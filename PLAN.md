@@ -8,9 +8,10 @@ characters, or assets.
 
 > `SANDLINE` is a placeholder codename. Rename before any public artifact.
 
-> **Revision 2.** Incorporates external technical review: determinism scoping
+> **Revision 2.1.** Incorporates external technical review: determinism scoping
 > (§2.3), the Rapier build correction (ADR-005), deterministic trig (T-0.14),
-> and the vertical-slice scope cut (§4.1).
+> and the vertical-slice scope cut (§4.1). 2.1 removes four surviving
+> bit-equality claims that contradicted §2.3.
 
 ---
 
@@ -55,8 +56,10 @@ ready to hand to an agent — break it down further first.
 4. **Data over code.** Weapons, classes, and enemy archetypes are JSON validated
    by zod schemas, never hardcoded in systems.
 5. **`shared` imports nothing platform-specific.** No `three`, no `ws`, no `fs`.
-   It must run headless in Node and in the browser, byte-identically. This is
-   what makes the authoritative server possible — enforced by T-0.11.
+   It must run headless in Node and in the browser. This is what makes the
+   authoritative server possible. Where the two must agree numerically, §2.3
+   sets how closely and T-0.11 measures it — the bar is **bounded divergence,
+   never bit-equality**.
 6. **Leave a trail.** Each task appends a one-line entry to `docs/CHANGELOG.md`.
 
 ### 0.4 Agent prompt template
@@ -261,8 +264,9 @@ sandline/
 **Why `packages/bot` exists and matters:** it is the single highest-leverage
 thing in this plan for AI-driven development. A headless client that programmatically
 drives inputs turns "does multiplayer work?" from a human judgement call into a
-CI assertion. Agents cannot verify feel, but they *can* verify that two bot
-clients converge on identical world state. Build it early (T-1.20).
+CI assertion. Agents cannot verify feel, but they *can* verify that every bot's
+predicted state tracks the authoritative server within a bounded error (§2.3).
+Build it early (T-1.20).
 
 ---
 
@@ -270,12 +274,12 @@ clients converge on identical world state. Build it early (T-1.20).
 
 | ID | Milestone | Exit gate | Est. (solo, part-time) |
 |---|---|---|---|
-| **M0** | Foundations | `pnpm verify` green in CI; headless sim steps 1000 deterministic ticks | 2–3 wks |
+| **M0** | Foundations | `pnpm verify` green in CI; parity harness reports bounded divergence over 1000 ticks in Node *and* a non-V8 engine | 2–3 wks |
 | **M1** | ⚠️ Netcode prototype | 2 players, capsules, one hitscan rifle, 5 dumb enemies, playable at 120 ms simulated latency | 6–8 wks |
 | **M2** | Shooter feel | 🧍 Third-person combat that a human signs off as good | 8–10 wks |
 | **M3** | AI & squad command | 6 slots with bot backfill; enemies use cover and suppress | 10–12 wks |
 | **M4** | Content systems | Asset pipeline, level format, mission scripting, lobby, saves | 10–12 wks |
-| **M5** | Vertical slice | One finished 10-minute mission, 6 players, demo-able | 8–10 wks |
+| **M5** | Vertical slice | One finished 10-minute mission at §4.1 scope, 6 slots, demo-able | 6–8 wks |
 
 **M0 + M1 are the real gate.** Build zero content until the netcode prototype
 feels good under simulated adverse network conditions. If M1 fails, the project
@@ -316,8 +320,9 @@ cut does not touch. M5 shrinks. The 3–5× multiplier applies to all of them.
 
 ## 5. M0 — Foundations
 
-Goal: a monorepo where shared simulation code runs identically and
-deterministically in Node and the browser, verified in CI.
+Goal: a monorepo where shared simulation code runs headless in Node and in the
+browser, agreeing to within the §2.3 bounds, verified in CI on a non-V8 engine
+as well as V8.
 
 #### T-0.01 — Workspace scaffold
 - **Depends:** —
@@ -528,7 +533,7 @@ being answered is: *does an authoritative-server TPS feel good in a browser?*
 - **Depends:** T-1.13
 - **Files:** `packages/client/src/net/prediction.ts`, tests
 - **Do:** Apply local input immediately through the same `CharacterController`. Store `(tick, state)` history for reconciliation.
-- **Done when:** With zero latency, predicted state matches server state exactly every tick.
+- **Done when:** With zero latency, predicted state tracks server state within 1e-4 m every tick, and the test records peak divergence. Per §2.3 and R10, do **not** assert exact equality here — that is precisely the tripwire that gets disabled the first time it fires.
 - **Size:** M
 
 #### T-1.15 — Reconciliation
