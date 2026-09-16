@@ -8,6 +8,10 @@ characters, or assets.
 
 > `SANDLINE` is a placeholder codename. Rename before any public artifact.
 
+> **Revision 2.** Incorporates external technical review: determinism scoping
+> (§2.3), the Rapier build correction (ADR-005), deterministic trig (T-0.14),
+> and the vertical-slice scope cut (§4.1).
+
 ---
 
 ## 0. How to use this document
@@ -114,6 +118,12 @@ fireteams** (overwatch + assault). Objectives expose two viable approach routes.
 | Medic | Fast revive, stims |
 | Recon | Suppressed weapons, optics, fire-support calls |
 
+**The vertical slice ships two of these: Team Leader and Marksman** (§4.1). That
+pair demonstrates the overwatch/assault split the entire mission template rests
+on. The other four are post-slice. Revive is available to every class — the
+Medic is merely faster — so downed/revive still ships in the slice without
+the Medic existing yet.
+
 ### 1.4 Retained mechanics
 
 Downed-and-revive instead of instant death · per-soldier persistent XP across
@@ -137,7 +147,7 @@ code on client and server** — every stack choice serves that.
 |---|---|---|---|
 | Language | TypeScript (strict) | ADR-003 | Shared sim across client/server |
 | Render | Three.js | ADR-004 | Control + ecosystem; PlayCanvas rejected (editor lock-in) |
-| Physics | Rapier (`rapier3d-compat`) | ADR-005 | Identical WASM in Node and browser |
+| Physics | Rapier, **deterministic build** (`@dimforge/rapier3d-compat-deterministic`) | ADR-005 | Same WASM in Node and browser. The default build guarantees only *local* determinism — see §2.3 |
 | Navigation | `recast-navigation-js` | ADR-006 | WASM Recast/Detour |
 | ECS | bitECS | ADR-007 | Typed arrays map directly onto network snapshots |
 | Transport | WebSocket (uWebSockets.js) behind an interface | ADR-008 | WebTransport swaps in later; Safari support is the blocker |
@@ -169,6 +179,42 @@ Target **60 fps at 1080p on 2020-era laptop integrated graphics**.
   realtime GI — baked sun and dust haze *is* the target aesthetic
 - KTX2/Basis textures, Draco/meshopt geometry
 - Initial download <80 MB, playable in <30 s, levels streamed after
+
+### 2.3 Determinism policy 🔒 (ADR-014)
+
+**Snapshot replication does not require whole-world determinism.** The server is
+authoritative and ships state; clients apply it. Only two code paths need
+client/server parity:
+
+1. **The character controller** — the local player is predicted and reconciled
+   (T-1.12, T-1.15).
+2. **Weapon spread** — and only if the client draws *predicted* tracers. Spawn
+   tracers from the server hit event instead and even this is exempt.
+
+Everything else — damage, AI, ragdolls, debris, vehicles — is replicated, never
+predicted, and may diverge freely.
+
+This scoping is deliberate. A whole-world golden hash breaks on every damage or
+movement tuning change, teaches the team to re-baseline reflexively, and then
+catches nothing. **Parity tests must own their constants in the test fixture**
+rather than reading `data/*.json`, so gameplay tuning can never touch them.
+
+**Parity is bounded, not bit-exact.** Reconciliation smooths residual error
+anyway (T-1.15), so tests assert divergence under an epsilon and *log the actual
+number*. The logged trend is the early warning; a hard equality assertion is a
+tripwire that gets disabled.
+
+#### Known determinism hazards in JavaScript
+
+- `Math.sin`, `cos`, `tan`, `atan`, `atan2`, `exp`, `log`, `pow`, `hypot` are
+  **not** specified to bit precision by ECMAScript. Results differ across
+  engines. Banned in `packages/shared` — see T-0.14.
+- **The trap:** the server is Node (V8) and Chrome is V8, so this bug is
+  *invisible during development* and surfaces only for Safari (JSC) and Firefox
+  (SpiderMonkey) players. CI must run at least one non-V8 engine.
+- `Math.sqrt` and the arithmetic operators **are** exactly specified by
+  IEEE-754. Do not reimplement them.
+- `Math.random` is banned outright in simulation code; use the seeded PRNG.
 
 ---
 
@@ -234,6 +280,37 @@ clients converge on identical world state. Build it early (T-1.20).
 **M0 + M1 are the real gate.** Build zero content until the netcode prototype
 feels good under simulated adverse network conditions. If M1 fails, the project
 changes shape — that is exactly what the gate is for.
+
+### 4.1 Estimate reality and the slice scope cut 🔒 (ADR-015)
+
+**The table above sums to ~50 weeks. Treat that as a floor and plan for 3–5×.**
+Solo part-time game projects overrun by roughly that factor with high
+reliability, and these per-milestone figures exclude integration, debugging, and
+the gap between "the art pipeline works" and "the art exists." The honest range
+for the vertical slice as originally specced is **two to four years part-time**.
+
+That is a scope problem, not an estimation problem. The response is to cut what
+the slice has to *contain*, not to re-estimate what it takes to build:
+
+| Originally specced | Vertical slice ships | Why |
+|---|---|---|
+| 6 classes | **2** — Team Leader, Marksman | Demonstrates the two-fireteam split |
+| 5 enemy archetypes | **2** — rifleman, MG | The MG creates the suppression problem the marksman answers |
+| 80–120 animation clips | **~35** | One weapon class per soldier class; 2 death variants not 6; vault cut |
+| 60-piece modular kit | **~25** | One compact level, not six |
+| Driveable vehicles | **Mounted MG only** | Driveable deferred past the slice |
+
+**The 6-slot squad architecture (ADR-001) is not cut.** Six slots filled from a
+two-class pool costs nothing extra and is precisely the thesis being
+demonstrated. What gets cut is *variety*, not *structure* — that distinction is
+what keeps the slice honest rather than merely small.
+
+The netcode demo is what proves this project is possible. Content breadth proves
+nothing that a collaborator, a publisher, or a playtester cares about at this
+stage, and it is the single largest cost in the plan (R1).
+
+M2–M4 estimates stay as written because they are mostly systems work, which the
+cut does not touch. M5 shrinks. The 3–5× multiplier applies to all of them.
 
 ---
 
@@ -305,32 +382,40 @@ deterministically in Node and the browser, verified in CI.
 - **Done when:** Test creates 1000 entities, queries by archetype, destroys half, and confirms no ID reuse collisions.
 - **Size:** M
 
-#### T-0.10 — ⚠️ Rapier in both runtimes
+#### T-0.10 — ⚠️ Rapier deterministic build in both runtimes
 - **Depends:** T-0.09
 - **Files:** `packages/shared/src/sim/physics.ts`, `physics.test.ts`
-- **Do:** Load `rapier3d-compat` WASM in Node *and* the browser behind one async init. This is the known gotcha in the stack — resolve it before anything depends on it. Expose world creation, rigid body and collider helpers.
-- **Done when:** The same test file passes under Node and under a browser test runner, producing bit-identical positions after 100 steps of a falling body.
+- **Do:** Load `@dimforge/rapier3d-compat-deterministic` WASM in Node *and* the browser behind one async init. Verify the exact published package name at pin time. The deterministic variant disables SIMD and the parallel solver; that is acceptable at this project's scale (6 players + ~40 AI, not thousands of bodies) and is what lets T-1.22 assert a tight bound. **Do not switch to the non-`compat` build to get determinism** — `compat` vs non-`compat` is about WASM loading strategy and is orthogonal to the determinism guarantee; dropping it breaks Node loading, which the entire shared-sim architecture depends on. Expose world creation, rigid body and collider helpers.
+- **Done when:** The same test file passes under Node and under a browser test runner including **one non-V8 engine**, with positions agreeing within 1e-4 m after 100 steps of a falling body. Log the actual maximum divergence and the measured performance cost versus the default build.
 - **Size:** M
 
-#### T-0.11 — Determinism guard
-- **Depends:** T-0.08, T-0.10
-- **Files:** `packages/shared/src/sim/hash.ts`, `packages/shared/test/determinism.test.ts`
-- **Do:** World-state hash (FNV-1a over quantized replicated component data). Test steps a fixed scenario 1000 ticks in Node and asserts the hash matches a committed golden value.
-- **Done when:** `pnpm test` fails loudly if any change perturbs simulation output. Document the process for intentionally re-baselining the golden hash.
+#### T-0.11 — Parity test harness
+- **Depends:** T-0.08, T-0.10, T-0.14
+- **Files:** `packages/shared/test/harness/parity.ts`, `parity.test.ts`
+- **Do:** Per §2.3, this **replaces** what would otherwise be a whole-world golden hash. Build the *harness*, not a specific test: run two independent simulation instances over a fixed input sequence and report per-tick divergence (max, mean, tick of first breach). Constants come from the caller's fixture, never from `data/*.json`, so gameplay tuning cannot break anything built on it. Prove it against a falling-body scenario; the character controller parity test lands with T-1.12.
+- **Done when:** The harness reports divergence for a two-instance falling-body run in Node and in at least one non-V8 browser engine, and prints peak divergence on **every** run so the trend is visible before it becomes a failure.
 - **Size:** M
 
 #### T-0.12 — Headless sim harness
 - **Depends:** T-0.11
 - **Files:** `packages/shared/src/sim/Simulation.ts`, `packages/tools/src/sim-run.ts`
-- **Do:** A `Simulation` class composing clock + world + physics with `step(inputs)` and `snapshot()`. CLI runs N ticks and prints the final hash.
-- **Done when:** `pnpm sim-run --ticks 1000` prints a hash matching T-0.11's golden value.
+- **Do:** A `Simulation` class composing clock + world + physics with `step(inputs)` and `snapshot()`. CLI runs N ticks of a named scenario and reports final state, plus divergence against a second instance when run in parity mode.
+- **Done when:** `pnpm sim-run --scenario fall --ticks 1000 --parity` completes and reports divergence within the T-0.11 bound.
 - **Size:** M
 
 #### T-0.13 — ADR scaffold
 - **Depends:** —
 - **Files:** `docs/adr/*.md`, `docs/CHANGELOG.md`
-- **Do:** Write up ADR-001 through ADR-013 from §1 and §2, one file each: context, decision, consequences, alternatives rejected.
+- **Do:** Write up ADR-001 through ADR-015 from §1, §2 and §4.1, one file each: context, decision, consequences, alternatives rejected. ADR-005 (Rapier build), ADR-014 (determinism policy) and ADR-015 (estimate reality) carry the review corrections — write those three first.
 - **Done when:** Every 🔒 reference in this plan resolves to a real ADR file.
+- **Size:** M
+
+#### T-0.14 — Deterministic math primitives
+- **Depends:** T-0.02
+- **Do first:** despite its ID, this **blocks T-0.11 and T-1.12**. Schedule it immediately after T-0.03.
+- **Files:** `packages/shared/src/math/trig.ts`, `prng.ts`, `trig.test.ts`
+- **Do:** ECMAScript does not specify transcendental functions to bit precision (§2.3), so `Math.sin`/`cos`/`atan2` drift between a Node server and a Safari or Firefox client. Provide deterministic replacements. **Exploit the angle quantization from T-1.02:** angles are already integers at 1/1024 turn on the wire, so index a precomputed 4096-entry table by that integer — exact, no interpolation error, no engine variance, and cheaper than a polynomial approximation. Add a seeded PRNG (PCG32 or xorshift128+) for weapon spread. Extend the T-0.03 lint rule to ban `Math.(sin|cos|tan|atan|atan2|exp|log|pow|hypot|random)` inside `packages/shared`. `Math.sqrt` and the arithmetic operators are exactly specified by IEEE-754 — leave them alone.
+- **Done when:** Table trig matches `Math.sin`/`cos` within 1e-6 across the full angle range; byte-identical outputs in Node and in a non-V8 browser engine; lint rejects a `Math.cos` call added to a shared file.
 - **Size:** M
 
 ---
@@ -355,6 +440,7 @@ being answered is: *does an authoritative-server TPS feel good in a browser?*
 - **Files:** `packages/shared/src/net/quantize.ts`, tests
 - **Do:** Position at 1/64 m over a bounded world extent, angles at 1/1024 turn, velocities at 1/32 m/s. Each with documented range and error bound.
 - **Done when:** Test asserts max round-trip error is within the documented bound across the full range, and that out-of-range values clamp rather than wrap.
+- **Note:** the integer angle representation here is what T-0.14's trig table indexes. Keep the two in sync — changing angle resolution means regenerating the table.
 - **Size:** S
 
 #### T-1.03 — Snapshot schema
@@ -425,10 +511,10 @@ being answered is: *does an authoritative-server TPS feel good in a browser?*
 - **Size:** M
 
 #### T-1.12 — Character controller
-- **Depends:** T-0.10, T-1.11
+- **Depends:** T-0.10, T-0.14, T-1.11
 - **Files:** `packages/shared/src/sim/CharacterController.ts`, tests
-- **Do:** Rapier kinematic character controller. Walk, run, crouch, jump, slope limits, step offset, gravity. **Pure function of (state, input, dt)** — no hidden state, no randomness, no wall-clock reads.
-- **Done when:** Determinism test — the same input sequence from the same start state produces identical positions across 500 ticks, in both Node and browser.
+- **Do:** Rapier kinematic character controller. Walk, run, crouch, jump, slope limits, step offset, gravity. **Pure function of (state, input, dt)** — no hidden state, no wall-clock reads, no `Math.random`. Yaw→direction conversion **must** use T-0.14 table trig, never `Math.sin`/`Math.cos`. This is the single most likely source of a client/server drift that costs a week to diagnose, because it is invisible on a V8-to-V8 pairing (§2.3).
+- **Done when:** Using the T-0.11 harness, two instances over a fixed 500-tick sequence (slopes, steps, wall slides, jumps) diverge by under 1e-4 m, in Node and in at least one non-V8 browser engine. Movement constants live in the test fixture, not `data/*.json`. Peak divergence printed on every run.
 - **Size:** L
 
 #### T-1.13 — Server tick loop
@@ -464,8 +550,8 @@ being answered is: *does an authoritative-server TPS feel good in a browser?*
 #### T-1.17 — Hitscan weapons
 - **Depends:** T-1.12
 - **Files:** `packages/shared/src/sim/weapons.ts`, `packages/shared/src/data/weapons.json`, schema, tests
-- **Do:** Data-driven weapon definitions — RPM, damage, spread, falloff, mag size, reload time. Deterministic seeded spread (seed derived from tick + entity, never `Math.random`).
-- **Done when:** Same tick and seed produce identical spread vectors on client and server.
+- **Do:** Data-driven weapon definitions — RPM, damage, spread, falloff, mag size, reload time. Spread uses the T-0.14 seeded PRNG and table trig, seeded from tick + entity id — never `Math.random`.
+- **Done when:** Same tick and seed produce identical spread vectors in Node and in a non-V8 browser engine. **Decide before implementing:** per §2.3, if the client draws tracers from the server hit event rather than predicting them, this parity requirement disappears entirely and the seeded path can be server-only.
 - **Size:** M
 
 #### T-1.18 — Lag compensation
@@ -491,8 +577,8 @@ being answered is: *does an authoritative-server TPS feel good in a browser?*
 #### T-1.20 — Headless bot client
 - **Depends:** T-1.09, T-1.14
 - **Files:** `packages/bot/src/BotClient.ts`, `packages/bot/src/main.ts`
-- **Do:** A full client — transport, prediction, reconciliation — with no renderer. Inputs come from a scripted sequence or a seeded random walk. Exposes its world-state hash.
-- **Done when:** `pnpm bot --count 2 --ticks 600` connects two bots to a local server and both report a final world hash identical to the server's.
+- **Do:** A full client — transport, prediction, reconciliation — with no renderer. Inputs come from a scripted sequence or a seeded random walk. Exposes its predicted local-player state and observed remote-entity states for divergence measurement. Per §2.3 this is **not** a world-hash comparison — the server is authoritative, so only prediction parity is meaningful.
+- **Done when:** `pnpm bot --count 2 --ticks 600` connects two bots to a local server and both report peak prediction divergence under 1e-3 m at zero simulated latency.
 - **Size:** L
 
 #### T-1.21 — Network condition simulator
@@ -505,8 +591,8 @@ being answered is: *does an authoritative-server TPS feel good in a browser?*
 #### T-1.22 — Netcode CI test suite
 - **Depends:** T-1.20, T-1.21
 - **Files:** `packages/bot/test/convergence.test.ts`
-- **Do:** Matrix test — 2 and 6 bots × {0 ms, 80 ms, 200 ms} latency × {0%, 5%, 20%} loss. Assert every client converges to the server hash and that peak prediction error stays under threshold.
-- **Done when:** The full matrix passes in CI in under 5 minutes. **This is M1's real exit gate.**
+- **Do:** Matrix test — 2 and 6 bots × {0 ms, 80 ms, 200 ms} latency × {0%, 5%, 20%} loss. Per §2.3 assert **bounded prediction divergence and correction frequency**, not hash equality: peak local-player divergence under threshold, correction rate under threshold, and no unbounded drift across the run. Record numbers per cell so regressions surface as a trend rather than a binary.
+- **Done when:** The full matrix passes in CI in under 5 minutes and emits a per-cell divergence table. **This is M1's real exit gate.**
 - **Size:** L
 
 #### T-1.23 — Netgraph overlay
@@ -576,11 +662,15 @@ using the T-1.xx tasks above as the template for granularity.
 | E-4.8 | Vehicles — mounted MG first, driveable second |
 | E-4.9 | Deployment — regional game servers, session orchestration, observability |
 
-### M5 — Vertical slice (~8–10 wks)
+### M5 — Vertical slice (~6–8 wks at §4.1 scope)
 
-One finished 10-minute mission. Six classes playable. Full audio pass. Baked
-lighting. Onboarding. Performance to the §2.2 budget on target hardware. This is
-the artifact you show people.
+One finished 10-minute mission at the reduced scope in §4.1: **two classes, two
+enemy types, ~25-piece kit, mounted MG**. Six playable slots with bot backfill —
+the architecture ships whole even though the content does not. Full audio pass.
+Baked lighting. Onboarding. Performance to the §2.2 budget on target hardware.
+
+This is the artifact you show people, and the thing it is meant to prove is the
+netcode and the squad architecture — not breadth.
 
 ---
 
@@ -588,15 +678,17 @@ the artifact you show people.
 
 | # | Risk | Severity | Mitigation | Owner milestone |
 |---|---|---|---|---|
-| R1 | **Art volume** — a TPS needs 80–120 animation clips; art sinks more of these projects than code | Critical | One shared humanoid rig for all soldiers and enemies · purchased mocap · ~60-piece modular kit builds every level · prone cut from v1 | M4 |
+| R1 | **Art volume** — a TPS needs 80–120 animation clips; art sinks more of these projects than code | Critical | **§4.1 cut: slice ships 2 classes, 2 enemy types, ~35 clips, ~25-piece kit** · one shared humanoid rig for all soldiers and enemies · purchased mocap · prone and vault cut from v1 | M4 |
 | R2 | **Cover-shooter netcode** doesn't feel good in a browser | Critical | M1 exists solely to answer this, before any content investment | M1 |
 | R3 | **Combat AI** fails to read as competent | High | Dedicated milestone, early grey-box prototyping, generous buffer | M3 |
 | R4 | **Six players amplifies level cost** — wider levels, ~1.5× encounter density | High | Two-fireteam mission template (§1.2); reuse kit aggressively | M4 |
 | R5 | **Browser performance** on lower-end hardware | Medium | Budget enforced in CI (E-4.2) · desktop-only v1 (ADR-002) | M4 |
-| R6 | **Rapier determinism** drifts across platforms | Medium | T-0.11 determinism guard catches it the day it appears | M0 |
+| R6 | **Cross-platform simulation drift** — Rapier's default build guarantees only *local* determinism, and JS transcendentals differ by engine | High | Deterministic Rapier build (ADR-005) · table trig in `shared/math` (T-0.14) · parity harness logging divergence trend (T-0.11) · **CI runs a non-V8 engine**, without which the bug is invisible | M0 |
 | R7 | **Hosting cost** at scale | Medium | Session-based regional allocation; measure early, model before launch | M4 |
 | R8 | **IP exposure** | Low but absolute | Original names, characters, and assets throughout. Historical setting is fine; real unit insignia and branding are not. | Ongoing |
 | R9 | **Scope creep** | High | Anything not in §1.4 goes to a backlog file, not into a milestone | Ongoing |
+| R10 | **Determinism theater** — a whole-world golden hash that breaks on every tuning change, gets re-baselined reflexively, then catches nothing | Medium | §2.3 scopes parity to the two paths that actually need it; parity tests own their constants in the fixture | M0 |
+| R11 | **Estimates are a floor, not a plan** — §4 sums to ~50 wks; comparable solo projects run 3–5× | High | §4.1 scope cut · re-estimate at every milestone gate from *measured velocity*, never from this table | Ongoing |
 
 ---
 
@@ -623,9 +715,17 @@ These block estimation, not implementation — M0 can start today regardless.
 
 1. Answer Q1–Q4 in §9.
 2. Create the dedicated repository; move `PLAN.md` into it.
-3. Run **T-0.13** (write the ADRs) — it costs little and stops agents from
-   re-litigating locked decisions in every subsequent task.
+3. Run **T-0.13** (write the ADRs). It costs little and stops agents from
+   re-litigating locked decisions in every subsequent task. Write **ADR-005**
+   (Rapier build), **ADR-014** (determinism policy) and **ADR-015** (estimate
+   reality) first — they carry the review corrections.
 4. Run **T-0.01 → T-0.05** sequentially; they are small and unblock everything.
-5. Run **T-0.06** and **T-0.07** in parallel.
-6. Spike **T-0.10** (Rapier in both runtimes) early. It is the first task that
-   can genuinely fail, and it invalidates ADR-005 if it does.
+5. Run **T-0.14** (deterministic math) next. Despite its ID it blocks T-0.11 and
+   T-1.12, and it is the cheapest available insurance against a drift bug that
+   stays invisible until the first Safari player joins.
+6. Run **T-0.06** and **T-0.07** in parallel.
+7. Spike **T-0.10** early — confirm the deterministic Rapier build loads in both
+   runtimes and **measure its actual performance cost**. If that cost is real at
+   this scale, ADR-005 and §2.3 both need revisiting before M1 starts.
+8. Add a non-V8 browser engine to CI before T-1.12 lands. Without it, §2.3's
+   central hazard cannot be detected by any test in this plan.
