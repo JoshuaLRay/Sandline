@@ -1,0 +1,107 @@
+:root {
+  --sand-deep: #0f0c07;
+  --dust: #e8dcc8;
+  --amber: #f0b429;
+  --rule: rgba(232, 220, 200, 0.18);
+  --panel: rgba(15, 12, 7, 0.74);
+}
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--sand-deep);
+  color: var(--dust);
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+canvas { display: block; touch-action: none; }
+
+#hud, #tuning {
+  position: fixed;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(6px);
+}
+#hud {
+  top: 0; left: 0;
+  margin: 12px;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  max-width: min(330px, calc(100vw - 24px));
+  pointer-events: none;
+}
+#hud h1 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+#hud h1 span { color: var(--amber); }
+#stats { white-space: pre-line; font-variant-numeric: tabular-nums; }
+#keys, #gap {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+  font-size: 10px;
+  opacity: 0.75;
+}
+#keys b { color: var(--amber); font-weight: 600; }
+#gap { color: #e0a866; opacity: 0.85; }
+
+#tuning {
+  top: 0; right: 0;
+  margin: 12px;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  width: min(240px, calc(100vw - 24px));
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+#tuning h2 {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+#tuning label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  margin-bottom: 9px;
+  font-size: 10px;
+}
+#tuning label b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--amber);
+}
+#tuning input[type='range'] {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 16px;
+  accent-color: var(--amber);
+  cursor: pointer;
+}
+#tuning input[type='range']:focus-visible { outline: 2px solid var(--amber); }
+#tuning .hint { margin: 10px 0 4px; font-size: 9px; opacity: 0.6; }
+#tuning-out {
+  margin: 0;
+  padding: 7px 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 2px;
+  font-size: 10px;
+  line-height: 1.45;
+  white-space: pre;
+  overflow-x: auto;
+  user-select: all;
+}
+@media (max-width: 640px) {
+  #tuning { position: static; margin: 12px; width: auto; max-height: none; }
+  #hud { position: static; margin: 12px 12px 0; max-width: none; }
+  body { overflow-y: auto; }
+}

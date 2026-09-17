@@ -34,3 +34,5 @@ Format: `T-<id> — <what changed>`
 - T-1.10 - Clock sync with median RTT and offset estimation.
 - T-1.12 - Kinematic character controller, pure and table-trig driven.
 - T-1.13 - Authoritative 30Hz session with six slots and per-client deltas.
+- T-0.06 - Client rebuilt as a local movement QA harness with live tuning.
+- T-1.11 - Keyboard and pointer-lock input producing MoveInput, edge-latched.

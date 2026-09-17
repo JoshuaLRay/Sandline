@@ -4,20 +4,21 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SANDLINE</title>
-    <style>
-      html, body { margin: 0; height: 100%; background: #0d0b08; overflow: hidden; }
-      canvas { display: block; }
-      #hud {
-        position: fixed; top: 12px; left: 12px;
-        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-        color: #e8dcc8; text-shadow: 0 1px 2px #000; pointer-events: none;
-        background: rgba(0,0,0,.35); padding: 8px 10px; border-radius: 4px;
-      }
-      #hud b { color: #f0b429; font-weight: 600; }
-    </style>
+    <link rel="stylesheet" href="/src/ui/qa.css" />
   </head>
   <body>
-    <div id="hud">SANDLINE <b>M0</b><br /><span id="stats">booting…</span></div>
+    <div id="hud">
+      <h1>Sandline <span>M1</span></h1>
+      <div id="stats">booting...</div>
+      <div id="keys">
+        <b>WASD</b> move &middot; <b>Shift</b> sprint &middot; <b>Ctrl</b> crouch &middot;
+        <b>Space</b> jump &middot; <b>R</b> reset &middot; <b>H</b> hide
+      </div>
+      <div id="gap">
+        No collision yet &mdash; you will walk through scenery. Speed, jump and
+        gravity are real; terrain is not implemented.
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
