@@ -21,3 +21,8 @@ Format: `T-<id> — <what changed>`
 - T-0.12 — `Simulation` class and `sim-run` CLI with a `--parity` mode.
 - T-0.07 — Server bootstrap: config, JSON logging, tick loop, clean SIGTERM.
 - T-0.06 — Vite + Three.js client with COOP/COEP headers set from the start.
+- T-1.01 - BitStream reader/writer, bit-packed, throws on over-read.
+- T-1.02 - Quantization specs with documented error bounds; clamps, never wraps.
+- T-1.03 - Replication schema and full snapshot encoding in wire integers.
+- T-1.04 - Delta compression with per-field masks and a bounded baseline ring.
+- T-1.05 - Tagged protocol messages with handshake version rejection.
