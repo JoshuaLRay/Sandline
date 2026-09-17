@@ -42,6 +42,15 @@ export class LocalInput {
    * infuriating bugs in a shooter, and the fix costs nothing.
    */
   private readonly pressed = new Set<string>();
+  /**
+   * Mouse buttons currently held, tracked only while the pointer is locked.
+   *
+   * The click that CAPTURES the pointer must not also fire the weapon, or every
+   * tester loses a round walking back into the window. Pointer lock arrives
+   * asynchronously, so `locked` is already false on that first mousedown and
+   * the button is simply not recorded.
+   */
+  private readonly buttons = new Set<number>();
   private yawAccum = 0;
   private pitchAccum = 0;
   private sensitivity: number;
@@ -65,14 +74,27 @@ export class LocalInput {
     });
     addEventListener('keyup', (e) => this.held.delete(e.code));
     // Losing focus mid-key leaves a key stuck down forever otherwise.
-    addEventListener('blur', () => this.held.clear());
+    addEventListener('blur', () => {
+      this.held.clear();
+      this.buttons.clear();
+    });
 
     canvas.addEventListener('click', () => {
       if (!this.locked) canvas.requestPointerLock();
     });
+    // Right mouse is aim-down-sights; without this it opens a context menu
+    // over the canvas instead.
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    addEventListener('mousedown', (e) => {
+      if (this.locked) this.buttons.add(e.button);
+    });
+    addEventListener('mouseup', (e) => this.buttons.delete(e.button));
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === canvas;
-      if (!this.locked) this.held.clear();
+      if (!this.locked) {
+        this.held.clear();
+        this.buttons.clear();
+      }
     });
     addEventListener('mousemove', (e) => {
       if (!this.locked) return;
@@ -107,6 +129,16 @@ export class LocalInput {
   get pitchFraction(): number {
     const limit = this.pitchAccum >= 0 ? this.maxPitch : -this.minPitch;
     return limit === 0 ? 0 : this.pitchAccum / limit;
+  }
+
+  /** Left mouse held: pull the trigger. Cadence is the weapon's, not the mouse's. */
+  get firing(): boolean {
+    return this.buttons.has(0);
+  }
+
+  /** Right mouse held: aim down sights, which tightens the cone. */
+  get ads(): boolean {
+    return this.buttons.has(2);
   }
 
   /** Camera pitch in wire-angle units. Not sent to the simulation. */

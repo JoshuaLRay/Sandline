@@ -1,14 +1,25 @@
 /**
- * Client (T-0.06) — currently a LOCAL movement QA harness.
+ * Client (T-0.06) — THE QA HOME for this project.
+ *
+ * Standing commitment, not a description of one task: whatever has been built
+ * and can be felt, you can reach it here, and the deployed page tracks the
+ * current state of the work. A task that adds something judgeable adds it to
+ * this harness in the same change. A task whose output is headless (wire
+ * formats, delta compression, clock sync) has nothing to add and should not
+ * invent something.
+ *
+ * Covered today: movement (T-1.12) and weapons (T-1.17).
  *
  * This runs the same `stepCharacter` the authoritative server runs (T-1.12), at
- * the same fixed 30 Hz, driven by local input. No network yet: prediction and
- * reconciliation are T-1.14/T-1.15, and until they exist there is nothing
- * networked worth looking at.
+ * the same fixed 30 Hz, driven by local input, and fires the same `tryFire` and
+ * `shotDirections` the server will (T-1.17). No network yet: prediction and
+ * reconciliation are T-1.14/T-1.15, and until they are wired in here there is
+ * nothing networked worth looking at.
  *
- * Its job right now is to make MOVEMENT FEEL judgeable, since the constants in
- * DEFAULT_MOVE_CONFIG are guesses and everything downstream (level scale, cover
- * spacing, encounter pacing, animation timing) is built on top of them.
+ * Its job is to make FEEL judgeable, since the constants in
+ * DEFAULT_MOVE_CONFIG and data/weapons.json are guesses and everything
+ * downstream (level scale, cover spacing, encounter pacing, animation timing)
+ * is built on top of them.
  *
  * KNOWN GAP: T-1.12 is partial. The plan specified a Rapier kinematic
  * controller with slope limits and step offset; this is pure math on a flat
@@ -28,6 +39,7 @@ import {
   wireToTable,
 } from '@sandline/shared';
 import { LocalInput } from './input/LocalInput.ts';
+import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { createTuningPanel } from './ui/TuningPanel.ts';
 
 /* -- Scene ----------------------------------------------------------------- */
@@ -108,7 +120,29 @@ const reference = new THREE.Mesh(
 );
 reference.position.set(-3, 0.9, 3);
 reference.castShadow = true;
+reference.name = 'reference figure';
 scene.add(reference);
+
+/**
+ * The firing range: targets at known distances straight ahead of spawn.
+ *
+ * Damage falloff (T-1.17) is a curve between two distances per weapon, and a
+ * curve you cannot stand at three points of is just a pair of numbers in JSON.
+ * These sit either side of the carbine's 22 m / 55 m falloff band and the
+ * breacher's 6 m / 18 m one, so the drop-off is something you walk to rather
+ * than read. Offset in x so they do not share a cell with a distance post.
+ */
+const targets: THREE.Object3D[] = [reference];
+const targetMat = new THREE.MeshStandardMaterial({ color: 0xcf6a4c, roughness: 0.85 });
+const targetGeo = new THREE.CapsuleGeometry(0.35, 1.1, 6, 14);
+for (const distance of [10, 20, 35, 55, 80, 95]) {
+  const target = new THREE.Mesh(targetGeo, targetMat);
+  target.position.set(2.5, 0.9, distance);
+  target.castShadow = true;
+  target.name = `range ${distance}m`;
+  scene.add(target);
+  targets.push(target);
+}
 
 /* -- Player ---------------------------------------------------------------- */
 
@@ -146,8 +180,12 @@ for (let i = 1; i < 6; i++) {
   );
   bot.position.set(i * 1.6 - 6, 0.9, -4);
   bot.castShadow = true;
+  bot.name = `squad slot ${i}`;
   scene.add(bot);
+  targets.push(bot);
 }
+
+const combat = new CombatQA(scene, targets);
 
 /* -- UI -------------------------------------------------------------------- */
 
@@ -164,6 +202,8 @@ document.body.appendChild(
 /* -- Loop ------------------------------------------------------------------ */
 
 const clock = new Clock();
+/** Reused so a held trigger does not allocate a vector per tick. */
+const muzzle = new THREE.Vector3();
 let last = performance.now();
 let frames = 0;
 let fpsAt = last;
@@ -178,6 +218,22 @@ function frame(): void {
   for (let i = 0; i < steps; i++) {
     prevState = state;
     state = stepCharacter(state, input.sample(), TICK_SECONDS, config);
+
+    /**
+     * Weapons run on the tick, not the frame. RPM, reload and the spread seed
+     * are all functions of simulation time and tick number (T-1.17), so firing
+     * from the render loop would make cadence depend on frame rate and make the
+     * spread a different pattern on every machine.
+     */
+    const tickNumber = clock.tick - steps + i + 1;
+    muzzle.set(state.x, state.y + EYE_HEIGHT, state.z);
+    combat.tick(tickNumber, tickNumber * TICK_SECONDS, {
+      origin: muzzle,
+      yawWire: input.yaw,
+      pitchWire: input.pitch,
+      firing: input.firing,
+      ads: input.ads,
+    });
   }
 
   // Render BETWEEN ticks. Without this the 30 Hz simulation shows as stutter,
@@ -246,9 +302,12 @@ function frame(): void {
         `${state.grounded ? 'grounded' : `airborne  y ${state.y.toFixed(2)}`}\n` +
         `tick ${clock.tick}   ${fps} fps${clock.dropped ? `   dropped ${clock.dropped}` : ''}\n` +
         `${input.firstPerson ? 'first person' : 'third person'}  (V to swap)\n` +
-        `${input.locked ? 'mouse captured - Esc to release' : 'CLICK to capture mouse'}`;
+        `${input.locked ? 'mouse captured - Esc to release' : 'CLICK to capture mouse'}\n` +
+        `\n${combat.readout(clock.tick * TICK_SECONDS, input.ads)}`;
     }
   }
+
+  combat.fade(clock.tick * TICK_SECONDS + clock.alpha * TICK_SECONDS);
 
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
@@ -256,10 +315,19 @@ function frame(): void {
 requestAnimationFrame(frame);
 
 addEventListener('keydown', (e) => {
-  if (e.code === 'KeyR') {
+  // R is reload, not reset: this is a shooter now and R is muscle memory.
+  // Reset moved to T.
+  if (e.code === 'KeyR') combat.requestReload(clock.tick * TICK_SECONDS);
+  if (e.code === 'KeyT') {
     state = createMoveState(0, 0, 0);
     prevState = state;
     peakSpeed = 0;
+    combat.reset();
+  }
+  // 1-4 pick a weapon. Switching is instant and reloads: a range, not a match.
+  const slot = Number.parseInt(e.code.replace('Digit', ''), 10);
+  if (e.code.startsWith('Digit') && slot >= 1 && slot <= WEAPON_ORDER.length) {
+    combat.selectWeapon(slot - 1);
   }
   if (e.code === 'KeyH' && hud) hud.hidden = !hud.hidden;
   // First/third person. A proper camera with collision is E-2.1 in M2; this is
