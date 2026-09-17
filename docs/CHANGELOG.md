@@ -36,3 +36,6 @@ Format: `T-<id> — <what changed>`
 - T-1.13 - Authoritative 30Hz session with six slots and per-client deltas.
 - T-0.06 - Client rebuilt as a local movement QA harness with live tuning.
 - T-1.11 - Keyboard and pointer-lock input producing MoveInput, edge-latched.
+- T-1.14 - Client prediction: immediate input with replay history.
+- T-1.15 - Reconciliation with input replay and linear correction smoothing.
+- T-1.16 - Remote entity interpolation, Catmull-Rom with a capped extrapolation.

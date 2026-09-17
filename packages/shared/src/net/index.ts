@@ -9,3 +9,5 @@ export * from './NetSim.ts';
 export * from './Connection.ts';
 export * from './clockSync.ts';
 export * from './SnapshotStore.ts';
+export * from './prediction.ts';
+export * from './interpolate.ts';
