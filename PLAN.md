@@ -709,7 +709,7 @@ These block estimation, not implementation — M0 can start today regardless.
 3. **Desktop-only confirmation.** Recommended and assumed (ADR-002). Mobile
    Safari support would add months.
 4. ~~**Where does this repo live?**~~ **Resolved 2026-09-17.** Split out of an
-   unrelated repository into `JoshuaLRay/sandline` with `git subtree split`, so
+   unrelated repository into `JoshuaLRay/Sandline` with `git subtree split`, so
    the commit history came with it. The forcing function was GitHub Pages:
    one site per repository, so the game and the host repo were competing for
    the same URL.

@@ -5,8 +5,8 @@
 Needs **Node 22+** and **pnpm 10+** (`npm i -g pnpm`).
 
 ```bash
-git clone https://github.com/JoshuaLRay/sandline.git
-cd sandline
+git clone https://github.com/JoshuaLRay/Sandline.git
+cd Sandline
 pnpm install
 pnpm --filter @sandline/client dev      # http://localhost:5173
 ```
@@ -43,7 +43,7 @@ pnpm --filter @sandline/client build
 makes the Actions deploy fail with a misleading *"Ensure GitHub Pages has been
 enabled"* 404 even though Pages is, technically, enabled.
 
-Published at: **https://joshualray.github.io/sandline/**
+Published at: **https://joshualray.github.io/Sandline/**
 
 ### One caveat that will matter later
 
