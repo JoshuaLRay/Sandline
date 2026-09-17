@@ -26,3 +26,11 @@ Format: `T-<id> — <what changed>`
 - T-1.03 - Replication schema and full snapshot encoding in wire integers.
 - T-1.04 - Delta compression with per-field masks and a bounded baseline ring.
 - T-1.05 - Tagged protocol messages with handshake version rejection.
+- T-1.06 - Transport interface plus a queued in-memory loopback pair.
+- T-1.21 - NetSim: clock-driven latency, jitter, loss and duplication.
+- T-1.07 - WebSocket server transport on `ws` (see ADR-008 addendum).
+- T-1.08 - Browser WebSocket client transport with exponential backoff.
+- T-1.09 - Connection lifecycle, handshake validation, heartbeat timeout.
+- T-1.10 - Clock sync with median RTT and offset estimation.
+- T-1.12 - Kinematic character controller, pure and table-trig driven.
+- T-1.13 - Authoritative 30Hz session with six slots and per-client deltas.

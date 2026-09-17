@@ -82,6 +82,12 @@ export class BitWriter {
     this.writeBits(new Uint32Array(buf)[0] as number, 32);
   }
 
+  /** Length-prefixed raw bytes, for embedding an encoded delta in a message. */
+  writeBytes(value: Uint8Array): void {
+    this.writeVarUint(value.length);
+    for (const b of value) this.writeBits(b, 8);
+  }
+
   writeString(value: string): void {
     const utf8 = encodeUtf8(value);
     this.writeVarUint(utf8.length);
@@ -147,6 +153,16 @@ export class BitReader {
     const buf = new ArrayBuffer(4);
     new Uint32Array(buf)[0] = this.readBits(32);
     return new Float32Array(buf)[0] as number;
+  }
+
+  readBytes(): Uint8Array {
+    const len = this.readVarUint();
+    if (len > this.bitsRemaining >> 3) {
+      throw new RangeError(`byte payload length ${len} exceeds remaining (corrupt stream)`);
+    }
+    const out = new Uint8Array(len);
+    for (let i = 0; i < len; i++) out[i] = this.readBits(8);
+    return out;
   }
 
   readString(): string {

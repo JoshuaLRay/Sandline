@@ -20,7 +20,7 @@ export interface SimulationOptions {
   ground?: boolean;
 }
 
-export interface EntitySnapshot {
+export interface ActorSnapshot {
   netId: number;
   x: number;
   y: number;
@@ -28,9 +28,9 @@ export interface EntitySnapshot {
   yaw: number;
 }
 
-export interface Snapshot {
+export interface SimSnapshot {
   tick: number;
-  entities: EntitySnapshot[];
+  entities: ActorSnapshot[];
 }
 
 export class Simulation {
@@ -83,8 +83,8 @@ export class Simulation {
     this.currentTick++;
   }
 
-  snapshot(): Snapshot {
-    const entities: EntitySnapshot[] = [];
+  snapshot(): SimSnapshot {
+    const entities: ActorSnapshot[] = [];
     for (const eid of this.bodies.keys()) {
       entities.push({
         netId: NetId.id[eid] as number,

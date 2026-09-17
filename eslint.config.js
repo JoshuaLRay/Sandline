@@ -42,6 +42,17 @@ export default tseslint.config(
     },
   },
   {
+    // Leading-underscore names are intentionally unused: `_channel` marks a
+    // parameter kept for interface conformance (both channels map to TCP today,
+    // per ADR-008) rather than one forgotten.
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+      ],
+    },
+  },
+  {
     /**
      * The one legitimate exception. trig.test.ts validates the lookup table
      * AGAINST Math.sin/cos — checking the table stays within 1e-6 of the real

@@ -17,6 +17,7 @@ export const MessageType = {
   JoinAck: 1,
   Input: 2,
   Snapshot: 3,
+  Delta: 8,
   Ack: 4,
   Ping: 5,
   Pong: 6,
@@ -31,6 +32,13 @@ export type Message =
   | { kind: 'JoinAck'; netId: number; slot: number; serverTick: number }
   | { kind: 'Input'; tick: number; moveX: number; moveY: number; yaw: number; pitch: number; buttons: number }
   | { kind: 'Snapshot'; snapshot: WorldSnapshot }
+  /**
+   * A delta-encoded snapshot. `baselineTick` is the tick the receiver must
+   * already hold; null means the payload is a full snapshot. Carrying the
+   * baseline explicitly lets a client detect that it lost the baseline and ask
+   * for a full one rather than decoding garbage.
+   */
+  | { kind: 'Delta'; tick: number; baselineTick: number | null; payload: Uint8Array }
   | { kind: 'Ack'; tick: number }
   | { kind: 'Ping'; id: number; clientTime: number }
   | { kind: 'Pong'; id: number; clientTime: number; serverTime: number }
@@ -65,6 +73,13 @@ export function encodeMessage(msg: Message): Uint8Array {
     case 'Snapshot':
       w.writeBits(MessageType.Snapshot, TYPE_BITS);
       writeSnapshot(w, msg.snapshot);
+      break;
+    case 'Delta':
+      w.writeBits(MessageType.Delta, TYPE_BITS);
+      w.writeVarUint(msg.tick);
+      w.writeBool(msg.baselineTick !== null);
+      if (msg.baselineTick !== null) w.writeVarUint(msg.baselineTick);
+      w.writeBytes(msg.payload);
       break;
     case 'Ack':
       w.writeBits(MessageType.Ack, TYPE_BITS);
@@ -116,6 +131,11 @@ export function decodeMessage(bytes: Uint8Array): Message {
       }
       case MessageType.Snapshot:
         return { kind: 'Snapshot', snapshot: readSnapshot(r) };
+      case MessageType.Delta: {
+        const tick = r.readVarUint();
+        const baselineTick = r.readBool() ? r.readVarUint() : null;
+        return { kind: 'Delta', tick, baselineTick, payload: r.readBytes() };
+      }
       case MessageType.Ack:
         return { kind: 'Ack', tick: r.readVarUint() };
       case MessageType.Ping:

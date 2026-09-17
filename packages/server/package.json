@@ -4,5 +4,11 @@
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
-  "dependencies": { "@sandline/shared": "workspace:*" }
+  "dependencies": {
+    "@sandline/shared": "workspace:*",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1"
+  }
 }

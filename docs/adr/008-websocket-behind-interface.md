@@ -47,3 +47,35 @@ moment. All game code targets the interface; nothing imports a WebSocket type.
   need.
 - **No abstraction, WebSocket directly.** Rejected: guarantees the assumption
   leakage above becomes permanent.
+
+## Addendum — 2026-09-17, `ws` substituted for uWebSockets.js
+
+uWebSockets.js is not published to npm. It is distributed from GitHub
+(`uNetworking/uWebSockets.js#v20.x`) as a native binary, which makes it a
+heavier install and a poorer fit for a project whose CI must stay simple.
+
+`packages/server/src/net/WsTransport.ts` therefore uses **`ws`** instead.
+
+**This is the decision above working as designed, not a departure from it.** The
+substitution touched one file and nothing else, because every consumer codes
+against the `Transport` interface. Moving to uWebSockets.js for throughput
+later — or to WebTransport, the change this ADR was actually written for — is
+the same size of change.
+
+The decision itself is unchanged: WebSocket, both channels on TCP, behind an
+interface. Only the library providing it differs.
+
+### Assumption leakage, guarded
+
+The consequence this ADR flagged — that TCP quietly teaches code to assume
+ordered, complete delivery — is now enforced rather than hoped for:
+
+- `NetSim` (T-1.21) injects latency, jitter, loss and duplication, and is driven
+  by an explicit clock rather than timers, so failures reproduce exactly.
+- It drops only `unreliable` traffic. Modelling loss on a reliable channel would
+  test a network we never have, since TCP would have retransmitted.
+- `SnapshotStore` treats a lost baseline as routine and asks for a full snapshot
+  rather than decoding against the wrong one, which would yield plausible but
+  wrong world state.
+- A NetSim test asserts that jitter genuinely REORDERS packets, pinning the one
+  assumption that would otherwise silently take root.
