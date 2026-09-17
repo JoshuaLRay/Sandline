@@ -4,5 +4,8 @@
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
-  "dependencies": { "@sandline/shared": "workspace:*" }
+  "dependencies": {
+    "@sandline/shared": "workspace:*",
+    "@sandline/server": "workspace:*"
+  }
 }

@@ -17,7 +17,8 @@
     "bench:rapier": "tsx packages/tools/src/bench-rapier.ts",
     "test:parity-browsers": "vitest run --config vitest.browser.config.ts",
     "build:artifact": "pnpm --filter @sandline/client build && tsx packages/tools/src/build-artifact.ts",
-    "bench:bandwidth": "tsx packages/tools/src/bench-bandwidth.ts"
+    "bench:bandwidth": "tsx packages/tools/src/bench-bandwidth.ts",
+    "bench:tickrate": "tsx packages/tools/src/bench-tickrate.ts"
   },
   "devDependencies": {
     "@dimforge/rapier3d-compat": "0.20.0",
