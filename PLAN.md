@@ -150,7 +150,7 @@ code on client and server** — every stack choice serves that.
 |---|---|---|---|
 | Language | TypeScript (strict) | ADR-003 | Shared sim across client/server |
 | Render | Three.js | ADR-004 | Control + ecosystem; PlayCanvas rejected (editor lock-in) |
-| Physics | Rapier, **deterministic build** (`@dimforge/rapier3d-compat-deterministic`) | ADR-005 | Same WASM in Node and browser. The default build guarantees only *local* determinism — see §2.3 |
+| Physics | Rapier, **deterministic build** (`@dimforge/rapier3d-deterministic-compat`) | ADR-005 | Same WASM in Node and browser. The default build guarantees only *local* determinism — see §2.3 |
 | Navigation | `recast-navigation-js` | ADR-006 | WASM Recast/Detour |
 | ECS | bitECS | ADR-007 | Typed arrays map directly onto network snapshots |
 | Transport | WebSocket (uWebSockets.js) behind an interface | ADR-008 | WebTransport swaps in later; Safari support is the blocker |
@@ -390,7 +390,7 @@ as well as V8.
 #### T-0.10 — ⚠️ Rapier deterministic build in both runtimes
 - **Depends:** T-0.09
 - **Files:** `packages/shared/src/sim/physics.ts`, `physics.test.ts`
-- **Do:** Load `@dimforge/rapier3d-compat-deterministic` WASM in Node *and* the browser behind one async init. Verify the exact published package name at pin time. The deterministic variant disables SIMD and the parallel solver; that is acceptable at this project's scale (6 players + ~40 AI, not thousands of bodies) and is what lets T-1.22 assert a tight bound. **Do not switch to the non-`compat` build to get determinism** — `compat` vs non-`compat` is about WASM loading strategy and is orthogonal to the determinism guarantee; dropping it breaks Node loading, which the entire shared-sim architecture depends on. Expose world creation, rigid body and collider helpers.
+- **Do:** Load `@dimforge/rapier3d-deterministic-compat` WASM in Node *and* the browser behind one async init. Verify the exact published package name at pin time. The deterministic variant disables SIMD and the parallel solver; that is acceptable at this project's scale (6 players + ~40 AI, not thousands of bodies) and is what lets T-1.22 assert a tight bound. **Do not switch to the non-`compat` build to get determinism** — `compat` vs non-`compat` is about WASM loading strategy and is orthogonal to the determinism guarantee; dropping it breaks Node loading, which the entire shared-sim architecture depends on. Expose world creation, rigid body and collider helpers.
 - **Done when:** The same test file passes under Node and under a browser test runner including **one non-V8 engine**, with positions agreeing within 1e-4 m after 100 steps of a falling body. Log the actual maximum divergence and the measured performance cost versus the default build.
 - **Size:** M
 

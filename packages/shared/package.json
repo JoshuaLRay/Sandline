@@ -1,0 +1,18 @@
+{
+  "name": "@sandline/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-deterministic-compat": "0.20.0",
+    "bitecs": "^0.3.40"
+  }
+}

@@ -8,3 +8,16 @@ Format: `T-<id> — <what changed>`
 ---
 
 - T-0.13 — Wrote ADR-001 through ADR-015 plus index and template in `docs/adr/`.
+- T-0.01 — pnpm workspace with shared/server/client/bot/tools; root `pnpm verify`.
+- T-0.02 — Strict TS with project references; `shared` resolves to source.
+- T-0.03 — ESLint flat config; bans platform imports and non-deterministic Math in `shared`.
+- T-0.04 — Vitest with per-package projects.
+- T-0.05 — CI running `pnpm verify`, plus a separate non-V8 parity job.
+- T-0.14 — Deterministic trig (committed 1025-entry quarter table) and sfc32 PRNG.
+- T-0.08 — Fixed 30 Hz timestep with spiral-of-death clamping.
+- T-0.09 — bitECS world, components, and never-reused NetId allocation.
+- T-0.10 — Rapier `-deterministic-compat` loads in Node; cost measured at 7% over default.
+- T-0.11 — Parity harness reporting bounded divergence, replacing the golden hash.
+- T-0.12 — `Simulation` class and `sim-run` CLI with a `--parity` mode.
+- T-0.07 — Server bootstrap: config, JSON logging, tick loop, clean SIGTERM.
+- T-0.06 — Vite + Three.js client with COOP/COEP headers set from the start.

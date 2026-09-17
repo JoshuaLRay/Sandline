@@ -24,7 +24,7 @@ initialize in Node and in the browser.
 
 ## Decision
 
-Use **`@dimforge/rapier3d-compat-deterministic`**. Verify the exact published
+Use **`@dimforge/rapier3d-deterministic-compat`**. Verify the exact published
 package name at pin time rather than trusting this document.
 
 **Do not attempt to fix determinism by dropping `compat`.** The two axes are
@@ -51,3 +51,58 @@ simulation the entire architecture rests on, and gains nothing.
   problem we do not have. We need bounded agreement, not bit-exactness (ADR-014).
 - **Jolt or Havok via WASM.** Rejected: less mature JavaScript bindings and no
   equivalent determinism story.
+
+## Addendum — 2026-09-17, package name verified
+
+The name originally written here, `@dimforge/rapier3d-compat-deterministic`, does
+not exist on npm. The published name reverses the last two segments:
+
+**`@dimforge/rapier3d-deterministic-compat`** — 0.20.0 at time of pinning.
+
+Dimforge publishes three orthogonal axes at the same version:
+
+| Package | Solver | Loading |
+|---|---|---|
+| `@dimforge/rapier3d` | default | bundler |
+| `@dimforge/rapier3d-compat` | default | async, works in Node |
+| `@dimforge/rapier3d-simd[-compat]` | SIMD | either |
+| `@dimforge/rapier3d-deterministic[-compat]` | deterministic | either |
+
+This confirms the decision above: `-compat` is a loading-strategy suffix that
+composes with the solver variant. We need both properties, so we take the
+package carrying both suffixes.
+
+## Addendum — 2026-09-17, performance cost measured
+
+ADR-005 required measuring the deterministic build's cost rather than assuming
+it negligible, and named the threshold for revisiting this decision. Measured
+via `pnpm bench:rapier` at this game's scale — 46 dynamic capsules (6 players +
+40 AI) on a static ground plane, 1800 steps, best of 3:
+
+| Build | Per step | Relative |
+|---|---|---|
+| `-deterministic-compat` (our pick) | 8.4 µs | 1.00× |
+| `-compat` (default) | 7.8 µs | 0.93× |
+| `-simd-compat` | 6.8 µs | 0.81× |
+
+**The deterministic build costs ~7% more than default and ~24% more than SIMD.**
+
+Against a 33,333 µs server tick at 30 Hz, allowing physics a generous 25% of the
+tick (8,333 µs), the deterministic build consumes **0.1% of that allowance**.
+
+**Verdict: ADR-005 stands, with a wide margin.** The determinism guarantee is
+effectively free at this scale. The trade would only become interesting at
+roughly a thousand times more bodies than this game will ever have, at which
+point the design would have other problems.
+
+This also retires the contingency in the Consequences section above: no revisit
+of ADR-005 or ADR-014 is needed before M1.
+
+### Local determinism confirmed
+
+`physics.test.ts` runs two independent worlds through identical 100- and
+1000-step falls. Peak divergence: **exactly 0.0 m** in both.
+
+That is *local* determinism only — one machine, one engine. The cross-engine
+property this ADR actually buys is what the non-V8 CI job exists to verify, and
+it remains unverified until that job runs.

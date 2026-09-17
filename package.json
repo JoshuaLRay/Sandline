@@ -1,0 +1,40 @@
+{
+  "name": "sandline",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --build --force",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test",
+    "sim-run": "tsx packages/tools/src/sim-run.ts",
+    "gen:trig": "tsx packages/tools/src/gen-trig-table.ts",
+    "bench:rapier": "tsx packages/tools/src/bench-rapier.ts",
+    "test:parity-browsers": "vitest run --config vitest.browser.config.ts"
+  },
+  "devDependencies": {
+    "@dimforge/rapier3d-compat": "0.20.0",
+    "@dimforge/rapier3d-deterministic-compat": "0.20.0",
+    "@dimforge/rapier3d-simd-compat": "0.20.0",
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^22.10.2",
+    "@vitest/browser": "^5.0.1",
+    "eslint": "^9.39.1",
+    "playwright": "^1.63.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1",
+    "vitest": "^3.2.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

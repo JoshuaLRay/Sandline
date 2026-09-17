@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SANDLINE</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #0d0b08; overflow: hidden; }
+      canvas { display: block; }
+      #hud {
+        position: fixed; top: 12px; left: 12px;
+        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: #e8dcc8; text-shadow: 0 1px 2px #000; pointer-events: none;
+        background: rgba(0,0,0,.35); padding: 8px 10px; border-radius: 4px;
+      }
+      #hud b { color: #f0b429; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <div id="hud">SANDLINE <b>M0</b><br /><span id="stats">booting…</span></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
