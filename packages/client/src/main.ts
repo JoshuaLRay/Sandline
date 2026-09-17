@@ -8,6 +8,7 @@
  * server instead (T-1.13).
  */
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Clock, Simulation, TICK_SECONDS } from '@sandline/shared';
 
 const stats = document.getElementById('stats') as HTMLElement;
@@ -24,7 +25,17 @@ scene.fog = new THREE.Fog(0x1a1408, 30, 90);
 
 const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 500);
 camera.position.set(12, 9, 14);
-camera.lookAt(0, 1, 0);
+
+// T-0.06 asks for an orbit camera. It is also the only way to inspect the
+// simulation before there is any player input (that arrives with T-1.11).
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 1, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI / 2 - 0.05; // don't let the camera go underground
+controls.minDistance = 4;
+controls.maxDistance = 60;
+controls.update();
 
 // ADR-013: one cascaded shadow-mapped sun, no realtime GI. Baked sun and dust
 // haze IS the target look, so the cheap option and the correct one coincide.
@@ -87,6 +98,7 @@ function frame(): void {
       `isolated: ${crossOriginIsolated}  step ${(TICK_SECONDS * 1000).toFixed(1)}ms`;
   }
 
+  controls.update();
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }

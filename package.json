@@ -15,7 +15,8 @@
     "sim-run": "tsx packages/tools/src/sim-run.ts",
     "gen:trig": "tsx packages/tools/src/gen-trig-table.ts",
     "bench:rapier": "tsx packages/tools/src/bench-rapier.ts",
-    "test:parity-browsers": "vitest run --config vitest.browser.config.ts"
+    "test:parity-browsers": "vitest run --config vitest.browser.config.ts",
+    "build:artifact": "pnpm --filter @sandline/client build && tsx packages/tools/src/build-artifact.ts"
   },
   "devDependencies": {
     "@dimforge/rapier3d-compat": "0.20.0",
