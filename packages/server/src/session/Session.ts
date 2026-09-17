@@ -21,6 +21,7 @@ import {
   type MoveState,
   POSITION,
   ServerConnection,
+  VELOCITY,
   SnapshotHistory,
   TICK_SECONDS,
   type Transport,
@@ -33,6 +34,7 @@ import {
 } from '@sandline/shared';
 
 const T = COMPONENT_IDS.Transform;
+const V = COMPONENT_IDS.Velocity;
 
 export interface Slot {
   index: number;
@@ -41,6 +43,10 @@ export interface Slot {
   state: MoveState;
   yaw: number;
   input: MoveInput;
+  /** Tick of the newest input actually consumed, echoed back for reconciliation. */
+  lastProcessedInputTick: number;
+  /** Newest input received but not yet stepped. */
+  pendingInputTick: number;
   /** Ticks since a real input arrived, for the repeat-then-idle rule. */
   staleTicks: number;
   connection: ServerConnection | null;
@@ -85,6 +91,8 @@ export class Session {
         state: createMoveState(i * 1.5 - 3.75, 0, 0),
         yaw: 0,
         input: idleInput(),
+        lastProcessedInputTick: -1,
+        pendingInputTick: -1,
         staleTicks: 0,
         connection: null,
       });
@@ -155,6 +163,7 @@ export class Session {
       crouch: (msg.buttons & 0b100) !== 0,
     };
     slot.yaw = msg.yaw;
+    slot.pendingInputTick = msg.tick;
     slot.staleTicks = 0;
   }
 
@@ -176,6 +185,8 @@ export class Session {
       }
       slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, DEFAULT_MOVE_CONFIG);
       slot.yaw = slot.input.yaw;
+      // Consumed now, so this is what the client may stop replaying.
+      slot.lastProcessedInputTick = slot.pendingInputTick;
     }
 
     this.currentTick++;
@@ -197,6 +208,10 @@ export class Session {
             s.yaw & 0x3ff,
             0,
           ],
+          // Vertical velocity must replicate or a client reconciling mid-jump
+          // snaps to the right height with the wrong momentum and diverges again
+          // on the very next tick.
+          [V]: [quantize(0, VELOCITY), quantize(s.state.vy, VELOCITY), quantize(0, VELOCITY)],
         },
       })),
     };
@@ -213,10 +228,12 @@ export class Session {
       writeDelta(w, snapshot, baseline);
       const payload = w.toUint8Array();
 
+      const slot = this.slots.find((sl) => sl.connection === conn);
       const wire = encodeMessage({
         kind: 'Delta',
         tick: snapshot.tick,
         baselineTick: baseline ? baseline.tick : null,
+        lastProcessedInputTick: slot ? slot.lastProcessedInputTick : -1,
         payload,
       });
       conn.transport.send(wire, 'unreliable');

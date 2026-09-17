@@ -583,7 +583,8 @@ being answered is: *does an authoritative-server TPS feel good in a browser?*
 - **Depends:** T-1.09, T-1.14
 - **Files:** `packages/bot/src/BotClient.ts`, `packages/bot/src/main.ts`
 - **Do:** A full client — transport, prediction, reconciliation — with no renderer. Inputs come from a scripted sequence or a seeded random walk. Exposes its predicted local-player state and observed remote-entity states for divergence measurement. Per §2.3 this is **not** a world-hash comparison — the server is authoritative, so only prediction parity is meaningful.
-- **Done when:** `pnpm bot --count 2 --ticks 600` connects two bots to a local server and both report peak prediction divergence under 1e-3 m at zero simulated latency.
+- **Done when:** `pnpm bot --count 2 --ticks 600` connects two bots to a local server and both report peak prediction divergence below the **correction threshold** (2 cm) at zero simulated latency, with zero corrections.
+- **Note (revised 2026-09-17):** this originally said 1e-3 m. That figure predates the wire format and is *unachievable by construction*: position quantizes to 1/64 m, so a 3D distance carries up to sqrt(3) x half a step — about 13.5 mm — of pure encoding error. Measured divergence is ~12 mm, i.e. the quantization floor. The meaningful property is that divergence stays under the threshold at which a player would see a correction.
 - **Size:** L
 
 #### T-1.21 — Network condition simulator

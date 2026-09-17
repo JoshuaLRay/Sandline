@@ -10,7 +10,7 @@ import { BitReader, BitWriter } from './BitStream.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 export const MessageType = {
   Join: 0,
@@ -38,7 +38,22 @@ export type Message =
    * baseline explicitly lets a client detect that it lost the baseline and ask
    * for a full one rather than decoding garbage.
    */
-  | { kind: 'Delta'; tick: number; baselineTick: number | null; payload: Uint8Array }
+  | {
+      kind: 'Delta';
+      tick: number;
+      baselineTick: number | null;
+      /**
+       * The last input tick the server had consumed from THIS client when it
+       * built this snapshot.
+       *
+       * Reconciliation is meaningless without it. The client must know which
+       * of its predictions the authoritative state already accounts for, so it
+       * can replay exactly the inputs still in flight - no more, no less.
+       * Replaying too few loses motion; replaying too many double-applies it.
+       */
+      lastProcessedInputTick: number;
+      payload: Uint8Array;
+    }
   | { kind: 'Ack'; tick: number }
   | { kind: 'Ping'; id: number; clientTime: number }
   | { kind: 'Pong'; id: number; clientTime: number; serverTime: number }
@@ -79,6 +94,8 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeVarUint(msg.tick);
       w.writeBool(msg.baselineTick !== null);
       if (msg.baselineTick !== null) w.writeVarUint(msg.baselineTick);
+      // -1 means "nothing from you yet"; shift so it stays a varuint.
+      w.writeVarUint(msg.lastProcessedInputTick + 1);
       w.writeBytes(msg.payload);
       break;
     case 'Ack':
@@ -134,7 +151,8 @@ export function decodeMessage(bytes: Uint8Array): Message {
       case MessageType.Delta: {
         const tick = r.readVarUint();
         const baselineTick = r.readBool() ? r.readVarUint() : null;
-        return { kind: 'Delta', tick, baselineTick, payload: r.readBytes() };
+        const lastProcessedInputTick = r.readVarUint() - 1;
+        return { kind: 'Delta', tick, baselineTick, lastProcessedInputTick, payload: r.readBytes() };
       }
       case MessageType.Ack:
         return { kind: 'Ack', tick: r.readVarUint() };

@@ -13,6 +13,15 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'bot',
+          root: './packages/bot',
+          environment: 'node',
+          include: ['test/**/*.test.ts', 'src/**/*.test.ts'],
+          testTimeout: 120_000,
+        },
+      },
+      {
+        test: {
           name: 'server',
           root: './packages/server',
           environment: 'node',
