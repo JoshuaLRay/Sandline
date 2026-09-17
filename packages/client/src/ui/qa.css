@@ -88,6 +88,12 @@ canvas { display: block; touch-action: none; }
   cursor: pointer;
 }
 #tuning input[type='range']:focus-visible { outline: 2px solid var(--amber); }
+#tuning label.check {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  margin-bottom: 10px;
+}
+#tuning label.check input { width: auto; accent-color: var(--amber); cursor: pointer; }
 #tuning .hint { margin: 10px 0 4px; font-size: 9px; opacity: 0.6; }
 #tuning-out {
   margin: 0;

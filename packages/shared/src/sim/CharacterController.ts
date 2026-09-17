@@ -88,9 +88,12 @@ export function stepCharacter(
   const s = sin(a);
   const c = cos(a);
 
-  // Forward is +Z rotated by yaw; strafe is the perpendicular.
-  const worldX = (my * s + mx * c) * speed * scale;
-  const worldZ = (my * c - mx * s) * speed * scale;
+  // Forward is +Z rotated by yaw. Right is cross(forward, up), NOT
+  // cross(up, forward) - in a right-handed Y-up system, a viewer looking along
+  // +Z has +X on their LEFT, so the other cross product sends D leftward and
+  // A rightward. That was shipped once and reported immediately.
+  const worldX = (my * s - mx * c) * speed * scale;
+  const worldZ = (my * c + mx * s) * speed * scale;
 
   let vy = state.vy;
   let grounded = state.grounded;

@@ -115,6 +115,11 @@ scene.add(reference);
 const config: MoveConfig = { ...DEFAULT_MOVE_CONFIG };
 const input = new LocalInput(renderer.domElement);
 
+/** Camera pivot height: roughly the eyes of a 1.8 m soldier. */
+const EYE_HEIGHT = 1.55;
+/** Third-person arm length before pitch shortening. */
+const CAMERA_DISTANCE = 5.5;
+
 let state = createMoveState(0, 0, 0);
 let prevState = state;
 
@@ -148,7 +153,13 @@ for (let i = 1; i < 6; i++) {
 
 const hud = document.getElementById('hud');
 const stats = document.getElementById('stats');
-document.body.appendChild(createTuningPanel(config, (v) => input.setSensitivity(v)));
+document.body.appendChild(
+  createTuningPanel(
+    config,
+    (v) => input.setSensitivity(v),
+    (v) => input.setInvertY(v),
+  ),
+);
 
 /* -- Loop ------------------------------------------------------------------ */
 
@@ -184,12 +195,42 @@ function frame(): void {
   const fz = cos(yawAngle);
   player.rotation.y = Math.atan2(fx, fz);
 
-  // Third-person follow. A real spring arm with collision is E-2.1, in M2.
-  const pitchT = input.pitch / 1024;
-  const dist = 5.5;
-  const height = 2.4 + pitchT * 6;
-  camera.position.set(rx - fx * dist, ry + height, rz - fz * dist);
-  camera.lookAt(rx, ry + 1.2, rz);
+  /**
+   * Orbit camera around an eye-height pivot.
+   *
+   * The previous version only raised and lowered the camera, which is why
+   * looking down felt cramped: the camera never actually pitched, it just
+   * hovered. Now pitch defines a real view direction and the camera sits one
+   * arm's length back along it.
+   */
+  const pitchAngle = wireToTable(((input.pitch % 1024) + 1024) % 1024);
+  const sinP = sin(pitchAngle);
+  const cosP = cos(pitchAngle);
+
+  const pivotY = ry + EYE_HEIGHT;
+  // View direction: horizontal component shrinks as pitch steepens.
+  const dx = fx * cosP;
+  const dy = sinP;
+  const dz = fz * cosP;
+
+  if (input.firstPerson) {
+    camera.position.set(rx, pivotY, rz);
+    camera.lookAt(rx + dx * 10, pivotY + dy * 10, rz + dz * 10);
+    player.visible = false;
+  } else {
+    player.visible = true;
+    /**
+     * Pull in at pitch extremes.
+     *
+     * At a steep angle the arm would otherwise bury the camera in the ground
+     * looking down, or put the character between you and the sky looking up.
+     * Shortening it keeps the view clear - a poor man's spring arm until the
+     * real one with collision lands in M2 (E-2.1).
+     */
+    const dist = CAMERA_DISTANCE * (1 - 0.55 * Math.abs(input.pitchFraction));
+    camera.position.set(rx - dx * dist, pivotY - dy * dist, rz - dz * dist);
+    camera.lookAt(rx, pivotY, rz);
+  }
 
   const speed = Math.hypot(state.x - prevState.x, state.z - prevState.z) / TICK_SECONDS;
   if (speed > peakSpeed) peakSpeed = speed;
@@ -204,6 +245,7 @@ function frame(): void {
         `${speed.toFixed(2)} m/s   peak ${peakSpeed.toFixed(2)}\n` +
         `${state.grounded ? 'grounded' : `airborne  y ${state.y.toFixed(2)}`}\n` +
         `tick ${clock.tick}   ${fps} fps${clock.dropped ? `   dropped ${clock.dropped}` : ''}\n` +
+        `${input.firstPerson ? 'first person' : 'third person'}  (V to swap)\n` +
         `${input.locked ? 'mouse captured - Esc to release' : 'CLICK to capture mouse'}`;
     }
   }
@@ -220,6 +262,9 @@ addEventListener('keydown', (e) => {
     peakSpeed = 0;
   }
   if (e.code === 'KeyH' && hud) hud.hidden = !hud.hidden;
+  // First/third person. A proper camera with collision is E-2.1 in M2; this is
+  // enough to judge whether the movement reads differently from each view.
+  if (e.code === 'KeyV') input.firstPerson = !input.firstPerson;
 });
 
 addEventListener('resize', () => {

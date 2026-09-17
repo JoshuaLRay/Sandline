@@ -14,7 +14,22 @@ import { WIRE_ANGLE_UNITS, type MoveInput } from '@sandline/shared';
 export interface InputOptions {
   /** Wire-angle units per pixel of mouse movement. */
   sensitivity?: number;
+  /** Mouse-down looks up. Off by default; some players want it on. */
+  invertY?: boolean;
 }
+
+const UNITS_PER_DEGREE = WIRE_ANGLE_UNITS / 360;
+
+/**
+ * Pitch limits, in degrees.
+ *
+ * Asymmetric on purpose: you want to see more ground than sky in a
+ * third-person shooter, and the previous symmetric ~72 degrees felt short
+ * looking down. First person gets a wider range because nothing occludes it.
+ */
+export const PITCH_LIMIT_UP_DEG = 60;
+export const PITCH_LIMIT_DOWN_DEG = 80;
+export const PITCH_LIMIT_FIRST_PERSON_DEG = 85;
 
 export class LocalInput {
   private readonly held = new Set<string>();
@@ -30,6 +45,9 @@ export class LocalInput {
   private yawAccum = 0;
   private pitchAccum = 0;
   private sensitivity: number;
+  private invertY: boolean;
+  /** First person removes the occlusion that limits third-person pitch. */
+  firstPerson = false;
   locked = false;
 
   constructor(
@@ -37,6 +55,7 @@ export class LocalInput {
     options: InputOptions = {},
   ) {
     this.sensitivity = options.sensitivity ?? 0.55;
+    this.invertY = options.invertY ?? false;
 
     addEventListener('keydown', (e) => {
       // Space would otherwise scroll the page out from under the canvas.
@@ -58,14 +77,36 @@ export class LocalInput {
     addEventListener('mousemove', (e) => {
       if (!this.locked) return;
       this.yawAccum -= e.movementX * this.sensitivity;
-      this.pitchAccum -= e.movementY * this.sensitivity;
-      const limit = WIRE_ANGLE_UNITS / 5; // ~72 degrees up and down
-      this.pitchAccum = Math.max(-limit, Math.min(limit, this.pitchAccum));
+      // Positive pitch means looking UP, so moving the mouse down (movementY
+      // positive) must DECREASE it.
+      const dy = this.invertY ? -e.movementY : e.movementY;
+      this.pitchAccum -= dy * this.sensitivity;
+      this.pitchAccum = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitchAccum));
     });
   }
 
   setSensitivity(value: number): void {
     this.sensitivity = value;
+  }
+
+  setInvertY(value: boolean): void {
+    this.invertY = value;
+  }
+
+  get maxPitch(): number {
+    const deg = this.firstPerson ? PITCH_LIMIT_FIRST_PERSON_DEG : PITCH_LIMIT_UP_DEG;
+    return deg * UNITS_PER_DEGREE;
+  }
+
+  get minPitch(): number {
+    const deg = this.firstPerson ? PITCH_LIMIT_FIRST_PERSON_DEG : PITCH_LIMIT_DOWN_DEG;
+    return -deg * UNITS_PER_DEGREE;
+  }
+
+  /** Pitch as -1..1 across its current range, for camera distance shaping. */
+  get pitchFraction(): number {
+    const limit = this.pitchAccum >= 0 ? this.maxPitch : -this.minPitch;
+    return limit === 0 ? 0 : this.pitchAccum / limit;
   }
 
   /** Camera pitch in wire-angle units. Not sent to the simulation. */

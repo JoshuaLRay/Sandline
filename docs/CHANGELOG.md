@@ -41,3 +41,5 @@ Format: `T-<id> — <what changed>`
 - T-1.16 - Remote entity interpolation, Catmull-Rom with a capped extrapolation.
 - T-1.20 - Headless bot client running the real prediction path, plus CLI.
 - T-1.22 - Netcode convergence matrix: 2/6 bots x latency x loss, M1's exit gate.
+- T-1.12 - Fixed inverted strafe handedness; pinned with direction tests.
+- T-0.06 - Orbit camera with real pitch, asymmetric limits, FPS/TPS toggle.

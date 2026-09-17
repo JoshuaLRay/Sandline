@@ -60,3 +60,31 @@ review.
 - **Rollback netcode.** Rejected: excellent for small deterministic games, poor
   fit for six players plus forty AI, and it would impose the whole-world
   determinism requirement ADR-014 rejects.
+
+## Addendum — 2026-09-17, the 60 Hz question is closed
+
+This ADR rejected a 60 Hz tick and named the condition for revisiting it: *"only
+if T-1.24 says the game feels sluggish and profiling points here."*
+
+Both halves were tested.
+
+**Profiling** (`pnpm bench:tickrate`, 6 players, projected to a 46-entity
+firefight) showed 60 Hz to be affordable — 1.91× CPU and 2.02× bandwidth, both
+from a negligible base, both inside the 18 KB/s budget. So cost was never the
+blocker.
+
+**Feel** was the deciding half, and it came back unambiguous. First human QA of
+the movement harness at 30 Hz: *"Movement feels great! No lag or jitter. No
+delay at all. Feels like a Steam game."*
+
+**Decision: 30 Hz stands. The question is closed, not deferred.**
+
+One correction to the reasoning above, recorded because it was wrong rather than
+merely incomplete. The Alternatives section justified rejecting 60 Hz on the
+grounds that "prediction is already hiding local latency." That conflates two
+different latencies: prediction hides *round-trip network* latency, and does
+nothing about *input sampling quantization*, which is purely a function of tick
+rate. The conclusion survives, but not for the reason originally given — it
+survives because a human could not feel the 33 ms sampling window.
+
+Reopen only on new felt evidence, not on analysis. The cost side is settled.

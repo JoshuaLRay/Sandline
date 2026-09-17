@@ -29,6 +29,7 @@ const ROWS: Row[] = [
 export function createTuningPanel(
   config: MoveConfig,
   onSensitivity: (value: number) => void,
+  onInvertY: (value: boolean) => void,
 ): HTMLElement {
   const panel = document.createElement('div');
   panel.id = 'tuning';
@@ -87,6 +88,18 @@ export function createTuningPanel(
   sensName.textContent = 'Look speed';
   sens.append(sensName, sensValue, sensInput);
   panel.append(sens);
+
+  // Y inversion is a preference, not a bug: plenty of players fly-stick style.
+  const invert = document.createElement('label');
+  invert.className = 'check';
+  const invertBox = document.createElement('input');
+  invertBox.type = 'checkbox';
+  invertBox.id = 'tune-invert-y';
+  invertBox.addEventListener('change', () => onInvertY(invertBox.checked));
+  const invertName = document.createElement('span');
+  invertName.textContent = 'Invert look Y';
+  invert.append(invertName, invertBox);
+  panel.append(invert);
 
   const hint = document.createElement('p');
   hint.className = 'hint';
