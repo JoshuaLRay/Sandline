@@ -708,8 +708,11 @@ These block estimation, not implementation — M0 can start today regardless.
    the project's largest cost, and it should be decided before M4.
 3. **Desktop-only confirmation.** Recommended and assumed (ADR-002). Mobile
    Safari support would add months.
-4. **Where does this repo live?** This plan currently sits in an unrelated
-   repository. It should move to a dedicated one before M0 starts.
+4. ~~**Where does this repo live?**~~ **Resolved 2026-09-17.** Split out of an
+   unrelated repository into `JoshuaLRay/sandline` with `git subtree split`, so
+   the commit history came with it. The forcing function was GitHub Pages:
+   one site per repository, so the game and the host repo were competing for
+   the same URL.
 5. **Session persistence model.** Does a campaign save belong to the host, or
    does every player carry their own soldier's progression across sessions?
    Affects E-4.6 substantially.
