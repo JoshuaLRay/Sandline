@@ -43,3 +43,4 @@ Format: `T-<id> — <what changed>`
 - T-1.22 - Netcode convergence matrix: 2/6 bots x latency x loss, M1's exit gate.
 - T-1.12 - Fixed inverted strafe handedness; pinned with direction tests.
 - T-0.06 - Orbit camera with real pitch, asymmetric limits, FPS/TPS toggle.
+- T-1.17 - Hitscan weapons: data-driven defs, deterministic seeded spread, falloff.
