@@ -55,9 +55,31 @@ Loss is applied downstream only - see the note in `SessionHost.ts` for why the
 server cannot honestly drop inbound traffic. Unset means a raw socket with no
 decorator at all, which is what a deployed host runs.
 
-**The browser client cannot connect to this yet.** It still builds its own
-in-page session; pointing it at a host is T-1.5.02, and that is the task that
-first puts two humans in one session.
+### Two people, one session (T-1.5.02)
+
+Point the client at the host with `?host=`:
+
+```
+http://localhost:5173/?host=ws://localhost:8080
+```
+
+Two browsers on that URL take two of the six slots and are in the same session:
+they see each other move and can shoot each other. Without the parameter the
+page builds its own session in the tab exactly as before, which is what the
+published build still does - it has no host to point at until T-1.5.07.
+
+The HUD's top line is the connection: connecting, `joined - slot n of 6`,
+`reconnecting - attempt 2 in 0.5s`, or `disconnected - <reason the host gave>`.
+On a real socket "nothing is happening" and "nothing is moving" are different
+faults, so the state is stated rather than inferred from a still screen.
+
+Two things worth knowing:
+
+- **The link sliders grey out.** Conditioning belongs to the host once the wire
+  is real; the panel says so rather than moving a slider that reaches nothing.
+- **`https` pages cannot open `ws://`.** The page names this rather than letting
+  a browser-blocked socket look like a host that is down - the fastest way to
+  spend an afternoon debugging a healthy server.
 
 ## Publishing
 

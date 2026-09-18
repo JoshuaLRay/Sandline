@@ -19,6 +19,7 @@ pnpm host                   # authoritative session host on ws://localhost:8080
 | `pnpm verify` | typecheck + lint + test |
 | `pnpm host` | authoritative session host — six slots, real WebSocket (T-1.5.01) |
 | `pnpm bot --url ws://localhost:8080 --count 2 --ticks 600` | drive bots against a running host over real sockets |
+| `?host=ws://localhost:8080` | client query parameter: join a host instead of the in-page session (T-1.5.02) |
 | `pnpm sim-run --scenario crowd --ticks 1800` | headless simulation, reports µs/tick |
 | `pnpm sim-run --scenario fall --ticks 1000 --parity` | two instances, reports divergence |
 | `pnpm bench:rapier` | deterministic vs default vs SIMD physics cost |

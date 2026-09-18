@@ -262,3 +262,25 @@ canvas { display: block; touch-action: none; }
 }
 .panel-body > .panel-sub:first-child { margin-top: 4px; }
 .panel .hint-sub { margin: 3px 0 8px; }
+
+/* A panel whose controls cannot reach anything — a remote host owns them
+   (T-1.5.02). Dimmed rather than removed, so the footnote can say where the
+   control went. */
+.panel-disabled .panel-body { opacity: 0.45; }
+.panel-disabled .panel-body .hint:last-child { opacity: 0.9; }
+
+/* A ?host= that could not be used. Deliberately un-collapsible and across the
+   top: the page still runs, on the in-page session, and the one thing a tester
+   must not do is mistake that for having joined someone (T-1.5.02). */
+#host-error {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  padding: 10px 14px;
+  background: #5a1d1d;
+  color: #ffd9d9;
+  border-bottom: 1px solid #a33;
+  font: 12px/1.5 ui-monospace, monospace;
+}

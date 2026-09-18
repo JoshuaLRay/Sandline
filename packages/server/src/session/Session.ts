@@ -242,6 +242,39 @@ export class Session {
     slot.isBot = false;
     slot.connection = conn;
     slot.staleTicks = 0;
+
+    /**
+     * Clear the PREVIOUS occupant's input bookkeeping (T-1.5.02).
+     *
+     * Entity state — position, health, weapon — deliberately survives the swap:
+     * that is ADR-001's whole point, and it is why a join is not a spawn. Input
+     * bookkeeping is the opposite. Tick numbers belong to a CLIENT, not to a
+     * soldier: each one counts from its own page load, so the next person to
+     * sit here starts again from 1.
+     *
+     * Leaving them was a bug that only a long-lived host could show, which is
+     * why it survived all of M1. Every in-page session began fresh, so no slot
+     * was ever reused by a different client. On a `SessionHost` (T-1.5.01)
+     * every slot is reused, and the ordering guard in `applyInput` — drop
+     * anything at or below `newestInputTick` — then discarded EVERY input from
+     * the new client until their tick counter climbed past whatever the last
+     * person reached. Symptoms, all at once and none of them pointing here:
+     * the player moves perfectly on their own screen and not at all on anyone
+     * else's, stands frozen at the previous occupant's last position, sees no
+     * corrections and a prediction error of exactly zero, because the server
+     * never acknowledged an input for them to reconcile against.
+     *
+     * `lastProcessedInputTick` matters just as much as `newestInputTick`: it is
+     * echoed in every delta, so a stale one asks the new client to reconcile
+     * against a tick it never predicted — the unmatched-reconcile path, which
+     * snaps and throws away every pending prediction.
+     */
+    slot.newestInputTick = -1;
+    slot.lastProcessedInputTick = -1;
+    slot.pendingInputTick = -1;
+    slot.queue.length = 0;
+    slot.input = idleInput(slot.yaw);
+
     conn.accept(slot.netId, slot.index, this.currentTick);
   }
 
@@ -253,6 +286,9 @@ export class Session {
     slot.isBot = true;
     slot.connection = null;
     slot.input = idleInput(slot.yaw);
+    // Anything still queued belongs to someone who has left. A bot that walked
+    // out the departed player's last few inputs would look briefly possessed.
+    slot.queue.length = 0;
   }
 
   private applyInput(conn: ServerConnection, msg: Extract<Message, { kind: 'Input' }>): void {

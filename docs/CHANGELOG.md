@@ -63,3 +63,4 @@ Format: `T-<id> — <what changed>`
 - T-1.23 - Netgraph overlay (G) with a second in-page client; fixed a client-killing Pong encode and continuous extrapolation.
 - T-1.24 setup - Per-client link conditions: your link and the sparring partner's move apart.
 - T-1.5.01 - Session host process: `pnpm host` serves the real Session over a WebSocket, with per-connection link conditioning and `pnpm bot --url`.
+- T-1.5.02 - Client joins a real host with `?host=ws://…`; two tabs share one session. Fixed a slot reused by a new client keeping the old occupant's input tick, which silently discarded every input from the newcomer.
