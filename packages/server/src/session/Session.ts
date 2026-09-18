@@ -33,11 +33,10 @@ import {
   createMoveState,
   createWeaponState,
   damageAtDistance,
-  dirFromYawPitch,
   encodeMessage,
   finishReload,
+  eyePosition,
   getWeapon,
-  muzzlePosition,
   shotDirections,
   startReload,
   tryFire,
@@ -260,15 +259,14 @@ export class Session {
 
     slot.pitch = msg.pitch;
     const yaw = wireToTable(msg.yaw);
-    const forward = dirFromYawPitch(yaw, wireToTable(msg.pitch));
-    const origin = muzzlePosition(
-      slot.state.x,
-      slot.state.y,
-      slot.state.z,
-      forward.x,
-      forward.z,
-      msg.ads,
-    );
+    /**
+     * Traced from the eye, not from the visual muzzle. The server does not know
+     * which camera the client is using and must not need to: a shot must hit
+     * the same thing in first and third person, or the view mode becomes a
+     * gameplay choice. The client draws its tracer from wherever the weapon
+     * appears to be; that is cosmetic.
+     */
+    const origin = eyePosition(slot.state.x, slot.state.y, slot.state.z);
 
     for (const dir of shotDirections(slot.weapon, shot, slot.netId, msg.tick, yaw, wireToTable(msg.pitch))) {
       const hit = resolveShot(

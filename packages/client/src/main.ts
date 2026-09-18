@@ -35,6 +35,9 @@ import {
   cos,
   fromRadians,
   sin,
+  DEFAULT_MUZZLE_RIG,
+  type MuzzleStance,
+  eyePosition,
   muzzlePosition,
   toRadians,
   wireToTable,
@@ -285,6 +288,19 @@ document.body.appendChild(panels);
 const clock = new Clock();
 /** Reused so a held trigger does not allocate a vector per tick. */
 const muzzle = new THREE.Vector3();
+/**
+ * The visual rig. `eyeHeight` tracks the camera's pivot so that first-person
+ * ADS puts the muzzle exactly at the middle of the screen even after the camera
+ * panel has been used. The AUTHORITATIVE trace origin does not track it — that
+ * stays the shipped default, because where your bullets come from must not be a
+ * camera preference.
+ */
+const rig = { ...DEFAULT_MUZZLE_RIG };
+/** Which point the weapon is held at, from the camera the player is using. */
+function stance(): MuzzleStance {
+  if (!input.firstPerson) return 'third';
+  return input.ads ? 'ads' : 'hip';
+}
 const aimRaycaster = new THREE.Raycaster();
 const aimDirection = new THREE.Vector3();
 const aimPoint = new THREE.Vector3();
@@ -358,8 +374,9 @@ function frame(): void {
 
     const here = net.simulated;
     const tickYaw = wireToTable(input.yaw);
+    rig.eyeHeight = cam.eyeHeight;
     const m = here
-      ? muzzlePosition(here.x, here.y, here.z, sin(tickYaw), cos(tickYaw), input.ads)
+      ? muzzlePosition(here.x, here.y, here.z, sin(tickYaw), cos(tickYaw), stance(), rig)
       : { x: 0, y: cam.eyeHeight, z: 0 };
     muzzle.set(m.x, m.y, m.z);
 
@@ -491,11 +508,11 @@ function frame(): void {
   /**
    * Converge the shot on what the reticle covers.
    *
-   * The muzzle is at the character's eye but the camera is off the shoulder, so
-   * the two are not on one line and firing along the camera angles would land
-   * shots beside the crosshair. Find what the reticle is actually over, then
-   * aim the muzzle at THAT. Accurate at every distance rather than at one
-   * calibrated range.
+   * Measured from the EYE, which is where the server traces from — not from the
+   * visual muzzle. Aiming along the camera angles would land shots beside the
+   * crosshair in third person, where the camera is off the shoulder; aiming
+   * from the visual muzzle would make the shot depend on which view you are
+   * using. Find what the reticle is actually over, then aim the eye at THAT.
    */
   aimDirection.set(dx, dy, dz).normalize();
   aimRaycaster.set(camera.position, aimDirection);
@@ -511,10 +528,8 @@ function frame(): void {
    * the right hip, so a direction measured from the centre line would put the
    * shot a hip's width off the reticle at close range.
    */
-  const renderMuzzle = muzzlePosition(rx, ry, rz, fx, fz, ads);
-  aimDirection
-    .set(aimPoint.x - renderMuzzle.x, aimPoint.y - renderMuzzle.y, aimPoint.z - renderMuzzle.z)
-    .normalize();
+  const eye = eyePosition(rx, ry, rz);
+  aimDirection.set(aimPoint.x - eye.x, aimPoint.y - eye.y, aimPoint.z - eye.z).normalize();
   aimYaw = fromRadians(Math.atan2(aimDirection.x, aimDirection.z));
   aimPitch = fromRadians(Math.asin(Math.max(-1, Math.min(1, aimDirection.y))));
 
