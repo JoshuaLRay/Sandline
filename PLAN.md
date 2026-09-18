@@ -715,6 +715,12 @@ different networks", and none of it blocks the first playtest.
 
 Task IDs follow §0.1: `T-1.5.<n>`, milestone 1.5.
 
+> **Start at [`docs/HANDOFF-M1.5.md`](docs/HANDOFF-M1.5.md).** This section is
+> the specification; the handoff is the state of play around it — what is
+> already done, how to get two people into a session today, and the findings
+> from T-1.5.01/02 that are absent from this plan because nobody knew them when
+> it was written.
+
 ### 6A.1 A host that serves
 
 #### T-1.5.01 — Session host process
@@ -761,6 +767,28 @@ Task IDs follow §0.1: `T-1.5.<n>`, milestone 1.5.
 - **Do:** The screen before the session. Choose a host, create a room or join a code, see all six slots with human/bot per slot, leave back to it. The roster is six rows always, never a growing list — ADR-001 is the reason, and a lobby that shows "2 players" teaches everyone the wrong model of the game. Put the code in a shareable link so the second player pastes a URL rather than types. Name the T-1.5.04 reason on a failed join. **Deliberately out of scope:** matchmaking, parties, region selection, ready-checks, class selection — those stay in E-4.5 and E-4.7.
 - **Done when:** One person hosts, sends the link, the other opens it, and both are in the same session within two clicks of the page loading; the roster shows four bots and two humans, and a slot visibly flips back to bot when someone leaves.
 - **Size:** M
+
+> **Amended 2026-09-18, after T-1.5.02 shipped.** The acceptance above was
+> written around a shareable link. That is still the fast path, but it is no
+> longer sufficient: **a person must be able to join entirely from the page** —
+> open the QA site, type a room code, play. No query parameter, no terminal, no
+> URL construction by hand.
+>
+> `?host=` (T-1.5.02) and `pnpm host` (T-1.5.01) are developer tools and stay
+> that way. They are how the netcode gets tested; they are not how a playtester
+> joins, and a gate that depends on a tester editing a URL is a gate that will
+> be run once by the person who wrote it.
+>
+> So the lobby owns the host address too, not just the room code: a default
+> host baked into the build (T-1.5.07), overridable in the UI for a LAN or a
+> local process. The query parameter, where present, pre-fills the lobby rather
+> than bypassing it — otherwise there are two entry points and only one of them
+> gets tested.
+>
+> **This makes T-1.5.07 a hard dependency of the goal, not a follow-on.** The
+> QA site is served over https and a browser will not open `ws://` from it, so
+> "join from the QA site" is impossible until a `wss://` host exists. Until
+> then the lobby is testable only against a local host over plain http.
 
 ### 6A.3 A host on the internet
 
