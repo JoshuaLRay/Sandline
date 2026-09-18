@@ -63,3 +63,4 @@ Format: `T-<id> — <what changed>`
 - T-1.23 - Netgraph overlay (G) with a second in-page client; fixed a client-killing Pong encode and continuous extrapolation.
 - T-1.24 setup - Per-client link conditions: your link and the sparring partner's move apart.
 - T-1.24 - M1 playtest gate: human sign-off recorded in docs/playtests/m1.md. M1 closed.
+- T-2.01 - Camera solve lifted out of the render loop, into a testable module.

@@ -53,7 +53,7 @@ import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { DEFAULT_LINK, type LinkConditions, LocalServer } from './net/LocalServer.ts';
 import { NetClient } from './net/NetClient.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
-import { solveArmLength } from './camera/followCamera.ts';
+import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
@@ -208,6 +208,8 @@ const input = new LocalInput(renderer.domElement);
  * way to find the right ones is to change them while watching the result.
  */
 const cam = { ...DEFAULT_CAMERA_CONFIG };
+/** Reused every frame: the solve writes into it rather than allocating. */
+const camSolve = createCameraSolve();
 /** How far the aim ray looks for something to converge on. */
 const AIM_RANGE = 250;
 
@@ -581,28 +583,26 @@ function frame(): void {
 
   player.position.set(rx, ry + 0.9, rz);
 
-  const yawAngle = wireToTable(input.yaw);
-  const fx = sin(yawAngle);
-  const fz = cos(yawAngle);
-  player.rotation.y = Math.atan2(fx, fz);
-
   /**
-   * Orbit camera around an eye-height pivot.
-   *
-   * The previous version only raised and lowered the camera, which is why
-   * looking down felt cramped: the camera never actually pitched, it just
-   * hovered. Now pitch defines a real view direction and the camera sits one
-   * arm's length back along it.
+   * Camera (T-2.01). The pivot, shoulder and arm arithmetic lives in
+   * `cameraSolve.ts`, where a test can reach it; what remains here is the
+   * Three.js bookkeeping — the Euler, the field-of-view ease, and assignment.
    */
-  const pitchAngle = wireToTable(((input.pitch % 1024) + 1024) % 1024);
-  const sinP = sin(pitchAngle);
-  const cosP = cos(pitchAngle);
-
-  const pivotY = ry + cam.eyeHeight;
-  // View direction: horizontal component shrinks as pitch steepens.
-  const dx = fx * cosP;
-  const dy = sinP;
-  const dz = fz * cosP;
+  solveCamera(
+    {
+      x: rx,
+      y: ry,
+      z: rz,
+      yawWire: input.yaw,
+      pitchWire: input.pitch,
+      pitchFraction: input.pitchFraction,
+      ads: input.ads,
+      firstPerson: input.firstPerson,
+    },
+    cam,
+    camSolve,
+  );
+  player.rotation.y = Math.atan2(camSolve.forward.x, camSolve.forward.z);
 
   const ads = input.ads;
 
@@ -628,43 +628,16 @@ function frame(): void {
    * instead of being solved for. The +PI turns the camera's default -Z gaze
    * onto the +Z forward this project uses.
    */
-  camera.rotation.set(toRadians(pitchAngle), toRadians(yawAngle) + Math.PI, 0, 'YXZ');
+  camera.rotation.set(
+    toRadians(camSolve.pitchAngle),
+    toRadians(camSolve.yawAngle) + Math.PI,
+    0,
+    'YXZ',
+  );
 
-  if (input.firstPerson) {
-    camera.position.set(rx, pivotY, rz);
-    player.visible = false;
-  } else {
-    player.visible = true;
-    /**
-     * Right is cross(forward, up), which for a Y-up right-handed system and a
-     * yaw-only forward reduces to (-fz, 0, fx). Same handedness the strafe fix
-     * established - getting it backwards here would put the camera over the
-     * wrong shoulder and mirror the aim offset.
-     */
-    const shoulder = ads ? cam.shoulderRightAds : cam.shoulderRight;
-    const focusX = rx - fz * shoulder;
-    const focusY = pivotY + cam.shoulderUp;
-    const focusZ = rz + fx * shoulder;
-
-    let dist =
-      cam.distance *
-      (ads ? cam.adsDistanceScale : 1) *
-      (1 - cam.pitchShorten * Math.abs(input.pitchFraction));
-
-    /**
-     * Floor clamp.
-     *
-     * Looking up swings the arm DOWN and behind, which used to push the camera
-     * through the ground plane. Rather than stopping at the floor and letting
-     * the view stay buried, shorten the arm to exactly the length that lands
-     * the camera on cam.minCameraY: the camera then draws in toward the
-     * character's feet as you keep looking up, which is what the eye expects.
-     * The real spring arm with scene collision is still E-2.1 in M2.
-     */
-    dist = solveArmLength(dist, focusY, dy, cam);
-
-    camera.position.set(focusX - dx * dist, focusY - dy * dist, focusZ - dz * dist);
-  }
+  camera.position.set(camSolve.position.x, camSolve.position.y, camSolve.position.z);
+  // Your own character is the one thing the first-person camera sits inside.
+  player.visible = !input.firstPerson;
 
   /**
    * Converge the shot on what the reticle covers.
@@ -675,7 +648,7 @@ function frame(): void {
    * from the visual muzzle would make the shot depend on which view you are
    * using. Find what the reticle is actually over, then aim the eye at THAT.
    */
-  aimDirection.set(dx, dy, dz).normalize();
+  aimDirection.set(camSolve.direction.x, camSolve.direction.y, camSolve.direction.z).normalize();
   aimRaycaster.set(camera.position, aimDirection);
   aimRaycaster.far = AIM_RANGE;
   const [reticleHit] = aimRaycaster.intersectObjects(shootable, false);
