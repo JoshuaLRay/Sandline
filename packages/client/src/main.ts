@@ -33,19 +33,20 @@ import {
   type MoveConfig,
   TICK_SECONDS,
   cos,
-  createMoveState,
   fromRadians,
   sin,
   muzzlePosition,
-  stepCharacter,
   toRadians,
   wireToTable,
 } from '@sandline/shared';
 import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
+import { DEFAULT_LINK, LocalServer } from './net/LocalServer.ts';
+import { NetClient } from './net/NetClient.ts';
 import { solveArmLength } from './camera/followCamera.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
+import { createNetworkPanel } from './ui/NetworkPanel.ts';
 import { createTuningPanel } from './ui/TuningPanel.ts';
 import { createWeaponPanel } from './ui/WeaponPanel.ts';
 
@@ -165,8 +166,6 @@ const cam = { ...DEFAULT_CAMERA_CONFIG };
 /** How far the aim ray looks for something to converge on. */
 const AIM_RANGE = 250;
 
-let state = createMoveState(0, 0, 0);
-let prevState = state;
 
 const player = new THREE.Mesh(
   new THREE.CapsuleGeometry(0.35, 1.1, 6, 16),
@@ -184,26 +183,58 @@ player.add(nose);
 nose.position.set(0, 0.45, 0.4);
 
 /**
- * Five bot slots, stationary, for scale. ADR-001: the squad is always six.
+ * Remote characters, created on demand from replicated entities.
  *
- * Parked off to the left rather than directly behind spawn, where they used to
- * sit: the third-person camera lives about 5.5 m behind the character, so a
- * capsule at z = -4 ends up roughly a metre in front of the lens and fills a
- * quarter of the screen.
+ * These used to be five capsules parked at fixed positions for scale. They are
+ * now the other five slots of the authoritative session (ADR-001: six, always),
+ * arriving over the wire and rendered at the interpolation delay. If they stand
+ * still it is because nothing is driving them — not because they are scenery.
  */
-for (let i = 1; i < 6; i++) {
-  const bot = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.35, 1.1, 4, 12),
-    new THREE.MeshStandardMaterial({ color: 0xb9a37a, roughness: 0.9 }),
-  );
-  bot.position.set(-9, 0.9, i * 1.8 - 3);
-  bot.castShadow = true;
-  bot.name = `squad slot ${i}`;
-  scene.add(bot);
-  targets.push(bot);
+const remoteMeshes = new Map<number, THREE.Mesh>();
+const remoteGeometry = new THREE.CapsuleGeometry(0.35, 1.1, 4, 12);
+const remoteMaterial = new THREE.MeshStandardMaterial({ color: 0xb9a37a, roughness: 0.9 });
+
+function remoteMesh(netId: number): THREE.Mesh {
+  let mesh = remoteMeshes.get(netId);
+  if (!mesh) {
+    mesh = new THREE.Mesh(remoteGeometry, remoteMaterial);
+    mesh.castShadow = true;
+    mesh.name = `net ${netId}`;
+    scene.add(mesh);
+    remoteMeshes.set(netId, mesh);
+  }
+  return mesh;
 }
 
-const combat = new CombatQA(scene, targets);
+const combat = new CombatQA(scene);
+
+/* -- Network --------------------------------------------------------------- */
+
+const link = { ...DEFAULT_LINK };
+// One config object, shared by reference with both the session and the
+// predictor: the movement panel must move authority and prediction together.
+const server = new LocalServer(link, config);
+const net = new NetClient(server.transport, 'qa', config);
+net.join();
+
+/**
+ * Draw the authoritative result of a shot. The muzzle is derived from the
+ * shooter's own replicated position, so a remote player's tracer leaves their
+ * barrel rather than the world origin.
+ */
+const shotOrigin = new THREE.Vector3();
+const shotEnd = new THREE.Vector3();
+net.onShot = (shot) => {
+  if (shot.shooterNetId === net.netId) {
+    shotOrigin.set(muzzle.x, muzzle.y, muzzle.z);
+  } else {
+    const mesh = remoteMeshes.get(shot.shooterNetId);
+    if (mesh) shotOrigin.set(mesh.position.x, mesh.position.y - 0.9 + 1.05, mesh.position.z);
+    else shotOrigin.set(shot.x, shot.y, shot.z);
+  }
+  shotEnd.set(shot.x, shot.y, shot.z);
+  combat.drawServerShot(shotOrigin, shotEnd, shot.targetNetId, shot.damage, clock.tick * TICK_SECONDS);
+};
 
 /* -- UI -------------------------------------------------------------------- */
 
@@ -242,7 +273,11 @@ const movementPanel = createTuningPanel(
 );
 const weaponPanel = createWeaponPanel(combat);
 const cameraPanel = createCameraPanel(cam);
-panels.append(movementPanel.root, weaponPanel.root, cameraPanel.root);
+const networkPanel = createNetworkPanel({
+  conditions: link,
+  onChange: (c) => server.setConditions(c),
+});
+panels.append(networkPanel.root, movementPanel.root, weaponPanel.root, cameraPanel.root);
 document.body.appendChild(panels);
 
 /* -- Loop ------------------------------------------------------------------ */
@@ -269,6 +304,20 @@ let frames = 0;
 let fpsAt = last;
 let fps = 0;
 let peakSpeed = 0;
+let speed = 0;
+
+/** Connection and prediction health, the numbers T-1.23 will graph. */
+function netReadout(): string {
+  const n = net.stats;
+  if (!n.joined) return 'connecting...';
+  const rate = n.reconciles === 0 ? 0 : (n.corrections / n.reconciles) * 100;
+  return (
+    `net ${n.netId}  tick ${n.serverTick}  remotes ${n.remotes}\n` +
+    `${link.latencyMs}ms  ${link.jitterMs}ms jitter  ${Math.round(link.lossRate * 100)}% loss\n` +
+    `corrections ${rate.toFixed(1)}%  peak ${n.peakDivergence.toFixed(3)}m\n` +
+    `snapshots ${n.snapshotsApplied}  missed ${n.missedBaselines}  in flight ${server.inFlight}`
+  );
+}
 
 function frame(): void {
   const now = performance.now();
@@ -277,8 +326,7 @@ function frame(): void {
   last = now;
 
   for (let i = 0; i < steps; i++) {
-    prevState = state;
-    state = stepCharacter(state, input.sample(), TICK_SECONDS, config);
+    const tickInput = input.sample();
 
     /**
      * Weapons run on the tick, not the frame. RPM, reload and the spread seed
@@ -287,12 +335,35 @@ function frame(): void {
      * spread a different pattern on every machine.
      */
     const tickNumber = clock.tick - steps + i + 1;
-    // Facing at THIS tick, not the render frame's: the shot leaves from where
-    // the character was pointing when the trigger was sampled.
+
+    /**
+     * Speed is measured across the PREDICT STEP ALONE — before and after this
+     * one call — rather than tick to tick.
+     *
+     * Between two ticks a reconcile can land, which snaps to authority and
+     * replays every unacknowledged input at once. Differentiating across that
+     * reports the replay as motion: at 200 ms it showed a 20 m/s peak for a
+     * character whose sprint is 6.8. Nothing between these two lines but the
+     * step the player's own input caused.
+     */
+    const beforeStep = net.simulated;
+    net.tick(tickNumber, tickInput, input.pitchWire);
+    const afterStep = net.simulated;
+    if (beforeStep !== null && afterStep !== null) {
+      speed = Math.hypot(afterStep.x - beforeStep.x, afterStep.z - beforeStep.z) / TICK_SECONDS;
+      if (speed > peakSpeed) peakSpeed = speed;
+    }
+
+    server.step(now);
+
+    const here = net.simulated;
     const tickYaw = wireToTable(input.yaw);
-    const m = muzzlePosition(state.x, state.y, state.z, sin(tickYaw), cos(tickYaw), input.ads);
+    const m = here
+      ? muzzlePosition(here.x, here.y, here.z, sin(tickYaw), cos(tickYaw), input.ads)
+      : { x: 0, y: cam.eyeHeight, z: 0 };
     muzzle.set(m.x, m.y, m.z);
-    combat.tick(tickNumber, tickNumber * TICK_SECONDS, {
+
+    const shot = combat.tick(tickNumber, tickNumber * TICK_SECONDS, {
       origin: muzzle,
       yaw: aimYaw,
       pitch: aimPitch,
@@ -300,15 +371,35 @@ function frame(): void {
       triggerEdge: input.consumeTriggerEdge(),
       ads: input.ads,
     });
+    // The local machine decides WHEN the trigger pulled; the server decides
+    // what that shot hit. Both run the same cadence, so a shot the client
+    // allows is normally one the server allows too.
+    if (shot !== null) {
+      net.fire(tickNumber, aimYaw >> 2, (aimPitch >> 2) & 0x3ff, combat.weaponIndex, input.ads);
+    }
   }
 
-  // Render BETWEEN ticks. Without this the 30 Hz simulation shows as stutter,
-  // and stutter gets misread as bad movement feel — which would make this whole
-  // QA pass measure the wrong thing.
-  const a = clock.alpha;
-  const rx = prevState.x + (state.x - prevState.x) * a;
-  const ry = prevState.y + (state.y - prevState.y) * a;
-  const rz = prevState.z + (state.z - prevState.z) * a;
+  server.pump(now);
+  net.advanceClock(dt * 1000);
+
+  /**
+   * Local position comes from the predictor, which already smooths the residual
+   * after a reconcile (T-1.15). Interpolating between ticks on top of that
+   * would fight the smoothing, so the frame delta goes INTO it rather than
+   * being applied around it.
+   */
+  const render = net.renderPosition(dt * 1000) ?? { x: 0, y: 0, z: 0 };
+  const rx = render.x;
+  const ry = render.y;
+  const rz = render.z;
+
+  // Remote characters at the interpolation delay (T-1.16).
+  for (const [netId, sample] of net.remotes()) {
+    const mesh = remoteMesh(netId);
+    mesh.position.set(sample.x, sample.y + 0.9, sample.z);
+    const remoteYaw = wireToTable(sample.yaw);
+    mesh.rotation.y = Math.atan2(sin(remoteYaw), cos(remoteYaw));
+  }
 
   player.position.set(rx, ry + 0.9, rz);
 
@@ -427,9 +518,6 @@ function frame(): void {
   aimYaw = fromRadians(Math.atan2(aimDirection.x, aimDirection.z));
   aimPitch = fromRadians(Math.asin(Math.max(-1, Math.min(1, aimDirection.y))));
 
-  const speed = Math.hypot(state.x - prevState.x, state.z - prevState.z) / TICK_SECONDS;
-  if (speed > peakSpeed) peakSpeed = speed;
-
   frames++;
   if (now - fpsAt >= 250) {
     fps = Math.round((frames * 1000) / (now - fpsAt));
@@ -438,11 +526,12 @@ function frame(): void {
     if (stats) {
       stats.textContent =
         `${speed.toFixed(2)} m/s   peak ${peakSpeed.toFixed(2)}\n` +
-        `${state.grounded ? 'grounded' : `airborne  y ${state.y.toFixed(2)}`}\n` +
+        `${net.simulated?.grounded ?? true ? 'grounded' : `airborne  y ${ry.toFixed(2)}`}\n` +
         `tick ${clock.tick}   ${fps} fps${clock.dropped ? `   dropped ${clock.dropped}` : ''}\n` +
         `${input.firstPerson ? 'first person' : 'third person'}  (V to swap)\n` +
         `${input.locked ? 'mouse captured - Esc to release' : 'CLICK to capture mouse'}\n` +
-        `\n${combat.readout(clock.tick * TICK_SECONDS, input.ads)}`;
+        `\n${combat.readout(clock.tick * TICK_SECONDS, input.ads)}\n` +
+        `\n${netReadout()}`;
     }
   }
 
@@ -457,9 +546,9 @@ addEventListener('keydown', (e) => {
   // R is reload, not reset: this is a shooter now and R is muscle memory.
   // Reset moved to T.
   if (e.code === 'KeyR') combat.requestReload(clock.tick * TICK_SECONDS);
+  // T resets the local readouts only. Position is authoritative now, so
+  // teleporting to spawn needs a server-side respawn — that is T-1.19.
   if (e.code === 'KeyT') {
-    state = createMoveState(0, 0, 0);
-    prevState = state;
     peakSpeed = 0;
     combat.reset();
   }

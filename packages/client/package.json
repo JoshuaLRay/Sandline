@@ -5,6 +5,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "dependencies": {
+    "@sandline/server": "workspace:*",
     "@sandline/shared": "workspace:*",
     "three": "^0.186.0"
   },

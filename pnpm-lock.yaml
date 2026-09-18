@@ -59,6 +59,9 @@ importers:
 
   packages/client:
     dependencies:
+      '@sandline/server':
+        specifier: workspace:*
+        version: link:../server
       '@sandline/shared':
         specifier: workspace:*
         version: link:../shared

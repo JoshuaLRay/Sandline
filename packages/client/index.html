@@ -12,7 +12,7 @@
       <div id="stats">booting...</div>
       <div id="keys">
         <b>WASD</b> move &middot; <b>Shift</b> sprint &middot; <b>Ctrl</b> crouch &middot;
-        <b>Space</b> jump &middot; <b>V</b> view &middot; <b>T</b> reset &middot; <b>H</b> hide
+        <b>Space</b> jump &middot; <b>V</b> view &middot; <b>T</b> reset stats &middot; <b>H</b> hide
       </div>
       <div id="keys">
         <b>LMB</b> fire &middot; <b>RMB</b> aim &middot; <b>R</b> reload &middot;
@@ -24,8 +24,9 @@
       </div>
       <div id="gap">
         Weapons are debug lines, not art: recoil, muzzle flash and shell
-        ejection are M2. Hits resolve locally &mdash; server-authoritative
-        hitscan with lag compensation is T-1.18.
+        ejection are M2. Hits ARE authoritative: an in-page session resolves
+        them with rewound hitboxes, so tracers appear when the server says so
+        &mdash; late, at latency, on purpose.
       </div>
     </div>
     <div id="crosshair" aria-hidden="true"></div>

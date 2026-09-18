@@ -38,7 +38,7 @@ describe('CombatQA', () => {
 
   beforeEach(() => {
     scene = new THREE.Scene();
-    combat = new CombatQA(scene, []);
+    combat = new CombatQA(scene);
   });
 
   it('completes a reload while the trigger is released', () => {

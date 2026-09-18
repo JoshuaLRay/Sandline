@@ -9,10 +9,17 @@
  *
  * WHAT THIS IS NOT. It is not E-2.4 (weapon feel: recoil patterns, camera
  * shake, muzzle flash, shell ejection) and must not quietly grow into it. There
- * is no art here, only debug lines. It is also NOT the authoritative hitscan:
- * resolution is a local Three.js raycast against the range targets, whereas the
- * real thing rewinds server-side hitboxes (T-1.18). When T-1.18 lands, this
- * becomes the client-side preview of a server hit event and the raycast goes.
+ * is no art here, only debug lines.
+ *
+ * HITS ARE THE SERVER'S. The local raycast this used to do is gone. Tracers and
+ * impacts are drawn from the HitEvent the server broadcasts after rewinding
+ * hitboxes (T-1.18), so what you see IS the authoritative result. At latency
+ * that means the tracer appears late — which is the honest thing to show, and
+ * the thing worth feeling before deciding whether a predicted tracer is needed.
+ *
+ * Cadence, magazine and bloom are still simulated locally, because an ammo
+ * counter that waits for a round trip feels broken. The server runs the same
+ * machine and is the authority; this copy exists only so the HUD responds.
  *
  * What it DOES exercise honestly is every number T-1.17 owns: the same
  * `tryFire` cadence and magazine machine, the same seeded `shotDirections`, the
@@ -23,23 +30,19 @@ import {
   ANGLE_UNITS,
   TICK_SECONDS,
   WEAPON_IDS,
+  type Shot,
   type WeaponDef,
   type WeaponState,
   allowsFire,
   createWeaponState,
   currentConeUnits,
-  damageAtDistance,
   decayBloom,
   finishReload,
   getWeapon,
   isReloading,
-  shotDirections,
   startReload,
   tryFire,
 } from '@sandline/shared';
-
-/** Local player. The server assigns real ids; the seed only needs to be stable. */
-const ENTITY_ID = 0;
 
 const TRACER_SECONDS = 0.11;
 const IMPACT_SECONDS = 0.8;
@@ -96,7 +99,6 @@ export class CombatQA {
   private readonly working = new Map<string, WeaponDef>();
   /** Fired when the active weapon changes, so the panel can rebind its rows. */
   onWeaponChange: ((def: WeaponDef) => void) | null = null;
-  private readonly raycaster = new THREE.Raycaster();
   private readonly effects: Fading[] = [];
   private readonly tracerGeometry = new THREE.BufferGeometry();
   private readonly impactGeometry = new THREE.SphereGeometry(0.09, 8, 6);
@@ -106,10 +108,7 @@ export class CombatQA {
   pelletsHit = 0;
   lastHit: LastHit | null = null;
 
-  constructor(
-    private readonly scene: THREE.Scene,
-    private readonly targets: THREE.Object3D[],
-  ) {
+  constructor(private readonly scene: THREE.Scene) {
     this.def = this.workingDef(0);
     this.state = createWeaponState(this.def);
   }
@@ -171,7 +170,7 @@ export class CombatQA {
    * the spread seed is (tick, entityId, shotIndex, pelletIndex), so the tick
    * number is part of the result, not bookkeeping.
    */
-  tick(tickNumber: number, now: number, ctx: FireContext): void {
+  tick(tickNumber: number, now: number, ctx: FireContext): Shot | null {
     /**
      * Settle any finished reload FIRST, every tick.
      *
@@ -183,20 +182,10 @@ export class CombatQA {
      */
     finishReload(this.def, this.state, now);
 
+    let fired: Shot | null = null;
     if (allowsFire(this.def, ctx.firing, ctx.triggerEdge)) {
-      const shot = tryFire(this.def, this.state, now, ctx.ads);
-      if (shot !== null) {
-        this.shotsFired += 1;
-        const directions = shotDirections(
-          this.def,
-          shot,
-          ENTITY_ID,
-          tickNumber,
-          ctx.yaw,
-          ctx.pitch,
-        );
-        for (const dir of directions) this.resolvePellet(ctx.origin, dir, now);
-      }
+      fired = tryFire(this.def, this.state, now, ctx.ads);
+      if (fired !== null) this.shotsFired += 1;
     }
 
     // Convenience for a range: an empty magazine reloads itself rather than
@@ -206,30 +195,26 @@ export class CombatQA {
     }
 
     decayBloom(this.def, this.state, TICK_SECONDS);
+    return fired;
   }
 
-  private resolvePellet(origin: THREE.Vector3, dir: { x: number; y: number; z: number }, now: number): void {
-    const direction = new THREE.Vector3(dir.x, dir.y, dir.z).normalize();
-    this.raycaster.set(origin, direction);
-    this.raycaster.far = this.def.maxRangeM;
-    const [hit] = this.raycaster.intersectObjects(this.targets, false);
-
-    const end = hit
-      ? hit.point.clone()
-      : origin.clone().addScaledVector(direction, this.def.maxRangeM);
-
+  /**
+   * Draw one authoritative pellet result. `origin` is the shooter's muzzle,
+   * `end` the impact or the end of the ray, both from the server.
+   */
+  drawServerShot(origin: THREE.Vector3, end: THREE.Vector3, targetNetId: number, damage: number, now: number): void {
+    const hit = targetNetId !== 0;
     this.pelletsFired += 1;
     if (hit) {
       this.pelletsHit += 1;
-      const damage = damageAtDistance(this.def, hit.distance);
       this.lastHit = {
-        target: hit.object.name === '' ? 'target' : hit.object.name,
-        distanceM: hit.distance,
+        target: `net ${targetNetId}`,
+        distanceM: origin.distanceTo(end),
         damage,
       };
       this.spawnImpact(end, damage, now);
     }
-    this.spawnTracer(origin, end, Boolean(hit), now);
+    this.spawnTracer(origin, end, hit, now);
   }
 
   private spawnTracer(from: THREE.Vector3, to: THREE.Vector3, hit: boolean, now: number): void {

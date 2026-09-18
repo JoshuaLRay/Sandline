@@ -166,9 +166,19 @@ export class LocalInput {
     return this.buttons.has(2);
   }
 
-  /** Camera pitch in wire-angle units. Not sent to the simulation. */
+  /** Camera pitch in wire-angle units, signed. Not sent to the simulation. */
   get pitch(): number {
     return this.pitchAccum;
+  }
+
+  /**
+   * Pitch wrapped into the unsigned 0..1023 the wire carries. Pitch
+   * accumulates signed so the limits can be asymmetric, but a wire angle is a
+   * position on a circle and has no sign.
+   */
+  get pitchWire(): number {
+    const units = WIRE_ANGLE_UNITS;
+    return ((Math.round(this.pitchAccum) % units) + units) % units;
   }
 
   get yaw(): number {

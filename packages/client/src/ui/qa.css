@@ -117,6 +117,8 @@ canvas { display: block; touch-action: none; }
   cursor: pointer;
 }
 .panel-reset:hover { background: rgba(240, 180, 41, 0.22); }
+.panel-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 6px; }
+.panel-presets .panel-reset { margin-top: 0; padding: 5px 2px; }
 
 /** The HUD collapses too, down to its title bar. */
 #hud.collapsed #stats,

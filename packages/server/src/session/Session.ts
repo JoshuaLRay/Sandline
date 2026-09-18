@@ -16,6 +16,7 @@ import {
   COMPONENT_IDS,
   DEFAULT_MOVE_CONFIG,
   MAX_SLOTS,
+  type MoveConfig,
   type Message,
   type MoveInput,
   type MoveState,
@@ -118,7 +119,13 @@ export class Session {
   private snapshotsSent = 0;
   private bytesSent = 0;
 
-  constructor() {
+  /**
+   * `moveConfig` is a REFERENCE, not a copy. The in-page QA server shares one
+   * object with the client's predictor so the movement tuning panel moves both
+   * at once; tuning one side only would mispredict every tick and read as the
+   * netcode being broken rather than as a tuning artefact.
+   */
+  constructor(private readonly moveConfig: MoveConfig = DEFAULT_MOVE_CONFIG) {
     // Six slots exist from the moment the session does (ADR-001).
     for (let i = 0; i < MAX_SLOTS; i++) {
       this.slots.push({
@@ -206,6 +213,9 @@ export class Session {
       crouch: (msg.buttons & 0b100) !== 0,
     };
     slot.yaw = msg.yaw;
+    // Aim pitch replicates so remote characters point where they are looking;
+    // movement never needed it, shooting does.
+    slot.pitch = msg.pitch;
     slot.pendingInputTick = msg.tick;
     slot.staleTicks = 0;
   }
@@ -314,7 +324,7 @@ export class Session {
         slot.staleTicks++;
         if (slot.staleTicks > MAX_INPUT_REPEAT) slot.input = idleInput(slot.yaw);
       }
-      slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, DEFAULT_MOVE_CONFIG);
+      slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig);
       slot.yaw = slot.input.yaw;
       // Consumed now, so this is what the client may stop replaying.
       slot.lastProcessedInputTick = slot.pendingInputTick;
@@ -344,7 +354,7 @@ export class Session {
             quantize(s.state.y, POSITION),
             quantize(s.state.z, POSITION),
             s.yaw & 0x3ff,
-            0,
+            s.pitch & 0x3ff,
           ],
           // Vertical velocity must replicate or a client reconciling mid-jump
           // snaps to the right height with the wrong momentum and diverges again
