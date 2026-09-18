@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { ANGLE_UNITS } from '../math/angles.ts';
+import { cos, sin } from '../math/trig.ts';
 import { DEFAULT_MUZZLE_RIG, type MuzzleRig, muzzlePosition } from './muzzle.ts';
 
 const RIG: MuzzleRig = { hipRight: 0.3, adsRight: 0.1, hipHeight: 1, adsHeight: 1.5 };
@@ -12,10 +14,12 @@ describe('muzzle placement', () => {
   it('sits on the character right, for every facing', () => {
     // Asserted against the cross product rather than a fixed axis: a change of
     // forward convention must not silently flip which hip fires.
-    for (let deg = 0; deg < 360; deg += 15) {
-      const rad = (deg * Math.PI) / 180;
-      const fx = Math.sin(rad);
-      const fz = Math.cos(rad);
+    // Swept with the table trig, not Math.sin/cos: these are the exact facings
+    // the character controller and camera produce, and Math is banned in
+    // shared for the reason ADR-014 gives.
+    for (let a = 0; a < ANGLE_UNITS; a += 64) {
+      const fx = sin(a);
+      const fz = cos(a);
       const m = muzzlePosition(0, 0, 0, fx, fz, false, RIG);
       const right = rightOf(fx, fz);
       expect(m.x).toBeCloseTo(right.x * RIG.hipRight, 10);

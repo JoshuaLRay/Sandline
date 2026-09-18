@@ -29,6 +29,7 @@ export const MAX_SLOTS = 6;
 export interface ServerConnectionEvents {
   onJoined?: (conn: ServerConnection) => void;
   onInput?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Input' }>) => void;
+  onFire?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Fire' }>) => void;
   onAck?: (conn: ServerConnection, tick: number) => void;
   onClosed?: (conn: ServerConnection, reason: string) => void;
 }
@@ -106,6 +107,9 @@ export class ServerConnection {
     switch (msg.kind) {
       case 'Input':
         this.events.onInput?.(this, msg);
+        break;
+      case 'Fire':
+        this.events.onFire?.(this, msg);
         break;
       case 'Ack':
         if (msg.tick > this.lastAckedTick) this.lastAckedTick = msg.tick;

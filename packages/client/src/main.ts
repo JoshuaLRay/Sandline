@@ -36,6 +36,7 @@ import {
   createMoveState,
   fromRadians,
   sin,
+  muzzlePosition,
   stepCharacter,
   toRadians,
   wireToTable,
@@ -44,7 +45,6 @@ import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { solveArmLength } from './camera/followCamera.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
-import { muzzlePosition } from './weapons/muzzle.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
 import { createTuningPanel } from './ui/TuningPanel.ts';
 import { createWeaponPanel } from './ui/WeaponPanel.ts';

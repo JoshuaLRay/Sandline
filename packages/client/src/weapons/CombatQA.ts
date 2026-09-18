@@ -22,6 +22,7 @@ import * as THREE from 'three';
 import {
   ANGLE_UNITS,
   TICK_SECONDS,
+  WEAPON_IDS,
   type WeaponDef,
   type WeaponState,
   allowsFire,
@@ -45,7 +46,8 @@ const IMPACT_SECONDS = 0.8;
 /** Hard cap on live debug objects, so a held trigger cannot leak the scene. */
 const MAX_EFFECTS = 400;
 
-export const WEAPON_ORDER = ['carbine', 'marksman', 'breacher', 'sidearm'] as const;
+/** Re-exported: the order is protocol, and shared owns it (see WEAPON_IDS). */
+export const WEAPON_ORDER = WEAPON_IDS;
 
 interface Fading {
   object: THREE.Object3D;

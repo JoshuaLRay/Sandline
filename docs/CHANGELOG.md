@@ -50,3 +50,4 @@ Format: `T-<id> — <what changed>`
 - T-0.06 - Pitch up raised to 89 degrees; camera orients by Euler, not lookAt.
 - T-1.18 - Lag compensation: rewound hitbox history, capped at 200ms, no restore step.
 - T-0.06 - Muzzle moved to the character's right hip; ADS brings it up and in.
+- T-1.18 - Session wiring: Fire/HitEvent messages, server-authoritative cadence, protocol v3.

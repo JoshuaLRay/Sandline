@@ -1,5 +1,13 @@
 /**
- * Where a shot leaves the character (QA harness).
+ * Where a shot leaves the character.
+ *
+ * In `shared` because BOTH sides need it and must agree: the client draws the
+ * tracer from here, and the server traces the authoritative hitscan ray from
+ * here (T-1.18). Two copies of this that drifted apart would mean shots that
+ * visibly leave the barrel but are traced from somewhere else — a whole class
+ * of "that clearly hit" complaints with no visible cause.
+ *
+ * Pure arithmetic, no transcendentals, so it is safe under ADR-014.
  *
  * Reported in QA: hip fire appeared to come from the LEFT hip. The muzzle was
  * not on the left — it was on the character's centre line, at eye height, with
@@ -17,11 +25,7 @@
  * rather than against a hardcoded axis.
  */
 
-export interface Vec3 {
-  x: number;
-  y: number;
-  z: number;
-}
+import type { Vec3 } from '../net/prediction.ts';
 
 export interface MuzzleRig {
   /** Lateral offset toward the character's right, hip and aimed. */

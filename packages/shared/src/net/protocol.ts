@@ -7,10 +7,11 @@
  * which is precisely the corrupt-state failure ADR-009 warns about.
  */
 import { BitReader, BitWriter } from './BitStream.ts';
+import { HEALTH, POSITION, dequantize, quantize } from './quantize.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 export const MessageType = {
   Join: 0,
@@ -18,6 +19,8 @@ export const MessageType = {
   Input: 2,
   Snapshot: 3,
   Delta: 8,
+  Fire: 9,
+  HitEvent: 10,
   Ack: 4,
   Ping: 5,
   Pong: 6,
@@ -53,6 +56,40 @@ export type Message =
        */
       lastProcessedInputTick: number;
       payload: Uint8Array;
+    }
+  /**
+   * A trigger pull (T-1.18). Carries the aim it was fired along and the server
+   * time the client was RENDERING at the moment it fired, which is what the
+   * server rewinds hitboxes to.
+   *
+   * `renderTimeMs` is untrusted: the server clamps the rewind it implies to
+   * MAX_REWIND_MS, so a client claiming an enormous latency cannot shoot into
+   * the distant past.
+   */
+  | {
+      kind: 'Fire';
+      tick: number;
+      yaw: number;
+      pitch: number;
+      renderTimeMs: number;
+      weapon: number;
+      /** Aimed: the server needs it to pick the same cone the client drew. */
+      ads: boolean;
+    }
+  /**
+   * The authoritative outcome of a shot, broadcast to everyone so all clients
+   * draw the same tracer. The shooter's muzzle is derivable from its replicated
+   * position, so only the endpoint travels.
+   */
+  | {
+      kind: 'HitEvent';
+      shooterNetId: number;
+      /** 0 when nothing was hit. */
+      targetNetId: number;
+      x: number;
+      y: number;
+      z: number;
+      damage: number;
     }
   | { kind: 'Ack'; tick: number }
   | { kind: 'Ping'; id: number; clientTime: number }
@@ -97,6 +134,26 @@ export function encodeMessage(msg: Message): Uint8Array {
       // -1 means "nothing from you yet"; shift so it stays a varuint.
       w.writeVarUint(msg.lastProcessedInputTick + 1);
       w.writeBytes(msg.payload);
+      break;
+    case 'Fire':
+      w.writeBits(MessageType.Fire, TYPE_BITS);
+      w.writeVarUint(msg.tick);
+      w.writeBits(msg.yaw & 0x3ff, 10);
+      w.writeBits(msg.pitch & 0x3ff, 10);
+      w.writeVarUint(Math.max(0, Math.round(msg.renderTimeMs)));
+      w.writeBits(msg.weapon & 0x7, 3);
+      w.writeBool(msg.ads);
+      break;
+    case 'HitEvent':
+      w.writeBits(MessageType.HitEvent, TYPE_BITS);
+      w.writeVarUint(msg.shooterNetId);
+      w.writeVarUint(msg.targetNetId);
+      // Impact points are world positions, so they use the position spec
+      // rather than a float - same wire precision as everything else (T-1.02).
+      w.writeBits(quantize(msg.x, POSITION), POSITION.bits);
+      w.writeBits(quantize(msg.y, POSITION), POSITION.bits);
+      w.writeBits(quantize(msg.z, POSITION), POSITION.bits);
+      w.writeBits(quantize(msg.damage, HEALTH), HEALTH.bits);
       break;
     case 'Ack':
       w.writeBits(MessageType.Ack, TYPE_BITS);
@@ -154,6 +211,26 @@ export function decodeMessage(bytes: Uint8Array): Message {
         const lastProcessedInputTick = r.readVarUint() - 1;
         return { kind: 'Delta', tick, baselineTick, lastProcessedInputTick, payload: r.readBytes() };
       }
+      case MessageType.Fire:
+        return {
+          kind: 'Fire',
+          tick: r.readVarUint(),
+          yaw: r.readBits(10),
+          pitch: r.readBits(10),
+          renderTimeMs: r.readVarUint(),
+          weapon: r.readBits(3),
+          ads: r.readBool(),
+        };
+      case MessageType.HitEvent:
+        return {
+          kind: 'HitEvent',
+          shooterNetId: r.readVarUint(),
+          targetNetId: r.readVarUint(),
+          x: dequantize(r.readBits(POSITION.bits), POSITION),
+          y: dequantize(r.readBits(POSITION.bits), POSITION),
+          z: dequantize(r.readBits(POSITION.bits), POSITION),
+          damage: dequantize(r.readBits(HEALTH.bits), HEALTH),
+        };
       case MessageType.Ack:
         return { kind: 'Ack', tick: r.readVarUint() };
       case MessageType.Ping:

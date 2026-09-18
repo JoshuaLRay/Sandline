@@ -185,6 +185,13 @@ export function parseWeaponTable(raw: unknown): Record<string, WeaponDef> {
   return out;
 }
 
+/**
+ * Wire order for weapon selection. The index is what travels in a Fire message,
+ * so this order is part of the protocol: reordering it silently reassigns every
+ * client's weapons and is a PROTOCOL_VERSION bump.
+ */
+export const WEAPON_IDS = ['carbine', 'marksman', 'breacher', 'sidearm'] as const;
+
 /** The shipped table, validated at import so bad data fails loudly at boot. */
 export const WEAPONS: Readonly<Record<string, WeaponDef>> = Object.freeze(parseWeaponTable(RAW_WEAPONS));
 

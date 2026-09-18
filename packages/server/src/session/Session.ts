@@ -26,12 +26,26 @@ import {
   TICK_SECONDS,
   type Transport,
   type WorldSnapshot,
+  WEAPON_IDS,
+  type WeaponDef,
+  type WeaponState,
   createMoveState,
+  createWeaponState,
+  damageAtDistance,
+  dirFromYawPitch,
   encodeMessage,
+  finishReload,
+  getWeapon,
+  muzzlePosition,
+  shotDirections,
+  startReload,
+  tryFire,
+  wireToTable,
   quantize,
   stepCharacter,
   writeDelta,
 } from '@sandline/shared';
+import { DEFAULT_HITBOX, HitboxHistory, resolveShot } from '../net/lagComp.ts';
 
 const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
@@ -50,6 +64,19 @@ export interface Slot {
   /** Ticks since a real input arrived, for the repeat-then-idle rule. */
   staleTicks: number;
   connection: ServerConnection | null;
+  /**
+   * Authoritative weapon state.
+   *
+   * The server owns cadence and the magazine, not the client. A client that
+   * spams Fire faster than the weapon's RPM gets the same treatment as one
+   * firing an empty magazine: nothing happens. This is the whole reason the
+   * cadence machine (T-1.17) is pure and takes an injected time — the server
+   * runs the identical code the client predicts with.
+   */
+  weapon: WeaponDef;
+  weaponState: WeaponState;
+  /** Aim pitch, in wire units. Movement only replicates yaw; shots need both. */
+  pitch: number;
 }
 
 /** ADR-012: repeat a missing input this many ticks, then treat it as idle. */
@@ -76,7 +103,17 @@ export class Session {
   readonly slots: Slot[] = [];
   private readonly history = new SnapshotHistory(64);
   private readonly connections = new Set<ServerConnection>();
+  /**
+   * Per-entity position history for lag compensation (T-1.18). Written once per
+   * tick for every slot, read when a Fire arrives.
+   */
+  private readonly hitboxes = new HitboxHistory();
   private currentTick = 0;
+  /**
+   * Server time at the last tick, in ms. Still injected — the session reads no
+   * clock; it only remembers the last time it was handed.
+   */
+  private nowMs = 0;
   private nextNetId = 1;
   private snapshotsSent = 0;
   private bytesSent = 0;
@@ -95,6 +132,9 @@ export class Session {
         pendingInputTick: -1,
         staleTicks: 0,
         connection: null,
+        weapon: getWeapon(WEAPON_IDS[0]),
+        weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
+        pitch: 0,
       });
     }
   }
@@ -120,6 +160,9 @@ export class Session {
       {
         onJoined: (c) => this.assignSlot(c),
         onInput: (c, msg) => this.applyInput(c, msg),
+        // NOT the `now` this connection was opened at: that value is frozen
+        // forever. Fire resolves against the session's current time.
+        onFire: (c, msg) => this.applyFire(c, msg),
         onClosed: (c) => this.releaseSlot(c),
       },
       now,
@@ -167,8 +210,96 @@ export class Session {
     slot.staleTicks = 0;
   }
 
+  /**
+   * Resolve a trigger pull (T-1.17 cadence, T-1.18 rewind).
+   *
+   * Everything in the message is untrusted. The weapon index is bounds-checked,
+   * the cadence and magazine are the server's own, and the claimed render time
+   * is clamped inside `resolveShot`.
+   */
+  private applyFire(conn: ServerConnection, msg: Extract<Message, { kind: 'Fire' }>): void {
+    const slot = this.slots.find((s) => s.connection === conn);
+    if (!slot) return;
+
+    const id = WEAPON_IDS[msg.weapon];
+    if (id === undefined) return; // Out-of-range index: drop it, do not throw.
+    if (id !== slot.weapon.id) {
+      slot.weapon = getWeapon(id);
+      slot.weaponState = createWeaponState(slot.weapon);
+    }
+
+    const nowSeconds = this.nowMs / 1000;
+    finishReload(slot.weapon, slot.weaponState, nowSeconds);
+
+    /**
+     * No auto/semi check here, deliberately. Each Fire message IS one discrete
+     * trigger pull, so `allowsFire` would be asked (held, edge) = (true, true)
+     * and answer true for every weapon — a check that reads like enforcement
+     * while enforcing nothing. Auto versus semi is a client INPUT concern: it
+     * decides whether holding the button keeps generating pulls. What stops a
+     * client generating them faster than the weapon allows is the cadence in
+     * `tryFire` below, which is the server's own and is the real protection.
+     */
+    const shot = tryFire(slot.weapon, slot.weaponState, nowSeconds, msg.ads);
+    if (shot === null) {
+      // Cadence, reload or an empty magazine. Auto-reload so a player who
+      // empties a magazine is not stuck until they think to press a key.
+      if (slot.weaponState.ammo === 0) startReload(slot.weapon, slot.weaponState, nowSeconds);
+      return;
+    }
+
+    slot.pitch = msg.pitch;
+    const yaw = wireToTable(msg.yaw);
+    const forward = dirFromYawPitch(yaw, wireToTable(msg.pitch));
+    const origin = muzzlePosition(
+      slot.state.x,
+      slot.state.y,
+      slot.state.z,
+      forward.x,
+      forward.z,
+      msg.ads,
+    );
+
+    for (const dir of shotDirections(slot.weapon, shot, slot.netId, msg.tick, yaw, wireToTable(msg.pitch))) {
+      const hit = resolveShot(
+        this.hitboxes,
+        {
+          shooterNetId: slot.netId,
+          ray: { origin, direction: dir, maxDistance: slot.weapon.maxRangeM },
+          nowMs: this.nowMs,
+          clientRenderTimeMs: msg.renderTimeMs,
+        },
+        DEFAULT_HITBOX,
+      );
+
+      const event: Message = hit
+        ? {
+            kind: 'HitEvent',
+            shooterNetId: slot.netId,
+            targetNetId: hit.netId,
+            x: hit.point.x,
+            y: hit.point.y,
+            z: hit.point.z,
+            // Applying this to health is T-1.19; the number travels now so the
+            // client can show it and so that task has nothing to re-derive.
+            damage: damageAtDistance(slot.weapon, hit.distance),
+          }
+        : {
+            kind: 'HitEvent',
+            shooterNetId: slot.netId,
+            targetNetId: 0,
+            x: origin.x + dir.x * slot.weapon.maxRangeM,
+            y: origin.y + dir.y * slot.weapon.maxRangeM,
+            z: origin.z + dir.z * slot.weapon.maxRangeM,
+            damage: 0,
+          };
+      for (const c of this.connections) c.send(event);
+    }
+  }
+
   /** Advance one authoritative tick and broadcast. */
   step(now: number): void {
+    this.nowMs = now;
     for (const conn of [...this.connections]) {
       // Advance each connection's clock BEFORE testing the timeout: messages
       // arriving between ticks are stamped with the latest tick time.
@@ -187,6 +318,13 @@ export class Session {
       slot.yaw = slot.input.yaw;
       // Consumed now, so this is what the client may stop replaying.
       slot.lastProcessedInputTick = slot.pendingInputTick;
+    }
+
+    // Record AFTER stepping, so the history holds the post-tick positions that
+    // the snapshot about to go out will describe. Recording pre-step would
+    // rewind clients to a world half a tick behind the one they were shown.
+    for (const slot of this.slots) {
+      this.hitboxes.record(slot.netId, now, slot.state.x, slot.state.y, slot.state.z);
     }
 
     this.currentTick++;
