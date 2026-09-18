@@ -15,7 +15,8 @@
     "falloffMinFraction": 0.55,
     "maxRangeM": 140,
     "magSize": 30,
-    "reloadSeconds": 2.1
+    "reloadSeconds": 2.1,
+    "auto": true
   },
   "marksman": {
     "id": "marksman",
@@ -33,7 +34,8 @@
     "falloffMinFraction": 0.8,
     "maxRangeM": 250,
     "magSize": 10,
-    "reloadSeconds": 2.8
+    "reloadSeconds": 2.8,
+    "auto": false
   },
   "breacher": {
     "id": "breacher",
@@ -51,7 +53,8 @@
     "falloffMinFraction": 0.2,
     "maxRangeM": 40,
     "magSize": 6,
-    "reloadSeconds": 3.4
+    "reloadSeconds": 3.4,
+    "auto": false
   },
   "sidearm": {
     "id": "sidearm",
@@ -69,6 +72,7 @@
     "falloffMinFraction": 0.45,
     "maxRangeM": 90,
     "magSize": 15,
-    "reloadSeconds": 1.6
+    "reloadSeconds": 1.6,
+    "auto": false
   }
 }

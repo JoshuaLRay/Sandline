@@ -45,3 +45,4 @@ Format: `T-<id> — <what changed>`
 - T-0.06 - Orbit camera with real pitch, asymmetric limits, FPS/TPS toggle.
 - T-1.17 - Hitscan weapons: data-driven defs, deterministic seeded spread, falloff.
 - T-0.06 - Client becomes the QA home: live weapon range for T-1.17, tracers, falloff.
+- T-0.06 - First weapon QA pass: reload loop, semi-auto, shoulder camera, ADS cue.

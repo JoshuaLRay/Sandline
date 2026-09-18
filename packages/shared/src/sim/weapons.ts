@@ -56,6 +56,24 @@ export interface WeaponDef {
   maxRangeM: number;
   magSize: number;
   reloadSeconds: number;
+  /**
+   * Full auto: holding the trigger keeps firing at the weapon's cadence.
+   * Semi-auto weapons need a fresh trigger pull per shot, which is a real
+   * balance lever (the marksman's 180 rpm means nothing if you can hold it
+   * down), not a presentation detail — so it lives in data with the rest.
+   */
+  auto: boolean;
+}
+
+/**
+ * Whether the trigger state permits a shot this tick. Cadence, magazine and
+ * reload are `tryFire`'s job; this is only the auto/semi distinction, kept
+ * separate so the caller can own trigger edge detection (the client latches it
+ * per tick, exactly as it latches jump — a click shorter than 33 ms must not
+ * fall between two samples).
+ */
+export function allowsFire(def: WeaponDef, triggerHeld: boolean, triggerEdge: boolean): boolean {
+  return def.auto ? triggerHeld : triggerEdge;
 }
 
 /** Seconds between shots. */
@@ -96,6 +114,14 @@ function num(row: Record<string, unknown>, key: string, id: string, min: number,
   return v;
 }
 
+function bool(row: Record<string, unknown>, key: string, id: string): boolean {
+  const v = row[key];
+  if (typeof v !== 'boolean') {
+    throw new WeaponDataError(`weapon "${id}": ${key} must be a boolean, got ${String(v)}`);
+  }
+  return v;
+}
+
 function str(row: Record<string, unknown>, key: string, id: string): string {
   const v = row[key];
   if (typeof v !== 'string' || v.length === 0) {
@@ -129,6 +155,7 @@ function parseWeaponDef(key: string, raw: unknown): WeaponDef {
     maxRangeM: num(row, 'maxRangeM', key, 1, 2000),
     magSize: num(row, 'magSize', key, 1, 500),
     reloadSeconds: num(row, 'reloadSeconds', key, 0, 60),
+    auto: bool(row, 'auto', key),
   };
 
   if (!Number.isInteger(def.pellets)) throw new WeaponDataError(`weapon "${key}": pellets must be an integer`);

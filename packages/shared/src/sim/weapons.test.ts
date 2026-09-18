@@ -3,6 +3,7 @@ import { ANGLE_UNITS } from '../math/angles.ts';
 import { cos } from '../math/trig.ts';
 import {
   WEAPONS,
+  allowsFire,
   type WeaponDef,
   createWeaponState,
   currentConeUnits,
@@ -42,7 +43,10 @@ const FIXTURE: WeaponDef = {
   maxRangeM: 100,
   magSize: 5,
   reloadSeconds: 2,
+  auto: true,
 };
+
+const SEMI: WeaponDef = { ...FIXTURE, id: 'semi', name: 'Semi', auto: false };
 
 const YAW = 700;
 const PITCH = 120;
@@ -184,6 +188,29 @@ describe('firing state machine', () => {
   });
 });
 
+describe('auto vs semi', () => {
+  it('lets a held trigger keep firing on an automatic weapon', () => {
+    expect(allowsFire(FIXTURE, true, false)).toBe(true);
+    expect(allowsFire(FIXTURE, true, true)).toBe(true);
+  });
+
+  it('requires a fresh pull on a semi-automatic weapon', () => {
+    // The whole point: holding the trigger down must NOT keep firing.
+    expect(allowsFire(SEMI, true, false)).toBe(false);
+    expect(allowsFire(SEMI, true, true)).toBe(true);
+  });
+
+  it('never fires on a released trigger either way', () => {
+    expect(allowsFire(FIXTURE, false, false)).toBe(false);
+    expect(allowsFire(SEMI, false, false)).toBe(false);
+  });
+
+  it('ships exactly one automatic weapon in the current table', () => {
+    const autos = Object.values(WEAPONS).filter((w) => w.auto).map((w) => w.id);
+    expect(autos).toEqual(['carbine']);
+  });
+});
+
 describe('bloom', () => {
   it('grows per shot, clamps at the maximum, and decays back to the base cone', () => {
     const state = createWeaponState(FIXTURE);
@@ -232,6 +259,7 @@ describe('weapon data', () => {
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', pellets: 1.5 } })).toThrow(/pellets must be an integer/);
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', falloffEndM: 1 } })).toThrow(/falloffEndM/);
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', adsSpreadDeg: 99 } })).toThrow(/adsSpreadDeg/);
+    expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', auto: 'yes' } })).toThrow(/auto must be a boolean/);
     expect(() => parseWeaponTable({})).toThrow(/empty/);
     expect(() => parseWeaponTable([])).toThrow(/keyed by weapon id/);
   });

@@ -51,6 +51,14 @@ export class LocalInput {
    * the button is simply not recorded.
    */
   private readonly buttons = new Set<number>();
+  /**
+   * Trigger pulls since the last tick, latched.
+   *
+   * Same reason jump is latched: input is sampled at 30 Hz, so a click shorter
+   * than 33 ms can land entirely between two samples. On a semi-automatic that
+   * is a shot that simply never happens, which reads as the gun being broken.
+   */
+  private triggerEdge = false;
   private yawAccum = 0;
   private pitchAccum = 0;
   private sensitivity: number;
@@ -86,7 +94,9 @@ export class LocalInput {
     // over the canvas instead.
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     addEventListener('mousedown', (e) => {
-      if (this.locked) this.buttons.add(e.button);
+      if (!this.locked) return;
+      this.buttons.add(e.button);
+      if (e.button === 0) this.triggerEdge = true;
     });
     addEventListener('mouseup', (e) => this.buttons.delete(e.button));
     document.addEventListener('pointerlockchange', () => {
@@ -129,6 +139,16 @@ export class LocalInput {
   get pitchFraction(): number {
     const limit = this.pitchAccum >= 0 ? this.maxPitch : -this.minPitch;
     return limit === 0 ? 0 : this.pitchAccum / limit;
+  }
+
+  /**
+   * Whether the trigger went down since the last call, and clear the latch.
+   * Call exactly once per tick — a second call in the same tick reads false.
+   */
+  consumeTriggerEdge(): boolean {
+    const edge = this.triggerEdge;
+    this.triggerEdge = false;
+    return edge;
   }
 
   /** Left mouse held: pull the trigger. Cadence is the weapon's, not the mouse's. */

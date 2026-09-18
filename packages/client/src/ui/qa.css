@@ -131,6 +131,19 @@ canvas { display: block; touch-action: none; }
 #crosshair::before { top: 8px; left: 0; width: 18px; height: 2px; }
 #crosshair::after { left: 8px; top: 0; width: 2px; height: 18px; }
 
+/**
+ * Aiming down sights. The reticle tightens and goes pale, which together with
+ * the narrowed field of view makes the state readable at a glance in first and
+ * third person alike - previously there was no cue at all in either.
+ */
+#crosshair.ads::before,
+#crosshair.ads::after {
+  background: var(--dust);
+  opacity: 1;
+}
+#crosshair.ads::before { top: 8px; left: 5px; width: 8px; }
+#crosshair.ads::after { left: 8px; top: 5px; height: 8px; }
+
 @media (max-width: 640px) {
   #crosshair { display: none; }
 

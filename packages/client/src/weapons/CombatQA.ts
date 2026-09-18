@@ -25,15 +25,16 @@ import {
   WEAPONS,
   type WeaponDef,
   type WeaponState,
+  allowsFire,
   createWeaponState,
   currentConeUnits,
   damageAtDistance,
   decayBloom,
+  finishReload,
   isReloading,
   shotDirections,
   startReload,
   tryFire,
-  wireToTable,
 } from '@sandline/shared';
 
 /** Local player. The server assigns real ids; the seed only needs to be stable. */
@@ -62,10 +63,20 @@ export interface LastHit {
 export interface FireContext {
   /** Muzzle position in world space. */
   origin: THREE.Vector3;
-  /** Aim, in WIRE angle units — the same units the input and wire use. */
-  yawWire: number;
-  pitchWire: number;
+  /**
+   * Aim, in TABLE angle units (1/4096 turn).
+   *
+   * Deliberately NOT the raw camera yaw/pitch. In third person the camera sits
+   * off the shoulder, so the muzzle is no longer on its centre line and firing
+   * along the camera angles would put shots beside the reticle. The caller
+   * converges muzzle-to-aim-point first and passes the result here.
+   */
+  yaw: number;
+  pitch: number;
+  /** Trigger held this tick. */
   firing: boolean;
+  /** Trigger went down since the last tick. Semi-automatics need this. */
+  triggerEdge: boolean;
   ads: boolean;
 }
 
@@ -113,7 +124,18 @@ export class CombatQA {
    * number is part of the result, not bookkeeping.
    */
   tick(tickNumber: number, now: number, ctx: FireContext): void {
-    if (ctx.firing) {
+    /**
+     * Settle any finished reload FIRST, every tick.
+     *
+     * This used to happen only inside `tryFire`, which runs only while the
+     * trigger is held — so a reload started on an empty magazine never
+     * completed unless you kept firing, the magazine stayed at zero, and the
+     * auto-reload below restarted it on the very next tick. The countdown
+     * looked like it was resetting itself because it was.
+     */
+    finishReload(this.def, this.state, now);
+
+    if (allowsFire(this.def, ctx.firing, ctx.triggerEdge)) {
       const shot = tryFire(this.def, this.state, now, ctx.ads);
       if (shot !== null) {
         this.shotsFired += 1;
@@ -122,8 +144,8 @@ export class CombatQA {
           shot,
           ENTITY_ID,
           tickNumber,
-          wireToTable(ctx.yawWire),
-          wireToTable(normalizeWirePitch(ctx.pitchWire)),
+          ctx.yaw,
+          ctx.pitch,
         );
         for (const dir of directions) this.resolvePellet(ctx.origin, dir, now);
       }
@@ -236,6 +258,7 @@ export class CombatQA {
 
   readout(now: number, ads: boolean): string {
     const reloading = isReloading(this.state, now);
+    const mode = this.def.auto ? 'auto' : 'semi';
     const ammo = reloading
       ? `reloading ${(this.state.reloadEndsAt - now).toFixed(1)}s`
       : `${this.state.ammo}/${this.def.magSize}`;
@@ -247,7 +270,7 @@ export class CombatQA {
       : 'no hits yet';
     return (
       `${this.def.name}   ${ammo}\n` +
-      `${this.def.rpm} rpm  x${this.def.pellets}  cone ${this.coneDegrees(ads).toFixed(2)}deg${ads ? ' ADS' : ''}\n` +
+      `${this.def.rpm} rpm ${mode}  x${this.def.pellets}  cone ${this.coneDegrees(ads).toFixed(2)}deg${ads ? '  [ADS]' : ''}\n` +
       `shots ${this.shotsFired}  pellets on target ${accuracy}\n` +
       `last ${hit}`
     );
@@ -259,10 +282,4 @@ function weaponAt(index: number): WeaponDef {
   const def = WEAPONS[id];
   if (def === undefined) throw new Error(`weapon "${id}" missing from the shipped table`);
   return def;
-}
-
-/** Camera pitch accumulates signed; the angle table wants it wrapped. */
-function normalizeWirePitch(pitchWire: number): number {
-  const units = 1024;
-  return ((Math.round(pitchWire) % units) + units) % units;
 }

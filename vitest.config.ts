@@ -22,6 +22,14 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'client',
+          root: './packages/client',
+          environment: 'node',
+          include: ['src/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
           name: 'server',
           root: './packages/server',
           environment: 'node',

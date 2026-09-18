@@ -34,11 +34,13 @@ import {
   TICK_SECONDS,
   cos,
   createMoveState,
+  fromRadians,
   sin,
   stepCharacter,
   wireToTable,
 } from '@sandline/shared';
 import { LocalInput } from './input/LocalInput.ts';
+import { solveArmLength } from './camera/followCamera.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { createTuningPanel } from './ui/TuningPanel.ts';
 
@@ -153,6 +155,27 @@ const input = new LocalInput(renderer.domElement);
 const EYE_HEIGHT = 1.55;
 /** Third-person arm length before pitch shortening. */
 const CAMERA_DISTANCE = 5.5;
+/**
+ * Over-the-shoulder offset.
+ *
+ * A centred third-person camera puts the character directly under the reticle,
+ * so you aim at your own back and cannot see what you are shooting. Offsetting
+ * the camera sideways is the standard fix and the reason every third-person
+ * shooter looks over one shoulder.
+ */
+const SHOULDER_RIGHT = 0.85;
+const SHOULDER_RIGHT_ADS = 0.55;
+const SHOULDER_UP = 0.3;
+/** Never let the camera sink below this. The ground plane is y = 0. */
+const MIN_CAMERA_Y = 0.3;
+/** ...and never collapse the arm entirely while doing it. */
+const MIN_CAMERA_DISTANCE = 1.0;
+const ARM_LIMITS = { minCameraY: MIN_CAMERA_Y, minDistance: MIN_CAMERA_DISTANCE };
+const BASE_FOV = 60;
+/** Narrowing the field of view IS the aim cue, in both first and third person. */
+const ADS_FOV = 38;
+/** How far the aim ray looks for something to converge on. */
+const AIM_RANGE = 250;
 
 let state = createMoveState(0, 0, 0);
 let prevState = state;
@@ -204,6 +227,20 @@ document.body.appendChild(
 const clock = new Clock();
 /** Reused so a held trigger does not allocate a vector per tick. */
 const muzzle = new THREE.Vector3();
+const aimRaycaster = new THREE.Raycaster();
+const aimDirection = new THREE.Vector3();
+const aimPoint = new THREE.Vector3();
+/** Everything the reticle can converge on, ground included. */
+const aimTargets: THREE.Object3D[] = [...targets, ground];
+/**
+ * Where the shot actually goes, in table angle units, recomputed each frame
+ * from the camera. One frame behind the tick that consumes it, which at 60 fps
+ * is 16 ms of aim lag - invisible here, and the alternative is computing the
+ * camera twice per frame.
+ */
+let aimYaw = 0;
+let aimPitch = 0;
+const crosshair = document.getElementById('crosshair');
 let last = performance.now();
 let frames = 0;
 let fpsAt = last;
@@ -212,7 +249,8 @@ let peakSpeed = 0;
 
 function frame(): void {
   const now = performance.now();
-  const steps = clock.advance((now - last) / 1000);
+  const dt = (now - last) / 1000;
+  const steps = clock.advance(dt);
   last = now;
 
   for (let i = 0; i < steps; i++) {
@@ -229,9 +267,10 @@ function frame(): void {
     muzzle.set(state.x, state.y + EYE_HEIGHT, state.z);
     combat.tick(tickNumber, tickNumber * TICK_SECONDS, {
       origin: muzzle,
-      yawWire: input.yaw,
-      pitchWire: input.pitch,
+      yaw: aimYaw,
+      pitch: aimPitch,
       firing: input.firing,
+      triggerEdge: input.consumeTriggerEdge(),
       ads: input.ads,
     });
   }
@@ -269,6 +308,17 @@ function frame(): void {
   const dy = sinP;
   const dz = fz * cosP;
 
+  const ads = input.ads;
+
+  // Field of view IS the aim cue. Eased rather than snapped so it reads as
+  // shouldering a weapon instead of a hard cut.
+  const targetFov = ads ? ADS_FOV : BASE_FOV;
+  if (Math.abs(camera.fov - targetFov) > 0.01) {
+    camera.fov += (targetFov - camera.fov) * Math.min(1, 12 * dt);
+    camera.updateProjectionMatrix();
+  }
+  if (crosshair) crosshair.classList.toggle('ads', ads);
+
   if (input.firstPerson) {
     camera.position.set(rx, pivotY, rz);
     camera.lookAt(rx + dx * 10, pivotY + dy * 10, rz + dz * 10);
@@ -276,17 +326,55 @@ function frame(): void {
   } else {
     player.visible = true;
     /**
-     * Pull in at pitch extremes.
-     *
-     * At a steep angle the arm would otherwise bury the camera in the ground
-     * looking down, or put the character between you and the sky looking up.
-     * Shortening it keeps the view clear - a poor man's spring arm until the
-     * real one with collision lands in M2 (E-2.1).
+     * Right is cross(forward, up), which for a Y-up right-handed system and a
+     * yaw-only forward reduces to (-fz, 0, fx). Same handedness the strafe fix
+     * established - getting it backwards here would put the camera over the
+     * wrong shoulder and mirror the aim offset.
      */
-    const dist = CAMERA_DISTANCE * (1 - 0.55 * Math.abs(input.pitchFraction));
-    camera.position.set(rx - dx * dist, pivotY - dy * dist, rz - dz * dist);
-    camera.lookAt(rx, pivotY, rz);
+    const shoulder = ads ? SHOULDER_RIGHT_ADS : SHOULDER_RIGHT;
+    const focusX = rx - fz * shoulder;
+    const focusY = pivotY + SHOULDER_UP;
+    const focusZ = rz + fx * shoulder;
+
+    let dist = CAMERA_DISTANCE * (ads ? 0.6 : 1) * (1 - 0.35 * Math.abs(input.pitchFraction));
+
+    /**
+     * Floor clamp.
+     *
+     * Looking up swings the arm DOWN and behind, which used to push the camera
+     * through the ground plane. Rather than stopping at the floor and letting
+     * the view stay buried, shorten the arm to exactly the length that lands
+     * the camera on MIN_CAMERA_Y: the camera then draws in toward the
+     * character's feet as you keep looking up, which is what the eye expects.
+     * The real spring arm with scene collision is still E-2.1 in M2.
+     */
+    dist = solveArmLength(dist, focusY, dy, ARM_LIMITS);
+
+    camera.position.set(focusX - dx * dist, focusY - dy * dist, focusZ - dz * dist);
+    camera.lookAt(focusX + dx * 10, focusY + dy * 10, focusZ + dz * 10);
   }
+
+  /**
+   * Converge the shot on what the reticle covers.
+   *
+   * The muzzle is at the character's eye but the camera is off the shoulder, so
+   * the two are not on one line and firing along the camera angles would land
+   * shots beside the crosshair. Find what the reticle is actually over, then
+   * aim the muzzle at THAT. Accurate at every distance rather than at one
+   * calibrated range.
+   */
+  aimDirection.set(dx, dy, dz).normalize();
+  aimRaycaster.set(camera.position, aimDirection);
+  aimRaycaster.far = AIM_RANGE;
+  const [reticleHit] = aimRaycaster.intersectObjects(aimTargets, false);
+  if (reticleHit) {
+    aimPoint.copy(reticleHit.point);
+  } else {
+    aimPoint.copy(camera.position).addScaledVector(aimDirection, AIM_RANGE);
+  }
+  aimDirection.set(aimPoint.x - rx, aimPoint.y - (ry + EYE_HEIGHT), aimPoint.z - rz).normalize();
+  aimYaw = fromRadians(Math.atan2(aimDirection.x, aimDirection.z));
+  aimPitch = fromRadians(Math.asin(Math.max(-1, Math.min(1, aimDirection.y))));
 
   const speed = Math.hypot(state.x - prevState.x, state.z - prevState.z) / TICK_SECONDS;
   if (speed > peakSpeed) peakSpeed = speed;
