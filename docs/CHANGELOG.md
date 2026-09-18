@@ -60,3 +60,4 @@ Format: `T-<id> — <what changed>`
 - T-0.06 - Fix TPS shots landing down-left: one complete shootable list for aim convergence.
 - T-1.19 - Damage with hit zones, death and 5s respawn; health replicated and shown.
 - T-0.06 - Aim rides at 1/4096; convergence limited to server-shootable geometry; spawns off the firing line.
+- T-1.23 - Netgraph overlay (G) with a second in-page client; fixed a client-killing Pong encode and continuous extrapolation.

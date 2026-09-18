@@ -176,3 +176,29 @@ describe('malformed input', () => {
     expect(survived).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe('timestamps on the wire', () => {
+  it('accepts the float clocks every real caller actually has', () => {
+    /**
+     * `performance.now()` and the injected server clock are both floats, and a
+     * varuint is not. Rounding lives in the encoder because the alternative is
+     * every call site remembering — and the one that forgot (ServerConnection
+     * answering a Ping) threw mid-encode, inside the client's frame loop,
+     * killing the whole render loop rather than just that message.
+     */
+    for (const msg of [
+      { kind: 'Ping' as const, id: 3, clientTime: 2020.4000000001397 },
+      { kind: 'Pong' as const, id: 3, clientTime: 1.5, serverTime: 8391.7238 },
+      { kind: 'Fire' as const, tick: 9, yaw: 100, pitch: 200, renderTimeMs: 512.25, weapon: 0, ads: false },
+    ]) {
+      expect(() => encodeMessage(msg)).not.toThrow();
+      expect(decodeMessage(encodeMessage(msg)).kind).toBe(msg.kind);
+    }
+  });
+
+  it('floors a negative or non-finite timestamp rather than throwing', () => {
+    const decoded = decodeMessage(encodeMessage({ kind: 'Ping', id: 1, clientTime: -5 }));
+    expect((decoded as Extract<Message, { kind: 'Ping' }>).clientTime).toBe(0);
+    expect(() => encodeMessage({ kind: 'Ping', id: 1, clientTime: NaN })).not.toThrow();
+  });
+});

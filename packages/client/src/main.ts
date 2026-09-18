@@ -49,9 +49,11 @@ import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { DEFAULT_LINK, LocalServer } from './net/LocalServer.ts';
 import { NetClient } from './net/NetClient.ts';
+import { SparringPartner } from './net/SparringPartner.ts';
 import { solveArmLength } from './camera/followCamera.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
+import { createNetgraph } from './ui/Netgraph.ts';
 import { createNetworkPanel } from './ui/NetworkPanel.ts';
 import { createTuningPanel } from './ui/TuningPanel.ts';
 import { createWeaponPanel } from './ui/WeaponPanel.ts';
@@ -261,6 +263,14 @@ const net = new NetClient(server.transport, 'qa', config);
 net.join();
 
 /**
+ * A second real client, so there is a remote player that MOVES. Stationary
+ * capsules interpolate perfectly at any latency and so tell a tester nothing;
+ * this is what makes the interpolation half of the netgraph mean something,
+ * and what T-1.23's two-client acceptance asks for.
+ */
+const sparring = new SparringPartner(server.connect());
+
+/**
  * Draw the authoritative result of a shot. The muzzle is derived from the
  * shooter's own replicated position, so a remote player's tracer leaves their
  * barrel rather than the world origin.
@@ -340,7 +350,26 @@ const networkPanel = createNetworkPanel({
   conditions: link,
   onChange: (c) => server.setConditions(c),
 });
-panels.append(networkPanel.root, movementPanel.root, weaponPanel.root, cameraPanel.root);
+const netgraph = createNetgraph(() => {
+  const n = net.stats;
+  return {
+    rttMs: n.rttMs,
+    jitterMs: n.jitterMs,
+    snapshotGapRate: n.snapshotGapRate,
+    snapshotBytes: n.snapshotBytes,
+    predictionErrorM: n.lastDivergence,
+    interpAheadTicks: n.interpAheadTicks,
+    tickDrift: n.tickDrift,
+    correctionRate: n.reconciles === 0 ? 0 : n.corrections / n.reconciles,
+  };
+});
+panels.append(
+  networkPanel.root,
+  netgraph.root,
+  movementPanel.root,
+  weaponPanel.root,
+  cameraPanel.root,
+);
 document.body.appendChild(panels);
 
 /* -- Loop ------------------------------------------------------------------ */
@@ -434,6 +463,7 @@ function frame(): void {
      */
     const beforeStep = net.simulated;
     net.tick(tickNumber, tickInput, input.pitchWire);
+    sparring.tick(tickNumber);
     const afterStep = net.simulated;
     // Keep both ends of the tick so rendering can interpolate across it.
     simPrev = beforeStep;
@@ -485,6 +515,7 @@ function frame(): void {
 
   server.pump(now);
   net.advanceClock(dt * 1000);
+  sparring.advanceClock(dt * 1000);
 
   /**
    * Render BETWEEN ticks, exactly as the local harness did before it was
@@ -661,6 +692,7 @@ function frame(): void {
   }
 
   combat.fade(clock.tick * TICK_SECONDS + clock.alpha * TICK_SECONDS);
+  netgraph.sample();
 
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
@@ -683,6 +715,9 @@ addEventListener('keydown', (e) => {
     combat.selectWeapon(slot - 1);
   }
   if (e.code === 'KeyH') toggleHud();
+  // G for graph. H already hides the HUD, and the netgraph is the one panel
+  // worth reaching for without taking your hand off the mouse.
+  if (e.code === 'KeyG') netgraph.root.classList.toggle('collapsed');
   // First/third person. A proper camera with collision is E-2.1 in M2; this is
   // enough to judge whether the movement reads differently from each view.
   if (e.code === 'KeyV') input.firstPerson = !input.firstPerson;

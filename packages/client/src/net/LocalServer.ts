@@ -60,9 +60,12 @@ export class LocalServer {
   private readonly upstream: NetSimOptions = { seed: 0x51a7 };
   private readonly downstream: NetSimOptions = { seed: 0x9e37 };
   private readonly sims: NetSim[];
+  private readonly extraPairs: { settle: () => void }[] = [];
+  private readonly conditions: LinkConditions;
 
   constructor(conditions: LinkConditions = DEFAULT_LINK, moveConfig?: MoveConfig) {
     this.session = new Session(moveConfig);
+    this.conditions = conditions;
     const serverSide = new NetSim(this.pair.a, this.upstream);
     const clientSide = new NetSim(this.pair.b, this.downstream);
     this.sims = [serverSide, clientSide];
@@ -71,9 +74,34 @@ export class LocalServer {
     this.setConditions(conditions);
   }
 
+  /**
+   * Attach another client to the same session.
+   *
+   * Used for the sparring partner, which exists so there is a remote entity
+   * that actually MOVES. Five idle capsules exercise replication but say
+   * nothing about interpolation, and interpolation is most of what a poor link
+   * does to other players. On a LAN link (the default) they are also the only
+   * way to see the interpolation delay at all.
+   */
+  connect(): Transport {
+    const pair = createLoopbackPair();
+    const up: NetSimOptions = { seed: 0x1234 + this.extraPairs.length * 97 };
+    const down: NetSimOptions = { seed: 0xabcd + this.extraPairs.length * 97 };
+    const serverSide = new NetSim(pair.a, up);
+    const clientSide = new NetSim(pair.b, down);
+    this.sims.push(serverSide, clientSide);
+    this.extraOptions.push(up, down);
+    this.extraPairs.push(pair);
+    this.session.addConnection(serverSide, 0);
+    this.setConditions(this.conditions);
+    return clientSide;
+  }
+
+  private readonly extraOptions: NetSimOptions[] = [];
+
   /** Live-tunable. NetSim reads these on every send, so changes take effect at once. */
   setConditions(c: LinkConditions): void {
-    for (const opts of [this.upstream, this.downstream]) {
+    for (const opts of [this.upstream, this.downstream, ...this.extraOptions]) {
       opts.latencyMs = c.latencyMs;
       opts.jitterMs = c.jitterMs;
       opts.lossRate = c.lossRate;
@@ -88,6 +116,7 @@ export class LocalServer {
   pump(nowMs: number): void {
     for (const sim of this.sims) sim.pump(nowMs);
     this.pair.settle();
+    for (const extra of this.extraPairs) extra.settle();
   }
 
   /** Advance the authoritative simulation one tick. */

@@ -201,7 +201,7 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeVarUint(msg.tick);
       w.writeBits(msg.yaw & 0xfff, 12);
       w.writeBits(msg.pitch & 0xfff, 12);
-      w.writeVarUint(Math.max(0, Math.round(msg.renderTimeMs)));
+      w.writeVarUint(msTime(msg.renderTimeMs));
       w.writeBits(msg.weapon & 0x7, 3);
       w.writeBool(msg.ads);
       break;
@@ -220,16 +220,30 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(MessageType.Ack, TYPE_BITS);
       w.writeVarUint(msg.tick);
       break;
+    /**
+     * Times are rounded HERE, not at the call sites.
+     *
+     * The wire carries whole milliseconds, and every source of a timestamp in
+     * this project is a float: `performance.now()` on the client and the
+     * injected server clock both are. Requiring each caller to round means the
+     * one that forgets throws mid-encode — and `ServerConnection` answering a
+     * Ping was exactly that caller. Nothing sent a Ping until the netgraph
+     * needed round-trip times, so the throw sat latent, and when it fired it
+     * took down the client's whole frame loop rather than just the ping.
+     *
+     * Sub-millisecond precision is worth nothing to a clock sync that takes a
+     * median of sixteen samples over a 30 Hz link.
+     */
     case 'Ping':
       w.writeBits(MessageType.Ping, TYPE_BITS);
       w.writeVarUint(msg.id);
-      w.writeVarUint(msg.clientTime);
+      w.writeVarUint(msTime(msg.clientTime));
       break;
     case 'Pong':
       w.writeBits(MessageType.Pong, TYPE_BITS);
       w.writeVarUint(msg.id);
-      w.writeVarUint(msg.clientTime);
-      w.writeVarUint(msg.serverTime);
+      w.writeVarUint(msTime(msg.clientTime));
+      w.writeVarUint(msTime(msg.serverTime));
       break;
     case 'Disconnect':
       w.writeBits(MessageType.Disconnect, TYPE_BITS);
@@ -237,6 +251,12 @@ export function encodeMessage(msg: Message): Uint8Array {
       break;
   }
   return w.toUint8Array();
+}
+
+/** A timestamp as whole, non-negative milliseconds. */
+function msTime(value: number): number {
+  if (!Number.isFinite(value) || value < 0) return 0;
+  return Math.round(value);
 }
 
 function int8(v: number): number {

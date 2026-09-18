@@ -12,6 +12,7 @@
  */
 import {
   COMPONENT_IDS,
+  ClockSync,
   InterpolationBuffer,
   type InterpResult,
   INTERPOLATION_DELAY_MS,
@@ -60,6 +61,37 @@ export interface NetStats {
   lastDivergence: number;
   peakDivergence: number;
   remotes: number;
+  /** Round trip from Ping/Pong, median over the sync window (T-1.10). */
+  rttMs: number;
+  /** Spread of snapshot inter-arrival times — what interpolation has to absorb. */
+  jitterMs: number;
+  /**
+   * Fraction of snapshot ticks the client never got state for.
+   *
+   * NOT the injected packet loss, and reads higher than it on purpose. A
+   * dropped delta usually takes the NEXT one with it, because that one's
+   * baseline is now missing and it has to be rejected — so 5% packet loss
+   * showed as 9.8% of ticks unaccounted for. This is the number the client
+   * actually experiences, which is the one worth graphing; raw packet loss is
+   * already on the slider that caused it.
+   */
+  snapshotGapRate: number;
+  /** Mean bytes per snapshot, against the ADR-012 budget. */
+  snapshotBytes: number;
+  /**
+   * Ticks of interpolation buffer still AHEAD of what is being rendered.
+   *
+   * Not the sample count, which sits pinned at the ring's capacity forever and
+   * says nothing. This is how much runway interpolation has left: it falls
+   * toward zero as snapshots stop arriving, and zero is the moment remote
+   * entities start extrapolating and then freeze (T-1.16).
+   */
+  interpAheadTicks: number;
+  /**
+   * Ticks between the client's running estimate of server time and the newest
+   * tick actually received. Grows when snapshots stop arriving.
+   */
+  tickDrift: number;
   health: number;
   maxHealth: number;
   /** Seconds of respawn left, timed locally from when health first read zero. */
@@ -111,6 +143,22 @@ export class NetClient {
    * on the wire for a cosmetic reason.
    */
   private downSince: number | null = null;
+  /** Local time the newest snapshot landed, for anchoring the server clock. */
+  private lastArrivalAt = 0;
+
+  /* -- Link health, for the netgraph (T-1.23) ----------------------------- */
+  private readonly clock = new ClockSync();
+  private lastPingAt = 0;
+  private rttEstimate = 0;
+  /** Arrival times of recent snapshots, for inter-arrival jitter. */
+  private readonly arrivals: number[] = [];
+  private jitterEstimate = 0;
+  private bytesTotal = 0;
+  private snapshotsForBytes = 0;
+  /** Newest tick seen, and how many ticks were skipped, for a loss estimate. */
+  private highestTick = -1;
+  private ticksExpected = 0;
+  private ticksMissing = 0;
 
   /**
    * The last few inputs sent, newest first, resent in each packet so a dropped
@@ -155,6 +203,12 @@ export class NetClient {
       lastDivergence: this.lastDivergence,
       peakDivergence: this.peakDivergence,
       remotes: this.buffers.size,
+      rttMs: this.rttEstimate,
+      jitterMs: this.jitterEstimate,
+      snapshotGapRate: this.ticksExpected === 0 ? 0 : this.ticksMissing / this.ticksExpected,
+      snapshotBytes: this.snapshotsForBytes === 0 ? 0 : this.bytesTotal / this.snapshotsForBytes,
+      interpAheadTicks: this.interpAhead(),
+      tickDrift: Math.max(0, Math.round(this.serverClockMs / TICK_MS) - this.highestTick),
       health: this.healthValue,
       maxHealth: this.maxHealthValue,
       downFor: this.downSince === null ? 0 : (performance.now() - this.downSince) / 1000,
@@ -221,10 +275,57 @@ export class NetClient {
     );
   }
 
+  /**
+   * Send a heartbeat if one is due. Once a second is plenty for a median over
+   * sixteen samples, and it doubles as the keep-alive the server's timeout
+   * expects.
+   */
+  private maybePing(nowMs: number): void {
+    // Four a second. A sixteen-sample median at 1 Hz takes sixteen seconds to
+    // follow a change, which for an instrument you are watching while dragging
+    // a slider is useless; at 250 ms it settles in about four.
+    if (nowMs - this.lastPingAt < 250) return;
+    this.lastPingAt = nowMs;
+    const ping = this.clock.beginPing(nowMs);
+    this.transport.send(
+      encodeMessage({ kind: 'Ping', id: ping.id, clientTime: ping.clientTime }),
+      'unreliable',
+    );
+  }
+
   /** Advance the local view of server time. Call once per frame. */
   advanceClock(frameMs: number): void {
-    this.serverClockMs += frameMs;
-    if (this.newestServerMs > this.serverClockMs) this.serverClockMs = this.newestServerMs;
+    const now = performance.now();
+    this.maybePing(now);
+
+    /**
+     * Server time is ANCHORED ON ARRIVALS: the newest tick we have heard about,
+     * plus however long ago we heard it.
+     *
+     * Two wrong versions preceded this. The first free-ran — advanced every
+     * frame, snapped forward on a fresher snapshot, and had nothing able to
+     * pull it back, so it drifted steadily ahead of the data and dragged the
+     * interpolation render time past the newest buffered sample. Remote players
+     * then extrapolated continuously instead of interpolating, which is the
+     * failure T-1.16's extrapolation cap exists to BOUND, not a state to live
+     * in.
+     *
+     * The second tried to use the clock sync's offset, which is wrong for a
+     * subtler reason worth writing down: that offset estimates the server's
+     * `performance.now()`, while snapshot times are `tick * TICK_MS` counting
+     * from zero. Same rate, different origins, so the estimate sat a whole
+     * startup-offset ahead and the symptom did not change at all. Clock sync is
+     * the right tool for round-trip time and the wrong one for this.
+     *
+     * Re-anchoring on every arrival cannot drift, because the only thing it
+     * extrapolates is the gap since the last packet — which is exactly the
+     * quantity that SHOULD eat into interpolation runway when snapshots stop.
+     */
+    if (this.lastArrivalAt > 0) {
+      this.serverClockMs = this.newestServerMs + (now - this.lastArrivalAt);
+    } else {
+      this.serverClockMs += frameMs;
+    }
   }
 
   /** Smoothed local position, or null before the first authoritative state. */
@@ -272,11 +373,25 @@ export class NetClient {
           return;
         }
         this.snapshotsApplied++;
+        this.bytesTotal += bytes.length;
+        this.snapshotsForBytes += 1;
+        this.observeArrival(msg.tick, performance.now());
         this.transport.send(encodeMessage({ kind: 'Ack', tick: msg.tick }), 'unreliable');
 
         const serverMs = msg.tick * TICK_MS;
-        if (serverMs > this.newestServerMs) this.newestServerMs = serverMs;
+        if (serverMs > this.newestServerMs) {
+          this.newestServerMs = serverMs;
+          this.lastArrivalAt = performance.now();
+        }
         this.ingest(result.snapshot.entities, msg.tick, serverMs, msg.lastProcessedInputTick);
+        break;
+      }
+
+      case 'Pong': {
+        const sample = this.clock.acceptPong(msg.id, msg.serverTime, performance.now());
+        // The MEDIAN over the window, not this sample: one late pong on a
+        // jittery link should not make the graph jump.
+        if (sample) this.rttEstimate = this.clock.rtt;
         break;
       }
 
@@ -293,6 +408,49 @@ export class NetClient {
 
       default:
         break;
+    }
+  }
+
+  /**
+   * Track snapshot arrival for jitter and loss.
+   *
+   * Loss is inferred from GAPS IN TICK NUMBERS, not from a counter the server
+   * sends: the server has no idea what failed to arrive, and a client that
+   * trusted it would report a perfect link on a broken one. Jitter is the mean
+   * absolute deviation of inter-arrival times from the tick period — the
+   * quantity interpolation actually has to absorb, rather than the variation in
+   * round trip that a ping measures.
+   */
+  /** Buffer runway: newest buffered tick minus the tick being rendered. */
+  private interpAhead(): number {
+    if (this.buffers.size === 0) return 0;
+    const renderTick = (this.serverClockMs - INTERPOLATION_DELAY_MS) / TICK_MS;
+    let best = 0;
+    for (const buffer of this.buffers.values()) {
+      const ahead = buffer.newestTick - renderTick;
+      if (ahead > best) best = ahead;
+    }
+    return Math.round(best);
+  }
+
+  private observeArrival(tick: number, atMs: number): void {
+    if (this.highestTick >= 0 && tick > this.highestTick) {
+      const skipped = tick - this.highestTick - 1;
+      this.ticksExpected += skipped + 1;
+      this.ticksMissing += skipped;
+    } else if (this.highestTick < 0) {
+      this.ticksExpected += 1;
+    }
+    if (tick > this.highestTick) this.highestTick = tick;
+
+    this.arrivals.push(atMs);
+    if (this.arrivals.length > 32) this.arrivals.shift();
+    if (this.arrivals.length >= 3) {
+      let total = 0;
+      for (let i = 1; i < this.arrivals.length; i += 1) {
+        total += Math.abs((this.arrivals[i] as number) - (this.arrivals[i - 1] as number) - TICK_MS);
+      }
+      this.jitterEstimate = total / (this.arrivals.length - 1);
     }
   }
 
