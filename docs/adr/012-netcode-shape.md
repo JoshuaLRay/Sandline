@@ -178,3 +178,11 @@ simulated link, which is the question worth answering before content
 investment. It does not answer "does it feel fair when two people shoot each
 other across 200 ms". That needs a real host, and it should be re-gated when
 E-4.9 deploys one — not quietly assumed to have been covered here.
+
+**Re-gated 2026-09-18, at M1.5 rather than E-4.9.** The paragraph above says
+this needs a real host and should be re-gated when one is deployed. Rather than
+wait for E-4.9 in M4, the host moved: PLAN.md §4.2 inserts M1.5 directly after
+M1, and T-1.5.08 is the gate that closes this addendum. It carries the same
+stop rule as T-1.24 — if two humans shooting each other across a real link does
+not feel fair, come back here before M2 continues. R2 closes there, not at
+T-1.24.

@@ -22,6 +22,7 @@ import {
   type MoveInput,
   type MoveState,
   POSITION,
+  type RosterEntry,
   ServerConnection,
   VELOCITY,
   SnapshotHistory,
@@ -176,7 +177,11 @@ export class Session {
    * at once; tuning one side only would mispredict every tick and read as the
    * netcode being broken rather than as a tuning artefact.
    */
-  constructor(private readonly moveConfig: MoveConfig = DEFAULT_MOVE_CONFIG) {
+  constructor(
+    private readonly moveConfig: MoveConfig = DEFAULT_MOVE_CONFIG,
+    /** The code clients are told they landed in. Empty for a lone session. */
+    readonly room = '',
+  ) {
     // Six slots exist from the moment the session does (ADR-001).
     for (let i = 0; i < MAX_SLOTS; i++) {
       this.slots.push({
@@ -214,17 +219,35 @@ export class Session {
     };
   }
 
-  /** Attach a transport. The connection handshakes before taking a slot. */
+  /** Humans seated right now. What a registry reclaims on (T-1.5.05). */
+  get players(): number {
+    return this.slots.filter((s) => !s.isBot).length;
+  }
+
+  /** Six rows, always: who is driving each slot (T-1.5.04). */
+  get roster(): RosterEntry[] {
+    return this.slots.map((s) => ({
+      human: !s.isBot,
+      name: s.connection?.name ?? '',
+    }));
+  }
+
+  /**
+   * Attach a transport. The connection handshakes before taking a slot.
+   *
+   * This is the single-session path — the in-page harness and every test that
+   * wants one session and nothing else. Whatever room code the client sends
+   * is accepted: there is only one place to be. A host holding many rooms
+   * handshakes the connection itself and calls `admit` on the room it chose.
+   */
   addConnection(transport: Transport, now: number): ServerConnection {
     const conn = new ServerConnection(
       transport,
       {
-        onJoined: (c) => this.assignSlot(c),
-        onInput: (c, msg) => this.applyInput(c, msg),
-        // NOT the `now` this connection was opened at: that value is frozen
-        // forever. Fire resolves against the session's current time.
-        onFire: (c, msg) => this.applyFire(c, msg),
-        onClosed: (c) => this.releaseSlot(c),
+        onJoined: (c) => this.admit(c),
+        // Tracked from the start so a peer that never finishes its handshake
+        // is still timed out by `step`, and forgotten if it drops before then.
+        onClosed: (c) => this.connections.delete(c),
       },
       now,
     );
@@ -232,17 +255,74 @@ export class Session {
     return conn;
   }
 
-  private assignSlot(conn: ServerConnection): void {
+  /**
+   * Seat a handshaked connection, or refuse it with `room full`.
+   *
+   * From here on the connection's events are this session's, whoever built it.
+   * The caller owns the connection's CLOCK: a host handing a connection to a
+   * room restarts it on the room's time first (`ServerConnection.resetClock`),
+   * because a room's clock is its own; the single-session path built the
+   * connection on this session's clock to begin with.
+   */
+  admit(conn: ServerConnection): boolean {
+    conn.rebind({
+      onInput: (c, msg) => this.applyInput(c, msg),
+      // NOT the `now` this connection was opened at: that value is frozen
+      // forever. Fire resolves against the session's current time.
+      onFire: (c, msg) => this.applyFire(c, msg),
+      onClosed: (c) => this.releaseSlot(c),
+    });
+    if (conn.state === 'closed') return false;
+    this.connections.add(conn);
+    return this.assignSlot(conn);
+  }
+
+  private assignSlot(conn: ServerConnection): boolean {
     const slot = this.slots.find((s) => s.isBot);
     if (!slot) {
-      conn.reject('session full');
-      return;
+      conn.reject('room full');
+      return false;
     }
     // Take over the bot's entity in place: same netId, no spawn, no despawn.
     slot.isBot = false;
     slot.connection = conn;
     slot.staleTicks = 0;
-    conn.accept(slot.netId, slot.index, this.currentTick);
+
+    /**
+     * Clear the PREVIOUS occupant's input bookkeeping (T-1.5.02).
+     *
+     * Entity state — position, health, weapon — deliberately survives the swap:
+     * that is ADR-001's whole point, and it is why a join is not a spawn. Input
+     * bookkeeping is the opposite. Tick numbers belong to a CLIENT, not to a
+     * soldier: each one counts from its own page load, so the next person to
+     * sit here starts again from 1.
+     *
+     * Leaving them was a bug that only a long-lived host could show, which is
+     * why it survived all of M1. Every in-page session began fresh, so no slot
+     * was ever reused by a different client. On a `SessionHost` (T-1.5.01)
+     * every slot is reused, and the ordering guard in `applyInput` — drop
+     * anything at or below `newestInputTick` — then discarded EVERY input from
+     * the new client until their tick counter climbed past whatever the last
+     * person reached. Symptoms, all at once and none of them pointing here:
+     * the player moves perfectly on their own screen and not at all on anyone
+     * else's, stands frozen at the previous occupant's last position, sees no
+     * corrections and a prediction error of exactly zero, because the server
+     * never acknowledged an input for them to reconcile against.
+     *
+     * `lastProcessedInputTick` matters just as much as `newestInputTick`: it is
+     * echoed in every delta, so a stale one asks the new client to reconcile
+     * against a tick it never predicted — the unmatched-reconcile path, which
+     * snaps and throws away every pending prediction.
+     */
+    slot.newestInputTick = -1;
+    slot.lastProcessedInputTick = -1;
+    slot.pendingInputTick = -1;
+    slot.queue.length = 0;
+    slot.input = idleInput(slot.yaw);
+
+    conn.accept(slot.netId, slot.index, this.currentTick, this.room);
+    this.broadcastRoster();
+    return true;
   }
 
   private releaseSlot(conn: ServerConnection): void {
@@ -253,6 +333,19 @@ export class Session {
     slot.isBot = true;
     slot.connection = null;
     slot.input = idleInput(slot.yaw);
+    // Anything still queued belongs to someone who has left. A bot that walked
+    // out the departed player's last few inputs would look briefly possessed.
+    slot.queue.length = 0;
+    this.broadcastRoster();
+  }
+
+  /**
+   * Everyone learns who is in the squad whenever it changes. Reliable, and
+   * tiny: six booleans and six short names, a few times per session.
+   */
+  private broadcastRoster(): void {
+    const roster = this.roster;
+    for (const c of this.connections) if (c.state === 'active') c.sendRoster(roster);
   }
 
   private applyInput(conn: ServerConnection, msg: Extract<Message, { kind: 'Input' }>): void {
@@ -450,6 +543,7 @@ export class Session {
       // arriving between ticks are stamped with the latest tick time.
       conn.setNow(now);
       if (conn.isTimedOut(now)) conn.reject('heartbeat timeout');
+      // (The code doubles as the text: a client shows exactly that.)
     }
 
     const nowSeconds = now / 1000;
@@ -618,8 +712,9 @@ export class Session {
     }
   }
 
+  /** Every seated connection is told the host is draining, then dropped. */
   close(reason = 'session closed'): void {
-    for (const conn of [...this.connections]) conn.reject(reason);
+    for (const conn of [...this.connections]) conn.reject('host draining', reason);
     this.connections.clear();
   }
 }

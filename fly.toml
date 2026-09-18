@@ -1,0 +1,53 @@
+# One deployed session host (T-1.5.07). See docs/DEPLOYING.md.
+#
+# Fly terminates TLS at its edge and forwards the WebSocket to the container's
+# plain ws:// port, which is exactly the arrangement the Dockerfile expects —
+# the public address is wss://<app>.fly.dev and the process never sees a
+# certificate. One region, one machine, no orchestration: E-4.9 stays in E-4.9.
+#
+# `app` and `primary_region` are the two lines to change for a fresh deploy:
+# app names are global on Fly, and the region should be near the people playing.
+
+app = "sandline-host"
+primary_region = "iad"
+
+[build]
+  dockerfile = "packages/server/Dockerfile"
+
+[env]
+  PORT = "8080"
+  LOG_LEVEL = "info"
+  # R12: caps, and small ones. Four rooms is 24 players on one shared-cpu-1x
+  # machine, far more than a playtest needs and far fewer than a stranger who
+  # finds the address could do anything with.
+  MAX_ROOMS = "4"
+  ROOM_GRACE_MS = "120000"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Between playtests the machine STOPS ITSELF once no socket is open, and
+  # starts again on the next connection — a cold start costs the first player
+  # a few seconds and costs the project nothing while nobody is playing. That
+  # is R12's "take it down between playtests", automated. `fly scale count 0`
+  # (DEPLOYING.md) is the manual version, for when it should stay down.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  # Six per room, four rooms, plus handshakes in flight. Beyond this Fly queues
+  # rather than the host degrading, which is the wrong failure but a bounded one.
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 40
+    soft_limit = 32
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

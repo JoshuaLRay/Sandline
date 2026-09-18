@@ -8,6 +8,7 @@
  *
  * Both channels map to TCP for now, as ADR-008 states.
  */
+import { type IncomingMessage, type ServerResponse, createServer } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { BaseTransport, type Channel } from '@sandline/shared';
 
@@ -41,6 +42,18 @@ export class WsConnectionTransport extends BaseTransport {
 export interface WsServerOptions {
   port: number;
   onConnection: (transport: WsConnectionTransport) => void;
+  /**
+   * Plain HTTP requests on the same port (T-1.5.07). A deployed host needs a
+   * health check its platform can poll, and one port is what a small instance
+   * gets. Absent, every non-upgrade request is answered 404.
+   */
+  onRequest?: (req: IncomingMessage, res: ServerResponse) => void;
+  /**
+   * Refuse a socket before it is upgraded. Returns a reason to refuse with,
+   * or null to accept. This is where a connection cap lives: a refused socket
+   * costs one HTTP response, an accepted one costs a heartbeat timeout.
+   */
+  shouldAccept?: () => string | null;
 }
 
 export interface WsServerHandle {
@@ -50,18 +63,35 @@ export interface WsServerHandle {
 
 export function startWsServer(options: WsServerOptions): Promise<WsServerHandle> {
   return new Promise((resolve, reject) => {
-    const wss = new WebSocketServer({ port: options.port });
-    wss.on('connection', (socket) => options.onConnection(new WsConnectionTransport(socket)));
-    wss.on('error', reject);
-    wss.on('listening', () => {
-      const address = wss.address();
+    const http = createServer((req, res) => {
+      if (options.onRequest) {
+        options.onRequest(req, res);
+        return;
+      }
+      res.statusCode = 404;
+      res.end();
+    });
+    const wss = new WebSocketServer({ noServer: true });
+    http.on('upgrade', (req, socket, head) => {
+      const refusal = options.shouldAccept?.() ?? null;
+      if (refusal !== null) {
+        socket.write(`HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n${refusal}`);
+        socket.destroy();
+        return;
+      }
+      wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
+    });
+    wss.on('connection', (socket: WebSocket) => options.onConnection(new WsConnectionTransport(socket)));
+    http.on('error', reject);
+    http.listen(options.port, () => {
+      const address = http.address();
       const port = typeof address === 'object' && address ? address.port : options.port;
       resolve({
         port,
         close: () =>
           new Promise<void>((done) => {
             for (const client of wss.clients) client.terminate();
-            wss.close(() => done());
+            wss.close(() => http.close(() => done()));
           }),
       });
     });

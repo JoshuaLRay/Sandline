@@ -30,7 +30,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Relative asset URLs come from `base: './'` in vite.config.ts, not a CLI
       # flag - the flag did not survive forwarding through pnpm.
+      #
+      # SANDLINE_HOST is the deployed session host the lobby offers by default
+      # (T-1.5.06, T-1.5.07) - a repository VARIABLE, not a secret, because it
+      # is baked into a public page. Unset, the lobby has no default host and
+      # says so; the in-page session still works. It must be wss://, since the
+      # page is https. Set it under Settings -> Secrets and variables ->
+      # Actions -> Variables; see docs/DEPLOYING.md.
       - run: pnpm --filter @sandline/client build
+        env:
+          SANDLINE_HOST: ${{ vars.SANDLINE_HOST }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: packages/client/dist

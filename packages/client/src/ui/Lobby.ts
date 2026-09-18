@@ -1,0 +1,259 @@
+/**
+ * The screen before the session (T-1.5.06).
+ *
+ * THE ONLY WAY IN. Until this existed, joining a host meant editing a URL:
+ * `?host=ws://…` built a remote session and everything else built the in-page
+ * one. That is developer tooling, and a gate that depends on a tester editing
+ * a URL is a gate that gets run once, by the person who wrote it (PLAN.md §6A,
+ * amendment). So the lobby owns both the host address and the room code, and a
+ * query parameter, where present, PRE-FILLS a field rather than bypassing the
+ * screen. Two entry points means only one of them gets tested.
+ *
+ * THREE BUTTONS, ONE MESSAGE. "Host a room" and "Join a room" send the same
+ * `Join` — with an empty code and with one — because the difference is one
+ * field (T-1.5.04). "Practice here" is the in-page session the harness has
+ * always been, kept because the published page must still work with no host
+ * at all, and because the movement and weapon tuning panels only mean anything
+ * against a session in this page.
+ *
+ * NOTHING HERE IS A GAME SCREEN. No matchmaking, parties, regions, ready-checks
+ * or class picks: those are E-4.5 and E-4.7, and this is a QA harness that
+ * needs two humans in one room. The roster it leads to is six rows always —
+ * see `SquadPanel` — because a lobby that says "2 players" teaches everyone the
+ * wrong model of the game (ADR-001).
+ */
+import { checkRoomInput, HostUrlError, parseHostUrl } from '../net/RemoteServer.ts';
+
+export type LobbyChoice =
+  | { kind: 'local' }
+  | { kind: 'remote'; host: string; room: string; name: string };
+
+export interface LobbyOptions {
+  /** The host baked into the build (T-1.5.07); empty when there is none. */
+  defaultHost: string;
+  /** `?host=` from the URL, already validated; overrides the default. */
+  presetHost: string | null;
+  /** Why `?host=` could not be used, if it could not. Shown, not fatal. */
+  presetHostError: string | null;
+  /** `?room=` from the URL. */
+  presetRoom: string;
+  /** Last name used, from storage. */
+  name: string;
+  pageProtocol: string;
+  buildStamp: string;
+  onChoose: (choice: LobbyChoice) => void;
+}
+
+export interface Lobby {
+  readonly root: HTMLElement;
+  /** Show the screen, optionally with a message about why (a refusal, a leave). */
+  show(message?: { text: string; tone: 'info' | 'error' }): void;
+  hide(): void;
+  /** The host and name as currently typed, for the share link. */
+  readonly host: string;
+  readonly name: string;
+}
+
+const NAME_KEY = 'sandline.name';
+
+export function readStoredName(): string {
+  try {
+    return localStorage.getItem(NAME_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function storeName(name: string): void {
+  try {
+    localStorage.setItem(NAME_KEY, name);
+  } catch {
+    // Preference only.
+  }
+}
+
+function field(label: string, input: HTMLInputElement): HTMLLabelElement {
+  const wrap = document.createElement('label');
+  wrap.className = 'lobby-field';
+  const text = document.createElement('span');
+  text.textContent = label;
+  wrap.append(text, input);
+  return wrap;
+}
+
+function button(text: string, className: string, onClick: () => void): HTMLButtonElement {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = className;
+  b.textContent = text;
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+export function createLobby(options: LobbyOptions): Lobby {
+  const root = document.createElement('div');
+  root.id = 'lobby';
+  root.setAttribute('role', 'dialog');
+  root.setAttribute('aria-labelledby', 'lobby-title');
+
+  const card = document.createElement('div');
+  card.className = 'lobby-card';
+
+  const title = document.createElement('h1');
+  title.id = 'lobby-title';
+  title.innerHTML = 'Sandline <span>M1.5</span>';
+  const stamp = document.createElement('em');
+  stamp.className = 'lobby-stamp';
+  stamp.textContent = options.buildStamp;
+  title.append(stamp);
+
+  const message = document.createElement('p');
+  message.className = 'lobby-message';
+  message.hidden = true;
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.maxLength = 32;
+  nameInput.setAttribute('autocomplete', 'nickname');
+  nameInput.placeholder = 'what the roster calls you';
+  nameInput.value = options.name;
+
+  const hostInput = document.createElement('input');
+  hostInput.type = 'text';
+  hostInput.spellcheck = false;
+  hostInput.autocomplete = 'off';
+  hostInput.placeholder = options.defaultHost || 'wss://… or ws://192.168.x.x:8080';
+  hostInput.value = options.presetHost ?? options.defaultHost;
+
+  const roomInput = document.createElement('input');
+  roomInput.type = 'text';
+  roomInput.spellcheck = false;
+  roomInput.autocomplete = 'off';
+  roomInput.autocapitalize = 'characters';
+  roomInput.maxLength = 8;
+  roomInput.placeholder = 'four characters, e.g. K7PM';
+  roomInput.value = options.presetRoom;
+  roomInput.className = 'lobby-code';
+
+  const say = (text: string, tone: 'info' | 'error'): void => {
+    message.hidden = text === '';
+    message.textContent = text;
+    message.dataset['tone'] = tone;
+  };
+
+  const readName = (): string | null => {
+    const name = nameInput.value.trim().slice(0, 32);
+    if (name === '') {
+      say('give the roster a name first', 'error');
+      nameInput.focus();
+      return null;
+    }
+    storeName(name);
+    return name;
+  };
+
+  const readHost = (): string | null => {
+    try {
+      return parseHostUrl(hostInput.value, options.pageProtocol);
+    } catch (e) {
+      if (!(e instanceof HostUrlError)) throw e;
+      say(hostInput.value.trim() === '' ? 'no host to join — type one, or practise here' : e.message, 'error');
+      hostInput.focus();
+      return null;
+    }
+  };
+
+  const remote = (wantRoom: boolean): void => {
+    const name = readName();
+    if (name === null) return;
+    const host = readHost();
+    if (host === null) return;
+    let room = '';
+    if (wantRoom) {
+      const checked = checkRoomInput(roomInput.value);
+      if (checked.error !== null || checked.room === '') {
+        say(checked.error ?? 'type the code the other player gave you', 'error');
+        roomInput.focus();
+        return;
+      }
+      room = checked.room;
+      roomInput.value = room;
+    }
+    say('', 'info');
+    options.onChoose({ kind: 'remote', host, room, name });
+  };
+
+  const hostButton = button('Host a room', 'lobby-primary', () => remote(false));
+  const joinButton = button('Join', 'lobby-primary', () => remote(true));
+  const localButton = button('Practise here — you and a bot, no host', 'lobby-secondary', () => {
+    say('', 'info');
+    options.onChoose({ kind: 'local' });
+  });
+
+  // Enter in the code field joins; Enter anywhere else hosts. Nobody should
+  // have to reach for the mouse after pasting a code.
+  roomInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') remote(true);
+  });
+  for (const input of [nameInput, hostInput]) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') remote(roomInput.value.trim() !== '');
+    });
+  }
+
+  const joinRow = document.createElement('div');
+  joinRow.className = 'lobby-join';
+  joinRow.append(field('Room code', roomInput), joinButton);
+
+  const help = document.createElement('p');
+  help.className = 'lobby-help';
+  help.textContent =
+    'Host a room and read its code to the other player, or paste the link. ' +
+    'Six slots, always: whoever is not a person is a bot.';
+
+  const gap = document.createElement('p');
+  gap.className = 'lobby-help lobby-gap';
+  gap.textContent =
+    options.defaultHost === ''
+      ? 'This build has no default host. Run `pnpm host` and point the field at it, or practise here.'
+      : `Default host: ${options.defaultHost}`;
+
+  card.append(
+    title,
+    message,
+    field('Name', nameInput),
+    field('Host', hostInput),
+    hostButton,
+    joinRow,
+    help,
+    localButton,
+    gap,
+  );
+  root.append(card);
+
+  if (options.presetHostError !== null) {
+    say(`Could not use ?host= — ${options.presetHostError}`, 'error');
+  }
+
+  return {
+    root,
+    show(msg) {
+      root.hidden = false;
+      if (msg) say(msg.text, msg.tone);
+      // The field most likely to need attention: a pasted link has the code
+      // filled in and wants Join; an empty page wants a name.
+      if (nameInput.value.trim() === '') nameInput.focus();
+      else if (roomInput.value.trim() !== '') joinButton.focus();
+      else hostButton.focus();
+    },
+    hide() {
+      root.hidden = true;
+    },
+    get host() {
+      return hostInput.value.trim();
+    },
+    get name() {
+      return nameInput.value.trim();
+    },
+  };
+}

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DISCONNECT_CODES,
+  type DisconnectCode,
   MAX_PRIOR_INPUTS,
   type Message,
   PROTOCOL_VERSION,
@@ -8,17 +10,38 @@ import {
   decodeMessage,
   encodeMessage,
 } from './protocol.ts';
+import { BitWriter } from './BitStream.ts';
+import {
+  ROOM_CODE_ALPHABET,
+  ROOM_CODE_LENGTH,
+  generateRoomCode,
+  isRoomCode,
+  normalizeRoomCode,
+} from './roomCode.ts';
 import { COMPONENT_IDS } from '../ecs/components.ts';
 
 const T = COMPONENT_IDS.Transform;
 
 const SAMPLES: Message[] = [
-  { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six' },
-  { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765 },
+  { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: 'K7PM' },
+  { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: '' },
+  { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM' },
   { kind: 'Ack', tick: 4242 },
   { kind: 'Ping', id: 7, clientTime: 1234567 },
   { kind: 'Pong', id: 7, clientTime: 1234567, serverTime: 1234599 },
-  { kind: 'Disconnect', reason: 'session full' },
+  { kind: 'Disconnect', code: 'room full', reason: 'room full' },
+  { kind: 'Disconnect', code: 'other', reason: '' },
+  {
+    kind: 'Roster',
+    slots: [
+      { human: true, name: 'ray' },
+      { human: false, name: '' },
+      { human: true, name: 'austin' },
+      { human: false, name: '' },
+      { human: false, name: '' },
+      { human: false, name: '' },
+    ],
+  },
   {
     kind: 'Snapshot',
     snapshot: { tick: 9, entities: [{ netId: 1, components: { [T]: [100, 200, 300, 400, 500] } }] },
@@ -110,14 +133,16 @@ describe('protocol messages (T-1.05)', () => {
 
 describe('handshake version checking', () => {
   it('accepts a matching version', () => {
-    expect(checkHandshake({ kind: 'Join', version: PROTOCOL_VERSION, name: 'ok' })).toEqual({ ok: true });
+    expect(checkHandshake({ kind: 'Join', version: PROTOCOL_VERSION, name: 'ok', room: '' })).toEqual({ ok: true });
   });
 
   // Version skew must be caught HERE. A mismatched client that gets through
   // misreads every subsequent snapshot as corrupt state rather than failing.
   it('rejects a mismatched version with a reason naming both sides', () => {
-    const r = checkHandshake({ kind: 'Join', version: PROTOCOL_VERSION + 1, name: 'old' });
+    const r = checkHandshake({ kind: 'Join', version: PROTOCOL_VERSION + 1, name: 'old', room: '' });
     expect(r.ok).toBe(false);
+    if (r.ok) throw new Error('unreachable');
+    expect(r.code).toBe('bad version');
     expect(r.reason).toMatch(/version mismatch/);
     expect(r.reason).toContain(String(PROTOCOL_VERSION));
   });
@@ -125,12 +150,15 @@ describe('handshake version checking', () => {
   it('rejects a non-Join opener', () => {
     const r = checkHandshake({ kind: 'Ack', tick: 1 });
     expect(r.ok).toBe(false);
+    if (r.ok) throw new Error('unreachable');
     expect(r.reason).toMatch(/expected Join/);
   });
 
   it('rejects empty and over-long names', () => {
-    expect(checkHandshake({ kind: 'Join', version: PROTOCOL_VERSION, name: '' }).ok).toBe(false);
-    expect(checkHandshake({ kind: 'Join', version: PROTOCOL_VERSION, name: 'x'.repeat(33) }).ok).toBe(false);
+    expect(checkHandshake({ kind: 'Join', version: PROTOCOL_VERSION, name: '', room: '' }).ok).toBe(false);
+    expect(
+      checkHandshake({ kind: 'Join', version: PROTOCOL_VERSION, name: 'x'.repeat(33), room: '' }).ok,
+    ).toBe(false);
   });
 });
 
@@ -144,12 +172,12 @@ describe('malformed input', () => {
   });
 
   it('rejects a truncated message rather than returning partial data', () => {
-    const full = encodeMessage({ kind: 'Disconnect', reason: 'a fairly long reason string' });
+    const full = encodeMessage({ kind: 'Disconnect', code: 'other', reason: 'a fairly long reason string' });
     expect(() => decodeMessage(full.slice(0, 2))).toThrow(ProtocolError);
   });
 
   it('wraps low-level corruption as ProtocolError, not a raw RangeError', () => {
-    const full = encodeMessage(SAMPLES[6] as Message);
+    const full = encodeMessage(SAMPLES.find((m) => m.kind === 'Snapshot') as Message);
     try {
       decodeMessage(full.slice(0, 3));
       throw new Error('should have thrown');
@@ -200,5 +228,66 @@ describe('timestamps on the wire', () => {
     const decoded = decodeMessage(encodeMessage({ kind: 'Ping', id: 1, clientTime: -5 }));
     expect((decoded as Extract<Message, { kind: 'Ping' }>).clientTime).toBe(0);
     expect(() => encodeMessage({ kind: 'Ping', id: 1, clientTime: NaN })).not.toThrow();
+  });
+});
+
+describe('typed rejections and room codes (T-1.5.04)', () => {
+  it('round-trips every disconnect code distinguishably', () => {
+    const seen = new Set<DisconnectCode>();
+    for (const code of DISCONNECT_CODES) {
+      const got = decodeMessage(encodeMessage({ kind: 'Disconnect', code, reason: 'why' }));
+      if (got.kind !== 'Disconnect') throw new Error('wrong kind');
+      expect(got.code).toBe(code);
+      seen.add(got.code);
+    }
+    expect(seen.size).toBe(DISCONNECT_CODES.length);
+  });
+
+  it('rejects a v5 client on version, not on room', () => {
+    /**
+     * A v5 Join is `type, version, name` and nothing else. Decoding it with
+     * v6's layout would over-read looking for the room string and report a
+     * protocol error — which a stale client would show as "protocol error"
+     * instead of "your build is too old". The version byte is the one field
+     * every version shares, so decoding stops there.
+     */
+    const w = new BitWriter();
+    w.writeBits(0, 4); // MessageType.Join
+    w.writeBits(5, 8);
+    w.writeString('stale-build');
+    const msg = decodeMessage(w.toUint8Array());
+    expect(msg).toMatchObject({ kind: 'Join', version: 5 });
+    const result = checkHandshake(msg);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('unreachable');
+    expect(result.code).toBe('bad version');
+  });
+
+  it('accepts an empty room (create) and a well-formed code, and refuses the rest', () => {
+    const join = (room: string): Message => ({ kind: 'Join', version: PROTOCOL_VERSION, name: 'x', room });
+    expect(checkHandshake(join('')).ok).toBe(true);
+    expect(checkHandshake(join('K7PM')).ok).toBe(true);
+    const bad = checkHandshake(join('hello'));
+    expect(bad).toMatchObject({ ok: false, code: 'no such room' });
+  });
+
+  it('generates codes only from the voice-safe alphabet', () => {
+    let n = 0;
+    const unit = () => ((n += 7919) % 1000) / 1000;
+    for (let i = 0; i < 500; i++) {
+      const code = generateRoomCode(unit);
+      expect(code).toHaveLength(ROOM_CODE_LENGTH);
+      expect(isRoomCode(code)).toBe(true);
+    }
+    for (const confusable of 'IO01S5B8Z2') expect(ROOM_CODE_ALPHABET).not.toContain(confusable);
+  });
+
+  it('normalises what a person types, and only that', () => {
+    expect(normalizeRoomCode(' k7-pm ')).toBe('K7PM');
+    expect(normalizeRoomCode('k7 pm')).toBe('K7PM');
+    expect(isRoomCode(normalizeRoomCode('k7pm'))).toBe(true);
+    // Confusables are refused rather than guessed at.
+    expect(isRoomCode(normalizeRoomCode('O7PM'))).toBe(false);
+    expect(isRoomCode('K7P')).toBe(false);
   });
 });

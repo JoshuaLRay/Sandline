@@ -25,6 +25,16 @@ function gitDescribe(): string {
 }
 
 const BUILD_SHA = gitDescribe();
+/**
+ * The host the lobby offers by default (T-1.5.06, T-1.5.07).
+ *
+ * Baked in at build time from SANDLINE_HOST so a playtester never types an
+ * address: the published page points at the deployed host, a local build
+ * points at nothing and the lobby says so. It is a `wss://` URL in production
+ * because the page is https and a browser will not open `ws://` from it —
+ * see docs/DEPLOYING.md.
+ */
+const DEFAULT_HOST = (process.env['SANDLINE_HOST'] ?? '').trim();
 /** Minute precision: "is this newer than the last one I loaded" needs no more. */
 const BUILD_TIME = new Date().toISOString().slice(0, 16).replace('T', ' ') + 'Z';
 
@@ -32,6 +42,7 @@ export default defineConfig({
   define: {
     __BUILD_SHA__: JSON.stringify(BUILD_SHA),
     __BUILD_TIME__: JSON.stringify(BUILD_TIME),
+    __DEFAULT_HOST__: JSON.stringify(DEFAULT_HOST),
   },
   /**
    * Relative asset URLs.

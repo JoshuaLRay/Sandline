@@ -5,3 +5,5 @@
  */
 declare const __BUILD_SHA__: string;
 declare const __BUILD_TIME__: string;
+/** Default host for the lobby, from SANDLINE_HOST at build time; '' when unset. */
+declare const __DEFAULT_HOST__: string;

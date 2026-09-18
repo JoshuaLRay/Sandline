@@ -36,6 +36,15 @@ export const PITCH_LIMIT_UP_DEG = 89;
 export const PITCH_LIMIT_DOWN_DEG = 80;
 export const PITCH_LIMIT_FIRST_PERSON_DEG = 89;
 
+/** True while a text field has focus: keys typed there are not game input. */
+export function isTextField(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  );
+}
+
 export class LocalInput {
   private readonly held = new Set<string>();
   /**
@@ -80,6 +89,9 @@ export class LocalInput {
     this.invertY = options.invertY ?? false;
 
     addEventListener('keydown', (e) => {
+      // Typing in the lobby's fields is not movement, and Space in a name
+      // field must stay a space (T-1.5.06).
+      if (isTextField(e.target)) return;
       // Space would otherwise scroll the page out from under the canvas.
       if (e.code === 'Space') e.preventDefault();
       this.held.add(e.code);

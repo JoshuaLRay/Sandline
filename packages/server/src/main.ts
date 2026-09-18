@@ -1,51 +1,52 @@
 /**
- * Server entrypoint (T-0.07).
+ * Server entrypoint (T-1.5.01, replacing T-0.07's bootstrap).
  *
- * Boots the shared simulation headlessly and runs the authoritative tick loop
- * (ADR-012). Transport lands in M1 (T-1.07); this proves the simulation runs in
- * Node, which is the property the whole architecture depends on.
+ * T-0.07 proved the shared simulation runs headless in Node, which is the
+ * property the whole architecture depends on, and left transport to M1. M1
+ * built the transport and never connected it to this file: the result was a
+ * server binary that stepped a physics world nobody could reach. This boots a
+ * `SessionHost` instead — the authoritative session (ADR-012) on a real socket
+ * (ADR-008), which is what a second human needs in order to have anywhere to
+ * join (PLAN.md §4.2).
+ *
+ * Link conditioning comes from the environment rather than a flag so a deployed
+ * host can be given it without redeploying an argument list:
+ *
+ *   pnpm host
+ *   LINK_LATENCY_MS=100 LINK_JITTER_MS=20 LINK_LOSS=0.05 pnpm host
+ *   MAX_ROOMS=4 ROOM_GRACE_MS=60000 pnpm host      # T-1.5.05: rooms per process, reclaim grace
  */
-import { Clock, Simulation, TICK_SECONDS } from '@sandline/shared';
+import { SessionHost, hostBanner, linkFromEnv } from './session/SessionHost.ts';
 import { loadConfig } from './config.ts';
 import { createLogger } from './log.ts';
 
 const config = loadConfig();
 const log = createLogger(config.logLevel);
 
-const sim = await Simulation.create();
-for (let slot = 0; slot < 6; slot++) {
-  sim.spawnActor({ x: slot * 1.5 - 3.75, y: 2, z: 0 });
-}
-
-const clock = new Clock();
-let last = performance.now();
-let running = true;
-
-log.info('server ready', {
+const link = linkFromEnv();
+const host = new SessionHost({
   port: config.port,
-  tickHz: config.tickHz,
-  slots: 6,
-  entities: sim.snapshot().entities.length,
+  log,
+  link,
+  registry: { maxRooms: config.maxRooms, graceMs: config.roomGraceMs },
+});
+const port = await host.start();
+
+log.info('host ready', {
+  ...hostBanner(port, link),
+  maxRooms: config.maxRooms,
+  roomGraceMs: config.roomGraceMs,
+  health: `http://localhost:${port}/healthz`,
 });
 
-const timer = setInterval(() => {
-  if (!running) return;
-  const now = performance.now();
-  const steps = clock.advance((now - last) / 1000);
-  last = now;
-  for (let i = 0; i < steps; i++) sim.step();
-  if (clock.dropped > 0) {
-    log.warn('tick backlog dropped', { dropped: clock.dropped, tick: clock.tick });
-  }
-}, (TICK_SECONDS * 1000) / 2);
-
-function shutdown(signal: string): void {
-  if (!running) return;
-  running = false;
-  log.info('shutting down', { signal, tick: clock.tick });
-  clearInterval(timer);
-  sim.dispose();
+let stopping = false;
+async function shutdown(signal: string): Promise<void> {
+  if (stopping) return;
+  stopping = true;
+  // `stats` already carries the tick, plus what the session actually did.
+  log.info('shutting down', { signal, ...host.registry.stats });
+  await host.stop(`host ${signal}`);
   process.exit(0);
 }
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));

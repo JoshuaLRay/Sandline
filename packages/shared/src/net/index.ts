@@ -4,6 +4,7 @@ export * from './schema.ts';
 export * from './snapshot.ts';
 export * from './delta.ts';
 export * from './protocol.ts';
+export * from './roomCode.ts';
 export * from './Transport.ts';
 export * from './NetSim.ts';
 export * from './Connection.ts';

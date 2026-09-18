@@ -19,6 +19,7 @@
     "build:artifact": "pnpm --filter @sandline/client build && tsx packages/tools/src/build-artifact.ts",
     "bench:bandwidth": "tsx packages/tools/src/bench-bandwidth.ts",
     "bench:tickrate": "tsx packages/tools/src/bench-tickrate.ts",
+    "host": "tsx packages/server/src/main.ts",
     "bot": "tsx packages/bot/src/main.ts"
   },
   "devDependencies": {
