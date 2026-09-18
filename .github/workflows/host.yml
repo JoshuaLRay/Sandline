@@ -4,8 +4,10 @@
 # nothing without a FLY_API_TOKEN secret, so a fork or a fresh clone does not
 # fail CI for lack of an account: the job is skipped, with a notice saying so.
 #
-# Setup, once, is in docs/DEPLOYING.md — create the app, set the secret, set the
-# SANDLINE_HOST repository variable so the published client points here.
+# With the secret set, this is the WHOLE deploy: it creates the Fly app named
+# in fly.toml if it does not exist yet, deploys, writes the host's address into
+# the SANDLINE_HOST repository variable, and rebuilds Pages so the published
+# lobby points at it. One secret is the only setup — docs/DEPLOYING.md.
 name: Host
 
 on:
@@ -24,6 +26,12 @@ concurrency:
   group: host
   cancel-in-progress: false
 
+# `actions: write` is what lets the job set the SANDLINE_HOST variable and
+# dispatch the Pages workflow; nothing here writes to the repository's content.
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -40,6 +48,19 @@ jobs:
           fi
       - uses: superfly/flyctl-actions/setup-flyctl@master
         if: steps.token.outputs.present == 'true'
+      - name: Create the app if it does not exist yet
+        if: steps.token.outputs.present == 'true'
+        run: |
+          app="$(sed -nE 's/^app *= *"([^"]+)".*/\1/p' fly.toml)"
+          if flyctl status --app "$app" >/dev/null 2>&1; then
+            echo "app $app exists"
+          else
+            # App names are global on Fly. If this fails with "already taken",
+            # change `app` in fly.toml and run again.
+            flyctl apps create "$app"
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       - name: Deploy
         if: steps.token.outputs.present == 'true'
         run: flyctl deploy --remote-only --ha=false
@@ -47,9 +68,25 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       - name: Health check
         if: steps.token.outputs.present == 'true'
+        id: health
         run: |
           host="$(flyctl status --json | jq -r '.Hostname')"
           echo "host: $host"
           curl --fail --silent --show-error "https://$host/healthz"
+          echo "host=$host" >> "$GITHUB_OUTPUT"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      # The published client learns the address from the SANDLINE_HOST
+      # repository variable at build time (pages.yml). Setting it here, from the
+      # hostname Fly actually assigned, means the variable can never name a host
+      # that does not exist — and rebuilding Pages means the lobby shows it
+      # within a few minutes of this job finishing.
+      - name: Point the published client at the host
+        if: steps.token.outputs.present == 'true'
+        run: |
+          gh variable set SANDLINE_HOST --body "wss://${{ steps.health.outputs.host }}"
+          gh workflow run pages.yml --ref main
+          echo "::notice::SANDLINE_HOST=wss://${{ steps.health.outputs.host }}; Pages rebuild dispatched."
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
