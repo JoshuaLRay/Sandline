@@ -98,6 +98,25 @@ scene.add(new THREE.GridHelper(200, 100, 0x8a7550, 0x6a5940));
  * mean there is always something passing you, whichever way you run — which is
  * what actually communicates speed.
  */
+/**
+ * Everything a shot can stop on: what the aim ray converges against and what a
+ * predicted tracer terminates on.
+ *
+ * ONE list, because two lists drift. This was split before — the convergence
+ * ray saw only the range targets and the ground, not the distance posts and not
+ * the other players — and the failure was silent and specific. With nothing
+ * hit, the aim point falls back to a point 250 m down the CAMERA's line, and a
+ * ray from the eye to a point that far away is essentially parallel to the
+ * camera. The eye sits 0.85 m left and 0.3 m below the camera in third person,
+ * so a parallel shot lands very nearly that far down and to the left of the
+ * reticle at any normal range. Aiming at a teammate or a post did exactly that,
+ * while aiming at a red target or the floor worked perfectly.
+ *
+ * Anything added to the scene that a bullet should acknowledge belongs here,
+ * including meshes created later.
+ */
+const shootable: THREE.Object3D[] = [];
+
 const markerMat = new THREE.MeshStandardMaterial({ color: 0xd8c9a8, roughness: 0.9 });
 const tallMat = new THREE.MeshStandardMaterial({ color: 0xf0b429, roughness: 0.8 });
 const postGeo = new THREE.BoxGeometry(0.18, 1.4, 0.18);
@@ -112,6 +131,7 @@ for (let gx = -40; gx <= 40; gx += 10) {
     post.position.set(gx, (major ? 2.6 : 1.4) / 2, gz);
     post.castShadow = true;
     scene.add(post);
+    shootable.push(post);
   }
 }
 
@@ -135,6 +155,7 @@ reference.position.set(-3, 0.9, 3);
 reference.castShadow = true;
 reference.name = 'reference figure';
 scene.add(reference);
+shootable.push(reference);
 
 /**
  * The firing range: targets at known distances straight ahead of spawn.
@@ -156,6 +177,7 @@ for (const spec of RANGE_TARGETS) {
   target.name = `range ${spec.label}`;
   scene.add(target);
   targets.push(target);
+  shootable.push(target);
 }
 
 /* -- Player ---------------------------------------------------------------- */
@@ -208,17 +230,14 @@ function remoteMesh(netId: number): THREE.Mesh {
     mesh.name = `net ${netId}`;
     scene.add(mesh);
     remoteMeshes.set(netId, mesh);
+    // Created on demand, so it has to join the list on demand too. Leaving
+    // remote players out is what produced the down-and-left shots.
+    shootable.push(mesh);
   }
   return mesh;
 }
 
-/**
- * Scenery a predicted tracer may terminate on. Visual only — the server
- * decides what was hit.
- */
-const tracerScenery: THREE.Object3D[] = [];
-const combat = new CombatQA(scene, tracerScenery);
-tracerScenery.push(...targets);
+const combat = new CombatQA(scene, shootable);
 
 /* -- Network --------------------------------------------------------------- */
 
@@ -333,8 +352,8 @@ function stance(): MuzzleStance {
 const aimRaycaster = new THREE.Raycaster();
 const aimDirection = new THREE.Vector3();
 const aimPoint = new THREE.Vector3();
-/** Everything the reticle can converge on, ground included. */
-const aimTargets: THREE.Object3D[] = [...targets, ground];
+// The ground joins last; it is the backstop every downward shot lands on.
+shootable.push(ground);
 /**
  * Where the shot actually goes, in table angle units, recomputed each frame
  * from the camera. One frame behind the tick that consumes it, which at 60 fps
@@ -598,7 +617,7 @@ function frame(): void {
   aimDirection.set(dx, dy, dz).normalize();
   aimRaycaster.set(camera.position, aimDirection);
   aimRaycaster.far = AIM_RANGE;
-  const [reticleHit] = aimRaycaster.intersectObjects(aimTargets, false);
+  const [reticleHit] = aimRaycaster.intersectObjects(shootable, false);
   if (reticleHit) {
     aimPoint.copy(reticleHit.point);
   } else {
