@@ -1,0 +1,229 @@
+/**
+ * T-1.18. The two cases the plan names are `compensated shots` below: a client
+ * at 150 ms latency hits a moving target it could not have hit uncompensated,
+ * and a client claiming five seconds of latency is clamped.
+ *
+ * Constants are declared here rather than read from movement or weapon data, so
+ * that tuning either can never quietly change what this proves.
+ */
+import { describe, expect, it } from 'vitest';
+import {
+  HitboxHistory,
+  type Hitbox,
+  MAX_REWIND_MS,
+  type Ray,
+  clampRewindMs,
+  rayCapsule,
+  resolveShot,
+} from './lagComp.ts';
+
+const TICK_MS = 1000 / 30;
+/** Sprint speed at the time of writing; declared, not imported. */
+const TARGET_SPEED = 6.8;
+const BOX: Hitbox = { radius: 0.35, halfHeight: 0.55, centerOffsetY: 0.9 };
+const SHOOTER = 1;
+const TARGET = 2;
+
+/**
+ * A target running along +X, crossing in front of a shooter who stands at the
+ * origin looking down +Z. Records from t = 0 to `untilMs` at the tick rate.
+ */
+function crossingTarget(untilMs: number, crossAtMs: number): HitboxHistory {
+  const history = new HitboxHistory();
+  for (let t = 0; t <= untilMs; t += TICK_MS) {
+    history.record(TARGET, t, (t - crossAtMs) / 1000 * TARGET_SPEED, 0, 10);
+    history.record(SHOOTER, t, 0, 0, 0);
+  }
+  return history;
+}
+
+/** Fired from the shooter's chest, straight down +Z. */
+const STRAIGHT: Ray = {
+  origin: { x: 0, y: BOX.centerOffsetY, z: 0 },
+  direction: { x: 0, y: 0, z: 1 },
+  maxDistance: 100,
+};
+
+describe('rewind clamping', () => {
+  it('passes through a plausible latency', () => {
+    expect(clampRewindMs(1000, 850)).toBeCloseTo(150, 10);
+  });
+
+  it('clamps a client claiming five seconds of latency', () => {
+    expect(clampRewindMs(5000, 0)).toBe(MAX_REWIND_MS);
+  });
+
+  it('refuses to rewind into the future, or on nonsense', () => {
+    expect(clampRewindMs(1000, 1200)).toBe(0);
+    expect(clampRewindMs(1000, NaN)).toBe(0);
+  });
+});
+
+describe('hitbox history', () => {
+  it('interpolates between recorded samples', () => {
+    const history = new HitboxHistory();
+    history.record(TARGET, 0, 0, 0, 0);
+    history.record(TARGET, 100, 10, 0, 0);
+    expect(history.positionAt(TARGET, 50)?.x).toBeCloseTo(5, 10);
+    expect(history.positionAt(TARGET, 25)?.x).toBeCloseTo(2.5, 10);
+  });
+
+  it('clamps to the newest sample rather than extrapolating forward', () => {
+    const history = new HitboxHistory();
+    history.record(TARGET, 0, 0, 0, 0);
+    history.record(TARGET, 100, 10, 0, 0);
+    expect(history.positionAt(TARGET, 5000)?.x).toBe(10);
+  });
+
+  it('forgets samples older than the window, and clamps to the oldest kept', () => {
+    const history = new HitboxHistory(200);
+    for (let t = 0; t <= 1000; t += TICK_MS) history.record(TARGET, t, t / 100, 0, 0);
+    const ancient = history.positionAt(TARGET, 0);
+    // The 0 ms sample is long gone; it clamps to the edge of the window, not to 0.
+    expect(ancient?.x).toBeGreaterThan(7);
+  });
+
+  it('returns null for an entity it has never seen, and after forgetting', () => {
+    const history = new HitboxHistory();
+    expect(history.positionAt(99, 0)).toBeNull();
+    history.record(TARGET, 0, 1, 2, 3);
+    expect(history.positionAt(TARGET, 0)).not.toBeNull();
+    history.forget(TARGET);
+    expect(history.positionAt(TARGET, 0)).toBeNull();
+  });
+
+  it('survives many more samples than its capacity, keeping the newest', () => {
+    const history = new HitboxHistory(500, 8);
+    let last = 0;
+    for (let t = 0; t <= 1000; t += TICK_MS) {
+      history.record(TARGET, t, t, 0, 0);
+      last = t;
+    }
+    // Ring wrapped roughly four times; the newest sample is still the newest.
+    expect(history.currentPosition(TARGET)?.x).toBe(last);
+    // ...and the samples the ring dropped are gone, so an old time clamps.
+    expect(history.positionAt(TARGET, 0)?.x).toBeGreaterThan(last - 8 * TICK_MS);
+  });
+});
+
+describe('ray against a capsule', () => {
+  const center = { x: 0, y: 1, z: 10 };
+
+  it('hits through the body', () => {
+    const d = rayCapsule({ origin: { x: 0, y: 1, z: 0 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 100 }, center, 0.35, 0.55);
+    expect(d).toBeCloseTo(10 - 0.35, 6);
+  });
+
+  it('misses beside it', () => {
+    const d = rayCapsule({ origin: { x: 1.2, y: 1, z: 0 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 100 }, center, 0.35, 0.55);
+    expect(d).toBeNull();
+  });
+
+  it('hits the rounded cap above the cylinder', () => {
+    const d = rayCapsule({ origin: { x: 0, y: 1.72, z: 0 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 100 }, center, 0.35, 0.55);
+    expect(d).not.toBeNull();
+    // Above the cap centre, so it must be short of the cylinder's front face.
+    expect(d as number).toBeGreaterThan(10 - 0.35);
+  });
+
+  it('misses above the cap entirely', () => {
+    const d = rayCapsule({ origin: { x: 0, y: 2.1, z: 0 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 100 }, center, 0.35, 0.55);
+    expect(d).toBeNull();
+  });
+
+  it('ignores a capsule behind the ray, and one past max distance', () => {
+    expect(rayCapsule({ origin: { x: 0, y: 1, z: 20 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 100 }, center, 0.35, 0.55)).toBeNull();
+    expect(rayCapsule({ origin: { x: 0, y: 1, z: 0 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 5 }, center, 0.35, 0.55)).toBeNull();
+  });
+});
+
+describe('compensated shots', () => {
+  /**
+   * The case T-1.18 exists for. The client is 150 ms behind: it renders the
+   * target crossing the centre line and fires. By the time the server resolves
+   * the shot the target has run 6.8 * 0.15 = 1.02 m, three capsule radii clear
+   * of the ray.
+   */
+  const NOW = 1000;
+  const LATENCY_MS = 150;
+
+  it('registers a hit that would have missed without compensation', () => {
+    const history = crossingTarget(NOW, NOW - LATENCY_MS);
+
+    const uncompensated = resolveShot(
+      history,
+      { shooterNetId: SHOOTER, ray: STRAIGHT, nowMs: NOW, clientRenderTimeMs: NOW },
+      BOX,
+    );
+    expect(uncompensated).toBeNull();
+
+    const compensated = resolveShot(
+      history,
+      { shooterNetId: SHOOTER, ray: STRAIGHT, nowMs: NOW, clientRenderTimeMs: NOW - LATENCY_MS },
+      BOX,
+    );
+    expect(compensated).not.toBeNull();
+    expect(compensated?.netId).toBe(TARGET);
+    expect(compensated?.rewindMs).toBeCloseTo(LATENCY_MS, 6);
+    expect(compensated?.distance).toBeCloseTo(10 - BOX.radius, 2);
+  });
+
+  it('clamps a client claiming five seconds of latency', () => {
+    // The target crossed 3 s ago. Honouring the claim would hit; the cap means
+    // the rewind stops 200 ms back, where the target is long gone.
+    const history = crossingTarget(NOW, NOW - 3000);
+    const shot = resolveShot(
+      history,
+      { shooterNetId: SHOOTER, ray: STRAIGHT, nowMs: NOW, clientRenderTimeMs: NOW - 5000 },
+      BOX,
+    );
+    expect(shot).toBeNull();
+  });
+
+  it('caps the rewind it reports at MAX_REWIND_MS', () => {
+    const history = crossingTarget(NOW, NOW - MAX_REWIND_MS);
+    const shot = resolveShot(
+      history,
+      { shooterNetId: SHOOTER, ray: STRAIGHT, nowMs: NOW, clientRenderTimeMs: NOW - 5000 },
+      BOX,
+    );
+    expect(shot?.rewindMs).toBe(MAX_REWIND_MS);
+    expect(shot?.rewoundTo).toBe(NOW - MAX_REWIND_MS);
+  });
+
+  it('never shoots the shooter', () => {
+    const history = new HitboxHistory();
+    history.record(SHOOTER, 0, 0, 0, 10);
+    const shot = resolveShot(
+      history,
+      { shooterNetId: SHOOTER, ray: STRAIGHT, nowMs: 0, clientRenderTimeMs: 0 },
+      BOX,
+    );
+    expect(shot).toBeNull();
+  });
+
+  it('returns the nearest of several targets', () => {
+    const history = new HitboxHistory();
+    history.record(SHOOTER, 0, 0, 0, 0);
+    history.record(TARGET, 0, 0, 0, 20);
+    history.record(3, 0, 0, 0, 8);
+    const shot = resolveShot(
+      history,
+      { shooterNetId: SHOOTER, ray: STRAIGHT, nowMs: 0, clientRenderTimeMs: 0 },
+      BOX,
+    );
+    expect(shot?.netId).toBe(3);
+  });
+
+  it('reports an impact point on the ray at the reported distance', () => {
+    const history = crossingTarget(NOW, NOW);
+    const shot = resolveShot(
+      history,
+      { shooterNetId: SHOOTER, ray: STRAIGHT, nowMs: NOW, clientRenderTimeMs: NOW },
+      BOX,
+    );
+    expect(shot).not.toBeNull();
+    expect(shot?.point.z).toBeCloseTo(shot?.distance as number, 10);
+    expect(shot?.point.x).toBeCloseTo(0, 10);
+  });
+});
