@@ -62,3 +62,4 @@ Format: `T-<id> — <what changed>`
 - T-0.06 - Aim rides at 1/4096; convergence limited to server-shootable geometry; spawns off the firing line.
 - T-1.23 - Netgraph overlay (G) with a second in-page client; fixed a client-killing Pong encode and continuous extrapolation.
 - T-1.24 setup - Per-client link conditions: your link and the sparring partner's move apart.
+- T-1.5.01 - Session host process: `pnpm host` serves the real Session over a WebSocket, with per-connection link conditioning and `pnpm bot --url`.

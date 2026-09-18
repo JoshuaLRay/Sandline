@@ -9,7 +9,7 @@ full plan and task backlog, and [`docs/adr/`](./docs/adr/) for locked decisions.
 pnpm install
 pnpm verify                 # typecheck + lint + test — the gate every task must pass
 pnpm --filter @sandline/client dev    # renderer at localhost:5173
-pnpm exec tsx packages/server/src/main.ts   # headless authoritative server
+pnpm host                   # authoritative session host on ws://localhost:8080
 ```
 
 ## Useful commands
@@ -17,6 +17,8 @@ pnpm exec tsx packages/server/src/main.ts   # headless authoritative server
 | Command | What it does |
 |---|---|
 | `pnpm verify` | typecheck + lint + test |
+| `pnpm host` | authoritative session host — six slots, real WebSocket (T-1.5.01) |
+| `pnpm bot --url ws://localhost:8080 --count 2 --ticks 600` | drive bots against a running host over real sockets |
 | `pnpm sim-run --scenario crowd --ticks 1800` | headless simulation, reports µs/tick |
 | `pnpm sim-run --scenario fall --ticks 1000 --parity` | two instances, reports divergence |
 | `pnpm bench:rapier` | deterministic vs default vs SIMD physics cost |

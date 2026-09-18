@@ -18,12 +18,46 @@ Also useful:
 
 ```bash
 pnpm verify                                    # typecheck + lint + test
-pnpm exec tsx packages/server/src/main.ts      # headless authoritative server
+pnpm host                                      # authoritative session host
 pnpm sim-run --scenario crowd --ticks 1800     # perf check, us/tick
 pnpm bench:rapier                              # physics build comparison
 pnpm bench:bandwidth                           # snapshot size vs ADR-012 budget
 pnpm bench:tickrate                            # 30 vs 60Hz tick cost
 ```
+
+## Run a host (T-1.5.01)
+
+`pnpm host` serves the authoritative session over a real WebSocket - six slots,
+bot backfill, the same `Session` the in-page harness runs. `PORT` selects the
+port (default 8080).
+
+Drive bots at it to check the netcode across a wire rather than a loopback pair:
+
+```bash
+pnpm host                                              # terminal one
+pnpm bot --url ws://localhost:8080 --count 2 --ticks 600   # terminal two
+```
+
+The numbers should match `pnpm bot --count 2 --ticks 600` (no `--url`), which
+runs the identical bots in-process on a virtual clock. A **difference** between
+the two is the finding: nothing in the netcode is supposed to know which
+transport it is on.
+
+The host can also carry the harness's link sliders, so a playtest over a real
+socket keeps the instrument the in-page one had. Latency applies **each way**,
+so 100 ms is a ~200 ms round trip, matching what T-1.22's matrix calls 100 ms:
+
+```bash
+LINK_LATENCY_MS=100 LINK_JITTER_MS=20 LINK_LOSS=0.05 pnpm host
+```
+
+Loss is applied downstream only - see the note in `SessionHost.ts` for why the
+server cannot honestly drop inbound traffic. Unset means a raw socket with no
+decorator at all, which is what a deployed host runs.
+
+**The browser client cannot connect to this yet.** It still builds its own
+in-page session; pointing it at a host is T-1.5.02, and that is the task that
+first puts two humans in one session.
 
 ## Publishing
 
