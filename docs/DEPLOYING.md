@@ -18,12 +18,68 @@ Also useful:
 
 ```bash
 pnpm verify                                    # typecheck + lint + test
-pnpm exec tsx packages/server/src/main.ts      # headless authoritative server
+pnpm host                                      # authoritative session host
 pnpm sim-run --scenario crowd --ticks 1800     # perf check, us/tick
 pnpm bench:rapier                              # physics build comparison
 pnpm bench:bandwidth                           # snapshot size vs ADR-012 budget
 pnpm bench:tickrate                            # 30 vs 60Hz tick cost
 ```
+
+## Run a host (T-1.5.01)
+
+`pnpm host` serves the authoritative session over a real WebSocket - six slots,
+bot backfill, the same `Session` the in-page harness runs. `PORT` selects the
+port (default 8080).
+
+Drive bots at it to check the netcode across a wire rather than a loopback pair:
+
+```bash
+pnpm host                                              # terminal one
+pnpm bot --url ws://localhost:8080 --count 2 --ticks 600   # terminal two
+```
+
+The numbers should match `pnpm bot --count 2 --ticks 600` (no `--url`), which
+runs the identical bots in-process on a virtual clock. A **difference** between
+the two is the finding: nothing in the netcode is supposed to know which
+transport it is on.
+
+The host can also carry the harness's link sliders, so a playtest over a real
+socket keeps the instrument the in-page one had. Latency applies **each way**,
+so 100 ms is a ~200 ms round trip, matching what T-1.22's matrix calls 100 ms:
+
+```bash
+LINK_LATENCY_MS=100 LINK_JITTER_MS=20 LINK_LOSS=0.05 pnpm host
+```
+
+Loss is applied downstream only - see the note in `SessionHost.ts` for why the
+server cannot honestly drop inbound traffic. Unset means a raw socket with no
+decorator at all, which is what a deployed host runs.
+
+### Two people, one session (T-1.5.02)
+
+Point the client at the host with `?host=`:
+
+```
+http://localhost:5173/?host=ws://localhost:8080
+```
+
+Two browsers on that URL take two of the six slots and are in the same session:
+they see each other move and can shoot each other. Without the parameter the
+page builds its own session in the tab exactly as before, which is what the
+published build still does - it has no host to point at until T-1.5.07.
+
+The HUD's top line is the connection: connecting, `joined - slot n of 6`,
+`reconnecting - attempt 2 in 0.5s`, or `disconnected - <reason the host gave>`.
+On a real socket "nothing is happening" and "nothing is moving" are different
+faults, so the state is stated rather than inferred from a still screen.
+
+Two things worth knowing:
+
+- **The link sliders grey out.** Conditioning belongs to the host once the wire
+  is real; the panel says so rather than moving a slider that reaches nothing.
+- **`https` pages cannot open `ws://`.** The page names this rather than letting
+  a browser-blocked socket look like a host that is down - the fastest way to
+  spend an afternoon debugging a healthy server.
 
 ## Publishing
 

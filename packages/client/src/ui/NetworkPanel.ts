@@ -95,7 +95,20 @@ function addLinkControls(parent: HTMLElement, target: LinkTarget): void {
   parent.append(row);
 }
 
-export function createNetworkPanel(targets: readonly LinkTarget[]): Panel {
+/**
+ * `disabledBecause` greys every control and replaces the footnote.
+ *
+ * Used when the session is a real host (T-1.5.02): conditioning lives there
+ * now, behind LINK_LATENCY_MS and friends, and nothing this panel does can
+ * reach it. Leaving the sliders live would be worse than removing them —
+ * a tester would drag one to 200 ms, feel no change, and report the
+ * conditioning as broken. Greyed and explained, they say where the control
+ * went instead.
+ */
+export function createNetworkPanel(
+  targets: readonly LinkTarget[],
+  disabledBecause?: string,
+): Panel {
   const panel = createPanel('network', 'Link conditions');
 
   for (const target of targets) {
@@ -111,9 +124,17 @@ export function createNetworkPanel(targets: readonly LinkTarget[]): Panel {
 
   const note = document.createElement('p');
   note.className = 'hint';
-  note.textContent =
-    'Simulated links to a session running in this page. Same protocol, prediction and lag compensation as a dedicated server; the wire is a model, not a real network.';
+  note.textContent = disabledBecause
+    ? disabledBecause
+    : 'Simulated links to a session running in this page. Same protocol, prediction and lag compensation as a dedicated server; the wire is a model, not a real network.';
   panel.body.append(note);
+
+  if (disabledBecause) {
+    panel.root.classList.add('panel-disabled');
+    for (const control of panel.body.querySelectorAll('input, button')) {
+      (control as HTMLInputElement | HTMLButtonElement).disabled = true;
+    }
+  }
 
   return panel;
 }

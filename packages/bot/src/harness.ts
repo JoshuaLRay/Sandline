@@ -100,12 +100,25 @@ export function runScenario(options: ScenarioOptions): ScenarioResult {
     for (const p of pumps) p();
   }
 
+  return summarize(bots, { bots: botCount, ticks, latencyMs, lossRate });
+}
+
+/**
+ * Roll a set of bots up into one comparable result.
+ *
+ * Extracted from `runScenario` so the remote runner (T-1.5.01) reports through
+ * exactly this code. The whole point of running the bots over a real socket is
+ * to compare the numbers against the in-process ones; two copies of this
+ * aggregation would eventually disagree about what "peak divergence" means, and
+ * the comparison would quietly stop being a comparison.
+ */
+export function summarize(
+  bots: readonly BotClient[],
+  meta: { bots: number; ticks: number; latencyMs: number; lossRate: number },
+): ScenarioResult {
   const perBot = bots.map((b) => b.metrics);
   return {
-    bots: botCount,
-    ticks,
-    latencyMs,
-    lossRate,
+    ...meta,
     peakDivergence: Math.max(...perBot.map((m) => m.peakDivergence)),
     worstCorrectionRate: Math.max(...bots.map((b) => b.correctionRate)),
     minSnapshotsApplied: Math.min(...perBot.map((m) => m.snapshotsApplied)),

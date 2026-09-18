@@ -103,7 +103,19 @@ export class NetClient {
   private predictor: Predictor | null = null;
   private readonly buffers = new Map<number, InterpolationBuffer>();
   private netIdValue = -1;
+  private slotValue = -1;
   private joinedFlag = false;
+  /**
+   * Why the host closed the connection, when it said (T-1.5.02).
+   *
+   * Previously dropped on the floor: on a loopback pair the only sender was
+   * this page, so the message carried nothing a tester could act on. On a real
+   * socket it is the one thing that distinguishes "the session is full" from
+   * "the host went away" from "your build is too old to speak to it" — three
+   * situations with three different responses, which look identical from a
+   * frozen screen.
+   */
+  private disconnectReasonValue: string | null = null;
 
   private snapshotsApplied = 0;
   private rejectedDeltas = 0;
@@ -168,6 +180,10 @@ export class NetClient {
 
   /** Authoritative shot outcomes. Set by the renderer to draw tracers. */
   onShot: ((shot: ServerShot) => void) | null = null;
+  /** Seated in a slot. Remote sessions surface this in the HUD (T-1.5.02). */
+  onJoined: ((slot: number) => void) | null = null;
+  /** The host said goodbye, and why. */
+  onDisconnect: ((reason: string) => void) | null = null;
 
   constructor(
     private readonly transport: Transport,
@@ -184,6 +200,15 @@ export class NetClient {
 
   get netId(): number {
     return this.netIdValue;
+  }
+
+  /** Squad slot the host seated us in, or -1. ADR-001: always 0..5. */
+  get slot(): number {
+    return this.slotValue;
+  }
+
+  get disconnectReason(): string | null {
+    return this.disconnectReasonValue;
   }
 
   get joined(): boolean {
@@ -219,6 +244,40 @@ export class NetClient {
     this.transport.send(
       encodeMessage({ kind: 'Join', version: PROTOCOL_VERSION, name: this.name }),
     );
+  }
+
+  /**
+   * Forget everything about the last connection, before handshaking again.
+   *
+   * A reconnect is not a resumption. The host hands a dropped player's entity
+   * back to a bot the moment the socket closes, so a returning client gets a
+   * NEW slot and a NEW NetId — and every piece of state below is about the old
+   * one. Keeping the predictor would reconcile our position against a soldier
+   * that now belongs to somebody else; keeping the snapshot store would decode
+   * the first delta against a baseline from a session we are no longer in,
+   * producing world state that is plausible and wrong, which is the one failure
+   * mode `SnapshotStore` exists to refuse (see its missed-baseline path).
+   *
+   * Link-health counters are deliberately NOT reset: RTT, jitter and the
+   * snapshot gap rate describe the network between here and the host, and that
+   * did not change because a socket did. A tester watching the netgraph through
+   * a drop wants the trend, not a fresh graph.
+   */
+  resetForRejoin(): void {
+    this.store.reset();
+    this.predictor = null;
+    this.buffers.clear();
+    this.netIdValue = -1;
+    this.slotValue = -1;
+    this.joinedFlag = false;
+    this.disconnectReasonValue = null;
+    this.healthValue = 0;
+    this.maxHealthValue = 0;
+    this.downSince = null;
+    this.recentInputs.length = 0;
+    this.newestServerMs = 0;
+    this.serverClockMs = 0;
+    this.highestTick = -1;
   }
 
   /** Predict one tick locally and send the input. Unreliable: a lost input is
@@ -360,7 +419,9 @@ export class NetClient {
     switch (msg.kind) {
       case 'JoinAck':
         this.netIdValue = msg.netId;
+        this.slotValue = msg.slot;
         this.joinedFlag = true;
+        this.onJoined?.(msg.slot);
         // The predictor is NOT created here, for the reason BotClient gives:
         // JoinAck does not say where we spawned, and assuming the origin
         // guarantees a large bogus correction on the first snapshot.
@@ -394,6 +455,12 @@ export class NetClient {
         if (sample) this.rttEstimate = this.clock.rtt;
         break;
       }
+
+      case 'Disconnect':
+        this.disconnectReasonValue = msg.reason;
+        this.joinedFlag = false;
+        this.onDisconnect?.(msg.reason);
+        break;
 
       case 'HitEvent':
         this.onShot?.({

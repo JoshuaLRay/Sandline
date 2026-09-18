@@ -68,6 +68,79 @@ function connectClient(session: Session, name: string, now = 0) {
   };
 }
 
+describe('Session — a slot reused by a different client (T-1.5.02)', () => {
+  /**
+   * The failure this pins only exists on a long-lived host. Every in-page
+   * session was built fresh per page load, so a slot had never been occupied by
+   * two different clients until `SessionHost` (T-1.5.01) made one process
+   * outlive its players.
+   */
+  it('accepts the new occupant\'s inputs even though they restart their tick count', () => {
+    const s = new Session();
+    const first = connectClient(s, 'first');
+    expect(first.joined?.slot).toBe(0);
+
+    /**
+     * Play out a long session and let the server CONSUME all of it, so the slot
+     * is left with an empty queue and a high water mark. Leaving inputs queued
+     * would move the entity on its own and the assertions below would pass
+     * without the new client's inputs ever being accepted — which is exactly
+     * how the first version of this test managed to pass against the bug.
+     */
+    let now = 0;
+    for (let tick = 1; tick <= 120; tick++) {
+      first.input(tick, 0, 1);
+      now += 33;
+      s.step(now);
+    }
+    expect(s.slots[0]!.queue).toHaveLength(0);
+    expect(s.slots[0]!.newestInputTick).toBe(120);
+    const leftAt = s.slots[0]!.state.z;
+    first.pair.b.close('gone');
+
+    // Someone else sits down in the same slot and counts from 1, as every
+    // client does — their page just loaded.
+    const second = connectClient(s, 'second');
+    expect(second.joined?.slot).toBe(0);
+    for (let tick = 1; tick <= 10; tick++) {
+      second.input(tick, 0, 1);
+      now += 33;
+      s.step(now);
+    }
+
+    // The mark of the bug: every one of those ten inputs sits at or below the
+    // departed player's 120, so the ordering guard discards them all.
+    expect(s.slots[0]!.lastProcessedInputTick).toBeGreaterThan(0);
+    expect(s.slots[0]!.lastProcessedInputTick).toBeLessThanOrEqual(10);
+    expect(s.slots[0]!.state.z).not.toBeCloseTo(leftAt, 2);
+  });
+
+  it('does not ask the new occupant to reconcile against the old one\'s ticks', () => {
+    const s = new Session();
+    const first = connectClient(s, 'first');
+    for (let tick = 1; tick <= 50; tick++) first.input(tick, 0, 1);
+    s.step(16);
+    expect(s.slots[0]!.lastProcessedInputTick).toBeGreaterThan(0);
+    first.pair.b.close('gone');
+
+    // A stale ack would send the new client reconciling against a tick it never
+    // predicted, which snaps it and discards every pending prediction.
+    const second = connectClient(s, 'second');
+    expect(second.joined?.slot).toBe(0);
+    expect(s.slots[0]!.lastProcessedInputTick).toBe(-1);
+    expect(s.slots[0]!.newestInputTick).toBe(-1);
+  });
+
+  it('does not let a bot walk out the inputs of the player who left', () => {
+    const s = new Session();
+    const c = connectClient(s, 'leaver');
+    for (let tick = 1; tick <= 20; tick++) c.input(tick, 0, 1);
+    c.pair.b.close('gone');
+    expect(s.slots[0]!.isBot).toBe(true);
+    expect(s.slots[0]!.queue).toHaveLength(0);
+  });
+});
+
 describe('Session lifecycle (T-1.09, T-1.13)', () => {
   it('starts with six bot-filled slots before anyone connects', () => {
     // ADR-001: the squad exists at every player count, including zero.

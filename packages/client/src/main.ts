@@ -52,6 +52,13 @@ import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { DEFAULT_LINK, type LinkConditions, LocalServer } from './net/LocalServer.ts';
 import { NetClient } from './net/NetClient.ts';
+import {
+  HostUrlError,
+  RemoteServer,
+  type SessionSource,
+  describeStatus,
+  hostFromQuery,
+} from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
@@ -260,6 +267,27 @@ const combat = new CombatQA(scene, shootable);
 
 /* -- Network --------------------------------------------------------------- */
 
+/**
+ * `?host=ws://…` puts the session in another process (T-1.5.02).
+ *
+ * Absent — the published build, and every run until this task — the session is
+ * built in this page as before. Present, this page is one client of a
+ * `SessionHost` (T-1.5.01) and a second tab pointed at the same host is a
+ * second player in the same session, which is the point of the milestone.
+ *
+ * A malformed host is fatal on purpose. The alternative is falling back to the
+ * in-page session, which looks like a working game and is the wrong one: two
+ * people would each be playing alone, wondering why the other never appears.
+ */
+let hostUrl: string | null = null;
+let hostError: string | null = null;
+try {
+  hostUrl = hostFromQuery(location.search, location.protocol);
+} catch (e) {
+  if (!(e instanceof HostUrlError)) throw e;
+  hostError = e.message;
+}
+
 const link = { ...DEFAULT_LINK };
 /**
  * The sparring partner's conditions are a SEPARATE object with separate
@@ -271,18 +299,46 @@ const link = { ...DEFAULT_LINK };
 const peerLink = { ...DEFAULT_LINK };
 // One config object, shared by reference with both the session and the
 // predictor: the movement panel must move authority and prediction together.
-const server = new LocalServer(link, config);
+// (Remote: the host owns the authoritative config and this one only predicts,
+// so the movement panel moves prediction alone and will mispredict until the
+// host is restarted to match. Tuning is an in-page-session activity.)
+const local = hostUrl === null ? new LocalServer(link, config) : null;
+const remote = hostUrl === null ? null : new RemoteServer(hostUrl);
+const server: SessionSource = local ?? (remote as RemoteServer);
 const net = new NetClient(server.transport, 'qa', config);
-net.join();
+
+if (remote) {
+  /**
+   * Handshake once the socket is usable, and again after every reconnect.
+   *
+   * `join()` at construction time would be sent into a socket that has not
+   * finished opening, and `WsClientTransport` drops a send on a socket that is
+   * not ready — so the Join would vanish and the page would wait forever for a
+   * JoinAck nobody was ever asked for.
+   */
+  remote.onReady = () => {
+    net.resetForRejoin();
+    net.join();
+  };
+  net.onJoined = () => remote.markJoined();
+  net.onDisconnect = (reason) => remote.noteReason(reason);
+} else {
+  net.join();
+}
 
 /**
  * A second real client, so there is a remote player that MOVES. Stationary
  * capsules interpolate perfectly at any latency and so tell a tester nothing;
  * this is what makes the interpolation half of the netgraph mean something,
  * and what T-1.23's two-client acceptance asks for.
+ *
+ * ONLY when the session is in this page. Against a real host the other player
+ * is a person in another tab — which is the thing the sparring partner has been
+ * standing in for since T-1.23, and it would now be taking one of the six
+ * slots away from a human to do it.
  */
-const sparringLink = server.connect(peerLink);
-const sparring = new SparringPartner(sparringLink.transport);
+const sparringLink = local?.connect(peerLink) ?? null;
+const sparring = sparringLink ? new SparringPartner(sparringLink.transport) : null;
 
 /**
  * Draw the authoritative result of a shot. The muzzle is derived from the
@@ -360,20 +416,25 @@ const movementPanel = createTuningPanel(
 );
 const weaponPanel = createWeaponPanel(combat);
 const cameraPanel = createCameraPanel(cam);
-const networkPanel = createNetworkPanel([
-  {
-    label: 'Your link',
-    conditions: link,
-    onChange: (c) => server.setConditions(c),
-    hint: 'Your own round trip. Felt as correction on yourself and as delay between the trigger and the hit marker.',
-  },
-  {
-    label: 'Sparring partner',
-    conditions: peerLink,
-    onChange: (c) => sparringLink.setConditions(c),
-    hint: 'The patrolling bot alone. Felt as rubber-banding and freezing on THEIR capsule while your own movement stays crisp.',
-  },
-]);
+const networkPanel = createNetworkPanel(
+  [
+    {
+      label: 'Your link',
+      conditions: link,
+      onChange: (c) => local?.setConditions(c),
+      hint: 'Your own round trip. Felt as correction on yourself and as delay between the trigger and the hit marker.',
+    },
+    {
+      label: 'Sparring partner',
+      conditions: peerLink,
+      onChange: (c) => sparringLink?.setConditions(c),
+      hint: 'The patrolling bot alone. Felt as rubber-banding and freezing on THEIR capsule while your own movement stays crisp.',
+    },
+  ],
+  remote
+    ? `Connected to ${remote.url}. The link is a real socket, so its conditions belong to the host: run it with LINK_LATENCY_MS, LINK_JITTER_MS and LINK_LOSS. Latency there applies each way, so 100 means a ~200 ms round trip.`
+    : undefined,
+);
 const netgraph = createNetgraph(() => {
   const n = net.stats;
   return {
@@ -387,6 +448,22 @@ const netgraph = createNetgraph(() => {
     correctionRate: n.reconciles === 0 ? 0 : n.corrections / n.reconciles,
   };
 });
+/**
+ * A bad `?host=` must not be quiet.
+ *
+ * `hostFromQuery` throwing leaves `hostUrl` null, so the page falls back to the
+ * in-page session — which runs perfectly and is the wrong game: two people each
+ * playing alone, each waiting for the other to appear. The fallback is the
+ * right behaviour (a harness that refuses to start is worse) but it has to be
+ * announced, and in the one place nobody can collapse.
+ */
+if (hostError !== null) {
+  const banner = document.createElement('div');
+  banner.id = 'host-error';
+  banner.textContent = `Could not use ?host= — ${hostError}. Running the in-page session instead: you are alone in it.`;
+  document.body.appendChild(banner);
+}
+
 panels.append(
   networkPanel.root,
   netgraph.root,
@@ -441,10 +518,18 @@ let simCur: { x: number; y: number; z: number } | null = null;
 const linkText = (c: LinkConditions): string =>
   `${c.latencyMs}ms  ${c.jitterMs}ms jitter  ${Math.round(c.lossRate * 100)}% loss`;
 
-/** Connection and prediction health, the numbers T-1.23 graphs. */
+/**
+ * Connection and prediction health, the numbers T-1.23 graphs.
+ *
+ * The connection line is first and is always present on a remote session. On a
+ * loopback pair there was nothing to say — the session could not fail to be
+ * there — but a socket can be refused, can drop, and can be retrying, and all
+ * three look identical from a screen that has stopped moving.
+ */
 function netReadout(): string {
   const n = net.stats;
-  if (!n.joined) return 'connecting...';
+  const connection = remote ? `${describeStatus(remote.status, net.slot)}\n` : '';
+  if (!n.joined) return connection || 'connecting...';
   const vitals =
     n.maxHealth === 0
       ? ''
@@ -453,12 +538,14 @@ function netReadout(): string {
         : `DOWN  respawning in ${Math.max(0, DAMAGE.respawnSeconds - n.downFor).toFixed(1)}s\n`;
   const rate = n.reconciles === 0 ? 0 : (n.corrections / n.reconciles) * 100;
   return (
+    connection +
     vitals +
     `net ${n.netId}  tick ${n.serverTick}  remotes ${n.remotes}\n` +
-    `you   ${linkText(link)}\n` +
-    `peer  ${linkText(peerLink)}\n` +
+    (remote
+      ? `rtt ${n.rttMs.toFixed(0)}ms  jitter ${n.jitterMs.toFixed(0)}ms  (measured)\n`
+      : `you   ${linkText(link)}\npeer  ${linkText(peerLink)}\n`) +
     `corrections ${rate.toFixed(1)}%  peak ${n.peakDivergence.toFixed(3)}m\n` +
-    `snapshots ${n.snapshotsApplied}  missed ${n.missedBaselines}  in flight ${server.local.inFlight}`
+    `snapshots ${n.snapshotsApplied}  missed ${n.missedBaselines}  in flight ${server.inFlight}`
   );
 }
 
@@ -491,7 +578,7 @@ function frame(): void {
      */
     const beforeStep = net.simulated;
     net.tick(tickNumber, tickInput, input.pitchWire);
-    sparring.tick(tickNumber);
+    sparring?.tick(tickNumber);
     const afterStep = net.simulated;
     // Keep both ends of the tick so rendering can interpolate across it.
     simPrev = beforeStep;
@@ -543,7 +630,7 @@ function frame(): void {
 
   server.pump(now);
   net.advanceClock(dt * 1000);
-  sparring.advanceClock(dt * 1000);
+  sparring?.advanceClock(dt * 1000);
 
   /**
    * Render BETWEEN ticks, exactly as the local harness did before it was
