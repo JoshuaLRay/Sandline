@@ -37,6 +37,7 @@ import {
   fromRadians,
   sin,
   stepCharacter,
+  toRadians,
   wireToTable,
 } from '@sandline/shared';
 import { LocalInput } from './input/LocalInput.ts';
@@ -343,9 +344,20 @@ function frame(): void {
   // relative to a character you cannot see in first person.
   cameraPanel.setVisible(!input.firstPerson);
 
+  /**
+   * Orient from the angles directly rather than with `lookAt`.
+   *
+   * `lookAt` builds a basis by crossing the view direction with world up, which
+   * degenerates as the view approaches vertical — and the pitch limit is now 89
+   * degrees, so the view gets there. Setting a YXZ Euler is exact at every
+   * pitch: yaw is the Y term, pitch the X term, and roll is pinned at zero
+   * instead of being solved for. The +PI turns the camera's default -Z gaze
+   * onto the +Z forward this project uses.
+   */
+  camera.rotation.set(toRadians(pitchAngle), toRadians(yawAngle) + Math.PI, 0, 'YXZ');
+
   if (input.firstPerson) {
     camera.position.set(rx, pivotY, rz);
-    camera.lookAt(rx + dx * 10, pivotY + dy * 10, rz + dz * 10);
     player.visible = false;
   } else {
     player.visible = true;
@@ -378,7 +390,6 @@ function frame(): void {
     dist = solveArmLength(dist, focusY, dy, cam);
 
     camera.position.set(focusX - dx * dist, focusY - dy * dist, focusZ - dz * dist);
-    camera.lookAt(focusX + dx * 10, focusY + dy * 10, focusZ + dz * 10);
   }
 
   /**

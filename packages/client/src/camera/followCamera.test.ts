@@ -13,7 +13,8 @@ describe('third-person arm length', () => {
 
   it('keeps the camera above the floor at every upward pitch', () => {
     // The bug this replaces: the camera went THROUGH the ground looking up.
-    for (let deg = 0; deg <= 60; deg += 1) {
+    // Sweeps to the real limit: pitch up is 89 degrees since the QA request.
+    for (let deg = 0; deg <= 89; deg += 1) {
       const dy = Math.sin((deg * Math.PI) / 180);
       const dist = solveArmLength(5.5, FOCUS_Y, dy, LIMITS);
       const cameraY = FOCUS_Y - dy * dist;
@@ -22,7 +23,7 @@ describe('third-person arm length', () => {
   });
 
   it('lands the camera exactly on the floor once the arm is the limit', () => {
-    const dy = Math.sin((60 * Math.PI) / 180);
+    const dy = Math.sin((89 * Math.PI) / 180);
     const dist = solveArmLength(5.5, FOCUS_Y, dy, LIMITS);
     expect(dist).toBeLessThan(5.5);
     expect(FOCUS_Y - dy * dist).toBeCloseTo(LIMITS.minCameraY, 10);
@@ -32,7 +33,7 @@ describe('third-person arm length', () => {
     // What the eye expects: nearer the feet the further up you look, rather
     // than sticking at a fixed height while the character pulls away.
     let previous = Infinity;
-    for (let deg = 20; deg <= 60; deg += 5) {
+    for (let deg = 20; deg <= 89; deg += 5) {
       const dist = solveArmLength(5.5, FOCUS_Y, Math.sin((deg * Math.PI) / 180), LIMITS);
       expect(dist).toBeLessThanOrEqual(previous + 1e-9);
       previous = dist;

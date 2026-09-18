@@ -23,13 +23,18 @@ const UNITS_PER_DEGREE = WIRE_ANGLE_UNITS / 360;
 /**
  * Pitch limits, in degrees.
  *
- * Asymmetric on purpose: you want to see more ground than sky in a
- * third-person shooter, and the previous symmetric ~72 degrees felt short
- * looking down. First person gets a wider range because nothing occludes it.
+ * Up is 89, i.e. as near straight up as is safe, by request after QA. NOT 90:
+ * at exactly vertical the view direction is parallel to the world up axis, and
+ * anything deriving a camera basis from those two (a `lookAt`, most spring
+ * arms) is then solving for a roll that has no answer. One degree of margin
+ * costs nothing visible and keeps every such construction well-conditioned.
+ *
+ * Down stays at 80. It was never the complaint, and ground is what a
+ * third-person shooter actually needs to see.
  */
-export const PITCH_LIMIT_UP_DEG = 60;
+export const PITCH_LIMIT_UP_DEG = 89;
 export const PITCH_LIMIT_DOWN_DEG = 80;
-export const PITCH_LIMIT_FIRST_PERSON_DEG = 85;
+export const PITCH_LIMIT_FIRST_PERSON_DEG = 89;
 
 export class LocalInput {
   private readonly held = new Set<string>();

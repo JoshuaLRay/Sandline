@@ -47,3 +47,4 @@ Format: `T-<id> — <what changed>`
 - T-0.06 - Client becomes the QA home: live weapon range for T-1.17, tracers, falloff.
 - T-0.06 - First weapon QA pass: reload loop, semi-auto, shoulder camera, ADS cue.
 - T-0.06 - Weapon and camera tuning panels; every QA window collapsible.
+- T-0.06 - Pitch up raised to 89 degrees; camera orients by Euler, not lookAt.
