@@ -31,10 +31,19 @@ import {
   WEAPON_IDS,
   type WeaponDef,
   type WeaponState,
+  type HealthState,
+  applyDamage,
+  createHealth,
   createMoveState,
   createWeaponState,
   damageAtDistance,
   decayBloom,
+  isAlive,
+  readyToRespawn,
+  respawn,
+  spawnFor,
+  zoneAt,
+  zoneDamage,
   encodeMessage,
   finishReload,
   eyePosition,
@@ -49,8 +58,15 @@ import {
 } from '@sandline/shared';
 import { DEFAULT_HITBOX, HitboxHistory, clampRewindMs, resolveShot } from '../net/lagComp.ts';
 
+/**
+ * Full standing height of a hitbox: cylinder plus both caps. Hit zones are
+ * fractions of this, so they track the capsule rather than assuming 1.8 m.
+ */
+const HITBOX_HEIGHT = 2 * (DEFAULT_HITBOX.halfHeight + DEFAULT_HITBOX.radius);
+
 const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
+const H = COMPONENT_IDS.Health;
 
 export interface Slot {
   index: number;
@@ -99,6 +115,7 @@ export interface Slot {
   weaponState: WeaponState;
   /** Aim pitch, in wire units. Movement only replicates yaw; shots need both. */
   pitch: number;
+  health: HealthState;
 }
 
 /** ADR-012: repeat a missing input this many ticks, then treat it as idle. */
@@ -179,6 +196,7 @@ export class Session {
         weapon: getWeapon(WEAPON_IDS[0]),
         weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
         pitch: 0,
+        health: createHealth(),
       });
     }
   }
@@ -375,6 +393,31 @@ export class Session {
         DEFAULT_HITBOX,
       );
 
+      let dealt = 0;
+      if (hit) {
+        /**
+         * Zone from the impact point's height up the target's hitbox — which is
+         * exactly why T-1.18 returns a point rather than only a distance.
+         */
+        const feet = this.hitboxes.positionAt(hit.netId, rewoundTo);
+        const zone = zoneAt(hit.point.y, feet?.y ?? 0, HITBOX_HEIGHT);
+        dealt = zoneDamage(damageAtDistance(slot.weapon, hit.distance), zone);
+
+        const target = this.slots.find((s) => s.netId === hit.netId);
+        if (target) {
+          const result = applyDamage(target.health, dealt, this.nowMs / 1000);
+          dealt = result.applied;
+          /**
+           * A killed player stops moving immediately: their queued inputs are
+           * intent from before they died, and letting a corpse run out its
+           * buffer looks like the hit did not register.
+           */
+          if (result.killed) target.queue.length = 0;
+        }
+        // Range targets take no damage yet: they have no health because they
+        // have no behaviour. Both arrive together when M2 gives them AI.
+      }
+
       const event: Message = hit
         ? {
             kind: 'HitEvent',
@@ -383,9 +426,7 @@ export class Session {
             x: hit.point.x,
             y: hit.point.y,
             z: hit.point.z,
-            // Applying this to health is T-1.19; the number travels now so the
-            // client can show it and so that task has nothing to re-derive.
-            damage: damageAtDistance(slot.weapon, hit.distance),
+            damage: dealt,
           }
         : {
             kind: 'HitEvent',
@@ -410,7 +451,27 @@ export class Session {
       if (conn.isTimedOut(now)) conn.reject('heartbeat timeout');
     }
 
+    const nowSeconds = now / 1000;
     for (const slot of this.slots) {
+      /**
+       * Dead players do not move and do not fall: they wait out the timer and
+       * reappear at their own spawn point with full health. Downed-and-revive
+       * is M2 (ADR-002); death here is death.
+       */
+      if (!isAlive(slot.health)) {
+        if (readyToRespawn(slot.health, nowSeconds)) {
+          respawn(slot.health);
+          const point = spawnFor(slot.index);
+          slot.state = createMoveState(point.x, point.y, point.z);
+          slot.queue.length = 0;
+          slot.input = idleInput(slot.yaw);
+          slot.weaponState = createWeaponState(slot.weapon);
+        }
+        // Still recorded into the hitbox history below, so a shot already in
+        // flight resolves against where the body is.
+        continue;
+      }
+
       if (!slot.isBot) {
         /**
          * Drain a backlog by stepping the extra inputs, not by throwing them
@@ -523,6 +584,9 @@ export class Session {
           // snaps to the right height with the wrong momentum and diverges again
           // on the very next tick.
           [V]: [quantize(0, VELOCITY), quantize(s.state.vy, VELOCITY), quantize(0, VELOCITY)],
+          // Replicated, never predicted: §2.3 puts damage firmly on the
+          // server's side of the line.
+          [H]: [Math.round(s.health.current), Math.round(s.health.max)],
         },
       })),
     };

@@ -35,6 +35,7 @@ import {
 
 const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
+const H = COMPONENT_IDS.Health;
 const TICK_MS = TICK_SECONDS * 1000;
 
 export interface ServerShot {
@@ -59,6 +60,10 @@ export interface NetStats {
   lastDivergence: number;
   peakDivergence: number;
   remotes: number;
+  health: number;
+  maxHealth: number;
+  /** Seconds of respawn left, timed locally from when health first read zero. */
+  downFor: number;
 }
 
 export class NetClient {
@@ -94,6 +99,18 @@ export class NetClient {
    * moving smoothly.
    */
   private serverClockMs = 0;
+  private healthValue = 0;
+  private maxHealthValue = 0;
+  /**
+   * When health first read zero, in local ms.
+   *
+   * The death TIME is not replicated — only the health value is — so the
+   * countdown is timed from when the client first saw zero. That is a display
+   * approximation off by the trip time, and it is the right trade: replicating
+   * a death timestamp so a HUD number can be exact would put a gameplay field
+   * on the wire for a cosmetic reason.
+   */
+  private downSince: number | null = null;
 
   /**
    * The last few inputs sent, newest first, resent in each packet so a dropped
@@ -138,6 +155,9 @@ export class NetClient {
       lastDivergence: this.lastDivergence,
       peakDivergence: this.peakDivergence,
       remotes: this.buffers.size,
+      health: this.healthValue,
+      maxHealth: this.maxHealthValue,
+      downFor: this.downSince === null ? 0 : (performance.now() - this.downSince) / 1000,
     };
   }
 
@@ -291,6 +311,13 @@ export class NetClient {
       const z = dequantize(transform[2] as number, POSITION);
 
       if (entity.netId === this.netIdValue) {
+        const health = entity.components[H];
+        if (health) {
+          this.healthValue = health[0] as number;
+          this.maxHealthValue = health[1] as number;
+          if (this.healthValue <= 0) this.downSince ??= performance.now();
+          else this.downSince = null;
+        }
         const velocity = entity.components[V];
         this.reconcile(
           {

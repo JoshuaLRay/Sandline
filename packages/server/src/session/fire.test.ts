@@ -9,6 +9,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+  DAMAGE,
   type Message,
   PROTOCOL_VERSION,
   RANGE_TARGETS,
@@ -36,6 +37,8 @@ function connect(session: Session, now = 0) {
   // transport does. Forgetting to pump it makes every message vanish silently.
   const hits: Extract<Message, { kind: 'HitEvent' }>[] = [];
   let netId = 0;
+  /** What the player is currently holding, resent every tick. */
+  let held = { moveX: 0, moveY: 0, yaw: 0, buttons: 0 };
 
   pair.b.onMessage((bytes) => {
     let msg: Message;
@@ -71,18 +74,51 @@ function connect(session: Session, now = 0) {
       );
       pair.settle();
     },
+    /**
+     * Resend whatever is currently being held, once per tick.
+     *
+     * This is what a real client does — it samples input every tick, so holding
+     * a key produces an identical input every tick rather than one and then
+     * silence. Sending IDLE here instead would be worse than sending nothing:
+     * it would arrive with a newer tick and supersede a deliberate input,
+     * silently cancelling movement a test had just asked for.
+     */
+    keepAlive(tick: number) {
+      pair.b.send(encodeMessage({ kind: 'Input', tick, ...held, pitch: 0 }));
+      pair.settle();
+    },
+    /** Start holding an input. It keeps being sent until changed. */
     input(yaw: number, tick: number, moveX = 0, moveY = 0, buttons = 0) {
+      held = { moveX, moveY, yaw, buttons };
       pair.b.send(encodeMessage({ kind: 'Input', tick, moveX, moveY, yaw, pitch: 0, buttons }));
       pair.settle();
+    },
+    /** Stop holding anything. */
+    release() {
+      held = { moveX: 0, moveY: 0, yaw: held.yaw, buttons: 0 };
     },
   };
 }
 
-/** Run `ticks` ticks from `fromMs`, returning the time after the last one. */
-function run(session: Session, fromMs: number, ticks: number, ...clients: { settle: () => void }[]): number {
+/**
+ * Run `ticks` ticks from `fromMs`, returning the time after the last one.
+ *
+ * Each client sends an input every tick, which a real client also does
+ * unconditionally. It is not decoration: the server drops a connection that has
+ * gone quiet (T-1.09 heartbeat timeout), so a test that idles for the length of
+ * a respawn gets disconnected mid-test and every later assertion reads as a
+ * mysterious absence of hit events rather than as a timeout.
+ */
+function run(
+  session: Session,
+  fromMs: number,
+  ticks: number,
+  ...clients: { settle: () => void; keepAlive: (tick: number) => void }[]
+): number {
   let t = fromMs;
   for (let i = 0; i < ticks; i += 1) {
     t += TICK_MS;
+    for (const c of clients) c.keepAlive(Math.round(t / TICK_MS));
     session.step(t);
     for (const c of clients) c.settle();
   }
@@ -345,5 +381,104 @@ describe('the shooter is rewound too', () => {
     client.fire({ ...aimThen, ads: true, renderTimeMs: now });
     expect(client.hits.length).toBe(before + 1);
     expect(client.hits.at(-1)?.targetNetId).toBe(0);
+  });
+});
+
+describe('damage, death and respawn (T-1.19)', () => {
+  /**
+   * End to end over the wire: shoot a teammate down, confirm the total damage
+   * dealt is exactly their health, confirm a corpse takes nothing further, and
+   * confirm they come back at full health at their own spawn.
+   *
+   * Slot 0 shoots slot 1, which spawns 1.5 m to its right at z = 0. At that
+   * range the carbine is inside its falloff start, and a shot at capsule centre
+   * height lands in the torso, so each hit is the weapon's full listed damage.
+   */
+  const CARBINE_TORSO = 22;
+
+  function killTheNeighbour() {
+    const session = new Session();
+    const client = connect(session);
+    let now = run(session, 0, 4, client);
+    const carbine = getWeapon('carbine');
+    const shotTicks = Math.ceil(((60 / carbine.rpm) * 1000) / TICK_MS);
+    // Slot 1's spawn, aimed at capsule centre.
+    const aim = aimAt(-2.25, 0.9, 0);
+
+    const fire = (): number | undefined => {
+      const before = client.hits.length;
+      client.fire({ ...aim, ads: true, renderTimeMs: now });
+      now = run(session, now, shotTicks, client);
+      return client.hits.length > before ? client.hits.at(-1)?.damage : undefined;
+    };
+    return { session, client, fire, aim, get now() { return now; }, advance: (ticks: number) => { now = run(session, now, ticks, client); } };
+  }
+
+  it('kills at the correct cumulative threshold and not before', () => {
+    const range = killTheNeighbour();
+    const shotsNeeded = Math.ceil(DAMAGE.maxHealth / CARBINE_TORSO);
+
+    let total = 0;
+    for (let i = 1; i < shotsNeeded; i += 1) {
+      const dealt = range.fire();
+      expect(dealt).toBeCloseTo(CARBINE_TORSO, 6);
+      total += dealt ?? 0;
+    }
+    expect(total).toBeLessThan(DAMAGE.maxHealth);
+
+    // The last shot deals only what was left, never the full listed damage.
+    const fatal = range.fire();
+    expect(fatal).toBeLessThan(CARBINE_TORSO);
+    total += fatal ?? 0;
+    expect(total).toBeCloseTo(DAMAGE.maxHealth, 6);
+  });
+
+  it('a corpse takes no further damage', () => {
+    // Under lag compensation two shooters can each land a fatal shot on a
+    // target that was alive in their own rewound world. Damage past zero is how
+    // one death becomes two kills.
+    const range = killTheNeighbour();
+    for (let i = 0; i < Math.ceil(DAMAGE.maxHealth / CARBINE_TORSO); i += 1) range.fire();
+    expect(range.fire()).toBe(0);
+    expect(range.fire()).toBe(0);
+  });
+
+  it('respawns at full health once the delay has elapsed, and not before', () => {
+    const range = killTheNeighbour();
+    for (let i = 0; i < Math.ceil(DAMAGE.maxHealth / CARBINE_TORSO); i += 1) range.fire();
+    const diedAt = range.now;
+    expect(range.fire()).toBe(0);
+
+    /**
+     * Measured rather than counted. Keep firing and watch for the first shot
+     * that lands damage again; the elapsed time is then the respawn delay as
+     * the session actually implements it, not as a tick-arithmetic guess. The
+     * earlier version of this test counted ticks and was wrong by the handful
+     * the polling shots themselves consumed.
+     */
+    let revivedAfter = -1;
+    while (range.now - diedAt < (DAMAGE.respawnSeconds + 3) * 1000) {
+      const dealt = range.fire();
+      if (dealt !== undefined && dealt > 0) {
+        revivedAfter = range.now - diedAt;
+        break;
+      }
+    }
+
+    expect(revivedAfter, 'they came back at all').toBeGreaterThan(0);
+    expect(revivedAfter / 1000, 'not before the delay').toBeGreaterThanOrEqual(DAMAGE.respawnSeconds);
+    // Within one polling interval of the delay, so it is the timer firing and
+    // not simply the loop eventually noticing.
+    expect(revivedAfter / 1000, 'and not much after it').toBeLessThan(DAMAGE.respawnSeconds + 0.5);
+  });
+
+  it('puts them back at their own spawn point, taking full damage again', () => {
+    const range = killTheNeighbour();
+    for (let i = 0; i < Math.ceil(DAMAGE.maxHealth / CARBINE_TORSO); i += 1) range.fire();
+    range.advance(Math.ceil(((DAMAGE.respawnSeconds + 0.5) * 1000) / TICK_MS));
+
+    // The aim was never adjusted: it still points at slot 1's spawn. A full
+    // damage hit means they are standing there again with full health.
+    expect(range.fire()).toBeCloseTo(CARBINE_TORSO, 6);
   });
 });

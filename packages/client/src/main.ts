@@ -33,6 +33,7 @@ import {
   type MoveConfig,
   TICK_SECONDS,
   cos,
+  DAMAGE,
   RANGE_TARGETS,
   fromRadians,
   shotDirections,
@@ -377,8 +378,15 @@ let simCur: { x: number; y: number; z: number } | null = null;
 function netReadout(): string {
   const n = net.stats;
   if (!n.joined) return 'connecting...';
+  const vitals =
+    n.maxHealth === 0
+      ? ''
+      : n.health > 0
+        ? `health ${Math.round(n.health)}/${Math.round(n.maxHealth)}\n`
+        : `DOWN  respawning in ${Math.max(0, DAMAGE.respawnSeconds - n.downFor).toFixed(1)}s\n`;
   const rate = n.reconciles === 0 ? 0 : (n.corrections / n.reconciles) * 100;
   return (
+    vitals +
     `net ${n.netId}  tick ${n.serverTick}  remotes ${n.remotes}\n` +
     `${link.latencyMs}ms  ${link.jitterMs}ms jitter  ${Math.round(link.lossRate * 100)}% loss\n` +
     `corrections ${rate.toFixed(1)}%  peak ${n.peakDivergence.toFixed(3)}m\n` +

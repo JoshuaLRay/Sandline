@@ -7,5 +7,6 @@ export * from './sim/CharacterController.ts';
 export * from './sim/weapons.ts';
 export * from './sim/muzzle.ts';
 export * from './sim/range.ts';
+export * from './sim/damage.ts';
 export * from './ecs/components.ts';
 export * from './ecs/world.ts';

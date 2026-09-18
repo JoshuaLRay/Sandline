@@ -1,0 +1,9 @@
+{
+  "maxHealth": 100,
+  "respawnSeconds": 5,
+  "zones": {
+    "head": { "multiplier": 2.5, "minFraction": 0.78 },
+    "torso": { "multiplier": 1, "minFraction": 0.42 },
+    "limb": { "multiplier": 0.75, "minFraction": 0 }
+  }
+}
