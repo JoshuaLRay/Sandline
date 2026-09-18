@@ -80,6 +80,8 @@ export interface RemoteScenarioOptions {
   bots: number;
   ticks: number;
   seed?: number;
+  /** Room code to join; empty asks the host for a fresh room (T-1.5.05). */
+  room?: string;
   /** Ms to wait for every bot's JoinAck before giving up. */
   joinTimeoutMs?: number;
   /** Ms to keep receiving after the last input, so in-flight deltas land. */
@@ -87,6 +89,8 @@ export interface RemoteScenarioOptions {
 }
 
 export interface RemoteScenarioResult extends ScenarioResult {
+  /** The room the bots played in. */
+  room: string;
   /** Wall-clock seconds the tick loop actually took. */
   elapsedSeconds: number;
   /**
@@ -112,7 +116,15 @@ export interface RemoteScenarioResult extends ScenarioResult {
 export async function runRemoteScenario(
   options: RemoteScenarioOptions,
 ): Promise<RemoteScenarioResult> {
-  const { url, bots: botCount, ticks, seed = 1, joinTimeoutMs = 5000, drainMs = 500 } = options;
+  const {
+    url,
+    bots: botCount,
+    ticks,
+    seed = 1,
+    joinTimeoutMs = 5000,
+    drainMs = 500,
+    room = '',
+  } = options;
 
   const transports: SocketTransport[] = [];
   const clients: BotClient[] = [];
@@ -124,8 +136,21 @@ export async function runRemoteScenario(
       clients.push(new BotClient(transport, { name: `bot${i}`, seed: seed + i }));
     }
 
-    for (const bot of clients) bot.join();
+    /**
+     * The first bot joins the room it was given — or asks for a new one — and
+     * the rest follow it into whatever the host answered (T-1.5.05). Joining
+     * all at once with an empty code would make one room per bot, and a run
+     * where nobody can see anybody proves nothing about reconciliation.
+     */
     const joinDeadline = performance.now() + joinTimeoutMs;
+    const [leader, ...followers] = clients;
+    if (leader) {
+      leader.join(room);
+      while (!leader.joined && !leader.metrics.disconnectReason && performance.now() < joinDeadline) {
+        await sleep(5);
+      }
+      for (const bot of followers) bot.join(leader.room);
+    }
     while (!clients.every((b) => b.joined) && performance.now() < joinDeadline) await sleep(5);
 
     /**
@@ -174,6 +199,7 @@ export async function runRemoteScenario(
 
     return {
       ...summarize(clients, { bots: botCount, ticks: completedTicks, latencyMs: 0, lossRate: 0 }),
+      room: leader?.room ?? '',
       elapsedSeconds,
       completedTicks,
       endedEarly,

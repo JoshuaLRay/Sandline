@@ -18,21 +18,24 @@ pnpm verify                 # typecheck + lint + test — the gate every task mu
 pnpm --filter @sandline/client dev    # renderer at localhost:5173
 ```
 
-That gives you the QA harness with a session running inside the page. For two
-people in one session, you also need a host:
+That opens the lobby. **Practise here** is the harness with a session running
+inside the page - you and a sparring bot. For two people in one session you
+also need a host:
 
 ```bash
 pnpm host                   # authoritative session host on ws://localhost:8080
 ```
 
-then open **`http://localhost:5173/?host=ws://localhost:8080`** in two windows.
-Each HUD should read `joined — slot n of 6`.
+then open **http://localhost:5173/** in two windows, type `ws://localhost:8080`
+into the host field, click **Host a room** in one and type its four-character
+code into the other. Both squad panels show two humans and four bots. Set
+`SANDLINE_HOST=ws://localhost:8080` before `pnpm --filter @sandline/client dev`
+and the field is pre-filled.
 
-`?host=` is a developer tool, not the destination. Joining from the page — a
-room code typed into a lobby, no URL editing — is T-1.5.04 through T-1.5.06, and
-reaching it from the published QA site needs the deployed host in T-1.5.07.
-[`docs/DEPLOYING.md`](./docs/DEPLOYING.md) has the full two-machine recipe and
-the things that will waste your afternoon.
+The published site at https://joshualray.github.io/Sandline/ works the same way
+against the deployed host, once one is deployed (T-1.5.07 -
+[`docs/DEPLOYING.md`](./docs/DEPLOYING.md) has the recipe, the teardown, and
+the things that will waste your afternoon).
 
 ## Useful commands
 
@@ -43,7 +46,10 @@ the things that will waste your afternoon.
 | `LINK_LATENCY_MS=100 LINK_JITTER_MS=20 LINK_LOSS=0.05 pnpm host` | same host with the link sliders applied on the wire — latency counts **each way** |
 | `pnpm bot --count 2 --ticks 600` | netcode check in-process on a virtual clock (T-1.20) |
 | `pnpm bot --url ws://localhost:8080 --count 2 --ticks 600` | the same bots over real sockets; the numbers should match the line above |
-| `?host=ws://localhost:8080` | client query parameter: join a host instead of the in-page session (T-1.5.02) |
+| `pnpm bot --url ws://localhost:8080 --room K7PM --count 1` | a bot into a room people are in (T-1.5.05) |
+| `?host=ws://…&room=K7PM` | pre-fills the lobby; the squad panel's **Copy link** produces this (T-1.5.06) |
+| `MAX_ROOMS=4 ROOM_GRACE_MS=60000 pnpm host` | rooms per process and how long an empty room lives (T-1.5.05) |
+| `curl localhost:8080/healthz` | rooms, players, protocol version (T-1.5.07) |
 | `pnpm sim-run --scenario crowd --ticks 1800` | headless simulation, reports µs/tick |
 | `pnpm sim-run --scenario fall --ticks 1000 --parity` | two instances, reports divergence |
 | `pnpm bench:rapier` | deterministic vs default vs SIMD physics cost |

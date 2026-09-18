@@ -1,8 +1,14 @@
 /** Environment-derived server config (T-0.07). */
+import { DEFAULT_MAX_ROOMS, DEFAULT_ROOM_GRACE_MS } from './session/Registry.ts';
+
 export interface ServerConfig {
   port: number;
   tickHz: number;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
+  /** Rooms this process will hold at once (T-1.5.05). */
+  maxRooms: number;
+  /** How long an emptied room lives before it is reclaimed, ms. */
+  roomGraceMs: number;
 }
 
 function intFromEnv(name: string, fallback: number): number {
@@ -22,5 +28,7 @@ export function loadConfig(): ServerConfig {
     port: intFromEnv('PORT', 8080),
     tickHz: intFromEnv('TICK_HZ', 30),
     logLevel: level as ServerConfig['logLevel'],
+    maxRooms: intFromEnv('MAX_ROOMS', DEFAULT_MAX_ROOMS),
+    roomGraceMs: intFromEnv('ROOM_GRACE_MS', DEFAULT_ROOM_GRACE_MS),
   };
 }

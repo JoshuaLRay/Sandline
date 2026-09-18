@@ -51,7 +51,7 @@ function connect(session: Session, now = 0) {
     if (msg.kind === 'JoinAck') netId = msg.netId;
     if (msg.kind === 'HitEvent') hits.push(msg);
   });
-  pair.b.send(encodeMessage({ kind: 'Join', version: PROTOCOL_VERSION, name: 'tester' }));
+  pair.b.send(encodeMessage({ kind: 'Join', version: PROTOCOL_VERSION, name: 'tester', room: '' }));
   pair.settle();
 
   return {

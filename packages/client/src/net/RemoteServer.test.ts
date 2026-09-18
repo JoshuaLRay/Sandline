@@ -10,8 +10,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   HostUrlError,
   RemoteServer,
+  checkRoomInput,
   describeStatus,
+  explainRejection,
   hostFromQuery,
+  roomFromQuery,
+  shareLink,
 } from './RemoteServer.ts';
 
 /** The surface `WsClientTransport` uses, and nothing more. */
@@ -125,11 +129,31 @@ describe('RemoteServer', () => {
     expect(describeStatus(remote.status, 2)).toBe('joined — slot 3 of 6');
   });
 
-  it('treats a refusal as terminal and keeps the reason', () => {
+  it('treats a refusal as terminal, keeps the code, and stops the socket retrying', () => {
     const remote = new RemoteServer('ws://host', { factory });
-    remote.noteReason('session full');
+    newest().open();
+    remote.noteRefusal('room full', 'room full');
     expect(remote.status.phase).toBe('failed');
-    expect(describeStatus(remote.status, -1)).toBe('disconnected — session full');
+    expect(remote.status.code).toBe('room full');
+    expect(describeStatus(remote.status, -1)).toBe('disconnected — that room already has six players');
+    // The transport is closed for good: a refused join retried six times
+    // would look to the host like a client hammering a full room.
+    expect(remote.transport.isOpen).toBe(false);
+    expect(newest().readyState).toBe(3);
+  });
+
+  it('explains every typed rejection with a different next action', () => {
+    const texts = new Set(
+      (['bad version', 'no such room', 'room full', 'host full', 'host draining'] as const).map((c) =>
+        explainRejection(c, c),
+      ),
+    );
+    expect(texts.size).toBe(5);
+    expect(explainRejection('bad version', '')).toMatch(/reload/);
+    expect(explainRejection('no such room', '')).toMatch(/code/);
+    // Untyped: the host's own words are all there is.
+    expect(explainRejection('other', 'because')).toBe('because');
+    expect(explainRejection(null, null)).toMatch(/closed/);
   });
 
   it('shows the attempt and the wait while backing off, then re-handshakes', () => {
@@ -172,5 +196,37 @@ describe('RemoteServer', () => {
     remote.step();
     remote.pump();
     expect(remote.inFlight).toBe(0);
+  });
+});
+
+describe('room codes and share links in the lobby (T-1.5.06)', () => {
+  it('reads and normalises ?room=', () => {
+    expect(roomFromQuery('')).toBe('');
+    expect(roomFromQuery('?room=k7-pm')).toBe('K7PM');
+    expect(roomFromQuery('?host=ws://x&room=%20cdfg%20')).toBe('CDFG');
+  });
+
+  it('accepts an empty code as "host a room" and refuses a code that cannot exist', () => {
+    expect(checkRoomInput('')).toEqual({ room: '', error: null });
+    expect(checkRoomInput(' k7pm ')).toEqual({ room: 'K7PM', error: null });
+    expect(checkRoomInput('O7PM').error).toMatch(/not a room code/);
+    expect(checkRoomInput('K7P').error).toMatch(/not a room code/);
+  });
+
+  it('builds a link that omits the host when it is the build default', () => {
+    const page = 'https://joshualray.github.io/Sandline/?host=old&room=OLD1#x';
+    expect(shareLink(page, 'wss://host.example', 'K7PM', 'wss://host.example')).toBe(
+      'https://joshualray.github.io/Sandline/?room=K7PM',
+    );
+    expect(shareLink(page, 'ws://192.168.1.5:8080', 'K7PM', 'wss://host.example')).toBe(
+      'https://joshualray.github.io/Sandline/?room=K7PM&host=ws%3A%2F%2F192.168.1.5%3A8080',
+    );
+  });
+
+  it('round-trips a shared link back through the query parsers', () => {
+    const link = shareLink('http://localhost:5173/', 'ws://192.168.1.5:8080', 'K7PM', '');
+    const search = new URL(link).search;
+    expect(hostFromQuery(search)).toBe('ws://192.168.1.5:8080');
+    expect(roomFromQuery(search)).toBe('K7PM');
   });
 });

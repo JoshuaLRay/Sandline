@@ -109,7 +109,7 @@ describe('WebSocket transport end to end (T-1.07, T-1.08)', () => {
     await wait(120);
 
     expect(new Set(slots).size).toBe(MAX_SLOTS);
-    expect(reasons.some((r) => /session full/.test(r))).toBe(true);
+    expect(reasons.some((r) => /room full/.test(r))).toBe(true);
     for (const { t } of clients) t.close();
   });
 

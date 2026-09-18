@@ -201,7 +201,7 @@ describe('Session lifecycle (T-1.09, T-1.13)', () => {
 
     const seventh = connectClient(s, 'overflow');
     expect(seventh.joined).toBeNull();
-    expect(seventh.closedReason).toMatch(/session full/);
+    expect(seventh.closedReason).toMatch(/room full/);
   });
 
   it('rejects a client speaking a different protocol version', () => {
@@ -210,7 +210,7 @@ describe('Session lifecycle (T-1.09, T-1.13)', () => {
     s.addConnection(pair.a, 0);
     let reason: string | null = null;
     const client = new ClientConnection(pair.b, { onClosed: (r) => (reason = r) });
-    client.send({ kind: 'Join', version: PROTOCOL_VERSION + 9, name: 'stale-build' });
+    client.send({ kind: 'Join', version: PROTOCOL_VERSION + 9, name: 'stale-build', room: '' });
     pair.settle();
     expect(reason).toMatch(/version mismatch/);
     expect(s.stats.players).toBe(0);

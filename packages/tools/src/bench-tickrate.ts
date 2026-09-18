@@ -18,7 +18,7 @@ function buildSession(): Session {
   for (let i = 0; i < PLAYERS; i++) {
     const pair = createLoopbackPair();
     session.addConnection(pair.a, 0);
-    pair.b.send(encodeMessage({ kind: 'Join', version: PROTOCOL_VERSION, name: `p${i}` }));
+    pair.b.send(encodeMessage({ kind: 'Join', version: PROTOCOL_VERSION, name: `p${i}`, room: '' }));
     pair.pump();
     // Everyone moving: the worst realistic case for delta size.
     pair.b.send(

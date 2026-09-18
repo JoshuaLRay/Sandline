@@ -158,9 +158,13 @@ export class BotClient {
     return this.reconciles === 0 ? 0 : (this.predictor?.corrections ?? 0) / this.reconciles;
   }
 
-  join(): void {
+  /** The room the host seated us in, from the JoinAck. */
+  room = '';
+
+  /** Handshake. An empty room asks the host to make one (T-1.5.04). */
+  join(room = ''): void {
     this.transport.send(
-      encodeMessage({ kind: 'Join', version: PROTOCOL_VERSION, name: this.options.name }),
+      encodeMessage({ kind: 'Join', version: PROTOCOL_VERSION, name: this.options.name, room }),
     );
   }
 
@@ -212,6 +216,7 @@ export class BotClient {
     switch (msg.kind) {
       case 'JoinAck':
         this.netId = msg.netId;
+        this.room = msg.room;
         this.joinedFlag = true;
         // The predictor is NOT created here. JoinAck does not say where we
         // spawned, and assuming the origin guarantees a large bogus correction

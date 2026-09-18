@@ -66,3 +66,7 @@ Format: `T-<id> — <what changed>`
 - T-2.01 - Camera solve lifted out of the render loop, into a testable module.
 - T-1.5.01 - Session host process: `pnpm host` serves the real Session over a WebSocket, with per-connection link conditioning and `pnpm bot --url`.
 - T-1.5.02 - Client joins a real host with `?host=ws://…`; two tabs share one session. Fixed a slot reused by a new client keeping the old occupant's input tick, which silently discarded every input from the newcomer.
+- T-1.5.04 - Protocol v6: `Join` carries a room code, `JoinAck` the room landed in, `Disconnect` a typed code; `Roster` message; voice-safe room codes. A v5 client is rejected on version, not on room.
+- T-1.5.05 - Room registry: one host holds many sessions, each on its own tick clock; empty rooms reclaimed after a grace; room, connection and process caps reject rather than degrade; `/healthz`.
+- T-1.5.06 - Lobby: host a room or join a code from the page, six-row squad panel, leave, share link; `?host=`/`?room=` pre-fill rather than bypass; default host baked in from `SANDLINE_HOST`.
+- T-1.5.07 - Host container, Fly config with TLS at the edge and auto-stop, deploy workflow, `DEPLOYING.md` deploy and teardown. The deploy itself needs an account and is documented, not run.

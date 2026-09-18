@@ -14,6 +14,7 @@
  *
  *   pnpm host
  *   LINK_LATENCY_MS=100 LINK_JITTER_MS=20 LINK_LOSS=0.05 pnpm host
+ *   MAX_ROOMS=4 ROOM_GRACE_MS=60000 pnpm host      # T-1.5.05: rooms per process, reclaim grace
  */
 import { SessionHost, hostBanner, linkFromEnv } from './session/SessionHost.ts';
 import { loadConfig } from './config.ts';
@@ -23,17 +24,27 @@ const config = loadConfig();
 const log = createLogger(config.logLevel);
 
 const link = linkFromEnv();
-const host = new SessionHost({ port: config.port, log, link });
+const host = new SessionHost({
+  port: config.port,
+  log,
+  link,
+  registry: { maxRooms: config.maxRooms, graceMs: config.roomGraceMs },
+});
 const port = await host.start();
 
-log.info('host ready', hostBanner(port, link));
+log.info('host ready', {
+  ...hostBanner(port, link),
+  maxRooms: config.maxRooms,
+  roomGraceMs: config.roomGraceMs,
+  health: `http://localhost:${port}/healthz`,
+});
 
 let stopping = false;
 async function shutdown(signal: string): Promise<void> {
   if (stopping) return;
   stopping = true;
   // `stats` already carries the tick, plus what the session actually did.
-  log.info('shutting down', { signal, ...host.session.stats });
+  log.info('shutting down', { signal, ...host.registry.stats });
   await host.stop(`host ${signal}`);
   process.exit(0);
 }

@@ -34,6 +34,14 @@
  * and stays behind. The simulation's story remains internally consistent, which
  * is the property that matters.
  *
+ * ROOMS (T-1.5.05). The host no longer holds one session; it holds a
+ * `Registry` of them. A socket is handshaked HERE, by a connection whose only
+ * job is to find out which room the client wants, and is then handed to that
+ * room's session (`Session.admit`), which takes over every event from there.
+ * An empty code makes a room; a code names one. Both refusals the registry
+ * can produce — `no such room`, `host full` — are typed (T-1.5.04), so the
+ * lobby can say which happened.
+ *
  * TESTABILITY. `now` is injectable and the tick timer is optional, so every
  * test below drives the host by hand with no timers and no sockets — the same
  * rule `Session` and `ServerConnection` already follow.
@@ -44,11 +52,13 @@ import {
   Clock,
   MAX_SLOTS,
   NetSim,
+  PROTOCOL_VERSION,
+  ServerConnection,
   TICK_HZ,
   TICK_SECONDS,
   type Transport,
 } from '@sandline/shared';
-import { Session } from './Session.ts';
+import { Registry, type RegistryOptions, type Room } from './Registry.ts';
 import { type WsServerHandle, startWsServer } from '../net/WsTransport.ts';
 import type { Logger } from '../log.ts';
 
@@ -214,30 +224,51 @@ export interface SessionHostOptions {
   now?: () => number;
   /** False drives the tick loop by hand — every test does. Default true. */
   autoTick?: boolean;
+  /** Rooms per process, reclaim grace, code seed. See `Registry`. */
+  registry?: RegistryOptions;
+  /**
+   * Sockets this process will hold at once, seated or not. The rooms cap
+   * bounds the seated ones; this bounds the rest — a flood of connections that
+   * never handshake would otherwise cost a heartbeat timeout each. Defaults to
+   * every seat in every room plus a handful for handshakes in flight.
+   */
+  maxConnections?: number;
 }
 
 export class SessionHost {
-  readonly session: Session;
+  readonly registry: Registry;
   private readonly log: Logger;
   private readonly link: LinkConditions | null;
   private readonly now: () => number;
   private readonly autoTick: boolean;
   private readonly clock = new Clock();
   private readonly conditioned = new Set<ConditionedTransport>();
+  /** Handshaking, not yet in a room. Timed out here; rooms time out their own. */
+  private readonly pending = new Set<ServerConnection>();
+  private readonly maxConnections: number;
+  private connections = 0;
   private handle: WsServerHandle | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private simTimeMs = 0;
   private lastReal = 0;
   private reportedDrops = 0;
+  private draining = false;
   /** Distinct per connection, so one client's loss pattern is its own. */
   private nextSeed = 0x5eed;
 
   constructor(private readonly options: SessionHostOptions) {
-    this.session = new Session();
     this.log = options.log;
     this.link = options.link ?? null;
     this.now = options.now ?? (() => performance.now());
     this.autoTick = options.autoTick ?? true;
+    this.registry = new Registry({
+      ...options.registry,
+      onReclaim: (room, why) => {
+        this.log.info('room reclaimed', { room: room.code, why, tick: room.session.tick });
+        options.registry?.onReclaim?.(room, why);
+      },
+    });
+    this.maxConnections = options.maxConnections ?? this.registry.maxRooms * MAX_SLOTS + 8;
   }
 
   /** Open the socket and start ticking. Resolves with the bound port. */
@@ -245,6 +276,12 @@ export class SessionHost {
     this.handle = await startWsServer({
       port: this.options.port,
       onConnection: (transport) => this.accept(transport),
+      onRequest: (req, res) => this.serveHttp(req.url ?? '/', res),
+      shouldAccept: () => {
+        if (this.draining) return 'host draining';
+        if (this.connections >= this.maxConnections) return 'host full';
+        return null;
+      },
     });
     this.lastReal = this.now();
     if (this.autoTick) {
@@ -261,13 +298,50 @@ export class SessionHost {
   }
 
   /**
-   * Attach a transport to the session.
+   * What a platform's health check and a curious person both get (T-1.5.07).
+   *
+   * Plain JSON, no secrets: room count, players, and the protocol version so a
+   * "why can't I join" can be answered from a browser tab without reading the
+   * host's log. Room CODES are deliberately absent — listing them would make
+   * every room joinable by anyone who found the URL.
+   */
+  private serveHttp(url: string, res: { statusCode: number; setHeader(k: string, v: string): void; end(b?: string): void }): void {
+    if (url === '/healthz' || url === '/health' || url === '/') {
+      res.statusCode = this.draining ? 503 : 200;
+      res.setHeader('content-type', 'application/json');
+      res.setHeader('cache-control', 'no-store');
+      res.end(JSON.stringify(this.health()));
+      return;
+    }
+    res.statusCode = 404;
+    res.end();
+  }
+
+  health(): Record<string, unknown> {
+    return {
+      ok: !this.draining,
+      protocol: PROTOCOL_VERSION,
+      ...this.registry.stats,
+      connections: this.connections,
+      maxConnections: this.maxConnections,
+      link: this.link ? hostBanner(0, this.link).link : 'raw socket',
+    };
+  }
+
+  /**
+   * Attach a transport and start its handshake.
    *
    * Public because it is the seam every test uses: hand it a loopback transport
-   * and the entire host — slot assignment, conditioning, heartbeat timeout,
-   * shutdown — is exercised with no sockets, no ports and no timing races.
+   * and the entire host — routing, conditioning, heartbeat timeout, shutdown —
+   * is exercised with no sockets, no ports and no timing races.
    */
   accept(transport: Transport): void {
+    if (this.connections >= this.maxConnections) {
+      // The socket layer refuses before the upgrade; this is the loopback path
+      // and the belt to that brace.
+      transport.close('host full');
+      return;
+    }
     let attached = transport;
     if (this.link) {
       const conditioned = new ConditionedTransport(
@@ -280,11 +354,69 @@ export class SessionHost {
       conditioned.onClose(() => this.conditioned.delete(conditioned));
       attached = conditioned;
     }
-    const conn = this.session.addConnection(attached, this.simTimeMs);
-    this.log.info('connection opened', { tick: this.session.tick, conditioned: this.link !== null });
-    attached.onClose((reason) =>
-      this.log.info('connection closed', { reason, slot: conn.slot, netId: conn.netId }),
+    this.connections += 1;
+    const conn = new ServerConnection(
+      attached,
+      {
+        onJoined: (c) => this.route(c),
+        onClosed: (c) => this.pending.delete(c),
+      },
+      this.simTimeMs,
     );
+    this.pending.add(conn);
+    attached.onClose((reason) => {
+      this.connections -= 1;
+      this.log.info('connection closed', {
+        reason,
+        room: conn.room,
+        slot: conn.slot,
+        netId: conn.netId,
+      });
+    });
+    this.log.info('connection opened', { conditioned: this.link !== null, open: this.connections });
+  }
+
+  /**
+   * The handshake passed; put the connection where it asked to go.
+   *
+   * `conn.room` is the CLIENT'S request — empty for "make me one" — and is
+   * overwritten with the room it actually landed in so the close log reads
+   * the truth. Every failure here is a typed rejection (T-1.5.04): the client
+   * shows which, and the lobby chooses between "check the code" and "try a
+   * code instead of a new room" on the strength of it.
+   */
+  private route(conn: ServerConnection): void {
+    this.pending.delete(conn);
+    if (this.draining) {
+      conn.reject('host draining');
+      return;
+    }
+    let room: Room | undefined;
+    if (conn.room === '') {
+      const made = this.registry.create(this.now());
+      if (!made) {
+        conn.reject('host full', `this host holds ${this.registry.maxRooms} rooms and all are in use`);
+        return;
+      }
+      room = made;
+    } else {
+      room = this.registry.get(conn.room);
+      if (!room) {
+        conn.reject('no such room', `no room ${conn.room} on this host`);
+        return;
+      }
+    }
+    conn.room = room.code;
+    // The room's clock, not the host's: see `ServerConnection.resetClock`.
+    conn.resetClock(room.simTimeMs);
+    const seated = room.session.admit(conn);
+    this.registry.noteOccupancy(room, this.now());
+    this.log.info(seated ? 'player seated' : 'player refused', {
+      room: room.code,
+      name: conn.name,
+      slot: conn.slot,
+      players: room.session.players,
+    });
   }
 
   /**
@@ -301,17 +433,21 @@ export class SessionHost {
 
     /**
      * Note what this makes the heartbeat timeout measure: SIMULATION time, not
-     * wall time, because that is the clock `Session.step` hands each
-     * connection. Under a stall the two diverge and clients get proportionally
-     * longer to answer. That is the behaviour worth having — a host that GC'd
-     * for six seconds should not come back and drop every player for going
-     * quiet during it.
+     * wall time, because that is the clock each room's `Session.step` hands
+     * its connections. Under a stall the two diverge and clients get
+     * proportionally longer to answer. That is the behaviour worth having — a
+     * host that GC'd for six seconds should not come back and drop every
+     * player for going quiet during it.
      */
     const steps = this.clock.advance((real - this.lastReal) / 1000);
     this.lastReal = real;
     for (let i = 0; i < steps; i++) {
       this.simTimeMs += TICK_MS;
-      this.session.step(this.simTimeMs);
+      for (const conn of [...this.pending]) {
+        conn.setNow(this.simTimeMs);
+        if (conn.isTimedOut(this.simTimeMs)) conn.reject('heartbeat timeout', 'no Join received');
+      }
+      this.registry.step(real);
     }
 
     if (steps > 0) for (const c of this.conditioned) c.pump(real);
@@ -319,13 +455,13 @@ export class SessionHost {
     if (this.clock.dropped > this.reportedDrops) {
       this.log.warn('tick backlog dropped', {
         dropped: this.clock.dropped - this.reportedDrops,
-        tick: this.session.tick,
+        tick: Math.round(this.simTimeMs / TICK_MS),
       });
       this.reportedDrops = this.clock.dropped;
     }
   }
 
-  /** Simulation time at the newest tick, in ms. The session's own clock. */
+  /** Host simulation time, in ms: ticks since boot. Rooms keep their own. */
   get serverTimeMs(): number {
     return this.simTimeMs;
   }
@@ -334,21 +470,28 @@ export class SessionHost {
     return this.handle?.port ?? null;
   }
 
+  /** Sockets held right now, seated or handshaking. */
+  get openConnections(): number {
+    return this.connections;
+  }
+
   /**
    * Say goodbye, then close.
    *
-   * `Session.close` sends every connection a `Disconnect` carrying the reason,
-   * which is the difference between a client showing "the host shut down" and a
-   * client silently retrying a server that is never coming back. It happens
-   * before the listening socket closes, because after that there is nothing to
-   * send it down.
+   * Every room's `Session.close` sends its connections a `Disconnect` carrying
+   * the reason, which is the difference between a client showing "the host
+   * shut down" and a client silently retrying a server that is never coming
+   * back. It happens before the listening socket closes, because after that
+   * there is nothing to send it down. Anyone mid-handshake is told the same.
    */
   async stop(reason = 'host shutting down'): Promise<void> {
+    this.draining = true;
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
     }
-    this.session.close(reason);
+    for (const conn of [...this.pending]) conn.reject('host draining', reason);
+    this.registry.close(reason);
     await this.handle?.close();
     this.handle = null;
   }

@@ -1,6 +1,7 @@
 # Handoff — M1.5: two humans, one session
 
-**Written 2026-09-18, after T-1.5.01 and T-1.5.02 landed.**
+**Written 2026-09-18, after T-1.5.01 and T-1.5.02 landed. Updated the same day
+after T-1.5.04 through T-1.5.07 landed — see §2 and §3, which changed most.**
 
 For whoever picks this up next, agent or person. It covers two things: **how to
 get two people into one session today**, and **what is left to build**, with the
@@ -41,10 +42,10 @@ anyone joins a game.
 | T-1.5.01 — session host process | **done** | `pnpm host` serves the real `Session` over a WebSocket; `pnpm bot --url` drives bots at it |
 | T-1.5.02 — client joins a remote host | **done** | `?host=ws://…` puts two browsers in one session |
 | T-1.5.03 — 🧍 LAN two-human gate | **open** | needs two people, nothing left to build |
-| T-1.5.04 — join codes, typed rejections | **open** | protocol v5 → v6 |
-| T-1.5.05 — room registry | **open** | one process, many sessions |
-| T-1.5.06 — lobby | **open** | the thing this handoff is really about |
-| T-1.5.07 — one deployed host | **open** | **hard dependency** of the goal above, see §4 |
+| T-1.5.04 — join codes, typed rejections | **done** | protocol v6: room in `Join`/`JoinAck`, typed `Disconnect`, `Roster` |
+| T-1.5.05 — room registry | **done** | one process, many sessions, each on its own clock; reclaim; caps; `/healthz` |
+| T-1.5.06 — lobby | **done** | host / join / practise from the page; six-row squad panel; leave; share link |
+| T-1.5.07 — one deployed host | **built, not deployed** | Dockerfile, `fly.toml`, Host workflow, `DEPLOYING.md`; needs an account — see §4 |
 | T-1.5.08 — 🧍 remote two-human gate | **open** | closes R2 |
 
 Measured at the end of T-1.5.02, two bots × 600 ticks on localhost:
@@ -59,38 +60,63 @@ the 13.5 mm quantization floor. Nothing in the netcode was depending on the
 loopback pair. Re-run both after any netcode change; a **divergence between the
 two numbers** is the signal, not either number alone.
 
+Re-measured after T-1.5.05 put the session behind a room registry: the same
+`0.0116 m`, `0` corrections, `0` unmatched, both ways. Routing changed nothing
+the netcode could feel. A headless browser driven through the lobby reconciles
+at `0.008 m` while moving — near the floor, not zero (§6).
+
 ---
 
 ## 3. Joining a server today
 
-Until the lobby exists, this is the only way, and it is what T-1.5.03 will be
-run with.
+Since T-1.5.06 the lobby is the only way in, and `?host=` only pre-fills it.
 
 ### Two windows on one machine
 
 ```bash
-pnpm host                             # terminal 1 — logs "host ready", port 8080
-pnpm --filter @sandline/client dev    # terminal 2 — serves localhost:5173
+pnpm host                                                      # terminal 1 — logs "host ready", port 8080
+SANDLINE_HOST=ws://localhost:8080 pnpm --filter @sandline/client dev   # terminal 2 — lobby pre-filled
 ```
 
-Open `http://localhost:5173/?host=ws://localhost:8080` in two browser windows.
-Each HUD's top line should read `joined — slot 1 of 6` and `joined — slot 2 of 6`.
+Open `http://localhost:5173/` in two browser windows. In one, **Host a room**;
+its squad panel shows a four-character code and the URL becomes `?room=XXXX`.
+In the other, type the code and **Join** — or paste the link from **Copy
+link**. Both squad panels read two humans and four bots; the HUD's top line
+reads `joined — slot 1 of 6` and `joined — slot 2 of 6`.
 
-**There is nothing to coordinate.** The host process holds exactly one session,
-so everyone who connects is in it. Room codes only start to matter at T-1.5.05,
-when one process begins holding several.
+Without `SANDLINE_HOST`, type `ws://localhost:8080` into the host field. Codes
+are case-insensitive and ignore spaces and hyphens.
 
 ### Two machines on a LAN
 
 ```bash
 pnpm host
-pnpm --filter @sandline/client dev -- --host   # without --host, vite binds localhost only
+SANDLINE_HOST=ws://192.168.x.x:8080 pnpm --filter @sandline/client dev -- --host
 ```
 
-Vite then prints a `192.168.x.x` address. Both people open
-`http://192.168.x.x:5173/?host=ws://192.168.x.x:8080` — the **host machine's**
-address in both places, never `localhost`, which would point the second machine
-at itself.
+Vite prints a `192.168.x.x` address; both people open it. The host field must
+carry the **host machine's** address, never `localhost`, which would point the
+second machine at itself. `--host` is required or vite binds localhost only.
+
+### The published site
+
+Needs the deployed host from T-1.5.07 — an https page will not open `ws://`.
+Once `SANDLINE_HOST` is set as a repository variable and Pages has rebuilt, the
+lobby at https://joshualray.github.io/Sandline/ has the address filled in and
+the flow is the same: host, read the code aloud, join.
+
+### Rooms
+
+One host process holds up to `MAX_ROOMS` (default 8, the Fly config says 4).
+A room with nobody in it lives `ROOM_GRACE_MS` (default two minutes) and is
+then reclaimed; a player whose connection drops and comes back inside that
+window lands in the same room, because the client re-joins the code it was
+given rather than asking for a new one. `curl localhost:8080/healthz` shows
+rooms, players and the protocol version.
+
+`pnpm bot --url ws://localhost:8080 --room XXXX --count 1 --ticks 600` puts a
+bot into a room people are in, which is the cheapest way to see a moving
+remote without a second human.
 
 ### Link conditions
 
@@ -112,116 +138,80 @@ one TCP socket (ADR-008). `SessionHost.ts` has the full reasoning.
    game. A firewall allowing one and not the other gives you a page that loads
    and never joins — the HUD sits on `connecting...` and it looks like a netcode
    bug.
-2. **Not from the published QA site.** It is https, and browsers refuse `ws://`
-   from an https page. The client says so in a red banner rather than letting it
-   look like a dead host, but the fix is T-1.5.07, not a workaround.
+2. **Not from the published QA site without the deployed host.** It is https,
+   and browsers refuse `ws://` from an https page. The lobby says so rather than
+   letting it look like a dead host.
 3. **Positions persist across joins.** A slot keeps whatever position its last
-   occupant left it at (ADR-001's entity swap). Restart `pnpm host` to put
+   occupant left it at (ADR-001's entity swap). Host a fresh room to put
    everyone back on the spawn line. This repeatedly made two test clients appear
    25 m apart when they were expected to be adjacent.
 4. **The movement panel is prediction-only on a remote host.** The host owns the
    authoritative `MoveConfig`; the client's copy only predicts. Tuning against a
-   remote host mispredicts every tick. Tune on the in-page session.
+   remote host mispredicts every tick. Tune on the in-page session ("Practise
+   here" in the lobby).
 
 ---
 
 ## 4. What has to be true before the QA site can do it
 
-The dependency chain, and the part that is easy to miss:
+Everything in the chain below is built. What is left is an account:
 
 ```
-T-1.5.04 (join codes on the wire)
+T-1.5.04 (join codes on the wire)         done
         ↓
-T-1.5.05 (many rooms in one process)
+T-1.5.05 (many rooms in one process)      done
         ↓
-T-1.5.06 (lobby UI)  ──┐
+T-1.5.06 (lobby UI)  ──┐                  done
                         ├──→ the goal in §1
-T-1.5.07 (wss:// host) ─┘
+T-1.5.07 (wss:// host) ─┘                 built; not deployed
 ```
 
-**The lobby alone does not get there.** A perfect lobby on the published site
-still cannot open a socket, because the page is https and any host without TLS
-is `ws://`. T-1.5.07 is not a follow-on polish task; it is half the goal.
+**Deploying is a person's job, once.** `docs/DEPLOYING.md` has the exact
+commands: `fly launch`, `fly deploy --ha=false`, set the `SANDLINE_HOST`
+repository variable to `wss://<app>.fly.dev`, let Pages rebuild. From then on
+the Host workflow redeploys on pushes that touch the host, if a `FLY_API_TOKEN`
+secret is set, and skips itself with a notice if not. The container was
+validated by replaying the Dockerfile's steps and booting the result — the
+image itself has not been built on a Docker daemon in this environment.
 
-Two consequences worth deciding early rather than discovering:
+Two things decided rather than left to discover:
 
-- **The build needs a default host.** The lobby should not ask a playtester for
-  an address. Bake the deployed host into the build (T-1.5.07 says so), and let
-  the UI override it for a LAN or a local process.
+- **The build carries a default host.** `SANDLINE_HOST` at build time becomes
+  the lobby's pre-filled address; unset, the lobby says there is none and the
+  in-page session still works. The UI overrides it for a LAN or a local process.
 - **A public host is a public attack surface** with no accounts and a cost meter
-  running — R12 in the risk register, arriving ~30 weeks earlier than the plan
-  assumed. Room codes, connection caps, one small instance, and take it down
-  between playtests. Real authentication is E-4.6 and nothing before it should
-  pretend otherwise.
+  running — R12, ~30 weeks early. What is in place: room codes required to
+  join (no listing anywhere, `/healthz` never shows them), `MAX_ROOMS` and a
+  connection cap that refuse rather than degrade, the smallest Fly machine,
+  and a machine that stops itself when the last socket closes and can be
+  pinned down with `fly scale count 0`. Real authentication is E-4.6 and
+  nothing before it should pretend otherwise.
 
 ---
 
 ## 5. The remaining tasks
 
-`PLAN.md` §6A has the full specs. This is what has been learned since.
+`PLAN.md` §6A has the full specs. Two 🧍 gates and one deploy remain.
 
 ### T-1.5.03 — 🧍 LAN two-human gate
 
 Nothing left to build. Two people, two machines, one host, per §3.
 
-**Recommendation: run this before building the lobby.** The gate judges *feel*
-under lag — two players contesting a doorway, trading shots inside the same
-rewind window, whether "I shot first" resolves in a way both people accept. How
-you joined is irrelevant to that verdict, and a bad verdict sends the project
-back to ADR-012 and changes what is worth building next. It is one sitting;
-the lobby is three tasks.
+**Recommendation: run this before deploying.** The gate judges *feel* under lag
+— two players contesting a doorway, trading shots inside the same rewind
+window, whether "I shot first" resolves in a way both people accept. How you
+joined is irrelevant to that verdict, and a bad verdict sends the project back
+to ADR-012 and changes what is worth building next.
 
-Write the verdict into `docs/playtests/m1.5-lan.md`. State what a LAN leaves
-unproven: NAT, internet jitter distributions, routing, and any latency a slider
-did not put there.
+Write the verdict into `docs/playtests/m1.5-lan.md`, beside `m1.md` (T-1.24's
+verdict, which now exists). State what a LAN leaves unproven: NAT, internet
+jitter distributions, routing, and any latency a slider did not put there.
 
-> Note: `docs/playtests/` does not exist yet, and neither does `m1.md` — **M1's
-> own gate T-1.24 has not been written down.** A gate whose result lives only in
-> a conversation is not a gate (`PLAN.md` §10).
+### T-1.5.07 — one deployed host: the deploy itself
 
-### T-1.5.04 — join codes and typed rejections
-
-Protocol v5 → v6. `Join` carries a room code, `JoinAck` carries the room, and
-the handshake's single free-text reason becomes a typed rejection.
-
-The reasons matter more than they look. `NetClient` **discarded the `Disconnect`
-message entirely** until T-1.5.02 — harmless on a loopback pair where the only
-sender was the same page, and the difference between "the session is full",
-"the host went away" and "your build is too old" on a real socket. Three
-situations, three different responses, identical from a frozen screen. It now
-surfaces them; keep it that way.
-
-Generate codes from an alphabet without visually confusable characters. They get
-read aloud over voice.
-
-### T-1.5.05 — room registry
-
-One process, many sessions. The reclaim policy is the judgement call: a bot-only
-session still costs a full 30 Hz tick loop and should not outlive the people in
-it, but reclaiming the instant someone's wifi drops loses their game.
-
-`packages/server/src/session/` is already named "room, tick loop, player slots"
-in `PLAN.md` §3. This is the room half, which has never existed.
-
-### T-1.5.06 — lobby
-
-See the amendment under the task in `PLAN.md` §6A. The short version: the lobby
-owns the host address as well as the room code, and `?host=` pre-fills it rather
-than bypassing it — two entry points means only one of them gets tested.
-
-The roster is **six rows, always**, human or bot per row. A lobby that shows
-"2 players" teaches everyone the wrong model of the game, and ADR-001 is the
-whole thesis being demonstrated.
-
-Out of scope and staying that way: matchmaking, parties, region selection,
-ready-checks, class selection. E-4.5 and E-4.7.
-
-### T-1.5.07 — one deployed host
-
-One region, one process, no orchestration. **TLS is the task**, not a detail —
-see §4.
-
-`docs/DEPLOYING.md` must document teardown as well as deploy (R12).
+`docs/DEPLOYING.md`, "The deployed host". Twenty minutes with a Fly account.
+Its own acceptance — two people on different networks, the host surviving both
+leaving and a third joining — is what T-1.5.08 does anyway.
 
 ### T-1.5.08 — 🧍 remote two-human gate
 
@@ -232,6 +222,14 @@ Where they disagree, **the real link is right and the model needs revisiting**.
 
 Carries the same stop rule as T-1.24: if it fails, go back to ADR-012 before M2
 continues. R2 closes here.
+
+### What T-1.5.04–07 deliberately left out
+
+Matchmaking, parties, region selection, ready-checks, class selection (E-4.5,
+E-4.7). Reconnecting to the *same slot* after a drop — a returning player gets
+a new slot in the same room (ADR-011's reconnect is not this milestone). A
+bundled server image — it runs from source through tsx, the same files
+`pnpm host` runs. Multi-region, allocation, autoscaling (E-4.9).
 
 ---
 
@@ -279,13 +277,25 @@ Both are written up in `SessionHost.ts`; repeated here because they cost real ti
   turns a clean shutdown into a silent vanish, which a client's reconnect backoff
   then chases for six attempts.
 
-### A stale build artifact, not yet cleaned up
+### Rooms, and the clock trap that came with them
 
-`packages/server/src/session/Session.d.ts` and its `.d.ts.map` are committed
-build artifacts describing a long-obsolete `Session` (no weapons, no health).
-They are inert today because the package exports resolve to the `.ts`, but a
-stale `.d.ts` beside its source is a trap. Deleting them is a two-line change
-nobody has owned yet.
+Each room runs on **its own simulation clock, from zero**. Lag compensation
+rewinds by `nowMs - renderTimeMs`, and the client computes `renderTimeMs` from
+the ticks it has seen (`tick x 33.3 ms`). A room created ten minutes into the
+host's life and stepped on the host's clock would have every shot ask for a
+ten-minute rewind, clamped to 200 ms, resolving against the oldest history
+there is — accurate-looking, and wrong for every player in every room but the
+first. `Registry.step` advances each room by exactly one tick of its own time;
+`SessionHost.route` restarts a joining connection's heartbeat clock on the
+room's time (`ServerConnection.resetClock`), or `now - lastHeard` goes negative
+and the peer can never time out. Both are tested; both are easy to undo by
+"simplifying" the clocks into one.
+
+### The stale build artifact is gone
+
+`packages/server/src/session/Session.d.ts` and its map were deleted in the
+T-1.5.04–07 change. `.gitignore` already covered `dist/`; nothing regenerates
+them beside the source.
 
 ### Verifying without a second human
 
@@ -310,7 +320,12 @@ What the first attempts got wrong, so you do not repeat them:
   socket and read `observer.store.current.entities` — that is the authoritative
   world every browser is subscribed to, so "did B actually move / take damage"
   is answerable without trusting either browser's rendering. Roughly 20 lines.
-  Worth promoting to `packages/tools/` if T-1.5.06 needs it again.
+  Worth promoting to `packages/tools/` if it is needed a third time.
+- **The lobby is scriptable.** `#lobby input[maxlength="32"]` is the name,
+  `input.lobby-code` the code, the buttons are found by text. After a join,
+  `.squad-code b` holds the room code and `#panel-squad .squad-list li` the six
+  rows. T-1.5.06 was verified this way: two pages host and join, a third is
+  refused with the typed reason, one leaves and the other's row flips to bot.
 
 Headless rendering in a container runs at 8–16 fps, which inflates measured RTT
 (pings are processed on the frame loop). Do not read latency numbers off a
@@ -322,7 +337,7 @@ headless run; read them off a real browser.
 
 From `PLAN.md` §0.3, and they apply to every task above:
 
-1. `pnpm verify` must pass. **387 tests** as of T-1.5.02.
+1. `pnpm verify` must pass. **425 tests** as of T-1.5.07.
 2. Tests ship with the code. Netcode changes need a headless test.
 3. No new runtime dependency without an ADR line. (T-1.5.01 added none —
    `pnpm bot --url` uses Node 22's own global `WebSocket`.)

@@ -22,7 +22,7 @@
  * are the same picture. On a socket they are different faults, so the phase
  * below is surfaced in the HUD rather than inferred from a frozen screen.
  */
-import type { Transport } from '@sandline/shared';
+import { type DisconnectCode, type Transport, isRoomCode, normalizeRoomCode } from '@sandline/shared';
 import { WsClientTransport } from './WsTransport.ts';
 
 /**
@@ -62,47 +62,121 @@ export interface ConnectionStatus {
   /**
    * What the host said, when it said anything.
    *
-   * The difference between "session full" and "the socket died" is the
+   * The difference between "room full" and "the socket died" is the
    * difference between a player waiting and a player reloading, and only the
    * host knows which it was.
    */
   reason: string | null;
+  /** The typed half of the host's reason (T-1.5.04), when it gave one. */
+  code: DisconnectCode | null;
 }
 
 /** `ws://` and `wss://` only, and mixed content named rather than discovered. */
 export class HostUrlError extends Error {}
 
 /**
- * Read `?host=` out of a query string.
+ * Check a host address the way the browser will, but with words.
  *
- * Returns null for the in-page session, which stays the default: the published
- * build has no host to point at, and a harness that failed to start because a
- * server was missing would be a worse harness than the one this replaces.
+ * Catches mixed content here rather than letting the browser refuse it. An
+ * https page cannot open a ws:// socket. The browser blocks it with a console
+ * message and an immediate close event, which reaches this code as an ordinary
+ * connection failure and reads as "the host is down" — so the first thing
+ * anyone does is go and check a host that is running perfectly. It is the
+ * single most likely way T-1.5.07 gets misdiagnosed, and it costs one line to
+ * name instead.
  */
-export function hostFromQuery(search: string, pageProtocol = 'http:'): string | null {
-  const raw = new URLSearchParams(search).get('host');
-  if (raw === null || raw.trim() === '') return null;
+export function parseHostUrl(raw: string, pageProtocol = 'http:'): string {
   const url = raw.trim();
-
   if (!/^wss?:\/\//.test(url)) {
     throw new HostUrlError(`host must start with ws:// or wss://, got '${url}'`);
   }
-  /**
-   * Catch mixed content here rather than letting the browser refuse it.
-   *
-   * An https page cannot open a ws:// socket. The browser blocks it with a
-   * console message and an immediate close event, which reaches this code as an
-   * ordinary connection failure and reads as "the host is down" — so the first
-   * thing anyone does is go and check a host that is running perfectly. It is
-   * the single most likely way T-1.5.07 gets misdiagnosed, and it costs one
-   * line to name instead.
-   */
   if (pageProtocol === 'https:' && url.startsWith('ws://')) {
     throw new HostUrlError(
       `this page is served over https, so it cannot open an insecure ws:// socket — use wss://${url.slice(5)}`,
     );
   }
   return url;
+}
+
+/**
+ * Read `?host=` out of a query string.
+ *
+ * Returns null when absent. Since T-1.5.06 this PRE-FILLS the lobby rather
+ * than bypassing it: the query parameter is a developer convenience and the
+ * shareable link's carrier, and there is exactly one way into a session.
+ */
+export function hostFromQuery(search: string, pageProtocol = 'http:'): string | null {
+  const raw = new URLSearchParams(search).get('host');
+  if (raw === null || raw.trim() === '') return null;
+  return parseHostUrl(raw, pageProtocol);
+}
+
+/** Read `?room=` out of a query string, normalised. Empty when absent. */
+export function roomFromQuery(search: string): string {
+  const raw = new URLSearchParams(search).get('room');
+  return raw === null ? '' : normalizeRoomCode(raw);
+}
+
+/**
+ * The link one player sends another (T-1.5.06).
+ *
+ * The host is left out when it is the build's default, so the common case is
+ * `?room=K7PM` and nothing else — short enough to read aloud as well as paste.
+ */
+export function shareLink(pageUrl: string, host: string, room: string, defaultHost: string): string {
+  const url = new URL(pageUrl);
+  url.search = '';
+  url.hash = '';
+  if (room !== '') url.searchParams.set('room', room);
+  if (host !== defaultHost) url.searchParams.set('host', host);
+  return url.toString();
+}
+
+/**
+ * A room code as typed by a person, or a reason it cannot be one.
+ *
+ * Empty is valid and means "host a new room" — the lobby's two buttons send
+ * the same message with and without a code (T-1.5.04).
+ */
+export function checkRoomInput(raw: string): { room: string; error: string | null } {
+  const room = normalizeRoomCode(raw);
+  if (room === '') return { room, error: null };
+  if (!isRoomCode(room)) {
+    return {
+      room,
+      error: `'${room}' is not a room code — codes are four characters and never use I, O, 0, 1, S, 5, B, 8, Z or 2`,
+    };
+  }
+  return { room, error: null };
+}
+
+/**
+ * What to tell a person about a typed rejection, and what they can do.
+ *
+ * The code is the host's; the sentence is ours. Each one names a different
+ * next action, which is the whole reason the reasons are typed.
+ */
+export function explainRejection(code: DisconnectCode | null, reason: string | null): string {
+  switch (code) {
+    case 'bad version':
+      return 'this build is older than the host — reload the page to get the current one';
+    case 'no such room':
+      return 'no room with that code on this host — check the code, or host a new room';
+    case 'room full':
+      return 'that room already has six players';
+    case 'host full':
+      return 'the host has as many rooms as it will hold — join a code instead of hosting';
+    case 'host draining':
+      return 'the host is shutting down — try again in a moment';
+    case 'heartbeat timeout':
+      return 'the host stopped hearing from you';
+    case 'left':
+      return 'you left';
+    case 'protocol error':
+    case 'other':
+    case null:
+      return reason ?? 'the host closed the connection';
+  }
 }
 
 export interface RemoteServerOptions {
@@ -119,6 +193,7 @@ export class RemoteServer implements SessionSource {
     attempt: 0,
     delayMs: 0,
     reason: null,
+    code: null,
   };
   private opened = false;
   private ready: (() => void) | null = null;
@@ -169,11 +244,26 @@ export class RemoteServer implements SessionSource {
     if (this.opened) handler();
   }
 
-  /** The host told us why it is closing the door. */
-  noteReason(reason: string): void {
+  /**
+   * The host told us why it is closing the door.
+   *
+   * A refusal is terminal: the retry would be refused identically, and six
+   * attempts of it would read to the host as a client hammering a full room.
+   * Closing the transport here is what stops the backoff.
+   */
+  noteRefusal(code: DisconnectCode, reason: string): void {
     this.status.reason = reason;
-    // A refusal is terminal: the retry would be refused identically.
+    this.status.code = code;
     this.status.phase = 'failed';
+    this.transport.close(reason);
+  }
+
+  /** Leave on purpose: no retry, no reason to show. */
+  close(): void {
+    this.status.phase = 'failed';
+    this.status.code ??= 'left';
+    this.status.reason ??= 'left';
+    this.transport.close('left');
   }
 
   markJoined(): void {
@@ -198,7 +288,7 @@ export function describeStatus(status: ConnectionStatus, slot: number): string {
     case 'retrying':
       return `reconnecting — attempt ${status.attempt} in ${(status.delayMs / 1000).toFixed(1)}s`;
     case 'failed':
-      return `disconnected — ${status.reason ?? 'gave up reconnecting'}`;
+      return `disconnected — ${status.code ? explainRejection(status.code, status.reason) : (status.reason ?? 'gave up reconnecting')}`;
     default:
       return status.reason === null ? 'connecting...' : `connecting... (${status.reason})`;
   }

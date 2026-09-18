@@ -9,9 +9,49 @@
 import { BitReader, BitWriter } from './BitStream.ts';
 import { HEALTH, POSITION, dequantize, quantize } from './quantize.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
+import { isRoomCode } from './roomCode.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 5;
+export const PROTOCOL_VERSION = 6;
+
+/**
+ * Why a connection ended, as a type rather than a sentence (T-1.5.04).
+ *
+ * A client needs to DO something different for each of these: wait and retry
+ * for a full room, re-check the code for a missing one, reload the page for a
+ * stale build, and go away for a draining host. A free-text reason could only
+ * be shown, never acted on, and on a loopback pair it was not even shown — the
+ * client discarded Disconnect outright until T-1.5.02. The string still
+ * travels beside the code for the detail a person wants to read ("server
+ * speaks 6, client sent 5"); the code is what the software reads.
+ *
+ * The order is the wire encoding. Append, never reorder.
+ */
+export const DISCONNECT_CODES = [
+  /** Anything not below; the text says what. */
+  'other',
+  'bad version',
+  'no such room',
+  'room full',
+  /** The process is shutting down: do not reconnect to it. */
+  'host draining',
+  /** The process holds as many rooms as it will; try a code, not a fresh room. */
+  'host full',
+  'heartbeat timeout',
+  /** The peer sent bytes the protocol cannot read. */
+  'protocol error',
+  /** The peer chose to leave. */
+  'left',
+] as const;
+export type DisconnectCode = (typeof DISCONNECT_CODES)[number];
+const DISCONNECT_CODE_BITS = 4;
+
+/** One row of the squad, as the lobby shows it: six of these, always. */
+export interface RosterEntry {
+  /** Empty for a bot. */
+  name: string;
+  human: boolean;
+}
 
 export const MessageType = {
   Join: 0,
@@ -25,6 +65,7 @@ export const MessageType = {
   Ping: 5,
   Pong: 6,
   Disconnect: 7,
+  Roster: 11,
 } as const;
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
 
@@ -44,8 +85,14 @@ export interface InputFrame {
 export const MAX_PRIOR_INPUTS = 3;
 
 export type Message =
-  | { kind: 'Join'; version: number; name: string }
-  | { kind: 'JoinAck'; netId: number; slot: number; serverTick: number }
+  /**
+   * `room` is the code to join, or empty to have the host create a room and
+   * say which in the JoinAck. One message for both because the difference is
+   * one field, and a client that could "create" without also joining would
+   * have made a room nobody is in.
+   */
+  | { kind: 'Join'; version: number; name: string; room: string }
+  | { kind: 'JoinAck'; netId: number; slot: number; serverTick: number; room: string }
   | {
       kind: 'Input';
       tick: number;
@@ -141,7 +188,13 @@ export type Message =
   | { kind: 'Ack'; tick: number }
   | { kind: 'Ping'; id: number; clientTime: number }
   | { kind: 'Pong'; id: number; clientTime: number; serverTime: number }
-  | { kind: 'Disconnect'; reason: string };
+  | { kind: 'Disconnect'; code: DisconnectCode; reason: string }
+  /**
+   * Who is in which slot. Sent on seating and whenever it changes, so a lobby
+   * can show six rows with a name or "bot" in each — replicated state carries
+   * positions and health, not who is driving.
+   */
+  | { kind: 'Roster'; slots: RosterEntry[] };
 
 export class ProtocolError extends Error {}
 
@@ -152,12 +205,14 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(MessageType.Join, TYPE_BITS);
       w.writeBits(msg.version, 8);
       w.writeString(msg.name);
+      w.writeString(msg.room);
       break;
     case 'JoinAck':
       w.writeBits(MessageType.JoinAck, TYPE_BITS);
       w.writeVarUint(msg.netId);
       w.writeBits(msg.slot, 3);
       w.writeVarUint(msg.serverTick);
+      w.writeString(msg.room);
       break;
     case 'Input':
       w.writeBits(MessageType.Input, TYPE_BITS);
@@ -245,9 +300,20 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeVarUint(msTime(msg.clientTime));
       w.writeVarUint(msTime(msg.serverTime));
       break;
-    case 'Disconnect':
+    case 'Disconnect': {
       w.writeBits(MessageType.Disconnect, TYPE_BITS);
+      const index = DISCONNECT_CODES.indexOf(msg.code);
+      w.writeBits(index < 0 ? 0 : index, DISCONNECT_CODE_BITS);
       w.writeString(msg.reason);
+      break;
+    }
+    case 'Roster':
+      w.writeBits(MessageType.Roster, TYPE_BITS);
+      w.writeBits(msg.slots.length, 3);
+      for (const entry of msg.slots) {
+        w.writeBool(entry.human);
+        w.writeString(entry.name);
+      }
       break;
   }
   return w.toUint8Array();
@@ -274,10 +340,27 @@ export function decodeMessage(bytes: Uint8Array): Message {
 
   try {
     switch (type) {
-      case MessageType.Join:
-        return { kind: 'Join', version: r.readBits(8), name: r.readString() };
+      case MessageType.Join: {
+        /**
+         * The version byte is the ONLY field with a layout every version
+         * shares. Past it, a foreign version's Join is unreadable by
+         * definition — v5's had no room string, so reading one would over-read
+         * and throw, and the client would be told "protocol error" instead of
+         * "your build is too old". Stop at the byte and let the handshake
+         * check say the right thing.
+         */
+        const version = r.readBits(8);
+        if (version !== PROTOCOL_VERSION) return { kind: 'Join', version, name: '', room: '' };
+        return { kind: 'Join', version, name: r.readString(), room: r.readString() };
+      }
       case MessageType.JoinAck:
-        return { kind: 'JoinAck', netId: r.readVarUint(), slot: r.readBits(3), serverTick: r.readVarUint() };
+        return {
+          kind: 'JoinAck',
+          netId: r.readVarUint(),
+          slot: r.readBits(3),
+          serverTick: r.readVarUint(),
+          room: r.readString(),
+        };
       case MessageType.Input: {
         const tick = r.readVarUint();
         const moveX = int8(r.readBits(8)) / 127;
@@ -334,8 +417,19 @@ export function decodeMessage(bytes: Uint8Array): Message {
         return { kind: 'Ping', id: r.readVarUint(), clientTime: r.readVarUint() };
       case MessageType.Pong:
         return { kind: 'Pong', id: r.readVarUint(), clientTime: r.readVarUint(), serverTime: r.readVarUint() };
-      case MessageType.Disconnect:
-        return { kind: 'Disconnect', reason: r.readString() };
+      case MessageType.Disconnect: {
+        const code = DISCONNECT_CODES[r.readBits(DISCONNECT_CODE_BITS)] ?? 'other';
+        return { kind: 'Disconnect', code, reason: r.readString() };
+      }
+      case MessageType.Roster: {
+        const count = r.readBits(3);
+        const slots: RosterEntry[] = [];
+        for (let i = 0; i < count; i += 1) {
+          const human = r.readBool();
+          slots.push({ human, name: r.readString() });
+        }
+        return { kind: 'Roster', slots };
+      }
       default:
         throw new ProtocolError(`unknown message type ${type}`);
     }
@@ -345,22 +439,34 @@ export function decodeMessage(bytes: Uint8Array): Message {
   }
 }
 
-export interface HandshakeResult {
-  ok: boolean;
-  reason?: string;
-}
+export type HandshakeResult =
+  | { ok: true }
+  | { ok: false; code: DisconnectCode; reason: string };
 
-/** Reject version skew at the handshake, before it can corrupt anything. */
+/**
+ * Reject version skew at the handshake, before it can corrupt anything.
+ *
+ * Version is checked FIRST, before the room, so a stale client is told it is
+ * stale rather than that its room does not exist — a published client will
+ * routinely be older than the host from T-1.5.07 on, and "no such room" would
+ * send its owner to re-check a code that was fine.
+ */
 export function checkHandshake(msg: Message): HandshakeResult {
-  if (msg.kind !== 'Join') return { ok: false, reason: `expected Join, got ${msg.kind}` };
+  if (msg.kind !== 'Join') {
+    return { ok: false, code: 'protocol error', reason: `expected Join, got ${msg.kind}` };
+  }
   if (msg.version !== PROTOCOL_VERSION) {
     return {
       ok: false,
+      code: 'bad version',
       reason: `protocol version mismatch: server speaks ${PROTOCOL_VERSION}, client sent ${msg.version}`,
     };
   }
   if (msg.name.length === 0 || msg.name.length > 32) {
-    return { ok: false, reason: 'name must be 1-32 characters' };
+    return { ok: false, code: 'protocol error', reason: 'name must be 1-32 characters' };
+  }
+  if (msg.room !== '' && !isRoomCode(msg.room)) {
+    return { ok: false, code: 'no such room', reason: `'${msg.room}' is not a room code` };
   }
   return { ok: true };
 }

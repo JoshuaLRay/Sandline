@@ -13,6 +13,8 @@
 import {
   COMPONENT_IDS,
   ClockSync,
+  type DisconnectCode,
+  type RosterEntry,
   InterpolationBuffer,
   type InterpResult,
   INTERPOLATION_DELAY_MS,
@@ -116,6 +118,13 @@ export class NetClient {
    * frozen screen.
    */
   private disconnectReasonValue: string | null = null;
+  private disconnectCodeValue: DisconnectCode | null = null;
+  private roomValue = '';
+  /**
+   * Who is in the six slots, as the host last said (T-1.5.04). Empty until
+   * seated; six entries after. The lobby's roster is drawn from this.
+   */
+  private rosterValue: RosterEntry[] = [];
 
   private snapshotsApplied = 0;
   private rejectedDeltas = 0;
@@ -181,9 +190,11 @@ export class NetClient {
   /** Authoritative shot outcomes. Set by the renderer to draw tracers. */
   onShot: ((shot: ServerShot) => void) | null = null;
   /** Seated in a slot. Remote sessions surface this in the HUD (T-1.5.02). */
-  onJoined: ((slot: number) => void) | null = null;
-  /** The host said goodbye, and why. */
-  onDisconnect: ((reason: string) => void) | null = null;
+  onJoined: ((slot: number, room: string) => void) | null = null;
+  /** The host said goodbye, and why — typed, so the UI can act on it. */
+  onDisconnect: ((reason: string, code: DisconnectCode) => void) | null = null;
+  /** The squad changed. */
+  onRoster: ((slots: RosterEntry[]) => void) | null = null;
 
   constructor(
     private readonly transport: Transport,
@@ -209,6 +220,19 @@ export class NetClient {
 
   get disconnectReason(): string | null {
     return this.disconnectReasonValue;
+  }
+
+  get disconnectCode(): DisconnectCode | null {
+    return this.disconnectCodeValue;
+  }
+
+  /** The room code the host seated us in; empty on an in-page session. */
+  get room(): string {
+    return this.roomValue;
+  }
+
+  get roster(): readonly RosterEntry[] {
+    return this.rosterValue;
   }
 
   get joined(): boolean {
@@ -240,10 +264,24 @@ export class NetClient {
     };
   }
 
-  join(): void {
+  /** Handshake. An empty room asks the host to create one (T-1.5.04). */
+  join(room = ''): void {
     this.transport.send(
-      encodeMessage({ kind: 'Join', version: PROTOCOL_VERSION, name: this.name }),
+      encodeMessage({ kind: 'Join', version: PROTOCOL_VERSION, name: this.name, room }),
     );
+  }
+
+  /**
+   * Say goodbye rather than just closing the socket, so the host frees the
+   * slot on the spot instead of after the heartbeat timeout — a leaving
+   * player's row in everyone else's roster flips back to bot immediately.
+   */
+  leave(): void {
+    if (this.transport.isOpen) {
+      this.transport.send(encodeMessage({ kind: 'Disconnect', code: 'left', reason: 'left' }));
+    }
+    this.joinedFlag = false;
+    this.transport.close('left');
   }
 
   /**
@@ -271,6 +309,9 @@ export class NetClient {
     this.slotValue = -1;
     this.joinedFlag = false;
     this.disconnectReasonValue = null;
+    this.disconnectCodeValue = null;
+    this.roomValue = '';
+    this.rosterValue = [];
     this.healthValue = 0;
     this.maxHealthValue = 0;
     this.downSince = null;
@@ -420,8 +461,9 @@ export class NetClient {
       case 'JoinAck':
         this.netIdValue = msg.netId;
         this.slotValue = msg.slot;
+        this.roomValue = msg.room;
         this.joinedFlag = true;
-        this.onJoined?.(msg.slot);
+        this.onJoined?.(msg.slot, msg.room);
         // The predictor is NOT created here, for the reason BotClient gives:
         // JoinAck does not say where we spawned, and assuming the origin
         // guarantees a large bogus correction on the first snapshot.
@@ -458,8 +500,14 @@ export class NetClient {
 
       case 'Disconnect':
         this.disconnectReasonValue = msg.reason;
+        this.disconnectCodeValue = msg.code;
         this.joinedFlag = false;
-        this.onDisconnect?.(msg.reason);
+        this.onDisconnect?.(msg.reason, msg.code);
+        break;
+
+      case 'Roster':
+        this.rosterValue = msg.slots;
+        this.onRoster?.(msg.slots);
         break;
 
       case 'HitEvent':
