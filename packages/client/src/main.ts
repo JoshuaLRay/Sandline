@@ -33,6 +33,7 @@ import {
   type MoveConfig,
   TICK_SECONDS,
   cos,
+  RANGE_TARGETS,
   fromRadians,
   sin,
   DEFAULT_MUZZLE_RIG,
@@ -146,11 +147,12 @@ scene.add(reference);
 const targets: THREE.Object3D[] = [reference];
 const targetMat = new THREE.MeshStandardMaterial({ color: 0xcf6a4c, roughness: 0.85 });
 const targetGeo = new THREE.CapsuleGeometry(0.35, 1.1, 6, 14);
-for (const distance of [10, 20, 35, 55, 80, 95]) {
+for (const spec of RANGE_TARGETS) {
   const target = new THREE.Mesh(targetGeo, targetMat);
-  target.position.set(2.5, 0.9, distance);
+  // The shared list stores FEET; the capsule mesh is positioned by its centre.
+  target.position.set(spec.x, spec.y + 0.9, spec.z);
   target.castShadow = true;
-  target.name = `range ${distance}m`;
+  target.name = `range ${spec.label}`;
   scene.add(target);
   targets.push(target);
 }
@@ -321,6 +323,9 @@ let fpsAt = last;
 let fps = 0;
 let peakSpeed = 0;
 let speed = 0;
+/** The predicted state either side of the latest tick, for render interpolation. */
+let simPrev: { x: number; y: number; z: number } | null = null;
+let simCur: { x: number; y: number; z: number } | null = null;
 
 /** Connection and prediction health, the numbers T-1.23 will graph. */
 function netReadout(): string {
@@ -365,6 +370,9 @@ function frame(): void {
     const beforeStep = net.simulated;
     net.tick(tickNumber, tickInput, input.pitchWire);
     const afterStep = net.simulated;
+    // Keep both ends of the tick so rendering can interpolate across it.
+    simPrev = beforeStep;
+    simCur = afterStep;
     if (beforeStep !== null && afterStep !== null) {
       speed = Math.hypot(afterStep.x - beforeStep.x, afterStep.z - beforeStep.z) / TICK_SECONDS;
       if (speed > peakSpeed) peakSpeed = speed;
@@ -400,15 +408,32 @@ function frame(): void {
   net.advanceClock(dt * 1000);
 
   /**
-   * Local position comes from the predictor, which already smooths the residual
-   * after a reconcile (T-1.15). Interpolating between ticks on top of that
-   * would fight the smoothing, so the frame delta goes INTO it rather than
-   * being applied around it.
+   * Render BETWEEN ticks, exactly as the local harness did before it was
+   * networked. The simulation runs at 30 Hz; without this the local player
+   * moves in 30 Hz steps however fast the display refreshes, which reads as
+   * the netcode being choppy when it is really just undersampled rendering.
+   *
+   * The predictor's own `renderPosition` cannot do this: it returns the
+   * simulated state plus the decaying correction offset, and the simulated
+   * state only changes on a tick. So take the OFFSET from it — which is what it
+   * uniquely knows, and which must be decayed once per frame — and apply it to
+   * a position interpolated across the tick.
    */
-  const render = net.renderPosition(dt * 1000) ?? { x: 0, y: 0, z: 0 };
-  const rx = render.x;
-  const ry = render.y;
-  const rz = render.z;
+  const smoothed = net.renderPosition(dt * 1000);
+  const sim = net.simulated;
+  let rx = 0;
+  let ry = 0;
+  let rz = 0;
+  if (smoothed && sim && simPrev && simCur) {
+    const a = clock.alpha;
+    rx = simPrev.x + (simCur.x - simPrev.x) * a + (smoothed.x - sim.x);
+    ry = simPrev.y + (simCur.y - simPrev.y) * a + (smoothed.y - sim.y);
+    rz = simPrev.z + (simCur.z - simPrev.z) * a + (smoothed.z - sim.z);
+  } else if (smoothed) {
+    rx = smoothed.x;
+    ry = smoothed.y;
+    rz = smoothed.z;
+  }
 
   // Remote characters at the interpolation delay (T-1.16).
   for (const [netId, sample] of net.remotes()) {

@@ -11,10 +11,12 @@ import { describe, expect, it } from 'vitest';
 import {
   type Message,
   PROTOCOL_VERSION,
+  RANGE_TARGETS,
   createLoopbackPair,
   decodeMessage,
   encodeMessage,
   getWeapon,
+  isRangeTarget,
 } from '@sandline/shared';
 import { Session } from './Session.ts';
 
@@ -88,6 +90,71 @@ function run(session: Session, fromMs: number, ticks: number, ...clients: { sett
   }
   return t;
 }
+
+/**
+ * Wire yaw/pitch aiming from the first slot's eye at a world point. Slot 0
+ * spawns at x = -3.75, z = 0 (six slots spread along X), and the eye is
+ * 1.55 m up. Math.* is fine here: this is `packages/server`, and the ADR-014
+ * ban is scoped to shared.
+ */
+function aimAt(tx: number, ty: number, tz: number): { yaw: number; pitch: number } {
+  const dx = tx - -3.75;
+  const dy = ty - 1.55;
+  const dz = tz - 0;
+  const wire = (rad: number): number =>
+    ((Math.round((rad / (Math.PI * 2)) * 1024) % 1024) + 1024) % 1024;
+  return {
+    yaw: wire(Math.atan2(dx, dz)),
+    pitch: wire(Math.asin(dy / Math.hypot(dx, dy, dz))),
+  };
+}
+
+describe('shooting the range', () => {
+  it('registers hits on the range targets, not only on player slots', () => {
+    /**
+     * The reported bug: hit markers appeared on the grey squad capsules and
+     * never on the red range targets. The targets were client-side scenery the
+     * server had never heard of, so every shot at one traced against the six
+     * player slots, found nothing, and came back a miss.
+     */
+    const session = new Session();
+    const client = connect(session);
+    const now = run(session, 0, 5, client);
+
+    const target = RANGE_TARGETS[0]!;
+    // Aim at the capsule's centre, which is its feet plus the hitbox offset.
+    const aim = aimAt(target.x, target.y + 0.9, target.z);
+    // Aimed: the hip cone is wide enough at this range to miss by chance, and a
+    // test that fails one run in ten is worse than no test.
+    client.fire({ ...aim, ads: true, renderTimeMs: now });
+
+    const hit = client.hits[0];
+    expect(hit).toBeDefined();
+    expect(hit?.targetNetId).toBe(target.netId);
+    expect(isRangeTarget(hit?.targetNetId ?? 0)).toBe(true);
+    expect(hit?.damage).toBeGreaterThan(0);
+  });
+
+  it('applies falloff across the range, so a distant target takes less', () => {
+    const near = RANGE_TARGETS[0]!;
+    const far = RANGE_TARGETS[4]!;
+
+    const shootAt = (t: typeof near): number => {
+      const session = new Session();
+      const client = connect(session);
+      const now = run(session, 0, 5, client);
+      client.fire({ ...aimAt(t.x, t.y + 0.9, t.z), ads: true, renderTimeMs: now });
+      return client.hits[0]?.damage ?? -1;
+    };
+
+    const nearDamage = shootAt(near);
+    const farDamage = shootAt(far);
+    expect(nearDamage).toBeGreaterThan(0);
+    expect(farDamage).toBeGreaterThan(0);
+    // 10 m is inside the carbine's 22 m falloff start; 80 m is past its 55 m end.
+    expect(farDamage).toBeLessThan(nearDamage);
+  });
+});
 
 describe('firing over the wire', () => {
   it('broadcasts a hit event for a shot, to every connection', () => {

@@ -17,6 +17,7 @@ import {
   DEFAULT_MOVE_CONFIG,
   MAX_SLOTS,
   type MoveConfig,
+  RANGE_TARGETS,
   type Message,
   type MoveInput,
   type MoveState,
@@ -333,6 +334,16 @@ export class Session {
     // rewind clients to a world half a tick behind the one they were shown.
     for (const slot of this.slots) {
       this.hitboxes.record(slot.netId, now, slot.state.x, slot.state.y, slot.state.z);
+    }
+    /**
+     * The range targets are shootable too. They never move, but they are
+     * recorded on the same schedule as everything else rather than special-cased
+     * into the trace: one code path means a rewound shot resolves against them
+     * identically, and means they stop being special the moment something makes
+     * them move (M2 gives them AI).
+     */
+    for (const target of RANGE_TARGETS) {
+      this.hitboxes.record(target.netId, now, target.x, target.y, target.z);
     }
 
     this.currentTick++;

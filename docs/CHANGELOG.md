@@ -53,3 +53,4 @@ Format: `T-<id> — <what changed>`
 - T-1.18 - Session wiring: Fire/HitEvent messages, server-authoritative cadence, protocol v3.
 - T-0.06 - Harness connected to an in-page authoritative session; link-condition sliders.
 - T-0.06 - Muzzle by view: TPS shoulder, FPS hip, FPS ADS centre; trace origin split out.
+- T-0.06 - Restore inter-tick render interpolation; range targets are server-side hittable.
