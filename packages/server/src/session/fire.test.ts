@@ -156,6 +156,49 @@ describe('shooting the range', () => {
   });
 });
 
+describe('weapon bloom', () => {
+  it('recovers between bursts, so accuracy comes back', () => {
+    /**
+     * The bug this guards: firing adds bloom and only `decayBloom` removes it,
+     * and the session never called it. The server's cone pinned at the weapon's
+     * maximum after a few shots and stayed there — while the client decayed its
+     * own copy and went on displaying the small cone. Invisible from the HUD;
+     * visible as every gun being much less accurate than it reads.
+     *
+     * Aimed shots at the nearest target are the probe. With bloom recovered the
+     * cone is a fraction of a degree and every shot lands; pinned at the
+     * carbine's 5.5 degree maximum, a 0.35 m capsule at 11.5 m is a coin flip
+     * at best, so six in a row landing is about a one-in-a-million accident.
+     */
+    const session = new Session();
+    const client = connect(session);
+    let now = run(session, 0, 5, client);
+
+    const target = RANGE_TARGETS[0]!;
+    const aim = aimAt(target.x, target.y + 0.9, target.z);
+    const carbine = getWeapon('carbine');
+    const shotTicks = Math.ceil(((60 / carbine.rpm) * 1000) / TICK_MS);
+
+    // Empty most of a magazine to drive the cone up.
+    for (let i = 0; i < 20; i += 1) {
+      client.fire({ ...aim, ads: true, renderTimeMs: now });
+      now = run(session, now, shotTicks, client);
+    }
+
+    // Stand still long enough for the bloom to recover fully.
+    now = run(session, now, 90, client);
+
+    const before = client.hits.length;
+    for (let i = 0; i < 6; i += 1) {
+      client.fire({ ...aim, ads: true, renderTimeMs: now });
+      now = run(session, now, shotTicks, client);
+    }
+    const fired = client.hits.slice(before);
+    expect(fired.length).toBe(6);
+    expect(fired.every((h) => h.targetNetId === target.netId)).toBe(true);
+  });
+});
+
 describe('firing over the wire', () => {
   it('broadcasts a hit event for a shot, to every connection', () => {
     const session = new Session();

@@ -261,6 +261,17 @@ function toggleHud(): void {
   hudToggle.textContent = collapsed ? '+' : '\u2212';
   hudToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
 }
+/**
+ * Stamp the build into the title bar. Also into document.title, so it is
+ * visible from a browser tab or a bookmark without opening the HUD.
+ */
+const buildStamp = document.createElement('em');
+buildStamp.id = 'build-stamp';
+buildStamp.textContent = `${__BUILD_SHA__} · ${__BUILD_TIME__}`;
+buildStamp.title = `Built from commit ${__BUILD_SHA__} at ${__BUILD_TIME__}`;
+hud?.querySelector('h1')?.append(buildStamp);
+document.title = `SANDLINE ${__BUILD_SHA__}`;
+
 const hudToggle = document.createElement('button');
 hudToggle.type = 'button';
 hudToggle.id = 'hud-toggle';

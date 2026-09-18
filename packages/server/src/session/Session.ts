@@ -34,6 +34,7 @@ import {
   createMoveState,
   createWeaponState,
   damageAtDistance,
+  decayBloom,
   encodeMessage,
   finishReload,
   eyePosition,
@@ -324,6 +325,18 @@ export class Session {
         if (slot.staleTicks > MAX_INPUT_REPEAT) slot.input = idleInput(slot.yaw);
       }
       slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig);
+      /**
+       * Recover weapon bloom, every tick, for every slot.
+       *
+       * Firing ADDS bloom and only this takes it away. Without it the server's
+       * cone climbs to the weapon's maximum within a few shots and stays pinned
+       * there for the rest of the session — every weapon permanently at its
+       * worst accuracy. The client decays its own copy correctly, so the HUD
+       * goes on reporting the small cone while the authoritative shots use the
+       * large one: the divergence is invisible from inside the game and shows
+       * up only as "the guns got worse".
+       */
+      decayBloom(slot.weapon, slot.weaponState, TICK_SECONDS);
       slot.yaw = slot.input.yaw;
       // Consumed now, so this is what the client may stop replaying.
       slot.lastProcessedInputTick = slot.pendingInputTick;

@@ -1,6 +1,38 @@
+import { execSync } from 'node:child_process';
 import { defineConfig } from 'vite';
 
+/**
+ * Build stamp, so a tester can tell at a glance whether the deployed site is
+ * the build they are expecting.
+ *
+ * "Did my change actually deploy?" has come up more than once, and the answer
+ * has so far been a trip to the Actions tab. The commit and the build time in
+ * the corner of the HUD answer it from inside the page.
+ *
+ * The commit comes from git at BUILD time, not from a committed file: anything
+ * written into the repo would be stale by exactly one commit, always, since it
+ * cannot contain its own hash. Falls back gracefully — a stamp that fails a
+ * build because git is unavailable would be a poor trade.
+ */
+function gitDescribe(): string {
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  } catch {
+    return 'local';
+  }
+}
+
+const BUILD_SHA = gitDescribe();
+/** Minute precision: "is this newer than the last one I loaded" needs no more. */
+const BUILD_TIME = new Date().toISOString().slice(0, 16).replace('T', ' ') + 'Z';
+
 export default defineConfig({
+  define: {
+    __BUILD_SHA__: JSON.stringify(BUILD_SHA),
+    __BUILD_TIME__: JSON.stringify(BUILD_TIME),
+  },
   /**
    * Relative asset URLs.
    *
