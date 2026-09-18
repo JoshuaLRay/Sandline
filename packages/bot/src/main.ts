@@ -29,7 +29,8 @@ console.log(`  missed baselines    ${result.totalMissedBaselines}`);
 for (const [i, m] of result.perBot.entries()) {
   console.log(
     `  bot${i}: peak ${m.peakDivergence.toFixed(4)} m, ` +
-      `${m.corrections}/${m.reconciles} corrections, ${m.snapshotsApplied} snapshots`,
+      `${m.trueCorrections}/${m.reconciles} corrections ` +
+      `(${m.corrections} counted internally), ${m.unmatched} unmatched`,
   );
 }
 
@@ -46,14 +47,31 @@ for (const [i, m] of result.perBot.entries()) {
  * ever SEES a correction.
  */
 const QUANTIZATION_FLOOR_M = Math.sqrt(3) * POSITION.maxError;
-const THRESHOLD = CORRECTION_THRESHOLD_M;
-const ok = result.allJoined && result.peakDivergence < THRESHOLD;
 console.log(
   `\n  quantization floor  ${QUANTIZATION_FLOOR_M.toFixed(4)} m (1/64 m position encoding)`,
 );
+console.log(`  unmatched reconciles ${result.totalUnmatched} (must be 0)`);
+
+/**
+ * On a CLEAN link, divergence must stay under the correction threshold: there
+ * is nothing to explain a correction, so seeing one means prediction is wrong.
+ *
+ * On a LOSSY link that is unachievable by construction. A lost run of inputs
+ * longer than the redundancy carries is information the server never receives,
+ * so some divergence is arithmetic rather than a defect. What matters there is
+ * how OFTEN the player is corrected, and that reconciliation never fails to
+ * match — the latter is structural, so it is held to zero at every setting.
+ */
+const clean = latencyMs === 0 && lossRate === 0;
+const ok = clean
+  ? result.allJoined && result.peakDivergence < CORRECTION_THRESHOLD_M
+  : result.allJoined && result.totalUnmatched === 0 && result.worstTrueCorrectionRate < 0.01;
 console.log(
-  `${ok ? 'OK' : 'FAIL'}: peak divergence ${result.peakDivergence.toFixed(4)} m ` +
-    `(threshold ${THRESHOLD} m, the correction threshold)`,
+  clean
+    ? `${ok ? 'OK' : 'FAIL'}: peak divergence ${result.peakDivergence.toFixed(4)} m ` +
+        `(threshold ${CORRECTION_THRESHOLD_M} m on a clean link)`
+    : `${ok ? 'OK' : 'FAIL'}: corrections ${(result.worstTrueCorrectionRate * 100).toFixed(2)}% ` +
+        `(under 1%), ${result.totalUnmatched} unmatched, peak ${result.peakDivergence.toFixed(4)} m`,
 );
-if (latencyMs === 0 && lossRate === 0 && !ok) process.exit(1);
+if (!ok) process.exit(1);
 export {};

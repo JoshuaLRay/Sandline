@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { CORRECTION_THRESHOLD_M, Predictor, SMOOTHING_MS, distance } from './prediction.ts';
-import { DEFAULT_MOVE_CONFIG, type MoveInput, createMoveState, stepCharacter } from '../sim/CharacterController.ts';
+import {
+  DEFAULT_MOVE_CONFIG,
+  type MoveInput,
+  type MoveState,
+  createMoveState,
+  stepCharacter,
+} from '../sim/CharacterController.ts';
 import { TICK_SECONDS } from '../sim/Clock.ts';
 
 const forward = (yaw = 0): MoveInput => ({
@@ -215,5 +221,79 @@ describe('correction smoothing (T-1.15)', () => {
     p.predict(1, idle());
     const r = p.renderPosition(16);
     expect(r).toEqual({ x: p.simulated.x, y: p.simulated.y, z: p.simulated.z });
+  });
+});
+
+/**
+ * Regressions from a smoothness pass at 80 ms / 15 ms jitter / 5% loss. Every
+ * one of these failed silently: prediction appeared to work, the correction
+ * counter read near zero, and the only symptom was that the game felt bad.
+ */
+describe('reconciliation under a poor link', () => {
+  const START: MoveState = { x: 0, y: 0, z: 0, vy: 0, grounded: true };
+  const FORWARD: MoveInput = { moveX: 0, moveY: 1, yaw: 0, jump: false, sprint: false, crouch: false };
+
+  it('does not throw away pending inputs when the acked tick is missing', () => {
+    /**
+     * The acknowledged tick may simply not be in history — it ages out, or the
+     * predictor started mid-stream. The old code cleared the WHOLE history in
+     * that case, which is self-sustaining: acknowledgements lag by a round
+     * trip, so the next one refers to a tick older than everything kept after
+     * the wipe and fails to match too. Measured at 814 unmatched out of 830.
+     */
+    // A predictor created mid-stream: it holds ticks 7..12, and the server
+    // acknowledges tick 5, from before it existed. Nothing to match.
+    const p = new Predictor(START);
+    for (let tick = 7; tick <= 12; tick += 1) p.predict(tick, FORWARD);
+
+    const result = p.reconcile(5, { ...START, z: 1 });
+    expect(result.matched).toBe(false);
+    // All six held inputs are newer than tick 5, so all six must be replayed
+    // rather than discarded.
+    expect(result.replayed).toBe(6);
+    expect(p.pendingInputs).toBe(6);
+  });
+
+  it('recovers on the next acknowledgement rather than staying broken', () => {
+    const p = new Predictor(START);
+    for (let tick = 1; tick <= 10; tick += 1) p.predict(tick, FORWARD);
+    p.reconcile(5, { ...START, z: 1 });
+    for (let tick = 11; tick <= 14; tick += 1) p.predict(tick, FORWARD);
+
+    // An advancing ack for a tick we do hold must match again.
+    const result = p.reconcile(12, p.simulated);
+    expect(result.matched).toBe(true);
+  });
+
+  it('ignores an acknowledgement that has not advanced', () => {
+    /**
+     * The server re-sends the same lastProcessedInputTick whenever it had
+     * nothing buffered from this client. Acting on it means comparing the
+     * client's present state against a server state from a different moment,
+     * which reads as a large error and yanks the player backwards. It was the
+     * last remaining source of lurching once inputs were being resent.
+     */
+    const p = new Predictor(START);
+    for (let tick = 1; tick <= 6; tick += 1) p.predict(tick, FORWARD);
+    p.reconcile(3, p.simulated);
+
+    const before = p.simulated;
+    const corrections = p.corrections;
+    // Same tick again, with a server state that is now far away.
+    const result = p.reconcile(3, { ...START, z: before.z + 5 });
+
+    expect(result.corrected).toBe(false);
+    expect(p.simulated).toEqual(before);
+    expect(p.corrections).toBe(corrections);
+  });
+
+  it('counts a correction on every path that corrects', () => {
+    // The counter used to increment on one of two correcting paths, so it read
+    // near zero while a third of reconciles were correcting.
+    const p = new Predictor(START);
+    for (let tick = 1; tick <= 4; tick += 1) p.predict(tick, FORWARD);
+    const result = p.reconcile(2, { ...START, z: 99 });
+    expect(result.corrected).toBe(true);
+    expect(p.corrections).toBe(1);
   });
 });

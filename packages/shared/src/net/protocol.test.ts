@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MAX_PRIOR_INPUTS,
   type Message,
   PROTOCOL_VERSION,
   ProtocolError,
@@ -54,7 +55,56 @@ describe('protocol messages (T-1.05)', () => {
 
   it('keeps an Input message small enough for 30 Hz', () => {
     const bytes = encodeMessage({ kind: 'Input', tick: 100000, moveX: 1, moveY: 1, yaw: 1023, pitch: 1023, buttons: 0xffff });
-    expect(bytes.length).toBeLessThanOrEqual(10);
+    expect(bytes.length).toBeLessThanOrEqual(12);
+  });
+
+  it('stays affordable upstream even carrying full redundancy', () => {
+    /**
+     * Inputs are resent so a dropped one costs nothing, which is the single
+     * biggest smoothness win available on a lossy link. The budget for that is
+     * derived, not guessed: worst case is the largest input plus MAX_PRIOR
+     * copies, at the tick rate, upstream from ONE client.
+     *
+     * 34 bytes x 30 Hz is under a kilobyte per second — trivial upstream, and
+     * not the direction that is under pressure anyway. The server's DOWNstream
+     * to six clients is the budget ADR-013 actually constrains, and this does
+     * not touch it.
+     */
+    const prior = Array.from({ length: MAX_PRIOR_INPUTS }, (_, i) => ({
+      tick: 100000 - (i + 1),
+      moveX: -1,
+      moveY: 1,
+      yaw: 1023,
+      pitch: 1023,
+      buttons: 0xffff,
+    }));
+    const bytes = encodeMessage({
+      kind: 'Input',
+      tick: 100000,
+      moveX: 1,
+      moveY: 1,
+      yaw: 1023,
+      pitch: 1023,
+      buttons: 0xffff,
+      prior,
+    });
+    expect(bytes.length).toBeLessThanOrEqual(34);
+    expect(bytes.length * 30).toBeLessThan(1024);
+  });
+
+  it('round-trips the resent inputs, ticks included', () => {
+    const prior = [
+      { tick: 41, moveX: -1, moveY: 0, yaw: 100, pitch: 200, buttons: 0b101 },
+      { tick: 40, moveX: 0, moveY: 1, yaw: 900, pitch: 50, buttons: 0b010 },
+    ];
+    const decoded = decodeMessage(
+      encodeMessage({ kind: 'Input', tick: 42, moveX: 1, moveY: -1, yaw: 512, pitch: 256, buttons: 0b001, prior }),
+    );
+    expect(decoded.kind).toBe('Input');
+    const got = (decoded as Extract<Message, { kind: 'Input' }>).prior ?? [];
+    expect(got.map((f) => f.tick)).toEqual([41, 40]);
+    expect(got[0]?.yaw).toBe(100);
+    expect(got[1]?.buttons).toBe(0b010);
   });
 });
 

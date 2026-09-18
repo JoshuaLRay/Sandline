@@ -11,7 +11,7 @@ import { HEALTH, POSITION, dequantize, quantize } from './quantize.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 export const MessageType = {
   Join: 0,
@@ -30,10 +30,45 @@ export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
 
 const TYPE_BITS = 4;
 
+/** One tick of input, as carried on the wire. */
+export interface InputFrame {
+  tick: number;
+  moveX: number;
+  moveY: number;
+  yaw: number;
+  pitch: number;
+  buttons: number;
+}
+
+/** How many prior inputs a packet may carry. Two bits on the wire. */
+export const MAX_PRIOR_INPUTS = 3;
+
 export type Message =
   | { kind: 'Join'; version: number; name: string }
   | { kind: 'JoinAck'; netId: number; slot: number; serverTick: number }
-  | { kind: 'Input'; tick: number; moveX: number; moveY: number; yaw: number; pitch: number; buttons: number }
+  | {
+      kind: 'Input';
+      tick: number;
+      moveX: number;
+      moveY: number;
+      yaw: number;
+      pitch: number;
+      buttons: number;
+      /**
+       * Recent PRIOR inputs, newest first, resent for redundancy.
+       *
+       * Inputs ride the unreliable channel, and a dropped one is not a dropped
+       * frame of animation — it is a tick the server never learns about, so it
+       * repeats whatever it had and the player's own prediction is then wrong
+       * by however far they moved. Repeating the last few inputs in every
+       * packet means a single loss, or a short run of them, costs nothing: the
+       * next packet carries the missing input and the server never notices.
+       *
+       * They are tiny — about seven bytes each — and this is the cheapest
+       * smoothness available on a lossy link.
+       */
+      prior?: readonly InputFrame[];
+    }
   | { kind: 'Snapshot'; snapshot: WorldSnapshot }
   /**
    * A delta-encoded snapshot. `baselineTick` is the tick the receiver must
@@ -121,6 +156,20 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(msg.yaw & 0x3ff, 10);
       w.writeBits(msg.pitch & 0x3ff, 10);
       w.writeBits(msg.buttons & 0xffff, 16);
+      {
+        const prior = (msg.prior ?? []).slice(0, MAX_PRIOR_INPUTS);
+        w.writeBits(prior.length, 2);
+        for (const f of prior) {
+          // Deltas against the newest tick: they are always within
+          // MAX_PRIOR_INPUTS, so four bits beats a varuint per frame.
+          w.writeBits(Math.min(15, Math.max(0, msg.tick - f.tick)), 4);
+          w.writeBits(Math.round(f.moveX * 127) & 0xff, 8);
+          w.writeBits(Math.round(f.moveY * 127) & 0xff, 8);
+          w.writeBits(f.yaw & 0x3ff, 10);
+          w.writeBits(f.pitch & 0x3ff, 10);
+          w.writeBits(f.buttons & 0xffff, 16);
+        }
+      }
       break;
     case 'Snapshot':
       w.writeBits(MessageType.Snapshot, TYPE_BITS);
@@ -201,7 +250,23 @@ export function decodeMessage(bytes: Uint8Array): Message {
         const tick = r.readVarUint();
         const moveX = int8(r.readBits(8)) / 127;
         const moveY = int8(r.readBits(8)) / 127;
-        return { kind: 'Input', tick, moveX, moveY, yaw: r.readBits(10), pitch: r.readBits(10), buttons: r.readBits(16) };
+        const yaw = r.readBits(10);
+        const pitch = r.readBits(10);
+        const buttons = r.readBits(16);
+        const count = r.readBits(2);
+        const prior: InputFrame[] = [];
+        for (let i = 0; i < count; i += 1) {
+          const back = r.readBits(4);
+          prior.push({
+            tick: tick - back,
+            moveX: int8(r.readBits(8)) / 127,
+            moveY: int8(r.readBits(8)) / 127,
+            yaw: r.readBits(10),
+            pitch: r.readBits(10),
+            buttons: r.readBits(16),
+          });
+        }
+        return { kind: 'Input', tick, moveX, moveY, yaw, pitch, buttons, prior };
       }
       case MessageType.Snapshot:
         return { kind: 'Snapshot', snapshot: readSnapshot(r) };

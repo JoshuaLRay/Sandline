@@ -15,6 +15,8 @@ import {
   InterpolationBuffer,
   type InterpResult,
   INTERPOLATION_DELAY_MS,
+  type InputFrame,
+  MAX_PRIOR_INPUTS,
   type Message,
   type MoveConfig,
   type MoveInput,
@@ -93,6 +95,12 @@ export class NetClient {
    */
   private serverClockMs = 0;
 
+  /**
+   * The last few inputs sent, newest first, resent in each packet so a dropped
+   * one costs nothing (see the Fire/Input protocol notes).
+   */
+  private readonly recentInputs: InputFrame[] = [];
+
   /** Authoritative shot outcomes. Set by the renderer to draw tracers. */
   onShot: ((shot: ServerShot) => void) | null = null;
 
@@ -145,6 +153,7 @@ export class NetClient {
   tick(tickNumber: number, input: MoveInput, pitch: number): void {
     if (!this.joinedFlag || !this.predictor) return;
     this.predictor.predict(tickNumber, input);
+    const buttons = (input.jump ? 1 : 0) | (input.sprint ? 2 : 0) | (input.crouch ? 4 : 0);
     this.transport.send(
       encodeMessage({
         kind: 'Input',
@@ -153,10 +162,20 @@ export class NetClient {
         moveY: input.moveY,
         yaw: input.yaw,
         pitch,
-        buttons: (input.jump ? 1 : 0) | (input.sprint ? 2 : 0) | (input.crouch ? 4 : 0),
+        buttons,
+        prior: this.recentInputs.slice(0, MAX_PRIOR_INPUTS),
       }),
       'unreliable',
     );
+    this.recentInputs.unshift({
+      tick: tickNumber,
+      moveX: input.moveX,
+      moveY: input.moveY,
+      yaw: input.yaw,
+      pitch,
+      buttons,
+    });
+    if (this.recentInputs.length > MAX_PRIOR_INPUTS) this.recentInputs.length = MAX_PRIOR_INPUTS;
   }
 
   /**

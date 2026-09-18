@@ -157,3 +157,54 @@ describe('netcode convergence matrix (T-1.22)', () => {
     expect(results.length).toBe(BOT_COUNTS.length * LATENCIES.length * LOSSES.length);
   });
 });
+
+/**
+ * The stated target for a poor connection: 80 ms, 15 ms jitter, 5% loss, and
+ * no jitteriness for the person on that link.
+ *
+ * Kept as its own case rather than folded into the matrix because it is a
+ * PRODUCT commitment, not a sweep point. The matrix asks "does this survive";
+ * this asks "is it pleasant", which is a much higher bar and the one that was
+ * being failed. Before the smoothness pass this link produced corrections on a
+ * third of reconciles and failed to match on 98% of them.
+ */
+describe('the poor-connection target', () => {
+  it('reconciles cleanly at 80ms / 15ms jitter / 5% loss', () => {
+    const r = runScenario({ bots: 6, ticks: 1800, latencyMs: 80, jitterMs: 15, lossRate: 0.05, seed: 7 });
+
+    expect(r.allJoined, 'every bot completed its handshake').toBe(true);
+
+    /**
+     * Structural, so held to exactly zero. Matching the acknowledged tick
+     * either works or it does not — a failure to match is not the link being
+     * bad, it is the client throwing its predictions away, and that happens for
+     * reasons that do not depend on how lossy the link is.
+     */
+    expect(r.totalUnmatched, 'reconciliation matched every acknowledgement').toBe(0);
+
+    /**
+     * Corrections are what the player actually SEES. A lost run longer than the
+     * resend depth is information the server never receives, so this cannot be
+     * zero — but at 1% it is roughly one visible correction every three
+     * seconds, and measured it sits nearer one a minute.
+     */
+    expect(
+      r.worstTrueCorrectionRate,
+      `worst correction rate ${(r.worstTrueCorrectionRate * 100).toFixed(2)}% should be under 1%`,
+    ).toBeLessThan(0.01);
+
+    console.log(
+      `[target] 80ms/15ms/5%: corrections ${(r.worstTrueCorrectionRate * 100).toFixed(2)}%, ` +
+        `unmatched ${r.totalUnmatched}, peak ${r.peakDivergence.toFixed(4)}m`,
+    );
+  });
+
+  it('is essentially perfect at 80ms / 15ms jitter with no loss', () => {
+    // Latency and jitter alone should cost nothing at all: every input arrives,
+    // so the server has no reason to disagree with the client beyond encoding.
+    const r = runScenario({ bots: 6, ticks: 900, latencyMs: 80, jitterMs: 15, lossRate: 0, seed: 7 });
+    expect(r.totalUnmatched).toBe(0);
+    expect(r.worstTrueCorrectionRate).toBe(0);
+    console.log(`[target] 80ms/15ms/0%: peak ${r.peakDivergence.toFixed(4)}m, 0 corrections`);
+  });
+});

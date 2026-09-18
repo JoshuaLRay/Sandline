@@ -88,3 +88,49 @@ rate. The conclusion survives, but not for the reason originally given — it
 survives because a human could not feel the 33 ms sampling window.
 
 Reopen only on new felt evidence, not on analysis. The cost side is settled.
+
+---
+
+## Addendum: repeat-then-idle is replaced by hold-immediately (2026-09-18)
+
+This ADR specified that a server missing an input should *repeat the last one*
+for up to five ticks before treating the player as idle. That was the right call
+when each input was sent once. It is the wrong call now that inputs are resent,
+and it was measurably the largest remaining source of visible correction on a
+poor link.
+
+**Why repeating hurts.** Horizontal motion in the character controller is driven
+directly by input rather than by carried momentum, so an *idle* step moves the
+player almost nowhere, while a *repeated* step moves them a full tick's worth —
+about 0.22 m at sprint — that the client never predicted. The client is then
+yanked back by exactly that distance. Repeating manufactures divergence out of
+nothing; holding manufactures none.
+
+**What replaced it.** Three changes, in increasing order of effect, measured at
+80 ms latency / 15 ms jitter / 5% loss with six bots:
+
+| | peak divergence | corrections | unmatched reconciles |
+|---|---|---|---|
+| Before | 0.88 m | 33% | 98% |
+| Reconciling without wiping history | 1.11 m | 19.5% | 8% |
+| Resending the last 3 inputs | 1.11 m | 0.3% | 0.1% |
+| Ignoring non-advancing acknowledgements | 0.23 m | 0.4% | 0% |
+| Holding instead of repeating | **0.15 m** | **0.1%** | **0%** |
+
+(The middle row's divergence rises because the client finally predicts instead
+of snapping to authority thirty times a second. A large number there was hiding
+behind a broken client that never diverged because it never predicted.)
+
+**The trade, stated plainly.** A held character pauses for a tick on everyone
+else's screen instead of gliding onward. This is deliberate and was asked for
+explicitly: the person with the poor connection should feel smooth, and the
+people watching them should absorb the jitter. It is the same asymmetry
+lag compensation already makes in favouring the shooter, applied to movement.
+A character that holds and then catches up is also more honest than one that
+keeps running on a guess and is then teleported back.
+
+**MAX_INPUT_REPEAT is retained but no longer used to repeat input.** It still
+bounds `staleTicks`, which remains the signal for a client that has gone quiet.
+
+Revisit if a future controller carries horizontal momentum, which would make a
+held step and a repeated step much closer in effect and weaken the argument.

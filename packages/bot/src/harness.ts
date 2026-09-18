@@ -36,6 +36,15 @@ export interface ScenarioResult {
   /** Lowest per-bot count of snapshots successfully applied. */
   minSnapshotsApplied: number;
   totalMissedBaselines: number;
+  /**
+   * Reconciles that could not match the acknowledged tick, summed. A
+   * STRUCTURAL number, not a statistical one: matching either works or it does
+   * not, so anything above zero means reconciliation is broken rather than
+   * merely stressed.
+   */
+  totalUnmatched: number;
+  /** Highest per-bot correction rate counted from `result.corrected`. */
+  worstTrueCorrectionRate: number;
   allJoined: boolean;
   perBot: BotMetrics[];
 }
@@ -101,6 +110,10 @@ export function runScenario(options: ScenarioOptions): ScenarioResult {
     worstCorrectionRate: Math.max(...bots.map((b) => b.correctionRate)),
     minSnapshotsApplied: Math.min(...perBot.map((m) => m.snapshotsApplied)),
     totalMissedBaselines: perBot.reduce((n, m) => n + m.missedBaselines, 0),
+    totalUnmatched: perBot.reduce((n, m) => n + m.unmatched, 0),
+    worstTrueCorrectionRate: Math.max(
+      ...perBot.map((m) => (m.reconciles === 0 ? 0 : m.trueCorrections / m.reconciles)),
+    ),
     allJoined: perBot.every((m) => m.joined),
     perBot,
   };

@@ -11,6 +11,8 @@
  * about the real one.
  */
 import {
+  type InputFrame,
+  MAX_PRIOR_INPUTS,
   type Message,
   type MoveInput,
   type MoveState,
@@ -40,6 +42,14 @@ export interface BotMetrics {
   corrections: number;
   /** Reconciles performed — the denominator for correction rate. */
   reconciles: number;
+  /**
+   * Reconciles where the acknowledged tick was NOT in the prediction history,
+   * so the client snapped straight to authority and threw away every pending
+   * prediction. The most violent thing that can happen to a moving player.
+   */
+  unmatched: number;
+  /** Corrections counted from `result.corrected`, which counts both paths. */
+  trueCorrections: number;
   snapshotsApplied: number;
   /** Deltas dropped because their baseline had been lost. */
   missedBaselines: number;
@@ -98,10 +108,14 @@ export class BotClient {
   private readonly script: readonly MoveInput[] | null;
   private netId = -1;
   private tickNumber = 0;
+  /** Resent in each packet so a dropped input costs nothing. */
+  private readonly recentInputs: InputFrame[] = [];
 
   private peakDivergence = 0;
   private lastDivergence = 0;
   private reconciles = 0;
+  private unmatched = 0;
+  private trueCorrections = 0;
   private snapshotsApplied = 0;
   private rejectedDeltas = 0;
   private joinedFlag = false;
@@ -125,6 +139,8 @@ export class BotClient {
       lastDivergence: this.lastDivergence,
       corrections: this.predictor?.corrections ?? 0,
       reconciles: this.reconciles,
+      unmatched: this.unmatched,
+      trueCorrections: this.trueCorrections,
       snapshotsApplied: this.snapshotsApplied,
       missedBaselines: this.store.missedBaselines,
       rejectedDeltas: this.rejectedDeltas,
@@ -159,6 +175,7 @@ export class BotClient {
 
     this.predictor.predict(this.tickNumber, input);
 
+    const buttons = (input.jump ? 1 : 0) | (input.sprint ? 2 : 0) | (input.crouch ? 4 : 0);
     this.transport.send(
       encodeMessage({
         kind: 'Input',
@@ -167,10 +184,20 @@ export class BotClient {
         moveY: input.moveY,
         yaw: input.yaw,
         pitch: 0,
-        buttons: (input.jump ? 1 : 0) | (input.sprint ? 2 : 0) | (input.crouch ? 4 : 0),
+        buttons,
+        prior: this.recentInputs.slice(0, MAX_PRIOR_INPUTS),
       }),
       'unreliable',
     );
+    this.recentInputs.unshift({
+      tick: this.tickNumber,
+      moveX: input.moveX,
+      moveY: input.moveY,
+      yaw: input.yaw,
+      pitch: 0,
+      buttons,
+    });
+    if (this.recentInputs.length > MAX_PRIOR_INPUTS) this.recentInputs.length = MAX_PRIOR_INPUTS;
   }
 
   private handle(bytes: Uint8Array): void {
@@ -249,6 +276,8 @@ export class BotClient {
 
     const result = this.predictor.reconcile(lastProcessedInputTick, authoritative);
     this.reconciles++;
+    if (!result.matched) this.unmatched++;
+    if (result.corrected) this.trueCorrections++;
     this.lastDivergence = result.error;
     if (result.error > this.peakDivergence) this.peakDivergence = result.error;
   }
