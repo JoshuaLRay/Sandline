@@ -11,7 +11,7 @@ import { HEALTH, POSITION, dequantize, quantize } from './quantize.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 
 export const MessageType = {
   Join: 0,
@@ -104,6 +104,18 @@ export type Message =
   | {
       kind: 'Fire';
       tick: number;
+      /**
+       * Aim in TABLE angle units (1/4096 turn), not the 1/1024 the wire uses
+       * for replicated facing.
+       *
+       * Replication precision is chosen for how accurately a character needs to
+       * be DRAWN; aim precision decides where a hitscan ray goes over a hundred
+       * metres. At 1/1024 a turn, half a step is 0.176 degrees, which is 30 cm
+       * of error at 100 m before any spread — and converting table to wire by
+       * shifting truncated rather than rounded, so the error was a consistent
+       * bias to one side rather than noise. Four more bits per shot removes
+       * both.
+       */
       yaw: number;
       pitch: number;
       renderTimeMs: number;
@@ -187,8 +199,8 @@ export function encodeMessage(msg: Message): Uint8Array {
     case 'Fire':
       w.writeBits(MessageType.Fire, TYPE_BITS);
       w.writeVarUint(msg.tick);
-      w.writeBits(msg.yaw & 0x3ff, 10);
-      w.writeBits(msg.pitch & 0x3ff, 10);
+      w.writeBits(msg.yaw & 0xfff, 12);
+      w.writeBits(msg.pitch & 0xfff, 12);
       w.writeVarUint(Math.max(0, Math.round(msg.renderTimeMs)));
       w.writeBits(msg.weapon & 0x7, 3);
       w.writeBool(msg.ads);
@@ -280,8 +292,8 @@ export function decodeMessage(bytes: Uint8Array): Message {
         return {
           kind: 'Fire',
           tick: r.readVarUint(),
-          yaw: r.readBits(10),
-          pitch: r.readBits(10),
+          yaw: r.readBits(12),
+          pitch: r.readBits(12),
           renderTimeMs: r.readVarUint(),
           weapon: r.readBits(3),
           ads: r.readBool(),

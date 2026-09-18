@@ -51,7 +51,6 @@ import {
   shotDirections,
   startReload,
   tryFire,
-  wireToTable,
   quantize,
   stepCharacter,
   writeDelta,
@@ -184,7 +183,7 @@ export class Session {
         index: i,
         netId: this.nextNetId++,
         isBot: true,
-        state: createMoveState(i * 1.5 - 3.75, 0, 0),
+        state: createMoveState(spawnFor(i).x, spawnFor(i).y, spawnFor(i).z),
         yaw: 0,
         input: idleInput(),
         lastProcessedInputTick: -1,
@@ -352,7 +351,9 @@ export class Session {
     }
 
     slot.pitch = msg.pitch;
-    const yaw = wireToTable(msg.yaw);
+    // Already table units: no expansion, so no expansion error.
+    const yaw = msg.yaw & 0xfff;
+    const pitch = msg.pitch & 0xfff;
     /**
      * Traced from the eye, not from the visual muzzle. The server does not know
      * which camera the client is using and must not need to: a shot must hit
@@ -381,7 +382,7 @@ export class Session {
     const shooterThen = this.hitboxes.positionAt(slot.netId, rewoundTo) ?? slot.state;
     const origin = eyePosition(shooterThen.x, shooterThen.y, shooterThen.z);
 
-    for (const dir of shotDirections(slot.weapon, shot, slot.netId, msg.tick, yaw, wireToTable(msg.pitch))) {
+    for (const dir of shotDirections(slot.weapon, shot, slot.netId, msg.tick, yaw, pitch)) {
       const hit = resolveShot(
         this.hitboxes,
         {

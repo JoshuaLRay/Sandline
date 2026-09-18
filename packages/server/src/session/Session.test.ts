@@ -9,7 +9,7 @@ import {
   createLoopbackPair,
   decodeMessage,
 } from '@sandline/shared';
-import { MAX_INPUT_REPEAT, Session } from './Session.ts';
+import { Session } from './Session.ts';
 
 /** A minimal in-process client: handshake, then drive inputs. */
 function connectClient(session: Session, name: string, now = 0) {
@@ -198,19 +198,31 @@ describe('tick loop (T-1.13)', () => {
 
   // ADR-012: repeat a missing input briefly, then idle. Without the cap a
   // player whose connection stalls mid-sprint runs forever.
-  it('repeats a missing input briefly, then stops the player', () => {
+  it('consumes each input once and then holds, rather than repeating it', () => {
+    /**
+     * ADR-012 originally said to repeat a missing input for a few ticks. Its
+     * addendum replaced that with holding still, because horizontal motion here
+     * is driven directly by input: an idle step moves the player almost
+     * nowhere, while a repeated step moves them a full tick's worth that their
+     * own client never predicted and must then be yanked back from.
+     *
+     * So one input buys exactly one tick of movement. Measured against the
+     * spawn rather than against zero, since spawns are data and have moved once
+     * already.
+     */
     const s = new Session();
     const c = connectClient(s, 'stalled');
+    const startZ = s.slots[0]!.state.z;
     c.input(1, 0, 1, 0);
 
-    for (let i = 0; i < MAX_INPUT_REPEAT; i++) s.step(i * 33);
-    const afterRepeat = s.slots[0]!.state.z;
-    expect(afterRepeat).toBeGreaterThan(0);
+    s.step(33);
+    const afterOne = s.slots[0]!.state.z - startZ;
+    expect(afterOne, 'the single input was consumed').toBeGreaterThan(0);
 
-    for (let i = 0; i < 60; i++) s.step((MAX_INPUT_REPEAT + i) * 33);
-    const afterIdle = s.slots[0]!.state.z;
-    // It coasted a few more ticks before idling, then stopped entirely.
-    expect(afterIdle - afterRepeat).toBeLessThan(0.2);
+    // Nothing further arrives. The player must not keep travelling.
+    for (let i = 2; i < 60; i++) s.step(i * 33);
+    const afterSilence = s.slots[0]!.state.z - startZ;
+    expect(afterSilence - afterOne, 'no coasting on a repeated input').toBeLessThan(0.01);
   });
 
   // The plan's stated acceptance criterion for T-1.13.

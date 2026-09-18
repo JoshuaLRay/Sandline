@@ -13,6 +13,7 @@ import {
   type Message,
   PROTOCOL_VERSION,
   RANGE_TARGETS,
+  SPAWN_POINTS,
   createLoopbackPair,
   decodeMessage,
   encodeMessage,
@@ -126,20 +127,25 @@ function run(
 }
 
 /**
- * Wire yaw/pitch aiming from the first slot's eye at a world point. Slot 0
- * spawns at x = -3.75, z = 0 (six slots spread along X), and the eye is
- * 1.55 m up. Math.* is fine here: this is `packages/server`, and the ADR-014
- * ban is scoped to shared.
+ * Yaw/pitch aiming from the first slot's eye at a world point, in TABLE angle
+ * units (1/4096) — the resolution a Fire message carries, which is finer than
+ * the 1/1024 used for replicated facing.
+ *
+ * The shooter's eye is derived from the shared spawn table rather than written
+ * in, so moving a spawn cannot silently leave every aim in this file pointing
+ * at empty ground. Math.* is fine here: this is `packages/server`, and the
+ * ADR-014 ban is scoped to shared.
  */
 function aimAt(tx: number, ty: number, tz: number): { yaw: number; pitch: number } {
-  const dx = tx - -3.75;
-  const dy = ty - 1.55;
-  const dz = tz - 0;
-  const wire = (rad: number): number =>
-    ((Math.round((rad / (Math.PI * 2)) * 1024) % 1024) + 1024) % 1024;
+  const eye = SPAWN_POINTS[0] as { x: number; y: number; z: number };
+  const dx = tx - eye.x;
+  const dy = ty - (eye.y + 1.55);
+  const dz = tz - eye.z;
+  const table = (rad: number): number =>
+    ((Math.round((rad / (Math.PI * 2)) * 4096) % 4096) + 4096) % 4096;
   return {
-    yaw: wire(Math.atan2(dx, dz)),
-    pitch: wire(Math.asin(dy / Math.hypot(dx, dy, dz))),
+    yaw: table(Math.atan2(dx, dz)),
+    pitch: table(Math.asin(dy / Math.hypot(dx, dy, dz))),
   };
 }
 
@@ -403,7 +409,8 @@ describe('damage, death and respawn (T-1.19)', () => {
     const carbine = getWeapon('carbine');
     const shotTicks = Math.ceil(((60 / carbine.rpm) * 1000) / TICK_MS);
     // Slot 1's spawn, aimed at capsule centre.
-    const aim = aimAt(-2.25, 0.9, 0);
+    const neighbour = SPAWN_POINTS[1] as { x: number; y: number; z: number };
+    const aim = aimAt(neighbour.x, neighbour.y + 0.9, neighbour.z);
 
     const fire = (): number | undefined => {
       const before = client.hits.length;
@@ -480,5 +487,53 @@ describe('damage, death and respawn (T-1.19)', () => {
     // The aim was never adjusted: it still points at slot 1's spawn. A full
     // damage hit means they are standing there again with full health.
     expect(range.fire()).toBeCloseTo(CARBINE_TORSO, 6);
+  });
+});
+
+describe('aim is accurate at every range', () => {
+  it('hits all six range targets from 10 m to 95 m', () => {
+    /**
+     * Reported as third-person shots landing left of the reticle up close and
+     * drifting further right the further out the target was. Two causes, both
+     * about precision rather than about lag:
+     *
+     * The aim used to be quantized to the 1/1024 turn the wire uses for
+     * replicated facing, and converted by a SHIFT, which truncates. So the
+     * error was a consistent bias to one side of up to a quarter of a degree —
+     * nothing at 10 m, most of a metre at 95 m. Aim now rides at 1/4096 and is
+     * rounded once.
+     *
+     * A single tolerance across a 10:1 range of distances is what makes this
+     * test worth having: an angular error is invisible near and glaring far, so
+     * only the far targets can catch it.
+     */
+    for (const target of RANGE_TARGETS) {
+      const session = new Session();
+      const client = connect(session);
+      const now = run(session, 0, 5, client);
+      client.fire({
+        ...aimAt(target.x, target.y + 0.9, target.z),
+        ads: true,
+        renderTimeMs: now,
+      });
+      const hit = client.hits[0];
+      expect(hit, `a shot was resolved at ${target.label}`).toBeDefined();
+      expect(hit?.targetNetId, `hit the target at ${target.label}`).toBe(target.netId);
+    }
+  });
+
+  it('lands the impact on the aim line, not beside it', () => {
+    // The impact must sit on the ray, so its lateral offset from the aim line
+    // is what "goes where I am pointing" actually means.
+    const far = RANGE_TARGETS[RANGE_TARGETS.length - 1] as (typeof RANGE_TARGETS)[number];
+    const session = new Session();
+    const client = connect(session);
+    const now = run(session, 0, 5, client);
+    client.fire({ ...aimAt(far.x, far.y + 0.9, far.z), ads: true, renderTimeMs: now });
+
+    const hit = client.hits[0];
+    expect(hit).toBeDefined();
+    // Within the capsule's own radius of the point aimed at, at 95 m out.
+    expect(Math.hypot((hit?.x ?? 0) - far.x, (hit?.z ?? 0) - far.z)).toBeLessThan(0.4);
   });
 });

@@ -177,18 +177,24 @@ export function respawn(health: HealthState, config: DamageConfig = DAMAGE): voi
  * Spawn points, in the order slots claim them.
  *
  * Six, one per slot (ADR-001), spread so a respawn does not drop a player on
- * top of a teammate. Shared because the server picks from them and the client
- * will want to draw them; a QA range has no contested spawns to reason about
- * yet, so "the slot's own point" is the whole selection policy and a
- * farthest-from-enemies rule is M2's problem.
+ * top of a teammate, and set BEHIND the firing line rather than on it.
+ *
+ * They used to sit in a row at z = 0, 1.5 m apart, which put five teammates
+ * directly in each other's field of fire — and since there is no collision yet
+ * (T-1.12), strafing swept the muzzle straight through them. Every shot then
+ * terminated on whichever body it happened to be inside.
+ *
+ * Shared because the server picks from them and the client draws them; a QA
+ * range has no contested spawns to reason about yet, so "the slot's own point"
+ * is the whole selection policy and a farthest-from-enemies rule is M2's.
  */
 export const SPAWN_POINTS: readonly { x: number; y: number; z: number }[] = [
-  { x: -3.75, y: 0, z: 0 },
-  { x: -2.25, y: 0, z: 0 },
-  { x: -0.75, y: 0, z: 0 },
-  { x: 0.75, y: 0, z: 0 },
-  { x: 2.25, y: 0, z: 0 },
-  { x: 3.75, y: 0, z: 0 },
+  { x: -3.75, y: 0, z: -6 },
+  { x: -2.25, y: 0, z: -6 },
+  { x: -0.75, y: 0, z: -6 },
+  { x: 0.75, y: 0, z: -6 },
+  { x: 2.25, y: 0, z: -6 },
+  { x: 3.75, y: 0, z: -6 },
 ];
 
 export function spawnFor(slotIndex: number): { x: number; y: number; z: number } {

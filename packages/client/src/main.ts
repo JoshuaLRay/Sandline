@@ -100,21 +100,30 @@ scene.add(new THREE.GridHelper(200, 100, 0x8a7550, 0x6a5940));
  * what actually communicates speed.
  */
 /**
- * Everything a shot can stop on: what the aim ray converges against and what a
+ * What a shot can stop on: what the aim ray converges against and what a
  * predicted tracer terminates on.
  *
- * ONE list, because two lists drift. This was split before — the convergence
- * ray saw only the range targets and the ground, not the distance posts and not
- * the other players — and the failure was silent and specific. With nothing
- * hit, the aim point falls back to a point 250 m down the CAMERA's line, and a
- * ray from the eye to a point that far away is essentially parallel to the
- * camera. The eye sits 0.85 m left and 0.3 m below the camera in third person,
- * so a parallel shot lands very nearly that far down and to the left of the
- * reticle at any normal range. Aiming at a teammate or a post did exactly that,
- * while aiming at a red target or the floor worked perfectly.
+ * ONLY WHAT THE SERVER CAN ACTUALLY HIT — the other players and the range
+ * targets, plus the ground as a backstop. Decoration is deliberately absent,
+ * and that boundary is the whole point.
  *
- * Anything added to the scene that a bullet should acknowledge belongs here,
- * including meshes created later.
+ * Getting this set wrong breaks aiming in two opposite ways, and this project
+ * has now shipped both. Leave things OUT that the server can hit (the other
+ * players were missing) and the aim ray finds nothing, falls back to a point
+ * 250 m down the camera's line, and fires nearly parallel from an eye that sits
+ * 0.85 m left and 0.3 m below the camera — every shot lands down and to the
+ * left. Put things IN that the server cannot hit (the distance posts and the
+ * scale figure were added) and the ray converges on decoration instead of on
+ * the target: measured tracer lengths of 140, 92, 2.7, 140, 77 and 30 metres
+ * across six consecutive shots while strafing, because the muzzle was sweeping
+ * through a field of posts. The convergence distance then jumps around, so the
+ * shot crosses the reticle's line at an arbitrary range — left of the reticle
+ * nearer than the crossing, right of it beyond, which is exactly how it was
+ * described.
+ *
+ * So the rule is not "everything solid". It is "exactly what the server
+ * resolves hits against". Add a mesh here when, and only when, the server also
+ * knows about it.
  */
 const shootable: THREE.Object3D[] = [];
 
@@ -132,7 +141,8 @@ for (let gx = -40; gx <= 40; gx += 10) {
     post.position.set(gx, (major ? 2.6 : 1.4) / 2, gz);
     post.castShadow = true;
     scene.add(post);
-    shootable.push(post);
+    // NOT shootable: decoration. The server has no world collision (T-1.12),
+    // so a shot passes through a post exactly as the player does.
   }
 }
 
@@ -156,7 +166,8 @@ reference.position.set(-3, 0.9, 3);
 reference.castShadow = true;
 reference.name = 'reference figure';
 scene.add(reference);
-shootable.push(reference);
+// Also decoration, and a 1.8 m one standing 3 m from spawn: the single worst
+// thing for a shot to terminate on by accident.
 
 /**
  * The firing range: targets at known distances straight ahead of spawn.
@@ -454,17 +465,9 @@ function frame(): void {
     // what that shot hit. Both run the same cadence, so a shot the client
     // allows is normally one the server allows too.
     if (shot !== null) {
-      /**
-       * Quantize FIRST, then predict from the quantized angles.
-       *
-       * The wire carries 1/1024 of a turn and the trig table works in 1/4096,
-       * so the server necessarily sees a slightly coarser aim than the client
-       * computed. Predicting from the un-quantized value would give the local
-       * tracer a different axis from the authoritative shot for no reason.
-       */
-      const wireYaw = (aimYaw >> 2) & 0x3ff;
-      const wirePitch = (aimPitch >> 2) & 0x3ff;
-      net.fire(tickNumber, wireYaw, wirePitch, combat.weaponIndex, input.ads);
+      // Sent at table resolution, so the server traces the exact angles this
+      // client computed and the predicted tracer shares them without rounding.
+      net.fire(tickNumber, aimYaw, aimPitch, combat.weaponIndex, input.ads);
 
       /**
        * Draw it NOW. The same seeded spread the server will compute — the seed
@@ -474,14 +477,7 @@ function frame(): void {
        */
       combat.predictShot(
         muzzle,
-        shotDirections(
-          combat.weapon,
-          shot,
-          net.netId,
-          tickNumber,
-          wireToTable(wireYaw),
-          wireToTable(wirePitch),
-        ),
+        shotDirections(combat.weapon, shot, net.netId, tickNumber, aimYaw, aimPitch),
         tickNumber * TICK_SECONDS,
       );
     }
@@ -638,6 +634,12 @@ function frame(): void {
    */
   const eye = eyePosition(rx, ry, rz);
   aimDirection.set(aimPoint.x - eye.x, aimPoint.y - eye.y, aimPoint.z - eye.z).normalize();
+  /**
+   * Rounded ONCE, straight to the resolution the wire now carries (1/4096).
+   * The previous path rounded to 1/4096 and then shifted down to 1/1024, and a
+   * shift truncates — so the aim was biased consistently to one side by up to
+   * a quarter of a degree rather than merely quantized.
+   */
   aimYaw = fromRadians(Math.atan2(aimDirection.x, aimDirection.z));
   aimPitch = fromRadians(Math.asin(Math.max(-1, Math.min(1, aimDirection.y))));
 
