@@ -11,15 +11,25 @@
  * shake, muzzle flash, shell ejection) and must not quietly grow into it. There
  * is no art here, only debug lines.
  *
- * HITS ARE THE SERVER'S. The local raycast this used to do is gone. Tracers and
- * impacts are drawn from the HitEvent the server broadcasts after rewinding
- * hitboxes (T-1.18), so what you see IS the authoritative result. At latency
- * that means the tracer appears late — which is the honest thing to show, and
- * the thing worth feeling before deciding whether a predicted tracer is needed.
+ * TRACERS ARE PREDICTED; HITS ARE THE SERVER'S. That split matters and it was
+ * wrong in both directions before.
  *
- * Cadence, magazine and bloom are still simulated locally, because an ammo
+ * Drawing tracers from the server's HitEvent meant nothing appeared until a
+ * full round trip had elapsed — 160 ms at 80 ms ping, felt as the trigger
+ * lagging and worsening with the connection. Nothing about a muzzle flash is
+ * the server's business. So the tracer is drawn the instant the trigger
+ * resolves locally, from the same seeded spread (T-1.17) the server will use,
+ * which is precisely the option T-1.17 kept alive by making spread
+ * deterministic even though replication did not require it.
+ *
+ * The local raycast is back, but ONLY to decide where the streak stops. It
+ * settles nothing: damage, hit markers and whether anything was hit at all come
+ * from the server's rewound trace (T-1.18). A tracer is a picture; a hit is a
+ * fact.
+ *
+ * Cadence, magazine and bloom are also simulated locally, because an ammo
  * counter that waits for a round trip feels broken. The server runs the same
- * machine and is the authority; this copy exists only so the HUD responds.
+ * machine and is the authority; this copy exists so the HUD responds now.
  *
  * What it DOES exercise honestly is every number T-1.17 owns: the same
  * `tryFire` cadence and magazine machine, the same seeded `shotDirections`, the
@@ -108,7 +118,13 @@ export class CombatQA {
   pelletsHit = 0;
   lastHit: LastHit | null = null;
 
-  constructor(private readonly scene: THREE.Scene) {
+  private readonly raycaster = new THREE.Raycaster();
+
+  constructor(
+    private readonly scene: THREE.Scene,
+    /** Visual-only: what a predicted tracer may terminate on. */
+    private readonly scenery: THREE.Object3D[] = [],
+  ) {
     this.def = this.workingDef(0);
     this.state = createWeaponState(this.def);
   }
@@ -199,22 +215,50 @@ export class CombatQA {
   }
 
   /**
-   * Draw one authoritative pellet result. `origin` is the shooter's muzzle,
-   * `end` the impact or the end of the ray, both from the server.
+   * Draw the tracers for a shot immediately, before the server has seen it.
+   *
+   * The endpoint comes from a local raycast because a streak has to stop
+   * somewhere to look right; it carries no authority. Whether that pellet hit
+   * anything is decided by `drawServerShot` when the real answer arrives.
+   */
+  predictShot(origin: THREE.Vector3, directions: readonly { x: number; y: number; z: number }[], now: number): void {
+    for (const dir of directions) {
+      const direction = new THREE.Vector3(dir.x, dir.y, dir.z).normalize();
+      this.raycaster.set(origin, direction);
+      this.raycaster.far = this.def.maxRangeM;
+      const [hit] = this.raycaster.intersectObjects(this.scenery, false);
+      const end = hit
+        ? hit.point.clone()
+        : origin.clone().addScaledVector(direction, this.def.maxRangeM);
+      this.spawnTracer(origin, end, false, now);
+    }
+  }
+
+  /**
+   * Draw a tracer along a known segment. Used for OTHER players' shots, where
+   * there was no local trigger to predict from and the server's endpoint is the
+   * only endpoint there is.
+   */
+  drawTracer(from: THREE.Vector3, to: THREE.Vector3, now: number): void {
+    this.spawnTracer(from, to, false, now);
+  }
+
+  /**
+   * Record the AUTHORITATIVE outcome of one pellet: the hit marker, the damage,
+   * and the accuracy tally. No tracer — the predicted one is already drawn, and
+   * a second line arriving a round trip later would be the very lag this
+   * separation exists to hide.
    */
   drawServerShot(origin: THREE.Vector3, end: THREE.Vector3, targetNetId: number, damage: number, now: number): void {
-    const hit = targetNetId !== 0;
     this.pelletsFired += 1;
-    if (hit) {
-      this.pelletsHit += 1;
-      this.lastHit = {
-        target: `net ${targetNetId}`,
-        distanceM: origin.distanceTo(end),
-        damage,
-      };
-      this.spawnImpact(end, damage, now);
-    }
-    this.spawnTracer(origin, end, hit, now);
+    if (targetNetId === 0) return;
+    this.pelletsHit += 1;
+    this.lastHit = {
+      target: `net ${targetNetId}`,
+      distanceM: origin.distanceTo(end),
+      damage,
+    };
+    this.spawnImpact(end, damage, now);
   }
 
   private spawnTracer(from: THREE.Vector3, to: THREE.Vector3, hit: boolean, now: number): void {

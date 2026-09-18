@@ -71,10 +71,8 @@ function connect(session: Session, now = 0) {
       );
       pair.settle();
     },
-    input(yaw: number, tick: number) {
-      pair.b.send(
-        encodeMessage({ kind: 'Input', tick, moveX: 0, moveY: 0, yaw, pitch: 0, buttons: 0 }),
-      );
+    input(yaw: number, tick: number, moveX = 0, moveY = 0, buttons = 0) {
+      pair.b.send(encodeMessage({ kind: 'Input', tick, moveX, moveY, yaw, pitch: 0, buttons }));
       pair.settle();
     },
   };
@@ -295,5 +293,57 @@ describe('firing over the wire', () => {
     const now = run(session, 0, 5, client);
     client.fire({ renderTimeMs: now, yaw: ALONG_THE_LINE });
     expect(client.hits[0]?.targetNetId).toBeGreaterThan(0);
+  });
+});
+
+describe('the shooter is rewound too', () => {
+  it('traces from where the shooter was when they fired, not where they are now', () => {
+    /**
+     * Reported as guns feeling inaccurate, and worse with ping. The fire
+     * command takes half a round trip to arrive and the server keeps
+     * simulating, so by the time it resolves the shooter has moved — 0.54 m at
+     * sprint on an 80 ms link. Tracing the client's aim DIRECTION from a
+     * position half a metre away from the one it was computed at shifts the
+     * whole ray sideways, which misses a 0.35 m target completely.
+     *
+     * This drives the shooter sideways, then fires with the aim and the render
+     * time from BEFORE the movement. Rewinding the origin lands it; using the
+     * current position does not.
+     */
+    const session = new Session();
+    const client = connect(session);
+    let now = run(session, 0, 4, client);
+
+    const target = RANGE_TARGETS[0]!;
+    const aimThen = aimAt(target.x, target.y + 0.9, target.z);
+    const firedAt = now;
+
+    // Strafe hard for ~200 ms: enough to carry the origin clear of a 0.35 m
+    // capsule at this range.
+    for (let tick = 1; tick <= 7; tick += 1) {
+      client.input(aimThen.yaw, tick, 1, 0, 0b010);
+      now = run(session, now, 1, client);
+    }
+
+    client.fire({ ...aimThen, ads: true, renderTimeMs: firedAt });
+    const rewound = client.hits.at(-1);
+    expect(rewound?.targetNetId).toBe(target.netId);
+
+    /**
+     * Now the same aim, claiming to have been fired right now, so the origin is
+     * the shooter's present position. It must miss.
+     *
+     * The wait is not optional: the carbine is 720 rpm, so two fires inside one
+     * 33 ms tick are one shot and a rejection, and the second assertion would
+     * be reading the first shot's result.
+     */
+    for (let tick = 8; tick <= 12; tick += 1) {
+      client.input(aimThen.yaw, tick, 1, 0, 0b010);
+      now = run(session, now, 1, client);
+    }
+    const before = client.hits.length;
+    client.fire({ ...aimThen, ads: true, renderTimeMs: now });
+    expect(client.hits.length).toBe(before + 1);
+    expect(client.hits.at(-1)?.targetNetId).toBe(0);
   });
 });

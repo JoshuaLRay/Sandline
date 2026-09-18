@@ -35,6 +35,7 @@ import {
   cos,
   RANGE_TARGETS,
   fromRadians,
+  shotDirections,
   sin,
   DEFAULT_MUZZLE_RIG,
   type MuzzleStance,
@@ -211,7 +212,13 @@ function remoteMesh(netId: number): THREE.Mesh {
   return mesh;
 }
 
-const combat = new CombatQA(scene);
+/**
+ * Scenery a predicted tracer may terminate on. Visual only — the server
+ * decides what was hit.
+ */
+const tracerScenery: THREE.Object3D[] = [];
+const combat = new CombatQA(scene, tracerScenery);
+tracerScenery.push(...targets);
 
 /* -- Network --------------------------------------------------------------- */
 
@@ -230,14 +237,23 @@ net.join();
 const shotOrigin = new THREE.Vector3();
 const shotEnd = new THREE.Vector3();
 net.onShot = (shot) => {
-  if (shot.shooterNetId === net.netId) {
-    shotOrigin.set(muzzle.x, muzzle.y, muzzle.z);
-  } else {
-    const mesh = remoteMeshes.get(shot.shooterNetId);
-    if (mesh) shotOrigin.set(mesh.position.x, mesh.position.y - 0.9 + 1.05, mesh.position.z);
-    else shotOrigin.set(shot.x, shot.y, shot.z);
-  }
   shotEnd.set(shot.x, shot.y, shot.z);
+  if (shot.shooterNetId === net.netId) {
+    // Our own shot: the tracer is already drawn, so this only lands the hit
+    // marker and the damage number.
+    shotOrigin.set(muzzle.x, muzzle.y, muzzle.z);
+    combat.drawServerShot(shotOrigin, shotEnd, shot.targetNetId, shot.damage, clock.tick * TICK_SECONDS);
+    return;
+  }
+  /**
+   * Someone else's shot. There is nothing to predict — we never saw their
+   * trigger — so this is the one case where a tracer legitimately arrives on
+   * the server's schedule, drawn from their replicated position.
+   */
+  const mesh = remoteMeshes.get(shot.shooterNetId);
+  if (mesh) shotOrigin.set(mesh.position.x, mesh.position.y - 0.9 + 1.05, mesh.position.z);
+  else shotOrigin.set(shot.x, shot.y, shot.z);
+  combat.drawTracer(shotOrigin, shotEnd, clock.tick * TICK_SECONDS);
   combat.drawServerShot(shotOrigin, shotEnd, shot.targetNetId, shot.damage, clock.tick * TICK_SECONDS);
 };
 
@@ -411,7 +427,36 @@ function frame(): void {
     // what that shot hit. Both run the same cadence, so a shot the client
     // allows is normally one the server allows too.
     if (shot !== null) {
-      net.fire(tickNumber, aimYaw >> 2, (aimPitch >> 2) & 0x3ff, combat.weaponIndex, input.ads);
+      /**
+       * Quantize FIRST, then predict from the quantized angles.
+       *
+       * The wire carries 1/1024 of a turn and the trig table works in 1/4096,
+       * so the server necessarily sees a slightly coarser aim than the client
+       * computed. Predicting from the un-quantized value would give the local
+       * tracer a different axis from the authoritative shot for no reason.
+       */
+      const wireYaw = (aimYaw >> 2) & 0x3ff;
+      const wirePitch = (aimPitch >> 2) & 0x3ff;
+      net.fire(tickNumber, wireYaw, wirePitch, combat.weaponIndex, input.ads);
+
+      /**
+       * Draw it NOW. The same seeded spread the server will compute — the seed
+       * is (tick, entityId, shotIndex, pellet) and every term is already known
+       * here — so the predicted streak and the authoritative one share an axis
+       * without anything being sent to agree on it.
+       */
+      combat.predictShot(
+        muzzle,
+        shotDirections(
+          combat.weapon,
+          shot,
+          net.netId,
+          tickNumber,
+          wireToTable(wireYaw),
+          wireToTable(wirePitch),
+        ),
+        tickNumber * TICK_SECONDS,
+      );
     }
   }
 

@@ -47,7 +47,7 @@ import {
   stepCharacter,
   writeDelta,
 } from '@sandline/shared';
-import { DEFAULT_HITBOX, HitboxHistory, resolveShot } from '../net/lagComp.ts';
+import { DEFAULT_HITBOX, HitboxHistory, clampRewindMs, resolveShot } from '../net/lagComp.ts';
 
 const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
@@ -342,7 +342,26 @@ export class Session {
      * gameplay choice. The client draws its tracer from wherever the weapon
      * appears to be; that is cosmetic.
      */
-    const origin = eyePosition(slot.state.x, slot.state.y, slot.state.z);
+    /**
+     * Trace from where the SHOOTER was when they fired, not from where they are
+     * now.
+     *
+     * The fire command took half a round trip to arrive, and the server kept
+     * simulating in the meantime — at 80 ms and sprint speed the shooter has
+     * moved about 0.54 m. Tracing the client's aim direction from a position
+     * half a metre away from the one it was computed at throws the shot off by
+     * a couple of degrees over typical range, which is an order of magnitude
+     * wider than the weapon's own aimed cone. It reads as the gun being
+     * inaccurate, and it gets worse with ping, exactly like the report.
+     *
+     * Rewinding the origin to the same instant the TARGETS are rewound to puts
+     * the whole trace in one moment — the moment the player was looking at.
+     * That is the same principle lag compensation already applies to targets,
+     * applied to the shooter, and it is the missing half of it.
+     */
+    const rewoundTo = this.nowMs - clampRewindMs(this.nowMs, msg.renderTimeMs);
+    const shooterThen = this.hitboxes.positionAt(slot.netId, rewoundTo) ?? slot.state;
+    const origin = eyePosition(shooterThen.x, shooterThen.y, shooterThen.z);
 
     for (const dir of shotDirections(slot.weapon, shot, slot.netId, msg.tick, yaw, wireToTable(msg.pitch))) {
       const hit = resolveShot(

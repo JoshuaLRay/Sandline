@@ -56,3 +56,4 @@ Format: `T-<id> — <what changed>`
 - T-0.06 - Restore inter-tick render interpolation; range targets are server-side hittable.
 - T-0.06 - Build stamp in the HUD; server now decays weapon bloom (accuracy fix).
 - T-1.15/T-1.18 - Smoothness pass: reconcile fixes, input redundancy, hold-not-repeat.
+- T-1.17/T-1.18 - Predicted tracers (no firing delay) and rewound shooter origin.
