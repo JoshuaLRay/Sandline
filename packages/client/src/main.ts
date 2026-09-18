@@ -40,9 +40,12 @@ import {
   wireToTable,
 } from '@sandline/shared';
 import { LocalInput } from './input/LocalInput.ts';
+import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { solveArmLength } from './camera/followCamera.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
+import { createCameraPanel } from './ui/CameraPanel.ts';
 import { createTuningPanel } from './ui/TuningPanel.ts';
+import { createWeaponPanel } from './ui/WeaponPanel.ts';
 
 /* -- Scene ----------------------------------------------------------------- */
 
@@ -151,29 +154,12 @@ for (const distance of [10, 20, 35, 55, 80, 95]) {
 const config: MoveConfig = { ...DEFAULT_MOVE_CONFIG };
 const input = new LocalInput(renderer.domElement);
 
-/** Camera pivot height: roughly the eyes of a 1.8 m soldier. */
-const EYE_HEIGHT = 1.55;
-/** Third-person arm length before pitch shortening. */
-const CAMERA_DISTANCE = 5.5;
 /**
- * Over-the-shoulder offset.
- *
- * A centred third-person camera puts the character directly under the reticle,
- * so you aim at your own back and cannot see what you are shooting. Offsetting
- * the camera sideways is the standard fix and the reason every third-person
- * shooter looks over one shoulder.
+ * Camera constants live in a config object so the tuning panel can move them,
+ * for the same reason DEFAULT_MOVE_CONFIG does: they are guesses, and the only
+ * way to find the right ones is to change them while watching the result.
  */
-const SHOULDER_RIGHT = 0.85;
-const SHOULDER_RIGHT_ADS = 0.55;
-const SHOULDER_UP = 0.3;
-/** Never let the camera sink below this. The ground plane is y = 0. */
-const MIN_CAMERA_Y = 0.3;
-/** ...and never collapse the arm entirely while doing it. */
-const MIN_CAMERA_DISTANCE = 1.0;
-const ARM_LIMITS = { minCameraY: MIN_CAMERA_Y, minDistance: MIN_CAMERA_DISTANCE };
-const BASE_FOV = 60;
-/** Narrowing the field of view IS the aim cue, in both first and third person. */
-const ADS_FOV = 38;
+const cam = { ...DEFAULT_CAMERA_CONFIG };
 /** How far the aim ray looks for something to converge on. */
 const AIM_RANGE = 250;
 
@@ -195,13 +181,20 @@ const nose = new THREE.Mesh(
 player.add(nose);
 nose.position.set(0, 0.45, 0.4);
 
-// Five bot slots, stationary, for scale. ADR-001: the squad is always six.
+/**
+ * Five bot slots, stationary, for scale. ADR-001: the squad is always six.
+ *
+ * Parked off to the left rather than directly behind spawn, where they used to
+ * sit: the third-person camera lives about 5.5 m behind the character, so a
+ * capsule at z = -4 ends up roughly a metre in front of the lens and fills a
+ * quarter of the screen.
+ */
 for (let i = 1; i < 6; i++) {
   const bot = new THREE.Mesh(
     new THREE.CapsuleGeometry(0.35, 1.1, 4, 12),
     new THREE.MeshStandardMaterial({ color: 0xb9a37a, roughness: 0.9 }),
   );
-  bot.position.set(i * 1.6 - 6, 0.9, -4);
+  bot.position.set(-9, 0.9, i * 1.8 - 3);
   bot.castShadow = true;
   bot.name = `squad slot ${i}`;
   scene.add(bot);
@@ -214,13 +207,41 @@ const combat = new CombatQA(scene, targets);
 
 const hud = document.getElementById('hud');
 const stats = document.getElementById('stats');
-document.body.appendChild(
-  createTuningPanel(
-    config,
-    (v) => input.setSensitivity(v),
-    (v) => input.setInvertY(v),
-  ),
+
+/**
+ * One scrolling column for every panel. Three of them fixed to the same corner
+ * would sit on top of each other, and each is individually collapsible so a
+ * tester can keep only the one they are working in open.
+ */
+/**
+ * The HUD collapses to its title bar rather than vanishing: H used to hide it
+ * outright, which left no on-screen way to get it back.
+ */
+function toggleHud(): void {
+  if (!hud) return;
+  const collapsed = hud.classList.toggle('collapsed');
+  hudToggle.textContent = collapsed ? '+' : '\u2212';
+  hudToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+}
+const hudToggle = document.createElement('button');
+hudToggle.type = 'button';
+hudToggle.id = 'hud-toggle';
+hudToggle.textContent = '\u2212';
+hudToggle.title = 'Collapse (H)';
+hudToggle.addEventListener('click', toggleHud);
+hud?.querySelector('h1')?.append(hudToggle);
+
+const panels = document.createElement('div');
+panels.id = 'panels';
+const movementPanel = createTuningPanel(
+  config,
+  (v) => input.setSensitivity(v),
+  (v) => input.setInvertY(v),
 );
+const weaponPanel = createWeaponPanel(combat);
+const cameraPanel = createCameraPanel(cam);
+panels.append(movementPanel.root, weaponPanel.root, cameraPanel.root);
+document.body.appendChild(panels);
 
 /* -- Loop ------------------------------------------------------------------ */
 
@@ -264,7 +285,7 @@ function frame(): void {
      * spread a different pattern on every machine.
      */
     const tickNumber = clock.tick - steps + i + 1;
-    muzzle.set(state.x, state.y + EYE_HEIGHT, state.z);
+    muzzle.set(state.x, state.y + cam.eyeHeight, state.z);
     combat.tick(tickNumber, tickNumber * TICK_SECONDS, {
       origin: muzzle,
       yaw: aimYaw,
@@ -302,7 +323,7 @@ function frame(): void {
   const sinP = sin(pitchAngle);
   const cosP = cos(pitchAngle);
 
-  const pivotY = ry + EYE_HEIGHT;
+  const pivotY = ry + cam.eyeHeight;
   // View direction: horizontal component shrinks as pitch steepens.
   const dx = fx * cosP;
   const dy = sinP;
@@ -312,12 +333,15 @@ function frame(): void {
 
   // Field of view IS the aim cue. Eased rather than snapped so it reads as
   // shouldering a weapon instead of a hard cut.
-  const targetFov = ads ? ADS_FOV : BASE_FOV;
+  const targetFov = ads ? cam.adsFov : cam.baseFov;
   if (Math.abs(camera.fov - targetFov) > 0.01) {
     camera.fov += (targetFov - camera.fov) * Math.min(1, 12 * dt);
     camera.updateProjectionMatrix();
   }
   if (crosshair) crosshair.classList.toggle('ads', ads);
+  // Every value in the camera panel describes where the arm puts the camera
+  // relative to a character you cannot see in first person.
+  cameraPanel.setVisible(!input.firstPerson);
 
   if (input.firstPerson) {
     camera.position.set(rx, pivotY, rz);
@@ -331,12 +355,15 @@ function frame(): void {
      * established - getting it backwards here would put the camera over the
      * wrong shoulder and mirror the aim offset.
      */
-    const shoulder = ads ? SHOULDER_RIGHT_ADS : SHOULDER_RIGHT;
+    const shoulder = ads ? cam.shoulderRightAds : cam.shoulderRight;
     const focusX = rx - fz * shoulder;
-    const focusY = pivotY + SHOULDER_UP;
+    const focusY = pivotY + cam.shoulderUp;
     const focusZ = rz + fx * shoulder;
 
-    let dist = CAMERA_DISTANCE * (ads ? 0.6 : 1) * (1 - 0.35 * Math.abs(input.pitchFraction));
+    let dist =
+      cam.distance *
+      (ads ? cam.adsDistanceScale : 1) *
+      (1 - cam.pitchShorten * Math.abs(input.pitchFraction));
 
     /**
      * Floor clamp.
@@ -344,11 +371,11 @@ function frame(): void {
      * Looking up swings the arm DOWN and behind, which used to push the camera
      * through the ground plane. Rather than stopping at the floor and letting
      * the view stay buried, shorten the arm to exactly the length that lands
-     * the camera on MIN_CAMERA_Y: the camera then draws in toward the
+     * the camera on cam.minCameraY: the camera then draws in toward the
      * character's feet as you keep looking up, which is what the eye expects.
      * The real spring arm with scene collision is still E-2.1 in M2.
      */
-    dist = solveArmLength(dist, focusY, dy, ARM_LIMITS);
+    dist = solveArmLength(dist, focusY, dy, cam);
 
     camera.position.set(focusX - dx * dist, focusY - dy * dist, focusZ - dz * dist);
     camera.lookAt(focusX + dx * 10, focusY + dy * 10, focusZ + dz * 10);
@@ -372,7 +399,7 @@ function frame(): void {
   } else {
     aimPoint.copy(camera.position).addScaledVector(aimDirection, AIM_RANGE);
   }
-  aimDirection.set(aimPoint.x - rx, aimPoint.y - (ry + EYE_HEIGHT), aimPoint.z - rz).normalize();
+  aimDirection.set(aimPoint.x - rx, aimPoint.y - (ry + cam.eyeHeight), aimPoint.z - rz).normalize();
   aimYaw = fromRadians(Math.atan2(aimDirection.x, aimDirection.z));
   aimPitch = fromRadians(Math.asin(Math.max(-1, Math.min(1, aimDirection.y))));
 
@@ -417,7 +444,7 @@ addEventListener('keydown', (e) => {
   if (e.code.startsWith('Digit') && slot >= 1 && slot <= WEAPON_ORDER.length) {
     combat.selectWeapon(slot - 1);
   }
-  if (e.code === 'KeyH' && hud) hud.hidden = !hud.hidden;
+  if (e.code === 'KeyH') toggleHud();
   // First/third person. A proper camera with collision is E-2.1 in M2; this is
   // enough to judge whether the movement reads differently from each view.
   if (e.code === 'KeyV') input.firstPerson = !input.firstPerson;

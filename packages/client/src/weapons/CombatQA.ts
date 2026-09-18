@@ -22,7 +22,6 @@ import * as THREE from 'three';
 import {
   ANGLE_UNITS,
   TICK_SECONDS,
-  WEAPONS,
   type WeaponDef,
   type WeaponState,
   allowsFire,
@@ -31,6 +30,7 @@ import {
   damageAtDistance,
   decayBloom,
   finishReload,
+  getWeapon,
   isReloading,
   shotDirections,
   startReload,
@@ -84,6 +84,16 @@ export class CombatQA {
   private index = 0;
   private def: WeaponDef;
   private state: WeaponState;
+  /**
+   * Per-weapon working copies of the shipped definitions.
+   *
+   * The tuning panel edits these live, so they must NOT be the frozen objects
+   * from `WEAPONS` — and they must survive a weapon switch, or a tester loses
+   * every value they dialled in the moment they press 2 to compare.
+   */
+  private readonly working = new Map<string, WeaponDef>();
+  /** Fired when the active weapon changes, so the panel can rebind its rows. */
+  onWeaponChange: ((def: WeaponDef) => void) | null = null;
   private readonly raycaster = new THREE.Raycaster();
   private readonly effects: Fading[] = [];
   private readonly tracerGeometry = new THREE.BufferGeometry();
@@ -98,20 +108,56 @@ export class CombatQA {
     private readonly scene: THREE.Scene,
     private readonly targets: THREE.Object3D[],
   ) {
-    this.def = weaponAt(0);
+    this.def = this.workingDef(0);
     this.state = createWeaponState(this.def);
   }
 
+  /** The LIVE definition. Mutating it retunes the weapon immediately. */
   get weapon(): WeaponDef {
     return this.def;
+  }
+
+  get weaponIndex(): number {
+    return this.index;
+  }
+
+  private workingDef(index: number): WeaponDef {
+    const id = WEAPON_ORDER[index] ?? WEAPON_ORDER[0];
+    const existing = this.working.get(id);
+    if (existing !== undefined) return existing;
+    const copy = { ...getWeapon(id) };
+    this.working.set(id, copy);
+    return copy;
+  }
+
+  /**
+   * Settle the magazine after a stat edit. Dropping mag size below the rounds
+   * already loaded would otherwise read as 30/10, and a reload timed against
+   * the old duration would finish at the wrong moment.
+   */
+  applyWeaponEdit(): void {
+    if (this.state.ammo > this.def.magSize) this.state.ammo = this.def.magSize;
+    this.state.reloadEndsAt = 0;
+  }
+
+  /** Restore the active weapon to the shipped data, discarding tuning. */
+  resetWeapon(): WeaponDef {
+    const id = this.def.id;
+    const fresh = { ...getWeapon(id) };
+    this.working.set(id, fresh);
+    this.def = fresh;
+    this.state = createWeaponState(fresh);
+    this.onWeaponChange?.(fresh);
+    return fresh;
   }
 
   /** Switch weapons. Each keeps a fresh magazine; this is a range, not a match. */
   selectWeapon(index: number): void {
     if (index === this.index || index < 0 || index >= WEAPON_ORDER.length) return;
     this.index = index;
-    this.def = weaponAt(index);
+    this.def = this.workingDef(index);
     this.state = createWeaponState(this.def);
+    this.onWeaponChange?.(this.def);
   }
 
   requestReload(now: number): void {
@@ -275,11 +321,4 @@ export class CombatQA {
       `last ${hit}`
     );
   }
-}
-
-function weaponAt(index: number): WeaponDef {
-  const id = WEAPON_ORDER[index] ?? WEAPON_ORDER[0];
-  const def = WEAPONS[id];
-  if (def === undefined) throw new Error(`weapon "${id}" missing from the shipped table`);
-  return def;
 }

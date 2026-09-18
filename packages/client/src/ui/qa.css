@@ -15,8 +15,13 @@ body {
 }
 canvas { display: block; touch-action: none; }
 
-#hud, #tuning {
-  position: fixed;
+/**
+ * Shared chrome only — NOT position. The panels live inside a flex column and
+ * must lay out in normal flow; inheriting `position: fixed` here stacked all
+ * three on the same spot, where they looked fine and only the last one could
+ * be clicked.
+ */
+#hud, .panel {
   padding: 10px 12px;
   background: var(--panel);
   border: 1px solid var(--rule);
@@ -27,6 +32,7 @@ canvas { display: block; touch-action: none; }
   backdrop-filter: blur(6px);
 }
 #hud {
+  position: fixed;
   top: 0; left: 0;
   margin: 12px;
   padding-top: calc(10px + env(safe-area-inset-top, 0px));
@@ -52,50 +58,121 @@ canvas { display: block; touch-action: none; }
 #keys b { color: var(--amber); font-weight: 600; }
 #gap { color: #e0a866; opacity: 0.85; }
 
-#tuning {
+/**
+ * One scrolling column for every tuning panel. Three panels fixed to the same
+ * corner would stack on top of each other.
+ */
+#panels {
+  position: fixed;
   top: 0; right: 0;
   margin: 12px;
-  padding-top: calc(10px + env(safe-area-inset-top, 0px));
-  width: min(240px, calc(100vw - 24px));
-  max-height: calc(100vh - 40px);
+  padding-top: env(safe-area-inset-top, 0px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(248px, calc(100vw - 24px));
+  max-height: calc(100vh - 34px);
   overflow-y: auto;
 }
-#tuning h2 {
-  margin: 0 0 8px;
+.panel { padding: 0; }
+.panel[hidden] { display: none; }
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.panel-head:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
+.panel-chevron {
+  flex: none;
+  width: 7px; height: 7px;
+  border-right: 1.5px solid var(--amber);
+  border-bottom: 1.5px solid var(--amber);
+  transform: rotate(45deg);
+  transition: transform 120ms ease;
+}
+.panel.collapsed .panel-chevron { transform: rotate(-45deg); }
+.panel.collapsed .panel-body { display: none; }
+.panel-body { padding: 2px 12px 11px; }
+
+.panel-reset {
+  width: 100%;
+  margin-top: 4px;
+  padding: 5px 8px;
+  background: rgba(240, 180, 41, 0.12);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  color: var(--dust);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.panel-reset:hover { background: rgba(240, 180, 41, 0.22); }
+
+/** The HUD collapses too, down to its title bar. */
+#hud.collapsed #stats,
+#hud.collapsed #keys,
+#hud.collapsed #gap { display: none; }
+#hud h1 { display: flex; align-items: center; gap: 8px; }
+#hud-toggle {
+  margin-left: auto;
+  padding: 0 5px;
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  color: var(--amber);
+  font: inherit;
+  font-size: 10px;
+  line-height: 1.5;
+  cursor: pointer;
+  pointer-events: auto;
+}
+#hud-toggle:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.panel h2 {
+  margin: 0;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--amber);
 }
-#tuning label {
+.panel label {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 2px 8px;
   margin-bottom: 9px;
   font-size: 10px;
 }
-#tuning label b {
+.panel label b {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--amber);
 }
-#tuning input[type='range'] {
+.panel input[type='range'] {
   grid-column: 1 / -1;
   width: 100%;
   height: 16px;
   accent-color: var(--amber);
   cursor: pointer;
 }
-#tuning input[type='range']:focus-visible { outline: 2px solid var(--amber); }
-#tuning label.check {
+.panel input[type='range']:focus-visible { outline: 2px solid var(--amber); }
+.panel label.check {
   grid-template-columns: 1fr auto;
   align-items: center;
   margin-bottom: 10px;
 }
-#tuning label.check input { width: auto; accent-color: var(--amber); cursor: pointer; }
-#tuning .hint { margin: 10px 0 4px; font-size: 9px; opacity: 0.6; }
-#tuning-out {
+.panel label.check input { width: auto; accent-color: var(--amber); cursor: pointer; }
+.panel .hint { margin: 10px 0 4px; font-size: 9px; opacity: 0.6; }
+.panel-out {
   margin: 0;
   padding: 7px 8px;
   background: rgba(0, 0, 0, 0.4);
@@ -147,7 +224,7 @@ canvas { display: block; touch-action: none; }
 @media (max-width: 640px) {
   #crosshair { display: none; }
 
-  #tuning { position: static; margin: 12px; width: auto; max-height: none; }
+  #panels { position: static; margin: 12px; width: auto; max-height: none; }
   #hud { position: static; margin: 12px 12px 0; max-width: none; }
   body { overflow-y: auto; }
 }

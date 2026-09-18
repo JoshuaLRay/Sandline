@@ -9,6 +9,7 @@
  * is a QA tool, so it writes to a live config object rather than to data files.
  */
 import type { MoveConfig } from '@sandline/shared';
+import { type Panel, addCheck, addReadout, addSlider, createPanel } from './Panel.ts';
 
 interface Row {
   key: keyof MoveConfig;
@@ -30,81 +31,58 @@ export function createTuningPanel(
   config: MoveConfig,
   onSensitivity: (value: number) => void,
   onInvertY: (value: boolean) => void,
-): HTMLElement {
-  const panel = document.createElement('div');
-  panel.id = 'tuning';
-  panel.innerHTML = '<h2>Movement tuning</h2>';
-
-  const readout = document.createElement('pre');
-  readout.id = 'tuning-out';
-
-  const refresh = (): void => {
-    const lines = ROWS.map((r) => `  ${r.key}: ${config[r.key]},`).join('\n');
-    readout.textContent = `{\n${lines}\n}`;
-  };
+): Panel {
+  // Collapsed by default: movement has already been tuned and signed off, so
+  // it is the panel least likely to be wanted open. Weapons and camera are the
+  // live questions. A tester's own choice overrides this from then on.
+  const panel = createPanel('movement', 'Movement tuning', true);
 
   for (const row of ROWS) {
-    const wrap = document.createElement('label');
-    const value = document.createElement('b');
-    value.textContent = String(config[row.key]);
-
-    const input = document.createElement('input');
-    input.type = 'range';
-    input.min = String(row.min);
-    input.max = String(row.max);
-    input.step = String(row.step);
-    input.value = String(config[row.key]);
-    input.id = `tune-${row.key}`;
-    input.addEventListener('input', () => {
-      const v = Number(input.value);
-      config[row.key] = v;
-      value.textContent = v.toFixed(1);
-      refresh();
+    addSlider(panel.body, {
+      label: row.label,
+      min: row.min,
+      max: row.max,
+      step: row.step,
+      get: () => config[row.key],
+      set: (value) => {
+        config[row.key] = value;
+        refresh();
+      },
     });
-
-    const name = document.createElement('span');
-    name.textContent = row.label;
-    wrap.append(name, value, input);
-    panel.append(wrap);
   }
 
   // Mouse sensitivity is a viewer preference, not a gameplay constant, so it
   // lives here but does not appear in the copyable config.
-  const sens = document.createElement('label');
-  const sensValue = document.createElement('b');
-  sensValue.textContent = '0.55';
-  const sensInput = document.createElement('input');
-  sensInput.type = 'range';
-  sensInput.min = '0.1';
-  sensInput.max = '2';
-  sensInput.step = '0.05';
-  sensInput.value = '0.55';
-  sensInput.id = 'tune-sensitivity';
-  sensInput.addEventListener('input', () => {
-    sensValue.textContent = Number(sensInput.value).toFixed(2);
-    onSensitivity(Number(sensInput.value));
+  let sensitivity = 0.55;
+  addSlider(panel.body, {
+    label: 'Look speed',
+    min: 0.1,
+    max: 2,
+    step: 0.05,
+    get: () => sensitivity,
+    set: (value) => {
+      sensitivity = value;
+      onSensitivity(value);
+    },
   });
-  const sensName = document.createElement('span');
-  sensName.textContent = 'Look speed';
-  sens.append(sensName, sensValue, sensInput);
-  panel.append(sens);
 
   // Y inversion is a preference, not a bug: plenty of players fly-stick style.
-  const invert = document.createElement('label');
-  invert.className = 'check';
-  const invertBox = document.createElement('input');
-  invertBox.type = 'checkbox';
-  invertBox.id = 'tune-invert-y';
-  invertBox.addEventListener('change', () => onInvertY(invertBox.checked));
-  const invertName = document.createElement('span');
-  invertName.textContent = 'Invert look Y';
-  invert.append(invertName, invertBox);
-  panel.append(invert);
+  let inverted = false;
+  addCheck(
+    panel.body,
+    'Invert look Y',
+    () => inverted,
+    (value) => {
+      inverted = value;
+      onInvertY(value);
+    },
+  );
 
-  const hint = document.createElement('p');
-  hint.className = 'hint';
-  hint.textContent = 'Paste these back to set the defaults:';
-  panel.append(hint, readout);
+  const readout = addReadout(panel.body, 'Paste these back to set the defaults:');
+  function refresh(): void {
+    const lines = ROWS.map((r) => `  ${r.key}: ${config[r.key]},`).join('\n');
+    readout.textContent = `{\n${lines}\n}`;
+  }
   refresh();
 
   return panel;
