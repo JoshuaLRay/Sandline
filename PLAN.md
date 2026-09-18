@@ -276,9 +276,10 @@ Build it early (T-1.20).
 |---|---|---|---|
 | **M0** | Foundations | `pnpm verify` green in CI; parity harness reports bounded divergence over 1000 ticks in Node *and* a non-V8 engine | 2–3 wks |
 | **M1** | ⚠️ Netcode prototype | 2 clients (one human, one bot), capsules, four hitscan weapons, static range targets, playable at 200 ms simulated latency | 6–8 wks |
+| **M1.5** | ⚠️ Two humans, one session | Two people on different networks join one room from the published client and shoot each other; 🧍 verdict written | 3–4 wks |
 | **M2** | Shooter feel | 🧍 Third-person combat that a human signs off as good | 8–10 wks |
 | **M3** | AI & squad command | 6 slots with bot backfill; enemies use cover and suppress | 10–12 wks |
-| **M4** | Content systems | Asset pipeline, level format, mission scripting, lobby, saves | 10–12 wks |
+| **M4** | Content systems | Asset pipeline, level format, mission scripting, saves | 9–11 wks |
 | **M5** | Vertical slice | One finished 10-minute mission at §4.1 scope, 6 slots, demo-able | 6–8 wks |
 
 **M0 + M1 are the real gate.** Build zero content until the netcode prototype
@@ -301,6 +302,10 @@ them a scope cut made to reach the gate sooner:
   session, but only one is a person; see T-1.24.
 - **120 ms became 200 ms**, matching what T-1.22 already asserts in CI and what
   T-1.24 actually plays.
+
+**M1.5 inserted 2026-09-18.** The gate above is run by one human because there
+is nowhere for a second one to join. That is now the next thing fixed rather
+than the last — see §4.2.
 
 ### 4.1 Estimate reality and the slice scope cut 🔒 (ADR-015)
 
@@ -332,6 +337,55 @@ stage, and it is the single largest cost in the plan (R1).
 
 M2–M4 estimates stay as written because they are mostly systems work, which the
 cut does not touch. M5 shrinks. The 3–5× multiplier applies to all of them.
+
+### 4.2 M1.5, and why hosting moved forward
+
+**Added 2026-09-18.** This plan never stated that two people connecting to each
+other is a milestone. It was implied by E-4.5 — lobby, matchmaking, session
+lifecycle, drop-in/drop-out — sitting in M4 roughly thirty weeks out, with
+E-4.9 deploying a host beside it. That was an ordering mistake rather than a
+missing intent, and it is corrected here.
+
+**The pillar is human-to-human play.** M1 asked *does an authoritative-server
+TPS feel good in a browser* and answered it against a simulated link and a bot.
+Every unknown ADR-012's addendum then listed — real jitter distributions,
+reordering under congestion, NAT, and two players' inputs interacting — needs a
+second person on the far end of a real socket. Leaving that until M4 means
+building shooter feel (M2), AI (M3) and content systems on top of a question
+the project has never once asked.
+
+**The parts already exist and are simply not joined up.** `Session` runs six
+slots with bot backfill and per-client deltas (T-1.13). `startWsServer` accepts
+sockets and is tested at eight concurrent connections (T-1.07).
+`WsClientTransport` reconnects with backoff (T-1.08). The handshake assigns
+NetId and slot and times out a silent peer (T-1.09). What does not exist is a
+process that connects them: `packages/server/src/main.ts` is still T-0.07's
+bootstrap, stepping a bare `Simulation` with no transport at all. The first task
+of this milestone is plumbing, not architecture, and the first two tasks are
+what put two humans in one session.
+
+**It is mostly moved work, not added work.** M1.5 takes the single-host slice
+out of E-4.9 and the room/join half out of E-4.5, so M4 drops to 9–11 weeks and
+§4.1's ~50-week floor is unchanged. (That is the only reason M4's estimate moved;
+§4.1's scope cut did not touch it.) What is genuinely new is the client's remote
+branch and the two 🧍 gates — which is the point of doing it.
+
+**It restores T-1.24 to what it originally said.** That task specified two
+humans and was amended down to one for precisely the reason this milestone
+removes. Once T-1.5.02 lands the amendment is moot: run T-1.24's three link
+settings with two people, and the addendum's largest gap — two players shooting
+each other under lag compensation — closes with it.
+
+**What this is not: peer-to-peer.** ADR-011 rejects P2P with host migration on
+three counts — the host gets a latency advantage, NAT traversal needs the TURN
+infrastructure ADR-008 declined, and a hostile host can corrupt the session.
+That decision is unchanged and is not re-litigated here. Two players connect
+*to each other through an authoritative host*, which is the only arrangement in
+which the shot arbitration T-1.5.03 and T-1.5.08 go looking for means anything.
+During development that host may be a process on one of the two machines; in
+production it is a dedicated one (ADR-011). Everything in this milestone is the
+client/server shape M1 already built — what changes is that the far end of the
+socket becomes a person.
 
 ---
 
@@ -645,6 +699,90 @@ ADR-012's addendum, since this task is that ADR's gate.
 
 ---
 
+## 6A. M1.5 — Two humans, one session ⚠️
+
+**Added 2026-09-18; see §4.2 for why this sits here rather than inside M4.**
+
+The question: *does it still feel fair when the thing shooting at you is a
+person, on a real socket, at whatever latency the internet gives?* M1 answered
+the single-player half of that against NetSim and a bot. This milestone answers
+the other half, and R2 does not close until it does.
+
+Ordered so the first human-to-human shot lands at **T-1.5.02**, two tasks in,
+rather than at the end. Everything from T-1.5.04 onward — codes, rooms, lobby,
+deployment — is what turns "two tabs against a laptop" into "two people on
+different networks", and none of it blocks the first playtest.
+
+Task IDs follow §0.1: `T-1.5.<n>`, milestone 1.5.
+
+### 6A.1 A host that serves
+
+#### T-1.5.01 — Session host process
+- **Depends:** T-1.07, T-1.09, T-1.13
+- **Files:** `packages/server/src/main.ts`, `packages/server/src/session/SessionHost.ts`, `SessionHost.test.ts`, `packages/bot/src/main.ts`, root `package.json`
+- **Do:** `packages/server/src/main.ts` is still T-0.07's bootstrap — it steps a bare `Simulation` and never calls `startWsServer`, so the dedicated server has never served a session to anything. Join them: accept sockets with `startWsServer` (T-1.07), hand each to `Session.addConnection` (T-1.13), and drive `Session.step` from a wall-clock loop using the `Clock` spiral clamp (T-0.08). Wrap each connection in `NetSim` behind `LINK_LATENCY_MS` / `LINK_JITTER_MS` / `LINK_LOSS` env vars, so a real socket can still carry the conditions T-1.24's sliders inject today — without this, the first remote playtest loses the instrument that made the local one useful. Drop silent peers on the existing 5 s heartbeat. `SIGTERM` sends `Disconnect` to every connection before exit rather than dropping sockets. Add `--url` to the bot CLI so it drives a real socket instead of a loopback pair.
+- **Done when:** `pnpm host` boots and logs its port; `pnpm bot --url ws://localhost:8080 --count 2 --ticks 600` joins two bots over real sockets and reports peak prediction divergence under the 2 cm correction threshold with zero unmatched reconciles — the identical assertion T-1.20 makes in-process, now across a wire; killing the host mid-run makes both bots report a clean close rather than hang.
+- **Note:** the point of reusing the bot's own thresholds is that a *difference* between the loopback and socket numbers is the finding. They should match; if they do not, something in the netcode was depending on the loopback pair.
+- **Size:** M
+
+#### T-1.5.02 — The client joins a remote host
+- **Depends:** T-1.5.01, T-1.08
+- **Files:** `packages/client/src/net/RemoteServer.ts`, `packages/client/src/main.ts`, `packages/client/src/ui/NetworkPanel.ts`
+- **Do:** The harness unconditionally builds a `LocalServer` — an in-page `Session` over a loopback pair. Add the other branch: `?host=ws://…` builds a `WsClientTransport` (T-1.08) instead, skips the in-page session and the `SparringPartner` entirely, and drives the existing `NetClient` from it unchanged. Everything downstream already codes against `Transport` (ADR-008), so this should touch startup and nothing else — if it does not, that is assumption leakage the ADR predicted and the finding is worth more than the task. In-page stays the default, so the published build is unaffected. Surface connection state in the HUD — connecting, joined as slot *n*, retrying (attempt and delay), gave up — because on a real socket "nothing is happening" must be distinguishable from "nothing is moving". When remote, grey the link sliders out and say why: conditioning now lives on the host (T-1.5.01), and a slider that silently does nothing is worse than no slider.
+- **Done when:** Two browser tabs pointed at one local host process take two of the six slots, see each other move, and damage each other; the netgraph's RTT is a measured socket round-trip rather than NetSim's configured number; closing one tab hands its slot back to a bot within the heartbeat timeout and the other tab plays on.
+- **Size:** M
+
+#### T-1.5.03 — 🧍 LAN two-human gate
+- **Depends:** T-1.5.02
+- **Files:** `docs/playtests/m1.5-lan.md`
+- **Do:** Two people, two machines, one host on the LAN. The first time this project has had two humans in one session. Judge only what the second human adds — anything a lone tester can assess belongs to T-1.24. Specifically: two players contesting one doorway; each shooting the other inside the same 200 ms rewind window; whether "I shot first" disputes resolve in a way *both* people accept; whether a corpse taking no further damage reads as correct or as a swallowed hit. Run at LAN, then with the host's conditioning at 80 and 200 ms, setting the two players' conditions independently as T-1.24 requires.
+- **Done when:** A written verdict naming which of those cases feel fair and which do not, and stating what a LAN still leaves unproven — NAT, internet jitter distributions, routing, and any latency a slider did not put there.
+- **Size:** S
+
+### 6A.2 Rooms, and getting two people into the same one
+
+#### T-1.5.04 — Join codes and typed reject reasons
+- **Depends:** T-1.5.01
+- **Files:** `packages/shared/src/net/protocol.ts`, `packages/shared/src/net/Connection.ts`, tests
+- **Do:** `Join` carries a room code alongside version and name; `JoinAck` carries the room it landed in. Replace the handshake's single free-text reason with a typed rejection — `bad version`, `no such room`, `room full`, `host draining` — so the client can say which happened instead of "disconnected". Bump `PROTOCOL_VERSION` 5 → 6; it is already the guard that catches a stale client, and a published client will now be older than the host routinely. Generate codes from an alphabet without visually confusable characters, because they get read aloud over voice.
+- **Done when:** Every message round-trips (extend T-1.05's property test); each rejection reaches the client distinguishable from the others; a v5 client against a v6 host is rejected on version, not on room.
+- **Size:** S
+
+#### T-1.5.05 — Room registry and session lifecycle
+- **Depends:** T-1.5.04
+- **Files:** `packages/server/src/session/Registry.ts`, `packages/server/src/main.ts`, tests
+- **Do:** One process, many sessions. Create a room and return its code, look one up, refuse a join into a full one, and reclaim a room once its last human leaves and a grace period passes — a bot-only session still costs a full 30 Hz tick loop and should not outlive the people in it, but reclaiming it the instant someone's wifi drops loses their game. Cap rooms per process, and connections per room at six (ADR-001). §3 already names `server/src/session/` as "room, tick loop, player slots"; this is the room half, which has never existed.
+- **Done when:** Two clients with the same code share a session and see each other; two clients with different codes cannot see each other at all; a seventh client into a full room is rejected with `room full`; an emptied room's tick loop stops and its entities are released; the process cap rejects rather than degrades.
+- **Size:** M
+
+#### T-1.5.06 — Lobby
+- **Depends:** T-1.5.05, T-1.5.02
+- **Files:** `packages/client/src/ui/Lobby.ts`, `packages/client/src/main.ts`, `packages/client/src/net/RemoteServer.ts`
+- **Do:** The screen before the session. Choose a host, create a room or join a code, see all six slots with human/bot per slot, leave back to it. The roster is six rows always, never a growing list — ADR-001 is the reason, and a lobby that shows "2 players" teaches everyone the wrong model of the game. Put the code in a shareable link so the second player pastes a URL rather than types. Name the T-1.5.04 reason on a failed join. **Deliberately out of scope:** matchmaking, parties, region selection, ready-checks, class selection — those stay in E-4.5 and E-4.7.
+- **Done when:** One person hosts, sends the link, the other opens it, and both are in the same session within two clicks of the page loading; the roster shows four bots and two humans, and a slot visibly flips back to bot when someone leaves.
+- **Size:** M
+
+### 6A.3 A host on the internet
+
+#### T-1.5.07 — One deployed host
+- **Depends:** T-1.5.05
+- **Files:** `packages/server/Dockerfile`, `docs/DEPLOYING.md`, `.github/workflows/`
+- **Do:** E-4.9's first slice and nothing more: one region, one process. A container running the host; **TLS**, because the client is served over HTTPS and no browser will open a `ws://` socket from an `https://` page — this is the single most likely way this task fails and it fails silently in the console; a health endpoint; T-0.07's structured logger shipping somewhere readable; and the client's default host pointing at it. **Explicitly not:** multi-region, allocation, orchestration, autoscaling, matchmaking, or observability beyond logs. All of that stays in E-4.9.
+- **Done when:** Two people on different networks, neither on a VPN, join the same room from the published client and play; the host survives both of them leaving and a third person joining afterwards; `DEPLOYING.md` documents redeploy *and teardown*, including how to take the host down between playtests (R12).
+- **Size:** M
+
+#### T-1.5.08 — 🧍 M1.5 gate: two humans, one real host
+- **Depends:** T-1.5.07, T-1.5.06, T-1.5.03
+- **Files:** `docs/playtests/m1.5.md`, `docs/adr/012-netcode-shape.md`
+- **Do:** Re-run T-1.5.03's verdict across the internet instead of a LAN, conditioning off — the latency is now whatever the route gives, which is the entire point. Record measured RTT, jitter and loss from the netgraph beside each judgement so the verdict can be read against the NetSim cells T-1.22 asserts in CI. Where they disagree, the real link is right and the model needs revisiting.
+- **Done when:** A written verdict at real internet latency with measured numbers beside it, and an ADR-012 addendum recording whether the two-human case changed that ADR's conclusion. **If it fails, stop and revisit ADR-012 before M2 continues** — the same rule T-1.24 carries, for the half of the question T-1.24 cannot reach.
+- **Size:** S
+
+**Exit gate:** T-1.5.08's verdict exists and is a pass. R2 closes here, not at
+T-1.24.
+
+---
+
 ## 7. M2–M5 — Epics
 
 Deliberately coarse. Each gets broken into leaf tasks at its planning gate,
@@ -682,7 +820,7 @@ using the T-1.xx tasks above as the template for granularity.
 
 **Risk:** highest uncertainty in the project after M1. Combat AI that reads as competent is genuinely hard. Budget generously and expect the estimate to move.
 
-### M4 — Content systems (~10–12 wks)
+### M4 — Content systems (~9–11 wks)
 
 | Epic | Scope |
 |---|---|
@@ -690,11 +828,11 @@ using the T-1.xx tasks above as the template for granularity.
 | E-4.2 | Runtime asset loading, streaming, LOD, budget enforcement in CI |
 | E-4.3 | Level format + modular kit (~60 pieces) + lightmap bake |
 | E-4.4 | Mission scripting — objectives, triggers, spawners, scripted events |
-| E-4.5 | Lobby, matchmaking, session lifecycle, drop-in/drop-out |
+| E-4.5 | Matchmaking, parties, region selection, reconnect-to-session, invite flow — **rooms, join codes and the lobby moved to M1.5** (§4.2) |
 | E-4.6 | Persistence — accounts, campaign saves, per-soldier XP (Postgres + Redis) |
 | E-4.7 | HUD, menus, class selection, scoreboard |
 | E-4.8 | Vehicles — mounted MG first, driveable second |
-| E-4.9 | Deployment — regional game servers, session orchestration, observability |
+| E-4.9 | Deployment — **multi-region** game servers, session allocation, drain and reclaim, observability — **the single-host slice moved to M1.5** (T-1.5.07) |
 
 ### M5 — Vertical slice (~6–8 wks at §4.1 scope)
 
@@ -713,7 +851,7 @@ netcode and the squad architecture — not breadth.
 | # | Risk | Severity | Mitigation | Owner milestone |
 |---|---|---|---|---|
 | R1 | **Art volume** — a TPS needs 80–120 animation clips; art sinks more of these projects than code | Critical | **§4.1 cut: slice ships 2 classes, 2 enemy types, ~35 clips, ~25-piece kit** · one shared humanoid rig for all soldiers and enemies · purchased mocap · prone and vault cut from v1 | M4 |
-| R2 | **Cover-shooter netcode** doesn't feel good in a browser | Critical | M1 exists solely to answer this, before any content investment | M1 |
+| R2 | **Cover-shooter netcode** doesn't feel good in a browser | Critical | M1 answers it for one player against a simulated link · **M1.5 answers the half M1 structurally cannot — two humans, real socket, real latency (§4.2)**. R2 closes at T-1.5.08, not T-1.24 | M1 · M1.5 |
 | R3 | **Combat AI** fails to read as competent | High | Dedicated milestone, early grey-box prototyping, generous buffer | M3 |
 | R4 | **Six players amplifies level cost** — wider levels, ~1.5× encounter density | High | Two-fireteam mission template (§1.2); reuse kit aggressively | M4 |
 | R5 | **Browser performance** on lower-end hardware | Medium | Budget enforced in CI (E-4.2) · desktop-only v1 (ADR-002) | M4 |
@@ -723,6 +861,7 @@ netcode and the squad architecture — not breadth.
 | R9 | **Scope creep** | High | Anything not in §1.4 goes to a backlog file, not into a milestone | Ongoing |
 | R10 | **Determinism theater** — a whole-world golden hash that breaks on every tuning change, gets re-baselined reflexively, then catches nothing | Medium | §2.3 scopes parity to the two paths that actually need it; parity tests own their constants in the fixture | M0 |
 | R11 | **Estimates are a floor, not a plan** — §4 sums to ~50 wks; comparable solo projects run 3–5× | High | §4.1 scope cut · re-estimate at every milestone gate from *measured velocity*, never from this table | Ongoing |
+| R12 | **A publicly reachable host is a public attack surface**, with no accounts, no rate limiting and a cost meter running — arriving ~30 wks earlier than the plan assumed | Medium | Unlisted host, room codes required to join, connection and room caps (T-1.5.05), one small instance, **taken down between playtests** and documented as such (T-1.5.07) · real authentication is E-4.6, and nothing before it should pretend otherwise | M1.5 |
 
 ---
 
@@ -753,37 +892,74 @@ These block estimation, not implementation — M0 can start today regardless.
    pulled forward from E-3.2/E-3.5. Decide at M2's planning gate (§0.5), not
    before: it changes what M2 is for.
 
+   **Partly answered by M1.5**, added later the same day. Once two humans share
+   a session the thing that shoots back can be the other person, which tests
+   recoil, tracers and hit feedback better than a dummy and costs no AI at all.
+   It does not retire the question — a human opponent says nothing about cover
+   behaviour or suppression, and M3 still needs somewhere to start — but it
+   does mean M2 can open without answering it first.
+
+7. **Does a player ever host?** Raised 2026-09-18 by M1.5. T-1.5.01 produces a
+   host process that anyone can run, and the in-page session already is a listen
+   server in all but name. So the capability arrives whether or not it is a
+   product decision. ADR-011 rejects peer-to-peer *with host migration* for
+   production on latency, NAT and trust grounds, and that stands — but a
+   player-run dedicated host on a LAN, or a community server, is a different
+   proposition it does not explicitly rule on. Affects the E-4.9 cost model
+   (R7), the trust model, and whether the client ever needs LAN host discovery.
+   Decide before E-4.9. Nothing in M1.5 waits on it: a development host is a
+   development host under either answer.
+
 ---
 
 ## 10. Immediate next actions
+
+**Rewritten 2026-09-18** to put M1.5 (§4.2, §6A) in front of M2.
 
 M0 and M1's agent-executable work is done: T-0.01 through T-0.14 and T-1.01
 through T-1.23 have all landed (`docs/CHANGELOG.md` is the per-task trail), 351
 tests pass, and CI is green including the non-V8 parity job.
 
-1. **Run T-1.24.** 🧍 It is the only thing left in M1 and the only thing here an
-   agent cannot do. Play the deployed harness, judge feel at the three link
-   settings, write the verdict into `docs/playtests/m1.md`. Everything else in
-   this list waits on it, because a failed gate sends us back to ADR-012 and
-   changes what comes next.
-2. **Tune the weapon numbers.** Nobody has. The values in `data/weapons.json`
+1. **Run T-1.24.** 🧍 The only thing left in M1 and the only thing here an agent
+   cannot do. Play the harness, judge feel at the three link settings, write the
+   verdict into `docs/playtests/m1.md`. It stays first because a failed gate
+   sends us back to ADR-012, and there is no sense building a lobby onto netcode
+   that does not feel right alone.
+2. **Start T-1.5.01 and T-1.5.02 in parallel with it.** They do not wait on the
+   verdict: both connect components M1 already built and tested, and neither
+   changes a netcode decision the verdict could overturn. They are also the
+   entire distance between today and two people in one session — everything else
+   in §6A is about turning that into two people on *different networks*.
+3. **If T-1.5.02 lands before T-1.24 is played, play T-1.24 with two humans.**
+   Its one-human amendment (§4, ADR-012 addendum) exists solely because there
+   was nowhere for a second person to join. Once there is, the amendment is
+   moot and the gate runs as originally written — which also collapses steps 1
+   and 2 of this list into one sitting.
+4. **Tune the weapon numbers.** Nobody has. The values in `data/weapons.json`
    and `data/damage.json` were invented by an agent to be plausible, and rule 4
    put them in data precisely so a person could change them without a code
    change. The harness has live sliders and a paste-back block for exactly
    this; it is worth doing in the same sitting as T-1.24, while the feel is in
    hand.
-3. **Then hold M1 open until the verdict is written down.** A gate whose result
-   lives only in a conversation is not a gate.
+5. **Hold M1 open until the verdict is written down.** A gate whose result lives
+   only in a conversation is not a gate.
 
-After T-1.24 passes, M1 closes and M2 opens at its planning gate (§0.5), which
-owes two answers before any epic is broken into leaf tasks:
+Then M1.5 runs to its exit gate (T-1.5.08). **M2 does not open until it does.**
+The reason is in §4.2: M2, M3 and M4 all build on the assumption that
+human-to-human play over a real host feels fair, and that assumption is
+currently untested rather than merely unpolished.
+
+M2's planning gate (§0.5) still owes two answers before any epic is broken into
+leaf tasks, and M1.5 moves one of them:
 
 - **§9 Q6 — what fights back in M2?** Its exit gate says "grey-box firefight"
-  and every AI epic is in M3.
+  and every AI epic is in M3. M1.5 softens this: the other human can be what
+  fights back. Confirm at the gate rather than assuming it.
 - **Finish T-1.12.** It is PARTIAL: pure math on a flat plane, no collision.
   World collision is what would let scenery stop a bullet and end the special
   case where the shootable set has to be maintained by hand
-  (`packages/shared/src/sim/range.ts`, and note 16 in any handoff).
+  (`packages/shared/src/sim/range.ts`, and note 16 in any handoff). T-1.5.03
+  raises the stakes on this — two humans and no cover is a thin firefight.
 
 The pre-M0 list this section used to hold — answer Q1–Q4, create the repo, run
 T-0.13, then T-0.01→T-0.05 — is all done and has been removed. Replaced

@@ -42,3 +42,38 @@ across the party. Fly.io or Hathora as the initial platform.
   world.
 - **Serverless / edge functions.** Rejected: sessions are long-lived and
   stateful, which is the exact workload serverless is worst at.
+
+---
+
+## Addendum — 2026-09-18: one host first, and P2P is still rejected
+
+M1.5 (PLAN.md §4.2, §6A) pulls a deployed host forward from M4 to immediately
+after M1, so that two humans can play each other roughly thirty weeks earlier
+than this plan originally had them doing so. Two clarifications, because the
+request that prompted it used the words "peer to peer".
+
+**The decision above is unchanged.** Authoritative dedicated hosts, allocated
+per session. The rejection of peer-to-peer with host migration stands on all
+three of its original counts — host latency advantage, NAT traversal requiring
+TURN, and a hostile host able to corrupt the session. Two players connecting
+"to each other" means connecting to each other *through* a host. That is not a
+compromise made for M1.5; it is the only arrangement under which the shot
+arbitration those playtests exist to judge means anything at all, since lag
+compensation (T-1.18) is a server-side rewind and there is no server to rewind
+in a P2P mesh.
+
+**What M1.5 does take is a staging of this decision, not a departure from it.**
+T-1.5.07 deploys *one* host in *one* region with no allocation, no orchestration
+and no drain — the smallest thing that is still a dedicated authoritative
+server. Multi-region placement, worst-case-RTT matching, session allocation and
+reclaim remain E-4.9 and remain as specified here. The <80 ms RTT target is not
+being tested by a single-region host and should not be claimed from it; what
+T-1.5.08 measures is whether the netcode holds up at whatever latency two real
+people happen to have between them, which is a different and, at this stage,
+more urgent question.
+
+**One thing this does raise.** A host process that any player can run now exists
+as a by-product (T-1.5.01), and the in-page session already is a listen server
+in all but name. Whether a player-run host is ever a *supported* mode — LAN
+play, community servers — is not something this ADR ruled on, and it is now
+PLAN.md §9 Q7, to be answered before E-4.9 rather than drifted into.
