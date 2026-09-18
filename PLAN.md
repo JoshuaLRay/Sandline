@@ -275,7 +275,7 @@ Build it early (T-1.20).
 | ID | Milestone | Exit gate | Est. (solo, part-time) |
 |---|---|---|---|
 | **M0** | Foundations | `pnpm verify` green in CI; parity harness reports bounded divergence over 1000 ticks in Node *and* a non-V8 engine | 2–3 wks |
-| **M1** | ⚠️ Netcode prototype | 2 players, capsules, one hitscan rifle, 5 dumb enemies, playable at 120 ms simulated latency | 6–8 wks |
+| **M1** | ⚠️ Netcode prototype | 2 clients (one human, one bot), capsules, four hitscan weapons, static range targets, playable at 200 ms simulated latency | 6–8 wks |
 | **M2** | Shooter feel | 🧍 Third-person combat that a human signs off as good | 8–10 wks |
 | **M3** | AI & squad command | 6 slots with bot backfill; enemies use cover and suppress | 10–12 wks |
 | **M4** | Content systems | Asset pipeline, level format, mission scripting, lobby, saves | 10–12 wks |
@@ -284,6 +284,23 @@ Build it early (T-1.20).
 **M0 + M1 are the real gate.** Build zero content until the netcode prototype
 feels good under simulated adverse network conditions. If M1 fails, the project
 changes shape — that is exactly what the gate is for.
+
+**M1's gate amended 2026-09-18.** It previously read "2 players, capsules, one
+hitscan rifle, 5 dumb enemies, playable at 120 ms". Three corrections, none of
+them a scope cut made to reach the gate sooner:
+
+- **The five dumb enemies are gone from it.** No leaf task in §6 ever owned
+  them, so this was a gate requirement with no task behind it rather than work
+  that got skipped. The netcode question does not need them either: a static
+  dummy exercises the identical hitscan, lag compensation and damage falloff
+  path (`packages/shared/src/sim/range.ts`). Enemy behaviour is M3 — E-3.2 AI
+  locomotion, E-3.5 combat AI, E-3.6 archetypes — and **target health lands
+  with the behaviour that justifies it**, because health on something that
+  cannot move or shoot back is a number with nothing behind it.
+- **"2 players" is now "2 clients".** Two real `NetClient`s do connect to the
+  session, but only one is a person; see T-1.24.
+- **120 ms became 200 ms**, matching what T-1.22 already asserts in CI and what
+  T-1.24 actually plays.
 
 ### 4.1 Estimate reality and the slice scope cut 🔒 (ADR-015)
 
@@ -427,9 +444,10 @@ as well as V8.
 
 ## 6. M1 — Netcode prototype ⚠️
 
-**This milestone is the project's primary technical risk.** Two capsules, one
-gun, five dumb enemies. No art, no animation, no polish. The only question
-being answered is: *does an authoritative-server TPS feel good in a browser?*
+**This milestone is the project's primary technical risk.** Two capsules, four
+guns, static targets to shoot at. No art, no animation, no polish, no enemy
+behaviour (§4). The only question being answered is: *does an
+authoritative-server TPS feel good in a browser?*
 
 ### 6.1 Serialization
 
@@ -611,9 +629,19 @@ being answered is: *does an authoritative-server TPS feel good in a browser?*
 #### T-1.24 — 🧍 M1 playtest gate
 - **Depends:** T-1.22, T-1.23
 - **Files:** `docs/playtests/m1.md`
-- **Do:** Two humans play the prototype at 0 ms, 80 ms, and 200 ms simulated latency. Record whether shooting feels responsive and fair, and whether movement feels rubber-bandy.
+- **Do:** A human plays the deployed harness at the three T-1.22 link settings — LAN, 80/15/5%, and 200/40/20% — and records whether shooting feels responsive and fair and whether movement feels rubber-bandy. Your link and the sparring partner's link are set **independently**, so run each setting on your own link against a LAN partner, then hold your own at LAN and put the partner on the worst one. "I am lagging" and "they are lagging" are different faults in different code and the verdict should judge them apart.
 - **Done when:** A written verdict exists. **If this fails, stop and revisit ADR-012 before starting M2.** No amount of green CI substitutes for this judgement.
 - **Size:** S
+
+**Amended 2026-09-18: one human, not two.** There is nowhere for a second human
+to join. GitHub Pages is static hosting, the authoritative session runs inside
+the tab over a loopback pair through NetSim, and ADR-011's regional hosting is
+not deployed — so the gate is one person plus the in-page `SparringPartner`
+bot, each on its own simulated link. **The verdict must state what that leaves
+unproven:** real jitter distributions, reordering under congestion, NAT, TCP
+head-of-line blocking, and two humans' inputs interacting in one session. Those
+need a real host and are not answerable here at any slider setting. Recorded in
+ADR-012's addendum, since this task is that ADR's gate.
 
 ---
 
@@ -717,24 +745,46 @@ These block estimation, not implementation — M0 can start today regardless.
 5. **Session persistence model.** Does a campaign save belong to the host, or
    does every player carry their own soldier's progression across sessions?
    Affects E-4.6 substantially.
+6. **What fights back in M2?** Raised 2026-09-18 by the M1 gate amendment in
+   §4. M2's exit gate is "a human plays a grey-box firefight", which presumes
+   something that shoots back, but every AI epic sits in M3 and M2 has none.
+   Either M2's gate means a firefight against dummies, or M2 needs a minimal
+   hostile — enough perception and locomotion to take a shot and be shot at —
+   pulled forward from E-3.2/E-3.5. Decide at M2's planning gate (§0.5), not
+   before: it changes what M2 is for.
 
 ---
 
 ## 10. Immediate next actions
 
-1. Answer Q1–Q4 in §9.
-2. Create the dedicated repository; move `PLAN.md` into it.
-3. Run **T-0.13** (write the ADRs). It costs little and stops agents from
-   re-litigating locked decisions in every subsequent task. Write **ADR-005**
-   (Rapier build), **ADR-014** (determinism policy) and **ADR-015** (estimate
-   reality) first — they carry the review corrections.
-4. Run **T-0.01 → T-0.05** sequentially; they are small and unblock everything.
-5. Run **T-0.14** (deterministic math) next. Despite its ID it blocks T-0.11 and
-   T-1.12, and it is the cheapest available insurance against a drift bug that
-   stays invisible until the first Safari player joins.
-6. Run **T-0.06** and **T-0.07** in parallel.
-7. Spike **T-0.10** early — confirm the deterministic Rapier build loads in both
-   runtimes and **measure its actual performance cost**. If that cost is real at
-   this scale, ADR-005 and §2.3 both need revisiting before M1 starts.
-8. Add a non-V8 browser engine to CI before T-1.12 lands. Without it, §2.3's
-   central hazard cannot be detected by any test in this plan.
+M0 and M1's agent-executable work is done: T-0.01 through T-0.14 and T-1.01
+through T-1.23 have all landed (`docs/CHANGELOG.md` is the per-task trail), 351
+tests pass, and CI is green including the non-V8 parity job.
+
+1. **Run T-1.24.** 🧍 It is the only thing left in M1 and the only thing here an
+   agent cannot do. Play the deployed harness, judge feel at the three link
+   settings, write the verdict into `docs/playtests/m1.md`. Everything else in
+   this list waits on it, because a failed gate sends us back to ADR-012 and
+   changes what comes next.
+2. **Tune the weapon numbers.** Nobody has. The values in `data/weapons.json`
+   and `data/damage.json` were invented by an agent to be plausible, and rule 4
+   put them in data precisely so a person could change them without a code
+   change. The harness has live sliders and a paste-back block for exactly
+   this; it is worth doing in the same sitting as T-1.24, while the feel is in
+   hand.
+3. **Then hold M1 open until the verdict is written down.** A gate whose result
+   lives only in a conversation is not a gate.
+
+After T-1.24 passes, M1 closes and M2 opens at its planning gate (§0.5), which
+owes two answers before any epic is broken into leaf tasks:
+
+- **§9 Q6 — what fights back in M2?** Its exit gate says "grey-box firefight"
+  and every AI epic is in M3.
+- **Finish T-1.12.** It is PARTIAL: pure math on a flat plane, no collision.
+  World collision is what would let scenery stop a bullet and end the special
+  case where the shootable set has to be maintained by hand
+  (`packages/shared/src/sim/range.ts`, and note 16 in any handoff).
+
+The pre-M0 list this section used to hold — answer Q1–Q4, create the repo, run
+T-0.13, then T-0.01→T-0.05 — is all done and has been removed. Replaced
+2026-09-18.

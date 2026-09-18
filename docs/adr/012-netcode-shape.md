@@ -134,3 +134,47 @@ bounds `staleTicks`, which remains the signal for a client that has gone quiet.
 
 Revisit if a future controller carries horizontal momentum, which would make a
 held step and a repeated step much closer in effect and weaken the argument.
+
+---
+
+## Addendum: T-1.24 is run by one human, not two (2026-09-18)
+
+T-1.24 is this ADR's gate — the task whose failure the plan says should send us
+back here before M2 starts. It specified **two humans** playing at 0, 80 and
+200 ms. It is being run by one, and the reason is not convenience.
+
+**There is nowhere for a second human to join.** The QA home is GitHub Pages,
+which is static hosting: no process runs there to connect to. The authoritative
+session therefore runs *inside the tab*, reached over a loopback pair through
+NetSim, and ADR-011's regional hosting is not deployed. A second person opening
+the same URL gets their own separate session, not a seat in yours.
+
+**What replaces the second human.** The in-page `SparringPartner` — a real
+`NetClient` walking a seeded patrol — plus, added for this gate, an independent
+set of link conditions per client. One slider driving every link could not
+produce the case that matters most: a teammate lagging on a connection that is
+otherwise fine. Your link governs prediction, reconciliation and the delay
+between trigger and hit marker; theirs governs only what you see of them. Those
+are different faults in different code, and a gate that cannot separate them
+produces a verdict that cannot be acted on.
+
+**What this genuinely does not answer, at any slider setting:**
+
+- Real jitter distributions. NetSim draws uniform jitter around a mean; real
+  networks are heavy-tailed.
+- Reordering under congestion, and TCP head-of-line blocking.
+- NAT traversal and connection establishment against a remote host.
+- Two humans' inputs interacting — two people contesting the same doorway, or
+  each shooting the other under lag compensation, which is precisely the case
+  "a corpse takes no further damage" exists to handle.
+
+The last one is the real loss. Everything else on that list is a property of
+the transport; that one is a property of *gameplay under lag* and the bot cannot
+stand in for it, because it never shoots.
+
+**Consequence: a passing T-1.24 does not close R2.** It answers "does an
+authoritative-server TPS feel good in a browser" for one player against a
+simulated link, which is the question worth answering before content
+investment. It does not answer "does it feel fair when two people shoot each
+other across 200 ms". That needs a real host, and it should be re-gated when
+E-4.9 deploys one — not quietly assumed to have been covered here.

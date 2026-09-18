@@ -8,13 +8,16 @@
  * formats, delta compression, clock sync) has nothing to add and should not
  * invent something.
  *
- * Covered today: movement (T-1.12) and weapons (T-1.17).
+ * Covered today: movement (T-1.12), weapons (T-1.17), damage and respawn
+ * (T-1.19), both camera views, and the netcode itself — prediction (T-1.14),
+ * reconciliation (T-1.15), interpolation (T-1.16), lag compensation (T-1.18)
+ * and the netgraph (T-1.23).
  *
  * This runs the same `stepCharacter` the authoritative server runs (T-1.12), at
  * the same fixed 30 Hz, driven by local input, and fires the same `tryFire` and
- * `shotDirections` the server will (T-1.17). No network yet: prediction and
- * reconciliation are T-1.14/T-1.15, and until they are wired in here there is
- * nothing networked worth looking at.
+ * `shotDirections` the server does (T-1.17) — the same functions, not copies.
+ * The session is real and in this page: see `LocalServer` for what that does
+ * and does not model, and for the per-client link conditions T-1.24 needs.
  *
  * Its job is to make FEEL judgeable, since the constants in
  * DEFAULT_MOVE_CONFIG and data/weapons.json are guesses and everything
@@ -47,7 +50,7 @@ import {
 } from '@sandline/shared';
 import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
-import { DEFAULT_LINK, LocalServer } from './net/LocalServer.ts';
+import { DEFAULT_LINK, type LinkConditions, LocalServer } from './net/LocalServer.ts';
 import { NetClient } from './net/NetClient.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
 import { solveArmLength } from './camera/followCamera.ts';
@@ -256,6 +259,14 @@ const combat = new CombatQA(scene, shootable);
 /* -- Network --------------------------------------------------------------- */
 
 const link = { ...DEFAULT_LINK };
+/**
+ * The sparring partner's conditions are a SEPARATE object with separate
+ * sliders. What you see of a remote player is governed by their link to the
+ * server, not by yours, so one shared slider could never show you a teammate
+ * lagging on an otherwise perfect connection — which is the commonest thing a
+ * player actually reports, and the case T-1.24 has to be able to judge.
+ */
+const peerLink = { ...DEFAULT_LINK };
 // One config object, shared by reference with both the session and the
 // predictor: the movement panel must move authority and prediction together.
 const server = new LocalServer(link, config);
@@ -268,7 +279,8 @@ net.join();
  * this is what makes the interpolation half of the netgraph mean something,
  * and what T-1.23's two-client acceptance asks for.
  */
-const sparring = new SparringPartner(server.connect());
+const sparringLink = server.connect(peerLink);
+const sparring = new SparringPartner(sparringLink.transport);
 
 /**
  * Draw the authoritative result of a shot. The muzzle is derived from the
@@ -346,10 +358,20 @@ const movementPanel = createTuningPanel(
 );
 const weaponPanel = createWeaponPanel(combat);
 const cameraPanel = createCameraPanel(cam);
-const networkPanel = createNetworkPanel({
-  conditions: link,
-  onChange: (c) => server.setConditions(c),
-});
+const networkPanel = createNetworkPanel([
+  {
+    label: 'Your link',
+    conditions: link,
+    onChange: (c) => server.setConditions(c),
+    hint: 'Your own round trip. Felt as correction on yourself and as delay between the trigger and the hit marker.',
+  },
+  {
+    label: 'Sparring partner',
+    conditions: peerLink,
+    onChange: (c) => sparringLink.setConditions(c),
+    hint: 'The patrolling bot alone. Felt as rubber-banding and freezing on THEIR capsule while your own movement stays crisp.',
+  },
+]);
 const netgraph = createNetgraph(() => {
   const n = net.stats;
   return {
@@ -414,7 +436,10 @@ let speed = 0;
 let simPrev: { x: number; y: number; z: number } | null = null;
 let simCur: { x: number; y: number; z: number } | null = null;
 
-/** Connection and prediction health, the numbers T-1.23 will graph. */
+const linkText = (c: LinkConditions): string =>
+  `${c.latencyMs}ms  ${c.jitterMs}ms jitter  ${Math.round(c.lossRate * 100)}% loss`;
+
+/** Connection and prediction health, the numbers T-1.23 graphs. */
 function netReadout(): string {
   const n = net.stats;
   if (!n.joined) return 'connecting...';
@@ -428,9 +453,10 @@ function netReadout(): string {
   return (
     vitals +
     `net ${n.netId}  tick ${n.serverTick}  remotes ${n.remotes}\n` +
-    `${link.latencyMs}ms  ${link.jitterMs}ms jitter  ${Math.round(link.lossRate * 100)}% loss\n` +
+    `you   ${linkText(link)}\n` +
+    `peer  ${linkText(peerLink)}\n` +
     `corrections ${rate.toFixed(1)}%  peak ${n.peakDivergence.toFixed(3)}m\n` +
-    `snapshots ${n.snapshotsApplied}  missed ${n.missedBaselines}  in flight ${server.inFlight}`
+    `snapshots ${n.snapshotsApplied}  missed ${n.missedBaselines}  in flight ${server.local.inFlight}`
   );
 }
 

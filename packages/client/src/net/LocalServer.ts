@@ -22,6 +22,17 @@
  * THE PAYOFF. Because the link is simulated, its conditions are a slider. A
  * tester can feel 200 ms and 20% loss on demand, which is exactly the judgement
  * no amount of green CI substitutes for.
+ *
+ * ONE LINK PER CLIENT. Every attached client owns its NetSim pair and its own
+ * conditions, because "mine is bad" and "theirs is bad" are different faults
+ * that feel different and break different code. YOUR link drives prediction and
+ * reconciliation: raise its latency and you feel your own corrections and your
+ * own firing. A REMOTE player's link drives only what you see of them — their
+ * input reaches the server late, so their capsule interpolates from stale
+ * samples no matter how good your own connection is. Driving every link from
+ * one slider, which is what this did until T-1.24 asked for the split, makes
+ * those two failures impossible to tell apart: the one thing a tester most
+ * needs to report precisely.
  */
 import {
   type MoveConfig,
@@ -47,35 +58,44 @@ export const DEFAULT_LINK: LinkConditions = {
   lossRate: 0,
 };
 
-export class LocalServer {
+/** One client's link to the in-page session, tunable on its own. */
+export interface ClientLink {
   readonly transport: Transport;
-  private readonly session: Session;
-  private readonly pair = createLoopbackPair();
   /**
-   * Separate option objects per direction, sharing values but NOT seeds. One
-   * shared object would give both directions the same RNG stream, so every lost
-   * packet would be lost both ways at once — a link no real network resembles,
-   * and a flattering one to reconcile against.
+   * Live-tunable. NetSim reads its options on every send, so a change takes
+   * effect on the next packet rather than the next reload.
    */
-  private readonly upstream: NetSimOptions = { seed: 0x51a7 };
-  private readonly downstream: NetSimOptions = { seed: 0x9e37 };
-  private readonly sims: NetSim[];
-  private readonly extraPairs: { settle: () => void }[] = [];
-  private readonly conditions: LinkConditions;
+  setConditions(c: LinkConditions): void;
+  /** Datagrams still in flight on this link, both directions. */
+  readonly inFlight: number;
+}
+
+/**
+ * Seeds are fixed per link rather than counted from one base, so attaching a
+ * second client cannot change the first one's loss pattern. A harness that
+ * patrols differently once someone else joins cannot be compared with itself.
+ */
+const LOCAL_SEEDS = { up: 0x51a7, down: 0x9e37 };
+const PEER_SEEDS = { up: 0x1234, down: 0xabcd };
+const PEER_SEED_STRIDE = 97;
+
+export class LocalServer {
+  /** The human's own transport. `LocalServer.setConditions` is its shorthand. */
+  readonly transport: Transport;
+  readonly local: ClientLink;
+  private readonly session: Session;
+  private readonly sims: NetSim[] = [];
+  private readonly pairs: { settle: () => void }[] = [];
+  private peers = 0;
 
   constructor(conditions: LinkConditions = DEFAULT_LINK, moveConfig?: MoveConfig) {
     this.session = new Session(moveConfig);
-    this.conditions = conditions;
-    const serverSide = new NetSim(this.pair.a, this.upstream);
-    const clientSide = new NetSim(this.pair.b, this.downstream);
-    this.sims = [serverSide, clientSide];
-    this.transport = clientSide;
-    this.session.addConnection(serverSide, 0);
-    this.setConditions(conditions);
+    this.local = this.attach(conditions, LOCAL_SEEDS);
+    this.transport = this.local.transport;
   }
 
   /**
-   * Attach another client to the same session.
+   * Attach another client to the same session, on a link of its own.
    *
    * Used for the sparring partner, which exists so there is a remote entity
    * that actually MOVES. Five idle capsules exercise replication but say
@@ -83,29 +103,50 @@ export class LocalServer {
    * does to other players. On a LAN link (the default) they are also the only
    * way to see the interpolation delay at all.
    */
-  connect(): Transport {
+  connect(conditions: LinkConditions = DEFAULT_LINK): ClientLink {
+    const index = this.peers++;
+    return this.attach(conditions, {
+      up: PEER_SEEDS.up + index * PEER_SEED_STRIDE,
+      down: PEER_SEEDS.down + index * PEER_SEED_STRIDE,
+    });
+  }
+
+  private attach(conditions: LinkConditions, seeds: { up: number; down: number }): ClientLink {
     const pair = createLoopbackPair();
-    const up: NetSimOptions = { seed: 0x1234 + this.extraPairs.length * 97 };
-    const down: NetSimOptions = { seed: 0xabcd + this.extraPairs.length * 97 };
+    /**
+     * Separate option objects per direction, sharing values but NOT seeds. One
+     * shared object would give both directions the same RNG stream, so every
+     * lost packet would be lost both ways at once — a link no real network
+     * resembles, and a flattering one to reconcile against.
+     */
+    const up: NetSimOptions = { seed: seeds.up };
+    const down: NetSimOptions = { seed: seeds.down };
     const serverSide = new NetSim(pair.a, up);
     const clientSide = new NetSim(pair.b, down);
     this.sims.push(serverSide, clientSide);
-    this.extraOptions.push(up, down);
-    this.extraPairs.push(pair);
+    this.pairs.push(pair);
     this.session.addConnection(serverSide, 0);
-    this.setConditions(this.conditions);
-    return clientSide;
+
+    const link: ClientLink = {
+      transport: clientSide,
+      setConditions(c: LinkConditions): void {
+        for (const opts of [up, down]) {
+          opts.latencyMs = c.latencyMs;
+          opts.jitterMs = c.jitterMs;
+          opts.lossRate = c.lossRate;
+        }
+      },
+      get inFlight(): number {
+        return serverSide.inFlight + clientSide.inFlight;
+      },
+    };
+    link.setConditions(conditions);
+    return link;
   }
 
-  private readonly extraOptions: NetSimOptions[] = [];
-
-  /** Live-tunable. NetSim reads these on every send, so changes take effect at once. */
+  /** Set the human's own link. Other clients keep whatever they were given. */
   setConditions(c: LinkConditions): void {
-    for (const opts of [this.upstream, this.downstream, ...this.extraOptions]) {
-      opts.latencyMs = c.latencyMs;
-      opts.jitterMs = c.jitterMs;
-      opts.lossRate = c.lossRate;
-    }
+    this.local.setConditions(c);
   }
 
   /**
@@ -115,8 +156,7 @@ export class LocalServer {
    */
   pump(nowMs: number): void {
     for (const sim of this.sims) sim.pump(nowMs);
-    this.pair.settle();
-    for (const extra of this.extraPairs) extra.settle();
+    for (const pair of this.pairs) pair.settle();
   }
 
   /** Advance the authoritative simulation one tick. */
@@ -135,6 +175,11 @@ export class LocalServer {
     return this.session.tick * TICK_SECONDS * 1000;
   }
 
+  /**
+   * Every link's queue. The HUD wants `local.inFlight` — the tester's own
+   * packets — because a sparring partner parked on a 300 ms link would
+   * otherwise inflate a number that reads as "my connection".
+   */
   get inFlight(): number {
     return this.sims.reduce((n, s) => n + s.inFlight, 0);
   }

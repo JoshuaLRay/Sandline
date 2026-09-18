@@ -249,3 +249,16 @@ canvas { display: block; touch-action: none; }
   #hud { position: static; margin: 12px 12px 0; max-width: none; }
   body { overflow-y: auto; }
 }
+
+/* Subsection heading inside a panel, for the per-client link groups. */
+.panel-sub {
+  margin: 14px 0 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  opacity: 0.85;
+}
+.panel-body > .panel-sub:first-child { margin-top: 4px; }
+.panel .hint-sub { margin: 3px 0 8px; }
