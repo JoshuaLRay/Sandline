@@ -44,6 +44,7 @@ import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { solveArmLength } from './camera/followCamera.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
+import { muzzlePosition } from './weapons/muzzle.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
 import { createTuningPanel } from './ui/TuningPanel.ts';
 import { createWeaponPanel } from './ui/WeaponPanel.ts';
@@ -286,7 +287,11 @@ function frame(): void {
      * spread a different pattern on every machine.
      */
     const tickNumber = clock.tick - steps + i + 1;
-    muzzle.set(state.x, state.y + cam.eyeHeight, state.z);
+    // Facing at THIS tick, not the render frame's: the shot leaves from where
+    // the character was pointing when the trigger was sampled.
+    const tickYaw = wireToTable(input.yaw);
+    const m = muzzlePosition(state.x, state.y, state.z, sin(tickYaw), cos(tickYaw), input.ads);
+    muzzle.set(m.x, m.y, m.z);
     combat.tick(tickNumber, tickNumber * TICK_SECONDS, {
       origin: muzzle,
       yaw: aimYaw,
@@ -410,7 +415,15 @@ function frame(): void {
   } else {
     aimPoint.copy(camera.position).addScaledVector(aimDirection, AIM_RANGE);
   }
-  aimDirection.set(aimPoint.x - rx, aimPoint.y - (ry + cam.eyeHeight), aimPoint.z - rz).normalize();
+  /**
+   * Converge from the MUZZLE, not the character's centre: the muzzle sits at
+   * the right hip, so a direction measured from the centre line would put the
+   * shot a hip's width off the reticle at close range.
+   */
+  const renderMuzzle = muzzlePosition(rx, ry, rz, fx, fz, ads);
+  aimDirection
+    .set(aimPoint.x - renderMuzzle.x, aimPoint.y - renderMuzzle.y, aimPoint.z - renderMuzzle.z)
+    .normalize();
   aimYaw = fromRadians(Math.atan2(aimDirection.x, aimDirection.z));
   aimPitch = fromRadians(Math.asin(Math.max(-1, Math.min(1, aimDirection.y))));
 
