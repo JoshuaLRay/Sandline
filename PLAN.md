@@ -664,6 +664,68 @@ using the T-1.xx tasks above as the template for granularity.
 
 **Exit gate:** 🧍 A human plays a grey-box firefight and signs off that it feels good.
 
+### 7.1 E-2.1 leaf tasks — broken out 2026-09-18
+
+M1 closed on T-1.24's sign-off, so M2 is open and E-2.1 is first. Only E-2.1 is
+broken out; the rest stay epics until their turn, per §0.5.
+
+**What already exists.** T-0.06's QA passes built more of this epic than the
+epic line suggests: a real orbiting camera with an 89-degree pitch limit
+oriented by YXZ Euler rather than `lookAt`, over-the-shoulder offsets for hip
+and ADS, pitch-based arm shortening, a floor clamp, an eased ADS field of view,
+a first/third person toggle and a live tuning panel. E-2.1's remaining scope is
+therefore narrower than "third-person camera": **spring arm, scene collision,
+shoulder swap, and an ADS transition that moves more than the FOV.**
+
+**§9 Q6 does not block this epic.** What fights back in M2 is a question about
+encounters, not about the camera; answer it before any epic that needs a target
+that shoots.
+
+#### T-2.01 — Camera solve out of the render loop
+- **Depends:** —
+- **Files:** `packages/client/src/camera/cameraSolve.ts`, `packages/client/src/camera/cameraSolve.test.ts`, `packages/client/src/main.ts`
+- **Do:** Move the third-person camera arithmetic out of `frame()` into a solve that takes the character's render position, yaw, pitch, ADS and config and writes camera position, focus, view direction and arm length into a caller-owned target. Plain numbers, no `three` types, so it runs headless — and so the renderer stays a view onto state (ADR-004). Compose the existing `solveArmLength` rather than reimplementing it. `main.ts` keeps the Euler set, the FOV ease and the assignment of the result.
+- **Done when:** `pnpm verify` green, `main.ts` holds no camera arithmetic beyond applying the solve, and tests cover the behaviours the QA rounds established: shoulder handedness, pitch shortening, ADS distance scale, the floor clamp, and first person putting the camera exactly on the pivot.
+- **Size:** M
+- **Why first:** every remaining task in this epic changes that arithmetic, and while it sits inline in the render loop no test can reach it. Not itself part of E-2.1's scope — its prerequisite. Name the file `cameraSolve.ts`, not `FollowCamera.ts`: a name differing from the existing `followCamera.ts` only by case breaks on a case-insensitive filesystem.
+
+#### T-2.02 — Spring arm
+- **Depends:** T-2.01
+- **Files:** `packages/client/src/camera/springArm.ts`, tests, `cameraSolve.ts`
+- **Do:** Damp the arm length instead of snapping it every frame. **Asymmetric on purpose:** pull IN at once, ease OUT. A camera that eases inward clips through whatever it is avoiding for the length of the ease; one that snaps back out on clearing it reads as a jolt.
+- **Done when:** tests assert the asymmetry — a step decrease in desired length is applied within one frame, a step increase takes a bounded number of frames — and that settle time is frame-rate independent, which a naive `lerp(a, b, k)` is not. Derive the thresholds from the smoothing constant; do not fit them (§2.3's habit, note 5).
+- **Size:** S
+
+#### T-2.03 — Arm collision against scenery
+- **Depends:** T-2.02
+- **Files:** `packages/client/src/camera/cameraColliders.ts`, `cameraSolve.ts`, `main.ts`, tests
+- **Do:** Cast from the focus point toward the desired camera position, shorten the arm to the first hit less a margin that keeps the near plane clear of the surface, and let T-2.02's ease restore it. **State the set's rule where the set is built.** It is neither the shootable set nor "everything in the scene": it is static scenery the camera must not pass through — the distance posts, the rail, the reference figure, the ground. Other players are excluded, or the camera lurches every time a teammate walks behind you.
+- **Done when:** tests drive the solve against a synthetic collider and assert the arm shortens to hit-minus-margin and recovers at T-2.02's rate; then built and driven headless, per the standing rule for anything the client renders.
+- **Size:** M
+- **Not T-1.12.** Camera collision is a local render concern and needs no authoritative collision. Finishing it must not be read as closing T-1.12's gap: a shot will still pass straight through a post that stops the camera, and the HUD should keep saying so.
+
+#### T-2.04 — Shoulder swap
+- **Depends:** T-2.01
+- **Files:** `cameraSolve.ts`, `LocalInput.ts`, `main.ts`, `cameraConfig.ts`, tests
+- **Do:** A key swaps the camera to the left shoulder, eased rather than cut. The aim convergence origin, the muzzle rig and the predicted tracer origin all follow the swap.
+- **Done when:** tests assert the eye and muzzle offsets mirror with the side, and that a shot fired after a swap still converges on the reticle at **both near and far range — a 10:1 spread**, because an angular error is invisible at 10 m and glaring at 95 m (note 17).
+- **Size:** M
+- **The riskiest task in this epic.** Shots landing down-and-left, and then landing at an arbitrary range, were both caused by getting the aim convergence set or its precision wrong — a month apart in reasoning and ten minutes apart in time. Re-read note 16 and §2.3 before starting: the convergence set is exactly what the SERVER resolves hits against, and it is not the camera collider set this epic also introduces.
+
+#### T-2.05 — ADS transition
+- **Depends:** T-2.02, T-2.04
+- **Files:** `cameraSolve.ts`, tests
+- **Do:** Drive arm length, shoulder offset and FOV from one normalized transition parameter so they move together. Today only the FOV eases while distance and shoulder snap, so shouldering reads as a jump with a smooth zoom laid over it.
+- **Done when:** tests assert all three are continuous across the transition, and that aim convergence stays consistent mid-transition — the frame where distance has moved and shoulder has not is exactly where a mis-derived eye position hides.
+- **Size:** S
+
+#### T-2.06 — 🧍 E-2.1 sign-off
+- **Depends:** T-2.01, T-2.02, T-2.03, T-2.04, T-2.05
+- **Files:** `docs/playtests/e2-1.md`
+- **Do:** A human plays and judges camera feel: spring behaviour against walls and tight spaces, the shoulder swap, the ADS transition, and 89-degree pitch in both views.
+- **Done when:** A written verdict exists, recording what it does and does not establish, as T-1.24's did.
+- **Size:** S
+
 ### M3 — AI & squad command (~10–12 wks)
 
 | Epic | Scope | Notes |
