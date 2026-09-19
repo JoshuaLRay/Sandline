@@ -1,3 +1,4 @@
+- T-2.06: replace capsule player representations with a shared humanoid grey-box soldier placeholder; move E-2.1 human sign-off to T-2.07.
 # Changelog
 
 One line per completed task, newest last. Appended by whoever completes the task
