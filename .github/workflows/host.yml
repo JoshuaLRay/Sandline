@@ -88,5 +88,8 @@ jobs:
           gh workflow run pages.yml --ref main
           echo "::notice::SANDLINE_HOST=wss://${{ steps.health.outputs.host }}; Pages rebuild dispatched."
         env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}   # ← changed from github.token
+          GH_REPO: ${{ github.repository }}
+        env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
