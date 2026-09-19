@@ -111,7 +111,11 @@ describe('camera solve (T-2.01)', () => {
       cast(origin, direction, maxDistance) {
         // Facing +Z, level: the camera ray starts at the shoulder and runs -Z.
         expect(origin.z).toBeCloseTo(0, 6);
-        expect(direction).toEqual({ x: 0, y: 0, z: -1 });
+        // Negating a zero component produces -0, which is the same ray
+        // direction but is deliberately distinct under deep equality.
+        expect(direction.x).toBeCloseTo(0, 6);
+        expect(direction.y).toBeCloseTo(0, 6);
+        expect(direction.z).toBeCloseTo(-1, 6);
         expect(maxDistance).toBeCloseTo(cfg.distance, 6);
         return 3;
       },
