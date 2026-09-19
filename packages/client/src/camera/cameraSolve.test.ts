@@ -14,7 +14,8 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CAMERA_CONFIG } from './cameraConfig.ts';
 import { CAMERA_COLLISION_MARGIN, type CameraCollider } from './cameraColliders.ts';
-import { type CameraView, createCameraSolve, solveCamera } from './cameraSolve.ts';
+import { DEFAULT_MUZZLE_RIG, muzzlePosition } from '@sandline/shared';
+import { convergeAimDirection, type CameraView, createCameraSolve, solveCamera } from './cameraSolve.ts';
 
 const cfg = DEFAULT_CAMERA_CONFIG;
 /** Wire-angle units per degree: the wire carries 1024 per turn. */
@@ -30,6 +31,7 @@ function view(over: Partial<CameraView> = {}): CameraView {
     pitchFraction: 0,
     ads: false,
     firstPerson: false,
+    shoulderSide: 1,
     ...over,
   };
 }
@@ -153,4 +155,63 @@ describe('camera solve (T-2.01)', () => {
     expect(s.focus.x).toBeCloseTo(10 - cfg.shoulderRight, 6);
     expect(s.focus.z).toBeCloseTo(-7, 6);
   });
+  it('eases a shoulder swap and settles at the requested side', () => {
+    const target = createCameraSolve();
+    const right = solveCamera(view(), cfg, target, 1 / 60);
+    expect(right.shoulderBlend).toBeCloseTo(1, 6);
+
+    solveCamera(view({ shoulderSide: -1 }), cfg, target, 1 / 60);
+    expect(target.shoulderBlend).toBeLessThan(1);
+    expect(target.shoulderBlend).toBeGreaterThan(-1);
+
+    for (let i = 0; i < 120; i += 1) {
+      solveCamera(view({ shoulderSide: -1 }), cfg, target, 1 / 60);
+    }
+    expect(target.shoulderBlend).toBeCloseTo(-1, 4);
+    expect(target.focus.x).toBeCloseTo(cfg.shoulderRight, 4);
+  });
+
+  it('uses the same continuous shoulder curve at different frame rates', () => {
+    const at30 = createCameraSolve();
+    const at60 = createCameraSolve();
+    for (let i = 0; i < 30; i += 1) solveCamera(view({ shoulderSide: -1 }), cfg, at30, 1 / 30);
+    for (let i = 0; i < 60; i += 1) solveCamera(view({ shoulderSide: -1 }), cfg, at60, 1 / 60);
+    expect(at30.shoulderBlend).toBeCloseTo(at60.shoulderBlend, 6);
+  });
+
+  it('mirrors the visual muzzle with the camera shoulder', () => {
+    const rightRig = { ...DEFAULT_MUZZLE_RIG, shoulderRight: DEFAULT_MUZZLE_RIG.shoulderRight };
+    const leftRig = { ...DEFAULT_MUZZLE_RIG, shoulderRight: -DEFAULT_MUZZLE_RIG.shoulderRight };
+    const right = muzzlePosition(0, 0, 0, 0, 1, 'third', rightRig);
+    const left = muzzlePosition(0, 0, 0, 0, 1, 'third', leftRig);
+    expect(left.x).toBeCloseTo(-right.x, 8);
+    expect(left.y).toBeCloseTo(right.y, 8);
+    expect(left.z).toBeCloseTo(right.z, 8);
+  });
+
+  it('keeps aim convergence on the reticle at 10 m and 95 m on either shoulder', () => {
+    for (const shoulderSide of [1, -1] as const) {
+      const s = createCameraSolve();
+      solveCamera(view({ shoulderSide }), cfg, s, 1 / 60);
+      for (const range of [10, 95]) {
+        const target = {
+          x: s.position.x + s.direction.x * range,
+          y: s.position.y + s.direction.y * range,
+          z: s.position.z + s.direction.z * range,
+        };
+        const eye = { x: 0, y: cfg.eyeHeight, z: 0 };
+        const aim = convergeAimDirection(s.position, s.direction, eye, range);
+        const expected = {
+          x: target.x - eye.x,
+          y: target.y - eye.y,
+          z: target.z - eye.z,
+        };
+        const length = Math.sqrt(expected.x ** 2 + expected.y ** 2 + expected.z ** 2);
+        expect(aim.x).toBeCloseTo(expected.x / length, 8);
+        expect(aim.y).toBeCloseTo(expected.y / length, 8);
+        expect(aim.z).toBeCloseTo(expected.z / length, 8);
+      }
+    }
+  });
+
 });
