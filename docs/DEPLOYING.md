@@ -160,7 +160,27 @@ same image.
 
 ### First deploy, once
 
-Needs [`flyctl`](https://fly.io/docs/flyctl/install/) and a Fly account.
+Two ways. The workflow does everything; the CLI is for when you want to watch.
+
+**From the repository (one secret).** Needs a Fly account and nothing
+installed.
+
+1. On [fly.io](https://fly.io), create a deploy token: Dashboard -> Tokens,
+   or `fly tokens create deploy -x 999999h` if you have `flyctl`. An
+   org-scoped token is needed the first time, because the workflow creates the
+   app; a token scoped to an app that does not exist yet cannot.
+2. Repo -> Settings -> Secrets and variables -> Actions -> **Secrets** ->
+   `FLY_API_TOKEN`.
+3. Actions -> **Host** -> Run workflow.
+
+The job creates the app named in `fly.toml` if it is missing, deploys, checks
+`/healthz`, writes `wss://<app>.fly.dev` into the `SANDLINE_HOST` repository
+variable, and re-runs Pages. A few minutes later the lobby at
+https://joshualray.github.io/Sandline/ has the address filled in. If the
+create step fails with "name already taken", change `app` in `fly.toml` and
+run it again — app names are global on Fly.
+
+**From a machine.** Needs [`flyctl`](https://fly.io/docs/flyctl/install/).
 
 ```bash
 fly auth login
@@ -170,19 +190,14 @@ fly status                                                   # hostname: sandlin
 curl https://sandline-host.fly.dev/healthz                   # {"ok":true,"protocol":6,"rooms":0,...}
 ```
 
-Then point the published client at it:
+Then point the published client at it by hand: Repo -> Settings -> Secrets
+and variables -> Actions -> **Variables** -> `SANDLINE_HOST` =
+`wss://sandline-host.fly.dev` (a variable, not a secret: it is baked into a
+public page), and re-run the Pages workflow. Or set the secret as above and
+run Host once, which does both.
 
-1. Repo -> Settings -> Secrets and variables -> Actions -> **Variables** ->
-   `SANDLINE_HOST` = `wss://sandline-host.fly.dev`. A variable, not a secret:
-   it is baked into a public page.
-2. Re-run the Pages workflow (or push to `main`). The lobby's host field now
-   shows that address by default and the build stamp in the corner changes.
-3. Open https://joshualray.github.io/Sandline/ in two browsers on two
-   networks. Host, join, play. That is T-1.5.08's setup.
-
-For the workflow to deploy on its own: `fly tokens create deploy -x 999999h`
-and store it as the `FLY_API_TOKEN` repository **secret**. Without it the Host
-workflow skips itself with a notice rather than failing.
+Either way, the result to check: open the published page in two browsers on
+two networks. Host, join, play. That is T-1.5.08's setup.
 
 ### Redeploy
 
@@ -191,7 +206,8 @@ fly deploy --ha=false          # from a clean checkout of main
 ```
 
 or Actions -> Host -> Run workflow. A push to `main` touching `packages/server`,
-`packages/shared` or the Dockerfile deploys automatically once the secret is set.
+`packages/shared` or the Dockerfile deploys automatically once the secret is
+set, and every run re-asserts `SANDLINE_HOST` and rebuilds Pages.
 The protocol version is in `/healthz`: if the published client is older than the
 host, the lobby says "this build is older than the host - reload", and the fix
 is to let Pages finish deploying.
