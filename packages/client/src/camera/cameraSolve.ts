@@ -67,6 +67,8 @@ export interface CameraSolve {
   pitchAngle: number;
   /** Arm length after shortening. Zero in first person. */
   distance: number;
+  /** Smoothed shoulder side: +1 right, -1 left. */
+  shoulderBlend: number;
 }
 
 export function createCameraSolve(): CameraSolve {
