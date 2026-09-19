@@ -73,10 +73,6 @@ export interface CameraSolve {
   adsBlend: number;
   /** FOV derived from the same ADS transition. */
   fov: number;
-  /** Normalized 0..1 ADS transition shared by distance, shoulder and FOV. */
-  adsBlend: number;
-  /** FOV derived from the same ADS transition. */
-  fov: number;
 }
 
 export function createCameraSolve(): CameraSolve {
