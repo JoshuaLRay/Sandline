@@ -847,9 +847,9 @@ function frame(): void {
 
   // Field of view IS the aim cue. Eased rather than snapped so it reads as
   // shouldering a weapon instead of a hard cut.
-  const targetFov = ads ? cam.adsFov : cam.baseFov;
+  const targetFov = camSolve.fov;
   if (Math.abs(camera.fov - targetFov) > 0.01) {
-    camera.fov += (targetFov - camera.fov) * Math.min(1, 12 * dt);
+    camera.fov = targetFov;
     camera.updateProjectionMatrix();
   }
   if (crosshair) crosshair.classList.toggle('ads', ads);
