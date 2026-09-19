@@ -488,7 +488,7 @@ export class Session {
       );
 
       let dealt = 0;
-      if (hit) {
+      if (hit && hit.netId !== 0) {
         /**
          * Zone from the impact point's height up the target's hitbox — which is
          * exactly why T-1.18 returns a point rather than only a distance.
@@ -512,6 +512,8 @@ export class Session {
         // have no behaviour. Both arrive together when M2 gives them AI.
       }
 
+      // A scenery stop is a hit event on netId 0 at the wall: everyone draws
+      // the tracer ending there, nobody takes damage (T-1.12).
       const event: Message = hit
         ? {
             kind: 'HitEvent',

@@ -106,3 +106,104 @@ describe('movement directions (T-1.12)', () => {
     expect(absurd.z).toBeCloseTo(sane.z, 9);
   });
 });
+
+/* -- World collision (T-1.12) ---------------------------------------------- */
+
+import { type WorldBox, boxFrom } from './world.ts';
+
+const wall = (id: string, x: number, z: number, w: number, h: number, d: number, y = 0): WorldBox =>
+  boxFrom({ id, x, y, z, w, h, d }, 'cover');
+
+/** Walk `ticks` ticks of `inp` from `start` through `world`. */
+function walk(start: { x: number; y?: number; z: number }, inp: MoveInput, ticks: number, world: WorldBox[]) {
+  let s = createMoveState(start.x, start.y ?? 0, start.z);
+  for (let i = 0; i < ticks; i++) s = stepCharacter(s, inp, TICK_SECONDS, DEFAULT_MOVE_CONFIG, world);
+  return s;
+}
+
+describe('world collision (T-1.12)', () => {
+  const cfg = DEFAULT_MOVE_CONFIG;
+
+  it('stops at a wall instead of walking through it', () => {
+    const w = [wall('wall', 0, 5, 6, 2.4, 0.3)];
+    const s = walk({ x: 0, z: 0 }, input({ moveY: 1, sprint: true }), 90, w);
+    // Sprinting 3 s would reach z = 20; the wall's near face is at 4.85.
+    expect(s.z).toBeCloseTo(4.85 - cfg.radius, 9);
+    expect(s.x).toBeCloseTo(0, 9);
+  });
+
+  it('slides along a wall when walking into it at an angle', () => {
+    const w = [wall('wall', 0, 5, 40, 2.4, 0.3)];
+    // Yaw a 45-degree turn: forward is (sin, cos) = (0.707, 0.707).
+    const s = walk({ x: 0, z: 0 }, input({ moveY: 1, yaw: 128 }), 90, w);
+    expect(s.z).toBeCloseTo(4.85 - cfg.radius, 9);
+    // The X component kept going for the whole walk: 4.2 m/s * 3 s * 0.707.
+    expect(s.x).toBeGreaterThan(8);
+  });
+
+  it('steps onto a ledge no higher than stepHeight and is blocked by a taller one', () => {
+    // A kerb 20 m deep: 60 ticks of walking (8.4 m) ends well inside it.
+    const low = [wall('kerb', 0, 13, 6, cfg.stepHeight - 0.05, 20)];
+    const onKerb = walk({ x: 0, z: 0 }, input({ moveY: 1 }), 60, low);
+    expect(onKerb.y).toBeCloseTo(cfg.stepHeight - 0.05, 9);
+    expect(onKerb.grounded).toBe(true);
+    expect(onKerb.z).toBeGreaterThan(4);
+
+    const tall = [wall('crate', 0, 13, 6, cfg.stepHeight + 0.2, 20)];
+    const blocked = walk({ x: 0, z: 0 }, input({ moveY: 1 }), 60, tall);
+    expect(blocked.y).toBe(0);
+    expect(blocked.z).toBeCloseTo(3 - cfg.radius, 9);
+  });
+
+  it('walks off a crate and falls to the ground', () => {
+    const w = [wall('crate', 0, 0, 2, 1.2, 2)];
+    const start = { x: 0, y: 1.2, z: 0 };
+    let s = createMoveState(start.x, start.y, start.z);
+    expect(stepCharacter(s, input(), TICK_SECONDS, cfg, w).grounded).toBe(true);
+    s = walk(start, input({ moveY: 1 }), 60, w);
+    expect(s.y).toBe(0);
+    expect(s.grounded).toBe(true);
+    expect(s.z).toBeGreaterThan(1);
+  });
+
+  it('lands a jump on top of cover', () => {
+    const w = [wall('crate', 0, 1.6, 2, 1.0, 2)];
+    let s = createMoveState(0, 0, 0);
+    s = stepCharacter(s, input({ moveY: 1, jump: true, sprint: true }), TICK_SECONDS, cfg, w);
+    let landed = s;
+    for (let i = 0; i < 60 && !landed.grounded; i++) {
+      landed = stepCharacter(landed, input({ moveY: 1, sprint: true }), TICK_SECONDS, cfg, w);
+    }
+    expect(landed.grounded).toBe(true);
+    expect(landed.y).toBeCloseTo(1.0, 9);
+  });
+
+  it('cannot jump up into a ceiling', () => {
+    const w = [wall('ceiling', 0, 0, 4, 1, 4, cfg.height + 0.3)];
+    let s = createMoveState(0, 0, 0);
+    let peak = 0;
+    s = stepCharacter(s, input({ jump: true }), TICK_SECONDS, cfg, w);
+    for (let i = 0; i < 40; i++) {
+      s = stepCharacter(s, input(), TICK_SECONDS, cfg, w);
+      if (s.y > peak) peak = s.y;
+    }
+    expect(peak).toBeLessThanOrEqual(0.3 + 1e-9);
+    expect(s.grounded).toBe(true);
+  });
+
+  it('does not tunnel through a post at sprint speed, from any side', () => {
+    const post = [wall('post', 0, 5, 0.18, 1.4, 0.18)];
+    for (const yaw of [0, 512]) {
+      const from = yaw === 0 ? { x: 0, z: 0 } : { x: 0, z: 10 };
+      const s = walk(from, input({ moveY: 1, sprint: true, yaw }), 60, post);
+      // Held on the near side of the post, never across it.
+      if (yaw === 0) expect(s.z).toBeLessThan(5);
+      else expect(s.z).toBeGreaterThan(5);
+    }
+  });
+
+  it('ignores the world entirely when given none, exactly as before T-1.12', () => {
+    const s = walk({ x: 0, z: 0 }, input({ moveY: 1 }), 30, []);
+    expect(s.z).toBeCloseTo(cfg.walkSpeed, 6);
+  });
+});

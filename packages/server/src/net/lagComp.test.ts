@@ -7,6 +7,7 @@
  * that tuning either can never quietly change what this proves.
  */
 import { describe, expect, it } from 'vitest';
+import { type WorldBox, boxFrom } from '@sandline/shared';
 import {
   HitboxHistory,
   type Hitbox,
@@ -23,6 +24,8 @@ const TARGET_SPEED = 6.8;
 const BOX: Hitbox = { radius: 0.35, halfHeight: 0.55, centerOffsetY: 0.9 };
 const SHOOTER = 1;
 const TARGET = 2;
+/** These tests are about rewinding; the scenery is tested on its own below. */
+const NO_WORLD: WorldBox[] = [];
 
 /**
  * A target running along +X, crossing in front of a shooter who stands at the
@@ -154,6 +157,7 @@ describe('compensated shots', () => {
       history,
       { shooterNetId: SHOOTER, ray: STRAIGHT, nowMs: NOW, clientRenderTimeMs: NOW },
       BOX,
+      NO_WORLD,
     );
     expect(uncompensated).toBeNull();
 
@@ -161,6 +165,7 @@ describe('compensated shots', () => {
       history,
       { shooterNetId: SHOOTER, ray: STRAIGHT, nowMs: NOW, clientRenderTimeMs: NOW - LATENCY_MS },
       BOX,
+      NO_WORLD,
     );
     expect(compensated).not.toBeNull();
     expect(compensated?.netId).toBe(TARGET);
@@ -176,6 +181,7 @@ describe('compensated shots', () => {
       history,
       { shooterNetId: SHOOTER, ray: STRAIGHT, nowMs: NOW, clientRenderTimeMs: NOW - 5000 },
       BOX,
+      NO_WORLD,
     );
     expect(shot).toBeNull();
   });
@@ -186,6 +192,7 @@ describe('compensated shots', () => {
       history,
       { shooterNetId: SHOOTER, ray: STRAIGHT, nowMs: NOW, clientRenderTimeMs: NOW - 5000 },
       BOX,
+      NO_WORLD,
     );
     expect(shot?.rewindMs).toBe(MAX_REWIND_MS);
     expect(shot?.rewoundTo).toBe(NOW - MAX_REWIND_MS);
@@ -198,6 +205,7 @@ describe('compensated shots', () => {
       history,
       { shooterNetId: SHOOTER, ray: STRAIGHT, nowMs: 0, clientRenderTimeMs: 0 },
       BOX,
+      NO_WORLD,
     );
     expect(shot).toBeNull();
   });
@@ -211,6 +219,7 @@ describe('compensated shots', () => {
       history,
       { shooterNetId: SHOOTER, ray: STRAIGHT, nowMs: 0, clientRenderTimeMs: 0 },
       BOX,
+      NO_WORLD,
     );
     expect(shot?.netId).toBe(3);
   });
@@ -221,9 +230,52 @@ describe('compensated shots', () => {
       history,
       { shooterNetId: SHOOTER, ray: STRAIGHT, nowMs: NOW, clientRenderTimeMs: NOW },
       BOX,
+      NO_WORLD,
     );
     expect(shot).not.toBeNull();
     expect(shot?.point.z).toBeCloseTo(shot?.distance as number, 10);
     expect(shot?.point.x).toBeCloseTo(0, 10);
+  });
+});
+
+describe('scenery stops a shot (T-1.12)', () => {
+  const NOW = 1000;
+  /** A target standing still at z = 10, the shooter at the origin. */
+  function standing(): HitboxHistory {
+    const history = new HitboxHistory();
+    for (let t = 0; t <= NOW; t += TICK_MS) {
+      history.record(TARGET, t, 0, 0, 10);
+      history.record(SHOOTER, t, 0, 0, 0);
+    }
+    return history;
+  }
+  const ray: Ray = { origin: { x: 0, y: 1, z: 0 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 100 };
+  const query = { shooterNetId: SHOOTER, ray, nowMs: NOW, clientRenderTimeMs: NOW };
+
+  it('a wall between shooter and target takes the shot, reported as netId 0 at the wall', () => {
+    const wall = [boxFrom({ id: 'wall', x: 0, y: 0, z: 5, w: 4, h: 2.4, d: 0.3 }, 'cover')];
+    const hit = resolveShot(standing(), query, BOX, wall);
+    expect(hit?.netId).toBe(0);
+    expect(hit?.distance).toBeCloseTo(4.85, 9);
+    expect(hit?.point.z).toBeCloseTo(4.85, 9);
+  });
+
+  it('a wall behind the target changes nothing', () => {
+    const wall = [boxFrom({ id: 'wall', x: 0, y: 0, z: 15, w: 4, h: 2.4, d: 0.3 }, 'cover')];
+    const hit = resolveShot(standing(), query, BOX, wall);
+    expect(hit?.netId).toBe(TARGET);
+  });
+
+  it('a low wall the ray passes over changes nothing', () => {
+    const low = [boxFrom({ id: 'low', x: 0, y: 0, z: 5, w: 4, h: 0.9, d: 0.3 }, 'cover')];
+    const hit = resolveShot(standing(), query, BOX, low);
+    expect(hit?.netId).toBe(TARGET);
+  });
+
+  it('a shot into empty scenery is still a scenery hit, not a miss to max range', () => {
+    const wall = [boxFrom({ id: 'wall', x: 0, y: 0, z: 30, w: 4, h: 2.4, d: 0.3 }, 'cover')];
+    const hit = resolveShot(new HitboxHistory(), query, BOX, wall);
+    expect(hit?.netId).toBe(0);
+    expect(hit?.distance).toBeCloseTo(29.85, 9);
   });
 });

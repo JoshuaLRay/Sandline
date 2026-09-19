@@ -29,6 +29,8 @@
  * is no restore step to get wrong.
  */
 
+import { DEFAULT_WORLD, type WorldBox, rayWorld } from '@sandline/shared';
+
 /**
  * How far back a shot may be rewound, whatever the client claims.
  *
@@ -284,6 +286,7 @@ export interface ShotQuery {
 }
 
 export interface ShotHit {
+  /** 0 when the shot stopped on scenery rather than on an entity. */
   netId: number;
   distance: number;
   point: Vec3;
@@ -302,11 +305,24 @@ export function resolveShot(
   history: HitboxHistory,
   query: ShotQuery,
   hitbox: Hitbox = DEFAULT_HITBOX,
+  world: readonly WorldBox[] = DEFAULT_WORLD,
 ): ShotHit | null {
   const rewindMs = clampRewindMs(query.nowMs, query.clientRenderTimeMs);
   const rewoundTo = query.nowMs - rewindMs;
 
-  let best: ShotHit | null = null;
+  /**
+   * Scenery first (T-1.12). A wall between the shooter and the target stops
+   * the shot: any capsule hit beyond the first box is discarded, and a shot
+   * that hits only scenery is reported as a hit on netId 0 at the point of
+   * impact, so tracers end on the wall rather than flying to max range.
+   * Scenery is static, so it is never rewound.
+   */
+  const scenery = rayWorld(query.ray, world);
+  let best: ShotHit | null =
+    scenery === null
+      ? null
+      : { netId: 0, distance: scenery.distance, point: scenery.point, rewoundTo, rewindMs };
+
   for (const netId of history.netIds()) {
     if (netId === query.shooterNetId) continue;
     const feet = history.positionAt(netId, rewoundTo);
