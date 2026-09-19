@@ -8,20 +8,39 @@ import * as THREE from 'three';
  * production soldier asset that belongs in M4/M5. One factory keeps local and
  * remote soldiers on the same proportions while they are still placeholders.
  *
- * The root is a torso mesh rather than a Group so the existing QA raycaster can
- * keep treating a player as one hittable object. Limbs and equipment are
- * visual children of that same root.
+ * THE ROOT IS THE HITBOX, NOT THE TORSO. The QA harness raycasts the shootable
+ * set non-recursively — one object per player — to converge the aim and to end
+ * predicted tracers. That object has to be the same shape the SERVER resolves
+ * hits against (`DEFAULT_HITBOX` in lagComp.ts: a 0.35 m capsule, 1.8 m tall,
+ * centred 0.9 m above the feet), or the client and server disagree about what
+ * a shot can hit. The first version of this file made the torso box the root,
+ * and the harness then treated a soldier as 0.72 m of torso: a predicted
+ * tracer passed clean through a head or a shin the server scored as a hit, and
+ * the aim converged on the background behind them. The capsule is invisible;
+ * the visible parts are its children.
  */
 export type HumanoidVariant = 'local' | 'remote';
 
+/** Mirrors the server's hitbox. The test pins these to `DEFAULT_HITBOX`. */
+export const HUMANOID_HIT_RADIUS = 0.35;
+export const HUMANOID_HIT_HALF_HEIGHT = 0.55;
+
 export function createHumanoidPlaceholder(variant: HumanoidVariant): THREE.Mesh {
   const local = variant === 'local';
+  // CapsuleGeometry's length is the cylinder between the caps: 2 x halfHeight.
   const root = new THREE.Mesh(
+    new THREE.CapsuleGeometry(HUMANOID_HIT_RADIUS, HUMANOID_HIT_HALF_HEIGHT * 2, 4, 8),
+    new THREE.MeshBasicMaterial({ visible: false }),
+  );
+  root.name = local ? 'humanoid local' : 'humanoid remote';
+
+  const torso = new THREE.Mesh(
     new THREE.BoxGeometry(0.62, 0.72, 0.34),
     new THREE.MeshStandardMaterial({ color: local ? 0x7b8068 : 0x686d5b, roughness: 0.85 }),
   );
-  root.name = local ? 'humanoid local' : 'humanoid remote';
-  root.castShadow = true;
+  torso.name = 'torso';
+  torso.castShadow = true;
+  root.add(torso);
 
   const skin = new THREE.MeshStandardMaterial({ color: 0xc99572, roughness: 0.9 });
   const uniform = new THREE.MeshStandardMaterial({ color: local ? 0x5f6748 : 0x6f7458, roughness: 0.95 });
@@ -71,5 +90,8 @@ export function createHumanoidPlaceholder(variant: HumanoidVariant): THREE.Mesh 
   rifle.position.set(0.35, 0.02, 0.48);
   root.add(rifle);
 
+  // Every visible part throws a shadow; the invisible hit capsule must not.
+  for (const child of root.children) child.castShadow = true;
+  root.castShadow = false;
   return root;
 }

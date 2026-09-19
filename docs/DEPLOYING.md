@@ -162,16 +162,23 @@ same image.
 
 Two ways. The workflow does everything; the CLI is for when you want to watch.
 
-**From the repository (one secret).** Needs a Fly account and nothing
+**From the repository (two secrets).** Needs a Fly account and nothing
 installed.
 
-1. On [fly.io](https://fly.io), create a deploy token: Dashboard -> Tokens,
-   or `fly tokens create deploy -x 999999h` if you have `flyctl`. An
-   org-scoped token is needed the first time, because the workflow creates the
-   app; a token scoped to an app that does not exist yet cannot.
-2. Repo -> Settings -> Secrets and variables -> Actions -> **Secrets** ->
-   `FLY_API_TOKEN`.
-3. Actions -> **Host** -> Run workflow.
+1. On [fly.io](https://fly.io), create a token: Dashboard -> your
+   organisation -> Tokens, or `fly tokens create org` if you have `flyctl`. It
+   must be org-scoped the first time, because the workflow creates the app; a
+   token scoped to an app that does not exist yet cannot.
+2. On GitHub, create a token that can write this repository's Actions
+   variables: Settings -> Developer settings -> Personal access tokens ->
+   fine-grained, this repository only, **Variables: read and write** (a
+   classic token with `repo` also works). The workflow's own `GITHUB_TOKEN`
+   cannot set variables — it fails with "Resource not accessible by
+   integration" whatever permissions the job grants it, which is what the
+   first real run showed.
+3. Repo -> Settings -> Secrets and variables -> Actions -> **Secrets**:
+   `FLY_API_TOKEN` and `GH_PAT`.
+4. Actions -> **Host** -> Run workflow.
 
 The job creates the app named in `fly.toml` if it is missing, deploys, checks
 `/healthz`, writes `wss://<app>.fly.dev` into the `SANDLINE_HOST` repository
@@ -207,7 +214,8 @@ fly deploy --ha=false          # from a clean checkout of main
 
 or Actions -> Host -> Run workflow. A push to `main` touching `packages/server`,
 `packages/shared` or the Dockerfile deploys automatically once the secret is
-set, and every run re-asserts `SANDLINE_HOST` and rebuilds Pages.
+set, and every run re-asserts `SANDLINE_HOST` and rebuilds Pages. The first
+real deploy ran 2026-09-19: `wss://sandline-host.fly.dev`.
 The protocol version is in `/healthz`: if the published client is older than the
 host, the lobby says "this build is older than the host - reload", and the fix
 is to let Pages finish deploying.

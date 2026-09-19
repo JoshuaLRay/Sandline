@@ -4,10 +4,15 @@
 # nothing without a FLY_API_TOKEN secret, so a fork or a fresh clone does not
 # fail CI for lack of an account: the job is skipped, with a notice saying so.
 #
-# With the secret set, this is the WHOLE deploy: it creates the Fly app named
+# With the secrets set, this is the WHOLE deploy: it creates the Fly app named
 # in fly.toml if it does not exist yet, deploys, writes the host's address into
 # the SANDLINE_HOST repository variable, and rebuilds Pages so the published
-# lobby points at it. One secret is the only setup — docs/DEPLOYING.md.
+# lobby points at it. Two secrets are the only setup — docs/DEPLOYING.md:
+#   FLY_API_TOKEN  an org-scoped Fly token
+#   GH_PAT         a GitHub token that may write repository variables. The
+#                  workflow's own GITHUB_TOKEN cannot: setting a variable with
+#                  it fails with "Resource not accessible by integration"
+#                  (run #4), whatever `permissions:` grants it.
 name: Host
 
 on:
@@ -45,6 +50,12 @@ jobs:
           else
             echo "::notice::FLY_API_TOKEN is not set; skipping the host deploy. See docs/DEPLOYING.md."
             echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+          # Fail here, before a deploy, rather than after one with a 403 at the
+          # last step and a host nobody is pointed at.
+          if [ -n "${{ secrets.FLY_API_TOKEN }}" ] && [ -z "${{ secrets.GH_PAT }}" ]; then
+            echo "::error::GH_PAT is not set. The workflow needs it to write SANDLINE_HOST; see docs/DEPLOYING.md."
+            exit 1
           fi
       - uses: superfly/flyctl-actions/setup-flyctl@master
         if: steps.token.outputs.present == 'true'
@@ -88,5 +99,5 @@ jobs:
           gh workflow run pages.yml --ref main
           echo "::notice::SANDLINE_HOST=wss://${{ steps.health.outputs.host }}; Pages rebuild dispatched."
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}   # ← changed from github.token
+          GH_TOKEN: ${{ secrets.GH_PAT }}
           GH_REPO: ${{ github.repository }}

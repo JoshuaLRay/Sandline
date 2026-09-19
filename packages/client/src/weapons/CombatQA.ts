@@ -230,18 +230,6 @@ export class CombatQA {
       const end = hit
         ? hit.point.clone()
         : origin.clone().addScaledVector(direction, this.def.maxRangeM);
-      if ((globalThis as unknown as { __dbg?: number }).__dbg === undefined) (globalThis as unknown as { __dbg: number }).__dbg = 0;
-      const g = globalThis as unknown as { __dbg: number; __log?: string[] };
-      if (g.__dbg < 8) {
-        g.__dbg += 1;
-        (g.__log ??= []).push(
-          `from(${origin.x.toFixed(2)},${origin.y.toFixed(2)},${origin.z.toFixed(2)}) ` +
-          `to(${end.x.toFixed(2)},${end.y.toFixed(2)},${end.z.toFixed(2)}) ` +
-          `len=${origin.distanceTo(end).toFixed(2)} ` +
-          `dir(${direction.x.toFixed(3)},${direction.y.toFixed(3)},${direction.z.toFixed(3)}) ` +
-          `hit=${hit ? (hit.object.name || 'unnamed') : 'none'}`,
-        );
-      }
       this.spawnTracer(origin, end, false, now);
     }
   }
