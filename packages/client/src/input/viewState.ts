@@ -26,6 +26,7 @@ export function createViewState(): ViewState {
 export function pressShoulderKey(state: ViewState): void {
   if (state.cameraMode === 'FPS') {
     state.cameraMode = 'TPS';
+    state.adsActive = false;
     return;
   }
   state.tpsShoulder = state.tpsShoulder === 'Right' ? 'Left' : 'Right';
