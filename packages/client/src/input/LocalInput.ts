@@ -10,6 +10,7 @@
  * exists to avoid.
  */
 import { WIRE_ANGLE_UNITS, type MoveInput } from '@sandline/shared';
+import { beginAds, createViewState, endAds, pressShoulderKey, shoulderSide } from './viewState.ts';
 
 export interface InputOptions {
   /** Wire-angle units per pixel of mouse movement. */
@@ -77,10 +78,8 @@ export class LocalInput {
   private pitchAccum = 0;
   private sensitivity: number;
   private invertY: boolean;
-  /** +1 is the default right shoulder; -1 is the left shoulder. */
-  private shoulderSideValue = 1 as 1 | -1;
-  /** First person removes the occlusion that limits third-person pitch. */
-  firstPerson = false;
+  /** Explicit camera/shoulder/ADS state. ADS changes camera mode but never the stored shoulder. */
+  private readonly viewState = createViewState();
   locked = false;
 
   constructor(
@@ -98,13 +97,14 @@ export class LocalInput {
       if (e.code === 'Space') e.preventDefault();
       this.held.add(e.code);
       this.pressed.add(e.code);
-      if (e.code === 'KeyQ') this.shoulderSideValue = this.shoulderSideValue === 1 ? -1 : 1;
+      if (e.code === 'KeyV') pressShoulderKey(this.viewState);
     });
     addEventListener('keyup', (e) => this.held.delete(e.code));
     // Losing focus mid-key leaves a key stuck down forever otherwise.
     addEventListener('blur', () => {
       this.held.clear();
       this.buttons.clear();
+      endAds(this.viewState);
     });
 
     canvas.addEventListener('click', () => {
@@ -117,13 +117,18 @@ export class LocalInput {
       if (!this.locked) return;
       this.buttons.add(e.button);
       if (e.button === 0) this.triggerEdge = true;
+      if (e.button === 2) beginAds(this.viewState);
     });
-    addEventListener('mouseup', (e) => this.buttons.delete(e.button));
+    addEventListener('mouseup', (e) => {
+      this.buttons.delete(e.button);
+      if (e.button === 2) endAds(this.viewState);
+    });
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === canvas;
       if (!this.locked) {
         this.held.clear();
         this.buttons.clear();
+        endAds(this.viewState);
       }
     });
     addEventListener('mousemove', (e) => {
@@ -145,9 +150,14 @@ export class LocalInput {
     this.invertY = value;
   }
 
-  /** Current third-person shoulder: +1 right, -1 left. */
+  /** Current stored TPS shoulder: +1 right, -1 left. */
   get shoulderSide(): 1 | -1 {
-    return this.shoulderSideValue;
+    return shoulderSide(this.viewState);
+  }
+
+  /** Camera mode. ADS enters FPS; releasing ADS does not leave FPS. */
+  get firstPerson(): boolean {
+    return this.viewState.cameraMode === 'FPS';
   }
 
   get maxPitch(): number {
@@ -181,9 +191,9 @@ export class LocalInput {
     return this.buttons.has(0);
   }
 
-  /** Right mouse held: aim down sights, which tightens the cone. */
+  /** Right mouse held: aim down sights and enter FPS when starting from TPS. */
   get ads(): boolean {
-    return this.buttons.has(2);
+    return this.viewState.adsActive;
   }
 
   /** Camera pitch in wire-angle units, signed. Not sent to the simulation. */

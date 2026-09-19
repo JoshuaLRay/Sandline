@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_CAMERA_CONFIG } from './cameraConfig.ts';
 import { CAMERA_COLLISION_MARGIN, type CameraCollider } from './cameraColliders.ts';
 import { DEFAULT_MUZZLE_RIG, muzzlePosition } from '@sandline/shared';
-import { convergeAimDirection, type CameraView, createCameraSolve, solveCamera } from './cameraSolve.ts';
+import { type CameraView, createCameraSolve, solveCamera } from './cameraSolve.ts';
 
 const cfg = DEFAULT_CAMERA_CONFIG;
 /** Wire-angle units per degree: the wire carries 1024 per turn. */
@@ -198,31 +198,6 @@ describe('camera solve (T-2.01)', () => {
     expect(left.z).toBeCloseTo(right.z, 8);
   });
 
-  it('keeps aim convergence on the reticle at 10 m and 95 m on either shoulder', () => {
-    for (const shoulderSide of [1, -1] as const) {
-      const s = createCameraSolve();
-      solveCamera(view({ shoulderSide }), cfg, s, 0);
-      for (const range of [10, 95]) {
-        const target = {
-          x: s.position.x + s.direction.x * range,
-          y: s.position.y + s.direction.y * range,
-          z: s.position.z + s.direction.z * range,
-        };
-        const eye = { x: 0, y: cfg.eyeHeight, z: 0 };
-        const aim = convergeAimDirection(s.position, s.direction, eye, range);
-        const expected = {
-          x: target.x - eye.x,
-          y: target.y - eye.y,
-          z: target.z - eye.z,
-        };
-        const length = Math.sqrt(expected.x ** 2 + expected.y ** 2 + expected.z ** 2);
-        expect(aim.x).toBeCloseTo(expected.x / length, 8);
-        expect(aim.y).toBeCloseTo(expected.y / length, 8);
-        expect(aim.z).toBeCloseTo(expected.z / length, 8);
-      }
-    }
-  });
-
   it('drives distance, shoulder offset and FOV from one continuous ADS blend', () => {
     const target = createCameraSolve();
     solveCamera(view(), cfg, target, 1 / 60);
@@ -262,24 +237,6 @@ describe('camera solve (T-2.01)', () => {
     expect(at30.fov).toBeCloseTo(at60.fov, 6);
   });
 
-  it('keeps aim convergence consistent mid-ADS transition', () => {
-    const target = createCameraSolve();
-    solveCamera(view({ ads: true }), cfg, target, 1 / 60);
-    const range = 95;
-    const aimPoint = {
-      x: target.position.x + target.direction.x * range,
-      y: target.position.y + target.direction.y * range,
-      z: target.position.z + target.direction.z * range,
-    };
-    const eye = { x: 0, y: cfg.eyeHeight, z: 0 };
-    const aim = convergeAimDirection(target.position, target.direction, eye, range);
-    const dx = aimPoint.x - eye.x;
-    const dy = aimPoint.y - eye.y;
-    const dz = aimPoint.z - eye.z;
-    const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    expect(aim.x).toBeCloseTo(dx / length, 8);
-    expect(aim.y).toBeCloseTo(dy / length, 8);
-    expect(aim.z).toBeCloseTo(dz / length, 8);
-  });
+
 
 });

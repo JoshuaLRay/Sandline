@@ -28,7 +28,10 @@ describe('humanoid placeholder (T-2.06)', () => {
     const local = createHumanoidPlaceholder('local');
     const remote = createHumanoidPlaceholder('remote');
 
-    expect(local.geometry.parameters).toEqual(remote.geometry.parameters);
+    local.geometry.computeBoundingBox();
+    remote.geometry.computeBoundingBox();
+    expect(local.geometry.boundingBox?.min.toArray()).toEqual(remote.geometry.boundingBox?.min.toArray());
+    expect(local.geometry.boundingBox?.max.toArray()).toEqual(remote.geometry.boundingBox?.max.toArray());
     expect(local.children.map((child) => child.name)).toEqual(remote.children.map((child) => child.name));
   });
 

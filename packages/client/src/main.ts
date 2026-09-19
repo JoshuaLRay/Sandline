@@ -63,7 +63,8 @@ import {
   shareLink,
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
-import { convergeAimDirection, createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
+import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
+import { solveZeroSpreadAim } from './aimSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
@@ -250,8 +251,8 @@ const input = new LocalInput(renderer.domElement);
 const cam = { ...DEFAULT_CAMERA_CONFIG };
 /** Reused every frame: the solve writes into it rather than allocating. */
 const camSolve = createCameraSolve();
-/** How far the aim ray looks for something to converge on. */
-const AIM_RANGE = 250;
+/** Distance used only to project the already-solved firing ray into screen space. */
+const RETICLE_PROJECTION_DISTANCE = 250;
 
 
 const player = createHumanoidPlaceholder('local');
@@ -610,7 +611,6 @@ function stance(): MuzzleStance {
   if (!input.firstPerson) return 'third';
   return input.ads ? 'ads' : 'hip';
 }
-const aimRaycaster = new THREE.Raycaster();
 const aimDirection = new THREE.Vector3();
 const aimPoint = new THREE.Vector3();
 // The ground joins last; it is the backstop every downward shot lands on.
@@ -865,41 +865,54 @@ function frame(): void {
   player.visible = !input.firstPerson;
 
   /**
-   * Converge the shot on what the reticle covers.
+   * Solve ONE authoritative zero-spread centerline from the gameplay eye.
    *
-   * Measured from the EYE, which is where the server traces from — not from the
-   * visual muzzle. Aiming along the camera angles would land shots beside the
-   * crosshair in third person, where the camera is off the shoulder; aiming
-   * from the visual muzzle would make the shot depend on which view you are
-   * using. Find what the reticle is actually over, then aim the eye at THAT.
-   */
-  aimDirection.set(camSolve.direction.x, camSolve.direction.y, camSolve.direction.z).normalize();
-  aimRaycaster.set(camera.position, aimDirection);
-  aimRaycaster.far = AIM_RANGE;
-  const [reticleHit] = aimRaycaster.intersectObjects(shootable, false);
-  if (reticleHit) {
-    aimPoint.copy(reticleHit.point);
-  } else {
-    aimPoint.copy(camera.position).addScaledVector(aimDirection, AIM_RANGE);
-  }
-  /**
-   * Converge from the MUZZLE, not the character's centre: the muzzle sits at
-   * the right hip, so a direction measured from the centre line would put the
-   * shot a hip's width off the reticle at close range.
+   * This deliberately does not raycast for a target and does not converge the
+   * eye ray to the camera ray at an arbitrary distance. The camera and gameplay
+   * eye are separated in TPS, so their parallel rays can legitimately project
+   * to different screen positions. That offset is exactly what the reticle must
+   * communicate.
+   *
+   * The resulting direction is the same direction sent to the weapon system.
+   * Spread is added only after this centerline is established.
    */
   const eye = eyePosition(rx, ry, rz);
-  const converged = convergeAimDirection(
-    camera.position,
-    aimDirection,
-    eye,
-    camera.position.distanceTo(aimPoint),
-  );
-  aimDirection.set(converged.x, converged.y, converged.z);
+  aimDirection.set(camSolve.direction.x, camSolve.direction.y, camSolve.direction.z).normalize();
+  const zeroSpreadAim = solveZeroSpreadAim(eye, aimDirection);
+  aimDirection.set(zeroSpreadAim.direction.x, zeroSpreadAim.direction.y, zeroSpreadAim.direction.z);
+
+  /**
+   * TPS reticle = projection of the SAME zero-spread firing ray.
+   *
+   * The projection distance is UI-only. It never participates in the firing
+   * direction, target selection, hit resolution, or weapon spread. Empty space
+   * therefore works exactly like a target, and changing target range cannot
+   * change the authoritative centerline.
+   */
+  if (crosshair) {
+    if (input.firstPerson) {
+      crosshair.style.left = '50%';
+      crosshair.style.top = '50%';
+    } else {
+      aimPoint.set(
+        zeroSpreadAim.origin.x,
+        zeroSpreadAim.origin.y,
+        zeroSpreadAim.origin.z,
+      );
+      aimPoint.addScaledVector(
+        aimDirection,
+        RETICLE_PROJECTION_DISTANCE,
+      );
+      aimPoint.project(camera);
+      crosshair.style.left = `${(aimPoint.x * 0.5 + 0.5) * innerWidth}px`;
+      crosshair.style.top = `${(-aimPoint.y * 0.5 + 0.5) * innerHeight}px`;
+    }
+  }
+
   /**
    * Rounded ONCE, straight to the resolution the wire now carries (1/4096).
-   * The previous path rounded to 1/4096 and then shifted down to 1/1024, and a
-   * shift truncates — so the aim was biased consistently to one side by up to
-   * a quarter of a degree rather than merely quantized.
+   * The firing direction above is the single source for both the weapon and
+   * reticle; the wire conversion is only serialization.
    */
   aimYaw = fromRadians(Math.atan2(aimDirection.x, aimDirection.z));
   aimPitch = fromRadians(Math.asin(Math.max(-1, Math.min(1, aimDirection.y))));
@@ -956,11 +969,8 @@ addEventListener('keydown', (e) => {
   // G for graph. H already hides the HUD, and the netgraph is the one panel
   // worth reaching for without taking your hand off the mouse.
   if (e.code === 'KeyG') netgraph.root.classList.toggle('collapsed');
-  // First/third person. A proper camera with collision is E-2.1 in M2; this is
-  // enough to judge whether the movement reads differently from each view.
-  if (e.code === 'KeyV') input.firstPerson = !input.firstPerson;
-  // Q swaps the third-person shoulder; the camera solve eases to the new side.
-  // Keep it independent of first-person so returning to third person preserves the choice.
+  // V is owned by LocalInput: in TPS it swaps shoulders; in FPS it exits FPS
+  // and restores the stored TPS shoulder. ADS is the automatic FPS entry path.
 
 });
 
