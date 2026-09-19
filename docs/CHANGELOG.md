@@ -75,3 +75,6 @@ Format: `T-<id> — <what changed>`
 - T-2.03 - Camera arm collision against static scenery, isolated from the server-authoritative shootable set.
 
 - T-2.04 — Eased Q-key shoulder swap with mirrored camera/muzzle offsets and 10/95 m aim-convergence coverage.
+- T-1.5.03 — Human-to-human LAN gate: owner playtest sign-off recorded; two-human combat feel accepted.
+- T-1.5.08 — M1.5 internet gate: owner completed the two-human real-host playtest and reported it looks great; M1.5 closed.
+- T-2.05 — ADS transition: arm length, shoulder offset and FOV now share one frame-rate-independent normalized transition.
