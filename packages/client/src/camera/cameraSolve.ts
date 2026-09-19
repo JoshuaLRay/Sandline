@@ -73,6 +73,10 @@ export interface CameraSolve {
   adsBlend: number;
   /** FOV derived from the same ADS transition. */
   fov: number;
+  /** Normalized 0..1 ADS transition shared by distance, shoulder and FOV. */
+  adsBlend: number;
+  /** FOV derived from the same ADS transition. */
+  fov: number;
 }
 
 export function createCameraSolve(): CameraSolve {
@@ -158,6 +162,19 @@ export function solveCamera(
   } else {
     out.shoulderBlend = targetShoulder;
   }
+
+  // ADS is one normalized transition state. Distance, shoulder offset and FOV
+  // all derive from it, so there is no frame where the weapon is "half aimed"
+  // but the camera has already snapped one of the other two cues. The same
+  // exponential curve is used at every frame rate.
+  const targetAds = view.ads ? 1 : 0;
+  if (dtSeconds > 0) {
+    const alpha = 1 - Math.exp(-12 * dtSeconds);
+    out.adsBlend += (targetAds - out.adsBlend) * alpha;
+  } else {
+    out.adsBlend = targetAds;
+  }
+  out.fov = cfg.baseFov + (cfg.adsFov - cfg.baseFov) * out.adsBlend;
 
   // ADS is one normalized transition state. Distance, shoulder offset and FOV
   // all derive from it, so there is no frame where the weapon is "half aimed"
