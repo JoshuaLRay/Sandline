@@ -63,7 +63,7 @@ import {
   shareLink,
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
-import { convergeAimDirection, createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
+import { aimAnglesFromDirection, convergeAimDirection, createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
@@ -667,8 +667,9 @@ function refreshAimBeforeTick(traceOrigin: { x: number; y: number; z: number }):
   const targetDistance = camera.position.distanceTo(aimPoint);
   const converged = convergeAimDirection(camera.position, aimDirection, traceOrigin, targetDistance);
   aimDirection.set(converged.x, converged.y, converged.z);
-  aimYaw = fromRadians(Math.atan2(aimDirection.x, aimDirection.z));
-  aimPitch = fromRadians(Math.asin(Math.max(-1, Math.min(1, aimDirection.y))));
+  const angles = aimAnglesFromDirection(aimDirection);
+  aimYaw = angles.yaw;
+  aimPitch = angles.pitch;
 }
 
 const linkText = (c: LinkConditions): string =>
@@ -942,8 +943,9 @@ function frame(): void {
    * shift truncates — so the aim was biased consistently to one side by up to
    * a quarter of a degree rather than merely quantized.
    */
-  aimYaw = fromRadians(Math.atan2(aimDirection.x, aimDirection.z));
-  aimPitch = fromRadians(Math.asin(Math.max(-1, Math.min(1, aimDirection.y))));
+  const angles = aimAnglesFromDirection(aimDirection);
+  aimYaw = angles.yaw;
+  aimPitch = angles.pitch;
 
   frames++;
   if (now - fpsAt >= 250) {
