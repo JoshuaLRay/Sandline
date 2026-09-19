@@ -90,6 +90,3 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}   # ← changed from github.token
           GH_REPO: ${{ github.repository }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
