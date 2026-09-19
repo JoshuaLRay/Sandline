@@ -64,6 +64,7 @@ import {
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
+import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
@@ -109,6 +110,27 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 scene.add(new THREE.GridHelper(200, 100, 0x8a7550, 0x6a5940));
+
+/**
+ * Static scenery that stops the CAMERA ARM. This is not the shootable set:
+ * the server cannot yet collide shots with scenery (T-1.12 remains partial),
+ * but the local camera must not pass through the ground, posts, rails, or the
+ * reference figure. Players are intentionally excluded so a teammate behind
+ * you cannot make the camera lurch.
+ */
+const cameraScenery: THREE.Object3D[] = [ground];
+const cameraRaycaster = new THREE.Raycaster();
+const cameraCollider: CameraCollider = {
+  cast(origin, direction, maxDistance) {
+    cameraRaycaster.set(
+      new THREE.Vector3(origin.x, origin.y, origin.z),
+      new THREE.Vector3(direction.x, direction.y, direction.z),
+    );
+    cameraRaycaster.near = 0;
+    cameraRaycaster.far = maxDistance;
+    return cameraRaycaster.intersectObjects(cameraScenery, false)[0]?.distance ?? null;
+  },
+};
 
 /**
  * A field of distance posts every 10 m across the whole playable area.
@@ -160,6 +182,7 @@ for (let gx = -40; gx <= 40; gx += 10) {
     post.position.set(gx, (major ? 2.6 : 1.4) / 2, gz);
     post.castShadow = true;
     scene.add(post);
+    cameraScenery.push(post);
     // NOT shootable: decoration. The server has no world collision (T-1.12),
     // so a shot passes through a post exactly as the player does.
   }
@@ -174,6 +197,7 @@ for (const z of [-1.2, 1.2]) {
   const rail = new THREE.Mesh(new THREE.BoxGeometry(10, 0.05, 0.12), laneMat);
   rail.position.set(5, 0.03, z);
   scene.add(rail);
+  cameraScenery.push(rail);
 }
 
 /** A 1.8 m reference figure: the only way to read speed and jump height. */
@@ -185,6 +209,7 @@ reference.position.set(-3, 0.9, 3);
 reference.castShadow = true;
 reference.name = 'reference figure';
 scene.add(reference);
+cameraScenery.push(reference);
 // Also decoration, and a 1.8 m one standing 3 m from spawn: the single worst
 // thing for a shot to terminate on by accident.
 
@@ -808,6 +833,7 @@ function frame(): void {
     cam,
     camSolve,
     dt,
+    cameraCollider,
   );
   player.rotation.y = Math.atan2(camSolve.forward.x, camSolve.forward.z);
 
