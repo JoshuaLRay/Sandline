@@ -43,6 +43,8 @@ export interface CameraView {
   pitchFraction: number;
   ads: boolean;
   firstPerson: boolean;
+  /** +1 is right shoulder, -1 is left shoulder. */
+  shoulderSide: 1 | -1;
 }
 
 interface Vec3 {
@@ -76,6 +78,7 @@ export function createCameraSolve(): CameraSolve {
     yawAngle: 0,
     pitchAngle: 0,
     distance: 0,
+    shoulderBlend: 1,
   };
 }
 
@@ -87,6 +90,30 @@ export function createCameraSolve(): CameraSolve {
  * centre and adding the shoulder afterwards moves the aim origin relative to
  * the reticle, which is the shape of the down-and-left bug.
  */
+/**
+ * Converge the authoritative eye ray onto the point covered by the camera.
+ * The camera can move to either shoulder; the trace origin remains the shared
+ * gameplay eye while the target point follows the camera's reticle.
+ */
+export function convergeAimDirection(
+  cameraPosition: Vec3,
+  cameraDirection: Vec3,
+  traceOrigin: Vec3,
+  targetDistance: number,
+): Vec3 {
+  const target = {
+    x: cameraPosition.x + cameraDirection.x * targetDistance,
+    y: cameraPosition.y + cameraDirection.y * targetDistance,
+    z: cameraPosition.z + cameraDirection.z * targetDistance,
+  };
+  const dx = target.x - traceOrigin.x;
+  const dy = target.y - traceOrigin.y;
+  const dz = target.z - traceOrigin.z;
+  const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  if (!(length > 0)) return { x: 0, y: 0, z: 1 };
+  return { x: dx / length, y: dy / length, z: dz / length };
+}
+
 export function solveCamera(
   view: CameraView,
   cfg: CameraConfig,
@@ -112,6 +139,17 @@ export function solveCamera(
   out.pitchAngle = pitchAngle;
   out.forward.x = fwdX;
   out.forward.z = fwdZ;
+
+  // The shoulder is a continuous render state, not a binary camera mode.
+  // Exponential easing makes the swap frame-rate independent just like the
+  // spring arm: 30 and 120 fps traverse the same continuous-time curve.
+  const targetShoulder = view.shoulderSide;
+  if (dtSeconds > 0) {
+    const alpha = 1 - Math.exp(-cfg.shoulderSwapRate * dtSeconds);
+    out.shoulderBlend += (targetShoulder - out.shoulderBlend) * alpha;
+  } else {
+    out.shoulderBlend = targetShoulder;
+  }
 
   // View direction: the horizontal component shrinks as the pitch steepens.
   const dx = fwdX * cosP;
@@ -143,7 +181,8 @@ export function solveCamera(
    * strafe fix established — getting it backwards puts the camera over the
    * wrong shoulder AND mirrors the aim offset, so it reads as two bugs.
    */
-  const shoulder = view.ads ? cfg.shoulderRightAds : cfg.shoulderRight;
+  const shoulder =
+    (view.ads ? cfg.shoulderRightAds : cfg.shoulderRight) * out.shoulderBlend;
   out.focus.x = view.x - fwdZ * shoulder;
   out.focus.y = pivotY + cfg.shoulderUp;
   out.focus.z = view.z + fwdX * shoulder;
