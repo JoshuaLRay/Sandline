@@ -13,6 +13,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CAMERA_CONFIG } from './cameraConfig.ts';
+import { CAMERA_COLLISION_MARGIN, type CameraCollider } from './cameraColliders.ts';
 import { type CameraView, createCameraSolve, solveCamera } from './cameraSolve.ts';
 
 const cfg = DEFAULT_CAMERA_CONFIG;
@@ -33,8 +34,8 @@ function view(over: Partial<CameraView> = {}): CameraView {
   };
 }
 
-const solve = (over: Partial<CameraView> = {}) =>
-  solveCamera(view(over), cfg, createCameraSolve());
+const solve = (over: Partial<CameraView> = {}, collider?: CameraCollider) =>
+  solveCamera(view(over), cfg, createCameraSolve(), 1 / 60, collider);
 
 describe('camera solve (T-2.01)', () => {
   it('writes into the target it is given', () => {
@@ -103,6 +104,31 @@ describe('camera solve (T-2.01)', () => {
   it('never collapses the arm past minDistance, even at the pitch limit', () => {
     const s = solve({ pitchWire: 89 * PER_DEG, pitchFraction: 1 });
     expect(s.distance).toBeGreaterThanOrEqual(cfg.minDistance);
+  });
+
+  it('shortens the arm to the first scenery hit less a near-plane margin', () => {
+    const collider: CameraCollider = {
+      cast(origin, direction, maxDistance) {
+        // Facing +Z, level: the camera ray starts at the shoulder and runs -Z.
+        expect(origin.z).toBeCloseTo(0, 6);
+        expect(direction).toEqual({ x: 0, y: 0, z: -1 });
+        expect(maxDistance).toBeCloseTo(cfg.distance, 6);
+        return 3;
+      },
+    };
+    const s = solve({}, collider);
+    expect(s.distance).toBeCloseTo(3 - CAMERA_COLLISION_MARGIN, 6);
+    expect(s.position.z).toBeCloseTo(-(3 - CAMERA_COLLISION_MARGIN), 6);
+  });
+
+  it('recovers at the spring-arm rate after scenery clears', () => {
+    const blocked: CameraCollider = { cast: () => 2 };
+    const target = createCameraSolve();
+    solveCamera(view(), cfg, target, 1 / 60, blocked);
+    const blockedLength = target.distance;
+    solveCamera(view(), cfg, target, 1 / 60);
+    expect(target.distance).toBeGreaterThan(blockedLength);
+    expect(target.distance).toBeLessThan(cfg.distance);
   });
 
   it('wraps a signed downward pitch instead of indexing the table negatively', () => {
