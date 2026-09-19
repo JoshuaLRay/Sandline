@@ -64,7 +64,6 @@ import {
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
-import { solveZeroSpreadAim } from './aimSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
@@ -251,8 +250,8 @@ const input = new LocalInput(renderer.domElement);
 const cam = { ...DEFAULT_CAMERA_CONFIG };
 /** Reused every frame: the solve writes into it rather than allocating. */
 const camSolve = createCameraSolve();
-/** Distance used only to project the already-solved firing ray into screen space. */
-const RETICLE_PROJECTION_DISTANCE = 250;
+/** How far the aim ray looks for something to converge on. */
+const AIM_RANGE = 250;
 
 
 const player = createHumanoidPlaceholder('local');
@@ -611,6 +610,7 @@ function stance(): MuzzleStance {
   if (!input.firstPerson) return 'third';
   return input.ads ? 'ads' : 'hip';
 }
+const aimRaycaster = new THREE.Raycaster();
 const aimDirection = new THREE.Vector3();
 const aimPoint = new THREE.Vector3();
 // The ground joins last; it is the backstop every downward shot lands on.
@@ -624,6 +624,22 @@ shootable.push(ground);
 let aimYaw = 0;
 let aimPitch = 0;
 const crosshair = document.getElementById('crosshair');
+/** Last gap written to the reticle, so the style is only touched on change. */
+let crosshairGap = -1;
+
+/**
+ * The crosshair gap in pixels for a cone half-angle, at the current field of
+ * view: the on-screen radius of the cone at the centre of the view. This is
+ * what makes the reticle honest — the gap is the inaccuracy, drawn at the size
+ * it actually has on screen, so bloom opening the cone visibly opens the arms.
+ */
+function coneGapPx(coneHalfDeg: number, fovDeg: number): number {
+  const half = innerHeight / 2;
+  return (Math.tan((coneHalfDeg * Math.PI) / 180) / Math.tan((fovDeg * Math.PI) / 360)) * half;
+}
+/** Hip fire never reads as precise: the arms sit at least this far out. */
+const HIP_GAP_MIN_PX = 26;
+const ADS_GAP_MIN_PX = 4;
 let last = performance.now();
 let frames = 0;
 let fpsAt = last;
@@ -865,54 +881,53 @@ function frame(): void {
   player.visible = !input.firstPerson;
 
   /**
-   * Solve ONE authoritative zero-spread centerline from the gameplay eye.
+   * Converge the shot on what the reticle covers.
    *
-   * This deliberately does not raycast for a target and does not converge the
-   * eye ray to the camera ray at an arbitrary distance. The camera and gameplay
-   * eye are separated in TPS, so their parallel rays can legitimately project
-   * to different screen positions. That offset is exactly what the reticle must
-   * communicate.
+   * Measured from the EYE, which is where the server traces from — not from the
+   * visual muzzle. Aiming along the camera angles would land shots beside the
+   * crosshair in third person, where the camera is off the shoulder; aiming
+   * from the visual muzzle would make the shot depend on which view you are
+   * using. Find what the reticle is actually over, then aim the eye at THAT.
    *
-   * The resulting direction is the same direction sent to the weapon system.
-   * Spread is added only after this centerline is established.
+   * This is the second time this convergence has been put in. It came out with
+   * the dynamic third-person reticle, which moved the crosshair to wherever the
+   * eye's ray landed instead; that reticle read as jitter (it lagged the view
+   * by a frame) and has been replaced with a fixed centre reticle whose GAP
+   * shows the inaccuracy. A fixed centre reticle without convergence is the
+   * down-and-left bug all over again, so the two go together.
    */
-  const eye = eyePosition(rx, ry, rz);
   aimDirection.set(camSolve.direction.x, camSolve.direction.y, camSolve.direction.z).normalize();
-  const zeroSpreadAim = solveZeroSpreadAim(eye, aimDirection);
-  aimDirection.set(zeroSpreadAim.direction.x, zeroSpreadAim.direction.y, zeroSpreadAim.direction.z);
+  aimRaycaster.set(camera.position, aimDirection);
+  aimRaycaster.far = AIM_RANGE;
+  const [reticleHit] = aimRaycaster.intersectObjects(shootable, false);
+  if (reticleHit) {
+    aimPoint.copy(reticleHit.point);
+  } else {
+    aimPoint.copy(camera.position).addScaledVector(aimDirection, AIM_RANGE);
+  }
+  const eye = eyePosition(rx, ry, rz);
+  aimDirection.set(aimPoint.x - eye.x, aimPoint.y - eye.y, aimPoint.z - eye.z).normalize();
 
   /**
-   * TPS reticle = projection of the SAME zero-spread firing ray.
-   *
-   * The projection distance is UI-only. It never participates in the firing
-   * direction, target selection, hit resolution, or weapon spread. Empty space
-   * therefore works exactly like a target, and changing target range cannot
-   * change the authoritative centerline.
+   * The reticle stays at the centre and its gap follows the cone: wide while
+   * hip firing, wider as bloom builds, tight while aiming down sights. The
+   * cone is the same one the weapon actually fires with (`CombatQA`), so what
+   * the arms enclose is where pellets can land.
    */
   if (crosshair) {
-    if (input.firstPerson) {
-      crosshair.style.left = '50%';
-      crosshair.style.top = '50%';
-    } else {
-      aimPoint.set(
-        zeroSpreadAim.origin.x,
-        zeroSpreadAim.origin.y,
-        zeroSpreadAim.origin.z,
-      );
-      aimPoint.addScaledVector(
-        aimDirection,
-        RETICLE_PROJECTION_DISTANCE,
-      );
-      aimPoint.project(camera);
-      crosshair.style.left = `${(aimPoint.x * 0.5 + 0.5) * innerWidth}px`;
-      crosshair.style.top = `${(-aimPoint.y * 0.5 + 0.5) * innerHeight}px`;
+    const cone = coneGapPx(combat.coneDegrees(ads), camera.fov);
+    const gap = Math.round(Math.max(ads ? ADS_GAP_MIN_PX : HIP_GAP_MIN_PX, cone));
+    if (gap !== crosshairGap) {
+      crosshairGap = gap;
+      crosshair.style.setProperty('--gap', `${gap}px`);
     }
   }
 
   /**
    * Rounded ONCE, straight to the resolution the wire now carries (1/4096).
-   * The firing direction above is the single source for both the weapon and
-   * reticle; the wire conversion is only serialization.
+   * The previous path rounded to 1/4096 and then shifted down to 1/1024, and a
+   * shift truncates — so the aim was biased consistently to one side by up to
+   * a quarter of a degree rather than merely quantized.
    */
   aimYaw = fromRadians(Math.atan2(aimDirection.x, aimDirection.z));
   aimPitch = fromRadians(Math.asin(Math.max(-1, Math.min(1, aimDirection.y))));
