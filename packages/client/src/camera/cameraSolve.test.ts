@@ -75,12 +75,21 @@ describe('camera solve (T-2.01)', () => {
   });
 
   it('draws the camera in and tightens the shoulder when aiming', () => {
-    const hip = solve();
-    const ads = solve({ ads: true });
-    expect(ads.distance).toBeCloseTo(cfg.distance * cfg.adsDistanceScale, 6);
-    expect(ads.distance).toBeLessThan(hip.distance);
-    expect(ads.focus.x).toBeCloseTo(-cfg.shoulderRightAds, 6);
-    expect(Math.abs(ads.focus.x)).toBeLessThan(Math.abs(hip.focus.x));
+    const target = createCameraSolve();
+    solveCamera(view(), cfg, target, 0);
+    const hip = target.distance;
+    expect(target.adsBlend).toBe(0);
+
+    solveCamera(view({ ads: true }), cfg, target, 1 / 60);
+    expect(target.adsBlend).toBeGreaterThan(0);
+    expect(target.adsBlend).toBeLessThan(1);
+    expect(target.distance).toBeLessThan(hip);
+    expect(target.focus.x).toBeLessThan(-cfg.shoulderRightAds);
+
+    for (let i = 0; i < 120; i += 1) solveCamera(view({ ads: true }), cfg, target, 1 / 60);
+    expect(target.adsBlend).toBeCloseTo(1, 4);
+    expect(target.distance).toBeCloseTo(cfg.distance * cfg.adsDistanceScale, 4);
+    expect(target.focus.x).toBeCloseTo(-cfg.shoulderRightAds, 4);
   });
 
   it('shortens the arm at full pitch', () => {
@@ -192,7 +201,7 @@ describe('camera solve (T-2.01)', () => {
   it('keeps aim convergence on the reticle at 10 m and 95 m on either shoulder', () => {
     for (const shoulderSide of [1, -1] as const) {
       const s = createCameraSolve();
-      solveCamera(view({ shoulderSide }), cfg, s, 1 / 60);
+      solveCamera(view({ shoulderSide }), cfg, s, 0);
       for (const range of [10, 95]) {
         const target = {
           x: s.position.x + s.direction.x * range,
