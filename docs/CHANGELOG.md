@@ -73,3 +73,5 @@ Format: `T-<id> — <what changed>`
 
 - T-2.02 - Frame-rate-independent asymmetric spring arm: snap inward, exponentially ease outward, with derived settle-time tests.
 - T-2.03 - Camera arm collision against static scenery, isolated from the server-authoritative shootable set.
+
+- T-2.04 — Eased Q-key shoulder swap with mirrored camera/muzzle offsets and 10/95 m aim-convergence coverage.
