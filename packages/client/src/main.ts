@@ -615,12 +615,7 @@ const aimDirection = new THREE.Vector3();
 const aimPoint = new THREE.Vector3();
 // The ground joins last; it is the backstop every downward shot lands on.
 shootable.push(ground);
-/**
- * Where the shot actually goes, in table angle units, recomputed each frame
- * from the camera. One frame behind the tick that consumes it, which at 60 fps
- * is 16 ms of aim lag - invisible here, and the alternative is computing the
- * camera twice per frame.
- */
+/** Where the shot goes, in table angle units. Refreshed before firing and again after camera presentation. */
 let aimYaw = 0;
 let aimPitch = 0;
 const crosshair = document.getElementById('crosshair');
@@ -634,6 +629,47 @@ let speed = 0;
 /** The predicted state either side of the latest tick, for render interpolation. */
 let simPrev: { x: number; y: number; z: number } | null = null;
 let simCur: { x: number; y: number; z: number } | null = null;
+
+/**
+ * Refresh the shot direction BEFORE the simulation tick consumes the trigger.
+ *
+ * The camera is presentation state, but the trigger is sampled on the fixed
+ * simulation tick. Previously aimYaw/aimPitch were only recomputed after that
+ * tick, so a mouse movement that happened between ticks could fire one shot
+ * using the previous frame's aim. Third person made the error much easier to
+ * see because convergence turns a camera-direction change into a different
+ * eye-to-reticle ray.
+ *
+ * The render pass still recomputes this after camera movement for the next
+ * frame. This early pass exists solely so the tick that consumes the input uses
+ * the current input's aim rather than the previous frame's aim.
+ */
+function refreshAimBeforeTick(traceOrigin: { x: number; y: number; z: number }): void {
+  const yaw = wireToTable(input.yaw);
+  const pitch = wireToTable(input.pitchWire);
+  const cosPitch = cos(pitch);
+  const direction = {
+    x: sin(yaw) * cosPitch,
+    y: sin(pitch),
+    z: cos(yaw) * cosPitch,
+  };
+
+  aimDirection.set(direction.x, direction.y, direction.z).normalize();
+  aimRaycaster.set(camera.position, aimDirection);
+  aimRaycaster.far = AIM_RANGE;
+  const [reticleHit] = aimRaycaster.intersectObjects(shootable, false);
+  if (reticleHit) {
+    aimPoint.copy(reticleHit.point);
+  } else {
+    aimPoint.copy(camera.position).addScaledVector(aimDirection, AIM_RANGE);
+  }
+
+  const targetDistance = camera.position.distanceTo(aimPoint);
+  const converged = convergeAimDirection(camera.position, aimDirection, traceOrigin, targetDistance);
+  aimDirection.set(converged.x, converged.y, converged.z);
+  aimYaw = fromRadians(Math.atan2(aimDirection.x, aimDirection.z));
+  aimPitch = fromRadians(Math.asin(Math.max(-1, Math.min(1, aimDirection.y))));
+}
 
 const linkText = (c: LinkConditions): string =>
   `${c.latencyMs}ms  ${c.jitterMs}ms jitter  ${Math.round(c.lossRate * 100)}% loss`;
@@ -687,6 +723,11 @@ function frame(): void {
   const net = live?.net ?? null;
   const server = live?.server ?? null;
   const sparring = live?.sparring ?? null;
+
+  // The fixed tick below may consume a trigger immediately. Refresh aim from
+  // the current mouse/input state first so the shot cannot inherit the prior
+  // render frame's aim direction.
+  if (net?.simulated) refreshAimBeforeTick(net.simulated);
 
   for (let i = 0; i < steps; i++) {
     const tickInput = input.sample();
