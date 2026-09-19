@@ -67,6 +67,7 @@ import { convergeAimDirection, createCameraSolve, solveCamera } from './camera/c
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
+import { createHumanoidPlaceholder } from './character/humanoidPlaceholder.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
 import { createNetworkPanel } from './ui/NetworkPanel.ts';
 import { type LobbyChoice, createLobby, readStoredName } from './ui/Lobby.ts';
@@ -253,20 +254,8 @@ const camSolve = createCameraSolve();
 const AIM_RANGE = 250;
 
 
-const player = new THREE.Mesh(
-  new THREE.CapsuleGeometry(0.35, 1.1, 6, 16),
-  new THREE.MeshStandardMaterial({ color: 0xf0b429, roughness: 0.6 }),
-);
-player.castShadow = true;
+const player = createHumanoidPlaceholder('local');
 scene.add(player);
-
-// A nose marker, so facing is readable — a capsule alone gives no yaw cue.
-const nose = new THREE.Mesh(
-  new THREE.BoxGeometry(0.12, 0.12, 0.45),
-  new THREE.MeshStandardMaterial({ color: 0x2a2113 }),
-);
-player.add(nose);
-nose.position.set(0, 0.45, 0.4);
 
 /**
  * Remote characters, created on demand from replicated entities.
@@ -277,14 +266,11 @@ nose.position.set(0, 0.45, 0.4);
  * still it is because nothing is driving them — not because they are scenery.
  */
 const remoteMeshes = new Map<number, THREE.Mesh>();
-const remoteGeometry = new THREE.CapsuleGeometry(0.35, 1.1, 4, 12);
-const remoteMaterial = new THREE.MeshStandardMaterial({ color: 0xb9a37a, roughness: 0.9 });
 
 function remoteMesh(netId: number): THREE.Mesh {
   let mesh = remoteMeshes.get(netId);
   if (!mesh) {
-    mesh = new THREE.Mesh(remoteGeometry, remoteMaterial);
-    mesh.castShadow = true;
+    mesh = createHumanoidPlaceholder('remote');
     mesh.name = `net ${netId}`;
     scene.add(mesh);
     remoteMeshes.set(netId, mesh);
