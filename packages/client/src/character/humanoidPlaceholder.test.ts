@@ -30,6 +30,14 @@ describe('humanoid placeholder (T-2.06)', () => {
       'rifle',
     ]);
     expect(soldier.name).toBe('humanoid local');
+
+    // The client aim ray intentionally tests only the root, not descendants.
+    // Aiming at the visible head must therefore still find the full-body proxy.
+    const raycaster = new THREE.Raycaster(
+      new THREE.Vector3(0, 0.62, -3),
+      new THREE.Vector3(0, 0, 1),
+    );
+    expect(raycaster.intersectObject(soldier, false).length).toBeGreaterThan(0);
   });
 
   it('uses the same hitbox and silhouette dimensions for local and remote soldiers', () => {
