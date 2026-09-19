@@ -98,30 +98,6 @@ export function createCameraSolve(): CameraSolve {
  * centre and adding the shoulder afterwards moves the aim origin relative to
  * the reticle, which is the shape of the down-and-left bug.
  */
-/**
- * Converge the authoritative eye ray onto the point covered by the camera.
- * The camera can move to either shoulder; the trace origin remains the shared
- * gameplay eye while the target point follows the camera's reticle.
- */
-export function convergeAimDirection(
-  cameraPosition: Vec3,
-  cameraDirection: Vec3,
-  traceOrigin: Vec3,
-  targetDistance: number,
-): Vec3 {
-  const target = {
-    x: cameraPosition.x + cameraDirection.x * targetDistance,
-    y: cameraPosition.y + cameraDirection.y * targetDistance,
-    z: cameraPosition.z + cameraDirection.z * targetDistance,
-  };
-  const dx = target.x - traceOrigin.x;
-  const dy = target.y - traceOrigin.y;
-  const dz = target.z - traceOrigin.z;
-  const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
-  if (!(length > 0)) return { x: 0, y: 0, z: 1 };
-  return { x: dx / length, y: dy / length, z: dz / length };
-}
-
 export function solveCamera(
   view: CameraView,
   cfg: CameraConfig,
