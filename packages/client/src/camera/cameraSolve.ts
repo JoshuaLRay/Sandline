@@ -69,6 +69,10 @@ export interface CameraSolve {
   distance: number;
   /** Smoothed shoulder side: +1 right, -1 left. */
   shoulderBlend: number;
+  /** Normalized 0..1 ADS transition shared by distance, shoulder and FOV. */
+  adsBlend: number;
+  /** FOV derived from the same ADS transition. */
+  fov: number;
 }
 
 export function createCameraSolve(): CameraSolve {
@@ -81,6 +85,8 @@ export function createCameraSolve(): CameraSolve {
     pitchAngle: 0,
     distance: 0,
     shoulderBlend: 1,
+    adsBlend: 0,
+    fov: 60,
   };
 }
 
@@ -153,6 +159,19 @@ export function solveCamera(
     out.shoulderBlend = targetShoulder;
   }
 
+  // ADS is one normalized transition state. Distance, shoulder offset and FOV
+  // all derive from it, so there is no frame where the weapon is "half aimed"
+  // but the camera has already snapped one of the other two cues. The same
+  // exponential curve is used at every frame rate.
+  const targetAds = view.ads ? 1 : 0;
+  if (dtSeconds > 0) {
+    const alpha = 1 - Math.exp(-12 * dtSeconds);
+    out.adsBlend += (targetAds - out.adsBlend) * alpha;
+  } else {
+    out.adsBlend = targetAds;
+  }
+  out.fov = cfg.baseFov + (cfg.adsFov - cfg.baseFov) * out.adsBlend;
+
   // View direction: the horizontal component shrinks as the pitch steepens.
   const dx = fwdX * cosP;
   const dy = sin(pitchAngle);
@@ -184,14 +203,14 @@ export function solveCamera(
    * wrong shoulder AND mirrors the aim offset, so it reads as two bugs.
    */
   const shoulder =
-    (view.ads ? cfg.shoulderRightAds : cfg.shoulderRight) * out.shoulderBlend;
+    (cfg.shoulderRight + (cfg.shoulderRightAds - cfg.shoulderRight) * out.adsBlend) * out.shoulderBlend;
   out.focus.x = view.x - fwdZ * shoulder;
   out.focus.y = pivotY + cfg.shoulderUp;
   out.focus.z = view.z + fwdX * shoulder;
 
   const desired =
     cfg.distance *
-    (view.ads ? cfg.adsDistanceScale : 1) *
+    (1 + (cfg.adsDistanceScale - 1) * out.adsBlend) *
     (1 - cfg.pitchShorten * Math.abs(view.pitchFraction));
 
   // Floor clamp: shorten the arm to land the camera ON the floor rather than
