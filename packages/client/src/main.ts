@@ -121,11 +121,14 @@ scene.add(new THREE.GridHelper(200, 100, 0x8a7550, 0x6a5940));
  */
 const cameraScenery: THREE.Object3D[] = [ground];
 const cameraRaycaster = new THREE.Raycaster();
+/** Reused every frame: the cast runs per frame and must not allocate. */
+const cameraRayOrigin = new THREE.Vector3();
+const cameraRayDirection = new THREE.Vector3();
 const cameraCollider: CameraCollider = {
   cast(origin, direction, maxDistance) {
     cameraRaycaster.set(
-      new THREE.Vector3(origin.x, origin.y, origin.z),
-      new THREE.Vector3(direction.x, direction.y, direction.z),
+      cameraRayOrigin.set(origin.x, origin.y, origin.z),
+      cameraRayDirection.set(direction.x, direction.y, direction.z),
     );
     cameraRaycaster.near = 0;
     cameraRaycaster.far = maxDistance;
@@ -270,6 +273,8 @@ const remoteMeshes = new Map<number, THREE.Mesh>();
 function remoteMesh(netId: number): THREE.Mesh {
   let mesh = remoteMeshes.get(netId);
   if (!mesh) {
+    // The root is the server's hitbox capsule (see humanoidPlaceholder.ts), so
+    // the non-recursive raycasts below hit exactly what the server would.
     mesh = createHumanoidPlaceholder('remote');
     mesh.name = `net ${netId}`;
     scene.add(mesh);
@@ -942,7 +947,7 @@ function frame(): void {
         `${speed.toFixed(2)} m/s   peak ${peakSpeed.toFixed(2)}\n` +
         `${net?.simulated?.grounded ?? true ? 'grounded' : `airborne  y ${ry.toFixed(2)}`}\n` +
         `tick ${clock.tick}   ${fps} fps${clock.dropped ? `   dropped ${clock.dropped}` : ''}\n` +
-        `${input.firstPerson ? 'first person' : 'third person'}  (V to swap)\n` +
+        `${input.firstPerson ? 'first person  (V for third)' : 'third person  (V swaps shoulder, RMB aims into first)'}\n` +
         `${input.locked ? 'mouse captured - Esc to release' : 'CLICK to capture mouse'}\n` +
         `\n${combat.readout(clock.tick * TICK_SECONDS, input.ads)}\n` +
         `\n${netReadout()}`;

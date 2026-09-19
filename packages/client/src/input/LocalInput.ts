@@ -97,7 +97,8 @@ export class LocalInput {
       if (e.code === 'Space') e.preventDefault();
       this.held.add(e.code);
       this.pressed.add(e.code);
-      if (e.code === 'KeyV') pressShoulderKey(this.viewState);
+      // Key auto-repeat would flip the shoulder every repeat while V is held.
+      if (e.code === 'KeyV' && !e.repeat) pressShoulderKey(this.viewState);
     });
     addEventListener('keyup', (e) => this.held.delete(e.code));
     // Losing focus mid-key leaves a key stuck down forever otherwise.
