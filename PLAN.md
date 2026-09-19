@@ -806,8 +806,7 @@ Task IDs follow §0.1: `T-1.5.<n>`, milestone 1.5.
 - **Done when:** A written verdict at real internet latency with measured numbers beside it, and an ADR-012 addendum recording whether the two-human case changed that ADR's conclusion. **If it fails, stop and revisit ADR-012 before M2 continues** — the same rule T-1.24 carries, for the half of the question T-1.24 cannot reach.
 - **Size:** S
 
-**Exit gate:** T-1.5.08's verdict exists and is a pass. R2 closes here, not at
-T-1.24.
+**Exit gate:** T-1.5.08's verdict exists and is a pass. **Human sign-off confirmed 2026-09-19:** the owner completed the human-to-human internet gate and reports that it looks great. R2 closes here, not at T-1.24.
 
 ---
 
