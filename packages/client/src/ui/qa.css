@@ -205,41 +205,43 @@ canvas { display: block; touch-action: none; }
   user-select: all;
 }
 /**
- * The reticle is centered only in FPS. In TPS its left/top are written every
- * frame from the projected zero-spread firing ray. The visual displacement is
- * intentional: the gameplay eye and over-the-shoulder camera are not coincident.
+ * A fixed centre reticle, always. The shot is converged on what the centre
+ * covers (see the aim convergence in main.ts), so the crosshair never moves;
+ * what moves is its GAP. Four arms sit `--gap` pixels out from the centre,
+ * and the frame loop sets `--gap` from the weapon's current cone: wide while
+ * hip firing, opening further as bloom builds, tight while aiming down sights.
+ * The gap IS the inaccuracy, drawn at the scale it has on screen.
  */
 #crosshair {
+  --gap: 6px;
+  --arm: 14px;
   position: fixed;
   top: 50%;
   left: 50%;
-  width: 18px;
-  height: 18px;
-  margin: -9px 0 0 -9px;
+  width: 0;
+  height: 0;
   pointer-events: none;
 }
-#crosshair::before,
-#crosshair::after {
-  content: '';
+#crosshair .arm {
   position: absolute;
   background: var(--amber);
   opacity: 0.85;
 }
-#crosshair::before { top: 8px; left: 0; width: 18px; height: 2px; }
-#crosshair::after { left: 8px; top: 0; width: 2px; height: 18px; }
+#crosshair .up,
+#crosshair .down { left: -1px; width: 2px; height: var(--arm); }
+#crosshair .left,
+#crosshair .right { top: -1px; height: 2px; width: var(--arm); }
+#crosshair .up { bottom: var(--gap); }
+#crosshair .down { top: var(--gap); }
+#crosshair .left { right: var(--gap); }
+#crosshair .right { left: var(--gap); }
 
 /**
- * Aiming down sights. The reticle tightens and goes pale, which together with
- * the narrowed field of view makes the state readable at a glance in first and
- * third person alike - previously there was no cue at all in either.
+ * Aiming down sights. The arms shorten, close in and go pale, which together
+ * with the narrowed field of view makes the state readable at a glance.
  */
-#crosshair.ads::before,
-#crosshair.ads::after {
-  background: var(--dust);
-  opacity: 1;
-}
-#crosshair.ads::before { top: 8px; left: 5px; width: 8px; }
-#crosshair.ads::after { left: 8px; top: 5px; height: 8px; }
+#crosshair.ads { --arm: 8px; }
+#crosshair.ads .arm { background: var(--dust); opacity: 1; }
 
 @media (max-width: 640px) {
   #crosshair { display: none; }

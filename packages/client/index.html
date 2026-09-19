@@ -30,7 +30,11 @@
         a host you joined from the lobby.
       </div>
     </div>
-    <div id="crosshair" aria-hidden="true"></div>
+    <!-- Four separate arms, so the gap between them can open with the cone. -->
+    <div id="crosshair" aria-hidden="true">
+      <span class="arm up"></span><span class="arm down"></span>
+      <span class="arm left"></span><span class="arm right"></span>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

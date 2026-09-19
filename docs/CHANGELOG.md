@@ -79,3 +79,4 @@ Format: `T-<id> — <what changed>`
 - T-1.5.03 — Human-to-human LAN gate: owner playtest sign-off recorded; two-human combat feel accepted.
 - T-1.5.08 — M1.5 internet gate: owner completed the two-human real-host playtest and reported it looks great; M1.5 closed.
 - T-2.05 — ADS transition: arm length, shoulder offset and FOV now share one frame-rate-independent normalized transition.
+- Reticle: fixed at the centre again, with a gap that follows the weapon's cone — wide in hip fire, wider under bloom, tight when aiming; the moving third-person reticle (which lagged the view by a frame) is gone and camera-to-eye aim convergence is back so the centre is where shots land. Aiming still enters first person until V.
