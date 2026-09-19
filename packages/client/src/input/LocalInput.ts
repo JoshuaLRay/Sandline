@@ -77,6 +77,8 @@ export class LocalInput {
   private pitchAccum = 0;
   private sensitivity: number;
   private invertY: boolean;
+  /** +1 is the default right shoulder; -1 is the left shoulder. */
+  private shoulderSideValue = 1 as 1 | -1;
   /** First person removes the occlusion that limits third-person pitch. */
   firstPerson = false;
   locked = false;
@@ -96,6 +98,7 @@ export class LocalInput {
       if (e.code === 'Space') e.preventDefault();
       this.held.add(e.code);
       this.pressed.add(e.code);
+      if (e.code === 'KeyQ') this.shoulderSideValue = this.shoulderSideValue === 1 ? -1 : 1;
     });
     addEventListener('keyup', (e) => this.held.delete(e.code));
     // Losing focus mid-key leaves a key stuck down forever otherwise.
@@ -140,6 +143,11 @@ export class LocalInput {
 
   setInvertY(value: boolean): void {
     this.invertY = value;
+  }
+
+  /** Current third-person shoulder: +1 right, -1 left. */
+  get shoulderSide(): 1 | -1 {
+    return this.shoulderSideValue;
   }
 
   get maxPitch(): number {
