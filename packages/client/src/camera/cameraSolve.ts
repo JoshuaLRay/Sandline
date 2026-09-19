@@ -27,6 +27,7 @@
 import { WIRE_ANGLE_UNITS, cos, sin, wireToTable } from '@sandline/shared';
 import type { CameraConfig } from './cameraConfig.ts';
 import { solveArmLength } from './followCamera.ts';
+import { springArmLength } from './springArm.ts';
 
 export interface CameraView {
   /** The character's render position. FEET, as the renderer receives it. */
@@ -85,7 +86,12 @@ export function createCameraSolve(): CameraSolve {
  * centre and adding the shoulder afterwards moves the aim origin relative to
  * the reticle, which is the shape of the down-and-left bug.
  */
-export function solveCamera(view: CameraView, cfg: CameraConfig, out: CameraSolve): CameraSolve {
+export function solveCamera(
+  view: CameraView,
+  cfg: CameraConfig,
+  out: CameraSolve,
+  dtSeconds = 1 / 60,
+): CameraSolve {
   const yawAngle = wireToTable(view.yawWire);
   /**
    * Pitch is signed; a wire angle is a position on a circle and has no sign.
@@ -147,8 +153,8 @@ export function solveCamera(view: CameraView, cfg: CameraConfig, out: CameraSolv
 
   // Floor clamp: shorten the arm to land the camera ON the floor rather than
   // clamping its position and leaving the view buried. See solveArmLength.
-  const distance = solveArmLength(desired, out.focus.y, dy, cfg);
-  out.distance = distance;
+  const collisionLimit = solveArmLength(desired, out.focus.y, dy, cfg);
+  out.distance = springArmLength(out.distance, collisionLimit, dtSeconds);
 
   out.position.x = out.focus.x - dx * distance;
   out.position.y = out.focus.y - dy * distance;

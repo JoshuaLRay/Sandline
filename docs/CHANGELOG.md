@@ -70,3 +70,5 @@ Format: `T-<id> — <what changed>`
 - T-1.5.05 - Room registry: one host holds many sessions, each on its own tick clock; empty rooms reclaimed after a grace; room, connection and process caps reject rather than degrade; `/healthz`.
 - T-1.5.06 - Lobby: host a room or join a code from the page, six-row squad panel, leave, share link; `?host=`/`?room=` pre-fill rather than bypass; default host baked in from `SANDLINE_HOST`.
 - T-1.5.07 - Host container, Fly config with TLS at the edge and auto-stop, deploy workflow, `DEPLOYING.md` deploy and teardown. The deploy itself needs an account and is documented, not run.
+
+- T-2.02 - Frame-rate-independent asymmetric spring arm: snap inward, exponentially ease outward, with derived settle-time tests.
