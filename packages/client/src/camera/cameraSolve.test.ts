@@ -214,4 +214,63 @@ describe('camera solve (T-2.01)', () => {
     }
   });
 
+  it('drives distance, shoulder offset and FOV from one continuous ADS blend', () => {
+    const target = createCameraSolve();
+    solveCamera(view(), cfg, target, 1 / 60);
+    expect(target.adsBlend).toBeCloseTo(0, 6);
+    expect(target.fov).toBeCloseTo(cfg.baseFov, 6);
+    expect(target.distance).toBeCloseTo(cfg.distance, 6);
+    expect(target.focus.x).toBeCloseTo(-cfg.shoulderRight, 6);
+
+    solveCamera(view({ ads: true }), cfg, target, 1 / 60);
+    expect(target.adsBlend).toBeGreaterThan(0);
+    expect(target.adsBlend).toBeLessThan(1);
+    expect(target.fov).toBeCloseTo(cfg.baseFov + (cfg.adsFov - cfg.baseFov) * target.adsBlend, 6);
+    expect(target.distance).toBeCloseTo(
+      cfg.distance * (1 + (cfg.adsDistanceScale - 1) * target.adsBlend),
+      6,
+    );
+    expect(target.focus.x).toBeCloseTo(
+      -(cfg.shoulderRight + (cfg.shoulderRightAds - cfg.shoulderRight) * target.adsBlend),
+      6,
+    );
+
+    for (let i = 0; i < 120; i += 1) solveCamera(view({ ads: true }), cfg, target, 1 / 60);
+    expect(target.adsBlend).toBeCloseTo(1, 4);
+    expect(target.fov).toBeCloseTo(cfg.adsFov, 4);
+    expect(target.distance).toBeCloseTo(cfg.distance * cfg.adsDistanceScale, 4);
+    expect(target.focus.x).toBeCloseTo(-cfg.shoulderRightAds, 4);
+  });
+
+  it('keeps the ADS transition frame-rate independent', () => {
+    const at30 = createCameraSolve();
+    const at60 = createCameraSolve();
+    for (let i = 0; i < 30; i += 1) solveCamera(view({ ads: true }), cfg, at30, 1 / 30);
+    for (let i = 0; i < 60; i += 1) solveCamera(view({ ads: true }), cfg, at60, 1 / 60);
+    expect(at30.adsBlend).toBeCloseTo(at60.adsBlend, 6);
+    expect(at30.distance).toBeCloseTo(at60.distance, 6);
+    expect(at30.focus.x).toBeCloseTo(at60.focus.x, 6);
+    expect(at30.fov).toBeCloseTo(at60.fov, 6);
+  });
+
+  it('keeps aim convergence consistent mid-ADS transition', () => {
+    const target = createCameraSolve();
+    solveCamera(view({ ads: true }), cfg, target, 1 / 60);
+    const range = 95;
+    const aimPoint = {
+      x: target.position.x + target.direction.x * range,
+      y: target.position.y + target.direction.y * range,
+      z: target.position.z + target.direction.z * range,
+    };
+    const eye = { x: 0, y: cfg.eyeHeight, z: 0 };
+    const aim = convergeAimDirection(target.position, target.direction, eye, range);
+    const dx = aimPoint.x - eye.x;
+    const dy = aimPoint.y - eye.y;
+    const dz = aimPoint.z - eye.z;
+    const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    expect(aim.x).toBeCloseTo(dx / length, 8);
+    expect(aim.y).toBeCloseTo(dy / length, 8);
+    expect(aim.z).toBeCloseTo(dz / length, 8);
+  });
+
 });
