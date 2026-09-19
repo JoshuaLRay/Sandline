@@ -24,7 +24,7 @@
  * character must be drawn, aim precision decides where a ray lands at 100 m
  * (note 17). Do not unify them.
  */
-import { WIRE_ANGLE_UNITS, cos, sin, wireToTable } from '@sandline/shared';
+import { WIRE_ANGLE_UNITS, cos, fromRadians, sin, wireToTable } from '@sandline/shared';
 import type { CameraConfig } from './cameraConfig.ts';
 import { solveCollisionArmLength, type CameraCollider } from './cameraColliders.ts';
 import { solveArmLength } from './followCamera.ts';
@@ -103,6 +103,19 @@ export function createCameraSolve(): CameraSolve {
  * The camera can move to either shoulder; the trace origin remains the shared
  * gameplay eye while the target point follows the camera's reticle.
  */
+/** Convert a normalized world aim direction to the exact wire angles used by Fire. */
+export function aimAnglesFromDirection(direction: Vec3): { yaw: number; pitch: number } {
+  const length = Math.sqrt(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
+  if (!(length > 0)) return { yaw: 0, pitch: 0 };
+  const x = direction.x / length;
+  const y = direction.y / length;
+  const z = direction.z / length;
+  return {
+    yaw: fromRadians(Math.atan2(x, z)),
+    pitch: fromRadians(Math.asin(Math.max(-1, Math.min(1, y)))),
+  };
+}
+
 export function convergeAimDirection(
   cameraPosition: Vec3,
   cameraDirection: Vec3,
