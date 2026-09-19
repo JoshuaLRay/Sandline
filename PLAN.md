@@ -884,8 +884,15 @@ that shoots.
 - **Done when:** tests assert all three are continuous across the transition, and that aim convergence stays consistent mid-transition — the frame where distance has moved and shoulder has not is exactly where a mis-derived eye position hides.
 - **Size:** S
 
-#### T-2.06 — 🧍 E-2.1 sign-off
-- **Depends:** T-2.01, T-2.02, T-2.03, T-2.04, T-2.05
+#### T-2.06 — Humanoid grey-box character
+- **Depends:** T-2.05
+- **Files:** `packages/client/src/character/humanoidPlaceholder.ts`, `packages/client/src/character/humanoidPlaceholder.test.ts`, `packages/client/src/main.ts`
+- **Do:** Replace the local and remote capsule player representations with a recognizable, deliberately low-detail humanoid grey-box soldier built from simple Three.js primitives. Keep it as one reusable factory for every soldier: head, torso, pelvis, arms, legs, boots, a small backpack and a simple rifle silhouette. The root remains a hittable `THREE.Mesh` so the existing QA aim/tracer path can keep treating each player as one shootable object. This is a gameplay placeholder, not production art: no external asset, rig, skinning or new runtime dependency.
+- **Done when:** the local player and every replicated remote player use the same humanoid factory, the capsule player geometry is gone from the playable characters, the placeholder reads as a human soldier at normal camera distance, and the factory has focused tests for its body-part structure and shared geometry/material ownership. `pnpm verify` remains green and the CHANGELOG records the task.
+- **Size:** M
+
+#### T-2.07 — 🧍 E-2.1 sign-off
+- **Depends:** T-2.01, T-2.02, T-2.03, T-2.04, T-2.05, T-2.06
 - **Files:** `docs/playtests/e2-1.md`
 - **Do:** A human plays and judges camera feel: spring behaviour against walls and tight spaces, the shoulder swap, the ADS transition, and 89-degree pitch in both views.
 - **Done when:** A written verdict exists, recording what it does and does not establish, as T-1.24's did.
