@@ -26,6 +26,7 @@
  */
 import { WIRE_ANGLE_UNITS, cos, sin, wireToTable } from '@sandline/shared';
 import type { CameraConfig } from './cameraConfig.ts';
+import { solveCollisionArmLength, type CameraCollider } from './cameraColliders.ts';
 import { solveArmLength } from './followCamera.ts';
 import { springArmLength } from './springArm.ts';
 
@@ -91,6 +92,7 @@ export function solveCamera(
   cfg: CameraConfig,
   out: CameraSolve,
   dtSeconds = 1 / 60,
+  collider?: CameraCollider,
 ): CameraSolve {
   const yawAngle = wireToTable(view.yawWire);
   /**
@@ -153,11 +155,20 @@ export function solveCamera(
 
   // Floor clamp: shorten the arm to land the camera ON the floor rather than
   // clamping its position and leaving the view buried. See solveArmLength.
-  const collisionLimit = solveArmLength(desired, out.focus.y, dy, cfg);
+  // The ray points from the shoulder pivot toward the desired camera position.
+  // Only static camera scenery belongs in this query; it intentionally differs
+  // from the server-authoritative shootable list used for aim convergence.
+  const sceneryLimit = solveCollisionArmLength(
+    desired,
+    out.focus,
+    { x: -dx, y: -dy, z: -dz },
+    collider,
+  );
+  const collisionLimit = solveArmLength(sceneryLimit, out.focus.y, dy, cfg);
   out.distance = springArmLength(out.distance, collisionLimit, dtSeconds);
 
-  out.position.x = out.focus.x - dx * distance;
-  out.position.y = out.focus.y - dy * distance;
-  out.position.z = out.focus.z - dz * distance;
+  out.position.x = out.focus.x - dx * out.distance;
+  out.position.y = out.focus.y - dy * out.distance;
+  out.position.z = out.focus.z - dz * out.distance;
   return out;
 }
