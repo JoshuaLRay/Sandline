@@ -807,6 +807,7 @@ function frame(): void {
     },
     cam,
     camSolve,
+    dt,
   );
   player.rotation.y = Math.atan2(camSolve.forward.x, camSolve.forward.z);
 
