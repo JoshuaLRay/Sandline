@@ -128,6 +128,7 @@ export class LocalInput {
       if (!this.locked) {
         this.held.clear();
         this.buttons.clear();
+        endAds(this.viewState);
       }
     });
     addEventListener('mousemove', (e) => {
