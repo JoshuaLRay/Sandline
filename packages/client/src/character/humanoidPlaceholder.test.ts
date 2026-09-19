@@ -3,12 +3,20 @@ import * as THREE from 'three';
 import { createHumanoidPlaceholder } from './humanoidPlaceholder.ts';
 
 describe('humanoid placeholder (T-2.06)', () => {
-  it('returns one hittable mesh root with the expected soldier silhouette parts', () => {
+  it('keeps a full-body hittable proxy behind the expected soldier silhouette', () => {
     const soldier = createHumanoidPlaceholder('local');
 
     expect(soldier).toBeInstanceOf(THREE.Mesh);
-    expect(soldier.geometry).toBeInstanceOf(THREE.BoxGeometry);
+    expect(soldier.geometry).toBeInstanceOf(THREE.CapsuleGeometry);
+    expect(soldier.geometry.parameters.radius).toBeCloseTo(0.35, 6);
+    expect(soldier.geometry.parameters.height).toBeCloseTo(1.1, 6);
+
+    const material = soldier.material as THREE.MeshBasicMaterial;
+    expect(material.transparent).toBe(true);
+    expect(material.opacity).toBe(0);
+
     expect(soldier.children.map((child) => child.name)).toEqual([
+      'torso',
       'head',
       'helmet',
       'pelvis',
@@ -24,7 +32,7 @@ describe('humanoid placeholder (T-2.06)', () => {
     expect(soldier.name).toBe('humanoid local');
   });
 
-  it('uses the same dimensions for local and remote soldiers', () => {
+  it('uses the same hitbox and silhouette dimensions for local and remote soldiers', () => {
     const local = createHumanoidPlaceholder('local');
     const remote = createHumanoidPlaceholder('remote');
 
