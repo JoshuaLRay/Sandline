@@ -63,7 +63,7 @@ import {
   shareLink,
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
-import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
+import { convergeAimDirection, createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
@@ -615,6 +615,10 @@ const muzzle = new THREE.Vector3();
  * camera preference.
  */
 const rig = { ...DEFAULT_MUZZLE_RIG };
+/** The visual weapon follows the same eased shoulder state as the camera. */
+function updateMuzzleRig(): void {
+  rig.shoulderRight = DEFAULT_MUZZLE_RIG.shoulderRight * camSolve.shoulderBlend;
+}
 /** Which point the weapon is held at, from the camera the player is using. */
 function stance(): MuzzleStance {
   if (!input.firstPerson) return 'third';
@@ -829,6 +833,7 @@ function frame(): void {
       pitchFraction: input.pitchFraction,
       ads: input.ads,
       firstPerson: input.firstPerson,
+      shoulderSide: input.shoulderSide,
     },
     cam,
     camSolve,
@@ -836,6 +841,7 @@ function frame(): void {
     cameraCollider,
   );
   player.rotation.y = Math.atan2(camSolve.forward.x, camSolve.forward.z);
+  updateMuzzleRig();
 
   const ads = input.ads;
 
@@ -896,7 +902,13 @@ function frame(): void {
    * shot a hip's width off the reticle at close range.
    */
   const eye = eyePosition(rx, ry, rz);
-  aimDirection.set(aimPoint.x - eye.x, aimPoint.y - eye.y, aimPoint.z - eye.z).normalize();
+  const converged = convergeAimDirection(
+    camera.position,
+    aimDirection,
+    eye,
+    camera.position.distanceTo(aimPoint),
+  );
+  aimDirection.set(converged.x, converged.y, converged.z);
   /**
    * Rounded ONCE, straight to the resolution the wire now carries (1/4096).
    * The previous path rounded to 1/4096 and then shifted down to 1/1024, and a
@@ -961,6 +973,9 @@ addEventListener('keydown', (e) => {
   // First/third person. A proper camera with collision is E-2.1 in M2; this is
   // enough to judge whether the movement reads differently from each view.
   if (e.code === 'KeyV') input.firstPerson = !input.firstPerson;
+  // Q swaps the third-person shoulder; the camera solve eases to the new side.
+  // Keep it independent of first-person so returning to third person preserves the choice.
+
 });
 
 addEventListener('resize', () => {
