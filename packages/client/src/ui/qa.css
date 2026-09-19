@@ -205,10 +205,9 @@ canvas { display: block; touch-action: none; }
   user-select: all;
 }
 /**
- * A fixed centre reticle. Third person aims from the camera pivot, so the
- * crosshair sits exactly on the ray: the muzzle is on the camera 's centre line
- * in both views, so what the reticle covers is what gets hit. Without
- * it, judging spread is guesswork.
+ * The reticle is centered only in FPS. In TPS its left/top are written every
+ * frame from the projected zero-spread firing ray. The visual displacement is
+ * intentional: the gameplay eye and over-the-shoulder camera are not coincident.
  */
 #crosshair {
   position: fixed;
