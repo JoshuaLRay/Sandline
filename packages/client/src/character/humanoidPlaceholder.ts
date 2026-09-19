@@ -18,7 +18,7 @@ export function createHumanoidPlaceholder(variant: HumanoidVariant): THREE.Mesh 
   const local = variant === 'local';
   const root = new THREE.Mesh(
     new THREE.BoxGeometry(0.62, 0.72, 0.34),
-    new THREE.MeshStandardMaterial({ color: local ? 0xf0b429 : 0xb9a37a, roughness: 0.85 }),
+    new THREE.MeshStandardMaterial({ color: local ? 0x7b8068 : 0x686d5b, roughness: 0.85 }),
   );
   root.name = local ? 'humanoid local' : 'humanoid remote';
   root.castShadow = true;
@@ -40,7 +40,7 @@ export function createHumanoidPlaceholder(variant: HumanoidVariant): THREE.Mesh 
 
   const pelvis = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.3), uniform);
   pelvis.name = 'pelvis';
-  pelvis.position.set(0, -0.5, 0);
+  pelvis.position.set(0, -0.25, 0);
   root.add(pelvis);
 
   for (const side of [-1, 1] as const) {
@@ -52,12 +52,12 @@ export function createHumanoidPlaceholder(variant: HumanoidVariant): THREE.Mesh 
 
     const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.5, 4, 8), uniform);
     leg.name = side < 0 ? 'leg-left' : 'leg-right';
-    leg.position.set(side * 0.17, -0.9, 0);
+    leg.position.set(side * 0.17, -0.48, 0);
     root.add(leg);
 
     const boot = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.12, 0.38), gear);
     boot.name = side < 0 ? 'boot-left' : 'boot-right';
-    boot.position.set(side * 0.17, -1.2, 0.08);
+    boot.position.set(side * 0.17, -0.72, 0.08);
     root.add(boot);
   }
 
@@ -69,7 +69,6 @@ export function createHumanoidPlaceholder(variant: HumanoidVariant): THREE.Mesh 
   const rifle = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.95), weapon);
   rifle.name = 'rifle';
   rifle.position.set(0.35, 0.02, 0.48);
-  rifle.rotation.x = Math.PI / 2;
   root.add(rifle);
 
   return root;
