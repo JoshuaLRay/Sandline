@@ -52,6 +52,15 @@ describe('view state', () => {
     expect(state.adsActive).toBe(false);
   });
 
+  it('V from FPS leaves a valid TPS state even if ADS is still held', () => {
+    const state = createViewState();
+    beginAds(state);
+
+    pressShoulderKey(state);
+
+    expect(state).toEqual({ cameraMode: 'TPS', tpsShoulder: 'Right', adsActive: false });
+  });
+
   it('ADS release and re-entry do not alter the stored shoulder', () => {
     const state = createViewState();
     pressShoulderKey(state); // Left
