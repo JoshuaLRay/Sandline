@@ -723,7 +723,7 @@ Task IDs follow §0.1: `T-1.5.<n>`, milestone 1.5.
 
 ### 6A.1 A host that serves
 
-#### T-1.5.01 — Session host process
+#### T-1.5.01 — ✅ COMPLETED Session host process
 - **Depends:** T-1.07, T-1.09, T-1.13
 - **Files:** `packages/server/src/main.ts`, `packages/server/src/session/SessionHost.ts`, `SessionHost.test.ts`, `packages/bot/src/main.ts`, root `package.json`
 - **Do:** `packages/server/src/main.ts` is still T-0.07's bootstrap — it steps a bare `Simulation` and never calls `startWsServer`, so the dedicated server has never served a session to anything. Join them: accept sockets with `startWsServer` (T-1.07), hand each to `Session.addConnection` (T-1.13), and drive `Session.step` from a wall-clock loop using the `Clock` spiral clamp (T-0.08). Wrap each connection in `NetSim` behind `LINK_LATENCY_MS` / `LINK_JITTER_MS` / `LINK_LOSS` env vars, so a real socket can still carry the conditions T-1.24's sliders inject today — without this, the first remote playtest loses the instrument that made the local one useful. Drop silent peers on the existing 5 s heartbeat. `SIGTERM` sends `Disconnect` to every connection before exit rather than dropping sockets. Add `--url` to the bot CLI so it drives a real socket instead of a loopback pair.
@@ -731,14 +731,14 @@ Task IDs follow §0.1: `T-1.5.<n>`, milestone 1.5.
 - **Note:** the point of reusing the bot's own thresholds is that a *difference* between the loopback and socket numbers is the finding. They should match; if they do not, something in the netcode was depending on the loopback pair.
 - **Size:** M
 
-#### T-1.5.02 — The client joins a remote host
+#### T-1.5.02 — ✅ COMPLETED The client joins a remote host
 - **Depends:** T-1.5.01, T-1.08
 - **Files:** `packages/client/src/net/RemoteServer.ts`, `packages/client/src/main.ts`, `packages/client/src/ui/NetworkPanel.ts`
 - **Do:** The harness unconditionally builds a `LocalServer` — an in-page `Session` over a loopback pair. Add the other branch: `?host=ws://…` builds a `WsClientTransport` (T-1.08) instead, skips the in-page session and the `SparringPartner` entirely, and drives the existing `NetClient` from it unchanged. Everything downstream already codes against `Transport` (ADR-008), so this should touch startup and nothing else — if it does not, that is assumption leakage the ADR predicted and the finding is worth more than the task. In-page stays the default, so the published build is unaffected. Surface connection state in the HUD — connecting, joined as slot *n*, retrying (attempt and delay), gave up — because on a real socket "nothing is happening" must be distinguishable from "nothing is moving". When remote, grey the link sliders out and say why: conditioning now lives on the host (T-1.5.01), and a slider that silently does nothing is worse than no slider.
 - **Done when:** Two browser tabs pointed at one local host process take two of the six slots, see each other move, and damage each other; the netgraph's RTT is a measured socket round-trip rather than NetSim's configured number; closing one tab hands its slot back to a bot within the heartbeat timeout and the other tab plays on.
 - **Size:** M
 
-#### T-1.5.03 — 🧍 LAN two-human gate
+#### T-1.5.03 — ✅ COMPLETED 🧍 LAN two-human gate
 - **Depends:** T-1.5.02
 - **Files:** `docs/playtests/m1.5-lan.md`
 - **Do:** Two people, two machines, one host on the LAN. The first time this project has had two humans in one session. Judge only what the second human adds — anything a lone tester can assess belongs to T-1.24. Specifically: two players contesting one doorway; each shooting the other inside the same 200 ms rewind window; whether "I shot first" disputes resolve in a way *both* people accept; whether a corpse taking no further damage reads as correct or as a swallowed hit. Run at LAN, then with the host's conditioning at 80 and 200 ms, setting the two players' conditions independently as T-1.24 requires.
@@ -747,21 +747,21 @@ Task IDs follow §0.1: `T-1.5.<n>`, milestone 1.5.
 
 ### 6A.2 Rooms, and getting two people into the same one
 
-#### T-1.5.04 — Join codes and typed reject reasons
+#### T-1.5.04 — ✅ COMPLETED Join codes and typed reject reasons
 - **Depends:** T-1.5.01
 - **Files:** `packages/shared/src/net/protocol.ts`, `packages/shared/src/net/Connection.ts`, tests
 - **Do:** `Join` carries a room code alongside version and name; `JoinAck` carries the room it landed in. Replace the handshake's single free-text reason with a typed rejection — `bad version`, `no such room`, `room full`, `host draining` — so the client can say which happened instead of "disconnected". Bump `PROTOCOL_VERSION` 5 → 6; it is already the guard that catches a stale client, and a published client will now be older than the host routinely. Generate codes from an alphabet without visually confusable characters, because they get read aloud over voice.
 - **Done when:** Every message round-trips (extend T-1.05's property test); each rejection reaches the client distinguishable from the others; a v5 client against a v6 host is rejected on version, not on room.
 - **Size:** S
 
-#### T-1.5.05 — Room registry and session lifecycle
+#### T-1.5.05 — ✅ COMPLETED Room registry and session lifecycle
 - **Depends:** T-1.5.04
 - **Files:** `packages/server/src/session/Registry.ts`, `packages/server/src/main.ts`, tests
 - **Do:** One process, many sessions. Create a room and return its code, look one up, refuse a join into a full one, and reclaim a room once its last human leaves and a grace period passes — a bot-only session still costs a full 30 Hz tick loop and should not outlive the people in it, but reclaiming it the instant someone's wifi drops loses their game. Cap rooms per process, and connections per room at six (ADR-001). §3 already names `server/src/session/` as "room, tick loop, player slots"; this is the room half, which has never existed.
 - **Done when:** Two clients with the same code share a session and see each other; two clients with different codes cannot see each other at all; a seventh client into a full room is rejected with `room full`; an emptied room's tick loop stops and its entities are released; the process cap rejects rather than degrades.
 - **Size:** M
 
-#### T-1.5.06 — Lobby
+#### T-1.5.06 — ✅ COMPLETED Lobby
 - **Depends:** T-1.5.05, T-1.5.02
 - **Files:** `packages/client/src/ui/Lobby.ts`, `packages/client/src/main.ts`, `packages/client/src/net/RemoteServer.ts`
 - **Do:** The screen before the session. Choose a host, create a room or join a code, see all six slots with human/bot per slot, leave back to it. The roster is six rows always, never a growing list — ADR-001 is the reason, and a lobby that shows "2 players" teaches everyone the wrong model of the game. Put the code in a shareable link so the second player pastes a URL rather than types. Name the T-1.5.04 reason on a failed join. **Deliberately out of scope:** matchmaking, parties, region selection, ready-checks, class selection — those stay in E-4.5 and E-4.7.
@@ -792,14 +792,14 @@ Task IDs follow §0.1: `T-1.5.<n>`, milestone 1.5.
 
 ### 6A.3 A host on the internet
 
-#### T-1.5.07 — One deployed host
+#### T-1.5.07 — ✅ COMPLETED One deployed host
 - **Depends:** T-1.5.05
 - **Files:** `packages/server/Dockerfile`, `docs/DEPLOYING.md`, `.github/workflows/`
 - **Do:** E-4.9's first slice and nothing more: one region, one process. A container running the host; **TLS**, because the client is served over HTTPS and no browser will open a `ws://` socket from an `https://` page — this is the single most likely way this task fails and it fails silently in the console; a health endpoint; T-0.07's structured logger shipping somewhere readable; and the client's default host pointing at it. **Explicitly not:** multi-region, allocation, orchestration, autoscaling, matchmaking, or observability beyond logs. All of that stays in E-4.9.
 - **Done when:** Two people on different networks, neither on a VPN, join the same room from the published client and play; the host survives both of them leaving and a third person joining afterwards; `DEPLOYING.md` documents redeploy *and teardown*, including how to take the host down between playtests (R12).
 - **Size:** M
 
-#### T-1.5.08 — 🧍 M1.5 gate: two humans, one real host
+#### T-1.5.08 — ✅ COMPLETED 🧍 M1.5 gate: two humans, one real host
 - **Depends:** T-1.5.07, T-1.5.06, T-1.5.03
 - **Files:** `docs/playtests/m1.5.md`, `docs/adr/012-netcode-shape.md`
 - **Do:** Re-run T-1.5.03's verdict across the internet instead of a LAN, conditioning off — the latency is now whatever the route gives, which is the entire point. Record measured RTT, jitter and loss from the netgraph beside each judgement so the verdict can be read against the NetSim cells T-1.22 asserts in CI. Where they disagree, the real link is right and the model needs revisiting.
