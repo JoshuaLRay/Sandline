@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_CAMERA_CONFIG } from './cameraConfig.ts';
 import { CAMERA_COLLISION_MARGIN, type CameraCollider } from './cameraColliders.ts';
 import { DEFAULT_MUZZLE_RIG, muzzlePosition } from '@sandline/shared';
-import { convergeAimDirection, type CameraView, createCameraSolve, solveCamera } from './cameraSolve.ts';
+import { aimAnglesFromDirection, convergeAimDirection, type CameraView, createCameraSolve, solveCamera } from './cameraSolve.ts';
 
 const cfg = DEFAULT_CAMERA_CONFIG;
 /** Wire-angle units per degree: the wire carries 1024 per turn. */
@@ -282,4 +282,17 @@ describe('camera solve (T-2.01)', () => {
     expect(aim.z).toBeCloseTo(dz / length, 8);
   });
 
+});
+
+
+describe('aim input freshness', () => {
+  it('converts the current view direction to Fire angles without retaining a previous aim', () => {
+    const right = aimAnglesFromDirection({ x: 1, y: 0, z: 0 });
+    const forward = aimAnglesFromDirection({ x: 0, y: 0, z: 1 });
+    const up = aimAnglesFromDirection({ x: 0, y: 1, z: 0 });
+
+    expect(right.yaw).not.toBe(forward.yaw);
+    expect(right.pitch).toBe(forward.pitch);
+    expect(up.pitch).not.toBe(forward.pitch);
+  });
 });
