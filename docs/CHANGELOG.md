@@ -72,3 +72,4 @@ Format: `T-<id> — <what changed>`
 - T-1.5.07 - Host container, Fly config with TLS at the edge and auto-stop, deploy workflow, `DEPLOYING.md` deploy and teardown. The deploy itself needs an account and is documented, not run.
 
 - T-2.02 - Frame-rate-independent asymmetric spring arm: snap inward, exponentially ease outward, with derived settle-time tests.
+- T-2.03 - Camera arm collision against static scenery, isolated from the server-authoritative shootable set.
