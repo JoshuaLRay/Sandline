@@ -19,6 +19,8 @@ export interface CameraConfig {
   pitchShorten: number;
   /** Arm length multiplier while aiming. */
   adsDistanceScale: number;
+  /** Exponential rate for easing the shoulder swap, in reciprocal seconds. */
+  shoulderSwapRate: number;
   /** Floor guard: lowest world Y the camera may occupy, and the shortest arm. */
   minCameraY: number;
   minDistance: number;
@@ -35,6 +37,7 @@ export const DEFAULT_CAMERA_CONFIG: CameraConfig = {
   shoulderUp: 0.3,
   pitchShorten: 0.35,
   adsDistanceScale: 0.6,
+  shoulderSwapRate: 14,
   minCameraY: 0.3,
   minDistance: 1.0,
   baseFov: 60,
