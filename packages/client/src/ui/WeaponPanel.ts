@@ -44,13 +44,26 @@ const ROWS: Row[] = [
   { key: 'recoilMaxDeg', label: 'Recoil cap', min: 0, max: 20, step: 0.5 },
   { key: 'recoilRecoveryPerSec', label: 'Recoil recovery', min: 1, max: 30, step: 0.5 },
   { key: 'recoilAdsScale', label: 'Recoil aimed x', min: 0, max: 1, step: 0.05 },
+  // T-2.09. Shake moves the picture, never the aim; the camera panel's
+  // "Shake" scales all of these at once for the player who dislikes it.
+  { key: 'shakePosM', label: 'Shake (m)', min: 0, max: 0.1, step: 0.002 },
+  { key: 'shakeRollDeg', label: 'Shake roll', min: 0, max: 3, step: 0.05 },
 ];
 
-const JSON_ORDER: (keyof WeaponDef)[] = [
+/**
+ * Every field of a WeaponDef, in the order weapons.json lists them. The
+ * paste-back block is only useful if it is COMPLETE: the T-2.08/09 fields
+ * were missing from it for a day, which would have thrown away exactly the
+ * numbers the E-2.4 sign-off exists to tune. WeaponPanel.test.ts holds this
+ * list to the type.
+ */
+export const JSON_ORDER: (keyof WeaponDef)[] = [
   'id', 'name', 'rpm', 'damage', 'pellets', 'hipSpreadDeg', 'adsSpreadDeg',
   'bloomPerShotDeg', 'maxSpreadDeg', 'bloomDecayDegPerSec', 'falloffStartM',
   'falloffEndM', 'falloffMinFraction', 'maxRangeM', 'magSize', 'reloadSeconds',
   'auto',
+  'recoilKickDeg', 'recoilDriftDeg', 'recoilMaxDeg', 'recoilRecoveryPerSec', 'recoilAdsScale',
+  'shakePosM', 'shakeRollDeg',
 ];
 
 export function createWeaponPanel(combat: CombatQA): Panel {
@@ -76,7 +89,7 @@ export function createWeaponPanel(combat: CombatQA): Panel {
 
   /**
    * Sliders bind to the ACTIVE definition, which the weapon switch replaces
-   * wholesale, so the rows are rebuilt rather than rebound. Cheap: fourteen
+   * wholesale, so the rows are rebuilt rather than rebound. Cheap: two dozen
    * inputs, only on a key press.
    */
   function rebuild(): void {
