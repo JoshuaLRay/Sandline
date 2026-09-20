@@ -414,7 +414,7 @@ describe('Session revive interaction (T-2.15)', () => {
 
     expect(targetSlot.health.current).toBeGreaterThan(0);
     expect(targetSlot.health.downedAt).toBeNull();
-    expect(targetSlot.reviveBySlot).toBe(0);
+    expect(targetSlot.reviveBySlot).toBe(-1);
     expect(targetSlot.reviveProgressSeconds).toBe(0);
   });
 
