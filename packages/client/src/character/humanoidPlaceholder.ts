@@ -1,12 +1,24 @@
 import * as THREE from 'three';
+import {
+  type GaitStyle,
+  type HumanoidBoneName,
+  type HumanoidPose,
+  type HumanoidRig,
+  type RigTransform,
+  registerRig,
+  transformOf,
+} from './humanoidRig.ts';
 
 /**
- * M2 gameplay character placeholder.
+ * M2 grey-box character: the fallback and diagnostic fixture (T-2.22).
  *
- * This is intentionally grey-box art: it gives camera, locomotion, aiming and
- * animation work a recognizable human silhouette without pretending to be the
- * production soldier asset that belongs in M4/M5. One factory keeps local and
- * remote soldiers on the same proportions while they are still placeholders.
+ * This is intentionally grey-box art: loose primitives on the hit capsule,
+ * which gives camera, locomotion and aiming work a human silhouette with no
+ * skinning in the way. Since T-2.22 the skinned soldier in humanoidSoldier.ts
+ * is what the harness draws; this stays for `?greybox` and for the tests that
+ * want a rig whose parts can be read off directly. It implements the same
+ * rig contract (humanoidRig.ts): whole limbs stand in for the upper-limb
+ * bones, and the joints it does not have read as null.
  *
  * THE ROOT IS THE HITBOX, NOT THE TORSO. The QA harness raycasts the shootable
  * set non-recursively — one object per player — to converge the aim and to end
@@ -30,17 +42,14 @@ export type HumanoidVariant = 'local' | 'remote';
  * lie down. A downed soldier is therefore still hit where the server says
  * they are hit, and the parts are the picture of it.
  */
-export type HumanoidPose = 'standing' | 'crouched' | 'downed';
+export type { HumanoidPose } from './humanoidRig.ts';
 
 /** Height of a downed body's centre above the feet, metres: lying on its back. */
 export const DOWNED_BODY_LIFT_M = 0.28;
 /** The root's centre sits this far above the feet (the capsule's half height plus radius). */
 export const HUMANOID_ROOT_LIFT_M = 0.9;
 
-interface RestTransform {
-  position: [number, number, number];
-  quaternion: [number, number, number, number];
-}
+type RestTransform = RigTransform;
 
 /** Lying on the back, head forward (+Z): turn the up axis onto forward, then face up. */
 const DOWNED_TURN = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, Math.PI, 0, 'YXZ'));
@@ -127,7 +136,65 @@ export function createHumanoidPlaceholder(variant: HumanoidVariant): THREE.Mesh 
     } satisfies RestTransform;
   }
   root.castShadow = false;
+  registerRig(createGreyBoxRig(root));
   return root;
+}
+
+/** Which named part stands in for each bone. The joints missing here read as null. */
+const GREY_BOX_BONES: Partial<Record<HumanoidBoneName, string>> = {
+  hips: 'pelvis',
+  chest: 'torso',
+  head: 'head',
+  'upper-arm-left': 'arm-left',
+  'upper-arm-right': 'arm-right',
+  'upper-leg-left': 'leg-left',
+  'upper-leg-right': 'leg-right',
+  'foot-left': 'boot-left',
+  'foot-right': 'boot-right',
+};
+
+/** Whole limbs swing; there are no knees to bend, no spine to twist. */
+const GREY_BOX_STYLE: GaitStyle = { armSwing: 1, kneeBend: 0, bob: 0, twist: 0, lean: 0 };
+
+/** The parts a hit jerks back: the upper body, not the legs that hold it up. */
+export const GREY_BOX_FLINCH_PARTS: readonly string[] = ['torso', 'head', 'helmet', 'arm-left', 'arm-right', 'backpack', 'rifle'];
+
+/**
+ * The grey box as a rig. A pose moves the parts directly (`setHumanoidPose`),
+ * so the base a bone returns to is captured from the parts right after a
+ * pose is applied — which is the only moment the parts hold a pure pose.
+ */
+function createGreyBoxRig(root: THREE.Mesh): HumanoidRig {
+  const parts = new Map<HumanoidBoneName, THREE.Object3D>();
+  for (const [bone, name] of Object.entries(GREY_BOX_BONES) as [HumanoidBoneName, string][]) {
+    const part = root.getObjectByName(name);
+    if (part) parts.set(bone, part);
+  }
+  const bases = new Map<HumanoidBoneName, RigTransform>();
+  const capture = (): void => {
+    for (const [bone, part] of parts) bases.set(bone, transformOf(part));
+  };
+  capture();
+  const aim = root.getObjectByName('rifle');
+  if (!aim) throw new Error('The grey box has no rifle');
+  const flinchParts = root.children.filter((part) => GREY_BOX_FLINCH_PARTS.includes(part.name));
+  return {
+    kind: 'grey-box',
+    root,
+    aim,
+    style: GREY_BOX_STYLE,
+    flinchParts,
+    get pose() {
+      return humanoidPose(root);
+    },
+    bone: (name) => parts.get(name) ?? null,
+    base: (name) => bases.get(name) ?? null,
+    setPose(pose) {
+      if (humanoidPose(root) === pose) return;
+      setHumanoidPose(root, pose);
+      capture();
+    },
+  };
 }
 
 /**
