@@ -35,6 +35,7 @@
  * impact lands a round trip after the tracer, which is the honest order.
  */
 import * as THREE from 'three';
+import { rigOf } from '../character/humanoidRig.ts';
 import { seedFrom, unitFromSeed } from '@sandline/shared';
 
 /** Two frames at 60 fps. A duration, so the flash lasts as long at any rate. */
@@ -376,10 +377,11 @@ export class WeaponEffects {
       existing.born = now;
       return;
     }
-    const bases: FlinchSlot['bases'] = [];
-    for (const part of root.children) {
-      if (FLINCH_PARTS.includes(part.name)) bases.push({ part, z: part.position.z });
-    }
+    // A registered rig says what its upper body is (T-2.22); a bare grey box
+    // is read off its part names.
+    const rig = rigOf(root);
+    const parts = rig ? rig.flinchParts : root.children.filter((part) => FLINCH_PARTS.includes(part.name));
+    const bases: FlinchSlot['bases'] = parts.map((part) => ({ part, z: part.position.z }));
     this.flinches.set(root, { born: now, bases });
   }
 
