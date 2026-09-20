@@ -69,8 +69,8 @@ export interface Hitbox {
   /** Capsule centre above the entity's ground position. */
   centerOffsetY: number;
   /** Crouched capsule geometry; feet remain the authoritative position. */
-  crouchHalfHeight: number;
-  crouchCenterOffsetY: number;
+  crouchHalfHeight?: number;
+  crouchCenterOffsetY?: number;
 }
 
 /** Matches the 1.8 m reference figure the movement harness is scaled against. */
@@ -343,8 +343,8 @@ export function resolveShot(
     const state = history.stateAt(netId, rewoundTo);
     if (state === null) continue;
     const feet = state.position;
-    const halfHeight = state.crouched ? hitbox.crouchHalfHeight : hitbox.halfHeight;
-    const centerOffsetY = state.crouched ? hitbox.crouchCenterOffsetY : hitbox.centerOffsetY;
+    const halfHeight = state.crouched ? (hitbox.crouchHalfHeight ?? hitbox.halfHeight) : hitbox.halfHeight;
+    const centerOffsetY = state.crouched ? (hitbox.crouchCenterOffsetY ?? hitbox.centerOffsetY) : hitbox.centerOffsetY;
     const center: Vec3 = { x: feet.x, y: feet.y + centerOffsetY, z: feet.z };
     const distance = rayCapsule(query.ray, center, hitbox.radius, halfHeight);
     if (distance === null) continue;
