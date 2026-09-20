@@ -93,6 +93,11 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     name: 'Crouch',
     fields: [uint('crouched', 1)],
   },
+  {
+    id: COMPONENT_IDS.Vault,
+    name: 'Vault',
+    fields: [uint('active', 1), uint('progress', 8)],
+  },
 ];
 
 /** Width of the component-presence bitmask. */
