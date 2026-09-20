@@ -197,6 +197,16 @@ describe('crouched hit volume (T-2.20)', () => {
     );
     expect(hit?.netId).toBe(TARGET);
   });
+
+  it('changes crouch state at the authoritative history sample', () => {
+    const history = new HitboxHistory();
+    history.record(SHOOTER, 0, 0, 0, 0, false);
+    history.record(TARGET, 0, 0, 0, 10, false);
+    history.record(TARGET, 100, 0, 0, 10, true);
+
+    expect(history.stateAt(TARGET, 99)?.crouched).toBe(false);
+    expect(history.stateAt(TARGET, 100)?.crouched).toBe(true);
+  });
 });
 
 describe('compensated shots', () => {
