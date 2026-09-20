@@ -902,10 +902,23 @@ function frame(): void {
     crosshair.classList.toggle('hidden', downed);
   }
   if (downedBanner) {
-    const timer = net?.stats.vitalTimer ?? 0;
-    const text = downed ? `DOWNED — bleeding out ${timer}s — crawl to a teammate` : '';
+    const stats = net?.stats;
+    const timer = stats?.vitalTimer ?? 0;
+    let text = '';
+    if (downed) {
+      if ((stats?.reviverSlot ?? -1) >= 0) {
+        const name = net?.roster[stats?.reviverSlot ?? -1]?.name || 'A teammate';
+        text = `DOWNED — ${name} is reviving you ${Math.round(stats?.reviveProgress ?? 0)}% — ${timer}s`;
+      } else {
+        text = `DOWNED — bleeding out ${timer}s — crawl to a teammate`;
+      }
+    } else if ((net?.reviveTargetNetId ?? 0) > 0) {
+      const targetNetId = net?.reviveTargetNetId ?? 0;
+      const name = net?.roster[net?.remoteSlot(targetNetId) ?? -1]?.name || 'teammate';
+      text = `Hold E to revive ${name} ${Math.round(net?.remoteReviveProgress(targetNetId) ?? 0)}%`;
+    }
     if (downedBanner.textContent !== text) downedBanner.textContent = text;
-    downedBanner.classList.toggle('shown', downed);
+    downedBanner.classList.toggle('shown', text.length > 0);
   }
   // Every value in the camera panel describes where the arm puts the camera
   // relative to a character you cannot see in first person.

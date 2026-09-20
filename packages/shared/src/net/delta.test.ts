@@ -17,7 +17,7 @@ function makeWorld(tick: number, n: number): WorldSnapshot {
       netId: i + 1,
       components: {
         [T]: [rng.nextUint32() % 65536, rng.nextUint32() % 65536, rng.nextUint32() % 65536, rng.nextUint32() % 1024, 0],
-        [H]: [100, 100, 0, 0],
+        [H]: [100, 100, 0, 0, 0, 0],
       },
     });
   }
@@ -63,7 +63,7 @@ describe('full snapshot (T-1.03)', () => {
       tick: 1,
       entities: [
         { netId: 1, components: { [T]: [1, 2, 3, 4, 5] } },
-        { netId: 2, components: { [H]: [50, 100, 0, 0] } },
+        { netId: 2, components: { [H]: [50, 100, 0, 0, 0, 0] } },
       ],
     };
     expectSameWorld(readSnapshot(new BitReader(encodeFull(world))), world);
@@ -104,7 +104,7 @@ describe('delta compression (T-1.04)', () => {
   it('applying a delta to its baseline reproduces the new state exactly', () => {
     const base = makeWorld(1, 30);
     const next = makeWorld(2, 30);
-    next.entities[7]!.components[H] = [42, 100, 1, 17];
+    next.entities[7]!.components[H] = [42, 100, 1, 17, 0, 0];
     expectSameWorld(decodeDelta(encodeDelta(next, base), base), next);
   });
 
@@ -120,7 +120,7 @@ describe('delta compression (T-1.04)', () => {
     const base = makeWorld(1, 3);
     const next: WorldSnapshot = {
       tick: 2,
-      entities: [...base.entities, { netId: 99, components: { [T]: [5, 6, 7, 8, 9], [H]: [10, 10, 0, 0] } }],
+      entities: [...base.entities, { netId: 99, components: { [T]: [5, 6, 7, 8, 9], [H]: [10, 10, 0, 0, 0, 0] } }],
     };
     const got = decodeDelta(encodeDelta(next, base), base);
     expect(got.entities).toHaveLength(4);
@@ -139,7 +139,7 @@ describe('delta compression (T-1.04)', () => {
     const next: WorldSnapshot = {
       tick: 2,
       entities: [
-        ...base.entities.filter((e) => e.netId !== 1).map((e) => (e.netId === 3 ? { ...e, components: { ...e.components, [H]: [7, 100, 0, 0] } } : e)),
+        ...base.entities.filter((e) => e.netId !== 1).map((e) => (e.netId === 3 ? { ...e, components: { ...e.components, [H]: [7, 100, 0, 0, 0, 0] } } : e)),
         { netId: 50, components: { [T]: [1, 1, 1, 1, 1] } },
       ],
     };
@@ -173,7 +173,7 @@ describe('delta compression (T-1.04)', () => {
     const base = makeWorld(0, 10);
     const next: WorldSnapshot = {
       tick: 1,
-      entities: base.entities.map((e, i) => (i === 0 ? { ...e, components: { ...e.components, [H]: [1, 100, 0, 0] } } : e)),
+      entities: base.entities.map((e, i) => (i === 0 ? { ...e, components: { ...e.components, [H]: [1, 100, 0, 0, 0, 0] } } : e)),
     };
     const got = decodeDelta(encodeDelta(next, base), base);
     expect(got.entities).toHaveLength(10);

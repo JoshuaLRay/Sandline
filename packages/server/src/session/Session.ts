@@ -40,6 +40,7 @@ import {
   isDowned,
   vitalTimer,
   vitality,
+  DAMAGE,
   vitalityCode,
   createMoveState,
   createWeaponState,
@@ -47,6 +48,7 @@ import {
   decayBloom,
   isAlive,
   readyToRespawn,
+  revive,
   respawn,
   spawnFor,
   zoneAt,
@@ -122,6 +124,9 @@ export interface Slot {
   /** Aim pitch, in wire units. Movement only replicates yaw; shots need both. */
   pitch: number;
   health: HealthState;
+  /** T-2.15: authoritative revive ownership/progress for this downed soldier. */
+  reviveBySlot: number;
+  reviveProgressSeconds: number;
 }
 
 /** ADR-012: repeat a missing input this many ticks, then treat it as idle. */
@@ -148,6 +153,7 @@ const idleInput = (yaw = 0): MoveInput => ({
   jump: false,
   sprint: false,
   crouch: false,
+  interact: false,
 });
 
 export interface SessionStats {
@@ -207,6 +213,8 @@ export class Session {
         weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
         pitch: 0,
         health: createHealth(),
+        reviveBySlot: -1,
+        reviveProgressSeconds: 0,
       });
     }
   }
@@ -290,6 +298,8 @@ export class Session {
       return false;
     }
     // Take over the bot's entity in place: same netId, no spawn, no despawn.
+    // Revive ownership belongs to the connection occupying a slot, not to the persistent entity.
+    this.clearReviveStateForSlot(slot.index);
     slot.isBot = false;
     slot.connection = conn;
     slot.staleTicks = 0;
@@ -336,6 +346,8 @@ export class Session {
     const slot = this.slots.find((s) => s.connection === conn);
     if (!slot) return;
     // Hand the entity back to a bot; it keeps its position and its netId.
+    // A departing reviver must not leave an interaction attached to a persistent entity.
+    this.clearReviveStateForSlot(slot.index);
     slot.isBot = true;
     slot.connection = null;
     slot.input = idleInput(slot.yaw);
@@ -389,6 +401,7 @@ export class Session {
           jump: (frame.buttons & 0b001) !== 0,
           sprint: (frame.buttons & 0b010) !== 0,
           crouch: (frame.buttons & 0b100) !== 0,
+          interact: (frame.buttons & 0b1000) !== 0,
         },
       });
     }
@@ -664,6 +677,9 @@ export class Session {
       slot.lastProcessedInputTick = slot.pendingInputTick;
     }
 
+    // Resolve revive interaction after consuming this tick's input, so a newly pressed E starts immediately.
+    this.updateRevives();
+
     // Record AFTER stepping, so the history holds the post-tick positions that
     // the snapshot about to go out will describe. Recording pre-step would
     // rewind clients to a world half a tick behind the one they were shown.
@@ -685,6 +701,96 @@ export class Session {
     const snapshot = this.buildSnapshot();
     this.history.store(snapshot);
     this.broadcast(snapshot);
+  }
+
+  /** Clear all revive state owned by, or stored on, a reused slot. */
+  private clearReviveStateForSlot(slotIndex: number): void {
+    const slot = this.slots[slotIndex];
+    if (slot) {
+      slot.reviveBySlot = -1;
+      slot.reviveProgressSeconds = 0;
+    }
+    for (const target of this.slots) {
+      if (target.reviveBySlot === slotIndex) {
+        target.reviveBySlot = -1;
+        target.reviveProgressSeconds = 0;
+      }
+    }
+  }
+
+  /**
+   * T-2.15: resolve the held-E revive interaction authoritatively.
+   *
+   * A downed target owns its reviver lock. Once a living human has started
+   * within range, another player cannot steal the interaction until the first
+   * player releases E, leaves range, becomes downed/dead, or the target stops
+   * being downed. This makes simultaneous attempts deterministic and matches
+   * the requested "first to start holds it" rule.
+   */
+  private updateRevives(): void {
+    const rangeSq = DAMAGE.downed.reviveRangeM * DAMAGE.downed.reviveRangeM;
+
+    // First, invalidate locks whose reviver is no longer actively holding E.
+    for (const target of this.slots) {
+      if (!isDowned(target.health)) {
+        target.reviveBySlot = -1;
+        target.reviveProgressSeconds = 0;
+        continue;
+      }
+      if (target.reviveBySlot < 0) {
+        target.reviveProgressSeconds = 0;
+        continue;
+      }
+      const reviver = target.reviveBySlot >= 0 ? this.slots[target.reviveBySlot] : undefined;
+      if (
+        !reviver ||
+        reviver.isBot ||
+        !isAlive(reviver.health) ||
+        !reviver.input.interact ||
+        this.distanceSq(reviver, target) > rangeSq
+      ) {
+        target.reviveBySlot = -1;
+        target.reviveProgressSeconds = 0;
+      }
+    }
+
+    // Then allow unclaimed targets to be claimed in stable slot/netId order.
+    for (const reviver of this.slots) {
+      if (reviver.isBot || !isAlive(reviver.health) || !reviver.input.interact) continue;
+      let best: Slot | null = null;
+      let bestDistance = Number.POSITIVE_INFINITY;
+      for (const target of this.slots) {
+        if (target === reviver || !isDowned(target.health) || target.reviveBySlot >= 0) continue;
+        const d = this.distanceSq(reviver, target);
+        if (d <= rangeSq && d < bestDistance) {
+          best = target;
+          bestDistance = d;
+        }
+      }
+      if (best) {
+        best.reviveBySlot = reviver.index;
+        best.reviveProgressSeconds = 0;
+      }
+    }
+
+    // Advance every active interaction and complete it at the configured hold time.
+    for (const target of this.slots) {
+      if (!isDowned(target.health) || target.reviveBySlot < 0) continue;
+      target.reviveProgressSeconds += TICK_SECONDS;
+      if (target.reviveProgressSeconds >= DAMAGE.downed.reviveSeconds) {
+        revive(target.health);
+        target.reviveBySlot = -1;
+        target.reviveProgressSeconds = 0;
+        target.queue.length = 0;
+      }
+    }
+  }
+
+  private distanceSq(a: Slot, b: Slot): number {
+    const dx = a.state.x - b.state.x;
+    const dy = a.state.y - b.state.y;
+    const dz = a.state.z - b.state.z;
+    return dx * dx + dy * dy + dz * dz;
   }
 
   private buildSnapshot(): WorldSnapshot {
@@ -712,7 +818,10 @@ export class Session {
             Math.round(s.health.max),
             vitalityCode(vitality(s.health)),
             Math.min(63, Math.ceil(vitalTimer(s.health, this.nowMs / 1000))),
+            Math.min(100, Math.round((s.reviveProgressSeconds / DAMAGE.downed.reviveSeconds) * 100)),
+            s.reviveBySlot < 0 ? 0 : s.reviveBySlot + 1,
           ],
+          [COMPONENT_IDS.PlayerSlot]: [s.index, s.isBot ? 1 : 0],
         },
       })),
     };
