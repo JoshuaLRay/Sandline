@@ -208,6 +208,49 @@ describe('world collision (T-1.12)', () => {
   });
 });
 
+
+describe('crouch height and clearance (T-2.20)', () => {
+  const lowCeiling = [wall('low ceiling', 0, 2, 4, 0.3, 4, 1.3)];
+
+  it('fits under a ceiling while crouched but not while standing', () => {
+    const crouched = walk({ x: 0, z: 0 }, input({ moveY: 1, crouch: true }), 60, lowCeiling);
+    const standing = walk({ x: 0, z: 0 }, input({ moveY: 1 }), 60, lowCeiling);
+    expect(crouched.z).toBeGreaterThan(2);
+    expect(standing.z).toBeLessThan(2);
+    expect(DEFAULT_MOVE_CONFIG.crouchHeight).toBeLessThan(DEFAULT_MOVE_CONFIG.height);
+  });
+
+  it('uses crouched height for headroom and standing height when rising', () => {
+    let s = createMoveState(0, 0, 0);
+    for (let i = 0; i < 20; i += 1) {
+      s = stepCharacter(s, input({ moveY: 1, crouch: true }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, lowCeiling);
+    }
+    const underCeiling = s;
+    const standing = stepCharacter(underCeiling, input({ crouch: false }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, lowCeiling);
+    expect(underCeiling.z).toBeGreaterThan(1);
+    expect(standing.z).toBe(underCeiling.z);
+    expect(standing.y).toBe(0);
+    // Releasing crouch under a 1.3 m ceiling must not switch the authoritative
+    // stance or hit volume to the 1.8 m standing height.
+    expect(standing.crouched).toBe(true);
+
+    // Once clear of the ceiling, the same release is allowed to stand.
+    let clear = standing;
+    for (let i = 0; i < 120 && clear.crouched; i += 1) {
+      clear = stepCharacter(clear, input({ moveY: 1 }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, lowCeiling);
+    }
+    expect(clear.crouched).toBe(false);
+  });
+
+  it('keeps downed geometry distinct from crouch', () => {
+    const crouched = stepCharacter(createMoveState(0, 0, 0), input({ crouch: true, moveY: 1 }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
+    const downed = stepCharacter(createMoveState(0, 0, 0), input({ downed: true, moveY: 1 }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
+    expect(crouched.y).toBe(0);
+    expect(downed.y).toBe(0);
+    expect(crouched.z).toBeGreaterThan(downed.z);
+  });
+});
+
 describe('downed: crawling (T-2.13)', () => {
   const forward = (extra: Partial<MoveInput> = {}): MoveInput => ({
     moveX: 0,

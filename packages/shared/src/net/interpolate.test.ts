@@ -16,6 +16,7 @@ const sample = (tick: number, x: number, yaw = 0): InterpSample => ({
   y: 0,
   z: 0,
   yaw,
+  crouched: false,
 });
 
 describe('lerpAngle', () => {
@@ -173,12 +174,22 @@ describe('InterpolationBuffer (T-1.16)', () => {
 
   it('never yields NaN even with degenerate timestamps', () => {
     const b = new InterpolationBuffer();
-    b.push({ tick: 1, serverTimeMs: 100, x: 1, y: 2, z: 3, yaw: 0 });
-    b.push({ tick: 2, serverTimeMs: 100, x: 5, y: 6, z: 7, yaw: 0 }); // same time
+    b.push({ tick: 1, serverTimeMs: 100, x: 1, y: 2, z: 3, yaw: 0, crouched: false });
+    b.push({ tick: 2, serverTimeMs: 100, x: 5, y: 6, z: 7, yaw: 0, crouched: true }); // same time
     const r = b.sample(500)!;
     expect(Number.isFinite(r.x)).toBe(true);
     expect(Number.isFinite(r.y)).toBe(true);
     expect(Number.isFinite(r.z)).toBe(true);
+  });
+
+  it('applies stance at the authoritative tick boundary', () => {
+    const b = new InterpolationBuffer();
+    b.push({ ...sample(1, 0), crouched: false });
+    b.push({ ...sample(2, 10), crouched: true });
+    // The stance remains standing all the way up to tick 2; it changes exactly
+    // when the authoritative crouched sample becomes current.
+    expect(b.sample(1.99 * 33)?.crouched).toBe(false);
+    expect(b.sample(2 * 33)?.crouched).toBe(true);
   });
 
   it('clears', () => {

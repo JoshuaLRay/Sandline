@@ -94,6 +94,41 @@ describe('humanoid placeholder (T-2.06)', () => {
   });
 });
 
+
+describe('crouched pose (T-2.20)', () => {
+  it('lowers the visible body while leaving the hit root untouched', () => {
+    const soldier = createHumanoidPlaceholder('local');
+    soldier.position.set(2, HUMANOID_ROOT_LIFT_M, 3);
+    const rootBefore = {
+      position: soldier.position.toArray(),
+      quaternion: soldier.quaternion.toArray(),
+      geometry: soldier.geometry,
+    };
+    const head = soldier.children.find((c) => c.name === 'head');
+    if (!head) throw new Error('head missing');
+    const standingY = head.position.y;
+
+    setHumanoidPose(soldier, 'crouched');
+
+    expect(humanoidPose(soldier)).toBe('crouched');
+    expect(head.position.y).toBeCloseTo(standingY - 0.25, 9);
+    expect(soldier.position.toArray()).toEqual(rootBefore.position);
+    expect(soldier.quaternion.toArray()).toEqual(rootBefore.quaternion);
+    expect(soldier.geometry).toBe(rootBefore.geometry);
+  });
+
+  const snapshot = (root: THREE.Object3D) => root.children.map((c) => ({ name: c.name, p: c.position.toArray(), q: c.quaternion.toArray() }));
+
+  it('restores the exact standing pose after crouching', () => {
+    const soldier = createHumanoidPlaceholder('remote');
+    const standing = snapshot(soldier);
+    setHumanoidPose(soldier, 'crouched');
+    expect(snapshot(soldier)).not.toEqual(standing);
+    setHumanoidPose(soldier, 'standing');
+    expect(snapshot(soldier)).toEqual(standing);
+  });
+});
+
 describe('downed pose (T-2.14)', () => {
   const snapshot = (root: THREE.Object3D) =>
     root.children.map((c) => ({ name: c.name, p: c.position.toArray(), q: c.quaternion.toArray() }));

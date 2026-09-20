@@ -25,6 +25,8 @@ export interface MoveState {
   /** Vertical velocity; horizontal motion is driven directly by input. */
   vy: number;
   grounded: boolean;
+  /** Authoritative crouch stance; remains crouched until standing clearance exists. */
+  crouched: boolean;
 }
 
 export interface MoveInput {
@@ -66,6 +68,8 @@ export interface MoveConfig {
    */
   radius: number;
   height: number;
+  /** Full standing height used for collision and headroom. */
+  crouchHeight: number;
   /** Ledges up to this high are stepped onto; higher ones block. */
   stepHeight: number;
 }
@@ -85,6 +89,7 @@ export const DEFAULT_MOVE_CONFIG: MoveConfig = {
   maxFallSpeed: -55,
   radius: 0.35,
   height: 1.8,
+  crouchHeight: 1.2,
   stepHeight: 0.45,
 };
 
@@ -133,9 +138,14 @@ export function stepCharacter(
   const lenSq = mx * mx + my * my;
   const scale = lenSq > 1 ? 1 / Math.sqrt(lenSq) : 1; // sqrt IS IEEE-exact
   const downed = input.downed === true;
+  // Crouch is an authoritative stance, not merely a button state. Releasing
+  // crouch while under a ceiling keeps the character crouched until the
+  // resulting position has enough headroom for the full standing height.
+  let crouched = !downed && (input.crouch || state.crouched);
+  const effectiveHeight = crouched ? config.crouchHeight : config.height;
   const speed = downed
     ? config.crawlSpeed
-    : input.crouch
+    : crouched
       ? config.crouchSpeed
       : input.sprint
         ? config.sprintSpeed
@@ -157,7 +167,7 @@ export function stepCharacter(
   const feet = state.y;
   /** Blocks horizontal movement: too tall to step onto, and not above the head. */
   const blocks = (box: WorldBox): boolean =>
-    box.maxY > feet + config.stepHeight && box.minY < feet + config.height;
+    box.maxY > feet + config.stepHeight && box.minY < feet + effectiveHeight;
 
   // 1. Horizontal, one axis at a time.
   let x = state.x + worldX * dt;
@@ -174,6 +184,21 @@ export function stepCharacter(
       z = worldZ > 0 ? box.minZ - half : box.maxZ + half;
     }
   }
+
+  // A released crouch is only allowed to transition to standing when the
+  // character's current feet position has full-height clearance. Keep the
+  // crouched stance while moving through a low ceiling; after horizontal
+  // movement, re-check at the resulting position so walking out from under
+  // cover permits the same tick's stand transition.
+  if (crouched && !input.crouch && !downed) {
+    const canStand = !world.some((box) =>
+      box.minY >= feet + config.stepHeight &&
+      box.minY < feet + config.height &&
+      overlapsFootprint(x, z, half, box),
+    );
+    if (canStand) crouched = false;
+  }
+  const resolvedHeight = crouched ? config.crouchHeight : config.height;
 
   // 2. Vertical.
   let vy = state.vy;
@@ -210,15 +235,15 @@ export function stepCharacter(
 
   // Head room: a box overhead within standing height stops an upward move.
   for (const box of world) {
-    if (box.minY >= y + config.stepHeight && box.minY < y + config.height && overlapsFootprint(x, z, half, box)) {
-      y = box.minY - config.height;
+    if (box.minY >= y + config.stepHeight && box.minY < y + resolvedHeight && overlapsFootprint(x, z, half, box)) {
+      y = Math.max(support, box.minY - effectiveHeight);
       if (vy > 0) vy = 0;
     }
   }
 
-  return { x, y, z, vy, grounded };
+  return { x, y, z, vy, grounded, crouched };
 }
 
 export function createMoveState(x = 0, y = 0, z = 0): MoveState {
-  return { x, y, z, vy: 0, grounded: y <= 0 };
+  return { x, y, z, vy: 0, grounded: y <= 0, crouched: false };
 }

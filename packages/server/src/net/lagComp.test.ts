@@ -140,6 +140,75 @@ describe('ray against a capsule', () => {
   });
 });
 
+
+describe('crouched hit volume (T-2.20)', () => {
+  const CROUCH_BOX: Hitbox = {
+    ...BOX,
+    crouchHalfHeight: 0.25,
+    crouchCenterOffsetY: 0.6,
+  };
+
+  it('rewinds the crouched state and uses the shorter capsule', () => {
+    const history = new HitboxHistory();
+    history.record(SHOOTER, 0, 0, 0, 0);
+    history.record(TARGET, 0, 0, 0, 10, true);
+
+    const low = resolveShot(
+      history,
+      {
+        shooterNetId: SHOOTER,
+        ray: { origin: { x: 0, y: 0.9, z: 0 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 100 },
+        nowMs: 0,
+        clientRenderTimeMs: 0,
+      },
+      CROUCH_BOX,
+      NO_WORLD,
+    );
+    expect(low?.netId).toBe(TARGET);
+
+    const high = resolveShot(
+      history,
+      {
+        shooterNetId: SHOOTER,
+        ray: { origin: { x: 0, y: 1.5, z: 0 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 100 },
+        nowMs: 0,
+        clientRenderTimeMs: 0,
+      },
+      CROUCH_BOX,
+      NO_WORLD,
+    );
+    expect(high).toBeNull();
+  });
+
+  it('keeps standing geometry when the history says standing', () => {
+    const history = new HitboxHistory();
+    history.record(SHOOTER, 0, 0, 0, 0);
+    history.record(TARGET, 0, 0, 0, 10, false);
+    const hit = resolveShot(
+      history,
+      {
+        shooterNetId: SHOOTER,
+        ray: { origin: { x: 0, y: 1.5, z: 0 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 100 },
+        nowMs: 0,
+        clientRenderTimeMs: 0,
+      },
+      CROUCH_BOX,
+      NO_WORLD,
+    );
+    expect(hit?.netId).toBe(TARGET);
+  });
+
+  it('changes crouch state at the authoritative history sample', () => {
+    const history = new HitboxHistory();
+    history.record(SHOOTER, 0, 0, 0, 0, false);
+    history.record(TARGET, 0, 0, 0, 10, false);
+    history.record(TARGET, 100, 0, 0, 10, true);
+
+    expect(history.stateAt(TARGET, 99)?.crouched).toBe(false);
+    expect(history.stateAt(TARGET, 100)?.crouched).toBe(true);
+  });
+});
+
 describe('compensated shots', () => {
   /**
    * The case T-1.18 exists for. The client is 150 ms behind: it renders the

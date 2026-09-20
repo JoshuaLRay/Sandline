@@ -88,10 +88,16 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     name: 'PlayerSlot',
     fields: [uint('slot', 3), uint('isBot', 1)],
   },
+  {
+    id: COMPONENT_IDS.Crouch,
+    name: 'Crouch',
+    fields: [uint('crouched', 1)],
+  },
 ];
 
 /** Width of the component-presence bitmask. */
-export const COMPONENT_MASK_BITS = SCHEMAS.length;
+// Component IDs are protocol IDs and may have gaps; the mask must cover the highest ID.
+export const COMPONENT_MASK_BITS = Math.max(...SCHEMAS.map((s) => s.id)) + 1;
 
 const BY_ID = new Map<number, ComponentSchema>(SCHEMAS.map((s) => [s.id, s]));
 

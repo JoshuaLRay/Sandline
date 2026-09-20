@@ -23,6 +23,8 @@ export interface InterpSample {
   z: number;
   /** Wire angle, 1/1024 turn. */
   yaw: number;
+  /** Authoritative stance; discrete, not spatially interpolated. */
+  crouched: boolean;
 }
 
 export interface InterpResult {
@@ -30,6 +32,7 @@ export interface InterpResult {
   y: number;
   z: number;
   yaw: number;
+  crouched: boolean;
   /** True when past the newest sample — the buffer is starving. */
   extrapolated: boolean;
   /** True when extrapolation hit its cap and the entity is held still. */
@@ -104,7 +107,7 @@ export class InterpolationBuffer {
     if (this.samples.length === 0) return null;
     if (this.samples.length === 1) {
       const only = this.samples[0] as InterpSample;
-      return { x: only.x, y: only.y, z: only.z, yaw: only.yaw, extrapolated: false, frozen: false };
+      return { x: only.x, y: only.y, z: only.z, yaw: only.yaw, crouched: only.crouched, extrapolated: false, frozen: false };
     }
 
     const oldest = this.samples[0] as InterpSample;
@@ -112,7 +115,7 @@ export class InterpolationBuffer {
 
     // Behind everything we hold: the buffer is too shallow, so hold the oldest.
     if (renderTimeMs <= oldest.serverTimeMs) {
-      return { x: oldest.x, y: oldest.y, z: oldest.z, yaw: oldest.yaw, extrapolated: false, frozen: false };
+      return { x: oldest.x, y: oldest.y, z: oldest.z, yaw: oldest.yaw, crouched: oldest.crouched, extrapolated: false, frozen: false };
     }
 
     if (renderTimeMs >= newest.serverTimeMs) {
@@ -137,6 +140,8 @@ export class InterpolationBuffer {
       y: catmullRom(p0.y, p1.y, p2.y, p3.y, t),
       z: catmullRom(p0.z, p1.z, p2.z, p3.z, t),
       yaw: lerpAngle(p1.yaw, p2.yaw, t),
+      // Stance changes at the authoritative sample boundary, not halfway between ticks.
+      crouched: renderTimeMs >= p2.serverTimeMs ? p2.crouched : p1.crouched,
       extrapolated: false,
       frozen: false,
     };
@@ -150,7 +155,7 @@ export class InterpolationBuffer {
 
     const span = newest.serverTimeMs - prev.serverTimeMs;
     if (span <= 0) {
-      return { x: newest.x, y: newest.y, z: newest.z, yaw: newest.yaw, extrapolated: true, frozen };
+      return { x: newest.x, y: newest.y, z: newest.z, yaw: newest.yaw, crouched: newest.crouched, extrapolated: true, frozen };
     }
 
     // Constant velocity from the last pair. Beyond the cap this holds still:
@@ -164,6 +169,7 @@ export class InterpolationBuffer {
       y: newest.y + vy * capped,
       z: newest.z + vz * capped,
       yaw: newest.yaw,
+      crouched: newest.crouched,
       extrapolated: true,
       frozen,
     };
