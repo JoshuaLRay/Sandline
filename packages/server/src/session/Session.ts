@@ -125,7 +125,7 @@ export interface Slot {
   pitch: number;
   health: HealthState;
   /** T-2.15: authoritative revive ownership/progress for this downed soldier. */
-  reviveByNetId: number;
+  reviveBySlot: number;
   reviveProgressSeconds: number;
 }
 
@@ -213,7 +213,7 @@ export class Session {
         weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
         pitch: 0,
         health: createHealth(),
-        reviveByNetId: 0,
+        reviveBySlot: -1,
         reviveProgressSeconds: 0,
       });
     }
@@ -714,15 +714,15 @@ export class Session {
     // First, invalidate locks whose reviver is no longer actively holding E.
     for (const target of this.slots) {
       if (!isDowned(target.health)) {
-        target.reviveByNetId = 0;
+        target.reviveBySlot = -1;
         target.reviveProgressSeconds = 0;
         continue;
       }
-      if (target.reviveByNetId === 0) {
+      if (target.reviveBySlot < 0) {
         target.reviveProgressSeconds = 0;
         continue;
       }
-      const reviver = this.slots.find((s) => s.netId === target.reviveByNetId);
+      const reviver = target.reviveBySlot >= 0 ? this.slots[target.reviveBySlot] : undefined;
       if (
         !reviver ||
         reviver.isBot ||
@@ -730,7 +730,7 @@ export class Session {
         !reviver.input.interact ||
         this.distanceSq(reviver, target) > rangeSq
       ) {
-        target.reviveByNetId = 0;
+        target.reviveBySlot = -1;
         target.reviveProgressSeconds = 0;
       }
     }
@@ -749,14 +749,14 @@ export class Session {
         }
       }
       if (best) {
-        best.reviveByNetId = reviver.netId;
+        best.reviveBySlot = reviver.index;
         best.reviveProgressSeconds = 0;
       }
     }
 
     // Advance every active interaction and complete it at the configured hold time.
     for (const target of this.slots) {
-      if (!isDowned(target.health) || target.reviveByNetId === 0) continue;
+      if (!isDowned(target.health) || target.reviveBySlot < 0) continue;
       target.reviveProgressSeconds += TICK_SECONDS;
       if (target.reviveProgressSeconds >= DAMAGE.downed.reviveSeconds) {
         revive(target.health);
@@ -800,8 +800,9 @@ export class Session {
             vitalityCode(vitality(s.health)),
             Math.min(63, Math.ceil(vitalTimer(s.health, this.nowMs / 1000))),
             Math.min(100, Math.round((s.reviveProgressSeconds / DAMAGE.downed.reviveSeconds) * 100)),
-            Math.min(7, s.reviveByNetId),
+            s.reviveBySlot < 0 ? 0 : s.reviveBySlot + 1,
           ],
+          [COMPONENT_IDS.PlayerSlot]: [s.index, s.isBot ? 1 : 0],
         },
       })),
     };
