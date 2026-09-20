@@ -169,8 +169,8 @@ class Track {
       x: older.x + (newer.x - older.x) * t,
       y: older.y + (newer.y - older.y) * t,
       z: older.z + (newer.z - older.z) * t,
-      // Stance is discrete. Use the state of the sample at the rewind point.
-      crouched: t < 0.5 ? older.crouched : newer.crouched,
+      // Stance changes at the authoritative sample boundary, not halfway through the position interpolation span.
+      crouched: timeMs >= newer.timeMs ? newer.crouched : older.crouched,
     };
   }
 }
