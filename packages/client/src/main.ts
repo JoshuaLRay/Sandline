@@ -885,6 +885,8 @@ function frame(): void {
     localPoseDriver.update(locomotion, dt);
   }
 
+  const downed = localDowned;
+
   // Remote characters at the interpolation delay (T-1.16). Their locomotion
   // comes from the same rendered samples used to place them, so animation never
   // feeds back into interpolation, hitboxes, or authoritative movement.
