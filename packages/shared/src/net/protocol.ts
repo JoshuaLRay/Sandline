@@ -66,7 +66,8 @@ export const MessageType = {
   Pong: 6,
   Disconnect: 7,
   Roster: 11,
-  ReviveProgress: 12,
+  Revive: 12,
+  ReviveProgress: 13,
 } as const;
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
 
@@ -197,6 +198,7 @@ export type Message =
    */
   | { kind: 'Roster'; slots: RosterEntry[] }
   /** Authoritative revive interaction state, broadcast while a revive is active or clears. */
+  | { kind: 'Revive'; active: boolean }
   | { kind: 'ReviveProgress'; targetNetId: number; reviverNetId: number; progress: number; targetName: string; reviverName: string };
 
 export class ProtocolError extends Error {}
@@ -317,6 +319,10 @@ export function encodeMessage(msg: Message): Uint8Array {
         w.writeBool(entry.human);
         w.writeString(entry.name);
       }
+      break;
+    case 'Revive':
+      w.writeBits(MessageType.Revive, TYPE_BITS);
+      w.writeBool(msg.active);
       break;
     case 'ReviveProgress':
       w.writeBits(MessageType.ReviveProgress, TYPE_BITS);
@@ -441,6 +447,8 @@ export function decodeMessage(bytes: Uint8Array): Message {
         }
         return { kind: 'Roster', slots };
       }
+      case MessageType.Revive:
+        return { kind: 'Revive', active: r.readBool() };
       case MessageType.ReviveProgress:
         return {
           kind: 'ReviveProgress',
