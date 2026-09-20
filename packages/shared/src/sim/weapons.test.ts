@@ -44,6 +44,11 @@ const FIXTURE: WeaponDef = {
   magSize: 5,
   reloadSeconds: 2,
   auto: true,
+  recoilKickDeg: 1,
+  recoilDriftDeg: 0.5,
+  recoilMaxDeg: 5,
+  recoilRecoveryPerSec: 8,
+  recoilAdsScale: 0.5,
 };
 
 const SEMI: WeaponDef = { ...FIXTURE, id: 'semi', name: 'Semi', auto: false };
@@ -259,6 +264,14 @@ describe('weapon data', () => {
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', pellets: 1.5 } })).toThrow(/pellets must be an integer/);
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', falloffEndM: 1 } })).toThrow(/falloffEndM/);
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', adsSpreadDeg: 99 } })).toThrow(/adsSpreadDeg/);
+    // T-2.08: recoil fields are validated like the rest, and a cap below one
+    // kick is refused rather than clamping every shot.
+    expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', recoilRecoveryPerSec: 0 } })).toThrow(/recoilRecoveryPerSec/);
+    expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', recoilAdsScale: 2 } })).toThrow(/recoilAdsScale/);
+    expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', recoilMaxDeg: 0.5 } })).toThrow(/recoilMaxDeg/);
+    const { recoilKickDeg: _k, ...missing } = { ...FIXTURE, id: 'a' };
+    void _k;
+    expect(() => parseWeaponTable({ a: missing })).toThrow(/recoilKickDeg/);
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', auto: 'yes' } })).toThrow(/auto must be a boolean/);
     expect(() => parseWeaponTable({})).toThrow(/empty/);
     expect(() => parseWeaponTable([])).toThrow(/keyed by weapon id/);

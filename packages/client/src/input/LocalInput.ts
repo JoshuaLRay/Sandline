@@ -11,6 +11,7 @@
  */
 import { WIRE_ANGLE_UNITS, type MoveInput } from '@sandline/shared';
 import { beginAds, createViewState, endAds, pressShoulderKey, shoulderSide } from './viewState.ts';
+import { composePitch } from '../weapons/recoil.ts';
 
 export interface InputOptions {
   /** Wire-angle units per pixel of mouse movement. */
@@ -76,6 +77,13 @@ export class LocalInput {
   private triggerEdge = false;
   private yawAccum = 0;
   private pitchAccum = 0;
+  /**
+   * Recoil's view offset (T-2.08), held APART from the mouse accumulators and
+   * added at read time. Recovery then pulls the view back by exactly what
+   * recoil added, never by what the player moved. See weapons/recoil.ts.
+   */
+  private offsetYaw = 0;
+  private offsetPitch = 0;
   private sensitivity: number;
   private invertY: boolean;
   /** Explicit camera/shoulder/ADS state. ADS changes camera mode but never the stored shoulder. */
@@ -171,10 +179,22 @@ export class LocalInput {
     return -deg * UNITS_PER_DEGREE;
   }
 
+  /** Lay a view offset over the mouse's own: recoil, in wire units. */
+  setViewOffset(yaw: number, pitch: number): void {
+    this.offsetYaw = yaw;
+    this.offsetPitch = pitch;
+  }
+
+  /** The pitch the player sees: mouse plus offset, held within the limits. */
+  private get viewPitch(): number {
+    return composePitch(this.pitchAccum, this.offsetPitch, this.minPitch, this.maxPitch);
+  }
+
   /** Pitch as -1..1 across its current range, for camera distance shaping. */
   get pitchFraction(): number {
-    const limit = this.pitchAccum >= 0 ? this.maxPitch : -this.minPitch;
-    return limit === 0 ? 0 : this.pitchAccum / limit;
+    const pitch = this.viewPitch;
+    const limit = pitch >= 0 ? this.maxPitch : -this.minPitch;
+    return limit === 0 ? 0 : pitch / limit;
   }
 
   /**
@@ -199,7 +219,7 @@ export class LocalInput {
 
   /** Camera pitch in wire-angle units, signed. Not sent to the simulation. */
   get pitch(): number {
-    return this.pitchAccum;
+    return this.viewPitch;
   }
 
   /**
@@ -209,11 +229,12 @@ export class LocalInput {
    */
   get pitchWire(): number {
     const units = WIRE_ANGLE_UNITS;
-    return ((Math.round(this.pitchAccum) % units) + units) % units;
+    return ((Math.round(this.viewPitch) % units) + units) % units;
   }
 
   get yaw(): number {
-    return ((Math.round(this.yawAccum) % WIRE_ANGLE_UNITS) + WIRE_ANGLE_UNITS) % WIRE_ANGLE_UNITS;
+    const yaw = this.yawAccum + this.offsetYaw;
+    return ((Math.round(yaw) % WIRE_ANGLE_UNITS) + WIRE_ANGLE_UNITS) % WIRE_ANGLE_UNITS;
   }
 
   sample(): MoveInput {
