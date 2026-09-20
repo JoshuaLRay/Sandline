@@ -78,8 +78,8 @@ export interface MoveConfig {
   /**
    * The soldier's footprint half-width and standing height, for collision
    * (T-1.12). The footprint is a square, not a circle: box-against-box is a
-   * comparison, and the 5 cm of corner a circle would shave off is not worth
-   * a square root per box per tick. Matches the server hitbox's radius.
+   * comparison, and the 5 cm of corner a circle would shave off is not worth a
+   * square root per box per tick. Matches the server hitbox's radius.
    */
   radius: number;
   height: number;
@@ -184,11 +184,34 @@ export function stepCharacter(
     const x = state.vaultStartX + (state.vaultEndX - state.vaultStartX) * p;
     const z = state.vaultStartZ + (state.vaultEndZ - state.vaultStartZ) * p;
     const y = state.vaultStartY + (state.vaultEndY - state.vaultStartY) * p + arc;
-    if (p >= 1) return { x, y: state.vaultEndY, z, vy: 0, grounded: true, crouched: false, vaulting: false, vaultProgress: 0, vaultStartX: x, vaultStartY: state.vaultEndY, vaultStartZ: z, vaultEndX: x, vaultEndY: state.vaultEndY, vaultEndZ: z };
-    return { ...state, x, y, z, vy: 0, grounded: false, vaulting: true, vaultProgress: p };
+    if (p >= 1) {
+      const elapsed = Math.max(0, (1 - state.vaultProgress) * config.vaultDuration);
+      const remaining = Math.max(0, dt - elapsed);
+      const completed: MoveState = {
+        x,
+        y: state.vaultEndY,
+        z,
+        vy: 0,
+        grounded: true,
+        crouched: false,
+        vaulting: false,
+        vaultProgress: 0,
+        vaultStartX: x,
+        vaultStartY: state.vaultEndY,
+        vaultStartZ: z,
+        vaultEndX: x,
+        vaultEndY: state.vaultEndY,
+        vaultEndZ: z,
+      };
+      if (remaining > 0) {
+        return stepCharacter(completed, { ...input, vault: false }, remaining, config, world);
+      }
+      return completed;
+    }
+    return { ...state, x, y, z, vy: 0, grounded: false, crouched: false, vaulting: true, vaultProgress: p };
   }
 
-  if (!downed && !state.crouched && state.grounded && input.vault && !input.firing && my > 0.25) {
+  if (!downed && !crouched && state.grounded && input.vault && !input.firing && my > 0.25) {
     const len = Math.sqrt(mx * mx + my * my);
     const dx = (my * s - mx * c) / len;
     const dz = (my * c + mx * s) / len;
