@@ -1,0 +1,34 @@
+import { chromium } from 'playwright';
+const PAGE = process.env.PAGE ?? 'http://localhost:5199/';
+const SHOT = '/tmp/claude-0/-home-user-Sandline/95d16252-fd92-5527-be1b-f6f2c7594247/scratchpad';
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+const ctx = await browser.newContext({ viewport: { width: 1024, height: 700 } });
+const p = await ctx.newPage();
+const errors = [];
+p.on('pageerror', (e) => errors.push(e.message));
+p.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+await p.goto(PAGE); await p.waitForSelector('#lobby');
+await p.fill('#lobby input[maxlength="32"]', 'smoke');
+await p.click('.lobby-secondary');
+await p.waitForTimeout(1500);
+// Headless has no real pointer lock: pretend the canvas holds it so the trigger is read.
+const locked = await p.evaluate(() => {
+  const canvas = document.querySelector('canvas');
+  Object.defineProperty(document, 'pointerLockElement', { get: () => canvas, configurable: true });
+  document.dispatchEvent(new Event('pointerlockchange'));
+  return document.pointerLockElement === canvas;
+});
+console.log('pointer lock simulated:', locked);
+await p.screenshot({ path: `${SHOT}/shake-before.png` });
+const camAt = () => p.evaluate(() => document.querySelector('#stats')?.textContent ?? '');
+await p.evaluate(() => window.dispatchEvent(new MouseEvent('mousedown', { button: 0, bubbles: true })));
+await p.waitForTimeout(400);
+await p.screenshot({ path: `${SHOT}/shake-during.png` });
+await p.waitForTimeout(4600);
+await p.evaluate(() => window.dispatchEvent(new MouseEvent('mouseup', { button: 0, bubbles: true })));
+await p.waitForTimeout(1500);
+await p.screenshot({ path: `${SHOT}/shake-after.png` });
+console.log('stats:\n' + (await camAt()));
+console.log('page errors:', errors.length ? errors : 'none');
+await browser.close();
+process.exit(errors.length ? 1 : 0);

@@ -37,6 +37,8 @@ const RIFLE: WeaponDef = {
   recoilMaxDeg: 4,
   recoilRecoveryPerSec: 8,
   recoilAdsScale: 0.5,
+  shakePosM: 0.02,
+  shakeRollDeg: 0.4,
 };
 
 const U = WIRE_UNITS_PER_DEGREE;

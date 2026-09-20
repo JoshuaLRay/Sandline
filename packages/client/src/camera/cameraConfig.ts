@@ -27,6 +27,8 @@ export interface CameraConfig {
   /** Field of view, hip and aimed. Narrowing it is the aim cue. */
   baseFov: number;
   adsFov: number;
+  /** Camera shake scale (T-2.09): 1 is the weapon's full jolt, 0 is none. */
+  shakeScale: number;
 }
 
 export const DEFAULT_CAMERA_CONFIG: CameraConfig = {
@@ -42,4 +44,5 @@ export const DEFAULT_CAMERA_CONFIG: CameraConfig = {
   minDistance: 1.0,
   baseFov: 60,
   adsFov: 38,
+  shakeScale: 1,
 };

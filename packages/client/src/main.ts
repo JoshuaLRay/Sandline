@@ -67,6 +67,7 @@ import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
+import { addShake, applyShake, createShake, decayShake } from './camera/cameraShake.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
 import { createHumanoidPlaceholder } from './character/humanoidPlaceholder.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
@@ -257,6 +258,12 @@ const combat = new CombatQA(scene, shootable);
  * frame rate. The server never sees any of it — only where the view points.
  */
 let recoil = createRecoil();
+/**
+ * Camera shake (T-2.09): the jolt the picture takes on a shot. Separate from
+ * recoil on purpose — recoil moves the aim, shake moves only what the eye
+ * sees, and the aim ray never reads it.
+ */
+let shake = createShake();
 
 /* -- Network --------------------------------------------------------------- */
 
@@ -586,6 +593,8 @@ function stance(): MuzzleStance {
   return input.ads ? 'ads' : 'hip';
 }
 const aimRaycaster = new THREE.Raycaster();
+/** The UNSHAKEN camera position: shake must never move where the aim starts. */
+const aimOrigin = new THREE.Vector3();
 const aimDirection = new THREE.Vector3();
 const aimPoint = new THREE.Vector3();
 // The ground joins last; it is the backstop every downward shot lands on.
@@ -742,6 +751,7 @@ function frame(): void {
       // the next goes where the kick leaves it.
       recoil = applyKick(recoil, combat.weapon, combat.shotsFired, input.ads);
       input.setViewOffset(recoil.yaw, recoil.pitch);
+      shake = addShake(shake, combat.weapon, input.ads);
 
       /**
        * Draw it NOW. The same seeded spread the server will compute — the seed
@@ -765,6 +775,7 @@ function frame(): void {
     recoil = recoverRecoil(recoil, combat.weapon, dt);
     input.setViewOffset(recoil.yaw, recoil.pitch);
   }
+  shake = decayShake(shake, dt);
 
   /**
    * Render BETWEEN ticks, exactly as the local harness did before it was
@@ -828,6 +839,9 @@ function frame(): void {
   );
   player.rotation.y = Math.atan2(camSolve.forward.x, camSolve.forward.z);
   updateMuzzleRig();
+  // After the arm and its collision, before the camera is placed: the aim
+  // below reads `camSolve.position`, which this leaves alone.
+  applyShake(camSolve, shake, cam.shakeScale);
 
   const ads = input.ads;
 
@@ -849,18 +863,24 @@ function frame(): void {
    * `lookAt` builds a basis by crossing the view direction with world up, which
    * degenerates as the view approaches vertical — and the pitch limit is now 89
    * degrees, so the view gets there. Setting a YXZ Euler is exact at every
-   * pitch: yaw is the Y term, pitch the X term, and roll is pinned at zero
-   * instead of being solved for. The +PI turns the camera's default -Z gaze
-   * onto the +Z forward this project uses.
+   * pitch: yaw is the Y term, pitch the X term, and roll is the shake's
+   * (T-2.09) — zero unless a shot is ringing. The +PI turns the camera's
+   * default -Z gaze onto the +Z forward this project uses.
    */
   camera.rotation.set(
     toRadians(camSolve.pitchAngle),
     toRadians(camSolve.yawAngle) + Math.PI,
-    0,
+    camSolve.shake.roll,
     'YXZ',
   );
 
-  camera.position.set(camSolve.position.x, camSolve.position.y, camSolve.position.z);
+  // The shake rides on top of the solved position and nowhere else: the aim
+  // ray below is cast from `camSolve.position`, which it never touches.
+  camera.position.set(
+    camSolve.position.x + camSolve.shake.x,
+    camSolve.position.y + camSolve.shake.y,
+    camSolve.position.z + camSolve.shake.z,
+  );
   // Your own character is the one thing the first-person camera sits inside.
   player.visible = !input.firstPerson;
 
@@ -881,13 +901,14 @@ function frame(): void {
    * down-and-left bug all over again, so the two go together.
    */
   aimDirection.set(camSolve.direction.x, camSolve.direction.y, camSolve.direction.z).normalize();
-  aimRaycaster.set(camera.position, aimDirection);
+  aimOrigin.set(camSolve.position.x, camSolve.position.y, camSolve.position.z);
+  aimRaycaster.set(aimOrigin, aimDirection);
   aimRaycaster.far = AIM_RANGE;
   const [reticleHit] = aimRaycaster.intersectObjects(shootable, false);
   if (reticleHit) {
     aimPoint.copy(reticleHit.point);
   } else {
-    aimPoint.copy(camera.position).addScaledVector(aimDirection, AIM_RANGE);
+    aimPoint.copy(aimOrigin).addScaledVector(aimDirection, AIM_RANGE);
   }
   const eye = eyePosition(rx, ry, rz);
   aimDirection.set(aimPoint.x - eye.x, aimPoint.y - eye.y, aimPoint.z - eye.z).normalize();

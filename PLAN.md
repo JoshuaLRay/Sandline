@@ -955,6 +955,12 @@ and lines, pooled and capped like the tracers already are (§0.3 rule 3).
 - **Do:** A shot adds a small, decaying positional and rotational impulse to the camera — distinct from recoil, which moves the aim: shake is what the eye sees, and the reticle must NOT follow it, or the player is aiming with a shaking gun. Composed into the solve after the arm so collision is unaffected. Per-weapon magnitude in data; a `reduce` config for people who dislike it.
 - **Done when:** tests assert the impulse decays to under 1% within a derived bound at any frame rate, that shake never changes `camSolve.direction` (the aim), and that two overlapping impulses sum rather than reset.
 - **Size:** S
+- **Completed 2026-09-20.** Written into separate `CameraSolve.shake` fields
+  the renderer adds when placing the camera; `position`, `focus`,
+  `direction` and `distance` stay untouched, and the aim ray is cast from the
+  unshaken position, so the aim is unaffected by construction rather than by
+  care. Per-weapon `shakePosM` / `shakeRollDeg` in data; `shakeScale` in the
+  camera config with a slider (0 is off).
 
 #### T-2.10 — Muzzle flash and shell ejection
 - **Depends:** T-2.06
