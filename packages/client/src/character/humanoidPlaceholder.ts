@@ -30,7 +30,7 @@ export type HumanoidVariant = 'local' | 'remote';
  * lie down. A downed soldier is therefore still hit where the server says
  * they are hit, and the parts are the picture of it.
  */
-export type HumanoidPose = 'standing' | 'downed';
+export type HumanoidPose = 'standing' | 'crouched' | 'downed';
 
 /** Height of a downed body's centre above the feet, metres: lying on its back. */
 export const DOWNED_BODY_LIFT_M = 0.28;
@@ -117,8 +117,15 @@ export function createHumanoidPlaceholder(variant: HumanoidVariant): THREE.Mesh 
   rifle.position.set(0.35, 0.02, 0.48);
   root.add(rifle);
 
-  // Every visible part throws a shadow; the invisible hit capsule must not.
-  for (const child of root.children) child.castShadow = true;
+  // Capture the factory rest once so animation and crouch presentation always
+  // return to the same authored pose, regardless of which runs first.
+  for (const child of root.children) {
+    child.castShadow = true;
+    child.userData['rest'] = {
+      position: child.position.toArray() as [number, number, number],
+      quaternion: child.quaternion.toArray() as [number, number, number, number],
+    } satisfies RestTransform;
+  }
   root.castShadow = false;
   return root;
 }
@@ -145,6 +152,23 @@ export function setHumanoidPose(root: THREE.Object3D, pose: HumanoidPose): void 
     if (pose === 'standing') {
       part.position.fromArray(rest.position);
       part.quaternion.fromArray(rest.quaternion);
+      continue;
+    }
+    if (pose === 'crouched') {
+      part.position.fromArray(rest.position);
+      part.quaternion.fromArray(rest.quaternion);
+      if (part.name === 'head' || part.name === 'helmet') part.position.y -= 0.25;
+      else if (part.name === 'torso' || part.name === 'backpack') part.position.y -= 0.22;
+      else if (part.name === 'pelvis') part.position.y -= 0.12;
+      else if (part.name.startsWith('leg-')) {
+        part.position.y -= 0.06;
+        part.rotation.x += 0.55;
+      } else if (part.name.startsWith('boot-')) {
+        part.position.y -= 0.04;
+      } else if (part.name.startsWith('arm-')) {
+        part.position.y -= 0.18;
+        part.rotation.x += 0.3;
+      }
       continue;
     }
     // Turn the rest pose about the root's origin, then drop it to the ground.
