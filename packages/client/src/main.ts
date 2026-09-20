@@ -35,7 +35,6 @@ import {
   type MoveConfig,
   TICK_SECONDS,
   cos,
-  DAMAGE,
   RANGE_TARGETS,
   fromRadians,
   shotDirections,
@@ -682,9 +681,11 @@ function netReadout(): string {
   const vitals =
     n.maxHealth === 0
       ? ''
-      : n.health > 0
+      : n.vitality === 'alive'
         ? `health ${Math.round(n.health)}/${Math.round(n.maxHealth)}\n`
-        : `DOWN  respawning in ${Math.max(0, DAMAGE.respawnSeconds - n.downFor).toFixed(1)}s\n`;
+        : n.vitality === 'downed'
+          ? `DOWNED  bleeding out ${n.vitalTimer}s  (crawl; a teammate can revive you)\n`
+          : `DEAD  respawning in ${n.vitalTimer}s\n`;
   const rate = n.reconciles === 0 ? 0 : (n.corrections / n.reconciles) * 100;
   return (
     connection +
@@ -765,7 +766,9 @@ function frame(): void {
       origin: muzzle,
       yaw: aimYaw,
       pitch: aimPitch,
-      firing: input.firing,
+      // Downed or dead: no weapon in hand. The server refuses the Fire
+      // anyway; refusing here too keeps the predicted tracer honest.
+      firing: input.firing && net.vitality === 'alive',
       triggerEdge: input.consumeTriggerEdge(),
       ads: input.ads,
     });

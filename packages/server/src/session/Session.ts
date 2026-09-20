@@ -35,6 +35,12 @@ import {
   type HealthState,
   applyDamage,
   createHealth,
+  expireBleedOut,
+  isDead,
+  isDowned,
+  vitalTimer,
+  vitality,
+  vitalityCode,
   createMoveState,
   createWeaponState,
   damageAtDistance,
@@ -415,6 +421,10 @@ export class Session {
   private applyFire(conn: ServerConnection, msg: Extract<Message, { kind: 'Fire' }>): void {
     const slot = this.slots.find((s) => s.connection === conn);
     if (!slot) return;
+    // A downed soldier is on the ground and a dead one is waiting to respawn;
+    // neither has a weapon in hand. A client that keeps sending Fire gets
+    // nothing, and never a hit event to draw.
+    if (!isAlive(slot.health)) return;
 
     const id = WEAPON_IDS[msg.weapon];
     if (id === undefined) return; // Out-of-range index: drop it, do not throw.
@@ -504,7 +514,8 @@ export class Session {
           /**
            * A killed player stops moving immediately: their queued inputs are
            * intent from before they died, and letting a corpse run out its
-           * buffer looks like the hit did not register.
+           * buffer looks like the hit did not register. A DOWNED player keeps
+           * their queue: they are still moving, at a crawl, on the next tick.
            */
           if (result.killed) target.queue.length = 0;
         }
@@ -551,11 +562,19 @@ export class Session {
     const nowSeconds = now / 1000;
     for (const slot of this.slots) {
       /**
-       * Dead players do not move and do not fall: they wait out the timer and
-       * reappear at their own spawn point with full health. Downed-and-revive
-       * is M2 (ADR-002); death here is death.
+       * Bleed-out (T-2.13): a downed soldier nobody reached dies here, and
+       * stops where they lie, exactly as a finishing shot would stop them.
        */
-      if (!isAlive(slot.health)) {
+      if (isDowned(slot.health) && expireBleedOut(slot.health, nowSeconds)) {
+        slot.queue.length = 0;
+        slot.input = idleInput(slot.yaw);
+      }
+      /**
+       * Dead players do not move and do not fall: they wait out the timer and
+       * reappear at their own spawn point with full health. Downed ones fall
+       * through to the movement below and crawl (`input.downed`).
+       */
+      if (isDead(slot.health)) {
         if (readyToRespawn(slot.health, nowSeconds)) {
           respawn(slot.health);
           const point = spawnFor(slot.index);
@@ -585,6 +604,7 @@ export class Session {
           slot.input = ahead.input;
           slot.pendingInputTick = ahead.tick;
           slot.staleTicks = 0;
+          slot.input.downed = isDowned(slot.health);
           slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig);
           extra -= 1;
         }
@@ -623,6 +643,9 @@ export class Session {
           slot.input = idleInput(slot.yaw);
         }
       }
+      // Vitality decides the gait, not the client: a downed soldier crawls
+      // whatever buttons arrive, and the predictor applies the same rule.
+      slot.input.downed = isDowned(slot.health);
       slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig);
       /**
        * Recover weapon bloom, every tick, for every slot.
@@ -682,8 +705,14 @@ export class Session {
           // on the very next tick.
           [V]: [quantize(0, VELOCITY), quantize(s.state.vy, VELOCITY), quantize(0, VELOCITY)],
           // Replicated, never predicted: §2.3 puts damage firmly on the
-          // server's side of the line.
-          [H]: [Math.round(s.health.current), Math.round(s.health.max)],
+          // server's side of the line. The vitality and its timer ride along
+          // (T-2.13) so the HUD counts what the server counts.
+          [H]: [
+            Math.round(s.health.current),
+            Math.round(s.health.max),
+            vitalityCode(vitality(s.health)),
+            Math.min(63, Math.ceil(vitalTimer(s.health, this.nowMs / 1000))),
+          ],
         },
       })),
     };

@@ -34,6 +34,8 @@ import {
   decodeMessage,
   dequantize,
   encodeMessage,
+  type Vitality,
+  vitalityFromCode,
 } from '@sandline/shared';
 
 const T = COMPONENT_IDS.Transform;
@@ -96,8 +98,10 @@ export interface NetStats {
   tickDrift: number;
   health: number;
   maxHealth: number;
-  /** Seconds of respawn left, timed locally from when health first read zero. */
-  downFor: number;
+  /** Alive, downed (crawling, bleeding out) or dead (waiting to respawn). */
+  vitality: Vitality;
+  /** Whole seconds left of the bleed-out or the respawn, from the server. */
+  vitalTimer: number;
 }
 
 export class NetClient {
@@ -155,15 +159,12 @@ export class NetClient {
   private healthValue = 0;
   private maxHealthValue = 0;
   /**
-   * When health first read zero, in local ms.
-   *
-   * The death TIME is not replicated — only the health value is — so the
-   * countdown is timed from when the client first saw zero. That is a display
-   * approximation off by the trip time, and it is the right trade: replicating
-   * a death timestamp so a HUD number can be exact would put a gameplay field
-   * on the wire for a cosmetic reason.
+   * Replicated with the health (T-2.13). Vitality is gameplay, not cosmetic:
+   * the predictor needs it to crawl when the server crawls, and the timer is
+   * the server's count rather than one started when a zero was first seen.
    */
-  private downSince: number | null = null;
+  private vitalityValue: Vitality = 'alive';
+  private vitalTimerValue = 0;
   /** Local time the newest snapshot landed, for anchoring the server clock. */
   private lastArrivalAt = 0;
 
@@ -260,8 +261,14 @@ export class NetClient {
       tickDrift: Math.max(0, Math.round(this.serverClockMs / TICK_MS) - this.highestTick),
       health: this.healthValue,
       maxHealth: this.maxHealthValue,
-      downFor: this.downSince === null ? 0 : (performance.now() - this.downSince) / 1000,
+      vitality: this.vitalityValue,
+      vitalTimer: this.vitalTimerValue,
     };
+  }
+
+  /** On their feet, crawling, or waiting to respawn — the server's word. */
+  get vitality(): Vitality {
+    return this.vitalityValue;
   }
 
   /** Handshake. An empty room asks the host to create one (T-1.5.04). */
@@ -314,7 +321,8 @@ export class NetClient {
     this.rosterValue = [];
     this.healthValue = 0;
     this.maxHealthValue = 0;
-    this.downSince = null;
+    this.vitalityValue = 'alive';
+    this.vitalTimerValue = 0;
     this.recentInputs.length = 0;
     this.newestServerMs = 0;
     this.serverClockMs = 0;
@@ -326,7 +334,10 @@ export class NetClient {
    *  would be worse than dropping it. */
   tick(tickNumber: number, input: MoveInput, pitch: number): void {
     if (!this.joinedFlag || !this.predictor) return;
-    this.predictor.predict(tickNumber, input);
+    // The server crawls a downed soldier whatever buttons arrive; predict the
+    // same, or every tick down is a correction (T-2.13).
+    const predicted = this.vitalityValue === 'downed' ? { ...input, downed: true } : input;
+    this.predictor.predict(tickNumber, predicted);
     const buttons = (input.jump ? 1 : 0) | (input.sprint ? 2 : 0) | (input.crouch ? 4 : 0);
     this.transport.send(
       encodeMessage({
@@ -588,8 +599,8 @@ export class NetClient {
         if (health) {
           this.healthValue = health[0] as number;
           this.maxHealthValue = health[1] as number;
-          if (this.healthValue <= 0) this.downSince ??= performance.now();
-          else this.downSince = null;
+          this.vitalityValue = vitalityFromCode((health[2] as number | undefined) ?? 0);
+          this.vitalTimerValue = (health[3] as number | undefined) ?? 0;
         }
         const velocity = entity.components[V];
         this.reconcile(

@@ -20,6 +20,7 @@ const CONFIG: MoveConfig = {
   walkSpeed: 4.2,
   sprintSpeed: 6.8,
   crouchSpeed: 1.9,
+  crawlSpeed: 1.2,
   gravity: -19.6,
   jumpSpeed: 6.0,
   groundY: 0,

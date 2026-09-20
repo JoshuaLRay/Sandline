@@ -390,19 +390,21 @@ describe('the shooter is rewound too', () => {
   });
 });
 
-describe('damage, death and respawn (T-1.19)', () => {
+describe('damage, downed, bleed-out and respawn (T-1.19, T-2.13)', () => {
   /**
    * End to end over the wire: shoot a teammate down, confirm the total damage
-   * dealt is exactly their health, confirm a corpse takes nothing further, and
-   * confirm they come back at full health at their own spawn.
+   * dealt is exactly their health, confirm the downed body takes no health
+   * damage but can be finished, and confirm they come back at full health at
+   * their own spawn after the bleed-out and the respawn delay.
    *
    * Slot 0 shoots slot 1, which spawns 1.5 m to its right at z = 0. At that
    * range the carbine is inside its falloff start, and a shot at capsule centre
    * height lands in the torso, so each hit is the weapon's full listed damage.
    */
   const CARBINE_TORSO = 22;
+  const SHOTS_TO_DOWN = Math.ceil(DAMAGE.maxHealth / CARBINE_TORSO);
 
-  function killTheNeighbour() {
+  function shootTheNeighbour() {
     const session = new Session();
     const client = connect(session);
     let now = run(session, 0, 4, client);
@@ -418,15 +420,23 @@ describe('damage, death and respawn (T-1.19)', () => {
       now = run(session, now, shotTicks, client);
       return client.hits.length > before ? client.hits.at(-1)?.damage : undefined;
     };
-    return { session, client, fire, aim, get now() { return now; }, advance: (ticks: number) => { now = run(session, now, ticks, client); } };
+    const hitsOn = (): number => client.hits.filter((h) => h.targetNetId !== 0).length;
+    return {
+      session,
+      client,
+      fire,
+      hitsOn,
+      aim,
+      get now() { return now; },
+      advance: (ticks: number) => { now = run(session, now, ticks, client); },
+      advanceSeconds: (s: number) => { now = run(session, now, Math.ceil((s * 1000) / TICK_MS), client); },
+    };
   }
 
-  it('kills at the correct cumulative threshold and not before', () => {
-    const range = killTheNeighbour();
-    const shotsNeeded = Math.ceil(DAMAGE.maxHealth / CARBINE_TORSO);
-
+  it('downs at the correct cumulative threshold and not before', () => {
+    const range = shootTheNeighbour();
     let total = 0;
-    for (let i = 1; i < shotsNeeded; i += 1) {
+    for (let i = 1; i < SHOTS_TO_DOWN; i += 1) {
       const dealt = range.fire();
       expect(dealt).toBeCloseTo(CARBINE_TORSO, 6);
       total += dealt ?? 0;
@@ -434,59 +444,82 @@ describe('damage, death and respawn (T-1.19)', () => {
     expect(total).toBeLessThan(DAMAGE.maxHealth);
 
     // The last shot deals only what was left, never the full listed damage.
-    const fatal = range.fire();
-    expect(fatal).toBeLessThan(CARBINE_TORSO);
-    total += fatal ?? 0;
+    const drop = range.fire();
+    expect(drop).toBeLessThan(CARBINE_TORSO);
+    total += drop ?? 0;
     expect(total).toBeCloseTo(DAMAGE.maxHealth, 6);
   });
 
-  it('a corpse takes no further damage', () => {
-    // Under lag compensation two shooters can each land a fatal shot on a
-    // target that was alive in their own rewound world. Damage past zero is how
-    // one death becomes two kills.
-    const range = killTheNeighbour();
-    for (let i = 0; i < Math.ceil(DAMAGE.maxHealth / CARBINE_TORSO); i += 1) range.fire();
+  it('a downed body takes no health damage, but shots still land on it', () => {
+    // Under lag compensation two shooters can each land the dropping shot on
+    // a target that was standing in their own rewound world. Damage past zero
+    // is how one drop becomes two.
+    const range = shootTheNeighbour();
+    for (let i = 0; i < SHOTS_TO_DOWN; i += 1) range.fire();
+    const before = range.hitsOn();
     expect(range.fire()).toBe(0);
     expect(range.fire()).toBe(0);
+    // They are hits on the body (the bleed-out is being cut), not misses.
+    expect(range.hitsOn()).toBe(before + 2);
   });
 
-  it('respawns at full health once the delay has elapsed, and not before', () => {
-    const range = killTheNeighbour();
-    for (let i = 0; i < Math.ceil(DAMAGE.maxHealth / CARBINE_TORSO); i += 1) range.fire();
-    const diedAt = range.now;
+  it('left alone, bleeds out and then respawns at full health at their own spawn', () => {
+    const range = shootTheNeighbour();
+    for (let i = 0; i < SHOTS_TO_DOWN; i += 1) range.fire();
+    // Not firing while waiting: a shot on the body would shorten the bleed-out.
+    range.advanceSeconds(DAMAGE.downed.bleedOutSeconds - 1);
+    // Still downed: a shot lands on the body for zero.
     expect(range.fire()).toBe(0);
-
-    /**
-     * Measured rather than counted. Keep firing and watch for the first shot
-     * that lands damage again; the elapsed time is then the respawn delay as
-     * the session actually implements it, not as a tick-arithmetic guess. The
-     * earlier version of this test counted ticks and was wrong by the handful
-     * the polling shots themselves consumed.
-     */
-    let revivedAfter = -1;
-    while (range.now - diedAt < (DAMAGE.respawnSeconds + 3) * 1000) {
-      const dealt = range.fire();
-      if (dealt !== undefined && dealt > 0) {
-        revivedAfter = range.now - diedAt;
-        break;
-      }
-    }
-
-    expect(revivedAfter, 'they came back at all').toBeGreaterThan(0);
-    expect(revivedAfter / 1000, 'not before the delay').toBeGreaterThanOrEqual(DAMAGE.respawnSeconds);
-    // Within one polling interval of the delay, so it is the timer firing and
-    // not simply the loop eventually noticing.
-    expect(revivedAfter / 1000, 'and not much after it').toBeLessThan(DAMAGE.respawnSeconds + 0.5);
-  });
-
-  it('puts them back at their own spawn point, taking full damage again', () => {
-    const range = killTheNeighbour();
-    for (let i = 0; i < Math.ceil(DAMAGE.maxHealth / CARBINE_TORSO); i += 1) range.fire();
-    range.advance(Math.ceil(((DAMAGE.respawnSeconds + 0.5) * 1000) / TICK_MS));
-
+    // That shot cut the timer by a carbine round's share; ride out the rest,
+    // then the respawn delay, with a margin.
+    range.advanceSeconds(DAMAGE.respawnSeconds + 1.5);
     // The aim was never adjusted: it still points at slot 1's spawn. A full
     // damage hit means they are standing there again with full health.
     expect(range.fire()).toBeCloseTo(CARBINE_TORSO, 6);
+  });
+
+  it('a full health bar of shots on a downed body finishes them early', () => {
+    const range = shootTheNeighbour();
+    for (let i = 0; i < SHOTS_TO_DOWN; i += 1) range.fire();
+    // One more bar's worth cuts the whole bleed-out: dead now, not in 30 s.
+    for (let i = 0; i < SHOTS_TO_DOWN; i += 1) range.fire();
+    // Respawned after only the respawn delay from HERE.
+    range.advanceSeconds(DAMAGE.respawnSeconds + 0.5);
+    expect(range.fire()).toBeCloseTo(CARBINE_TORSO, 6);
+  });
+});
+
+describe('a downed or dead soldier cannot fire (T-2.13)', () => {
+  it('ignores Fire from a downed client: no hit event, no damage', () => {
+    const session = new Session();
+    const shooter = connect(session);
+    const victim = connect(session, TICK_MS);
+    let now = run(session, 0, 4, shooter, victim);
+    const carbine = getWeapon('carbine');
+    const shotTicks = Math.ceil(((60 / carbine.rpm) * 1000) / TICK_MS);
+    const neighbour = SPAWN_POINTS[1] as { x: number; y: number; z: number };
+    const aim = aimAt(neighbour.x, neighbour.y + 0.9, neighbour.z);
+
+    // Slot 0 downs slot 1 (the second client).
+    for (let i = 0; i < Math.ceil(DAMAGE.maxHealth / 22); i += 1) {
+      shooter.fire({ ...aim, ads: true, renderTimeMs: now });
+      now = run(session, now, shotTicks, shooter, victim);
+    }
+    expect(victim.hits.filter((h) => h.targetNetId === victim.netId).length).toBeGreaterThan(0);
+
+    // The downed client fires back, straight at the shooter's spawn.
+    const eventsBefore = shooter.hits.length;
+    const me = SPAWN_POINTS[1] as { x: number; y: number; z: number };
+    const them = SPAWN_POINTS[0] as { x: number; y: number; z: number };
+    const dx = them.x - me.x;
+    const yawTable = ((Math.round((Math.atan2(dx, 0) / (Math.PI * 2)) * 4096) % 4096) + 4096) % 4096;
+    for (let i = 0; i < 5; i += 1) {
+      victim.fire({ yaw: yawTable, pitch: 0, ads: true, renderTimeMs: now });
+      now = run(session, now, shotTicks, shooter, victim);
+    }
+    // Nothing was broadcast for those pulls: not a hit, not even a miss.
+    expect(shooter.hits.filter((h) => h.shooterNetId === victim.netId)).toHaveLength(0);
+    expect(shooter.hits.length).toBe(eventsBefore);
   });
 });
 

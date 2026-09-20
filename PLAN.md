@@ -1003,6 +1003,60 @@ and lines, pooled and capped like the tracers already are (§0.3 rule 3).
 - **Size:** S
 - **Prepared 2026-09-20, not run.** `docs/playtests/e2-4.md` is a run sheet with the questions per weapon, a tuning paste-back section and a verdict section left blank; it says NOT YET RUN at the top and stays that way until a person fills it in. The weapon panel's paste-back block was missing every T-2.08/09 field and would have discarded the tuned numbers; fixed, with shake sliders added and a test holding the list to the type.
 
+### 7.3 E-2.6 leaf tasks — broken out 2026-09-20
+
+E-2.4's build tasks are in and both remaining §10 items are human
+sign-offs, so the next epic is broken out. **E-2.6 before E-2.2, E-2.3,
+E-2.5 and E-2.7**, for three reasons. It is the squad pillar's own mechanic
+(§1.2: revive ships in the slice, every class can do it), and the one thing
+two humans in a room feel immediately: you go down, you crawl, your partner
+picks you up. It is almost entirely shared simulation and server state,
+which is what the project builds well and tests exactly; E-2.2 and E-2.3
+both wait on an animation system and a rig, and E-2.7 on audio assets. And
+it needs no new world: T-1.12's cover is enough to get downed behind.
+
+**What already exists.** T-1.19 owns health, zones, death and the 5 s
+respawn (`damage.ts`), replicated in the `Health` component and shown on
+the HUD. The character controller has walk, sprint and crouch speeds. The
+predictor replays inputs, so any gait the server imposes must be one the
+client can impose on itself from replicated state, or every tick is a
+correction.
+
+**Two rules for every task here.** First, vitality is the SERVER'S: nothing
+predicts a down, a death or a revive (§2.3 puts damage on that side of the
+line), and the only thing the client predicts is the crawl gait, from the
+replicated state, because movement is predicted. Second, no art: a downed
+soldier is the grey-box humanoid laid down, a revive is a held key and a
+progress number on the HUD.
+
+#### T-2.13 — Downed state, bleed-out, crawl
+- **Depends:** T-1.19, T-1.12
+- **Files:** `packages/shared/src/sim/damage.ts`, `data/damage.json`, `CharacterController.ts`, `ecs/components.ts`, `net/schema.ts`, `net/protocol.ts`, `Session.ts`, `NetClient.ts`, `main.ts`, tests
+- **Do:** Health reaching zero DOWNS rather than kills: a `downedAt` beside `diedAt`, three vitalities in one order (alive, downed, dead, respawn). A bleed-out timer in data; damage to a downed soldier cuts the timer in proportion (one health bar finishes it) rather than touching health, so a squad can finish someone and a downed player under fire is not safe. The controller gains a crawl speed and a `downed` input flag that the server sets from vitality and the client predictor from the replicated one; sprint and jump are ignored under it. A downed or dead soldier cannot fire, server and client. The `Health` component carries the vitality and the whole seconds left in its phase (protocol v7), so the HUD counts what the server counts instead of timing from the first zero it saw.
+- **Done when:** tests assert the down at the exact threshold and never a kill from health; bleed-out into death at the configured time and the respawn counted from death; proportional cutting and an early finish; revive restoring the configured fraction (the pure function, for T-2.15); crawl speed and no jump; end to end over the wire, that a downed body takes hits for zero and respawns after bleed-out plus respawn, and that a downed client's Fire is ignored. Every fixture declares its own numbers.
+- **Size:** M
+
+#### T-2.14 — Downed presentation
+- **Depends:** T-2.13, T-2.06
+- **Files:** `packages/client/src/character/humanoidPlaceholder.ts`, `cameraSolve.ts`, `main.ts`, tests
+- **Do:** A downed humanoid lies on its back (the root turned, the hit capsule still the server's: the server's hitbox does not change shape when downed, and neither must the client's shootable root). The local camera drops to a crawl height while downed, eased, and the reticle hides since there is no weapon in hand. Remote downed soldiers show the same pose from replicated vitality. The HUD line from T-2.13 becomes a clear DOWNED banner with the countdown.
+- **Done when:** tests assert the pose is applied from vitality and restored exactly on revive or respawn, and that the shootable root's geometry is untouched by the pose; a headless run downs the local player and screenshots the view.
+- **Size:** S
+
+#### T-2.15 — Revive interaction
+- **Depends:** T-2.13
+- **Files:** `net/protocol.ts` (a button bit), `Session.ts`, `NetClient.ts`, `LocalInput.ts`, `main.ts`, tests
+- **Do:** An interact button in the input bitfield (`E`). On the server, a living soldier holding it within `reviveRangeM` of a downed teammate accrues revive progress per tick; releasing, moving out of range, or going down yourself resets it; reaching `reviveSeconds` calls T-2.13's `revive`. Progress is replicated so both HUDs show it: "Hold E to revive NAME" on the reviver's, "NAME is reviving you" on the downed player's. One reviver per downed soldier at a time; the first to start holds it.
+- **Done when:** a two-client session test downs one, walks the other into range, holds the button for the configured time and sees the revive; releasing early resets; out of range resets; a dead soldier cannot be revived; the bleed-out keeps running during the attempt (a revive that arrives too late fails honestly).
+- **Size:** M
+
+#### T-2.16 — 🧍 E-2.6 sign-off
+- **Depends:** T-2.13, T-2.14, T-2.15
+- **Files:** `docs/playtests/e2-6.md`
+- **Do:** Two people on the host. One goes down behind cover and crawls; the other revives them under fire, and once fails to in time. Judge whether the bleed-out is long enough to reach a teammate and short enough to matter, whether being finished reads as fair, whether the revive hold feels earned, and whether the downed view is clear about what to do. Tune `damage.json`'s downed block while the feel is in hand.
+- **Done when:** a written verdict, on a run sheet prepared before the session as `e2-4.md` was.
+- **Size:** S
+
 ### M3 — AI & squad command (~10–12 wks)
 
 | Epic | Scope | Notes |
@@ -1140,8 +1194,11 @@ the non-V8 parity job.
 4. **Tune in data while playing.** The weapon numbers were guesses at T-1.17
    and remain so; the recoil and shake numbers T-2.08/09 add will be guesses
    too. The harness has sliders and a paste-back block for exactly this.
+5. **E-2.6 is broken out (§7.3) and T-2.13 is built.** T-2.14 and T-2.15
+   follow, then the sign-off. The protocol is v7: a client and host from
+   either side of T-2.13 refuse each other on version, by design.
 
-E-2.2, E-2.3 and the remaining M2 epics stay epics until their turn (§0.5).
+E-2.2, E-2.3, E-2.5 and E-2.7 stay epics until their turn (§0.5).
 §9 Q6 is answered well enough for now by M1.5 — the other human fights back —
 and is re-asked at M3's gate, where it changes what M3 is for.
 
