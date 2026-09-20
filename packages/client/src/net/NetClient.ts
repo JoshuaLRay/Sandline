@@ -176,6 +176,7 @@ export class NetClient {
   private readonly remoteVitalities = new Map<number, Vitality>();
   private readonly remoteReviveProgressValues = new Map<number, number>();
   private readonly remoteReviverSlots = new Map<number, number>();
+  private readonly remoteSlots = new Map<number, number>();
   /** Local time the newest snapshot landed, for anchoring the server clock. */
   private lastArrivalAt = 0;
 
@@ -292,6 +293,10 @@ export class NetClient {
     return this.reviverSlotValue;
   }
 
+  remoteSlot(netId: number): number {
+    return this.remoteSlots.get(netId) ?? -1;
+  }
+
   remoteReviveProgress(netId: number): number {
     return this.remoteReviveProgressValues.get(netId) ?? 0;
   }
@@ -368,6 +373,7 @@ export class NetClient {
     this.remoteVitalities.clear();
     this.remoteReviveProgressValues.clear();
     this.remoteReviverSlots.clear();
+    this.remoteSlots.clear();
     this.recentInputs.length = 0;
     this.newestServerMs = 0;
     this.serverClockMs = 0;
@@ -645,7 +651,9 @@ export class NetClient {
       const z = dequantize(transform[2] as number, POSITION);
 
       if (entity.netId === this.netIdValue) {
-        const health = entity.components[H];
+        const slot = entity.components[COMPONENT_IDS.PlayerSlot];
+      if (slot) this.remoteSlots.set(entity.netId, (slot[0] as number));
+      const health = entity.components[H];
         if (health) {
           this.healthValue = health[0] as number;
           this.maxHealthValue = health[1] as number;
