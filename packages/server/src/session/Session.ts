@@ -674,7 +674,7 @@ export class Session {
     }
 
     // Resolve revive interaction after consuming this tick's input, so a newly pressed E starts immediately.
-    this.updateRevives(nowSeconds);
+    this.updateRevives();
 
     // Record AFTER stepping, so the history holds the post-tick positions that
     // the snapshot about to go out will describe. Recording pre-step would
@@ -708,7 +708,7 @@ export class Session {
    * being downed. This makes simultaneous attempts deterministic and matches
    * the requested "first to start holds it" rule.
    */
-  private updateRevives(nowSeconds: number): void {
+  private updateRevives(): void {
     const rangeSq = DAMAGE.downed.reviveRangeM * DAMAGE.downed.reviveRangeM;
 
     // First, invalidate locks whose reviver is no longer actively holding E.
