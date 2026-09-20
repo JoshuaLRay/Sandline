@@ -66,6 +66,8 @@ export interface MoveConfig {
    */
   radius: number;
   height: number;
+  /** Full standing height used for collision and headroom. */
+  crouchHeight: number;
   /** Ledges up to this high are stepped onto; higher ones block. */
   stepHeight: number;
 }
@@ -85,6 +87,7 @@ export const DEFAULT_MOVE_CONFIG: MoveConfig = {
   maxFallSpeed: -55,
   radius: 0.35,
   height: 1.8,
+  crouchHeight: 1.2,
   stepHeight: 0.45,
 };
 
@@ -133,6 +136,7 @@ export function stepCharacter(
   const lenSq = mx * mx + my * my;
   const scale = lenSq > 1 ? 1 / Math.sqrt(lenSq) : 1; // sqrt IS IEEE-exact
   const downed = input.downed === true;
+  const effectiveHeight = input.crouch && !downed ? config.crouchHeight : config.height;
   const speed = downed
     ? config.crawlSpeed
     : input.crouch
@@ -157,7 +161,7 @@ export function stepCharacter(
   const feet = state.y;
   /** Blocks horizontal movement: too tall to step onto, and not above the head. */
   const blocks = (box: WorldBox): boolean =>
-    box.maxY > feet + config.stepHeight && box.minY < feet + config.height;
+    box.maxY > feet + config.stepHeight && box.minY < feet + effectiveHeight;
 
   // 1. Horizontal, one axis at a time.
   let x = state.x + worldX * dt;
@@ -210,7 +214,7 @@ export function stepCharacter(
 
   // Head room: a box overhead within standing height stops an upward move.
   for (const box of world) {
-    if (box.minY >= y + config.stepHeight && box.minY < y + config.height && overlapsFootprint(x, z, half, box)) {
+    if (box.minY >= y + config.stepHeight && box.minY < y + effectiveHeight && overlapsFootprint(x, z, half, box)) {
       y = box.minY - config.height;
       if (vy > 0) vy = 0;
     }
