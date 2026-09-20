@@ -26,6 +26,7 @@ import {
   type MoveState,
   PROTOCOL_VERSION,
   INPUT_BUTTONS,
+  vaultFromLevels,
   POSITION,
   Predictor,
   SnapshotStore,
@@ -389,7 +390,12 @@ export class NetClient {
     // same, or every tick down is a correction (T-2.13).
     const predicted = this.vitalityValue === 'downed' ? { ...input, downed: true } : input;
     this.predictor.predict(tickNumber, predicted);
-    const buttons = (input.jump ? INPUT_BUTTONS.jump : 0) | (input.sprint ? INPUT_BUTTONS.sprint : 0) | (input.crouch ? INPUT_BUTTONS.crouch : 0) | (input.interact ? INPUT_BUTTONS.interact : 0);
+    const buttons =
+      (input.jump ? INPUT_BUTTONS.jump : 0) |
+      (input.sprint ? INPUT_BUTTONS.sprint : 0) |
+      (input.crouch ? INPUT_BUTTONS.crouch : 0) |
+      (input.interact ? INPUT_BUTTONS.interact : 0) |
+      (input.firing ? INPUT_BUTTONS.fire : 0);
     this.transport.send(
       encodeMessage({
         kind: 'Input',
@@ -675,6 +681,9 @@ export class NetClient {
             // answers the question and a dedicated bit would not pay for itself.
             grounded: y <= 0.001,
             crouched: (crouch?.[0] as number | undefined) === 1,
+            // Mid-vault the authoritative state is airborne with no velocity;
+            // without the vault itself a replay would drop out of it (T-2.21).
+            vault: vaultFromLevels(entity.components[COMPONENT_IDS.Vault]),
           },
           lastProcessedInputTick,
         );

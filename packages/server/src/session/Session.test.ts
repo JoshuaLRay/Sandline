@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COMPONENT_IDS,
+  CORRECTION_THRESHOLD_M,
+  POSITION,
+  Predictor,
+  dequantize,
+  vaultFromLevels,
   ClientConnection,
   MAX_SLOTS,
   NetSim,
@@ -488,6 +494,88 @@ describe('Session revive interaction (T-2.15)', () => {
   });
 });
 
+
+describe('Session vault over the wire (T-2.21)', () => {
+  const T = COMPONENT_IDS.Transform;
+  const Vt = COMPONENT_IDS.Vault;
+  const positionOf = (snap: WorldSnapshot | undefined, netId: number) => {
+    const e = snap?.entities.find((x) => x.netId === netId);
+    if (!e) return null;
+    const t = e.components[T] as number[];
+    return { x: dequantize(t[0]!, POSITION), y: dequantize(t[1]!, POSITION), z: dequantize(t[2]!, POSITION), vault: vaultFromLevels(e.components[Vt]) };
+  };
+
+  it('a client walking into the low wall vaults it; the other client sees the whole traversal and a predictor agrees within the movement bound', () => {
+    const s = new Session();
+    const runner = connectClient(s, 'runner');
+    const watcher = connectClient(s, 'watcher');
+    const slot = s.slots[runner.joined!.slot]!;
+    // Stand just south of the low wall (x -12..-6, z -1, 1 m tall), facing +Z.
+    slot.state = { ...slot.state, x: -9, y: 0, z: -2.4, vy: 0, grounded: true, crouched: false, vault: null };
+    const predictor = new Predictor({ ...slot.state });
+
+    let now = 0;
+    let sawVault = false;
+    let peakY = 0;
+    let worstError = 0;
+    let crossed = false;
+    // The watcher's loopback delivers a step's delta when it next settles, so
+    // what it has decoded after step N is the world at N - 1: compare each
+    // snapshot against the prediction for that same tick.
+    let previousPrediction = { ...predictor.simulated };
+    for (let tick = 1; tick <= 45; tick += 1) {
+      runner.input(tick, 0, 1, 0, 0);
+      watcher.input(tick, 0, 0);
+      const seen = positionOf(watcher.snapshots.at(-1), slot.netId);
+      if (seen) {
+        if (seen.vault) sawVault = true;
+        peakY = Math.max(peakY, seen.y);
+        if (seen.z > -0.85) crossed = true;
+        worstError = Math.max(
+          worstError,
+          Math.hypot(previousPrediction.x - seen.x, previousPrediction.y - seen.y, previousPrediction.z - seen.z),
+        );
+      }
+      previousPrediction = { ...predictor.predict(tick, { moveX: 0, moveY: 1, yaw: 0, jump: false, sprint: false, crouch: false }) };
+      now += 33;
+      s.step(now);
+      // The server and the predictor ran the same step on the same input.
+      expect(Math.hypot(slot.state.x - previousPrediction.x, slot.state.y - previousPrediction.y, slot.state.z - previousPrediction.z)).toBeLessThan(1e-9);
+    }
+    expect(sawVault).toBe(true);
+    expect(peakY).toBeGreaterThan(1);
+    expect(crossed).toBe(true);
+    expect(slot.state.vault ?? null).toBeNull();
+    expect(slot.state.grounded).toBe(true);
+    // Wire precision is 1/64 m per axis; the movement bound is 2 cm.
+    expect(worstError).toBeLessThan(CORRECTION_THRESHOLD_M);
+  });
+
+  it('refuses a Fire mid-vault, and the client-declared trigger refuses a vault', () => {
+    const s = new Session();
+    const runner = connectClient(s, 'runner');
+    const slot = s.slots[runner.joined!.slot]!;
+    slot.state = { ...slot.state, x: -9, y: 0, z: -2.4, vy: 0, grounded: true, crouched: false, vault: null };
+    let now = 0;
+    // Holding the trigger (button bit 16) while walking in: no vault, a wall.
+    for (let tick = 1; tick <= 40; tick += 1) {
+      runner.input(tick, 0, 1, 0, 0b10000);
+      now += 33;
+      s.step(now);
+      expect(slot.state.vault ?? null).toBeNull();
+    }
+    expect(slot.state.z).toBeLessThan(-1.15);
+    // Release the trigger: the vault starts on the next steps.
+    let tick = 40;
+    while (!slot.state.vault && tick < 60) {
+      tick += 1;
+      runner.input(tick, 0, 1, 0, 0);
+      now += 33;
+      s.step(now);
+    }
+    expect(slot.state.vault).not.toBeNull();
+  });
+});
 
 describe('Session revive on a bursty link (T-2.15)', () => {
   /** Down the target beside the reviver, as the interaction test does. */

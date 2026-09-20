@@ -34,6 +34,7 @@ import {
   type WeaponState,
   type HealthState,
   applyDamage,
+  vaultToLevels,
   createHealth,
   expireBleedOut,
   isDead,
@@ -166,6 +167,7 @@ const idleInput = (yaw = 0): MoveInput => ({
   sprint: false,
   crouch: false,
   interact: false,
+  firing: false,
 });
 
 export interface SessionStats {
@@ -417,6 +419,7 @@ export class Session {
           sprint: (frame.buttons & 0b010) !== 0,
           crouch: (frame.buttons & 0b100) !== 0,
           interact: (frame.buttons & 0b1000) !== 0,
+          firing: (frame.buttons & 0b10000) !== 0,
         },
       });
     }
@@ -453,6 +456,9 @@ export class Session {
     // neither has a weapon in hand. A client that keeps sending Fire gets
     // nothing, and never a hit event to draw.
     if (!isAlive(slot.health)) return;
+    // Mid-vault both hands are on the wall (T-2.21). The client stops pulling
+    // the trigger too; refusing here keeps a lying client from firing.
+    if (slot.state.vault) return;
 
     const id = WEAPON_IDS[msg.weapon];
     if (id === undefined) return; // Out-of-range index: drop it, do not throw.
@@ -854,6 +860,9 @@ export class Session {
           [COMPONENT_IDS.PlayerSlot]: [s.index, s.isBot ? 1 : 0],
           // Replicate the authoritative stance so remote presentation matches the hitbox.
           [C]: [s.state.crouched ? 1 : 0],
+          // A vault in progress, whole (T-2.21): a predictor reconciling
+          // mid-vault continues the same traversal instead of falling out of it.
+          [COMPONENT_IDS.Vault]: vaultToLevels(s.state.vault),
         },
       })),
     };

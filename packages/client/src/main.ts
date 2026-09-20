@@ -787,7 +787,8 @@ function frame(): void {
       pitch: aimPitch,
       // Downed or dead: no weapon in hand. The server refuses the Fire
       // anyway; refusing here too keeps the predicted tracer honest.
-      firing: input.firing && net.vitality === 'alive',
+      // Both hands on the wall during a vault (T-2.21); the server refuses too.
+      firing: input.firing && net.vitality === 'alive' && !net.simulated?.vault,
       triggerEdge: input.consumeTriggerEdge(),
       ads: input.ads,
     });
@@ -1085,7 +1086,7 @@ function frame(): void {
     if (stats) {
       stats.textContent =
         `${speed.toFixed(2)} m/s   peak ${peakSpeed.toFixed(2)}\n` +
-        `${net?.simulated?.grounded ?? true ? 'grounded' : `airborne  y ${ry.toFixed(2)}`}\n` +
+        `${net?.simulated?.vault ? `vaulting  ${(net.simulated.vault.elapsed * 1000).toFixed(0)}ms` : net?.simulated?.grounded ?? true ? 'grounded' : `airborne  y ${ry.toFixed(2)}`}\n` +
         `tick ${clock.tick}   ${fps} fps${clock.dropped ? `   dropped ${clock.dropped}` : ''}\n` +
         `${input.firstPerson ? 'first person  (V for third)' : 'third person  (V swaps shoulder, RMB aims into first)'}\n` +
         `locomotion ${locomotion.state}  ${locomotion.direction}  ${Math.round(locomotion.normalizedSpeed * 100)}%\n` +

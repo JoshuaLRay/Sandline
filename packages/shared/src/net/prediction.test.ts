@@ -297,3 +297,51 @@ describe('reconciliation under a poor link', () => {
     expect(p.corrections).toBe(1);
   });
 });
+
+describe('reconciling mid-vault (T-2.21)', () => {
+  /**
+   * The predictor uses the shared world. The low wall at x -12..-6, z -1 is a
+   * metre tall: too tall to step, low enough to vault. Face +Z from just south
+   * of it and hold forward.
+   */
+  const AT_THE_WALL: MoveState = { x: -9, y: 0, z: -2.4, vy: 0, grounded: true, crouched: false, vault: null };
+
+  it('continues the server\'s vault exactly instead of dropping out of it', () => {
+    // The server's story: the same steps, one tick at a time.
+    let server = AT_THE_WALL;
+    const serverStates: MoveState[] = [];
+    for (let tick = 1; tick <= 40; tick += 1) {
+      server = stepCharacter(server, forward(), TICK_SECONDS);
+      serverStates.push(server);
+    }
+    const vaultTicks = serverStates.map((s, i) => (s.vault ? i + 1 : -1)).filter((t) => t > 0);
+    expect(vaultTicks.length).toBeGreaterThan(5);
+
+    // The client predicts the same inputs, and mid-vault a snapshot arrives
+    // carrying the server's state for an earlier tick, vault included.
+    const p = new Predictor(AT_THE_WALL);
+    for (let tick = 1; tick <= 40; tick += 1) {
+      p.predict(tick, forward());
+      const ackTick = tick - 3;
+      if (ackTick >= 1 && (vaultTicks[0] as number) <= ackTick && ackTick <= (vaultTicks.at(-1) as number)) {
+        const result = p.reconcile(ackTick, serverStates[ackTick - 1] as MoveState);
+        expect(result.error).toBeLessThan(1e-9);
+        expect(result.corrected).toBe(false);
+      }
+    }
+    expect(p.simulated).toEqual(server);
+    expect(p.corrections).toBe(0);
+  });
+
+  it('a snapshot without the vault (an older sender) makes a replay fall out of it, which is why it is carried', () => {
+    let server = AT_THE_WALL;
+    while (!server.vault || server.vault.elapsed < 0.2) server = stepCharacter(server, forward(), TICK_SECONDS);
+    const stripped: MoveState = { ...server, vault: null };
+    const withVault = stepCharacter(server, forward(), TICK_SECONDS);
+    const without = stepCharacter(stripped, forward(), TICK_SECONDS);
+    expect(withVault.vault).not.toBeNull();
+    expect(without.vault ?? null).toBeNull();
+    expect(distance(withVault, without)).toBeGreaterThan(0.05);
+  });
+});
+

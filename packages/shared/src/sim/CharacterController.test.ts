@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_MOVE_CONFIG, type MoveInput, createMoveState, stepCharacter } from './CharacterController.ts';
+import { DEFAULT_MOVE_CONFIG, type MoveInput, type MoveState, createMoveState, stepCharacter } from './CharacterController.ts';
 import { TICK_SECONDS } from './Clock.ts';
 import { ANGLE_QUARTER, WIRE_ANGLE_UNITS } from '../math/angles.ts';
 import { cos, sin } from '../math/trig.ts';
@@ -149,7 +149,9 @@ describe('world collision (T-1.12)', () => {
     expect(onKerb.grounded).toBe(true);
     expect(onKerb.z).toBeGreaterThan(4);
 
-    const tall = [wall('crate', 0, 13, 6, cfg.stepHeight + 0.2, 20)];
+    // Taller than a step but no taller than a vault is now vaulted (T-2.21);
+    // what blocks is a box taller than the vault height.
+    const tall = [wall('crate', 0, 13, 6, cfg.vaultMaxHeight + 0.2, 20)];
     const blocked = walk({ x: 0, z: 0 }, input({ moveY: 1 }), 60, tall);
     expect(blocked.y).toBe(0);
     expect(blocked.z).toBeCloseTo(3 - cfg.radius, 9);
@@ -286,3 +288,182 @@ describe('downed: crawling (T-2.13)', () => {
   });
 });
 
+
+describe('vault (T-2.21)', () => {
+  /** Own numbers, per the fixture rule: retuning the defaults cannot move these. */
+  const CONFIG = {
+    ...DEFAULT_MOVE_CONFIG,
+    walkSpeed: 4.2,
+    radius: 0.35,
+    height: 1.8,
+    stepHeight: 0.45,
+    vaultMaxHeight: 1.25,
+    vaultDistance: 1.5,
+    vaultSeconds: 0.55,
+    vaultProbe: 0.35,
+    vaultLip: 0.15,
+  };
+  const hurdle = (h: number) => boxFrom({ id: 'hurdle', x: 0, y: 0, z: 3, w: 6, h, d: 0.4 }, 'cover');
+  const forward = (over: Partial<MoveInput> = {}): MoveInput => input({ moveY: 1, ...over });
+
+  /** Walk +Z from the origin for `ticks`; report when the vault began and where it ended. */
+  function walk(world: WorldBox[], ticks: number, inp: (t: number) => MoveInput = () => forward(), dt = TICK_SECONDS) {
+    let s = createMoveState(0, 0, 0);
+    let startedAt = -1;
+    let peakY = 0;
+    let landedAt = -1;
+    for (let t = 0; t < ticks; t += 1) {
+      const wasVaulting = !!s.vault;
+      s = stepCharacter(s, inp(t), dt, CONFIG, world);
+      if (s.vault && startedAt < 0) startedAt = t;
+      if (s.vault) peakY = Math.max(peakY, s.y);
+      if (wasVaulting && !s.vault && landedAt < 0) landedAt = t;
+    }
+    return { s, startedAt, peakY, landedAt };
+  }
+
+  it('vaults a hurdle too tall to step, clearing its top and landing grounded beyond it', () => {
+    const world = [hurdle(0.9)];
+    const r = walk(world, 60);
+    expect(r.startedAt).toBeGreaterThanOrEqual(0);
+    expect(r.landedAt).toBeGreaterThan(r.startedAt);
+    // Lands on the tick real time reaches vaultSeconds, not a tick sooner or later.
+    expect(r.landedAt - r.startedAt).toBe(Math.ceil(CONFIG.vaultSeconds / TICK_SECONDS) - 1);
+    // Over the top with the lip to spare, then down on the far side.
+    expect(r.peakY).toBeGreaterThan(0.9);
+    expect(r.s.vault).toBeNull();
+    expect(r.s.grounded).toBe(true);
+    expect(r.s.z).toBeGreaterThan(3.2); // past the hurdle's far face (z 3.2)
+    expect(r.s.y).toBe(0);
+  });
+
+  it('steps through a hurdle no taller than a step without vaulting', () => {
+    const r = walk([hurdle(0.4)], 60);
+    expect(r.startedAt).toBe(-1);
+    expect(r.s.z).toBeGreaterThan(3.2);
+  });
+
+  it('refuses a hurdle taller than the vault height, and stops at it like a wall', () => {
+    const r = walk([hurdle(1.5)], 60);
+    expect(r.startedAt).toBe(-1);
+    expect(r.s.z).toBeCloseTo(2.8 - CONFIG.radius, 9);
+  });
+
+  it('refuses when the landing is blocked', () => {
+    // A wall right behind the hurdle: the landing footprint would sit in it.
+    const wall = boxFrom({ id: 'wall', x: 0, y: 0, z: 3.7, w: 6, h: 2.4, d: 0.4 }, 'cover');
+    const r = walk([hurdle(0.9), wall], 60);
+    expect(r.startedAt).toBe(-1);
+    expect(r.s.z).toBeLessThan(2.8);
+  });
+
+  it('needs forward intent: strafing, backing off, or standing still never vaults', () => {
+    const world = [hurdle(0.9)];
+    // Walk up to it, then stop pushing: the last ticks have no intent.
+    let s = createMoveState(0, 0, 2.2);
+    for (let t = 0; t < 30; t += 1) s = stepCharacter(s, input({ moveX: 1 }), TICK_SECONDS, CONFIG, world);
+    expect(s.vault ?? null).toBeNull();
+    for (let t = 0; t < 30; t += 1) s = stepCharacter(s, input({ moveY: -1 }), TICK_SECONDS, CONFIG, world);
+    expect(s.vault ?? null).toBeNull();
+    for (let t = 0; t < 30; t += 1) s = stepCharacter(s, input(), TICK_SECONDS, CONFIG, world);
+    expect(s.vault ?? null).toBeNull();
+    // A diagonal with the strafe dominant is not forward intent either.
+    for (let t = 0; t < 30; t += 1) s = stepCharacter(s, input({ moveX: 1, moveY: 0.4 }), TICK_SECONDS, CONFIG, world);
+    expect(s.vault ?? null).toBeNull();
+  });
+
+  it('never starts while crouched, downed, firing, jumping or airborne', () => {
+    const world = [hurdle(0.9)];
+    for (const over of [{ crouch: true }, { downed: true }, { firing: true }, { jump: true }] as Partial<MoveInput>[]) {
+      const r = walk(world, 60, () => forward(over));
+      expect(r.startedAt, JSON.stringify(over)).toBe(-1);
+    }
+    // Airborne: jump just before the hurdle, then hold forward in the air.
+    const r = walk(world, 60, (t) => forward({ jump: t === 8 }));
+    let s = createMoveState(0, 0, 0);
+    let vaultedWhileAirborne = false;
+    for (let t = 0; t < 60; t += 1) {
+      const airborne = !s.grounded;
+      s = stepCharacter(s, forward({ jump: t === 8 }), TICK_SECONDS, CONFIG, world);
+      if (airborne && s.vault && s.vault.elapsed <= TICK_SECONDS + 1e-9) vaultedWhileAirborne = true;
+    }
+    expect(vaultedWhileAirborne).toBe(false);
+    expect(r.s.vault ?? null).toBeNull();
+  });
+
+  it('ignores every input once under way: strafing mid-vault does not bend the path', () => {
+    const world = [hurdle(0.9)];
+    const straight = walk(world, 60);
+    // Everything a player could mash, from the tick after the vault begins.
+    const mash = (t: number): MoveInput => (t > straight.startedAt ? forward({ moveX: 1, jump: true, crouch: true }) : forward());
+    const bent = walk(world, 60, mash);
+    expect(bent.startedAt).toBe(straight.startedAt);
+    // Same landing tick, same X (no strafe took), same Z.
+    expect(bent.landedAt).toBe(straight.landedAt);
+    let a = createMoveState(0, 0, 0);
+    let b = createMoveState(0, 0, 0);
+    for (let t = 0; t <= straight.landedAt; t += 1) {
+      a = stepCharacter(a, forward(), TICK_SECONDS, CONFIG, world);
+      b = stepCharacter(b, mash(t), TICK_SECONDS, CONFIG, world);
+    }
+    expect(b.x).toBe(a.x);
+    expect(b.z).toBe(a.z);
+    expect(b.y).toBe(a.y);
+  });
+
+  it('traces the same traversal at 30 and 120 Hz, and lands at the same moment', () => {
+    const world = [hurdle(0.9)];
+    // Start from the same pre-vault state so only the vault is compared.
+    let pre = createMoveState(0, 0, 0);
+    while (!pre.vault) pre = stepCharacter(pre, forward(), TICK_SECONDS, CONFIG, world);
+    const start: MoveState = { ...pre, vault: { ...(pre.vault as NonNullable<typeof pre.vault>), elapsed: 0 } };
+    const at = (dt: number, seconds: number) => {
+      let s = start;
+      for (let t = 0; t < Math.round(seconds / dt); t += 1) s = stepCharacter(s, forward(), dt, CONFIG, world);
+      return s;
+    };
+    const mid30 = at(1 / 30, 0.3);
+    const mid120 = at(1 / 120, 0.3);
+    expect(Math.abs(mid30.x - mid120.x)).toBeLessThan(1e-9);
+    expect(Math.abs(mid30.y - mid120.y)).toBeLessThan(1e-9);
+    expect(Math.abs(mid30.z - mid120.z)).toBeLessThan(1e-9);
+    // Landing: the same place, at the same moment to within one 30 Hz tick.
+    const land = (dt: number) => {
+      let s = start;
+      let steps = 0;
+      while (s.vault) {
+        s = stepCharacter(s, forward(), dt, CONFIG, world);
+        steps += 1;
+      }
+      return { s, seconds: steps * dt };
+    };
+    const land30 = land(1 / 30);
+    const land120 = land(1 / 120);
+    expect(land30.s.x).toBe(land120.s.x);
+    expect(land30.s.y).toBe(land120.s.y);
+    expect(land30.s.z).toBe(land120.s.z);
+    expect(land30.s.grounded && land120.s.grounded).toBe(true);
+    expect(Math.abs(land30.seconds - land120.seconds)).toBeLessThan(1 / 30);
+    expect(land120.seconds).toBeCloseTo(CONFIG.vaultSeconds, 9);
+  });
+
+  it('a vault handed to a fresh step mid-way continues exactly (what a reconcile relies on)', () => {
+    const world = [hurdle(0.9)];
+    let s = createMoveState(0, 0, 0);
+    while (!s.vault || s.vault.elapsed < 0.2) s = stepCharacter(s, forward(), TICK_SECONDS, CONFIG, world);
+    // Rebuild the state from its numbers only, as a snapshot would deliver it.
+    const handed: MoveState = { x: s.x, y: s.y, z: s.z, vy: 0, grounded: false, crouched: false, vault: { ...(s.vault as NonNullable<typeof s.vault>) } };
+    let a: MoveState = s;
+    let b: MoveState = handed;
+    // Through the rest of the vault (the handed copy is fed a different,
+    // ignored input), and one ordinary tick beyond the landing.
+    while (a.vault) {
+      a = stepCharacter(a, forward(), TICK_SECONDS, CONFIG, world);
+      b = stepCharacter(b, forward({ moveX: -1 }), TICK_SECONDS, CONFIG, world);
+      expect(b).toEqual(a);
+    }
+    a = stepCharacter(a, forward(), TICK_SECONDS, CONFIG, world);
+    b = stepCharacter(b, forward(), TICK_SECONDS, CONFIG, world);
+    expect(b).toEqual(a);
+  });
+});
