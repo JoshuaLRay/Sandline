@@ -690,7 +690,7 @@ export class Session {
     // the snapshot about to go out will describe. Recording pre-step would
     // rewind clients to a world half a tick behind the one they were shown.
     for (const slot of this.slots) {
-      this.hitboxes.record(slot.netId, now, slot.state.x, slot.state.y, slot.state.z, slot.input.crouch && !isDowned(slot.health));
+      this.hitboxes.record(slot.netId, now, slot.state.x, slot.state.y, slot.state.z, slot.state.crouched);
     }
     /**
      * The range targets are shootable too. They never move, but they are
@@ -829,7 +829,7 @@ export class Session {
           ],
           [COMPONENT_IDS.PlayerSlot]: [s.index, s.isBot ? 1 : 0],
           // Replicate the authoritative stance so remote presentation matches the hitbox.
-          [C]: [s.input.crouch && !isDowned(s.health) ? 1 : 0],
+          [C]: [s.state.crouched ? 1 : 0],
         },
       })),
     };
