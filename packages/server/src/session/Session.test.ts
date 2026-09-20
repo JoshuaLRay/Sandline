@@ -8,6 +8,7 @@ import {
   type WorldSnapshot,
   createLoopbackPair,
   decodeMessage,
+  DAMAGE,
 } from '@sandline/shared';
 import { Session } from './Session.ts';
 
@@ -403,7 +404,8 @@ describe('Session revive interaction (T-2.15)', () => {
     expect(target.snapshots.at(-1)?.entities.find((e) => e.netId === targetSlot.netId)?.components[2]?.[4]).toBeGreaterThan(45);
 
     // Keep holding through the configured 3-second interaction.
-    for (let tick = 46; tick <= 90; tick++) {
+    const completionTicks = Math.ceil(DAMAGE.downed.reviveSeconds / (1 / 30));
+    for (let tick = 46; tick <= 45 + completionTicks; tick++) {
       reviver.input(tick, 0, 0, 0, 0b1000);
       target.input(tick, 0, 0);
       now += 33;
@@ -498,8 +500,8 @@ describe('Session revive edge cases (T-2.15)', () => {
 
     reviver.input(2, 0, 0, 0, 0b1000);
     target.input(2, 0, 0);
-    s.step(1000);
-    expect(targetSlot.health.diedAt).toBe(1);
+    s.step((DAMAGE.downed.bleedOutSeconds + 1) * 1000);
+    expect(targetSlot.health.diedAt).toBe((DAMAGE.downed.bleedOutSeconds + 1));
     expect(targetSlot.reviveProgressSeconds).toBe(0);
   });
 });
