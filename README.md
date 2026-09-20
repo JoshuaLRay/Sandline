@@ -3,12 +3,11 @@
 Browser-based 6-player co-op squad shooter. See [`PLAN.md`](./PLAN.md) for the
 full plan and task backlog, and [`docs/adr/`](./docs/adr/) for locked decisions.
 
-**Current milestone: M1.5 — two humans, one session.** M1 proved the netcode
-against a simulated link and a bot. M1.5 puts a second person on the far end of
-a real socket, which is the half M1 structurally could not reach. See
-[`PLAN.md` §4.2](./PLAN.md) for why it moved ahead of M2, and
-[`docs/HANDOFF-M1.5.md`](./docs/HANDOFF-M1.5.md) for where it stands and what
-is left.
+**Current milestone: M2 — Shooter feel.** M1.5 is closed: T-1.5.03 and T-1.5.08
+both passed, R2 is closed, and the authoritative host is deployed at
+`wss://sandline-host.fly.dev`. See [`PLAN.md` §7](./PLAN.md) for the current M2
+work and [`docs/HANDOFF-M1.5.md`](./docs/HANDOFF-M1.5.md) for the historical
+M1.5 operational and debugging notes.
 
 ## Quick start
 
@@ -32,10 +31,10 @@ code into the other. Both squad panels show two humans and four bots. Set
 `SANDLINE_HOST=ws://localhost:8080` before `pnpm --filter @sandline/client dev`
 and the field is pre-filled.
 
-The published site at https://joshualray.github.io/Sandline/ works the same way
-against the deployed host, once one is deployed (T-1.5.07 -
-[`docs/DEPLOYING.md`](./docs/DEPLOYING.md) has the recipe, the teardown, and
-the things that will waste your afternoon).
+The published site at https://joshualray.github.io/Sandline/ works against the
+deployed host at `wss://sandline-host.fly.dev` (T-1.5.07). For local/LAN
+operation, the host field can still be overridden; [`docs/DEPLOYING.md`](./docs/DEPLOYING.md)
+has the deployment recipe, teardown, and the things that will waste your afternoon.
 
 ## Useful commands
 
