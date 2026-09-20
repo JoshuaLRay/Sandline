@@ -48,9 +48,9 @@ export const COMPONENT_IDS = {
   Velocity: 1,
   Health: 2,
   PlayerSlot: 3,
+  NetId: 4,
   /** Replicated locomotion stance for remote presentation. */
-  Crouch: 4,
-  NetId: 5,
+  Crouch: 5,
 } as const;
 
 export type ComponentName = keyof typeof COMPONENT_IDS;
