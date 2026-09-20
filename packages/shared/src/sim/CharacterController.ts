@@ -206,7 +206,7 @@ export function stepCharacter(
       const d = far + 0.05;
       if (miss || d <= 0 || d > config.vaultDistance + 1e-9) continue;
       const ex = state.x + dx * d, ez = state.z + dz * d;
-      const blocked = world.some((other) => other !== box && other.maxY > box.maxY - 0.05 && overlapsFootprint(ex, ez, half, other));
+      const blocked = world.some((other) => other.id !== box.id && other.maxY > box.maxY - 0.05 && overlapsFootprint(ex, ez, half + 1e-9, other));
       if (!blocked && (!best || d < best.d)) best = { d, x: ex, z: ez, y: box.maxY };
     }
     if (best) return { x: state.x, y: state.y, z: state.z, vy: 0, grounded: false, crouched: false, vaulting: true, vaultProgress: 0, vaultStartX: state.x, vaultStartY: state.y, vaultStartZ: state.z, vaultEndX: best.x, vaultEndY: best.y, vaultEndZ: best.z };
