@@ -424,6 +424,52 @@ describe('Session revive interaction (T-2.15)', () => {
     expect(targetSlot.reviveProgressSeconds).toBe(0);
   });
 
+  it('revives one soldier at a time: a second downed teammate in reach waits for the first', () => {
+    // Review 2026-09-20: the claim pass skipped locked targets but never asked
+    // whether the reviver already held a lock, so one held E beside two downed
+    // teammates brought both back in a single hold.
+    const s = new Session();
+    const reviver = connectClient(s, 'reviver');
+    const first = connectClient(s, 'first');
+    const second = connectClient(s, 'second');
+    const reviverSlot = s.slots[reviver.joined!.slot]!;
+    const firstSlot = s.slots[first.joined!.slot]!;
+    const secondSlot = s.slots[second.joined!.slot]!;
+    for (const t of [firstSlot, secondSlot]) {
+      t.health.current = 0;
+      t.health.downedAt = 0;
+      t.state.x = reviverSlot.state.x;
+      t.state.y = reviverSlot.state.y;
+      t.state.z = reviverSlot.state.z;
+    }
+    let now = 0;
+    const hold = (ticks: number, from: number): void => {
+      for (let tick = from; tick < from + ticks; tick++) {
+        reviver.input(tick, 0, 0, 0, 0b1000);
+        first.input(tick, 0, 0);
+        second.input(tick, 0, 0);
+        now += 33;
+        s.step(now);
+      }
+    };
+    hold(10, 1);
+    // One lock, on one of them; the other is untouched.
+    expect([firstSlot.reviveBySlot, secondSlot.reviveBySlot].filter((r) => r === reviverSlot.index)).toHaveLength(1);
+    expect(firstSlot.reviveProgressSeconds > 0 && secondSlot.reviveProgressSeconds > 0).toBe(false);
+    const completionTicks = Math.ceil(DAMAGE.downed.reviveSeconds / (1 / 30));
+    hold(completionTicks, 11);
+    // The first hold has completed; exactly one is up, the other is now being worked on.
+    const up = [firstSlot, secondSlot].filter((t) => t.health.current > 0);
+    const still = [firstSlot, secondSlot].filter((t) => t.health.current === 0);
+    expect(up).toHaveLength(1);
+    expect(still).toHaveLength(1);
+    expect(still[0]!.reviveBySlot).toBe(reviverSlot.index);
+    expect(still[0]!.reviveProgressSeconds).toBeLessThan(0.5);
+    hold(completionTicks + 2, 11 + completionTicks);
+    expect(firstSlot.health.current).toBeGreaterThan(0);
+    expect(secondSlot.health.current).toBeGreaterThan(0);
+  });
+
   it('clears revive state when a reviver disconnects and their slot is reassigned', () => {
     const s = new Session();
     const reviver = connectClient(s, 'reviver');

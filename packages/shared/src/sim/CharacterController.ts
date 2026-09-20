@@ -299,7 +299,11 @@ export function stepCharacter(
   // Head room: a box overhead within standing height stops an upward move.
   for (const box of world) {
     if (box.minY >= y + config.stepHeight && box.minY < y + resolvedHeight && overlapsFootprint(x, z, half, box)) {
-      y = Math.max(support, box.minY - effectiveHeight);
+      // The height the stance resolved to this tick, not the one it entered
+      // with: standing up while jumping under a ceiling clamps the feet to
+      // where a standing body fits, rather than lifting them to where a
+      // crouched one would.
+      y = Math.max(support, box.minY - resolvedHeight);
       if (vy > 0) vy = 0;
     }
   }
