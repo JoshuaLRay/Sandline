@@ -569,7 +569,6 @@ export class Session {
     }
 
     const nowSeconds = now / 1000;
-    this.updateRevives(nowSeconds);
     for (const slot of this.slots) {
       /**
        * Bleed-out (T-2.13): a downed soldier nobody reached dies here, and
@@ -673,6 +672,9 @@ export class Session {
       // Consumed now, so this is what the client may stop replaying.
       slot.lastProcessedInputTick = slot.pendingInputTick;
     }
+
+    // Resolve revive interaction after consuming this tick's input, so a newly pressed E starts immediately.
+    this.updateRevives(nowSeconds);
 
     // Record AFTER stepping, so the history holds the post-tick positions that
     // the snapshot about to go out will describe. Recording pre-step would
