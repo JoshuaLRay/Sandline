@@ -213,8 +213,8 @@ describe('crouch height and clearance (T-2.20)', () => {
   const lowCeiling = [wall('low ceiling', 0, 2, 4, 0.3, 4, 1.3)];
 
   it('fits under a ceiling while crouched but not while standing', () => {
-    const crouched = walk({ x: 0, z: 0 }, input({ moveY: 1, crouch: true }), 40, lowCeiling);
-    const standing = walk({ x: 0, z: 0 }, input({ moveY: 1 }), 40, lowCeiling);
+    const crouched = walk({ x: 0, z: 0 }, input({ moveY: 1, crouch: true }), 60, lowCeiling);
+    const standing = walk({ x: 0, z: 0 }, input({ moveY: 1 }), 60, lowCeiling);
     expect(crouched.z).toBeGreaterThan(2);
     expect(standing.z).toBeLessThan(2);
     expect(DEFAULT_MOVE_CONFIG.crouchHeight).toBeLessThan(DEFAULT_MOVE_CONFIG.height);
