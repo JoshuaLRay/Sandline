@@ -76,6 +76,7 @@ const CROUCH_HITBOX_HEIGHT = 2 * ((DEFAULT_HITBOX.crouchHalfHeight ?? DEFAULT_HI
 const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
 const H = COMPONENT_IDS.Health;
+const C = COMPONENT_IDS.Crouch;
 
 export interface Slot {
   index: number;
@@ -827,6 +828,8 @@ export class Session {
             s.reviveBySlot < 0 ? 0 : s.reviveBySlot + 1,
           ],
           [COMPONENT_IDS.PlayerSlot]: [s.index, s.isBot ? 1 : 0],
+          // Replicate the authoritative stance so remote presentation matches the hitbox.
+          [C]: [s.input.crouch && !isDowned(s.health) ? 1 : 0],
         },
       })),
     };
