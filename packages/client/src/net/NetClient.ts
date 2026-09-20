@@ -674,6 +674,7 @@ export class NetClient {
             // Derived rather than replicated, as in BotClient: height already
             // answers the question and a dedicated bit would not pay for itself.
             grounded: y <= 0.001,
+            crouched: (crouch?.[0] as number | undefined) === 1,
           },
           lastProcessedInputTick,
         );
