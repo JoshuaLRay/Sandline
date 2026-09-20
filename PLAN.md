@@ -755,6 +755,7 @@ Task IDs follow §0.1: `T-1.5.<n>`, milestone 1.5.
 #### T-1.5.03 — ✅ COMPLETED 🧍 LAN two-human gate
 - **Depends:** T-1.5.02
 - **Files:** `docs/playtests/m1.5-lan.md`
+- **Verdict written 2026-09-20** (`docs/playtests/m1.5-lan.md`), after the fact, from the one-line record: PASS, with the individual cases and the conditioning levels the task asked for stated as not recorded.
 - **Do:** Two people, two machines, one host on the LAN. The first time this project has had two humans in one session. Judge only what the second human adds — anything a lone tester can assess belongs to T-1.24. Specifically: two players contesting one doorway; each shooting the other inside the same 200 ms rewind window; whether "I shot first" disputes resolve in a way *both* people accept; whether a corpse taking no further damage reads as correct or as a swallowed hit. Run at LAN, then with the host's conditioning at 80 and 200 ms, setting the two players' conditions independently as T-1.24 requires.
 - **Done when:** A written verdict naming which of those cases feel fair and which do not, and stating what a LAN still leaves unproven — NAT, internet jitter distributions, routing, and any latency a slider did not put there.
 - **Size:** S
@@ -816,6 +817,7 @@ Task IDs follow §0.1: `T-1.5.<n>`, milestone 1.5.
 #### T-1.5.08 — ✅ COMPLETED 🧍 M1.5 gate: two humans, one real host
 - **Depends:** T-1.5.07, T-1.5.06, T-1.5.03
 - **Files:** `docs/playtests/m1.5.md`, `docs/adr/012-netcode-shape.md`
+- **Verdict written 2026-09-20** (`docs/playtests/m1.5.md`), after the fact: PASS; ADR-012 carries the closing addendum. The measured netgraph numbers the done-when asks for were not recorded and are still owed by the next two-person session.
 - **Do:** Re-run T-1.5.03's verdict across the internet instead of a LAN, conditioning off — the latency is now whatever the route gives, which is the entire point. Record measured RTT, jitter and loss from the netgraph beside each judgement so the verdict can be read against the NetSim cells T-1.22 asserts in CI. Where they disagree, the real link is right and the model needs revisiting.
 - **Done when:** A written verdict at real internet latency with measured numbers beside it, and an ADR-012 addendum recording whether the two-human case changed that ADR's conclusion. **If it fails, stop and revisit ADR-012 before M2 continues** — the same rule T-1.24 carries, for the half of the question T-1.24 cannot reach.
 - **Size:** S
@@ -1119,11 +1121,12 @@ people on different networks have played. T-1.12 is finished (§6.3). All of
 E-2.1's build tasks have landed. 473 tests pass and CI is green, including
 the non-V8 parity job.
 
-1. **Write the M1.5 verdicts down.** 🧍 T-1.5.03 and T-1.5.08 are marked
-   complete but `docs/playtests/` holds only `m1.md`. The changelog has one
-   line each; the plan's own rule is that a gate whose result lives only in a
-   conversation is not a gate. Record what was judged fair and what a LAN and
-   the internet each left unproven, with the netgraph numbers beside them.
+1. **M1.5 verdicts: written 2026-09-20** (`docs/playtests/m1.5-lan.md`,
+   `m1.5.md`; ADR-012 addendum). Written from the record, so they are thin
+   where the record was: neither the individual cases nor the netgraph
+   numbers were noted at the time. 🧍 The next two-person session should
+   read the netgraph's `rtt`, `jitter`, `corrections` and `peak` lines once
+   and paste them into `m1.5.md`; that is the only thing still owed.
 2. **Run T-2.07.** 🧍 E-2.1 is built; judge it. Two things to look at with
    intent, both from the 2026-09-19 review: aiming cuts to first person in one
    frame, which also means T-2.05's eased arm is never seen in play; and the
