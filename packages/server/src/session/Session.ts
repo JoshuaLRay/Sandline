@@ -40,6 +40,7 @@ import {
   isDowned,
   vitalTimer,
   vitality,
+  DAMAGE,
   vitalityCode,
   createMoveState,
   createWeaponState,
@@ -47,6 +48,7 @@ import {
   decayBloom,
   isAlive,
   readyToRespawn,
+  revive,
   respawn,
   spawnFor,
   zoneAt,
@@ -122,6 +124,9 @@ export interface Slot {
   /** Aim pitch, in wire units. Movement only replicates yaw; shots need both. */
   pitch: number;
   health: HealthState;
+  /** T-2.15: authoritative revive ownership/progress for this downed soldier. */
+  reviveByNetId: number;
+  reviveProgressSeconds: number;
 }
 
 /** ADR-012: repeat a missing input this many ticks, then treat it as idle. */
@@ -148,6 +153,7 @@ const idleInput = (yaw = 0): MoveInput => ({
   jump: false,
   sprint: false,
   crouch: false,
+  interact: false,
 });
 
 export interface SessionStats {
@@ -207,6 +213,8 @@ export class Session {
         weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
         pitch: 0,
         health: createHealth(),
+        reviveByNetId: 0,
+        reviveProgressSeconds: 0,
       });
     }
   }
@@ -389,6 +397,7 @@ export class Session {
           jump: (frame.buttons & 0b001) !== 0,
           sprint: (frame.buttons & 0b010) !== 0,
           crouch: (frame.buttons & 0b100) !== 0,
+          interact: (frame.buttons & 0b1000) !== 0,
         },
       });
     }
@@ -560,6 +569,7 @@ export class Session {
     }
 
     const nowSeconds = now / 1000;
+    this.updateRevives(nowSeconds);
     for (const slot of this.slots) {
       /**
        * Bleed-out (T-2.13): a downed soldier nobody reached dies here, and
@@ -687,6 +697,81 @@ export class Session {
     this.broadcast(snapshot);
   }
 
+  /**
+   * T-2.15: resolve the held-E revive interaction authoritatively.
+   *
+   * A downed target owns its reviver lock. Once a living human has started
+   * within range, another player cannot steal the interaction until the first
+   * player releases E, leaves range, becomes downed/dead, or the target stops
+   * being downed. This makes simultaneous attempts deterministic and matches
+   * the requested "first to start holds it" rule.
+   */
+  private updateRevives(nowSeconds: number): void {
+    const rangeSq = DAMAGE.downed.reviveRangeM * DAMAGE.downed.reviveRangeM;
+
+    // First, invalidate locks whose reviver is no longer actively holding E.
+    for (const target of this.slots) {
+      if (!isDowned(target.health)) {
+        target.reviveByNetId = 0;
+        target.reviveProgressSeconds = 0;
+        continue;
+      }
+      if (target.reviveByNetId === 0) {
+        target.reviveProgressSeconds = 0;
+        continue;
+      }
+      const reviver = this.slots.find((s) => s.netId === target.reviveByNetId);
+      if (
+        !reviver ||
+        reviver.isBot ||
+        !isAlive(reviver.health) ||
+        !reviver.input.interact ||
+        this.distanceSq(reviver, target) > rangeSq
+      ) {
+        target.reviveByNetId = 0;
+        target.reviveProgressSeconds = 0;
+      }
+    }
+
+    // Then allow unclaimed targets to be claimed in stable slot/netId order.
+    for (const reviver of this.slots) {
+      if (reviver.isBot || !isAlive(reviver.health) || !reviver.input.interact) continue;
+      let best: Slot | null = null;
+      let bestDistance = Number.POSITIVE_INFINITY;
+      for (const target of this.slots) {
+        if (target === reviver || !isDowned(target.health) || target.reviveByNetId !== 0) continue;
+        const d = this.distanceSq(reviver, target);
+        if (d <= rangeSq && d < bestDistance) {
+          best = target;
+          bestDistance = d;
+        }
+      }
+      if (best) {
+        best.reviveByNetId = reviver.netId;
+        best.reviveProgressSeconds = 0;
+      }
+    }
+
+    // Advance every active interaction and complete it at the configured hold time.
+    for (const target of this.slots) {
+      if (!isDowned(target.health) || target.reviveByNetId === 0) continue;
+      target.reviveProgressSeconds += TICK_SECONDS;
+      if (target.reviveProgressSeconds >= DAMAGE.downed.reviveSeconds) {
+        revive(target.health);
+        target.reviveByNetId = 0;
+        target.reviveProgressSeconds = 0;
+        target.queue.length = 0;
+      }
+    }
+  }
+
+  private distanceSq(a: Slot, b: Slot): number {
+    const dx = a.state.x - b.state.x;
+    const dy = a.state.y - b.state.y;
+    const dz = a.state.z - b.state.z;
+    return dx * dx + dy * dy + dz * dz;
+  }
+
   private buildSnapshot(): WorldSnapshot {
     return {
       tick: this.currentTick,
@@ -712,6 +797,8 @@ export class Session {
             Math.round(s.health.max),
             vitalityCode(vitality(s.health)),
             Math.min(63, Math.ceil(vitalTimer(s.health, this.nowMs / 1000))),
+            Math.min(100, Math.round((s.reviveProgressSeconds / DAMAGE.downed.reviveSeconds) * 100)),
+            Math.min(7, s.reviveByNetId),
           ],
         },
       })),
