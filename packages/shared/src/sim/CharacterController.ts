@@ -25,6 +25,8 @@ export interface MoveState {
   /** Vertical velocity; horizontal motion is driven directly by input. */
   vy: number;
   grounded: boolean;
+  /** Authoritative crouch stance; remains crouched until standing clearance exists. */
+  crouched: boolean;
 }
 
 export interface MoveInput {
@@ -136,10 +138,14 @@ export function stepCharacter(
   const lenSq = mx * mx + my * my;
   const scale = lenSq > 1 ? 1 / Math.sqrt(lenSq) : 1; // sqrt IS IEEE-exact
   const downed = input.downed === true;
-  const effectiveHeight = input.crouch && !downed ? config.crouchHeight : config.height;
+  // Crouch is an authoritative stance, not merely a button state. Releasing
+  // crouch while under a ceiling keeps the character crouched until the
+  // resulting position has enough headroom for the full standing height.
+  let crouched = !downed && (input.crouch || state.crouched);
+  const effectiveHeight = crouched ? config.crouchHeight : config.height;
   const speed = downed
     ? config.crawlSpeed
-    : input.crouch
+    : crouched
       ? config.crouchSpeed
       : input.sprint
         ? config.sprintSpeed
@@ -179,6 +185,21 @@ export function stepCharacter(
     }
   }
 
+  // A released crouch is only allowed to transition to standing when the
+  // character's current feet position has full-height clearance. Keep the
+  // crouched stance while moving through a low ceiling; after horizontal
+  // movement, re-check at the resulting position so walking out from under
+  // cover permits the same tick's stand transition.
+  if (crouched && !input.crouch && !downed) {
+    const canStand = !world.some((box) =>
+      box.minY >= feet + config.stepHeight &&
+      box.minY < feet + config.height &&
+      overlapsFootprint(x, z, half, box),
+    );
+    if (canStand) crouched = false;
+  }
+  const resolvedHeight = crouched ? config.crouchHeight : config.height;
+
   // 2. Vertical.
   let vy = state.vy;
   let grounded = state.grounded;
@@ -214,15 +235,15 @@ export function stepCharacter(
 
   // Head room: a box overhead within standing height stops an upward move.
   for (const box of world) {
-    if (box.minY >= y + config.stepHeight && box.minY < y + effectiveHeight && overlapsFootprint(x, z, half, box)) {
+    if (box.minY >= y + config.stepHeight && box.minY < y + resolvedHeight && overlapsFootprint(x, z, half, box)) {
       y = Math.max(support, box.minY - effectiveHeight);
       if (vy > 0) vy = 0;
     }
   }
 
-  return { x, y, z, vy, grounded };
+  return { x, y, z, vy, grounded, crouched };
 }
 
 export function createMoveState(x = 0, y = 0, z = 0): MoveState {
-  return { x, y, z, vy: 0, grounded: y <= 0 };
+  return { x, y, z, vy: 0, grounded: y <= 0, crouched: false };
 }
