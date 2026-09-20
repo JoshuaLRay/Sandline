@@ -140,8 +140,8 @@ export class InterpolationBuffer {
       y: catmullRom(p0.y, p1.y, p2.y, p3.y, t),
       z: catmullRom(p0.z, p1.z, p2.z, p3.z, t),
       yaw: lerpAngle(p1.yaw, p2.yaw, t),
-      // Stance is discrete; use the state at the rendered sample's nearer tick.
-      crouched: t < 0.5 ? p1.crouched : p2.crouched,
+      // Stance changes at the authoritative sample boundary, not halfway between ticks.
+      crouched: renderTimeMs >= p2.serverTimeMs ? p2.crouched : p1.crouched,
       extrapolated: false,
       frozen: false,
     };
