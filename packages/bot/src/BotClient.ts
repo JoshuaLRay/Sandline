@@ -32,7 +32,6 @@ import {
 
 const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
-const VA = COMPONENT_IDS.Vault;
 
 export interface BotMetrics {
   /** Largest gap between prediction and authority, in metres. */
@@ -91,12 +90,12 @@ class InputWalk {
         moveX: (this.rng.nextUint32() % 3) - 1,
         moveY: (this.rng.nextUint32() % 3) - 1,
         yaw: this.rng.nextUint32() % 1024,
-        jump: false,
+        jump: this.rng.nextUint32() % 8 === 0,
         sprint: this.rng.nextUint32() % 3 === 0,
         crouch: false,
       };
     } else {
-      this.current = { ...this.current, jump: false };
+      this.current = { ...this.current, jump: this.rng.nextUint32() % 40 === 0 };
     }
     return this.current;
   }
@@ -270,9 +269,6 @@ export class BotClient {
       // it is worth when height already answers the question.
       grounded: dequantize(transform[1] as number, POSITION) <= 0.001,
       crouched: (mine?.components[COMPONENT_IDS.Crouch]?.[0] as number | undefined) === 1,
-      vaulting: ((mine?.components[VA]?.[0] as number | undefined) ?? 0) === 1,
-      vaultProgress: ((mine?.components[VA]?.[1] as number | undefined) ?? 0) / 255,
-      vaultStartX: 0, vaultStartY: 0, vaultStartZ: 0, vaultEndX: 0, vaultEndY: 0, vaultEndZ: 0,
     };
 
     // First authoritative word on where we are: adopt it as the baseline.
