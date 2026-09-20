@@ -909,6 +909,7 @@ that shoots.
 - **Do:** A human plays and judges camera feel: spring behaviour against walls and tight spaces, the shoulder swap, the ADS transition, and 89-degree pitch in both views.
 - **Done when:** A written verdict exists, recording what it does and does not establish, as T-1.24's did.
 - **Size:** S
+- **Completed 2026-09-20.** Owner human sign-off passed. Camera, shoulder swap, ADS transition, and pitch were judged good enough for M2 to proceed.
 
 ### 7.2 E-2.4 leaf tasks — broken out 2026-09-20
 
@@ -997,7 +998,7 @@ and lines, pooled and capped like the tracers already are (§0.3 rule 3).
 - **Do:** A human fires every weapon at the range and at another person, and judges whether recoil reads as a pattern to learn, whether shake is felt without being aimed with, and whether the flash, shells and impacts make a hit feel like a hit. Tune the new numbers in data while the feel is in hand.
 - **Done when:** A written verdict exists, as T-1.24's did, naming what it does and does not establish.
 - **Size:** S
-- **Prepared 2026-09-20, not run.** `docs/playtests/e2-4.md` is a run sheet with the questions per weapon, a tuning paste-back section and a verdict section left blank; it says NOT YET RUN at the top and stays that way until a person fills it in. The weapon panel's paste-back block was missing every T-2.08/09 field and would have discarded the tuned numbers; fixed, with shake sliders added and a test holding the list to the type.
+- **Completed 2026-09-20.** Owner human sign-off passed. Recoil, camera shake, muzzle flash/shells, and impacts were judged good enough for M2 to proceed; the run sheet records the owner verdict.
 
 ### 7.3 E-2.6 leaf tasks — broken out 2026-09-20
 
@@ -1053,6 +1054,7 @@ progress number on the HUD.
 - **Do:** Two people on the host. One goes down behind cover and crawls; the other revives them under fire, and once fails to in time. Judge whether the bleed-out is long enough to reach a teammate and short enough to matter, whether being finished reads as fair, whether the revive hold feels earned, and whether the downed view is clear about what to do. Tune `damage.json`'s downed block while the feel is in hand.
 - **Done when:** a written verdict, on a run sheet prepared before the session as `e2-4.md` was.
 - **Size:** S
+- **Completed 2026-09-20.** Owner human sign-off passed. Downed presentation, crawl, bleed-out, and teammate revive were judged good enough for M2 to proceed.
 
 ### M3 — AI & squad command (~10–12 wks)
 
@@ -1166,38 +1168,18 @@ These block estimation, not implementation — M0 can start today regardless.
 
 ## 10. Immediate next actions
 
-**Current milestone: M2. Rewritten 2026-09-20.** M1 closed on T-1.24 (`docs/playtests/m1.md`). M1.5
-closed on the owner's T-1.5.08 sign-off: the host is deployed at
-`wss://sandline-host.fly.dev`, the published lobby points at it, and two
-people on different networks have played. T-1.12 is finished (§6.3). All of
-E-2.1's build tasks have landed. 473 tests pass and CI is green, including
-the non-V8 parity job.
+**Current milestone: M2. Updated 2026-09-20.** M1 and M1.5 are closed. E-2.1,
+E-2.4, and E-2.6 are now built and human-signed off. The three M2 human gates
+(T-2.07, T-2.12, T-2.16) have passed on the owner's judgement. CI remains
+green, including the non-V8 parity job.
 
-1. **M1.5 verdicts: written 2026-09-20** (`docs/playtests/m1.5-lan.md`,
-   `m1.5.md`; ADR-012 addendum). Written from the record, so they are thin
-   where the record was: neither the individual cases nor the netgraph
-   numbers were noted at the time. 🧍 The next two-person session should
-   read the netgraph's `rtt`, `jitter`, `corrections` and `peak` lines once
-   and paste them into `m1.5.md`; that is the only thing still owed.
-2. **Run T-2.07.** 🧍 E-2.1 is built; judge it. Two things to look at with
-   intent, both from the 2026-09-19 review: aiming cuts to first person in one
-   frame, which also means T-2.05's eased arm is never seen in play; and the
-   arm snaps inward on the tall posts by T-2.02's design. Either is a
-   one-line change once a person says which way it should go.
-3. **E-2.4 is built; run T-2.12.** 🧍 T-2.08 through T-2.11 landed
-   2026-09-20. `docs/playtests/e2-4.md` is the run sheet: fill it in during
-   the session, not after. It also carries T-2.07's two questions, so one
-   session can close both sign-offs.
-4. **Tune in data while playing.** The weapon numbers were guesses at T-1.17
-   and remain so; the recoil and shake numbers T-2.08/09 add will be guesses
-   too. The harness has sliders and a paste-back block for exactly this.
-5. **E-2.6 is broken out (§7.3) and T-2.13 is built.** T-2.14 and T-2.15
-   follow, then the sign-off. The protocol is v7: a client and host from
-   either side of T-2.13 refuse each other on version, by design.
+1. **Begin E-2.2 — Animation & Character Feel.** M2's next build epic is E-2.2.
+   Break it into leaf tasks at the planning gate before implementation, following
+   §0.5 and the lessons from the completed camera, weapon-feel, and downed/revive
+   work.
+2. **Keep tuning data opportunistically.** Weapon and downed values remain
+   data-driven; adjust them when a concrete playtest issue appears rather than
+   reopening completed gates without a reason.
 
-E-2.2, E-2.3, E-2.5 and E-2.7 stay epics until their turn (§0.5).
-§9 Q6 is answered well enough for now by M1.5 — the other human fights back —
-and is re-asked at M3's gate, where it changes what M3 is for.
-
-The list this section held before — T-1.24, T-1.5.01/02, M1.5's exit gate —
-is done and has been removed.
+E-2.3, E-2.5 and E-2.7 remain epics until their turn. M2's exit gate remains the
+overall human judgement that third-person combat feels good.
