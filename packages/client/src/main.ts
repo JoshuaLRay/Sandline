@@ -24,10 +24,9 @@
  * downstream (level scale, cover spacing, encounter pacing, animation timing)
  * is built on top of them.
  *
- * KNOWN GAP: T-1.12 is partial. The plan specified a Rapier kinematic
- * controller with slope limits and step offset; this is pure math on a flat
- * plane. There is no collision — you will walk through scenery. Speed, jump arc,
- * gravity and turn rate are real; terrain behaviour is not implemented.
+ * The world is solid (T-1.12): walls, crates, posts and rails stop the player
+ * and stop shots, on the client and the server alike, from one shared list.
+ * Flat ground and boxes only — no slopes or stairs beyond a 0.45 m step.
  */
 import * as THREE from 'three';
 import {
@@ -63,6 +62,7 @@ import {
   shareLink,
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
+import { DEFAULT_WORLD, type WorldBoxKind, boxCentre } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
@@ -113,12 +113,24 @@ scene.add(ground);
 scene.add(new THREE.GridHelper(200, 100, 0x8a7550, 0x6a5940));
 
 /**
- * Static scenery that stops the CAMERA ARM. This is not the shootable set:
- * the server cannot yet collide shots with scenery (T-1.12 remains partial),
- * but the local camera must not pass through the ground, posts, rails, or the
- * reference figure. Players are intentionally excluded so a teammate behind
- * you cannot make the camera lurch.
+ * THE WORLD, drawn from the shared list (T-1.12).
+ *
+ * Every solid thing here comes from `DEFAULT_WORLD`: the distance posts, the
+ * sprint-lane rails, the reference figure and the cover in world.json. The
+ * server collides players and shots with exactly that list, the predictor
+ * collides the local player with it, and the camera arm stops on it — so
+ * there is no longer a client-only decoration a soldier can walk through or a
+ * shot can pass through. That was the case with every post until now, and it
+ * is the gap note 16 in the handoffs kept pointing at.
+ *
+ * Two sets are built from the one list. `shootable` is what the aim converges
+ * on and what predicted tracers end on; it is exactly what the server resolves
+ * hits against, plus the ground as a backstop, so it holds every world box and
+ * every player, and nothing else. `cameraScenery` is what the camera arm stops
+ * on: the same boxes, never the players, or the camera lurches every time a
+ * teammate walks behind you.
  */
+const shootable: THREE.Object3D[] = [];
 const cameraScenery: THREE.Object3D[] = [ground];
 const cameraRaycaster = new THREE.Raycaster();
 /** Reused every frame: the cast runs per frame and must not allocate. */
@@ -136,86 +148,36 @@ const cameraCollider: CameraCollider = {
   },
 };
 
-/**
- * A field of distance posts every 10 m across the whole playable area.
- *
- * Judging "does this feel too fast" is impossible without a sense of scale, and
- * markers running in ONE direction only help until you turn. Posts on a grid
- * mean there is always something passing you, whichever way you run — which is
- * what actually communicates speed.
- */
-/**
- * What a shot can stop on: what the aim ray converges against and what a
- * predicted tracer terminates on.
- *
- * ONLY WHAT THE SERVER CAN ACTUALLY HIT — the other players and the range
- * targets, plus the ground as a backstop. Decoration is deliberately absent,
- * and that boundary is the whole point.
- *
- * Getting this set wrong breaks aiming in two opposite ways, and this project
- * has now shipped both. Leave things OUT that the server can hit (the other
- * players were missing) and the aim ray finds nothing, falls back to a point
- * 250 m down the camera's line, and fires nearly parallel from an eye that sits
- * 0.85 m left and 0.3 m below the camera — every shot lands down and to the
- * left. Put things IN that the server cannot hit (the distance posts and the
- * scale figure were added) and the ray converges on decoration instead of on
- * the target: measured tracer lengths of 140, 92, 2.7, 140, 77 and 30 metres
- * across six consecutive shots while strafing, because the muzzle was sweeping
- * through a field of posts. The convergence distance then jumps around, so the
- * shot crosses the reticle's line at an arbitrary range — left of the reticle
- * nearer than the crossing, right of it beyond, which is exactly how it was
- * described.
- *
- * So the rule is not "everything solid". It is "exactly what the server
- * resolves hits against". Add a mesh here when, and only when, the server also
- * knows about it.
- */
-const shootable: THREE.Object3D[] = [];
-
-const markerMat = new THREE.MeshStandardMaterial({ color: 0xd8c9a8, roughness: 0.9 });
-const tallMat = new THREE.MeshStandardMaterial({ color: 0xf0b429, roughness: 0.8 });
-const postGeo = new THREE.BoxGeometry(0.18, 1.4, 0.18);
-const tallGeo = new THREE.BoxGeometry(0.22, 2.6, 0.22);
-
-for (let gx = -40; gx <= 40; gx += 10) {
-  for (let gz = -40; gz <= 40; gz += 10) {
-    if (gx === 0 && gz === 0) continue; // keep spawn clear
-    // Every 20 m gets a taller, brighter post so distance stays countable.
-    const major = gx % 20 === 0 && gz % 20 === 0;
-    const post = new THREE.Mesh(major ? tallGeo : postGeo, major ? tallMat : markerMat);
-    post.position.set(gx, (major ? 2.6 : 1.4) / 2, gz);
-    post.castShadow = true;
-    scene.add(post);
-    cameraScenery.push(post);
-    // NOT shootable: decoration. The server has no world collision (T-1.12),
-    // so a shot passes through a post exactly as the player does.
+const worldMaterials: Record<WorldBoxKind, THREE.Material> = {
+  'post-minor': new THREE.MeshStandardMaterial({ color: 0xd8c9a8, roughness: 0.9 }),
+  'post-major': new THREE.MeshStandardMaterial({ color: 0xf0b429, roughness: 0.8 }),
+  rail: new THREE.MeshStandardMaterial({ color: 0xc2532e, roughness: 1 }),
+  figure: new THREE.MeshStandardMaterial({ color: 0x8b6f47, roughness: 0.9 }),
+  cover: new THREE.MeshStandardMaterial({ color: 0x7a6a52, roughness: 0.95 }),
+};
+/** The box every world entry collides as. The figure also gets its capsule. */
+const invisible = new THREE.MeshBasicMaterial({ visible: false });
+for (const box of DEFAULT_WORLD) {
+  const c = boxCentre(box);
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(c.w, c.h, c.d),
+    box.kind === 'figure' ? invisible : worldMaterials[box.kind],
+  );
+  mesh.position.set(c.x, c.y, c.z);
+  mesh.castShadow = box.kind !== 'figure';
+  mesh.name = box.id;
+  scene.add(mesh);
+  shootable.push(mesh);
+  cameraScenery.push(mesh);
+  if (box.kind === 'figure') {
+    /** The 1.8 m reference figure: the only way to read speed and jump height. */
+    const capsule = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 1.1, 4, 12), worldMaterials.figure);
+    capsule.position.set(c.x, c.y, c.z);
+    capsule.castShadow = true;
+    capsule.name = 'reference figure (drawn)';
+    scene.add(capsule);
   }
 }
-
-/**
- * A 10 m sprint lane at spawn. Sprint from one end to the other and count
- * seconds: that turns "feels fast" into a number you can act on.
- */
-const laneMat = new THREE.MeshStandardMaterial({ color: 0xc2532e, roughness: 1 });
-for (const z of [-1.2, 1.2]) {
-  const rail = new THREE.Mesh(new THREE.BoxGeometry(10, 0.05, 0.12), laneMat);
-  rail.position.set(5, 0.03, z);
-  scene.add(rail);
-  cameraScenery.push(rail);
-}
-
-/** A 1.8 m reference figure: the only way to read speed and jump height. */
-const reference = new THREE.Mesh(
-  new THREE.CapsuleGeometry(0.35, 1.1, 4, 12),
-  new THREE.MeshStandardMaterial({ color: 0x8b6f47, roughness: 0.9 }),
-);
-reference.position.set(-3, 0.9, 3);
-reference.castShadow = true;
-reference.name = 'reference figure';
-scene.add(reference);
-cameraScenery.push(reference);
-// Also decoration, and a 1.8 m one standing 3 m from spawn: the single worst
-// thing for a shot to terminate on by accident.
 
 /**
  * The firing range: targets at known distances straight ahead of spawn.
@@ -226,7 +188,7 @@ cameraScenery.push(reference);
  * breacher's 6 m / 18 m one, so the drop-off is something you walk to rather
  * than read. Offset in x so they do not share a cell with a distance post.
  */
-const targets: THREE.Object3D[] = [reference];
+const targets: THREE.Object3D[] = [];
 const targetMat = new THREE.MeshStandardMaterial({ color: 0xcf6a4c, roughness: 0.85 });
 const targetGeo = new THREE.CapsuleGeometry(0.35, 1.1, 6, 14);
 for (const spec of RANGE_TARGETS) {

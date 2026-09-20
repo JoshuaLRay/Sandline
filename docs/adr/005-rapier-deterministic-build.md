@@ -106,3 +106,25 @@ of ADR-005 or ADR-014 is needed before M1.
 That is *local* determinism only — one machine, one engine. The cross-engine
 property this ADR actually buys is what the non-V8 CI job exists to verify, and
 it remains unverified until that job runs.
+
+## Addendum — 2026-09-19: the character controller does not use Rapier
+
+T-1.12's world collision landed as a shared static world of axis-aligned boxes
+resolved in pure arithmetic (`packages/shared/src/sim/world.ts`,
+`CharacterController.ts`), not as Rapier's kinematic character controller.
+
+The reason is §2.3's own: arithmetic and comparison are exactly specified by
+IEEE-754, so a box world gives client and server bit-identical prediction on
+every engine with no WASM in the prediction path, and the parity test can
+assert zero rather than a bound. The deterministic Rapier build would have
+given *bounded* agreement at the cost of a physics world on every client and
+in every server room, for geometry that is nothing but boxes.
+
+This does not reopen the decision above. Rapier remains the physics engine
+for anything dynamic — debris, ragdolls, projectiles with real arcs — and the
+`-deterministic-compat` build remains the one to use if any of that is ever
+predicted. What the box world cannot express (slopes, stairs beyond a step,
+round columns) is a level-design constraint accepted for M2's grey box; when
+levels need it, replace the world representation and keep the controller's
+contract: a pure function of (state, input, dt, config, world).
+

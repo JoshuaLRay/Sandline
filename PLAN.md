@@ -593,6 +593,20 @@ authoritative-server TPS feel good in a browser?*
 - **Do:** Rapier kinematic character controller. Walk, run, crouch, jump, slope limits, step offset, gravity. **Pure function of (state, input, dt)** — no hidden state, no wall-clock reads, no `Math.random`. Yaw→direction conversion **must** use T-0.14 table trig, never `Math.sin`/`Math.cos`. This is the single most likely source of a client/server drift that costs a week to diagnose, because it is invisible on a V8-to-V8 pairing (§2.3).
 - **Done when:** Using the T-0.11 harness, two instances over a fixed 500-tick sequence (slopes, steps, wall slides, jumps) diverge by under 1e-4 m, in Node and in at least one non-V8 browser engine. Movement constants live in the test fixture, not `data/*.json`. Peak divergence printed on every run.
 - **Size:** L
+- **Completed 2026-09-19, with one deliberate departure.** World collision is
+  against a shared static world of axis-aligned boxes
+  (`packages/shared/src/sim/world.ts`, cover in `data/world.json`) in pure
+  arithmetic, not Rapier's kinematic controller — see the ADR-005 addendum.
+  Walls, crates, posts and rails stop the player (slide, step-up to 0.45 m,
+  land on cover, head room) and stop shots on the server (`resolveShot`), and
+  the client renders, aim-converges and camera-collides against the same
+  list, which closes note 16's hand-maintained shootable set. The 500-tick
+  parity sequence (`test/harness/characterParity.test.ts`) walks steps, walls,
+  a jump onto cover and off it, and runs in the non-V8 browser job; measured
+  divergence is exactly 0. **Not done:** slopes and stairs beyond a step —
+  boxes cannot express them, and the grey-box firefight does not need them
+  first. If M3's levels do, the box world is the thing to replace, not the
+  controller's contract.
 
 #### T-1.13 — Server tick loop
 - **Depends:** T-1.12, T-1.09
@@ -1051,11 +1065,10 @@ leaf tasks, and M1.5 moves one of them:
 - **§9 Q6 — what fights back in M2?** Its exit gate says "grey-box firefight"
   and every AI epic is in M3. M1.5 softens this: the other human can be what
   fights back. Confirm at the gate rather than assuming it.
-- **Finish T-1.12.** It is PARTIAL: pure math on a flat plane, no collision.
-  World collision is what would let scenery stop a bullet and end the special
-  case where the shootable set has to be maintained by hand
-  (`packages/shared/src/sim/range.ts`, and note 16 in any handoff). T-1.5.03
-  raises the stakes on this — two humans and no cover is a thin firefight.
+- **Finish T-1.12.** ~~It is PARTIAL: pure math on a flat plane, no collision.~~
+  **Done 2026-09-19:** a shared box world that players and shots collide with
+  on both ends, and cover on the range (a doorway, low walls, crates, a step).
+  Slopes remain out; see the note under T-1.12.
 
 The pre-M0 list this section used to hold — answer Q1–Q4, create the repo, run
 T-0.13, then T-0.01→T-0.05 — is all done and has been removed. Replaced

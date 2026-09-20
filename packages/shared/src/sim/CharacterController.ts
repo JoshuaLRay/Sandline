@@ -16,6 +16,7 @@
  */
 import { type BinAngle, wireToTable } from '../math/angles.ts';
 import { sin, cos } from '../math/trig.ts';
+import { DEFAULT_WORLD, type WorldBox, overlapsFootprint } from './world.ts';
 
 export interface MoveState {
   x: number;
@@ -47,6 +48,16 @@ export interface MoveConfig {
   groundY: number;
   /** Terminal velocity, so a long fall cannot produce absurd numbers. */
   maxFallSpeed: number;
+  /**
+   * The soldier's footprint half-width and standing height, for collision
+   * (T-1.12). The footprint is a square, not a circle: box-against-box is a
+   * comparison, and the 5 cm of corner a circle would shave off is not worth
+   * a square root per box per tick. Matches the server hitbox's radius.
+   */
+  radius: number;
+  height: number;
+  /** Ledges up to this high are stepped onto; higher ones block. */
+  stepHeight: number;
 }
 
 /**
@@ -61,6 +72,9 @@ export const DEFAULT_MOVE_CONFIG: MoveConfig = {
   jumpSpeed: 6.0,
   groundY: 0,
   maxFallSpeed: -55,
+  radius: 0.35,
+  height: 1.8,
+  stepHeight: 0.45,
 };
 
 /** Clamp a stick axis. Guards against a hostile client sending moveX = 1e9. */
@@ -69,11 +83,37 @@ function axis(v: number): number {
   return v < -1 ? -1 : v > 1 ? 1 : v;
 }
 
+/**
+ * One tick of movement, with collision against `world` (T-1.12).
+ *
+ * The order is horizontal then vertical, and each horizontal axis separately:
+ *
+ *   1. X, then Z, each pushed out of any box that blocks at standing height.
+ *      Resolving the axes one at a time is what makes walking into a wall at
+ *      an angle SLIDE along it instead of stopping dead — the blocked axis
+ *      loses its motion and the other keeps its own. A box you could step
+ *      onto, or one entirely above your head, does not block.
+ *   2. Y against the highest surface under the footprint: the ground, or the
+ *      top of any box no higher than a step above the feet. Landing on it
+ *      grounds you; being above it does not. So walking off a crate falls,
+ *      walking onto a step rises, and a jump that comes down on cover stands
+ *      on it. A box overhead within standing height stops an upward move.
+ *
+ * Nothing here tunnels at the speeds this game has: the footprint is 0.7 m
+ * wide and sprint moves 0.23 m per tick, so a box thinner than a post still
+ * overlaps the footprint at every tick along the way.
+ *
+ * Still pure, still only arithmetic and comparison. `world` defaults to the
+ * shared static world so that every caller — server session, client
+ * predictor, headless bot — collides with the same scenery without being
+ * told; tests pass their own, per the fixture rule.
+ */
 export function stepCharacter(
   state: Readonly<MoveState>,
   input: Readonly<MoveInput>,
   dt: number,
   config: MoveConfig = DEFAULT_MOVE_CONFIG,
+  world: readonly WorldBox[] = DEFAULT_WORLD,
 ): MoveState {
   const mx = axis(input.moveX);
   const my = axis(input.moveY);
@@ -95,6 +135,29 @@ export function stepCharacter(
   const worldX = (my * s - mx * c) * speed * scale;
   const worldZ = (my * c + mx * s) * speed * scale;
 
+  const half = config.radius;
+  const feet = state.y;
+  /** Blocks horizontal movement: too tall to step onto, and not above the head. */
+  const blocks = (box: WorldBox): boolean =>
+    box.maxY > feet + config.stepHeight && box.minY < feet + config.height;
+
+  // 1. Horizontal, one axis at a time.
+  let x = state.x + worldX * dt;
+  if (worldX !== 0) {
+    for (const box of world) {
+      if (!blocks(box) || !overlapsFootprint(x, state.z, half, box)) continue;
+      x = worldX > 0 ? box.minX - half : box.maxX + half;
+    }
+  }
+  let z = state.z + worldZ * dt;
+  if (worldZ !== 0) {
+    for (const box of world) {
+      if (!blocks(box) || !overlapsFootprint(x, z, half, box)) continue;
+      z = worldZ > 0 ? box.minZ - half : box.maxZ + half;
+    }
+  }
+
+  // 2. Vertical.
   let vy = state.vy;
   let grounded = state.grounded;
 
@@ -109,19 +172,33 @@ export function stepCharacter(
   }
 
   let y = state.y + vy * dt;
-  if (y <= config.groundY) {
-    y = config.groundY;
+
+  // The highest surface under the footprint that the feet can reach: the
+  // ground, or a box top no more than a step above where the feet were. A box
+  // top far below the feet is also a candidate — that is what a fall lands on.
+  let support = config.groundY;
+  for (const box of world) {
+    if (box.maxY <= feet + config.stepHeight && box.maxY > support && overlapsFootprint(x, z, half, box)) {
+      support = box.maxY;
+    }
+  }
+  if (y <= support) {
+    y = support;
     vy = 0;
     grounded = true;
+  } else {
+    grounded = false;
   }
 
-  return {
-    x: state.x + worldX * dt,
-    y,
-    z: state.z + worldZ * dt,
-    vy,
-    grounded,
-  };
+  // Head room: a box overhead within standing height stops an upward move.
+  for (const box of world) {
+    if (box.minY >= y + config.stepHeight && box.minY < y + config.height && overlapsFootprint(x, z, half, box)) {
+      y = box.minY - config.height;
+      if (vy > 0) vy = 0;
+    }
+  }
+
+  return { x, y, z, vy, grounded };
 }
 
 export function createMoveState(x = 0, y = 0, z = 0): MoveState {
