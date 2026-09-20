@@ -157,7 +157,19 @@ export class Predictor {
     // Compare against our own prediction for that tick when we have it; against
     // where we currently believe we are when we do not.
     const reference = matched ? (this.history[matchIndex] as PredictionEntry).state : this.state;
-    const error = distance(reference, serverState);
+    const reconciledServerState =
+      serverState.vaulting && this.state.vaulting
+        ? {
+            ...serverState,
+            vaultStartX: this.state.vaultStartX,
+            vaultStartY: this.state.vaultStartY,
+            vaultStartZ: this.state.vaultStartZ,
+            vaultEndX: this.state.vaultEndX,
+            vaultEndY: this.state.vaultEndY,
+            vaultEndZ: this.state.vaultEndZ,
+          }
+        : serverState;
+    const error = distance(reference, reconciledServerState);
     if (error > this.peakError) this.peakError = error;
 
     if (matched && error <= CORRECTION_THRESHOLD_M) {
@@ -170,7 +182,7 @@ export class Predictor {
     const before = this.state;
 
     // Snap to authority, then re-apply what the server has not seen yet.
-    let replayed = serverState;
+    let replayed = reconciledServerState;
     this.history = [];
     for (const entry of unacked) {
       replayed = stepCharacter(replayed, entry.input, TICK_SECONDS, this.config);
