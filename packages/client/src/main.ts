@@ -69,7 +69,8 @@ import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
 import { WeaponEffects } from './weapons/effects.ts';
 import { addShake, applyShake, createShake, decayShake } from './camera/cameraShake.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
-import { createHumanoidPlaceholder, setHumanoidPose } from './character/humanoidPlaceholder.ts';
+import { createHumanoidPlaceholder, humanoidPose, setHumanoidPose } from './character/humanoidPlaceholder.ts';
+import { createLocomotionPoseDriver, type LocomotionPoseDriver } from './character/locomotionPose.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
 import { createNetworkPanel } from './ui/NetworkPanel.ts';
@@ -223,6 +224,7 @@ const AIM_RANGE = 250;
 
 
 const player = createHumanoidPlaceholder('local');
+const localPoseDriver = createLocomotionPoseDriver(player);
 scene.add(player);
 
 /**
@@ -234,6 +236,8 @@ scene.add(player);
  * still it is because nothing is driving them — not because they are scenery.
  */
 const remoteMeshes = new Map<number, THREE.Mesh>();
+const remotePoseDrivers = new Map<number, LocomotionPoseDriver>();
+const remoteRenderedPrev = new Map<number, { x: number; z: number }>();
 
 function remoteMesh(netId: number): THREE.Mesh {
   let mesh = remoteMeshes.get(netId);
@@ -244,6 +248,7 @@ function remoteMesh(netId: number): THREE.Mesh {
     mesh.name = `net ${netId}`;
     scene.add(mesh);
     remoteMeshes.set(netId, mesh);
+    remotePoseDrivers.set(netId, createLocomotionPoseDriver(mesh));
     // Created on demand, so it has to join the list on demand too. Leaving
     // remote players out is what produced the down-and-left shots.
     shootable.push(mesh);
@@ -479,10 +484,14 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
     const at = shootable.indexOf(mesh);
     if (at >= 0) shootable.splice(at, 1);
     remoteMeshes.delete(netId);
+    remotePoseDrivers.delete(netId);
+    remoteRenderedPrev.delete(netId);
   }
   combat.reset();
   effects.reset();
   setHumanoidPose(player, 'standing');
+  remotePoseDrivers.clear();
+  remoteRenderedPrev.clear();
   simPrev = null;
   simCur = null;
   player.visible = false;
@@ -851,7 +860,7 @@ function frame(): void {
 
   // Classify the rendered result, not the input. This keeps presentation tied to
   // what the player actually sees after prediction, interpolation and correction.
-  // T-2.18 will consume this result for the procedural gait.
+  // T-2.19 drives the same pose system from that rendered result.
   if (renderedPrev && dt > 0) {
     locomotion = classifyLocomotion(
       {
@@ -867,20 +876,56 @@ function frame(): void {
   }
   renderedPrev = { x: rx, z: rz };
 
-  // Remote characters at the interpolation delay (T-1.16).
+  const localDowned = net?.vitality === 'downed';
+  if (localDowned) {
+    localPoseDriver.reset();
+    setHumanoidPose(player, 'downed');
+  } else {
+    if (humanoidPose(player) === 'downed') setHumanoidPose(player, 'standing');
+    localPoseDriver.update(locomotion, dt);
+  }
+
+  // Remote characters at the interpolation delay (T-1.16). Their locomotion
+  // comes from the same rendered samples used to place them, so animation never
+  // feeds back into interpolation, hitboxes, or authoritative movement.
+  const seenRemoteIds = new Set<number>();
   for (const [netId, sample] of net?.remotes() ?? []) {
+    seenRemoteIds.add(netId);
     const mesh = remoteMesh(netId);
     mesh.position.set(sample.x, sample.y + 0.9, sample.z);
     const remoteYaw = wireToTable(sample.yaw);
     mesh.rotation.y = Math.atan2(sin(remoteYaw), cos(remoteYaw));
-    // The pose follows the server's word on them, not the interpolated
-    // position: a state has no in-between (T-2.14).
-    setHumanoidPose(mesh, net?.remoteVitality(netId) === 'downed' ? 'downed' : 'standing');
+
+    const previous = remoteRenderedPrev.get(netId);
+    const remoteVelocityX = previous && dt > 0 ? (sample.x - previous.x) / dt : 0;
+    const remoteVelocityZ = previous && dt > 0 ? (sample.z - previous.z) / dt : 0;
+    const remoteDowned = net?.remoteVitality(netId) === 'downed';
+    const driver = remotePoseDrivers.get(netId)!;
+    const remoteLocomotion = classifyLocomotion(
+      {
+        velocityX: remoteVelocityX,
+        velocityZ: remoteVelocityZ,
+        grounded: true,
+        crouched: false,
+        downed: remoteDowned,
+        facingYaw: sample.yaw,
+      },
+      config,
+    );
+    if (remoteDowned) {
+      driver.reset();
+      setHumanoidPose(mesh, 'downed');
+    } else {
+      if (humanoidPose(mesh) === 'downed') setHumanoidPose(mesh, 'standing');
+      driver.update(remoteLocomotion, dt);
+    }
+    remoteRenderedPrev.set(netId, { x: sample.x, z: sample.z });
+  }
+  for (const netId of remoteRenderedPrev.keys()) {
+    if (!seenRemoteIds.has(netId)) remoteRenderedPrev.delete(netId);
   }
 
   player.position.set(rx, ry + 0.9, rz);
-  const downed = net?.vitality === 'downed';
-  setHumanoidPose(player, downed ? 'downed' : 'standing');
 
   /**
    * Camera (T-2.01). The pivot, shoulder and arm arithmetic lives in
