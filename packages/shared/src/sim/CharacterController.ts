@@ -37,6 +37,8 @@ export interface MoveInput {
   jump: boolean;
   sprint: boolean;
   crouch: boolean;
+  /** T-2.15: hold the interact button to revive a nearby downed teammate. */
+  interact?: boolean;
   /**
    * Downed (T-2.13): crawling. Not a button — the server sets it from the
    * soldier's vitality and the client predictor from the replicated one, so
