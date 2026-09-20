@@ -1,4 +1,4 @@
-# Handoff — M1.5: two humans, one session
+# Handoff — M1.5: two humans, one session (closed)
 
 **Written 2026-09-18, after T-1.5.01 and T-1.5.02 landed. Updated the same day
 after T-1.5.04 through T-1.5.07 landed — see §2 and §3, which changed most.**
@@ -41,12 +41,12 @@ anyone joins a game.
 |---|---|---|
 | T-1.5.01 — session host process | **done** | `pnpm host` serves the real `Session` over a WebSocket; `pnpm bot --url` drives bots at it |
 | T-1.5.02 — client joins a remote host | **done** | `?host=ws://…` puts two browsers in one session |
-| T-1.5.03 — 🧍 LAN two-human gate | **open** | needs two people, nothing left to build |
+| T-1.5.03 — 🧍 LAN two-human gate | **passed** | human sign-off recorded in `docs/playtests/m1.5-lan.md` |
 | T-1.5.04 — join codes, typed rejections | **done** | protocol v6: room in `Join`/`JoinAck`, typed `Disconnect`, `Roster` |
 | T-1.5.05 — room registry | **done** | one process, many sessions, each on its own clock; reclaim; caps; `/healthz` |
 | T-1.5.06 — lobby | **done** | host / join / practise from the page; six-row squad panel; leave; share link |
-| T-1.5.07 — one deployed host | **built, not deployed** | Dockerfile, `fly.toml`, Host workflow, `DEPLOYING.md`; needs an account — see §4 |
-| T-1.5.08 — 🧍 remote two-human gate | **open** | closes R2 |
+| T-1.5.07 — one deployed host | **deployed** | live at `wss://sandline-host.fly.dev`; deployment and teardown remain in `docs/DEPLOYING.md` |
+| T-1.5.08 — 🧍 remote two-human gate | **passed** | human sign-off recorded in `docs/playtests/m1.5.md`; R2 closed |
 
 Measured at the end of T-1.5.02, two bots × 600 ticks on localhost:
 
@@ -152,87 +152,43 @@ one TCP socket (ADR-008). `SessionHost.ts` has the full reasoning.
 
 ---
 
-## 4. What has to be true before the QA site can do it
+## 4. Deployed-host status
 
-Everything in the chain below is built. What is left is an account:
+The M1.5 deployment gate is complete. The authoritative host is live at
+`wss://sandline-host.fly.dev`, and the published QA site uses it. The deployment
+recipe and teardown procedure remain in [`docs/DEPLOYING.md`](./DEPLOYING.md)
+for future maintenance and playtests.
 
-```
-T-1.5.04 (join codes on the wire)         done
-        ↓
-T-1.5.05 (many rooms in one process)      done
-        ↓
-T-1.5.06 (lobby UI)  ──┐                  done
-                        ├──→ the goal in §1
-T-1.5.07 (wss:// host) ─┘                 built; not deployed
-```
+The public host remains intentionally minimal: room codes are required, room and
+connection caps refuse excess load rather than degrade, and the Fly machine can
+be stopped between playtests. Real authentication remains E-4.6; nothing in
+M1.5 should be read as providing authentication.
 
-**Deploying is a person's job, once.** `docs/DEPLOYING.md` has the exact
-commands: `fly launch`, `fly deploy --ha=false`, set the `SANDLINE_HOST`
-repository variable to `wss://<app>.fly.dev`, let Pages rebuild. From then on
-the Host workflow redeploys on pushes that touch the host, if a `FLY_API_TOKEN`
-secret is set, and skips itself with a notice if not. The container was
-validated by replaying the Dockerfile's steps and booting the result — the
-image itself has not been built on a Docker daemon in this environment.
-
-Two things decided rather than left to discover:
-
-- **The build carries a default host.** `SANDLINE_HOST` at build time becomes
-  the lobby's pre-filled address; unset, the lobby says there is none and the
-  in-page session still works. The UI overrides it for a LAN or a local process.
-- **A public host is a public attack surface** with no accounts and a cost meter
-  running — R12, ~30 weeks early. What is in place: room codes required to
-  join (no listing anywhere, `/healthz` never shows them), `MAX_ROOMS` and a
-  connection cap that refuse rather than degrade, the smallest Fly machine,
-  and a machine that stops itself when the last socket closes and can be
-  pinned down with `fly scale count 0`. Real authentication is E-4.6 and
-  nothing before it should pretend otherwise.
+For local development, `pnpm host` and the lobby's host override remain useful.
+The debugging notes in §6 explain the failure modes discovered while building
+this milestone.
 
 ---
 
-## 5. The remaining tasks
+## 5. M1.5 is closed; M2 is current
 
-`PLAN.md` §6A has the full specs. Two 🧍 gates and one deploy remain.
+There are no remaining M1.5 build or human-gate tasks. The authoritative records
+are:
 
-### T-1.5.03 — 🧍 LAN two-human gate
+- T-1.5.03 passed; see [`docs/playtests/m1.5-lan.md`](./playtests/m1.5-lan.md).
+- T-1.5.08 passed; see [`docs/playtests/m1.5.md`](./playtests/m1.5.md).
+- R2 is closed, as recorded in `PLAN.md` and the ADR-012 addendum.
+- T-1.5.07 is deployed at `wss://sandline-host.fly.dev`.
 
-Nothing left to build. Two people, two machines, one host, per §3.
+The netgraph measurements requested by the original T-1.5.08 wording were not
+recorded during the sign-off. They are useful follow-up telemetry for a future
+two-person session, but they do **not** reopen M1.5 or block M2.
 
-**Recommendation: run this before deploying.** The gate judges *feel* under lag
-— two players contesting a doorway, trading shots inside the same rewind
-window, whether "I shot first" resolves in a way both people accept. How you
-joined is irrelevant to that verdict, and a bad verdict sends the project back
-to ADR-012 and changes what is worth building next.
+**Current work is M2 — Shooter feel.** Continue from `PLAN.md` §7. The M1.5
+implementation and playtest notes below are retained as operational/debugging
+reference rather than as an open-task checklist.
 
-Write the verdict into `docs/playtests/m1.5-lan.md`, beside `m1.md` (T-1.24's
-verdict, which now exists). State what a LAN leaves unproven: NAT, internet
-jitter distributions, routing, and any latency a slider did not put there.
-
-### T-1.5.07 — one deployed host: the deploy itself
-
-`docs/DEPLOYING.md`, "The deployed host". Twenty minutes with a Fly account.
-Its own acceptance — two people on different networks, the host surviving both
-leaving and a third joining — is what T-1.5.08 does anyway.
-
-### T-1.5.08 — 🧍 remote two-human gate
-
-The verdict T-1.5.03 gives at LAN, repeated across the internet with
-conditioning off. Record measured RTT, jitter and loss from the netgraph beside
-each judgement, so it can be read against the NetSim cells T-1.22 asserts in CI.
-Where they disagree, **the real link is right and the model needs revisiting**.
-
-Carries the same stop rule as T-1.24: if it fails, go back to ADR-012 before M2
-continues. R2 closes here.
-
-### What T-1.5.04–07 deliberately left out
-
-Matchmaking, parties, region selection, ready-checks, class selection (E-4.5,
-E-4.7). Reconnecting to the *same slot* after a drop — a returning player gets
-a new slot in the same room (ADR-011's reconnect is not this milestone). A
-bundled server image — it runs from source through tsx, the same files
-`pnpm host` runs. Multi-region, allocation, autoscaling (E-4.9).
-
----
-
+### Historical M1.5 task notes
 ## 6. Findings the next task needs
 
 ### The bug that will happen again in a different costume
@@ -337,7 +293,7 @@ headless run; read them off a real browser.
 
 From `PLAN.md` §0.3, and they apply to every task above:
 
-1. `pnpm verify` must pass. **425 tests** as of T-1.5.07.
+1. `pnpm verify` must pass. **473 tests** in the current green verification baseline.
 2. Tests ship with the code. Netcode changes need a headless test.
 3. No new runtime dependency without an ADR line. (T-1.5.01 added none —
    `pnpm bot --url` uses Node 22's own global `WebSocket`.)
