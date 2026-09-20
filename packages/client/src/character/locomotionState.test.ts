@@ -60,7 +60,7 @@ describe('locomotion state classifier (T-2.17)', () => {
   it('handles yaw when deriving local movement direction', () => {
     // At 90 degrees, world +X is local forward.
     expect(sample(1, 0, { facingYaw: 256 }).direction).toBe('forward');
-    expect(sample(0, 1, { facingYaw: 256 }).direction).toBe('left');
+    // At the same yaw, world +Z is local right.\n    expect(sample(0, 1, { facingYaw: 256 }).direction).toBe('right');
   });
 
   it('distinguishes walk and sprint from the resulting speed', () => {
