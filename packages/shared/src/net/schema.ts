@@ -80,7 +80,7 @@ export const SCHEMAS: readonly ComponentSchema[] = [
         uint('state', 2),
         uint('timer', 6),
         uint('reviveProgress', 7),
-        uint('reviverNetId', 3),
+        uint('reviverSlot', 3),
       ],
   },
   {
