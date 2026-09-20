@@ -832,7 +832,7 @@ using the T-1.xx tasks above as the template for granularity.
 | Epic | Scope | Notes |
 |---|---|---|
 | E-2.1 | Third-person camera | Spring arm, collision, shoulder swap, ADS transition · 🧍 |
-| E-2.2 | Locomotion state machine | Blend tree, 8-way movement, crouch, vault |
+| E-2.2 | Locomotion state machine & character presentation | Shared humanoid model/rig, blend tree, 8-way movement, crouch, vault |
 | E-2.3 | Animation system | Aim offsets (additive), reload/fire layers, hit reactions, IK foot placement |
 | E-2.4 | Weapon feel | Recoil patterns, camera shake, muzzle flash, tracers, shell ejection · 🧍 |
 | E-2.5 | Projectile weapons | Grenades, RPG — ballistic arcs, network-replicated |
@@ -913,11 +913,11 @@ that shoots.
 
 ### 7.2 E-2.2 leaf tasks — broken out 2026-09-20
 
-E-2.2 is the next build epic after the completed E-2.1, E-2.4, and E-2.6 gates. The boundary is that this epic owns locomotion state and movement presentation; E-2.3 owns the broader animation stack (aim offsets, reload/fire layers, hit reactions, and IK). No production art or skeletal asset pipeline is pulled forward from M4.
+E-2.2 is the next build epic after the completed E-2.1, E-2.4, and E-2.6 gates. The boundary is that this epic owns locomotion state and movement presentation; E-2.3 owns the broader animation stack (aim offsets, reload/fire layers, hit reactions, and IK). No general production art or full skeletal asset pipeline is pulled forward from M4. M2 does, however, pull forward one reusable, game-ready humanoid soldier model/rig so the locomotion work is validated on an actual character rather than the grey-box placeholder.
 
 **What already exists.** CharacterController already owns authoritative walk, sprint, crouch and crawl speeds, jump, gravity, ground state and collision. LocalInput already produces movement axes, sprint/crouch/jump, yaw and the downed state. T-2.06 provides a shared grey-box humanoid for local and remote soldiers. E-2.2 therefore should not rewrite movement physics or introduce a second movement simulation. It should turn the existing movement state into a coherent visual state, and add vault only where the current step-up controller cannot provide the intended traversal.
 
-**Two rules for this epic.** First, the server remains authoritative for movement and any new vault/crouch collision state; the client may predict only what the existing character controller already predicts. Second, the grey-box body is the temporary animation target. Build the state/pose interfaces so a skeletal rig can replace the renderer later without changing the movement contract.
+**Two rules for this epic.** First, the server remains authoritative for movement and any new vault/crouch collision state; the client may predict only what the existing character controller already predicts. Second, the character presentation target is upgraded during this epic: the grey-box body remains the fallback/test fixture, but the M2 gate must exercise a reusable humanoid soldier model with a production-oriented rig. Build the state/pose interfaces so the model can replace the placeholder without changing the movement contract.
 
 #### T-2.17 — Locomotion state model
 - **Depends:** T-2.06, T-1.12
@@ -954,17 +954,24 @@ E-2.2 is the next build epic after the completed E-2.1, E-2.4, and E-2.6 gates. 
 - **Done when:** shared tests cover valid vaults, too-low step-through, too-high rejection, blocked landing, loss of forward intent, and frame-rate-independent traversal; a two-client session test shows the remote player vaulting from the same authoritative state without divergence beyond the existing movement bound. No vault can start while downed, dead, crouched, or firing.
 - **Size:** L
 
-#### T-2.22 — Vault presentation and locomotion polish
+#### T-2.22 — Humanoid character model and rig integration
+- **Depends:** T-2.19
+- **Files:** packages/client/src/character/humanoidPlaceholder.ts, packages/client/src/character/, packages/client/src/main.ts, tests, docs/adr/ (only if a new runtime asset dependency is introduced)
+- **Do:** Replace the grey-box soldier as the primary local/remote presentation with one reusable humanoid soldier model suitable for M2 playtesting. Establish a stable skeleton/rig contract for locomotion, crouch, crawl/downed and vault poses, and route the existing locomotion classifier/pose driver through that contract. Keep the grey-box implementation available as a lightweight fallback/diagnostic fixture. Do not build the general Blender → glTF production pipeline here; the asset must be committed or otherwise sourced under a documented license, and the runtime integration must use the existing Three.js asset-loading approach or add an ADR for any new runtime dependency.
+- **Done when:** the browser harness renders the humanoid model for both local and remote soldiers; the model has a stable root/aim attachment and does not change authoritative position, yaw, hitbox identity or network state; locomotion state transitions can drive the rig without per-state renderer hacks; the grey-box fallback still passes its existing tests; and `pnpm verify` passes.
+- **Size:** M
+
+#### T-2.23 — Vault presentation and locomotion polish
 - **Depends:** T-2.21
 - **Files:** packages/client/src/character/locomotionPose.ts, packages/client/src/character/humanoidPlaceholder.ts, packages/client/src/main.ts, tests
 - **Do:** Add the grey-box vault pose and blend entry/exit with the locomotion state machine. Preserve existing camera and weapon presentation contracts: vault changes the body pose and authoritative position, but does not create an alternate camera or firing path. Add small procedural anticipation/landing offsets only to visible parts.
 - **Done when:** tests assert vault pose entry/exit restores exact standing/crouch rest transforms, local and remote vaults use the same state, and the weapon/aim root remains valid throughout. A browser harness records a complete step → vault → landing cycle with no visible pose snap.
 - **Size:** M
 
-#### T-2.23 — 🧍 E-2.2 sign-off
-- **Depends:** T-2.17, T-2.18, T-2.19, T-2.20, T-2.21, T-2.22
+#### T-2.24 — 🧍 E-2.2 sign-off
+- **Depends:** T-2.17, T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Files:** docs/playtests/e2-2.md
-- **Do:** A human runs the grey-box range through idle, walk, sprint, all eight movement directions, crouch, jump, vault and crawl. Test the same states on a second human over the deployed host. Judge whether locomotion reads naturally, direction changes do not snap, crouch is useful and readable, vault timing feels controllable, and remote movement remains visually believable.
+- **Do:** A human runs the grey-box range through idle, walk, sprint, all eight movement directions, crouch, jump, vault and crawl on the humanoid model. Verify the grey-box fallback separately. Test the same states on a second human over the deployed host. Judge whether locomotion reads naturally, direction changes do not snap, crouch is useful and readable, vault timing feels controllable, and remote movement remains visually believable.
 - **Done when:** a written verdict exists, including any tuned movement/animation values and what the test does and does not establish. The verdict must pass before E-2.2 is complete.
 - **Size:** S
 
@@ -1230,10 +1237,7 @@ E-2.4, and E-2.6 are now built and human-signed off. The three M2 human gates
 (T-2.07, T-2.12, T-2.16) have passed on the owner's judgement. CI remains
 green, including the non-V8 parity job.
 
-1. **Begin E-2.2 — Animation & Character Feel.** M2's next build epic is E-2.2.
-   Break it into leaf tasks at the planning gate before implementation, following
-   §0.5 and the lessons from the completed camera, weapon-feel, and downed/revive
-   work.
+1. **Continue E-2.2 — Animation & Character Feel.** E-2.2 is broken into T-2.17 through T-2.24. The humanoid character model/rig is now an explicit M2 task (T-2.22), before the E-2.2 human gate, so the milestone is not signed off on pill/grey-box characters.
 2. **Keep tuning data opportunistically.** Weapon and downed values remain
    data-driven; adjust them when a concrete playtest issue appears rather than
    reopening completed gates without a reason.
