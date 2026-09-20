@@ -15,7 +15,7 @@ import { isRoomCode } from './roomCode.ts';
 export const PROTOCOL_VERSION = 10;
 
 /** Input button bits carried on the unreliable input frame. */
-export const INPUT_BUTTONS = Object.freeze({ jump: 0b001, sprint: 0b010, crouch: 0b100, interact: 0b1000, firing: 0b10000 });
+export const INPUT_BUTTONS = Object.freeze({ jump: 0b001, sprint: 0b010, crouch: 0b100, interact: 0b1000, fire: 0b10000 });
 
 /**
  * Why a connection ended, as a type rather than a sentence (T-1.5.04).
