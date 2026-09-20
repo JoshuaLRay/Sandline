@@ -982,6 +982,16 @@ and lines, pooled and capped like the tracers already are (§0.3 rule 3).
 - **Do:** Where a round stops, something happens. A scenery hit (a `HitEvent` on netId 0, from T-1.12) spawns a short spark burst and a fading decal-sized quad at the impact point on the wall; a player hit already lands the marker and adds a brief flinch on the humanoid. Predicted tracers end at the local raycast as now; the impact is drawn when the server confirms the point, which is the honest order.
 - **Done when:** firing at the doorway wall from spawn produces an impact at the server's point every time, none at the tracer's predicted end when the two differ, and the pool stays capped under a held trigger.
 - **Size:** S
+- **Completed 2026-09-20.** `surfaceAt` (shared, pure) tells a scenery
+  stop from a max-range miss by whether the server's point lies on a face
+  of the shared world, since the hit event does not say; the tolerance is
+  the wire's 1/64 m position step, because the point arrives quantized,
+  and the mark is snapped back onto the face. The ground is not
+  in the server's world, so it gets no mark, which is honest. Impacts are a
+  decal quad turned onto the face plus seeded sparks on closed-form arcs,
+  pooled and capped in `effects.ts`; a soldier hit jerks the upper body
+  back and recovers to the exact resting pose. Only `onServerShot` calls
+  `impact`; the predicted tracer's end is never used.
 
 #### T-2.12 — 🧍 E-2.4 sign-off
 - **Depends:** T-2.08, T-2.09, T-2.10, T-2.11

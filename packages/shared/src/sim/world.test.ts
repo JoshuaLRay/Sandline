@@ -9,8 +9,11 @@ import {
   loadCover,
   overlapsFootprint,
   postBoxes,
+  WIRE_POINT_TOLERANCE_M,
   rayWorld,
+  surfaceAt,
 } from './world.ts';
+import { POSITION, dequantize, quantize } from '../net/quantize.ts';
 
 const box = (id: string, x: number, y: number, z: number, w: number, h: number, d: number): WorldBox =>
   boxFrom({ id, x, y, z, w, h, d }, 'cover');
@@ -124,5 +127,74 @@ describe('rayWorld', () => {
     const a = rayWorld(ray, DEFAULT_WORLD);
     const b = rayWorld(ray, [...DEFAULT_WORLD]);
     expect(a).toEqual(b);
+  });
+});
+
+describe('surfaceAt: which face a server point lies on (T-2.11)', () => {
+  const wall = DEFAULT_WORLD.find((b) => b.id === 'west-wall-b');
+  if (!wall) throw new Error('fixture: west-wall-b missing');
+  /** From the spawn line (z = -6, eye height) toward the doorway wall's south face. */
+  const eye = { x: 0, y: 1.55, z: -6 };
+  const towards = (x: number, y: number, z: number) => {
+    const dx = x - eye.x;
+    const dy = y - eye.y;
+    const dz = z - eye.z;
+    const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    return { x: dx / len, y: dy / len, z: dz / len };
+  };
+
+  it('finds the doorway wall under the server\'s stopping point, every time', () => {
+    for (let i = 0; i < 20; i += 1) {
+      // Sweep the face just east of the doorway (x -7.6 .. -6.4): clear of the
+      // reference figure at x -4.5, which shadows the wall's east end from here.
+      const aimX = -7.6 + (i / 19) * 1.2;
+      const aimY = 0.3 + (i % 5) * 0.45;
+      const hit = rayWorld({ origin: eye, direction: towards(aimX, aimY, wall.minZ), maxDistance: 100 }, DEFAULT_WORLD);
+      expect(hit?.box.id).toBe('west-wall-b');
+      if (!hit) return;
+      const surface = surfaceAt(hit.point, DEFAULT_WORLD);
+      expect(surface?.box.id).toBe('west-wall-b');
+      expect(surface?.normal).toEqual({ x: 0, y: 0, z: -1 });
+      expect(surface?.point.z).toBe(wall.minZ);
+    }
+  });
+
+  it('still finds the face after the point has been through the wire, and snaps it back on', () => {
+    const wire = (v: number) => dequantize(quantize(v, POSITION), POSITION);
+    for (let i = 0; i < 20; i += 1) {
+      const aimX = -7.6 + (i / 19) * 1.2;
+      const aimY = 0.3 + (i % 5) * 0.45;
+      const hit = rayWorld({ origin: eye, direction: towards(aimX, aimY, wall.minZ), maxDistance: 100 }, DEFAULT_WORLD);
+      if (!hit) throw new Error('the sweep must hit the wall');
+      const arrived = { x: wire(hit.point.x), y: wire(hit.point.y), z: wire(hit.point.z) };
+      expect(Math.abs(arrived.z - wall.minZ)).toBeLessThanOrEqual(WIRE_POINT_TOLERANCE_M / 2 + 1e-12);
+      const surface = surfaceAt(arrived, DEFAULT_WORLD);
+      expect(surface?.box.id).toBe('west-wall-b');
+      expect(surface?.point).toEqual({ x: arrived.x, y: arrived.y, z: wall.minZ });
+    }
+  });
+
+  it('is null for a max-range miss in the air and for the ground, which the server does not have', () => {
+    const miss = towards(0, 1.55, 40);
+    expect(surfaceAt({ x: eye.x + miss.x * 100, y: eye.y + miss.y * 100, z: eye.z + miss.z * 100 }, DEFAULT_WORLD)).toBeNull();
+    expect(surfaceAt({ x: 0, y: 0, z: 0 }, DEFAULT_WORLD)).toBeNull();
+    expect(surfaceAt({ x: 0, y: -3, z: 20 }, DEFAULT_WORLD)).toBeNull();
+  });
+
+  it('reports the top of a crate and the far side of a wall with the right normals', () => {
+    const crate = DEFAULT_WORLD.find((b) => b.id === 'crate-a');
+    if (!crate) throw new Error('fixture: crate-a missing');
+    expect(surfaceAt({ x: -9, y: crate.maxY, z: 9 }, DEFAULT_WORLD)?.normal).toEqual({ x: 0, y: 1, z: 0 });
+    expect(surfaceAt({ x: -6, y: 1, z: wall.maxZ }, DEFAULT_WORLD)?.normal).toEqual({ x: 0, y: 0, z: 1 });
+    expect(surfaceAt({ x: wall.minX, y: 1, z: 4 }, DEFAULT_WORLD)?.normal).toEqual({ x: -1, y: 0, z: 0 });
+  });
+
+  it('does not claim a point deep inside a box or just beyond the tolerance', () => {
+    const tol = WIRE_POINT_TOLERANCE_M;
+    expect(surfaceAt({ x: -6, y: 1, z: 4 }, DEFAULT_WORLD)).toBeNull();
+    expect(surfaceAt({ x: -6, y: 1, z: wall.minZ - tol * 1.5 }, DEFAULT_WORLD)).toBeNull();
+    expect(surfaceAt({ x: -6, y: 1, z: wall.minZ - tol * 0.5 }, DEFAULT_WORLD)?.normal).toEqual({ x: 0, y: 0, z: -1 });
+    // A caller may ask for exactness.
+    expect(surfaceAt({ x: -6, y: 1, z: wall.minZ - 0.002 }, DEFAULT_WORLD, 1e-3)).toBeNull();
   });
 });

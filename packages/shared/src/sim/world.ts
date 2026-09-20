@@ -26,6 +26,7 @@
  * hard-code. Positions are what the renderer draws; there is no second copy.
  */
 import RAW_WORLD from '../data/world.json' with { type: 'json' };
+import { POSITION } from '../net/quantize.ts';
 
 export type WorldBoxKind = 'post-minor' | 'post-major' | 'rail' | 'figure' | 'cover';
 
@@ -234,6 +235,73 @@ export function rayWorld(ray: WorldRay, world: readonly WorldBox[]): WorldHit | 
     distance: bestT,
     point: { x: o.x + d.x * bestT, y: o.y + d.y * bestT, z: o.z + d.z * bestT },
   };
+}
+
+export interface WorldSurface {
+  box: WorldBox;
+  /** Outward unit normal of the face, axis-aligned. */
+  normal: { x: number; y: number; z: number };
+  /** The point snapped onto the face along its normal. */
+  point: { x: number; y: number; z: number };
+}
+
+/**
+ * How far a wire point may sit off a face and still be on it: one position
+ * quantum. Hit events carry positions at wire precision (T-1.02), so the
+ * server's exact stopping point arrives rounded by up to half a step.
+ */
+export const WIRE_POINT_TOLERANCE_M = POSITION.step;
+
+/**
+ * The face of the world a point lies on, or null (T-2.11).
+ *
+ * The server's hit event carries a point and nothing else. When the target
+ * is netId 0 that point is EITHER where a round stopped on scenery OR the end
+ * of a ray that hit nothing, at max range in the air; the message does not
+ * say which, and a client that drew an impact at every such point would
+ * paint marks in the sky. This tells them apart from the geometry: a point
+ * within `tolerance` of a box face is on that face, with that face's normal.
+ * The ground is not in the server's world, so a shot into it is a miss here
+ * as it is there, which is honest: nobody confirmed a round stopped on it.
+ *
+ * The default tolerance is the wire's own position step, because the point
+ * has been through the wire; the returned point is snapped back onto the
+ * face so a mark drawn there sits ON the wall, not a few millimetres off it.
+ *
+ * Pure comparison and subtraction, so it is safe under ADR-014.
+ */
+export function surfaceAt(
+  point: { x: number; y: number; z: number },
+  world: readonly WorldBox[],
+  tolerance = WIRE_POINT_TOLERANCE_M,
+): WorldSurface | null {
+  let best: WorldSurface | null = null;
+  let bestGap = tolerance;
+  for (const box of world) {
+    if (
+      point.x < box.minX - tolerance || point.x > box.maxX + tolerance ||
+      point.y < box.minY - tolerance || point.y > box.maxY + tolerance ||
+      point.z < box.minZ - tolerance || point.z > box.maxZ + tolerance
+    ) {
+      continue;
+    }
+    // [gap, normal, the snapped point]
+    const faces: [number, number, number, number, { x: number; y: number; z: number }][] = [
+      [Math.abs(point.x - box.minX), -1, 0, 0, { x: box.minX, y: point.y, z: point.z }],
+      [Math.abs(point.x - box.maxX), 1, 0, 0, { x: box.maxX, y: point.y, z: point.z }],
+      [Math.abs(point.y - box.minY), 0, -1, 0, { x: point.x, y: box.minY, z: point.z }],
+      [Math.abs(point.y - box.maxY), 0, 1, 0, { x: point.x, y: box.maxY, z: point.z }],
+      [Math.abs(point.z - box.minZ), 0, 0, -1, { x: point.x, y: point.y, z: box.minZ }],
+      [Math.abs(point.z - box.maxZ), 0, 0, 1, { x: point.x, y: point.y, z: box.maxZ }],
+    ];
+    for (const [gap, x, y, z, snapped] of faces) {
+      if (gap <= bestGap) {
+        bestGap = gap;
+        best = { box, normal: { x, y, z }, point: snapped };
+      }
+    }
+  }
+  return best;
 }
 
 /** True when a square footprint of half-size `half` at (x, z) overlaps the box in the ground plane. */

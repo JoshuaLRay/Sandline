@@ -62,7 +62,7 @@ import {
   shareLink,
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
-import { DEFAULT_WORLD, type WorldBoxKind, boxCentre } from '@sandline/shared';
+import { DEFAULT_WORLD, type WorldBoxKind, boxCentre, surfaceAt } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
@@ -325,6 +325,7 @@ const shotOrigin = new THREE.Vector3();
 const shotEnd = new THREE.Vector3();
 function onServerShot(net: NetClient, shot: ServerShot): void {
   shotEnd.set(shot.x, shot.y, shot.z);
+  landImpact(net, shot);
   if (shot.shooterNetId === net.netId) {
     // Our own shot: the tracer is already drawn, so this only lands the hit
     // marker and the damage number.
@@ -342,6 +343,25 @@ function onServerShot(net: NetClient, shot: ServerShot): void {
   else shotOrigin.set(shot.x, shot.y, shot.z);
   combat.drawTracer(shotOrigin, shotEnd, clock.tick * TICK_SECONDS);
   combat.drawServerShot(shotOrigin, shotEnd, shot.targetNetId, shot.damage, clock.tick * TICK_SECONDS);
+}
+
+/**
+ * Where the round stopped, from the SERVER'S point (T-2.11) — never from the
+ * predicted tracer's end, which is only a picture. A scenery stop is a mark
+ * and sparks on the face the point lies on; a max-range miss lies on no face
+ * and gets nothing. A soldier hit flinches: ours in third person, theirs by
+ * their replicated mesh.
+ */
+function landImpact(net: NetClient, shot: ServerShot): void {
+  const now = clock.tick * TICK_SECONDS;
+  if (shot.targetNetId === 0) {
+    const surface = surfaceAt(shot, DEFAULT_WORLD);
+    // The wire rounds the point to 1/64 m; the mark goes on the face itself.
+    if (surface) effects.impact(surface.point, surface.normal, now);
+    return;
+  }
+  const target = shot.targetNetId === net.netId ? player : remoteMeshes.get(shot.targetNetId);
+  if (target) effects.flinch(target, now);
 }
 
 function startSession(choice: LobbyChoice): void {
