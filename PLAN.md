@@ -943,6 +943,11 @@ and lines, pooled and capped like the tracers already are (§0.3 rule 3).
 - **Do:** Per-weapon recoil in data: a vertical kick per shot, a horizontal drift per shot with a seeded sign so a burst walks a repeatable pattern, a cap, and a recovery rate. A pure `recoil.ts` accumulates kicks and recovers them (exponential, frame-rate independent, the T-2.02 form). The client adds the accumulated offset to its view yaw/pitch — the aim the next shot is fired along — and the recovery pulls the view back only by what recoil added, never by what the mouse moved. ADS scales the kick down by a per-weapon factor.
 - **Done when:** tests assert a burst of N shots produces the pattern in data exactly, that recovery returns the offset to zero within a bound derived from the rate, that the same recovery at 30 and 120 fps lands within 1e-6, and that mouse movement during recovery is preserved. Every weapon in `weapons.json` validates with the new fields.
 - **Size:** M
+- **Completed 2026-09-20.** `recoil.ts` lives in `packages/client/src/weapons/`
+  rather than `shared`: it is view state the server never runs, and its
+  recovery uses `Math.exp`, which §2.3 bans from the shared simulation. The
+  data and its validation are in `shared` as specified. Fields are flat on
+  `WeaponDef` (`recoilKickDeg` etc.) so the weapon panel's sliders reach them.
 
 #### T-2.09 — Camera shake
 - **Depends:** T-2.01

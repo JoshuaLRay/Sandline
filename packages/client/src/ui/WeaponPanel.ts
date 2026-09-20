@@ -38,6 +38,12 @@ const ROWS: Row[] = [
   { key: 'falloffEndM', label: 'Falloff end', min: 0, max: 250, step: 1 },
   { key: 'falloffMinFraction', label: 'Falloff floor', min: 0, max: 1, step: 0.05 },
   { key: 'maxRangeM', label: 'Max range', min: 5, max: 300, step: 5 },
+  // T-2.08. Recoil moves the view, never the shot: tune it by feel.
+  { key: 'recoilKickDeg', label: 'Recoil kick', min: 0, max: 6, step: 0.05 },
+  { key: 'recoilDriftDeg', label: 'Recoil drift', min: 0, max: 3, step: 0.05 },
+  { key: 'recoilMaxDeg', label: 'Recoil cap', min: 0, max: 20, step: 0.5 },
+  { key: 'recoilRecoveryPerSec', label: 'Recoil recovery', min: 1, max: 30, step: 0.5 },
+  { key: 'recoilAdsScale', label: 'Recoil aimed x', min: 0, max: 1, step: 0.05 },
 ];
 
 const JSON_ORDER: (keyof WeaponDef)[] = [

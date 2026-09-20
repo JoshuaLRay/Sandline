@@ -66,6 +66,7 @@ import { DEFAULT_WORLD, type WorldBoxKind, boxCentre } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
+import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
 import { createHumanoidPlaceholder } from './character/humanoidPlaceholder.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
@@ -249,6 +250,13 @@ function remoteMesh(netId: number): THREE.Mesh {
 }
 
 const combat = new CombatQA(scene, shootable);
+/**
+ * Recoil (T-2.08): a view offset the trigger kicks and every frame recovers.
+ * Applied on the tick a shot resolves, so the NEXT shot fires along the
+ * kicked view; recovered per frame, so the climb unwinds smoothly at any
+ * frame rate. The server never sees any of it — only where the view points.
+ */
+let recoil = createRecoil();
 
 /* -- Network --------------------------------------------------------------- */
 
@@ -730,6 +738,10 @@ function frame(): void {
       // Sent at table resolution, so the server traces the exact angles this
       // client computed and the predicted tracer shares them without rounding.
       net.fire(tickNumber, aimYaw, aimPitch, combat.weaponIndex, input.ads);
+      // Kick AFTER the shot is sent: this shot goes where the view pointed,
+      // the next goes where the kick leaves it.
+      recoil = applyKick(recoil, combat.weapon, combat.shotsFired, input.ads);
+      input.setViewOffset(recoil.yaw, recoil.pitch);
 
       /**
        * Draw it NOW. The same seeded spread the server will compute — the seed
@@ -748,6 +760,11 @@ function frame(): void {
   server?.pump(now);
   net?.advanceClock(dt * 1000);
   sparring?.advanceClock(dt * 1000);
+
+  if (recoil.pitch !== 0 || recoil.yaw !== 0) {
+    recoil = recoverRecoil(recoil, combat.weapon, dt);
+    input.setViewOffset(recoil.yaw, recoil.pitch);
+  }
 
   /**
    * Render BETWEEN ticks, exactly as the local harness did before it was

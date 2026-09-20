@@ -63,6 +63,19 @@ export interface WeaponDef {
    * down), not a presentation detail — so it lives in data with the rest.
    */
   auto: boolean;
+  /**
+   * Recoil (T-2.08): what one shot does to the VIEW, in degrees. Never to the
+   * server's ray — the next shot fires wherever the kicked view then points,
+   * and the server already resolves that. Kick is straight up; drift is
+   * sideways with a seeded sign per shot so a burst walks a pattern the player
+   * can learn; the total is capped; recovery is an exponential rate in
+   * reciprocal seconds; aiming scales the kick by `recoilAdsScale`.
+   */
+  recoilKickDeg: number;
+  recoilDriftDeg: number;
+  recoilMaxDeg: number;
+  recoilRecoveryPerSec: number;
+  recoilAdsScale: number;
 }
 
 /**
@@ -156,6 +169,11 @@ function parseWeaponDef(key: string, raw: unknown): WeaponDef {
     magSize: num(row, 'magSize', key, 1, 500),
     reloadSeconds: num(row, 'reloadSeconds', key, 0, 60),
     auto: bool(row, 'auto', key),
+    recoilKickDeg: num(row, 'recoilKickDeg', key, 0, 30),
+    recoilDriftDeg: num(row, 'recoilDriftDeg', key, 0, 30),
+    recoilMaxDeg: num(row, 'recoilMaxDeg', key, 0, 60),
+    recoilRecoveryPerSec: num(row, 'recoilRecoveryPerSec', key, 0.1, 100),
+    recoilAdsScale: num(row, 'recoilAdsScale', key, 0, 1),
   };
 
   if (!Number.isInteger(def.pellets)) throw new WeaponDataError(`weapon "${key}": pellets must be an integer`);
@@ -168,6 +186,9 @@ function parseWeaponDef(key: string, raw: unknown): WeaponDef {
   }
   if (def.adsSpreadDeg > def.hipSpreadDeg) {
     throw new WeaponDataError(`weapon "${key}": adsSpreadDeg (${def.adsSpreadDeg}) exceeds hipSpreadDeg (${def.hipSpreadDeg})`);
+  }
+  if (def.recoilMaxDeg < def.recoilKickDeg) {
+    throw new WeaponDataError(`weapon "${key}": recoilMaxDeg (${def.recoilMaxDeg}) is below recoilKickDeg (${def.recoilKickDeg}) — one shot would exceed the cap`);
   }
   return def;
 }
