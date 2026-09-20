@@ -27,6 +27,14 @@ export interface MoveState {
   grounded: boolean;
   /** Authoritative crouch stance; remains crouched until standing clearance exists. */
   crouched: boolean;
+  vaulting: boolean;
+  vaultProgress: number;
+  vaultStartX: number;
+  vaultStartY: number;
+  vaultStartZ: number;
+  vaultEndX: number;
+  vaultEndY: number;
+  vaultEndZ: number;
 }
 
 export interface MoveInput {
@@ -47,6 +55,10 @@ export interface MoveInput {
    * both step the same input. Sprint and jump are ignored while it is set.
    */
   downed?: boolean;
+  /** T-2.21: jump is the vault request; the authoritative controller decides. */
+  vault?: boolean;
+  /** Held trigger state, used to reject vault while firing. */
+  firing?: boolean;
 }
 
 export interface MoveConfig {
@@ -55,6 +67,9 @@ export interface MoveConfig {
   crouchSpeed: number;
   /** Downed and crawling (T-2.13). */
   crawlSpeed: number;
+  vaultHeight: number;
+  vaultDistance: number;
+  vaultDuration: number;
   gravity: number;
   jumpSpeed: number;
   groundY: number;
@@ -83,6 +98,9 @@ export const DEFAULT_MOVE_CONFIG: MoveConfig = {
   sprintSpeed: 6.8,
   crouchSpeed: 1.9,
   crawlSpeed: 1.2,
+  vaultHeight: 1.35,
+  vaultDistance: 1.4,
+  vaultDuration: 0.45,
   gravity: -19.6,
   jumpSpeed: 6.0,
   groundY: 0,
@@ -155,6 +173,43 @@ export function stepCharacter(
   const a: BinAngle = wireToTable(input.yaw);
   const s = sin(a);
   const c = cos(a);
+
+  // Vault traversal is an explicit state. Jump is only a request; this same
+  // detector runs on both client and server, while the server's replicated
+  // Vault component is the authoritative remote presentation state.
+  if (state.vaulting) {
+    const p = Math.min(1, state.vaultProgress + dt / config.vaultDuration);
+    const arc = 4 * p * (1 - p) * 0.35;
+    const x = state.vaultStartX + (state.vaultEndX - state.vaultStartX) * p;
+    const z = state.vaultStartZ + (state.vaultEndZ - state.vaultStartZ) * p;
+    const y = state.vaultStartY + (state.vaultEndY - state.vaultStartY) * p + arc;
+    if (p >= 1) return { x, y: state.vaultEndY, z, vy: 0, grounded: true, crouched: false, vaulting: false, vaultProgress: 0, vaultStartX: x, vaultStartY: state.vaultEndY, vaultStartZ: z, vaultEndX: x, vaultEndY: state.vaultEndY, vaultEndZ: z };
+    return { ...state, x, y, z, vy: 0, grounded: false, vaulting: true, vaultProgress: p };
+  }
+
+  if (!downed && !state.crouched && state.grounded && input.vault && !input.firing && my > 0.25) {
+    const len = Math.sqrt(mx * mx + my * my);
+    const dx = (my * s - mx * c) / len;
+    const dz = (my * c + mx * s) / len;
+    let best: { d: number; x: number; z: number; y: number } | null = null;
+    for (const box of world) {
+      if (box.maxY <= state.y + config.stepHeight || box.maxY > state.y + config.vaultHeight) continue;
+      let near = 0, far = config.vaultDistance, miss = false;
+      for (const axis of [{ o: state.x, d: dx, lo: box.minX - half, hi: box.maxX + half }, { o: state.z, d: dz, lo: box.minZ - half, hi: box.maxZ + half }]) {
+        if (axis.d === 0) { if (axis.o < axis.lo || axis.o > axis.hi) miss = true; continue; }
+        let a0 = (axis.lo - axis.o) / axis.d, a1 = (axis.hi - axis.o) / axis.d;
+        if (a0 > a1) [a0, a1] = [a1, a0];
+        near = Math.max(near, a0); far = Math.min(far, a1);
+        if (near > far) { miss = true; break; }
+      }
+      const d = far + config.radius + 0.05;
+      if (miss || d <= 0 || d > config.vaultDistance) continue;
+      const ex = state.x + dx * d, ez = state.z + dz * d;
+      const blocked = world.some((other) => other !== box && other.maxY > box.maxY - 0.05 && overlapsFootprint(ex, ez, half, other));
+      if (!blocked && (!best || d < best.d)) best = { d, x: ex, z: ez, y: box.maxY };
+    }
+    if (best) return { x: state.x, y: state.y, z: state.z, vy: 0, grounded: false, crouched: false, vaulting: true, vaultProgress: 0, vaultStartX: state.x, vaultStartY: state.y, vaultStartZ: state.z, vaultEndX: best.x, vaultEndY: best.y, vaultEndZ: best.z };
+  }
 
   // Forward is +Z rotated by yaw. Right is cross(forward, up), NOT
   // cross(up, forward) - in a right-handed Y-up system, a viewer looking along
@@ -241,9 +296,9 @@ export function stepCharacter(
     }
   }
 
-  return { x, y, z, vy, grounded, crouched };
+  return { x, y, z, vy, grounded, crouched, vaulting: false, vaultProgress: 0, vaultStartX: x, vaultStartY: y, vaultStartZ: z, vaultEndX: x, vaultEndY: y, vaultEndZ: z };
 }
 
 export function createMoveState(x = 0, y = 0, z = 0): MoveState {
-  return { x, y, z, vy: 0, grounded: y <= 0, crouched: false };
+  return { x, y, z, vy: 0, grounded: y <= 0, crouched: false, vaulting: false, vaultProgress: 0, vaultStartX: x, vaultStartY: y, vaultStartZ: z, vaultEndX: x, vaultEndY: y, vaultEndZ: z };
 }
