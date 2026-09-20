@@ -27,6 +27,7 @@ const CONFIG: MoveConfig = {
   maxFallSpeed: -55,
   radius: 0.35,
   height: 1.8,
+  crouchHeight: 1.2,
   stepHeight: 0.45,
 };
 const DT = 1 / 30;
