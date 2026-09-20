@@ -182,12 +182,14 @@ describe('InterpolationBuffer (T-1.16)', () => {
     expect(Number.isFinite(r.z)).toBe(true);
   });
 
-  it('replicates stance as a discrete state rather than blending it', () => {
+  it('applies stance at the authoritative tick boundary', () => {
     const b = new InterpolationBuffer();
     b.push({ ...sample(1, 0), crouched: false });
     b.push({ ...sample(2, 10), crouched: true });
-    expect(b.sample(1.4 * 33)?.crouched).toBe(false);
-    expect(b.sample(1.6 * 33)?.crouched).toBe(true);
+    // The stance remains standing all the way up to tick 2; it changes exactly
+    // when the authoritative crouched sample becomes current.
+    expect(b.sample(1.99 * 33)?.crouched).toBe(false);
+    expect(b.sample(2 * 33)?.crouched).toBe(true);
   });
 
   it('clears', () => {
