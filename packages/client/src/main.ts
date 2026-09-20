@@ -69,7 +69,7 @@ import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
 import { WeaponEffects } from './weapons/effects.ts';
 import { addShake, applyShake, createShake, decayShake } from './camera/cameraShake.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
-import { createHumanoidPlaceholder } from './character/humanoidPlaceholder.ts';
+import { createHumanoidPlaceholder, setHumanoidPose } from './character/humanoidPlaceholder.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
 import { createNetworkPanel } from './ui/NetworkPanel.ts';
 import { type LobbyChoice, createLobby, readStoredName } from './ui/Lobby.ts';
@@ -360,7 +360,9 @@ function landImpact(net: NetClient, shot: ServerShot): void {
     return;
   }
   const target = shot.targetNetId === net.netId ? player : remoteMeshes.get(shot.targetNetId);
-  if (target) effects.flinch(target, now);
+  // A downed soldier is already on the ground; the flinch belongs to the upright.
+  const targetDowned = shot.targetNetId === net.netId ? net.vitality !== 'alive' : net.remoteVitality(shot.targetNetId) !== 'alive';
+  if (target && !targetDowned) effects.flinch(target, now);
 }
 
 function startSession(choice: LobbyChoice): void {
@@ -479,6 +481,7 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
   }
   combat.reset();
   effects.reset();
+  setHumanoidPose(player, 'standing');
   simPrev = null;
   simCur = null;
   player.visible = false;
@@ -634,6 +637,7 @@ shootable.push(ground);
 let aimYaw = 0;
 let aimPitch = 0;
 const crosshair = document.getElementById('crosshair');
+const downedBanner = document.getElementById('downed');
 /** Last gap written to the reticle, so the style is only touched on change. */
 let crosshairGap = -1;
 
@@ -845,9 +849,14 @@ function frame(): void {
     mesh.position.set(sample.x, sample.y + 0.9, sample.z);
     const remoteYaw = wireToTable(sample.yaw);
     mesh.rotation.y = Math.atan2(sin(remoteYaw), cos(remoteYaw));
+    // The pose follows the server's word on them, not the interpolated
+    // position: a state has no in-between (T-2.14).
+    setHumanoidPose(mesh, net?.remoteVitality(netId) === 'downed' ? 'downed' : 'standing');
   }
 
   player.position.set(rx, ry + 0.9, rz);
+  const downed = net?.vitality === 'downed';
+  setHumanoidPose(player, downed ? 'downed' : 'standing');
 
   /**
    * Camera (T-2.01). The pivot, shoulder and arm arithmetic lives in
@@ -865,6 +874,7 @@ function frame(): void {
       ads: input.ads,
       firstPerson: input.firstPerson,
       shoulderSide: input.shoulderSide,
+      downed,
     },
     cam,
     camSolve,
@@ -886,7 +896,17 @@ function frame(): void {
     camera.fov = targetFov;
     camera.updateProjectionMatrix();
   }
-  if (crosshair) crosshair.classList.toggle('ads', ads);
+  if (crosshair) {
+    crosshair.classList.toggle('ads', ads);
+    // No weapon in hand while downed: nothing for a reticle to promise.
+    crosshair.classList.toggle('hidden', downed);
+  }
+  if (downedBanner) {
+    const timer = net?.stats.vitalTimer ?? 0;
+    const text = downed ? `DOWNED — bleeding out ${timer}s — crawl to a teammate` : '';
+    if (downedBanner.textContent !== text) downedBanner.textContent = text;
+    downedBanner.classList.toggle('shown', downed);
+  }
   // Every value in the camera panel describes where the arm puts the camera
   // relative to a character you cannot see in first person.
   cameraPanel.setVisible(!input.firstPerson);

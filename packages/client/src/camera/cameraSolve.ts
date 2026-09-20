@@ -45,6 +45,8 @@ export interface CameraView {
   firstPerson: boolean;
   /** +1 is right shoulder, -1 is left shoulder. */
   shoulderSide: 1 | -1;
+  /** Lying on the ground (T-2.14): the pivot eases down to `downedEyeHeight`. */
+  downed?: boolean;
 }
 
 interface Vec3 {
@@ -71,6 +73,8 @@ export interface CameraSolve {
   shoulderBlend: number;
   /** Normalized 0..1 ADS transition shared by distance, shoulder and FOV. */
   adsBlend: number;
+  /** Normalized 0..1: how far the pivot has dropped toward the downed height. */
+  downedBlend: number;
   /** FOV derived from the same ADS transition. */
   fov: number;
   /**
@@ -93,6 +97,7 @@ export function createCameraSolve(): CameraSolve {
     distance: 0,
     shoulderBlend: 1,
     adsBlend: 0,
+    downedBlend: 0,
     fov: 60,
     shake: { x: 0, y: 0, z: 0, roll: 0 },
   };
@@ -156,6 +161,16 @@ export function solveCamera(
   }
   out.fov = cfg.baseFov + (cfg.adsFov - cfg.baseFov) * out.adsBlend;
 
+  // Going down drops the pivot on the same curve; getting up lifts it back.
+  // Eased for the same reason as the others: a cut reads as a teleport.
+  const targetDowned = view.downed ? 1 : 0;
+  if (dtSeconds > 0) {
+    const alpha = 1 - Math.exp(-8 * dtSeconds);
+    out.downedBlend += (targetDowned - out.downedBlend) * alpha;
+  } else {
+    out.downedBlend = targetDowned;
+  }
+
   // View direction: the horizontal component shrinks as the pitch steepens.
   const dx = fwdX * cosP;
   const dy = sin(pitchAngle);
@@ -164,7 +179,7 @@ export function solveCamera(
   out.direction.y = dy;
   out.direction.z = dz;
 
-  const pivotY = view.y + cfg.eyeHeight;
+  const pivotY = view.y + cfg.eyeHeight + (cfg.downedEyeHeight - cfg.eyeHeight) * out.downedBlend;
 
   if (view.firstPerson) {
     // The eye IS the camera here, so focus and position coincide and there is

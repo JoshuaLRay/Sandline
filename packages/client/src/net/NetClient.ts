@@ -165,6 +165,8 @@ export class NetClient {
    */
   private vitalityValue: Vitality = 'alive';
   private vitalTimerValue = 0;
+  /** Each remote soldier's vitality from its newest snapshot, for the pose (T-2.14). */
+  private readonly remoteVitalities = new Map<number, Vitality>();
   /** Local time the newest snapshot landed, for anchoring the server clock. */
   private lastArrivalAt = 0;
 
@@ -323,6 +325,7 @@ export class NetClient {
     this.maxHealthValue = 0;
     this.vitalityValue = 'alive';
     this.vitalTimerValue = 0;
+    this.remoteVitalities.clear();
     this.recentInputs.length = 0;
     this.newestServerMs = 0;
     this.serverClockMs = 0;
@@ -446,6 +449,11 @@ export class NetClient {
 
   get simulated(): MoveState | null {
     return this.predictor?.simulated ?? null;
+  }
+
+  /** A remote soldier's vitality, as of their newest snapshot. Not interpolated: a state, not a position. */
+  remoteVitality(netId: number): Vitality {
+    return this.remoteVitalities.get(netId) ?? 'alive';
   }
 
   /** Every remote entity, sampled at the interpolation delay. */
@@ -624,6 +632,8 @@ export class NetClient {
         this.buffers.set(entity.netId, buffer);
       }
       buffer.push({ tick, serverTimeMs: serverMs, x, y, z, yaw: (transform[3] as number) & 0x3ff });
+      const health = entity.components[H];
+      if (health) this.remoteVitalities.set(entity.netId, vitalityFromCode((health[2] as number | undefined) ?? 0));
     }
   }
 
