@@ -376,6 +376,11 @@ export class NetClient {
    * `renderTimeMs` is what the server rewinds hitboxes to, so it must be the
    * time this client was actually RENDERING — the interpolated past, not now.
    */
+  revive(active: boolean): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage({ kind: 'Revive', active }), 'unreliable');
+  }
+
   fire(tick: number, yaw: number, pitch: number, weapon: number, ads: boolean): void {
     if (!this.joinedFlag) return;
     this.transport.send(
