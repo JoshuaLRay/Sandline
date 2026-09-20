@@ -95,4 +95,5 @@ Format: `T-<id> — <what changed>`
 - Planning: broke E-2.2 into T-2.17 through T-2.23, covering locomotion state, eight-way gait, remote playback, crouch height/hit volume, authoritative vaulting, vault presentation, and human sign-off.
 
 - T-2.17 — Added a pure rendered-velocity locomotion classifier with idle/walk/sprint/crouch-walk/crawl states, eight-way direction, normalized gait inputs, and QA HUD integration.
+- Planning update 2026-09-20 — E-2.2 now explicitly includes T-2.22, a reusable humanoid character model/rig integration before the human gate; the grey-box remains only as a fallback/diagnostic fixture, and the E-2.2 sign-off moves to T-2.24.
 - T-2.19: integrate local predicted and remote interpolated locomotion playback through the shared pose driver.
