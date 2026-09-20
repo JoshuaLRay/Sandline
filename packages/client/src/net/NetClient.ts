@@ -174,7 +174,7 @@ export class NetClient {
   private reviverNetIdValue = 0;
   /** Each remote soldier's vitality from its newest snapshot, for the pose (T-2.14). */
   private readonly remoteVitalities = new Map<number, Vitality>();
-  private readonly remoteReviveProgress = new Map<number, number>();
+  private readonly remoteReviveProgressValues = new Map<number, number>();
   private readonly remoteRevivers = new Map<number, number>();
   /** Local time the newest snapshot landed, for anchoring the server clock. */
   private lastArrivalAt = 0;
@@ -293,7 +293,7 @@ export class NetClient {
   }
 
   remoteReviveProgress(netId: number): number {
-    return this.remoteReviveProgress.get(netId) ?? 0;
+    return this.remoteReviveProgressValues.get(netId) ?? 0;
   }
 
   /** NetId of the downed teammate this client is currently reviving, or 0. */
@@ -302,7 +302,7 @@ export class NetClient {
     let progress = 0;
     for (const [netId, reviver] of this.remoteRevivers) {
       if (reviver !== this.netIdValue) continue;
-      const p = this.remoteReviveProgress.get(netId) ?? 0;
+      const p = this.remoteReviveProgressValues.get(netId) ?? 0;
       if (p > progress) {
         progress = p;
         best = netId;
@@ -366,7 +366,7 @@ export class NetClient {
     this.reviveProgressValue = 0;
     this.reviverNetIdValue = 0;
     this.remoteVitalities.clear();
-    this.remoteReviveProgress.clear();
+    this.remoteReviveProgressValues.clear();
     this.remoteRevivers.clear();
     this.recentInputs.length = 0;
     this.newestServerMs = 0;
@@ -679,7 +679,7 @@ export class NetClient {
       const health = entity.components[H];
       if (health) {
         this.remoteVitalities.set(entity.netId, vitalityFromCode((health[2] as number | undefined) ?? 0));
-        this.remoteReviveProgress.set(entity.netId, (health[4] as number | undefined) ?? 0);
+        this.remoteReviveProgressValues.set(entity.netId, (health[4] as number | undefined) ?? 0);
         this.remoteRevivers.set(entity.netId, (health[5] as number | undefined) ?? 0);
       }
     }
