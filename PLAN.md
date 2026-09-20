@@ -1001,6 +1001,7 @@ and lines, pooled and capped like the tracers already are (§0.3 rule 3).
 - **Do:** A human fires every weapon at the range and at another person, and judges whether recoil reads as a pattern to learn, whether shake is felt without being aimed with, and whether the flash, shells and impacts make a hit feel like a hit. Tune the new numbers in data while the feel is in hand.
 - **Done when:** A written verdict exists, as T-1.24's did, naming what it does and does not establish.
 - **Size:** S
+- **Prepared 2026-09-20, not run.** `docs/playtests/e2-4.md` is a run sheet with the questions per weapon, a tuning paste-back section and a verdict section left blank; it says NOT YET RUN at the top and stays that way until a person fills it in. The weapon panel's paste-back block was missing every T-2.08/09 field and would have discarded the tuned numbers; fixed, with shake sliders added and a test holding the list to the type.
 
 ### M3 — AI & squad command (~10–12 wks)
 
@@ -1132,8 +1133,10 @@ the non-V8 parity job.
    frame, which also means T-2.05's eased arm is never seen in play; and the
    arm snaps inward on the tall posts by T-2.02's design. Either is a
    one-line change once a person says which way it should go.
-3. **Start E-2.4 (§7.2).** T-2.08 and T-2.09 can start now and in parallel;
-   T-2.10 and T-2.11 follow. None of them waits on T-2.07.
+3. **E-2.4 is built; run T-2.12.** 🧍 T-2.08 through T-2.11 landed
+   2026-09-20. `docs/playtests/e2-4.md` is the run sheet: fill it in during
+   the session, not after. It also carries T-2.07's two questions, so one
+   session can close both sign-offs.
 4. **Tune in data while playing.** The weapon numbers were guesses at T-1.17
    and remain so; the recoil and shake numbers T-2.08/09 add will be guesses
    too. The harness has sliders and a paste-back block for exactly this.
