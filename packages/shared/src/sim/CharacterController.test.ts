@@ -290,7 +290,7 @@ describe('downed: crawling (T-2.13)', () => {
 
 describe('authoritative vault traversal (T-2.21)', () => {
   const cfg = DEFAULT_MOVE_CONFIG;
-  const ledge = [wall('vaultable', 0, 1.0, 2, 1.0, 0.6)];
+  const ledge = [wall('vaultable', 0, 0.7, 2, 1.0, 0.6)];
 
   it('starts a vault for a ledge above step height and below vault height', () => {
     const s = stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1, vault: true }), TICK_SECONDS, cfg, ledge);
