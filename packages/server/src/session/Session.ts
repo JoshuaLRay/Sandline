@@ -71,6 +71,7 @@ import { DEFAULT_HITBOX, HitboxHistory, clampRewindMs, resolveShot } from '../ne
  * fractions of this, so they track the capsule rather than assuming 1.8 m.
  */
 const HITBOX_HEIGHT = 2 * (DEFAULT_HITBOX.halfHeight + DEFAULT_HITBOX.radius);
+const CROUCH_HITBOX_HEIGHT = 2 * (DEFAULT_HITBOX.crouchHalfHeight + DEFAULT_HITBOX.radius);
 
 const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
@@ -516,8 +517,12 @@ export class Session {
          * Zone from the impact point's height up the target's hitbox — which is
          * exactly why T-1.18 returns a point rather than only a distance.
          */
-        const feet = this.hitboxes.positionAt(hit.netId, rewoundTo);
-        const zone = zoneAt(hit.point.y, feet?.y ?? 0, HITBOX_HEIGHT);
+        const targetState = this.hitboxes.stateAt(hit.netId, rewoundTo);
+        const zone = zoneAt(
+          hit.point.y,
+          targetState?.position.y ?? 0,
+          targetState?.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT,
+        );
         dealt = zoneDamage(damageAtDistance(slot.weapon, hit.distance), zone);
 
         const target = this.slots.find((s) => s.netId === hit.netId);
@@ -684,7 +689,7 @@ export class Session {
     // the snapshot about to go out will describe. Recording pre-step would
     // rewind clients to a world half a tick behind the one they were shown.
     for (const slot of this.slots) {
-      this.hitboxes.record(slot.netId, now, slot.state.x, slot.state.y, slot.state.z);
+      this.hitboxes.record(slot.netId, now, slot.state.x, slot.state.y, slot.state.z, slot.input.crouch && !isDowned(slot.health));
     }
     /**
      * The range targets are shootable too. They never move, but they are
