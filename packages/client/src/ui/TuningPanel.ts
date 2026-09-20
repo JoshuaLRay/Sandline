@@ -23,8 +23,15 @@ const ROWS: Row[] = [
   { key: 'walkSpeed', label: 'Walk', min: 1, max: 12, step: 0.1 },
   { key: 'sprintSpeed', label: 'Sprint', min: 1, max: 16, step: 0.1 },
   { key: 'crouchSpeed', label: 'Crouch', min: 0.5, max: 8, step: 0.1 },
+  { key: 'crawlSpeed', label: 'Crawl', min: 0.3, max: 4, step: 0.1 },
   { key: 'jumpSpeed', label: 'Jump impulse', min: 1, max: 14, step: 0.1 },
   { key: 'gravity', label: 'Gravity', min: -60, max: -5, step: 0.5 },
+  // T-2.24: the vault's timing is the sign-off's question, so it is a
+  // slider like the speeds. All three are shared movement config: on the
+  // in-page session they move authority and prediction together.
+  { key: 'vaultSeconds', label: 'Vault seconds', min: 0.2, max: 1.5, step: 0.05 },
+  { key: 'vaultDistance', label: 'Vault distance', min: 0.8, max: 3, step: 0.1 },
+  { key: 'vaultMaxHeight', label: 'Vault max height', min: 0.5, max: 1.6, step: 0.05 },
 ];
 
 export function createTuningPanel(
