@@ -470,8 +470,8 @@ describe('Session revive edge cases (T-2.15)', () => {
     expect(targetSlot.reviveByNetId).toBe(0);
     expect(targetSlot.reviveProgressSeconds).toBe(0);
 
-    targetSlot.downedAt = null;
-    targetSlot.diedAt = 0;
+    targetSlot.health.downedAt = null;
+    targetSlot.health.diedAt = 0;
     reviverSlot.state.x = targetSlot.state.x;
     reviver.input(3, 0, 0, 0, 0b1000);
     target.input(3, 0, 0);
