@@ -77,6 +77,7 @@ const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
 const H = COMPONENT_IDS.Health;
 const C = COMPONENT_IDS.Crouch;
+const VA = COMPONENT_IDS.Vault;
 
 export interface Slot {
   index: number;
@@ -404,6 +405,8 @@ export class Session {
           sprint: (frame.buttons & 0b010) !== 0,
           crouch: (frame.buttons & 0b100) !== 0,
           interact: (frame.buttons & 0b1000) !== 0,
+          vault: (frame.buttons & 0b001) !== 0,
+          firing: (frame.buttons & 0b10000) !== 0,
         },
       });
     }
@@ -830,6 +833,7 @@ export class Session {
           [COMPONENT_IDS.PlayerSlot]: [s.index, s.isBot ? 1 : 0],
           // Replicate the authoritative stance so remote presentation matches the hitbox.
           [C]: [s.state.crouched ? 1 : 0],
+          [VA]: [s.state.vaulting ? 1 : 0, Math.round(s.state.vaultProgress * 255)],
         },
       })),
     };
