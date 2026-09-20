@@ -10,7 +10,7 @@ import {
   decodeMessage,
   DAMAGE,
 } from '@sandline/shared';
-import { Session } from './Session.ts';
+import { MAX_INPUT_REPEAT, Session } from './Session.ts';
 
 /** A minimal in-process client: handshake, then drive inputs. */
 function connectClient(session: Session, name: string, now = 0) {
@@ -488,6 +488,77 @@ describe('Session revive interaction (T-2.15)', () => {
   });
 });
 
+
+describe('Session revive on a bursty link (T-2.15)', () => {
+  /** Down the target beside the reviver, as the interaction test does. */
+  function downedBesideReviver() {
+    const s = new Session();
+    const reviver = connectClient(s, 'reviver');
+    const target = connectClient(s, 'target');
+    const targetSlot = s.slots[target.joined!.slot]!;
+    const reviverSlot = s.slots[reviver.joined!.slot]!;
+    targetSlot.health.current = 0;
+    targetSlot.health.downedAt = 0;
+    targetSlot.state.x = reviverSlot.state.x;
+    targetSlot.state.y = reviverSlot.state.y;
+    targetSlot.state.z = reviverSlot.state.z;
+    return { s, reviver, target, targetSlot, reviverSlot };
+  }
+
+  it('completes on time when the held-E inputs arrive only every third tick', () => {
+    /**
+     * A tick with nothing buffered runs an idle input (hold-immediately) whose
+     * interact is false. If the hold were read off that input, every gap
+     * would drop the lock and reset the progress, and a client on a jittery
+     * link could never finish a revive. The button is latched from the newest
+     * real input instead, so the gaps merely pass.
+     */
+    const { s, reviver, target, targetSlot, reviverSlot } = downedBesideReviver();
+    const holdTicks = Math.ceil(DAMAGE.downed.reviveSeconds / (1 / 30));
+    let now = 0;
+    for (let tick = 1; tick <= holdTicks - 2; tick++) {
+      if (tick % 3 === 0) {
+        reviver.input(tick, 0, 0, 0, 0b1000);
+        target.input(tick, 0, 0);
+      }
+      now += 33;
+      s.step(now);
+    }
+    expect(targetSlot.reviveBySlot).toBe(reviverSlot.index);
+    expect(targetSlot.reviveProgressSeconds).toBeGreaterThan(DAMAGE.downed.reviveSeconds - 0.2);
+    expect(targetSlot.health.downedAt).not.toBeNull();
+    for (let tick = holdTicks - 1; tick <= holdTicks + 3; tick++) {
+      if (tick % 3 === 0) {
+        reviver.input(tick, 0, 0, 0, 0b1000);
+        target.input(tick, 0, 0);
+      }
+      now += 33;
+      s.step(now);
+    }
+    expect(targetSlot.health.downedAt).toBeNull();
+    expect(targetSlot.health.current).toBeGreaterThan(0);
+  });
+
+  it('drops the hold once the reviver has been silent past the repeat window', () => {
+    const { s, reviver, target, targetSlot, reviverSlot } = downedBesideReviver();
+    let now = 0;
+    for (let tick = 1; tick <= 20; tick++) {
+      reviver.input(tick, 0, 0, 0, 0b1000);
+      target.input(tick, 0, 0);
+      now += 33;
+      s.step(now);
+    }
+    expect(targetSlot.reviveBySlot).toBe(reviverSlot.index);
+    // The reviver goes quiet; the target keeps talking so nothing times out.
+    for (let tick = 21; tick <= 21 + MAX_INPUT_REPEAT + 2; tick++) {
+      target.input(tick, 0, 0);
+      now += 33;
+      s.step(now);
+    }
+    expect(targetSlot.reviveBySlot).toBe(-1);
+    expect(targetSlot.reviveProgressSeconds).toBe(0);
+  });
+});
 
 describe('Session revive edge cases (T-2.15)', () => {
   it('resets when the reviver leaves range and never revives a dead target', () => {
