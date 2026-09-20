@@ -575,7 +575,7 @@ export class Session {
         const target = this.slots.find((s) => s.netId === revive.targetNetId);
         if (!reviver || !target || isDead(reviver.health) || !isDowned(target.health) || (target.state.x - reviver.state.x) ** 2 + (target.state.z - reviver.state.z) ** 2 > REVIVE_RANGE_M ** 2) this.revives.delete(reviverNetId);
       }
-      if (isDowned(slot.health) && expireBleedOut(slot.health, nowSeconds) || false) {
+      if (isDowned(slot.health) && expireBleedOut(slot.health, nowSeconds)) {
         slot.queue.length = 0;
         slot.input = idleInput(slot.yaw);
       }
