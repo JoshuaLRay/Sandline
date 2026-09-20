@@ -883,6 +883,7 @@ function frame(): void {
   } else {
     if (humanoidPose(player) === 'downed') setHumanoidPose(player, 'standing');
     localPoseDriver.update(locomotion, dt);
+    setHumanoidPose(player, input.crouching ? 'crouched' : 'standing');
   }
 
   const downed = localDowned;
