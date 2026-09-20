@@ -443,3 +443,63 @@ describe('Session revive interaction (T-2.15)', () => {
     expect(targetSlot.reviveByNetId).toBe(s.slots[second.joined!.slot]!.netId);
   });
 });
+
+
+describe('Session revive edge cases (T-2.15)', () => {
+  it('resets when the reviver leaves range and never revives a dead target', () => {
+    const s = new Session();
+    const reviver = connectClient(s, 'reviver');
+    const target = connectClient(s, 'target');
+    const reviverSlot = s.slots[reviver.joined!.slot]!;
+    const targetSlot = s.slots[target.joined!.slot]!;
+    targetSlot.health.current = 0;
+    targetSlot.health.downedAt = 0;
+    targetSlot.state.x = reviverSlot.state.x;
+    targetSlot.state.y = reviverSlot.state.y;
+    targetSlot.state.z = reviverSlot.state.z;
+
+    reviver.input(1, 0, 0, 0, 0b1000);
+    target.input(1, 0, 0);
+    s.step(33);
+    expect(targetSlot.reviveProgressSeconds).toBeGreaterThan(0);
+
+    reviverSlot.state.x += 2;
+    reviver.input(2, 0, 0, 0, 0b1000);
+    target.input(2, 0, 0);
+    s.step(66);
+    expect(targetSlot.reviveByNetId).toBe(0);
+    expect(targetSlot.reviveProgressSeconds).toBe(0);
+
+    targetSlot.downedAt = null;
+    targetSlot.diedAt = 0;
+    reviverSlot.state.x = targetSlot.state.x;
+    reviver.input(3, 0, 0, 0, 0b1000);
+    target.input(3, 0, 0);
+    s.step(99);
+    expect(targetSlot.reviveByNetId).toBe(0);
+  });
+
+  it('lets bleed-out win if the revive starts too late', () => {
+    const s = new Session();
+    const reviver = connectClient(s, 'reviver');
+    const target = connectClient(s, 'target');
+    const reviverSlot = s.slots[reviver.joined!.slot]!;
+    const targetSlot = s.slots[target.joined!.slot]!;
+    targetSlot.health.current = 0;
+    targetSlot.health.downedAt = 0;
+    targetSlot.state.x = reviverSlot.state.x;
+    targetSlot.state.y = reviverSlot.state.y;
+    targetSlot.state.z = reviverSlot.state.z;
+
+    reviver.input(1, 0, 0, 0, 0b1000);
+    target.input(1, 0, 0);
+    s.step(500);
+    expect(targetSlot.health.downedAt).not.toBeNull();
+
+    reviver.input(2, 0, 0, 0, 0b1000);
+    target.input(2, 0, 0);
+    s.step(1000);
+    expect(targetSlot.health.diedAt).toBe(1);
+    expect(targetSlot.reviveProgressSeconds).toBe(0);
+  });
+});
