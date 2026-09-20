@@ -117,6 +117,8 @@ describe('crouched pose (T-2.20)', () => {
     expect(soldier.geometry).toBe(rootBefore.geometry);
   });
 
+  const snapshot = (root: THREE.Object3D) => root.children.map((c) => ({ name: c.name, p: c.position.toArray(), q: c.quaternion.toArray() }));
+
   it('restores the exact standing pose after crouching', () => {
     const soldier = createHumanoidPlaceholder('remote');
     const standing = snapshot(soldier);
