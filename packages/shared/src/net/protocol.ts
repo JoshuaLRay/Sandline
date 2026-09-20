@@ -12,7 +12,7 @@ import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isRoomCode } from './roomCode.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 7;
+export const PROTOCOL_VERSION = 8;
 
 /**
  * Why a connection ended, as a type rather than a sentence (T-1.5.04).
@@ -66,6 +66,7 @@ export const MessageType = {
   Pong: 6,
   Disconnect: 7,
   Roster: 11,
+  ReviveProgress: 12,
 } as const;
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
 
@@ -194,7 +195,9 @@ export type Message =
    * can show six rows with a name or "bot" in each — replicated state carries
    * positions and health, not who is driving.
    */
-  | { kind: 'Roster'; slots: RosterEntry[] };
+  | { kind: 'Roster'; slots: RosterEntry[] }
+  /** Authoritative revive interaction state, broadcast while a revive is active or clears. */
+  | { kind: 'ReviveProgress'; targetNetId: number; reviverNetId: number; progress: number; targetName: string; reviverName: string };
 
 export class ProtocolError extends Error {}
 
@@ -315,6 +318,14 @@ export function encodeMessage(msg: Message): Uint8Array {
         w.writeString(entry.name);
       }
       break;
+    case 'ReviveProgress':
+      w.writeBits(MessageType.ReviveProgress, TYPE_BITS);
+      w.writeVarUint(msg.targetNetId);
+      w.writeVarUint(msg.reviverNetId);
+      w.writeBits(Math.max(0, Math.min(255, Math.round(msg.progress * 255))), 8);
+      w.writeString(msg.targetName);
+      w.writeString(msg.reviverName);
+      break;
   }
   return w.toUint8Array();
 }
@@ -430,6 +441,15 @@ export function decodeMessage(bytes: Uint8Array): Message {
         }
         return { kind: 'Roster', slots };
       }
+      case MessageType.ReviveProgress:
+        return {
+          kind: 'ReviveProgress',
+          targetNetId: r.readVarUint(),
+          reviverNetId: r.readVarUint(),
+          progress: r.readBits(8) / 255,
+          targetName: r.readString(),
+          reviverName: r.readString(),
+        };
       default:
         throw new ProtocolError(`unknown message type ${type}`);
     }
