@@ -1038,7 +1038,8 @@ function frame(): void {
         `${speed.toFixed(2)} m/s   peak ${peakSpeed.toFixed(2)}\n` +
         `${net?.simulated?.grounded ?? true ? 'grounded' : `airborne  y ${ry.toFixed(2)}`}\n` +
         `tick ${clock.tick}   ${fps} fps${clock.dropped ? `   dropped ${clock.dropped}` : ''}\n` +
-        `${input.firstPerson ? 'first person  (V for third)' : 'third person  (V swaps shoulder, RMB aims into first)'}\n` +\n        `locomotion ${locomotion.state}  ${locomotion.direction}  ${Math.round(locomotion.normalizedSpeed * 100)}%\n` +
+        `${input.firstPerson ? 'first person  (V for third)' : 'third person  (V swaps shoulder, RMB aims into first)'}\n` +
+        `locomotion ${locomotion.state}  ${locomotion.direction}  ${Math.round(locomotion.normalizedSpeed * 100)}%\n` +
         `${input.locked ? 'mouse captured - Esc to release' : 'CLICK to capture mouse'}\n` +
         `\n${combat.readout(clock.tick * TICK_SECONDS, input.ads)}\n` +
         `${effects.readout()}\n` +
