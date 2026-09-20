@@ -22,6 +22,9 @@ export const Health = defineComponent({ current: Types.ui16, max: Types.ui16, st
 /** Which of the six squad slots this entity occupies (ADR-001). */
 export const PlayerSlot = defineComponent({ slot: Types.ui8, isBot: Types.ui8 });
 
+/** Whether the authoritative character is currently crouched. */
+export const Crouch = defineComponent({ crouched: Types.ui8 });
+
 /**
  * Network identity, distinct from the bitECS entity id.
  *
@@ -45,6 +48,8 @@ export const COMPONENT_IDS = {
   Velocity: 1,
   Health: 2,
   PlayerSlot: 3,
+  /** Replicated locomotion stance for remote presentation. */
+  Crouch: 5,
   NetId: 4,
 } as const;
 
