@@ -91,12 +91,12 @@ class InputWalk {
         moveX: (this.rng.nextUint32() % 3) - 1,
         moveY: (this.rng.nextUint32() % 3) - 1,
         yaw: this.rng.nextUint32() % 1024,
-        jump: this.rng.nextUint32() % 8 === 0,
+        jump: false,
         sprint: this.rng.nextUint32() % 3 === 0,
         crouch: false,
       };
     } else {
-      this.current = { ...this.current, jump: this.rng.nextUint32() % 40 === 0 };
+      this.current = { ...this.current, jump: false };
     }
     return this.current;
   }
