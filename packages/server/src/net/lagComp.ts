@@ -137,10 +137,10 @@ class Track {
    * resolve against the oldest thing known, not silently fail to hit anything.
    * `windowMs` discards samples too old to be trusted.
    */
-  sampleAt(timeMs: number, windowMs: number): Vec3 | null {
+  sampleAt(timeMs: number, windowMs: number): Sample | null {
     const newest = this.at(0);
     if (newest === undefined) return null;
-    if (timeMs >= newest.timeMs) return { x: newest.x, y: newest.y, z: newest.z };
+    if (timeMs >= newest.timeMs) return newest;
 
     const horizon = newest.timeMs - windowMs;
     let older: Sample | undefined;
@@ -158,16 +158,19 @@ class Track {
 
     if (older === undefined) {
       // Older than anything retained: clamp to the oldest sample still valid.
-      return { x: newer.x, y: newer.y, z: newer.z };
+      return newer;
     }
 
     const span = newer.timeMs - older.timeMs;
-    if (span <= 0) return { x: older.x, y: older.y, z: older.z };
+    if (span <= 0) return older;
     const t = (timeMs - older.timeMs) / span;
     return {
+      timeMs,
       x: older.x + (newer.x - older.x) * t,
       y: older.y + (newer.y - older.y) * t,
       z: older.z + (newer.z - older.z) * t,
+      // Stance is discrete. Use the state of the sample at the rewind point.
+      crouched: t < 0.5 ? older.crouched : newer.crouched,
     };
   }
 }
