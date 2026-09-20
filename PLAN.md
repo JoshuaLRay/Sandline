@@ -276,7 +276,7 @@ Build it early (T-1.20).
 |---|---|---|---|
 | **M0** | Foundations | `pnpm verify` green in CI; parity harness reports bounded divergence over 1000 ticks in Node *and* a non-V8 engine | 2–3 wks |
 | **M1** | ⚠️ Netcode prototype | 2 clients (one human, one bot), capsules, four hitscan weapons, static range targets, playable at 200 ms simulated latency | 6–8 wks |
-| **M1.5** | ⚠️ Two humans, one session | Two people on different networks join one room from the published client and shoot each other; 🧍 verdict written | 3–4 wks |
+| **M1.5** | Two humans, one session — **closed** | Two human gates passed; R2 closed; deployed host verified | 3–4 wks |
 | **M2** | Shooter feel | 🧍 Third-person combat that a human signs off as good | 8–10 wks |
 | **M3** | AI & squad command | 6 slots with bot backfill; enemies use cover and suppress | 10–12 wks |
 | **M4** | Content systems | Asset pipeline, level format, mission scripting, saves | 9–11 wks |
@@ -303,9 +303,10 @@ them a scope cut made to reach the gate sooner:
 - **120 ms became 200 ms**, matching what T-1.22 already asserts in CI and what
   T-1.24 actually plays.
 
-**M1.5 inserted 2026-09-18.** The gate above is run by one human because there
-is nowhere for a second one to join. That is now the next thing fixed rather
-than the last — see §4.2.
+**M1.5 closed 2026-09-19.** The two-human milestone was completed to answer the
+real-socket question before M2. T-1.5.03 (LAN) and T-1.5.08 (internet) both
+passed, R2 closed, and the single-host deployment is live at
+`wss://sandline-host.fly.dev`. The original rationale remains in §4.2.
 
 ### 4.1 Estimate reality and the slice scope cut 🔒 (ADR-015)
 
@@ -704,18 +705,15 @@ authoritative-server TPS feel good in a browser?*
 **Amended 2026-09-18: one human, not two.** There is nowhere for a second human
 to join. GitHub Pages is static hosting, the authoritative session runs inside
 the tab over a loopback pair through NetSim, and ADR-011's regional hosting is
-not deployed — so the gate is one person plus the in-page `SparringPartner`
-bot, each on its own simulated link. **The verdict must state what that leaves
-unproven:** real jitter distributions, reordering under congestion, NAT, TCP
-head-of-line blocking, and two humans' inputs interacting in one session. Those
-need a real host and are not answerable here at any slider setting. Recorded in
-ADR-012's addendum, since this task is that ADR's gate.
+The original one-human amendment is retained as historical context. The
+subsequent M1.5 LAN and internet gates supplied the missing two-human and
+real-internet evidence; see the playtest records and ADR-012 closing addendum.
 
 ---
 
-## 6A. M1.5 — Two humans, one session ⚠️
+## 6A. M1.5 — Two humans, one session — CLOSED
 
-**Added 2026-09-18; see §4.2 for why this sits here rather than inside M4.**
+**Closed 2026-09-19.** See §4.2 for why this milestone sits here rather than inside M4. The tasks below are the completed historical specification and acceptance record.
 
 The question: *does it still feel fair when the thing shooting at you is a
 person, on a real socket, at whatever latency the internet gives?* M1 answered
@@ -729,11 +727,9 @@ different networks", and none of it blocks the first playtest.
 
 Task IDs follow §0.1: `T-1.5.<n>`, milestone 1.5.
 
-> **Start at [`docs/HANDOFF-M1.5.md`](docs/HANDOFF-M1.5.md).** This section is
-> the specification; the handoff is the state of play around it — what is
-> already done, how to get two people into a session today, and the findings
-> from T-1.5.01/02 that are absent from this plan because nobody knew them when
-> it was written.
+> **Historical handoff:** [`docs/HANDOFF-M1.5.md`](docs/HANDOFF-M1.5.md) retains the
+> operational setup and debugging notes from this milestone. M2 is the current
+> milestone; this section is the completed M1.5 specification and record.
 
 ### 6A.1 A host that serves
 
@@ -1117,7 +1113,7 @@ netcode and the squad architecture — not breadth.
 | R9 | **Scope creep** | High | Anything not in §1.4 goes to a backlog file, not into a milestone | Ongoing |
 | R10 | **Determinism theater** — a whole-world golden hash that breaks on every tuning change, gets re-baselined reflexively, then catches nothing | Medium | §2.3 scopes parity to the two paths that actually need it; parity tests own their constants in the fixture | M0 |
 | R11 | **Estimates are a floor, not a plan** — §4 sums to ~50 wks; comparable solo projects run 3–5× | High | §4.1 scope cut · re-estimate at every milestone gate from *measured velocity*, never from this table | Ongoing |
-| R12 | **A publicly reachable host is a public attack surface**, with no accounts, no rate limiting and a cost meter running — arriving ~30 wks earlier than the plan assumed | Medium | Unlisted host, room codes required to join, connection and room caps (T-1.5.05), one small instance, **taken down between playtests** and documented as such (T-1.5.07) · real authentication is E-4.6, and nothing before it should pretend otherwise | M1.5 |
+| R12 | **A publicly reachable host is a public attack surface**, with no accounts, no rate limiting and a cost meter running — arriving ~30 wks earlier than the plan assumed | Medium | Unlisted host, room codes required to join, connection and room caps (T-1.5.05), one small instance, teardown documented in `docs/DEPLOYING.md`; current host: `wss://sandline-host.fly.dev` · real authentication is E-4.6, and nothing before it should pretend otherwise | M1.5 |
 
 ---
 
@@ -1170,7 +1166,7 @@ These block estimation, not implementation — M0 can start today regardless.
 
 ## 10. Immediate next actions
 
-**Rewritten 2026-09-20.** M1 closed on T-1.24 (`docs/playtests/m1.md`). M1.5
+**Current milestone: M2. Rewritten 2026-09-20.** M1 closed on T-1.24 (`docs/playtests/m1.md`). M1.5
 closed on the owner's T-1.5.08 sign-off: the host is deployed at
 `wss://sandline-host.fly.dev`, the published lobby points at it, and two
 people on different networks have played. T-1.12 is finished (§6.3). All of
