@@ -51,6 +51,8 @@ export const COMPONENT_IDS = {
   NetId: 4,
   /** Replicated locomotion stance for remote presentation. */
   Crouch: 5,
+  /** T-2.21: a vault in progress, enough of it for a predictor to continue it. */
+  Vault: 6,
 } as const;
 
 export type ComponentName = keyof typeof COMPONENT_IDS;

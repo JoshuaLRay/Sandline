@@ -304,6 +304,47 @@ export function surfaceAt(
   return best;
 }
 
+/**
+ * The highest surface under a footprint that is no higher than `below`: a box
+ * top, or `groundY` when none qualifies (T-2.21). The same rule the
+ * controller's vertical step uses to land, lifted out so a vault can ask
+ * where it will come down before it commits.
+ */
+export function supportUnder(
+  x: number,
+  z: number,
+  half: number,
+  below: number,
+  world: readonly WorldBox[],
+  groundY: number,
+): number {
+  let support = groundY;
+  for (const box of world) {
+    if (box.maxY <= below && box.maxY > support && overlapsFootprint(x, z, half, box)) support = box.maxY;
+  }
+  return support;
+}
+
+/**
+ * True when something a soldier of `height` standing at `feet` could neither
+ * step onto nor pass under overlaps the footprint (T-2.21): the controller's
+ * "blocks" rule, as a question about a place rather than a move.
+ */
+export function blockedAt(
+  x: number,
+  z: number,
+  half: number,
+  feet: number,
+  stepHeight: number,
+  height: number,
+  world: readonly WorldBox[],
+): boolean {
+  for (const box of world) {
+    if (box.maxY > feet + stepHeight && box.minY < feet + height && overlapsFootprint(x, z, half, box)) return true;
+  }
+  return false;
+}
+
 /** True when a square footprint of half-size `half` at (x, z) overlaps the box in the ground plane. */
 export function overlapsFootprint(x: number, z: number, half: number, box: WorldBox): boolean {
   return x + half > box.minX && x - half < box.maxX && z + half > box.minZ && z - half < box.maxZ;

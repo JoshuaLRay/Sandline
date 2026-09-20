@@ -257,6 +257,8 @@ export class LocalInput {
       sprint: on('ShiftLeft', 'ShiftRight'),
       crouch: on('ControlLeft', 'ControlRight', 'KeyC'),
       interact: on('KeyE'),
+      // Carried so the server can refuse a vault mid-burst (T-2.21).
+      firing: this.firing,
     };
     this.pressed.clear();
     return input;

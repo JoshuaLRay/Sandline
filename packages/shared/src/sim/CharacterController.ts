@@ -16,7 +16,7 @@
  */
 import { type BinAngle, wireToTable } from '../math/angles.ts';
 import { sin, cos } from '../math/trig.ts';
-import { DEFAULT_WORLD, type WorldBox, overlapsFootprint } from './world.ts';
+import { DEFAULT_WORLD, type WorldBox, blockedAt, overlapsFootprint, supportUnder } from './world.ts';
 
 export interface MoveState {
   x: number;
@@ -27,6 +27,26 @@ export interface MoveState {
   grounded: boolean;
   /** Authoritative crouch stance; remains crouched until standing clearance exists. */
   crouched: boolean;
+  /**
+   * A vault in progress (T-2.21), or null/absent. Everything the traversal
+   * needs is in here, so a predictor handed this state mid-vault continues
+   * it exactly: the position at any moment is a function of `elapsed`, not
+   * of the steps that led there.
+   */
+  vault?: VaultState | null;
+}
+
+export interface VaultState {
+  /** Seconds since the vault began. */
+  elapsed: number;
+  /** Facing at entry, wire units: the traversal runs straight along it. */
+  yaw: number;
+  /** Feet position at entry. */
+  fromX: number;
+  fromY: number;
+  fromZ: number;
+  /** The obstacle's top: the height the feet rise to. */
+  topY: number;
 }
 
 export interface MoveInput {
@@ -47,6 +67,12 @@ export interface MoveInput {
    * both step the same input. Sprint and jump are ignored while it is set.
    */
   downed?: boolean;
+  /**
+   * The trigger is held (T-2.21). Movement ignores it except to refuse a
+   * vault: a soldier does not throw themselves over a wall mid-burst. A
+   * client that lies about it can only deny itself vaults.
+   */
+  firing?: boolean;
 }
 
 export interface MoveConfig {
@@ -72,6 +98,18 @@ export interface MoveConfig {
   crouchHeight: number;
   /** Ledges up to this high are stepped onto; higher ones block. */
   stepHeight: number;
+  /**
+   * Vault (T-2.21): an obstacle taller than a step and no taller than this
+   * is vaulted when walked into with forward intent. The traversal covers
+   * `vaultDistance` along the facing in `vaultSeconds`, rising to the
+   * obstacle's top plus `vaultLip` at the midpoint to clear the edge, and
+   * looks `vaultProbe` beyond the footprint's front edge for the obstacle.
+   */
+  vaultMaxHeight: number;
+  vaultDistance: number;
+  vaultSeconds: number;
+  vaultProbe: number;
+  vaultLip: number;
 }
 
 /**
@@ -91,6 +129,11 @@ export const DEFAULT_MOVE_CONFIG: MoveConfig = {
   height: 1.8,
   crouchHeight: 1.2,
   stepHeight: 0.45,
+  vaultMaxHeight: 1.25,
+  vaultDistance: 1.5,
+  vaultSeconds: 0.55,
+  vaultProbe: 0.35,
+  vaultLip: 0.15,
 };
 
 /** Clamp a stick axis. Guards against a hostile client sending moveX = 1e9. */
@@ -155,6 +198,26 @@ export function stepCharacter(
   const a: BinAngle = wireToTable(input.yaw);
   const s = sin(a);
   const c = cos(a);
+
+  // A vault in progress owns the whole tick (T-2.21): no strafe, no jump, no
+  // crouch, and no collision, which was settled when it started.
+  const active = state.vault ?? null;
+  if (active) return advanceVault(active, dt, config, world);
+
+  // A vault begins here, before ordinary movement: walking into a vaultable
+  // obstacle with forward intent, on the ground, standing, not firing.
+  if (
+    state.grounded &&
+    !downed &&
+    !crouched &&
+    !input.jump &&
+    input.firing !== true &&
+    my > 0.5 &&
+    Math.abs(mx) <= 0.5
+  ) {
+    const started = tryStartVault(state, input.yaw, s, c, config, world);
+    if (started) return advanceVault(started, dt, config, world);
+  }
 
   // Forward is +Z rotated by yaw. Right is cross(forward, up), NOT
   // cross(up, forward) - in a right-handed Y-up system, a viewer looking along
@@ -241,9 +304,89 @@ export function stepCharacter(
     }
   }
 
-  return { x, y, z, vy, grounded, crouched };
+  return { x, y, z, vy, grounded, crouched, vault: null };
+}
+
+/**
+ * Look for a vaultable obstacle just ahead and a clear place to land beyond
+ * it (T-2.21). Returns the vault to run, or null. Pure arithmetic and
+ * comparison, like everything the server and the predictor share.
+ *
+ * "Vaultable": a box overlapping the footprint one probe ahead whose top is
+ * higher than a step and no higher than `vaultMaxHeight` above the feet,
+ * and which rises from no higher than a step (a floating box is a ceiling,
+ * not a hurdle). Anything ahead that is taller than the vault height and in
+ * the way is a wall and refuses the vault. "Clear to land": the landing
+ * footprint, `vaultDistance` along the facing, has a support no higher than
+ * the obstacle's top plus a step and nothing on it that would block a
+ * standing soldier.
+ */
+export function tryStartVault(
+  state: Readonly<MoveState>,
+  yaw: number,
+  dirX: number,
+  dirZ: number,
+  config: MoveConfig,
+  world: readonly WorldBox[],
+): VaultState | null {
+  const half = config.radius;
+  const feet = state.y;
+  const aheadX = state.x + dirX * (half + config.vaultProbe);
+  const aheadZ = state.z + dirZ * (half + config.vaultProbe);
+
+  let topY = -Infinity;
+  for (const box of world) {
+    if (!overlapsFootprint(aheadX, aheadZ, half, box)) continue;
+    if (box.minY >= feet + config.height) continue; // overhead, not in the way
+    if (box.maxY <= feet + config.stepHeight) continue; // a step, walked onto
+    // Too tall to vault, and in the way: a wall. Stop looking.
+    if (box.maxY > feet + config.vaultMaxHeight) return null;
+    if (box.minY > feet + config.stepHeight) continue; // floating: a ceiling
+    if (box.maxY > topY) topY = box.maxY;
+  }
+  if (topY === -Infinity) return null;
+
+  const endX = state.x + dirX * config.vaultDistance;
+  const endZ = state.z + dirZ * config.vaultDistance;
+  const landing = supportUnder(endX, endZ, half, topY + config.stepHeight, world, config.groundY);
+  if (blockedAt(endX, endZ, half, landing, config.stepHeight, config.height, world)) return null;
+
+  return { elapsed: 0, yaw, fromX: state.x, fromY: feet, fromZ: state.z, topY };
+}
+
+/**
+ * One tick of a vault (T-2.21). The traversal is a closed form of elapsed
+ * time, so 30 and 120 Hz steps trace the same path and land on the same
+ * tick of real time: along the facing at a constant rate, and up on a
+ * smoothstep to the obstacle's top with a parabolic lip on top of it. On
+ * completion the feet come down on whatever supports the landing footprint,
+ * which the start already checked.
+ */
+export function advanceVault(
+  vault: Readonly<VaultState>,
+  dt: number,
+  config: MoveConfig,
+  world: readonly WorldBox[],
+): MoveState {
+  const elapsed = vault.elapsed + dt;
+  const p = elapsed >= config.vaultSeconds ? 1 : elapsed / config.vaultSeconds;
+  const a: BinAngle = wireToTable(vault.yaw);
+  const dirX = sin(a);
+  const dirZ = cos(a);
+  const x = vault.fromX + dirX * config.vaultDistance * p;
+  const z = vault.fromZ + dirZ * config.vaultDistance * p;
+
+  if (p >= 1) {
+    const y = supportUnder(x, z, config.radius, vault.topY + config.stepHeight, world, config.groundY);
+    return { x, y, z, vy: 0, grounded: true, crouched: false, vault: null };
+  }
+
+  const rise = p * p * (3 - 2 * p);
+  const lip = 4 * p * (1 - p) * config.vaultLip;
+  const y = vault.fromY + (vault.topY - vault.fromY) * rise + lip;
+  return { x, y, z, vy: 0, grounded: false, crouched: false, vault: { ...vault, elapsed } };
 }
 
 export function createMoveState(x = 0, y = 0, z = 0): MoveState {
-  return { x, y, z, vy: 0, grounded: y <= 0, crouched: false };
+  return { x, y, z, vy: 0, grounded: y <= 0, crouched: false, vault: null };
 }

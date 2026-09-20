@@ -93,6 +93,14 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     name: 'Crouch',
     fields: [uint('crouched', 1)],
   },
+  {
+    id: COMPONENT_IDS.Vault,
+    name: 'Vault',
+    // T-2.21. `active` 0 means the rest is meaningless. Elapsed is in
+    // milliseconds so a 10-bit field spans a second; a vault is shorter.
+    // `vaultToLevels` / `vaultFromLevels` (net/vaultWire.ts) are the ends.
+    fields: [uint('active', 1), uint('elapsedMs', 10), angle('yaw'), pos('fromX'), pos('fromY'), pos('fromZ'), pos('topY')],
+  },
 ];
 
 /** Width of the component-presence bitmask. */

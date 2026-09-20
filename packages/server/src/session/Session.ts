@@ -34,6 +34,7 @@ import {
   type WeaponState,
   type HealthState,
   applyDamage,
+  vaultToLevels,
   createHealth,
   expireBleedOut,
   isDead,
@@ -129,6 +130,16 @@ export interface Slot {
   /** T-2.15: authoritative revive ownership/progress for this downed soldier. */
   reviveBySlot: number;
   reviveProgressSeconds: number;
+  /**
+   * Whether the newest REAL input had interact held. Latched here rather
+   * than read off `input` each tick, because a tick with nothing buffered
+   * runs an idle input (hold-immediately, in `step`) whose interact is
+   * false, and an idle tick must PAUSE a revive, not cancel it: on a bursty
+   * link the inputs arrive two at a time with a gap between, and a hold that
+   * reset on every gap could never finish. The latch drops on a real
+   * release, on silence past the repeat window, or when the seat changes.
+   */
+  interactHeld: boolean;
 }
 
 /** ADR-012: repeat a missing input this many ticks, then treat it as idle. */
@@ -156,6 +167,7 @@ const idleInput = (yaw = 0): MoveInput => ({
   sprint: false,
   crouch: false,
   interact: false,
+  firing: false,
 });
 
 export interface SessionStats {
@@ -217,6 +229,7 @@ export class Session {
         health: createHealth(),
         reviveBySlot: -1,
         reviveProgressSeconds: 0,
+        interactHeld: false,
       });
     }
   }
@@ -337,6 +350,7 @@ export class Session {
     slot.pendingInputTick = -1;
     slot.queue.length = 0;
     slot.input = idleInput(slot.yaw);
+    slot.interactHeld = false;
 
     conn.accept(slot.netId, slot.index, this.currentTick, this.room);
     this.broadcastRoster();
@@ -353,6 +367,7 @@ export class Session {
     slot.isBot = true;
     slot.connection = null;
     slot.input = idleInput(slot.yaw);
+    slot.interactHeld = false;
     // Anything still queued belongs to someone who has left. A bot that walked
     // out the departed player's last few inputs would look briefly possessed.
     slot.queue.length = 0;
@@ -404,6 +419,7 @@ export class Session {
           sprint: (frame.buttons & 0b010) !== 0,
           crouch: (frame.buttons & 0b100) !== 0,
           interact: (frame.buttons & 0b1000) !== 0,
+          firing: (frame.buttons & 0b10000) !== 0,
         },
       });
     }
@@ -440,6 +456,9 @@ export class Session {
     // neither has a weapon in hand. A client that keeps sending Fire gets
     // nothing, and never a hit event to draw.
     if (!isAlive(slot.health)) return;
+    // Mid-vault both hands are on the wall (T-2.21). The client stops pulling
+    // the trigger too; refusing here keeps a lying client from firing.
+    if (slot.state.vault) return;
 
     const id = WEAPON_IDS[msg.weapon];
     if (id === undefined) return; // Out-of-range index: drop it, do not throw.
@@ -587,6 +606,7 @@ export class Session {
       if (isDowned(slot.health) && expireBleedOut(slot.health, nowSeconds)) {
         slot.queue.length = 0;
         slot.input = idleInput(slot.yaw);
+    slot.interactHeld = false;
       }
       /**
        * Dead players do not move and do not fall: they wait out the timer and
@@ -600,6 +620,7 @@ export class Session {
           slot.state = createMoveState(point.x, point.y, point.z);
           slot.queue.length = 0;
           slot.input = idleInput(slot.yaw);
+    slot.interactHeld = false;
           slot.weaponState = createWeaponState(slot.weapon);
         }
         // Still recorded into the hitbox history below, so a shot already in
@@ -621,6 +642,7 @@ export class Session {
           const ahead = slot.queue.shift();
           if (!ahead) break;
           slot.input = ahead.input;
+          slot.interactHeld = ahead.input.interact === true;
           slot.pendingInputTick = ahead.tick;
           slot.staleTicks = 0;
           slot.input.downed = isDowned(slot.health);
@@ -631,6 +653,7 @@ export class Session {
         const next = slot.queue.shift();
         if (next) {
           slot.input = next.input;
+          slot.interactHeld = next.input.interact === true;
           slot.pendingInputTick = next.tick;
           slot.staleTicks = 0;
         } else {
@@ -659,6 +682,8 @@ export class Session {
            * from a moment it cannot match.
            */
           slot.staleTicks++;
+          // The interact latch survives this on purpose: an idle tick pauses
+          // a revive; only a real release or silence past the window ends it.
           slot.input = idleInput(slot.yaw);
         }
       }
@@ -752,7 +777,7 @@ export class Session {
         !reviver ||
         reviver.isBot ||
         !isAlive(reviver.health) ||
-        !reviver.input.interact ||
+        !this.holdingInteract(reviver) ||
         this.distanceSq(reviver, target) > rangeSq
       ) {
         target.reviveBySlot = -1;
@@ -762,7 +787,7 @@ export class Session {
 
     // Then allow unclaimed targets to be claimed in stable slot/netId order.
     for (const reviver of this.slots) {
-      if (reviver.isBot || !isAlive(reviver.health) || !reviver.input.interact) continue;
+      if (reviver.isBot || !isAlive(reviver.health) || !this.holdingInteract(reviver)) continue;
       let best: Slot | null = null;
       let bestDistance = Number.POSITIVE_INFINITY;
       for (const target of this.slots) {
@@ -790,6 +815,11 @@ export class Session {
         target.queue.length = 0;
       }
     }
+  }
+
+  /** Holding E as of the newest real input, and not silent past the repeat window. */
+  private holdingInteract(slot: Slot): boolean {
+    return slot.interactHeld && slot.staleTicks <= MAX_INPUT_REPEAT;
   }
 
   private distanceSq(a: Slot, b: Slot): number {
@@ -830,6 +860,9 @@ export class Session {
           [COMPONENT_IDS.PlayerSlot]: [s.index, s.isBot ? 1 : 0],
           // Replicate the authoritative stance so remote presentation matches the hitbox.
           [C]: [s.state.crouched ? 1 : 0],
+          // A vault in progress, whole (T-2.21): a predictor reconciling
+          // mid-vault continues the same traversal instead of falling out of it.
+          [COMPONENT_IDS.Vault]: vaultToLevels(s.state.vault),
         },
       })),
     };
