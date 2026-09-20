@@ -93,3 +93,4 @@ Format: `T-<id> — <what changed>`
 
 - T-2.07 / T-2.12 / T-2.16 — Human sign-offs passed for E-2.1 camera, E-2.4 weapon feel, and E-2.6 downed/revive; M2 moves to E-2.2.
 - Planning: broke E-2.2 into T-2.17 through T-2.23, covering locomotion state, eight-way gait, remote playback, crouch height/hit volume, authoritative vaulting, vault presentation, and human sign-off.
+- Planning update 2026-09-20 — E-2.2 now explicitly includes T-2.22, a reusable humanoid character model/rig integration before the human gate; the grey-box remains only as a fallback/diagnostic fixture, and the E-2.2 sign-off moves to T-2.24.
