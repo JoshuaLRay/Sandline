@@ -741,7 +741,7 @@ export class Session {
       let best: Slot | null = null;
       let bestDistance = Number.POSITIVE_INFINITY;
       for (const target of this.slots) {
-        if (target === reviver || !isDowned(target.health) || target.reviveBySlot !== 0) continue;
+        if (target === reviver || !isDowned(target.health) || target.reviveBySlot >= 0) continue;
         const d = this.distanceSq(reviver, target);
         if (d <= rangeSq && d < bestDistance) {
           best = target;
