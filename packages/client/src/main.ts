@@ -909,7 +909,7 @@ function frame(): void {
         velocityX: remoteVelocityX,
         velocityZ: remoteVelocityZ,
         grounded: true,
-        crouched: false,
+        crouched: sample.crouched,
         downed: remoteDowned,
         facingYaw: sample.yaw,
       },
@@ -921,6 +921,7 @@ function frame(): void {
     } else {
       if (humanoidPose(mesh) === 'downed') setHumanoidPose(mesh, 'standing');
       driver.update(remoteLocomotion, dt);
+      setHumanoidPose(mesh, sample.crouched ? 'crouched' : 'standing');
     }
     remoteRenderedPrev.set(netId, { x: sample.x, z: sample.z });
   }
