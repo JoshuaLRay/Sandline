@@ -703,6 +703,9 @@ export class NetClient {
         z,
         yaw: (transform[3] as number) & 0x3ff,
         crouched: (crouch?.[0] as number | undefined) === 1,
+        // The same replicated vault the local predictor continues from, so a
+        // remote's vault pose runs on the state its position does (T-2.23).
+        vaultElapsed: vaultFromLevels(entity.components[COMPONENT_IDS.Vault])?.elapsed ?? null,
       });
       const health = entity.components[H];
       if (health) {

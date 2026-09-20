@@ -5,7 +5,7 @@
  * CharacterController remains the owner of movement physics; this only turns
  * the rendered result into a visual locomotion state.
  */
-export type LocomotionState = 'idle' | 'walk' | 'sprint' | 'crouch-walk' | 'crawl';
+export type LocomotionState = 'idle' | 'walk' | 'sprint' | 'crouch-walk' | 'crawl' | 'vault';
 
 export type MovementDirection =
   | 'forward'
@@ -26,6 +26,13 @@ export interface LocomotionInput {
   downed: boolean;
   /** Wire yaw, 1024 units per turn. */
   facingYaw: number;
+  /**
+   * How far through an authoritative vault the rendered state is, 0..1, or
+   * null (or absent) when not vaulting (T-2.23). The one input that is not a
+   * rendered velocity: a vault is a traversal the server owns, and the pose
+   * has to follow its clock rather than guess it from motion.
+   */
+  vaultProgress?: number | null;
 }
 
 export interface LocomotionResult {
@@ -42,6 +49,8 @@ export interface LocomotionResult {
   airborne: boolean;
   /** Signed local movement angle, where 0 is forward and +PI/4 is right. */
   directionAngle: number;
+  /** 0..1 through the vault while `state` is 'vault'; 0 otherwise. */
+  vaultProgress: number;
 }
 
 export interface LocomotionSpeeds {
@@ -101,9 +110,14 @@ export function classifyLocomotion(
     'forward-left',
   ];
 
+  const vaultProgress = input.vaultProgress == null ? null : Math.max(0, Math.min(1, finite(input.vaultProgress)));
   let state: LocomotionState;
   let modeSpeed: number;
-  if (speed <= SPEED_EPSILON) {
+  if (vaultProgress !== null) {
+    // Whatever else is true of the body, it is over the obstacle.
+    state = 'vault';
+    modeSpeed = speeds.walkSpeed;
+  } else if (speed <= SPEED_EPSILON) {
     state = 'idle';
     modeSpeed = input.downed ? speeds.crawlSpeed : input.crouched ? speeds.crouchSpeed : speeds.walkSpeed;
   } else if (input.downed) {
@@ -131,9 +145,10 @@ export function classifyLocomotion(
     normalizedSpeed,
     // A renderer integrates this rate with its own frame dt; no clock belongs
     // in the classifier. Zero when stationary makes idle settle cleanly.
-    gaitRate: state === 'idle' ? 0 : normalizedSpeed,
+    gaitRate: state === 'idle' || state === 'vault' ? 0 : normalizedSpeed,
     airborne: !input.grounded,
     directionAngle,
+    vaultProgress: vaultProgress ?? 0,
   };
 }
 

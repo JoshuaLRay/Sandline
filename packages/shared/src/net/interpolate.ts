@@ -25,6 +25,11 @@ export interface InterpSample {
   yaw: number;
   /** Authoritative stance; discrete, not spatially interpolated. */
   crouched: boolean;
+  /**
+   * Seconds into an authoritative vault, or null when not vaulting (T-2.23).
+   * Optional so a sample that has no idea about vaults reads as not vaulting.
+   */
+  vaultElapsed?: number | null;
 }
 
 export interface InterpResult {
@@ -33,6 +38,13 @@ export interface InterpResult {
   z: number;
   yaw: number;
   crouched: boolean;
+  /**
+   * Seconds into the vault at the render time, or null. Interpolated between
+   * two vaulting samples so a remote's vault pose advances as smoothly as
+   * its position does; across the edge of a vault it switches at the
+   * authoritative sample boundary, like the stance.
+   */
+  vaultElapsed: number | null;
   /** True when past the newest sample — the buffer is starving. */
   extrapolated: boolean;
   /** True when extrapolation hit its cap and the entity is held still. */
@@ -72,6 +84,18 @@ function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number): 
   );
 }
 
+/**
+ * The vault between two samples: linear while both are vaulting, otherwise
+ * whichever sample is current at the render time (the boundary rule the
+ * stance uses).
+ */
+function vaultBetween(p1: InterpSample, p2: InterpSample, t: number, past: boolean): number | null {
+  const a = p1.vaultElapsed ?? null;
+  const b = p2.vaultElapsed ?? null;
+  if (a !== null && b !== null) return a + (b - a) * t;
+  return past ? b : a;
+}
+
 export class InterpolationBuffer {
   private samples: InterpSample[] = [];
 
@@ -107,7 +131,7 @@ export class InterpolationBuffer {
     if (this.samples.length === 0) return null;
     if (this.samples.length === 1) {
       const only = this.samples[0] as InterpSample;
-      return { x: only.x, y: only.y, z: only.z, yaw: only.yaw, crouched: only.crouched, extrapolated: false, frozen: false };
+      return { x: only.x, y: only.y, z: only.z, yaw: only.yaw, crouched: only.crouched, vaultElapsed: only.vaultElapsed ?? null, extrapolated: false, frozen: false };
     }
 
     const oldest = this.samples[0] as InterpSample;
@@ -115,7 +139,7 @@ export class InterpolationBuffer {
 
     // Behind everything we hold: the buffer is too shallow, so hold the oldest.
     if (renderTimeMs <= oldest.serverTimeMs) {
-      return { x: oldest.x, y: oldest.y, z: oldest.z, yaw: oldest.yaw, crouched: oldest.crouched, extrapolated: false, frozen: false };
+      return { x: oldest.x, y: oldest.y, z: oldest.z, yaw: oldest.yaw, crouched: oldest.crouched, vaultElapsed: oldest.vaultElapsed ?? null, extrapolated: false, frozen: false };
     }
 
     if (renderTimeMs >= newest.serverTimeMs) {
@@ -142,6 +166,7 @@ export class InterpolationBuffer {
       yaw: lerpAngle(p1.yaw, p2.yaw, t),
       // Stance changes at the authoritative sample boundary, not halfway between ticks.
       crouched: renderTimeMs >= p2.serverTimeMs ? p2.crouched : p1.crouched,
+      vaultElapsed: vaultBetween(p1, p2, t, renderTimeMs >= p2.serverTimeMs),
       extrapolated: false,
       frozen: false,
     };
@@ -155,7 +180,7 @@ export class InterpolationBuffer {
 
     const span = newest.serverTimeMs - prev.serverTimeMs;
     if (span <= 0) {
-      return { x: newest.x, y: newest.y, z: newest.z, yaw: newest.yaw, crouched: newest.crouched, extrapolated: true, frozen };
+      return { x: newest.x, y: newest.y, z: newest.z, yaw: newest.yaw, crouched: newest.crouched, vaultElapsed: newest.vaultElapsed ?? null, extrapolated: true, frozen };
     }
 
     // Constant velocity from the last pair. Beyond the cap this holds still:
@@ -170,6 +195,9 @@ export class InterpolationBuffer {
       z: newest.z + vz * capped,
       yaw: newest.yaw,
       crouched: newest.crouched,
+      // A vault runs on the server's clock; carrying it forward with the
+      // position keeps the pose from stalling while the buffer starves.
+      vaultElapsed: newest.vaultElapsed == null ? null : newest.vaultElapsed + capped / 1000,
       extrapolated: true,
       frozen,
     };

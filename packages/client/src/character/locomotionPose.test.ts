@@ -12,6 +12,7 @@ const base: LocomotionResult = {
   gaitRate: 1,
   airborne: false,
   directionAngle: 0,
+  vaultProgress: 0,
 };
 
 function snapshot(root: THREE.Object3D) {

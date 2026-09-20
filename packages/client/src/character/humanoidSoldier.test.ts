@@ -16,6 +16,7 @@ const WALK: LocomotionResult = {
   gaitRate: 1,
   airborne: false,
   directionAngle: 0,
+  vaultProgress: 0,
 };
 const IDLE: LocomotionResult = { ...WALK, state: 'idle', speed: 0, normalizedSpeed: 0, gaitRate: 0 };
 

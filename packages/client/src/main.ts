@@ -882,6 +882,8 @@ function frame(): void {
         crouched: input.crouching,
         downed: net?.vitality === 'downed',
         facingYaw: input.yaw,
+        // The predicted vault's clock, carried to the frame like the position.
+        vaultProgress: sim?.vault ? Math.min(1, (sim.vault.elapsed + clock.alpha * TICK_SECONDS) / config.vaultSeconds) : null,
       },
       config,
     );
@@ -896,7 +898,9 @@ function frame(): void {
     playerRig.setPose('downed');
     localPoseDriver.reset();
   } else {
-    playerRig.setPose(input.crouching ? 'crouched' : 'standing');
+    // A vault is taken standing: the server refuses one from a crouch and
+    // ignores the crouch key until the landing, so the pose does too.
+    playerRig.setPose(input.crouching && !sim?.vault ? 'crouched' : 'standing');
     localPoseDriver.update(locomotion, dt);
   }
 
@@ -926,6 +930,7 @@ function frame(): void {
         crouched: sample.crouched,
         downed: remoteDowned,
         facingYaw: sample.yaw,
+        vaultProgress: sample.vaultElapsed == null ? null : Math.min(1, sample.vaultElapsed / config.vaultSeconds),
       },
       config,
     );
@@ -1103,6 +1108,7 @@ function frame(): void {
         `tick ${clock.tick}   ${fps} fps${clock.dropped ? `   dropped ${clock.dropped}` : ''}\n` +
         `${input.firstPerson ? 'first person  (V for third)' : 'third person  (V swaps shoulder, RMB aims into first)'}\n` +
         `locomotion ${locomotion.state}  ${locomotion.direction}  ${Math.round(locomotion.normalizedSpeed * 100)}%   rig ${playerRig.kind}\n` +
+        `pose step ${localPoseDriver.step.toFixed(3)} rad  peak ${localPoseDriver.peakStep.toFixed(3)}\n` +
         `${input.locked ? 'mouse captured - Esc to release' : 'CLICK to capture mouse'}\n` +
         `\n${combat.readout(clock.tick * TICK_SECONDS, input.ads)}\n` +
         `${effects.readout()}\n` +
@@ -1135,6 +1141,7 @@ addEventListener('keydown', (e) => {
   // teleporting to spawn needs a server-side respawn — that is T-1.19.
   if (e.code === 'KeyT') {
     peakSpeed = 0;
+    localPoseDriver.resetPeak();
     combat.reset();
   effects.reset();
   }
