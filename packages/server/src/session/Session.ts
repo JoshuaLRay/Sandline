@@ -786,8 +786,12 @@ export class Session {
     }
 
     // Then allow unclaimed targets to be claimed in stable slot/netId order.
+    // One soldier at a time: a reviver already holding a lock takes no second
+    // target, however many downed teammates are in reach. The next one is
+    // claimed the tick after the first revive completes and frees the reviver.
     for (const reviver of this.slots) {
       if (reviver.isBot || !isAlive(reviver.health) || !this.holdingInteract(reviver)) continue;
+      if (this.slots.some((t) => t.reviveBySlot === reviver.index)) continue;
       let best: Slot | null = null;
       let bestDistance = Number.POSITIVE_INFINITY;
       for (const target of this.slots) {

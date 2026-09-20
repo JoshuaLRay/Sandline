@@ -244,6 +244,19 @@ describe('crouch height and clearance (T-2.20)', () => {
     expect(clear.crouched).toBe(false);
   });
 
+  it('standing up while jumping under a ceiling clamps to the standing height, not the crouched one', () => {
+    // Review 2026-09-20: the head-room clamp used the height the stance
+    // entered the tick with, so releasing crouch and jumping under a ceiling
+    // between 1.8 and 2.0 m lifted the feet 0.6 m for one tick.
+    const ceiling = [wall('ceiling', 0, 0, 4, 0.3, 4, 1.9)];
+    const crouched: MoveState = { ...createMoveState(0, 0, 0), crouched: true };
+    const rose = stepCharacter(crouched, input({ crouch: false, jump: true }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, ceiling);
+    const standing = stepCharacter(createMoveState(0, 0, 0), input({ jump: true }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, ceiling);
+    expect(rose.crouched).toBe(false);
+    expect(rose.y).toBe(standing.y);
+    expect(rose.y).toBeCloseTo(1.9 - DEFAULT_MOVE_CONFIG.height, 9);
+  });
+
   it('keeps downed geometry distinct from crouch', () => {
     const crouched = stepCharacter(createMoveState(0, 0, 0), input({ crouch: true, moveY: 1 }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
     const downed = stepCharacter(createMoveState(0, 0, 0), input({ downed: true, moveY: 1 }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
