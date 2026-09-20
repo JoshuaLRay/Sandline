@@ -207,6 +207,11 @@ export class LocalInput {
     return edge;
   }
 
+  /** Current crouch intent; the locomotion classifier consumes the rendered result plus this visual state. */
+  get crouching(): boolean {
+    return this.held.has('ControlLeft') || this.held.has('ControlRight') || this.held.has('KeyC');
+  }
+
   /** Left mouse held: pull the trigger. Cadence is the weapon's, not the mouse's. */
   get firing(): boolean {
     return this.buttons.has(0);
