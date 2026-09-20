@@ -741,7 +741,7 @@ export class Session {
       let best: Slot | null = null;
       let bestDistance = Number.POSITIVE_INFINITY;
       for (const target of this.slots) {
-        if (target === reviver || !isDowned(target.health) || target.reviveByNetId !== 0) continue;
+        if (target === reviver || !isDowned(target.health) || target.reviveBySlot !== 0) continue;
         const d = this.distanceSq(reviver, target);
         if (d <= rangeSq && d < bestDistance) {
           best = target;
@@ -760,7 +760,7 @@ export class Session {
       target.reviveProgressSeconds += TICK_SECONDS;
       if (target.reviveProgressSeconds >= DAMAGE.downed.reviveSeconds) {
         revive(target.health);
-        target.reviveByNetId = 0;
+        target.reviveBySlot = -1;
         target.reviveProgressSeconds = 0;
         target.queue.length = 0;
       }
