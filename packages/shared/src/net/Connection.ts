@@ -147,6 +147,9 @@ export class ServerConnection {
       case 'Fire':
         this.events.onFire?.(this, msg);
         break;
+      case 'Revive':
+        this.events.onRevive?.(this, msg.active);
+        break;
       case 'ReviveProgress':
         this.reject('protocol error', 'client cannot send ReviveProgress');
         break;
