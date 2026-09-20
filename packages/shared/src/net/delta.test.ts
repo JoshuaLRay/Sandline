@@ -104,7 +104,7 @@ describe('delta compression (T-1.04)', () => {
   it('applying a delta to its baseline reproduces the new state exactly', () => {
     const base = makeWorld(1, 30);
     const next = makeWorld(2, 30);
-    next.entities[7]!.components[H] = [42, 100, 1, 17];
+    next.entities[7]!.components[H] = [42, 100, 1, 17, 0, 0];
     expectSameWorld(decodeDelta(encodeDelta(next, base), base), next);
   });
 
