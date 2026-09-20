@@ -98,3 +98,5 @@ Format: `T-<id> — <what changed>`
 - Planning update 2026-09-20 — E-2.2 now explicitly includes T-2.22, a reusable humanoid character model/rig integration before the human gate; the grey-box remains only as a fallback/diagnostic fixture, and the E-2.2 sign-off moves to T-2.24.
 - T-2.19: integrate local predicted and remote interpolated locomotion playback through the shared pose driver.
 - T-2.20 — Added authoritative crouch height/clearance, crouched humanoid presentation, and crouch-aware lag-compensated hit volumes.
+
+- T-2.21: added authoritative fixed-duration vault traversal and replicated vault state.
