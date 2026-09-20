@@ -736,7 +736,7 @@ function frame(): void {
   const sparring = live?.sparring ?? null;
 
   for (let i = 0; i < steps; i++) {
-    const tickInput = input.sample();
+    const tickInput = { ...input.sample(), firing: input.firing, vault: input.jump };
     if (!net || !server) continue;
 
     /**
