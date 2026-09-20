@@ -108,4 +108,20 @@ describe('locomotion state classifier (T-2.17)', () => {
     const b = sample(2, 3);
     expect(b).toEqual(a);
   });
+
+  it('reads a vault in progress as the vault state, whatever the body is doing (T-2.23)', () => {
+    const mid = sample(0, 2.7, { grounded: false, vaultProgress: 0.4 });
+    expect(mid.state).toBe('vault');
+    expect(mid.vaultProgress).toBe(0.4);
+    expect(mid.gaitRate).toBe(0);
+    expect(mid.airborne).toBe(true);
+    // Direction still comes from the rendered velocity.
+    expect(mid.direction).toBe('forward');
+    // Clamped, and null or absent means no vault.
+    expect(sample(0, 2.7, { vaultProgress: 1.7 }).vaultProgress).toBe(1);
+    expect(sample(0, 2.7, { vaultProgress: null }).state).toBe('walk');
+    expect(sample(0, 2.7).vaultProgress).toBe(0);
+    // Crouched or downed flags do not override an authoritative vault.
+    expect(sample(0, 1, { crouched: true, vaultProgress: 0.1 }).state).toBe('vault');
+  });
 });

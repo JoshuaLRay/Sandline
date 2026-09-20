@@ -192,6 +192,40 @@ describe('InterpolationBuffer (T-1.16)', () => {
     expect(b.sample(2 * 33)?.crouched).toBe(true);
   });
 
+  it('carries a vault between samples on the server\'s clock (T-2.23)', () => {
+    const b = new InterpolationBuffer();
+    // Ticks 1..4 at 33 ms: standing, then two vaulting samples, then landed.
+    b.push({ ...sample(1, 0), vaultElapsed: null });
+    b.push({ ...sample(2, 1), vaultElapsed: 0.033 });
+    b.push({ ...sample(3, 2), vaultElapsed: 0.066 });
+    b.push({ ...sample(4, 3), vaultElapsed: null });
+    // Between two vaulting samples the clock advances linearly with the position.
+    expect(b.sample(2.5 * 33)?.vaultElapsed).toBeCloseTo(0.0495, 9);
+    // Across the edge of the vault it switches at the authoritative boundary,
+    // the way the stance does: not vaulting up to tick 2, vaulting from it.
+    expect(b.sample(1.5 * 33)?.vaultElapsed).toBeNull();
+    expect(b.sample(2 * 33)?.vaultElapsed).toBeCloseTo(0.033, 9);
+    expect(b.sample(3.5 * 33)?.vaultElapsed).toBeCloseTo(0.066, 9);
+    expect(b.sample(4 * 33)?.vaultElapsed).toBeNull();
+    // A sample that knows nothing of vaults reads as not vaulting.
+    const plain = new InterpolationBuffer();
+    plain.push(sample(1, 0));
+    expect(plain.sample(0)?.vaultElapsed).toBeNull();
+  });
+
+  it('extrapolates a vault forward while the buffer starves (T-2.23)', () => {
+    const b = new InterpolationBuffer();
+    b.push({ ...sample(1, 0), vaultElapsed: 0.1 });
+    b.push({ ...sample(2, 1), vaultElapsed: 0.133 });
+    const ahead = b.sample(2 * 33 + 50)!;
+    expect(ahead.extrapolated).toBe(true);
+    expect(ahead.vaultElapsed).toBeCloseTo(0.183, 9);
+    // Capped with the position: no further than MAX_EXTRAPOLATION_MS.
+    const far = b.sample(2 * 33 + 1000)!;
+    expect(far.frozen).toBe(true);
+    expect(far.vaultElapsed).toBeCloseTo(0.133 + 0.25, 9);
+  });
+
   it('clears', () => {
     const b = new InterpolationBuffer();
     b.push(sample(1, 1));
