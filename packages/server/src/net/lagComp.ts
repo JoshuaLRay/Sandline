@@ -195,12 +195,12 @@ export class HitboxHistory {
 
   positionAt(netId: number, timeMs: number): Vec3 | null {
     const sample = this.tracks.get(netId)?.sampleAt(timeMs, this.windowMs);
-    return sample === null ? null : { x: sample.x, y: sample.y, z: sample.z };
+    return sample === undefined || sample === null ? null : { x: sample.x, y: sample.y, z: sample.z };
   }
 
   stateAt(netId: number, timeMs: number): { position: Vec3; crouched: boolean } | null {
     const sample = this.tracks.get(netId)?.sampleAt(timeMs, this.windowMs);
-    return sample === null
+    return sample === undefined || sample === null
       ? null
       : { position: { x: sample.x, y: sample.y, z: sample.z }, crouched: sample.crouched };
   }
