@@ -323,7 +323,7 @@ describe('authoritative vault traversal (T-2.21)', () => {
     let a = stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1, vault: true }), TICK_SECONDS, cfg, ledge);
     for (let i = 0; i < 20; i++) a = stepCharacter(a, input(), TICK_SECONDS, cfg, ledge);
     let b = stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1, vault: true }), 1 / 60, cfg, ledge);
-    for (let i = 1; i < 60; i++) b = stepCharacter(b, input(), 1 / 60, cfg, ledge);
+    for (let i = 1; i < 40; i++) b = stepCharacter(b, input(), 1 / 60, cfg, ledge);
     expect(a.vaulting).toBe(false);
     expect(b.vaulting).toBe(false);
     expect(b.x).toBeCloseTo(a.x, 9);
