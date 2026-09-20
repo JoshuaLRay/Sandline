@@ -1124,6 +1124,85 @@ progress number on the HUD.
 - **Size:** S
 - **Completed 2026-09-20.** Owner human sign-off passed. Downed presentation, crawl, bleed-out, and teammate revive were judged good enough for M2 to proceed.
 
+### 7.4 E-2.3 leaf tasks — broken out 2026-09-20
+
+E-2.2's build tasks are in and its only open item is the human gate
+(T-2.24), so the next epic is broken out. **E-2.3 before E-2.5 and E-2.7**,
+for three reasons. T-2.22 built the rig it was waiting for: a skeleton with
+named bones, a chest-mounted aim attachment the hands are solved onto, and a
+pose driver that layers on a pose's base and restores it exactly — the
+animation system is the layers that go on top of that, and nothing else in
+M2 can use the rig until they exist. It is what the exit gate's firefight
+reads through: a soldier who aims where they look, whose rifle kicks when
+they fire, who visibly reloads, who reacts to being hit, and whose feet
+stand on what they stand on; today a remote soldier holds a level rifle
+whatever they are looking at. And it is almost all client-side arithmetic on
+the rig: the aim pitch is already on the wire (the `Transform` component has
+carried it since T-1.17 for the server's own shots), shot events already
+reach every client, and the one new replicated thing (a reload in progress)
+is a few bits. E-2.5 needs a target that shoots (§9 Q6) and a new class of
+replicated entity; E-2.7 needs audio assets.
+
+**What already exists.** The rig contract (`humanoidRig.ts`): named bones,
+`base(bone)` for the transform a bone returns to in the current pose, the
+`aim` attachment on the chest, `flinchParts`, and the grey box as a second
+implementation. The pose driver (`locomotionPose.ts`) composes the gait and
+the vault on the base and measures its own largest per-frame joint step. The
+two-bone IK that puts the hands on the rifle at build time
+(`humanoidSoldier.ts`). The `ServerShot` event with shooter, target, point
+and damage on every client. `Transform.pitch` on the wire. The interpolation
+buffer carrying stance and vault beside position. `supportUnder` in the
+shared world for what is under a point. The T-2.11 flinch, a translation of
+the upper body that this epic replaces with a rig reaction.
+
+**Three rules for every task here.** First, **a layer is additive on the
+pose driver's output and restores exactly**: applied after the gait every
+frame, in the rig contract's terms (named bones, base transforms), zero
+input leaves the bones bit-identical to the driver's, and no layer
+accumulates across frames. Second, **nothing authoritative moves**: not the
+hit capsule, not the aim the server traces, not the muzzle the tracers
+leave. A layer is a picture of state that already exists; where a remote
+needs a piece of state it does not have, replicate the state, never an
+animation clock. Third, **no animation assets**: every layer is procedural,
+as the gait and the vault are; the clip pipeline is M4's, and a rig that
+animates from state now will take clips then.
+
+#### T-2.25 — Aim offsets (additive)
+- **Depends:** T-2.22, T-2.23
+- **Files:** `packages/client/src/character/humanoidRig.ts`, `humanoidSoldier.ts`, `humanoidPlaceholder.ts`, `packages/shared/src/net/interpolate.ts`, `packages/client/src/net/NetClient.ts`, `main.ts`, tests
+- **Do:** The rig contract gains `aim(pitch, weight)`: pitch the weapon and what holds it to a signed aim pitch, additive on the current pose. On the skinned soldier the spine takes a bounded share of the pitch, the neck follows so the head looks along the aim, the aim attachment turns about the shoulder by the remainder so the rifle points exactly along the aim, and the arms are re-solved onto the turned grips every frame by the same IK that placed them at build time; at pitch zero every bone is bit-identical to the driver's output. The grey box turns its rifle part. Locally the pitch is the view pitch the player sees (recoil included, so the body kicks with the view); for remotes it is the replicated `Transform.pitch`, carried through the interpolation buffer like yaw. The weight fades the layer out through a vault and off when downed.
+- **Done when:** tests assert the aim attachment's forward matches the pitch within a degree and a half across the camera's whole range, the hands stay on their grips throughout (within reach; the layer never leaves a hand floating), pitch zero restores the exact standing and crouched rest, weight zero at any pitch is the base, a walk with the layer applied every frame equals a walk without it once the pitch returns to zero (no accumulation), the root never moves, the interpolation buffer lerps pitch the short way and reads absent pitch as level, and local and remote fed the same pitch strike the same pose. A browser run on the host shows the other player's rifle pitched when they look up.
+- **Size:** M
+- **Completed 2026-09-20.** `aimAt(pitch, weight)` on the rig contract. On the skinned soldier the spine takes 30% of the pitch to a 0.35 rad cap, the neck 35% to 0.45 rad, and the aim attachment turns about the shoulder by the remainder, so the rifle's pitch in the body's frame is the aim's exactly; the arms are re-solved onto the turned grips every frame by the same function that placed them at build time, composed on the rest the way the pose is, so a level aim is the pose's own bits (the sign of a zero counts). The neck, which the driver writes, is composed on with an undo-if-untouched guard so a frame with no time in it cannot stack the layer; the spine, which nothing else rotates, is set from its base. A pose change re-bases the attachment. The grey box turns its rifle part. Locally the pitch is the view pitch the player sees, recoil included; remotes get `Transform.pitch` through the interpolation buffer, lerped the short way, absent reading as level. The weight is one minus the driver's vault weight, and zero while downed. Two browsers on a host: the other player's rifle pitched steeply up on the watcher's screen while the bots' stayed level.
+
+#### T-2.26 — Fire and reload layers
+- **Depends:** T-2.25
+- **Files:** `packages/client/src/character/`, `packages/shared/src/ecs/components.ts`, `net/schema.ts`, `net/protocol.ts`, `Session.ts`, `NetClient.ts`, `main.ts`, tests
+- **Do:** Fire: each shot kicks the aim attachment back and up and the chest with it, recovering exponentially and frame-rate independently (the T-2.02 form), stacking under a held trigger as the camera shake does; locally from the predicted shot, for remotes from the `ServerShot` event by shooter. Reload: a `Weapon` component carries the weapon index and reload progress (protocol bump), and the reload is a curve of that progress, as the vault is of its own: the left hand leaves the foregrip for the magazine well and returns, the rifle dips, and at the end the hands are back on their grips exactly; locally from the client's own reload state, for remotes from the replicated progress.
+- **Done when:** tests assert the kick recovers within a bound derived from its rate and traces the same envelope at 30 and 120 fps, that a burst builds and is bounded, that the reload's hands return to the grips bit-exactly, that local and remote fed the same progress strike the same pose, and a session test replicates a reload's progress to a watcher. No layer moves the tracer's muzzle or the shot the server resolves.
+- **Size:** M
+
+#### T-2.27 — Hit reactions on the rig
+- **Depends:** T-2.25
+- **Files:** `packages/client/src/character/`, `packages/client/src/weapons/effects.ts`, `main.ts`, tests
+- **Do:** Replace the T-2.11 translation flinch on the skinned rig with a reaction in the rig's terms: the chest turns away from the shooter (the direction is known on every client from the shot's shooter and the target's position), the head snaps on a head-zone hit (the zone from the point's height against the same fractions `damage.json` uses), the magnitude scales with damage, it recovers on the T-2.02 curve, a second hit restarts it, and a downed soldier does not react. The grey box keeps the translation flinch as its fallback path; `effects.flinch` becomes the entry point that asks the rig.
+- **Done when:** tests assert direction (a shot from the left turns the chest one way, from the right the other), zone (head hit moves the head, torso hit does not), magnitude, exact recovery, restart without drift, none while downed, and the grey box unchanged; the T-2.11 flinch tests keep passing on the fixture.
+- **Size:** M
+
+#### T-2.28 — Foot placement
+- **Depends:** T-2.25
+- **Files:** `packages/client/src/character/`, `main.ts`, tests
+- **Do:** Each foot finds what is under it in the shared world (`supportUnder` at the foot's own x/z) and, when that differs from the body's authoritative feet height, a two-bone leg IK plants the foot on its support within a bounded range, the hips settle to the lower foot, and the other knee bends to take up the difference; blended by dt so stepping onto and off an edge slides rather than pops; only while grounded and not vaulting or downed; never a change to the authoritative position. The gait's swing stays on top: a planted foot is the one the gait has on the ground.
+- **Done when:** tests assert a soldier standing half on the slab has one foot at the slab's height and one on the ground with the hips lowered and a knee bent, flat ground is the exact rest, the range is bounded, a walk across the slab's edge keeps the peak joint step inside the walk's own, and the root never moves; a browser run screenshots a soldier standing on the slab's edge.
+- **Size:** M
+
+#### T-2.29 — 🧍 E-2.3 sign-off
+- **Depends:** T-2.25, T-2.26, T-2.27, T-2.28
+- **Files:** `docs/playtests/e2-3.md`
+- **Do:** Two people on the host. Each watches the other aim up and down, fire bursts, reload, take hits, and stand on the slab's edge, and judges whether the body reads what the other is doing: is the rifle pointing where they are looking, does a burst look like a burst, does a reload read as one without a HUD, does a hit land on the body, do the feet stand on the world. Tune the layers' numbers while the feel is in hand.
+- **Done when:** a written verdict, on a run sheet prepared before the session as `e2-2.md` was, naming what it does and does not establish.
+- **Size:** S
+
 ### M3 — AI & squad command (~10–12 wks)
 
 | Epic | Scope | Notes |
@@ -1241,10 +1320,17 @@ E-2.4, and E-2.6 are now built and human-signed off. The three M2 human gates
 (T-2.07, T-2.12, T-2.16) have passed on the owner's judgement. CI remains
 green, including the non-V8 parity job.
 
-1. **Continue E-2.2 — Animation & Character Feel.** E-2.2 is broken into T-2.17 through T-2.24. The humanoid character model/rig is now an explicit M2 task (T-2.22), before the E-2.2 human gate, so the milestone is not signed off on pill/grey-box characters.
-2. **Keep tuning data opportunistically.** Weapon and downed values remain
+1. **Run T-2.24.** 🧍 E-2.2 is built through T-2.23 on the skinned soldier
+   (T-2.22); `docs/playtests/e2-2.md` is the run sheet, prepared and not run.
+   It needs a second person on the host: the bots never shoot, so crawl,
+   revive and remote believability cannot be judged alone.
+2. **Continue E-2.3 — Animation system.** Broken out 2026-09-20 as T-2.25
+   through T-2.29 (§7.4): aim offsets, fire and reload layers, hit reactions
+   on the rig, foot placement, then the sign-off. Each is a procedural layer
+   on the rig contract; none moves anything authoritative.
+3. **Keep tuning data opportunistically.** Weapon and downed values remain
    data-driven; adjust them when a concrete playtest issue appears rather than
    reopening completed gates without a reason.
 
-E-2.3, E-2.5 and E-2.7 remain epics until their turn. M2's exit gate remains the
+E-2.5 and E-2.7 remain epics until their turn. M2's exit gate remains the
 overall human judgement that third-person combat feels good.

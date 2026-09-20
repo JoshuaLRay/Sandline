@@ -122,6 +122,14 @@ export interface HumanoidRig {
    * bone's standing transform exactly. Leaves the root alone.
    */
   setPose(pose: HumanoidPose): void;
+  /**
+   * Pitch the weapon and what holds it to a signed aim pitch, radians,
+   * positive up (T-2.25). A LAYER: applied after the pose driver every
+   * frame, additive on its output, and never accumulating — applying it
+   * twice is applying it once. `weight` 0..1 fades it; at 0, or at pitch 0
+   * with weight 1, every bone is bit-identical to the driver's output.
+   */
+  aimAt(pitchRadians: number, weight: number): void;
 }
 
 const RIGS = new WeakMap<THREE.Object3D, HumanoidRig>();

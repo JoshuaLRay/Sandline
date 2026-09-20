@@ -249,6 +249,11 @@ const remoteMeshes = new Map<number, THREE.Mesh>();
 const remotePoseDrivers = new Map<number, LocomotionPoseDriver>();
 const remoteRenderedPrev = new Map<number, { x: number; z: number }>();
 
+/** A signed wire angle (1024 per turn) in radians. */
+function wireToRadians(wire: number): number {
+  return (wire / 1024) * Math.PI * 2;
+}
+
 function remoteMesh(netId: number): THREE.Mesh {
   let mesh = remoteMeshes.get(netId);
   if (!mesh) {
@@ -501,6 +506,7 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
   effects.reset();
   playerRig.setPose('standing');
   localPoseDriver.reset();
+  playerRig.aimAt(0, 0);
   remotePoseDrivers.clear();
   remoteRenderedPrev.clear();
   simPrev = null;
@@ -897,11 +903,15 @@ function frame(): void {
   if (localDowned) {
     playerRig.setPose('downed');
     localPoseDriver.reset();
+    playerRig.aimAt(0, 0);
   } else {
     // A vault is taken standing: the server refuses one from a crouch and
     // ignores the crouch key until the landing, so the pose does too.
     playerRig.setPose(input.crouching && !sim?.vault ? 'crouched' : 'standing');
     localPoseDriver.update(locomotion, dt);
+    // The aim layer (T-2.25): the body points its rifle where the view
+    // points, recoil included; it fades out through a vault.
+    playerRig.aimAt(wireToRadians(input.pitch), 1 - localPoseDriver.vaultWeight);
   }
 
   const downed = localDowned;
@@ -938,9 +948,13 @@ function frame(): void {
     if (remoteDowned) {
       remoteRig.setPose('downed');
       driver.reset();
+      remoteRig.aimAt(0, 0);
     } else {
       remoteRig.setPose(sample.crouched ? 'crouched' : 'standing');
       driver.update(remoteLocomotion, dt);
+      // Their replicated aim pitch, the one the server traces their shots
+      // along, unsigned on the wire like yaw (T-2.25).
+      remoteRig.aimAt(wireToRadians(sample.pitch > 511 ? sample.pitch - 1024 : sample.pitch), 1 - driver.vaultWeight);
     }
     remoteRenderedPrev.set(netId, { x: sample.x, z: sample.z });
   }

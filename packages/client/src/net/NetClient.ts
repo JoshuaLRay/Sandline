@@ -702,6 +702,9 @@ export class NetClient {
         y,
         z,
         yaw: (transform[3] as number) & 0x3ff,
+        // The aim pitch the server traces their shots along, for the body to
+        // point its rifle the same way (T-2.25).
+        pitch: ((transform[4] as number | undefined) ?? 0) & 0x3ff,
         crouched: (crouch?.[0] as number | undefined) === 1,
         // The same replicated vault the local predictor continues from, so a
         // remote's vault pose runs on the state its position does (T-2.23).

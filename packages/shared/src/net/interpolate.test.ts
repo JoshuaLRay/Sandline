@@ -226,6 +226,21 @@ describe('InterpolationBuffer (T-1.16)', () => {
     expect(far.vaultElapsed).toBeCloseTo(0.133 + 0.25, 9);
   });
 
+  it('carries the aim pitch the short way, and reads absent pitch as level (T-2.25)', () => {
+    const b = new InterpolationBuffer();
+    // Looking 20 units down (1004) to 20 units up (20): the short way crosses zero.
+    b.push({ ...sample(1, 0), pitch: 1004 });
+    b.push({ ...sample(2, 1), pitch: 20 });
+    expect(b.sample(1.5 * 33)?.pitch).toBe(0);
+    expect(b.sample(1 * 33)?.pitch).toBe(1004);
+    expect(b.sample(2 * 33 + 10)?.pitch).toBe(20);
+    const plain = new InterpolationBuffer();
+    plain.push(sample(1, 0));
+    plain.push(sample(2, 1));
+    expect(plain.sample(1.5 * 33)?.pitch).toBe(0);
+    expect(plain.sample(0)?.pitch).toBe(0);
+  });
+
   it('clears', () => {
     const b = new InterpolationBuffer();
     b.push(sample(1, 1));

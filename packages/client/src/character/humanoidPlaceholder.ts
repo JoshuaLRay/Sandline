@@ -178,6 +178,13 @@ function createGreyBoxRig(root: THREE.Mesh): HumanoidRig {
   const aim = root.getObjectByName('rifle');
   if (!aim) throw new Error('The grey box has no rifle');
   const flinchParts = root.children.filter((part) => GREY_BOX_FLINCH_PARTS.includes(part.name));
+  // The aim layer on the fixture: the rifle part turns about its own X
+  // (T-2.25). Undo the last turn if it is still in place, then apply.
+  const rifleBefore = new THREE.Quaternion();
+  const rifleAfter = new THREE.Quaternion();
+  let rifleTurned = false;
+  const rifleTurn = new THREE.Quaternion();
+  const X = new THREE.Vector3(1, 0, 0);
   return {
     kind: 'grey-box',
     root,
@@ -193,6 +200,17 @@ function createGreyBoxRig(root: THREE.Mesh): HumanoidRig {
       if (humanoidPose(root) === pose) return;
       setHumanoidPose(root, pose);
       capture();
+      rifleTurned = false;
+    },
+    aimAt(pitchRadians, weight) {
+      if (rifleTurned && aim.quaternion.equals(rifleAfter)) aim.quaternion.copy(rifleBefore);
+      rifleTurned = false;
+      const w = Number.isFinite(weight) ? Math.max(0, Math.min(1, weight)) : 0;
+      if (w === 0 || !Number.isFinite(pitchRadians) || pitchRadians === 0) return;
+      rifleBefore.copy(aim.quaternion);
+      aim.quaternion.multiply(rifleTurn.setFromAxisAngle(X, -pitchRadians * w));
+      rifleAfter.copy(aim.quaternion);
+      rifleTurned = true;
     },
   };
 }
