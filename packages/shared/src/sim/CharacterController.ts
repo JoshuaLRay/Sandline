@@ -170,6 +170,7 @@ export function stepCharacter(
         : config.walkSpeed;
 
   // Table trig, not Math.cos. See the header.
+  const half = config.radius;
   const a: BinAngle = wireToTable(input.yaw);
   const s = sin(a);
   const c = cos(a);
@@ -218,7 +219,6 @@ export function stepCharacter(
   const worldX = (my * s - mx * c) * speed * scale;
   const worldZ = (my * c + mx * s) * speed * scale;
 
-  const half = config.radius;
   const feet = state.y;
   /** Blocks horizontal movement: too tall to step onto, and not above the head. */
   const blocks = (box: WorldBox): boolean =>
