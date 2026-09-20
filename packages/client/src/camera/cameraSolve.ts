@@ -73,6 +73,13 @@ export interface CameraSolve {
   adsBlend: number;
   /** FOV derived from the same ADS transition. */
   fov: number;
+  /**
+   * Camera shake (T-2.09): a world-space offset the renderer ADDS to
+   * `position` when placing the camera, and a roll for the Euler. Kept apart
+   * from `position` so the aim ray, which reads `position` and `direction`,
+   * never sees it. Written by `applyShake`; zero otherwise.
+   */
+  shake: { x: number; y: number; z: number; roll: number };
 }
 
 export function createCameraSolve(): CameraSolve {
@@ -87,6 +94,7 @@ export function createCameraSolve(): CameraSolve {
     shoulderBlend: 1,
     adsBlend: 0,
     fov: 60,
+    shake: { x: 0, y: 0, z: 0, roll: 0 },
   };
 }
 

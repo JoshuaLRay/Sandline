@@ -49,6 +49,8 @@ const FIXTURE: WeaponDef = {
   recoilMaxDeg: 5,
   recoilRecoveryPerSec: 8,
   recoilAdsScale: 0.5,
+  shakePosM: 0.02,
+  shakeRollDeg: 0.4,
 };
 
 const SEMI: WeaponDef = { ...FIXTURE, id: 'semi', name: 'Semi', auto: false };
@@ -272,6 +274,9 @@ describe('weapon data', () => {
     const { recoilKickDeg: _k, ...missing } = { ...FIXTURE, id: 'a' };
     void _k;
     expect(() => parseWeaponTable({ a: missing })).toThrow(/recoilKickDeg/);
+    // T-2.09: shake is validated the same way.
+    expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', shakePosM: -1 } })).toThrow(/shakePosM/);
+    expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', shakeRollDeg: 45 } })).toThrow(/shakeRollDeg/);
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', auto: 'yes' } })).toThrow(/auto must be a boolean/);
     expect(() => parseWeaponTable({})).toThrow(/empty/);
     expect(() => parseWeaponTable([])).toThrow(/keyed by weapon id/);

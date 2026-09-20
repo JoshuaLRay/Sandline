@@ -27,6 +27,8 @@ const ROWS: Row[] = [
   { key: 'adsFov', label: 'FOV aimed', min: 20, max: 90, step: 1 },
   { key: 'adsDistanceScale', label: 'Arm aimed', min: 0.2, max: 1, step: 0.05 },
   { key: 'shoulderRightAds', label: 'Shoulder aimed', min: 0, max: 2.5, step: 0.05 },
+  // T-2.09. The `reduce` setting: 0 turns camera shake off entirely.
+  { key: 'shakeScale', label: 'Shake', min: 0, max: 2, step: 0.05 },
 ];
 
 export function createCameraPanel(config: CameraConfig): Panel {

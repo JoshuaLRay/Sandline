@@ -76,6 +76,14 @@ export interface WeaponDef {
   recoilMaxDeg: number;
   recoilRecoveryPerSec: number;
   recoilAdsScale: number;
+  /**
+   * Camera shake (T-2.09): the jolt one shot gives the PICTURE, as a
+   * positional amplitude in metres and a roll in degrees. Distinct from
+   * recoil, which moves the aim; shake never does. Scaled by
+   * `recoilAdsScale` while aiming, like recoil.
+   */
+  shakePosM: number;
+  shakeRollDeg: number;
 }
 
 /**
@@ -174,6 +182,8 @@ function parseWeaponDef(key: string, raw: unknown): WeaponDef {
     recoilMaxDeg: num(row, 'recoilMaxDeg', key, 0, 60),
     recoilRecoveryPerSec: num(row, 'recoilRecoveryPerSec', key, 0.1, 100),
     recoilAdsScale: num(row, 'recoilAdsScale', key, 0, 1),
+    shakePosM: num(row, 'shakePosM', key, 0, 0.5),
+    shakeRollDeg: num(row, 'shakeRollDeg', key, 0, 10),
   };
 
   if (!Number.isInteger(def.pellets)) throw new WeaponDataError(`weapon "${key}": pellets must be an integer`);
