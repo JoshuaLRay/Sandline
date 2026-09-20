@@ -68,6 +68,9 @@ export interface Hitbox {
   halfHeight: number;
   /** Capsule centre above the entity's ground position. */
   centerOffsetY: number;
+  /** Crouched capsule geometry; feet remain the authoritative position. */
+  crouchHalfHeight: number;
+  crouchCenterOffsetY: number;
 }
 
 /** Matches the 1.8 m reference figure the movement harness is scaled against. */
@@ -75,6 +78,8 @@ export const DEFAULT_HITBOX: Hitbox = {
   radius: 0.35,
   halfHeight: 0.55,
   centerOffsetY: 0.9,
+  crouchHalfHeight: 0.25,
+  crouchCenterOffsetY: 0.6,
 };
 
 interface Sample {
@@ -82,6 +87,7 @@ interface Sample {
   x: number;
   y: number;
   z: number;
+  crouched: boolean;
 }
 
 /**
@@ -98,16 +104,17 @@ class Track {
 
   constructor(private readonly capacity: number) {}
 
-  record(timeMs: number, x: number, y: number, z: number): void {
+  record(timeMs: number, x: number, y: number, z: number, crouched = false): void {
     this.head = (this.head + 1) % this.capacity;
     const existing = this.samples[this.head];
     if (existing === undefined) {
-      this.samples[this.head] = { timeMs, x, y, z };
+      this.samples[this.head] = { timeMs, x, y, z, crouched };
     } else {
       existing.timeMs = timeMs;
       existing.x = x;
       existing.y = y;
       existing.z = z;
+      existing.crouched = crouched;
     }
     if (this.count < this.capacity) this.count += 1;
   }
@@ -174,17 +181,25 @@ export class HitboxHistory {
     private readonly capacity: number = DEFAULT_CAPACITY,
   ) {}
 
-  record(netId: number, timeMs: number, x: number, y: number, z: number): void {
+  record(netId: number, timeMs: number, x: number, y: number, z: number, crouched = false): void {
     let track = this.tracks.get(netId);
     if (track === undefined) {
       track = new Track(this.capacity);
       this.tracks.set(netId, track);
     }
-    track.record(timeMs, x, y, z);
+    track.record(timeMs, x, y, z, crouched);
   }
 
   positionAt(netId: number, timeMs: number): Vec3 | null {
-    return this.tracks.get(netId)?.sampleAt(timeMs, this.windowMs) ?? null;
+    const sample = this.tracks.get(netId)?.sampleAt(timeMs, this.windowMs);
+    return sample === null ? null : { x: sample.x, y: sample.y, z: sample.z };
+  }
+
+  stateAt(netId: number, timeMs: number): { position: Vec3; crouched: boolean } | null {
+    const sample = this.tracks.get(netId)?.sampleAt(timeMs, this.windowMs);
+    return sample === null
+      ? null
+      : { position: { x: sample.x, y: sample.y, z: sample.z }, crouched: sample.crouched };
   }
 
   /** Newest recorded position, i.e. no rewind at all. */
@@ -325,11 +340,13 @@ export function resolveShot(
 
   for (const netId of history.netIds()) {
     if (netId === query.shooterNetId) continue;
-    const feet = history.positionAt(netId, rewoundTo);
-    if (feet === null) continue;
-
-    const center: Vec3 = { x: feet.x, y: feet.y + hitbox.centerOffsetY, z: feet.z };
-    const distance = rayCapsule(query.ray, center, hitbox.radius, hitbox.halfHeight);
+    const state = history.stateAt(netId, rewoundTo);
+    if (state === null) continue;
+    const feet = state.position;
+    const halfHeight = state.crouched ? hitbox.crouchHalfHeight : hitbox.halfHeight;
+    const centerOffsetY = state.crouched ? hitbox.crouchCenterOffsetY : hitbox.centerOffsetY;
+    const center: Vec3 = { x: feet.x, y: feet.y + centerOffsetY, z: feet.z };
+    const distance = rayCapsule(query.ray, center, hitbox.radius, halfHeight);
     if (distance === null) continue;
     if (best !== null && distance >= best.distance) continue;
 
