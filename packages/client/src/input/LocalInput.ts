@@ -251,6 +251,7 @@ export class LocalInput {
       jump: tapped('Space'),
       sprint: on('ShiftLeft', 'ShiftRight'),
       crouch: on('ControlLeft', 'ControlRight', 'KeyC'),
+      interact: on('KeyE'),
     };
     this.pressed.clear();
     return input;
