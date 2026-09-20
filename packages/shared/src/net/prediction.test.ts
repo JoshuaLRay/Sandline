@@ -230,7 +230,7 @@ describe('correction smoothing (T-1.15)', () => {
  * counter read near zero, and the only symptom was that the game felt bad.
  */
 describe('reconciliation under a poor link', () => {
-  const START: MoveState = { x: 0, y: 0, z: 0, vy: 0, grounded: true, crouched: false };
+  const START: MoveState = { x: 0, y: 0, z: 0, vy: 0, grounded: true, crouched: false, vaulting: false, vaultProgress: 0, vaultStartX: 0, vaultStartY: 0, vaultStartZ: 0, vaultEndX: 0, vaultEndY: 0, vaultEndZ: 0 };
   const FORWARD: MoveInput = { moveX: 0, moveY: 1, yaw: 0, jump: false, sprint: false, crouch: false };
 
   it('does not throw away pending inputs when the acked tick is missing', () => {
