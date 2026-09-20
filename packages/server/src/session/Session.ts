@@ -141,6 +141,9 @@ export const MAX_INPUT_QUEUE = 4;
  */
 export const MAX_CATCHUP_INPUTS = 2;
 
+const REVIVE_RANGE_M = 2.0;
+const REVIVE_SECONDS = 3.0;
+
 const idleInput = (yaw = 0): MoveInput => ({
   moveX: 0,
   moveY: 0,
@@ -176,6 +179,7 @@ export class Session {
   private nextNetId = 1;
   private snapshotsSent = 0;
   private bytesSent = 0;
+  private readonly revives = new Map<number, { targetNetId: number; startedAt: number }>();
 
   /**
    * `moveConfig` is a REFERENCE, not a copy. The in-page QA server shares one
@@ -276,6 +280,7 @@ export class Session {
       // NOT the `now` this connection was opened at: that value is frozen
       // forever. Fire resolves against the session's current time.
       onFire: (c, msg) => this.applyFire(c, msg),
+      onRevive: (c, active) => this.applyRevive(c, active),
       onClosed: (c) => this.releaseSlot(c),
     });
     if (conn.state === 'closed') return false;
@@ -565,7 +570,12 @@ export class Session {
        * Bleed-out (T-2.13): a downed soldier nobody reached dies here, and
        * stops where they lie, exactly as a finishing shot would stop them.
        */
-      if (isDowned(slot.health) && expireBleedOut(slot.health, nowSeconds)) {
+      for (const [reviverNetId, revive] of this.revives) {
+        const reviver = this.slots.find((s) => s.netId === reviverNetId);
+        const target = this.slots.find((s) => s.netId === revive.targetNetId);
+        if (!reviver || !target || isDead(reviver.health) || !isDowned(target.health) || (target.state.x - reviver.state.x) ** 2 + (target.state.z - reviver.state.z) ** 2 > REVIVE_RANGE_M ** 2) this.revives.delete(reviverNetId);
+      }
+      if (isDowned(slot.health) && expireBleedOut(slot.health, nowSeconds) || false) {
         slot.queue.length = 0;
         slot.input = idleInput(slot.yaw);
       }
