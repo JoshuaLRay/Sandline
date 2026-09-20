@@ -9,6 +9,8 @@
 export interface CameraConfig {
   /** Pivot height — roughly the eyes of a 1.8 m soldier. */
   eyeHeight: number;
+  /** Pivot height while downed (T-2.14): the view of someone lying on the ground. */
+  downedEyeHeight: number;
   /** Arm length before any shortening. */
   distance: number;
   /** Over-the-shoulder offset, hip and aimed. */
@@ -33,6 +35,7 @@ export interface CameraConfig {
 
 export const DEFAULT_CAMERA_CONFIG: CameraConfig = {
   eyeHeight: 1.55,
+  downedEyeHeight: 0.55,
   distance: 5.5,
   shoulderRight: 0.85,
   shoulderRightAds: 0.55,

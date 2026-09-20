@@ -21,6 +21,33 @@ import * as THREE from 'three';
  */
 export type HumanoidVariant = 'local' | 'remote';
 
+/**
+ * How the visible parts are arranged on the hit capsule (T-2.14).
+ *
+ * THE POSE MOVES THE PARTS, NEVER THE ROOT. The server's hitbox is the same
+ * upright capsule whether a soldier is standing or downed, so the client's
+ * shootable root must stay exactly where and how it is; only the children
+ * lie down. A downed soldier is therefore still hit where the server says
+ * they are hit, and the parts are the picture of it.
+ */
+export type HumanoidPose = 'standing' | 'downed';
+
+/** Height of a downed body's centre above the feet, metres: lying on its back. */
+export const DOWNED_BODY_LIFT_M = 0.28;
+/** The root's centre sits this far above the feet (the capsule's half height plus radius). */
+export const HUMANOID_ROOT_LIFT_M = 0.9;
+
+interface RestTransform {
+  position: [number, number, number];
+  quaternion: [number, number, number, number];
+}
+
+/** Lying on the back, head forward (+Z): turn the up axis onto forward, then face up. */
+const DOWNED_TURN = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, Math.PI, 0, 'YXZ'));
+const scratchPosition = new THREE.Vector3();
+const scratchQuaternion = new THREE.Quaternion();
+
+
 /** Mirrors the server's hitbox. The test pins these to `DEFAULT_HITBOX`. */
 export const HUMANOID_HIT_RADIUS = 0.35;
 export const HUMANOID_HIT_HALF_HEIGHT = 0.55;
@@ -95,3 +122,42 @@ export function createHumanoidPlaceholder(variant: HumanoidVariant): THREE.Mesh 
   root.castShadow = false;
   return root;
 }
+
+/**
+ * Arrange the parts for a pose. Idempotent: applying the same pose twice
+ * changes nothing, and `standing` restores every part's rest transform
+ * EXACTLY (the rest is captured from the parts the first time this is
+ * called, so it is whatever the factory built). The root is untouched.
+ */
+export function setHumanoidPose(root: THREE.Object3D, pose: HumanoidPose): void {
+  const current = root.userData['pose'] as HumanoidPose | undefined;
+  if (current === pose) return;
+  if (current === undefined && pose === 'standing') {
+    root.userData['pose'] = 'standing';
+    return;
+  }
+  for (const part of root.children) {
+    let rest = part.userData['rest'] as RestTransform | undefined;
+    if (!rest) {
+      rest = { position: part.position.toArray() as [number, number, number], quaternion: part.quaternion.toArray() as [number, number, number, number] };
+      part.userData['rest'] = rest;
+    }
+    if (pose === 'standing') {
+      part.position.fromArray(rest.position);
+      part.quaternion.fromArray(rest.quaternion);
+      continue;
+    }
+    // Turn the rest pose about the root's origin, then drop it to the ground.
+    scratchPosition.fromArray(rest.position).applyQuaternion(DOWNED_TURN);
+    scratchPosition.y += DOWNED_BODY_LIFT_M - HUMANOID_ROOT_LIFT_M;
+    part.position.copy(scratchPosition);
+    scratchQuaternion.fromArray(rest.quaternion);
+    part.quaternion.copy(DOWNED_TURN).multiply(scratchQuaternion);
+  }
+  root.userData['pose'] = pose;
+}
+
+export function humanoidPose(root: THREE.Object3D): HumanoidPose {
+  return (root.userData['pose'] as HumanoidPose | undefined) ?? 'standing';
+}
+

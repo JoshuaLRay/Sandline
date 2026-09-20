@@ -1042,6 +1042,7 @@ progress number on the HUD.
 - **Do:** A downed humanoid lies on its back (the root turned, the hit capsule still the server's: the server's hitbox does not change shape when downed, and neither must the client's shootable root). The local camera drops to a crawl height while downed, eased, and the reticle hides since there is no weapon in hand. Remote downed soldiers show the same pose from replicated vitality. The HUD line from T-2.13 becomes a clear DOWNED banner with the countdown.
 - **Done when:** tests assert the pose is applied from vitality and restored exactly on revive or respawn, and that the shootable root's geometry is untouched by the pose; a headless run downs the local player and screenshots the view.
 - **Size:** S
+- **Completed 2026-09-20.** `setHumanoidPose` turns the PARTS about the root and drops them to a lying height; the root, which is the hit capsule, is untouched, and `standing` restores every part's rest transform exactly. The camera's pivot eases to `downedEyeHeight` on the same exponential curve as the other blends. Remote vitality rides the snapshot and drives the remote pose; the reticle hides and a banner counts the server's bleed-out. A downed soldier no longer flinches: they are already on the ground.
 
 #### T-2.15 — Revive interaction
 - **Depends:** T-2.13

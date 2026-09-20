@@ -464,3 +464,26 @@ canvas { display: block; touch-action: none; }
 .squad-actions .panel-reset[hidden] { display: none; }
 .squad-leave { background: rgba(163, 51, 51, 0.2); }
 .squad-leave:hover { background: rgba(163, 51, 51, 0.35); }
+
+/* Downed banner (T-2.14): centred above the reticle's place, unmissable. */
+#downed {
+  position: fixed;
+  left: 50%;
+  top: 34%;
+  transform: translate(-50%, -50%);
+  padding: 8px 16px;
+  background: rgba(120, 20, 20, 0.72);
+  border: 1px solid rgba(255, 140, 120, 0.7);
+  border-radius: 3px;
+  color: #ffe1d6;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  display: none;
+}
+#downed.shown { display: block; }
+#crosshair.hidden { display: none; }
+
