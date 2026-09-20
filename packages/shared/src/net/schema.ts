@@ -96,7 +96,8 @@ export const SCHEMAS: readonly ComponentSchema[] = [
 ];
 
 /** Width of the component-presence bitmask. */
-// Component IDs are protocol IDs and may have gaps; the mask must cover the highest ID.\nexport const COMPONENT_MASK_BITS = Math.max(...SCHEMAS.map((s) => s.id)) + 1;
+// Component IDs are protocol IDs and may have gaps; the mask must cover the highest ID.
+export const COMPONENT_MASK_BITS = Math.max(...SCHEMAS.map((s) => s.id)) + 1;
 
 const BY_ID = new Map<number, ComponentSchema>(SCHEMAS.map((s) => [s.id, s]));
 
