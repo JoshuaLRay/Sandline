@@ -43,6 +43,12 @@ export interface MoveInput {
    * both step the same input. Sprint and jump are ignored while it is set.
    */
   downed?: boolean;
+  /**
+   * The interact button (T-2.15): held to revive a downed teammate. Not a
+   * movement input — the controller ignores it — but it rides the same
+   * per-tick sample so the server sees it in step with the position.
+   */
+  interact?: boolean;
 }
 
 export interface MoveConfig {

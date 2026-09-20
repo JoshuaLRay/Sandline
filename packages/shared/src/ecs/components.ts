@@ -17,7 +17,15 @@ export const Transform = defineComponent({
 export const Velocity = defineComponent({ x: Types.f32, y: Types.f32, z: Types.f32 });
 
 /** `state` is a vitality code (damage.ts), `timer` whole seconds of bleed-out or respawn left (T-2.13). */
-export const Health = defineComponent({ current: Types.ui16, max: Types.ui16, state: Types.ui8, timer: Types.ui8 });
+export const Health = defineComponent({
+  current: Types.ui16,
+  max: Types.ui16,
+  state: Types.ui8,
+  timer: Types.ui8,
+  /** T-2.15: revive progress on this soldier (0..15) and the reviver's slot (7 = none). */
+  revive: Types.ui8,
+  reviver: Types.ui8,
+});
 
 /** Which of the six squad slots this entity occupies (ADR-001). */
 export const PlayerSlot = defineComponent({ slot: Types.ui8, isBot: Types.ui8 });

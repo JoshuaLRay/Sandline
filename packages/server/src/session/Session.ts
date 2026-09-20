@@ -33,14 +33,14 @@ import {
   type WeaponDef,
   type WeaponState,
   type HealthState,
+  DAMAGE,
   applyDamage,
   createHealth,
+  encodeVitals,
   expireBleedOut,
   isDead,
   isDowned,
-  vitalTimer,
-  vitality,
-  vitalityCode,
+  revive,
   createMoveState,
   createWeaponState,
   damageAtDistance,
@@ -73,6 +73,7 @@ const HITBOX_HEIGHT = 2 * (DEFAULT_HITBOX.halfHeight + DEFAULT_HITBOX.radius);
 const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
 const H = COMPONENT_IDS.Health;
+const P = COMPONENT_IDS.PlayerSlot;
 
 export interface Slot {
   index: number;
@@ -122,6 +123,19 @@ export interface Slot {
   /** Aim pitch, in wire units. Movement only replicates yaw; shots need both. */
   pitch: number;
   health: HealthState;
+  /**
+   * Whether the newest REAL input had interact held (T-2.15). Latched here
+   * rather than read off `input`, because a tick with nothing buffered runs
+   * an idle input (hold-immediately, above) and an idle tick must pause the
+   * hold, not cancel it: on a bursty link the inputs arrive two at a time
+   * with a gap between, and a revive that reset on every gap could never
+   * finish. Dropped once the client has been silent past the repeat window.
+   */
+  interactHeld: boolean;
+  /** The revive THIS soldier is performing, if any (T-2.15). */
+  reviving: { targetNetId: number; progressSeconds: number } | null;
+  /** netId of whoever is reviving THIS soldier, or null. One at a time. */
+  revivedBy: number | null;
 }
 
 /** ADR-012: repeat a missing input this many ticks, then treat it as idle. */
@@ -207,6 +221,9 @@ export class Session {
         weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
         pitch: 0,
         health: createHealth(),
+        interactHeld: false,
+        reviving: null,
+        revivedBy: null,
       });
     }
   }
@@ -325,6 +342,7 @@ export class Session {
     slot.pendingInputTick = -1;
     slot.queue.length = 0;
     slot.input = idleInput(slot.yaw);
+    slot.interactHeld = false;
 
     conn.accept(slot.netId, slot.index, this.currentTick, this.room);
     this.broadcastRoster();
@@ -339,6 +357,7 @@ export class Session {
     slot.isBot = true;
     slot.connection = null;
     slot.input = idleInput(slot.yaw);
+    slot.interactHeld = false;
     // Anything still queued belongs to someone who has left. A bot that walked
     // out the departed player's last few inputs would look briefly possessed.
     slot.queue.length = 0;
@@ -389,6 +408,7 @@ export class Session {
           jump: (frame.buttons & 0b001) !== 0,
           sprint: (frame.buttons & 0b010) !== 0,
           crouch: (frame.buttons & 0b100) !== 0,
+          interact: (frame.buttons & 0b1000) !== 0,
         },
       });
     }
@@ -568,6 +588,7 @@ export class Session {
       if (isDowned(slot.health) && expireBleedOut(slot.health, nowSeconds)) {
         slot.queue.length = 0;
         slot.input = idleInput(slot.yaw);
+    slot.interactHeld = false;
       }
       /**
        * Dead players do not move and do not fall: they wait out the timer and
@@ -581,6 +602,7 @@ export class Session {
           slot.state = createMoveState(point.x, point.y, point.z);
           slot.queue.length = 0;
           slot.input = idleInput(slot.yaw);
+    slot.interactHeld = false;
           slot.weaponState = createWeaponState(slot.weapon);
         }
         // Still recorded into the hitbox history below, so a shot already in
@@ -602,6 +624,7 @@ export class Session {
           const ahead = slot.queue.shift();
           if (!ahead) break;
           slot.input = ahead.input;
+          slot.interactHeld = ahead.input.interact === true;
           slot.pendingInputTick = ahead.tick;
           slot.staleTicks = 0;
           slot.input.downed = isDowned(slot.health);
@@ -612,6 +635,7 @@ export class Session {
         const next = slot.queue.shift();
         if (next) {
           slot.input = next.input;
+          slot.interactHeld = next.input.interact === true;
           slot.pendingInputTick = next.tick;
           slot.staleTicks = 0;
         } else {
@@ -640,6 +664,9 @@ export class Session {
            * from a moment it cannot match.
            */
           slot.staleTicks++;
+          // The latch (`interactHeld`) deliberately survives this: an idle
+          // tick pauses a revive, and only silence past the repeat window or
+          // a real release ends it.
           slot.input = idleInput(slot.yaw);
         }
       }
@@ -682,9 +709,79 @@ export class Session {
     }
 
     this.currentTick++;
+    this.resolveRevives(nowSeconds);
     const snapshot = this.buildSnapshot();
     this.history.store(snapshot);
     this.broadcast(snapshot);
+  }
+
+  /**
+   * Revives (T-2.15). A living soldier holding interact within reach of a
+   * downed teammate accrues progress every tick; letting go, stepping out of
+   * reach, or going down yourself cancels it and the next attempt starts
+   * from nothing. Reaching the configured time stands the teammate up with
+   * a fraction of their health. One reviver per downed soldier: the first
+   * to start holds it until they stop.
+   *
+   * Runs AFTER movement so "within reach" is judged on this tick's
+   * positions, and before the snapshot so both HUDs see this tick's
+   * progress. The bleed-out is not paused by an attempt: a revive that
+   * finishes too late fails, which is the honest outcome.
+   */
+  private resolveRevives(nowSeconds: number): void {
+    void nowSeconds;
+    const cfg = DAMAGE.downed;
+    const distance = (a: Slot, b: Slot): number => Math.hypot(a.state.x - b.state.x, a.state.z - b.state.z);
+    const holding = (slot: Slot): boolean => slot.interactHeld && slot.staleTicks <= MAX_INPUT_REPEAT;
+
+    // Continue or cancel what is under way.
+    for (const slot of this.slots) {
+      if (!slot.reviving) continue;
+      const target = this.slots.find((s) => s.netId === slot.reviving?.targetNetId);
+      if (!target || !holding(slot) || !isAlive(slot.health) || !isDowned(target.health) || distance(slot, target) > cfg.reviveRangeM) {
+        if (target && target.revivedBy === slot.netId) target.revivedBy = null;
+        slot.reviving = null;
+        continue;
+      }
+      slot.reviving.progressSeconds += TICK_SECONDS;
+      if (slot.reviving.progressSeconds + 1e-9 >= cfg.reviveSeconds) {
+        revive(target.health);
+        target.revivedBy = null;
+        slot.reviving = null;
+      }
+    }
+
+    // Start new attempts on the nearest unattended downed teammate in reach.
+    for (const slot of this.slots) {
+      if (slot.reviving || !holding(slot) || !isAlive(slot.health)) continue;
+      let best: Slot | null = null;
+      let bestDistance = Infinity;
+      for (const other of this.slots) {
+        if (other === slot || !isDowned(other.health) || other.revivedBy !== null) continue;
+        const d = distance(slot, other);
+        if (d <= cfg.reviveRangeM && d < bestDistance) {
+          best = other;
+          bestDistance = d;
+        }
+      }
+      if (best) {
+        slot.reviving = { targetNetId: best.netId, progressSeconds: 0 };
+        best.revivedBy = slot.netId;
+      }
+    }
+  }
+
+  /** 0..1 of the revive being performed on `slot`, from its reviver's progress. */
+  private reviveProgressOn(slot: Slot): number {
+    if (slot.revivedBy === null) return 0;
+    const reviver = this.slots.find((s) => s.netId === slot.revivedBy);
+    if (!reviver?.reviving) return 0;
+    return reviver.reviving.progressSeconds / DAMAGE.downed.reviveSeconds;
+  }
+
+  private reviverSlotOf(slot: Slot): number | null {
+    if (slot.revivedBy === null) return null;
+    return this.slots.find((s) => s.netId === slot.revivedBy)?.index ?? null;
   }
 
   private buildSnapshot(): WorldSnapshot {
@@ -707,12 +804,10 @@ export class Session {
           // Replicated, never predicted: §2.3 puts damage firmly on the
           // server's side of the line. The vitality and its timer ride along
           // (T-2.13) so the HUD counts what the server counts.
-          [H]: [
-            Math.round(s.health.current),
-            Math.round(s.health.max),
-            vitalityCode(vitality(s.health)),
-            Math.min(63, Math.ceil(vitalTimer(s.health, this.nowMs / 1000))),
-          ],
+          [H]: encodeVitals(s.health, this.nowMs / 1000, this.reviveProgressOn(s), this.reviverSlotOf(s)),
+          // Which seat this soldier is in, so a client can name them from the
+          // roster (T-2.15's prompts need a name, and netIds have none).
+          [P]: [s.index & 0x7, s.isBot ? 1 : 0],
         },
       })),
     };

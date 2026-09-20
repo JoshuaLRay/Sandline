@@ -74,7 +74,17 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     name: 'Health',
     // T-2.13: vitality (alive / downed / dead) and the seconds left in that
     // phase, so a HUD counts down what the server counts, not a local guess.
-    fields: [uint('current', HEALTH.bits), uint('max', HEALTH.bits), uint('state', 2), uint('timer', 6)],
+    // T-2.15 adds the revive being performed on this soldier: its progress
+    // in fifteenths and the reviver's slot, 7 for nobody. `encodeVitals` /
+    // `decodeVitals` in damage.ts are the two ends of this list.
+    fields: [
+      uint('current', HEALTH.bits),
+      uint('max', HEALTH.bits),
+      uint('state', 2),
+      uint('timer', 6),
+      uint('revive', 4),
+      uint('reviver', 3),
+    ],
   },
   {
     id: COMPONENT_IDS.PlayerSlot,

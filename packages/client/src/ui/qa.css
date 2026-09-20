@@ -487,3 +487,24 @@ canvas { display: block; touch-action: none; }
 #downed.shown { display: block; }
 #crosshair.hidden { display: none; }
 
+/* Revive prompt (T-2.15): below the reticle, quieter than the downed banner. */
+#revive {
+  position: fixed;
+  left: 50%;
+  top: 60%;
+  transform: translate(-50%, -50%);
+  padding: 6px 12px;
+  background: rgba(20, 60, 40, 0.7);
+  border: 1px solid rgba(140, 255, 190, 0.6);
+  border-radius: 3px;
+  color: #dcffe9;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  display: none;
+}
+#revive.shown { display: block; }
+

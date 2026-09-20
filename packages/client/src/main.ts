@@ -34,6 +34,7 @@ import {
   DEFAULT_MOVE_CONFIG,
   type MoveConfig,
   TICK_SECONDS,
+  DAMAGE,
   cos,
   RANGE_TARGETS,
   fromRadians,
@@ -638,6 +639,7 @@ let aimYaw = 0;
 let aimPitch = 0;
 const crosshair = document.getElementById('crosshair');
 const downedBanner = document.getElementById('downed');
+const revivePrompt = document.getElementById('revive');
 /** Last gap written to the reticle, so the style is only touched on change. */
 let crosshairGap = -1;
 
@@ -901,11 +903,36 @@ function frame(): void {
     // No weapon in hand while downed: nothing for a reticle to promise.
     crosshair.classList.toggle('hidden', downed);
   }
-  if (downedBanner) {
-    const timer = net?.stats.vitalTimer ?? 0;
-    const text = downed ? `DOWNED — bleeding out ${timer}s — crawl to a teammate` : '';
+  if (downedBanner && net) {
+    const s = net.stats;
+    const reviver = s.reviverSlot === null ? null : net.roster[s.reviverSlot]?.name || `slot ${s.reviverSlot + 1}`;
+    const text = !downed
+      ? ''
+      : reviver !== null
+        ? `${reviver.toUpperCase()} IS REVIVING YOU — ${Math.round(s.reviveProgress * 100)}%`
+        : `DOWNED — bleeding out ${s.vitalTimer}s — crawl to a teammate`;
     if (downedBanner.textContent !== text) downedBanner.textContent = text;
     downedBanner.classList.toggle('shown', downed);
+  }
+  if (revivePrompt && net) {
+    // The server decides; this only tells the player what holding E would do
+    // (or is doing), from what the newest snapshot says about each teammate.
+    let text = '';
+    if (net.vitality === 'alive') {
+      for (const [netId, sample] of net.remotes()) {
+        const info = net.remoteInfo(netId);
+        if (!info || info.vitality !== 'downed') continue;
+        const name = ((info.slot !== null ? net.roster[info.slot]?.name : '') || 'teammate').toUpperCase();
+        if (info.reviverSlot === net.slot) {
+          text = `REVIVING ${name} — ${Math.round(info.reviveProgress * 100)}%`;
+          break;
+        }
+        const near = Math.hypot(sample.x - rx, sample.z - rz) <= DAMAGE.downed.reviveRangeM;
+        if (near && info.reviverSlot === null && text === '') text = `HOLD E TO REVIVE ${name}`;
+      }
+    }
+    if (revivePrompt.textContent !== text) revivePrompt.textContent = text;
+    revivePrompt.classList.toggle('shown', text !== '');
   }
   // Every value in the camera panel describes where the arm puts the camera
   // relative to a character you cannot see in first person.

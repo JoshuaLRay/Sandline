@@ -251,6 +251,8 @@ export class LocalInput {
       jump: tapped('Space'),
       sprint: on('ShiftLeft', 'ShiftRight'),
       crouch: on('ControlLeft', 'ControlRight', 'KeyC'),
+      // Held, not tapped: a revive is a hold (T-2.15).
+      interact: on('KeyE'),
     };
     this.pressed.clear();
     return input;

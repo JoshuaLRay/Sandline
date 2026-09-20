@@ -12,7 +12,7 @@
       <div id="stats">booting...</div>
       <div id="keys">
         <b>WASD</b> move &middot; <b>Shift</b> sprint &middot; <b>Ctrl</b> crouch &middot;
-        <b>Space</b> jump &middot; <b>V</b> shoulder / exit FPS &middot; <b>T</b> reset stats &middot; <b>G</b> netgraph &middot; <b>H</b> hide
+        <b>Space</b> jump &middot; <b>E</b> hold to revive &middot; <b>V</b> shoulder / exit FPS &middot; <b>T</b> reset stats &middot; <b>G</b> netgraph &middot; <b>H</b> hide
       </div>
       <div id="keys">
         <b>LMB</b> fire &middot; <b>RMB</b> ADS (enters FPS) &middot;
@@ -34,6 +34,8 @@
     <!-- Four separate arms, so the gap between them can open with the cone. -->
     <!-- Shown only while downed (T-2.14): the one thing the player needs to know. -->
     <div id="downed" role="status" aria-live="polite"></div>
+    <!-- Shown to a standing player near a downed one (T-2.15). -->
+    <div id="revive" role="status" aria-live="polite"></div>
     <div id="crosshair" aria-hidden="true">
       <span class="arm up"></span><span class="arm down"></span>
       <span class="arm left"></span><span class="arm right"></span>

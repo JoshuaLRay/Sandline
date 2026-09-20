@@ -35,12 +35,14 @@ import {
   dequantize,
   encodeMessage,
   type Vitality,
-  vitalityFromCode,
+  type Vitals,
+  decodeVitals,
 } from '@sandline/shared';
 
 const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
 const H = COMPONENT_IDS.Health;
+const P = COMPONENT_IDS.PlayerSlot;
 const TICK_MS = TICK_SECONDS * 1000;
 
 export interface ServerShot {
@@ -102,6 +104,15 @@ export interface NetStats {
   vitality: Vitality;
   /** Whole seconds left of the bleed-out or the respawn, from the server. */
   vitalTimer: number;
+  /** 0..1 of a revive being performed on us, and who is doing it (T-2.15). */
+  reviveProgress: number;
+  reviverSlot: number | null;
+}
+
+/** What the client knows of a remote soldier beyond their position. */
+export interface RemoteInfo extends Vitals {
+  /** Seat index, for the roster's name. Null until their first snapshot. */
+  slot: number | null;
 }
 
 export class NetClient {
@@ -165,8 +176,10 @@ export class NetClient {
    */
   private vitalityValue: Vitality = 'alive';
   private vitalTimerValue = 0;
-  /** Each remote soldier's vitality from its newest snapshot, for the pose (T-2.14). */
-  private readonly remoteVitalities = new Map<number, Vitality>();
+  private reviveProgressValue = 0;
+  private reviverSlotValue: number | null = null;
+  /** Each remote soldier's vitals and seat from its newest snapshot (T-2.14, T-2.15). */
+  private readonly remoteInfos = new Map<number, RemoteInfo>();
   /** Local time the newest snapshot landed, for anchoring the server clock. */
   private lastArrivalAt = 0;
 
@@ -265,6 +278,8 @@ export class NetClient {
       maxHealth: this.maxHealthValue,
       vitality: this.vitalityValue,
       vitalTimer: this.vitalTimerValue,
+      reviveProgress: this.reviveProgressValue,
+      reviverSlot: this.reviverSlotValue,
     };
   }
 
@@ -325,7 +340,9 @@ export class NetClient {
     this.maxHealthValue = 0;
     this.vitalityValue = 'alive';
     this.vitalTimerValue = 0;
-    this.remoteVitalities.clear();
+    this.reviveProgressValue = 0;
+    this.reviverSlotValue = null;
+    this.remoteInfos.clear();
     this.recentInputs.length = 0;
     this.newestServerMs = 0;
     this.serverClockMs = 0;
@@ -341,7 +358,7 @@ export class NetClient {
     // same, or every tick down is a correction (T-2.13).
     const predicted = this.vitalityValue === 'downed' ? { ...input, downed: true } : input;
     this.predictor.predict(tickNumber, predicted);
-    const buttons = (input.jump ? 1 : 0) | (input.sprint ? 2 : 0) | (input.crouch ? 4 : 0);
+    const buttons = (input.jump ? 1 : 0) | (input.sprint ? 2 : 0) | (input.crouch ? 4 : 0) | (input.interact ? 8 : 0);
     this.transport.send(
       encodeMessage({
         kind: 'Input',
@@ -453,7 +470,12 @@ export class NetClient {
 
   /** A remote soldier's vitality, as of their newest snapshot. Not interpolated: a state, not a position. */
   remoteVitality(netId: number): Vitality {
-    return this.remoteVitalities.get(netId) ?? 'alive';
+    return this.remoteInfos.get(netId)?.vitality ?? 'alive';
+  }
+
+  /** Everything known of a remote soldier beyond position, or null before their first snapshot. */
+  remoteInfo(netId: number): RemoteInfo | null {
+    return this.remoteInfos.get(netId) ?? null;
   }
 
   /** Every remote entity, sampled at the interpolation delay. */
@@ -605,10 +627,13 @@ export class NetClient {
       if (entity.netId === this.netIdValue) {
         const health = entity.components[H];
         if (health) {
-          this.healthValue = health[0] as number;
-          this.maxHealthValue = health[1] as number;
-          this.vitalityValue = vitalityFromCode((health[2] as number | undefined) ?? 0);
-          this.vitalTimerValue = (health[3] as number | undefined) ?? 0;
+          const v = decodeVitals(health);
+          this.healthValue = v.current;
+          this.maxHealthValue = v.max;
+          this.vitalityValue = v.vitality;
+          this.vitalTimerValue = v.timer;
+          this.reviveProgressValue = v.reviveProgress;
+          this.reviverSlotValue = v.reviverSlot;
         }
         const velocity = entity.components[V];
         this.reconcile(
@@ -633,7 +658,13 @@ export class NetClient {
       }
       buffer.push({ tick, serverTimeMs: serverMs, x, y, z, yaw: (transform[3] as number) & 0x3ff });
       const health = entity.components[H];
-      if (health) this.remoteVitalities.set(entity.netId, vitalityFromCode((health[2] as number | undefined) ?? 0));
+      const seat = entity.components[P];
+      if (health) {
+        this.remoteInfos.set(entity.netId, {
+          ...decodeVitals(health),
+          slot: seat ? (seat[0] as number) : (this.remoteInfos.get(entity.netId)?.slot ?? null),
+        });
+      }
     }
   }
 

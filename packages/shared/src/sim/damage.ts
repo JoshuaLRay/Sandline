@@ -347,3 +347,60 @@ export const SPAWN_POINTS: readonly { x: number; y: number; z: number }[] = [
 export function spawnFor(slotIndex: number): { x: number; y: number; z: number } {
   return SPAWN_POINTS[slotIndex % SPAWN_POINTS.length] as { x: number; y: number; z: number };
 }
+
+/**
+ * The Health component's wire fields, decoded (T-2.13, T-2.15). One place
+ * encodes them on the server and one decodes them on the client, so the
+ * field order is written down exactly once beside the schema.
+ */
+export interface Vitals {
+  current: number;
+  max: number;
+  vitality: Vitality;
+  /** Whole seconds left of the bleed-out or the respawn. */
+  timer: number;
+  /** 0..1 of the revive being performed ON this soldier, 0 when none. */
+  reviveProgress: number;
+  /** Slot index of whoever is reviving this soldier, or null. */
+  reviverSlot: number | null;
+}
+
+/** Revive progress is sent in this many levels (4 bits). */
+export const REVIVE_PROGRESS_LEVELS = 15;
+/** The 3-bit reviver field's "nobody" value: slots are 0..5. */
+export const NO_REVIVER_SLOT = 7;
+/** The timer field is 6 bits. */
+const TIMER_MAX = 63;
+
+export function encodeVitals(
+  health: HealthState,
+  nowSeconds: number,
+  reviveProgress: number,
+  reviverSlot: number | null,
+  config: DamageConfig = DAMAGE,
+): number[] {
+  const fraction = reviveProgress > 1 ? 1 : reviveProgress < 0 ? 0 : reviveProgress;
+  return [
+    Math.round(health.current),
+    Math.round(health.max),
+    vitalityCode(vitality(health)),
+    Math.min(TIMER_MAX, Math.ceil(vitalTimer(health, nowSeconds, config))),
+    Math.round(fraction * REVIVE_PROGRESS_LEVELS),
+    reviverSlot === null ? NO_REVIVER_SLOT : reviverSlot,
+  ];
+}
+
+/** Tolerates a short array (an older sender): missing fields read as "nothing". */
+export function decodeVitals(levels: readonly number[]): Vitals {
+  const at = (i: number): number => (levels[i] as number | undefined) ?? 0;
+  const reviver = (levels[5] as number | undefined) ?? NO_REVIVER_SLOT;
+  return {
+    current: at(0),
+    max: at(1),
+    vitality: vitalityFromCode(at(2)),
+    timer: at(3),
+    reviveProgress: at(4) / REVIVE_PROGRESS_LEVELS,
+    reviverSlot: reviver === NO_REVIVER_SLOT ? null : reviver,
+  };
+}
+
