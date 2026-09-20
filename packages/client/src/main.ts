@@ -744,6 +744,7 @@ function frame(): void {
      */
     const beforeStep = net.simulated;
     net.tick(tickNumber, tickInput, input.pitchWire);
+    net.revive(input.interact && net.vitality === 'alive');
     sparring?.tick(tickNumber);
     const afterStep = net.simulated;
     // Keep both ends of the tick so rendering can interpolate across it.
@@ -906,6 +907,10 @@ function frame(): void {
     const text = downed ? `DOWNED — bleeding out ${timer}s — crawl to a teammate` : '';
     if (downedBanner.textContent !== text) downedBanner.textContent = text;
     downedBanner.classList.toggle('shown', downed);
+  }
+  if (net && net.reviveProgress > 0 && net.reviveProgress < 1) {
+    const reviveText = net.reviveReviverNetId === net.netId ? `REVIVING — ${Math.round(net.reviveProgress * 100)}%` : `BEING REVIVED — ${Math.round(net.reviveProgress * 100)}%`;
+    if (downedBanner) { downedBanner.textContent = reviveText; downedBanner.classList.add('shown'); }
   }
   // Every value in the camera panel describes where the arm puts the camera
   // relative to a character you cannot see in first person.
