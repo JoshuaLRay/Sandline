@@ -964,7 +964,7 @@ E-2.2 is the next build epic after the completed E-2.1, E-2.4, and E-2.6 gates. 
 #### T-2.23 — Vault presentation and locomotion polish
 - **Depends:** T-2.21
 - **Files:** packages/client/src/character/locomotionPose.ts, packages/client/src/character/humanoidPlaceholder.ts, packages/client/src/main.ts, tests
-- **Do:** Add the grey-box vault pose and blend entry/exit with the locomotion state machine. Preserve existing camera and weapon presentation contracts: vault changes the body pose and authoritative position, but does not create an alternate camera or firing path. Add small procedural anticipation/landing offsets only to visible parts.
+- **Do:** Add the humanoid rig's vault pose and blend entry/exit with the locomotion state machine. The humanoid model is the primary presentation; retain the grey-box vault pose only as a fallback/diagnostic path. Preserve existing camera and weapon presentation contracts: vault changes the body pose and authoritative position, but does not create an alternate camera or firing path. Add small procedural anticipation/landing offsets only to visible parts.
 - **Done when:** tests assert vault pose entry/exit restores exact standing/crouch rest transforms, local and remote vaults use the same state, and the weapon/aim root remains valid throughout. A browser harness records a complete step → vault → landing cycle with no visible pose snap.
 - **Size:** M
 
