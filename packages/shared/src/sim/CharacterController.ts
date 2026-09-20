@@ -215,7 +215,7 @@ export function stepCharacter(
   // Head room: a box overhead within standing height stops an upward move.
   for (const box of world) {
     if (box.minY >= y + config.stepHeight && box.minY < y + effectiveHeight && overlapsFootprint(x, z, half, box)) {
-      y = box.minY - config.height;
+      y = Math.max(support, box.minY - effectiveHeight);
       if (vy > 0) vy = 0;
     }
   }
