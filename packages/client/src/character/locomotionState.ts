@@ -53,7 +53,6 @@ export interface LocomotionSpeeds {
 
 const SPEED_EPSILON = 0.05;
 const TWO_PI = Math.PI * 2;
-const HALF_PI = Math.PI / 2;
 const EIGHTH_PI = Math.PI / 4;
 
 function finite(value: number): number {
