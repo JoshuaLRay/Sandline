@@ -186,3 +186,19 @@ M1, and T-1.5.08 is the gate that closes this addendum. It carries the same
 stop rule as T-1.24 — if two humans shooting each other across a real link does
 not feel fair, come back here before M2 continues. R2 closes there, not at
 T-1.24.
+
+## Addendum: the two-human gate passed; the conclusion stands (2026-09-20)
+
+T-1.5.08 was run on 2026-09-19: two people on different networks, joined
+through the published lobby to the Fly host, conditioning off. The owner's
+verdict is a pass — "it looks great" — recorded in `docs/playtests/m1.5.md`,
+with the LAN run before it in `docs/playtests/m1.5-lan.md`. The stop rule the
+re-gate paragraph above carries was not triggered. **This ADR's conclusion is
+unchanged by the two-human case**, and the re-gate addendum of 2026-09-18 is
+closed. R2 is closed with it (PLAN.md §8).
+
+One thing the gate owed and did not deliver: the measured RTT, jitter and
+correction numbers beside the verdict, which are what would let NetSim's
+uniform-jitter model be checked against a real route. The playtest file says
+so. Until a session records them, the T-1.22 cells stand on the model alone.
+
