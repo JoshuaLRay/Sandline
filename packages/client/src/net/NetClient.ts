@@ -649,11 +649,11 @@ export class NetClient {
       const x = dequantize(transform[0] as number, POSITION);
       const y = dequantize(transform[1] as number, POSITION);
       const z = dequantize(transform[2] as number, POSITION);
+      const playerSlot = entity.components[COMPONENT_IDS.PlayerSlot];
+      if (playerSlot) this.remoteSlots.set(entity.netId, playerSlot[0] as number);
 
       if (entity.netId === this.netIdValue) {
-        const slot = entity.components[COMPONENT_IDS.PlayerSlot];
-      if (slot) this.remoteSlots.set(entity.netId, (slot[0] as number));
-      const health = entity.components[H];
+        const health = entity.components[H];
         if (health) {
           this.healthValue = health[0] as number;
           this.maxHealthValue = health[1] as number;
