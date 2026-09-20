@@ -399,7 +399,7 @@ describe('Session revive interaction (T-2.15)', () => {
       s.step(now);
     }
 
-    expect(targetSlot.reviveByNetId).toBe(reviverSlot.netId);
+    expect(targetSlot.reviveBySlot).toBe(reviverSlot.index);
     expect(targetSlot.reviveProgressSeconds).toBeGreaterThan(1.4);
     expect(target.snapshots.at(-1)?.entities.find((e) => e.netId === targetSlot.netId)?.components[2]?.[4]).toBeGreaterThan(45);
 
@@ -414,7 +414,7 @@ describe('Session revive interaction (T-2.15)', () => {
 
     expect(targetSlot.health.current).toBeGreaterThan(0);
     expect(targetSlot.health.downedAt).toBeNull();
-    expect(targetSlot.reviveByNetId).toBe(0);
+    expect(targetSlot.reviveBySlot).toBe(0);
     expect(targetSlot.reviveProgressSeconds).toBe(0);
   });
 
@@ -436,13 +436,13 @@ describe('Session revive interaction (T-2.15)', () => {
     second.input(1, 0, 0, 0, 0b1000);
     target.input(1, 0, 0);
     s.step(33);
-    expect(targetSlot.reviveByNetId).toBe(s.slots[first.joined!.slot]!.netId);
+    expect(targetSlot.reviveBySlot).toBe(s.slots[first.joined!.slot]!.index);
 
     first.input(2, 0, 0);
     second.input(2, 0, 0, 0, 0b1000);
     target.input(2, 0, 0);
     s.step(66);
-    expect(targetSlot.reviveByNetId).toBe(s.slots[second.joined!.slot]!.netId);
+    expect(targetSlot.reviveBySlot).toBe(s.slots[second.joined!.slot]!.index);
   });
 });
 
@@ -469,7 +469,7 @@ describe('Session revive edge cases (T-2.15)', () => {
     reviver.input(2, 0, 0, 0, 0b1000);
     target.input(2, 0, 0);
     s.step(66);
-    expect(targetSlot.reviveByNetId).toBe(0);
+    expect(targetSlot.reviveBySlot).toBe(0);
     expect(targetSlot.reviveProgressSeconds).toBe(0);
 
     targetSlot.health.downedAt = null;
@@ -478,7 +478,7 @@ describe('Session revive edge cases (T-2.15)', () => {
     reviver.input(3, 0, 0, 0, 0b1000);
     target.input(3, 0, 0);
     s.step(99);
-    expect(targetSlot.reviveByNetId).toBe(0);
+    expect(targetSlot.reviveBySlot).toBe(0);
   });
 
   it('lets bleed-out win if the revive starts too late', () => {
