@@ -167,6 +167,9 @@ export class NetClient {
   private vitalTimerValue = 0;
   /** Each remote soldier's vitality from its newest snapshot, for the pose (T-2.14). */
   private readonly remoteVitalities = new Map<number, Vitality>();
+  private reviveProgressValue = 0;
+  private reviveTargetValue = -1;
+  private reviveReviverValue = -1;
   /** Local time the newest snapshot landed, for anchoring the server clock. */
   private lastArrivalAt = 0;
 
@@ -452,6 +455,10 @@ export class NetClient {
   }
 
   /** A remote soldier's vitality, as of their newest snapshot. Not interpolated: a state, not a position. */
+  get reviveProgress(): number { return this.reviveProgressValue; }
+  get reviveTargetNetId(): number { return this.reviveTargetValue; }
+  get reviveReviverNetId(): number { return this.reviveReviverValue; }
+
   remoteVitality(netId: number): Vitality {
     return this.remoteVitalities.get(netId) ?? 'alive';
   }
@@ -529,6 +536,11 @@ export class NetClient {
         this.onRoster?.(msg.slots);
         break;
 
+      case 'ReviveProgress':
+        this.reviveProgressValue = msg.progress;
+        this.reviveTargetValue = msg.targetNetId;
+        this.reviveReviverValue = msg.reviverNetId;
+        break;
       case 'HitEvent':
         this.onShot?.({
           shooterNetId: msg.shooterNetId,
