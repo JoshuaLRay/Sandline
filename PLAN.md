@@ -912,6 +912,66 @@ that shoots.
 - **Done when:** A written verdict exists, recording what it does and does not establish, as T-1.24's did.
 - **Size:** S
 
+### 7.2 E-2.4 leaf tasks — broken out 2026-09-20
+
+M1.5 closed on T-1.5.08 and T-1.12 is finished (a shared box world; ADR-005
+addendum), so both answers §10 said M2 owed are in. E-2.1 is built and waits
+on its human sign-off (T-2.07). The next epic broken out is E-2.4, not E-2.2:
+weapon feel is what the owner is playtesting right now and needs no animation
+system, while locomotion's blend tree does (E-2.3). Per §0.5, E-2.2, E-2.3
+and the rest stay epics until their turn.
+
+**What already exists.** T-1.17 owns cadence, magazine, seeded spread and
+bloom, shared by client and server; the harness draws predicted tracers on
+the trigger and the server's hit event lands the marker (`CombatQA.ts`). The
+reticle's gap already shows the cone. T-1.12 made scenery stop shots, so a
+hit event on netId 0 now carries a point of impact on a wall. What is
+missing is everything a player FEELS on the trigger: the view kicking, the
+camera shaking, a flash at the muzzle, a shell on the ground, and an impact
+where the round stopped.
+
+**Two rules that hold for every task here.** First, nothing in E-2.4 touches
+the authoritative shot: recoil moves the VIEW, and the next shot's direction
+comes from wherever the view then points, which the server already resolves.
+A "recoil" that bent the server's ray would be a second spread and a second
+parity requirement. Second, no art dependencies: every effect is primitives
+and lines, pooled and capped like the tracers already are (§0.3 rule 3).
+
+#### T-2.08 — Recoil patterns
+- **Depends:** T-1.17, T-2.01
+- **Files:** `packages/shared/src/sim/recoil.ts`, tests, `packages/shared/src/data/weapons.json`, `packages/client/src/input/LocalInput.ts`, `packages/client/src/weapons/CombatQA.ts`
+- **Do:** Per-weapon recoil in data: a vertical kick per shot, a horizontal drift per shot with a seeded sign so a burst walks a repeatable pattern, a cap, and a recovery rate. A pure `recoil.ts` accumulates kicks and recovers them (exponential, frame-rate independent, the T-2.02 form). The client adds the accumulated offset to its view yaw/pitch — the aim the next shot is fired along — and the recovery pulls the view back only by what recoil added, never by what the mouse moved. ADS scales the kick down by a per-weapon factor.
+- **Done when:** tests assert a burst of N shots produces the pattern in data exactly, that recovery returns the offset to zero within a bound derived from the rate, that the same recovery at 30 and 120 fps lands within 1e-6, and that mouse movement during recovery is preserved. Every weapon in `weapons.json` validates with the new fields.
+- **Size:** M
+
+#### T-2.09 — Camera shake
+- **Depends:** T-2.01
+- **Files:** `packages/client/src/camera/cameraShake.ts`, tests, `cameraSolve.ts`, `main.ts`
+- **Do:** A shot adds a small, decaying positional and rotational impulse to the camera — distinct from recoil, which moves the aim: shake is what the eye sees, and the reticle must NOT follow it, or the player is aiming with a shaking gun. Composed into the solve after the arm so collision is unaffected. Per-weapon magnitude in data; a `reduce` config for people who dislike it.
+- **Done when:** tests assert the impulse decays to under 1% within a derived bound at any frame rate, that shake never changes `camSolve.direction` (the aim), and that two overlapping impulses sum rather than reset.
+- **Size:** S
+
+#### T-2.10 — Muzzle flash and shell ejection
+- **Depends:** T-2.06
+- **Files:** `packages/client/src/weapons/effects.ts`, tests, `CombatQA.ts`
+- **Do:** On the trigger, a flash at the visual muzzle for two frames (a small emissive quad and a point light), and a shell — a tiny box — ejected right and back on a short ballistic arc that lands and fades. Both pooled and capped, exactly as tracers are, so a held trigger cannot leak the scene. The muzzle comes from `muzzlePosition` so it follows stance and shoulder.
+- **Done when:** a headless run holding the trigger for five seconds ends with the pool at its cap and no per-shot allocation beyond it; the effect count returns to zero within the fade time after release.
+- **Size:** M
+
+#### T-2.11 — Impacts
+- **Depends:** T-1.12, T-2.06
+- **Files:** `packages/client/src/weapons/effects.ts`, `CombatQA.ts`, `main.ts`
+- **Do:** Where a round stops, something happens. A scenery hit (a `HitEvent` on netId 0, from T-1.12) spawns a short spark burst and a fading decal-sized quad at the impact point on the wall; a player hit already lands the marker and adds a brief flinch on the humanoid. Predicted tracers end at the local raycast as now; the impact is drawn when the server confirms the point, which is the honest order.
+- **Done when:** firing at the doorway wall from spawn produces an impact at the server's point every time, none at the tracer's predicted end when the two differ, and the pool stays capped under a held trigger.
+- **Size:** S
+
+#### T-2.12 — 🧍 E-2.4 sign-off
+- **Depends:** T-2.08, T-2.09, T-2.10, T-2.11
+- **Files:** `docs/playtests/e2-4.md`
+- **Do:** A human fires every weapon at the range and at another person, and judges whether recoil reads as a pattern to learn, whether shake is felt without being aimed with, and whether the flash, shells and impacts make a hit feel like a hit. Tune the new numbers in data while the feel is in hand.
+- **Done when:** A written verdict exists, as T-1.24's did, naming what it does and does not establish.
+- **Size:** S
+
 ### M3 — AI & squad command (~10–12 wks)
 
 | Epic | Scope | Notes |
@@ -1024,52 +1084,32 @@ These block estimation, not implementation — M0 can start today regardless.
 
 ## 10. Immediate next actions
 
-**Rewritten 2026-09-18** to put M1.5 (§4.2, §6A) in front of M2.
+**Rewritten 2026-09-20.** M1 closed on T-1.24 (`docs/playtests/m1.md`). M1.5
+closed on the owner's T-1.5.08 sign-off: the host is deployed at
+`wss://sandline-host.fly.dev`, the published lobby points at it, and two
+people on different networks have played. T-1.12 is finished (§6.3). All of
+E-2.1's build tasks have landed. 473 tests pass and CI is green, including
+the non-V8 parity job.
 
-M0 and M1's agent-executable work is done: T-0.01 through T-0.14 and T-1.01
-through T-1.23 have all landed (`docs/CHANGELOG.md` is the per-task trail), 351
-tests pass, and CI is green including the non-V8 parity job.
+1. **Write the M1.5 verdicts down.** 🧍 T-1.5.03 and T-1.5.08 are marked
+   complete but `docs/playtests/` holds only `m1.md`. The changelog has one
+   line each; the plan's own rule is that a gate whose result lives only in a
+   conversation is not a gate. Record what was judged fair and what a LAN and
+   the internet each left unproven, with the netgraph numbers beside them.
+2. **Run T-2.07.** 🧍 E-2.1 is built; judge it. Two things to look at with
+   intent, both from the 2026-09-19 review: aiming cuts to first person in one
+   frame, which also means T-2.05's eased arm is never seen in play; and the
+   arm snaps inward on the tall posts by T-2.02's design. Either is a
+   one-line change once a person says which way it should go.
+3. **Start E-2.4 (§7.2).** T-2.08 and T-2.09 can start now and in parallel;
+   T-2.10 and T-2.11 follow. None of them waits on T-2.07.
+4. **Tune in data while playing.** The weapon numbers were guesses at T-1.17
+   and remain so; the recoil and shake numbers T-2.08/09 add will be guesses
+   too. The harness has sliders and a paste-back block for exactly this.
 
-1. **Run T-1.24.** 🧍 The only thing left in M1 and the only thing here an agent
-   cannot do. Play the harness, judge feel at the three link settings, write the
-   verdict into `docs/playtests/m1.md`. It stays first because a failed gate
-   sends us back to ADR-012, and there is no sense building a lobby onto netcode
-   that does not feel right alone.
-2. **Start T-1.5.01 and T-1.5.02 in parallel with it.** They do not wait on the
-   verdict: both connect components M1 already built and tested, and neither
-   changes a netcode decision the verdict could overturn. They are also the
-   entire distance between today and two people in one session — everything else
-   in §6A is about turning that into two people on *different networks*.
-3. **If T-1.5.02 lands before T-1.24 is played, play T-1.24 with two humans.**
-   Its one-human amendment (§4, ADR-012 addendum) exists solely because there
-   was nowhere for a second person to join. Once there is, the amendment is
-   moot and the gate runs as originally written — which also collapses steps 1
-   and 2 of this list into one sitting.
-4. **Tune the weapon numbers.** Nobody has. The values in `data/weapons.json`
-   and `data/damage.json` were invented by an agent to be plausible, and rule 4
-   put them in data precisely so a person could change them without a code
-   change. The harness has live sliders and a paste-back block for exactly
-   this; it is worth doing in the same sitting as T-1.24, while the feel is in
-   hand.
-5. **Hold M1 open until the verdict is written down.** A gate whose result lives
-   only in a conversation is not a gate.
+E-2.2, E-2.3 and the remaining M2 epics stay epics until their turn (§0.5).
+§9 Q6 is answered well enough for now by M1.5 — the other human fights back —
+and is re-asked at M3's gate, where it changes what M3 is for.
 
-Then M1.5 runs to its exit gate (T-1.5.08). **M2 does not open until it does.**
-The reason is in §4.2: M2, M3 and M4 all build on the assumption that
-human-to-human play over a real host feels fair, and that assumption is
-currently untested rather than merely unpolished.
-
-M2's planning gate (§0.5) still owes two answers before any epic is broken into
-leaf tasks, and M1.5 moves one of them:
-
-- **§9 Q6 — what fights back in M2?** Its exit gate says "grey-box firefight"
-  and every AI epic is in M3. M1.5 softens this: the other human can be what
-  fights back. Confirm at the gate rather than assuming it.
-- **Finish T-1.12.** ~~It is PARTIAL: pure math on a flat plane, no collision.~~
-  **Done 2026-09-19:** a shared box world that players and shots collide with
-  on both ends, and cover on the range (a doorway, low walls, crates, a step).
-  Slopes remain out; see the note under T-1.12.
-
-The pre-M0 list this section used to hold — answer Q1–Q4, create the repo, run
-T-0.13, then T-0.01→T-0.05 — is all done and has been removed. Replaced
-2026-09-18.
+The list this section held before — T-1.24, T-1.5.01/02, M1.5's exit gate —
+is done and has been removed.
