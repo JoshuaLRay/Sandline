@@ -90,4 +90,48 @@ describe('grey-box locomotion pose driver (T-2.18)', () => {
     expect(root.quaternion.toArray()).toEqual(before.quaternion);
     expect(root.scale.toArray()).toEqual(before.scale);
   });
+
+  it('drives local and remote presentation from rendered samples and returns to rest', () => {
+    const local = createHumanoidPlaceholder('local');
+    const remote = createHumanoidPlaceholder('remote');
+    const localDriver = createLocomotionPoseDriver(local);
+    const remoteDriver = createLocomotionPoseDriver(remote);
+
+    const renderedSamples = [
+      { x: 0, z: 0 },
+      { x: 0, z: 0.07 },
+      { x: 0, z: 0.21 },
+      { x: 0, z: 0.35 },
+    ];
+    for (let i = 1; i < renderedSamples.length; i++) {
+      const previous = renderedSamples[i - 1]!;
+      const current = renderedSamples[i]!;
+      const velocityZ = (current.z - previous.z) / (1 / 30);
+      const result = { ...base, speed: velocityZ, normalizedSpeed: Math.min(1, velocityZ / 4.2) };
+      localDriver.update(result, 1 / 30);
+      remoteDriver.update(result, 1 / 30);
+    }
+
+    expect(localDriver.phase).toBeCloseTo(remoteDriver.phase, 10);
+    expect(local.getObjectByName('leg-left')!.quaternion.angleTo(
+      remote.getObjectByName('leg-left')!.quaternion,
+    )).toBeLessThan(1e-9);
+
+    localDriver.update({ ...base, state: 'idle', speed: 0, normalizedSpeed: 0, gaitRate: 0 }, 1 / 60);
+    remoteDriver.update({ ...base, state: 'idle', speed: 0, normalizedSpeed: 0, gaitRate: 0 }, 1 / 60);
+    expect(snapshot(local)).toEqual(snapshot(createHumanoidPlaceholder('local')));
+    expect(snapshot(remote)).toEqual(snapshot(createHumanoidPlaceholder('remote')));
+  });
+
+  it('can reset presentation for a downed state without moving the root', () => {
+    const root = createHumanoidPlaceholder('remote');
+    const driver = createLocomotionPoseDriver(root);
+    const rootPosition = root.position.toArray();
+    driver.update(base, 1 / 30);
+    driver.reset();
+    expect(root.position.toArray()).toEqual(rootPosition);
+    expect(snapshot(root)).toEqual(snapshot(createHumanoidPlaceholder('remote')));
+    expect(driver.phase).toBe(0);
+  });
+
 });
