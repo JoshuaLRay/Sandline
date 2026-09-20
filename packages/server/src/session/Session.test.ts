@@ -478,7 +478,7 @@ describe('Session revive edge cases (T-2.15)', () => {
     reviver.input(3, 0, 0, 0, 0b1000);
     target.input(3, 0, 0);
     s.step(99);
-    expect(targetSlot.reviveBySlot).toBe(0);
+    expect(targetSlot.reviveBySlot).toBe(-1);
   });
 
   it('lets bleed-out win if the revive starts too late', () => {
