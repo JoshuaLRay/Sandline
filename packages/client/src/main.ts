@@ -70,6 +70,7 @@ import { WeaponEffects } from './weapons/effects.ts';
 import { addShake, applyShake, createShake, decayShake } from './camera/cameraShake.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
 import { createHumanoidPlaceholder, setHumanoidPose } from './character/humanoidPlaceholder.ts';
+import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
 import { createNetworkPanel } from './ui/NetworkPanel.ts';
 import { type LobbyChoice, createLobby, readStoredName } from './ui/Lobby.ts';
@@ -664,6 +665,11 @@ let speed = 0;
 /** The predicted state either side of the latest tick, for render interpolation. */
 let simPrev: { x: number; y: number; z: number } | null = null;
 let simCur: { x: number; y: number; z: number } | null = null;
+let renderedPrev: { x: number; z: number } | null = null;
+let locomotion: LocomotionResult = classifyLocomotion(
+  { velocityX: 0, velocityZ: 0, grounded: true, crouched: false, downed: false, facingYaw: 0 },
+  config,
+);
 
 const linkText = (c: LinkConditions): string =>
   `${c.latencyMs}ms  ${c.jitterMs}ms jitter  ${Math.round(c.lossRate * 100)}% loss`;
@@ -843,6 +849,24 @@ function frame(): void {
     rz = smoothed.z;
   }
 
+  // Classify the rendered result, not the input. This keeps presentation tied to
+  // what the player actually sees after prediction, interpolation and correction.
+  // T-2.18 will consume this result for the procedural gait.
+  if (renderedPrev && dt > 0) {
+    locomotion = classifyLocomotion(
+      {
+        velocityX: (rx - renderedPrev.x) / dt,
+        velocityZ: (rz - renderedPrev.z) / dt,
+        grounded: sim?.grounded ?? true,
+        crouched: input.crouching,
+        downed: net?.vitality === 'downed',
+        facingYaw: input.yaw,
+      },
+      config,
+    );
+  }
+  renderedPrev = { x: rx, z: rz };
+
   // Remote characters at the interpolation delay (T-1.16).
   for (const [netId, sample] of net?.remotes() ?? []) {
     const mesh = remoteMesh(netId);
@@ -1015,6 +1039,7 @@ function frame(): void {
         `${net?.simulated?.grounded ?? true ? 'grounded' : `airborne  y ${ry.toFixed(2)}`}\n` +
         `tick ${clock.tick}   ${fps} fps${clock.dropped ? `   dropped ${clock.dropped}` : ''}\n` +
         `${input.firstPerson ? 'first person  (V for third)' : 'third person  (V swaps shoulder, RMB aims into first)'}\n` +
+        `locomotion ${locomotion.state}  ${locomotion.direction}  ${Math.round(locomotion.normalizedSpeed * 100)}%\n` +
         `${input.locked ? 'mouse captured - Esc to release' : 'CLICK to capture mouse'}\n` +
         `\n${combat.readout(clock.tick * TICK_SECONDS, input.ads)}\n` +
         `${effects.readout()}\n` +
