@@ -24,6 +24,8 @@ export const PlayerSlot = defineComponent({ slot: Types.ui8, isBot: Types.ui8 })
 
 /** Whether the authoritative character is currently crouched. */
 export const Crouch = defineComponent({ crouched: Types.ui8 });
+/** Explicit authoritative traversal state (T-2.21). */
+export const Vault = defineComponent({ active: Types.ui8, progress: Types.ui8 });
 
 /**
  * Network identity, distinct from the bitECS entity id.
@@ -51,6 +53,8 @@ export const COMPONENT_IDS = {
   NetId: 4,
   /** Replicated locomotion stance for remote presentation. */
   Crouch: 5,
+  /** Replicated vault traversal state. */
+  Vault: 6,
 } as const;
 
 export type ComponentName = keyof typeof COMPONENT_IDS;
