@@ -207,3 +207,39 @@ describe('world collision (T-1.12)', () => {
     expect(s.z).toBeCloseTo(cfg.walkSpeed, 6);
   });
 });
+
+describe('downed: crawling (T-2.13)', () => {
+  const forward = (extra: Partial<MoveInput> = {}): MoveInput => ({
+    moveX: 0,
+    moveY: 1,
+    yaw: 0,
+    jump: false,
+    sprint: false,
+    crouch: false,
+    ...extra,
+  });
+  const travel = (input: MoveInput, ticks: number): { dz: number; y: number } => {
+    let s = createMoveState(0, 0, 0);
+    for (let i = 0; i < ticks; i += 1) s = stepCharacter(s, input, TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
+    return { dz: s.z, y: s.y };
+  };
+
+  it('moves at the crawl speed, and sprint does not lift it', () => {
+    const ticks = 30;
+    const crawl = travel(forward({ downed: true }), ticks);
+    expect(crawl.dz).toBeCloseTo(DEFAULT_MOVE_CONFIG.crawlSpeed * TICK_SECONDS * ticks, 9);
+    expect(travel(forward({ downed: true, sprint: true }), ticks).dz).toBeCloseTo(crawl.dz, 12);
+    expect(crawl.dz).toBeLessThan(travel(forward({ crouch: true }), ticks).dz);
+  });
+
+  it('cannot jump', () => {
+    const up = travel(forward({ jump: true }), 3);
+    expect(up.y).toBeGreaterThan(0);
+    expect(travel(forward({ downed: true, jump: true }), 3).y).toBe(0);
+  });
+
+  it('is the same input with the flag absent as with it false', () => {
+    expect(travel(forward(), 10)).toEqual(travel(forward({ downed: false }), 10));
+  });
+});
+

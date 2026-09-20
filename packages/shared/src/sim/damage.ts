@@ -13,7 +13,17 @@
  * death you then have to take back is far worse than a hit marker arriving
  * 80 ms late.
  *
- * Downed-and-revive is M2 (ADR-002). Death here is death.
+ * DOWNED BEFORE DEAD (T-2.13, E-2.6). Health reaching zero no longer kills:
+ * the soldier is DOWNED — on the ground, crawling, unable to fire — with a
+ * bleed-out timer running. A teammate can revive them (T-2.15); nobody does,
+ * and the timer expires into death, which then respawns as before. Damage to
+ * a downed soldier does not touch health (there is none) but CUTS the timer,
+ * so a squad can finish someone rather than wait, and a downed player under
+ * fire is not safe. Three states, one order: alive -> downed -> dead ->
+ * (respawn) -> alive, with revive the only way back from downed to alive.
+ *
+ * The whole thing stays a pure function of an injected clock, so a full
+ * down, bleed-out, death and respawn sequence is testable in microseconds.
  */
 import RAW_DAMAGE from '../data/damage.json' with { type: 'json' };
 
@@ -33,9 +43,21 @@ export interface ZoneRule {
   minFraction: number;
 }
 
+export interface DownedConfig {
+  /** Seconds from being downed to dying, with nobody reviving. */
+  bleedOutSeconds: number;
+  /** Seconds a teammate must hold the revive to complete it (T-2.15). */
+  reviveSeconds: number;
+  /** How close the reviver must be, metres (T-2.15). */
+  reviveRangeM: number;
+  /** Health a revived soldier gets back, as a fraction of max. */
+  reviveHealthFraction: number;
+}
+
 export interface DamageConfig {
   maxHealth: number;
   respawnSeconds: number;
+  downed: DownedConfig;
   zones: Record<HitZone, ZoneRule>;
 }
 
@@ -78,9 +100,20 @@ export function parseDamageConfig(raw: unknown): DamageConfig {
     throw new DamageDataError('damage.zones: head must start above torso');
   }
 
+  const rawDowned = row['downed'];
+  if (typeof rawDowned !== 'object' || rawDowned === null) throw new DamageDataError('damage.downed: expected an object');
+  const d = rawDowned as Record<string, unknown>;
+  const downed: DownedConfig = {
+    bleedOutSeconds: num(d, 'bleedOutSeconds', 'damage.downed', 1, 300),
+    reviveSeconds: num(d, 'reviveSeconds', 'damage.downed', 0, 30),
+    reviveRangeM: num(d, 'reviveRangeM', 'damage.downed', 0.1, 10),
+    reviveHealthFraction: num(d, 'reviveHealthFraction', 'damage.downed', 0.01, 1),
+  };
+
   return {
     maxHealth: num(row, 'maxHealth', 'damage', 1, 1000),
     respawnSeconds: num(row, 'respawnSeconds', 'damage', 0, 60),
+    downed,
     zones,
   };
 }
@@ -112,46 +145,159 @@ export function zoneDamage(base: number, zone: HitZone, config: DamageConfig = D
 export interface HealthState {
   current: number;
   max: number;
-  /** Server time of death, or null while alive. */
+  /**
+   * Server time the soldier went down, or null. Damage taken while downed
+   * moves this EARLIER, which is how it shortens the bleed-out without a
+   * second timer.
+   */
+  downedAt: number | null;
+  /** Server time of death, or null while alive or downed. */
   diedAt: number | null;
 }
 
+export type Vitality = 'alive' | 'downed' | 'dead';
+
 export function createHealth(config: DamageConfig = DAMAGE): HealthState {
-  return { current: config.maxHealth, max: config.maxHealth, diedAt: null };
+  return { current: config.maxHealth, max: config.maxHealth, downedAt: null, diedAt: null };
 }
 
+export function vitality(health: HealthState): Vitality {
+  if (health.diedAt !== null) return 'dead';
+  if (health.downedAt !== null) return 'downed';
+  return 'alive';
+}
+
+/** On their feet: moving freely, shooting, able to revive. */
 export function isAlive(health: HealthState): boolean {
-  return health.diedAt === null;
+  return vitality(health) === 'alive';
+}
+
+export function isDowned(health: HealthState): boolean {
+  return vitality(health) === 'downed';
+}
+
+export function isDead(health: HealthState): boolean {
+  return vitality(health) === 'dead';
+}
+
+/** Wire code for a vitality, 2 bits. Part of the protocol: append only. */
+export function vitalityCode(v: Vitality): number {
+  return v === 'alive' ? 0 : v === 'downed' ? 1 : 2;
+}
+
+export function vitalityFromCode(code: number): Vitality {
+  return code === 1 ? 'downed' : code === 2 ? 'dead' : 'alive';
 }
 
 export interface DamageResult {
-  /** Damage actually taken, after clamping to remaining health. */
+  /** Health actually removed, after clamping to what was left. Zero once downed. */
   applied: number;
-  /** True only on the shot that killed — never on subsequent shots. */
+  /** True only on the shot that put them down — never on later shots. */
+  downed: boolean;
+  /**
+   * True only on the shot that killed. Since T-2.13 that is a shot that
+   * exhausts a downed soldier's bleed-out, never a shot that empties health.
+   */
   killed: boolean;
+  /** Seconds taken off the bleed-out by a shot on a downed soldier. */
+  bleedOutCutSeconds: number;
   remaining: number;
 }
+
+const NOTHING = (health: HealthState): DamageResult => ({
+  applied: 0,
+  downed: false,
+  killed: false,
+  bleedOutCutSeconds: 0,
+  remaining: health.current,
+});
 
 /**
  * Apply damage. Mutates, and reports what happened.
  *
- * A dead target takes nothing further and cannot be killed twice. That matters
- * for more than tidiness: with lag compensation two players can both fire a
- * fatal shot at a target that was alive in each of their rewound worlds, and
+ * Alive: health comes off, and reaching zero DOWNS rather than kills.
+ *
+ * Downed: health is already zero, so the damage is taken off the bleed-out
+ * instead, scaled so that one health bar's worth of damage finishes the
+ * timer: `bleedOutSeconds x amount / maxHealth`. Exhausting it kills, and
+ * that is the only way a shot kills.
+ *
+ * Dead: nothing, and never a second kill. That matters for more than
+ * tidiness: with lag compensation two players can both land the finishing
+ * shot on a target that was downed in each of their rewound worlds, and
  * awarding two kills for one death is the visible symptom.
  */
-export function applyDamage(health: HealthState, amount: number, nowSeconds: number): DamageResult {
-  if (!isAlive(health) || !Number.isFinite(amount) || amount <= 0) {
-    return { applied: 0, killed: false, remaining: health.current };
+export function applyDamage(
+  health: HealthState,
+  amount: number,
+  nowSeconds: number,
+  config: DamageConfig = DAMAGE,
+): DamageResult {
+  if (!Number.isFinite(amount) || amount <= 0) return NOTHING(health);
+  const state = vitality(health);
+  if (state === 'dead') return NOTHING(health);
+
+  if (state === 'downed') {
+    const cut = (config.downed.bleedOutSeconds * Math.min(amount, health.max)) / health.max;
+    health.downedAt = (health.downedAt as number) - cut;
+    const killed = bleedOutRemaining(health, nowSeconds, config) <= 0;
+    if (killed) health.diedAt = nowSeconds;
+    return { applied: 0, downed: false, killed, bleedOutCutSeconds: cut, remaining: 0 };
   }
+
   const applied = Math.min(amount, health.current);
   health.current -= applied;
-  const killed = health.current <= 0;
-  if (killed) {
+  const downed = health.current <= 0;
+  if (downed) {
     health.current = 0;
-    health.diedAt = nowSeconds;
+    health.downedAt = nowSeconds;
   }
-  return { applied, killed, remaining: health.current };
+  return { applied, downed, killed: false, bleedOutCutSeconds: 0, remaining: health.current };
+}
+
+/** Seconds of bleed-out left, or 0 when not downed or already due. */
+export function bleedOutRemaining(health: HealthState, nowSeconds: number, config: DamageConfig = DAMAGE): number {
+  if (health.downedAt === null || health.diedAt !== null) return 0;
+  const left = config.downed.bleedOutSeconds - (nowSeconds - health.downedAt);
+  return left > 0 ? left : 0;
+}
+
+/**
+ * Let a downed soldier's timer run out. Returns true on the tick it does,
+ * once: the caller stops their movement then, exactly as a killing shot
+ * would.
+ */
+export function expireBleedOut(health: HealthState, nowSeconds: number, config: DamageConfig = DAMAGE): boolean {
+  if (!isDowned(health) || bleedOutRemaining(health, nowSeconds, config) > 0) return false;
+  health.diedAt = nowSeconds;
+  return true;
+}
+
+/**
+ * Back on their feet with a fraction of their health. Only a downed soldier
+ * can be revived; the interaction that calls this is T-2.15's.
+ */
+export function revive(health: HealthState, config: DamageConfig = DAMAGE): boolean {
+  if (!isDowned(health)) return false;
+  health.current = Math.max(1, Math.round(health.max * config.downed.reviveHealthFraction));
+  health.downedAt = null;
+  return true;
+}
+
+/**
+ * Seconds left in whatever phase the soldier is in: the bleed-out while
+ * downed, the respawn while dead, zero while alive. Replicated so the HUD can
+ * count down honestly rather than timing from when it first saw a zero.
+ */
+export function vitalTimer(health: HealthState, nowSeconds: number, config: DamageConfig = DAMAGE): number {
+  switch (vitality(health)) {
+    case 'downed':
+      return bleedOutRemaining(health, nowSeconds, config);
+    case 'dead':
+      return respawnRemaining(health, nowSeconds, config);
+    default:
+      return 0;
+  }
 }
 
 /** Whether a dead player's respawn timer has elapsed. */
@@ -166,10 +312,11 @@ export function respawnRemaining(health: HealthState, nowSeconds: number, config
   return left > 0 ? left : 0;
 }
 
-/** Restore to full and clear the death state. */
+/** Restore to full and clear both the downed and the death state. */
 export function respawn(health: HealthState, config: DamageConfig = DAMAGE): void {
   health.current = config.maxHealth;
   health.max = config.maxHealth;
+  health.downedAt = null;
   health.diedAt = null;
 }
 

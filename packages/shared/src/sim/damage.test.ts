@@ -4,13 +4,22 @@ import {
   type DamageConfig,
   SPAWN_POINTS,
   applyDamage,
+  bleedOutRemaining,
   createHealth,
+  expireBleedOut,
   isAlive,
+  isDead,
+  isDowned,
   parseDamageConfig,
   readyToRespawn,
   respawn,
   respawnRemaining,
+  revive,
   spawnFor,
+  vitalTimer,
+  vitality,
+  vitalityCode,
+  vitalityFromCode,
   zoneAt,
   zoneDamage,
 } from './damage.ts';
@@ -22,6 +31,7 @@ import {
 const CONFIG: DamageConfig = {
   maxHealth: 100,
   respawnSeconds: 5,
+  downed: { bleedOutSeconds: 20, reviveSeconds: 3, reviveRangeM: 1.5, reviveHealthFraction: 0.4 },
   zones: {
     head: { multiplier: 2, minFraction: 0.8 },
     torso: { multiplier: 1, minFraction: 0.4 },
@@ -69,22 +79,27 @@ describe('hit zones', () => {
 });
 
 describe('cumulative damage', () => {
-  it('kills at the correct threshold, not before', () => {
+  it('downs at the correct threshold, not before (T-2.13: zero health downs, it does not kill)', () => {
     const h = createHealth(CONFIG);
     // Four 22-damage carbine torso hits is 88: still standing.
     for (let i = 0; i < 4; i += 1) {
-      const r = applyDamage(h, 22, 0);
+      const r = applyDamage(h, 22, 0, CONFIG);
+      expect(r.downed).toBe(false);
       expect(r.killed).toBe(false);
     }
     expect(h.current).toBe(100 - 88);
     expect(isAlive(h)).toBe(true);
 
     // The fifth crosses it.
-    const fatal = applyDamage(h, 22, 1);
-    expect(fatal.killed).toBe(true);
-    expect(fatal.applied).toBe(12); // clamped to what was left, not 22
+    const drop = applyDamage(h, 22, 1, CONFIG);
+    expect(drop.downed).toBe(true);
+    expect(drop.killed).toBe(false);
+    expect(drop.applied).toBe(12); // clamped to what was left, not 22
     expect(h.current).toBe(0);
     expect(isAlive(h)).toBe(false);
+    expect(isDowned(h)).toBe(true);
+    expect(isDead(h)).toBe(false);
+    expect(h.downedAt).toBe(1);
   });
 
   it('takes fewer headshots than torso shots, by exactly the multiplier', () => {
@@ -92,29 +107,36 @@ describe('cumulative damage', () => {
     // multiplier and this still tests the property instead of a stale number.
     const perHead = zoneDamage(22, 'head', CONFIG);
     const perTorso = zoneDamage(22, 'torso', CONFIG);
-    const headshotsToKill = Math.ceil(CONFIG.maxHealth / perHead);
-    const torsoShotsToKill = Math.ceil(CONFIG.maxHealth / perTorso);
-    expect(headshotsToKill).toBeLessThan(torsoShotsToKill);
+    const headshotsToDown = Math.ceil(CONFIG.maxHealth / perHead);
+    const torsoShotsToDown = Math.ceil(CONFIG.maxHealth / perTorso);
+    expect(headshotsToDown).toBeLessThan(torsoShotsToDown);
 
     const h = createHealth(CONFIG);
-    for (let i = 1; i < headshotsToKill; i += 1) {
-      expect(applyDamage(h, perHead, 0).killed).toBe(false);
+    for (let i = 1; i < headshotsToDown; i += 1) {
+      expect(applyDamage(h, perHead, 0, CONFIG).downed).toBe(false);
     }
-    expect(applyDamage(h, perHead, 0).killed).toBe(true);
+    expect(applyDamage(h, perHead, 0, CONFIG).downed).toBe(true);
   });
 
-  it('cannot kill the same target twice', () => {
+  it('cannot down the same target twice, and a corpse takes nothing', () => {
     /**
-     * Not tidiness. Under lag compensation two players can each fire a fatal
-     * shot at a target that was alive in their own rewound world, and awarding
-     * two kills for one death is how that shows up.
+     * Not tidiness. Under lag compensation two players can each land the
+     * decisive shot on a target that was standing in their own rewound
+     * world; two downs for one drop, or two kills for one death, is how
+     * that shows up.
      */
     const h = createHealth(CONFIG);
-    applyDamage(h, 500, 0);
-    const second = applyDamage(h, 500, 0);
-    expect(second.killed).toBe(false);
+    expect(applyDamage(h, 500, 0, CONFIG).downed).toBe(true);
+    expect(h.downedAt).toBe(0);
+    const second = applyDamage(h, 500, 0, CONFIG);
+    expect(second.downed).toBe(false);
     expect(second.applied).toBe(0);
-    expect(h.diedAt).toBe(0);
+    // That second shot was a full health bar's worth on a downed soldier: it
+    // finishes them, once.
+    expect(second.killed).toBe(true);
+    expect(isDead(h)).toBe(true);
+    const third = applyDamage(h, 500, 0, CONFIG);
+    expect(third).toMatchObject({ applied: 0, downed: false, killed: false, bleedOutCutSeconds: 0 });
   });
 
   it('ignores nonsense amounts', () => {
@@ -126,15 +148,85 @@ describe('cumulative damage', () => {
   });
 });
 
+describe('downed and bleed-out (T-2.13)', () => {
+  it('bleeds out into death after the configured time, and not before', () => {
+    const h = createHealth(CONFIG);
+    applyDamage(h, 500, 10, CONFIG);
+    expect(vitality(h)).toBe('downed');
+    expect(bleedOutRemaining(h, 10, CONFIG)).toBe(20);
+    expect(bleedOutRemaining(h, 25, CONFIG)).toBe(5);
+    expect(expireBleedOut(h, 29.9, CONFIG)).toBe(false);
+    expect(vitality(h)).toBe('downed');
+    expect(expireBleedOut(h, 30, CONFIG)).toBe(true);
+    expect(vitality(h)).toBe('dead');
+    expect(h.diedAt).toBe(30);
+    // Once, not every tick after.
+    expect(expireBleedOut(h, 31, CONFIG)).toBe(false);
+    // And the respawn clock starts at death, not at the drop.
+    expect(readyToRespawn(h, 34.9, CONFIG)).toBe(false);
+    expect(readyToRespawn(h, 35, CONFIG)).toBe(true);
+  });
+
+  it('damage while downed cuts the bleed-out in proportion, and can finish them', () => {
+    const h = createHealth(CONFIG);
+    applyDamage(h, 500, 0, CONFIG);
+    // A quarter of a health bar takes a quarter of the timer.
+    const r = applyDamage(h, 25, 1, CONFIG);
+    expect(r.applied).toBe(0);
+    expect(r.bleedOutCutSeconds).toBeCloseTo(5, 12);
+    expect(r.killed).toBe(false);
+    expect(bleedOutRemaining(h, 1, CONFIG)).toBeCloseTo(20 - 1 - 5, 12);
+    // Overkill counts as one bar, never more.
+    expect(applyDamage(h, 5000, 1, CONFIG)).toMatchObject({ killed: true, bleedOutCutSeconds: 20 });
+    expect(vitality(h)).toBe('dead');
+    expect(h.diedAt).toBe(1);
+  });
+
+  it('revive stands them up with a fraction of their health; only the downed can be revived', () => {
+    const h = createHealth(CONFIG);
+    expect(revive(h, CONFIG)).toBe(false); // alive
+    applyDamage(h, 500, 0, CONFIG);
+    expect(revive(h, CONFIG)).toBe(true);
+    expect(vitality(h)).toBe('alive');
+    expect(h.current).toBe(40);
+    expect(h.downedAt).toBeNull();
+    // Down again from 40, bleed out, and a corpse cannot be revived.
+    applyDamage(h, 40, 5, CONFIG);
+    expect(vitality(h)).toBe('downed');
+    expireBleedOut(h, 100, CONFIG);
+    expect(revive(h, CONFIG)).toBe(false);
+    expect(vitality(h)).toBe('dead');
+  });
+
+  it('reports the seconds left in whichever phase, for the wire', () => {
+    const h = createHealth(CONFIG);
+    expect(vitalTimer(h, 0, CONFIG)).toBe(0);
+    applyDamage(h, 500, 10, CONFIG);
+    expect(vitalTimer(h, 12, CONFIG)).toBe(18);
+    expireBleedOut(h, 30, CONFIG);
+    expect(vitalTimer(h, 31, CONFIG)).toBe(4);
+    respawn(h, CONFIG);
+    expect(vitalTimer(h, 99, CONFIG)).toBe(0);
+    expect(h.downedAt).toBeNull();
+    expect(h.diedAt).toBeNull();
+  });
+
+  it('round-trips the vitality codes', () => {
+    for (const v of ['alive', 'downed', 'dead'] as const) expect(vitalityFromCode(vitalityCode(v))).toBe(v);
+    expect(vitalityCode('alive')).toBe(0);
+    expect(vitalityFromCode(3)).toBe('alive');
+  });
+});
+
 describe('death and respawn', () => {
   it('waits the full delay, then restores full health', () => {
     const h = createHealth(CONFIG);
-    applyDamage(h, 500, 10);
-
-    expect(readyToRespawn(h, 10, CONFIG)).toBe(false);
-    expect(readyToRespawn(h, 14.9, CONFIG)).toBe(false);
-    expect(readyToRespawn(h, 15, CONFIG)).toBe(true);
-
+    applyDamage(h, 500, 10, CONFIG);
+    expireBleedOut(h, 10 + CONFIG.downed.bleedOutSeconds, CONFIG);
+    // Downed at 10, dead at 30: the respawn counts from 30.
+    expect(readyToRespawn(h, 30, CONFIG)).toBe(false);
+    expect(readyToRespawn(h, 34.9, CONFIG)).toBe(false);
+    expect(readyToRespawn(h, 35, CONFIG)).toBe(true);
     respawn(h, CONFIG);
     expect(h.current).toBe(CONFIG.maxHealth);
     expect(isAlive(h)).toBe(true);
@@ -144,7 +236,9 @@ describe('death and respawn', () => {
   it('counts the timer down for the HUD, and floors at zero', () => {
     const h = createHealth(CONFIG);
     expect(respawnRemaining(h, 0, CONFIG)).toBe(0); // alive
-    applyDamage(h, 500, 10);
+    applyDamage(h, 500, 10, CONFIG);
+    expect(respawnRemaining(h, 10, CONFIG)).toBe(0); // downed, not dead
+    h.diedAt = 10;
     expect(respawnRemaining(h, 10, CONFIG)).toBe(5);
     expect(respawnRemaining(h, 12.5, CONFIG)).toBe(2.5);
     expect(respawnRemaining(h, 99, CONFIG)).toBe(0);
@@ -181,6 +275,13 @@ describe('damage data', () => {
     const floatingLimb = JSON.parse(JSON.stringify(DAMAGE)) as DamageConfig;
     floatingLimb.zones.limb.minFraction = 0.2;
     expect(() => parseDamageConfig(floatingLimb)).toThrow(/fallback zone/);
+  });
+
+  it('rejects a downed block that is missing or out of range', () => {
+    const { downed: _drop, ...noDowned } = CONFIG;
+    expect(() => parseDamageConfig(noDowned)).toThrow(/damage\.downed/);
+    expect(() => parseDamageConfig({ ...CONFIG, downed: { ...CONFIG.downed, reviveHealthFraction: 0 } })).toThrow(/reviveHealthFraction/);
+    expect(() => parseDamageConfig({ ...CONFIG, downed: { ...CONFIG.downed, bleedOutSeconds: 0 } })).toThrow(/bleedOutSeconds/);
   });
 
   it('rejects a missing or malformed field', () => {

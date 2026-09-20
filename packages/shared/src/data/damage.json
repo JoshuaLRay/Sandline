@@ -1,9 +1,24 @@
 {
   "maxHealth": 100,
   "respawnSeconds": 5,
+  "downed": {
+    "bleedOutSeconds": 30,
+    "reviveSeconds": 3,
+    "reviveRangeM": 1.5,
+    "reviveHealthFraction": 0.4
+  },
   "zones": {
-    "head": { "multiplier": 2.5, "minFraction": 0.78 },
-    "torso": { "multiplier": 1, "minFraction": 0.42 },
-    "limb": { "multiplier": 0.75, "minFraction": 0 }
+    "head": {
+      "multiplier": 2.5,
+      "minFraction": 0.78
+    },
+    "torso": {
+      "multiplier": 1,
+      "minFraction": 0.42
+    },
+    "limb": {
+      "multiplier": 0.75,
+      "minFraction": 0
+    }
   }
 }

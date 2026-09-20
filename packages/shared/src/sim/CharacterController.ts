@@ -37,12 +37,20 @@ export interface MoveInput {
   jump: boolean;
   sprint: boolean;
   crouch: boolean;
+  /**
+   * Downed (T-2.13): crawling. Not a button — the server sets it from the
+   * soldier's vitality and the client predictor from the replicated one, so
+   * both step the same input. Sprint and jump are ignored while it is set.
+   */
+  downed?: boolean;
 }
 
 export interface MoveConfig {
   walkSpeed: number;
   sprintSpeed: number;
   crouchSpeed: number;
+  /** Downed and crawling (T-2.13). */
+  crawlSpeed: number;
   gravity: number;
   jumpSpeed: number;
   groundY: number;
@@ -68,6 +76,7 @@ export const DEFAULT_MOVE_CONFIG: MoveConfig = {
   walkSpeed: 4.2,
   sprintSpeed: 6.8,
   crouchSpeed: 1.9,
+  crawlSpeed: 1.2,
   gravity: -19.6,
   jumpSpeed: 6.0,
   groundY: 0,
@@ -121,7 +130,14 @@ export function stepCharacter(
   // Normalise diagonal input so moving on both axes is not faster.
   const lenSq = mx * mx + my * my;
   const scale = lenSq > 1 ? 1 / Math.sqrt(lenSq) : 1; // sqrt IS IEEE-exact
-  const speed = input.crouch ? config.crouchSpeed : input.sprint ? config.sprintSpeed : config.walkSpeed;
+  const downed = input.downed === true;
+  const speed = downed
+    ? config.crawlSpeed
+    : input.crouch
+      ? config.crouchSpeed
+      : input.sprint
+        ? config.sprintSpeed
+        : config.walkSpeed;
 
   // Table trig, not Math.cos. See the header.
   const a: BinAngle = wireToTable(input.yaw);
@@ -161,7 +177,7 @@ export function stepCharacter(
   let vy = state.vy;
   let grounded = state.grounded;
 
-  if (grounded && input.jump) {
+  if (grounded && input.jump && !downed) {
     vy = config.jumpSpeed;
     grounded = false;
   } else if (!grounded) {
