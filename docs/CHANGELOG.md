@@ -92,3 +92,4 @@ Format: `T-<id> — <what changed>`
 - T-2.14 — Downed presentation: the humanoid's parts lie down on the hit capsule, which does not move; the camera pivot eases to a crawl height; remote downed soldiers are posed from replicated vitality; the reticle hides and a DOWNED banner counts the server's timer.
 
 - T-2.07 / T-2.12 / T-2.16 — Human sign-offs passed for E-2.1 camera, E-2.4 weapon feel, and E-2.6 downed/revive; M2 moves to E-2.2.
+- Planning: broke E-2.2 into T-2.17 through T-2.23, covering locomotion state, eight-way gait, remote playback, crouch height/hit volume, authoritative vaulting, vault presentation, and human sign-off.
