@@ -292,6 +292,10 @@ export class NetClient {
     return this.reviverNetIdValue;
   }
 
+  remoteReviveProgress(netId: number): number {
+    return this.remoteReviveProgress.get(netId) ?? 0;
+  }
+
   /** NetId of the downed teammate this client is currently reviving, or 0. */
   get reviveTargetNetId(): number {
     let best = 0;
