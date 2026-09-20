@@ -906,15 +906,15 @@ function frame(): void {
     const timer = stats?.vitalTimer ?? 0;
     let text = '';
     if (downed) {
-      if ((stats?.reviverNetId ?? 0) > 0) {
-        const name = net?.roster[(stats?.reviverNetId ?? 1) - 1]?.name || 'A teammate';
+      if ((stats?.reviverSlot ?? -1) >= 0) {
+        const name = net?.roster[stats?.reviverSlot ?? -1]?.name || 'A teammate';
         text = `DOWNED — ${name} is reviving you ${Math.round(stats?.reviveProgress ?? 0)}% — ${timer}s`;
       } else {
         text = `DOWNED — bleeding out ${timer}s — crawl to a teammate`;
       }
     } else if ((net?.reviveTargetNetId ?? 0) > 0) {
       const targetNetId = net?.reviveTargetNetId ?? 0;
-      const name = net?.roster[targetNetId - 1]?.name || 'teammate';
+      const name = net?.roster[net?.remoteSlot(targetNetId) ?? -1]?.name || 'teammate';
       text = `Hold E to revive ${name} ${Math.round(net?.remoteReviveProgress(targetNetId) ?? 0)}%`;
     }
     if (downedBanner.textContent !== text) downedBanner.textContent = text;
