@@ -169,6 +169,7 @@ export class InterpolationBuffer {
       y: newest.y + vy * capped,
       z: newest.z + vz * capped,
       yaw: newest.yaw,
+      crouched: newest.crouched,
       extrapolated: true,
       frozen,
     };
