@@ -32,6 +32,7 @@ export interface ServerConnectionEvents {
   onJoined?: (conn: ServerConnection) => void;
   onInput?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Input' }>) => void;
   onFire?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Fire' }>) => void;
+  onRevive?: (conn: ServerConnection, active: boolean) => void;
   onAck?: (conn: ServerConnection, tick: number) => void;
   onClosed?: (conn: ServerConnection, reason: string) => void;
 }
@@ -146,6 +147,12 @@ export class ServerConnection {
       case 'Fire':
         this.events.onFire?.(this, msg);
         break;
+      case 'Input':
+        this.events.onInput?.(this, msg);
+        break;
+      case 'ReviveProgress':
+        this.reject('protocol error', 'client cannot send ReviveProgress');
+        break;
       case 'Ack':
         if (msg.tick > this.lastAckedTick) this.lastAckedTick = msg.tick;
         this.events.onAck?.(this, msg.tick);
@@ -208,6 +215,7 @@ export interface ClientConnectionEvents {
   onSnapshot?: (msg: Extract<Message, { kind: 'Snapshot' }>) => void;
   onPong?: (msg: Extract<Message, { kind: 'Pong' }>) => void;
   onRoster?: (slots: RosterEntry[]) => void;
+  onReviveProgress?: (msg: Extract<Message, { kind: 'ReviveProgress' }>) => void;
   onClosed?: (reason: string, code: DisconnectCode | null) => void;
 }
 
@@ -262,6 +270,9 @@ export class ClientConnection {
         break;
       case 'Roster':
         this.events.onRoster?.(msg.slots);
+        break;
+      case 'ReviveProgress':
+        this.events.onReviveProgress?.(msg);
         break;
       case 'Disconnect':
         this.rejectionReason = msg.reason;
