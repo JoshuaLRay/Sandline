@@ -74,7 +74,14 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     name: 'Health',
     // T-2.13: vitality (alive / downed / dead) and the seconds left in that
     // phase, so a HUD counts down what the server counts, not a local guess.
-    fields: [uint('current', HEALTH.bits), uint('max', HEALTH.bits), uint('state', 2), uint('timer', 6)],
+    fields: [
+        uint('current', HEALTH.bits),
+        uint('max', HEALTH.bits),
+        uint('state', 2),
+        uint('timer', 6),
+        uint('reviveProgress', 7),
+        uint('reviverNetId', 3),
+      ],
   },
   {
     id: COMPONENT_IDS.PlayerSlot,
