@@ -69,7 +69,9 @@ import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
 import { WeaponEffects } from './weapons/effects.ts';
 import { addShake, applyShake, createShake, decayShake } from './camera/cameraShake.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
-import { createHumanoidPlaceholder, humanoidPose, setHumanoidPose } from './character/humanoidPlaceholder.ts';
+import { createHumanoidPlaceholder } from './character/humanoidPlaceholder.ts';
+import { requireRig } from './character/humanoidRig.ts';
+import { createHumanoidSoldier } from './character/humanoidSoldier.ts';
 import { createLocomotionPoseDriver, type LocomotionPoseDriver } from './character/locomotionPose.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
@@ -223,8 +225,16 @@ const camSolve = createCameraSolve();
 const AIM_RANGE = 250;
 
 
-const player = createHumanoidPlaceholder('local');
-const localPoseDriver = createLocomotionPoseDriver(player);
+/**
+ * The skinned soldier is the presentation (T-2.22); `?greybox` on the URL
+ * draws the grey-box fixture instead, for diagnosing the rig contract from
+ * parts that can be read off directly. Both register a rig on their root.
+ */
+const greyBox = new URLSearchParams(location.search).has('greybox');
+const createSoldier = greyBox ? createHumanoidPlaceholder : createHumanoidSoldier;
+const player = createSoldier('local');
+const playerRig = requireRig(player);
+const localPoseDriver = createLocomotionPoseDriver(playerRig);
 scene.add(player);
 
 /**
@@ -242,9 +252,9 @@ const remoteRenderedPrev = new Map<number, { x: number; z: number }>();
 function remoteMesh(netId: number): THREE.Mesh {
   let mesh = remoteMeshes.get(netId);
   if (!mesh) {
-    // The root is the server's hitbox capsule (see humanoidPlaceholder.ts), so
+    // The root is the server's hitbox capsule (see humanoidSoldier.ts), so
     // the non-recursive raycasts below hit exactly what the server would.
-    mesh = createHumanoidPlaceholder('remote');
+    mesh = createSoldier('remote');
     mesh.name = `net ${netId}`;
     scene.add(mesh);
     remoteMeshes.set(netId, mesh);
@@ -489,7 +499,8 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
   }
   combat.reset();
   effects.reset();
-  setHumanoidPose(player, 'standing');
+  playerRig.setPose('standing');
+  localPoseDriver.reset();
   remotePoseDrivers.clear();
   remoteRenderedPrev.clear();
   simPrev = null;
@@ -736,8 +747,7 @@ function frame(): void {
   const sparring = live?.sparring ?? null;
 
   for (let i = 0; i < steps; i++) {
-    const sampledInput = input.sample();
-    const tickInput = { ...sampledInput, vault: sampledInput.jump };
+    const tickInput = input.sample();
     if (!net || !server) continue;
 
     /**
@@ -788,7 +798,8 @@ function frame(): void {
       pitch: aimPitch,
       // Downed or dead: no weapon in hand. The server refuses the Fire
       // anyway; refusing here too keeps the predicted tracer honest.
-      firing: input.firing && net.vitality === 'alive',
+      // Both hands on the wall during a vault (T-2.21); the server refuses too.
+      firing: input.firing && net.vitality === 'alive' && !net.simulated?.vault,
       triggerEdge: input.consumeTriggerEdge(),
       ads: input.ads,
     });
@@ -878,13 +889,15 @@ function frame(): void {
   renderedPrev = { x: rx, z: rz };
 
   const localDowned = net?.vitality === 'downed';
+  // The pose first, then the gait on top of it (T-2.22): the driver composes
+  // on the pose's base transforms, so the order is what makes a crouch-walk
+  // the crouch with a gait on it.
   if (localDowned) {
+    playerRig.setPose('downed');
     localPoseDriver.reset();
-    setHumanoidPose(player, 'downed');
   } else {
-    if (humanoidPose(player) === 'downed') setHumanoidPose(player, 'standing');
+    playerRig.setPose(input.crouching ? 'crouched' : 'standing');
     localPoseDriver.update(locomotion, dt);
-    setHumanoidPose(player, input.crouching ? 'crouched' : 'standing');
   }
 
   const downed = localDowned;
@@ -916,13 +929,13 @@ function frame(): void {
       },
       config,
     );
+    const remoteRig = requireRig(mesh);
     if (remoteDowned) {
+      remoteRig.setPose('downed');
       driver.reset();
-      setHumanoidPose(mesh, 'downed');
     } else {
-      if (humanoidPose(mesh) === 'downed') setHumanoidPose(mesh, 'standing');
+      remoteRig.setPose(sample.crouched ? 'crouched' : 'standing');
       driver.update(remoteLocomotion, dt);
-      setHumanoidPose(mesh, sample.crouched ? 'crouched' : 'standing');
     }
     remoteRenderedPrev.set(netId, { x: sample.x, z: sample.z });
   }
@@ -1086,10 +1099,10 @@ function frame(): void {
     if (stats) {
       stats.textContent =
         `${speed.toFixed(2)} m/s   peak ${peakSpeed.toFixed(2)}\n` +
-        `${net?.simulated?.grounded ?? true ? 'grounded' : `airborne  y ${ry.toFixed(2)}`}\n` +
+        `${net?.simulated?.vault ? `vaulting  ${(net.simulated.vault.elapsed * 1000).toFixed(0)}ms` : net?.simulated?.grounded ?? true ? 'grounded' : `airborne  y ${ry.toFixed(2)}`}\n` +
         `tick ${clock.tick}   ${fps} fps${clock.dropped ? `   dropped ${clock.dropped}` : ''}\n` +
         `${input.firstPerson ? 'first person  (V for third)' : 'third person  (V swaps shoulder, RMB aims into first)'}\n` +
-        `locomotion ${locomotion.state}  ${locomotion.direction}  ${Math.round(locomotion.normalizedSpeed * 100)}%\n` +
+        `locomotion ${locomotion.state}  ${locomotion.direction}  ${Math.round(locomotion.normalizedSpeed * 100)}%   rig ${playerRig.kind}\n` +
         `${input.locked ? 'mouse captured - Esc to release' : 'CLICK to capture mouse'}\n` +
         `\n${combat.readout(clock.tick * TICK_SECONDS, input.ads)}\n` +
         `${effects.readout()}\n` +
