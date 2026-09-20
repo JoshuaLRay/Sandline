@@ -911,6 +911,63 @@ that shoots.
 - **Size:** S
 - **Completed 2026-09-20.** Owner human sign-off passed. Camera, shoulder swap, ADS transition, and pitch were judged good enough for M2 to proceed.
 
+### 7.2 E-2.2 leaf tasks — broken out 2026-09-20
+
+E-2.2 is the next build epic after the completed E-2.1, E-2.4, and E-2.6 gates. The boundary is that this epic owns locomotion state and movement presentation; E-2.3 owns the broader animation stack (aim offsets, reload/fire layers, hit reactions, and IK). No production art or skeletal asset pipeline is pulled forward from M4.
+
+**What already exists.** CharacterController already owns authoritative walk, sprint, crouch and crawl speeds, jump, gravity, ground state and collision. LocalInput already produces movement axes, sprint/crouch/jump, yaw and the downed state. T-2.06 provides a shared grey-box humanoid for local and remote soldiers. E-2.2 therefore should not rewrite movement physics or introduce a second movement simulation. It should turn the existing movement state into a coherent visual state, and add vault only where the current step-up controller cannot provide the intended traversal.
+
+**Two rules for this epic.** First, the server remains authoritative for movement and any new vault/crouch collision state; the client may predict only what the existing character controller already predicts. Second, the grey-box body is the temporary animation target. Build the state/pose interfaces so a skeletal rig can replace the renderer later without changing the movement contract.
+
+#### T-2.17 — Locomotion state model
+- **Depends:** T-2.06, T-1.12
+- **Files:** packages/client/src/character/locomotionState.ts, tests, packages/client/src/main.ts
+- **Do:** Create a pure locomotion classifier driven by rendered movement velocity, grounded state, crouch/downed state and facing yaw. Produce explicit states for idle, walk, sprint, crouch-walk and crawl, plus an 8-way movement direction and normalized speed/phase inputs for the renderer. Do not duplicate CharacterController speed selection; consume its result.
+- **Done when:** unit tests cover idle, all eight directions, walk/sprint thresholds, crouch, crawl, airborne and zero-speed edge cases; the classifier is deterministic and contains no Three.js types, DOM access or wall-clock reads. pnpm verify passes.
+- **Size:** S
+
+#### T-2.18 — Eight-way grey-box gait
+- **Depends:** T-2.17
+- **Files:** packages/client/src/character/locomotionPose.ts, tests, packages/client/src/character/humanoidPlaceholder.ts
+- **Do:** Add a procedural placeholder gait for the grey-box soldier. Blend forward/back/strafe leg and arm poses across the eight movement directions, with a continuous gait phase so diagonal movement does not snap between cardinal poses. Walk and sprint use different stride magnitude/rate; idle settles exactly to the standing pose. Keep the implementation renderer-local and reusable by both local and remote soldiers.
+- **Done when:** tests assert cardinal and diagonal poses are continuous at direction boundaries, gait phase is frame-rate independent, idle restores every affected part to its recorded rest transform, and local/remote factories can share the same pose driver. No production animation asset is introduced.
+- **Size:** M
+
+#### T-2.19 — Locomotion integration and remote playback
+- **Depends:** T-2.18
+- **Files:** packages/client/src/main.ts, packages/client/src/character/locomotionPose.ts, tests
+- **Do:** Feed the classifier/pose driver from the same rendered positions already used by the camera and remote interpolation. Local prediction drives the local gait; replicated remote movement drives remote gait. Derive remote gait phase from continuous render time and movement state rather than adding a networked animation clock. Preserve existing remote interpolation and never mutate authoritative movement state from animation.
+- **Done when:** a headless/browser harness can drive local movement through idle → walk → sprint → stop and a remote entity through the same sequence; both settle to the exact rest pose when stationary, and no animation update changes position, yaw, hitbox root or network state.
+- **Size:** M
+
+#### T-2.20 — Crouch presentation and authoritative height
+- **Depends:** T-2.17
+- **Files:** packages/shared/src/sim/CharacterController.ts, tests, packages/shared/src/net/lagComp.ts, packages/client/src/character/locomotionPose.ts, packages/client/src/character/humanoidPlaceholder.ts, packages/client/src/main.ts
+- **Do:** Make crouch a real locomotion state rather than only a slower walk. Define standing and crouched controller heights in movement data/config, use the crouched height for authoritative movement clearance and lag-compensated hit volume, and have the placeholder body blend to a lower crouched pose. Keep crawl/downed geometry distinct: downed remains the T-2.14 pose and its existing hitbox contract. Client prediction must use the same crouch state and constants as the server.
+- **Done when:** shared tests assert crouch height/clearance, standing↔crouch transitions, ceiling rejection and prediction parity; lag-comp tests assert the crouched hit volume differs from standing while downed keeps its existing contract; a browser test shows the body lowering without changing its shootable root identity. pnpm verify passes.
+- **Size:** M
+
+#### T-2.21 — Authoritative vault traversal
+- **Depends:** T-2.20
+- **Files:** packages/shared/src/sim/CharacterController.ts, tests, packages/shared/src/sim/world.ts, packages/shared/src/net/protocol.ts, packages/server/src/session/Session.ts, packages/client/src/main.ts
+- **Do:** Add an explicit vault state to the shared movement contract for obstacles too high to step but low enough to vault. Detect a valid ledge from the same authoritative world boxes, require forward intent and grounded/near-grounded entry, and move the character through a fixed-duration traversal with no client-only teleport. The server owns whether a vault starts; the client predictor mirrors the same deterministic traversal from replicated/input state. Keep vault height, distance and duration in movement config, not hardcoded in the renderer.
+- **Done when:** shared tests cover valid vaults, too-low step-through, too-high rejection, blocked landing, loss of forward intent, and frame-rate-independent traversal; a two-client session test shows the remote player vaulting from the same authoritative state without divergence beyond the existing movement bound. No vault can start while downed, dead, crouched, or firing.
+- **Size:** L
+
+#### T-2.22 — Vault presentation and locomotion polish
+- **Depends:** T-2.21
+- **Files:** packages/client/src/character/locomotionPose.ts, packages/client/src/character/humanoidPlaceholder.ts, packages/client/src/main.ts, tests
+- **Do:** Add the grey-box vault pose and blend entry/exit with the locomotion state machine. Preserve existing camera and weapon presentation contracts: vault changes the body pose and authoritative position, but does not create an alternate camera or firing path. Add small procedural anticipation/landing offsets only to visible parts.
+- **Done when:** tests assert vault pose entry/exit restores exact standing/crouch rest transforms, local and remote vaults use the same state, and the weapon/aim root remains valid throughout. A browser harness records a complete step → vault → landing cycle with no visible pose snap.
+- **Size:** M
+
+#### T-2.23 — 🧍 E-2.2 sign-off
+- **Depends:** T-2.17, T-2.18, T-2.19, T-2.20, T-2.21, T-2.22
+- **Files:** docs/playtests/e2-2.md
+- **Do:** A human runs the grey-box range through idle, walk, sprint, all eight movement directions, crouch, jump, vault and crawl. Test the same states on a second human over the deployed host. Judge whether locomotion reads naturally, direction changes do not snap, crouch is useful and readable, vault timing feels controllable, and remote movement remains visually believable.
+- **Done when:** a written verdict exists, including any tuned movement/animation values and what the test does and does not establish. The verdict must pass before E-2.2 is complete.
+- **Size:** S
+
 ### 7.2 E-2.4 leaf tasks — broken out 2026-09-20
 
 M1.5 closed on T-1.5.08 and T-1.12 is finished (a shared box world; ADR-005
