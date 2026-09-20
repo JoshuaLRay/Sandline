@@ -203,7 +203,7 @@ export function stepCharacter(
         near = Math.max(near, a0); far = Math.min(far, a1);
         if (near > far) { miss = true; break; }
       }
-      const d = far + config.radius + 0.05;
+      const d = far + 0.05;
       if (miss || d <= 0 || d > config.vaultDistance) continue;
       const ex = state.x + dx * d, ez = state.z + dz * d;
       const blocked = world.some((other) => other !== box && other.maxY > box.maxY - 0.05 && overlapsFootprint(ex, ez, half, other));
