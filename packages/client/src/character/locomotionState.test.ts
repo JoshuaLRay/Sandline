@@ -64,9 +64,9 @@ describe('locomotion state classifier (T-2.17)', () => {
   });
 
   it('distinguishes walk and sprint from the resulting speed', () => {
-    expect(sample(speeds.walkSpeed).state).toBe('walk');
-    expect(sample((speeds.walkSpeed + speeds.sprintSpeed) / 2).state).toBe('sprint');
-    expect(sample(speeds.sprintSpeed).state).toBe('sprint');
+    expect(sample(speeds.walkSpeed, 0).state).toBe('walk');
+    expect(sample((speeds.walkSpeed + speeds.sprintSpeed) / 2, 0).state).toBe('sprint');
+    expect(sample(speeds.sprintSpeed, 0).state).toBe('sprint');
   });
 
   it('uses explicit crouch and crawl states rather than re-selecting movement speed', () => {
@@ -87,7 +87,7 @@ describe('locomotion state classifier (T-2.17)', () => {
   });
 
   it('normalizes speed and gait rate against the selected mode', () => {
-    const walk = sample(speeds.walkSpeed / 2);
+    const walk = sample(speeds.walkSpeed / 2, 0);
     expect(walk.normalizedSpeed).toBeCloseTo(0.5);
     expect(walk.gaitRate).toBeCloseTo(0.5);
 
@@ -97,8 +97,8 @@ describe('locomotion state classifier (T-2.17)', () => {
   });
 
   it('has a deterministic dead zone', () => {
-    expect(sample(LOCOMOTION_SPEED_EPSILON * 0.5).state).toBe('idle');
-    expect(sample(LOCOMOTION_SPEED_EPSILON * 1.1).state).toBe('walk');
+    expect(sample(LOCOMOTION_SPEED_EPSILON * 0.5, 0).state).toBe('idle');
+    expect(sample(LOCOMOTION_SPEED_EPSILON * 1.1, 0).state).toBe('walk');
   });
 
   it('contains no renderer or wall-clock dependency', () => {
