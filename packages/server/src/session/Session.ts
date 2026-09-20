@@ -298,6 +298,8 @@ export class Session {
       return false;
     }
     // Take over the bot's entity in place: same netId, no spawn, no despawn.
+    // Revive ownership belongs to the connection occupying a slot, not to the persistent entity.
+    this.clearReviveStateForSlot(slot.index);
     slot.isBot = false;
     slot.connection = conn;
     slot.staleTicks = 0;
@@ -344,6 +346,8 @@ export class Session {
     const slot = this.slots.find((s) => s.connection === conn);
     if (!slot) return;
     // Hand the entity back to a bot; it keeps its position and its netId.
+    // A departing reviver must not leave an interaction attached to a persistent entity.
+    this.clearReviveStateForSlot(slot.index);
     slot.isBot = true;
     slot.connection = null;
     slot.input = idleInput(slot.yaw);
@@ -697,6 +701,21 @@ export class Session {
     const snapshot = this.buildSnapshot();
     this.history.store(snapshot);
     this.broadcast(snapshot);
+  }
+
+  /** Clear all revive state owned by, or stored on, a reused slot. */
+  private clearReviveStateForSlot(slotIndex: number): void {
+    const slot = this.slots[slotIndex];
+    if (slot) {
+      slot.reviveBySlot = -1;
+      slot.reviveProgressSeconds = 0;
+    }
+    for (const target of this.slots) {
+      if (target.reviveBySlot === slotIndex) {
+        target.reviveBySlot = -1;
+        target.reviveProgressSeconds = 0;
+      }
+    }
   }
 
   /**
