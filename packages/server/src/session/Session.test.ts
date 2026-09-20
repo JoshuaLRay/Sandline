@@ -418,6 +418,48 @@ describe('Session revive interaction (T-2.15)', () => {
     expect(targetSlot.reviveProgressSeconds).toBe(0);
   });
 
+  it('clears revive state when a reviver disconnects and their slot is reassigned', () => {
+    const s = new Session();
+    const reviver = connectClient(s, 'reviver');
+    const target = connectClient(s, 'target');
+    const reviverSlot = s.slots[reviver.joined!.slot]!;
+    const targetSlot = s.slots[target.joined!.slot]!;
+
+    targetSlot.health.current = 0;
+    targetSlot.health.downedAt = 0;
+    targetSlot.state.x = reviverSlot.state.x;
+    targetSlot.state.y = reviverSlot.state.y;
+    targetSlot.state.z = reviverSlot.state.z;
+
+    reviver.input(1, 0, 0, 0, 0b1000);
+    target.input(1, 0, 0);
+    s.step(33);
+    expect(targetSlot.reviveBySlot).toBe(reviverSlot.index);
+    expect(targetSlot.reviveProgressSeconds).toBeGreaterThan(0);
+
+    // The reviver leaves mid-interaction. The same world slot is immediately
+    // available for the next connection, so its revive ownership must not
+    // survive the client/slot handoff.
+    reviver.pair.b.close('gone');
+    reviver.pair.settle();
+    expect(s.slots[reviverSlot.index]!.isBot).toBe(true);
+    expect(targetSlot.reviveBySlot).toBe(-1);
+    expect(targetSlot.reviveProgressSeconds).toBe(0);
+
+    const replacement = connectClient(s, 'replacement');
+    expect(replacement.joined?.slot).toBe(reviverSlot.index);
+    expect(targetSlot.reviveBySlot).toBe(-1);
+    expect(targetSlot.reviveProgressSeconds).toBe(0);
+
+    // The replacement has not pressed E and must not inherit the old
+    // interaction.
+    target.input(2, 0, 0);
+    replacement.input(1, 0, 0);
+    s.step(66);
+    expect(targetSlot.reviveBySlot).toBe(-1);
+    expect(targetSlot.reviveProgressSeconds).toBe(0);
+  });
+
   it('releases the revive lock when E is released and allows another teammate to take it', () => {
     const s = new Session();
     const first = connectClient(s, 'first');
