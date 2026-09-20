@@ -230,6 +230,16 @@ describe('crouch height and clearance (T-2.20)', () => {
     expect(underCeiling.z).toBeGreaterThan(1);
     expect(standing.z).toBe(underCeiling.z);
     expect(standing.y).toBe(0);
+    // Releasing crouch under a 1.3 m ceiling must not switch the authoritative
+    // stance or hit volume to the 1.8 m standing height.
+    expect(standing.crouched).toBe(true);
+
+    // Once clear of the ceiling, the same release is allowed to stand.
+    let clear = standing;
+    for (let i = 0; i < 120 && clear.crouched; i += 1) {
+      clear = stepCharacter(clear, input({ moveY: 1 }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, lowCeiling);
+    }
+    expect(clear.crouched).toBe(false);
   });
 
   it('keeps downed geometry distinct from crouch', () => {
