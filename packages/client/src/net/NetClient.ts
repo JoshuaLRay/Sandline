@@ -650,6 +650,7 @@ export class NetClient {
       const y = dequantize(transform[1] as number, POSITION);
       const z = dequantize(transform[2] as number, POSITION);
       const playerSlot = entity.components[COMPONENT_IDS.PlayerSlot];
+      const crouch = entity.components[COMPONENT_IDS.Crouch];
       if (playerSlot) this.remoteSlots.set(entity.netId, playerSlot[0] as number);
 
       if (entity.netId === this.netIdValue) {
@@ -684,7 +685,15 @@ export class NetClient {
         buffer = new InterpolationBuffer();
         this.buffers.set(entity.netId, buffer);
       }
-      buffer.push({ tick, serverTimeMs: serverMs, x, y, z, yaw: (transform[3] as number) & 0x3ff });
+      buffer.push({
+        tick,
+        serverTimeMs: serverMs,
+        x,
+        y,
+        z,
+        yaw: (transform[3] as number) & 0x3ff,
+        crouched: (crouch?.[0] as number | undefined) === 1,
+      });
       const health = entity.components[H];
       if (health) {
         this.remoteVitalities.set(entity.netId, vitalityFromCode((health[2] as number | undefined) ?? 0));
