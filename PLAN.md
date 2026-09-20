@@ -1043,7 +1043,7 @@ progress number on the HUD.
 #### T-2.15 — Revive interaction
 - **Depends:** T-2.13
 - **Files:** `net/protocol.ts` (a button bit), `Session.ts`, `NetClient.ts`, `LocalInput.ts`, `main.ts`, tests
-- **Do:** An interact button in the input bitfield (`E`). On the server, a living soldier holding it within `reviveRangeM` of a downed teammate accrues revive progress per tick; releasing, moving out of range, or going down yourself resets it; reaching `reviveSeconds` calls T-2.13's `revive`. Progress is replicated so both HUDs show it: "Hold E to revive NAME" on the reviver's, "NAME is reviving you" on the downed player's. One reviver per downed soldier at a time; the first to start holds it.
+- **Completed 2026-09-20.** E is carried as an input bit; the server authoritatively locks the first nearby living reviver to a downed teammate, advances the configured 3 s hold, resets on release/range/invalid state, and calls the existing T-2.13 `revive`. Revive progress and reviver net ID are replicated in Health snapshots, and both HUDs display the teammate name and progress. Protocol is v8 for the extended Health schema. Session tests cover completion, release/lock handoff, range reset, dead targets, and bleed-out winning when the attempt starts too late.
 - **Done when:** a two-client session test downs one, walks the other into range, holds the button for the configured time and sees the revive; releasing early resets; out of range resets; a dead soldier cannot be revived; the bleed-out keeps running during the attempt (a revive that arrives too late fails honestly).
 - **Size:** M
 
