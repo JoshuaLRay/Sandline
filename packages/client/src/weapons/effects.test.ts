@@ -4,8 +4,17 @@
  */
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_WORLD, rayWorld, surfaceAt } from '@sandline/shared';
 import {
+  DECAL_FADE_SECONDS,
+  DECAL_OFFSET_M,
+  DECAL_SECONDS,
   FLASH_FORWARD_M,
+  FLINCH_PARTS,
+  FLINCH_SECONDS,
+  IMPACT_POOL,
+  SPARKS_PER_IMPACT,
+  SPARK_SECONDS,
   FLASH_LIGHT_INTENSITY,
   FLASH_POOL,
   FLASH_SECONDS,
@@ -18,7 +27,9 @@ import {
   ejectVelocity,
   flightSeconds,
   shellLifetimeSeconds,
+  sparkVelocities,
 } from './effects.ts';
+import { createHumanoidPlaceholder } from '../character/humanoidPlaceholder.ts';
 
 /** Facing +Z: forward = (0, 0, 1), so right = (-1, 0, 0) and back = (0, 0, -1). */
 const FWD_X = 0;
@@ -253,5 +264,146 @@ describe('shell ejection (T-2.10)', () => {
     expect(fx.liveFlashes).toBe(0);
     expect(visibleCount(scene)).toBe(0);
     expect(scene.children.length).toBe(before);
+  });
+});
+
+describe('impacts land at the server\'s point (T-2.11)', () => {
+  /** The spawn line at eye height, aiming at the doorway wall's south face. */
+  const eye = { x: 0, y: 1.55, z: -6 };
+  const wall = DEFAULT_WORLD.find((b) => b.id === 'west-wall-b');
+  if (!wall) throw new Error('fixture: west-wall-b missing');
+  const towards = (x: number, y: number, z: number) => {
+    const dx = x - eye.x;
+    const dy = y - eye.y;
+    const dz = z - eye.z;
+    const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    return { x: dx / len, y: dy / len, z: dz / len };
+  };
+  const decals = (scene: THREE.Scene) =>
+    scene.children.filter((o): o is THREE.Mesh => o instanceof THREE.Mesh && o.visible && o.geometry instanceof THREE.PlaneGeometry);
+
+  it('puts a mark on the doorway wall exactly where the server said, every shot', () => {
+    const { scene, fx } = setup();
+    for (let i = 0; i < 20; i += 1) {
+      // Sweep the face just east of the doorway (x -7.6 .. -6.4): clear of the
+      // reference figure at x -4.5, which shadows the wall's east end from here.
+      const aimX = -7.6 + (i / 19) * 1.2;
+      const aimY = 0.3 + (i % 5) * 0.45;
+      const hit = rayWorld({ origin: eye, direction: towards(aimX, aimY, wall.minZ), maxDistance: 100 }, DEFAULT_WORLD);
+      if (!hit) throw new Error('the sweep must hit the wall');
+      const surface = surfaceAt(hit.point, DEFAULT_WORLD);
+      if (!surface) throw new Error('the point must lie on a face');
+      fx.reset();
+      fx.impact(hit.point, surface.normal, i);
+      fx.update(i);
+      const [decal] = decals(scene);
+      expect(decal).toBeDefined();
+      if (!decal) return;
+      // Lifted off the face along its normal, and no further.
+      expect(decal.position.x).toBeCloseTo(hit.point.x, 9);
+      expect(decal.position.y).toBeCloseTo(hit.point.y, 9);
+      expect(decal.position.z).toBeCloseTo(hit.point.z - DECAL_OFFSET_M, 9);
+      // Turned to face out of the wall: the quad's +Z is the normal.
+      const facing = new THREE.Vector3(0, 0, 1).applyQuaternion(decal.quaternion);
+      expect(facing.distanceTo(new THREE.Vector3(0, 0, -1))).toBeLessThan(1e-9);
+    }
+  });
+
+  it('draws nothing for a max-range miss: the server\'s point is on no face', () => {
+    const miss = towards(0, 1.55, 40);
+    const end = { x: eye.x + miss.x * 100, y: eye.y + miss.y * 100, z: eye.z + miss.z * 100 };
+    // The caller's rule: no surface, no impact. The predicted tracer would
+    // have ended on the client's ground or a target; neither is asked.
+    expect(surfaceAt(end, DEFAULT_WORLD)).toBeNull();
+  });
+
+  it('sparks leave the face along its normal and fall; the mark outlives them and fades on schedule', () => {
+    const { scene, fx } = setup();
+    const point = { x: -6, y: 1, z: wall.minZ };
+    fx.impact(point, { x: 0, y: 0, z: -1 }, 0);
+    fx.update(0);
+    const sparks = scene.children.find((o): o is THREE.Points => o instanceof THREE.Points && o.visible);
+    const [decal] = decals(scene);
+    if (!sparks || !decal) throw new Error('impact not drawn');
+    const velocities = new Float32Array(SPARKS_PER_IMPACT * 3);
+    sparkVelocities({ x: 0, y: 0, z: -1 }, 1, velocities);
+    const at = (t: number, i: number) => {
+      fx.update(t);
+      const a = sparks.geometry.getAttribute('position').array as Float32Array;
+      return { x: a[i * 3] as number, y: a[i * 3 + 1] as number, z: a[i * 3 + 2] as number };
+    };
+    for (let i = 0; i < SPARKS_PER_IMPACT; i += 1) {
+      // Every spark starts at the point and moves OUT of the wall (-Z here).
+      const start = at(0, i);
+      expect(start.z).toBeCloseTo(point.z, 5);
+      const later = at(SPARK_SECONDS / 2, i);
+      expect(later.z).toBeLessThan(point.z);
+      // On the closed-form arc: x and z linear, y under gravity.
+      const t = SPARK_SECONDS / 2;
+      expect(later.x).toBeCloseTo(point.x + (velocities[i * 3] as number) * t, 4);
+      expect(later.y).toBeCloseTo(point.y + (velocities[i * 3 + 1] as number) * t - 0.5 * GRAVITY_M_S2 * t * t, 4);
+    }
+    fx.update(SPARK_SECONDS);
+    expect(sparks.visible).toBe(false);
+    expect(decal.visible).toBe(true);
+    fx.update(DECAL_SECONDS - DECAL_FADE_SECONDS / 2);
+    expect((decal.material as THREE.MeshBasicMaterial).opacity).toBeLessThan(0.85);
+    expect((decal.material as THREE.MeshBasicMaterial).opacity).toBeGreaterThan(0);
+    fx.update(DECAL_SECONDS);
+    expect(decal.visible).toBe(false);
+    expect(fx.liveImpacts).toBe(0);
+  });
+
+  it('stays capped under a held trigger and leaves the scene\'s object set unchanged', () => {
+    const { scene, fx } = setup();
+    const objectsAtStart = scene.children.length;
+    let now = 0;
+    for (let i = 1; i <= 100; i += 1) {
+      fx.impact({ x: -6 + (i % 7) * 0.1, y: 1, z: wall.minZ }, { x: 0, y: 0, z: -1 }, now);
+      fx.update(now);
+      expect(scene.children.length).toBe(objectsAtStart);
+      expect(fx.liveImpacts).toBeLessThanOrEqual(IMPACT_POOL);
+      now += 0.05;
+    }
+    expect(fx.liveImpacts).toBe(IMPACT_POOL);
+    fx.update(now + DECAL_SECONDS);
+    expect(fx.liveImpacts).toBe(0);
+    expect(visibleCount(scene)).toBe(0);
+  });
+});
+
+describe('a hit soldier flinches (T-2.11)', () => {
+  it('jerks the upper body back and returns it to exactly where it was', () => {
+    const { fx } = setup();
+    const soldier = createHumanoidPlaceholder('remote');
+    const rest = new Map(soldier.children.map((c) => [c.name, c.position.z]));
+    fx.flinch(soldier, 1);
+    expect(fx.liveFlinches).toBe(1);
+    fx.update(1 + FLINCH_SECONDS / 3);
+    for (const part of soldier.children) {
+      const base = rest.get(part.name) as number;
+      if (FLINCH_PARTS.includes(part.name)) expect(part.position.z).toBeLessThan(base);
+      else expect(part.position.z).toBe(base);
+    }
+    // A hair past the end: 1 + 0.18 - 1 is a float short of 0.18.
+    fx.update(1 + FLINCH_SECONDS + 1e-9);
+    expect(fx.liveFlinches).toBe(0);
+    for (const part of soldier.children) expect(part.position.z).toBe(rest.get(part.name));
+  });
+
+  it('a second hit mid-flinch restarts it without drifting the resting pose', () => {
+    const { fx } = setup();
+    const soldier = createHumanoidPlaceholder('remote');
+    const torso = soldier.children.find((c) => c.name === 'torso');
+    if (!torso) throw new Error('no torso');
+    const base = torso.position.z;
+    fx.flinch(soldier, 0);
+    fx.update(FLINCH_SECONDS / 2);
+    fx.flinch(soldier, FLINCH_SECONDS / 2);
+    fx.update(FLINCH_SECONDS / 2 + FLINCH_SECONDS / 3);
+    expect(torso.position.z).toBeLessThan(base);
+    fx.update(FLINCH_SECONDS / 2 + FLINCH_SECONDS + 1e-9);
+    expect(torso.position.z).toBe(base);
+    expect(fx.liveFlinches).toBe(0);
   });
 });
