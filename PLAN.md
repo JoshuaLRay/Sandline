@@ -968,6 +968,13 @@ and lines, pooled and capped like the tracers already are (§0.3 rule 3).
 - **Do:** On the trigger, a flash at the visual muzzle for two frames (a small emissive quad and a point light), and a shell — a tiny box — ejected right and back on a short ballistic arc that lands and fades. Both pooled and capped, exactly as tracers are, so a held trigger cannot leak the scene. The muzzle comes from `muzzlePosition` so it follows stance and shoulder.
 - **Done when:** a headless run holding the trigger for five seconds ends with the pool at its cap and no per-shot allocation beyond it; the effect count returns to zero within the fade time after release.
 - **Size:** M
+- **Completed 2026-09-20.** `effects.ts`: every flash (additive sprite +
+  point light) and shell (box) is allocated once and added hidden; a shot
+  claims a free slot or recycles the oldest, so a held trigger never grows
+  the scene. Shells fly a closed-form arc to an analytic landing time, so
+  30 and 120 fps place them identically; the throw is seeded from the shot
+  index. The lifetime bound is derived from the numbers. HUD shows the live
+  counts against the caps.
 
 #### T-2.11 — Impacts
 - **Depends:** T-1.12, T-2.06

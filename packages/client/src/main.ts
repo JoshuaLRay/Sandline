@@ -67,6 +67,7 @@ import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
+import { WeaponEffects } from './weapons/effects.ts';
 import { addShake, applyShake, createShake, decayShake } from './camera/cameraShake.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
 import { createHumanoidPlaceholder } from './character/humanoidPlaceholder.ts';
@@ -251,6 +252,11 @@ function remoteMesh(netId: number): THREE.Mesh {
 }
 
 const combat = new CombatQA(scene, shootable);
+/**
+ * Muzzle flash and shells (T-2.10): pooled once here, never allocated on a
+ * shot. Cosmetic, from the VISUAL muzzle, like the tracers.
+ */
+const effects = new WeaponEffects(scene);
 /**
  * Recoil (T-2.08): a view offset the trigger kicks and every frame recovers.
  * Applied on the tick a shot resolves, so the NEXT shot fires along the
@@ -453,6 +459,7 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
     remoteMeshes.delete(netId);
   }
   combat.reset();
+  effects.reset();
   simPrev = null;
   simCur = null;
   player.visible = false;
@@ -726,9 +733,11 @@ function frame(): void {
 
     const here = net.simulated;
     const tickYaw = wireToTable(input.yaw);
+    const facingX = sin(tickYaw);
+    const facingZ = cos(tickYaw);
     rig.eyeHeight = cam.eyeHeight;
     const m = here
-      ? muzzlePosition(here.x, here.y, here.z, sin(tickYaw), cos(tickYaw), stance(), rig)
+      ? muzzlePosition(here.x, here.y, here.z, facingX, facingZ, stance(), rig)
       : { x: 0, y: cam.eyeHeight, z: 0 };
     muzzle.set(m.x, m.y, m.z);
 
@@ -752,6 +761,8 @@ function frame(): void {
       recoil = applyKick(recoil, combat.weapon, combat.shotsFired, input.ads);
       input.setViewOffset(recoil.yaw, recoil.pitch);
       shake = addShake(shake, combat.weapon, input.ads);
+      // The shell comes to rest at the feet: whatever the character stands on.
+      effects.fire(muzzle, facingX, facingZ, here?.y ?? 0, combat.shotsFired, tickNumber * TICK_SECONDS);
 
       /**
        * Draw it NOW. The same seeded spread the server will compute — the seed
@@ -950,11 +961,13 @@ function frame(): void {
         `${input.firstPerson ? 'first person  (V for third)' : 'third person  (V swaps shoulder, RMB aims into first)'}\n` +
         `${input.locked ? 'mouse captured - Esc to release' : 'CLICK to capture mouse'}\n` +
         `\n${combat.readout(clock.tick * TICK_SECONDS, input.ads)}\n` +
+        `${effects.readout()}\n` +
         `\n${netReadout()}`;
     }
   }
 
   combat.fade(clock.tick * TICK_SECONDS + clock.alpha * TICK_SECONDS);
+  effects.update(clock.tick * TICK_SECONDS + clock.alpha * TICK_SECONDS);
   netgraph.sample();
   if (live && now - squadAt >= 250) {
     squadAt = now;
@@ -979,6 +992,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyT') {
     peakSpeed = 0;
     combat.reset();
+  effects.reset();
   }
   // 1-4 pick a weapon. Switching is instant and reloads: a range, not a match.
   const slot = Number.parseInt(e.code.replace('Digit', ''), 10);
