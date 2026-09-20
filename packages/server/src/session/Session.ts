@@ -71,7 +71,7 @@ import { DEFAULT_HITBOX, HitboxHistory, clampRewindMs, resolveShot } from '../ne
  * fractions of this, so they track the capsule rather than assuming 1.8 m.
  */
 const HITBOX_HEIGHT = 2 * (DEFAULT_HITBOX.halfHeight + DEFAULT_HITBOX.radius);
-const CROUCH_HITBOX_HEIGHT = 2 * (DEFAULT_HITBOX.crouchHalfHeight + DEFAULT_HITBOX.radius);
+const CROUCH_HITBOX_HEIGHT = 2 * ((DEFAULT_HITBOX.crouchHalfHeight ?? DEFAULT_HITBOX.halfHeight) + DEFAULT_HITBOX.radius);
 
 const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
