@@ -286,3 +286,48 @@ describe('downed: crawling (T-2.13)', () => {
   });
 });
 
+
+
+describe('authoritative vault traversal (T-2.21)', () => {
+  const cfg = DEFAULT_MOVE_CONFIG;
+  const ledge = [wall('vaultable', 0, 1.0, 2, 1.0, 0.6)];
+
+  it('starts a vault for a ledge above step height and below vault height', () => {
+    const s = stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1, vault: true }), TICK_SECONDS, cfg, ledge);
+    expect(s.vaulting).toBe(true);
+    expect(s.vaultProgress).toBe(0);
+  });
+
+  it('walks through a too-low obstacle and rejects a too-high one as a vault', () => {
+    const low = [wall('low', 0, 1, 2, cfg.stepHeight - 0.05, 0.6)];
+    const lowStep = stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1, vault: true }), TICK_SECONDS, cfg, low);
+    expect(lowStep.vaulting).toBe(false);
+    const high = [wall('high', 0, 1, 2, cfg.vaultHeight + 0.2, 0.6)];
+    const highStep = stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1, vault: true }), TICK_SECONDS, cfg, high);
+    expect(highStep.vaulting).toBe(false);
+  });
+
+  it('rejects a blocked landing, lost forward intent, and invalid stances', () => {
+    const blocked = [
+      ...ledge,
+      wall('landing', 0, 2.2, 2, 2, 0.6),
+    ];
+    expect(stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1, vault: true }), TICK_SECONDS, cfg, blocked).vaulting).toBe(false);
+    expect(stepCharacter(createMoveState(0, 0, 0), input({ moveY: 0, vault: true }), TICK_SECONDS, cfg, ledge).vaulting).toBe(false);
+    expect(stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1, vault: true, crouch: true }), TICK_SECONDS, cfg, ledge).vaulting).toBe(false);
+    expect(stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1, vault: true, downed: true }), TICK_SECONDS, cfg, ledge).vaulting).toBe(false);
+    expect(stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1, vault: true, firing: true }), TICK_SECONDS, cfg, ledge).vaulting).toBe(false);
+  });
+
+  it('completes the same traversal independent of render/frame chunking', () => {
+    let a = stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1, vault: true }), TICK_SECONDS, cfg, ledge);
+    for (let i = 0; i < 20; i++) a = stepCharacter(a, input(), TICK_SECONDS, cfg, ledge);
+    let b = stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1, vault: true }), 1 / 60, cfg, ledge);
+    for (let i = 1; i < 60; i++) b = stepCharacter(b, input(), 1 / 60, cfg, ledge);
+    expect(a.vaulting).toBe(false);
+    expect(b.vaulting).toBe(false);
+    expect(b.x).toBeCloseTo(a.x, 9);
+    expect(b.y).toBeCloseTo(a.y, 9);
+    expect(b.z).toBeCloseTo(a.z, 9);
+  });
+});
