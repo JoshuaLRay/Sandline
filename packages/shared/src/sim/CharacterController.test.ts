@@ -310,7 +310,7 @@ describe('authoritative vault traversal (T-2.21)', () => {
   it('rejects a blocked landing, lost forward intent, and invalid stances', () => {
     const blocked = [
       ...ledge,
-      wall('landing', 0, 2.2, 2, 2, 0.6),
+      wall('landing', 0, 1.6, 2, 2, 0.6),
     ];
     expect(stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1, vault: true }), TICK_SECONDS, cfg, blocked).vaulting).toBe(false);
     expect(stepCharacter(createMoveState(0, 0, 0), input({ moveY: 0, vault: true }), TICK_SECONDS, cfg, ledge).vaulting).toBe(false);
