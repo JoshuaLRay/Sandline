@@ -12,6 +12,12 @@ import {
   FLASH_FORWARD_M,
   FLINCH_PARTS,
   FLINCH_SECONDS,
+  HIT_FULL_DAMAGE,
+  HIT_MIN_STRENGTH,
+  HIT_RECOVERY_RATE,
+  type HitDescription,
+  hitReactionSeconds,
+  hitStrength,
   IMPACT_POOL,
   SPARKS_PER_IMPACT,
   SPARK_SECONDS,
@@ -30,6 +36,8 @@ import {
   sparkVelocities,
 } from './effects.ts';
 import { createHumanoidPlaceholder } from '../character/humanoidPlaceholder.ts';
+import { HUMANOID_BONES, type HumanoidRig, requireRig } from '../character/humanoidRig.ts';
+import { HIT_TWIST_RAD, createHumanoidSoldier } from '../character/humanoidSoldier.ts';
 
 /** Facing +Z: forward = (0, 0, 1), so right = (-1, 0, 0) and back = (0, 0, -1). */
 const FWD_X = 0;
@@ -405,5 +413,146 @@ describe('a hit soldier flinches (T-2.11)', () => {
     fx.update(FLINCH_SECONDS / 2 + FLINCH_SECONDS + 1e-9);
     expect(torso.position.z).toBe(base);
     expect(fx.liveFlinches).toBe(0);
+  });
+});
+
+/** T-2.27 fixtures: a soldier at the origin facing +Z, feet on the floor, 1.8 m tall. */
+function skinned(): { root: THREE.Object3D; rig: HumanoidRig } {
+  const root = createHumanoidSoldier('remote');
+  root.position.set(0, 0.9, 0);
+  return { root, rig: requireRig(root) };
+}
+function hitFrom(shooter: THREE.Vector3 | null, pointY: number, damage: number): HitDescription {
+  return { shooter, point: { x: 0, y: pointY, z: 0 }, damage, feetY: 0, height: 1.8 };
+}
+function chestYaw(rig: HumanoidRig): number {
+  const rest = new THREE.Quaternion().fromArray(requireRig(createHumanoidSoldier('remote')).bone('chest')!.quaternion.toArray());
+  return new THREE.Euler().setFromQuaternion(rest.invert().multiply(rig.bone('chest')!.quaternion), 'YXZ').y;
+}
+function bones(rig: HumanoidRig) {
+  return HUMANOID_BONES.map((name) => ({ name, p: rig.bone(name)!.position.toArray(), q: rig.bone(name)!.quaternion.toArray() }));
+}
+const LEFT = new THREE.Vector3(6, 1.2, 0);
+const RIGHT = new THREE.Vector3(-6, 1.2, 0);
+
+describe('a hit lands on the rig (T-2.27)', () => {
+  it('turns the chest away from the shooter, by where they stand in the world', () => {
+    const { fx } = setup();
+    const { root, rig } = skinned();
+    fx.flinch(root, 1, hitFrom(LEFT, 1.0, 20));
+    expect(fx.liveReactions).toBe(1);
+    expect(fx.liveFlinches).toBe(0);
+    expect(chestYaw(rig)).toBeGreaterThan(0.05);
+    fx.flinch(root, 1, hitFrom(RIGHT, 1.0, 20));
+    expect(chestYaw(rig)).toBeLessThan(-0.05);
+    // Turned to face +X, the same shooter is now behind and to the right;
+    // one at world -Z is on the soldier's left.
+    root.rotation.y = Math.PI / 2;
+    fx.flinch(root, 1, hitFrom(new THREE.Vector3(0, 1.2, -6), 1.0, 20));
+    expect(chestYaw(rig)).toBeGreaterThan(0.05);
+    // An unknown shooter is taken to be in front: no twist, a lean back.
+    fx.flinch(root, 1, hitFrom(null, 1.0, 20));
+    expect(Math.abs(chestYaw(rig))).toBeLessThan(1e-9);
+    expect(bones(rig)).not.toEqual(bones(skinned().rig));
+  });
+
+  it('snaps the head on a head-zone hit, by the height of the point against damage.json', () => {
+    const { fx } = setup();
+    const { root, rig } = skinned();
+    const neckRest = rig.bone('neck')!.quaternion.toArray();
+    // 1.0 of 1.8 m is the torso: the head rides the chest but the neck is untouched.
+    fx.flinch(root, 1, hitFrom(LEFT, 1.0, 20));
+    expect(rig.bone('neck')!.quaternion.toArray()).toEqual(neckRest);
+    // 1.6 of 1.8 m is past the head's 0.78.
+    fx.flinch(root, 1, hitFrom(LEFT, 1.6, 20));
+    expect(rig.bone('neck')!.quaternion.toArray()).not.toEqual(neckRest);
+  });
+
+  it('is sized by the damage, floored so a graze still reads', () => {
+    expect(hitStrength(HIT_FULL_DAMAGE)).toBe(1);
+    expect(hitStrength(HIT_FULL_DAMAGE * 3)).toBe(1);
+    expect(hitStrength(HIT_FULL_DAMAGE / 2)).toBeCloseTo(0.5, 12);
+    expect(hitStrength(1)).toBe(HIT_MIN_STRENGTH);
+    expect(hitStrength(0)).toBe(0);
+    const { fx } = setup();
+    const { root, rig } = skinned();
+    fx.flinch(root, 1, hitFrom(LEFT, 1.0, HIT_FULL_DAMAGE));
+    const full = chestYaw(rig);
+    expect(full).toBeCloseTo(HIT_TWIST_RAD, 6);
+    fx.flinch(root, 1, hitFrom(LEFT, 1.0, HIT_FULL_DAMAGE / 2));
+    expect(chestYaw(rig)).toBeCloseTo(full / 2, 6);
+  });
+
+  it('recovers on the exponential, the same at 30 and 120 fps, and is exact when over', () => {
+    for (const fps of [30, 120]) {
+      const { fx } = setup();
+      const { root, rig } = skinned();
+      const rest = bones(rig);
+      fx.flinch(root, 2, hitFrom(LEFT, 1.0, HIT_FULL_DAMAGE));
+      const dt = 1 / fps;
+      let now = 2;
+      while (now + dt < 2 + hitReactionSeconds()) {
+        now += dt;
+        fx.update(now);
+        expect(chestYaw(rig)).toBeCloseTo(HIT_TWIST_RAD * Math.exp(-HIT_RECOVERY_RATE * (now - 2)), 6);
+        expect(fx.liveReactions).toBe(1);
+      }
+      fx.update(2 + hitReactionSeconds() + 1e-9);
+      expect(fx.liveReactions).toBe(0);
+      expect(bones(rig)).toEqual(rest);
+    }
+  });
+
+  it('a second hit restarts it with its own direction, and the rest is exact after', () => {
+    const { fx } = setup();
+    const { root, rig } = skinned();
+    const rest = bones(rig);
+    fx.flinch(root, 0, hitFrom(LEFT, 1.0, HIT_FULL_DAMAGE));
+    fx.update(0.1);
+    const faded = chestYaw(rig);
+    expect(faded).toBeLessThan(HIT_TWIST_RAD * 0.5);
+    fx.flinch(root, 0.1, hitFrom(RIGHT, 1.0, HIT_FULL_DAMAGE));
+    expect(chestYaw(rig)).toBeCloseTo(-HIT_TWIST_RAD, 6);
+    expect(fx.liveReactions).toBe(1);
+    fx.update(0.1 + hitReactionSeconds() / 2);
+    expect(chestYaw(rig)).toBeLessThan(0);
+    fx.update(0.1 + hitReactionSeconds() + 1e-9);
+    expect(fx.liveReactions).toBe(0);
+    expect(bones(rig)).toEqual(rest);
+    // And withdrawn early by a reset.
+    fx.flinch(root, 5, hitFrom(LEFT, 1.6, HIT_FULL_DAMAGE));
+    fx.reset();
+    expect(fx.liveReactions).toBe(0);
+    expect(bones(rig)).toEqual(rest);
+  });
+
+  it('a downed soldier shows nothing', () => {
+    const { fx } = setup();
+    const { root, rig } = skinned();
+    rig.setPose('downed');
+    const downed = bones(rig);
+    fx.flinch(root, 1, hitFrom(LEFT, 1.6, HIT_FULL_DAMAGE));
+    expect(fx.liveReactions).toBe(0);
+    expect(fx.liveFlinches).toBe(0);
+    expect(bones(rig)).toEqual(downed);
+  });
+
+  it('the grey box keeps the translation flinch: the same call jerks it back and turns nothing', () => {
+    const { fx } = setup();
+    const soldier = createHumanoidPlaceholder('remote');
+    soldier.position.set(0, 0.9, 0);
+    const rest = soldier.children.map((c) => ({ name: c.name, z: c.position.z, q: c.quaternion.toArray() }));
+    fx.flinch(soldier, 1, { shooter: LEFT, point: { x: 0, y: 1.6, z: 0 }, damage: HIT_FULL_DAMAGE, feetY: 0, height: 1.8 });
+    expect(fx.liveReactions).toBe(0);
+    expect(fx.liveFlinches).toBe(1);
+    fx.update(1 + FLINCH_SECONDS / 3);
+    for (const [i, part] of soldier.children.entries()) {
+      expect(part.quaternion.toArray()).toEqual(rest[i]!.q);
+      if (FLINCH_PARTS.includes(part.name)) expect(part.position.z).toBeLessThan(rest[i]!.z);
+      else expect(part.position.z).toBe(rest[i]!.z);
+    }
+    fx.update(1 + FLINCH_SECONDS + 1e-9);
+    expect(fx.liveFlinches).toBe(0);
+    for (const [i, part] of soldier.children.entries()) expect(part.position.z).toBe(rest[i]!.z);
   });
 });

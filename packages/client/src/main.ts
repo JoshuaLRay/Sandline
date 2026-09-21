@@ -71,7 +71,13 @@ import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
 import { WeaponEffects } from './weapons/effects.ts';
 import { addShake, applyShake, createShake, decayShake } from './camera/cameraShake.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
-import { createHumanoidPlaceholder } from './character/humanoidPlaceholder.ts';
+import {
+  HUMANOID_HIT_CROUCH_HALF_HEIGHT,
+  HUMANOID_HIT_HALF_HEIGHT,
+  HUMANOID_HIT_RADIUS,
+  HUMANOID_ROOT_LIFT_M,
+  createHumanoidPlaceholder,
+} from './character/humanoidPlaceholder.ts';
 import { requireRig } from './character/humanoidRig.ts';
 import { createHumanoidSoldier } from './character/humanoidSoldier.ts';
 import { type KickState, addKick, createKick, decayKick } from './character/weaponKick.ts';
@@ -401,7 +407,19 @@ function landImpact(net: NetClient, shot: ServerShot): void {
   const target = shot.targetNetId === net.netId ? player : remoteMeshes.get(shot.targetNetId);
   // A downed soldier is already on the ground; the flinch belongs to the upright.
   const targetDowned = shot.targetNetId === net.netId ? net.vitality !== 'alive' : net.remoteVitality(shot.targetNetId) !== 'alive';
-  if (target && !targetDowned) effects.flinch(target, now);
+  if (!target || targetDowned) return;
+  // The reaction on the rig (T-2.27) wants where the round came from: the
+  // shooter's own body on this client, ours or their replicated one. The
+  // zone is the point's height up the hitbox the server resolved against.
+  const shooter = shot.shooterNetId === net.netId ? player : remoteMeshes.get(shot.shooterNetId);
+  const crouched = requireRig(target).pose === 'crouched';
+  effects.flinch(target, now, {
+    shooter: shooter ? shooter.position : null,
+    point: shot,
+    damage: shot.damage,
+    feetY: target.position.y - HUMANOID_ROOT_LIFT_M,
+    height: 2 * ((crouched ? HUMANOID_HIT_CROUCH_HALF_HEIGHT : HUMANOID_HIT_HALF_HEIGHT) + HUMANOID_HIT_RADIUS),
+  });
 }
 
 function startSession(choice: LobbyChoice): void {

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { DEFAULT_HITBOX } from '@sandline/server';
 import {
   DOWNED_BODY_LIFT_M,
+  HUMANOID_HIT_CROUCH_HALF_HEIGHT,
   HUMANOID_HIT_HALF_HEIGHT,
   HUMANOID_HIT_RADIUS,
   HUMANOID_ROOT_LIFT_M,
@@ -72,6 +73,7 @@ describe('humanoid placeholder (T-2.06)', () => {
      */
     expect(HUMANOID_HIT_RADIUS).toBe(DEFAULT_HITBOX.radius);
     expect(HUMANOID_HIT_HALF_HEIGHT).toBe(DEFAULT_HITBOX.halfHeight);
+    expect(HUMANOID_HIT_CROUCH_HALF_HEIGHT).toBe(DEFAULT_HITBOX.crouchHalfHeight);
 
     const soldier = createHumanoidPlaceholder('remote');
     // Placed the way main.ts places it: root at the capsule centre above the feet.

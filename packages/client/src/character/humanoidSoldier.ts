@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {
   HUMANOID_BONES,
   type GaitStyle,
+  type HitReaction,
   type HumanoidBoneName,
   type HumanoidPose,
   type HumanoidRig,
@@ -162,6 +163,17 @@ const RELOAD_DIP = 0.35;
 /** The magazine well in aim space: under the rifle, a hand's length back from the foregrip. */
 const MAG_WELL: [number, number, number] = [0.02, -0.17, 0.13];
 const scratchOffset = new THREE.Vector3();
+/**
+ * The hit reaction (T-2.27), at full strength: the chest twists about the
+ * body's axis away from where the round came from by the lateral part of
+ * that direction, and leans away by the frontal part; a head-zone hit
+ * snaps the neck the same way on top. All of it is composed on the driver's
+ * chest and neck, so a hit taken mid-stride is the stride with a hit on it.
+ */
+export const HIT_TWIST_RAD = 0.4;
+export const HIT_LEAN_RAD = 0.25;
+export const HIT_HEAD_RAD = 0.45;
+const scratchEuler = new THREE.Euler();
 
 interface Segment {
   geometry: THREE.BufferGeometry;
@@ -438,17 +450,59 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
   const neckBefore = new THREE.Quaternion();
   const neckAfter = new THREE.Quaternion();
   let neckApplied = false;
+  // The chest is the driver's too; the hit reaction composes on it the same way.
+  const chestBefore = new THREE.Quaternion();
+  const chestAfter = new THREE.Quaternion();
+  let chestApplied = false;
   const spineTurn = new THREE.Quaternion();
   const neckTurn = new THREE.Quaternion();
   const aimTurn = new THREE.Quaternion();
+  const hitTurn = new THREE.Quaternion();
+  /** The reaction the pass shows; null is none. Never set while downed. */
+  let reaction: HitReaction | null = null;
+  /** What the pass was last asked to hold, so a reaction can re-run it. */
+  let lastHold: WeaponHold = { pitch: 0, weight: 0 };
   const restoreArms = (): void => {
     for (const name of ['upper-arm-left', 'lower-arm-left', 'upper-arm-right', 'lower-arm-right'] as const) {
       bones.get(name)!.quaternion.fromArray(bases.get(name)!.quaternion);
     }
   };
+  /**
+   * The neck takes the aim's lean and a head hit's snap in ONE write, so the
+   * undo guard covers both; zero of each leaves the driver's bits untouched.
+   */
+  const turnNeck = (neckLean: number, hit: HitReaction | null, strength: number): void => {
+    const snap = hit && hit.head && strength > 0;
+    if (neckLean === 0 && !snap) return;
+    neckBefore.copy(neck.quaternion);
+    if (neckLean !== 0) neck.quaternion.multiply(neckTurn.setFromAxisAngle(X_AXIS, -neckLean));
+    if (snap) {
+      // Away from the shooter: twisted by the lateral part, tipped by the frontal.
+      scratchEuler.set(-HIT_HEAD_RAD * strength * hit.fromZ, HIT_HEAD_RAD * strength * hit.fromX, 0, 'YXZ');
+      neck.quaternion.multiply(hitTurn.setFromEuler(scratchEuler));
+    }
+    neckAfter.copy(neck.quaternion);
+    neckApplied = true;
+  };
   const hold = (state: WeaponHold): void => {
+    lastHold = state;
     if (neckApplied && neck.quaternion.equals(neckAfter)) neck.quaternion.copy(neckBefore);
     neckApplied = false;
+    if (chestApplied && chest.quaternion.equals(chestAfter)) chest.quaternion.copy(chestBefore);
+    chestApplied = false;
+    // -- The hit reaction (T-2.27): on the driver's chest, before the neck. --
+    const hit = reaction;
+    const strength = hit && Number.isFinite(hit.strength) ? Math.max(0, Math.min(1, hit.strength)) : 0;
+    if (hit && strength > 0) {
+      // Rotation about +Y carries the soldier's left (+X) toward the back
+      // (-Z): a round from the left turns that shoulder away. About X,
+      // positive tips forward, so a round from the front tips the chest back.
+      scratchEuler.set(-HIT_LEAN_RAD * strength * hit.fromZ, HIT_TWIST_RAD * strength * hit.fromX, 0, 'YXZ');
+      chestBefore.copy(chest.quaternion);
+      chest.quaternion.multiply(hitTurn.setFromEuler(scratchEuler));
+      chestAfter.copy(chest.quaternion);
+      chestApplied = true;
+    }
     const w = Number.isFinite(state.weight) ? Math.max(0, Math.min(1, state.weight)) : 0;
     const pitchRadians = state.pitch;
     if (w === 0 || !Number.isFinite(pitchRadians)) {
@@ -457,6 +511,7 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
       aim.quaternion.identity();
       aim.position.fromArray(AIM_IN_CHEST);
       restoreArms();
+      turnNeck(0, hit, strength);
       return;
     }
     const p = pitchRadians * w;
@@ -467,10 +522,7 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     const neckLean = Math.max(-AIM_NECK_MAX, Math.min(AIM_NECK_MAX, p * AIM_NECK_SHARE));
     // Looking up is a positive pitch; about the model's X, up is a negative turn.
     spine.quaternion.fromArray(bases.get('spine')!.quaternion).multiply(spineTurn.setFromAxisAngle(X_AXIS, -spineLean));
-    neckBefore.copy(neck.quaternion);
-    neck.quaternion.multiply(neckTurn.setFromAxisAngle(X_AXIS, -neckLean));
-    neckAfter.copy(neck.quaternion);
-    neckApplied = true;
+    turnNeck(neckLean, hit, strength);
     // The rifle turns about the shoulder by what the spine did not take, so
     // its pitch in the body's frame is exactly the aim's.
     // The kick lifts the muzzle further; a reload dips it.
@@ -509,9 +561,18 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
       if (next === pose) return;
       apply(next);
       neckApplied = false;
+      chestApplied = false;
+      // A soldier going down takes no more hits on the body.
+      if (next === 'downed') reaction = null;
     },
     aimAt: (pitchRadians, weight) => hold({ pitch: pitchRadians, weight }),
     hold,
+    react(state) {
+      reaction = state && pose !== 'downed' ? state : null;
+      // The same pass as the hold, so the order the two are called in is
+      // nobody's concern: what shows is always the last of each.
+      hold(lastHold);
+    },
   };
   registerRig(rig);
   return root;

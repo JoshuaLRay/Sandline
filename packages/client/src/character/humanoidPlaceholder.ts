@@ -61,6 +61,7 @@ const scratchQuaternion = new THREE.Quaternion();
 /** Mirrors the server's hitbox. The test pins these to `DEFAULT_HITBOX`. */
 export const HUMANOID_HIT_RADIUS = 0.35;
 export const HUMANOID_HIT_HALF_HEIGHT = 0.55;
+export const HUMANOID_HIT_CROUCH_HALF_HEIGHT = 0.25;
 
 export function createHumanoidPlaceholder(variant: HumanoidVariant): THREE.Mesh {
   const local = variant === 'local';

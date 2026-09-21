@@ -5,7 +5,8 @@ import type * as THREE from 'three';
  *
  * Everything that poses a soldier — the locomotion pose driver, the crouch and
  * downed poses, the flinch, and T-2.23's vault — talks to a soldier through
- * this interface and nothing else. Two things implement it: the skinned
+ * this interface and nothing else. The weapon layer (T-2.25, T-2.26) and
+ * the hit reaction (T-2.27) are layers on it too. Two things implement it: the skinned
  * soldier in humanoidSoldier.ts (the primary presentation) and the grey-box
  * fixture in humanoidPlaceholder.ts (the fallback and diagnostic). A glTF
  * soldier from the M4/M5 pipeline will be a third, and needs only to name its
@@ -139,6 +140,31 @@ export interface HumanoidRig {
    * input at zero (or weight 0) every bone is the driver's own bits.
    */
   hold(state: WeaponHold): void;
+  /**
+   * Show a hit landing on the body (T-2.27): the chest turns away from
+   * where the round came from, the head snaps with it on a head-zone hit,
+   * and the whole of it scales with `strength`. A LAYER like `hold`, and
+   * applied in the same pass: the rig shows the reaction it was last given
+   * whenever either is called, in either order, and never accumulates it.
+   * `null` (or strength 0) shows none, bit-exactly; a downed soldier shows
+   * none whatever it is given. A rig without the method has no reaction of
+   * its own, and `effects.flinch` falls back to the translation flinch.
+   */
+  react?(state: HitReaction | null): void;
+}
+
+/** A hit the rig is asked to show, in the root's own frame. */
+export interface HitReaction {
+  /**
+   * The direction the round came FROM, unit length in the ground plane of
+   * the root's frame: +x is the soldier's left, +z is in front.
+   */
+  fromX: number;
+  fromZ: number;
+  /** Whether the round struck the head zone: the head snaps too. */
+  head: boolean;
+  /** 0..1: how much of the full reaction to show right now. */
+  strength: number;
 }
 
 /** What the weapon layer is asked to show this frame. */

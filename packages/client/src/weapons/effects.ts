@@ -35,8 +35,8 @@
  * impact lands a round trip after the tracer, which is the honest order.
  */
 import * as THREE from 'three';
-import { rigOf } from '../character/humanoidRig.ts';
-import { seedFrom, unitFromSeed } from '@sandline/shared';
+import { type HitReaction, type HumanoidRig, rigOf } from '../character/humanoidRig.ts';
+import { seedFrom, unitFromSeed, zoneAt } from '@sandline/shared';
 
 /** Two frames at 60 fps. A duration, so the flash lasts as long at any rate. */
 export const FLASH_SECONDS = 0.034;
@@ -77,6 +77,30 @@ export const FLINCH_SECONDS = 0.18;
 export const FLINCH_BACK_M = 0.07;
 /** The parts that flinch: the upper body, not the legs that hold it up. */
 export const FLINCH_PARTS: readonly string[] = ['torso', 'head', 'helmet', 'arm-left', 'arm-right', 'backpack', 'rifle'];
+
+/**
+ * The hit reaction on a rig that has one (T-2.27). The hit lands whole in
+ * the frame it arrives and what is left of it decays by exp(-rate x age):
+ * the T-2.02 form, closed on the age, so 30 and 120 fps show the same body
+ * at the same moment. Its size is the damage over HIT_FULL_DAMAGE, capped at
+ * one and floored so a grazing round still reads as a hit.
+ */
+export const HIT_RECOVERY_RATE = 12;
+export const HIT_FULL_DAMAGE = 50;
+export const HIT_MIN_STRENGTH = 0.3;
+/** Under this fraction of its size the reaction is over, and the rig is exact again. */
+export const HIT_SETTLE_FRACTION = 0.01;
+
+/** Seconds from a hit to its reaction falling under HIT_SETTLE_FRACTION. */
+export function hitReactionSeconds(): number {
+  return Math.log(1 / HIT_SETTLE_FRACTION) / HIT_RECOVERY_RATE;
+}
+
+/** How big a hit's reaction is, 0..1, from the damage it dealt. */
+export function hitStrength(damage: number): number {
+  if (!(damage > 0)) return 0;
+  return Math.max(HIT_MIN_STRENGTH, Math.min(1, damage / HIT_FULL_DAMAGE));
+}
 
 interface FlashSlot {
   sprite: THREE.Sprite;
@@ -119,6 +143,25 @@ interface FlinchSlot {
   born: number;
   /** Each part's resting local Z, restored exactly when the flinch ends. */
   bases: { part: THREE.Object3D; z: number }[];
+}
+
+interface ReactionSlot {
+  rig: HumanoidRig;
+  born: number;
+  /** The reaction at full size; what the rig is shown is this scaled by the age. */
+  shape: HitReaction;
+}
+
+/** What `flinch` needs to know about a hit to put it on the body (T-2.27). */
+export interface HitDescription {
+  /** Where the round came from, in the world; null when the shooter is not known. */
+  shooter: Vec3Like | null;
+  /** The server's impact point. */
+  point: Vec3Like;
+  damage: number;
+  /** The target's feet and the height of its hitbox, for the zone. */
+  feetY: number;
+  height: number;
 }
 
 export interface Vec3Like {
@@ -196,6 +239,9 @@ export class WeaponEffects {
   private readonly shells: ShellSlot[] = [];
   private readonly impacts: ImpactSlot[] = [];
   private readonly flinches = new Map<THREE.Object3D, FlinchSlot>();
+  private readonly reactions = new Map<THREE.Object3D, ReactionSlot>();
+  private readonly scratchFrom = new THREE.Vector3();
+  private readonly scratchFacing = new THREE.Quaternion();
   private readonly shellGeometry = new THREE.BoxGeometry(SHELL_SIZE_M.x, SHELL_SIZE_M.y, SHELL_SIZE_M.z);
   private readonly decalGeometry = new THREE.PlaneGeometry(DECAL_SIZE_M, DECAL_SIZE_M);
   /** Reused per call so a shot allocates nothing. */
@@ -297,6 +343,11 @@ export class WeaponEffects {
     return this.flinches.size;
   }
 
+  /** Rigs showing a hit reaction (T-2.27); the translation flinches are counted apart. */
+  get liveReactions(): number {
+    return this.reactions.size;
+  }
+
   /** The next free slot, or the oldest live one when every slot is taken. */
   private claim<T extends { live: boolean; born: number }>(pool: readonly T[]): T {
     let pick = pool[0] as T;
@@ -367,11 +418,41 @@ export class WeaponEffects {
   }
 
   /**
-   * A soldier was hit: jerk the upper body back and let it recover. Hitting
-   * a soldier already flinching restarts the flinch; the resting pose is
-   * captured once and restored exactly when it ends.
+   * A soldier was hit. With a description of the hit and a rig that can
+   * react (T-2.27), the rig is asked to: the chest turns away from where
+   * the round came from, the head snaps on a head-zone hit, sized by the
+   * damage. A second hit restarts it with its own direction and size.
+   *
+   * Otherwise the T-2.11 flinch: jerk the upper body back and let it
+   * recover. Hitting a soldier already flinching restarts the flinch; the
+   * resting pose is captured once and restored exactly when it ends.
    */
-  flinch(root: THREE.Object3D, now: number): void {
+  flinch(root: THREE.Object3D, now: number, hit?: HitDescription): void {
+    const rig = rigOf(root);
+    // A downed soldier is on the ground already; nothing here is for it.
+    if (rig?.pose === 'downed') return;
+    if (hit && rig?.react) {
+      const strength = hitStrength(hit.damage);
+      if (strength === 0) return;
+      // The direction the round came from, in the root's own frame and flat
+      // on the ground; an unknown shooter is taken to be in front.
+      const from = this.scratchFrom;
+      if (hit.shooter) {
+        root.getWorldPosition(from).subVectors(hit.shooter as THREE.Vector3, from);
+        from.y = 0;
+        if (from.lengthSq() > 1e-12) from.normalize().applyQuaternion(root.getWorldQuaternion(this.scratchFacing).invert());
+        else from.set(0, 0, 1);
+      } else {
+        from.set(0, 0, 1);
+      }
+      if (!Number.isFinite(from.x) || !Number.isFinite(from.z)) from.set(0, 0, 1);
+      // The zone from the point's height, against the fractions damage.json gives the server.
+      const head = zoneAt(hit.point.y, hit.feetY, hit.height) === 'head';
+      const slot: ReactionSlot = { rig, born: now, shape: { fromX: from.x, fromZ: from.z, head, strength } };
+      this.reactions.set(root, slot);
+      this.showReaction(root, slot, now);
+      return;
+    }
     const existing = this.flinches.get(root);
     if (existing) {
       existing.born = now;
@@ -379,10 +460,21 @@ export class WeaponEffects {
     }
     // A registered rig says what its upper body is (T-2.22); a bare grey box
     // is read off its part names.
-    const rig = rigOf(root);
     const parts = rig ? rig.flinchParts : root.children.filter((part) => FLINCH_PARTS.includes(part.name));
     const bases: FlinchSlot['bases'] = parts.map((part) => ({ part, z: part.position.z }));
     this.flinches.set(root, { born: now, bases });
+  }
+
+  /** What is left of a reaction at `now`, shown on its rig; over, it is withdrawn exactly. */
+  private showReaction(root: THREE.Object3D, slot: ReactionSlot, now: number): void {
+    const age = now - slot.born;
+    const left = age < 0 ? 0 : Math.exp(-HIT_RECOVERY_RATE * age);
+    if (left < HIT_SETTLE_FRACTION) {
+      slot.rig.react!(null);
+      this.reactions.delete(root);
+      return;
+    }
+    slot.rig.react!({ ...slot.shape, strength: slot.shape.strength * left });
   }
 
   /** Where a shell is `t` seconds into its life: on the arc, or at rest. */
@@ -470,6 +562,7 @@ export class WeaponEffects {
       const back = f < 1 / 3 ? f * 3 : 1 - (f - 1 / 3) * 1.5;
       for (const { part, z } of flinch.bases) part.position.z = z - FLINCH_BACK_M * back;
     }
+    for (const [root, slot] of this.reactions) this.showReaction(root, slot, now);
   }
 
   private retireFlash(flash: FlashSlot): void {
@@ -499,12 +592,16 @@ export class WeaponEffects {
       for (const { part, z } of flinch.bases) part.position.z = z;
       this.flinches.delete(root);
     }
+    for (const [root, slot] of this.reactions) {
+      slot.rig.react!(null);
+      this.reactions.delete(root);
+    }
   }
 
   readout(): string {
     return (
       `fx  flashes ${this.liveFlashes}/${FLASH_POOL}  shells ${this.liveShells}/${SHELL_POOL}` +
-      `  impacts ${this.liveImpacts}/${IMPACT_POOL}`
+      `  impacts ${this.liveImpacts}/${IMPACT_POOL}  hits ${this.flinches.size + this.reactions.size}`
     );
   }
 }
