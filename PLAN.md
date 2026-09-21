@@ -1197,6 +1197,7 @@ animates from state now will take clips then.
 - **Do:** Each foot finds what is under it in the shared world (`supportUnder` at the foot's own x/z) and, when that differs from the body's authoritative feet height, a two-bone leg IK plants the foot on its support within a bounded range, the hips settle to the lower foot, and the other knee bends to take up the difference; blended by dt so stepping onto and off an edge slides rather than pops; only while grounded and not vaulting or downed; never a change to the authoritative position. The gait's swing stays on top: a planted foot is the one the gait has on the ground.
 - **Done when:** tests assert a soldier standing half on the slab has one foot at the slab's height and one on the ground with the hips lowered and a knee bent, flat ground is the exact rest, the range is bounded, a walk across the slab's edge keeps the peak joint step inside the walk's own, and the root never moves; a browser run screenshots a soldier standing on the slab's edge.
 - **Size:** M
+- **Completed 2026-09-21.** `footPlacement.ts`: a driver on the rig contract, as the gait is, applied after it every frame. Each foot asks `supportUnder` at its own x/z — the shared world, the same list the controller collides with — for an offset from the body's authoritative feet height, bounded to `FOOT_RANGE_M`; the hips settle to the LOWEST foot, since a leg that rests straight cannot reach below the hips it hangs from, and every other knee bends to put its foot back down through the same two-bone solver that puts the hands on the rifle, now shared as `twoBoneIk.ts` (the arms' pose is bit-identical after the move). The ankle keeps the world orientation the gait gave it. The gait stays on top: the IK's target is where the gait put the foot, its pole hint is a fixed distance ahead of where the gait put the knee (a standing leg's knee sits on the hip-to-ankle line, where the perpendicular the solver needs is noise and two frames can bend the same leg two ways), and a foot the gait has LIFTED is not planted at all — each foot's share fades out with its lift above the same foot in the pose's own base, so only a foot the gait has on the ground is pinned to the world. The settle is a critically damped spring rather than an exponential, because the knee's bend grows as the square root of the lift and an exponential's first frame is its fastest: from a straight leg that is most of a radian in one frame, which is the vault's snap in the one shape it can still take. The layer fades in over its first two centimetres, since IK cannot reproduce the gait's own bits even when asked for the pose it is already in. Off while vaulting or downed, which the caller says, and off while airborne, which the layer works out from the body's own footprint. The root is never touched. Measured: a walk across the slab's edge peaks at 0.168 rad of joint step against the walk's own 0.168 at 60 fps, and 0.328 against 0.329 at 30. A browser run on the published harness: the soldier on the slab's west edge with the HUD reading `feet at 7.5,8.0  L 0.00  R -0.40  hips -0.40`, one boot on the slab, one on the ground, the hips down between them; walking back off it returned exactly `L 0.00  R 0.00`.
 
 #### T-2.29 — 🧍 E-2.3 sign-off
 - **Depends:** T-2.25, T-2.26, T-2.27, T-2.28
@@ -1328,9 +1329,11 @@ green, including the non-V8 parity job.
    revive and remote believability cannot be judged alone.
 2. **Continue E-2.3 — Animation system.** Broken out 2026-09-20 as T-2.25
    through T-2.29 (§7.4). Aim offsets (T-2.25), the fire and reload layers
-   (T-2.26) and the hit reaction (T-2.27) are in; **T-2.28, foot placement, is
-   next**, then the T-2.29 sign-off. Each is a procedural layer on the rig
-   contract; none moves anything authoritative.
+   (T-2.26), the hit reaction (T-2.27) and foot placement (T-2.28) are all in,
+   so **E-2.3's build work is done and T-2.29, the sign-off, is what remains**:
+   two people on the host, judging whether the body reads what the other is
+   doing, and tuning the layers' numbers with the feel in hand. Each layer is
+   procedural on the rig contract; none moves anything authoritative.
 3. **Keep tuning data opportunistically.** Weapon and downed values remain
    data-driven; adjust them when a concrete playtest issue appears rather than
    reopening completed gates without a reason.

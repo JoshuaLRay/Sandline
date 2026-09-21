@@ -11,6 +11,7 @@ import {
   registerRig,
 } from './humanoidRig.ts';
 import { plateau } from './locomotionPose.ts';
+import { solveTwoBone } from './twoBoneIk.ts';
 import { DOWNED_BODY_LIFT_M, HUMANOID_HIT_HALF_HEIGHT, HUMANOID_HIT_RADIUS, HUMANOID_ROOT_LIFT_M } from './humanoidPlaceholder.ts';
 
 /**
@@ -97,8 +98,6 @@ const GRIP_LEFT: [number, number, number] = [0.02, -0.02, 0.36];
 const ELBOW_HINT_RIGHT: [number, number, number] = [-0.25, -0.6, -0.1];
 const ELBOW_HINT_LEFT: [number, number, number] = [0.45, -0.25, 0.1];
 
-const DOWN = new THREE.Vector3(0, -1, 0);
-
 /** Lying on the back, head forward (+Z): the grey box's turn, applied to the hips. */
 const DOWNED_TURN = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, Math.PI, 0, 'YXZ'));
 
@@ -177,9 +176,6 @@ interface Segment {
 }
 
 const scratchMatrix = new THREE.Matrix4();
-const scratchA = new THREE.Vector3();
-const scratchB = new THREE.Vector3();
-const scratchC = new THREE.Vector3();
 const scratchQ = new THREE.Quaternion();
 
 function boneIndex(name: HumanoidBoneName): number {
@@ -232,37 +228,6 @@ function weld(segments: Segment[]): THREE.BufferGeometry {
   geometry.setIndex(indices);
   geometry.computeBoundingSphere();
   return geometry;
-}
-
-/**
- * Two-bone IK in the chest's frame: point the upper arm from `shoulder` so
- * that a lower arm of the given lengths reaches `target`, with the elbow on
- * the side of `hint`. Returns the two bones' local quaternions (rest is the
- * identity, the geometry hangs along -Y).
- */
-function solveArm(
-  shoulder: THREE.Vector3,
-  target: THREE.Vector3,
-  hint: THREE.Vector3,
-  upper: number,
-  lower: number,
-): { upper: THREE.Quaternion; lower: THREE.Quaternion } {
-  const toTarget = scratchA.copy(target).sub(shoulder);
-  const reach = Math.min(toTarget.length(), upper + lower - 1e-3);
-  const u = toTarget.normalize();
-  // The pole: the hint's component perpendicular to the shoulder-target line.
-  const pole = scratchB.copy(hint).sub(shoulder);
-  pole.addScaledVector(u, -pole.dot(u)).normalize();
-  const cosShoulder = (upper * upper + reach * reach - lower * lower) / (2 * upper * reach);
-  const shoulderAngle = Math.acos(Math.max(-1, Math.min(1, cosShoulder)));
-  const upperDir = scratchC.copy(u).multiplyScalar(Math.cos(shoulderAngle)).addScaledVector(pole, Math.sin(shoulderAngle));
-  const upperQ = new THREE.Quaternion().setFromUnitVectors(DOWN, upperDir);
-  const elbow = upperDir.clone().multiplyScalar(upper).add(shoulder);
-  const lowerDir = target.clone().sub(elbow).normalize();
-  const lowerWorld = new THREE.Quaternion().setFromUnitVectors(DOWN, lowerDir);
-  // Local to the upper arm: undo the upper arm's rotation first.
-  const lowerQ = upperQ.clone().invert().multiply(lowerWorld);
-  return { upper: upperQ, lower: lowerQ };
 }
 
 function poseQuaternion(offset: PoseOffset | undefined, out: THREE.Quaternion): THREE.Quaternion {
@@ -380,7 +345,8 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     // Branching rather than scaling by zero keeps a reach of 0 bit-exact.
     if (side === 'left' && reach > 0) grip.addScaledVector(toWell, reach);
     grip.applyQuaternion(aimTurn).add(origin);
-    return solveArm(
+    // The same solver the legs plant a foot with (T-2.28), in the chest's frame.
+    return solveTwoBone(
       inChest(JOINTS[`upper-arm-${side}`]),
       grip,
       inChest(JOINTS[`upper-arm-${side}`]).add(new THREE.Vector3().fromArray(side === 'left' ? ELBOW_HINT_LEFT : ELBOW_HINT_RIGHT)),

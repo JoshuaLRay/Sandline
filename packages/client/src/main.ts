@@ -83,6 +83,7 @@ import { FROM_THE_FRONT, hitReactionFrom, shooterDirection } from './character/h
 import { createHumanoidSoldier } from './character/humanoidSoldier.ts';
 import { type KickState, addKick, createKick, decayKick } from './character/weaponKick.ts';
 import { createLocomotionPoseDriver, type LocomotionPoseDriver } from './character/locomotionPose.ts';
+import { type FootPlacementDriver, createFootPlacementDriver } from './character/footPlacement.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
 import { createNetworkPanel } from './ui/NetworkPanel.ts';
@@ -245,6 +246,13 @@ const createSoldier = greyBox ? createHumanoidPlaceholder : createHumanoidSoldie
 const player = createSoldier('local');
 const playerRig = requireRig(player);
 const localPoseDriver = createLocomotionPoseDriver(playerRig);
+/**
+ * Foot placement (T-2.28). Created with the same config object the session
+ * and the predictor share, so the movement panel's step height moves what the
+ * feet will stand on with it, and reading the same world the controller
+ * collides with.
+ */
+const localFeet = createFootPlacementDriver(playerRig, { world: DEFAULT_WORLD, config });
 scene.add(player);
 
 /**
@@ -257,6 +265,7 @@ scene.add(player);
  */
 const remoteMeshes = new Map<number, THREE.Mesh>();
 const remotePoseDrivers = new Map<number, LocomotionPoseDriver>();
+const remoteFeet = new Map<number, FootPlacementDriver>();
 const remoteRenderedPrev = new Map<number, { x: number; z: number }>();
 
 /** A signed wire angle (1024 per turn) in radians. */
@@ -281,6 +290,7 @@ function remoteMesh(netId: number): THREE.Mesh {
     scene.add(mesh);
     remoteMeshes.set(netId, mesh);
     remotePoseDrivers.set(netId, createLocomotionPoseDriver(mesh));
+    remoteFeet.set(netId, createFootPlacementDriver(mesh, { world: DEFAULT_WORLD, config }));
     // Created on demand, so it has to join the list on demand too. Leaving
     // remote players out is what produced the down-and-left shots.
     shootable.push(mesh);
@@ -544,6 +554,7 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
     if (at >= 0) shootable.splice(at, 1);
     remoteMeshes.delete(netId);
     remotePoseDrivers.delete(netId);
+    remoteFeet.delete(netId);
     remoteRenderedPrev.delete(netId);
   }
   combat.reset();
@@ -552,8 +563,10 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
   localPoseDriver.reset();
   playerRig.aimAt(0, 0);
   kick = createKick();
+  localFeet.reset();
   remoteKicks.clear();
   remotePoseDrivers.clear();
+  remoteFeet.clear();
   remoteRenderedPrev.clear();
   simPrev = null;
   simCur = null;
@@ -1020,6 +1033,13 @@ function frame(): void {
         reload: net?.remoteWeapon(netId).reloadProgress ?? 0,
       });
     }
+    // Their feet stand on what is under them (T-2.28). The mesh is already at
+    // its interpolated place, so the layer reads the world the same way the
+    // local one does; a vaulting or downed soldier gets none.
+    remoteFeet.get(netId)?.update(
+      { feetY: sample.y, active: !remoteDowned && driver.vaultWeight === 0 },
+      dt,
+    );
     remoteRenderedPrev.set(netId, { x: sample.x, z: sample.z });
   }
   for (const netId of remoteRenderedPrev.keys()) {
@@ -1027,6 +1047,19 @@ function frame(): void {
   }
 
   player.position.set(rx, ry + 0.9, rz);
+
+  /**
+   * Foot placement (T-2.28), last: the layer asks the world what is under
+   * each foot, so it runs once the root is standing where the authoritative
+   * state puts it. The root itself is untouched — only the legs under it.
+   */
+  localFeet.update(
+    {
+      feetY: ry,
+      active: !localDowned && !sim?.vault && localPoseDriver.vaultWeight === 0,
+    },
+    dt,
+  );
 
   /**
    * Camera (T-2.01). The pivot, shoulder and arm arithmetic lives in
@@ -1187,6 +1220,8 @@ function frame(): void {
         `${input.firstPerson ? 'first person  (V for third)' : 'third person  (V swaps shoulder, RMB aims into first)'}\n` +
         `locomotion ${locomotion.state}  ${locomotion.direction}  ${Math.round(locomotion.normalizedSpeed * 100)}%   rig ${playerRig.kind}\n` +
         `pose step ${localPoseDriver.step.toFixed(3)} rad  peak ${localPoseDriver.peakStep.toFixed(3)}\n` +
+        `feet at ${rx.toFixed(1)},${rz.toFixed(1)}  L ${localFeet.offset('left').toFixed(2)}  R ${localFeet.offset('right').toFixed(2)}` +
+        `  hips ${localFeet.drop.toFixed(2)}  step ${localFeet.step.toFixed(3)}\n` +
         `${input.locked ? 'mouse captured - Esc to release' : 'CLICK to capture mouse'}\n` +
         `\n${combat.readout(clock.tick * TICK_SECONDS, input.ads)}\n` +
         `${effects.readout()}\n` +
@@ -1220,6 +1255,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyT') {
     peakSpeed = 0;
     localPoseDriver.resetPeak();
+    localFeet.resetPeak();
     combat.reset();
   effects.reset();
   }
