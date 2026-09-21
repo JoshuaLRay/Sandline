@@ -1189,6 +1189,7 @@ animates from state now will take clips then.
 - **Do:** Replace the T-2.11 translation flinch on the skinned rig with a reaction in the rig's terms: the chest turns away from the shooter (the direction is known on every client from the shot's shooter and the target's position), the head snaps on a head-zone hit (the zone from the point's height against the same fractions `damage.json` uses), the magnitude scales with damage, it recovers on the T-2.02 curve, a second hit restarts it, and a downed soldier does not react. The grey box keeps the translation flinch as its fallback path; `effects.flinch` becomes the entry point that asks the rig.
 - **Done when:** tests assert direction (a shot from the left turns the chest one way, from the right the other), zone (head hit moves the head, torso hit does not), magnitude, exact recovery, restart without drift, none while downed, and the grey box unchanged; the T-2.11 flinch tests keep passing on the fixture.
 - **Size:** M
+- **Completed 2026-09-21.** `react(reaction)` on the rig contract, a layer on the same rules as `hold`: applied after the driver, never accumulating, and handing the bones back exactly on `react(null)`. The chest turns away from the shooter about its own up axis and tilts along the shot — back from a round in front, forward from one behind — and on a head-zone hit the head snaps 1.6× that again on top, so it goes further and faster than the body under it. The chest is the driver's to write, so the layer composes on it with the T-2.25 undo-if-untouched guard; the head, which nothing else rotates, is set from its base. The numbers are pure and live in `hitReaction.ts`: `shooterDirection` puts the shooter in the target's own frame from state every client already has (the shot's shooter and both positions — nothing new on the wire), `hitReactionFrom` scales by damage to a bound at `REACTION_FULL_DAMAGE` and reads the zone from the impact's height against `damage.json`'s own fractions, and `reactionAt` is the T-2.02 curve as a closed form of the age, so 30 and 120 fps trace the same recovery and a second hit is a new peak rather than a sum. `effects.flinch` is now the entry point that asks the rig — `react(null)` with nothing live is the question — and falls back to the T-2.11 translation over `flinchParts` for the grey box, which answers false and keeps its jerk back; the skinned soldier names no parts to translate. A downed soldier does not react. The muzzle the tracers leave and the shot the server resolves are untouched.
 
 #### T-2.28 — Foot placement
 - **Depends:** T-2.25
@@ -1326,9 +1327,10 @@ green, including the non-V8 parity job.
    It needs a second person on the host: the bots never shoot, so crawl,
    revive and remote believability cannot be judged alone.
 2. **Continue E-2.3 — Animation system.** Broken out 2026-09-20 as T-2.25
-   through T-2.29 (§7.4): aim offsets, fire and reload layers, hit reactions
-   on the rig, foot placement, then the sign-off. Each is a procedural layer
-   on the rig contract; none moves anything authoritative.
+   through T-2.29 (§7.4). Aim offsets (T-2.25), the fire and reload layers
+   (T-2.26) and the hit reaction (T-2.27) are in; **T-2.28, foot placement, is
+   next**, then the T-2.29 sign-off. Each is a procedural layer on the rig
+   contract; none moves anything authoritative.
 3. **Keep tuning data opportunistically.** Weapon and downed values remain
    data-driven; adjust them when a concrete playtest issue appears rather than
    reopening completed gates without a reason.

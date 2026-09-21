@@ -47,6 +47,7 @@ import {
   muzzlePosition,
   toRadians,
   wireToTable,
+  zoneAt,
 } from '@sandline/shared';
 import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
@@ -71,8 +72,14 @@ import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
 import { WeaponEffects } from './weapons/effects.ts';
 import { addShake, applyShake, createShake, decayShake } from './camera/cameraShake.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
-import { createHumanoidPlaceholder } from './character/humanoidPlaceholder.ts';
-import { requireRig } from './character/humanoidRig.ts';
+import {
+  HUMANOID_CROUCH_HIT_HEIGHT_M,
+  HUMANOID_HIT_HEIGHT_M,
+  HUMANOID_ROOT_LIFT_M,
+  createHumanoidPlaceholder,
+} from './character/humanoidPlaceholder.ts';
+import { requireRig, rigOf } from './character/humanoidRig.ts';
+import { FROM_THE_FRONT, hitReactionFrom, shooterDirection } from './character/hitReaction.ts';
 import { createHumanoidSoldier } from './character/humanoidSoldier.ts';
 import { type KickState, addKick, createKick, decayKick } from './character/weaponKick.ts';
 import { createLocomotionPoseDriver, type LocomotionPoseDriver } from './character/locomotionPose.ts';
@@ -401,7 +408,26 @@ function landImpact(net: NetClient, shot: ServerShot): void {
   const target = shot.targetNetId === net.netId ? player : remoteMeshes.get(shot.targetNetId);
   // A downed soldier is already on the ground; the flinch belongs to the upright.
   const targetDowned = shot.targetNetId === net.netId ? net.vitality !== 'alive' : net.remoteVitality(shot.targetNetId) !== 'alive';
-  if (target && !targetDowned) effects.flinch(target, now);
+  if (!target || targetDowned) return;
+  /**
+   * What the reaction is made of (T-2.27), all of it state this client
+   * already has: where the shooter stood, in the TARGET'S frame, so the body
+   * turns away from them; the impact's height up the hit capsule, read
+   * against the same zone fractions the server scored the damage with; and
+   * the damage itself. A shooter with no mesh yet — a shot from someone who
+   * has not been interpolated — reads as a shot from the front.
+   */
+  const shooter = shot.shooterNetId === net.netId ? player : remoteMeshes.get(shot.shooterNetId);
+  const from = shooter
+    ? shooterDirection(shooter.position.x - target.position.x, shooter.position.z - target.position.z, target.rotation.y)
+    : FROM_THE_FRONT;
+  const crouched = rigOf(target)?.pose === 'crouched';
+  const zone = zoneAt(
+    shot.y,
+    target.position.y - HUMANOID_ROOT_LIFT_M,
+    crouched ? HUMANOID_CROUCH_HIT_HEIGHT_M : HUMANOID_HIT_HEIGHT_M,
+  );
+  effects.flinch(target, now, hitReactionFrom(shot.damage, zone, from));
 }
 
 function startSession(choice: LobbyChoice): void {

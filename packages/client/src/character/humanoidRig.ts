@@ -111,7 +111,11 @@ export interface HumanoidRig {
    */
   readonly aim: THREE.Object3D;
   readonly style: GaitStyle;
-  /** What a hit jerks back along local -Z: the upper body, not the legs. */
+  /**
+   * What a hit jerks back along local -Z when the rig has no reaction of its
+   * own: the upper body, not the legs (T-2.11). Empty on a rig that answers
+   * `react`, which shows the hit in bones instead (T-2.27).
+   */
   readonly flinchParts: readonly THREE.Object3D[];
   readonly pose: HumanoidPose;
   bone(name: HumanoidBoneName): THREE.Object3D | null;
@@ -139,6 +143,31 @@ export interface HumanoidRig {
    * input at zero (or weight 0) every bone is the driver's own bits.
    */
   hold(state: WeaponHold): void;
+  /**
+   * Show a hit (T-2.27). A LAYER, on the same three rules as `hold`: applied
+   * after the pose driver, never accumulating, and restoring the driver's own
+   * bits exactly when it ends. `react(null)` ends it — and with nothing live
+   * it is the question on its own, which is how `effects.flinch` asks.
+   *
+   * Returns true when the rig has taken the reaction, and false when it has
+   * none of its own and the caller should jerk `flinchParts` back instead.
+   * A downed soldier does not react: they are already on the ground.
+   */
+  react(reaction: HitReaction | null): boolean;
+}
+
+/**
+ * What a round that landed does to the body that took it, in the rig's terms.
+ * Angles in radians, signed in the model's frame (+X the soldier's left, +Y
+ * up, +Z forward); `hitReaction.ts` computes them from the shot.
+ */
+export interface HitReaction {
+  /** The chest's turn away from the shooter about its own up axis. Positive turns it to the soldier's left. */
+  turn: number;
+  /** The chest's tilt along the shot. Positive tilts it back, away from a shot in front. */
+  lean: number;
+  /** 0..1: how much of the reaction the head takes on top of the chest. Only a head-zone hit is above 0. */
+  head: number;
 }
 
 /** What the weapon layer is asked to show this frame. */

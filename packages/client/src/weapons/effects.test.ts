@@ -23,6 +23,7 @@ import {
   SHELL_POOL,
   SHELL_REST_SECONDS,
   SHELL_SIZE_M,
+  REACTION_SECONDS,
   WeaponEffects,
   ejectVelocity,
   flightSeconds,
@@ -30,6 +31,9 @@ import {
   sparkVelocities,
 } from './effects.ts';
 import { createHumanoidPlaceholder } from '../character/humanoidPlaceholder.ts';
+import { createHumanoidSoldier } from '../character/humanoidSoldier.ts';
+import { HUMANOID_BONES, requireRig, type HumanoidRig } from '../character/humanoidRig.ts';
+import { hitReactionFrom, shooterDirection } from '../character/hitReaction.ts';
 
 /** Facing +Z: forward = (0, 0, 1), so right = (-1, 0, 0) and back = (0, 0, -1). */
 const FWD_X = 0;
@@ -405,5 +409,76 @@ describe('a hit soldier flinches (T-2.11)', () => {
     fx.update(FLINCH_SECONDS / 2 + FLINCH_SECONDS + 1e-9);
     expect(torso.position.z).toBe(base);
     expect(fx.liveFlinches).toBe(0);
+  });
+});
+
+describe('the rig takes its own hit reaction (T-2.27)', () => {
+  const boneBits = (rig: HumanoidRig): string => JSON.stringify(
+    HUMANOID_BONES.map((name) => rig.bone(name)?.quaternion.toArray() ?? null),
+  );
+  /** A round from the soldier's left, in the head. */
+  const headshot = hitReactionFrom(50, 'head', shooterDirection(5, 0, 0));
+
+  it('turns the body instead of translating it, and recovers to the pose exactly', () => {
+    const { fx } = setup();
+    const soldier = createHumanoidSoldier('remote');
+    const rig = requireRig(soldier);
+    const rest = boneBits(rig);
+
+    fx.flinch(soldier, 1, headshot);
+    expect(fx.liveFlinches).toBe(1);
+    fx.update(1 + REACTION_SECONDS / 4);
+    expect(boneBits(rig)).not.toBe(rest);
+    // A reaction in bones: nothing is jerked back along local -Z (T-2.11).
+    for (const name of HUMANOID_BONES) {
+      const bone = rig.bone(name);
+      const base = rig.base(name);
+      if (bone && base) expect(bone.position.toArray()).toEqual(base.position);
+    }
+
+    fx.update(1 + REACTION_SECONDS + 1e-9);
+    expect(fx.liveFlinches).toBe(0);
+    expect(boneBits(rig)).toBe(rest);
+  });
+
+  it('a second hit restarts the reaction on the new round, without drifting the pose', () => {
+    const { fx } = setup();
+    const soldier = createHumanoidSoldier('remote');
+    const rig = requireRig(soldier);
+    const rest = boneBits(rig);
+    const fromRight = hitReactionFrom(50, 'torso', shooterDirection(-5, 0, 0));
+
+    fx.flinch(soldier, 0, headshot);
+    fx.update(REACTION_SECONDS / 2);
+    fx.flinch(soldier, REACTION_SECONDS / 2, fromRight);
+    fx.update(REACTION_SECONDS / 2 + REACTION_SECONDS / 4);
+    expect(boneBits(rig)).not.toBe(rest);
+    // The newest round is the whole reaction: a torso hit leaves the head bone.
+    expect(rig.bone('head')?.quaternion.toArray()).toEqual(rig.base('head')?.quaternion);
+
+    fx.update(REACTION_SECONDS / 2 + REACTION_SECONDS + 1e-9);
+    expect(fx.liveFlinches).toBe(0);
+    expect(boneBits(rig)).toBe(rest);
+  });
+
+  it('a downed soldier does not react, and reset hands the bones back', () => {
+    const { fx } = setup();
+    const soldier = createHumanoidSoldier('remote');
+    const rig = requireRig(soldier);
+    rig.setPose('downed');
+    const down = boneBits(rig);
+
+    fx.flinch(soldier, 0, headshot);
+    fx.update(REACTION_SECONDS / 4);
+    expect(boneBits(rig)).toBe(down);
+
+    rig.setPose('standing');
+    const up = boneBits(rig);
+    fx.flinch(soldier, 1, headshot);
+    fx.update(1 + REACTION_SECONDS / 4);
+    expect(boneBits(rig)).not.toBe(up);
+    fx.reset();
+    expect(fx.liveFlinches).toBe(0);
+    expect(boneBits(rig)).toBe(up);
   });
 });

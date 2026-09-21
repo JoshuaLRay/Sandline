@@ -4,6 +4,7 @@ import {
   type GaitStyle,
   type HumanoidBoneName,
   type HumanoidPose,
+  type HitReaction,
   type HumanoidRig,
   type RigTransform,
   type WeaponHold,
@@ -159,6 +160,12 @@ const X_AXIS = new THREE.Vector3(1, 0, 0);
  */
 const KICK_SPINE_SHARE = 0.3;
 const RELOAD_DIP = 0.35;
+/**
+ * The hit reaction's shares (T-2.27). The chest carries the turn and the
+ * tilt; on a head-zone hit the head snaps this much of them again on top, so
+ * the head goes further and faster than the body under it.
+ */
+const REACTION_HEAD_SHARE = 1.6;
 /** The magazine well in aim space: under the rifle, a hand's length back from the foregrip. */
 const MAG_WELL: [number, number, number] = [0.02, -0.17, 0.13];
 const scratchOffset = new THREE.Vector3();
@@ -494,12 +501,48 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     }
   };
 
+  // -- The hit reaction's own bookkeeping (T-2.27). --
+  // The chest is the driver's to write every frame, so the layer composes on
+  // whatever it holds, with the same undo-if-untouched guard the neck uses:
+  // a frame with no time in it cannot stack the reaction. The head is the
+  // layer's alone — the driver rotates the neck, never the head — so it is
+  // set from its base and the snap composed on that.
+  const head = bones.get('head')!;
+  const chestBefore = new THREE.Quaternion();
+  const chestAfter = new THREE.Quaternion();
+  let chestReacted = false;
+  const reactTurn = new THREE.Quaternion();
+  const headTurn = new THREE.Quaternion();
+  const reactEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+  const react = (reaction: HitReaction | null): boolean => {
+    if (chestReacted && chest.quaternion.equals(chestAfter)) chest.quaternion.copy(chestBefore);
+    chestReacted = false;
+    head.quaternion.fromArray(bases.get('head')!.quaternion);
+    // A soldier on the ground does not react: they are already down, and the
+    // reaction would be a picture of a fight they are out of.
+    if (!reaction || pose === 'downed') return true;
+    const turn = Number.isFinite(reaction.turn) ? reaction.turn : 0;
+    const lean = Number.isFinite(reaction.lean) ? reaction.lean : 0;
+    if (turn === 0 && lean === 0) return true;
+    const headShare = REACTION_HEAD_SHARE * (Number.isFinite(reaction.head) ? Math.max(0, Math.min(1, reaction.head)) : 0);
+    chestBefore.copy(chest.quaternion);
+    // Tilting back is a negative turn about the model's X, as looking up is.
+    chest.quaternion.multiply(reactTurn.setFromEuler(reactEuler.set(-lean, turn, 0, 'YXZ')));
+    chestAfter.copy(chest.quaternion);
+    chestReacted = true;
+    if (headShare > 0) {
+      head.quaternion.multiply(headTurn.setFromEuler(reactEuler.set(-lean * headShare, turn * headShare, 0, 'YXZ')));
+    }
+    return true;
+  };
+
   const rig: HumanoidRig = {
     kind: 'skinned',
     root,
     aim,
     style: SKINNED_STYLE,
-    flinchParts: [bones.get('spine')!],
+    // The skinned soldier reacts in bones (T-2.27); nothing translates it.
+    flinchParts: [],
     get pose() {
       return pose ?? 'standing';
     },
@@ -509,9 +552,11 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
       if (next === pose) return;
       apply(next);
       neckApplied = false;
+      chestReacted = false;
     },
     aimAt: (pitchRadians, weight) => hold({ pitch: pitchRadians, weight }),
     hold,
+    react,
   };
   registerRig(rig);
   return root;
