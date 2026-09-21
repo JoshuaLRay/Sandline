@@ -8,6 +8,9 @@ both passed, R2 is closed, and the authoritative host is deployed at
 `wss://sandline-host.fly.dev`. See [`PLAN.md` §7](./PLAN.md) for the current M2
 work and [`docs/HANDOFF-M1.5.md`](./docs/HANDOFF-M1.5.md) for the historical
 M1.5 operational and debugging notes.
+[`docs/HANDOFF-SOLDIER-LOOK.md`](./docs/HANDOFF-SOLDIER-LOOK.md) is the context
+transfer for the proposed PS2-era pass on the soldier's presentation — state of
+play, fixed points, and a task breakdown that is not agreed yet.
 
 ## Quick start
 
