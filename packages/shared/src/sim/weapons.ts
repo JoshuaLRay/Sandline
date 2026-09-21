@@ -345,6 +345,18 @@ export function startReload(def: WeaponDef, state: WeaponState, now: number): bo
   return true;
 }
 
+/**
+ * How far through a reload the weapon is, 0..1; 0 when none is in progress
+ * (T-2.26). A curve of the weapon's own clock, so the server's snapshot and
+ * the client's local state read the same number for the same moment.
+ */
+export function reloadProgress(def: WeaponDef, state: WeaponState, now: number): number {
+  if (!isReloading(state, now) || !(def.reloadSeconds > 0)) return 0;
+  const p = 1 - (state.reloadEndsAt - now) / def.reloadSeconds;
+  // The start of a reload is exactly 0, not a rounding hair above it.
+  return p < 1e-9 ? 0 : p > 1 ? 1 : p;
+}
+
 /** Complete a reload whose end time has passed. Idempotent. */
 export function finishReload(def: WeaponDef, state: WeaponState, now: number): void {
   if (state.reloadEndsAt !== 0 && state.reloadEndsAt <= now) {

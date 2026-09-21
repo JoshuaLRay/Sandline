@@ -49,6 +49,7 @@ import {
   decayBloom,
   isAlive,
   readyToRespawn,
+  reloadProgress,
   revive,
   respawn,
   spawnFor,
@@ -867,6 +868,13 @@ export class Session {
           // A vault in progress, whole (T-2.21): a predictor reconciling
           // mid-vault continues the same traversal instead of falling out of it.
           [COMPONENT_IDS.Vault]: vaultToLevels(s.state.vault),
+          // The weapon in hand and its reload, for the body (T-2.26). The
+          // server only knows the reloads it started itself (an empty
+          // magazine on a Fire); a client's manual reload is its own picture.
+          [COMPONENT_IDS.Weapon]: [
+            Math.max(0, (WEAPON_IDS as readonly string[]).indexOf(s.weapon.id)),
+            Math.min(100, Math.round(reloadProgress(s.weapon, s.weaponState, this.nowMs / 1000) * 100)),
+          ],
         },
       })),
     };

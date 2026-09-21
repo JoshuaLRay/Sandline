@@ -97,7 +97,7 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 }
 
 /** Rises over [upStart, upEnd], holds at 1, falls over [downStart, downEnd]. */
-function plateau(p: number, upStart: number, upEnd: number, downStart: number, downEnd: number): number {
+export function plateau(p: number, upStart: number, upEnd: number, downStart: number, downEnd: number): number {
   return smoothstep(upStart, upEnd, p) * (1 - smoothstep(downStart, downEnd, p));
 }
 

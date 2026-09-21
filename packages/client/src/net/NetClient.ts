@@ -176,6 +176,8 @@ export class NetClient {
   /** Each remote soldier's vitality from its newest snapshot, for the pose (T-2.14). */
   private readonly remoteVitalities = new Map<number, Vitality>();
   private readonly remoteReviveProgressValues = new Map<number, number>();
+  /** Each remote's weapon index and reload progress 0..1, for the body (T-2.26). */
+  private readonly remoteWeapons = new Map<number, { index: number; reloadProgress: number }>();
   private readonly remoteReviverSlots = new Map<number, number>();
   private readonly remoteSlots = new Map<number, number>();
   /** Local time the newest snapshot landed, for anchoring the server clock. */
@@ -302,6 +304,11 @@ export class NetClient {
     return this.remoteReviveProgressValues.get(netId) ?? 0;
   }
 
+  /** The weapon a remote holds and how far through a reload it is (T-2.26). */
+  remoteWeapon(netId: number): { index: number; reloadProgress: number } {
+    return this.remoteWeapons.get(netId) ?? { index: 0, reloadProgress: 0 };
+  }
+
   /** NetId of the downed teammate this client is currently reviving, or 0. */
   get reviveTargetNetId(): number {
     let best = 0;
@@ -373,6 +380,7 @@ export class NetClient {
     this.reviverSlotValue = -1;
     this.remoteVitalities.clear();
     this.remoteReviveProgressValues.clear();
+    this.remoteWeapons.clear();
     this.remoteReviverSlots.clear();
     this.remoteSlots.clear();
     this.recentInputs.length = 0;
@@ -702,11 +710,21 @@ export class NetClient {
         y,
         z,
         yaw: (transform[3] as number) & 0x3ff,
+        // The aim pitch the server traces their shots along, for the body to
+        // point its rifle the same way (T-2.25).
+        pitch: ((transform[4] as number | undefined) ?? 0) & 0x3ff,
         crouched: (crouch?.[0] as number | undefined) === 1,
         // The same replicated vault the local predictor continues from, so a
         // remote's vault pose runs on the state its position does (T-2.23).
         vaultElapsed: vaultFromLevels(entity.components[COMPONENT_IDS.Vault])?.elapsed ?? null,
       });
+      const weapon = entity.components[COMPONENT_IDS.Weapon];
+      if (weapon) {
+        this.remoteWeapons.set(entity.netId, {
+          index: (weapon[0] as number | undefined) ?? 0,
+          reloadProgress: ((weapon[1] as number | undefined) ?? 0) / 100,
+        });
+      }
       const health = entity.components[H];
       if (health) {
         this.remoteVitalities.set(entity.netId, vitalityFromCode((health[2] as number | undefined) ?? 0));

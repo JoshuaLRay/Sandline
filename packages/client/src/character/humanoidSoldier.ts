@@ -6,8 +6,10 @@ import {
   type HumanoidPose,
   type HumanoidRig,
   type RigTransform,
+  type WeaponHold,
   registerRig,
 } from './humanoidRig.ts';
+import { plateau } from './locomotionPose.ts';
 import { DOWNED_BODY_LIFT_M, HUMANOID_HIT_HALF_HEIGHT, HUMANOID_HIT_RADIUS, HUMANOID_ROOT_LIFT_M } from './humanoidPlaceholder.ts';
 
 /**
@@ -132,8 +134,34 @@ const DOWNED: PoseOffsets = {
   'upper-leg-right': { euler: [0, 0, -0.08] },
 };
 
-/** Knees bend, hips bob, the chest twists and leans; the arms stay on the rifle. */
-const SKINNED_STYLE: GaitStyle = { armSwing: 0.12, kneeBend: 1, bob: 1, twist: 1, lean: 1 };
+/**
+ * Knees bend, hips bob, the chest twists and leans. The arms do not swing:
+ * the aim layer solves them onto the rifle every frame (T-2.25).
+ */
+const SKINNED_STYLE: GaitStyle = { armSwing: 0, kneeBend: 1, bob: 1, twist: 1, lean: 1 };
+
+/**
+ * The aim layer's shares (T-2.25). The spine takes a bounded part of the
+ * pitch so the whole torso leans into a steep aim; the neck follows so the
+ * head looks along it; the aim attachment turns about the shoulder by the
+ * remainder, so the rifle's pitch is exactly the aim's.
+ */
+const AIM_SPINE_SHARE = 0.3;
+const AIM_SPINE_MAX = 0.35;
+const AIM_NECK_SHARE = 0.35;
+const AIM_NECK_MAX = 0.45;
+const X_AXIS = new THREE.Vector3(1, 0, 0);
+/**
+ * The fire and reload layers (T-2.26). A kick leans the spine by a share of
+ * the muzzle rise, so the body takes the shot and not only the rifle. A
+ * reload dips the muzzle and sends the left hand from the foregrip to the
+ * magazine well and back, both curves of the reload's progress.
+ */
+const KICK_SPINE_SHARE = 0.3;
+const RELOAD_DIP = 0.35;
+/** The magazine well in aim space: under the rifle, a hand's length back from the foregrip. */
+const MAG_WELL: [number, number, number] = [0.02, -0.17, 0.13];
+const scratchOffset = new THREE.Vector3();
 
 interface Segment {
   geometry: THREE.BufferGeometry;
@@ -327,20 +355,35 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
   mesh.updateMatrixWorld(true);
   mesh.bind(new THREE.Skeleton(ordered));
 
-  // -- Standing: the rifle hold, solved once in the chest's frame. --
+  // -- The rifle hold: the arms solved onto the grips in the chest's frame. --
+  // One function for the build-time standing pose and for the aim layer, so
+  // that an aim of zero reproduces the standing arms bit for bit.
   const chestOrigin = new THREE.Vector3().fromArray(JOINTS.chest);
   const inChest = (model: [number, number, number]): THREE.Vector3 => new THREE.Vector3().fromArray(model).sub(chestOrigin);
   const aimOrigin = new THREE.Vector3().fromArray(AIM_IN_CHEST);
-  const standing: PoseOffsets = {};
-  for (const side of ['left', 'right'] as const) {
-    const grip = new THREE.Vector3().fromArray(side === 'left' ? GRIP_LEFT : GRIP_RIGHT).add(aimOrigin);
-    const solved = solveArm(
+  const toWell = new THREE.Vector3().fromArray(MAG_WELL).sub(new THREE.Vector3().fromArray(GRIP_LEFT));
+  const holdRifle = (
+    side: 'left' | 'right',
+    aimTurn: THREE.Quaternion,
+    origin: THREE.Vector3 = aimOrigin,
+    reach = 0,
+  ): { upper: THREE.Quaternion; lower: THREE.Quaternion } => {
+    const grip = new THREE.Vector3().fromArray(side === 'left' ? GRIP_LEFT : GRIP_RIGHT);
+    // The left hand on its way to the magazine well, in the rifle's frame.
+    // Branching rather than scaling by zero keeps a reach of 0 bit-exact.
+    if (side === 'left' && reach > 0) grip.addScaledVector(toWell, reach);
+    grip.applyQuaternion(aimTurn).add(origin);
+    return solveArm(
       inChest(JOINTS[`upper-arm-${side}`]),
       grip,
       inChest(JOINTS[`upper-arm-${side}`]).add(new THREE.Vector3().fromArray(side === 'left' ? ELBOW_HINT_LEFT : ELBOW_HINT_RIGHT)),
       UPPER_ARM_M,
       LOWER_ARM_M,
     );
+  };
+  const standing: PoseOffsets = {};
+  for (const side of ['left', 'right'] as const) {
+    const solved = holdRifle(side, new THREE.Quaternion());
     standing[`upper-arm-${side}`] = { quaternion: solved.upper };
     standing[`lower-arm-${side}`] = { quaternion: solved.lower };
   }
@@ -377,9 +420,79 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
       });
     }
     aim.visible = next !== 'downed';
+    // A pose re-bases the attachment too: level and in place, until the
+    // weapon layer says otherwise.
+    aim.quaternion.identity();
+    aim.position.fromArray(AIM_IN_CHEST);
     pose = next;
   };
   apply('standing');
+
+  // -- The aim layer's own bookkeeping (T-2.25). --
+  // The neck is the driver's to write each frame; the layer composes on it.
+  // If the driver has not touched it since the last application (a frame
+  // with no time in it), the last application is undone first, so the
+  // layer never accumulates.
+  const spine = bones.get('spine')!;
+  const neck = bones.get('neck')!;
+  const neckBefore = new THREE.Quaternion();
+  const neckAfter = new THREE.Quaternion();
+  let neckApplied = false;
+  const spineTurn = new THREE.Quaternion();
+  const neckTurn = new THREE.Quaternion();
+  const aimTurn = new THREE.Quaternion();
+  const restoreArms = (): void => {
+    for (const name of ['upper-arm-left', 'lower-arm-left', 'upper-arm-right', 'lower-arm-right'] as const) {
+      bones.get(name)!.quaternion.fromArray(bases.get(name)!.quaternion);
+    }
+  };
+  const hold = (state: WeaponHold): void => {
+    if (neckApplied && neck.quaternion.equals(neckAfter)) neck.quaternion.copy(neckBefore);
+    neckApplied = false;
+    const w = Number.isFinite(state.weight) ? Math.max(0, Math.min(1, state.weight)) : 0;
+    const pitchRadians = state.pitch;
+    if (w === 0 || !Number.isFinite(pitchRadians)) {
+      // Off: the pose's own arms and a level rifle in place, whatever the pose is.
+      spine.quaternion.fromArray(bases.get('spine')!.quaternion);
+      aim.quaternion.identity();
+      aim.position.fromArray(AIM_IN_CHEST);
+      restoreArms();
+      return;
+    }
+    const p = pitchRadians * w;
+    const kickUp = Number.isFinite(state.kickUp) ? Math.max(0, state.kickUp as number) * w : 0;
+    const kickBack = Number.isFinite(state.kickBack) ? Math.max(0, state.kickBack as number) * w : 0;
+    const reload = Number.isFinite(state.reload) ? Math.max(0, Math.min(1, state.reload as number)) : 0;
+    const spineLean = Math.max(-AIM_SPINE_MAX, Math.min(AIM_SPINE_MAX, p * AIM_SPINE_SHARE + kickUp * KICK_SPINE_SHARE));
+    const neckLean = Math.max(-AIM_NECK_MAX, Math.min(AIM_NECK_MAX, p * AIM_NECK_SHARE));
+    // Looking up is a positive pitch; about the model's X, up is a negative turn.
+    spine.quaternion.fromArray(bases.get('spine')!.quaternion).multiply(spineTurn.setFromAxisAngle(X_AXIS, -spineLean));
+    neckBefore.copy(neck.quaternion);
+    neck.quaternion.multiply(neckTurn.setFromAxisAngle(X_AXIS, -neckLean));
+    neckAfter.copy(neck.quaternion);
+    neckApplied = true;
+    // The rifle turns about the shoulder by what the spine did not take, so
+    // its pitch in the body's frame is exactly the aim's.
+    // The kick lifts the muzzle further; a reload dips it.
+    const dip = RELOAD_DIP * plateau(reload, 0, 0.25, 0.75, 1);
+    const rifleTurn = -(p - spineLean) - kickUp + dip;
+    // A zero turn is the identity itself, not a rotation by negative zero:
+    // the snapshot a test compares must be the build-time bits.
+    if (rifleTurn === 0) aimTurn.identity();
+    else aimTurn.setFromAxisAngle(X_AXIS, rifleTurn);
+    aim.quaternion.copy(aimTurn);
+    // The kick drives the rifle back along its own axis.
+    aim.position.fromArray(AIM_IN_CHEST);
+    if (kickBack > 0) aim.position.add(scratchOffset.set(0, 0, -kickBack).applyQuaternion(aimTurn));
+    const reach = plateau(reload, 0, 0.3, 0.7, 1);
+    for (const side of ['left', 'right'] as const) {
+      const solved = holdRifle(side, aimTurn, aim.position, side === 'left' ? reach : 0);
+      // Composed on the rest exactly as the pose is, so a level aim lands on
+      // the pose's own bits (a bare copy can differ by the sign of a zero).
+      bones.get(`upper-arm-${side}`)!.quaternion.fromArray(rest.get(`upper-arm-${side}`)!.quaternion).multiply(solved.upper);
+      bones.get(`lower-arm-${side}`)!.quaternion.fromArray(rest.get(`lower-arm-${side}`)!.quaternion).multiply(solved.lower);
+    }
+  };
 
   const rig: HumanoidRig = {
     kind: 'skinned',
@@ -395,7 +508,10 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     setPose(next) {
       if (next === pose) return;
       apply(next);
+      neckApplied = false;
     },
+    aimAt: (pitchRadians, weight) => hold({ pitch: pitchRadians, weight }),
+    hold,
   };
   registerRig(rig);
   return root;

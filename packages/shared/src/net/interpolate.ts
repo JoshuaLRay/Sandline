@@ -23,6 +23,11 @@ export interface InterpSample {
   z: number;
   /** Wire angle, 1/1024 turn. */
   yaw: number;
+  /**
+   * Aim pitch, wire angle, unsigned like yaw (T-2.25). Optional so a sample
+   * that carries no pitch reads as level.
+   */
+  pitch?: number;
   /** Authoritative stance; discrete, not spatially interpolated. */
   crouched: boolean;
   /**
@@ -37,6 +42,8 @@ export interface InterpResult {
   y: number;
   z: number;
   yaw: number;
+  /** Aim pitch, wire angle, interpolated the short way like yaw. */
+  pitch: number;
   crouched: boolean;
   /**
    * Seconds into the vault at the render time, or null. Interpolated between
@@ -131,7 +138,7 @@ export class InterpolationBuffer {
     if (this.samples.length === 0) return null;
     if (this.samples.length === 1) {
       const only = this.samples[0] as InterpSample;
-      return { x: only.x, y: only.y, z: only.z, yaw: only.yaw, crouched: only.crouched, vaultElapsed: only.vaultElapsed ?? null, extrapolated: false, frozen: false };
+      return { x: only.x, y: only.y, z: only.z, yaw: only.yaw, pitch: only.pitch ?? 0, crouched: only.crouched, vaultElapsed: only.vaultElapsed ?? null, extrapolated: false, frozen: false };
     }
 
     const oldest = this.samples[0] as InterpSample;
@@ -139,7 +146,7 @@ export class InterpolationBuffer {
 
     // Behind everything we hold: the buffer is too shallow, so hold the oldest.
     if (renderTimeMs <= oldest.serverTimeMs) {
-      return { x: oldest.x, y: oldest.y, z: oldest.z, yaw: oldest.yaw, crouched: oldest.crouched, vaultElapsed: oldest.vaultElapsed ?? null, extrapolated: false, frozen: false };
+      return { x: oldest.x, y: oldest.y, z: oldest.z, yaw: oldest.yaw, pitch: oldest.pitch ?? 0, crouched: oldest.crouched, vaultElapsed: oldest.vaultElapsed ?? null, extrapolated: false, frozen: false };
     }
 
     if (renderTimeMs >= newest.serverTimeMs) {
@@ -164,6 +171,7 @@ export class InterpolationBuffer {
       y: catmullRom(p0.y, p1.y, p2.y, p3.y, t),
       z: catmullRom(p0.z, p1.z, p2.z, p3.z, t),
       yaw: lerpAngle(p1.yaw, p2.yaw, t),
+      pitch: lerpAngle(p1.pitch ?? 0, p2.pitch ?? 0, t),
       // Stance changes at the authoritative sample boundary, not halfway between ticks.
       crouched: renderTimeMs >= p2.serverTimeMs ? p2.crouched : p1.crouched,
       vaultElapsed: vaultBetween(p1, p2, t, renderTimeMs >= p2.serverTimeMs),
@@ -180,7 +188,7 @@ export class InterpolationBuffer {
 
     const span = newest.serverTimeMs - prev.serverTimeMs;
     if (span <= 0) {
-      return { x: newest.x, y: newest.y, z: newest.z, yaw: newest.yaw, crouched: newest.crouched, vaultElapsed: newest.vaultElapsed ?? null, extrapolated: true, frozen };
+      return { x: newest.x, y: newest.y, z: newest.z, yaw: newest.yaw, pitch: newest.pitch ?? 0, crouched: newest.crouched, vaultElapsed: newest.vaultElapsed ?? null, extrapolated: true, frozen };
     }
 
     // Constant velocity from the last pair. Beyond the cap this holds still:
@@ -194,6 +202,7 @@ export class InterpolationBuffer {
       y: newest.y + vy * capped,
       z: newest.z + vz * capped,
       yaw: newest.yaw,
+      pitch: newest.pitch ?? 0,
       crouched: newest.crouched,
       // A vault runs on the server's clock; carrying it forward with the
       // position keeps the pose from stalling while the buffer starves.

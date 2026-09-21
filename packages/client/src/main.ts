@@ -34,6 +34,8 @@ import {
   DEFAULT_MOVE_CONFIG,
   type MoveConfig,
   TICK_SECONDS,
+  WEAPON_IDS,
+  getWeapon,
   cos,
   RANGE_TARGETS,
   fromRadians,
@@ -72,6 +74,7 @@ import { createCameraPanel } from './ui/CameraPanel.ts';
 import { createHumanoidPlaceholder } from './character/humanoidPlaceholder.ts';
 import { requireRig } from './character/humanoidRig.ts';
 import { createHumanoidSoldier } from './character/humanoidSoldier.ts';
+import { type KickState, addKick, createKick, decayKick } from './character/weaponKick.ts';
 import { createLocomotionPoseDriver, type LocomotionPoseDriver } from './character/locomotionPose.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
@@ -249,6 +252,18 @@ const remoteMeshes = new Map<number, THREE.Mesh>();
 const remotePoseDrivers = new Map<number, LocomotionPoseDriver>();
 const remoteRenderedPrev = new Map<number, { x: number; z: number }>();
 
+/** A signed wire angle (1024 per turn) in radians. */
+function wireToRadians(wire: number): number {
+  return (wire / 1024) * Math.PI * 2;
+}
+
+/**
+ * The fire layer's kicks (T-2.26): ours from the predicted shot, each
+ * remote's from the server's shot event by shooter. Both decay per frame.
+ */
+let kick = createKick();
+const remoteKicks = new Map<number, KickState>();
+
 function remoteMesh(netId: number): THREE.Mesh {
   let mesh = remoteMeshes.get(netId);
   if (!mesh) {
@@ -341,6 +356,14 @@ const shotEnd = new THREE.Vector3();
 function onServerShot(net: NetClient, shot: ServerShot): void {
   shotEnd.set(shot.x, shot.y, shot.z);
   landImpact(net, shot);
+  if (shot.shooterNetId !== net.netId) {
+    // Their rifle kicks on their body (T-2.26): the server's event is the
+    // first this client hears of the shot, and the weapon they hold is
+    // replicated beside their reload.
+    const held = net.remoteWeapon(shot.shooterNetId);
+    const def = getWeapon(WEAPON_IDS[held.index] ?? WEAPON_IDS[0]);
+    remoteKicks.set(shot.shooterNetId, addKick(remoteKicks.get(shot.shooterNetId) ?? createKick(), def, false));
+  }
   if (shot.shooterNetId === net.netId) {
     // Our own shot: the tracer is already drawn, so this only lands the hit
     // marker and the damage number.
@@ -501,6 +524,9 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
   effects.reset();
   playerRig.setPose('standing');
   localPoseDriver.reset();
+  playerRig.aimAt(0, 0);
+  kick = createKick();
+  remoteKicks.clear();
   remotePoseDrivers.clear();
   remoteRenderedPrev.clear();
   simPrev = null;
@@ -815,6 +841,7 @@ function frame(): void {
       recoil = applyKick(recoil, combat.weapon, combat.shotsFired, input.ads);
       input.setViewOffset(recoil.yaw, recoil.pitch);
       shake = addShake(shake, combat.weapon, input.ads);
+      kick = addKick(kick, combat.weapon, input.ads);
       // The shell comes to rest at the feet: whatever the character stands on.
       effects.fire(muzzle, facingX, facingZ, here?.y ?? 0, combat.shotsFired, tickNumber * TICK_SECONDS);
 
@@ -897,11 +924,23 @@ function frame(): void {
   if (localDowned) {
     playerRig.setPose('downed');
     localPoseDriver.reset();
+    playerRig.aimAt(0, 0);
   } else {
     // A vault is taken standing: the server refuses one from a crouch and
     // ignores the crouch key until the landing, so the pose does too.
     playerRig.setPose(input.crouching && !sim?.vault ? 'crouched' : 'standing');
     localPoseDriver.update(locomotion, dt);
+    // The weapon layer (T-2.25, T-2.26): the body points its rifle where the
+    // view points, recoil included, the rifle kicks with each shot, and a
+    // reload is a curve of the weapon's own clock; it fades out through a vault.
+    kick = decayKick(kick, dt);
+    playerRig.hold({
+      pitch: wireToRadians(input.pitch),
+      weight: 1 - localPoseDriver.vaultWeight,
+      kickBack: kick.back,
+      kickUp: kick.up,
+      reload: combat.reloadProgress((clock.tick + clock.alpha) * TICK_SECONDS),
+    });
   }
 
   const downed = localDowned;
@@ -938,9 +977,22 @@ function frame(): void {
     if (remoteDowned) {
       remoteRig.setPose('downed');
       driver.reset();
+      remoteRig.aimAt(0, 0);
     } else {
       remoteRig.setPose(sample.crouched ? 'crouched' : 'standing');
       driver.update(remoteLocomotion, dt);
+      // Their replicated aim pitch, the one the server traces their shots
+      // along, unsigned on the wire like yaw (T-2.25); their kick from the
+      // server's shot events and their reload from the snapshot (T-2.26).
+      const remoteKick = decayKick(remoteKicks.get(netId) ?? createKick(), dt);
+      remoteKicks.set(netId, remoteKick);
+      remoteRig.hold({
+        pitch: wireToRadians(sample.pitch > 511 ? sample.pitch - 1024 : sample.pitch),
+        weight: 1 - driver.vaultWeight,
+        kickBack: remoteKick.back,
+        kickUp: remoteKick.up,
+        reload: net?.remoteWeapon(netId).reloadProgress ?? 0,
+      });
     }
     remoteRenderedPrev.set(netId, { x: sample.x, z: sample.z });
   }

@@ -122,6 +122,37 @@ export interface HumanoidRig {
    * bone's standing transform exactly. Leaves the root alone.
    */
   setPose(pose: HumanoidPose): void;
+  /**
+   * Pitch the weapon and what holds it to a signed aim pitch, radians,
+   * positive up (T-2.25). A LAYER: applied after the pose driver every
+   * frame, additive on its output, and never accumulating — applying it
+   * twice is applying it once. `weight` 0..1 fades it; at 0, or at pitch 0
+   * with weight 1, every bone is bit-identical to the driver's output.
+   * The same as `hold({ pitch, weight })`.
+   */
+  aimAt(pitchRadians: number, weight: number): void;
+  /**
+   * The whole weapon layer in one call (T-2.25, T-2.26): the aim, the fire
+   * layer's kick, and the reload in progress. One pass, so the hands are
+   * solved onto the rifle wherever all three have put it. Same rules as
+   * `aimAt`: applied after the driver, never accumulating, and with every
+   * input at zero (or weight 0) every bone is the driver's own bits.
+   */
+  hold(state: WeaponHold): void;
+}
+
+/** What the weapon layer is asked to show this frame. */
+export interface WeaponHold {
+  /** Signed aim pitch, radians, positive up. */
+  pitch: number;
+  /** 0..1: fades the whole layer (through a vault; off while downed). */
+  weight: number;
+  /** The fire layer's kick: metres back along the rifle's own axis. */
+  kickBack?: number;
+  /** The fire layer's kick: radians of muzzle rise. */
+  kickUp?: number;
+  /** 0..1 through a reload; 0 or absent when none is in progress. */
+  reload?: number;
 }
 
 const RIGS = new WeakMap<THREE.Object3D, HumanoidRig>();
