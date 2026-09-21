@@ -1206,6 +1206,158 @@ animates from state now will take clips then.
 - **Done when:** a written verdict, on a run sheet prepared before the session as `e2-2.md` was, naming what it does and does not establish.
 - **Size:** S
 
+### 7.5 E-2.5 leaf tasks — broken out 2026-09-21
+
+E-2.3's build tasks are in (T-2.25 through T-2.28) and its only open item is
+its human gate, as E-2.2's is, so the next epic is broken out. **E-2.5 before
+E-2.7**, for three reasons. E-2.7 is positional audio and needs assets this
+project does not have; E-2.5 needs nothing that is not already in the repo.
+It is the last thing in M2 that changes what the SERVER simulates rather than
+what the client draws — every shooter-feel epic so far layered presentation
+onto state that already existed, and a grenade is a new object in the world
+with a life of its own, which is a different kind of work and should not be
+the last thing attempted before the exit gate. And it is what makes the box
+world's cover mean something in both directions: T-1.12 gave a player
+something to hide behind, and a weapon that arcs over it is the answer to
+hiding, which is the tactical loop §1.2 is built on.
+
+**§9 Q6 still does not block this epic, and E-2.5 is where that stops being
+free.** A blast wants something to go off next to. The bots filling the unclaimed
+slots carry real health and can be downed (T-2.13), and M1.5 put a second
+person on the host, so the epic can be built and judged without an enemy that
+shoots. What it cannot be judged against is the range targets: `applyFire`
+says out loud that they take no damage because they have no behaviour, and
+that stays true for a grenade at their feet. T-2.37's run sheet says so, and
+its gate needs a second person for the same reason T-2.24's does.
+
+**What already exists.**
+
+- The shared box world (T-1.12): `rayWorld`'s slab trace, `surfaceAt` for the
+  face a point lies on (T-2.11), `supportUnder` and `blockedAt` (T-2.21).
+  One list, four consumers; a projectile makes it five.
+- Damage, downed and bleed-out (T-1.19, T-2.13). `applyDamage` already takes
+  a downed soldier's timer instead of their health, finishes them when it runs
+  out, and never kills twice — which a blast catching two downed teammates
+  would otherwise do.
+- The hit event path: one `HitEvent` per outcome, broadcast to every client,
+  and on the receiving side the pooled, capped effects of T-2.10 and T-2.11,
+  the camera shake of T-2.09 and the rig's hit reaction of T-2.27.
+- Delta snapshots that already carry spawns and despawns (`net/delta.ts`), and
+  the interpolation buffer (T-1.16) that samples any replicated entity 100 ms
+  behind. The machinery for a new replicated entity exists. What does not
+  exist is anything that knows an entity might NOT be a soldier:
+  `Session.buildSnapshot` maps its six slots, and `main.ts` gives every netId
+  `NetClient.remotes()` returns a humanoid mesh, a pose driver and foot
+  placement. The first grenade would arrive as a soldier crawling through the
+  air.
+- The weapon table with cadence, magazine and reload (T-1.17, T-2.26), and
+  `WEAPON_IDS`, whose order is protocol. The launcher is a fifth entry, and
+  the `Weapon` component's index field is two bits wide.
+- The vault (T-2.21, T-2.23) as the precedent for a flight: authoritative
+  state that carries enough of a traversal for any tick rate to trace the same
+  path and for a mid-flight snapshot to re-base rather than correct. The
+  reload (T-2.26) as the precedent for a body layer that is a curve of a
+  replicated progress.
+- `eyePosition` and `muzzlePosition` (`sim/muzzle.ts`), already split into the
+  gameplay origin the server traces from and the visual one the client draws
+  from — a projectile needs both, and for the same reasons.
+- The loopback session tests (`fire.test.ts`) and the bot harness: how any of
+  this is verified without a person in the chair.
+
+**Four rules for every task here.**
+
+First, **the server owns the whole flight.** Nothing about a projectile is
+predicted — §2.3 puts it on the replicated side with damage and debris — and
+unlike movement there is no correction to smooth afterwards: a grenade the
+client flew and the server did not is a grenade in the wrong place when it
+goes off, and it goes off once. The client draws what the snapshot says,
+exactly as it draws a remote soldier. The single exception is the wind-up of
+a client's OWN throw, which it may show immediately the way a manual reload is
+its own picture (T-2.26); the projectile itself appears when the server says
+it left the hand.
+
+Second, **the arc is a closed form, not an integration.** Within a flight
+segment, position is `p0 + v0 t + ½ g t²` and nothing accumulates — the
+T-2.21 habit, for the T-2.21 reason: 30 Hz and 120 Hz trace the same path, and
+the renderer, the throw preview and the server's own sweep are one function
+rather than three that agree until they do not (the T-1.12 habit). It is
+`+ - * /` and `Math.sqrt`, all exactly specified by IEEE-754, so it is safe in
+`shared` under ADR-014 with no WASM in the path — and the lint rule enforces
+that, so `pnpm verify` catches a transcendental that creeps in. ADR-005's
+addendum names projectiles as Rapier's kind of work and that stands for
+anything needing real dynamics; a grenade rolling off a crate in a world of
+axis-aligned boxes is not that, and this epic does not reopen it.
+
+Third, **a blast is not lag-compensated.** Hitscan rewinds because the shot is
+instantaneous and the shooter's screen is 100 ms old (T-1.18). A projectile
+has been in the air on the server for a second by the time it detonates, so
+there is no moment to rewind to: the detonation resolves against present
+positions, nothing new goes on the wire for it, and no client's claimed render
+time can move a blast.
+
+Fourth, **no art, and no numbers in code.** Every effect is primitives,
+pooled and capped like the tracers (§0.3 rule 3), and every constant — speeds,
+fuses, restitution, radii, damage, counts — lives in `projectiles.json`,
+validated at import exactly as `weapons.json` is (§0.3 rule 4).
+
+#### T-2.30 — Replicated entities that are not soldiers
+- **Depends:** —
+- **Files:** `packages/shared/src/ecs/components.ts`, `packages/shared/src/net/schema.ts`, `packages/shared/src/net/protocol.ts`, `packages/shared/src/sim/projectiles.ts`, `packages/server/src/session/Session.ts`, `packages/client/src/net/NetClient.ts`, `packages/client/src/main.ts`, tests
+- **Do:** Make the replicated entity set variable and typed. Append a `Projectile` component to `COMPONENT_IDS` and `SCHEMAS` — never renumber — carrying the kind and whatever T-2.31's segment needs for a client to place it; hand projectiles netIds from a range above the range targets' 1000, never reused within a session, for the reason `NetId` exists at all. `buildSnapshot` becomes the slots plus the live projectiles instead of a map over six. `NetClient` sorts what it ingests so `remotes()` keeps meaning *remote soldiers* and a second accessor returns the projectiles, both sampled through the same interpolation buffer; `main.ts` builds a humanoid, a pose driver and a foot-placement layer only for the former. Cap the live set in config and state the bandwidth where the cap is defined: a projectile's `Transform` is three 16-bit positions plus the presence mask, about 7 bytes a tick and 210 B/s at 30 Hz, against §2.1's 18 KB/s budget and its 40 KB/s review line — the cap is what stops a held trigger on a launcher spending it.
+- **Done when:** `pnpm verify` green; delta tests assert a mid-session spawn and a despawn both reach a client and that a despawned netId's interpolation buffer is dropped rather than left extrapolating a dead entity forever; a session test carrying one synthetic projectile entity asserts the client creates no humanoid, pose driver or foot layer for it and that every existing remote-soldier assertion still holds; `protocol.test.ts` covers the version bump and the new component's round trip.
+- **Size:** M
+- **Why first.** Nothing else in the epic can be seen until the wire can carry a thing that is not a soldier, and the failure if it is skipped is not a missing feature but a humanoid crawling through the air with a pose driver on it. Not itself projectile behaviour — its prerequisite, as T-2.01 was for the camera.
+
+#### T-2.31 — Ballistic arcs and bounce in shared
+- **Depends:** —
+- **Files:** `packages/shared/src/sim/ballistics.ts`, `packages/shared/src/sim/ballistics.test.ts`, `packages/shared/src/sim/world.ts`
+- **Do:** The flight, pure. A segment is an origin, a launch velocity, a gravity scale and a start time; `positionAt` is the closed form above. `stepFlight` SWEEPS the segment's chord for the tick against the world boxes with the existing slab trace and returns the first face crossed — a rocket at 60 m/s covers 2 m a tick and a per-tick point test would put it straight through a 0.3 m wall at every tick rate, which is the one bug in this module that cannot be seen from the outside until someone shoots through the west wall. A contact reflects the velocity about the face normal, scales the normal component by the restitution and the tangential by the friction, and RE-BASES the segment at the contact point, so nothing integrates across a bounce and a snapshot mid-flight is a re-base rather than a correction. A rest rule stops a grenade that is slow with ground under it, or it jitters in the floor forever and the snapshot pays for it every tick. A fuse, and the detonation point for either kind of fuse. A grenade collides with the world only: bouncing off a moving capsule is dynamics a box world cannot do honestly and nobody will see it in a grey box. The rocket-versus-soldier test is T-2.33's, where the hitboxes live.
+- **Done when:** tests assert apex and range against the closed form for a launch in data; a max-speed rocket stops at the near face of a 0.3 m wall at 30, 60 and 120 Hz and never past it; a bounce scales the normal component by the restitution and scales the tangential component without flipping its sign (flipping it sends a floor-bounced grenade back at the thrower, which reads as a physics bug and is a sign error); a grenade thrown at the ground comes to rest within a bound derived from the restitution rather than a fitted number; the same throw at 30 and 120 Hz detonates within an epsilon the fixture owns and LOGS (§2.3's habit, R10's rule).
+- **Size:** M
+
+#### T-2.32 — Projectile data and the launcher weapon
+- **Depends:** T-2.31
+- **Files:** `packages/shared/src/data/projectiles.json`, `packages/shared/src/sim/projectiles.ts`, `packages/shared/src/sim/weapons.ts`, `packages/shared/src/data/weapons.json`, `packages/shared/src/net/schema.ts`, `packages/shared/src/net/protocol.ts`, `packages/client/src/ui/WeaponPanel.ts`, tests
+- **Do:** Two kinds in data, validated by hand for the reason `weapons.ts` gives. A thrown grenade: throw speed, launch elevation, wind-up seconds, fuse, restitution, friction, rest speed, blast radius, blast damage, a self-damage scale, and how many a soldier carries. A rocket: muzzle speed, gravity scale, arming distance, a contact fuse, its own blast block. Append the launcher to `WEAPON_IDS` as a fifth id — appended, never reordered, because that order is the protocol and reordering silently reassigns every client's weapons. It does not fit the `Weapon` component's two-bit index, so widen that field to three bits and bump `PROTOCOL_VERSION`; the `Fire` message's weapon field is already three bits and needs nothing. The launcher's own row in `weapons.json` keeps the existing cadence, magazine and reload fields — a launcher is a weapon that reloads, and reusing T-1.17's state machine for it is most of why it is cheap.
+- **Done when:** every row validates at import and a bad row names itself and its field, as a bad weapon row does; a test pins the first four `WEAPON_IDS` in order (the wire order is protocol, and this test is what a reorder trips over); the widened weapon index round-trips 4 through `schema.ts` and the delta; the weapon panel's sliders reach the new fields so T-2.37 can tune them in the session rather than afterwards; `pnpm verify` green.
+- **Size:** M
+
+#### T-2.33 — The throw, the launch, and the authoritative flight
+- **Depends:** T-2.30, T-2.31, T-2.32
+- **Files:** `packages/shared/src/net/protocol.ts`, `packages/server/src/session/Session.ts`, `packages/server/src/session/projectiles.test.ts`, `packages/client/src/input/LocalInput.ts`, `packages/client/src/net/NetClient.ts`, `packages/client/src/main.ts`
+- **Do:** A throw bit on the input frame — the buttons field is sixteen bits with five in use, so it costs nothing on the wire, and it is inert in `stepCharacter`, so prediction is untouched by it. The server owns the rest: a wind-up of the data's length, then a projectile spawned from `eyePosition` along the aim the server holds at the RELEASE, not at the press, because that is the aim the thrower was looking down when the grenade actually left. Live projectiles step once per tick through T-2.31's flight, inside the same loop that steps characters and before the hitbox history is recorded, and despawn on detonation. A launcher `Fire` goes through the existing path — cadence, magazine, auto-reload, the refusals for downed, dead and mid-vault all already hold — and spawns a projectile instead of tracing a ray; that branch is the only change `applyFire` takes. Refuse a throw for the same states plus an empty pouch, and decrement the count; a respawn refills it, as it already resets the weapon. Wind-up progress and the count ride the snapshot beside the reload so a body and a HUD can read them (T-2.26's shape). A rocket's sweep tests present soldier hitboxes with `rayCapsule` and skips the shooter's own inside the arming distance — the hitscan path already excludes the shooter, and without the same exclusion a rocket detonates in the launcher's chest.
+- **Done when:** a loopback session test throws, steps the session, and sees the projectile spawn exactly one wind-up later, fly the shared arc tick by tick in the snapshots the client receives, and despawn on detonation; a launcher `Fire` produces a projectile and no `HitEvent`; a rocket fired into the low wall detonates on its face and one fired at a teammate detonates on the teammate; every refusal is covered (downed, dead, mid-vault, empty pouch, cadence) and each returns nothing rather than throwing; the pouch decrements and a respawn refills it; the live-projectile cap holds under a held launcher trigger and a spammed throw key.
+- **Size:** L
+- **The riskiest task in this epic,** and the one to re-read §2.1 before starting. It is the first thing this project has put on the wire whose count varies at runtime, so it is the first that can spend the bandwidth budget — the cap is not a tidiness measure, it is the budget's enforcement. Note also what the wind-up buys: the release is the server's, so the moment the grenade leaves the hand is authoritative and identical everywhere, and the round trip hides inside an animation the player is already watching instead of showing up as a grenade that appears late.
+
+#### T-2.34 — Explosion damage, and cover that stops it
+- **Depends:** T-2.33
+- **Files:** `packages/shared/src/sim/blast.ts`, `packages/shared/src/sim/blast.test.ts`, `packages/server/src/session/Session.ts`, tests
+- **Do:** Damage from a detonation: full inside an inner radius, falling to zero at the outer one, both in data, measured to the target's centre of mass rather than their feet — a blast at the feet of a standing soldier and one at the feet of a crouched one should not deal the same damage. Then the part that matters: an occlusion test with `rayWorld` from the blast centre to that point, and a box in the way means no damage. **Binary, one sample point, deliberately.** A half-cover model needs several sample points per target and a rule for combining them, which is a tuning exercise with no obvious right answer; one point and a yes-or-no is honest about what the box world knows, is exactly testable, and is what a grey-box firefight needs first. Damage goes through `applyDamage`, so a downed soldier takes a bleed-out cut and a blast can finish someone, and no zone multiplier is applied — a blast has no headshot, and `zoneAt` is deliberately not called here. Self-damage is scaled by the data's factor, so a rocket at a near wall can put you down. Emit one `HitEvent` per damaged soldier and one at the blast centre with no target, so every client draws the explosion where the server had it and not where its own copy of the flight ended.
+- **Done when:** tests assert full damage at the centre, the falloff's value at the inner and outer radii and zero beyond; a soldier behind `low-wall` takes nothing while one at the same distance in the open takes full; a downed soldier's timer is cut instead of their health, and a blast that finishes two downed soldiers kills each exactly once (T-1.19's rule, which lag compensation already made a real case); self-damage lands on the thrower; and a two-client loopback test over the wire has one client throw and the other take the damage the server computed, with both receiving the blast event and the per-target events.
+- **Size:** M
+
+#### T-2.35 — Projectiles, trails and explosions on screen
+- **Depends:** T-2.30, T-2.34
+- **Files:** `packages/client/src/weapons/effects.ts`, `packages/client/src/weapons/projectileView.ts`, `packages/client/src/weapons/CombatQA.ts`, `packages/client/src/main.ts`, tests
+- **Do:** A pooled primitive per live projectile — a small sphere for a grenade, a stub for a rocket — placed from the interpolated sample exactly as a remote soldier is, with a short fading trail behind the rocket. A throw preview arc while the throw is held, drawn from T-2.31's own `positionAt` so the line the player learns and the path the server flies are one function. On the blast event: a flash, a dust puff, seeded sparks on closed-form arcs and a scorch mark turned onto the face `surfaceAt` reports, with no mark at all when the point is not on the world — T-2.11's rule, which is what keeps marks out of the sky. Camera shake (T-2.09) scaled by distance to the blast, composed into the solve as a shake and therefore never into the aim.
+- **Done when:** a headless run spamming the throw and the launcher ends with every pool at its cap, no per-event allocation beyond it, and every count back to zero within the derived lifetime after the last blast; the preview arc and the flown path agree within an epsilon the test states for a thrower who does not move between press and release; a blast against the low wall marks the wall and a blast in the open marks nothing; the shake test still asserts the aim is untouched.
+- **Size:** M
+
+#### T-2.36 — Throw and launcher poses on the rig
+- **Depends:** T-2.33, T-2.26
+- **Files:** `packages/client/src/character/humanoidRig.ts`, `packages/client/src/character/humanoidSoldier.ts`, `packages/client/src/character/humanoidPlaceholder.ts`, `packages/client/src/main.ts`, tests
+- **Do:** The throw as a curve of progress, on E-2.3's rules: additive through `hold`, applied after the driver, never accumulating, and handing the bones back bit-exactly when the progress is zero. The arm cocks back through the wind-up, the grenade rides in the hand, and both leave at the release; the launcher gets a shouldered hold pose so a rocket does not launch from a rifle grip. Locally the progress is the client's own wind-up, for remotes the replicated one, as T-2.26 does with the reload. No layer moves the launch the server owns or the muzzle the tracers leave.
+- **Done when:** tests assert zero progress is the driver's own bits, that local and remote fed the same progress strike the same pose, that the grenade in the hand disappears exactly at the replicated release rather than a frame either side, that the grey box gets a fallback pose and keeps its existing tests, and that the peak per-frame joint step through a throw stays inside the walk's own, on T-2.23's measure.
+- **Size:** M
+
+#### T-2.37 — 🧍 E-2.5 sign-off
+- **Depends:** T-2.30, T-2.31, T-2.32, T-2.33, T-2.34, T-2.35, T-2.36
+- **Files:** `docs/playtests/e2-5.md`
+- **Do:** Two people on the host, on a run sheet prepared before the session as `e2-2.md` was. Throw at a bot's feet, at each other, and over the low wall from behind it; bounce one through the west doorway and off a crate; cook one and throw it late; rocket the crates, the slab and a person; put yourself down with a rocket at a near wall; take a blast while downed and be finished by one. The cover case is the one to run twice: one player behind `low-wall` and one in the open at the same distance from the same grenade. Judge whether the arc is readable and the preview teaches the throw, whether the fuse is long enough to cook and short enough to matter, whether the blast radius reads fair from both ends of it, whether a rocket feels heavy, and whether a grenade landing near you is legible before it goes off. Tune `projectiles.json` while the feel is in hand.
+- **Done when:** a written verdict exists, naming what it does and does not establish. It cannot establish anything about a blast against an enemy: the range targets take no damage, so bots and the other person are the only things worth throwing at, and AI is M3's.
+- **Size:** S
+
 ### M3 — AI & squad command (~10–12 wks)
 
 | Epic | Scope | Notes |
@@ -1318,25 +1470,30 @@ These block estimation, not implementation — M0 can start today regardless.
 
 ## 10. Immediate next actions
 
-**Current milestone: M2. Updated 2026-09-20.** M1 and M1.5 are closed. E-2.1,
-E-2.4, and E-2.6 are now built and human-signed off. The three M2 human gates
-(T-2.07, T-2.12, T-2.16) have passed on the owner's judgement. CI remains
-green, including the non-V8 parity job.
+**Current milestone: M2. Updated 2026-09-21.** M1 and M1.5 are closed. E-2.1,
+E-2.4 and E-2.6 are built and human-signed off. E-2.2 and E-2.3 are built
+through their last build task and each waits only on its human gate. CI
+remains green, including the non-V8 parity job.
 
-1. **Run T-2.24.** 🧍 E-2.2 is built through T-2.23 on the skinned soldier
-   (T-2.22); `docs/playtests/e2-2.md` is the run sheet, prepared and not run.
-   It needs a second person on the host: the bots never shoot, so crawl,
-   revive and remote believability cannot be judged alone.
-2. **Continue E-2.3 — Animation system.** Broken out 2026-09-20 as T-2.25
-   through T-2.29 (§7.4). Aim offsets (T-2.25), the fire and reload layers
-   (T-2.26), the hit reaction (T-2.27) and foot placement (T-2.28) are all in,
-   so **E-2.3's build work is done and T-2.29, the sign-off, is what remains**:
-   two people on the host, judging whether the body reads what the other is
-   doing, and tuning the layers' numbers with the feel in hand. Each layer is
-   procedural on the rig contract; none moves anything authoritative.
-3. **Keep tuning data opportunistically.** Weapon and downed values remain
-   data-driven; adjust them when a concrete playtest issue appears rather than
-   reopening completed gates without a reason.
+1. **Run T-2.24 and T-2.29.** 🧍 Both gates need a second person on the host
+   and neither needs any more code. `docs/playtests/e2-2.md` is prepared and
+   unrun; T-2.29's sheet is written before its session, as that one was.
+   These two are the only open items in E-2.2 and E-2.3, and the values tuned
+   in them — movement, and the E-2.3 layers — are cheapest to change while
+   the feel is in hand.
+2. **Build E-2.5 — Projectile weapons.** Broken out 2026-09-21 as T-2.30
+   through T-2.37 (§7.5). **Start with T-2.30**: the wire carries nothing but
+   soldiers today, and every other task in the epic waits on an entity set
+   that can hold something else. T-2.31's arc is pure and can be written
+   beside it. The epic is where the box world's cover starts working in both
+   directions, and it is the last M2 work that changes what the server
+   simulates rather than what the client draws.
+3. **Keep tuning data opportunistically.** Weapon, downed and movement values
+   remain data-driven; adjust them when a concrete playtest issue appears
+   rather than reopening completed gates without a reason.
 
-E-2.5 and E-2.7 remain epics until their turn. M2's exit gate remains the
-overall human judgement that third-person combat feels good.
+E-2.7 — combat audio — remains an epic until its turn: it is the last in M2
+and the only one that needs assets the repo does not have. M2's exit gate
+remains the overall human judgement that third-person combat feels good, and
+§9 Q6 stays answered the way M1.5 answered it: the thing that fights back is
+the other person on the host, and AI is M3's.
