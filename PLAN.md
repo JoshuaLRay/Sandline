@@ -1206,6 +1206,91 @@ animates from state now will take clips then.
 - **Done when:** a written verdict, on a run sheet prepared before the session as `e2-2.md` was, naming what it does and does not establish.
 - **Size:** S
 
+### 7.5 E-2.5 leaf tasks — broken out 2026-09-21
+
+E-2.3's build work is in (T-2.25 through T-2.28) and its only open item is the
+human gate, so the next epic is broken out. **E-2.5 before E-2.7**, for two
+reasons. E-2.7 needs audio assets nobody has sourced, which is R1 and §9 Q2,
+and buying them to hear a rifle is a decision about the project's largest cost
+made for the smallest reason. And E-2.5 no longer needs what it was waiting
+for: §7.4 held it back because it wants "a target that shoots" (§9 Q6), and
+M1.5 answered that with the other person on the host. A grenade is the first
+weapon here whose whole point is that it is thrown *at* somebody who can walk
+away from it, so a human on the other end is not a nicety, it is the test.
+
+**What already exists.** The shared world of axis-aligned boxes and `rayWorld`
+against it (T-1.12) — one list that the controller, the server's shots, the
+camera arm and now a grenade all collide with. The table trig and the seeded
+PRNG (T-0.14). `damage.json`'s zones and the downed/bleed-out machine (T-2.13,
+T-2.15), which a blast can feed without changing a line of it. Delta spawns
+and despawns (T-1.04), supported since M1 and exercised by nothing: the six
+slots have always existed and never appeared or vanished. A grenade is the
+first entity in this game that does either.
+
+**Four rules for every task here.**
+
+1. **The server throws it.** A projectile is a replicated entity, never a
+   predicted one (§2.3). The client may draw the arc it expects; where the
+   thing actually is, when it goes off and who it hurts are the server's, and
+   a client that disagrees is simply wrong.
+2. **One integrator, one world.** The arc a thrower is shown is the same
+   function stepping at the same dt over the same box list the server flies the
+   real one along. A prettier preview from a second integrator is a picture of
+   a throw that is not going to happen, and the player aims by that picture —
+   this is `world.ts`'s one-list rule, applied to the one case where the
+   disagreement is visible before the shot lands.
+3. **Pure arithmetic, no Rapier.** ADR-005's 2026-09-19 addendum names
+   projectiles as Rapier's. That is amended here (ADR-005 addendum,
+   2026-09-21) rather than quietly ignored, per §0.2: a sphere against boxes
+   with gravity, restitution and friction is exact on every engine and keeps
+   WASM out of the preview path. Ragdolls and debris stay Rapier's.
+4. **No new assets.** A grenade is a sphere, a rocket is a stub of a cylinder,
+   and a blast is pooled primitives on a closed form of their age, exactly as
+   T-2.10's flash and shells are. The clip and effect pipelines are M4's.
+
+**Not in this epic.** Cooking a grenade in the hand, an underbarrel launcher,
+smoke and flashbangs (M4 content), destructible cover (nothing in the world
+model can break), and any AI that throws one (M3). The blast damages everyone
+it reaches, the thrower included: with six co-operative slots and nothing
+hostile in M2, a grenade that could not hurt a teammate could not be judged at
+all.
+
+#### T-2.30 — Ballistic arcs in the shared sim
+- **Depends:** —
+- **Files:** `packages/shared/src/sim/ballistics.ts`, `packages/shared/src/data/projectiles.json`, `packages/shared/src/sim/world.ts`, `packages/shared/src/index.ts`, tests
+- **Do:** Projectile definitions as data, validated at import as `weapons.json` is: launch speed and loft, gravity and drag, collision radius, restitution, bounce friction and roll drag, fuse, impact detonation, blast radius, damage and edge fraction. Behaviour as pure functions of (definition, state, dt, world): a step that integrates the parabola and SWEEPS the projectile's sphere along the chord it travelled, bounces off the face it struck, settles and skids on a floor, and reports the step it goes off on and why (fuse, impact, old age). `rayWorld` gains the two things a bounce needs and a ray never did — an inflation radius, which turns it into a swept sphere, and the face normal it entered through. A blast is falloff by distance from a flat core to an edge fraction, scaled by how much of a target the blast can see through the same box list.
+- **Done when:** tests assert the arc matches the closed-form parabola in clear air, that a re-run is bit-identical, that a rocket at 45 m/s cannot pass through a 2 cm wall at 12 m, that a bounce returns the restitution's share of the approach speed and reverses the axis it struck, that a dropped grenade comes to rest and then does not move at all, that a flat hard throw skids on after landing rather than sticking where it touched, that the fuse ends it wherever it is and an impact fuse ends it on the surface it hit, that the blast falls off monotonically and stops at its radius, that cover blocks the probes it should and not the ones it should not, and that the previewed arc is the stepped path to the last bit.
+- **Completed 2026-09-21.** `ballistics.ts`, and `projectiles.json` beside `weapons.json`: a frag grenade and a rocket. The step integrates the parabola — `p + v·dt - ½g·dt²`, the closed form the shells in `effects.ts` already fly — and collides the straight chord between its ends, swept as a sphere by `rayWorld`'s new `inflate`, so a 45 m/s rocket cannot cross a 2 cm sheet without touching it. A bounce takes the entry face's normal (also new on `rayWorld`, and free: the slab test already knew it), gives back `restitution` of the normal speed and sheds `friction` of the tangential. Three things the first draft got wrong and the tests caught: a dead bounce on a floor is a LANDING, not a bounce — without that branch a grenade thrown flat spent its whole collision budget on zero-distance contacts and stopped dead where it touched, so a settled projectile is held up by the floor and skids for the rest of the tick; a skid needs its own rate (`rollDragPerSec`) rather than the bounce's fraction, which at 30 Hz stops a grenade in a tenth of a second; and an arc walked by comparing a running total against its horizon draws one frame too many, because fifteen thirtieths is 0.49999999999999994. The blast is linear from a flat core (a tenth of the radius) to `blastMinFraction` at the edge, scaled by three probes up the target — shin, chest, head — through the same box list, with `blastCoverFraction` as the floor for a body entirely behind something: a soldier hugging a 0.9 m crate keeps their head exposed and takes a third of the sight. Level throws travel about 17 m including the roll; the rocket reaches 43 m before its sag puts it in the ground. Nothing here reads a clock, and a re-run is bit-identical.
+- **Size:** M
+
+#### T-2.31 — Projectiles on the wire and on the server
+- **Depends:** T-2.30
+- **Files:** `packages/shared/src/net/protocol.ts`, `packages/shared/src/ecs/components.ts`, `net/schema.ts`, `packages/shared/src/net/Connection.ts`, `packages/server/src/session/Session.ts`, tests
+- **Do:** A `Throw` message (a trigger pull for a projectile: tick, aim, which one), reliable like `Fire`, and everything in it untrusted — the index is bounds-checked, the pouch and the cooldown are the server's. The session spawns a projectile entity with a netId of its own, steps every one of them once per tick with T-2.30's stepper, and replicates position and velocity through the existing snapshot path plus a `Projectile` component saying which kind it is and whose it is (protocol bump). On detonation it despawns, applies blast damage to every soldier in reach through `applyDamage` — the thrower included — and broadcasts a `Detonation` carrying the point, the tick it happened on and what each target took. A rocket also detonates on the first body it touches, tested against the hitboxes as they are NOW: a projectile is a real object in the present, not a rewound ray, so lag compensation has no part in it.
+- **Done when:** session tests over the real wire assert a thrown grenade appears as an entity that spawns, moves and despawns; that it goes off on its fuse and damages a soldier standing next to it and not one across the range; that a wall between them cuts the damage to the cover fraction; that the thrower takes their own blast; that a rocket fired into a teammate detonates on them rather than behind them; that the pouch empties and the cooldown holds, so a client spamming Throw gets exactly what the data allows; that a downed or vaulting soldier throws nothing; and that a projectile's netId is never a slot's or a range target's.
+- **Size:** M
+
+#### T-2.32 — The throw in the page
+- **Depends:** T-2.31
+- **Files:** `packages/client/src/weapons/ThrowQA.ts`, `packages/client/src/net/NetClient.ts`, `packages/client/src/input/LocalInput.ts`, `packages/client/src/main.ts`, tests
+- **Do:** Hold the throw key to see the arc, release to throw it. The preview is T-2.30's `projectileArc` from the eye along the converged aim, drawn as a line with a marker where it would go off, and it is the same call the server will make. The pouch is two projectiles on 5 and 6 with their counts on the HUD, mirroring the local weapon state the way `CombatQA` mirrors the weapon's. Replicated projectiles are drawn from the interpolation buffer at the same delay as remote soldiers, since that is the world they are in; the local thrower gets a predicted ghost from the same stepper so their own grenade leaves their hand now rather than a round trip later, retired the moment its replicated twin arrives.
+- **Done when:** tests assert the preview line is `projectileArc`'s own points, that the throw key latches an edge the way the trigger does so a tap is never lost, that the pouch refuses a throw it has no projectile for, and that a ghost is retired by the arrival of a replicated projectile of the same kind from the same thrower. A browser run on the host: the other player sees the grenade you threw follow the arc you were shown, and it goes off where it landed.
+- **Size:** M
+
+#### T-2.33 — Detonation presentation
+- **Depends:** T-2.32
+- **Files:** `packages/client/src/weapons/effects.ts`, `packages/client/src/camera/cameraShake.ts`, `packages/client/src/main.ts`, tests
+- **Do:** A blast is a flash, an expanding shell of light, debris thrown on the same closed-form arcs the shells fly, and a scorch on the ground under it — pooled once and capped like every other effect, and stateless per frame so 30 and 120 fps draw the same picture at the same moment. It shakes the camera by distance, scaled the way the blast damage is and cut by the same cover the damage is cut by, so a blast behind a wall is felt less than one in the open. The server's `Detonation` is held until the render clock reaches the tick it happened on, because the projectile is being drawn a hundred milliseconds behind server time and a blast that arrives early goes off in front of a grenade still in the air. Each target's own damage lands as the T-2.27 reaction, away from the blast.
+- **Done when:** tests assert the shake falls off with distance and is zero past the radius, that cover cuts it, that a detonation is not drawn before its tick is being rendered and is drawn exactly once when it is, and that the effect pools never grow. A browser run: two grenades in a burst allocate nothing, and the blast reads from across the range.
+- **Size:** M
+
+#### T-2.34 — 🧍 E-2.5 sign-off
+- **Depends:** T-2.30, T-2.31, T-2.32, T-2.33
+- **Files:** `docs/playtests/e2-5.md`
+- **Do:** Two people on the host. Each throws grenades at the other and at cover: does the arc read where it is going, does the grenade land where the line said, does a bounce off a crate go where a bounce should, does a blast behind cover feel weaker than one in the open, and is the rocket worth the two rounds it carries. Tune the numbers in `projectiles.json` while the feel is in hand.
+- **Done when:** a written verdict, on a run sheet prepared before the session as `e2-2.md` was, naming what it does and does not establish.
+- **Size:** S
+
 ### M3 — AI & squad command (~10–12 wks)
 
 | Epic | Scope | Notes |
