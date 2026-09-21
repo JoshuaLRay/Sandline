@@ -43,7 +43,14 @@ export const RANGE_TARGETS: readonly RangeTarget[] = [10, 20, 35, 55, 80, 95].ma
   }),
 );
 
-/** True for a netId belonging to the range rather than to a player slot. */
+/**
+ * True for a netId belonging to the range rather than to a player slot.
+ *
+ * A BOUNDED range, not "anything above the targets". It was the open-ended
+ * test until T-2.31 gave the session a second class of non-player entity:
+ * projectiles are numbered from `FIRST_PROJECTILE_NET_ID`, well above these,
+ * and under the old test every grenade in the air was a range target.
+ */
 export function isRangeTarget(netId: number): boolean {
-  return netId >= FIRST_TARGET_NET_ID;
+  return netId >= FIRST_TARGET_NET_ID && netId < FIRST_TARGET_NET_ID + RANGE_TARGETS.length;
 }

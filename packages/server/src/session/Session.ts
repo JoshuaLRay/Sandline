@@ -32,6 +32,21 @@ import {
   WEAPON_IDS,
   type WeaponDef,
   type WeaponState,
+  DEFAULT_WORLD,
+  FIRST_PROJECTILE_NET_ID,
+  PROJECTILE_IDS,
+  type ProjectileDef,
+  type ProjectileState,
+  type ProjectileWorld,
+  blastDamageOn,
+  createProjectileState,
+  dirFromYawPitch,
+  getProjectile,
+  launchOrigin,
+  launchVelocity,
+  projectileByIndex,
+  stepProjectile,
+  tableToWire,
   type HealthState,
   applyDamage,
   vaultToLevels,
@@ -66,7 +81,7 @@ import {
   stepCharacter,
   writeDelta,
 } from '@sandline/shared';
-import { DEFAULT_HITBOX, HitboxHistory, clampRewindMs, resolveShot } from '../net/lagComp.ts';
+import { DEFAULT_HITBOX, HitboxHistory, clampRewindMs, rayCapsule, resolveShot } from '../net/lagComp.ts';
 
 /**
  * Full standing height of a hitbox: cylinder plus both caps. Hit zones are
@@ -127,6 +142,13 @@ export interface Slot {
   weaponState: WeaponState;
   /** Aim pitch, in wire units. Movement only replicates yaw; shots need both. */
   pitch: number;
+  /**
+   * How many of each projectile are left, indexed like PROJECTILE_IDS, and the
+   * earliest time the next one may leave the hand (T-2.31). The server's, not
+   * the client's: a client that lies about either gets nothing.
+   */
+  pouch: number[];
+  nextThrowAt: number;
   health: HealthState;
   /** T-2.15: authoritative revive ownership/progress for this downed soldier. */
   reviveBySlot: number;
@@ -171,6 +193,30 @@ const idleInput = (yaw = 0): MoveInput => ({
   firing: false,
 });
 
+/** A full load-out of every projectile, as the data says it is carried. */
+function fullPouch(): number[] {
+  return PROJECTILE_IDS.map((id) => getProjectile(id).carried);
+}
+
+/**
+ * How far ahead of the eye a projectile is born. Far enough to be clear of the
+ * thrower's own capsule (0.35 m radius) and no further; `launchOrigin` sweeps
+ * the gap, so standing against a wall shortens it rather than posting a
+ * grenade through the wall.
+ */
+const LAUNCH_AHEAD_M = 0.55;
+
+/** One projectile the session owns. The state is T-2.30's; the rest is identity. */
+interface ActiveProjectile {
+  netId: number;
+  def: ProjectileDef;
+  /** Index into PROJECTILE_IDS: what goes on the wire. */
+  kind: number;
+  ownerSlot: number;
+  ownerNetId: number;
+  state: ProjectileState;
+}
+
 export interface SessionStats {
   tick: number;
   players: number;
@@ -188,6 +234,13 @@ export class Session {
    * tick for every slot, read when a Fire arrives.
    */
   private readonly hitboxes = new HitboxHistory();
+  /**
+   * Projectiles in flight (T-2.31). A list rather than a slot array: unlike
+   * every other entity in this session they come and go, which is what makes
+   * them the first real exercise of the delta format's spawns and despawns.
+   */
+  private readonly projectiles: ActiveProjectile[] = [];
+  private nextProjectileNetId = FIRST_PROJECTILE_NET_ID;
   private currentTick = 0;
   /**
    * Server time at the last tick, in ms. Still injected — the session reads no
@@ -227,6 +280,8 @@ export class Session {
         weapon: getWeapon(WEAPON_IDS[0]),
         weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
         pitch: 0,
+        pouch: fullPouch(),
+        nextThrowAt: 0,
         health: createHealth(),
         reviveBySlot: -1,
         reviveProgressSeconds: 0,
@@ -247,6 +302,11 @@ export class Session {
       snapshotsSent: this.snapshotsSent,
       bytesSent: this.bytesSent,
     };
+  }
+
+  /** Projectiles in the air right now. The harness HUD reads it (T-2.32). */
+  get projectilesInFlight(): number {
+    return this.projectiles.length;
   }
 
   /** Humans seated right now. What a registry reclaims on (T-1.5.05). */
@@ -300,6 +360,7 @@ export class Session {
       // NOT the `now` this connection was opened at: that value is frozen
       // forever. Fire resolves against the session's current time.
       onFire: (c, msg) => this.applyFire(c, msg),
+      onThrow: (c, msg) => this.applyThrow(c, msg),
       onClosed: (c) => this.releaseSlot(c),
     });
     if (conn.state === 'closed') return false;
@@ -488,7 +549,19 @@ export class Session {
       return;
     }
 
-    slot.pitch = msg.pitch;
+    /**
+     * Wire units here, TABLE units in the message.
+     *
+     * `slot.pitch` is what the snapshot replicates (`s.pitch & 0x3ff`), and a
+     * Fire carries its aim at 1/4096 so the server traces the exact angles the
+     * client computed. Storing the table value in the wire field masked off the
+     * top two bits of it, so a shot fired while looking up replicated a
+     * nonsense aim pitch until the next Input overwrote it — visible since
+     * T-2.25 as a remote soldier's rifle flicking as they fire. Found while
+     * adding the throw beside it; one line, so it is fixed here rather than
+     * left for the sign-off to trip over.
+     */
+    slot.pitch = tableToWire(msg.pitch);
     // Already table units: no expansion, so no expansion error.
     const yaw = msg.yaw & 0xfff;
     const pitch = msg.pitch & 0xfff;
@@ -587,6 +660,175 @@ export class Session {
     }
   }
 
+  /**
+   * A projectile leaving the hand (T-2.31).
+   *
+   * Everything in the message is untrusted, as in `applyFire`: the index is
+   * bounds-checked, and the pouch and the cooldown are the server's own, so a
+   * client sending Throw thirty times a second gets exactly what the data
+   * allows and nothing more.
+   *
+   * Nothing is rewound. A hitscan shot is resolved against the world its
+   * shooter was looking at, because the shot is over by the time the message
+   * arrives; a grenade is an object that exists from here on, in everyone's
+   * present, and spawning it in the past would only put it where nobody will
+   * see it.
+   */
+  private applyThrow(conn: ServerConnection, msg: Extract<Message, { kind: 'Throw' }>): void {
+    const slot = this.slots.find((s) => s.connection === conn);
+    if (!slot) return;
+    // The same two refusals a Fire gets: no hands free while downed, dead or
+    // mid-vault. The client stops asking too; this is for one that does not.
+    if (!isAlive(slot.health)) return;
+    if (slot.state.vault) return;
+
+    const def = projectileByIndex(msg.projectile);
+    if (def === null) return; // Out-of-range index: drop it, do not throw.
+    const nowSeconds = this.nowMs / 1000;
+    if (nowSeconds < slot.nextThrowAt) return;
+    const left = slot.pouch[msg.projectile] ?? 0;
+    if (left <= 0) return;
+    slot.pouch[msg.projectile] = left - 1;
+    slot.nextThrowAt = nowSeconds + def.cooldownSeconds;
+
+    const yaw = msg.yaw & 0xfff;
+    const pitch = msg.pitch & 0xfff;
+    const direction = dirFromYawPitch(yaw, pitch);
+    const eye = eyePosition(slot.state.x, slot.state.y, slot.state.z);
+    const origin = launchOrigin(def, eye, direction, LAUNCH_AHEAD_M, this.projectileWorld());
+    this.projectiles.push({
+      netId: this.nextProjectileNetId++,
+      def,
+      kind: msg.projectile,
+      ownerSlot: slot.index,
+      ownerNetId: slot.netId,
+      state: createProjectileState(origin, launchVelocity(def, yaw, pitch)),
+    });
+  }
+
+  /** The boxes and the floor a projectile collides with: the shared world. */
+  private projectileWorld(): ProjectileWorld {
+    return { boxes: DEFAULT_WORLD, groundY: this.moveConfig.groundY };
+  }
+
+  /**
+   * Fly every projectile one tick, and detonate the ones that arrive.
+   *
+   * Run AFTER the soldiers have moved, so a rocket meets the bodies where this
+   * tick left them rather than where the last one did.
+   */
+  private stepProjectiles(): void {
+    if (this.projectiles.length === 0) return;
+    const world = this.projectileWorld();
+    const survivors: ActiveProjectile[] = [];
+    for (const projectile of this.projectiles) {
+      const step = stepProjectile(projectile.def, projectile.state, TICK_SECONDS, world);
+      projectile.state = step.state;
+
+      let at = step.detonation === null ? null : step.detonation.point;
+      /**
+       * A rocket goes off on the first BODY it touches too, and the body wins:
+       * `step.to` is already truncated at whatever scenery stopped the
+       * projectile, so anything found inside that segment is at or in front of
+       * the wall. The thrower is excluded — a rocket is born half a metre from
+       * its own capsule — but the blast that follows is not, so firing one into
+       * a wall at arm's length still costs you.
+       */
+      if (projectile.def.detonateOnImpact) {
+        const body = this.bodyAlong(step.from, step.to, projectile.ownerNetId);
+        if (body !== null) at = body;
+      }
+
+      if (at === null) {
+        survivors.push(projectile);
+        continue;
+      }
+      this.detonate(projectile, at);
+    }
+    this.projectiles.length = 0;
+    for (const projectile of survivors) this.projectiles.push(projectile);
+  }
+
+  /**
+   * The nearest hit capsule along a segment, as it stands NOW, or null.
+   *
+   * Deliberately not `resolveShot`: that rewinds, which is right for a shot
+   * fired at a remembered world and wrong for an object flying through the
+   * present one. The range targets are in here on the same terms as the
+   * players, so a rocket goes off on a target the way a bullet stops on one.
+   */
+  private bodyAlong(from: { x: number; y: number; z: number }, to: { x: number; y: number; z: number }, excludeNetId: number): { x: number; y: number; z: number } | null {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const dz = to.z - from.z;
+    const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (length <= 0) return null;
+    const ray = { origin: from, direction: { x: dx / length, y: dy / length, z: dz / length }, maxDistance: length };
+    let best: number | null = null;
+    for (const netId of this.hitboxes.netIds()) {
+      if (netId === excludeNetId) continue;
+      const state = this.hitboxes.stateAt(netId, this.nowMs);
+      if (state === null) continue;
+      const halfHeight = state.crouched ? (DEFAULT_HITBOX.crouchHalfHeight ?? DEFAULT_HITBOX.halfHeight) : DEFAULT_HITBOX.halfHeight;
+      const centerOffsetY = state.crouched ? (DEFAULT_HITBOX.crouchCenterOffsetY ?? DEFAULT_HITBOX.centerOffsetY) : DEFAULT_HITBOX.centerOffsetY;
+      const centre = { x: state.position.x, y: state.position.y + centerOffsetY, z: state.position.z };
+      const distance = rayCapsule(ray, centre, DEFAULT_HITBOX.radius, halfHeight);
+      if (distance === null) continue;
+      if (best === null || distance < best) best = distance;
+    }
+    if (best === null) return null;
+    return {
+      x: from.x + ray.direction.x * best,
+      y: from.y + ray.direction.y * best,
+      z: from.z + ray.direction.z * best,
+    };
+  }
+
+  /**
+   * Go off: everyone in reach takes the blast, the thrower included.
+   *
+   * SELF-DAMAGE AND FRIENDLY FIRE ARE ON, and that is a decision rather than
+   * an oversight. Six co-operative slots and nothing hostile in M2 means a
+   * grenade that could not hurt a teammate could not be judged at all — and a
+   * blast a player can stand in is the only thing that makes them respect the
+   * fuse. Damage goes through `applyDamage` like a bullet's, so a blast downs,
+   * cuts a bleed-out and cannot kill twice, by the same rules.
+   */
+  private detonate(projectile: ActiveProjectile, at: { x: number; y: number; z: number }): void {
+    const nowSeconds = this.nowMs / 1000;
+    const targets: { netId: number; damage: number }[] = [];
+    for (const slot of this.slots) {
+      if (isDead(slot.health)) continue;
+      const height = slot.state.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT;
+      const damage = blastDamageOn(
+        projectile.def,
+        at,
+        { x: slot.state.x, y: slot.state.y, z: slot.state.z },
+        height,
+        DEFAULT_WORLD,
+      );
+      if (damage <= 0) continue;
+      const result = applyDamage(slot.health, damage, nowSeconds);
+      // A killed player stops moving immediately, as under fire (see applyFire).
+      if (result.killed) slot.queue.length = 0;
+      targets.push({ netId: slot.netId, damage: result.applied });
+    }
+
+    const event: Message = {
+      kind: 'Detonation',
+      netId: projectile.netId,
+      projectile: projectile.kind,
+      // The tick this blast belongs to, so a client rendering a hundred
+      // milliseconds behind can hold it until it gets there (T-2.33).
+      tick: this.currentTick,
+      x: at.x,
+      y: at.y,
+      z: at.z,
+      targets,
+    };
+    for (const c of this.connections) c.send(event);
+  }
+
   /** Advance one authoritative tick and broadcast. */
   step(now: number): void {
     this.nowMs = now;
@@ -623,6 +865,8 @@ export class Session {
           slot.input = idleInput(slot.yaw);
     slot.interactHeld = false;
           slot.weaponState = createWeaponState(slot.weapon);
+          slot.pouch = fullPouch();
+          slot.nextThrowAt = 0;
         }
         // Still recorded into the hitbox history below, so a shot already in
         // flight resolves against where the body is.
@@ -730,6 +974,15 @@ export class Session {
     }
 
     this.currentTick++;
+    /**
+     * Projectiles fly LAST, after the bodies have moved and been recorded and
+     * after the tick has advanced. Both halves matter: a rocket meets the
+     * soldiers where this tick left them, and a detonation names the tick of
+     * the snapshot it is announced alongside — the same snapshot the projectile
+     * despawns from, so a client is never told a grenade went off in a world
+     * where it is still in the air.
+     */
+    this.stepProjectiles();
     const snapshot = this.buildSnapshot();
     this.history.store(snapshot);
     this.broadcast(snapshot);
@@ -835,9 +1088,7 @@ export class Session {
   }
 
   private buildSnapshot(): WorldSnapshot {
-    return {
-      tick: this.currentTick,
-      entities: this.slots.map((s) => ({
+    const entities: WorldSnapshot['entities'] = this.slots.map((s) => ({
         netId: s.netId,
         components: {
           [T]: [
@@ -876,8 +1127,39 @@ export class Session {
             Math.min(100, Math.round(reloadProgress(s.weapon, s.weaponState, this.nowMs / 1000) * 100)),
           ],
         },
-      })),
-    };
+      }));
+
+    /**
+     * Projectiles are entities like any other, and the only ones that come and
+     * go: they carry a Transform and a Velocity — the velocity so a client can
+     * point a rocket along its flight and smooth between samples — and a
+     * Projectile saying which kind and whose. No health, no stance, nothing
+     * a soldier needs. They cost their component mask and about a hundred bits
+     * a tick each while they are in the air, and nothing at all once they are
+     * not (T-1.04's despawn).
+     */
+    for (const p of this.projectiles) {
+      entities.push({
+        netId: p.netId,
+        components: {
+          [T]: [
+            quantize(p.state.x, POSITION),
+            quantize(p.state.y, POSITION),
+            quantize(p.state.z, POSITION),
+            0,
+            0,
+          ],
+          [V]: [
+            quantize(p.state.vx, VELOCITY),
+            quantize(p.state.vy, VELOCITY),
+            quantize(p.state.vz, VELOCITY),
+          ],
+          [COMPONENT_IDS.Projectile]: [p.kind, p.ownerSlot],
+        },
+      });
+    }
+
+    return { tick: this.currentTick, entities };
   }
 
   private broadcast(snapshot: WorldSnapshot): void {

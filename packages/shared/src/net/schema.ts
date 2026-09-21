@@ -109,6 +109,15 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // as a curve of the server's clock, the way the vault is.
     fields: [uint('index', 2), uint('reloadProgress', 7)],
   },
+  {
+    id: COMPONENT_IDS.Projectile,
+    name: 'Projectile',
+    // T-2.31. `kind` indexes PROJECTILE_IDS and `ownerSlot` is the squad slot
+    // that threw it, both of which a client needs before it can draw the thing
+    // — and neither of which changes for the life of the entity, so they cost
+    // their bits once on the spawn and nothing per tick after (T-1.04).
+    fields: [uint('kind', 2), uint('ownerSlot', 3)],
+  },
 ];
 
 /** Width of the component-presence bitmask. */

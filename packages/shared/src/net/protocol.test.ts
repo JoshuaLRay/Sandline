@@ -42,11 +42,53 @@ const SAMPLES: Message[] = [
       { human: false, name: '' },
     ],
   },
+  { kind: 'Throw', tick: 900, yaw: 4095, pitch: 3072, projectile: 1 },
   {
     kind: 'Snapshot',
     snapshot: { tick: 9, entities: [{ netId: 1, components: { [T]: [100, 200, 300, 400, 500] } }] },
   },
 ];
+
+describe('projectiles on the wire (T-2.31)', () => {
+  it('round-trips a Detonation with everyone it caught', () => {
+    const msg: Message = {
+      kind: 'Detonation',
+      netId: 2007,
+      projectile: 1,
+      tick: 1234,
+      x: -12.5,
+      y: 1.25,
+      z: 41.75,
+      targets: [
+        { netId: 3, damage: 96 },
+        { netId: 5, damage: 12 },
+      ],
+    };
+    const got = decodeMessage(encodeMessage(msg));
+    if (got.kind !== 'Detonation') throw new Error('wrong kind');
+    expect(got.netId).toBe(2007);
+    expect(got.projectile).toBe(1);
+    expect(got.tick).toBe(1234);
+    // Positions ride the same 1/64 m spec every other world point does.
+    expect(got.x).toBeCloseTo(-12.5, 2);
+    expect(got.y).toBeCloseTo(1.25, 2);
+    expect(got.z).toBeCloseTo(41.75, 2);
+    expect(got.targets).toEqual(msg.targets);
+  });
+
+  it('round-trips a blast that caught nobody, which is most of them', () => {
+    const msg: Message = { kind: 'Detonation', netId: 2000, projectile: 0, tick: 7, x: 0, y: 0, z: 0, targets: [] };
+    expect(decodeMessage(encodeMessage(msg))).toEqual(msg);
+  });
+
+  it('carries the whole squad, and no more', () => {
+    const targets = Array.from({ length: 6 }, (_, i) => ({ netId: i + 1, damage: 10 + i }));
+    const msg: Message = { kind: 'Detonation', netId: 2001, projectile: 0, tick: 9, x: 1, y: 2, z: 3, targets };
+    const got = decodeMessage(encodeMessage(msg));
+    if (got.kind !== 'Detonation') throw new Error('wrong kind');
+    expect(got.targets).toHaveLength(6);
+  });
+});
 
 describe('protocol messages (T-1.05)', () => {
   it.each(SAMPLES.map((m) => [m.kind, m] as const))('round-trips %s', (_kind, msg) => {

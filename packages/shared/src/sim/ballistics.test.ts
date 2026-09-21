@@ -20,6 +20,7 @@ import {
   blastExposure,
   createProjectileState,
   getProjectile,
+  launchOrigin,
   launchVelocity,
   parseProjectileTable,
   projectileArc,
@@ -132,6 +133,25 @@ describe('launch (T-2.30)', () => {
     const sideways = launchVelocity(GRENADE, ANGLE_QUARTER, 0);
     expect(sideways.x).toBeCloseTo(GRENADE.speedMPerSec, 6);
     expect(sideways.z).toBeCloseTo(0, 6);
+  });
+});
+
+describe('where it leaves the hand (T-2.30)', () => {
+  it('is ahead of the eye along the aim', () => {
+    const origin = launchOrigin(GRENADE, { x: 0, y: 1.55, z: 0 }, { x: 0, y: 0, z: 1 }, 0.5, OPEN);
+    expect(origin).toEqual({ x: 0, y: 1.55, z: 0.5 });
+  });
+
+  it('stops at a wall the thrower is standing against, rather than inside it', () => {
+    const world: ProjectileWorld = { boxes: [wall('wall', 0.3, 0.2)], groundY: 0 };
+    const origin = launchOrigin(GRENADE, { x: 0, y: 1.55, z: 0 }, { x: 1, y: 0, z: 0 }, 0.5, world);
+    // The wall's near face is at 0.2; the sphere stops a radius short of it.
+    expect(origin.x).toBeCloseTo(0.2 - GRENADE.radiusM, 6);
+  });
+
+  it('never starts below the floor', () => {
+    const origin = launchOrigin(GRENADE, { x: 0, y: 0.05, z: 0 }, { x: 0, y: -1, z: 0 }, 0.5, OPEN);
+    expect(origin.y).toBeCloseTo(GRENADE.radiusM, 6);
   });
 });
 

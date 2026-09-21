@@ -102,6 +102,17 @@ export interface ProjectileDef {
  * so reordering this is a PROTOCOL_VERSION bump.
  */
 export const PROJECTILE_IDS = ['frag', 'rocket'] as const;
+
+/**
+ * Where projectile netIds start (T-2.31).
+ *
+ * Clear of the six player slots, which are handed out from 1, and clear of the
+ * range targets at 1000, which is why `isRangeTarget` became a bounded test
+ * when this arrived. A projectile's id is never reused within a session: a
+ * recycled one arriving at a client that still holds the old grenade would be
+ * a grenade that teleports, which is exactly what NetId exists to prevent.
+ */
+export const FIRST_PROJECTILE_NET_ID = 2000;
 export type ProjectileId = (typeof PROJECTILE_IDS)[number];
 
 // ---------------------------------------------------------------------------
@@ -310,12 +321,34 @@ export function launchVelocity(def: ProjectileDef, yaw: BinAngle, pitch: BinAngl
   return { x: dir.x * def.speedMPerSec, y: dir.y * def.speedMPerSec, z: dir.z * def.speedMPerSec };
 }
 
-/** Where a projectile leaves the hand: ahead of the eye, clear of the body. */
-export function launchOrigin(eye: Vec3, direction: Vec3, aheadM: number): Vec3 {
+/**
+ * Where a projectile leaves the hand: ahead of the eye along the aim, clear of
+ * the thrower's own body — and no further than the first thing in the way.
+ *
+ * The clamp is the whole point of putting this here rather than writing the
+ * three multiplications at the call site. Half a metre ahead of the eye is
+ * inside the wall when you are standing against one, and a projectile that
+ * begins inside a box is the one case `stepProjectile` cannot resolve: there
+ * is no face to bounce off. Sweeping the same sphere over the same half metre
+ * means the worst case is a grenade that goes off in your face, which is the
+ * correct outcome for throwing one into a wall you are touching.
+ */
+export function launchOrigin(
+  def: ProjectileDef,
+  eye: Vec3,
+  direction: Vec3,
+  aheadM: number,
+  world: ProjectileWorld = DEFAULT_PROJECTILE_WORLD,
+): Vec3 {
+  let ahead = aheadM;
+  const blocked = rayWorld({ origin: eye, direction, maxDistance: aheadM }, world.boxes, def.radiusM);
+  if (blocked !== null && blocked.distance < ahead) ahead = blocked.distance;
+  const floor = world.groundY + def.radiusM;
+  const y = eye.y + direction.y * ahead;
   return {
-    x: eye.x + direction.x * aheadM,
-    y: eye.y + direction.y * aheadM,
-    z: eye.z + direction.z * aheadM,
+    x: eye.x + direction.x * ahead,
+    y: y < floor ? floor : y,
+    z: eye.z + direction.z * ahead,
   };
 }
 

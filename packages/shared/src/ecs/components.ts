@@ -34,6 +34,14 @@ export const Crouch = defineComponent({ crouched: Types.ui8 });
  */
 export const NetId = defineComponent({ id: Types.ui32 });
 
+/**
+ * A projectile in flight (T-2.31): which kind it is and whose it is. Position
+ * and velocity ride the usual `Transform` and `Velocity`; this is the part a
+ * renderer cannot derive, and it is also what tells a client that an entity
+ * that just spawned is a grenade rather than a soldier.
+ */
+export const Projectile = defineComponent({ kind: Types.ui8, ownerSlot: Types.ui8 });
+
 /** Marker: this entity is sent to clients. */
 export const Replicated = defineComponent();
 
@@ -55,6 +63,8 @@ export const COMPONENT_IDS = {
   Vault: 6,
   /** T-2.26: which weapon is in hand and how far through a reload it is, for the body. */
   Weapon: 7,
+  /** T-2.31: a projectile in flight — which kind, and whose. */
+  Projectile: 8,
 } as const;
 
 export type ComponentName = keyof typeof COMPONENT_IDS;
