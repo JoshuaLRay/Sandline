@@ -50,6 +50,7 @@ import {
   finishReload,
   getWeapon,
   isReloading,
+  reloadProgress,
   startReload,
   tryFire,
 } from '@sandline/shared';
@@ -136,6 +137,11 @@ export class CombatQA {
 
   get weaponIndex(): number {
     return this.index;
+  }
+
+  /** How far through a reload the weapon in hand is, 0..1 (T-2.26). */
+  reloadProgress(now: number): number {
+    return reloadProgress(this.def, this.state, now);
   }
 
   private workingDef(index: number): WeaponDef {

@@ -53,6 +53,8 @@ export const COMPONENT_IDS = {
   Crouch: 5,
   /** T-2.21: a vault in progress, enough of it for a predictor to continue it. */
   Vault: 6,
+  /** T-2.26: which weapon is in hand and how far through a reload it is, for the body. */
+  Weapon: 7,
 } as const;
 
 export type ComponentName = keyof typeof COMPONENT_IDS;

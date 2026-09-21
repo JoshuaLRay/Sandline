@@ -282,3 +282,22 @@ describe('weapon data', () => {
     expect(() => parseWeaponTable([])).toThrow(/keyed by weapon id/);
   });
 });
+
+describe('reload progress (T-2.26)', () => {
+  it('is a curve of the weapon\'s own clock: 0 outside a reload, 0..1 through it', async () => {
+    const { createWeaponState, getWeapon, reloadProgress, startReload, finishReload } = await import('./weapons.ts');
+    const def = getWeapon('carbine');
+    const state = createWeaponState(def);
+    expect(reloadProgress(def, state, 5)).toBe(0);
+    state.ammo = 0;
+    expect(startReload(def, state, 10)).toBe(true);
+    expect(reloadProgress(def, state, 10)).toBe(0);
+    expect(reloadProgress(def, state, 10 + def.reloadSeconds / 2)).toBeCloseTo(0.5, 9);
+    expect(reloadProgress(def, state, 10 + def.reloadSeconds * 0.9)).toBeCloseTo(0.9, 9);
+    // Past the end it reads 0 whether or not the reload has been settled.
+    expect(reloadProgress(def, state, 10 + def.reloadSeconds)).toBe(0);
+    finishReload(def, state, 10 + def.reloadSeconds);
+    expect(reloadProgress(def, state, 10 + def.reloadSeconds + 1)).toBe(0);
+    expect(state.ammo).toBe(def.magSize);
+  });
+});

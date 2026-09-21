@@ -541,6 +541,46 @@ describe('Session revive interaction (T-2.15)', () => {
 });
 
 
+describe('Session replicates the weapon and its reload (T-2.26)', () => {
+  it('a watcher sees the weapon in hand and the reload advance to a hundred and clear', () => {
+    const s = new Session();
+    const loader = connectClient(s, 'loader');
+    const watcher = connectClient(s, 'watcher');
+    const slot = s.slots[loader.joined!.slot]!;
+    const W = COMPONENT_IDS.Weapon;
+    const seen = (): number[] | undefined =>
+      watcher.snapshots.at(-1)?.entities.find((e) => e.netId === slot.netId)?.components[W] as number[] | undefined;
+    let now = 0;
+    const tick = (): void => {
+      now += 33;
+      loader.input(now / 33, 0, 0);
+      watcher.input(now / 33, 0, 0);
+      s.step(now);
+    };
+    for (let i = 0; i < 5; i += 1) tick();
+    expect(seen()).toEqual([0, 0]);
+    // The server's own reload: the one it starts on an empty magazine.
+    slot.weaponState.ammo = 0;
+    slot.weaponState.reloadEndsAt = now / 1000 + slot.weapon.reloadSeconds;
+    const readings: number[] = [];
+    const ticks = Math.ceil((slot.weapon.reloadSeconds * 1000) / 33) + 3;
+    for (let i = 0; i < ticks; i += 1) {
+      tick();
+      readings.push(seen()![1]!);
+    }
+    // Rises monotonically from near zero, reaches the nineties, then clears.
+    expect(readings[0]).toBeLessThan(10);
+    expect(Math.max(...readings)).toBeGreaterThan(90);
+    expect(Math.max(...readings)).toBeLessThanOrEqual(100);
+    for (let i = 1; i < readings.length; i += 1) {
+      const step = readings[i]! - readings[i - 1]!;
+      expect(step >= 0 || readings[i] === 0).toBe(true);
+    }
+    expect(readings.at(-1)).toBe(0);
+    expect(seen()![0]).toBe(0);
+  });
+});
+
 describe('Session vault over the wire (T-2.21)', () => {
   const T = COMPONENT_IDS.Transform;
   const Vt = COMPONENT_IDS.Vault;

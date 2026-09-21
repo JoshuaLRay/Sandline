@@ -8,6 +8,7 @@ import {
   registerRig,
   transformOf,
 } from './humanoidRig.ts';
+import { plateau } from './locomotionPose.ts';
 
 /**
  * M2 grey-box character: the fallback and diagnostic fixture (T-2.22).
@@ -156,6 +157,9 @@ const GREY_BOX_BONES: Partial<Record<HumanoidBoneName, string>> = {
 /** Whole limbs swing; there are no knees to bend, no spine to twist. */
 const GREY_BOX_STYLE: GaitStyle = { armSwing: 1, kneeBend: 0, bob: 0, twist: 0, lean: 0 };
 
+/** How far the fixture's rifle dips through a reload, radians (T-2.26). */
+const GREY_BOX_RELOAD_DIP = 0.35;
+
 /** The parts a hit jerks back: the upper body, not the legs that hold it up. */
 export const GREY_BOX_FLINCH_PARTS: readonly string[] = ['torso', 'head', 'helmet', 'arm-left', 'arm-right', 'backpack', 'rifle'];
 
@@ -203,12 +207,21 @@ function createGreyBoxRig(root: THREE.Mesh): HumanoidRig {
       rifleTurned = false;
     },
     aimAt(pitchRadians, weight) {
+      this.hold({ pitch: pitchRadians, weight });
+    },
+    hold(state) {
       if (rifleTurned && aim.quaternion.equals(rifleAfter)) aim.quaternion.copy(rifleBefore);
       rifleTurned = false;
-      const w = Number.isFinite(weight) ? Math.max(0, Math.min(1, weight)) : 0;
-      if (w === 0 || !Number.isFinite(pitchRadians) || pitchRadians === 0) return;
+      const w = Number.isFinite(state.weight) ? Math.max(0, Math.min(1, state.weight)) : 0;
+      if (w === 0 || !Number.isFinite(state.pitch)) return;
+      const kickUp = Number.isFinite(state.kickUp) ? Math.max(0, state.kickUp as number) : 0;
+      const reload = Number.isFinite(state.reload) ? Math.max(0, Math.min(1, state.reload as number)) : 0;
+      // The fixture turns its rifle for the aim, the kick and a reload's dip;
+      // it has no hands to send to a magazine well.
+      const turn = -(state.pitch + kickUp) * w + GREY_BOX_RELOAD_DIP * plateau(reload, 0, 0.25, 0.75, 1);
+      if (turn === 0) return;
       rifleBefore.copy(aim.quaternion);
-      aim.quaternion.multiply(rifleTurn.setFromAxisAngle(X, -pitchRadians * w));
+      aim.quaternion.multiply(rifleTurn.setFromAxisAngle(X, turn));
       rifleAfter.copy(aim.quaternion);
       rifleTurned = true;
     },

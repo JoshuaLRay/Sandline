@@ -101,6 +101,14 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // `vaultToLevels` / `vaultFromLevels` (net/vaultWire.ts) are the ends.
     fields: [uint('active', 1), uint('elapsedMs', 10), angle('yaw'), pos('fromX'), pos('fromY'), pos('fromZ'), pos('topY')],
   },
+  {
+    id: COMPONENT_IDS.Weapon,
+    name: 'Weapon',
+    // T-2.26. The weapon in hand (an index into WEAPON_IDS) and the reload in
+    // progress as a percentage, so a remote soldier's body can show a reload
+    // as a curve of the server's clock, the way the vault is.
+    fields: [uint('index', 2), uint('reloadProgress', 7)],
+  },
 ];
 
 /** Width of the component-presence bitmask. */
