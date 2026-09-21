@@ -61,6 +61,16 @@ const scratchQuaternion = new THREE.Quaternion();
 /** Mirrors the server's hitbox. The test pins these to `DEFAULT_HITBOX`. */
 export const HUMANOID_HIT_RADIUS = 0.35;
 export const HUMANOID_HIT_HALF_HEIGHT = 0.55;
+export const HUMANOID_HIT_CROUCH_HALF_HEIGHT = 0.25;
+/**
+ * The capsule's full height, standing and crouched: what a hit's height up
+ * the body is read against for its zone, exactly as the server reads it
+ * (T-2.27). The visible capsule never changes shape — a pose moves bones, not
+ * the root — so the crouched height is the server's number, not a measurement
+ * of the client's root.
+ */
+export const HUMANOID_HIT_HEIGHT_M = 2 * (HUMANOID_HIT_HALF_HEIGHT + HUMANOID_HIT_RADIUS);
+export const HUMANOID_CROUCH_HIT_HEIGHT_M = 2 * (HUMANOID_HIT_CROUCH_HALF_HEIGHT + HUMANOID_HIT_RADIUS);
 
 export function createHumanoidPlaceholder(variant: HumanoidVariant): THREE.Mesh {
   const local = variant === 'local';
@@ -224,6 +234,15 @@ function createGreyBoxRig(root: THREE.Mesh): HumanoidRig {
       aim.quaternion.multiply(rifleTurn.setFromAxisAngle(X, turn));
       rifleAfter.copy(aim.quaternion);
       rifleTurned = true;
+    },
+    react() {
+      /**
+       * The fixture has no reaction of its own (T-2.27): no spine to turn,
+       * and a head that is a box sitting on the torso rather than a joint.
+       * It keeps the T-2.11 translation flinch, which `effects.flinch` reads
+       * this `false` and falls back to, over `flinchParts`.
+       */
+      return false;
     },
   };
 }

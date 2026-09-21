@@ -35,7 +35,8 @@
  * impact lands a round trip after the tracer, which is the honest order.
  */
 import * as THREE from 'three';
-import { rigOf } from '../character/humanoidRig.ts';
+import { type HitReaction, type HumanoidRig, rigOf } from '../character/humanoidRig.ts';
+import { FRONTAL_HIT_REACTION, reactionAt, reactionSeconds } from '../character/hitReaction.ts';
 import { seedFrom, unitFromSeed } from '@sandline/shared';
 
 /** Two frames at 60 fps. A duration, so the flash lasts as long at any rate. */
@@ -77,6 +78,8 @@ export const FLINCH_SECONDS = 0.18;
 export const FLINCH_BACK_M = 0.07;
 /** The parts that flinch: the upper body, not the legs that hold it up. */
 export const FLINCH_PARTS: readonly string[] = ['torso', 'head', 'helmet', 'arm-left', 'arm-right', 'backpack', 'rifle'];
+/** How long a rig's own reaction runs before it has recovered (T-2.27). */
+export const REACTION_SECONDS = reactionSeconds();
 
 interface FlashSlot {
   sprite: THREE.Sprite;
@@ -117,6 +120,13 @@ interface ImpactSlot {
 
 interface FlinchSlot {
   born: number;
+  /**
+   * The rig showing the hit in its own bones (T-2.27), or null for the
+   * T-2.11 translation, which is what a rig without a reaction gets.
+   */
+  rig: HumanoidRig | null;
+  /** The reaction at the moment of the hit; every frame is this, aged. */
+  peak: HitReaction;
   /** Each part's resting local Z, restored exactly when the flinch ends. */
   bases: { part: THREE.Object3D; z: number }[];
 }
@@ -367,22 +377,33 @@ export class WeaponEffects {
   }
 
   /**
-   * A soldier was hit: jerk the upper body back and let it recover. Hitting
-   * a soldier already flinching restarts the flinch; the resting pose is
-   * captured once and restored exactly when it ends.
+   * A soldier was hit. THE ENTRY POINT ASKS THE RIG (T-2.27): a rig with a
+   * reaction of its own shows the hit in bones — the chest turning away from
+   * the shooter, the head snapping on a head-zone hit — and one without, the
+   * grey box, keeps the T-2.11 jerk back along its parts' local -Z. The
+   * question is `react(null)` with nothing live: it ends nothing and answers.
+   *
+   * Hitting a soldier already reacting restarts the reaction on the NEW
+   * round's direction and size rather than stacking on the old one; the
+   * resting pose is restored exactly when it ends, either way.
    */
-  flinch(root: THREE.Object3D, now: number): void {
+  flinch(root: THREE.Object3D, now: number, reaction: HitReaction = FRONTAL_HIT_REACTION): void {
     const existing = this.flinches.get(root);
     if (existing) {
       existing.born = now;
+      existing.peak = reaction;
+      return;
+    }
+    const rig = rigOf(root);
+    if (rig && rig.react(null)) {
+      this.flinches.set(root, { born: now, rig, peak: reaction, bases: [] });
       return;
     }
     // A registered rig says what its upper body is (T-2.22); a bare grey box
     // is read off its part names.
-    const rig = rigOf(root);
     const parts = rig ? rig.flinchParts : root.children.filter((part) => FLINCH_PARTS.includes(part.name));
     const bases: FlinchSlot['bases'] = parts.map((part) => ({ part, z: part.position.z }));
-    this.flinches.set(root, { born: now, bases });
+    this.flinches.set(root, { born: now, rig: null, peak: reaction, bases });
   }
 
   /** Where a shell is `t` seconds into its life: on the arc, or at rest. */
@@ -460,6 +481,18 @@ export class WeaponEffects {
     }
     for (const [root, flinch] of this.flinches) {
       const age = now - flinch.born;
+      if (flinch.rig) {
+        // The reaction is a closed form of its age like everything else here,
+        // so 30 and 120 fps trace the same recovery, and `react(null)` at the
+        // end hands the bones back to the pose driver exactly as it left them.
+        if (age >= REACTION_SECONDS || age < 0) {
+          flinch.rig.react(null);
+          this.flinches.delete(root);
+          continue;
+        }
+        flinch.rig.react(reactionAt(flinch.peak, age));
+        continue;
+      }
       if (age >= FLINCH_SECONDS || age < 0) {
         for (const { part, z } of flinch.bases) part.position.z = z;
         this.flinches.delete(root);
@@ -496,7 +529,8 @@ export class WeaponEffects {
     for (const shell of this.shells) this.retireShell(shell);
     for (const slot of this.impacts) this.retireImpact(slot);
     for (const [root, flinch] of this.flinches) {
-      for (const { part, z } of flinch.bases) part.position.z = z;
+      if (flinch.rig) flinch.rig.react(null);
+      else for (const { part, z } of flinch.bases) part.position.z = z;
       this.flinches.delete(root);
     }
   }

@@ -3,7 +3,10 @@ import * as THREE from 'three';
 import { DEFAULT_HITBOX } from '@sandline/server';
 import {
   DOWNED_BODY_LIFT_M,
+  HUMANOID_CROUCH_HIT_HEIGHT_M,
+  HUMANOID_HIT_CROUCH_HALF_HEIGHT,
   HUMANOID_HIT_HALF_HEIGHT,
+  HUMANOID_HIT_HEIGHT_M,
   HUMANOID_HIT_RADIUS,
   HUMANOID_ROOT_LIFT_M,
   createHumanoidPlaceholder,
@@ -72,6 +75,16 @@ describe('humanoid placeholder (T-2.06)', () => {
      */
     expect(HUMANOID_HIT_RADIUS).toBe(DEFAULT_HITBOX.radius);
     expect(HUMANOID_HIT_HALF_HEIGHT).toBe(DEFAULT_HITBOX.halfHeight);
+    /**
+     * And the heights a hit's zone is read against (T-2.27) are the server's
+     * own, or the client would draw a head reaction for a round the server
+     * scored on a torso.
+     */
+    expect(HUMANOID_HIT_CROUCH_HALF_HEIGHT).toBe(DEFAULT_HITBOX.crouchHalfHeight);
+    expect(HUMANOID_HIT_HEIGHT_M).toBe(2 * (DEFAULT_HITBOX.halfHeight + DEFAULT_HITBOX.radius));
+    expect(HUMANOID_CROUCH_HIT_HEIGHT_M).toBe(
+      2 * ((DEFAULT_HITBOX.crouchHalfHeight ?? DEFAULT_HITBOX.halfHeight) + DEFAULT_HITBOX.radius),
+    );
 
     const soldier = createHumanoidPlaceholder('remote');
     // Placed the way main.ts places it: root at the capsule centre above the feet.
