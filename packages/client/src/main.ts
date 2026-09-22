@@ -1148,7 +1148,8 @@ function frame(): void {
         grounded: sim?.grounded ?? true,
         crouched: input.crouching,
         downed: net?.vitality === 'downed',
-        facingYaw: input.yaw,
+        // Body facing, not the recoil-kicked camera yaw (B-02): see bodyYaw's doc.
+        facingYaw: input.bodyYaw,
         // The predicted vault's clock, carried to the frame like the position.
         vaultProgress: sim?.vault ? Math.min(1, (sim.vault.elapsed + clock.alpha * TICK_SECONDS) / config.vaultSeconds) : null,
       },
