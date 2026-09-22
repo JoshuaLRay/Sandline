@@ -842,6 +842,7 @@ using the T-1.xx tasks above as the template for granularity.
 | E-2.5 | Projectile weapons | Grenades, RPG — ballistic arcs, network-replicated |
 | E-2.6 | Downed & revive | Bleed-out timer, crawl state, revive interaction |
 | E-2.7 | Combat audio | Positional Web Audio, weapon layers, distance falloff, occlusion approximation |
+| E-2.8 | Prone stance & voluntary crawl | Authoritative prone height/hit volume, prone crawl speed, fire-from-prone — see [ADR-016](./docs/adr/016-prone-stance.md), which reopens the v1 exclusion in ADR-002 |
 
 **Exit gate:** 🧍 A human plays a grey-box firefight and signs off that it feels good.
 
@@ -1385,6 +1386,50 @@ eye.
 - **Done when:** a written verdict on a run sheet prepared before the session, naming what it does and does not establish.
 - **Size:** S
 - **Run sheet prepared 2026-09-21, not run.** `docs/playtests/soldier-look.md`, written as `e2-2.md` was and saying so at the top. Section 6 carries the one decision T-2.37 deliberately left open — whether to render at a fixed low resolution and upscale with point filtering — because it trades legibility the two open feel-gates are judged on, and that is the owner's call to make with the thing in front of them.
+
+### 7.8 E-2.8 leaf tasks — broken out 2026-09-22
+
+[ADR-016](./docs/adr/016-prone-stance.md) reopens ADR-002's prone exclusion:
+the owner asked for a voluntary prone stance now that crouch (T-2.20) has
+already built authoritative stance height/hit-volume and E-2.6 already
+proved a crawl gait end to end for the downed state. Prone is **not** the
+downed crawl B-05 removed — that removal stands, and is not reopened here.
+Prone is a stance a standing, alive soldier chooses to enter, keeps their
+weapon in, and chooses to leave.
+
+**Two rules for this epic**, the same shape T-2.20 and T-2.13 set: vitality
+and stance are the SERVER'S (nothing predicts a stance transition the
+server didn't authorize, only replays one from replicated/input state, same
+as crouch), and prone reuses the existing hit-capsule-by-stance and
+pose-driver contracts rather than adding a second one.
+
+#### T-2.40 — Prone state, authoritative height/hit volume, prone crawl speed
+- **Depends:** T-2.20, T-2.13
+- **Files:** `packages/shared/src/sim/CharacterController.ts`, movement/data config, `ecs/components.ts`, `net/schema.ts`, `net/protocol.ts`, `Session.ts`, `NetClient.ts`, tests
+- **Do:** A `prone` stance alongside standing/crouch, entered/exited by a bound key and authoritative on the server exactly as crouch is: its own controller height, ceiling clearance and hit volume, and its own crawl speed in data (distinct name and value from the removed `crawlSpeed`, which stays gone — this is not its resurrection). Entry is refused while downed, dead, mid-vault, or sprinting; sprint/jump inputs are ignored while prone, same as crouch. Client prediction uses the identical state and constants the server does.
+- **Done when:** shared tests assert prone height/clearance/hit-volume distinct from both standing and crouch and from the downed hitbox; standing↔prone and crouch↔prone transitions; ceiling rejection; blocked entry while downed/dead/vaulting/sprinting; prediction parity between server and client; lag-comp tests assert the prone hit volume differs from both standing and crouch. `pnpm verify` green.
+- **Size:** M
+
+#### T-2.41 — Prone presentation
+- **Depends:** T-2.40, T-2.06
+- **Files:** `packages/client/src/character/locomotionState.ts`, `locomotionPose.ts`, `humanoidPlaceholder.ts`/`humanoidSoldier.ts`, `cameraSolve.ts`, tests
+- **Do:** A `prone` locomotion classifier state (distinct from `crouch` and from the downed pose) driving a low, front-down pose on the existing pose-driver contract — reuse the rig/pose plumbing T-2.06/T-2.20/T-2.14 already built, not a new one. The camera eases to a prone eye height on the same curve crouch and downed already use. The weapon stays in hand and aimable; this is not the downed pose, which has none.
+- **Done when:** tests assert the pose is applied from replicated stance and restored exactly on standing/crouch, that the shootable root's geometry is untouched, and that prone is visually and structurally distinct from the downed lie-down pose in the same test suite that guards that distinction. A headless run drops the local player prone and screenshots the view.
+- **Size:** S
+
+#### T-2.42 — Fire from prone
+- **Depends:** T-2.40, T-2.41
+- **Files:** weapon fire path (client + server), aim/recoil config, tests
+- **Do:** Firing is permitted while prone (unlike while downed, which stays refused per T-2.13). Recoil/spread may be tuned tighter prone than standing/crouch in data, but no new mechanism — reuse the existing fire/aim pipeline with prone as another stance input to it.
+- **Done when:** tests assert Fire succeeds while prone end to end over the wire, and that stance-conditioned aim/recoil tuning (if any) reads from data, not a hardcoded branch. `pnpm verify` green.
+- **Size:** S
+
+#### T-2.43 — 🧍 E-2.8 sign-off
+- **Depends:** T-2.40, T-2.41, T-2.42
+- **Files:** `docs/playtests/e2-8.md`
+- **Do:** A human goes prone, crawls into and out of cover, fires from prone, and stands back up, then does the same as the other player watches remotely. Judge whether prone reads as clearly different from both crouch and the downed pose, whether the crawl speed feels earned rather than crippling, and whether firing prone is usable rather than a curiosity.
+- **Done when:** a written verdict, on a run sheet prepared before the session as `e2-6.md` was.
+- **Size:** S
 
 ### M3 — AI & squad command (~10–12 wks)
 
