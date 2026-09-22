@@ -153,20 +153,63 @@ const DOWNED: PoseOffsets = {
 /**
  * Face down, propped on the elbows, the rifle held forward along the sight
  * line — the hips carry the turn, same as downed, but without the flip onto
- * the back, and the arms keep the standing IK hold rather than going slack:
- * this is a stance a soldier fights from. The legs splay a little for a
- * stable base, the chest and neck lift off the ground so the sight is level.
+ * the back, and the arms keep the IK hold rather than going slack: this is a
+ * stance a soldier fights from. The legs splay a little for a stable base.
+ *
+ * THE CHAIN ARCHES BACK, NEVER FORWARD. After the hips' turn a positive X
+ * rotation bends the body toward its front, which is now the ground, so the
+ * spine and chest take negative turns to lift the shoulders onto the elbows,
+ * and the neck and head take the rest of a quarter turn so the face looks
+ * along the facing instead of into the dirt (the old +0.5 spine drove the
+ * head through the ground).
  */
+const PRONE_SPINE = -0.22;
+const PRONE_CHEST = -0.2;
+const PRONE_NECK = -0.55;
+const PRONE_HEAD = -(Math.PI / 2 + PRONE_SPINE + PRONE_CHEST + PRONE_NECK);
+/**
+ * How much lower than the grey box's prone lift the skinned hips sit: the
+ * belt box and vest are deep enough at the shared lift to leave daylight
+ * under the belly and the elbows.
+ */
+const PRONE_SINK_M = 0.1;
 const PRONE: PoseOffsets = {
-  hips: { position: [0, PRONE_BODY_LIFT_M - JOINTS.hips[1], 0], quaternion: PRONE_TURN },
-  spine: { euler: [0.5, 0, 0] },
-  chest: { euler: [-0.3, 0, 0] },
-  neck: { euler: [-0.2, 0, 0] },
-  head: { euler: [-0.1, 0, 0] },
+  hips: { position: [0, PRONE_BODY_LIFT_M - PRONE_SINK_M - JOINTS.hips[1], 0], quaternion: PRONE_TURN },
+  spine: { euler: [PRONE_SPINE, 0, 0] },
+  chest: { euler: [PRONE_CHEST, 0, 0] },
+  neck: { euler: [PRONE_NECK, 0, 0] },
+  head: { euler: [PRONE_HEAD, 0, 0] },
   'upper-leg-left': { euler: [0, 0, 0.12] },
   'upper-leg-right': { euler: [0, 0, -0.12] },
   'lower-leg-left': { euler: [0.15, 0, 0] },
   'lower-leg-right': { euler: [0.15, 0, 0] },
+};
+
+/**
+ * Where the rifle rests in each pose, in chest space: the attachment's turn,
+ * its origin (the butt, at the shoulder) and the elbow hints the arms solve
+ * with. Standing, crouched and downed hold it level at the muzzle rig's
+ * shoulder. Prone turns it back by exactly the chest's pitch from level, so
+ * it lies forward along the ground whatever the torso does, butt in against
+ * the right shoulder, elbows planted under it.
+ */
+interface AimRest {
+  quaternion: THREE.Quaternion;
+  position: [number, number, number];
+  elbowRight: [number, number, number];
+  elbowLeft: [number, number, number];
+}
+const AIM_REST: AimRest = {
+  quaternion: new THREE.Quaternion(),
+  position: AIM_IN_CHEST,
+  elbowRight: ELBOW_HINT_RIGHT,
+  elbowLeft: ELBOW_HINT_LEFT,
+};
+const PRONE_AIM: AimRest = {
+  quaternion: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -(Math.PI / 2 + PRONE_SPINE + PRONE_CHEST)),
+  position: [-0.21, 0.12, 0.1],
+  elbowRight: [-0.3, 0.05, 0.5],
+  elbowLeft: [0.25, 0.1, 0.5],
 };
 
 /**
@@ -402,12 +445,12 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
   // that an aim of zero reproduces the standing arms bit for bit.
   const chestOrigin = new THREE.Vector3().fromArray(JOINTS.chest);
   const inChest = (model: [number, number, number]): THREE.Vector3 => new THREE.Vector3().fromArray(model).sub(chestOrigin);
-  const aimOrigin = new THREE.Vector3().fromArray(AIM_IN_CHEST);
   const toWell = new THREE.Vector3().fromArray(MAG_WELL).sub(new THREE.Vector3().fromArray(GRIP_LEFT));
   const holdRifle = (
     side: 'left' | 'right',
     aimTurn: THREE.Quaternion,
-    origin: THREE.Vector3 = aimOrigin,
+    origin: THREE.Vector3,
+    aimRest: AimRest,
     reach = 0,
   ): { upper: THREE.Quaternion; lower: THREE.Quaternion } => {
     const grip = new THREE.Vector3().fromArray(side === 'left' ? GRIP_LEFT : GRIP_RIGHT);
@@ -419,24 +462,31 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     return solveTwoBone(
       inChest(JOINTS[`upper-arm-${side}`]),
       grip,
-      inChest(JOINTS[`upper-arm-${side}`]).add(new THREE.Vector3().fromArray(side === 'left' ? ELBOW_HINT_LEFT : ELBOW_HINT_RIGHT)),
+      inChest(JOINTS[`upper-arm-${side}`]).add(new THREE.Vector3().fromArray(side === 'left' ? aimRest.elbowLeft : aimRest.elbowRight)),
       UPPER_ARM_M,
       LOWER_ARM_M,
     );
   };
-  const standing: PoseOffsets = {};
-  for (const side of ['left', 'right'] as const) {
-    const solved = holdRifle(side, new THREE.Quaternion());
-    standing[`upper-arm-${side}`] = { quaternion: solved.upper };
-    standing[`lower-arm-${side}`] = { quaternion: solved.lower };
-  }
+  const armsFor = (aimRest: AimRest): PoseOffsets => {
+    const arms: PoseOffsets = {};
+    for (const side of ['left', 'right'] as const) {
+      const solved = holdRifle(side, aimRest.quaternion, new THREE.Vector3().fromArray(aimRest.position), aimRest);
+      arms[`upper-arm-${side}`] = { quaternion: solved.upper };
+      arms[`lower-arm-${side}`] = { quaternion: solved.lower };
+    }
+    return arms;
+  };
+  const standing = armsFor(AIM_REST);
   const poses: Record<HumanoidPose, PoseOffsets> = {
     standing,
-    // Crouch, prone and downed keep the hold: the arms are chest-relative.
+    // Crouch and downed keep the standing hold: the arms are chest-relative.
     crouched: { ...standing, ...CROUCHED },
-    prone: { ...standing, ...PRONE },
+    // Prone solves its own hold onto the rifle laid along the ground.
+    prone: { ...PRONE, ...armsFor(PRONE_AIM) },
     downed: { ...standing, ...DOWNED },
   };
+  const aimRests: Record<HumanoidPose, AimRest> = { standing: AIM_REST, crouched: AIM_REST, prone: PRONE_AIM, downed: AIM_REST };
+  let aimRest = AIM_REST;
 
   // -- The rig. --
   const rest = new Map<HumanoidBoneName, RigTransform>();
@@ -464,10 +514,11 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
       });
     }
     aim.visible = next !== 'downed';
-    // A pose re-bases the attachment too: level and in place, until the
+    // A pose re-bases the attachment too: at the pose's rest, until the
     // weapon layer says otherwise.
-    aim.quaternion.identity();
-    aim.position.fromArray(AIM_IN_CHEST);
+    aimRest = aimRests[next];
+    aim.quaternion.copy(aimRest.quaternion);
+    aim.position.fromArray(aimRest.position);
     pose = next;
   };
   apply('standing');
@@ -485,6 +536,7 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
   const spineTurn = new THREE.Quaternion();
   const neckTurn = new THREE.Quaternion();
   const aimTurn = new THREE.Quaternion();
+  const rifleTurnQ = new THREE.Quaternion();
   const restoreArms = (): void => {
     for (const name of ['upper-arm-left', 'lower-arm-left', 'upper-arm-right', 'lower-arm-right'] as const) {
       bones.get(name)!.quaternion.fromArray(bases.get(name)!.quaternion);
@@ -496,10 +548,10 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     const w = Number.isFinite(state.weight) ? Math.max(0, Math.min(1, state.weight)) : 0;
     const pitchRadians = state.pitch;
     if (w === 0 || !Number.isFinite(pitchRadians)) {
-      // Off: the pose's own arms and a level rifle in place, whatever the pose is.
+      // Off: the pose's own arms and its resting rifle, whatever the pose is.
       spine.quaternion.fromArray(bases.get('spine')!.quaternion);
-      aim.quaternion.identity();
-      aim.position.fromArray(AIM_IN_CHEST);
+      aim.quaternion.copy(aimRest.quaternion);
+      aim.position.fromArray(aimRest.position);
       restoreArms();
       return;
     }
@@ -520,17 +572,17 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     // The kick lifts the muzzle further; a reload dips it.
     const dip = RELOAD_DIP * plateau(reload, 0, 0.25, 0.75, 1);
     const rifleTurn = -(p - spineLean) - kickUp + dip;
-    // A zero turn is the identity itself, not a rotation by negative zero:
+    // A zero turn is the rest itself, not a rotation by negative zero:
     // the snapshot a test compares must be the build-time bits.
-    if (rifleTurn === 0) aimTurn.identity();
-    else aimTurn.setFromAxisAngle(X_AXIS, rifleTurn);
+    aimTurn.copy(aimRest.quaternion);
+    if (rifleTurn !== 0) aimTurn.multiply(rifleTurnQ.setFromAxisAngle(X_AXIS, rifleTurn));
     aim.quaternion.copy(aimTurn);
     // The kick drives the rifle back along its own axis.
-    aim.position.fromArray(AIM_IN_CHEST);
+    aim.position.fromArray(aimRest.position);
     if (kickBack > 0) aim.position.add(scratchOffset.set(0, 0, -kickBack).applyQuaternion(aimTurn));
     const reach = plateau(reload, 0, 0.3, 0.7, 1);
     for (const side of ['left', 'right'] as const) {
-      const solved = holdRifle(side, aimTurn, aim.position, side === 'left' ? reach : 0);
+      const solved = holdRifle(side, aimTurn, aim.position, aimRest, side === 'left' ? reach : 0);
       // Composed on the rest exactly as the pose is, so a level aim lands on
       // the pose's own bits (a bare copy can differ by the sign of a zero).
       bones.get(`upper-arm-${side}`)!.quaternion.fromArray(rest.get(`upper-arm-${side}`)!.quaternion).multiply(solved.upper);
