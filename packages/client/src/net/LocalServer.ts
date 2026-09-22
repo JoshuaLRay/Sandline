@@ -43,6 +43,7 @@ import {
   createLoopbackPair,
 } from '@sandline/shared';
 import { Session } from '@sandline/server/session';
+import { initNav, isNavReady } from '@sandline/server/nav';
 
 export interface LinkConditions {
   latencyMs: number;
@@ -88,7 +89,19 @@ export class LocalServer {
   private readonly pairs: { settle: () => void }[] = [];
   private peers = 0;
 
+  /**
+   * The way to make one: waits for the session's WASM (Recast, T-3.01) to
+   * initialise in this page before a session exists to tick. The host awaits
+   * the same promise in `SessionHost.start`.
+   */
+  static async create(conditions: LinkConditions = DEFAULT_LINK, moveConfig?: MoveConfig): Promise<LocalServer> {
+    await initNav();
+    return new LocalServer(conditions, moveConfig);
+  }
+
+  /** Throws unless `initNav()` has resolved; prefer `LocalServer.create`. */
   constructor(conditions: LinkConditions = DEFAULT_LINK, moveConfig?: MoveConfig) {
+    if (!isNavReady()) throw new Error('LocalServer before initNav() resolved: use LocalServer.create()');
     this.session = new Session(moveConfig);
     this.local = this.attach(conditions, LOCAL_SEEDS);
     this.transport = this.local.transport;

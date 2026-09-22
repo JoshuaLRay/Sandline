@@ -30,6 +30,14 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'tools',
+          root: './packages/tools',
+          environment: 'node',
+          include: ['src/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
           name: 'server',
           root: './packages/server',
           environment: 'node',

@@ -12,7 +12,8 @@
  * has, and it does not depend on how many datagrams the session chooses to
  * send in reply.
  */
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { initNav } from '@sandline/server/nav';
 import { DEFAULT_LINK, LocalServer } from './LocalServer.ts';
 import { NetClient } from './NetClient.ts';
 
@@ -34,7 +35,16 @@ function settleThrough(server: LocalServer, ...instants: number[]): void {
 /** Comfortably past a 300 ms round trip, with the pump ordering to spare. */
 const AFTER_SLOW_ROUND_TRIP = [400, 800];
 
+it('refuses to exist before the navmesh WASM is initialised, and create() awaits it', async () => {
+  // Runs first, before any other test here has initialised the module.
+  expect(() => new LocalServer(DEFAULT_LINK)).toThrow(/initNav/);
+  const server = await LocalServer.create(DEFAULT_LINK);
+  expect(server.tick).toBe(0);
+});
+
 describe('LocalServer per-client links', () => {
+  beforeAll(() => initNav());
+
   it('delays one client without touching the other', () => {
     const server = new LocalServer(LAN);
     const peer = server.connect(SLOW);

@@ -61,6 +61,7 @@ import {
 import { Registry, type RegistryOptions, type Room } from './Registry.ts';
 import { type WsServerHandle, startWsServer } from '../net/WsTransport.ts';
 import type { Logger } from '../log.ts';
+import { initNav } from '../ai/nav/NavMesh.ts';
 
 const TICK_MS = TICK_SECONDS * 1000;
 
@@ -273,6 +274,9 @@ export class SessionHost {
 
   /** Open the socket and start ticking. Resolves with the bound port. */
   async start(): Promise<number> {
+    // Every WASM a session uses is ready before a room can exist to tick
+    // (T-3.01): nothing is listening until it resolves.
+    await initNav();
     this.handle = await startWsServer({
       port: this.options.port,
       onConnection: (transport) => this.accept(transport),

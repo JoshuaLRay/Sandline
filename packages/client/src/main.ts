@@ -55,6 +55,7 @@ import {
 import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { type ClientLink, DEFAULT_LINK, type LinkConditions, LocalServer } from './net/LocalServer.ts';
+import { initNav } from '@sandline/server/nav';
 import { NetClient, type ServerDetonation, type ServerShot } from './net/NetClient.ts';
 import {
   HostUrlError,
@@ -654,6 +655,18 @@ function onServerDetonation(net: NetClient, event: ServerDetonation): void {
   };
 }
 
+/**
+ * The in-page session's WASM (Recast, T-3.01) must be ready before it can be
+ * built. It is started at load, so by the time anyone clicks it has usually
+ * long resolved; a remote session needs none of it.
+ */
+const navReady = initNav();
+
+function chooseSession(choice: LobbyChoice): void {
+  if (choice.kind === 'local') void navReady.then(() => startSession(choice));
+  else startSession(choice);
+}
+
 function startSession(choice: LobbyChoice): void {
   if (live) leaveSession(null);
 
@@ -890,7 +903,7 @@ const lobby = createLobby({
   name: readStoredName() || 'qa',
   pageProtocol: location.protocol,
   buildStamp: `${__BUILD_SHA__} · ${__BUILD_TIME__}`,
-  onChoose: startSession,
+  onChoose: chooseSession,
 });
 document.body.appendChild(lobby.root);
 

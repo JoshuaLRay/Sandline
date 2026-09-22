@@ -5,7 +5,9 @@
   "type": "module",
   "main": "./dist/index.js",
   "dependencies": {
-    "@sandline/shared": "workspace:*",
-    "@sandline/server": "workspace:*"
+    "@recast-navigation/core": "0.43.1",
+    "@recast-navigation/generators": "0.43.1",
+    "@sandline/server": "workspace:*",
+    "@sandline/shared": "workspace:*"
   }
 }
