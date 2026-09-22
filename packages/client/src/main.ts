@@ -933,6 +933,15 @@ let speed = 0;
 let simPrev: { x: number; y: number; z: number } | null = null;
 let simCur: { x: number; y: number; z: number } | null = null;
 let renderedPrev: { x: number; z: number } | null = null;
+/**
+ * Shots taken this frame's ticks whose flash and shell are still to be drawn
+ * (B-02). The tick knows a shot happened; only the frame knows where the
+ * muzzle is DRAWN, so the effects wait for it. Reused, never reallocated.
+ */
+const pendingShots: { shotIndex: number; carrierX: number; carrierZ: number }[] = [];
+let pendingShotCount = 0;
+/** The drawn muzzle's rig: the tick's, with the eye at the camera's pivot. */
+const drawnRig = { ...DEFAULT_MUZZLE_RIG };
 let locomotion: LocomotionResult = classifyLocomotion(
   { velocityX: 0, velocityZ: 0, grounded: true, crouched: false, downed: false, facingYaw: 0 },
   config,
@@ -1063,8 +1072,14 @@ function frame(): void {
       input.setViewOffset(recoil.yaw, recoil.pitch);
       shake = addShake(shake, combat.weapon, input.ads);
       kick = addKick(kick, combat.weapon, input.ads);
-      // The shell comes to rest at the feet: whatever the character stands on.
-      effects.fire(muzzle, facingX, facingZ, here?.y ?? 0, combat.shotsFired, tickNumber * TICK_SECONDS);
+      // The flash and shell are drawn from the frame's muzzle, not this
+      // tick's (B-02): see where `pendingShots` is drained.
+      const pending = pendingShots[pendingShotCount] ?? { shotIndex: 0, carrierX: 0, carrierZ: 0 };
+      pendingShots[pendingShotCount] = pending;
+      pendingShotCount += 1;
+      pending.shotIndex = combat.shotsFired;
+      pending.carrierX = beforeStep && afterStep ? (afterStep.x - beforeStep.x) / TICK_SECONDS : 0;
+      pending.carrierZ = beforeStep && afterStep ? (afterStep.z - beforeStep.z) / TICK_SECONDS : 0;
 
       /**
        * Draw it NOW. The same seeded spread the server will compute — the seed
@@ -1523,8 +1538,39 @@ function frame(): void {
     }
   }
 
-  combat.fade(clock.tick * TICK_SECONDS + clock.alpha * TICK_SECONDS);
-  effects.update(clock.tick * TICK_SECONDS + clock.alpha * TICK_SECONDS);
+  const effectsNow = clock.tick * TICK_SECONDS + clock.alpha * TICK_SECONDS;
+  combat.fade(effectsNow);
+  /**
+   * The flash and shell come from the muzzle as DRAWN this frame (B-02) — the
+   * rendered position, interpolated between ticks, and the camera's own pivot
+   * height — not the tick-end muzzle the shot was taken from. In first person
+   * the two differ by up to a tick of movement straight along the view axis
+   * when running forward or backward, and the aimed muzzle sits a few
+   * centimetres in front of the eye: a flash placed from the tick's muzzle
+   * landed in front of the near plane on some frames and behind it on others,
+   * so every round blinked a screen-filling sprite on or off. That was the
+   * run-and-fire strobe. The hit is still traced from the tick's eye; this is
+   * only where the picture of the shot is drawn.
+   */
+  if (live) {
+    drawnRig.shoulderRight = rig.shoulderRight;
+    drawnRig.eyeHeight = input.firstPerson && !downed ? camSolve.position.y - ry : cam.eyeHeight;
+    const fwdX = camSolve.forward.x;
+    const fwdZ = camSolve.forward.z;
+    const drawn = muzzlePosition(rx, ry, rz, fwdX, fwdZ, stance(), drawnRig);
+    for (let i = 0; i < pendingShotCount; i += 1) {
+      const pending = pendingShots[i]!;
+      // The shell comes to rest at the feet: whatever the character stands on.
+      effects.fire(drawn, fwdX, fwdZ, ry, pending.shotIndex, effectsNow, {
+        x: pending.carrierX,
+        y: 0,
+        z: pending.carrierZ,
+      });
+    }
+    effects.followMuzzle(drawn, fwdX, fwdZ);
+  }
+  pendingShotCount = 0;
+  effects.update(effectsNow);
   netgraph.sample();
   if (live && now - squadAt >= 250) {
     squadAt = now;

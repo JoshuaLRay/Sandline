@@ -162,6 +162,43 @@ describe('muzzle flash (T-2.10)', () => {
     fx.update(FLASH_SECONDS / 2);
     expect(fx.liveFlashes).toBe(2);
   });
+
+  it('rides the drawn muzzle for its whole life, however far that moves (B-02)', () => {
+    const { scene, fx } = setup();
+    fx.fire(MUZZLE, FWD_X, FWD_Z, FLOOR_Y, 1, 0);
+    const sprite = scene.children.find((o): o is THREE.Sprite => o instanceof THREE.Sprite && o.visible);
+    const light = scene.children.find((o): o is THREE.PointLight => o instanceof THREE.PointLight && o.visible);
+    expect(sprite).toBeDefined();
+    expect(light).toBeDefined();
+    if (!sprite || !light) return;
+    // Running backward at 4 m/s, a frame at a time: a flash left where the
+    // shot put it would drift ahead of the eye by the distance run, out past
+    // the near plane and into view. It must stay exactly FLASH_FORWARD_M on.
+    for (let frame = 1; frame * (1 / 60) < FLASH_SECONDS; frame += 1) {
+      const drawn = { x: MUZZLE.x, y: MUZZLE.y, z: MUZZLE.z - (4 * frame) / 60 };
+      fx.followMuzzle(drawn, FWD_X, FWD_Z);
+      fx.update(frame / 60);
+      expect(sprite.position.z - drawn.z).toBeCloseTo(FLASH_FORWARD_M, 12);
+      expect(sprite.position.x).toBeCloseTo(drawn.x, 12);
+      expect(light.position.equals(sprite.position)).toBe(true);
+    }
+    // Turning carries it round too.
+    fx.followMuzzle(MUZZLE, 1, 0);
+    expect(sprite.position.x).toBeCloseTo(MUZZLE.x + FLASH_FORWARD_M, 12);
+    expect(sprite.position.z).toBeCloseTo(MUZZLE.z, 12);
+  });
+
+  it('leaves a retired flash where it was: following touches only live ones', () => {
+    const { scene, fx } = setup();
+    fx.fire(MUZZLE, FWD_X, FWD_Z, FLOOR_Y, 1, 0);
+    fx.update(FLASH_SECONDS);
+    const sprite = scene.children.find((o): o is THREE.Sprite => o instanceof THREE.Sprite);
+    if (!sprite) throw new Error('no flash sprite in the pool');
+    const before = sprite.position.clone();
+    fx.followMuzzle({ x: 50, y: 1, z: 50 }, FWD_X, FWD_Z);
+    expect(sprite.position.equals(before)).toBe(true);
+    expect(sprite.visible).toBe(false);
+  });
 });
 
 describe('shell ejection (T-2.10)', () => {
@@ -182,6 +219,24 @@ describe('shell ejection (T-2.10)', () => {
   it('is the same throw every time and not the same for every shot', () => {
     expect(ejectVelocity(FWD_X, FWD_Z, 7)).toEqual(ejectVelocity(FWD_X, FWD_Z, 7));
     expect(ejectVelocity(FWD_X, FWD_Z, 7)).not.toEqual(ejectVelocity(FWD_X, FWD_Z, 8));
+  });
+
+  it('carries the shooter\'s own velocity, so a shooter cannot overtake their brass (B-02)', () => {
+    const { scene, fx } = setup();
+    // Running straight backward at 4 m/s — faster than the throw's own back.
+    const carrier = { x: 0, y: 0, z: -4 };
+    fx.fire(MUZZLE, FWD_X, FWD_Z, FLOOR_Y, 1, 0, carrier);
+    const v = ejectVelocity(FWD_X, FWD_Z, 1);
+    const shell = scene.children.find((o): o is THREE.Mesh => o instanceof THREE.Mesh && o.visible);
+    if (!shell) throw new Error('no shell');
+    const t = 0.05;
+    fx.update(t);
+    expect(shell.position.x).toBeCloseTo(MUZZLE.x + v.x * t, 12);
+    expect(shell.position.z).toBeCloseTo(MUZZLE.z + (v.z + carrier.z) * t, 12);
+    // Relative to the shooter, still thrown back of the muzzle: never ahead of it.
+    expect(shell.position.z).toBeLessThan(MUZZLE.z + carrier.z * t);
+    // Vertical is the throw's alone: the carrier's y is ignored, the arc is unchanged.
+    expect(shell.position.y).toBeCloseTo(MUZZLE.y + v.y * t - 0.5 * GRAVITY_M_S2 * t * t, 12);
   });
 
   it('follows the closed-form arc and lands exactly when the formula says', () => {
