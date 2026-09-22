@@ -1,5 +1,5 @@
 /**
- * Muzzle flash, shell ejection (T-2.10) and impacts (T-2.11).
+ * Muzzle flash, shell ejection (T-2.10), impacts (T-2.11) and blasts (T-2.33).
  *
  * PRIMITIVES, POOLED, CAPPED. No art: a flash is an additive sprite and a
  * point light, a shell is a tiny box, an impact is a dark quad on the wall
@@ -73,6 +73,29 @@ export const SPARK_SECONDS = 0.28;
 /** Spark launch speeds, metres per second: off the surface, across it, and up. */
 export const SPARK_SPEED = { out: 3.2, across: 1.8, up: 0.9 } as const;
 
+/**
+ * A blast (T-2.33). Pooled like everything else here, and every part of it a
+ * closed form of its age: the fireball's radius and fade, the light's ramp,
+ * the debris on the same ballistic arcs the shells and sparks fly, and the
+ * scorch's long fade. Four is more than can be ringing at the cadences the
+ * pouch allows; a fifth blast takes the oldest slot, as a fifth flash does.
+ */
+export const BLAST_POOL = 4;
+/** The fireball's own life. The scorch it leaves outlives it by seconds. */
+export const BLAST_FLASH_SECONDS = 0.3;
+export const BLAST_LIGHT_INTENSITY = 90;
+/** Fireball and scorch sizes, as fractions of the blast's own radius. */
+export const BLAST_FIREBALL_FRACTION = 0.45;
+export const BLAST_SCORCH_FRACTION = 0.34;
+export const BLAST_DEBRIS = 20;
+export const BLAST_DEBRIS_SECONDS = 1.2;
+/** Debris launch speeds, metres per second: outward and upward. */
+export const BLAST_DEBRIS_SPEED = { out: 8, up: 6 } as const;
+export const SCORCH_SECONDS = 10;
+export const SCORCH_FADE_SECONDS = 3;
+/** How far above a surface a blast may be and still scorch it, metres. */
+export const SCORCH_REACH_M = 1.2;
+
 /** A hit on a soldier jerks the upper body back this far for this long. */
 export const FLINCH_SECONDS = 0.18;
 export const FLINCH_BACK_M = 0.07;
@@ -103,6 +126,23 @@ interface ShellSlot {
   flight: number;
   /** World Y of the shell's centre once it has landed. */
   restY: number;
+}
+
+interface BlastSlot {
+  fireball: THREE.Mesh;
+  fireballMaterial: THREE.MeshBasicMaterial;
+  light: THREE.PointLight;
+  scorch: THREE.Mesh;
+  scorchMaterial: THREE.MeshBasicMaterial;
+  debris: THREE.Points;
+  positions: THREE.BufferAttribute;
+  /** Launch velocity per piece, xyz interleaved. */
+  velocities: Float32Array;
+  origin: THREE.Vector3;
+  /** The blast's own radius, which every size here is a fraction of. */
+  radius: number;
+  born: number;
+  live: boolean;
 }
 
 interface ImpactSlot {
@@ -199,20 +239,51 @@ export function sparkVelocities(normal: Vec3Like, impactIndex: number, out: Floa
   }
 }
 
+/**
+ * Launch velocities for one blast's debris: outward in every direction and
+ * biased upward, seeded from the blast index so the same blast throws the same
+ * pieces and a test can say where they went.
+ *
+ * The directions come from the seeded unit interval rather than from a sphere
+ * point-picking formula, because they are decoration: what matters is that
+ * they are spread, repeatable, and not all in one plane.
+ */
+export function debrisVelocities(blastIndex: number, out: Float32Array, count = BLAST_DEBRIS): void {
+  for (let i = 0; i < count; i += 1) {
+    const u = (k: number): number => unitFromSeed(seedFrom(blastIndex, i, k));
+    // A direction on the unit sphere, then squashed toward the horizontal so
+    // most of it sprays out rather than straight up.
+    const cosTheta = 2 * u(1) - 1;
+    const sinTheta = Math.sqrt(1 - cosTheta * cosTheta);
+    const phi = 2 * Math.PI * u(2);
+    const speed = BLAST_DEBRIS_SPEED.out * (0.35 + 0.65 * u(3));
+    out[i * 3] = sinTheta * Math.cos(phi) * speed;
+    out[i * 3 + 1] = Math.abs(cosTheta) * speed * 0.5 + BLAST_DEBRIS_SPEED.up * u(4);
+    out[i * 3 + 2] = sinTheta * Math.sin(phi) * speed;
+  }
+}
+
 const PLANE_FACING = new THREE.Vector3(0, 0, 1);
 
 export class WeaponEffects {
   private readonly flashes: FlashSlot[] = [];
   private readonly shells: ShellSlot[] = [];
   private readonly impacts: ImpactSlot[] = [];
+  private readonly blasts: BlastSlot[] = [];
   private readonly flinches = new Map<THREE.Object3D, FlinchSlot>();
   private readonly shellGeometry = new THREE.BoxGeometry(SHELL_SIZE_M.x, SHELL_SIZE_M.y, SHELL_SIZE_M.z);
   private readonly decalGeometry = new THREE.PlaneGeometry(DECAL_SIZE_M, DECAL_SIZE_M);
+  /** Unit sizes, scaled per blast, so one pool serves every projectile's radius. */
+  private readonly fireballGeometry = new THREE.SphereGeometry(1, 16, 12);
+  /** A DISC, not a quad: a blast is round, and a 6 m dark square is a rug. */
+  private readonly scorchGeometry = new THREE.CircleGeometry(0.5, 24);
   /** Reused per call so a shot allocates nothing. */
   private readonly scratch = new THREE.Vector3();
   private readonly scratchNormal = new THREE.Vector3();
   /** Counts impacts for their seeds; never reset, so no two share a throw. */
   private impactsSpawned = 0;
+  /** The same for blasts, so two grenades never throw the same debris. */
+  private blastsSpawned = 0;
 
   constructor(private readonly scene: THREE.Scene) {
     for (let i = 0; i < FLASH_POOL; i += 1) {
@@ -289,6 +360,62 @@ export class WeaponEffects {
         live: false,
       });
     }
+    for (let i = 0; i < BLAST_POOL; i += 1) {
+      const fireballMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffb347,
+        transparent: true,
+        opacity: 1,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      // Unit radius, scaled per blast: one geometry serves every projectile.
+      const fireball = new THREE.Mesh(this.fireballGeometry, fireballMaterial);
+      fireball.visible = false;
+      const light = new THREE.PointLight(0xffa04a, 0, 1, 2);
+      light.visible = false;
+      const scorchMaterial = new THREE.MeshBasicMaterial({
+        color: 0x1d1813,
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+      });
+      const scorch = new THREE.Mesh(this.scorchGeometry, scorchMaterial);
+      scorch.visible = false;
+      const positions = new THREE.BufferAttribute(new Float32Array(BLAST_DEBRIS * 3), 3);
+      positions.setUsage(THREE.DynamicDrawUsage);
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', positions);
+      const debris = new THREE.Points(
+        geometry,
+        new THREE.PointsMaterial({
+          color: 0x4a3a2a,
+          size: 0.08,
+          sizeAttenuation: true,
+          transparent: true,
+          opacity: 1,
+          depthWrite: false,
+        }),
+      );
+      debris.visible = false;
+      debris.frustumCulled = false;
+      scene.add(fireball, light, scorch, debris);
+      this.blasts.push({
+        fireball,
+        fireballMaterial,
+        light,
+        scorch,
+        scorchMaterial,
+        debris,
+        positions,
+        velocities: new Float32Array(BLAST_DEBRIS * 3),
+        origin: new THREE.Vector3(),
+        radius: 1,
+        born: 0,
+        live: false,
+      });
+    }
   }
 
   get liveFlashes(): number {
@@ -301,6 +428,10 @@ export class WeaponEffects {
 
   get liveImpacts(): number {
     return this.impacts.reduce((n, s) => n + (s.live ? 1 : 0), 0);
+  }
+
+  get liveBlasts(): number {
+    return this.blasts.reduce((n, s) => n + (s.live ? 1 : 0), 0);
   }
 
   get liveFlinches(): number {
@@ -406,6 +537,52 @@ export class WeaponEffects {
     this.flinches.set(root, { born: now, rig: null, peak: reaction, bases });
   }
 
+  /**
+   * A blast at `point`, the SERVER'S point, of a projectile whose blast radius
+   * is `radiusM` (T-2.33). `scorchY` is the surface under it, or null when
+   * there is nothing close enough below to mark — a rocket going off against
+   * a wall three metres up leaves no ring on the floor.
+   *
+   * Everything it draws is a function of the age, as the flash and the shells
+   * are: the fireball's radius and fade, the light's ramp, and the debris on
+   * the same ballistic arcs. Nothing is integrated, so 30 and 120 fps draw the
+   * same picture at the same moment, and a pool slot is all it costs.
+   */
+  blast(point: Vec3Like, radiusM: number, scorchY: number | null, now: number): void {
+    const slot = this.claim(this.blasts);
+    this.blastsSpawned += 1;
+    slot.live = true;
+    slot.born = now;
+    slot.radius = radiusM;
+    slot.origin.set(point.x, point.y, point.z);
+
+    slot.fireball.position.copy(slot.origin);
+    slot.fireball.scale.setScalar(radiusM * BLAST_FIREBALL_FRACTION * 0.2);
+    slot.fireballMaterial.opacity = 1;
+    slot.fireball.visible = true;
+
+    slot.light.position.copy(slot.origin);
+    slot.light.distance = radiusM * 2;
+    slot.light.intensity = BLAST_LIGHT_INTENSITY;
+    slot.light.visible = true;
+
+    if (scorchY === null) {
+      slot.scorch.visible = false;
+    } else {
+      const size = radiusM * BLAST_SCORCH_FRACTION * 2;
+      slot.scorch.position.set(point.x, scorchY + DECAL_OFFSET_M, point.z);
+      slot.scorch.rotation.set(-Math.PI / 2, 0, 0);
+      slot.scorch.scale.set(size, size, 1);
+      slot.scorchMaterial.opacity = 0.8;
+      slot.scorch.visible = true;
+    }
+
+    debrisVelocities(this.blastsSpawned, slot.velocities);
+    (slot.debris.material as THREE.PointsMaterial).opacity = 1;
+    slot.debris.visible = true;
+    this.placeDebris(slot, 0);
+  }
+
   /** Where a shell is `t` seconds into its life: on the arc, or at rest. */
   private placeShell(shell: ShellSlot, t: number): void {
     const { mesh, origin, velocity } = shell;
@@ -430,6 +607,19 @@ export class WeaponEffects {
     const arr = slot.positions.array as Float32Array;
     const drop = 0.5 * GRAVITY_M_S2 * t * t;
     for (let i = 0; i < SPARKS_PER_IMPACT; i += 1) {
+      arr[i * 3] = origin.x + (velocities[i * 3] as number) * t;
+      arr[i * 3 + 1] = origin.y + (velocities[i * 3 + 1] as number) * t - drop;
+      arr[i * 3 + 2] = origin.z + (velocities[i * 3 + 2] as number) * t;
+    }
+    slot.positions.needsUpdate = true;
+  }
+
+  /** Every piece of debris `t` seconds after the blast, on its own arc. */
+  private placeDebris(slot: BlastSlot, t: number): void {
+    const { origin, velocities } = slot;
+    const arr = slot.positions.array as Float32Array;
+    const drop = 0.5 * GRAVITY_M_S2 * t * t;
+    for (let i = 0; i < BLAST_DEBRIS; i += 1) {
       arr[i * 3] = origin.x + (velocities[i * 3] as number) * t;
       arr[i * 3 + 1] = origin.y + (velocities[i * 3 + 1] as number) * t - drop;
       arr[i * 3 + 2] = origin.z + (velocities[i * 3 + 2] as number) * t;
@@ -479,6 +669,33 @@ export class WeaponEffects {
       const fadeStart = DECAL_SECONDS - DECAL_FADE_SECONDS;
       slot.decalMaterial.opacity = t <= fadeStart ? 0.85 : 0.85 * (1 - (t - fadeStart) / DECAL_FADE_SECONDS);
     }
+    for (const slot of this.blasts) {
+      if (!slot.live) continue;
+      const t = Math.max(0, now - slot.born);
+      if (t >= SCORCH_SECONDS) {
+        this.retireBlast(slot);
+        continue;
+      }
+      if (t < BLAST_FLASH_SECONDS) {
+        // The fireball opens fast and fades as it opens.
+        const f = t / BLAST_FLASH_SECONDS;
+        slot.fireball.scale.setScalar(slot.radius * BLAST_FIREBALL_FRACTION * (0.2 + 0.8 * f));
+        slot.fireballMaterial.opacity = 1 - f;
+        slot.light.intensity = BLAST_LIGHT_INTENSITY * (1 - f);
+      } else if (slot.fireball.visible) {
+        slot.fireball.visible = false;
+        slot.light.visible = false;
+        slot.light.intensity = 0;
+      }
+      if (t < BLAST_DEBRIS_SECONDS) {
+        this.placeDebris(slot, t);
+        (slot.debris.material as THREE.PointsMaterial).opacity = 1 - t / BLAST_DEBRIS_SECONDS;
+      } else if (slot.debris.visible) {
+        slot.debris.visible = false;
+      }
+      const fadeStart = SCORCH_SECONDS - SCORCH_FADE_SECONDS;
+      slot.scorchMaterial.opacity = t <= fadeStart ? 0.8 : 0.8 * (1 - (t - fadeStart) / SCORCH_FADE_SECONDS);
+    }
     for (const [root, flinch] of this.flinches) {
       const age = now - flinch.born;
       if (flinch.rig) {
@@ -523,11 +740,21 @@ export class WeaponEffects {
     slot.sparks.visible = false;
   }
 
+  private retireBlast(slot: BlastSlot): void {
+    slot.live = false;
+    slot.fireball.visible = false;
+    slot.light.visible = false;
+    slot.light.intensity = 0;
+    slot.scorch.visible = false;
+    slot.debris.visible = false;
+  }
+
   /** Hide everything now. The pool stays allocated; there is nothing to free. */
   reset(): void {
     for (const flash of this.flashes) this.retireFlash(flash);
     for (const shell of this.shells) this.retireShell(shell);
     for (const slot of this.impacts) this.retireImpact(slot);
+    for (const slot of this.blasts) this.retireBlast(slot);
     for (const [root, flinch] of this.flinches) {
       if (flinch.rig) flinch.rig.react(null);
       else for (const { part, z } of flinch.bases) part.position.z = z;
@@ -538,7 +765,7 @@ export class WeaponEffects {
   readout(): string {
     return (
       `fx  flashes ${this.liveFlashes}/${FLASH_POOL}  shells ${this.liveShells}/${SHELL_POOL}` +
-      `  impacts ${this.liveImpacts}/${IMPACT_POOL}`
+      `  impacts ${this.liveImpacts}/${IMPACT_POOL}  blasts ${this.liveBlasts}/${BLAST_POOL}`
     );
   }
 }

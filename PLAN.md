@@ -1206,7 +1206,95 @@ animates from state now will take clips then.
 - **Done when:** a written verdict, on a run sheet prepared before the session as `e2-2.md` was, naming what it does and does not establish.
 - **Size:** S
 
-### 7.5 The soldier's look — broken out 2026-09-21
+### 7.5 E-2.5 leaf tasks — broken out 2026-09-21
+
+E-2.3's build work is in (T-2.25 through T-2.28) and its only open item is the
+human gate, so the next epic is broken out. **E-2.5 before E-2.7**, for two
+reasons. E-2.7 needs audio assets nobody has sourced, which is R1 and §9 Q2,
+and buying them to hear a rifle is a decision about the project's largest cost
+made for the smallest reason. And E-2.5 no longer needs what it was waiting
+for: §7.4 held it back because it wants "a target that shoots" (§9 Q6), and
+M1.5 answered that with the other person on the host. A grenade is the first
+weapon here whose whole point is that it is thrown *at* somebody who can walk
+away from it, so a human on the other end is not a nicety, it is the test.
+
+**What already exists.** The shared world of axis-aligned boxes and `rayWorld`
+against it (T-1.12) — one list that the controller, the server's shots, the
+camera arm and now a grenade all collide with. The table trig and the seeded
+PRNG (T-0.14). `damage.json`'s zones and the downed/bleed-out machine (T-2.13,
+T-2.15), which a blast can feed without changing a line of it. Delta spawns
+and despawns (T-1.04), supported since M1 and exercised by nothing: the six
+slots have always existed and never appeared or vanished. A grenade is the
+first entity in this game that does either.
+
+**Four rules for every task here.**
+
+1. **The server throws it.** A projectile is a replicated entity, never a
+   predicted one (§2.3). The client may draw the arc it expects; where the
+   thing actually is, when it goes off and who it hurts are the server's, and
+   a client that disagrees is simply wrong.
+2. **One integrator, one world.** The arc a thrower is shown is the same
+   function stepping at the same dt over the same box list the server flies the
+   real one along. A prettier preview from a second integrator is a picture of
+   a throw that is not going to happen, and the player aims by that picture —
+   this is `world.ts`'s one-list rule, applied to the one case where the
+   disagreement is visible before the shot lands.
+3. **Pure arithmetic, no Rapier.** ADR-005's 2026-09-19 addendum names
+   projectiles as Rapier's. That is amended here (ADR-005 addendum,
+   2026-09-21) rather than quietly ignored, per §0.2: a sphere against boxes
+   with gravity, restitution and friction is exact on every engine and keeps
+   WASM out of the preview path. Ragdolls and debris stay Rapier's.
+4. **No new assets.** A grenade is a sphere, a rocket is a stub of a cylinder,
+   and a blast is pooled primitives on a closed form of their age, exactly as
+   T-2.10's flash and shells are. The clip and effect pipelines are M4's.
+
+**Not in this epic.** Cooking a grenade in the hand, an underbarrel launcher,
+smoke and flashbangs (M4 content), destructible cover (nothing in the world
+model can break), and any AI that throws one (M3). The blast damages everyone
+it reaches, the thrower included: with six co-operative slots and nothing
+hostile in M2, a grenade that could not hurt a teammate could not be judged at
+all.
+
+#### T-2.30 — Ballistic arcs in the shared sim
+- **Depends:** —
+- **Files:** `packages/shared/src/sim/ballistics.ts`, `packages/shared/src/data/projectiles.json`, `packages/shared/src/sim/world.ts`, `packages/shared/src/index.ts`, tests
+- **Do:** Projectile definitions as data, validated at import as `weapons.json` is: launch speed and loft, gravity and drag, collision radius, restitution, bounce friction and roll drag, fuse, impact detonation, blast radius, damage and edge fraction. Behaviour as pure functions of (definition, state, dt, world): a step that integrates the parabola and SWEEPS the projectile's sphere along the chord it travelled, bounces off the face it struck, settles and skids on a floor, and reports the step it goes off on and why (fuse, impact, old age). `rayWorld` gains the two things a bounce needs and a ray never did — an inflation radius, which turns it into a swept sphere, and the face normal it entered through. A blast is falloff by distance from a flat core to an edge fraction, scaled by how much of a target the blast can see through the same box list.
+- **Done when:** tests assert the arc matches the closed-form parabola in clear air, that a re-run is bit-identical, that a rocket at 45 m/s cannot pass through a 2 cm wall at 12 m, that a bounce returns the restitution's share of the approach speed and reverses the axis it struck, that a dropped grenade comes to rest and then does not move at all, that a flat hard throw skids on after landing rather than sticking where it touched, that the fuse ends it wherever it is and an impact fuse ends it on the surface it hit, that the blast falls off monotonically and stops at its radius, that cover blocks the probes it should and not the ones it should not, and that the previewed arc is the stepped path to the last bit.
+- **Completed 2026-09-21.** `ballistics.ts`, and `projectiles.json` beside `weapons.json`: a frag grenade and a rocket. The step integrates the parabola — `p + v·dt - ½g·dt²`, the closed form the shells in `effects.ts` already fly — and collides the straight chord between its ends, swept as a sphere by `rayWorld`'s new `inflate`, so a 45 m/s rocket cannot cross a 2 cm sheet without touching it. A bounce takes the entry face's normal (also new on `rayWorld`, and free: the slab test already knew it), gives back `restitution` of the normal speed and sheds `friction` of the tangential. Three things the first draft got wrong and the tests caught: a dead bounce on a floor is a LANDING, not a bounce — without that branch a grenade thrown flat spent its whole collision budget on zero-distance contacts and stopped dead where it touched, so a settled projectile is held up by the floor and skids for the rest of the tick; a skid needs its own rate (`rollDragPerSec`) rather than the bounce's fraction, which at 30 Hz stops a grenade in a tenth of a second; and an arc walked by comparing a running total against its horizon draws one frame too many, because fifteen thirtieths is 0.49999999999999994. The blast is linear from a flat core (a tenth of the radius) to `blastMinFraction` at the edge, scaled by three probes up the target — shin, chest, head — through the same box list, with `blastCoverFraction` as the floor for a body entirely behind something: a soldier hugging a 0.9 m crate keeps their head exposed and takes a third of the sight. Level throws travel about 17 m including the roll; the rocket reaches 43 m before its sag puts it in the ground. Nothing here reads a clock, and a re-run is bit-identical.
+- **Size:** M
+
+#### T-2.31 — Projectiles on the wire and on the server
+- **Depends:** T-2.30
+- **Files:** `packages/shared/src/net/protocol.ts`, `packages/shared/src/ecs/components.ts`, `net/schema.ts`, `packages/shared/src/net/Connection.ts`, `packages/server/src/session/Session.ts`, tests
+- **Do:** A `Throw` message (a trigger pull for a projectile: tick, aim, which one), reliable like `Fire`, and everything in it untrusted — the index is bounds-checked, the pouch and the cooldown are the server's. The session spawns a projectile entity with a netId of its own, steps every one of them once per tick with T-2.30's stepper, and replicates position and velocity through the existing snapshot path plus a `Projectile` component saying which kind it is and whose it is (protocol bump). On detonation it despawns, applies blast damage to every soldier in reach through `applyDamage` — the thrower included — and broadcasts a `Detonation` carrying the point, the tick it happened on and what each target took. A rocket also detonates on the first body it touches, tested against the hitboxes as they are NOW: a projectile is a real object in the present, not a rewound ray, so lag compensation has no part in it.
+- **Done when:** session tests over the real wire, decoding the deltas a client would decode, assert a thrown grenade appears as an entity that spawns, moves and despawns; that it goes off on its fuse, that the blast is stamped with the tick of the snapshot the projectile vanishes from, and that it damages a soldier standing next to it and nobody across the range; that the thrower takes their own blast and is downed by the same `applyDamage` a bullet uses; that a rocket fired at a teammate detonates on them rather than behind them; that the pouch empties and the cooldown holds, so a client spamming Throw gets exactly what the data allows; that a downed or vaulting soldier throws nothing and a respawn refills the pouch; and that a projectile's netId is never a slot's or a range target's. What a blast does at a distance and through cover stays in `ballistics.test.ts`, over geometry a fixture owns rather than the shipped world.
+- **Completed 2026-09-21.** A `Throw` message beside `Fire` — same shape, same untrusted treatment, and no rewind: a hitscan shot is resolved against the world its shooter was looking at, while a grenade is an object in everyone's present, so spawning it in the past would only put it where nobody will see it. The session keeps a list of them (the first entities here that come and go), flies each one tick with T-2.30's stepper, and replicates `Transform`, `Velocity` and a new `Projectile` component saying which kind and whose (protocol v12). They fly LAST in the tick, after the bodies have moved and been recorded and after the tick has advanced, so a rocket meets the soldiers where this tick left them and a `Detonation` names the tick of the snapshot it despawns from. A rocket also goes off on the first body along its step, tested against the capsules as they stand now rather than through lag compensation, its own thrower excepted — though the blast still reaches back, which is what firing one at arm's length should cost. The blast runs through `applyDamage` like a bullet's, so it downs, cuts a bleed-out and cannot kill twice, and it catches everyone in reach including the thrower: with nothing hostile in M2, a grenade that could not hurt a teammate could not be judged at all. Two things fixed on the way: `isRangeTarget` was "anything at or above 1000" and would have called every projectile a range target, so it is now a bounded test; and `applyFire` stored a Fire's TABLE-unit pitch in the slot's WIRE-unit field, so the aim pitch a remote's rifle points along (T-2.25) was masked to nonsense for the tick after every shot.
+- **Size:** M
+
+#### T-2.32 — The throw in the page
+- **Depends:** T-2.31
+- **Files:** `packages/client/src/weapons/ThrowQA.ts`, `packages/client/src/net/NetClient.ts`, `packages/client/src/input/LocalInput.ts`, `packages/client/src/main.ts`, tests
+- **Do:** Hold the throw key to see the arc, release to throw it. The preview is T-2.30's `projectileArc` from the eye along the converged aim, drawn as a line with a marker where it would go off, and it is the same call the server will make. The pouch is two projectiles on 5 and 6 with their counts on the HUD, mirroring the local weapon state the way `CombatQA` mirrors the weapon's. Replicated projectiles are drawn from the interpolation buffer at the same delay as remote soldiers, since that is the world they are in; the local thrower gets a predicted ghost from the same stepper so their own grenade leaves their hand now rather than a round trip later, retired the moment its replicated twin arrives.
+- **Done when:** tests assert the preview line is `projectileArc`'s own points, that the throw key latches a release edge the way the trigger latches a press so a tap is never lost, that the pouch and its cooldown refuse what the server would refuse, that a ghost flies on the same stepper the server flies its twin on, and that the ghost/twin handover shows exactly one grenade — bound on arrival, the twin hidden while the ghost lives, the ghost retired when the twin leaves the world, never adopting somebody else's throw and never going off by itself. A browser run on the host: the other player sees the grenade you threw follow the arc you were shown, and it goes off where it landed.
+- **Completed 2026-09-22.** Hold G to see the arc, release to throw it; 5 and 6 pick from the pouch beside 1–4's weapons, and the netgraph moved to N, since G is the more valuable muscle memory. `ThrowQA` is the local copy — pouch, cooldown, arc, ghosts — with no THREE in it, so the sequencing is testable in Node and `main.ts` only draws. The preview is `projectileArc` itself over `{ DEFAULT_WORLD, config.groundY }`, the same function over the same list the server flies the real one through, from the same clamped launch origin; it is drawn into a fixed buffer with a draw range rather than a new geometry per frame. The handover is by BINDING, not by timing: a ghost leaves the hand on the release, the replicated twin is matched to it by kind and owner slot when it arrives, the twin is not drawn while its ghost lives, and the ghost is retired the moment the twin leaves the world — so there is one grenade on screen throughout, it leaves immediately, and the blast stays the server's. A ghost never detonates itself; one whose throw went unanswered gives up after 1.2 s. On the wire side `NetClient` keeps projectiles in their own buffers (a grenade handed to `remotes()` would be given a humanoid mesh, a pose driver and a foot solver), interpolated at the same delay as everything else replicated, and holds each `Detonation` until the render clock reaches its tick.
+- **Size:** M
+
+#### T-2.33 — Detonation presentation
+- **Depends:** T-2.32
+- **Files:** `packages/client/src/weapons/effects.ts`, `packages/client/src/camera/cameraShake.ts`, `packages/client/src/main.ts`, tests
+- **Do:** A blast is a flash, an expanding shell of light, debris thrown on the same closed-form arcs the shells fly, and a scorch on the ground under it — pooled once and capped like every other effect, and stateless per frame so 30 and 120 fps draw the same picture at the same moment. It shakes the camera by distance, scaled the way the blast damage is and cut by the same cover the damage is cut by, so a blast behind a wall is felt less than one in the open. The server's `Detonation` is held until the render clock reaches the tick it happened on, because the projectile is being drawn a hundred milliseconds behind server time and a blast that arrives early goes off in front of a grenade still in the air. Each target's own damage lands as the T-2.27 reaction, away from the blast.
+- **Done when:** tests assert the shake falls off with distance and is zero past the radius, that cover cuts it by the same fraction the damage is cut by, that a detonation is not drawn before its tick is being rendered and is drawn exactly once when it is, that several released blasts come out in the order they went off, that a projectile goes into its own list and never the remote players', and that the blast pool never grows and is gone by the end of the scorch. A browser run: the blast reads from across the range.
+- **Completed 2026-09-22.** `effects.blast` is a pooled fireball, light, debris and scorch, every part a closed form of its age like the flash and the shells, so 30 and 120 fps draw the same picture at the same moment (asserted by stepping two pools at the two rates to the same instant and comparing the debris positions). The scorch is a disc, on whatever surface is under the blast, and a blast with nothing close enough below it leaves no ring. The camera's jolt is scaled by `blastDamageOn` itself — the same function over the same box list the server scored the damage with — so the shake and the damage cannot disagree: a blast that hurt you rings the camera, one behind a wall is felt through the wall at the cover fraction, one past the radius is not felt at all. Each target takes the T-2.27 reaction away from the blast, with the blast standing in for the shooter and the torso for the zone. `NetClient` releases each blast when the render clock reaches its tick, oldest first. Browser run on the built page, in-page session: hold G and the arc draws from the hand to a ring on the ground; release and the grenade flies it; 2.6 s later the HUD reads `last blast M2 Frag 37 dmg on 1` with `blasts 1/4` live, health 63/100 — the thrower's own blast, on the thrower — and a round scorch with debris over it sits where the ring was.
+- **Size:** M
+
+#### T-2.34 — 🧍 E-2.5 sign-off
+- **Depends:** T-2.30, T-2.31, T-2.32, T-2.33
+- **Files:** `docs/playtests/e2-5.md`
+- **Do:** Two people on the host. Each throws grenades at the other and at cover: does the arc read where it is going, does the grenade land where the line said, does a bounce off a crate go where a bounce should, does a blast behind cover feel weaker than one in the open, and is the rocket worth the two rounds it carries. Tune the numbers in `projectiles.json` while the feel is in hand.
+- **Done when:** a written verdict, on a run sheet prepared before the session as `e2-2.md` was, naming what it does and does not establish.
+- **Size:** S
+
+### 7.6 The soldier's look — broken out 2026-09-21
 
 E-2.3's build work closed at T-2.28 and only its human gate is open, so this
 takes the request `docs/HANDOFF-SOLDIER-LOOK.md` was written for and makes it
@@ -1254,7 +1342,7 @@ and diagnostic fixture.
 every remaining playtest, T-2.24 and T-2.29 included, and those are judged by
 eye.
 
-#### T-2.30 — One diffuse atlas, procedurally generated
+#### T-2.35 — One diffuse atlas, procedurally generated
 - **Depends:** —
 - **Files:** `packages/client/src/character/soldierTexture.ts`, `soldierPalette.json`, `humanoidSoldier.ts`, `packages/client/tsconfig.json`, tests
 - **Do:** A 256² `DataTexture` built from arithmetic — no DOM, no asset, no loader — with `NearestFilter` magnification and a cell per body part. Paint the detail the geometry does not carry: pouches, straps, seams, boot cuffs, a helmet band, a plain face. Keep `weld()`'s UVs and remap each segment into its cell. Palette in data (standing rule 4).
@@ -1262,37 +1350,37 @@ eye.
 - **Size:** M
 - **Completed 2026-09-21.** `soldierTexture.ts` paints a 256² atlas into a `Uint8Array` as a 4×4 grid of 64px cells — face, helmet, torso front and back, vest, belt, sleeve, glove, trouser, boot, neck, rifle, pack and two plain cells — and wraps it in a `DataTexture`, point-magnified, mipmapped for minification, sRGB. A `DataTexture` rather than a `CanvasTexture` because client tests run under `environment: 'node'` where a canvas throws and every soldier test builds a soldier; rather than an image because there is no loader, no `public/` and no asset pipeline in this client until E-4.1, and standing rule 3 would want an ADR and a licence for one. `remapGeometryUv` moves each primitive's own UVs into its cell and takes an ARRAY to give a box a cell per face, which is how one torso box carries a placket and chest pockets on the front and a plain yoke on the back. `weld()` now carries `uv` across and no longer synthesises the flat per-segment vertex colour, which is gone: the atlas says everything it said and the things it could not. **Two measured findings are pinned by test.** Three's spheres and capsules emit `u` outside [0, 1] — -0.0625 to 1.0625 on an eight-segment capsule, a seam nudged half a segment past each edge — so `cellUv` clamps, or that sliver reads the next cell and paints a stripe of boot sole up a sleeve. And the remap insets by half a texel at every edge, because a primitive emits u = 1 on its last column and under nearest filtering that lands on the first texel of the *next* cell. Geometry, bone names, bind pose, hit capsule and aim attachment all untouched; the rifle takes the same atlas, so it stays the second draw rather than becoming a third material.
 
-#### T-2.31 — The silhouette
-- **Depends:** T-2.30
+#### T-2.36 — The silhouette
+- **Depends:** T-2.35
 - **Files:** `humanoidSoldier.ts`, tests
 - **Do:** Chunkier, flatter, era-correct proportions inside the same 1.8 m capsule: bigger boots, gloves, a helmet with a brim, a collar, webbing and pouches as geometry slabs, squarer limbs (fewer radial segments, flat where the era was flat). Keep the bone table's joint positions wherever possible; where they move, move the pinned assertions with them in the same commit.
 - **Done when:** the root capsule, the aim attachment's world place, the bone names and the bind pose are all unchanged; triangles stay under the guard and inside ADR-013; every E-2.2/E-2.3 layer test still passes; `pnpm verify` green.
 - **Size:** M
 - **Completed 2026-09-21.** The largest single change is that the helmet has a BRIM — one disc at the dome's rim, and the strongest era cue the model has; without it a helmet reads as a swimming cap. Then oversized boots with an upper on the shin that wears them so the trouser does not stop in mid-air above a block, bigger gloves, thicker limbs on six radial segments rather than eight, shoulder slabs instead of balls, and a collar and five pouches as geometry, because gear that breaks the outline is most of what tells a 2002 soldier from a mannequin. **Triangles went DOWN, 1,446 to 980:** faceting the limbs bought more than the gear slabs cost, which is worth saying plainly rather than padding the model back up to a number — the era's range was 1–3k and the silhouette was what was wrong, not the budget. Every joint position in the bone table is unchanged, which is what makes this an art change rather than a rig change: the arms' IK constants, the legs' lengths derived by `footPlacement.ts`, and every pinned assertion hold exactly, and all of E-2.2's and E-2.3's layer tests pass untouched. New guard, and the reason the pack moved in 2 cm: every skin vertex must stay within `HUMANOID_HIT_RADIUS` of the root axis and fill at least 80% of it — a shoulder or pack outside the capsule is a netcode bug wearing art's clothes, since you would watch rounds pass through visible kit, and a thin soldier rattling inside a fat hitbox is the same fault the other way up.
 
-#### T-2.32 — The era's shading
-- **Depends:** T-2.30
+#### T-2.37 — The era's shading
+- **Depends:** T-2.35
 - **Files:** `main.ts`, `humanoidSoldier.ts`, `humanoidPlaceholder.ts`, tests
 - **Do:** Drop PBR for the characters (`MeshLambertMaterial`, or Standard pinned to roughness 1 with no environment contribution) and harden the shadow filter. Keep ADR-013's one shadow-mapped sun and the dust haze. **No vertex jitter and no affine texture warping.**
 - **Done when:** a human says it reads as the era; frame time no worse than before; the grey box still renders; `pnpm verify` green.
 - **Size:** S–M
-- **Completed 2026-09-21**, except the human half of its gate, which is T-2.34's. The characters drop PBR for `MeshLambertMaterial` and the shadow filter hardens from `PCFSoftShadowMap` to `PCFShadowMap`: a roughness response and a soft penumbra under a soldier are the two things that read as modern however well the character is textured. Lambert is diffuse and nothing else, which is what hardware lighting in 2002 was, and it is cheaper besides. The grey box takes the same material so the fixture is lit like the thing it stands in for. **Smooth normals on purpose:** `flatShading` is the reflex here and it is the wrong console — the PS2 interpolated per-vertex lighting across a triangle, so its curved surfaces read smooth and only the SILHOUETTE gave the polygon count away, which is exactly what T-2.31's six-sided limbs do; faceted shading is a 2015 indie look. No vertex jitter and no affine warping either. ADR-013's one sun and the dust haze are untouched. **The low-resolution render target is deliberately NOT done and is section 6 of T-2.34's run sheet:** it is the strongest remaining era cue and it also costs crosshair, tracer and hit-marker legibility that T-2.24 and T-2.29, both still open, are judged on. Which way that trade goes is an owner's call.
+- **Completed 2026-09-21**, except the human half of its gate, which is T-2.39's. The characters drop PBR for `MeshLambertMaterial` and the shadow filter hardens from `PCFSoftShadowMap` to `PCFShadowMap`: a roughness response and a soft penumbra under a soldier are the two things that read as modern however well the character is textured. Lambert is diffuse and nothing else, which is what hardware lighting in 2002 was, and it is cheaper besides. The grey box takes the same material so the fixture is lit like the thing it stands in for. **Smooth normals on purpose:** `flatShading` is the reflex here and it is the wrong console — the PS2 interpolated per-vertex lighting across a triangle, so its curved surfaces read smooth and only the SILHOUETTE gave the polygon count away, which is exactly what T-2.36's six-sided limbs do; faceted shading is a 2015 indie look. No vertex jitter and no affine warping either. ADR-013's one sun and the dust haze are untouched. **The low-resolution render target is deliberately NOT done and is section 6 of T-2.39's run sheet:** it is the strongest remaining era cue and it also costs crosshair, tracer and hit-marker legibility that T-2.24 and T-2.29, both still open, are judged on. Which way that trade goes is an owner's call.
 
-#### T-2.33 — Squad colours from the atlas
-- **Depends:** T-2.30
+#### T-2.38 — Squad colours from the atlas
+- **Depends:** T-2.35
 - **Files:** `soldierTexture.ts`, `humanoidSoldier.ts`, palette data, tests
 - **Do:** Per-slot variation — local, squadmate, bot — as palette swaps of the same atlas rather than new materials or new geometry, so six soldiers stay six draws of the same one. Keep the local/remote distinction the harness already relies on.
 - **Done when:** six soldiers on screen with distinguishable kit; no extra draw call per variant; `pnpm verify` green.
 - **Size:** S
-- **Completed 2026-09-21.** The palette data becomes a `base` plus per-name overrides, so a squad of six is one set of colours wearing six markings rather than six unrelated schemes — which is what a squad looks like, and what keeps a slot colour to one line of data. `paletteFor({local, human, slot})` reads the palette off the roster; `setSoldierPalette(root, name)` repaints a LIVE soldier by swapping the atlas and nothing else — same geometry, skeleton, material and draw call. That matters more than it looks: ADR-001's bot/human swap happens on a live entity rather than by rebuilding the session, so a slot changing hands has to be a texture swap, and `main.ts` re-asks every frame rather than fixing the colour at creation (the call skips when nothing changed). **The marking moved twice and both reasons are worth keeping.** It is the HELMET BAND and not a patch, because a patch does not survive forty metres and a band is visible from every angle, range and pose. And the band sits a third of the way UP the dome rather than at the rim where a band belongs, because T-2.31's brim occludes the rim exactly — the first version was painted correctly and invisible on the model. The shoulders carry it too, since the helmet mark and the vest patch both face front and a squad seen from anywhere but head-on shows neither. `remote` stays as the fallback before the roster arrives; the grey box answers false rather than throwing.
+- **Completed 2026-09-21.** The palette data becomes a `base` plus per-name overrides, so a squad of six is one set of colours wearing six markings rather than six unrelated schemes — which is what a squad looks like, and what keeps a slot colour to one line of data. `paletteFor({local, human, slot})` reads the palette off the roster; `setSoldierPalette(root, name)` repaints a LIVE soldier by swapping the atlas and nothing else — same geometry, skeleton, material and draw call. That matters more than it looks: ADR-001's bot/human swap happens on a live entity rather than by rebuilding the session, so a slot changing hands has to be a texture swap, and `main.ts` re-asks every frame rather than fixing the colour at creation (the call skips when nothing changed). **The marking moved twice and both reasons are worth keeping.** It is the HELMET BAND and not a patch, because a patch does not survive forty metres and a band is visible from every angle, range and pose. And the band sits a third of the way UP the dome rather than at the rim where a band belongs, because T-2.36's brim occludes the rim exactly — the first version was painted correctly and invisible on the model. The shoulders carry it too, since the helmet mark and the vest patch both face front and a squad seen from anywhere but head-on shows neither. `remote` stays as the fallback before the roster arrives; the grey box answers false rather than throwing.
 
-#### T-2.34 — 🧍 Look sign-off
-- **Depends:** T-2.30, T-2.31, T-2.32, T-2.33
+#### T-2.39 — 🧍 Look sign-off
+- **Depends:** T-2.35, T-2.36, T-2.37, T-2.38
 - **Files:** `docs/playtests/soldier-look.md`
 - **Do:** Two people on the host, at the ranges the game is actually played at — across the range, in cover, downed, at a sprint. Judge whether it reads as 2002 rather than as untextured geometry, whether soldiers are distinguishable at 40 m, and whether the silhouette still reads through the E-2.3 layers.
 - **Done when:** a written verdict on a run sheet prepared before the session, naming what it does and does not establish.
 - **Size:** S
-- **Run sheet prepared 2026-09-21, not run.** `docs/playtests/soldier-look.md`, written as `e2-2.md` was and saying so at the top. Section 6 carries the one decision T-2.32 deliberately left open — whether to render at a fixed low resolution and upscale with point filtering — because it trades legibility the two open feel-gates are judged on, and that is the owner's call to make with the thing in front of them.
+- **Run sheet prepared 2026-09-21, not run.** `docs/playtests/soldier-look.md`, written as `e2-2.md` was and saying so at the top. Section 6 carries the one decision T-2.37 deliberately left open — whether to render at a fixed low resolution and upscale with point filtering — because it trades legibility the two open feel-gates are judged on, and that is the owner's call to make with the thing in front of them.
 
 ### M3 — AI & squad command (~10–12 wks)
 
@@ -1406,34 +1494,38 @@ These block estimation, not implementation — M0 can start today regardless.
 
 ## 10. Immediate next actions
 
-**Current milestone: M2. Updated 2026-09-20.** M1 and M1.5 are closed. E-2.1,
-E-2.4, and E-2.6 are now built and human-signed off. The three M2 human gates
-(T-2.07, T-2.12, T-2.16) have passed on the owner's judgement. CI remains
-green, including the non-V8 parity job.
+**Current milestone: M2. Updated 2026-09-22.** M1 and M1.5 are closed. E-2.1,
+E-2.4, and E-2.6 are built and human-signed off; E-2.2, E-2.3, E-2.5 and the
+soldier's look (§7.6) are built and waiting on their gates. CI remains green,
+including the non-V8 parity job. **Four human gates are now queued behind one
+session** — T-2.24, T-2.29, T-2.34 and T-2.39 all want two people on the host,
+and all four can be judged in one sitting from their run sheets.
 
-1. **Run T-2.24.** 🧍 E-2.2 is built through T-2.23 on the skinned soldier
-   (T-2.22); `docs/playtests/e2-2.md` is the run sheet, prepared and not run.
-   It needs a second person on the host: the bots never shoot, so crawl,
-   revive and remote believability cannot be judged alone.
-2. **Continue E-2.3 — Animation system.** Broken out 2026-09-20 as T-2.25
-   through T-2.29 (§7.4). Aim offsets (T-2.25), the fire and reload layers
-   (T-2.26), the hit reaction (T-2.27) and foot placement (T-2.28) are all in,
-   so **E-2.3's build work is done and T-2.29, the sign-off, is what remains**:
-   two people on the host, judging whether the body reads what the other is
-   doing, and tuning the layers' numbers with the feel in hand. Each layer is
-   procedural on the rig contract; none moves anything authoritative.
-3. **Run T-2.34.** 🧍 The soldier's look was broken out 2026-09-21 as T-2.30
-   through T-2.34 (§7.5) from `docs/HANDOFF-SOLDIER-LOOK.md`, and **the build
-   work is done**: the soldier now carries one generated 256² diffuse atlas,
-   an era silhouette with a brimmed helmet, Lambert shading under a hard
-   shadow, and a per-slot helmet band. `docs/playtests/soldier-look.md` is the
-   run sheet, prepared and not run. It owes one decision nothing else can
-   make: section 6, whether to render at a fixed low resolution and upscale
-   with point filtering, which is the strongest era cue left and costs
-   crosshair and tracer legibility that T-2.24 and T-2.29 are judged on.
-4. **Keep tuning data opportunistically.** Weapon and downed values remain
-   data-driven; adjust them when a concrete playtest issue appears rather than
-   reopening completed gates without a reason.
+1. **Run the four gates together.** 🧍 T-2.24 (E-2.2 locomotion, run sheet
+   `docs/playtests/e2-2.md`, prepared and not run: the bots never shoot, so
+   crawl, revive and remote believability cannot be judged alone), 🧍 T-2.29
+   (E-2.3's layers: does the body read what the other person is doing), 🧍
+   T-2.34 (E-2.5: does the arc read where the grenade is going, and does cover
+   matter) and 🧍 T-2.39 (the soldier's look, §7.6: does it read as 2002 rather
+   than as untextured geometry, and are soldiers distinguishable at 40 m — it
+   owes one open decision, section 6 of `docs/playtests/soldier-look.md`,
+   whether to render at a fixed low resolution and upscale with point
+   filtering, which trades crosshair and tracer legibility that T-2.24 and
+   T-2.29 are also judged on). All four run sheets are prepared and not run;
+   nothing in the build blocks any of them.
+2. **Tune `projectiles.json` with the feel in hand.** The blast radius, the
+   fuse, the throw speed and the roll are guesses measured only against
+   arithmetic: a level throw travels about 17 m including the roll, the rocket
+   reaches 43 m before its sag puts it in the ground, and a frag at your own
+   feet takes a third of your health off. Whether any of that is *right* is
+   what T-2.34 is for, and every one of them is a number in data.
+3. **Keep tuning the rest of the data opportunistically.** Weapon and downed
+   values remain data-driven; adjust them when a concrete playtest issue
+   appears rather than reopening completed gates without a reason.
 
-E-2.5 and E-2.7 remain epics until their turn. M2's exit gate remains the
-overall human judgement that third-person combat feels good.
+E-2.7 (combat audio) is the last M2 epic and remains an epic until its turn;
+it is the one that needs assets bought or made (R1, §9 Q2), which is a
+decision worth taking deliberately rather than on the way past. M2's exit gate
+remains the overall human judgement that third-person combat feels good — and
+with grenades in, that firefight now has something in it that the other person
+has to move away from.

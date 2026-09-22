@@ -1,4 +1,4 @@
-# Soldier look sign-off — T-2.34
+# Soldier look sign-off — T-2.39
 
 ## Status: NOT YET RUN
 
@@ -16,7 +16,7 @@ soldier's look is not signed off.** Nothing in this file is a result.
 
 ## What this is judging
 
-T-2.30 through T-2.33 gave the soldier the art *treatment* the locked
+T-2.35 through T-2.38 gave the soldier the art *treatment* the locked
 direction always implied — `PLAN.md` line 5's "early-2000s console squad
 tactics games", ADR-013's "early-2000s console squad shooter" — and which had
 never existed. Before this, the soldier was untextured primitives under a PBR
@@ -52,7 +52,7 @@ than filing it as a look note. Neither is implemented and neither should be.
 A line each is enough; "fine" is a valid answer, "did not try" is a required
 one.
 
-### 1. Does it read as the era at all (T-2.30, T-2.32)
+### 1. Does it read as the era at all (T-2.35, T-2.37)
 
 Stand still in third person and look at your own soldier.
 
@@ -65,7 +65,7 @@ Stand still in third person and look at your own soldier.
 - Does anything read as PS1 rather than PS2 — texture swimming or warping as
   you move, vertices wobbling? (There should be none. Both would be bugs.)
 
-### 2. The silhouette (T-2.31)
+### 2. The silhouette (T-2.36)
 
 Walk a full circle around a bot at spawn.
 
@@ -89,7 +89,7 @@ have to survive everything that moves.
 - Fire a burst and reload. Does the rifle read as a weapon with furniture — a
   stock, a handguard, a magazine — rather than as a box?
 
-### 4. Telling six soldiers apart (T-2.33)
+### 4. Telling six soldiers apart (T-2.38)
 
 **Needs a second person on the host**, or you are judging bots against bots.
 
@@ -114,7 +114,7 @@ have to survive everything that moves.
 ### 6. The resolution question — the one open decision
 
 **This is the deliberate open item, and it is yours to settle, not an
-agent's.** T-2.32 did not implement a fixed low-resolution render target
+agent's.** T-2.37 did not implement a fixed low-resolution render target
 (rendering at, say, 640×448 and upscaling with point filtering). It is the
 strongest era cue still available and it is the only one with a real cost:
 it would also soften the crosshair, the tracers and the hit markers, and

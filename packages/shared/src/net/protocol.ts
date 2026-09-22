@@ -12,7 +12,7 @@ import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isRoomCode } from './roomCode.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 11;
+export const PROTOCOL_VERSION = 12;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({ jump: 0b001, sprint: 0b010, crouch: 0b100, interact: 0b1000, fire: 0b10000 });
@@ -69,6 +69,8 @@ export const MessageType = {
   Pong: 6,
   Disconnect: 7,
   Roster: 11,
+  Throw: 12,
+  Detonation: 13,
 } as const;
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
 
@@ -188,6 +190,41 @@ export type Message =
       z: number;
       damage: number;
     }
+  /**
+   * A projectile leaving the hand (T-2.31). A trigger pull, like Fire, and
+   * untrusted in the same way: the index is bounds-checked, and the pouch and
+   * the cooldown that decide whether it is allowed are the server's own.
+   *
+   * No `renderTimeMs` and no rewind. A hitscan shot is resolved against the
+   * world the shooter was LOOKING at; a grenade is an object that exists from
+   * now on, in everyone's present, and rewinding its spawn would only put it
+   * somewhere none of them will see it.
+   */
+  | { kind: 'Throw'; tick: number; yaw: number; pitch: number; projectile: number }
+  /**
+   * A projectile going off (T-2.31): where, which kind, the tick it happened
+   * on, and what each soldier in reach took.
+   *
+   * The tick is what makes it drawable honestly. Projectiles are rendered at
+   * the interpolation delay like every other replicated entity, so a blast
+   * drawn the instant this arrives goes off a tenth of a second in front of a
+   * grenade the viewer can still see in the air; the client holds it until its
+   * render clock reaches this tick.
+   *
+   * Damage travels with it rather than as a HitEvent per target: a hit event
+   * means a round landed, and feeding six of them into the hit-marker path
+   * would make one grenade look like a burst of impossible shots.
+   */
+  | {
+      kind: 'Detonation';
+      netId: number;
+      projectile: number;
+      tick: number;
+      x: number;
+      y: number;
+      z: number;
+      targets: readonly { netId: number; damage: number }[];
+    }
   | { kind: 'Ack'; tick: number }
   | { kind: 'Ping'; id: number; clientTime: number }
   | { kind: 'Pong'; id: number; clientTime: number; serverTime: number }
@@ -274,6 +311,31 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(quantize(msg.z, POSITION), POSITION.bits);
       w.writeBits(quantize(msg.damage, HEALTH), HEALTH.bits);
       break;
+    case 'Throw':
+      w.writeBits(MessageType.Throw, TYPE_BITS);
+      w.writeVarUint(msg.tick);
+      w.writeBits(msg.yaw & 0xfff, 12);
+      w.writeBits(msg.pitch & 0xfff, 12);
+      w.writeBits(msg.projectile & 0x3, 2);
+      break;
+    case 'Detonation': {
+      w.writeBits(MessageType.Detonation, TYPE_BITS);
+      w.writeVarUint(msg.netId);
+      w.writeBits(msg.projectile & 0x3, 2);
+      w.writeVarUint(msg.tick);
+      w.writeBits(quantize(msg.x, POSITION), POSITION.bits);
+      w.writeBits(quantize(msg.y, POSITION), POSITION.bits);
+      w.writeBits(quantize(msg.z, POSITION), POSITION.bits);
+      // Six slots is the whole squad (ADR-001), so three bits cover a blast
+      // that catches everyone.
+      const targets = msg.targets.slice(0, 7);
+      w.writeBits(targets.length, 3);
+      for (const t of targets) {
+        w.writeVarUint(t.netId);
+        w.writeBits(quantize(t.damage, HEALTH), HEALTH.bits);
+      }
+      break;
+    }
     case 'Ack':
       w.writeBits(MessageType.Ack, TYPE_BITS);
       w.writeVarUint(msg.tick);
@@ -414,6 +476,28 @@ export function decodeMessage(bytes: Uint8Array): Message {
           z: dequantize(r.readBits(POSITION.bits), POSITION),
           damage: dequantize(r.readBits(HEALTH.bits), HEALTH),
         };
+      case MessageType.Throw:
+        return {
+          kind: 'Throw',
+          tick: r.readVarUint(),
+          yaw: r.readBits(12),
+          pitch: r.readBits(12),
+          projectile: r.readBits(2),
+        };
+      case MessageType.Detonation: {
+        const netId = r.readVarUint();
+        const projectile = r.readBits(2);
+        const tick = r.readVarUint();
+        const x = dequantize(r.readBits(POSITION.bits), POSITION);
+        const y = dequantize(r.readBits(POSITION.bits), POSITION);
+        const z = dequantize(r.readBits(POSITION.bits), POSITION);
+        const count = r.readBits(3);
+        const targets: { netId: number; damage: number }[] = [];
+        for (let i = 0; i < count; i += 1) {
+          targets.push({ netId: r.readVarUint(), damage: dequantize(r.readBits(HEALTH.bits), HEALTH) });
+        }
+        return { kind: 'Detonation', netId, projectile, tick, x, y, z, targets };
+      }
       case MessageType.Ack:
         return { kind: 'Ack', tick: r.readVarUint() };
       case MessageType.Ping:

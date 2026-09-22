@@ -8,8 +8,8 @@ both passed, R2 is closed, and the authoritative host is deployed at
 `wss://sandline-host.fly.dev`. See [`PLAN.md` §7](./PLAN.md) for the current M2
 work and [`docs/HANDOFF-M1.5.md`](./docs/HANDOFF-M1.5.md) for the historical
 M1.5 operational and debugging notes.
-The PS2-era pass on the soldier is agreed and built as T-2.30 through T-2.33
-(`PLAN.md` §7.5); its human gate T-2.34 is open, with the run sheet at
+The PS2-era pass on the soldier is agreed and built as T-2.35 through T-2.38
+(`PLAN.md` §7.6); its human gate T-2.39 is open, with the run sheet at
 [`docs/playtests/soldier-look.md`](./docs/playtests/soldier-look.md).
 [`docs/HANDOFF-SOLDIER-LOOK.md`](./docs/HANDOFF-SOLDIER-LOOK.md) is the context
 transfer it came from, kept for its reasoning about the era and the fixed

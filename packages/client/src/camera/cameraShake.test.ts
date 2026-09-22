@@ -3,12 +3,16 @@
  * tuning a weapon can never change what this proves.
  */
 import { describe, expect, it } from 'vitest';
-import type { WeaponDef } from '@sandline/shared';
+import type { ProjectileDef, WeaponDef, WorldBox } from '@sandline/shared';
+import { boxFrom } from '@sandline/shared';
 import { DEFAULT_CAMERA_CONFIG } from './cameraConfig.ts';
 import { createCameraSolve, solveCamera } from './cameraSolve.ts';
 import {
+  BLAST_SHAKE_POS_M,
   SHAKE_DECAY_RATE,
+  addImpulse,
   addShake,
+  blastShake,
   applyShake,
   createShake,
   decayShake,
@@ -157,5 +161,71 @@ describe('camera shake and the aim (T-2.09)', () => {
     // The offset is (nearly) perpendicular to the view: within the pitch's
     // share of the up component, which at 14 degrees is small.
     expect(Math.abs(along)).toBeLessThan(total * 0.3);
+  });
+});
+
+/** T-2.33. Its own grenade, so tuning `projectiles.json` proves nothing here. */
+const GRENADE: ProjectileDef = {
+  id: 'fixture-grenade',
+  name: 'Fixture Grenade',
+  kind: 'thrown',
+  speedMPerSec: 16,
+  loftDeg: 0,
+  gravity: 10,
+  dragPerSec: 0,
+  radiusM: 0.1,
+  restitution: 0.3,
+  friction: 0.5,
+  rollDragPerSec: 3,
+  fuseSeconds: 2,
+  detonateOnImpact: false,
+  maxLifeSeconds: 6,
+  blastRadiusM: 6,
+  blastDamage: 100,
+  blastMinFraction: 0.1,
+  blastCoverFraction: 0.25,
+  carried: 3,
+  cooldownSeconds: 1,
+};
+
+const HEIGHT_M = 1.8;
+const NO_COVER: readonly WorldBox[] = [];
+
+describe('a blast on the picture (T-2.33)', () => {
+  const at = (distance: number, world: readonly WorldBox[] = NO_COVER) =>
+    blastShake(GRENADE, { x: 0, y: 0.2, z: 0 }, { x: distance, y: 0, z: 0 }, HEIGHT_M, world);
+
+  it('is hardest underfoot and falls off with distance', () => {
+    const close = at(0.1);
+    // Not quite the maximum: the distance is measured to the middle of the
+    // body, so a blast at your feet is still most of a metre from it.
+    expect(close.posM).toBeGreaterThan(BLAST_SHAKE_POS_M * 0.95);
+    expect(close.posM).toBeLessThanOrEqual(BLAST_SHAKE_POS_M);
+    let previous = close.posM;
+    for (let d = 1; d < GRENADE.blastRadiusM; d += 1) {
+      const here = at(d).posM;
+      expect(here).toBeLessThan(previous);
+      previous = here;
+    }
+  });
+
+  it('is nothing at all past the radius', () => {
+    expect(at(GRENADE.blastRadiusM + 0.5).posM).toBe(0);
+    expect(at(GRENADE.blastRadiusM + 0.5).rollRad).toBe(0);
+  });
+
+  it('is cut by the same cover that cuts the damage', () => {
+    const wall = boxFrom({ id: 'wall', x: 1.5, y: 0, z: 0, w: 0.4, h: 4, d: 8 }, 'cover');
+    const open = at(3).posM;
+    const behind = at(3, [wall]).posM;
+    expect(behind).toBeGreaterThan(0);
+    expect(behind).toBeCloseTo(open * GRENADE.blastCoverFraction, 6);
+  });
+
+  it('rings a camera that is already ringing rather than restarting it', () => {
+    const one = addImpulse(createShake(), 0.05, 0.01);
+    const two = addImpulse(one, 0.05, 0.01);
+    expect(two.posAmp).toBeCloseTo(0.1, 6);
+    expect(two.rollAmp).toBeCloseTo(0.02, 6);
   });
 });
