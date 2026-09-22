@@ -117,8 +117,14 @@ export class LocalInput {
       // Typing in the lobby's fields is not movement, and Space in a name
       // field must stay a space (T-1.5.06).
       if (isTextField(e.target)) return;
-      // Space would otherwise scroll the page out from under the canvas.
-      if (e.code === 'Space') e.preventDefault();
+      // With the mouse captured, the canvas owns the keyboard: every key we
+      // handle gets preventDefault, not just Space. Otherwise Ctrl (crouch)
+      // held alongside a movement or weapon key fires whatever browser
+      // shortcut that combo happens to be bound to (Find, bookmark, print,
+      // ...) instead of reaching the game. A few reserved combos (Ctrl+W,
+      // Ctrl+T, Ctrl+N, ...) are blocked by the browser itself and no amount
+      // of preventDefault stops them.
+      if (this.locked || e.code === 'Space') e.preventDefault();
       this.held.add(e.code);
       this.pressed.add(e.code);
       // Key auto-repeat would flip the shoulder every repeat while V is held.
