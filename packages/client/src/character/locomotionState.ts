@@ -5,7 +5,7 @@
  * CharacterController remains the owner of movement physics; this only turns
  * the rendered result into a visual locomotion state.
  */
-export type LocomotionState = 'idle' | 'walk' | 'sprint' | 'crouch-walk' | 'vault';
+export type LocomotionState = 'idle' | 'walk' | 'sprint' | 'crouch-walk' | 'prone' | 'vault';
 
 export type MovementDirection =
   | 'forward'
@@ -23,6 +23,11 @@ export interface LocomotionInput {
   velocityZ: number;
   grounded: boolean;
   crouched: boolean;
+  /**
+   * Prone (T-2.41): distinct from crouch, and from downed's forced idle.
+   * Optional, absent (or false) reads as not prone, same as `vaultProgress`.
+   */
+  prone?: boolean;
   downed: boolean;
   /** Wire yaw, 1024 units per turn. */
   facingYaw: number;
@@ -57,6 +62,8 @@ export interface LocomotionSpeeds {
   walkSpeed: number;
   sprintSpeed: number;
   crouchSpeed: number;
+  /** Optional: only prone callers need it, same as `vaultProgress`. */
+  proneSpeed?: number;
 }
 
 const SPEED_EPSILON = 0.05;
@@ -120,7 +127,14 @@ export function classifyLocomotion(
     // Downed (B-05): immobile, so this is unconditionally idle regardless of
     // whatever velocity a stale sample carries.
     state = 'idle';
-    modeSpeed = input.crouched ? speeds.crouchSpeed : speeds.walkSpeed;
+    modeSpeed = input.prone
+      ? (speeds.proneSpeed ?? speeds.crouchSpeed)
+      : input.crouched
+        ? speeds.crouchSpeed
+        : speeds.walkSpeed;
+  } else if (input.prone) {
+    state = 'prone';
+    modeSpeed = speeds.proneSpeed ?? speeds.crouchSpeed;
   } else if (input.crouched) {
     state = 'crouch-walk';
     modeSpeed = speeds.crouchSpeed;

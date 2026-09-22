@@ -288,6 +288,7 @@ export function createLocomotionPoseDriver(target: THREE.Object3D | HumanoidRig)
     const gaitScale =
       sprint ? 1 :
       state === 'crouch-walk' ? 0.55 :
+      state === 'prone' ? 0.35 :
       1;
     const { style } = rig;
     const stride = Math.sin(phase);

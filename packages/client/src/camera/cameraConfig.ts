@@ -11,6 +11,8 @@ export interface CameraConfig {
   eyeHeight: number;
   /** Pivot height while downed (T-2.14): the view of someone lying on the ground. */
   downedEyeHeight: number;
+  /** Pivot height while prone (T-2.41): lower than the view aiming from cover, higher than lying incapacitated. */
+  proneEyeHeight: number;
   /** Arm length before any shortening. */
   distance: number;
   /** Over-the-shoulder offset, hip and aimed. */
@@ -36,6 +38,7 @@ export interface CameraConfig {
 export const DEFAULT_CAMERA_CONFIG: CameraConfig = {
   eyeHeight: 1.55,
   downedEyeHeight: 0.55,
+  proneEyeHeight: 0.5,
   distance: 5.5,
   shoulderRight: 0.85,
   shoulderRightAds: 0.55,

@@ -47,6 +47,8 @@ export type { HumanoidPose } from './humanoidRig.ts';
 
 /** Height of a downed body's centre above the feet, metres: lying on its back. */
 export const DOWNED_BODY_LIFT_M = 0.28;
+/** Height of a prone body's centre above the feet, metres: face down, propped on the elbows. */
+export const PRONE_BODY_LIFT_M = 0.3;
 /** The root's centre sits this far above the feet (the capsule's half height plus radius). */
 export const HUMANOID_ROOT_LIFT_M = 0.9;
 
@@ -54,6 +56,8 @@ type RestTransform = RigTransform;
 
 /** Lying on the back, head forward (+Z): turn the up axis onto forward, then face up. */
 const DOWNED_TURN = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, Math.PI, 0, 'YXZ'));
+/** Face down, head forward (+Z): the opposite pitch from downed, so the chest faces the ground instead of the sky. */
+const PRONE_TURN = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0, 'YXZ'));
 const scratchPosition = new THREE.Vector3();
 const scratchQuaternion = new THREE.Quaternion();
 
@@ -292,11 +296,15 @@ export function setHumanoidPose(root: THREE.Object3D, pose: HumanoidPose): void 
       continue;
     }
     // Turn the rest pose about the root's origin, then drop it to the ground.
-    scratchPosition.fromArray(rest.position).applyQuaternion(DOWNED_TURN);
-    scratchPosition.y += DOWNED_BODY_LIFT_M - HUMANOID_ROOT_LIFT_M;
+    // Prone and downed differ only in which turn: prone keeps the face down
+    // and the weapon forward, downed adds the extra flip onto the back.
+    const turn = pose === 'prone' ? PRONE_TURN : DOWNED_TURN;
+    const lift = pose === 'prone' ? PRONE_BODY_LIFT_M : DOWNED_BODY_LIFT_M;
+    scratchPosition.fromArray(rest.position).applyQuaternion(turn);
+    scratchPosition.y += lift - HUMANOID_ROOT_LIFT_M;
     part.position.copy(scratchPosition);
     scratchQuaternion.fromArray(rest.quaternion);
-    part.quaternion.copy(DOWNED_TURN).multiply(scratchQuaternion);
+    part.quaternion.copy(turn).multiply(scratchQuaternion);
   }
   root.userData['pose'] = pose;
 }

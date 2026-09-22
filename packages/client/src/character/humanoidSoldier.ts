@@ -12,7 +12,7 @@ import {
 } from './humanoidRig.ts';
 import { plateau } from './locomotionPose.ts';
 import { solveTwoBone } from './twoBoneIk.ts';
-import { DOWNED_BODY_LIFT_M, HUMANOID_HIT_HALF_HEIGHT, HUMANOID_HIT_RADIUS, HUMANOID_ROOT_LIFT_M } from './humanoidPlaceholder.ts';
+import { DOWNED_BODY_LIFT_M, HUMANOID_HIT_HALF_HEIGHT, HUMANOID_HIT_RADIUS, HUMANOID_ROOT_LIFT_M, PRONE_BODY_LIFT_M } from './humanoidPlaceholder.ts';
 import { type CellName, type PaletteName, remapGeometryUv, soldierAtlas } from './soldierTexture.ts';
 
 /**
@@ -109,6 +109,8 @@ const ELBOW_HINT_LEFT: [number, number, number] = [0.45, -0.25, 0.1];
 
 /** Lying on the back, head forward (+Z): the grey box's turn, applied to the hips. */
 const DOWNED_TURN = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, Math.PI, 0, 'YXZ'));
+/** Face down, head forward (+Z): the opposite pitch from downed, so the chest faces the ground instead of the sky. */
+const PRONE_TURN = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0, 'YXZ'));
 
 interface PoseOffset {
   position?: [number, number, number];
@@ -141,6 +143,25 @@ const DOWNED: PoseOffsets = {
   'lower-arm-right': { euler: [-0.35, 0, 0] },
   'upper-leg-left': { euler: [0, 0, 0.08] },
   'upper-leg-right': { euler: [0, 0, -0.08] },
+};
+
+/**
+ * Face down, propped on the elbows, the rifle held forward along the sight
+ * line — the hips carry the turn, same as downed, but without the flip onto
+ * the back, and the arms keep the standing IK hold rather than going slack:
+ * this is a stance a soldier fights from. The legs splay a little for a
+ * stable base, the chest and neck lift off the ground so the sight is level.
+ */
+const PRONE: PoseOffsets = {
+  hips: { position: [0, PRONE_BODY_LIFT_M - JOINTS.hips[1], 0], quaternion: PRONE_TURN },
+  spine: { euler: [0.5, 0, 0] },
+  chest: { euler: [-0.3, 0, 0] },
+  neck: { euler: [-0.2, 0, 0] },
+  head: { euler: [-0.1, 0, 0] },
+  'upper-leg-left': { euler: [0, 0, 0.12] },
+  'upper-leg-right': { euler: [0, 0, -0.12] },
+  'lower-leg-left': { euler: [0.15, 0, 0] },
+  'lower-leg-right': { euler: [0.15, 0, 0] },
 };
 
 /**
@@ -406,8 +427,9 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
   }
   const poses: Record<HumanoidPose, PoseOffsets> = {
     standing,
-    // Crouch and downed keep the hold: the arms are chest-relative.
+    // Crouch, prone and downed keep the hold: the arms are chest-relative.
     crouched: { ...standing, ...CROUCHED },
+    prone: { ...standing, ...PRONE },
     downed: { ...standing, ...DOWNED },
   };
 

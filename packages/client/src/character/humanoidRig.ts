@@ -70,8 +70,12 @@ export const HUMANOID_BONES: readonly HumanoidBoneName[] = [
  * How the body is arranged on the hit capsule. The capsule itself is the same
  * upright shape in every pose (the server's is), so a pose only ever moves
  * the rig's bones. Vault is T-2.23's to add.
+ *
+ * `prone` (T-2.41) is a voluntary combat stance, not `downed`: the weapon
+ * stays in hand and the rig keeps reacting to hits, and the body faces down
+ * rather than lying on its back.
  */
-export type HumanoidPose = 'standing' | 'crouched' | 'downed';
+export type HumanoidPose = 'standing' | 'crouched' | 'downed' | 'prone';
 
 export type HumanoidRigKind = 'skinned' | 'grey-box';
 
