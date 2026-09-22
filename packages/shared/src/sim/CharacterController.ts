@@ -28,6 +28,14 @@ export interface MoveState {
   /** Authoritative crouch stance; remains crouched until standing clearance exists. */
   crouched: boolean;
   /**
+   * Authoritative prone stance (T-2.40, ADR-016): lower and slower than
+   * crouch, its own hit volume. Rises the same way crouch does — only when
+   * clearance exists at the target height — and is mutually exclusive with
+   * `crouched` (prone is the lower of the two). Not the downed state B-05
+   * removed crawling from: prone is voluntary and keeps the weapon in hand.
+   */
+  prone: boolean;
+  /**
    * A vault in progress (T-2.21), or null/absent. Everything the traversal
    * needs is in here, so a predictor handed this state mid-vault continues
    * it exactly: the position at any moment is a function of `elapsed`, not
@@ -59,6 +67,12 @@ export interface MoveInput {
   jump: boolean;
   sprint: boolean;
   crouch: boolean;
+  /**
+   * Prone (T-2.40, ADR-016): held like `crouch`. Takes priority over crouch
+   * while held — pressing both goes prone, not crouched. Sprint and jump are
+   * ignored while prone, same as crouch ignores sprint.
+   */
+  prone?: boolean;
   /** T-2.15: hold the interact button to revive a nearby downed teammate. */
   interact?: boolean;
   /**
@@ -96,6 +110,14 @@ export interface MoveConfig {
   height: number;
   /** Full standing height used for collision and headroom. */
   crouchHeight: number;
+  /**
+   * Prone height (T-2.40): lower than `crouchHeight`, same footprint radius.
+   * Used for collision, headroom and the authoritative hit volume while
+   * prone, exactly as `crouchHeight` is while crouched.
+   */
+  proneHeight: number;
+  /** Movement speed while prone; slower than `crouchSpeed`. */
+  proneSpeed: number;
   /** Ledges up to this high are stepped onto; higher ones block. */
   stepHeight: number;
   /**
@@ -127,6 +149,9 @@ export const DEFAULT_MOVE_CONFIG: MoveConfig = {
   radius: 0.35,
   height: 1.8,
   crouchHeight: 1.2,
+  // Matches DEFAULT_HITBOX's prone capsule (server/net/lagComp.ts): 2 * (0.05 + 0.35).
+  proneHeight: 0.8,
+  proneSpeed: 1.1,
   stepHeight: 0.45,
   vaultMaxHeight: 1.25,
   vaultDistance: 1.5,
@@ -180,20 +205,32 @@ export function stepCharacter(
   const lenSq = mx * mx + my * my;
   const scale = lenSq > 1 ? 1 / Math.sqrt(lenSq) : 1; // sqrt IS IEEE-exact
   const downed = input.downed === true;
-  // Crouch is an authoritative stance, not merely a button state. Releasing
-  // crouch while under a ceiling keeps the character crouched until the
-  // resulting position has enough headroom for the full standing height.
-  let crouched = !downed && (input.crouch || state.crouched);
-  const effectiveHeight = crouched ? config.crouchHeight : config.height;
+  // Stance is a ladder — standing (0), crouched (1), prone (2, T-2.40) — each
+  // level authoritative, not merely a button state. Dropping a level (prone
+  // beats crouch when both are held) is instant; rising a level only happens
+  // once clearance at the target height exists, checked below after
+  // horizontal movement resolves this tick's position. Heights are
+  // monotonic (standing needs the most headroom, prone the least), so a
+  // level's own clearance check is sufficient without checking every level
+  // in between.
+  const heightAt = (lvl: number): number => (lvl === 2 ? config.proneHeight : lvl === 1 ? config.crouchHeight : config.height);
+  const desiredLevel = !downed && input.prone === true ? 2 : !downed && input.crouch === true ? 1 : 0;
+  const currentLevel = state.prone ? 2 : state.crouched ? 1 : 0;
+  // Drop instantly; a rise is only provisional here and confirmed after the move.
+  let level = downed ? 0 : Math.max(currentLevel, desiredLevel);
+  const effectiveHeight = heightAt(level);
   // Downed (B-05): immobile. No crawling — a downed soldier lies still until
-  // revived or respawned.
+  // revived or respawned. Prone (T-2.40) is the opposite: voluntary and slow,
+  // not the removed downed crawl.
   const speed = downed
     ? 0
-    : crouched
-      ? config.crouchSpeed
-      : input.sprint
-        ? config.sprintSpeed
-        : config.walkSpeed;
+    : level === 2
+      ? config.proneSpeed
+      : level === 1
+        ? config.crouchSpeed
+        : input.sprint
+          ? config.sprintSpeed
+          : config.walkSpeed;
 
   // Table trig, not Math.cos. See the header.
   const a: BinAngle = wireToTable(input.yaw);
@@ -210,7 +247,7 @@ export function stepCharacter(
   if (
     state.grounded &&
     !downed &&
-    !crouched &&
+    level === 0 &&
     !input.jump &&
     input.firing !== true &&
     my > 0.5 &&
@@ -249,26 +286,34 @@ export function stepCharacter(
     }
   }
 
-  // A released crouch is only allowed to transition to standing when the
-  // character's current feet position has full-height clearance. Keep the
-  // crouched stance while moving through a low ceiling; after horizontal
-  // movement, re-check at the resulting position so walking out from under
-  // cover permits the same tick's stand transition.
-  if (crouched && !input.crouch && !downed) {
-    const canStand = !world.some((box) =>
-      box.minY >= feet + config.stepHeight &&
-      box.minY < feet + config.height &&
-      overlapsFootprint(x, z, half, box),
-    );
-    if (canStand) crouched = false;
+  // A released level is only allowed to rise when the character's current
+  // feet position has clearance at the target height. Keep the lower stance
+  // while moving through a low ceiling; after horizontal movement, re-check
+  // at the resulting position so walking out from under cover permits the
+  // same tick's rise. One level at a time, since a level released two rungs
+  // up (prone key released with crouch not held either) may only have room
+  // to reach crouch, not standing.
+  if (!downed) {
+    while (level > desiredLevel) {
+      const targetHeight = heightAt(level - 1);
+      const clear = !world.some((box) =>
+        box.minY >= feet + config.stepHeight &&
+        box.minY < feet + targetHeight &&
+        overlapsFootprint(x, z, half, box),
+      );
+      if (!clear) break;
+      level -= 1;
+    }
   }
-  const resolvedHeight = crouched ? config.crouchHeight : config.height;
+  const crouched = level === 1;
+  const prone = level === 2;
+  const resolvedHeight = heightAt(level);
 
   // 2. Vertical.
   let vy = state.vy;
   let grounded = state.grounded;
 
-  if (grounded && input.jump && !downed) {
+  if (grounded && input.jump && !downed && !prone) {
     vy = config.jumpSpeed;
     grounded = false;
   } else if (!grounded) {
@@ -309,7 +354,7 @@ export function stepCharacter(
     }
   }
 
-  return { x, y, z, vy, grounded, crouched, vault: null };
+  return { x, y, z, vy, grounded, crouched, prone, vault: null };
 }
 
 /**
@@ -383,15 +428,15 @@ export function advanceVault(
 
   if (p >= 1) {
     const y = supportUnder(x, z, config.radius, vault.topY + config.stepHeight, world, config.groundY);
-    return { x, y, z, vy: 0, grounded: true, crouched: false, vault: null };
+    return { x, y, z, vy: 0, grounded: true, crouched: false, prone: false, vault: null };
   }
 
   const rise = p * p * (3 - 2 * p);
   const lip = 4 * p * (1 - p) * config.vaultLip;
   const y = vault.fromY + (vault.topY - vault.fromY) * rise + lip;
-  return { x, y, z, vy: 0, grounded: false, crouched: false, vault: { ...vault, elapsed } };
+  return { x, y, z, vy: 0, grounded: false, crouched: false, prone: false, vault: { ...vault, elapsed } };
 }
 
 export function createMoveState(x = 0, y = 0, z = 0): MoveState {
-  return { x, y, z, vy: 0, grounded: y <= 0, crouched: false, vault: null };
+  return { x, y, z, vy: 0, grounded: y <= 0, crouched: false, prone: false, vault: null };
 }

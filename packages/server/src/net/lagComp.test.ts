@@ -209,6 +209,81 @@ describe('crouched hit volume (T-2.20)', () => {
   });
 });
 
+describe('prone hit volume (T-2.40, ADR-016)', () => {
+  const STANCE_BOX: Hitbox = {
+    ...BOX,
+    crouchHalfHeight: 0.25,
+    crouchCenterOffsetY: 0.6,
+    proneHalfHeight: 0.05,
+    proneCenterOffsetY: 0.4,
+  };
+
+  it('is lower again than crouch: a shot that clears crouch also clears prone', () => {
+    const history = new HitboxHistory();
+    history.record(SHOOTER, 0, 0, 0, 0);
+    history.record(TARGET, 0, 0, 0, 10, false, true);
+
+    const atCrouchHeight = resolveShot(
+      history,
+      {
+        shooterNetId: SHOOTER,
+        ray: { origin: { x: 0, y: 0.85, z: 0 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 100 },
+        nowMs: 0,
+        clientRenderTimeMs: 0,
+      },
+      STANCE_BOX,
+      NO_WORLD,
+    );
+    // A shot at the top of the crouch capsule (0.6 + 0.25 = 0.85) sails clean
+    // over the shorter prone one (0.4 + 0.05 = 0.45).
+    expect(atCrouchHeight).toBeNull();
+
+    const atProneHeight = resolveShot(
+      history,
+      {
+        shooterNetId: SHOOTER,
+        ray: { origin: { x: 0, y: 0.42, z: 0 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 100 },
+        nowMs: 0,
+        clientRenderTimeMs: 0,
+      },
+      STANCE_BOX,
+      NO_WORLD,
+    );
+    expect(atProneHeight?.netId).toBe(TARGET);
+  });
+
+  it('prone beats crouch when a sample somehow carries both', () => {
+    const history = new HitboxHistory();
+    history.record(SHOOTER, 0, 0, 0, 0);
+    history.record(TARGET, 0, 0, 0, 10, true, true);
+
+    const atCrouchHeight = resolveShot(
+      history,
+      {
+        shooterNetId: SHOOTER,
+        ray: { origin: { x: 0, y: 0.85, z: 0 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 100 },
+        nowMs: 0,
+        clientRenderTimeMs: 0,
+      },
+      STANCE_BOX,
+      NO_WORLD,
+    );
+    expect(atCrouchHeight).toBeNull();
+  });
+
+  it('replicates prone at the authoritative history sample, distinct from crouched', () => {
+    const history = new HitboxHistory();
+    history.record(SHOOTER, 0, 0, 0, 0, false, false);
+    history.record(TARGET, 0, 0, 0, 10, false, false);
+    history.record(TARGET, 100, 0, 0, 10, false, true);
+
+    expect(history.stateAt(TARGET, 99)?.prone).toBe(false);
+    expect(history.stateAt(TARGET, 99)?.crouched).toBe(false);
+    expect(history.stateAt(TARGET, 100)?.prone).toBe(true);
+    expect(history.stateAt(TARGET, 100)?.crouched).toBe(false);
+  });
+});
+
 describe('compensated shots', () => {
   /**
    * The case T-1.18 exists for. The client is 150 ms behind: it renders the

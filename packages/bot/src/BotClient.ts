@@ -269,6 +269,7 @@ export class BotClient {
       // it is worth when height already answers the question.
       grounded: dequantize(transform[1] as number, POSITION) <= 0.001,
       crouched: (mine?.components[COMPONENT_IDS.Crouch]?.[0] as number | undefined) === 1,
+      prone: (mine?.components[COMPONENT_IDS.Crouch]?.[1] as number | undefined) === 1,
     };
 
     // First authoritative word on where we are: adopt it as the baseline.

@@ -31,6 +31,11 @@ export interface InterpSample {
   /** Authoritative stance; discrete, not spatially interpolated. */
   crouched: boolean;
   /**
+   * Authoritative prone stance (T-2.40, ADR-016), same discrete handling as
+   * `crouched`. Optional so a sample predating prone reads as not prone.
+   */
+  prone?: boolean;
+  /**
    * Seconds into an authoritative vault, or null when not vaulting (T-2.23).
    * Optional so a sample that has no idea about vaults reads as not vaulting.
    */
@@ -45,6 +50,8 @@ export interface InterpResult {
   /** Aim pitch, wire angle, interpolated the short way like yaw. */
   pitch: number;
   crouched: boolean;
+  /** T-2.40: same discrete handling as `crouched`. */
+  prone: boolean;
   /**
    * Seconds into the vault at the render time, or null. Interpolated between
    * two vaulting samples so a remote's vault pose advances as smoothly as
@@ -138,7 +145,7 @@ export class InterpolationBuffer {
     if (this.samples.length === 0) return null;
     if (this.samples.length === 1) {
       const only = this.samples[0] as InterpSample;
-      return { x: only.x, y: only.y, z: only.z, yaw: only.yaw, pitch: only.pitch ?? 0, crouched: only.crouched, vaultElapsed: only.vaultElapsed ?? null, extrapolated: false, frozen: false };
+      return { x: only.x, y: only.y, z: only.z, yaw: only.yaw, pitch: only.pitch ?? 0, crouched: only.crouched, prone: only.prone ?? false, vaultElapsed: only.vaultElapsed ?? null, extrapolated: false, frozen: false };
     }
 
     const oldest = this.samples[0] as InterpSample;
@@ -146,7 +153,7 @@ export class InterpolationBuffer {
 
     // Behind everything we hold: the buffer is too shallow, so hold the oldest.
     if (renderTimeMs <= oldest.serverTimeMs) {
-      return { x: oldest.x, y: oldest.y, z: oldest.z, yaw: oldest.yaw, pitch: oldest.pitch ?? 0, crouched: oldest.crouched, vaultElapsed: oldest.vaultElapsed ?? null, extrapolated: false, frozen: false };
+      return { x: oldest.x, y: oldest.y, z: oldest.z, yaw: oldest.yaw, pitch: oldest.pitch ?? 0, crouched: oldest.crouched, prone: oldest.prone ?? false, vaultElapsed: oldest.vaultElapsed ?? null, extrapolated: false, frozen: false };
     }
 
     if (renderTimeMs >= newest.serverTimeMs) {
@@ -174,6 +181,7 @@ export class InterpolationBuffer {
       pitch: lerpAngle(p1.pitch ?? 0, p2.pitch ?? 0, t),
       // Stance changes at the authoritative sample boundary, not halfway between ticks.
       crouched: renderTimeMs >= p2.serverTimeMs ? p2.crouched : p1.crouched,
+      prone: renderTimeMs >= p2.serverTimeMs ? (p2.prone ?? false) : (p1.prone ?? false),
       vaultElapsed: vaultBetween(p1, p2, t, renderTimeMs >= p2.serverTimeMs),
       extrapolated: false,
       frozen: false,
@@ -188,7 +196,7 @@ export class InterpolationBuffer {
 
     const span = newest.serverTimeMs - prev.serverTimeMs;
     if (span <= 0) {
-      return { x: newest.x, y: newest.y, z: newest.z, yaw: newest.yaw, pitch: newest.pitch ?? 0, crouched: newest.crouched, vaultElapsed: newest.vaultElapsed ?? null, extrapolated: true, frozen };
+      return { x: newest.x, y: newest.y, z: newest.z, yaw: newest.yaw, pitch: newest.pitch ?? 0, crouched: newest.crouched, prone: newest.prone ?? false, vaultElapsed: newest.vaultElapsed ?? null, extrapolated: true, frozen };
     }
 
     // Constant velocity from the last pair. Beyond the cap this holds still:
@@ -204,6 +212,7 @@ export class InterpolationBuffer {
       yaw: newest.yaw,
       pitch: newest.pitch ?? 0,
       crouched: newest.crouched,
+      prone: newest.prone ?? false,
       // A vault runs on the server's clock; carrying it forward with the
       // position keeps the pose from stalling while the buffer starves.
       vaultElapsed: newest.vaultElapsed == null ? null : newest.vaultElapsed + capped / 1000,

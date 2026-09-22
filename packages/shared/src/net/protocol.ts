@@ -12,10 +12,18 @@ import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isRoomCode } from './roomCode.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 13;
+export const PROTOCOL_VERSION = 14;
 
 /** Input button bits carried on the unreliable input frame. */
-export const INPUT_BUTTONS = Object.freeze({ jump: 0b001, sprint: 0b010, crouch: 0b100, interact: 0b1000, fire: 0b10000 });
+export const INPUT_BUTTONS = Object.freeze({
+  jump: 0b1,
+  sprint: 0b10,
+  crouch: 0b100,
+  interact: 0b1000,
+  fire: 0b10000,
+  /** T-2.40, ADR-016: voluntary prone. Beats crouch when both are held. */
+  prone: 0b100000,
+});
 
 /**
  * Why a connection ended, as a type rather than a sentence (T-1.5.04).

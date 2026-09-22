@@ -22,13 +22,15 @@ All four gates' build dependencies are satisfied. All four need the owner in
 the room with another human — an agent cannot close any of them, and must
 never fabricate a verdict or simulate the playtest to get one.
 
-**If nothing here is actionable** (no human available): writing the two
-missing run sheets (`e2-3.md`, `e2-5.md`), modeled on `e2-2.md` and
-`soldier-look.md`, is real unblocked work an agent can do — it does not
-require a human, only requires not inventing a verdict inside it. Past that,
-the next build work is **E-2.7** (combat audio, PLAN.md §7 epic table), which
-needs breaking out into leaf tasks and is blocked on an assets sourcing
-decision (R1, §9 Q2 — purchased/commissioned/in-house).
+**If nothing here is actionable** (no human available): the real next build
+task is **T-2.41** (§7.8, prone presentation) — T-2.40 landed 2026-09-22 and
+its dependency T-2.06 was already done, so it is open now, not blocked.
+Writing the two missing run sheets (`e2-3.md`, `e2-5.md`), modeled on
+`e2-2.md` and `soldier-look.md`, is also real unblocked work an agent can do
+— it does not require a human, only requires not inventing a verdict inside
+it. Past that, **E-2.7** (combat audio, PLAN.md §7 epic table) needs breaking
+out into leaf tasks and is blocked on an assets sourcing decision (R1, §9
+Q2 — purchased/commissioned/in-house).
 
 ---
 
@@ -183,8 +185,8 @@ a standing, alive soldier, built on the crouch (T-2.20) and crawl-gait
 
 | Task | Status | Depends |
 |---|---|---|
-| T-2.40 | OPEN | T-2.20, T-2.13 |
-| T-2.41 | BLOCKED | T-2.40, T-2.06 |
+| T-2.40 | DONE | T-2.20, T-2.13 |
+| T-2.41 | OPEN | T-2.40, T-2.06 |
 | T-2.42 | BLOCKED | T-2.40, T-2.41 |
 | 🧍 T-2.43 | BLOCKED — run sheet `e2-8.md` missing, write it first | T-2.40..T-2.42 |
 
