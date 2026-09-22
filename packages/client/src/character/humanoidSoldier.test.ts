@@ -3,9 +3,10 @@ import * as THREE from 'three';
 import { DEFAULT_HITBOX } from '@sandline/server';
 import { DEFAULT_MUZZLE_RIG } from '@sandline/shared';
 import { HUMANOID_BONES, type HumanoidBoneName, rigOf, requireRig } from './humanoidRig.ts';
-import { AIM_IN_CHEST, createHumanoidSoldier, soldierSkin } from './humanoidSoldier.ts';
-import { HUMANOID_ROOT_LIFT_M, createHumanoidPlaceholder } from './humanoidPlaceholder.ts';
+import { AIM_IN_CHEST, createHumanoidSoldier, setSoldierPalette, soldierSkin } from './humanoidSoldier.ts';
+import { HUMANOID_HIT_RADIUS, HUMANOID_ROOT_LIFT_M, createHumanoidPlaceholder } from './humanoidPlaceholder.ts';
 import { createLocomotionPoseDriver } from './locomotionPose.ts';
+import { ATLAS_SIZE, CELLS, CELL_SIZE, soldierAtlas } from './soldierTexture.ts';
 import type { LocomotionResult } from './locomotionState.ts';
 
 const WALK: LocomotionResult = {
@@ -99,6 +100,128 @@ describe('skinned soldier (T-2.22)', () => {
     expect(skin.castShadow).toBe(true);
     // Well inside ADR-013's 8–15k triangles.
     expect(skin.geometry.index!.count / 3).toBeLessThan(4000);
+  });
+
+  it('textures the whole soldier from one atlas, every vertex inside a cell (T-2.30)', () => {
+    const soldier = createHumanoidSoldier('local');
+    const skin = soldierSkin(soldier);
+    const material = skin.material as THREE.MeshStandardMaterial;
+    expect(material.map).toBe(soldierAtlas('local'));
+    // The atlas replaced the flat per-segment vertex colours outright: it says
+    // everything they said and the things they could not.
+    expect(material.vertexColors).toBe(false);
+    expect(skin.geometry.getAttribute('color')).toBeUndefined();
+
+    const uv = skin.geometry.getAttribute('uv');
+    expect(uv.count).toBe(skin.geometry.getAttribute('position').count);
+    // Every vertex sits strictly inside some cell — never on a cell boundary,
+    // which under nearest filtering is a stripe of the neighbouring part.
+    const origins = new Set(Object.values(CELLS).map((c) => `${c.x},${c.y}`));
+    const used = new Set<string>();
+    for (let i = 0; i < uv.count; i += 1) {
+      const x = Math.floor(uv.getX(i) * ATLAS_SIZE);
+      const y = Math.floor(uv.getY(i) * ATLAS_SIZE);
+      const origin = `${Math.floor(x / CELL_SIZE) * CELL_SIZE},${Math.floor(y / CELL_SIZE) * CELL_SIZE}`;
+      expect(origins.has(origin)).toBe(true);
+      used.add(origin);
+    }
+    // The body reaches for most of the atlas; a layout mostly unused is a
+    // layout that has drifted from the model.
+    expect(used.size).toBeGreaterThanOrEqual(10);
+
+    // The rifle is textured from the same atlas, so it stays the second draw
+    // rather than becoming a third material.
+    const rifle = soldier.getObjectByName('rifle') as THREE.Mesh;
+    expect((rifle.material as THREE.MeshStandardMaterial).map).toBe(soldierAtlas('local'));
+  });
+
+  it('lights the soldier the way 2002 did: diffuse only, smooth normals (T-2.32)', () => {
+    const soldier = createHumanoidSoldier('local');
+    const skin = soldierSkin(soldier);
+    const material = skin.material as THREE.MeshLambertMaterial;
+    // A PBR material is a modern look by construction — a roughness response
+    // and an environment term the era had no way to compute.
+    expect(material).toBeInstanceOf(THREE.MeshLambertMaterial);
+    expect(material).not.toBeInstanceOf(THREE.MeshStandardMaterial);
+    expect((soldier.getObjectByName('rifle') as THREE.Mesh).material).toBeInstanceOf(THREE.MeshLambertMaterial);
+    // And NOT flat-shaded: that is the wrong console. The PS2 interpolated
+    // per-vertex lighting across a triangle, so curved surfaces read smooth
+    // and only the silhouette gave the polygon count away. Faceted shading is
+    // a 2015 indie look; PS1 is the jitter and the warp, and we have neither.
+    expect(material.flatShading).toBe(false);
+  });
+
+  it('gives each variant its own palette off one shared texture (T-2.30)', () => {
+    const a = createHumanoidSoldier('local');
+    const b = createHumanoidSoldier('remote');
+    expect((soldierSkin(a).material as THREE.MeshStandardMaterial).map)
+      .not.toBe((soldierSkin(b).material as THREE.MeshStandardMaterial).map);
+    // Two soldiers of the same variant share the texture: six of a squad are
+    // six draws of one 256² atlas, not six atlases.
+    const c = createHumanoidSoldier('local');
+    expect((soldierSkin(c).material as THREE.MeshStandardMaterial).map)
+      .toBe((soldierSkin(a).material as THREE.MeshStandardMaterial).map);
+    // Same geometry either way: a palette is never a mesh change.
+    expect(soldierSkin(a).geometry.getAttribute('uv').array)
+      .toEqual(soldierSkin(b).geometry.getAttribute('uv').array);
+  });
+
+  it('keeps the chunky silhouette inside the capsule the server shoots at (T-2.31)', () => {
+    // A stockier soldier is an art change; a soldier whose shoulder, pack or
+    // boot sticks out of DEFAULT_HITBOX is a netcode bug wearing art's
+    // clothes — you would see rounds pass through visible kit. The skin may
+    // be any shape it likes inside the capsule's radius and no shape outside.
+    const soldier = createHumanoidSoldier('local');
+    const skin = soldierSkin(soldier);
+    const position = skin.geometry.getAttribute('position');
+    let worst = 0;
+    for (let i = 0; i < position.count; i += 1) {
+      worst = Math.max(worst, Math.hypot(position.getX(i), position.getZ(i)));
+    }
+    expect(worst).toBeLessThanOrEqual(HUMANOID_HIT_RADIUS);
+    // And it genuinely fills that capsule rather than hiding in the middle of
+    // it: a thin soldier in a fat hitbox is the same fault the other way up.
+    expect(worst).toBeGreaterThan(HUMANOID_HIT_RADIUS * 0.8);
+  });
+
+  it('stays inside the triangle guard after the silhouette pass (T-2.31)', () => {
+    const tris = soldierSkin(createHumanoidSoldier('local')).geometry.index!.count / 3;
+    // Faceting the limbs bought more than the gear slabs cost, so this went
+    // DOWN. Both bounds matter: the ceiling is ADR-013's budget, the floor
+    // catches a "simplification" that quietly deletes the era's gear.
+    expect(tris).toBeLessThan(4000);
+    expect(tris).toBeGreaterThan(600);
+  });
+
+  it('repaints a live soldier without touching mesh, skeleton or pose (T-2.33)', () => {
+    // ADR-001's bot/human swap happens on a LIVE entity, never by rebuilding
+    // the session. A slot changing hands must therefore be a texture swap and
+    // nothing else — not a new mesh, not a new material, not a lost pose.
+    const soldier = createHumanoidSoldier('remote');
+    const skin = soldierSkin(soldier);
+    const rig = requireRig(soldier);
+    rig.setPose('crouched');
+    const before = {
+      geometry: skin.geometry,
+      material: skin.material,
+      skeleton: skin.skeleton,
+      bones: boneSnapshot(soldier),
+    };
+
+    expect(setSoldierPalette(soldier, 'slot-3')).toBe(true);
+    expect((skin.material as THREE.MeshLambertMaterial).map).toBe(soldierAtlas('slot-3'));
+    expect(skin.geometry).toBe(before.geometry);
+    expect(skin.material).toBe(before.material);
+    expect(skin.skeleton).toBe(before.skeleton);
+    expect(boneSnapshot(soldier)).toEqual(before.bones);
+    expect(rig.pose).toBe('crouched');
+    // The rifle follows the body it is held by.
+    expect(((soldier.getObjectByName('rifle') as THREE.Mesh).material as THREE.MeshLambertMaterial).map)
+      .toBe(soldierAtlas('slot-3'));
+
+    // The grey box has no atlas to swap and says so rather than throwing:
+    // `?greybox` is a diagnostic fixture, not a soldier.
+    expect(setSoldierPalette(createHumanoidPlaceholder('remote'), 'slot-3')).toBe(false);
   });
 
   it('keeps local and remote soldiers on one skeleton without sharing materials', () => {

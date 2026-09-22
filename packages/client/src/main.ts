@@ -84,7 +84,8 @@ import {
 } from './character/humanoidPlaceholder.ts';
 import { requireRig, rigOf } from './character/humanoidRig.ts';
 import { FROM_THE_FRONT, hitReactionFrom, shooterDirection } from './character/hitReaction.ts';
-import { createHumanoidSoldier } from './character/humanoidSoldier.ts';
+import { createHumanoidSoldier, setSoldierPalette } from './character/humanoidSoldier.ts';
+import { paletteFor } from './character/soldierTexture.ts';
 import { type KickState, addKick, createKick, decayKick } from './character/weaponKick.ts';
 import { createLocomotionPoseDriver, type LocomotionPoseDriver } from './character/locomotionPose.ts';
 import { type FootPlacementDriver, createFootPlacementDriver } from './character/footPlacement.ts';
@@ -104,7 +105,10 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// A hard shadow edge (T-2.32). The era could not afford to filter one, and a
+// soft penumbra under a soldier is one of the two things — with a PBR
+// material — that read as modern however the character is textured.
+renderer.shadowMap.type = THREE.PCFShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -1181,6 +1185,12 @@ function frame(): void {
   for (const [netId, sample] of net?.remotes() ?? []) {
     seenRemoteIds.add(netId);
     const mesh = remoteMesh(netId);
+    // The slot's colours (T-2.33), re-asked every frame rather than fixed at
+    // creation: a slot flips between bot and human on the LIVE entity
+    // (ADR-001), and the body is where that should show. A repaint is a
+    // texture swap the call itself skips when nothing changed.
+    const remoteSlot = net?.remoteSlot(netId) ?? -1;
+    setSoldierPalette(mesh, paletteFor({ slot: remoteSlot, human: net?.roster[remoteSlot]?.human }));
     mesh.position.set(sample.x, sample.y + 0.9, sample.z);
     const remoteYaw = wireToTable(sample.yaw);
     mesh.rotation.y = Math.atan2(sin(remoteYaw), cos(remoteYaw));

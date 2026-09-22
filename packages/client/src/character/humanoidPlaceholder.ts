@@ -81,18 +81,21 @@ export function createHumanoidPlaceholder(variant: HumanoidVariant): THREE.Mesh 
   );
   root.name = local ? 'humanoid local' : 'humanoid remote';
 
+  // Lambert like the skinned soldier (T-2.32), so the fixture is lit the same
+  // way as the thing it stands in for. A diagnostic that shades differently
+  // from the model tells you about the diagnostic.
   const torso = new THREE.Mesh(
     new THREE.BoxGeometry(0.62, 0.72, 0.34),
-    new THREE.MeshStandardMaterial({ color: local ? 0x7b8068 : 0x686d5b, roughness: 0.85 }),
+    new THREE.MeshLambertMaterial({ color: local ? 0x7b8068 : 0x686d5b }),
   );
   torso.name = 'torso';
   torso.castShadow = true;
   root.add(torso);
 
-  const skin = new THREE.MeshStandardMaterial({ color: 0xc99572, roughness: 0.9 });
-  const uniform = new THREE.MeshStandardMaterial({ color: local ? 0x5f6748 : 0x6f7458, roughness: 0.95 });
-  const gear = new THREE.MeshStandardMaterial({ color: 0x2f3329, roughness: 1 });
-  const weapon = new THREE.MeshStandardMaterial({ color: 0x20231f, roughness: 0.8 });
+  const skin = new THREE.MeshLambertMaterial({ color: 0xc99572 });
+  const uniform = new THREE.MeshLambertMaterial({ color: local ? 0x5f6748 : 0x6f7458 });
+  const gear = new THREE.MeshLambertMaterial({ color: 0x2f3329 });
+  const weapon = new THREE.MeshLambertMaterial({ color: 0x20231f });
 
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.23, 10, 8), skin);
   head.name = 'head';
