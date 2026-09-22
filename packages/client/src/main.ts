@@ -55,7 +55,7 @@ import {
 import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { type ClientLink, DEFAULT_LINK, type LinkConditions, LocalServer } from './net/LocalServer.ts';
-import { NetClient, type ServerShot } from './net/NetClient.ts';
+import { NetClient, type ServerDetonation, type ServerShot } from './net/NetClient.ts';
 import {
   HostUrlError,
   RemoteServer,
@@ -67,14 +67,14 @@ import {
   shareLink,
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
-import { DEFAULT_WORLD, type WorldBoxKind, boxCentre, surfaceAt } from '@sandline/shared';
+import { DEFAULT_WORLD, type WorldBoxKind, boxCentre, supportUnder, surfaceAt } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { PROJECTILE_ORDER, ThrowQA } from './weapons/ThrowQA.ts';
 import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
-import { WeaponEffects } from './weapons/effects.ts';
-import { addShake, applyShake, createShake, decayShake } from './camera/cameraShake.ts';
+import { SCORCH_REACH_M, WeaponEffects } from './weapons/effects.ts';
+import { addImpulse, addShake, applyShake, blastShake, createShake, decayShake } from './camera/cameraShake.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
 import {
   HUMANOID_CROUCH_HIT_HEIGHT_M,
@@ -389,6 +389,8 @@ arcMarker.visible = false;
 scene.add(arcMarker);
 
 const throwOrigin = new THREE.Vector3();
+/** The last blast this client drew, for the HUD. */
+let lastBlast: { name: string; damage: number; targets: number } | null = null;
 const projectileHeading = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -543,6 +545,68 @@ function landImpact(net: NetClient, shot: ServerShot): void {
   effects.flinch(target, now, hitReactionFrom(shot.damage, zone, from));
 }
 
+/**
+ * A blast, at the moment the render clock reaches the tick it went off on
+ * (T-2.33) — `NetClient` holds it until then, because projectiles are drawn a
+ * hundred milliseconds behind server time and a blast drawn on arrival goes
+ * off in front of a grenade the player can still see in the air.
+ *
+ * Three things come out of one message: the picture at the server's point, the
+ * jolt to this player's own camera scaled by how much of the blast reached
+ * them, and a reaction on everybody it hurt, away from the blast — the T-2.27
+ * layer, asked the same way a bullet asks it.
+ */
+function onServerDetonation(net: NetClient, event: ServerDetonation): void {
+  const now = clock.tick * TICK_SECONDS;
+  const def = getProjectile(PROJECTILE_ORDER[event.kind] ?? PROJECTILE_ORDER[0]);
+  const centre = { x: event.x, y: event.y, z: event.z };
+
+  /**
+   * What the scorch goes on: the surface under the blast, if there is one
+   * close enough below it. A rocket against a wall three metres up leaves no
+   * ring on the floor beneath it.
+   */
+  const support = supportUnder(event.x, event.z, 0.15, event.y, DEFAULT_WORLD, config.groundY);
+  effects.blast(centre, def.blastRadiusM, event.y - support <= SCORCH_REACH_M ? support : null, now);
+
+  // Our own camera, by what reached US. `net.simulated` is where the server
+  // has this player; the blast was resolved against that, not against the
+  // rendered position.
+  const here = net.simulated;
+  if (here) {
+    const impulse = blastShake(
+      def,
+      centre,
+      { x: here.x, y: here.y, z: here.z },
+      here.crouched ? HUMANOID_CROUCH_HIT_HEIGHT_M : HUMANOID_HIT_HEIGHT_M,
+      DEFAULT_WORLD,
+    );
+    if (impulse.posM > 0) shake = addImpulse(shake, impulse.posM, impulse.rollRad);
+  }
+
+  for (const target of event.targets) {
+    const mesh = target.netId === net.netId ? player : remoteMeshes.get(target.netId);
+    const downed = target.netId === net.netId
+      ? net.vitality !== 'alive'
+      : net.remoteVitality(target.netId) !== 'alive';
+    if (!mesh || downed) continue;
+    /**
+     * Staggered AWAY from the blast, in the target's own frame, by the same
+     * arithmetic a bullet's reaction uses — the blast is simply the shooter.
+     * A blast has no hit zone, so it is a torso hit: the body takes it, not
+     * the head.
+     */
+    const from = shooterDirection(centre.x - mesh.position.x, centre.z - mesh.position.z, mesh.rotation.y);
+    effects.flinch(mesh, now, hitReactionFrom(target.damage, 'torso', from));
+  }
+
+  lastBlast = {
+    name: def.name,
+    damage: event.targets.reduce((total, t) => total + t.damage, 0),
+    targets: event.targets.length,
+  };
+}
+
 function startSession(choice: LobbyChoice): void {
   if (live) leaveSession(null);
 
@@ -556,6 +620,7 @@ function startSession(choice: LobbyChoice): void {
   const server: SessionSource = local ?? (remote as RemoteServer);
   const net = new NetClient(server.transport, choice.kind === 'remote' ? choice.name : 'qa', config);
   net.onShot = (shot) => onServerShot(net, shot);
+  net.onDetonation = (event) => onServerDetonation(net, event);
 
   if (remote && choice.kind === 'remote') {
     /**
@@ -1419,7 +1484,8 @@ function frame(): void {
         `  hips ${localFeet.drop.toFixed(2)}  step ${localFeet.step.toFixed(3)}\n` +
         `${input.locked ? 'mouse captured - Esc to release' : 'CLICK to capture mouse'}\n` +
         `\n${combat.readout(clock.tick * TICK_SECONDS, input.ads)}\n` +
-        `${throws.readout(clock.tick * TICK_SECONDS)}\n` +
+        `${throws.readout(clock.tick * TICK_SECONDS)}` +
+        `${lastBlast ? `\nlast blast ${lastBlast.name}  ${lastBlast.damage.toFixed(0)} dmg on ${lastBlast.targets}` : ''}\n` +
         `${effects.readout()}\n` +
         `\n${netReadout()}`;
     }
@@ -1458,6 +1524,7 @@ addEventListener('keydown', (e) => {
     for (const id of throws.takeRetired()) dropProjectileMesh(`g${id}`);
     throws.reset();
     for (const id of throws.takeRetired()) dropProjectileMesh(`g${id}`);
+    lastBlast = null;
   }
   // 1-4 pick a weapon, 5-6 the pouch. Switching is instant and reloads: a
   // range, not a match.

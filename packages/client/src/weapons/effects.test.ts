@@ -24,7 +24,13 @@ import {
   SHELL_REST_SECONDS,
   SHELL_SIZE_M,
   REACTION_SECONDS,
+  BLAST_DEBRIS,
+  BLAST_DEBRIS_SECONDS,
+  BLAST_FLASH_SECONDS,
+  BLAST_POOL,
+  SCORCH_SECONDS,
   WeaponEffects,
+  debrisVelocities,
   ejectVelocity,
   flightSeconds,
   shellLifetimeSeconds,
@@ -480,5 +486,84 @@ describe('the rig takes its own hit reaction (T-2.27)', () => {
     fx.reset();
     expect(fx.liveFlinches).toBe(0);
     expect(boneBits(rig)).toBe(up);
+  });
+});
+
+describe('blasts (T-2.33)', () => {
+  const BLAST_RADIUS_M = 6;
+  const point = { x: 2, y: 0.3, z: -4 };
+
+  it('never grows the scene, however many go off', () => {
+    const scene = new THREE.Scene();
+    const effects = new WeaponEffects(scene);
+    const before = scene.children.length;
+    for (let i = 0; i < BLAST_POOL * 3; i += 1) {
+      effects.blast({ x: i, y: 0.3, z: 0 }, BLAST_RADIUS_M, 0, i * 0.05);
+    }
+    expect(scene.children.length).toBe(before);
+    expect(effects.liveBlasts).toBe(BLAST_POOL);
+  });
+
+  it('is gone by the end of the scorch, and not before', () => {
+    const scene = new THREE.Scene();
+    const effects = new WeaponEffects(scene);
+    effects.blast(point, BLAST_RADIUS_M, 0, 0);
+    effects.update(BLAST_FLASH_SECONDS + 0.01);
+    expect(effects.liveBlasts).toBe(1);
+    effects.update(SCORCH_SECONDS - 0.01);
+    expect(effects.liveBlasts).toBe(1);
+    effects.update(SCORCH_SECONDS);
+    expect(effects.liveBlasts).toBe(0);
+  });
+
+  it('draws the same picture at any frame rate: everything is a function of age', () => {
+    const slow = new WeaponEffects(new THREE.Scene());
+    const fast = new WeaponEffects(new THREE.Scene());
+    slow.blast(point, BLAST_RADIUS_M, 0, 0);
+    fast.blast(point, BLAST_RADIUS_M, 0, 0);
+    // 30 fps against 120 fps, up to the same moment.
+    for (let t = 1 / 30; t <= 0.2 + 1e-9; t += 1 / 30) slow.update(t);
+    for (let t = 1 / 120; t <= 0.2 + 1e-9; t += 1 / 120) fast.update(t);
+    const debrisOf = (fx: WeaponEffects) => {
+      const points = (fx as unknown as { blasts: { debris: THREE.Points }[] }).blasts[0]?.debris;
+      return Array.from(((points?.geometry.getAttribute('position') as THREE.BufferAttribute).array) as Float32Array);
+    };
+    expect(debrisOf(fast)).toEqual(debrisOf(slow));
+  });
+
+  it('leaves no ring when there is nothing under it to mark', () => {
+    const scene = new THREE.Scene();
+    const effects = new WeaponEffects(scene);
+    effects.blast(point, BLAST_RADIUS_M, null, 0);
+    const scorch = (effects as unknown as { blasts: { scorch: THREE.Mesh }[] }).blasts[0]?.scorch;
+    expect(scorch?.visible).toBe(false);
+  });
+
+  it('throws the same debris for the same blast, and different for the next', () => {
+    const a = new Float32Array(BLAST_DEBRIS * 3);
+    const b = new Float32Array(BLAST_DEBRIS * 3);
+    const c = new Float32Array(BLAST_DEBRIS * 3);
+    debrisVelocities(7, a);
+    debrisVelocities(7, b);
+    debrisVelocities(8, c);
+    expect(Array.from(a)).toEqual(Array.from(b));
+    expect(Array.from(a)).not.toEqual(Array.from(c));
+    // Spread, and biased upward: nothing goes straight down.
+    for (let i = 0; i < BLAST_DEBRIS; i += 1) expect(a[i * 3 + 1] as number).toBeGreaterThan(0);
+  });
+
+  it('flies its debris on the same arc a shell flies', () => {
+    const scene = new THREE.Scene();
+    const effects = new WeaponEffects(scene);
+    effects.blast(point, BLAST_RADIUS_M, 0, 0);
+    const velocities = (effects as unknown as { blasts: { velocities: Float32Array }[] }).blasts[0]?.velocities as Float32Array;
+    const t = BLAST_DEBRIS_SECONDS / 2;
+    effects.update(t);
+    const positions = (effects as unknown as { blasts: { positions: THREE.BufferAttribute }[] }).blasts[0]
+      ?.positions.array as Float32Array;
+    expect(positions[1] as number).toBeCloseTo(
+      point.y + (velocities[1] as number) * t - 0.5 * GRAVITY_M_S2 * t * t,
+      6,
+    );
   });
 });
