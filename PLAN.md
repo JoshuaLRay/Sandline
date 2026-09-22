@@ -1268,6 +1268,7 @@ eye.
 - **Do:** Chunkier, flatter, era-correct proportions inside the same 1.8 m capsule: bigger boots, gloves, a helmet with a brim, a collar, webbing and pouches as geometry slabs, squarer limbs (fewer radial segments, flat where the era was flat). Keep the bone table's joint positions wherever possible; where they move, move the pinned assertions with them in the same commit.
 - **Done when:** the root capsule, the aim attachment's world place, the bone names and the bind pose are all unchanged; triangles stay under the guard and inside ADR-013; every E-2.2/E-2.3 layer test still passes; `pnpm verify` green.
 - **Size:** M
+- **Completed 2026-09-21.** The largest single change is that the helmet has a BRIM — one disc at the dome's rim, and the strongest era cue the model has; without it a helmet reads as a swimming cap. Then oversized boots with an upper on the shin that wears them so the trouser does not stop in mid-air above a block, bigger gloves, thicker limbs on six radial segments rather than eight, shoulder slabs instead of balls, and a collar and five pouches as geometry, because gear that breaks the outline is most of what tells a 2002 soldier from a mannequin. **Triangles went DOWN, 1,446 to 980:** faceting the limbs bought more than the gear slabs cost, which is worth saying plainly rather than padding the model back up to a number — the era's range was 1–3k and the silhouette was what was wrong, not the budget. Every joint position in the bone table is unchanged, which is what makes this an art change rather than a rig change: the arms' IK constants, the legs' lengths derived by `footPlacement.ts`, and every pinned assertion hold exactly, and all of E-2.2's and E-2.3's layer tests pass untouched. New guard, and the reason the pack moved in 2 cm: every skin vertex must stay within `HUMANOID_HIT_RADIUS` of the root axis and fill at least 80% of it — a shoulder or pack outside the capsule is a netcode bug wearing art's clothes, since you would watch rounds pass through visible kit, and a thin soldier rattling inside a fat hitbox is the same fault the other way up.
 
 #### T-2.32 — The era's shading
 - **Depends:** T-2.30
@@ -1275,6 +1276,7 @@ eye.
 - **Do:** Drop PBR for the characters (`MeshLambertMaterial`, or Standard pinned to roughness 1 with no environment contribution) and harden the shadow filter. Keep ADR-013's one shadow-mapped sun and the dust haze. **No vertex jitter and no affine texture warping.**
 - **Done when:** a human says it reads as the era; frame time no worse than before; the grey box still renders; `pnpm verify` green.
 - **Size:** S–M
+- **Completed 2026-09-21**, except the human half of its gate, which is T-2.34's. The characters drop PBR for `MeshLambertMaterial` and the shadow filter hardens from `PCFSoftShadowMap` to `PCFShadowMap`: a roughness response and a soft penumbra under a soldier are the two things that read as modern however well the character is textured. Lambert is diffuse and nothing else, which is what hardware lighting in 2002 was, and it is cheaper besides. The grey box takes the same material so the fixture is lit like the thing it stands in for. **Smooth normals on purpose:** `flatShading` is the reflex here and it is the wrong console — the PS2 interpolated per-vertex lighting across a triangle, so its curved surfaces read smooth and only the SILHOUETTE gave the polygon count away, which is exactly what T-2.31's six-sided limbs do; faceted shading is a 2015 indie look. No vertex jitter and no affine warping either. ADR-013's one sun and the dust haze are untouched. **The low-resolution render target is deliberately NOT done and is section 6 of T-2.34's run sheet:** it is the strongest remaining era cue and it also costs crosshair, tracer and hit-marker legibility that T-2.24 and T-2.29, both still open, are judged on. Which way that trade goes is an owner's call.
 
 #### T-2.33 — Squad colours from the atlas
 - **Depends:** T-2.30
@@ -1282,6 +1284,7 @@ eye.
 - **Do:** Per-slot variation — local, squadmate, bot — as palette swaps of the same atlas rather than new materials or new geometry, so six soldiers stay six draws of the same one. Keep the local/remote distinction the harness already relies on.
 - **Done when:** six soldiers on screen with distinguishable kit; no extra draw call per variant; `pnpm verify` green.
 - **Size:** S
+- **Completed 2026-09-21.** The palette data becomes a `base` plus per-name overrides, so a squad of six is one set of colours wearing six markings rather than six unrelated schemes — which is what a squad looks like, and what keeps a slot colour to one line of data. `paletteFor({local, human, slot})` reads the palette off the roster; `setSoldierPalette(root, name)` repaints a LIVE soldier by swapping the atlas and nothing else — same geometry, skeleton, material and draw call. That matters more than it looks: ADR-001's bot/human swap happens on a live entity rather than by rebuilding the session, so a slot changing hands has to be a texture swap, and `main.ts` re-asks every frame rather than fixing the colour at creation (the call skips when nothing changed). **The marking moved twice and both reasons are worth keeping.** It is the HELMET BAND and not a patch, because a patch does not survive forty metres and a band is visible from every angle, range and pose. And the band sits a third of the way UP the dome rather than at the rim where a band belongs, because T-2.31's brim occludes the rim exactly — the first version was painted correctly and invisible on the model. The shoulders carry it too, since the helmet mark and the vest patch both face front and a squad seen from anywhere but head-on shows neither. `remote` stays as the fallback before the roster arrives; the grey box answers false rather than throwing.
 
 #### T-2.34 — 🧍 Look sign-off
 - **Depends:** T-2.30, T-2.31, T-2.32, T-2.33
@@ -1289,6 +1292,7 @@ eye.
 - **Do:** Two people on the host, at the ranges the game is actually played at — across the range, in cover, downed, at a sprint. Judge whether it reads as 2002 rather than as untextured geometry, whether soldiers are distinguishable at 40 m, and whether the silhouette still reads through the E-2.3 layers.
 - **Done when:** a written verdict on a run sheet prepared before the session, naming what it does and does not establish.
 - **Size:** S
+- **Run sheet prepared 2026-09-21, not run.** `docs/playtests/soldier-look.md`, written as `e2-2.md` was and saying so at the top. Section 6 carries the one decision T-2.32 deliberately left open — whether to render at a fixed low resolution and upscale with point filtering — because it trades legibility the two open feel-gates are judged on, and that is the owner's call to make with the thing in front of them.
 
 ### M3 — AI & squad command (~10–12 wks)
 
@@ -1418,10 +1422,15 @@ green, including the non-V8 parity job.
    two people on the host, judging whether the body reads what the other is
    doing, and tuning the layers' numbers with the feel in hand. Each layer is
    procedural on the rig contract; none moves anything authoritative.
-3. **The soldier's look.** Broken out 2026-09-21 as T-2.30 through T-2.34
-   (§7.5), from `docs/HANDOFF-SOLDIER-LOOK.md`. Not on M2's critical path —
-   the exit gate is feel, not looks — but it runs before the two open human
-   gates because both are judged by eye and the soldier is what they look at.
+3. **Run T-2.34.** 🧍 The soldier's look was broken out 2026-09-21 as T-2.30
+   through T-2.34 (§7.5) from `docs/HANDOFF-SOLDIER-LOOK.md`, and **the build
+   work is done**: the soldier now carries one generated 256² diffuse atlas,
+   an era silhouette with a brimmed helmet, Lambert shading under a hard
+   shadow, and a per-slot helmet band. `docs/playtests/soldier-look.md` is the
+   run sheet, prepared and not run. It owes one decision nothing else can
+   make: section 6, whether to render at a fixed low resolution and upscale
+   with point filtering, which is the strongest era cue left and costs
+   crosshair and tracer legibility that T-2.24 and T-2.29 are judged on.
 4. **Keep tuning data opportunistically.** Weapon and downed values remain
    data-driven; adjust them when a concrete playtest issue appears rather than
    reopening completed gates without a reason.

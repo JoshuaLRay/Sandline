@@ -1,7 +1,17 @@
 # Handoff — the soldier's look: PS2-era, Desert Storm-ish
 
-**Written 2026-09-21, after T-2.28 closed E-2.3's build work. Nothing here is
-built yet.** This is a context transfer for whoever picks the work up next,
+> **Superseded 2026-09-21, the same day.** §6's proposal was agreed and is now
+> `PLAN.md` §7.5; T-2.30 through T-2.33 are built and T-2.34's run sheet is
+> `docs/playtests/soldier-look.md`. **`PLAN.md` is authoritative** — this file
+> is kept for §1–§5, which is the reasoning the tasks rest on: why the era is
+> already the locked direction, what the soldier was made of, what PS2 means
+> that PS1 does not, and what must not move. Three things it predicted are
+> worth checking against what happened: the `DataTexture` decision was right
+> and was the whole job's hinge; `weld()` throwing UVs away was the change it
+> said it was; and the triangle count went *down*, not up.
+
+**Written 2026-09-21, after T-2.28 closed E-2.3's build work. Nothing here was
+built at the time of writing.** This is a context transfer for whoever picks the work up next,
 agent or person: what the soldier is made of today, what "PS2 era" actually
 means in renderer terms, what must not move while it changes, and a proposed
 task breakdown in `PLAN.md`'s format.
