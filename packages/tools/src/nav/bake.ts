@@ -13,9 +13,23 @@
  * the result per world with a staleness hash (`navBakeHash`).
  */
 import { createHash } from 'node:crypto';
-import { exportNavMesh, init } from '@recast-navigation/core';
+import { type OffMeshConnectionParams, exportNavMesh, init } from '@recast-navigation/core';
 import { type SoloNavMeshGeneratorConfig, generateSoloNavMesh } from '@recast-navigation/generators';
-import { DEFAULT_MOVE_CONFIG, type MoveConfig, type World } from '@sandline/shared';
+import {
+  DEFAULT_MOVE_CONFIG,
+  type MoveConfig,
+  type World,
+  createMoveState,
+  supportUnder,
+  tryStartVault,
+} from '@sandline/shared';
+import {
+  NAV_AREA_VAULT,
+  NAV_FLAG_VAULT,
+  NAV_FLAG_WALK,
+  NavMesh,
+  initNav,
+} from '../../../server/src/ai/nav/NavMesh.ts';
 import { DEFAULT_HITBOX, type Hitbox } from '../../../server/src/net/lagComp.ts';
 
 /** An axis-aligned box, min and max corners, in world metres. */
@@ -124,6 +138,13 @@ export interface NavAgent {
   height: number;
   climb: number;
   groundY: number;
+  /**
+   * The vault rule's own numbers (T-3.04), carried so the staleness hash
+   * covers them: retuning the vault changes which boxes get a link.
+   */
+  vaultMaxHeight: number;
+  vaultDistance: number;
+  vaultProbe: number;
 }
 
 export function navAgentFrom(move: MoveConfig, hitbox: Hitbox): NavAgent {
@@ -132,6 +153,27 @@ export function navAgentFrom(move: MoveConfig, hitbox: Hitbox): NavAgent {
     height: move.height,
     climb: move.stepHeight,
     groundY: move.groundY,
+    vaultMaxHeight: move.vaultMaxHeight,
+    vaultDistance: move.vaultDistance,
+    vaultProbe: move.vaultProbe,
+  };
+}
+
+/**
+ * The controller config the vault predicate is asked with: today's defaults
+ * with every field the agent carries laid over them, so a link is generated
+ * for exactly the agent the mesh was baked for.
+ */
+function moveConfigFor(agent: NavAgent): MoveConfig {
+  return {
+    ...DEFAULT_MOVE_CONFIG,
+    radius: agent.radius,
+    height: agent.height,
+    stepHeight: agent.climb,
+    groundY: agent.groundY,
+    vaultMaxHeight: agent.vaultMaxHeight,
+    vaultDistance: agent.vaultDistance,
+    vaultProbe: agent.vaultProbe,
   };
 }
 
@@ -186,11 +228,115 @@ export function navBakeHash(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): 
     },
     agent,
     config: navConfigFor(agent),
+    // How vault links are searched for and kept (T-3.04). The vault rule's
+    // own numbers are in `agent`; the rule itself is the controller's code.
+    links: { spacing: LINK_SPACING_M, approachMargin: APPROACH_MARGIN_M, endOnMesh: LINK_END_ON_MESH_M },
   };
   return createHash('sha256').update(JSON.stringify(inputs)).digest('hex');
 }
 
-/** Bake a named world for an agent. */
-export function bakeWorld(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): Promise<Uint8Array> {
-  return bakeNavMesh(worldSoup(world, agent.groundY), navConfigFor(agent));
+/* -- Vault links (T-3.04) ----------------------------------------------------- */
+
+/** One vault a soldier could make: walk to `from`, face `yaw`, vault to `to`. */
+export interface VaultLink {
+  box: string;
+  from: { x: number; y: number; z: number };
+  to: { x: number; y: number; z: number };
+  /** The four axis directions, as wire yaw (1024 per turn): +Z 0, +X 256, −Z 512, −X 768. */
+  yaw: number;
+}
+
+/**
+ * How far off a face the approach point stands: the body's radius plus a
+ * margin, so it sits just inside the mesh (eroded by a whole voxel beyond
+ * the radius) while the vault probe still reaches the box.
+ */
+const APPROACH_MARGIN_M = NAV_CELL.cs;
+/** Approach points along a long face, at most this far apart. */
+const LINK_SPACING_M = 2;
+
+/** The four facings, as the controller reads them: forward is (sin yaw, cos yaw). */
+const FACINGS = [
+  { yaw: 0, dirX: 0, dirZ: 1 },
+  { yaw: 256, dirX: 1, dirZ: 0 },
+  { yaw: 512, dirX: 0, dirZ: -1 },
+  { yaw: 768, dirX: -1, dirZ: 0 },
+] as const;
+
+/**
+ * Every vault the controller would make, found by ASKING it (T-2.21's
+ * `tryStartVault`), not by restating its rule. For each box and each of its
+ * four faces, a soldier stands just off the face at points along it, facing
+ * in; where the controller says it would vault, the link runs from there to
+ * where the vault lands. Each side is asked separately, so a box that can be
+ * vaulted both ways gets a link each way, and one whose far side has no
+ * landing gets only the links that can actually happen.
+ */
+export function vaultLinks(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): VaultLink[] {
+  const config = moveConfigFor(agent);
+  const half = agent.radius;
+  const stand = half + APPROACH_MARGIN_M;
+  const links: VaultLink[] = [];
+  for (const box of world.boxes) {
+    for (const f of FACINGS) {
+      // The face the soldier walks at, and the span along it they can stand on.
+      const alongX = f.dirX === 0;
+      const lo = (alongX ? box.minX : box.minZ) + half;
+      const hi = (alongX ? box.maxX : box.maxZ) - half;
+      const face = f.dirX > 0 ? box.minX : f.dirX < 0 ? box.maxX : f.dirZ > 0 ? box.minZ : box.maxZ;
+      const count = hi <= lo ? 1 : Math.max(1, Math.ceil((hi - lo) / LINK_SPACING_M) + 1);
+      for (let i = 0; i < count; i++) {
+        const t = count === 1 ? (lo + hi) / 2 : lo + ((hi - lo) * i) / (count - 1);
+        const x = alongX ? t : face - f.dirX * stand;
+        const z = alongX ? face - f.dirZ * stand : t;
+        const y = supportUnder(x, z, half, agent.groundY + agent.climb, world.boxes, agent.groundY);
+        const vault = tryStartVault(createMoveState(x, y, z), f.yaw, f.dirX, f.dirZ, config, world.boxes);
+        if (!vault) continue;
+        const toX = x + f.dirX * config.vaultDistance;
+        const toZ = z + f.dirZ * config.vaultDistance;
+        const toY = supportUnder(toX, toZ, half, vault.topY + config.stepHeight, world.boxes, config.groundY);
+        links.push({ box: box.id, from: { x, y, z }, to: { x: toX, y: toY, z: toZ }, yaw: f.yaw });
+      }
+    }
+  }
+  return links;
+}
+
+/** How close a link end must be, across the ground, to the mesh to count as on it. */
+export const LINK_END_ON_MESH_M = NAV_CELL.cs;
+
+/** True when a point is on the mesh: close across the ground and within a step vertically. */
+export function onMesh(mesh: NavMesh, p: { x: number; y: number; z: number }, climb: number): boolean {
+  const near = mesh.nearestPoint(p);
+  if (!near) return false;
+  const across = Math.sqrt((near.point.x - p.x) ** 2 + (near.point.z - p.z) ** 2);
+  return across <= LINK_END_ON_MESH_M && Math.abs(near.point.y - p.y) <= climb;
+}
+
+/**
+ * The vault links that can join the mesh: both ends on it. The controller
+ * will happily vault onto a surface the mesh does not reach — the 0.3 m top
+ * of the low wall walked along lengthwise, the top of a post — and a link to
+ * nowhere is not a route, so the mesh is baked once without links to find
+ * out which ends it has.
+ */
+export async function meshVaultLinks(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): Promise<VaultLink[]> {
+  await initNav();
+  const bare = NavMesh.load(await bakeNavMesh(worldSoup(world, agent.groundY), navConfigFor(agent)));
+  const kept = vaultLinks(world, agent).filter((l) => onMesh(bare, l.from, agent.climb) && onMesh(bare, l.to, agent.climb));
+  bare.destroy();
+  return kept;
+}
+
+/** Bake a named world for an agent: the mesh, and a vault link for every vault the controller would make onto it. */
+export async function bakeWorld(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): Promise<Uint8Array> {
+  const offMeshConnections: OffMeshConnectionParams[] = (await meshVaultLinks(world, agent)).map((link) => ({
+    startPosition: link.from,
+    endPosition: link.to,
+    radius: agent.radius,
+    bidirectional: false,
+    area: NAV_AREA_VAULT,
+    flags: NAV_FLAG_WALK | NAV_FLAG_VAULT,
+  }));
+  return bakeNavMesh(worldSoup(world, agent.groundY), { ...navConfigFor(agent), offMeshConnections });
 }
