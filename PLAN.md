@@ -1206,6 +1206,90 @@ animates from state now will take clips then.
 - **Done when:** a written verdict, on a run sheet prepared before the session as `e2-2.md` was, naming what it does and does not establish.
 - **Size:** S
 
+### 7.5 The soldier's look — broken out 2026-09-21
+
+E-2.3's build work closed at T-2.28 and only its human gate is open, so this
+takes the request `docs/HANDOFF-SOLDIER-LOOK.md` was written for and makes it
+tasks:
+
+> *"I'd like to update how the player models look. I'd like them to look like
+> the player models from PS2 era like Desert Storm."*
+
+**This is not a change of art direction; it is the first delivery of the one
+already locked.** `PLAN.md` line 5 says "in the spirit of early-2000s console
+squad tactics games" and ADR-013's context names the same era as the reason a
+browser build is realistic at all. What has never existed is any of the art
+*treatment* that would make it read that way. T-2.22 built a soldier out of
+untextured primitives under a PBR material, and it reads as exactly that.
+
+**Original IP, and the reference is a technique, not a game (R8).** Desert
+Storm is named here for the era's *rendering constraints and silhouette
+language* — low triangle counts, one small hand-painted diffuse, vertex-ish
+lighting, chunky gear. No models, textures, characters, names, insignia or
+likenesses are copied, and no asset is sourced from it. Rebuilding a technique
+is not taking anyone's IP; the standing rule is unchanged and unthreatened.
+
+**PS2, not PS1 — the distinction is most of the work.** The usual "retro 3D"
+kit is the wrong console and would read as a bug rather than a style: **no
+vertex jitter and no affine texture warping**, both of which are PS1. The
+target is a low-poly silhouette, ONE small point-filtered diffuse carrying all
+the detail, simple lighting, hard shadow edges and a narrow palette.
+
+**Why the triangle count is not the problem.** At 1,446 triangles the soldier
+is already squarely in the era's range. Four other things do the damage: no
+texture at all, a PBR material under soft shadows, round primitives, and
+realistic rather than stocky proportions. The tasks below take them in that
+order, texture first, because that is where the look actually lives.
+
+**Nothing authoritative moves.** The hit capsule (`HUMANOID_HIT_RADIUS` 0.35,
+`HUMANOID_HIT_HALF_HEIGHT` 0.55, pinned to the server's `DEFAULT_HITBOX`), the
+aim attachment's world place, the trace origin, the bone names and
+bind-pose-is-identity are all untouched by every task here. **If a change to
+how a soldier looks makes a test about where a bullet goes fail, the change is
+wrong — not the test.** The grey box behind `?greybox` stays as the fallback
+and diagnostic fixture.
+
+**This is not on M2's critical path** — the exit gate is whether combat
+*feels* good, not how it looks — but it runs now because the look affects
+every remaining playtest, T-2.24 and T-2.29 included, and those are judged by
+eye.
+
+#### T-2.30 — One diffuse atlas, procedurally generated
+- **Depends:** —
+- **Files:** `packages/client/src/character/soldierTexture.ts`, `soldierPalette.json`, `humanoidSoldier.ts`, `packages/client/tsconfig.json`, tests
+- **Do:** A 256² `DataTexture` built from arithmetic — no DOM, no asset, no loader — with `NearestFilter` magnification and a cell per body part. Paint the detail the geometry does not carry: pouches, straps, seams, boot cuffs, a helmet band, a plain face. Keep `weld()`'s UVs and remap each segment into its cell. Palette in data (standing rule 4).
+- **Done when:** the soldier renders textured with one draw call and one material; the atlas builds in Node with no DOM; a test asserts the atlas's size, filtering and known texels; triangle count unchanged; `pnpm verify` green.
+- **Size:** M
+- **Completed 2026-09-21.** `soldierTexture.ts` paints a 256² atlas into a `Uint8Array` as a 4×4 grid of 64px cells — face, helmet, torso front and back, vest, belt, sleeve, glove, trouser, boot, neck, rifle, pack and two plain cells — and wraps it in a `DataTexture`, point-magnified, mipmapped for minification, sRGB. A `DataTexture` rather than a `CanvasTexture` because client tests run under `environment: 'node'` where a canvas throws and every soldier test builds a soldier; rather than an image because there is no loader, no `public/` and no asset pipeline in this client until E-4.1, and standing rule 3 would want an ADR and a licence for one. `remapGeometryUv` moves each primitive's own UVs into its cell and takes an ARRAY to give a box a cell per face, which is how one torso box carries a placket and chest pockets on the front and a plain yoke on the back. `weld()` now carries `uv` across and no longer synthesises the flat per-segment vertex colour, which is gone: the atlas says everything it said and the things it could not. **Two measured findings are pinned by test.** Three's spheres and capsules emit `u` outside [0, 1] — -0.0625 to 1.0625 on an eight-segment capsule, a seam nudged half a segment past each edge — so `cellUv` clamps, or that sliver reads the next cell and paints a stripe of boot sole up a sleeve. And the remap insets by half a texel at every edge, because a primitive emits u = 1 on its last column and under nearest filtering that lands on the first texel of the *next* cell. Geometry, bone names, bind pose, hit capsule and aim attachment all untouched; the rifle takes the same atlas, so it stays the second draw rather than becoming a third material.
+
+#### T-2.31 — The silhouette
+- **Depends:** T-2.30
+- **Files:** `humanoidSoldier.ts`, tests
+- **Do:** Chunkier, flatter, era-correct proportions inside the same 1.8 m capsule: bigger boots, gloves, a helmet with a brim, a collar, webbing and pouches as geometry slabs, squarer limbs (fewer radial segments, flat where the era was flat). Keep the bone table's joint positions wherever possible; where they move, move the pinned assertions with them in the same commit.
+- **Done when:** the root capsule, the aim attachment's world place, the bone names and the bind pose are all unchanged; triangles stay under the guard and inside ADR-013; every E-2.2/E-2.3 layer test still passes; `pnpm verify` green.
+- **Size:** M
+
+#### T-2.32 — The era's shading
+- **Depends:** T-2.30
+- **Files:** `main.ts`, `humanoidSoldier.ts`, `humanoidPlaceholder.ts`, tests
+- **Do:** Drop PBR for the characters (`MeshLambertMaterial`, or Standard pinned to roughness 1 with no environment contribution) and harden the shadow filter. Keep ADR-013's one shadow-mapped sun and the dust haze. **No vertex jitter and no affine texture warping.**
+- **Done when:** a human says it reads as the era; frame time no worse than before; the grey box still renders; `pnpm verify` green.
+- **Size:** S–M
+
+#### T-2.33 — Squad colours from the atlas
+- **Depends:** T-2.30
+- **Files:** `soldierTexture.ts`, `humanoidSoldier.ts`, palette data, tests
+- **Do:** Per-slot variation — local, squadmate, bot — as palette swaps of the same atlas rather than new materials or new geometry, so six soldiers stay six draws of the same one. Keep the local/remote distinction the harness already relies on.
+- **Done when:** six soldiers on screen with distinguishable kit; no extra draw call per variant; `pnpm verify` green.
+- **Size:** S
+
+#### T-2.34 — 🧍 Look sign-off
+- **Depends:** T-2.30, T-2.31, T-2.32, T-2.33
+- **Files:** `docs/playtests/soldier-look.md`
+- **Do:** Two people on the host, at the ranges the game is actually played at — across the range, in cover, downed, at a sprint. Judge whether it reads as 2002 rather than as untextured geometry, whether soldiers are distinguishable at 40 m, and whether the silhouette still reads through the E-2.3 layers.
+- **Done when:** a written verdict on a run sheet prepared before the session, naming what it does and does not establish.
+- **Size:** S
+
 ### M3 — AI & squad command (~10–12 wks)
 
 | Epic | Scope | Notes |
@@ -1334,7 +1418,11 @@ green, including the non-V8 parity job.
    two people on the host, judging whether the body reads what the other is
    doing, and tuning the layers' numbers with the feel in hand. Each layer is
    procedural on the rig contract; none moves anything authoritative.
-3. **Keep tuning data opportunistically.** Weapon and downed values remain
+3. **The soldier's look.** Broken out 2026-09-21 as T-2.30 through T-2.34
+   (§7.5), from `docs/HANDOFF-SOLDIER-LOOK.md`. Not on M2's critical path —
+   the exit gate is feel, not looks — but it runs before the two open human
+   gates because both are judged by eye and the soldier is what they look at.
+4. **Keep tuning data opportunistically.** Weapon and downed values remain
    data-driven; adjust them when a concrete playtest issue appears rather than
    reopening completed gates without a reason.
 
