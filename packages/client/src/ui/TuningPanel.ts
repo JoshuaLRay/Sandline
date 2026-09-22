@@ -23,7 +23,6 @@ const ROWS: Row[] = [
   { key: 'walkSpeed', label: 'Walk', min: 1, max: 12, step: 0.1 },
   { key: 'sprintSpeed', label: 'Sprint', min: 1, max: 16, step: 0.1 },
   { key: 'crouchSpeed', label: 'Crouch', min: 0.5, max: 8, step: 0.1 },
-  { key: 'crawlSpeed', label: 'Crawl', min: 0.3, max: 4, step: 0.1 },
   { key: 'jumpSpeed', label: 'Jump impulse', min: 1, max: 14, step: 0.1 },
   { key: 'gravity', label: 'Gravity', min: -60, max: -5, step: 0.5 },
   // T-2.24: the vault's timing is the sign-off's question, so it is a

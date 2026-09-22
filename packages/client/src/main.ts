@@ -961,7 +961,7 @@ function netReadout(): string {
       : n.vitality === 'alive'
         ? `health ${Math.round(n.health)}/${Math.round(n.maxHealth)}\n`
         : n.vitality === 'downed'
-          ? `DOWNED  bleeding out ${n.vitalTimer}s  (crawl; a teammate can revive you)\n`
+          ? `DOWNED  bleeding out ${n.vitalTimer}s  (immobile; a teammate can revive you)\n`
           : `DEAD  respawning in ${n.vitalTimer}s\n`;
   const rate = n.reconciles === 0 ? 0 : (n.corrections / n.reconciles) * 100;
   return (
@@ -1359,7 +1359,9 @@ function frame(): void {
       pitchWire: input.pitch,
       pitchFraction: input.pitchFraction,
       ads: input.ads,
-      firstPerson: input.firstPerson,
+      // A downed soldier is forced into third person (B-05): there is no
+      // weapon in hand for a first-person view to promise anything about.
+      firstPerson: input.firstPerson && !downed,
       shoulderSide: input.shoulderSide,
       downed,
     },
@@ -1397,7 +1399,7 @@ function frame(): void {
         const name = net?.roster[stats?.reviverSlot ?? -1]?.name || 'A teammate';
         text = `DOWNED — ${name} is reviving you ${Math.round(stats?.reviveProgress ?? 0)}% — ${timer}s`;
       } else {
-        text = `DOWNED — bleeding out ${timer}s — crawl to a teammate`;
+        text = `DOWNED — bleeding out ${timer}s — wait for a teammate to revive you`;
       }
     } else if ((net?.reviveTargetNetId ?? 0) > 0) {
       const targetNetId = net?.reviveTargetNetId ?? 0;
@@ -1436,7 +1438,8 @@ function frame(): void {
     camSolve.position.z + camSolve.shake.z,
   );
   // Your own character is the one thing the first-person camera sits inside.
-  player.visible = !input.firstPerson;
+  // Downed forces third person (B-05), so the body stays visible then too.
+  player.visible = !input.firstPerson || downed;
 
   /**
    * Converge the shot on what the reticle covers.

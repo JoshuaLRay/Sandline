@@ -62,9 +62,11 @@ export interface MoveInput {
   /** T-2.15: hold the interact button to revive a nearby downed teammate. */
   interact?: boolean;
   /**
-   * Downed (T-2.13): crawling. Not a button — the server sets it from the
-   * soldier's vitality and the client predictor from the replicated one, so
-   * both step the same input. Sprint and jump are ignored while it is set.
+   * Downed (T-2.13, B-05): immobile. Not a button — the server sets it from
+   * the soldier's vitality and the client predictor from the replicated one,
+   * so both step the same input. Movement, sprint and jump are all ignored
+   * while it is set; a downed soldier lies where they went down until
+   * revived or respawned.
    */
   downed?: boolean;
   /**
@@ -79,8 +81,6 @@ export interface MoveConfig {
   walkSpeed: number;
   sprintSpeed: number;
   crouchSpeed: number;
-  /** Downed and crawling (T-2.13). */
-  crawlSpeed: number;
   gravity: number;
   jumpSpeed: number;
   groundY: number;
@@ -120,7 +120,6 @@ export const DEFAULT_MOVE_CONFIG: MoveConfig = {
   walkSpeed: 4.2,
   sprintSpeed: 6.8,
   crouchSpeed: 1.9,
-  crawlSpeed: 1.2,
   gravity: -19.6,
   jumpSpeed: 6.0,
   groundY: 0,
@@ -186,8 +185,10 @@ export function stepCharacter(
   // resulting position has enough headroom for the full standing height.
   let crouched = !downed && (input.crouch || state.crouched);
   const effectiveHeight = crouched ? config.crouchHeight : config.height;
+  // Downed (B-05): immobile. No crawling — a downed soldier lies still until
+  // revived or respawned.
   const speed = downed
-    ? config.crawlSpeed
+    ? 0
     : crouched
       ? config.crouchSpeed
       : input.sprint
