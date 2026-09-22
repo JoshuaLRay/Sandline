@@ -34,6 +34,7 @@ ADRs that section names → implement. That's the whole loop. See
 | `pnpm sim-run --scenario crowd --ticks 1800` | headless simulation, reports µs/tick |
 | `pnpm sim-run --scenario fall --ticks 1000 --parity` | two instances, reports divergence |
 | `pnpm bench:rapier` | deterministic vs default vs SIMD physics cost |
+| `pnpm bench:nav` | Recast init, bake and Detour query cost |
 | `pnpm gen:trig` | regenerate the committed trig table |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
 
