@@ -1147,6 +1147,7 @@ function frame(): void {
         velocityZ: (rz - renderedPrev.z) / dt,
         grounded: sim?.grounded ?? true,
         crouched: input.crouching,
+        prone: input.proning,
         downed: net?.vitality === 'downed',
         // Body facing, not the recoil-kicked camera yaw (B-02): see bodyYaw's doc.
         facingYaw: input.bodyYaw,
@@ -1169,7 +1170,8 @@ function frame(): void {
   } else {
     // A vault is taken standing: the server refuses one from a crouch and
     // ignores the crouch key until the landing, so the pose does too.
-    playerRig.setPose(input.crouching && !sim?.vault ? 'crouched' : 'standing');
+    // Prone beats crouch, as it does in the controller (T-2.40).
+    playerRig.setPose(sim?.vault ? 'standing' : input.proning ? 'prone' : input.crouching ? 'crouched' : 'standing');
     localPoseDriver.update(locomotion, dt);
     // The weapon layer (T-2.25, T-2.26): the body points its rifle where the
     // view points, recoil included, the rifle kicks with each shot, and a
@@ -1214,6 +1216,7 @@ function frame(): void {
         velocityZ: remoteVelocityZ,
         grounded: true,
         crouched: sample.crouched,
+        prone: sample.prone,
         downed: remoteDowned,
         facingYaw: sample.yaw,
         vaultProgress: sample.vaultElapsed == null ? null : Math.min(1, sample.vaultElapsed / config.vaultSeconds),
@@ -1226,7 +1229,7 @@ function frame(): void {
       driver.reset();
       remoteRig.aimAt(0, 0);
     } else {
-      remoteRig.setPose(sample.crouched ? 'crouched' : 'standing');
+      remoteRig.setPose(sample.prone ? 'prone' : sample.crouched ? 'crouched' : 'standing');
       driver.update(remoteLocomotion, dt);
       // Their replicated aim pitch, the one the server traces their shots
       // along, unsigned on the wire like yaw (T-2.25); their kick from the
@@ -1364,6 +1367,7 @@ function frame(): void {
       firstPerson: input.firstPerson && !downed,
       shoulderSide: input.shoulderSide,
       downed,
+      prone: input.proning && !downed && !sim?.vault,
     },
     cam,
     camSolve,
