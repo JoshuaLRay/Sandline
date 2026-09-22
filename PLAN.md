@@ -1585,6 +1585,7 @@ comms, and any mission scripting beyond what T-3.34 names.
 - **Do:** A pure function from (corridor, current `MoveState`, intent) to a `MoveInput`: yaw toward the next corner, move axes, walk/sprint/crouch from the intent, forward intent into a vault link. It is stepped at 30 Hz and the result goes through `stepCharacter` like a human's input (rule 1). Arrival radius, corner smoothing and repath on a stuck detector (no progress along the corridor for N ticks) are data.
 - **Done when:** a headless session test drives a bot slot from spawn to a goal 60 m away and it arrives inside the arrival radius within a bounded number of ticks; it crosses the low wall by vaulting; a bot pushed off its corridor (teleported sideways) repaths and still arrives; a goal off the mesh resolves to the nearest point on it; the bot's server position and a replay of its inputs through `stepCharacter` agree exactly (they are the same function).
 - **Size:** M
+- **Handoff:** [`docs/HANDOFF-T-3.05.md`](docs/HANDOFF-T-3.05.md) has the surfaces this builds on, numbers measured against the committed range bake (a route that vaults, a teleport that really forces a repath, where today's nearest-point query falls short) and a proposed design. This entry stays authoritative.
 
 #### T-3.06 — Local avoidance
 - **Depends:** T-3.05
