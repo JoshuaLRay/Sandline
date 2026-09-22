@@ -19,6 +19,12 @@ export interface InputOptions {
   sensitivity?: number;
   /** Mouse-down looks up. Off by default; some players want it on. */
   invertY?: boolean;
+  /**
+   * What goes fullscreen on click. The page root by default, not the canvas:
+   * the HUD and crosshair are the canvas's siblings, so fullscreening the
+   * canvas alone hid every one of them.
+   */
+  fullscreenTarget?: Element;
 }
 
 const UNITS_PER_DEGREE = WIRE_ANGLE_UNITS / 360;
@@ -97,8 +103,13 @@ export class LocalInput {
    * and holding Ctrl while pressing another key (movement, weapon slots)
    * reached the browser as a shortcut instead of the game. C now flips this
    * on keydown, same shape as V's shoulder toggle in viewState.ts.
+   *
+   * Held Ctrl crouches too, but only while immersive: Keyboard Lock is what
+   * keeps Ctrl+W and friends inside the game, and it only holds in
+   * fullscreen. See `crouching`.
    */
   private crouchToggled = false;
+  private readonly fullscreenTarget: Element | undefined;
   private yawAccum = 0;
   private pitchAccum = 0;
   /**
@@ -120,6 +131,7 @@ export class LocalInput {
   ) {
     this.sensitivity = options.sensitivity ?? 0.55;
     this.invertY = options.invertY ?? false;
+    this.fullscreenTarget = options.fullscreenTarget ?? document.documentElement;
 
     addEventListener('keydown', (e) => {
       // Typing in the lobby's fields is not movement, and Space in a name
@@ -156,14 +168,15 @@ export class LocalInput {
       endAds(this.viewState);
     });
 
-    armKeyboardLock(canvas);
+    const fullscreenTarget = this.fullscreenTarget;
+    if (fullscreenTarget) armKeyboardLock(fullscreenTarget);
     canvas.addEventListener('click', () => {
       if (!this.locked) canvas.requestPointerLock();
       // Same gesture: a click already has user activation, which both
       // requestFullscreen and (via the fullscreenchange listener above)
       // keyboard.lock() need. No-ops where the Keyboard Lock API doesn't
       // exist (Firefox, Safari) — see keyboardLock.ts.
-      requestFullscreenForKeyboardLock(canvas);
+      if (fullscreenTarget) requestFullscreenForKeyboardLock(fullscreenTarget);
     });
     // Right mouse is aim-down-sights; without this it opens a context menu
     // over the canvas instead.
@@ -205,9 +218,9 @@ export class LocalInput {
     this.invertY = value;
   }
 
-  /** True while the canvas is the fullscreen element, i.e. Keyboard Lock (if supported) is armed. */
+  /** True while the page is the fullscreen element, i.e. Keyboard Lock (if supported) is armed. */
   get immersive(): boolean {
-    return document.fullscreenElement === this.canvas;
+    return this.fullscreenTarget !== undefined && document.fullscreenElement === this.fullscreenTarget;
   }
 
   /** Current stored TPS shoulder: +1 right, -1 left. */
@@ -260,7 +273,8 @@ export class LocalInput {
 
   /** Current crouch intent; the locomotion classifier consumes the rendered result plus this visual state. */
   get crouching(): boolean {
-    return this.crouchToggled;
+    const ctrlHeld = this.held.has('ControlLeft') || this.held.has('ControlRight');
+    return this.crouchToggled || (this.immersive && ctrlHeld);
   }
 
   /**
@@ -343,7 +357,7 @@ export class LocalInput {
       yaw: this.yaw,
       jump: tapped('Space'),
       sprint: on('ShiftLeft', 'ShiftRight'),
-      crouch: this.crouchToggled,
+      crouch: this.crouching,
       prone: on('KeyZ'),
       interact: on('KeyE'),
       // Carried so the server can refuse a vault mid-burst (T-2.21).

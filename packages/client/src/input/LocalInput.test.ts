@@ -96,4 +96,30 @@ describe('LocalInput yaw vs bodyYaw (B-02)', () => {
     win.dispatch('keydown', { code: 'KeyC', target: null });
     expect(input.crouching).toBe(false);
   });
+
+  it('held Ctrl crouches only while the page is fullscreen', () => {
+    const canvas = fakeTarget();
+    const root = {} as Element;
+    const docWithFullscreen = doc as unknown as { fullscreenElement: unknown };
+    const input = new LocalInput(canvas as unknown as HTMLElement, { fullscreenTarget: root });
+
+    win.dispatch('keydown', { code: 'ControlLeft', target: null });
+    expect(input.crouching).toBe(false);
+    expect(input.sample().crouch).toBe(false);
+
+    docWithFullscreen.fullscreenElement = root;
+    expect(input.immersive).toBe(true);
+    expect(input.crouching).toBe(true);
+    expect(input.sample().crouch).toBe(true);
+
+    win.dispatch('keyup', { code: 'ControlLeft', target: null });
+    expect(input.crouching).toBe(false);
+
+    // The C toggle still works on its own in fullscreen, and a Ctrl tap
+    // doesn't cancel it.
+    win.dispatch('keydown', { code: 'KeyC', target: null });
+    win.dispatch('keydown', { code: 'ControlRight', target: null });
+    win.dispatch('keyup', { code: 'ControlRight', target: null });
+    expect(input.crouching).toBe(true);
+  });
 });
