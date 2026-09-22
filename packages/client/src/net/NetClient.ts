@@ -465,7 +465,8 @@ export class NetClient {
       (input.sprint ? INPUT_BUTTONS.sprint : 0) |
       (input.crouch ? INPUT_BUTTONS.crouch : 0) |
       (input.interact ? INPUT_BUTTONS.interact : 0) |
-      (input.firing ? INPUT_BUTTONS.fire : 0);
+      (input.firing ? INPUT_BUTTONS.fire : 0) |
+      (input.prone ? INPUT_BUTTONS.prone : 0);
     this.transport.send(
       encodeMessage({
         kind: 'Input',
@@ -835,7 +836,7 @@ export class NetClient {
           buffer = new InterpolationBuffer();
           this.projectileBuffers.set(entity.netId, buffer);
         }
-        buffer.push({ tick, serverTimeMs: serverMs, x, y, z, yaw: 0, crouched: false });
+        buffer.push({ tick, serverTimeMs: serverMs, x, y, z, yaw: 0, crouched: false, prone: false });
         const velocity = entity.components[V];
         this.projectileInfo.set(entity.netId, {
           kind: (projectile[0] as number | undefined) ?? 0,
@@ -873,6 +874,7 @@ export class NetClient {
             // answers the question and a dedicated bit would not pay for itself.
             grounded: y <= 0.001,
             crouched: (crouch?.[0] as number | undefined) === 1,
+            prone: (crouch?.[1] as number | undefined) === 1,
             // Mid-vault the authoritative state is airborne with no velocity;
             // without the vault itself a replay would drop out of it (T-2.21).
             vault: vaultFromLevels(entity.components[COMPONENT_IDS.Vault]),
@@ -898,6 +900,7 @@ export class NetClient {
         // point its rifle the same way (T-2.25).
         pitch: ((transform[4] as number | undefined) ?? 0) & 0x3ff,
         crouched: (crouch?.[0] as number | undefined) === 1,
+        prone: (crouch?.[1] as number | undefined) === 1,
         // The same replicated vault the local predictor continues from, so a
         // remote's vault pose runs on the state its position does (T-2.23).
         vaultElapsed: vaultFromLevels(entity.components[COMPONENT_IDS.Vault])?.elapsed ?? null,

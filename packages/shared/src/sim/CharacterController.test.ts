@@ -264,6 +264,95 @@ describe('crouch height and clearance (T-2.20)', () => {
     expect(downed.y).toBe(0);
     expect(crouched.z).toBeGreaterThan(downed.z);
   });
+
+  it('keeps prone geometry distinct from both crouch and downed (T-2.40)', () => {
+    const crouched = stepCharacter(createMoveState(0, 0, 0), input({ crouch: true, moveY: 1 }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
+    const prone = stepCharacter(createMoveState(0, 0, 0), input({ prone: true, moveY: 1 }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
+    const downed = stepCharacter(createMoveState(0, 0, 0), input({ downed: true, moveY: 1 }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
+    expect(prone.crouched).toBe(false);
+    expect(crouched.prone).toBe(false);
+    expect(downed.prone).toBe(false);
+    // Slower than crouch (its own speed), but still moves — unlike downed.
+    expect(prone.z).toBeGreaterThan(0);
+    expect(prone.z).toBeLessThan(crouched.z);
+    expect(downed.z).toBe(0);
+  });
+});
+
+describe('prone height, clearance and speed (T-2.40, ADR-016)', () => {
+  // Fits under prone (0.8 m) but not crouch (1.2 m) or standing (1.8 m).
+  const proneOnlyCeiling = [wall('prone ceiling', 0, 2, 4, 0.3, 4, 0.9)];
+  // Fits under crouch (1.2 m) but not standing (1.8 m).
+  const crouchOnlyCeiling = [wall('crouch ceiling', 0, 2, 4, 0.3, 4, 1.3)];
+
+  it('is not the same as crouch or downed: its own height and speed', () => {
+    expect(DEFAULT_MOVE_CONFIG.proneHeight).toBeLessThan(DEFAULT_MOVE_CONFIG.crouchHeight);
+    expect(DEFAULT_MOVE_CONFIG.proneSpeed).toBeLessThan(DEFAULT_MOVE_CONFIG.crouchSpeed);
+  });
+
+  it('fits under a passage only prone allows, blocked crouched or standing', () => {
+    const prone = walk({ x: 0, z: 0 }, input({ moveY: 1, prone: true }), 60, proneOnlyCeiling);
+    const crouched = walk({ x: 0, z: 0 }, input({ moveY: 1, crouch: true }), 60, proneOnlyCeiling);
+    const standing = walk({ x: 0, z: 0 }, input({ moveY: 1 }), 60, proneOnlyCeiling);
+    expect(prone.z).toBeGreaterThan(2);
+    expect(crouched.z).toBeLessThan(2);
+    expect(standing.z).toBeLessThan(2);
+  });
+
+  it('applies its own, slower speed while prone', () => {
+    const d = move(input({ moveY: 1, prone: true }));
+    const speed = Math.sqrt(d.x * d.x + d.z * d.z) / TICK_SECONDS;
+    expect(speed).toBeCloseTo(DEFAULT_MOVE_CONFIG.proneSpeed, 6);
+  });
+
+  it('prone beats crouch when both are held', () => {
+    const s = stepCharacter(createMoveState(0, 0, 0), input({ crouch: true, prone: true }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
+    expect(s.prone).toBe(true);
+    expect(s.crouched).toBe(false);
+  });
+
+  it('drops from standing straight to prone instantly, no clearance needed to go lower', () => {
+    const s = stepCharacter(createMoveState(0, 0, 0), input({ prone: true }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
+    expect(s.prone).toBe(true);
+  });
+
+  it('rises one level at a time: released under a ceiling that only fits crouch lands crouched, not standing', () => {
+    let s = createMoveState(0, 0, 0);
+    for (let i = 0; i < 20; i += 1) {
+      s = stepCharacter(s, input({ moveY: 1, prone: true }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, crouchOnlyCeiling);
+    }
+    const proneUnderCrouchCeiling = s;
+    expect(proneUnderCrouchCeiling.prone).toBe(true);
+    const released = stepCharacter(proneUnderCrouchCeiling, input({ prone: false }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, crouchOnlyCeiling);
+    // Only crouch clearance exists here: rises to crouched, not all the way to standing.
+    expect(released.prone).toBe(false);
+    expect(released.crouched).toBe(true);
+  });
+
+  it('rises all the way to standing in one tick when there is room for it', () => {
+    const proneInOpen: MoveState = { ...createMoveState(0, 0, 0), prone: true };
+    const released = stepCharacter(proneInOpen, input({}), TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
+    expect(released.prone).toBe(false);
+    expect(released.crouched).toBe(false);
+  });
+
+  it('cannot jump while prone', () => {
+    const s = stepCharacter(createMoveState(0, 0, 0), input({ prone: true, jump: true }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
+    expect(s.y).toBe(0);
+    expect(s.vy).toBe(0);
+  });
+
+  it('is forced out of prone while downed, exactly as crouch is', () => {
+    const s = stepCharacter(createMoveState(0, 0, 0), input({ prone: true, downed: true, moveY: 1 }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
+    expect(s.prone).toBe(false);
+    expect(s.z).toBe(0);
+  });
+
+  it('treats an absent flag the same as an explicit false', () => {
+    const a = stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1 }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
+    const b = stepCharacter(createMoveState(0, 0, 0), input({ moveY: 1, prone: false }), TICK_SECONDS, DEFAULT_MOVE_CONFIG, []);
+    expect(a).toEqual(b);
+  });
 });
 
 describe('downed: immobile (T-2.13, B-05)', () => {
@@ -384,9 +473,9 @@ describe('vault (T-2.21)', () => {
     expect(s.vault ?? null).toBeNull();
   });
 
-  it('never starts while crouched, downed, firing, jumping or airborne', () => {
+  it('never starts while crouched, prone, downed, firing, jumping or airborne', () => {
     const world = [hurdle(0.9)];
-    for (const over of [{ crouch: true }, { downed: true }, { firing: true }, { jump: true }] as Partial<MoveInput>[]) {
+    for (const over of [{ crouch: true }, { prone: true }, { downed: true }, { firing: true }, { jump: true }] as Partial<MoveInput>[]) {
       const r = walk(world, 60, () => forward(over));
       expect(r.startedAt, JSON.stringify(over)).toBe(-1);
     }
@@ -464,7 +553,7 @@ describe('vault (T-2.21)', () => {
     let s = createMoveState(0, 0, 0);
     while (!s.vault || s.vault.elapsed < 0.2) s = stepCharacter(s, forward(), TICK_SECONDS, CONFIG, world);
     // Rebuild the state from its numbers only, as a snapshot would deliver it.
-    const handed: MoveState = { x: s.x, y: s.y, z: s.z, vy: 0, grounded: false, crouched: false, vault: { ...(s.vault as NonNullable<typeof s.vault>) } };
+    const handed: MoveState = { x: s.x, y: s.y, z: s.z, vy: 0, grounded: false, crouched: false, prone: false, vault: { ...(s.vault as NonNullable<typeof s.vault>) } };
     let a: MoveState = s;
     let b: MoveState = handed;
     // Through the rest of the vault (the handed copy is fed a different,

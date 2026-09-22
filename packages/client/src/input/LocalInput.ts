@@ -235,6 +235,15 @@ export class LocalInput {
     return this.held.has('ControlLeft') || this.held.has('ControlRight') || this.held.has('KeyC');
   }
 
+  /**
+   * Current prone intent (T-2.40, ADR-016): held like crouch, takes priority
+   * over it in the controller. Z is free — C is crouch and Ctrl is already
+   * taken by it too.
+   */
+  get proning(): boolean {
+    return this.held.has('KeyZ');
+  }
+
   /** Holding the throw key: the arc is being aimed (T-2.32). */
   get throwHeld(): boolean {
     return this.held.has(THROW_KEY);
@@ -308,6 +317,7 @@ export class LocalInput {
       jump: tapped('Space'),
       sprint: on('ShiftLeft', 'ShiftRight'),
       crouch: on('ControlLeft', 'ControlRight', 'KeyC'),
+      prone: on('KeyZ'),
       interact: on('KeyE'),
       // Carried so the server can refuse a vault mid-burst (T-2.21).
       firing: this.firing,
