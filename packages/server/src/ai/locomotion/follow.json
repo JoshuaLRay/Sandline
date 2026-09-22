@@ -1,0 +1,9 @@
+{
+  "$comment": "Path following tuning (T-3.05), read and validated by followPath.ts. Distances are metres across the ground; ticks are 30 Hz server ticks. arrivalRadiusM: how close to the path's last point counts as there. cornerRadiusM: how close to a corner before steering for the next one — the corner smoothing; up to 1.5 m costs the range route nothing, 2.5 m cuts the west doorway fine enough to slide along its wall for two seconds. stuckTicks / progressEpsilonM: no progress means the distance left along the path has not fallen by progressEpsilonM for stuckTicks ticks, measured over the window so prone speed (0.037 m a tick) is not stuck; then the follower repaths. goalSearchMaxM: how far across a goal off the mesh is looked for (a goal 50 m past the range floor's edge needs 64). repathGoalMoveM: how far an intent's goal must move before it is planned again, so a brain re-sending the same goal at 10 Hz does not repath each time.",
+  "arrivalRadiusM": 0.25,
+  "cornerRadiusM": 0.3,
+  "stuckTicks": 15,
+  "progressEpsilonM": 0.05,
+  "goalSearchMaxM": 64,
+  "repathGoalMoveM": 0.5
+}

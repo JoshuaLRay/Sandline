@@ -80,6 +80,8 @@ export interface NavRaycast {
  * is still findable.
  */
 const QUERY_HALF_EXTENTS: NavPoint = { x: 0.5, y: 2, z: 0.5 };
+/** How much wider each step of `resolvePoint`'s search is than the last. */
+const RESOLVE_WIDEN = 4;
 const MAX_CORRIDOR = 256;
 
 let ready: Promise<void> | null = null;
@@ -118,17 +120,65 @@ export class NavMesh {
     return new NavMesh(navMesh);
   }
 
-  /** Nearest point on the mesh, or null when nothing is within the query extents. */
-  nearestPoint(p: NavPoint): { point: NavPoint; polyRef: number } | null {
-    const r = this.query.findClosestPoint(p);
+  /**
+   * A point on the mesh near `p`, or null when nothing is within the query
+   * box (half-extents, default half a metre across and two up and down).
+   *
+   * Near, not necessarily nearest: Detour takes the nearest polygon among
+   * those overlapping the box, so a point further away than the box reaches
+   * can win over a nearer one just outside it. `resolvePoint` is the query
+   * that promises the nearest.
+   */
+  nearestPoint(p: NavPoint, halfExtents: NavPoint = QUERY_HALF_EXTENTS): { point: NavPoint; polyRef: number } | null {
+    const r = this.query.findClosestPoint(p, { halfExtents });
     if (!r.success || r.polyRef === 0) return null;
     return { point: { x: r.point.x, y: r.point.y, z: r.point.z }, polyRef: r.polyRef };
   }
 
-  /** Corridor and straight path between two points, or null when there is none. */
-  path(from: NavPoint, to: NavPoint): NavPath | null {
-    const start = this.nearestPoint(from);
-    const end = this.nearestPoint(to);
+  /**
+   * The nearest point on the mesh to `p`, searching up to `maxSearchM`
+   * across (T-3.05) — where a goal picked off the mesh (inside a crate, on a
+   * wall top, past the floor's edge) really goes.
+   *
+   * Widens the query box four times at a step from the default, and takes a
+   * hit only once it is no further across, and no further vertically, than
+   * the box that found it: anything nearer would then have been inside the
+   * box too. A hit further out than its box is only near — the centre of a
+   * range crate answers 1.16 m away through the default box when the true
+   * nearest is 1.00 m — so the search goes on. At the cap the best hit is
+   * returned as it is; null means nothing is within `maxSearchM` at all.
+   * Vertical reach grows with the horizontal once it passes the default, so
+   * a goal on a 2.4 m wall top comes down to the floor beside it.
+   */
+  resolvePoint(p: NavPoint, maxSearchM: number): { point: NavPoint; polyRef: number } | null {
+    let across = QUERY_HALF_EXTENTS.x;
+    let best: { point: NavPoint; polyRef: number } | null = null;
+    for (;;) {
+      const up = Math.max(QUERY_HALF_EXTENTS.y, across);
+      const hit = this.nearestPoint(p, { x: across, y: up, z: across });
+      if (hit) {
+        best = hit;
+        const dx = hit.point.x - p.x;
+        const dz = hit.point.z - p.z;
+        if (Math.sqrt(dx * dx + dz * dz) <= across && Math.abs(hit.point.y - p.y) <= up) return hit;
+      }
+      if (across >= maxSearchM) return best;
+      across = Math.min(across * RESOLVE_WIDEN, maxSearchM);
+    }
+  }
+
+  /**
+   * Corridor and straight path between two points, or null when there is none.
+   *
+   * Both ends are snapped to the mesh first: through the default query box
+   * when `searchM` is absent, which is what the bake's tests have always
+   * asked, or by `resolvePoint` out to `searchM` when it is given, which is
+   * what path following asks (T-3.05).
+   */
+  path(from: NavPoint, to: NavPoint, searchM?: number): NavPath | null {
+    const snap = (p: NavPoint) => (searchM === undefined ? this.nearestPoint(p) : this.resolvePoint(p, searchM));
+    const start = snap(from);
+    const end = snap(to);
     if (!start || !end) return null;
     const found = this.query.findPath(start.polyRef, end.polyRef, start.point, end.point, {
       maxPathPolys: MAX_CORRIDOR,
