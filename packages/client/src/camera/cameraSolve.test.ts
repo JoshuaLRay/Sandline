@@ -274,3 +274,43 @@ describe('downed camera (T-2.14)', () => {
   });
 });
 
+describe('prone camera (T-2.41)', () => {
+  it('drops the pivot to the prone height in both views, and lifts it back', () => {
+    const cfg = DEFAULT_CAMERA_CONFIG;
+    // dt = 0 snaps every blend, so this is the settled geometry.
+    const up = solveCamera(view({ firstPerson: true }), cfg, createCameraSolve(), 0);
+    const prone = solveCamera(view({ firstPerson: true, prone: true }), cfg, createCameraSolve(), 0);
+    expect(up.position.y).toBeCloseTo(cfg.eyeHeight, 9);
+    expect(prone.position.y).toBeCloseTo(cfg.proneEyeHeight, 9);
+    expect(prone.proneBlend).toBe(1);
+
+    const third = solveCamera(view({ prone: true }), cfg, createCameraSolve(), 0);
+    expect(third.focus.y).toBeCloseTo(cfg.proneEyeHeight + cfg.shoulderUp, 9);
+    // Standing back up returns to exactly the standing pivot.
+    const lifted = solveCamera(view(), cfg, third, 0);
+    expect(lifted.focus.y).toBeCloseTo(cfg.eyeHeight + cfg.shoulderUp, 9);
+  });
+
+  it('eases rather than cuts, on the same curve at any frame rate', () => {
+    const cfg = DEFAULT_CAMERA_CONFIG;
+    const at = (fps: number, seconds: number) => {
+      const out = createCameraSolve();
+      for (let i = 0; i < Math.round(fps * seconds); i += 1) solveCamera(view({ prone: true }), cfg, out, 1 / fps);
+      return out.proneBlend;
+    };
+    const early = at(60, 0.05);
+    expect(early).toBeGreaterThan(0);
+    expect(early).toBeLessThan(1);
+    expect(at(60, 0.2)).toBeGreaterThan(early);
+    expect(Math.abs(at(30, 0.5) - at(120, 0.5))).toBeLessThan(0.02);
+    expect(at(60, 2)).toBeGreaterThan(0.99);
+  });
+
+  it('is a distinct height from downed, not the same drop reused', () => {
+    const cfg = DEFAULT_CAMERA_CONFIG;
+    const down = solveCamera(view({ firstPerson: true, downed: true }), cfg, createCameraSolve(), 0);
+    const prone = solveCamera(view({ firstPerson: true, prone: true }), cfg, createCameraSolve(), 0);
+    expect(prone.position.y).not.toBeCloseTo(down.position.y, 3);
+  });
+});
+

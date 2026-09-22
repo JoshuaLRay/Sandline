@@ -9,6 +9,7 @@ const speeds: LocomotionSpeeds = {
   walkSpeed: 4.2,
   sprintSpeed: 6.8,
   crouchSpeed: 1.9,
+  proneSpeed: 1.1,
 };
 
 function sample(
@@ -76,6 +77,21 @@ describe('locomotion state classifier (T-2.17)', () => {
     expect(sample(speeds.walkSpeed, 0, { downed: true }).state).toBe('idle');
   });
 
+  it('uses an explicit prone state, distinct from crouch, at the prone speed', () => {
+    const proneSpeed = speeds.proneSpeed as number;
+    const result = sample(proneSpeed, 0, { prone: true });
+    expect(result.state).toBe('prone');
+    expect(result.state).not.toBe('crouch-walk');
+    expect(result.normalizedSpeed).toBeCloseTo(1);
+    // A crouch flag alongside prone does not win: the stance ladder only
+    // has one level active at a time, and prone reads as the lower one.
+    expect(sample(proneSpeed, 0, { prone: true, crouched: true }).state).toBe('prone');
+  });
+
+  it('goes idle rather than crawling when prone and stationary, at the prone speed', () => {
+    expect(sample(0, 0, { prone: true }).state).toBe('idle');
+  });
+
   it('marks airborne samples without inventing a separate movement state', () => {
     const result = sample(3, 0, { grounded: false });
     expect(result.state).toBe('walk');
@@ -125,5 +141,6 @@ describe('locomotion state classifier (T-2.17)', () => {
     expect(sample(0, 2.7).vaultProgress).toBe(0);
     // Crouched or downed flags do not override an authoritative vault.
     expect(sample(0, 1, { crouched: true, vaultProgress: 0.1 }).state).toBe('vault');
+    expect(sample(0, 1, { prone: true, vaultProgress: 0.1 }).state).toBe('vault');
   });
 });
