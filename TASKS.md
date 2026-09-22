@@ -174,6 +174,20 @@ decision (R1, §9 Q2 — purchased/commissioned/in-house).
 Still an epic (PLAN.md §7 epic table). Blocked on an art/audio sourcing
 decision (R1, §9 Q2) before it can be split into leaf tasks.
 
+### E-2.8 — Prone stance & voluntary crawl (§7.8) — awaiting T-2.43
+
+Reopens ADR-002's prone exclusion; see `docs/adr/016-prone-stance.md`. Not
+the downed crawl B-05 removed (that stays removed) — a voluntary stance for
+a standing, alive soldier, built on the crouch (T-2.20) and crawl-gait
+(E-2.6) groundwork.
+
+| Task | Status | Depends |
+|---|---|---|
+| T-2.40 | OPEN | T-2.20, T-2.13 |
+| T-2.41 | BLOCKED | T-2.40, T-2.06 |
+| T-2.42 | BLOCKED | T-2.40, T-2.41 |
+| 🧍 T-2.43 | BLOCKED — run sheet `e2-8.md` missing, write it first | T-2.40..T-2.42 |
+
 ---
 
 ## M3–M5
