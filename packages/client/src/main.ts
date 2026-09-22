@@ -1509,7 +1509,7 @@ function frame(): void {
         `pose step ${localPoseDriver.step.toFixed(3)} rad  peak ${localPoseDriver.peakStep.toFixed(3)}\n` +
         `feet at ${rx.toFixed(1)},${rz.toFixed(1)}  L ${localFeet.offset('left').toFixed(2)}  R ${localFeet.offset('right').toFixed(2)}` +
         `  hips ${localFeet.drop.toFixed(2)}  step ${localFeet.step.toFixed(3)}\n` +
-        `${input.locked ? 'mouse captured - Esc to release' : 'CLICK to capture mouse'}\n` +
+        `${input.locked ? `mouse captured - Esc to release${input.immersive ? '  (fullscreen, shortcuts locked out)' : ''}` : 'CLICK to capture mouse'}\n` +
         `\n${combat.readout(clock.tick * TICK_SECONDS, input.ads)}\n` +
         `${throws.readout(clock.tick * TICK_SECONDS)}` +
         `${lastBlast ? `\nlast blast ${lastBlast.name}  ${lastBlast.damage.toFixed(0)} dmg on ${lastBlast.targets}` : ''}\n` +

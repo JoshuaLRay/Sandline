@@ -12,6 +12,7 @@
 import { WIRE_ANGLE_UNITS, type MoveInput } from '@sandline/shared';
 import { beginAds, createViewState, endAds, pressShoulderKey, shoulderSide } from './viewState.ts';
 import { composePitch } from '../weapons/recoil.ts';
+import { armKeyboardLock, requestFullscreenForKeyboardLock } from './keyboardLock.ts';
 
 export interface InputOptions {
   /** Wire-angle units per pixel of mouse movement. */
@@ -155,8 +156,14 @@ export class LocalInput {
       endAds(this.viewState);
     });
 
+    armKeyboardLock(canvas);
     canvas.addEventListener('click', () => {
       if (!this.locked) canvas.requestPointerLock();
+      // Same gesture: a click already has user activation, which both
+      // requestFullscreen and (via the fullscreenchange listener above)
+      // keyboard.lock() need. No-ops where the Keyboard Lock API doesn't
+      // exist (Firefox, Safari) — see keyboardLock.ts.
+      requestFullscreenForKeyboardLock(canvas);
     });
     // Right mouse is aim-down-sights; without this it opens a context menu
     // over the canvas instead.
@@ -196,6 +203,11 @@ export class LocalInput {
 
   setInvertY(value: boolean): void {
     this.invertY = value;
+  }
+
+  /** True while the canvas is the fullscreen element, i.e. Keyboard Lock (if supported) is armed. */
+  get immersive(): boolean {
+    return document.fullscreenElement === this.canvas;
   }
 
   /** Current stored TPS shoulder: +1 right, -1 left. */
