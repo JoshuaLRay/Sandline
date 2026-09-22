@@ -87,6 +87,39 @@ describe(`NavMesh (${runtime()})`, () => {
     mesh.destroy();
   });
 
+  it('resolves an off-mesh point to the nearest mesh, widening only as far as asked (T-3.05)', async () => {
+    await initNav();
+    const mesh = NavMesh.load(spikeBytes());
+    // The centre of the 1.2 m crate at x 6..7.2, z −6..−4.8: 0.6 m to each
+    // face plus the 0.4 m the bake erodes, so the nearest ground is 1.0 m
+    // away. The default box, reaching only 0.5 m, answers with something
+    // near instead — a polygon corner further off.
+    const inCrate = { x: 6.6, y: 0, z: -5.4 };
+    const across = (p: { x: number; z: number }) => Math.hypot(p.x - inCrate.x, p.z - inCrate.z);
+    const crate = mesh.resolvePoint(inCrate, 64);
+    expect(crate).not.toBeNull();
+    expect(across(crate!.point)).toBeGreaterThan(0.95);
+    expect(across(crate!.point)).toBeLessThan(1.05);
+    expect(Math.abs(crate!.point.y)).toBeLessThan(0.2);
+    const near = mesh.nearestPoint(inCrate);
+    if (near) expect(across(near.point)).toBeGreaterThanOrEqual(across(crate!.point));
+    // Twenty metres past the floor's edge (z = 20): nothing in the default
+    // box, found by widening, and not found when the cap stops short.
+    const beyond = { x: -10, y: 0, z: 40 };
+    expect(mesh.nearestPoint(beyond)).toBeNull();
+    const edge = mesh.resolvePoint(beyond, 64);
+    expect(edge).not.toBeNull();
+    expect(edge!.point.z).toBeGreaterThan(19);
+    expect(edge!.point.z).toBeLessThan(20);
+    expect(mesh.resolvePoint(beyond, 8)).toBeNull();
+    // path() snaps its ends that way when given a search, and only then.
+    expect(mesh.path(SPIKE_FROM, beyond)).toBeNull();
+    const toEdge = mesh.path(SPIKE_FROM, beyond, 64);
+    expect(toEdge).not.toBeNull();
+    expect(toEdge!.points.at(-1)!.z).toBeGreaterThan(19);
+    mesh.destroy();
+  });
+
   it('raycasts: clear along open floor, stopped by the wall', async () => {
     await initNav();
     const mesh = NavMesh.load(spikeBytes());
