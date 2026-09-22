@@ -178,6 +178,13 @@ export interface WorldHit {
   box: WorldBox;
   distance: number;
   point: { x: number; y: number; z: number };
+  /**
+   * Outward unit normal of the face the ray entered through (T-2.30), all
+   * zeroes when the ray began inside the box and there is no entry face.
+   * A hitscan ray only ever needed where it stopped; a grenade needs to know
+   * which way to bounce, and the slab test already computes it.
+   */
+  normal: { x: number; y: number; z: number };
 }
 
 /**
@@ -187,20 +194,35 @@ export interface WorldHit {
  * A ray starting inside a box hits it at distance 0. An axis the ray does not
  * move along is a miss if the origin is outside that slab and ignored if inside
  * — spelled out rather than left to `1/0`, whose `0 * Infinity` is NaN.
+ *
+ * `inflate` grows every box by that much on all three axes, which turns the
+ * centre ray into a swept SPHERE of that radius (T-2.30). Exact for the faces,
+ * generous at the corners by up to the radius — a grenade that clips a corner
+ * bounces a hair early, which is the harmless direction to be wrong in, and it
+ * keeps one slab test rather than a second capsule-per-edge implementation.
  */
-export function rayWorld(ray: WorldRay, world: readonly WorldBox[]): WorldHit | null {
+export function rayWorld(
+  ray: WorldRay,
+  world: readonly WorldBox[],
+  inflate = 0,
+): WorldHit | null {
   const { origin: o, direction: d, maxDistance } = ray;
   let best: WorldBox | null = null;
   let bestT = maxDistance;
+  /** Axis (0/1/2) and sign of the face the ray entered through, or -1 inside. */
+  let bestAxis = -1;
+  let bestSign = 0;
   for (const box of world) {
     let tNear = 0;
     let tFar = bestT;
     let miss = false;
+    let axisIndex = -1;
+    let axisSign = 0;
     for (const axis of ['x', 'y', 'z'] as const) {
       const oa = o[axis];
       const da = d[axis];
-      const lo = axis === 'x' ? box.minX : axis === 'y' ? box.minY : box.minZ;
-      const hi = axis === 'x' ? box.maxX : axis === 'y' ? box.maxY : box.maxZ;
+      const lo = (axis === 'x' ? box.minX : axis === 'y' ? box.minY : box.minZ) - inflate;
+      const hi = (axis === 'x' ? box.maxX : axis === 'y' ? box.maxY : box.maxZ) + inflate;
       if (da === 0) {
         if (oa < lo || oa > hi) {
           miss = true;
@@ -210,12 +232,19 @@ export function rayWorld(ray: WorldRay, world: readonly WorldBox[]): WorldHit | 
       }
       let t1 = (lo - oa) / da;
       let t2 = (hi - oa) / da;
+      // WHICH face is the near one follows from the direction's sign, and the
+      // swap below is about to throw that information away.
+      const sign = da > 0 ? -1 : 1;
       if (t1 > t2) {
         const swap = t1;
         t1 = t2;
         t2 = swap;
       }
-      if (t1 > tNear) tNear = t1;
+      if (t1 > tNear) {
+        tNear = t1;
+        axisIndex = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
+        axisSign = sign;
+      }
       if (t2 < tFar) tFar = t2;
       if (tNear > tFar) {
         miss = true;
@@ -227,6 +256,8 @@ export function rayWorld(ray: WorldRay, world: readonly WorldBox[]): WorldHit | 
     if (best === null || tNear < bestT) {
       best = box;
       bestT = tNear;
+      bestAxis = axisIndex;
+      bestSign = axisSign;
     }
   }
   if (best === null) return null;
@@ -234,6 +265,11 @@ export function rayWorld(ray: WorldRay, world: readonly WorldBox[]): WorldHit | 
     box: best,
     distance: bestT,
     point: { x: o.x + d.x * bestT, y: o.y + d.y * bestT, z: o.z + d.z * bestT },
+    normal: {
+      x: bestAxis === 0 ? bestSign : 0,
+      y: bestAxis === 1 ? bestSign : 0,
+      z: bestAxis === 2 ? bestSign : 0,
+    },
   };
 }
 

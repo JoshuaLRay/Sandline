@@ -128,3 +128,43 @@ round columns) is a level-design constraint accepted for M2's grey box; when
 levels need it, replace the world representation and keep the controller's
 contract: a pure function of (state, input, dt, config, world).
 
+
+## Addendum — 2026-09-21: projectiles do not use Rapier either
+
+The 2026-09-19 addendum above, while recording that the character controller
+had left Rapier, named "projectiles with real arcs" among the things Rapier
+remains the engine for. E-2.5's grenades and rockets are exactly that, so the
+line is amended rather than worked around (§0.2: a locked decision is raised,
+not silently substituted).
+
+**Projectile flight, bouncing and blast occlusion are pure arithmetic over the
+shared box world** (`packages/shared/src/sim/ballistics.ts`), on the same
+`rayWorld` the shots and the camera arm use, now with an inflation radius that
+turns a ray into a swept sphere.
+
+Three reasons, in order of weight:
+
+1. **The player aims by the arc they are shown.** A thrown grenade is the only
+   thing in this game whose trajectory is drawn *before* it is committed to. If
+   the preview and the authoritative flight come from different integrators
+   they disagree visibly, in front of the person deciding where to throw — the
+   two-sets-disagreeing failure `world.ts`'s header is about, in its most
+   obvious form. One function stepping over one list cannot disagree with
+   itself.
+2. **It would put WASM in the preview path.** The preview runs in the render
+   loop of every client, including the published static page. Rapier on the
+   server and something else on the client is the disagreement above; Rapier on
+   both is a physics world per client per session to fly one sphere.
+3. **There is nothing here Rapier is better at.** Gravity, drag, a swept sphere
+   against axis-aligned boxes, restitution and friction are about eighty lines
+   of `+ - * /` and `Math.sqrt`, all exactly specified by IEEE-754. What a rigid
+   body solver buys — stacking, joints, arbitrary convex shapes, contact
+   manifolds — a grenade does not use.
+
+**What is unchanged.** Rapier stays the engine for anything that needs a real
+solver: ragdolls, debris, vehicles, and any dynamic body whose behaviour
+nobody has to agree about in advance. `-deterministic-compat` remains the build
+to use for it. §2.3 is also unchanged and is why this is a small decision:
+projectiles are replicated, never predicted, so no parity obligation attaches
+to them — the determinism above is a property this arithmetic has for free,
+not a promise the netcode leans on.

@@ -32,6 +32,7 @@ export interface ServerConnectionEvents {
   onJoined?: (conn: ServerConnection) => void;
   onInput?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Input' }>) => void;
   onFire?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Fire' }>) => void;
+  onThrow?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Throw' }>) => void;
   onAck?: (conn: ServerConnection, tick: number) => void;
   onClosed?: (conn: ServerConnection, reason: string) => void;
 }
@@ -145,6 +146,9 @@ export class ServerConnection {
         break;
       case 'Fire':
         this.events.onFire?.(this, msg);
+        break;
+      case 'Throw':
+        this.events.onThrow?.(this, msg);
         break;
       case 'Ack':
         if (msg.tick > this.lastAckedTick) this.lastAckedTick = msg.tick;

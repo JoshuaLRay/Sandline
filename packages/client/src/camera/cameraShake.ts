@@ -25,7 +25,8 @@
  * exp(-rate x dt) and the oscillation runs on elapsed seconds, so 30 and
  * 120 fps trace the same picture.
  */
-import type { WeaponDef } from '@sandline/shared';
+import { type ProjectileDef, type WeaponDef, blastDamageOn } from '@sandline/shared';
+import type { WorldBox } from '@sandline/shared';
 import type { CameraSolve } from './cameraSolve.ts';
 
 /** Amplitude envelope decay, in reciprocal seconds. 1% remains after ~0.33 s. */
@@ -56,15 +57,54 @@ export function createShake(): ShakeState {
   return { posAmp: 0, rollAmp: 0, time: 0 };
 }
 
-/** A shot: add the weapon's impulse to whatever is still ringing. */
-export function addShake(state: ShakeState, def: WeaponDef, ads: boolean): ShakeState {
-  const scale = ads ? def.recoilAdsScale : 1;
+/** Add one impulse to whatever is still ringing. */
+export function addImpulse(state: ShakeState, posM: number, rollRad: number): ShakeState {
   return {
-    posAmp: state.posAmp + def.shakePosM * scale,
-    rollAmp: state.rollAmp + (def.shakeRollDeg * Math.PI) / 180 * scale,
+    posAmp: state.posAmp + posM,
+    rollAmp: state.rollAmp + rollRad,
     // A fresh impulse on a quiet camera starts its own phase; one landing
     // on a ringing camera rides the existing one.
     time: state.posAmp === 0 && state.rollAmp === 0 ? 0 : state.time,
+  };
+}
+
+/** A shot: add the weapon's impulse to whatever is still ringing. */
+export function addShake(state: ShakeState, def: WeaponDef, ads: boolean): ShakeState {
+  const scale = ads ? def.recoilAdsScale : 1;
+  return addImpulse(state, def.shakePosM * scale, ((def.shakeRollDeg * Math.PI) / 180) * scale);
+}
+
+/** A blast in the open, at the viewer's own feet: the hardest it can shake. */
+export const BLAST_SHAKE_POS_M = 0.075;
+export const BLAST_SHAKE_ROLL_DEG = 1.4;
+
+/**
+ * What a blast does to the PICTURE at a distance (T-2.33).
+ *
+ * Scaled by exactly the fraction of the blast that reached the viewer — the
+ * same `blastDamageOn` the server scored the damage with, over the same box
+ * list — so the shake and the damage cannot disagree: a blast that hurt you
+ * badly rings the camera hard, one behind a wall is felt through the wall,
+ * and one past its radius is not felt at all. Nothing here touches the aim,
+ * for the reason at the top of this file.
+ *
+ * `feet` is the viewer's own position, not the camera's: the camera sits on an
+ * arm behind the player's shoulder, and how hard a grenade rattles you should
+ * not depend on which way you happen to be facing.
+ */
+export function blastShake(
+  def: ProjectileDef,
+  centre: { x: number; y: number; z: number },
+  feet: { x: number; y: number; z: number },
+  heightM: number,
+  world: readonly WorldBox[],
+): { posM: number; rollRad: number } {
+  if (!(def.blastDamage > 0)) return { posM: 0, rollRad: 0 };
+  const fraction = blastDamageOn(def, centre, feet, heightM, world) / def.blastDamage;
+  const clamped = fraction < 0 ? 0 : fraction > 1 ? 1 : fraction;
+  return {
+    posM: BLAST_SHAKE_POS_M * clamped,
+    rollRad: ((BLAST_SHAKE_ROLL_DEG * Math.PI) / 180) * clamped,
   };
 }
 
