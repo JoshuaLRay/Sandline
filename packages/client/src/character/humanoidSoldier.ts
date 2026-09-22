@@ -296,7 +296,7 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
   // On the long faces `u` runs stock to muzzle, which is how the one rifle
   // cell gets furniture, a magazine and a barrel out of a single box.
   remapGeometryUv(rifleGeometry, 'rifle');
-  const rifle = new THREE.Mesh(rifleGeometry, new THREE.MeshStandardMaterial({ map: atlas, roughness: 0.9, metalness: 0 }));
+  const rifle = new THREE.Mesh(rifleGeometry, new THREE.MeshLambertMaterial({ map: atlas }));
   rifle.name = 'rifle';
   rifle.position.set(0, 0, 0.4);
   rifle.castShadow = true;
@@ -350,10 +350,17 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
   // the whole model has: a helmet without one reads as a swimming cap.
   add('head', 'helmet', placed(new THREE.CylinderGeometry(0.172, 0.162, 0.03, 8), 0, 1.695, 0));
 
-  const mesh = new THREE.SkinnedMesh(
-    weld(segments),
-    new THREE.MeshStandardMaterial({ map: atlas, roughness: 1, metalness: 0 }),
-  );
+  // Lambert, not Standard (T-2.32). A PBR material is a modern look by
+  // construction — a roughness response and an environment term the era had
+  // no way to compute. Lambert is diffuse and nothing else, which is what
+  // hardware lighting in 2002 was, and it is cheaper besides.
+  //
+  // SMOOTH NORMALS ON PURPOSE. `flatShading` is the reflex here and it is the
+  // wrong console: the PS2 interpolated per-vertex lighting across a triangle
+  // (Gouraud), so its curved surfaces read smooth and only the SILHOUETTE
+  // gave the polygon count away — which is exactly what T-2.31's six-sided
+  // limbs do. Faceted shading is a 2015 indie look, not a 2002 one.
+  const mesh = new THREE.SkinnedMesh(weld(segments), new THREE.MeshLambertMaterial({ map: atlas }));
   mesh.name = 'soldier';
   mesh.castShadow = true;
   mesh.frustumCulled = false;

@@ -135,6 +135,22 @@ describe('skinned soldier (T-2.22)', () => {
     expect((rifle.material as THREE.MeshStandardMaterial).map).toBe(soldierAtlas('local'));
   });
 
+  it('lights the soldier the way 2002 did: diffuse only, smooth normals (T-2.32)', () => {
+    const soldier = createHumanoidSoldier('local');
+    const skin = soldierSkin(soldier);
+    const material = skin.material as THREE.MeshLambertMaterial;
+    // A PBR material is a modern look by construction — a roughness response
+    // and an environment term the era had no way to compute.
+    expect(material).toBeInstanceOf(THREE.MeshLambertMaterial);
+    expect(material).not.toBeInstanceOf(THREE.MeshStandardMaterial);
+    expect((soldier.getObjectByName('rifle') as THREE.Mesh).material).toBeInstanceOf(THREE.MeshLambertMaterial);
+    // And NOT flat-shaded: that is the wrong console. The PS2 interpolated
+    // per-vertex lighting across a triangle, so curved surfaces read smooth
+    // and only the silhouette gave the polygon count away. Faceted shading is
+    // a 2015 indie look; PS1 is the jitter and the warp, and we have neither.
+    expect(material.flatShading).toBe(false);
+  });
+
   it('gives each variant its own palette off one shared texture (T-2.30)', () => {
     const a = createHumanoidSoldier('local');
     const b = createHumanoidSoldier('remote');
