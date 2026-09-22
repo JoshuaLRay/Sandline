@@ -52,6 +52,13 @@ export interface MuzzleRig {
    * `eyePosition`, as the authoritative trace origin.
    */
   eyeHeight: number;
+  /**
+   * Eye height while prone (T-2.42): the trace origin of a soldier lying on the
+   * ground. Inside the 0.8 m prone hit volume, not 0.75 m above it — a shot
+   * from standing eye height would let a prone body fire over cover it is
+   * hidden behind.
+   */
+  proneEyeHeight: number;
 }
 
 /** Scaled against the 1.8 m reference figure the movement harness uses. */
@@ -61,18 +68,30 @@ export const DEFAULT_MUZZLE_RIG: MuzzleRig = {
   hipRight: 0.26,
   hipHeight: 1.05,
   eyeHeight: 1.55,
+  proneEyeHeight: 0.4,
 };
 
 /**
  * The authoritative trace origin: centre line, eye height.
  *
- * Deliberately free of stance and of camera tuning. The server has no idea
- * which view a client is using and must not need to, and a player who drags the
- * camera's pivot-height slider must not thereby move where their bullets come
- * from.
+ * Deliberately free of the muzzle stance and of camera tuning. The server has
+ * no idea which view a client is using and must not need to, and a player who
+ * drags the camera's pivot-height slider must not thereby move where their
+ * bullets come from.
+ *
+ * The BODY's stance is different: it is server-authoritative state both sides
+ * already agree on, so `prone` (T-2.42) lowers the origin to the rig's
+ * `proneEyeHeight`. Crouch is not an input here yet — it traces from standing
+ * eye height as it always has.
  */
-export function eyePosition(feetX: number, feetY: number, feetZ: number, rig: MuzzleRig = DEFAULT_MUZZLE_RIG): Vec3 {
-  return { x: feetX, y: feetY + rig.eyeHeight, z: feetZ };
+export function eyePosition(
+  feetX: number,
+  feetY: number,
+  feetZ: number,
+  rig: MuzzleRig = DEFAULT_MUZZLE_RIG,
+  prone = false,
+): Vec3 {
+  return { x: feetX, y: feetY + (prone ? rig.proneEyeHeight : rig.eyeHeight), z: feetZ };
 }
 
 /**

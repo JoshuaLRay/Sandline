@@ -31,6 +31,7 @@ const ROWS: Row[] = [
   { key: 'reloadSeconds', label: 'Reload', min: 0.2, max: 8, step: 0.1 },
   { key: 'hipSpreadDeg', label: 'Cone hip', min: 0, max: 15, step: 0.05 },
   { key: 'adsSpreadDeg', label: 'Cone aimed', min: 0, max: 15, step: 0.05 },
+  { key: 'proneSpreadScale', label: 'Cone prone ×', min: 0, max: 1, step: 0.05 },
   { key: 'bloomPerShotDeg', label: 'Bloom/shot', min: 0, max: 4, step: 0.05 },
   { key: 'maxSpreadDeg', label: 'Cone max', min: 0, max: 20, step: 0.1 },
   { key: 'bloomDecayDegPerSec', label: 'Bloom decay', min: 0, max: 30, step: 0.5 },
@@ -59,7 +60,7 @@ const ROWS: Row[] = [
  */
 export const JSON_ORDER: (keyof WeaponDef)[] = [
   'id', 'name', 'rpm', 'damage', 'pellets', 'hipSpreadDeg', 'adsSpreadDeg',
-  'bloomPerShotDeg', 'maxSpreadDeg', 'bloomDecayDegPerSec', 'falloffStartM',
+  'proneSpreadScale', 'bloomPerShotDeg', 'maxSpreadDeg', 'bloomDecayDegPerSec', 'falloffStartM',
   'falloffEndM', 'falloffMinFraction', 'maxRangeM', 'magSize', 'reloadSeconds',
   'auto',
   'recoilKickDeg', 'recoilDriftDeg', 'recoilMaxDeg', 'recoilRecoveryPerSec', 'recoilAdsScale',

@@ -34,6 +34,7 @@ const FIXTURE: WeaponDef = {
   pellets: 8,
   hipSpreadDeg: 3,
   adsSpreadDeg: 1,
+  proneSpreadScale: 0.5,
   bloomPerShotDeg: 0.5,
   maxSpreadDeg: 6,
   bloomDecayDegPerSec: 4,
@@ -245,6 +246,49 @@ describe('bloom', () => {
   });
 });
 
+describe('prone cone (T-2.42)', () => {
+  it('scales the whole cone by the weapon row, and only while prone', () => {
+    const state = createWeaponState(FIXTURE);
+    for (const ads of [false, true]) {
+      const upright = currentConeUnits(FIXTURE, state, ads);
+      expect(currentConeUnits(FIXTURE, state, ads, false)).toBe(upright);
+      expect(currentConeUnits(FIXTURE, state, ads, true)).toBe(upright * FIXTURE.proneSpreadScale);
+    }
+    // Bloom and the ceiling are scaled too: prone is steadier at every point
+    // of a burst, not only on the first round.
+    state.bloomUnits += degToAngle(FIXTURE.maxSpreadDeg);
+    expect(currentConeUnits(FIXTURE, state, false, true)).toBe(degToAngle(FIXTURE.maxSpreadDeg) * FIXTURE.proneSpreadScale);
+  });
+
+  it('reads the tuning from the row: a scale of 1 changes nothing, a different one changes it', () => {
+    // Two defs that differ ONLY in the data field. If prone were a hardcoded
+    // branch, both would answer alike.
+    const flat: WeaponDef = { ...FIXTURE, proneSpreadScale: 1 };
+    const steady: WeaponDef = { ...FIXTURE, proneSpreadScale: 0.25 };
+    const a = createWeaponState(flat);
+    const b = createWeaponState(steady);
+    expect(currentConeUnits(flat, a, false, true)).toBe(currentConeUnits(flat, a, false, false));
+    expect(currentConeUnits(steady, b, false, true)).toBe(currentConeUnits(steady, b, false, false) * 0.25);
+  });
+
+  it('fires the shot with the prone cone, and the stance changes nothing else about the shot', () => {
+    const upright = createWeaponState(FIXTURE);
+    const prone = createWeaponState(FIXTURE);
+    const u = tryFire(FIXTURE, upright, 0, false);
+    const p = tryFire(FIXTURE, prone, 0, false, true);
+    expect(p?.coneUnits).toBe((u?.coneUnits ?? 0) * FIXTURE.proneSpreadScale);
+    expect(p?.shotIndex).toBe(u?.shotIndex);
+    expect(prone).toEqual(upright); // Same ammo, cadence and bloom afterwards.
+  });
+
+  it('ships every weapon at least as steady prone as upright', () => {
+    for (const def of Object.values(WEAPONS)) {
+      expect(def.proneSpreadScale).toBeGreaterThan(0);
+      expect(def.proneSpreadScale).toBeLessThanOrEqual(1);
+    }
+  });
+});
+
 describe('weapon data', () => {
   it('ships a table that validates', () => {
     expect(Object.keys(WEAPONS).length).toBeGreaterThanOrEqual(3);
@@ -266,6 +310,8 @@ describe('weapon data', () => {
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', pellets: 1.5 } })).toThrow(/pellets must be an integer/);
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', falloffEndM: 1 } })).toThrow(/falloffEndM/);
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', adsSpreadDeg: 99 } })).toThrow(/adsSpreadDeg/);
+    // T-2.42: a prone scale above 1 would make lying down LESS accurate.
+    expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', proneSpreadScale: 1.5 } })).toThrow(/proneSpreadScale/);
     // T-2.08: recoil fields are validated like the rest, and a cap below one
     // kick is refused rather than clamping every shot.
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', recoilRecoveryPerSec: 0 } })).toThrow(/recoilRecoveryPerSec/);

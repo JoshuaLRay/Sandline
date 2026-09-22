@@ -28,6 +28,7 @@ const RIFLE: WeaponDef = {
   pellets: 1,
   hipSpreadDeg: 2,
   adsSpreadDeg: 0.5,
+  proneSpreadScale: 1,
   bloomPerShotDeg: 0.4,
   maxSpreadDeg: 5,
   bloomDecayDegPerSec: 4,

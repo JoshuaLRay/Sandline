@@ -1424,6 +1424,7 @@ pose-driver contracts rather than adding a second one.
 - **Do:** Firing is permitted while prone (unlike while downed, which stays refused per T-2.13). Recoil/spread may be tuned tighter prone than standing/crouch in data, but no new mechanism — reuse the existing fire/aim pipeline with prone as another stance input to it.
 - **Done when:** tests assert Fire succeeds while prone end to end over the wire, and that stance-conditioned aim/recoil tuning (if any) reads from data, not a hardcoded branch. `pnpm verify` green.
 - **Size:** S
+- **Completed 2026-09-22.** Nothing refused a prone Fire; what was missing was that the shot still left from STANDING eye height, 0.75 m above the prone hit volume, so prone behind cover shot over it. `eyePosition` gained the body's prone stance as an input (the muzzle stance/view still is not one) and the muzzle rig a `proneEyeHeight`; the server takes both stance and origin from the shooter's rewound sample so the two never disagree. Spread got `proneSpreadScale` per weapon row as a stance input beside `ads` — same pipeline, no new mechanism. Recoil left alone (the spec allowed tuning, not required it). Crouch still traces from standing eye height and so do throws in every stance: logged as B-09 rather than widened into this task.
 
 #### T-2.43 — 🧍 E-2.8 sign-off
 - **Depends:** T-2.40, T-2.41, T-2.42

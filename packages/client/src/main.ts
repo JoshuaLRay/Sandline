@@ -1106,6 +1106,9 @@ function frame(): void {
       firing: !holdingPouch && input.firing && net.vitality === 'alive' && !net.simulated?.vault,
       triggerEdge: !holdingPouch && triggerEdge,
       ads: input.ads,
+      // Prone fires (T-2.42), with the predicted stance as a cone input — the
+      // replayed one, not the key, so it matches what the server resolves.
+      prone: net.simulated?.prone ?? false,
     });
     // The local machine decides WHEN the trigger pulled; the server decides
     // what that shot hit. Both run the same cadence, so a shot the client
@@ -1551,7 +1554,8 @@ function frame(): void {
   } else {
     aimPoint.copy(aimOrigin).addScaledVector(aimDirection, AIM_RANGE);
   }
-  const eye = eyePosition(rx, ry, rz);
+  // Prone traces from a prone eye (T-2.42), so converge from there too.
+  const eye = eyePosition(rx, ry, rz, DEFAULT_MUZZLE_RIG, sim?.prone ?? false);
   aimDirection.set(aimPoint.x - eye.x, aimPoint.y - eye.y, aimPoint.z - eye.z).normalize();
 
   /**
@@ -1561,7 +1565,7 @@ function frame(): void {
    * the arms enclose is where pellets can land.
    */
   if (crosshair) {
-    const cone = coneGapPx(combat.coneDegrees(ads), camera.fov);
+    const cone = coneGapPx(combat.coneDegrees(ads, sim?.prone ?? false), camera.fov);
     const gap = Math.round(Math.max(ads ? ADS_GAP_MIN_PX : HIP_GAP_MIN_PX, cone));
     if (gap !== crosshairGap) {
       crosshairGap = gap;
