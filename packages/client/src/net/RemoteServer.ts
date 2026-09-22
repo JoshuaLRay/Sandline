@@ -172,6 +172,8 @@ export function explainRejection(code: DisconnectCode | null, reason: string | n
       return 'the host stopped hearing from you';
     case 'left':
       return 'you left';
+    case 'unknown world':
+      return 'the host is running a map this build does not have — reload the page to get the current one';
     case 'protocol error':
     case 'other':
     case null:

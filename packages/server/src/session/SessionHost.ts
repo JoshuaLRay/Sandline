@@ -50,6 +50,7 @@ import {
   BaseTransport,
   type Channel,
   Clock,
+  DEFAULT_WORLD_ID,
   MAX_SLOTS,
   NetSim,
   PROTOCOL_VERSION,
@@ -325,6 +326,7 @@ export class SessionHost {
     return {
       ok: !this.draining,
       protocol: PROTOCOL_VERSION,
+      world: this.registry.world ?? DEFAULT_WORLD_ID,
       ...this.registry.stats,
       connections: this.connections,
       maxConnections: this.maxConnections,

@@ -12,7 +12,7 @@ import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isRoomCode } from './roomCode.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 15;
+export const PROTOCOL_VERSION = 16;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -53,6 +53,12 @@ export const DISCONNECT_CODES = [
   'protocol error',
   /** The peer chose to leave. */
   'left',
+  /**
+   * T-3.02: the host named a world this client's build does not have. The
+   * client refuses the join rather than render the wrong scenery and predict
+   * against boxes the server does not collide with.
+   */
+  'unknown world',
 ] as const;
 export type DisconnectCode = (typeof DISCONNECT_CODES)[number];
 const DISCONNECT_CODE_BITS = 4;
@@ -106,7 +112,15 @@ export type Message =
    * have made a room nobody is in.
    */
   | { kind: 'Join'; version: number; name: string; room: string }
-  | { kind: 'JoinAck'; netId: number; slot: number; serverTick: number; room: string }
+  | {
+      kind: 'JoinAck';
+      netId: number;
+      slot: number;
+      serverTick: number;
+      room: string;
+      /** The session's named world (T-3.02); the client builds it with `getWorld`. */
+      world: string;
+    }
   | {
       kind: 'Input';
       tick: number;
@@ -285,6 +299,7 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(msg.slot, 3);
       w.writeVarUint(msg.serverTick);
       w.writeString(msg.room);
+      w.writeString(msg.world);
       break;
     case 'Input':
       w.writeBits(MessageType.Input, TYPE_BITS);
@@ -464,6 +479,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
           slot: r.readBits(3),
           serverTick: r.readVarUint(),
           room: r.readString(),
+          world: r.readString(),
         };
       case MessageType.Input: {
         const tick = r.readVarUint();

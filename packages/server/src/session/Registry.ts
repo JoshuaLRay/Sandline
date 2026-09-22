@@ -63,6 +63,8 @@ export interface RegistryOptions {
   /** Seeds the code generator, so a test can predict the codes it gets. */
   seed?: number;
   moveConfig?: MoveConfig;
+  /** The named world every room is built with (T-3.02). Defaults to the range. */
+  world?: string;
   /** Called when a room is reclaimed, with why. For the host's log. */
   onReclaim?: (room: Room, reason: string) => void;
 }
@@ -81,6 +83,7 @@ export class Registry {
   readonly maxRooms: number;
   readonly graceMs: number;
   private readonly moveConfig: MoveConfig | undefined;
+  readonly world: string | undefined;
   private readonly onReclaim: ((room: Room, reason: string) => void) | undefined;
 
   constructor(options: RegistryOptions = {}) {
@@ -88,6 +91,7 @@ export class Registry {
     this.graceMs = options.graceMs ?? DEFAULT_ROOM_GRACE_MS;
     this.rng = new Sfc32(options.seed ?? 0x2e0a);
     this.moveConfig = options.moveConfig;
+    this.world = options.world;
     this.onReclaim = options.onReclaim;
   }
 
@@ -130,7 +134,7 @@ export class Registry {
     while (this.rooms.has(code)) code = generateRoomCode(() => this.rng.next());
     const room: Room = {
       code,
-      session: new Session(this.moveConfig, code),
+      session: new Session(this.moveConfig, code, this.world),
       createdAt: now,
       simTimeMs: 0,
       emptySince: now,

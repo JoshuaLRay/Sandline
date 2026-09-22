@@ -25,7 +25,7 @@ const T = COMPONENT_IDS.Transform;
 const SAMPLES: Message[] = [
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: 'K7PM' },
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: '' },
-  { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM' },
+  { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM', world: 'range' },
   { kind: 'Ack', tick: 4242 },
   { kind: 'Ping', id: 7, clientTime: 1234567 },
   { kind: 'Pong', id: 7, clientTime: 1234567, serverTime: 1234599 },

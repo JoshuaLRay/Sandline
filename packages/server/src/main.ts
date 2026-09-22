@@ -28,7 +28,7 @@ const host = new SessionHost({
   port: config.port,
   log,
   link,
-  registry: { maxRooms: config.maxRooms, graceMs: config.roomGraceMs },
+  registry: { maxRooms: config.maxRooms, graceMs: config.roomGraceMs, world: config.world },
 });
 const port = await host.start();
 
@@ -36,6 +36,7 @@ log.info('host ready', {
   ...hostBanner(port, link),
   maxRooms: config.maxRooms,
   roomGraceMs: config.roomGraceMs,
+  world: config.world,
   health: `http://localhost:${port}/healthz`,
 });
 

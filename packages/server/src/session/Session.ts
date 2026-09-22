@@ -32,7 +32,9 @@ import {
   WEAPON_IDS,
   type WeaponDef,
   type WeaponState,
-  DEFAULT_WORLD,
+  DEFAULT_WORLD_ID,
+  type World,
+  requireWorld,
   FIRST_PROJECTILE_NET_ID,
   PROJECTILE_IDS,
   type ProjectileDef,
@@ -280,11 +282,20 @@ export class Session {
    * at once; tuning one side only would mispredict every tick and read as the
    * netcode being broken rather than as a tuning artefact.
    */
+  /**
+   * The named world this session collides, shoots and throws against
+   * (T-3.02), and names in every `JoinAck`. Fixed for the session's life.
+   */
+  readonly world: World;
+
   constructor(
     private readonly moveConfig: MoveConfig = DEFAULT_MOVE_CONFIG,
     /** The code clients are told they landed in. Empty for a lone session. */
     readonly room = '',
+    /** A world id (`WORLD=range pnpm host`), or a built world — tests make their own. */
+    world: string | World = DEFAULT_WORLD_ID,
   ) {
+    this.world = typeof world === 'string' ? requireWorld(world) : world;
     // Six slots exist from the moment the session does (ADR-001).
     for (let i = 0; i < MAX_SLOTS; i++) {
       this.slots.push({
@@ -439,7 +450,7 @@ export class Session {
     slot.input = idleInput(slot.yaw);
     slot.interactHeld = false;
 
-    conn.accept(slot.netId, slot.index, this.currentTick, this.room);
+    conn.accept(slot.netId, slot.index, this.currentTick, this.room, this.world.id);
     this.broadcastRoster();
     return true;
   }
@@ -644,6 +655,7 @@ export class Session {
           clientRenderTimeMs: msg.renderTimeMs,
         },
         DEFAULT_HITBOX,
+        this.world.boxes,
       );
 
       let dealt = 0;
@@ -779,9 +791,9 @@ export class Session {
     slot.heldProjectile = pouchIndex;
   }
 
-  /** The boxes and the floor a projectile collides with: the shared world. */
+  /** The boxes and the floor a projectile collides with: this session's world. */
   private projectileWorld(): ProjectileWorld {
-    return { boxes: DEFAULT_WORLD, groundY: this.moveConfig.groundY };
+    return { boxes: this.world.boxes, groundY: this.moveConfig.groundY };
   }
 
   /**
@@ -877,7 +889,7 @@ export class Session {
         at,
         { x: slot.state.x, y: slot.state.y, z: slot.state.z },
         height,
-        DEFAULT_WORLD,
+        this.world.boxes,
       );
       if (damage <= 0) continue;
       const result = applyDamage(slot.health, damage, nowSeconds);
@@ -964,7 +976,7 @@ export class Session {
           slot.pendingInputTick = ahead.tick;
           slot.staleTicks = 0;
           slot.input.downed = isDowned(slot.health);
-          slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig);
+          slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig, this.world.boxes);
           extra -= 1;
         }
 
@@ -1009,7 +1021,7 @@ export class Session {
       // still whatever buttons arrive (B-05), and the predictor applies the
       // same rule.
       slot.input.downed = isDowned(slot.health);
-      slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig);
+      slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig, this.world.boxes);
       /**
        * Recover weapon bloom, every tick, for every slot.
        *

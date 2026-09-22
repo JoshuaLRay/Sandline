@@ -18,8 +18,10 @@ import {
   VELOCITY,
   type WorldSnapshot,
   createLoopbackPair,
+  decodeMessage,
   encodeMessage,
   quantize,
+  requireWorld,
   writeDelta,
 } from '@sandline/shared';
 import { NetClient, type ServerDetonation, type ServerShot } from './NetClient.ts';
@@ -199,5 +201,43 @@ describe('a shot carries its own origin on the wire (B-01)', () => {
 
     expect(client.shots).toHaveLength(1);
     expect(client.shots[0]).toMatchObject({ originX: -6, originY: 1.5625, originZ: -2 });
+  });
+});
+
+describe('the session names its world (T-3.02)', () => {
+  function acked(world: string) {
+    const pair = createLoopbackPair();
+    const net = new NetClient(pair.b, 'tester');
+    const fromClient: Message[] = [];
+    pair.a.onMessage((bytes) => fromClient.push(decodeMessage(bytes)));
+    const refusals: { reason: string; code: string }[] = [];
+    let joined = 0;
+    net.onJoined = () => joined++;
+    net.onDisconnect = (reason, code) => refusals.push({ reason, code });
+    pair.a.send(encodeMessage({ kind: 'JoinAck', netId: 7, slot: 2, serverTick: 0, room: 'K7PM', world }));
+    pair.settle();
+    return { net, fromClient, refusals, joined: () => joined };
+  }
+
+  it('builds the named world from the same data and joins', () => {
+    const { net, refusals, joined } = acked('range');
+    expect(net.joined).toBe(true);
+    expect(joined()).toBe(1);
+    expect(refusals).toEqual([]);
+    expect(net.world?.id).toBe('range');
+    expect(net.world?.boxes).toBe(requireWorld('range').boxes);
+  });
+
+  it('refuses a world this build does not have, typed, rather than render the wrong scenery', () => {
+    const { net, fromClient, refusals, joined } = acked('atlantis');
+    expect(net.joined).toBe(false);
+    expect(joined()).toBe(0);
+    expect(net.world).toBeNull();
+    expect(refusals).toHaveLength(1);
+    expect(refusals[0]!.code).toBe('unknown world');
+    expect(refusals[0]!.reason).toMatch(/atlantis/);
+    // The host is told why, with the same code, rather than seeing a silent drop.
+    const bye = fromClient.find((m) => m.kind === 'Disconnect');
+    expect(bye).toMatchObject({ kind: 'Disconnect', code: 'unknown world' });
   });
 });

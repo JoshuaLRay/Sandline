@@ -27,4 +27,13 @@ describe('loadConfig (T-0.07)', () => {
     process.env['LOG_LEVEL'] = 'verbose';
     expect(() => loadConfig()).toThrow(/LOG_LEVEL/);
   });
+
+  it('names a world by id, defaulting to the range, and refuses one this build lacks (T-3.02)', () => {
+    delete process.env['WORLD'];
+    expect(loadConfig().world).toBe('range');
+    process.env['WORLD'] = 'range';
+    expect(loadConfig().world).toBe('range');
+    process.env['WORLD'] = 'atlantis';
+    expect(() => loadConfig()).toThrow(/WORLD must be one of range/);
+  });
 });

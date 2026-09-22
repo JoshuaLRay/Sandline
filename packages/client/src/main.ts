@@ -68,7 +68,7 @@ import {
   shareLink,
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
-import { DEFAULT_WORLD, type WorldBoxKind, boxCentre, supportUnder, surfaceAt } from '@sandline/shared';
+import { DEFAULT_WORLD_ID, type World, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
@@ -143,8 +143,9 @@ scene.add(new THREE.GridHelper(200, 100, 0x8a7550, 0x6a5940));
 /**
  * THE WORLD, drawn from the shared list (T-1.12).
  *
- * Every solid thing here comes from `DEFAULT_WORLD`: the distance posts, the
- * sprint-lane rails, the reference figure and the cover in world.json. The
+ * Every solid thing here comes from the session's named world (T-3.02) —
+ * for the range, the distance posts, the sprint-lane rails, the reference
+ * figure and the cover in worlds/range.json. The
  * server collides players and shots with exactly that list, the predictor
  * collides the local player with it, and the camera arm stops on it — so
  * there is no longer a client-only decoration a soldier can walk through or a
@@ -185,26 +186,55 @@ const worldMaterials: Record<WorldBoxKind, THREE.Material> = {
 };
 /** The box every world entry collides as. The figure also gets its capsule. */
 const invisible = new THREE.MeshBasicMaterial({ visible: false });
-for (const box of DEFAULT_WORLD) {
-  const c = boxCentre(box);
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(c.w, c.h, c.d),
-    box.kind === 'figure' ? invisible : worldMaterials[box.kind],
-  );
-  mesh.position.set(c.x, c.y, c.z);
-  mesh.castShadow = box.kind !== 'figure';
-  mesh.name = box.id;
-  scene.add(mesh);
-  shootable.push(mesh);
-  cameraScenery.push(mesh);
-  if (box.kind === 'figure') {
-    /** The 1.8 m reference figure: the only way to read speed and jump height. */
-    const capsule = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 1.1, 4, 12), worldMaterials.figure);
-    capsule.position.set(c.x, c.y, c.z);
-    capsule.castShadow = true;
-    capsule.name = 'reference figure (drawn)';
-    scene.add(capsule);
+
+/**
+ * The world being drawn, collided with and shot at (T-3.02). The range until
+ * a host names another in `JoinAck`; the lobby is drawn over it.
+ */
+let activeWorld: World = requireWorld(DEFAULT_WORLD_ID);
+/** Every mesh the current world added, so the next world can take them away. */
+const worldMeshes: THREE.Mesh[] = [];
+
+function buildScenery(world: World): void {
+  for (const mesh of worldMeshes.splice(0)) {
+    scene.remove(mesh);
+    mesh.geometry.dispose();
+    for (const list of [shootable, cameraScenery]) {
+      const at = list.indexOf(mesh);
+      if (at >= 0) list.splice(at, 1);
+    }
   }
+  for (const box of world.boxes) {
+    const c = boxCentre(box);
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(c.w, c.h, c.d),
+      box.kind === 'figure' ? invisible : worldMaterials[box.kind],
+    );
+    mesh.position.set(c.x, c.y, c.z);
+    mesh.castShadow = box.kind !== 'figure';
+    mesh.name = box.id;
+    scene.add(mesh);
+    worldMeshes.push(mesh);
+    shootable.push(mesh);
+    cameraScenery.push(mesh);
+    if (box.kind === 'figure') {
+      /** The 1.8 m reference figure: the only way to read speed and jump height. */
+      const capsule = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 1.1, 4, 12), worldMaterials.figure);
+      capsule.position.set(c.x, c.y, c.z);
+      capsule.castShadow = true;
+      capsule.name = 'reference figure (drawn)';
+      scene.add(capsule);
+      worldMeshes.push(capsule);
+    }
+  }
+}
+buildScenery(activeWorld);
+
+/** Switch to the world a session named, redrawing only when it changed. */
+function useWorld(world: World): void {
+  if (world.id === activeWorld.id) return;
+  activeWorld = world;
+  buildScenery(world);
 }
 
 /**
@@ -263,7 +293,7 @@ const localPoseDriver = createLocomotionPoseDriver(playerRig);
  * feet will stand on with it, and reading the same world the controller
  * collides with.
  */
-const localFeet = createFootPlacementDriver(playerRig, { world: DEFAULT_WORLD, config });
+const localFeet = createFootPlacementDriver(playerRig, { world: () => activeWorld.boxes, config });
 scene.add(player);
 
 /**
@@ -301,7 +331,7 @@ function remoteMesh(netId: number): THREE.Mesh {
     scene.add(mesh);
     remoteMeshes.set(netId, mesh);
     remotePoseDrivers.set(netId, createLocomotionPoseDriver(mesh));
-    remoteFeet.set(netId, createFootPlacementDriver(mesh, { world: DEFAULT_WORLD, config }));
+    remoteFeet.set(netId, createFootPlacementDriver(mesh, { world: () => activeWorld.boxes, config }));
     // Created on demand, so it has to join the list on demand too. Leaving
     // remote players out is what produced the down-and-left shots.
     shootable.push(mesh);
@@ -353,9 +383,9 @@ function equipPouch(index: number): void {
 /** The weapon in hand in first person, drawn over the world. */
 const viewModel = new ViewModel();
 
-/** The world a projectile collides with: the shared boxes and the same floor. */
+/** The world a projectile collides with: the session's boxes and the same floor. */
 function projectileWorld(): ProjectileWorld {
-  return { boxes: DEFAULT_WORLD, groundY: config.groundY };
+  return { boxes: activeWorld.boxes, groundY: config.groundY };
 }
 
 /**
@@ -563,7 +593,7 @@ function onServerShot(net: NetClient, shot: ServerShot): void {
 function landImpact(net: NetClient, shot: ServerShot): void {
   const now = clock.tick * TICK_SECONDS;
   if (shot.targetNetId === 0) {
-    const surface = surfaceAt(shot, DEFAULT_WORLD);
+    const surface = surfaceAt(shot, activeWorld.boxes);
     // The wire rounds the point to 1/64 m; the mark goes on the face itself.
     if (surface) effects.impact(surface.point, surface.normal, now);
     return;
@@ -614,7 +644,7 @@ function onServerDetonation(net: NetClient, event: ServerDetonation): void {
    * close enough below it. A rocket against a wall three metres up leaves no
    * ring on the floor beneath it.
    */
-  const support = supportUnder(event.x, event.z, 0.15, event.y, DEFAULT_WORLD, config.groundY);
+  const support = supportUnder(event.x, event.z, 0.15, event.y, activeWorld.boxes, config.groundY);
   effects.blast(centre, def.blastRadiusM, event.y - support <= SCORCH_REACH_M ? support : null, now);
 
   // Our own camera, by what reached US. `net.simulated` is where the server
@@ -627,7 +657,7 @@ function onServerDetonation(net: NetClient, event: ServerDetonation): void {
       centre,
       { x: here.x, y: here.y, z: here.z },
       here.crouched ? HUMANOID_CROUCH_HIT_HEIGHT_M : HUMANOID_HIT_HEIGHT_M,
-      DEFAULT_WORLD,
+      activeWorld.boxes,
     );
     if (impulse.posM > 0) shake = addImpulse(shake, impulse.posM, impulse.rollRad);
   }
@@ -706,6 +736,7 @@ function startSession(choice: LobbyChoice): void {
       net.join(roomJoined);
     };
     net.onJoined = (_slot, room) => {
+      if (net.world) useWorld(net.world);
       roomJoined = room;
       remote.markJoined();
       history.replaceState(null, '', shareLink(location.href, choice.host, room, __DEFAULT_HOST__));
@@ -717,6 +748,10 @@ function startSession(choice: LobbyChoice): void {
       leaveSession({ text: explainRejection(code, reason), tone: 'error' });
     };
   } else {
+    // The in-page session names its world in JoinAck exactly as a host does.
+    net.onJoined = () => {
+      if (net.world) useWorld(net.world);
+    };
     net.join();
   }
 

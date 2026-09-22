@@ -3,7 +3,14 @@ import { RANGE_TARGETS } from './range.ts';
 import { SPAWN_POINTS } from './damage.ts';
 import {
   DEFAULT_WORLD,
+  DEFAULT_WORLD_ID,
+  WORLD_IDS,
   type WorldBox,
+  figureBox,
+  getWorld,
+  loadWorld,
+  railBoxes,
+  requireWorld,
   boxCentre,
   boxFrom,
   loadCover,
@@ -196,5 +203,36 @@ describe('surfaceAt: which face a server point lies on (T-2.11)', () => {
     expect(surfaceAt({ x: -6, y: 1, z: wall.minZ - tol * 0.5 }, DEFAULT_WORLD)?.normal).toEqual({ x: 0, y: 0, z: -1 });
     // A caller may ask for exactness.
     expect(surfaceAt({ x: -6, y: 1, z: wall.minZ - 0.002 }, DEFAULT_WORLD, 1e-3)).toBeNull();
+  });
+});
+
+describe('named worlds (T-3.02)', () => {
+  it('the range is box-for-box what DEFAULT_WORLD was: posts, rails, figure, then cover', () => {
+    const range = requireWorld('range');
+    expect(range.id).toBe(DEFAULT_WORLD_ID);
+    expect(range.boxes).toBe(DEFAULT_WORLD);
+    expect(range.boxes).toEqual([...postBoxes(), ...railBoxes(), figureBox(), ...loadCover()]);
+    expect(WORLD_IDS).toContain('range');
+  });
+
+  it('gives a world only the generated pieces its file asks for', () => {
+    const cover = [{ id: 'c', x: 0, y: 0, z: 0, w: 1, h: 1, d: 1 }];
+    expect(loadWorld({ id: 'bare', cover }).boxes.map((b) => b.kind)).toEqual(['cover']);
+    const railed = loadWorld({ id: 'railed', generate: ['rails'], cover });
+    expect(railed.boxes.map((b) => b.kind)).toEqual(['rail', 'rail', 'cover']);
+  });
+
+  it('refuses a malformed world file at load, with what was wrong', () => {
+    const cover: unknown[] = [];
+    expect(() => loadWorld(null)).toThrow(/expected an object/);
+    expect(() => loadWorld({ cover })).toThrow(/id must match/);
+    expect(() => loadWorld({ id: 'Has Spaces', cover })).toThrow(/id must match/);
+    expect(() => loadWorld({ id: 'ok', generate: ['moat'], cover })).toThrow(/generate must list only/);
+    expect(() => loadWorld({ id: 'ok' })).toThrow(/cover/);
+  });
+
+  it('answers an unknown id with undefined, or a throw naming the ids it has', () => {
+    expect(getWorld('atlantis')).toBeUndefined();
+    expect(() => requireWorld('atlantis')).toThrow(/unknown world 'atlantis'.*range/);
   });
 });
