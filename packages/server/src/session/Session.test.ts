@@ -15,6 +15,9 @@ import {
   createLoopbackPair,
   decodeMessage,
   DAMAGE,
+  type MoveInput,
+  TICK_SECONDS,
+  stepCharacter,
 } from '@sandline/shared';
 import { MAX_INPUT_REPEAT, Session } from './Session.ts';
 
@@ -591,7 +594,7 @@ describe('Session vault over the wire (T-2.21)', () => {
     return { x: dequantize(t[0]!, POSITION), y: dequantize(t[1]!, POSITION), z: dequantize(t[2]!, POSITION), vault: vaultFromLevels(e.components[Vt]) };
   };
 
-  it('a client walking into the low wall vaults it; the other client sees the whole traversal and a predictor agrees within the movement bound', () => {
+  it('a client pressing jump at the low wall vaults it; the other client sees the whole traversal and a predictor agrees within the movement bound', () => {
     const s = new Session();
     const runner = connectClient(s, 'runner');
     const watcher = connectClient(s, 'watcher');
@@ -610,7 +613,12 @@ describe('Session vault over the wire (T-2.21)', () => {
     // snapshot against the prediction for that same tick.
     let previousPrediction = { ...predictor.simulated };
     for (let tick = 1; tick <= 45; tick += 1) {
-      runner.input(tick, 0, 1, 0, 0);
+      // Jump (button bit 0) goes down on the tick it would start the vault:
+      // the player pressing space at the wall. Walking into it alone does not vault.
+      const walk: MoveInput = { moveX: 0, moveY: 1, yaw: 0, jump: false, sprint: false, crouch: false };
+      const jump = !slot.state.vault && stepCharacter(slot.state, { ...walk, jump: true }, TICK_SECONDS).vault != null;
+      const move: MoveInput = { ...walk, jump };
+      runner.input(tick, 0, 1, 0, jump ? 0b001 : 0);
       watcher.input(tick, 0, 0);
       const seen = positionOf(watcher.snapshots.at(-1), slot.netId);
       if (seen) {
@@ -622,7 +630,7 @@ describe('Session vault over the wire (T-2.21)', () => {
           Math.hypot(previousPrediction.x - seen.x, previousPrediction.y - seen.y, previousPrediction.z - seen.z),
         );
       }
-      previousPrediction = { ...predictor.predict(tick, { moveX: 0, moveY: 1, yaw: 0, jump: false, sprint: false, crouch: false }) };
+      previousPrediction = { ...predictor.predict(tick, move) };
       now += 33;
       s.step(now);
       // The server and the predictor ran the same step on the same input.
@@ -643,7 +651,7 @@ describe('Session vault over the wire (T-2.21)', () => {
     const slot = s.slots[runner.joined!.slot]!;
     slot.state = { ...slot.state, x: -9, y: 0, z: -2.4, vy: 0, grounded: true, crouched: false, vault: null };
     let now = 0;
-    // Holding the trigger (button bit 16) while walking in: no vault, a wall.
+    // Holding the trigger (button bit 16) while walking in: a wall.
     for (let tick = 1; tick <= 40; tick += 1) {
       runner.input(tick, 0, 1, 0, 0b10000);
       now += 33;
@@ -651,11 +659,18 @@ describe('Session vault over the wire (T-2.21)', () => {
       expect(slot.state.vault ?? null).toBeNull();
     }
     expect(slot.state.z).toBeLessThan(-1.15);
-    // Release the trigger: the vault starts on the next steps.
-    let tick = 40;
+    // Jump (bit 0) at the wall with the trigger still held: no vault.
+    const atWall = { ...slot.state };
+    runner.input(41, 0, 1, 0, 0b10001);
+    now += 33;
+    s.step(now);
+    expect(slot.state.vault ?? null).toBeNull();
+    // Back to the wall, trigger released, jump pressed: the vault starts.
+    slot.state = atWall;
+    let tick = 41;
     while (!slot.state.vault && tick < 60) {
       tick += 1;
-      runner.input(tick, 0, 1, 0, 0);
+      runner.input(tick, 0, 1, 0, 0b001);
       now += 33;
       s.step(now);
     }

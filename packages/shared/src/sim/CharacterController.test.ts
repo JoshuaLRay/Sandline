@@ -149,8 +149,8 @@ describe('world collision (T-1.12)', () => {
     expect(onKerb.grounded).toBe(true);
     expect(onKerb.z).toBeGreaterThan(4);
 
-    // Taller than a step but no taller than a vault is now vaulted (T-2.21);
-    // what blocks is a box taller than the vault height.
+    // Taller than a step blocks a walk; a box no taller than the vault height
+    // is only vaulted with jump pressed (T-2.21). This one is taller still.
     const tall = [wall('crate', 0, 13, 6, cfg.vaultMaxHeight + 0.2, 20)];
     const blocked = walk({ x: 0, z: 0 }, input({ moveY: 1 }), 60, tall);
     expect(blocked.y).toBe(0);
@@ -407,15 +407,30 @@ describe('vault (T-2.21)', () => {
   const hurdle = (h: number) => boxFrom({ id: 'hurdle', x: 0, y: 0, z: 3, w: 6, h, d: 0.4 }, 'cover');
   const forward = (over: Partial<MoveInput> = {}): MoveInput => input({ moveY: 1, ...over });
 
+  /**
+   * Hold forward and press jump on the tick it would start a vault: the
+   * player hitting space at the obstacle. Vaulting needs the press; walking
+   * into a hurdle alone never vaults.
+   */
+  const atTheHurdle = (s: MoveState, world: WorldBox[], over: Partial<MoveInput> = {}): MoveInput => {
+    const pressed = forward({ ...over, jump: true });
+    return stepCharacter(s, pressed, TICK_SECONDS, CONFIG, world).vault ? pressed : forward(over);
+  };
+
   /** Walk +Z from the origin for `ticks`; report when the vault began and where it ended. */
-  function walk(world: WorldBox[], ticks: number, inp: (t: number) => MoveInput = () => forward(), dt = TICK_SECONDS) {
+  function walk(
+    world: WorldBox[],
+    ticks: number,
+    inp: (t: number, s: MoveState) => MoveInput = (_t, s) => atTheHurdle(s, world),
+    dt = TICK_SECONDS,
+  ) {
     let s = createMoveState(0, 0, 0);
     let startedAt = -1;
     let peakY = 0;
     let landedAt = -1;
     for (let t = 0; t < ticks; t += 1) {
       const wasVaulting = !!s.vault;
-      s = stepCharacter(s, inp(t), dt, CONFIG, world);
+      s = stepCharacter(s, inp(t, s), dt, CONFIG, world);
       if (s.vault && startedAt < 0) startedAt = t;
       if (s.vault) peakY = Math.max(peakY, s.y);
       if (wasVaulting && !s.vault && landedAt < 0) landedAt = t;
@@ -438,6 +453,20 @@ describe('vault (T-2.21)', () => {
     expect(r.s.y).toBe(0);
   });
 
+  it('walking into a vaultable hurdle without jump does not vault; it stops at it like a wall', () => {
+    const r = walk([hurdle(0.9)], 60, () => forward());
+    expect(r.startedAt).toBe(-1);
+    expect(r.s.z).toBeCloseTo(2.8 - CONFIG.radius, 9);
+    expect(r.s.y).toBe(0);
+  });
+
+  it('jump pressed with nothing vaultable ahead is an ordinary jump', () => {
+    const s = stepCharacter(createMoveState(0, 0, 0), forward({ jump: true }), TICK_SECONDS, CONFIG, [hurdle(0.9)]);
+    expect(s.vault ?? null).toBeNull();
+    expect(s.grounded).toBe(false);
+    expect(s.vy).toBe(CONFIG.jumpSpeed);
+  });
+
   it('steps through a hurdle no taller than a step without vaulting', () => {
     const r = walk([hurdle(0.4)], 60);
     expect(r.startedAt).toBe(-1);
@@ -458,34 +487,35 @@ describe('vault (T-2.21)', () => {
     expect(r.s.z).toBeLessThan(2.8);
   });
 
-  it('needs forward intent: strafing, backing off, or standing still never vaults', () => {
+  it('needs forward intent: strafing, backing off, or standing still never vaults, even with jump', () => {
     const world = [hurdle(0.9)];
-    // Walk up to it, then stop pushing: the last ticks have no intent.
+    // Up against it, jump held throughout, with no forward push.
     let s = createMoveState(0, 0, 2.2);
-    for (let t = 0; t < 30; t += 1) s = stepCharacter(s, input({ moveX: 1 }), TICK_SECONDS, CONFIG, world);
+    for (let t = 0; t < 30; t += 1) s = stepCharacter(s, input({ moveX: 1, jump: true }), TICK_SECONDS, CONFIG, world);
     expect(s.vault ?? null).toBeNull();
-    for (let t = 0; t < 30; t += 1) s = stepCharacter(s, input({ moveY: -1 }), TICK_SECONDS, CONFIG, world);
+    for (let t = 0; t < 30; t += 1) s = stepCharacter(s, input({ moveY: -1, jump: true }), TICK_SECONDS, CONFIG, world);
     expect(s.vault ?? null).toBeNull();
-    for (let t = 0; t < 30; t += 1) s = stepCharacter(s, input(), TICK_SECONDS, CONFIG, world);
+    for (let t = 0; t < 30; t += 1) s = stepCharacter(s, input({ jump: true }), TICK_SECONDS, CONFIG, world);
     expect(s.vault ?? null).toBeNull();
     // A diagonal with the strafe dominant is not forward intent either.
-    for (let t = 0; t < 30; t += 1) s = stepCharacter(s, input({ moveX: 1, moveY: 0.4 }), TICK_SECONDS, CONFIG, world);
+    for (let t = 0; t < 30; t += 1) s = stepCharacter(s, input({ moveX: 1, moveY: 0.4, jump: true }), TICK_SECONDS, CONFIG, world);
     expect(s.vault ?? null).toBeNull();
   });
 
-  it('never starts while crouched, prone, downed, firing, jumping or airborne', () => {
+  it('never starts while crouched, prone, downed, firing or airborne, even with jump held', () => {
     const world = [hurdle(0.9)];
-    for (const over of [{ crouch: true }, { prone: true }, { downed: true }, { firing: true }, { jump: true }] as Partial<MoveInput>[]) {
-      const r = walk(world, 60, () => forward(over));
+    for (const over of [{ crouch: true }, { prone: true }, { downed: true }, { firing: true }] as Partial<MoveInput>[]) {
+      const r = walk(world, 60, () => forward({ ...over, jump: true }));
       expect(r.startedAt, JSON.stringify(over)).toBe(-1);
     }
-    // Airborne: jump just before the hurdle, then hold forward in the air.
-    const r = walk(world, 60, (t) => forward({ jump: t === 8 }));
+    // Airborne: jump just before the hurdle, then keep pressing jump in the air.
+    const inAir = (t: number, s: MoveState) => forward({ jump: t === 8 || !s.grounded });
+    const r = walk(world, 60, inAir);
     let s = createMoveState(0, 0, 0);
     let vaultedWhileAirborne = false;
     for (let t = 0; t < 60; t += 1) {
       const airborne = !s.grounded;
-      s = stepCharacter(s, forward({ jump: t === 8 }), TICK_SECONDS, CONFIG, world);
+      s = stepCharacter(s, inAir(t, s), TICK_SECONDS, CONFIG, world);
       if (airborne && s.vault && s.vault.elapsed <= TICK_SECONDS + 1e-9) vaultedWhileAirborne = true;
     }
     expect(vaultedWhileAirborne).toBe(false);
@@ -496,7 +526,8 @@ describe('vault (T-2.21)', () => {
     const world = [hurdle(0.9)];
     const straight = walk(world, 60);
     // Everything a player could mash, from the tick after the vault begins.
-    const mash = (t: number): MoveInput => (t > straight.startedAt ? forward({ moveX: 1, jump: true, crouch: true }) : forward());
+    const mash = (t: number, s: MoveState): MoveInput =>
+      t > straight.startedAt ? forward({ moveX: 1, jump: true, crouch: true }) : atTheHurdle(s, world);
     const bent = walk(world, 60, mash);
     expect(bent.startedAt).toBe(straight.startedAt);
     // Same landing tick, same X (no strafe took), same Z.
@@ -504,8 +535,8 @@ describe('vault (T-2.21)', () => {
     let a = createMoveState(0, 0, 0);
     let b = createMoveState(0, 0, 0);
     for (let t = 0; t <= straight.landedAt; t += 1) {
-      a = stepCharacter(a, forward(), TICK_SECONDS, CONFIG, world);
-      b = stepCharacter(b, mash(t), TICK_SECONDS, CONFIG, world);
+      a = stepCharacter(a, atTheHurdle(a, world), TICK_SECONDS, CONFIG, world);
+      b = stepCharacter(b, mash(t, b), TICK_SECONDS, CONFIG, world);
     }
     expect(b.x).toBe(a.x);
     expect(b.z).toBe(a.z);
@@ -516,7 +547,7 @@ describe('vault (T-2.21)', () => {
     const world = [hurdle(0.9)];
     // Start from the same pre-vault state so only the vault is compared.
     let pre = createMoveState(0, 0, 0);
-    while (!pre.vault) pre = stepCharacter(pre, forward(), TICK_SECONDS, CONFIG, world);
+    while (!pre.vault) pre = stepCharacter(pre, atTheHurdle(pre, world), TICK_SECONDS, CONFIG, world);
     const start: MoveState = { ...pre, vault: { ...(pre.vault as NonNullable<typeof pre.vault>), elapsed: 0 } };
     const at = (dt: number, seconds: number) => {
       let s = start;
@@ -551,7 +582,7 @@ describe('vault (T-2.21)', () => {
   it('a vault handed to a fresh step mid-way continues exactly (what a reconcile relies on)', () => {
     const world = [hurdle(0.9)];
     let s = createMoveState(0, 0, 0);
-    while (!s.vault || s.vault.elapsed < 0.2) s = stepCharacter(s, forward(), TICK_SECONDS, CONFIG, world);
+    while (!s.vault || s.vault.elapsed < 0.2) s = stepCharacter(s, s.vault ? forward() : atTheHurdle(s, world), TICK_SECONDS, CONFIG, world);
     // Rebuild the state from its numbers only, as a snapshot would deliver it.
     const handed: MoveState = { x: s.x, y: s.y, z: s.z, vy: 0, grounded: false, crouched: false, prone: false, vault: { ...(s.vault as NonNullable<typeof s.vault>) } };
     let a: MoveState = s;
