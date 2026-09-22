@@ -68,8 +68,9 @@ export interface MoveInput {
   sprint: boolean;
   crouch: boolean;
   /**
-   * Prone (T-2.40, ADR-016): held like `crouch`. Takes priority over crouch
-   * while held — pressing both goes prone, not crouched. Sprint and jump are
+   * Prone (T-2.40, ADR-016): a level intent like `crouch` (the client
+   * toggles it on Z). Takes priority over crouch while set — both set goes
+   * prone, not crouched. Sprint and jump are
    * ignored while prone, same as crouch ignores sprint.
    */
   prone?: boolean;
