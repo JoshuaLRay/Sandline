@@ -284,6 +284,16 @@ describe('skinned soldier (T-2.22)', () => {
     expect(head.clone().sub(soldier.position).dot(facing)).toBeGreaterThan(0.4);
     expect(foot.clone().sub(soldier.position).dot(facing)).toBeLessThan(-0.4);
     expect(rig.aim.visible).toBe(false);
+    // B-05: not a flat scarecrow — the torso rolls so one shoulder rides
+    // clear of the ground (world Y is yaw-invariant, so this holds at any
+    // facing), and the near hand comes up off the ground onto the abdomen
+    // rather than lying open at the side like the far one.
+    const shoulderLeft = worldOf(soldier, 'upper-arm-left');
+    const shoulderRight = worldOf(soldier, 'upper-arm-right');
+    expect(Math.abs(shoulderLeft.y - shoulderRight.y)).toBeGreaterThan(0.08);
+    const handLeft = worldOf(soldier, 'hand-left');
+    const handRight = worldOf(soldier, 'hand-right');
+    expect(handRight.y).toBeGreaterThan(handLeft.y + 0.3);
 
     rig.setPose('standing');
     expect(boneSnapshot(soldier)).toEqual(standing);
