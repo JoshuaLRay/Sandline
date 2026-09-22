@@ -13,7 +13,7 @@ Status: **OPEN** (not investigated/fixed) · **IN PROGRESS** · **FIXED**
 |---|---|---|---|---|
 | B-01 | Weapons/tracers | Strafing while firing makes some bullet tracers render perpendicular to the fire direction instead of along it. | FIXED | — |
 | B-02 | Weapons/animation | Running forward or backward while firing in FPS view causes visual strobing. | FIXED | — |
-| B-03 | Grenades | Grenades are too floaty and travel too far; arc/drag needs tuning. | OPEN | — |
+| B-03 | Grenades | Grenades are too floaty and travel too far; arc/drag needs tuning. | FIXED | — |
 | B-04 | Weapons | Rocket launcher cannot be equipped or fired. | OPEN | — |
 | B-05 | Downed state | Downed players should lie on their back clutching their abdomen (one shoulder off the ground), be unable to crawl, be forced into TPS view, and have no movement while downed. Currently crawling is possible and this needs to be removed. | OPEN | — |
 
