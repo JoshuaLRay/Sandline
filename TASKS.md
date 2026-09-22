@@ -36,8 +36,7 @@ Q2 — purchased/commissioned/in-house).
 **M3 is broken out** (PLAN.md §7.9). E-3.1's navmesh pipeline is done:
 T-3.01 (the Recast spike), T-3.02 (named worlds), T-3.03 (the range baked
 and committed, with a staleness hash) and T-3.04 (vault links). The next
-build tasks are **T-3.05** (path following as input; handoff in
-`docs/HANDOFF-T-3.05.md`), **T-3.07** (behaviour
+build tasks are **T-3.05** (path following as input), **T-3.07** (behaviour
 tree runtime, no dependencies) and **T-3.18** (cover points in the bake).
 
 ---
@@ -219,7 +218,7 @@ once before the first M3 task — it is short and every task leans on it.
 
 | Task | Status | Depends |
 |---|---|---|
-| T-3.05 | OPEN — read `docs/HANDOFF-T-3.05.md` first | T-3.04 |
+| T-3.05 | OPEN | T-3.04 |
 | T-3.06 | BLOCKED | T-3.05 |
 
 ### E-3.3 — Behaviour tree runtime
