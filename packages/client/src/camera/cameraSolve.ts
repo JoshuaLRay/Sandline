@@ -49,6 +49,8 @@ export interface CameraView {
   downed?: boolean;
   /** Prone (T-2.41): the pivot eases down to `proneEyeHeight`, on the same curve. */
   prone?: boolean;
+  /** Crouched: the pivot eases down to `crouchEyeHeight`. Prone wins if both are set. */
+  crouched?: boolean;
 }
 
 interface Vec3 {
@@ -79,6 +81,8 @@ export interface CameraSolve {
   downedBlend: number;
   /** Normalized 0..1: how far the pivot has dropped toward the prone height. */
   proneBlend: number;
+  /** Normalized 0..1: how far the pivot has dropped toward the crouch height. */
+  crouchBlend: number;
   /** FOV derived from the same ADS transition. */
   fov: number;
   /**
@@ -103,6 +107,7 @@ export function createCameraSolve(): CameraSolve {
     adsBlend: 0,
     downedBlend: 0,
     proneBlend: 0,
+    crouchBlend: 0,
     fov: 60,
     shake: { x: 0, y: 0, z: 0, roll: 0 },
   };
@@ -185,6 +190,16 @@ export function solveCamera(
     out.proneBlend = targetProne;
   }
 
+  // Crouching drops it too. Prone beats crouch, as it does in the controller,
+  // so the two drops never stack.
+  const targetCrouch = view.crouched && !view.prone ? 1 : 0;
+  if (dtSeconds > 0) {
+    const alpha = 1 - Math.exp(-8 * dtSeconds);
+    out.crouchBlend += (targetCrouch - out.crouchBlend) * alpha;
+  } else {
+    out.crouchBlend = targetCrouch;
+  }
+
   // View direction: the horizontal component shrinks as the pitch steepens.
   const dx = fwdX * cosP;
   const dy = sin(pitchAngle);
@@ -197,7 +212,8 @@ export function solveCamera(
     view.y +
     cfg.eyeHeight +
     (cfg.downedEyeHeight - cfg.eyeHeight) * out.downedBlend +
-    (cfg.proneEyeHeight - cfg.eyeHeight) * out.proneBlend;
+    (cfg.proneEyeHeight - cfg.eyeHeight) * out.proneBlend +
+    (cfg.crouchEyeHeight - cfg.eyeHeight) * out.crouchBlend;
 
   if (view.firstPerson) {
     // The eye IS the camera here, so focus and position coincide and there is

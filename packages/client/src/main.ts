@@ -1368,6 +1368,8 @@ function frame(): void {
       shoulderSide: input.shoulderSide,
       downed,
       prone: input.proning && !downed && !sim?.vault,
+      // Same gate as the rig's pose: a vault is taken standing.
+      crouched: input.crouching && !downed && !sim?.vault,
     },
     cam,
     camSolve,
