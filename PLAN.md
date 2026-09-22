@@ -1406,25 +1406,32 @@ These block estimation, not implementation — M0 can start today regardless.
 
 ## 10. Immediate next actions
 
-**Current milestone: M2. Updated 2026-09-20.** M1 and M1.5 are closed. E-2.1,
-E-2.4, and E-2.6 are now built and human-signed off. The three M2 human gates
-(T-2.07, T-2.12, T-2.16) have passed on the owner's judgement. CI remains
-green, including the non-V8 parity job.
+**Current milestone: M2. Updated 2026-09-22.** M1 and M1.5 are closed. E-2.1,
+E-2.4, and E-2.6 are built and human-signed off; E-2.2, E-2.3 and E-2.5 are
+built and waiting on their gates. CI remains green, including the non-V8
+parity job. **Three human gates are now queued behind one session** — T-2.24,
+T-2.29 and T-2.34 all want two people on the host, and all three can be judged
+in one sitting from their run sheets.
 
-1. **Run T-2.24.** 🧍 E-2.2 is built through T-2.23 on the skinned soldier
-   (T-2.22); `docs/playtests/e2-2.md` is the run sheet, prepared and not run.
-   It needs a second person on the host: the bots never shoot, so crawl,
-   revive and remote believability cannot be judged alone.
-2. **Continue E-2.3 — Animation system.** Broken out 2026-09-20 as T-2.25
-   through T-2.29 (§7.4). Aim offsets (T-2.25), the fire and reload layers
-   (T-2.26), the hit reaction (T-2.27) and foot placement (T-2.28) are all in,
-   so **E-2.3's build work is done and T-2.29, the sign-off, is what remains**:
-   two people on the host, judging whether the body reads what the other is
-   doing, and tuning the layers' numbers with the feel in hand. Each layer is
-   procedural on the rig contract; none moves anything authoritative.
-3. **Keep tuning data opportunistically.** Weapon and downed values remain
-   data-driven; adjust them when a concrete playtest issue appears rather than
-   reopening completed gates without a reason.
+1. **Run the three gates together.** 🧍 T-2.24 (E-2.2 locomotion, run sheet
+   `docs/playtests/e2-2.md`, prepared and not run), 🧍 T-2.29 (E-2.3's layers:
+   does the body read what the other person is doing) and 🧍 T-2.34 (E-2.5:
+   does the arc read where the grenade is going, and does cover matter). The
+   first two need only the two people; the third wants its run sheet writing
+   first, as `e2-2.md` was. Nothing in the build blocks any of them.
+2. **Tune `projectiles.json` with the feel in hand.** The blast radius, the
+   fuse, the throw speed and the roll are guesses measured only against
+   arithmetic: a level throw travels about 17 m including the roll, the rocket
+   reaches 43 m before its sag puts it in the ground, and a frag at your own
+   feet takes a third of your health off. Whether any of that is *right* is
+   what T-2.34 is for, and every one of them is a number in data.
+3. **Keep tuning the rest of the data opportunistically.** Weapon and downed
+   values remain data-driven; adjust them when a concrete playtest issue
+   appears rather than reopening completed gates without a reason.
 
-E-2.5 and E-2.7 remain epics until their turn. M2's exit gate remains the
-overall human judgement that third-person combat feels good.
+E-2.7 (combat audio) is the last M2 epic and remains an epic until its turn;
+it is the one that needs assets bought or made (R1, §9 Q2), which is a
+decision worth taking deliberately rather than on the way past. M2's exit gate
+remains the overall human judgement that third-person combat feels good — and
+with grenades in, that firefight now has something in it that the other person
+has to move away from.
