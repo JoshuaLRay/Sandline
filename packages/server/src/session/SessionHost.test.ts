@@ -23,6 +23,7 @@ import {
 } from '@sandline/shared';
 import { SessionHost, hostBanner, linkFromEnv } from './SessionHost.ts';
 import type { Logger } from '../log.ts';
+import { isNavReady } from '../ai/nav/NavMesh.ts';
 
 /** Silent logger: these tests assert on state, not on stdout. */
 const quiet: Logger = {
@@ -536,6 +537,13 @@ describe('SessionHost — over a real socket', () => {
   }
 
   const settle = (): Promise<void> => new Promise((r) => setTimeout(r, 60));
+
+  it('has the navmesh WASM initialised before it listens (T-3.01)', async () => {
+    const { host } = newHost();
+    hosts.push(host);
+    await host.start();
+    expect(isNavReady()).toBe(true);
+  });
 
   it('handshakes a real WebSocket client into a room', async () => {
     const { host } = newHost();

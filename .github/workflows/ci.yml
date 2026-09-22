@@ -36,5 +36,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps firefox webkit
+      # Chromium for T-3.01's navmesh run; the ADR-014 parity project still
+      # runs on Firefox and WebKit only.
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm test:parity-browsers

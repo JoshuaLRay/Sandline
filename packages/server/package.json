@@ -5,6 +5,7 @@
   "type": "module",
   "main": "./src/index.ts",
   "dependencies": {
+    "@recast-navigation/core": "0.43.1",
     "@sandline/shared": "workspace:*",
     "ws": "^8.21.3"
   },
@@ -20,6 +21,10 @@
     "./session": {
       "types": "./src/session/Session.ts",
       "default": "./src/session/Session.ts"
+    },
+    "./nav": {
+      "types": "./src/ai/nav/NavMesh.ts",
+      "default": "./src/ai/nav/NavMesh.ts"
     }
   }
 }

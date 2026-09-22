@@ -24,7 +24,7 @@ different choice.
 | [003](003-typescript-end-to-end.md) | TypeScript end to end | Accepted |
 | [004](004-threejs-renderer.md) | Three.js for rendering | Accepted |
 | [005](005-rapier-deterministic-build.md) | Rapier deterministic build | Accepted · 2 addenda |
-| [006](006-recast-navigation.md) | recast-navigation-js for pathfinding | Accepted |
+| [006](006-recast-navigation.md) | recast-navigation-js for pathfinding | Accepted · 1 addendum |
 | [007](007-bitecs.md) | bitECS for entity storage | Accepted |
 | [008](008-websocket-behind-interface.md) | WebSocket behind a transport interface | Accepted · 1 addendum |
 | [009](009-bitpacked-wire-format.md) | Hand-rolled bit-packed wire format | Accepted |
