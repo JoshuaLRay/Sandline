@@ -1,4 +1,3 @@
-- T-2.06: replace capsule player representations with a shared humanoid grey-box soldier placeholder; move E-2.1 human sign-off to T-2.07.
 # Changelog
 
 One line per completed task, newest last. Appended by whoever completes the task
@@ -79,6 +78,7 @@ Format: `T-<id> — <what changed>`
 - T-1.5.03 — Human-to-human LAN gate: owner playtest sign-off recorded; two-human combat feel accepted.
 - T-1.5.08 — M1.5 internet gate: owner completed the two-human real-host playtest and reported it looks great; M1.5 closed.
 - T-2.05 — ADS transition: arm length, shoulder offset and FOV now share one frame-rate-independent normalized transition.
+- T-2.06 — Replace capsule player representations with a shared humanoid grey-box soldier placeholder; move E-2.1 human sign-off to T-2.07.
 - Reticle: fixed at the centre again, with a gap that follows the weapon's cone — wide in hip fire, wider under bloom, tight when aiming; the moving third-person reticle (which lagged the view by a frame) is gone and camera-to-eye aim convergence is back so the centre is where shots land. Aiming still enters first person until V.
 - Review of E-2.1 (T-2.02..T-2.06): the humanoid's hit root is now the server's hitbox capsule rather than the torso box, so the harness hits what the server hits; V no longer flips the shoulder on key auto-repeat; camera collider stops allocating per frame; stale HUD key hint; leftover debug logging removed from CombatQA; Host workflow fails early without GH_PAT and the docs name both secrets.
 - T-1.12 — World collision: one shared box world (posts, rails, figure, cover from `data/world.json`) that the controller collides with (slide, step, land, head room), the server stops shots on, and the client renders and raycasts; parity over 500 ticks is exactly 0 on every engine. Firing-lane posts removed so the range stays shootable from every slot.
@@ -96,6 +96,7 @@ Format: `T-<id> — <what changed>`
 
 - T-2.17 — Added a pure rendered-velocity locomotion classifier with idle/walk/sprint/crouch-walk/crawl states, eight-way direction, normalized gait inputs, and QA HUD integration.
 - Planning update 2026-09-20 — E-2.2 now explicitly includes T-2.22, a reusable humanoid character model/rig integration before the human gate; the grey-box remains only as a fallback/diagnostic fixture, and the E-2.2 sign-off moves to T-2.24.
+- T-2.18 — Procedural eight-way grey-box gait: continuous blend of forward/back/strafe leg and arm poses across the eight movement directions with a gait phase that does not snap at direction boundaries; walk and sprint use distinct stride magnitude/rate, idle settles exactly to the rest pose, and the driver is shared by local and remote soldiers. (Backfilled — this task was completed but never logged; PLAN.md carries no completion note for it either.)
 - T-2.19: integrate local predicted and remote interpolated locomotion playback through the shared pose driver.
 - T-2.20 — Added authoritative crouch height/clearance, crouched humanoid presentation, and crouch-aware lag-compensated hit volumes.
 - T-2.15 fix — a revive hold survives idle ticks: the interact button is latched from the newest real input instead of read off the tick's input, so gaps in a bursty input stream pause the hold rather than resetting it; silence past the repeat window still releases it. Tests: inputs every third tick complete on time; a silent reviver drops the lock.

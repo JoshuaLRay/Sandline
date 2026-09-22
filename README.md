@@ -3,17 +3,15 @@
 Browser-based 6-player co-op squad shooter. See [`PLAN.md`](./PLAN.md) for the
 full plan and task backlog, and [`docs/adr/`](./docs/adr/) for locked decisions.
 
+**If you're an agent working a task, start at [`CLAUDE.md`](./CLAUDE.md) and
+[`TASKS.md`](./TASKS.md), not here.** This file is the human-facing overview.
+
 **Current milestone: M2 — Shooter feel.** M1.5 is closed: T-1.5.03 and T-1.5.08
 both passed, R2 is closed, and the authoritative host is deployed at
 `wss://sandline-host.fly.dev`. See [`PLAN.md` §7](./PLAN.md) for the current M2
-work and [`docs/HANDOFF-M1.5.md`](./docs/HANDOFF-M1.5.md) for the historical
-M1.5 operational and debugging notes.
-The PS2-era pass on the soldier is agreed and built as T-2.35 through T-2.38
-(`PLAN.md` §7.6); its human gate T-2.39 is open, with the run sheet at
+work. The PS2-era pass on the soldier is agreed and built as T-2.35 through
+T-2.38 (`PLAN.md` §7.7); its human gate T-2.39 is open, with the run sheet at
 [`docs/playtests/soldier-look.md`](./docs/playtests/soldier-look.md).
-[`docs/HANDOFF-SOLDIER-LOOK.md`](./docs/HANDOFF-SOLDIER-LOOK.md) is the context
-transfer it came from, kept for its reasoning about the era and the fixed
-points; where it and `PLAN.md` disagree, `PLAN.md` wins.
 
 ## Quick start
 
@@ -82,4 +80,4 @@ The client names this case rather than letting you discover it.
 on the same entity (ADR-001), so on a long-lived host you spawn wherever the
 last person left. That is the design, not a bug — but restart `pnpm host` if you
 want everyone back on the spawn line. Everything *per-client* resets on join;
-getting that wrong cost a day (see the handoff doc).
+getting that wrong cost a day.

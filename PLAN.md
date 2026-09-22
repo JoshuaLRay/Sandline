@@ -61,6 +61,10 @@ ready to hand to an agent — break it down further first.
    sets how closely and T-0.11 measures it — the bar is **bounded divergence,
    never bit-equality**.
 6. **Leave a trail.** Each task appends a one-line entry to `docs/CHANGELOG.md`.
+7. **Keep `TASKS.md` current.** The same commit that appends the CHANGELOG
+   line also flips that task's row in `/TASKS.md` from OPEN to DONE (or to
+   BLOCKED/🧍, if that's where it lands). A task is not done while the tracker
+   still says otherwise.
 
 ### 0.4 Agent prompt template
 
@@ -979,7 +983,7 @@ E-2.2 is the next build epic after the completed E-2.1, E-2.4, and E-2.6 gates. 
 - **Size:** S
 - **Prepared 2026-09-20, not run.** `docs/playtests/e2-2.md` is the run sheet: the range's vault targets and hiding spots by position, the three HUD lines that are its instruments (the classifier's line, the stance line, and the pose-step peak that puts a number on "snap"), eight sections from the figure at rest through the eight-way gait, crouch, jump, vault, crawl and revive, the other person over the host under Poor and Awful, and the grey-box fixture, then tuning, netgraph and verdict sections left blank. It says NOT YET RUN at the top and stays that way until a person fills it in. The bots never shoot, so crawl, revive and remote believability need the second person, and the sheet says so. The movement panel gains crawl speed and the vault's seconds, distance and maximum height so that "vault timing feels controllable" can be tuned in the session rather than guessed at afterwards.
 
-### 7.2 E-2.4 leaf tasks — broken out 2026-09-20
+### 7.3 E-2.4 leaf tasks — broken out 2026-09-20
 
 M1.5 closed on T-1.5.08 and T-1.12 is finished (a shared box world; ADR-005
 addendum), so both answers §10 said M2 owed are in. E-2.1 is built and waits
@@ -1068,7 +1072,7 @@ and lines, pooled and capped like the tracers already are (§0.3 rule 3).
 - **Size:** S
 - **Completed 2026-09-20.** Owner human sign-off passed. Recoil, camera shake, muzzle flash/shells, and impacts were judged good enough for M2 to proceed; the run sheet records the owner verdict.
 
-### 7.3 E-2.6 leaf tasks — broken out 2026-09-20
+### 7.4 E-2.6 leaf tasks — broken out 2026-09-20
 
 E-2.4's build tasks are in and both remaining §10 items are human
 sign-offs, so the next epic is broken out. **E-2.6 before E-2.2, E-2.3,
@@ -1124,7 +1128,7 @@ progress number on the HUD.
 - **Size:** S
 - **Completed 2026-09-20.** Owner human sign-off passed. Downed presentation, crawl, bleed-out, and teammate revive were judged good enough for M2 to proceed.
 
-### 7.4 E-2.3 leaf tasks — broken out 2026-09-20
+### 7.5 E-2.3 leaf tasks — broken out 2026-09-20
 
 E-2.2's build tasks are in and its only open item is the human gate
 (T-2.24), so the next epic is broken out. **E-2.3 before E-2.5 and E-2.7**,
@@ -1206,14 +1210,14 @@ animates from state now will take clips then.
 - **Done when:** a written verdict, on a run sheet prepared before the session as `e2-2.md` was, naming what it does and does not establish.
 - **Size:** S
 
-### 7.5 E-2.5 leaf tasks — broken out 2026-09-21
+### 7.6 E-2.5 leaf tasks — broken out 2026-09-21
 
 E-2.3's build work is in (T-2.25 through T-2.28) and its only open item is the
 human gate, so the next epic is broken out. **E-2.5 before E-2.7**, for two
 reasons. E-2.7 needs audio assets nobody has sourced, which is R1 and §9 Q2,
 and buying them to hear a rifle is a decision about the project's largest cost
 made for the smallest reason. And E-2.5 no longer needs what it was waiting
-for: §7.4 held it back because it wants "a target that shoots" (§9 Q6), and
+for: §7.5 held it back because it wants "a target that shoots" (§9 Q6), and
 M1.5 answered that with the other person on the host. A grenade is the first
 weapon here whose whole point is that it is thrown *at* somebody who can walk
 away from it, so a human on the other end is not a nicety, it is the test.
@@ -1294,7 +1298,7 @@ all.
 - **Done when:** a written verdict, on a run sheet prepared before the session as `e2-2.md` was, naming what it does and does not establish.
 - **Size:** S
 
-### 7.6 The soldier's look — broken out 2026-09-21
+### 7.7 The soldier's look — broken out 2026-09-21
 
 E-2.3's build work closed at T-2.28 and only its human gate is open, so this
 takes the request `docs/HANDOFF-SOLDIER-LOOK.md` was written for and makes it
@@ -1496,23 +1500,28 @@ These block estimation, not implementation — M0 can start today regardless.
 
 **Current milestone: M2. Updated 2026-09-22.** M1 and M1.5 are closed. E-2.1,
 E-2.4, and E-2.6 are built and human-signed off; E-2.2, E-2.3, E-2.5 and the
-soldier's look (§7.6) are built and waiting on their gates. CI remains green,
+soldier's look (§7.7) are built and waiting on their gates. CI remains green,
 including the non-V8 parity job. **Four human gates are now queued behind one
 session** — T-2.24, T-2.29, T-2.34 and T-2.39 all want two people on the host,
 and all four can be judged in one sitting from their run sheets.
 
-1. **Run the four gates together.** 🧍 T-2.24 (E-2.2 locomotion, run sheet
-   `docs/playtests/e2-2.md`, prepared and not run: the bots never shoot, so
-   crawl, revive and remote believability cannot be judged alone), 🧍 T-2.29
-   (E-2.3's layers: does the body read what the other person is doing), 🧍
-   T-2.34 (E-2.5: does the arc read where the grenade is going, and does cover
-   matter) and 🧍 T-2.39 (the soldier's look, §7.6: does it read as 2002 rather
-   than as untextured geometry, and are soldiers distinguishable at 40 m — it
-   owes one open decision, section 6 of `docs/playtests/soldier-look.md`,
-   whether to render at a fixed low resolution and upscale with point
-   filtering, which trades crosshair and tracer legibility that T-2.24 and
-   T-2.29 are also judged on). All four run sheets are prepared and not run;
-   nothing in the build blocks any of them.
+1. **Run the four gates together — once their run sheets exist.** 🧍 T-2.24
+   (E-2.2 locomotion, run sheet `docs/playtests/e2-2.md`, prepared and not
+   run: the bots never shoot, so crawl, revive and remote believability cannot
+   be judged alone), 🧍 T-2.29 (E-2.3's layers: does the body read what the
+   other person is doing), 🧍 T-2.34 (E-2.5: does the arc read where the
+   grenade is going, and does cover matter) and 🧍 T-2.39 (the soldier's look,
+   §7.7: does it read as 2002 rather than as untextured geometry, and are
+   soldiers distinguishable at 40 m — it owes one open decision, section 6 of
+   `docs/playtests/soldier-look.md`, whether to render at a fixed low
+   resolution and upscale with point filtering, which trades crosshair and
+   tracer legibility that T-2.24 and T-2.29 are also judged on). **Only two of
+   the four run sheets actually exist:** `e2-2.md` and `soldier-look.md`.
+   `docs/playtests/e2-3.md` (T-2.29) and `docs/playtests/e2-5.md` (T-2.34) are
+   missing even though their task bodies describe them as prepared "as
+   `e2-2.md` was" — they were not. Writing those two run sheets is real,
+   unblocked build work: nothing in the build blocks any of the four gates,
+   but two of them have nothing for the owner to run yet.
 2. **Tune `projectiles.json` with the feel in hand.** The blast radius, the
    fuse, the throw speed and the roll are guesses measured only against
    arithmetic: a level throw travels about 17 m including the roll, the rocket
