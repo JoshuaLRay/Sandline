@@ -1,5 +1,14 @@
 # Sandline — context transfer: T-3.05 path following
 
+> **Superseded 2026-09-22, the same day.** T-3.05 is built; `PLAN.md`'s
+> T-3.05 entry (its Completed note) is authoritative and says what was done.
+> Of the suggestions below, three went another way: the tuning is
+> `server/src/ai/locomotion/follow.json` (server-only data, so not in
+> `shared`); one 60 m route from slot 0 both vaults the low wall and goes
+> through the west doorway, so no separate low-wall test was needed; and
+> there is no vault approach tolerance to tune, because the follower presses
+> jump only when a trial `stepCharacter` step with jump held starts the vault.
+
 As of 2026-09-22, `main` at `2ba94f3`.
 
 ## Where things stand

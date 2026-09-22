@@ -8,7 +8,7 @@
 | A task's exact scope | The **one** `PLAN.md` section `TASKS.md` names for that task | Do not read `PLAN.md` end to end. It is a 1500-line historical record with 85 tasks' worth of completion notes; almost none of it is relevant to the task in front of you. |
 | A locked decision (🔒 in the plan) | `docs/adr/` — one file per ADR | Do not re-litigate a 🔒 decision. If it looks wrong, stop and say so. |
 | Why a *finished* task was built the way it was | The task's own entry in `PLAN.md` (its "Completed" note) and `docs/CHANGELOG.md` | These are reference, not a reading assignment — look up the one task you care about. |
-| Historical context on M1.5 or the soldier-look pass | `docs/HANDOFF-M1.5.md`, `docs/HANDOFF-SOLDIER-LOOK.md` | **Superseded.** Don't read these unless a task explicitly points at one. Where they and `PLAN.md` disagree, `PLAN.md` wins. |
+| Historical context on M1.5, the soldier-look pass or T-3.05 | `docs/HANDOFF-M1.5.md`, `docs/HANDOFF-SOLDIER-LOOK.md`, `docs/HANDOFF-T-3.05.md` | **Superseded.** Don't read these unless a task explicitly points at one. Where they and `PLAN.md` disagree, `PLAN.md` wins. |
 
 **The point of this file existing:** completing the next available task should
 cost a few thousand tokens, not ~40k. `TASKS.md` → one `PLAN.md` section → the
