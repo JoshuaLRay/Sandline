@@ -25,7 +25,7 @@ import {
   requireWorld,
 } from '@sandline/shared';
 import RANGE_FILE from '../../../shared/src/data/worlds/range.json' with { type: 'json' };
-import { NavMesh, type NavPoint, initNav, pathLength } from '../../../server/src/ai/nav/NavMesh.ts';
+import { NavMesh, type NavPath, type NavPoint, initNav, pathLength } from '../../../server/src/ai/nav/NavMesh.ts';
 import { bakedNavFor, loadWorldNavMesh } from '../../../server/src/ai/nav/bakedNav.ts';
 import { DEFAULT_HITBOX } from '../../../server/src/net/lagComp.ts';
 import { DEFAULT_NAV_AGENT, bakeWorld, navAgentFrom, navBakeHash } from './bake.ts';
@@ -55,6 +55,9 @@ describe('committed bakes are fresh (T-3.03)', () => {
       height: DEFAULT_MOVE_CONFIG.height,
       climb: DEFAULT_MOVE_CONFIG.stepHeight,
       groundY: DEFAULT_MOVE_CONFIG.groundY,
+      vaultMaxHeight: DEFAULT_MOVE_CONFIG.vaultMaxHeight,
+      vaultDistance: DEFAULT_MOVE_CONFIG.vaultDistance,
+      vaultProbe: DEFAULT_MOVE_CONFIG.vaultProbe,
     });
   });
 
@@ -81,17 +84,22 @@ describe('the range navmesh, from the committed bytes (T-3.03)', () => {
     mesh = loadWorldNavMesh('range');
   });
 
-  function reach(from: NavPoint, to: NavPoint): NavPoint[] {
+  function reach(from: NavPoint, to: NavPoint): NavPath {
     const path = mesh.path(from, to);
     expect(path, `no path ${JSON.stringify(from)} → ${JSON.stringify(to)}`).not.toBeNull();
     const last = path!.points[path!.points.length - 1]!;
     expect(Math.hypot(last.x - to.x, last.z - to.z), 'path stopped short of the goal').toBeLessThan(ARRIVED_M);
-    return path!.points;
+    return path!;
   }
 
-  /** Every segment, raised to knee height, against the world's boxes. */
-  function throughABox(points: readonly NavPoint[]): string | null {
+  /**
+   * Every WALKED segment, raised to knee height, against the world's boxes.
+   * A vault leg (T-3.04) crosses its box on purpose; `vaults` names those
+   * legs by their first point, and `vaultLegsCross` checks them separately.
+   */
+  function throughABox(points: readonly NavPoint[], vaults: readonly number[] = []): string | null {
     for (let i = 1; i < points.length; i++) {
+      if (vaults.includes(i - 1)) continue;
       const a = points[i - 1]!;
       const b = points[i]!;
       const dx = b.x - a.x;
@@ -138,18 +146,23 @@ describe('the range navmesh, from the committed bytes (T-3.03)', () => {
   };
 
   for (const [name, goal] of Object.entries(goals)) {
-    it(`paths from spawn to the ${name}, never through a box at knee height`, () => {
-      const points = reach(spawn, goal);
-      expect(throughABox(points)).toBeNull();
+    it(`paths from spawn to the ${name}, never walking through a box at knee height`, () => {
+      const path = reach(spawn, goal);
+      expect(throughABox(path.points, path.vaults)).toBeNull();
+      // Any vault on the way is over the one box on the range that has links.
+      for (const i of path.vaults) {
+        expect(throughABox([path.points[i]!, path.points[i + 1]!])).toMatch(/'low-wall'/);
+      }
     });
   }
 
   it('routes round a wall it cannot cross: north of the west wall is further than the straight line', () => {
     const north = goals['north of the west wall']!;
-    const points = reach({ x: -11.5, y: 0, z: 2 }, north);
+    const path = reach({ x: -11.5, y: 0, z: 2 }, north);
     // 4 m straight through the 2.4 m wall; the doorway or its end is longer.
-    expect(pathLength(points)).toBeGreaterThan(4.5);
-    expect(throughABox(points)).toBeNull();
+    expect(pathLength(path.points)).toBeGreaterThan(4.5);
+    expect(path.vaults).toEqual([]);
+    expect(throughABox(path.points)).toBeNull();
   });
 });
 

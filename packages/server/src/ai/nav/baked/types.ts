@@ -8,8 +8,16 @@ export interface BakedNav {
    * means the world or the agent changed without a re-bake.
    */
   hash: string;
-  /** The agent it was baked for, derived from MoveConfig and the hitbox. */
-  agent: { radius: number; height: number; climb: number; groundY: number };
+  /** The agent it was baked for, derived from MoveConfig and the hitbox, vault rule included (T-3.04). */
+  agent: {
+    radius: number;
+    height: number;
+    climb: number;
+    groundY: number;
+    vaultMaxHeight: number;
+    vaultDistance: number;
+    vaultProbe: number;
+  };
   /** Detour's export, base64 so the same module loads in Node and in the page. */
   base64: string;
 }

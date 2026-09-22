@@ -37,6 +37,31 @@ export interface NavPath {
   corridor: number[];
   /** The string-pulled path: start, each corner, end. */
   points: NavPoint[];
+  /**
+   * Indices into `points` where a vault link starts (T-3.04): the leg from
+   * `points[i]` to `points[i + 1]` is a vault, walked into with forward
+   * intent, not a straight walk.
+   */
+  vaults: number[];
+}
+
+/**
+ * Polygon flags and areas the bake writes (T-3.04). Walkable ground is
+ * Recast's default (area 0, flag 1); a vault link is flagged walk AND vault,
+ * so the default query filter paths across it and a caller can tell it apart.
+ */
+export const NAV_FLAG_WALK = 1;
+export const NAV_FLAG_VAULT = 2;
+export const NAV_AREA_VAULT = 1;
+/** Detour's straight-path flag for a point that starts an off-mesh connection. */
+const DT_STRAIGHTPATH_OFFMESH_CONNECTION = 4;
+
+/** One off-mesh link baked into the mesh (T-3.04). */
+export interface NavLink {
+  from: NavPoint;
+  to: NavPoint;
+  /** Flagged as a vault: walk into it with forward intent. */
+  vault: boolean;
 }
 
 export interface NavRaycast {
@@ -129,14 +154,19 @@ export class NavMesh {
       return null;
     }
     const points: NavPoint[] = [];
+    const vaults: number[] = [];
     const flat = straight.straightPath;
     for (let i = 0; i < straight.straightPathCount; i++) {
       points.push({ x: flat.get(i * 3), y: flat.get(i * 3 + 1), z: flat.get(i * 3 + 2) });
+      if ((straight.straightPathFlags.get(i) & DT_STRAIGHTPATH_OFFMESH_CONNECTION) !== 0) {
+        const flags = this.mesh.getPolyFlags(straight.straightPathRefs.get(i));
+        if ((flags.flags & NAV_FLAG_VAULT) !== 0) vaults.push(i);
+      }
     }
     flat.destroy();
     straight.straightPathFlags.destroy();
     straight.straightPathRefs.destroy();
-    return { corridor, points };
+    return { corridor, points, vaults };
   }
 
   /**
@@ -156,6 +186,29 @@ export class NavMesh {
       t,
       point: { x: s.x + (to.x - s.x) * t, y: s.y + (to.y - s.y) * t, z: s.z + (to.z - s.z) * t },
     };
+  }
+
+  /** Every off-mesh link in the mesh, as baked. */
+  links(): NavLink[] {
+    const out: NavLink[] = [];
+    for (let t = 0; t < this.mesh.getMaxTiles(); t++) {
+      const tile = this.mesh.getTile(t);
+      const header = tile.header();
+      if (!header) continue;
+      // A connection's own flags() are its direction bits; the vault flag is
+      // on the polygon Detour made for it, found by the tile's base ref.
+      const base = this.mesh.getPolyRefBase(tile);
+      for (let i = 0; i < header.offMeshConCount(); i++) {
+        const con = tile.offMeshCons(i);
+        const polyFlags = this.mesh.getPolyFlags(base + con.poly()).flags;
+        out.push({
+          from: { x: con.pos(0), y: con.pos(1), z: con.pos(2) },
+          to: { x: con.pos(3), y: con.pos(4), z: con.pos(5) },
+          vault: (polyFlags & NAV_FLAG_VAULT) !== 0,
+        });
+      }
+    }
+    return out;
   }
 
   destroy(): void {

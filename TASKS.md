@@ -33,10 +33,11 @@ it. Past that, **E-2.7** (combat audio, PLAN.md §7 epic table) needs breaking
 out into leaf tasks and is blocked on an assets sourcing decision (R1, §9
 Q2 — purchased/commissioned/in-house).
 
-**M3 is broken out** (PLAN.md §7.9). T-3.01 (the Recast spike), T-3.02
-(named worlds) and T-3.03 (the range baked and committed, with a staleness
-hash) are done. The next build tasks are **T-3.04** (vault links in the
-bake) and **T-3.07** (behaviour tree runtime, no dependencies).
+**M3 is broken out** (PLAN.md §7.9). E-3.1's navmesh pipeline is done:
+T-3.01 (the Recast spike), T-3.02 (named worlds), T-3.03 (the range baked
+and committed, with a staleness hash) and T-3.04 (vault links). The next
+build tasks are **T-3.05** (path following as input), **T-3.07** (behaviour
+tree runtime, no dependencies) and **T-3.18** (cover points in the bake).
 
 ---
 
@@ -211,13 +212,13 @@ once before the first M3 task — it is short and every task leans on it.
 | ⚠️ T-3.01 | DONE | — |
 | T-3.02 | DONE | — |
 | T-3.03 | DONE | T-3.01, T-3.02 |
-| T-3.04 | OPEN | T-3.03 |
+| T-3.04 | DONE | T-3.03 |
 
 ### E-3.2 — AI locomotion
 
 | Task | Status | Depends |
 |---|---|---|
-| T-3.05 | BLOCKED | T-3.04 |
+| T-3.05 | OPEN | T-3.04 |
 | T-3.06 | BLOCKED | T-3.05 |
 
 ### E-3.3 — Behaviour tree runtime
@@ -250,7 +251,7 @@ once before the first M3 task — it is short and every task leans on it.
 | T-3.15 | BLOCKED | T-3.10, T-3.13 |
 | T-3.16 | BLOCKED | T-3.15 |
 | T-3.17 | BLOCKED | T-3.16 |
-| T-3.18 | BLOCKED | T-3.04 |
+| T-3.18 | OPEN | T-3.04 |
 | T-3.19 | BLOCKED | T-3.18, T-3.13 |
 | T-3.20 | BLOCKED | T-3.05, T-3.14, T-3.15, T-3.19 |
 | T-3.21 | BLOCKED | T-3.20, T-3.16, T-3.06 |
