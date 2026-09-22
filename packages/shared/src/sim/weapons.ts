@@ -43,6 +43,12 @@ export interface WeaponDef {
   /** Cone half-angles, in degrees for authoring. Converted once, below. */
   hipSpreadDeg: number;
   adsSpreadDeg: number;
+  /**
+   * Multiplier on the whole cone (base plus bloom) while prone (T-2.42,
+   * ADR-016): a supported weapon is steadier. 1 is no change; data, not a
+   * branch in the fire path, so a weapon that gains nothing prone says 1.
+   */
+  proneSpreadScale: number;
   /** Bloom added per shot fired, and the ceiling it clamps to. */
   bloomPerShotDeg: number;
   maxSpreadDeg: number;
@@ -167,6 +173,7 @@ function parseWeaponDef(key: string, raw: unknown): WeaponDef {
     pellets: num(row, 'pellets', key, 1, 64),
     hipSpreadDeg: num(row, 'hipSpreadDeg', key, 0, 45),
     adsSpreadDeg: num(row, 'adsSpreadDeg', key, 0, 45),
+    proneSpreadScale: num(row, 'proneSpreadScale', key, 0, 1),
     bloomPerShotDeg: num(row, 'bloomPerShotDeg', key, 0, 45),
     maxSpreadDeg: num(row, 'maxSpreadDeg', key, 0, 45),
     bloomDecayDegPerSec: num(row, 'bloomDecayDegPerSec', key, 0, 180),
@@ -325,12 +332,19 @@ export function isReloading(state: WeaponState, now: number): boolean {
   return state.reloadEndsAt > now;
 }
 
-/** Current cone half-angle in binary angle units, base plus accumulated bloom. */
-export function currentConeUnits(def: WeaponDef, state: WeaponState, ads: boolean): number {
+/**
+ * Current cone half-angle in binary angle units, base plus accumulated bloom.
+ *
+ * `prone` is a stance input like `ads` (T-2.42): it scales the clamped cone by
+ * the weapon's own `proneSpreadScale`, so how much steadier a gun is on the
+ * ground is a row in the weapon table rather than a number in here.
+ */
+export function currentConeUnits(def: WeaponDef, state: WeaponState, ads: boolean, prone = false): number {
   const base = degToAngle(ads ? def.adsSpreadDeg : def.hipSpreadDeg);
   const max = degToAngle(def.maxSpreadDeg);
   const cone = base + state.bloomUnits;
-  return cone > max ? max : cone;
+  const clamped = cone > max ? max : cone;
+  return prone ? clamped * def.proneSpreadScale : clamped;
 }
 
 /** Bloom recovery. Call once per tick with the tick's dt; never with a clock read. */
@@ -384,13 +398,14 @@ export function tryFire(
   state: WeaponState,
   now: number,
   ads: boolean,
+  prone = false,
 ): Shot | null {
   finishReload(def, state, now);
   if (isReloading(state, now)) return null;
   if (now < state.nextShotAt) return null;
   if (state.ammo <= 0) return null;
 
-  const coneUnits = currentConeUnits(def, state, ads);
+  const coneUnits = currentConeUnits(def, state, ads, prone);
   const shotIndex = state.shotIndex;
   state.ammo -= 1;
   state.shotIndex += 1;

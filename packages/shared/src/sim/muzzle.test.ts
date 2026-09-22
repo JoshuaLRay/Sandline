@@ -9,6 +9,7 @@ const RIG: MuzzleRig = {
   hipRight: 0.2,
   hipHeight: 1,
   eyeHeight: 1.6,
+  proneEyeHeight: 0.35,
 };
 
 /** right = cross(forward, up), the definition the whole project agrees on. */
@@ -34,6 +35,21 @@ describe('trace origin', () => {
       expect(muzzlePosition(1, 0, 2, fx, fz, 'third', RIG)).not.toEqual(trace);
       expect(muzzlePosition(1, 0, 2, fx, fz, 'hip', RIG)).not.toEqual(trace);
     }
+  });
+});
+
+describe('trace origin while prone (T-2.42)', () => {
+  it('drops to the rig\'s prone eye height, and only when prone', () => {
+    expect(eyePosition(4, 2, -7, RIG, true)).toEqual({ x: 4, y: 2 + RIG.proneEyeHeight, z: -7 });
+    expect(eyePosition(4, 2, -7, RIG, false)).toEqual(eyePosition(4, 2, -7, RIG));
+  });
+
+  it('ships a prone eye inside the prone hit volume, well below standing eye height', () => {
+    // The 0.8 m prone capsule (DEFAULT_HITBOX / MoveConfig.proneHeight): a
+    // trace origin above it would let a body hidden behind cover fire over it.
+    expect(DEFAULT_MUZZLE_RIG.proneEyeHeight).toBeGreaterThan(0);
+    expect(DEFAULT_MUZZLE_RIG.proneEyeHeight).toBeLessThan(0.8);
+    expect(DEFAULT_MUZZLE_RIG.proneEyeHeight).toBeLessThan(DEFAULT_MUZZLE_RIG.hipHeight);
   });
 });
 

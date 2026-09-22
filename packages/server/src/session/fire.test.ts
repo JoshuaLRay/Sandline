@@ -10,6 +10,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   DAMAGE,
+  DEFAULT_MUZZLE_RIG,
+  INPUT_BUTTONS,
   type Message,
   PROTOCOL_VERSION,
   RANGE_TARGETS,
@@ -136,10 +138,10 @@ function run(
  * at empty ground. Math.* is fine here: this is `packages/server`, and the
  * ADR-014 ban is scoped to shared.
  */
-function aimAt(tx: number, ty: number, tz: number): { yaw: number; pitch: number } {
+function aimAt(tx: number, ty: number, tz: number, eyeHeight = 1.55): { yaw: number; pitch: number } {
   const eye = SPAWN_POINTS[0] as { x: number; y: number; z: number };
   const dx = tx - eye.x;
-  const dy = ty - (eye.y + 1.55);
+  const dy = ty - (eye.y + eyeHeight);
   const dz = tz - eye.z;
   const table = (rad: number): number =>
     ((Math.round((rad / (Math.PI * 2)) * 4096) % 4096) + 4096) % 4096;
@@ -562,6 +564,102 @@ describe('a downed or dead soldier cannot fire (T-2.13)', () => {
     // Nothing was broadcast for those pulls: not a hit, not even a miss.
     expect(shooter.hits.filter((h) => h.shooterNetId === victim.netId)).toHaveLength(0);
     expect(shooter.hits.length).toBe(eventsBefore);
+  });
+});
+
+describe('firing from prone (T-2.42)', () => {
+  /** The Input button bit T-2.40 gave prone. */
+  const PRONE = INPUT_BUTTONS.prone;
+
+  it('a prone soldier fires over the wire: the shot resolves, hits, and leaves from a prone eye', () => {
+    const session = new Session();
+    const client = connect(session);
+    let now = run(session, 0, 2, client);
+    // Go prone and stay there long enough for the history to be all prone.
+    client.input(0, 1, 0, 0, PRONE);
+    now = run(session, now, 10, client);
+
+    const eye = SPAWN_POINTS[0] as { x: number; y: number; z: number };
+    const target = RANGE_TARGETS[0]!;
+    // Aimed from where a prone shooter's eye actually is.
+    client.fire({
+      ...aimAt(target.x, target.y + 0.9, target.z, DEFAULT_MUZZLE_RIG.proneEyeHeight),
+      ads: true,
+      renderTimeMs: now,
+    });
+
+    const hit = client.hits.at(-1);
+    expect(hit, 'a Fire from prone is resolved, not refused').toBeDefined();
+    expect(hit?.shooterNetId).toBe(client.netId);
+    expect(hit?.targetNetId).toBe(target.netId);
+    expect(hit?.damage).toBeGreaterThan(0);
+    // The origin on the wire is the prone eye, inside the 0.8 m prone hit
+    // volume — not standing eye height, which would shoot over any cover the
+    // body is lying behind.
+    expect(hit?.originY).toBeCloseTo(eye.y + DEFAULT_MUZZLE_RIG.proneEyeHeight, 1);
+    expect(hit?.originY).toBeLessThan(eye.y + 0.8);
+  });
+
+  it('standing back up restores the standing trace origin', () => {
+    const session = new Session();
+    const client = connect(session);
+    let now = run(session, 0, 2, client);
+    client.input(0, 1, 0, 0, PRONE);
+    now = run(session, now, 10, client);
+    client.input(0, 12, 0, 0, 0);
+    now = run(session, now, 20, client);
+
+    const eye = SPAWN_POINTS[0] as { x: number; y: number; z: number };
+    client.fire({ yaw: ALONG_THE_LINE * 4, pitch: 0, ads: true, renderTimeMs: now });
+    expect(client.hits.at(-1)?.originY).toBeCloseTo(eye.y + DEFAULT_MUZZLE_RIG.eyeHeight, 1);
+  });
+
+  it('the prone cone is the weapon row\'s: a whole magazine lands tighter than standing', () => {
+    /**
+     * Hip fire at the farthest target, same seeds both ways (same ticks, same
+     * shot indices), so the only difference between the two runs is the
+     * stance input to the cone. Every pellet's angular miss from the aim line
+     * shrinks by the carbine's `proneSpreadScale`, so the prone group's worst
+     * miss must be the tighter one.
+     */
+    const far = RANGE_TARGETS[RANGE_TARGETS.length - 1]!;
+    const carbine = getWeapon('carbine');
+    expect(carbine.proneSpreadScale).toBeLessThan(1);
+    const shotTicks = Math.ceil(((60 / carbine.rpm) * 1000) / TICK_MS);
+
+    const worstMiss = (prone: boolean): number => {
+      const session = new Session();
+      const client = connect(session);
+      let now = run(session, 0, 2, client);
+      client.input(0, 1, 0, 0, prone ? PRONE : 0);
+      now = run(session, now, 10, client);
+      const eyeHeight = prone ? DEFAULT_MUZZLE_RIG.proneEyeHeight : DEFAULT_MUZZLE_RIG.eyeHeight;
+      // Aimed well above the target so every pellet flies to max range and
+      // the end point measures the pellet direction alone.
+      const aim = aimAt(far.x, far.y + 30, far.z, eyeHeight);
+      let worst = 0;
+      for (let i = 0; i < 10; i += 1) {
+        client.fire({ ...aim, tick: 100 + i, ads: false, renderTimeMs: now });
+        const h = client.hits.at(-1)!;
+        const dx = h.x - h.originX;
+        const dy = h.y - h.originY;
+        const dz = h.z - h.originZ;
+        const len = Math.hypot(dx, dy, dz);
+        const ax = far.x - (SPAWN_POINTS[0]!.x);
+        const ay = far.y + 30 - (SPAWN_POINTS[0]!.y + eyeHeight);
+        const az = far.z - (SPAWN_POINTS[0]!.z);
+        const alen = Math.hypot(ax, ay, az);
+        const cosMiss = (dx * ax + dy * ay + dz * az) / (len * alen);
+        worst = Math.max(worst, Math.acos(Math.min(1, cosMiss)));
+        now = run(session, now, shotTicks, client);
+      }
+      return worst;
+    };
+
+    const standing = worstMiss(false);
+    const prone = worstMiss(true);
+    console.log(`prone cone: worst miss standing ${standing.toFixed(5)} rad, prone ${prone.toFixed(5)} rad`);
+    expect(prone).toBeLessThan(standing);
   });
 });
 

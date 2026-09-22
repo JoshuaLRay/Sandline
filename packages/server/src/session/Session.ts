@@ -72,6 +72,7 @@ import {
   zoneDamage,
   encodeMessage,
   finishReload,
+  DEFAULT_MUZZLE_RIG,
   eyePosition,
   getWeapon,
   shotDirections,
@@ -571,7 +572,16 @@ export class Session {
      * client generating them faster than the weapon allows is the cadence in
      * `tryFire` below, which is the server's own and is the real protection.
      */
-    const shot = tryFire(slot.weapon, slot.weaponState, nowSeconds, msg.ads);
+    /**
+     * Prone fires like any other stance (T-2.42, ADR-016): no refusal, only a
+     * stance input. The stance is the one at the rewound instant, the same
+     * instant the origin below is taken from, so the cone and the eye height
+     * never disagree about whether this shooter was lying down.
+     */
+    const rewoundTo = this.nowMs - clampRewindMs(this.nowMs, msg.renderTimeMs);
+    const shooterThen = this.hitboxes.stateAt(slot.netId, rewoundTo);
+    const proneThen = shooterThen?.prone ?? slot.state.prone;
+    const shot = tryFire(slot.weapon, slot.weaponState, nowSeconds, msg.ads, proneThen);
     if (shot === null) {
       // Cadence, reload or an empty magazine. Auto-reload so a player who
       // empties a magazine is not stuck until they think to press a key.
@@ -619,9 +629,10 @@ export class Session {
      * That is the same principle lag compensation already applies to targets,
      * applied to the shooter, and it is the missing half of it.
      */
-    const rewoundTo = this.nowMs - clampRewindMs(this.nowMs, msg.renderTimeMs);
-    const shooterThen = this.hitboxes.positionAt(slot.netId, rewoundTo) ?? slot.state;
-    const origin = eyePosition(shooterThen.x, shooterThen.y, shooterThen.z);
+    const at = shooterThen?.position ?? slot.state;
+    // A prone shooter's shot leaves from a prone eye (T-2.42), not 0.75 m above
+    // the body — otherwise lying behind cover would still shoot over it.
+    const origin = eyePosition(at.x, at.y, at.z, DEFAULT_MUZZLE_RIG, proneThen);
 
     for (const dir of shotDirections(slot.weapon, shot, slot.netId, msg.tick, yaw, pitch)) {
       const hit = resolveShot(
