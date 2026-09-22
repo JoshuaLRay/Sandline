@@ -44,6 +44,18 @@ const SAMPLES: Message[] = [
   },
   { kind: 'Throw', tick: 900, yaw: 4095, pitch: 3072, projectile: 1 },
   {
+    kind: 'HitEvent',
+    shooterNetId: 3,
+    targetNetId: 7,
+    x: 12.5,
+    y: 1.75,
+    z: -40.25,
+    originX: -2.5,
+    originY: 1.5,
+    originZ: -6,
+    damage: 22,
+  },
+  {
     kind: 'Snapshot',
     snapshot: { tick: 9, entities: [{ netId: 1, components: { [T]: [100, 200, 300, 400, 500] } }] },
   },

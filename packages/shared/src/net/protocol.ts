@@ -12,7 +12,7 @@ import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isRoomCode } from './roomCode.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 12;
+export const PROTOCOL_VERSION = 13;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({ jump: 0b001, sprint: 0b010, crouch: 0b100, interact: 0b1000, fire: 0b10000 });
@@ -177,8 +177,19 @@ export type Message =
     }
   /**
    * The authoritative outcome of a shot, broadcast to everyone so all clients
-   * draw the same tracer. The shooter's muzzle is derivable from its replicated
-   * position, so only the endpoint travels.
+   * draw the same tracer.
+   *
+   * The origin travels too (B-01), rather than letting an observer approximate
+   * it from the shooter's replicated position. That approximation is the
+   * shooter's CURRENT interpolated position at the moment this event is drawn —
+   * which, for a strafing shooter, can be a metre or more from where the shot
+   * actually left the barrel by the time a round trip plus the interpolation
+   * delay have passed. At typical engagement range that reads as a few degrees
+   * off; at close range the same absolute drift is a large fraction of the
+   * distance to the target, and the tracer can look like it left at a steep
+   * angle to the way the shooter was actually facing. The server already
+   * computes the rewound origin to resolve the shot (T-1.18's "shooter is
+   * rewound too"); sending it is the fix, not a new computation.
    */
   | {
       kind: 'HitEvent';
@@ -188,6 +199,10 @@ export type Message =
       x: number;
       y: number;
       z: number;
+      /** Where the shot left the barrel: the shooter's rewound eye position. */
+      originX: number;
+      originY: number;
+      originZ: number;
       damage: number;
     }
   /**
@@ -309,6 +324,9 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(quantize(msg.x, POSITION), POSITION.bits);
       w.writeBits(quantize(msg.y, POSITION), POSITION.bits);
       w.writeBits(quantize(msg.z, POSITION), POSITION.bits);
+      w.writeBits(quantize(msg.originX, POSITION), POSITION.bits);
+      w.writeBits(quantize(msg.originY, POSITION), POSITION.bits);
+      w.writeBits(quantize(msg.originZ, POSITION), POSITION.bits);
       w.writeBits(quantize(msg.damage, HEALTH), HEALTH.bits);
       break;
     case 'Throw':
@@ -474,6 +492,9 @@ export function decodeMessage(bytes: Uint8Array): Message {
           x: dequantize(r.readBits(POSITION.bits), POSITION),
           y: dequantize(r.readBits(POSITION.bits), POSITION),
           z: dequantize(r.readBits(POSITION.bits), POSITION),
+          originX: dequantize(r.readBits(POSITION.bits), POSITION),
+          originY: dequantize(r.readBits(POSITION.bits), POSITION),
+          originZ: dequantize(r.readBits(POSITION.bits), POSITION),
           damage: dequantize(r.readBits(HEALTH.bits), HEALTH),
         };
       case MessageType.Throw:

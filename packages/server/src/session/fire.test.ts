@@ -388,6 +388,48 @@ describe('the shooter is rewound too', () => {
     expect(client.hits.length).toBe(before + 1);
     expect(client.hits.at(-1)?.targetNetId).toBe(0);
   });
+
+  it('sends the rewound origin on the wire, not the shooter\'s live position (B-01)', () => {
+    /**
+     * Reported as a strafing shooter's tracers looking off-angle, sometimes
+     * badly so, to everyone but themselves. An observer had no origin of its
+     * own to rewind — it approximated one from the shooter's replicated
+     * position AT THE TIME THE EVENT ARRIVED, which for a strafing shooter can
+     * be a metre or more from the barrel that actually fired, especially at
+     * close range where that drift is a large fraction of the shot's own
+     * length.
+     *
+     * The server already computes the correct point — the same rewound origin
+     * `resolveShot` traces from, immediately above — so this only has to check
+     * it reaches the wire rather than a live position sampled some other way.
+     */
+    const session = new Session();
+    const client = connect(session);
+    let now = run(session, 0, 4, client);
+
+    const eye = SPAWN_POINTS[0] as { x: number; y: number; z: number };
+    const aimAlong = aimAt(eye.x + 10, eye.y + 1.55, eye.z);
+    const firedAt = now;
+
+    // Strafe for less than MAX_REWIND_MS (200 ms), then fire with the render
+    // time and aim from BEFORE any of it — exactly the "shooter is rewound
+    // too" scenario above, but reading the origin the event carries rather
+    // than what it hit. Within the rewind cap the origin lands back at the
+    // exact pre-strafe position, which is what makes it worth asserting on.
+    for (let tick = 1; tick <= 4; tick += 1) {
+      client.input(aimAlong.yaw, tick, 1, 0, 0b010);
+      now = run(session, now, 1, client);
+    }
+    client.fire({ ...aimAlong, ads: true, renderTimeMs: firedAt });
+
+    const hit = client.hits.at(-1);
+    expect(hit).toBeDefined();
+    // The rewound origin sits back at the spawn eye, not out where the strafe
+    // carried the shooter by the time this resolved.
+    expect(hit?.originX).toBeCloseTo(eye.x, 1);
+    expect(hit?.originZ).toBeCloseTo(eye.z, 1);
+    expect(hit?.originY).toBeCloseTo(eye.y + 1.55, 1);
+  });
 });
 
 describe('damage, downed, bleed-out and respawn (T-1.19, T-2.13)', () => {

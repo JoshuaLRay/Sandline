@@ -11,7 +11,7 @@ Status: **OPEN** (not investigated/fixed) · **IN PROGRESS** · **FIXED**
 
 | # | Area | Report | Status | Task |
 |---|---|---|---|---|
-| B-01 | Weapons/tracers | Strafing while firing makes some bullet tracers render perpendicular to the fire direction instead of along it. | OPEN | — |
+| B-01 | Weapons/tracers | Strafing while firing makes some bullet tracers render perpendicular to the fire direction instead of along it. | FIXED | — |
 | B-02 | Weapons/animation | Running forward or backward while firing in FPS view causes visual strobing. | OPEN | — |
 | B-03 | Grenades | Grenades are too floaty and travel too far; arc/drag needs tuning. | OPEN | — |
 | B-04 | Weapons | Rocket launcher cannot be equipped or fired. | OPEN | — |

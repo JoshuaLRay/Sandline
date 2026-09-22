@@ -657,6 +657,9 @@ export class Session {
             x: hit.point.x,
             y: hit.point.y,
             z: hit.point.z,
+            originX: origin.x,
+            originY: origin.y,
+            originZ: origin.z,
             damage: dealt,
           }
         : {
@@ -666,6 +669,9 @@ export class Session {
             x: origin.x + dir.x * slot.weapon.maxRangeM,
             y: origin.y + dir.y * slot.weapon.maxRangeM,
             z: origin.z + dir.z * slot.weapon.maxRangeM,
+            originX: origin.x,
+            originY: origin.y,
+            originZ: origin.z,
             damage: 0,
           };
       for (const c of this.connections) c.send(event);
