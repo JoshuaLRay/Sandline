@@ -27,6 +27,8 @@ const CONFIG: MoveConfig = {
   radius: 0.35,
   height: 1.8,
   crouchHeight: 1.2,
+  proneHeight: 0.8,
+  proneSpeed: 1.1,
   stepHeight: 0.45,
   vaultMaxHeight: 1.25,
   vaultDistance: 1.5,

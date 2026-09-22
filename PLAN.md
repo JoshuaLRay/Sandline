@@ -842,6 +842,7 @@ using the T-1.xx tasks above as the template for granularity.
 | E-2.5 | Projectile weapons | Grenades, RPG — ballistic arcs, network-replicated |
 | E-2.6 | Downed & revive | Bleed-out timer, crawl state, revive interaction |
 | E-2.7 | Combat audio | Positional Web Audio, weapon layers, distance falloff, occlusion approximation |
+| E-2.8 | Prone stance & voluntary crawl | Authoritative prone height/hit volume, prone crawl speed, fire-from-prone — see [ADR-016](./docs/adr/016-prone-stance.md), which reopens the v1 exclusion in ADR-002 |
 
 **Exit gate:** 🧍 A human plays a grey-box firefight and signs off that it feels good.
 
@@ -1386,6 +1387,51 @@ eye.
 - **Size:** S
 - **Run sheet prepared 2026-09-21, not run.** `docs/playtests/soldier-look.md`, written as `e2-2.md` was and saying so at the top. Section 6 carries the one decision T-2.37 deliberately left open — whether to render at a fixed low resolution and upscale with point filtering — because it trades legibility the two open feel-gates are judged on, and that is the owner's call to make with the thing in front of them.
 
+### 7.8 E-2.8 leaf tasks — broken out 2026-09-22
+
+[ADR-016](./docs/adr/016-prone-stance.md) reopens ADR-002's prone exclusion:
+the owner asked for a voluntary prone stance now that crouch (T-2.20) has
+already built authoritative stance height/hit-volume and E-2.6 already
+proved a crawl gait end to end for the downed state. Prone is **not** the
+downed crawl B-05 removed — that removal stands, and is not reopened here.
+Prone is a stance a standing, alive soldier chooses to enter, keeps their
+weapon in, and chooses to leave.
+
+**Two rules for this epic**, the same shape T-2.20 and T-2.13 set: vitality
+and stance are the SERVER'S (nothing predicts a stance transition the
+server didn't authorize, only replays one from replicated/input state, same
+as crouch), and prone reuses the existing hit-capsule-by-stance and
+pose-driver contracts rather than adding a second one.
+
+#### T-2.40 — Prone state, authoritative height/hit volume, prone crawl speed
+- **Depends:** T-2.20, T-2.13
+- **Files:** `packages/shared/src/sim/CharacterController.ts`, movement/data config, `ecs/components.ts`, `net/schema.ts`, `net/protocol.ts`, `Session.ts`, `NetClient.ts`, tests
+- **Do:** A `prone` stance alongside standing/crouch, entered/exited by a bound key and authoritative on the server exactly as crouch is: its own controller height, ceiling clearance and hit volume, and its own crawl speed in data (distinct name and value from the removed `crawlSpeed`, which stays gone — this is not its resurrection). Entry is refused while downed, dead, mid-vault, or sprinting; sprint/jump inputs are ignored while prone, same as crouch. Client prediction uses the identical state and constants the server does.
+- **Done when:** shared tests assert prone height/clearance/hit-volume distinct from both standing and crouch and from the downed hitbox; standing↔prone and crouch↔prone transitions; ceiling rejection; blocked entry while downed/dead/vaulting/sprinting; prediction parity between server and client; lag-comp tests assert the prone hit volume differs from both standing and crouch. `pnpm verify` green.
+- **Size:** M
+- **Completed 2026-09-22.** Stance became a three-level ladder in `stepCharacter` — standing (0), crouched (1), prone (2, lowest) — instead of a second parallel boolean next to crouch: dropping a level is instant, rising one is checked one level at a time against the target height after horizontal movement resolves, which is the same ratchet crouch already used, generalized rather than duplicated. Prone gets its own `MoveConfig.proneHeight` (0.8 m) and `proneSpeed` (1.1 m/s), and its own server hit-capsule (`DEFAULT_HITBOX.proneHalfHeight`/`proneCenterOffsetY`, factored into a shared `capsuleFor` helper `lagComp.ts` and `Session.ts`'s `bodyAlong` both call, rather than duplicating the crouch/prone ternary a third time) — 0.8 m total height, well under crouch's 1.2 m and standing's 1.8 m. Wire: the `Crouch` component (id 5) gained a second `prone` bit (protocol v14), and `INPUT_BUTTONS` gained `prone` (`0b100000`). One deviation from the Do text, decided during implementation rather than asked back: entry is **not** specially refused while sprinting — like crouch, holding sprint and pressing prone just goes prone (sprint is ignored via the same speed-selection precedence crouch already uses), rather than adding a second, redundant refusal. "Blocked while dead" is Session.ts's job, not `stepCharacter`'s: a dead slot's movement is skipped entirely upstream (as it already was for every other stance), so there is nothing for the controller itself to refuse. Jump is newly blocked while prone (crouch itself does not block jump — that was pre-existing and left alone). Prediction parity is inherited for free: `stepCharacter` is the one shared pure function both sides already run, so there is no second prone-specific path to diverge, and `characterParity.test.ts`'s fixture and the full suite stay at zero measured divergence with the new fields present.
+
+#### T-2.41 — Prone presentation
+- **Depends:** T-2.40, T-2.06
+- **Files:** `packages/client/src/character/locomotionState.ts`, `locomotionPose.ts`, `humanoidPlaceholder.ts`/`humanoidSoldier.ts`, `cameraSolve.ts`, tests
+- **Do:** A `prone` locomotion classifier state (distinct from `crouch` and from the downed pose) driving a low, front-down pose on the existing pose-driver contract — reuse the rig/pose plumbing T-2.06/T-2.20/T-2.14 already built, not a new one. The camera eases to a prone eye height on the same curve crouch and downed already use. The weapon stays in hand and aimable; this is not the downed pose, which has none.
+- **Done when:** tests assert the pose is applied from replicated stance and restored exactly on standing/crouch, that the shootable root's geometry is untouched, and that prone is visually and structurally distinct from the downed lie-down pose in the same test suite that guards that distinction. A headless run drops the local player prone and screenshots the view.
+- **Size:** S
+
+#### T-2.42 — Fire from prone
+- **Depends:** T-2.40, T-2.41
+- **Files:** weapon fire path (client + server), aim/recoil config, tests
+- **Do:** Firing is permitted while prone (unlike while downed, which stays refused per T-2.13). Recoil/spread may be tuned tighter prone than standing/crouch in data, but no new mechanism — reuse the existing fire/aim pipeline with prone as another stance input to it.
+- **Done when:** tests assert Fire succeeds while prone end to end over the wire, and that stance-conditioned aim/recoil tuning (if any) reads from data, not a hardcoded branch. `pnpm verify` green.
+- **Size:** S
+
+#### T-2.43 — 🧍 E-2.8 sign-off
+- **Depends:** T-2.40, T-2.41, T-2.42
+- **Files:** `docs/playtests/e2-8.md`
+- **Do:** A human goes prone, crawls into and out of cover, fires from prone, and stands back up, then does the same as the other player watches remotely. Judge whether prone reads as clearly different from both crouch and the downed pose, whether the crawl speed feels earned rather than crippling, and whether firing prone is usable rather than a curiosity.
+- **Done when:** a written verdict, on a run sheet prepared before the session as `e2-6.md` was.
+- **Size:** S
+
 ### M3 — AI & squad command (~10–12 wks)
 
 | Epic | Scope | Notes |
@@ -1446,6 +1492,7 @@ netcode and the squad architecture — not breadth.
 | R10 | **Determinism theater** — a whole-world golden hash that breaks on every tuning change, gets re-baselined reflexively, then catches nothing | Medium | §2.3 scopes parity to the two paths that actually need it; parity tests own their constants in the fixture | M0 |
 | R11 | **Estimates are a floor, not a plan** — §4 sums to ~50 wks; comparable solo projects run 3–5× | High | §4.1 scope cut · re-estimate at every milestone gate from *measured velocity*, never from this table | Ongoing |
 | R12 | **A publicly reachable host is a public attack surface**, with no accounts, no rate limiting and a cost meter running — arriving ~30 wks earlier than the plan assumed | Medium | Unlisted host, room codes required to join, connection and room caps (T-1.5.05), one small instance, teardown documented in `docs/DEPLOYING.md`; current host: `wss://sandline-host.fly.dev` · real authentication is E-4.6, and nothing before it should pretend otherwise | M1.5 |
+| R13 | **A held-modifier keybinding collides with a browser-reserved shortcut** — Ctrl bound to crouch meant Ctrl+W (crouch-walk forward) reads to the browser as "close tab" and no page-side `preventDefault` can stop it; those reserved combos (Ctrl+W/T/N and a handful of others) are blocked from page script by design in every major browser, not a bug to work around in this codebase | High (playtests: closes the tab under the tester) | B-06: crouch moved off Ctrl entirely, onto a toggle on C (`LocalInput.crouchToggled`) · **standing rule: no future keybinding may put Ctrl, Alt, or Meta in a *held* combo with another game key** — a tap-only modifier use (if any) is fine since there's nothing to combine with a second keydown · **implemented:** clicking into the canvas now also requests fullscreen and arms `navigator.keyboard.lock()` (`packages/client/src/input/keyboardLock.ts`), the browser-sanctioned way for a page to reclaim reserved shortcuts — Chromium-only (Firefox/Safari have no `navigator.keyboard.lock` and silently fall back to ordinary `preventDefault`), refused locks (no user activation, one already active) also fall back rather than breaking the game, and it self-corrects on any fullscreen exit (Esc held, F11, browser UI) via `fullscreenchange` rather than needing every exit path handled by hand; still not something a player can turn off from browser settings on its own, and OS-level key remapping (AutoHotkey/Karabiner/xremap) remains a tester's fallback on non-Chromium browsers | M2 |
 
 ---
 

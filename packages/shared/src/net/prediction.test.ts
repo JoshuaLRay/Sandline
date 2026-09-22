@@ -230,7 +230,7 @@ describe('correction smoothing (T-1.15)', () => {
  * counter read near zero, and the only symptom was that the game felt bad.
  */
 describe('reconciliation under a poor link', () => {
-  const START: MoveState = { x: 0, y: 0, z: 0, vy: 0, grounded: true, crouched: false };
+  const START: MoveState = { x: 0, y: 0, z: 0, vy: 0, grounded: true, crouched: false, prone: false };
   const FORWARD: MoveInput = { moveX: 0, moveY: 1, yaw: 0, jump: false, sprint: false, crouch: false };
 
   it('does not throw away pending inputs when the acked tick is missing', () => {
@@ -304,7 +304,7 @@ describe('reconciling mid-vault (T-2.21)', () => {
    * metre tall: too tall to step, low enough to vault. Face +Z from just south
    * of it and hold forward.
    */
-  const AT_THE_WALL: MoveState = { x: -9, y: 0, z: -2.4, vy: 0, grounded: true, crouched: false, vault: null };
+  const AT_THE_WALL: MoveState = { x: -9, y: 0, z: -2.4, vy: 0, grounded: true, crouched: false, prone: false, vault: null };
 
   it('continues the server\'s vault exactly instead of dropping out of it', () => {
     // The server's story: the same steps, one tick at a time.

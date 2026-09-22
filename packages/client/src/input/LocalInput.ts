@@ -12,6 +12,7 @@
 import { WIRE_ANGLE_UNITS, type MoveInput } from '@sandline/shared';
 import { beginAds, createViewState, endAds, pressShoulderKey, shoulderSide } from './viewState.ts';
 import { composePitch } from '../weapons/recoil.ts';
+import { armKeyboardLock, requestFullscreenForKeyboardLock } from './keyboardLock.ts';
 
 export interface InputOptions {
   /** Wire-angle units per pixel of mouse movement. */
@@ -91,6 +92,13 @@ export class LocalInput {
    * exists to prevent.
    */
   private throwReleased = false;
+  /**
+   * Crouch is a toggle (B-06 follow-up), not a held key: it used to be Ctrl,
+   * and holding Ctrl while pressing another key (movement, weapon slots)
+   * reached the browser as a shortcut instead of the game. C now flips this
+   * on keydown, same shape as V's shoulder toggle in viewState.ts.
+   */
+  private crouchToggled = false;
   private yawAccum = 0;
   private pitchAccum = 0;
   /**
@@ -117,12 +125,21 @@ export class LocalInput {
       // Typing in the lobby's fields is not movement, and Space in a name
       // field must stay a space (T-1.5.06).
       if (isTextField(e.target)) return;
-      // Space would otherwise scroll the page out from under the canvas.
-      if (e.code === 'Space') e.preventDefault();
+      // With the mouse captured, the canvas owns the keyboard: every key we
+      // handle gets preventDefault, not just Space. Otherwise Ctrl (crouch)
+      // held alongside a movement or weapon key fires whatever browser
+      // shortcut that combo happens to be bound to (Find, bookmark, print,
+      // ...) instead of reaching the game. A few reserved combos (Ctrl+W,
+      // Ctrl+T, Ctrl+N, ...) are blocked by the browser itself and no amount
+      // of preventDefault stops them.
+      if (this.locked || e.code === 'Space') e.preventDefault();
       this.held.add(e.code);
       this.pressed.add(e.code);
       // Key auto-repeat would flip the shoulder every repeat while V is held.
       if (e.code === 'KeyV' && !e.repeat) pressShoulderKey(this.viewState);
+      // Same reason: auto-repeat would flip crouch on and off every repeat
+      // while C is held down instead of toggling once per press.
+      if (e.code === 'KeyC' && !e.repeat) this.crouchToggled = !this.crouchToggled;
     });
     addEventListener('keyup', (e) => {
       // The latch is set on the release of a key that was actually down, so a
@@ -139,8 +156,14 @@ export class LocalInput {
       endAds(this.viewState);
     });
 
+    armKeyboardLock(canvas);
     canvas.addEventListener('click', () => {
       if (!this.locked) canvas.requestPointerLock();
+      // Same gesture: a click already has user activation, which both
+      // requestFullscreen and (via the fullscreenchange listener above)
+      // keyboard.lock() need. No-ops where the Keyboard Lock API doesn't
+      // exist (Firefox, Safari) — see keyboardLock.ts.
+      requestFullscreenForKeyboardLock(canvas);
     });
     // Right mouse is aim-down-sights; without this it opens a context menu
     // over the canvas instead.
@@ -180,6 +203,11 @@ export class LocalInput {
 
   setInvertY(value: boolean): void {
     this.invertY = value;
+  }
+
+  /** True while the canvas is the fullscreen element, i.e. Keyboard Lock (if supported) is armed. */
+  get immersive(): boolean {
+    return document.fullscreenElement === this.canvas;
   }
 
   /** Current stored TPS shoulder: +1 right, -1 left. */
@@ -232,7 +260,15 @@ export class LocalInput {
 
   /** Current crouch intent; the locomotion classifier consumes the rendered result plus this visual state. */
   get crouching(): boolean {
-    return this.held.has('ControlLeft') || this.held.has('ControlRight') || this.held.has('KeyC');
+    return this.crouchToggled;
+  }
+
+  /**
+   * Current prone intent (T-2.40, ADR-016): held like a normal movement key,
+   * takes priority over crouch in the controller. Z is free — C is crouch.
+   */
+  get proning(): boolean {
+    return this.held.has('KeyZ');
   }
 
   /** Holding the throw key: the arc is being aimed (T-2.32). */
@@ -307,7 +343,8 @@ export class LocalInput {
       yaw: this.yaw,
       jump: tapped('Space'),
       sprint: on('ShiftLeft', 'ShiftRight'),
-      crouch: on('ControlLeft', 'ControlRight', 'KeyC'),
+      crouch: this.crouchToggled,
+      prone: on('KeyZ'),
       interact: on('KeyE'),
       // Carried so the server can refuse a vault mid-burst (T-2.21).
       firing: this.firing,

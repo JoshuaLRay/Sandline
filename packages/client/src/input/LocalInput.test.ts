@@ -37,14 +37,26 @@ describe('LocalInput yaw vs bodyYaw (B-02)', () => {
       addEventListener: g['addEventListener'],
       removeEventListener: g['removeEventListener'],
       document: g['document'],
+      HTMLInputElement: g['HTMLInputElement'],
+      HTMLTextAreaElement: g['HTMLTextAreaElement'],
+      HTMLSelectElement: g['HTMLSelectElement'],
     };
     g['addEventListener'] = win.addEventListener.bind(win);
     g['removeEventListener'] = win.removeEventListener.bind(win);
     g['document'] = doc;
+    // The test environment is Node, not a browser: isTextField's `instanceof`
+    // checks need these classes to exist even though every dispatched event
+    // here passes a null target.
+    g['HTMLInputElement'] = class {};
+    g['HTMLTextAreaElement'] = class {};
+    g['HTMLSelectElement'] = class {};
     restore = () => {
       g['addEventListener'] = previous.addEventListener;
       g['removeEventListener'] = previous.removeEventListener;
       g['document'] = previous.document;
+      g['HTMLInputElement'] = previous.HTMLInputElement;
+      g['HTMLTextAreaElement'] = previous.HTMLTextAreaElement;
+      g['HTMLSelectElement'] = previous.HTMLSelectElement;
     };
   });
 
@@ -62,5 +74,26 @@ describe('LocalInput yaw vs bodyYaw (B-02)', () => {
     input.setViewOffset(37, 0);
     expect(input.yaw).not.toBe(yawBefore);
     expect(input.bodyYaw).toBe(bodyYawBefore);
+  });
+
+  it('B-06: crouch is a toggle on C, not held-Ctrl', () => {
+    const canvas = fakeTarget();
+    const input = new LocalInput(canvas as unknown as HTMLElement);
+
+    expect(input.crouching).toBe(false);
+    win.dispatch('keydown', { code: 'ControlLeft', target: null });
+    expect(input.crouching).toBe(false);
+
+    win.dispatch('keydown', { code: 'KeyC', target: null });
+    expect(input.crouching).toBe(true);
+    // Auto-repeat while C is held down must not flip the toggle again.
+    win.dispatch('keydown', { code: 'KeyC', target: null, repeat: true });
+    expect(input.crouching).toBe(true);
+
+    win.dispatch('keyup', { code: 'KeyC', target: null });
+    expect(input.crouching).toBe(true);
+
+    win.dispatch('keydown', { code: 'KeyC', target: null });
+    expect(input.crouching).toBe(false);
   });
 });

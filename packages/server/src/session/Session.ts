@@ -81,7 +81,7 @@ import {
   stepCharacter,
   writeDelta,
 } from '@sandline/shared';
-import { DEFAULT_HITBOX, HitboxHistory, clampRewindMs, rayCapsule, resolveShot } from '../net/lagComp.ts';
+import { DEFAULT_HITBOX, HitboxHistory, capsuleFor, clampRewindMs, rayCapsule, resolveShot } from '../net/lagComp.ts';
 
 /**
  * Full standing height of a hitbox: cylinder plus both caps. Hit zones are
@@ -89,6 +89,8 @@ import { DEFAULT_HITBOX, HitboxHistory, clampRewindMs, rayCapsule, resolveShot }
  */
 const HITBOX_HEIGHT = 2 * (DEFAULT_HITBOX.halfHeight + DEFAULT_HITBOX.radius);
 const CROUCH_HITBOX_HEIGHT = 2 * ((DEFAULT_HITBOX.crouchHalfHeight ?? DEFAULT_HITBOX.halfHeight) + DEFAULT_HITBOX.radius);
+/** T-2.40: prone's own hit-volume height, lower again than crouch's. */
+const PRONE_HITBOX_HEIGHT = 2 * ((DEFAULT_HITBOX.proneHalfHeight ?? DEFAULT_HITBOX.halfHeight) + DEFAULT_HITBOX.radius);
 
 const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
@@ -189,6 +191,7 @@ const idleInput = (yaw = 0): MoveInput => ({
   jump: false,
   sprint: false,
   crouch: false,
+  prone: false,
   interact: false,
   firing: false,
 });
@@ -494,6 +497,8 @@ export class Session {
           crouch: (frame.buttons & 0b100) !== 0,
           interact: (frame.buttons & 0b1000) !== 0,
           firing: (frame.buttons & 0b10000) !== 0,
+          // T-2.40, ADR-016.
+          prone: (frame.buttons & 0b100000) !== 0,
         },
       });
     }
@@ -627,7 +632,7 @@ export class Session {
         const zone = zoneAt(
           hit.point.y,
           targetState?.position.y ?? 0,
-          targetState?.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT,
+          targetState?.prone ? PRONE_HITBOX_HEIGHT : targetState?.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT,
         );
         dealt = zoneDamage(damageAtDistance(slot.weapon, hit.distance), zone);
 
@@ -790,8 +795,7 @@ export class Session {
       if (netId === excludeNetId) continue;
       const state = this.hitboxes.stateAt(netId, this.nowMs);
       if (state === null) continue;
-      const halfHeight = state.crouched ? (DEFAULT_HITBOX.crouchHalfHeight ?? DEFAULT_HITBOX.halfHeight) : DEFAULT_HITBOX.halfHeight;
-      const centerOffsetY = state.crouched ? (DEFAULT_HITBOX.crouchCenterOffsetY ?? DEFAULT_HITBOX.centerOffsetY) : DEFAULT_HITBOX.centerOffsetY;
+      const { halfHeight, centerOffsetY } = capsuleFor(DEFAULT_HITBOX, state.crouched, state.prone);
       const centre = { x: state.position.x, y: state.position.y + centerOffsetY, z: state.position.z };
       const distance = rayCapsule(ray, centre, DEFAULT_HITBOX.radius, halfHeight);
       if (distance === null) continue;
@@ -820,7 +824,7 @@ export class Session {
     const targets: { netId: number; damage: number }[] = [];
     for (const slot of this.slots) {
       if (isDead(slot.health)) continue;
-      const height = slot.state.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT;
+      const height = slot.state.prone ? PRONE_HITBOX_HEIGHT : slot.state.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT;
       const damage = blastDamageOn(
         projectile.def,
         at,
@@ -983,7 +987,7 @@ export class Session {
     // the snapshot about to go out will describe. Recording pre-step would
     // rewind clients to a world half a tick behind the one they were shown.
     for (const slot of this.slots) {
-      this.hitboxes.record(slot.netId, now, slot.state.x, slot.state.y, slot.state.z, slot.state.crouched);
+      this.hitboxes.record(slot.netId, now, slot.state.x, slot.state.y, slot.state.z, slot.state.crouched, slot.state.prone);
     }
     /**
      * The range targets are shootable too. They never move, but they are
@@ -1138,7 +1142,7 @@ export class Session {
           ],
           [COMPONENT_IDS.PlayerSlot]: [s.index, s.isBot ? 1 : 0],
           // Replicate the authoritative stance so remote presentation matches the hitbox.
-          [C]: [s.state.crouched ? 1 : 0],
+          [C]: [s.state.crouched ? 1 : 0, s.state.prone ? 1 : 0],
           // A vault in progress, whole (T-2.21): a predictor reconciling
           // mid-vault continues the same traversal instead of falling out of it.
           [COMPONENT_IDS.Vault]: vaultToLevels(s.state.vault),

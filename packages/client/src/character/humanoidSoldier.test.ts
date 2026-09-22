@@ -241,7 +241,7 @@ describe('skinned soldier (T-2.22)', () => {
     expect(aim.y).toBeCloseTo(DEFAULT_MUZZLE_RIG.shoulderHeight, 6);
     expect(AIM_IN_CHEST[0]).toBe(-DEFAULT_MUZZLE_RIG.shoulderRight);
     // Downed lets go of the rifle (and hides it); the other poses hold it.
-    for (const pose of ['standing', 'crouched'] as const) {
+    for (const pose of ['standing', 'crouched', 'prone'] as const) {
       requireRig(soldier).setPose(pose);
       const at = worldOf(soldier, 'aim');
       const right = worldOf(soldier, 'hand-right');
@@ -302,6 +302,48 @@ describe('skinned soldier (T-2.22)', () => {
     expect(boneSnapshot(soldier)).toEqual(crouched);
     rig.setPose('crouched');
     expect(boneSnapshot(soldier)).toEqual(crouched);
+
+    expect(soldier.position.toArray()).toEqual(rootBefore.p);
+    expect(soldier.quaternion.toArray()).toEqual(rootBefore.q);
+    expect(soldier.geometry).toBe(rootBefore.g);
+  });
+
+  it('goes prone by moving bones only, structurally distinct from crouch and downed, and restores exactly (T-2.41)', () => {
+    const soldier = createHumanoidSoldier('remote');
+    soldier.position.set(3, HUMANOID_ROOT_LIFT_M, -2);
+    soldier.rotation.y = 0.7;
+    const rootBefore = { p: soldier.position.toArray(), q: soldier.quaternion.toArray(), g: soldier.geometry };
+    const rig = requireRig(soldier);
+    const standing = boneSnapshot(soldier);
+
+    rig.setPose('crouched');
+    const crouched = boneSnapshot(soldier);
+    rig.setPose('downed');
+    const downed = boneSnapshot(soldier);
+
+    rig.setPose('prone');
+    expect(rig.pose).toBe('prone');
+    // Unlike downed, prone keeps the weapon in hand and aimable.
+    expect(rig.aim.visible).toBe(true);
+    // Face down along the facing, head forward, feet back — not on the back.
+    const head = worldOf(soldier, 'head');
+    const foot = worldOf(soldier, 'foot-left');
+    const facing = new THREE.Vector3(Math.sin(0.7), 0, Math.cos(0.7));
+    expect(head.clone().sub(soldier.position).dot(facing)).toBeGreaterThan(0.4);
+    expect(foot.clone().sub(soldier.position).dot(facing)).toBeLessThan(-0.4);
+    const prone = boneSnapshot(soldier);
+    expect(prone).not.toEqual(crouched);
+    expect(prone).not.toEqual(downed);
+    expect(prone).not.toEqual(standing);
+
+    rig.setPose('standing');
+    expect(boneSnapshot(soldier)).toEqual(standing);
+    rig.setPose('crouched');
+    expect(boneSnapshot(soldier)).toEqual(crouched);
+    rig.setPose('prone');
+    expect(boneSnapshot(soldier)).toEqual(prone);
+    rig.setPose('prone');
+    expect(boneSnapshot(soldier)).toEqual(prone);
 
     expect(soldier.position.toArray()).toEqual(rootBefore.p);
     expect(soldier.quaternion.toArray()).toEqual(rootBefore.q);
@@ -372,6 +414,20 @@ describe('the gait on the skinned rig (T-2.22)', () => {
     expect(thigh.x).toBeLessThan(-0.9);
     driver.update({ ...IDLE, state: 'idle' }, 1 / 60);
     expect(boneSnapshot(soldier)).toEqual(crouched);
+    rig.setPose('standing');
+    expect(boneSnapshot(soldier)).toEqual(boneSnapshot(createHumanoidSoldier('remote')));
+  });
+
+  it('is the prone pose with a gait on it, and idle prone is exactly the prone pose (T-2.41)', () => {
+    const soldier = createHumanoidSoldier('remote');
+    const rig = requireRig(soldier);
+    const driver = createLocomotionPoseDriver(rig);
+    rig.setPose('prone');
+    const prone = boneSnapshot(soldier);
+    driver.update({ ...WALK, state: 'prone', speed: 1 }, 0.1);
+    expect(boneSnapshot(soldier)).not.toEqual(prone);
+    driver.update({ ...IDLE, state: 'idle' }, 1 / 60);
+    expect(boneSnapshot(soldier)).toEqual(prone);
     rig.setPose('standing');
     expect(boneSnapshot(soldier)).toEqual(boneSnapshot(createHumanoidSoldier('remote')));
   });

@@ -91,7 +91,8 @@ export const SCHEMAS: readonly ComponentSchema[] = [
   {
     id: COMPONENT_IDS.Crouch,
     name: 'Crouch',
-    fields: [uint('crouched', 1)],
+    // T-2.40: prone appended after crouched, never renumbered (ADR-009).
+    fields: [uint('crouched', 1), uint('prone', 1)],
   },
   {
     id: COMPONENT_IDS.Vault,

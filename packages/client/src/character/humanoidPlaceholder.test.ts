@@ -9,6 +9,7 @@ import {
   HUMANOID_HIT_HEIGHT_M,
   HUMANOID_HIT_RADIUS,
   HUMANOID_ROOT_LIFT_M,
+  PRONE_BODY_LIFT_M,
   createHumanoidPlaceholder,
   humanoidPose,
   setHumanoidPose,
@@ -194,6 +195,75 @@ describe('downed pose (T-2.14)', () => {
 
   it('reads as standing until told otherwise', () => {
     expect(humanoidPose(createHumanoidPlaceholder('remote'))).toBe('standing');
+  });
+});
+
+describe('prone pose (T-2.41)', () => {
+  const snapshot = (root: THREE.Object3D) =>
+    root.children.map((c) => ({ name: c.name, p: c.position.toArray(), q: c.quaternion.toArray() }));
+
+  it('lays the parts face down along the facing, on the ground, and leaves the root exactly alone', () => {
+    const soldier = createHumanoidPlaceholder('remote');
+    soldier.position.set(3, 0.9, -2);
+    soldier.rotation.y = 0.7;
+    const rootBefore = { p: soldier.position.toArray(), q: soldier.quaternion.toArray(), g: soldier.geometry };
+    const standing = snapshot(soldier);
+
+    setHumanoidPose(soldier, 'prone');
+    expect(humanoidPose(soldier)).toBe('prone');
+    // Root: same position, same orientation, same geometry object. The hit
+    // capsule the server resolves against has not moved.
+    expect(soldier.position.toArray()).toEqual(rootBefore.p);
+    expect(soldier.quaternion.toArray()).toEqual(rootBefore.q);
+    expect(soldier.geometry).toBe(rootBefore.g);
+
+    const head = soldier.children.find((c) => c.name === 'head');
+    const boot = soldier.children.find((c) => c.name === 'boot-left');
+    if (!head || !boot) throw new Error('parts missing');
+    // The body lies along local Z, head forward, feet back, same as downed...
+    expect(head.position.z).toBeGreaterThan(0.5);
+    expect(boot.position.z).toBeLessThan(-0.5);
+    // ...at roughly the prone lift above the feet, which sit 0.9 below the root.
+    const feetY = -HUMANOID_ROOT_LIFT_M;
+    expect(Math.abs(head.position.y - (feetY + PRONE_BODY_LIFT_M))).toBeLessThan(0.15);
+    expect(Math.abs(boot.position.y - (feetY + PRONE_BODY_LIFT_M))).toBeLessThan(0.15);
+    // Every part moved from where it stood.
+    expect(snapshot(soldier)).not.toEqual(standing);
+  });
+
+  it('is structurally distinct from downed: face down, not on the back', () => {
+    const soldier = createHumanoidPlaceholder('local');
+    setHumanoidPose(soldier, 'prone');
+    const prone = snapshot(soldier);
+    setHumanoidPose(soldier, 'standing');
+    setHumanoidPose(soldier, 'downed');
+    const downed = snapshot(soldier);
+    expect(prone).not.toEqual(downed);
+  });
+
+  it('restores the standing pose exactly, and is idempotent either way', () => {
+    const soldier = createHumanoidPlaceholder('local');
+    const standing = snapshot(soldier);
+    setHumanoidPose(soldier, 'prone');
+    const prone = snapshot(soldier);
+    setHumanoidPose(soldier, 'prone');
+    expect(snapshot(soldier)).toEqual(prone);
+    setHumanoidPose(soldier, 'standing');
+    expect(snapshot(soldier)).toEqual(standing);
+    expect(humanoidPose(soldier)).toBe('standing');
+    // And a second cycle lands on the same prone pose: no drift.
+    setHumanoidPose(soldier, 'prone');
+    expect(snapshot(soldier)).toEqual(prone);
+  });
+
+  it('restores exactly on crouch too, not only standing', () => {
+    const soldier = createHumanoidPlaceholder('remote');
+    setHumanoidPose(soldier, 'crouched');
+    const crouched = snapshot(soldier);
+    setHumanoidPose(soldier, 'prone');
+    expect(snapshot(soldier)).not.toEqual(crouched);
+    setHumanoidPose(soldier, 'crouched');
+    expect(snapshot(soldier)).toEqual(crouched);
   });
 });
 
