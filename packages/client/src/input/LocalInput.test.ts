@@ -97,6 +97,67 @@ describe('LocalInput yaw vs bodyYaw (B-02)', () => {
     expect(input.crouching).toBe(false);
   });
 
+  it('prone is a toggle on Z, exclusive with the crouch toggle', () => {
+    const canvas = fakeTarget();
+    const input = new LocalInput(canvas as unknown as HTMLElement);
+    const key = (code: string, extra: Record<string, unknown> = {}) =>
+      win.dispatch('keydown', { code, target: null, ...extra });
+
+    key('KeyZ');
+    win.dispatch('keyup', { code: 'KeyZ', target: null });
+    expect(input.proning).toBe(true);
+    expect(input.sample().prone).toBe(true);
+    key('KeyZ', { repeat: true });
+    expect(input.proning).toBe(true);
+
+    // C from prone goes to crouch, Z from crouch goes prone, Z again stands.
+    key('KeyC');
+    expect([input.proning, input.crouching]).toEqual([false, true]);
+    key('KeyZ');
+    expect([input.proning, input.crouching]).toEqual([true, false]);
+    key('KeyZ');
+    expect([input.proning, input.crouching]).toEqual([false, false]);
+  });
+
+  it('sprint cancels a toggled crouch or prone', () => {
+    const canvas = fakeTarget();
+    const input = new LocalInput(canvas as unknown as HTMLElement);
+
+    win.dispatch('keydown', { code: 'KeyC', target: null });
+    win.dispatch('keydown', { code: 'ShiftLeft', target: null });
+    expect(input.crouching).toBe(false);
+    expect(input.sample().sprint).toBe(true);
+    win.dispatch('keyup', { code: 'ShiftLeft', target: null });
+
+    win.dispatch('keydown', { code: 'KeyZ', target: null });
+    win.dispatch('keydown', { code: 'ShiftRight', target: null });
+    expect(input.proning).toBe(false);
+  });
+
+  it('jump stands up out of a toggled stance without also jumping', () => {
+    const canvas = fakeTarget();
+    const input = new LocalInput(canvas as unknown as HTMLElement);
+
+    win.dispatch('keydown', { code: 'KeyZ', target: null });
+    input.sample();
+    // A tap entirely between two samples: stands, doesn't jump.
+    win.dispatch('keydown', { code: 'Space', target: null, preventDefault() {} });
+    win.dispatch('keyup', { code: 'Space', target: null });
+    const stood = input.sample();
+    expect([stood.prone, stood.crouch, stood.jump]).toEqual([false, false, false]);
+
+    // Held through the stand-up: still no jump until Space is pressed again.
+    win.dispatch('keydown', { code: 'KeyC', target: null });
+    win.dispatch('keydown', { code: 'Space', target: null, preventDefault() {} });
+    expect(input.sample().jump).toBe(false);
+    expect(input.sample().jump).toBe(false);
+    win.dispatch('keyup', { code: 'Space', target: null });
+
+    // Standing, Space is an ordinary jump.
+    win.dispatch('keydown', { code: 'Space', target: null, preventDefault() {} });
+    expect(input.sample().jump).toBe(true);
+  });
+
   it('held Ctrl crouches only while the page is fullscreen', () => {
     const canvas = fakeTarget();
     const root = {} as Element;

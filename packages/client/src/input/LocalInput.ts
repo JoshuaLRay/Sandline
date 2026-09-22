@@ -109,6 +109,16 @@ export class LocalInput {
    * fullscreen. See `crouching`.
    */
   private crouchToggled = false;
+  /**
+   * Prone is a toggle on Z, same shape as crouch. The two are exclusive: Z
+   * from crouch goes prone and Z again stands; C from prone goes to crouch.
+   */
+  private proneToggled = false;
+  /**
+   * Space pressed to get up out of a toggled stance is a stand, not a jump:
+   * the press stops counting as jump until the key comes back up.
+   */
+  private jumpSuppressed = false;
   private readonly fullscreenTarget: Element | undefined;
   private yawAccum = 0;
   private pitchAccum = 0;
@@ -149,11 +159,12 @@ export class LocalInput {
       this.pressed.add(e.code);
       // Key auto-repeat would flip the shoulder every repeat while V is held.
       if (e.code === 'KeyV' && !e.repeat) pressShoulderKey(this.viewState);
-      // Same reason: auto-repeat would flip crouch on and off every repeat
-      // while C is held down instead of toggling once per press.
-      if (e.code === 'KeyC' && !e.repeat) this.crouchToggled = !this.crouchToggled;
+      // Same reason: auto-repeat would flip crouch/prone on and off every
+      // repeat while C or Z is held down instead of toggling once per press.
+      if (!e.repeat) this.pressStanceKey(e.code);
     });
     addEventListener('keyup', (e) => {
+      if (e.code === 'Space') this.jumpSuppressed = false;
       // The latch is set on the release of a key that was actually down, so a
       // stray keyup (alt-tab, a key released after a blur) throws nothing.
       if (e.code === THROW_KEY && this.held.has(THROW_KEY)) this.throwReleased = true;
@@ -163,6 +174,7 @@ export class LocalInput {
     addEventListener('blur', () => {
       this.held.clear();
       this.buttons.clear();
+      this.jumpSuppressed = false;
       // A throw interrupted by losing the window is cancelled, not thrown.
       this.throwReleased = false;
       endAds(this.viewState);
@@ -196,6 +208,7 @@ export class LocalInput {
       if (!this.locked) {
         this.held.clear();
         this.buttons.clear();
+        this.jumpSuppressed = false;
         endAds(this.viewState);
       }
     });
@@ -208,6 +221,29 @@ export class LocalInput {
       this.pitchAccum -= dy * this.sensitivity;
       this.pitchAccum = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitchAccum));
     });
+  }
+
+  /**
+   * Stance toggles on a fresh (non-repeat) keydown. C and Z flip their own
+   * stance and clear the other; Shift (sprint) and Space (jump) stand up out
+   * of either. Held-Ctrl crouch isn't a toggle, so neither cancels it.
+   */
+  private pressStanceKey(code: string): void {
+    if (code === 'KeyC') {
+      this.crouchToggled = this.proneToggled ? true : !this.crouchToggled;
+      this.proneToggled = false;
+    } else if (code === 'KeyZ') {
+      this.proneToggled = !this.proneToggled;
+      this.crouchToggled = false;
+    } else if (code === 'ShiftLeft' || code === 'ShiftRight' || code === 'Space') {
+      const wasDown = this.crouchToggled || this.proneToggled;
+      this.crouchToggled = false;
+      this.proneToggled = false;
+      if (code === 'Space' && wasDown) {
+        this.jumpSuppressed = true;
+        this.pressed.delete('Space');
+      }
+    }
   }
 
   setSensitivity(value: number): void {
@@ -278,11 +314,11 @@ export class LocalInput {
   }
 
   /**
-   * Current prone intent (T-2.40, ADR-016): held like a normal movement key,
-   * takes priority over crouch in the controller. Z is free — C is crouch.
+   * Current prone intent (T-2.40, ADR-016): a toggle on Z, like crouch on C.
+   * Takes priority over crouch in the controller.
    */
   get proning(): boolean {
-    return this.held.has('KeyZ');
+    return this.proneToggled;
   }
 
   /** Holding the throw key: the arc is being aimed (T-2.32). */
@@ -355,10 +391,10 @@ export class LocalInput {
       moveX: strafe,
       moveY: forward,
       yaw: this.yaw,
-      jump: tapped('Space'),
+      jump: !this.jumpSuppressed && tapped('Space'),
       sprint: on('ShiftLeft', 'ShiftRight'),
       crouch: this.crouching,
-      prone: on('KeyZ'),
+      prone: this.proning,
       interact: on('KeyE'),
       // Carried so the server can refuse a vault mid-burst (T-2.21).
       firing: this.firing,
