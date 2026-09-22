@@ -170,7 +170,18 @@ export type GeneratedPiece = (typeof GENERATED_PIECES)[number];
 export interface World {
   id: string;
   boxes: readonly WorldBox[];
+  /**
+   * Half the side of the square of open ground the world stands on, centred
+   * on the origin (T-3.03). The ground is not a box — nothing collides with it
+   * but `groundY` — so this is only what the navmesh bake walks. A file may
+   * set it (`floor.halfExtent`); otherwise it is the boxes' extent plus
+   * `FLOOR_MARGIN_M`.
+   */
+  floorHalfExtent: number;
 }
+
+/** Open ground left round a world's outermost box when its file names no floor. */
+export const FLOOR_MARGIN_M = 5;
 
 /** A world id is what travels in `JoinAck`: short, lowercase, no spaces. */
 const WORLD_ID = /^[a-z][a-z0-9-]{0,31}$/;
@@ -192,15 +203,24 @@ export function loadWorld(raw: unknown): World {
     throw new Error(`world '${file.id}': generate must list only ${GENERATED_PIECES.join(', ')}`);
   }
   const wants = (piece: GeneratedPiece): boolean => generate.includes(piece);
-  return {
-    id: file.id,
-    boxes: [
-      ...(wants('posts') ? postBoxes() : []),
-      ...(wants('rails') ? railBoxes() : []),
-      ...(wants('figure') ? [figureBox()] : []),
-      ...loadCover(raw),
-    ],
-  };
+  const boxes = [
+    ...(wants('posts') ? postBoxes() : []),
+    ...(wants('rails') ? railBoxes() : []),
+    ...(wants('figure') ? [figureBox()] : []),
+    ...loadCover(raw),
+  ];
+  const floor = (raw as { floor?: unknown }).floor;
+  let floorHalfExtent = 0;
+  for (const b of boxes) floorHalfExtent = Math.max(floorHalfExtent, -b.minX, b.maxX, -b.minZ, b.maxZ);
+  floorHalfExtent += FLOOR_MARGIN_M;
+  if (floor !== undefined) {
+    const half = (floor as { halfExtent?: unknown } | null)?.halfExtent;
+    if (typeof half !== 'number' || !Number.isFinite(half) || half <= 0) {
+      throw new Error(`world '${file.id}': floor.halfExtent must be a positive number`);
+    }
+    floorHalfExtent = half;
+  }
+  return { id: file.id, boxes, floorHalfExtent };
 }
 
 /** Every world this build knows, by id. Validated once, at import. */

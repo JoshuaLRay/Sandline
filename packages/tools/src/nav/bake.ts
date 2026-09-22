@@ -6,13 +6,17 @@
  * package, and never in a session: geometry is static (ADR-002), so a runtime
  * bake would spend server budget every session on a result that never changes.
  *
- * T-3.01 is the spike: it bakes a hand-built soup (a floor and a few boxes)
- * with agent parameters written out below. T-3.03 replaces both with a named
- * world's boxes and parameters derived from `MoveConfig`, and commits the
- * result per world with a staleness hash.
+ * T-3.01's spike bakes a hand-built soup (a floor and a few boxes) with agent
+ * parameters written out below; its bytes stay committed for the
+ * cross-runtime test. T-3.03 bakes each named world with parameters derived
+ * from `MoveConfig` and the hitbox (`bakeWorld`), and `pnpm gen:nav` commits
+ * the result per world with a staleness hash (`navBakeHash`).
  */
+import { createHash } from 'node:crypto';
 import { exportNavMesh, init } from '@recast-navigation/core';
 import { type SoloNavMeshGeneratorConfig, generateSoloNavMesh } from '@recast-navigation/generators';
+import { DEFAULT_MOVE_CONFIG, type MoveConfig, type World } from '@sandline/shared';
+import { DEFAULT_HITBOX, type Hitbox } from '../../../server/src/net/lagComp.ts';
 
 /** An axis-aligned box, min and max corners, in world metres. */
 export interface SoupBox {
@@ -103,4 +107,90 @@ export async function bakeNavMesh(
   const bytes = exportNavMesh(result.navMesh);
   result.navMesh.destroy();
   return bytes;
+}
+
+/* -- Named worlds (T-3.03) --------------------------------------------------- */
+
+/**
+ * The agent a world is baked for, derived — never typed in a second time —
+ * from the numbers the controller and the server already use: the body's
+ * radius (the larger of the controller's footprint and the server's hit
+ * capsule, so the mesh never lets a soldier path somewhere their capsule
+ * would not fit), the standing height, and the step a soldier climbs without
+ * a jump.
+ */
+export interface NavAgent {
+  radius: number;
+  height: number;
+  climb: number;
+  groundY: number;
+}
+
+export function navAgentFrom(move: MoveConfig, hitbox: Hitbox): NavAgent {
+  return {
+    radius: Math.max(move.radius, hitbox.radius),
+    height: move.height,
+    climb: move.stepHeight,
+    groundY: move.groundY,
+  };
+}
+
+/** The agent the committed bakes are for: today's movement and hitbox defaults. */
+export const DEFAULT_NAV_AGENT = navAgentFrom(DEFAULT_MOVE_CONFIG, DEFAULT_HITBOX);
+
+/**
+ * Voxel size, 0.1 m across and 0.05 m up. Recast erodes by whole voxels, so
+ * the 0.35 m radius rounds UP to 0.4 m: the mesh stays 5 cm further from a
+ * wall than the capsule needs, which is the safe direction to be wrong in.
+ */
+export const NAV_CELL = { cs: 0.1, ch: 0.05 } as const;
+
+export function navConfigFor(agent: NavAgent): Partial<SoloNavMeshGeneratorConfig> {
+  return {
+    cs: NAV_CELL.cs,
+    ch: NAV_CELL.ch,
+    walkableRadius: Math.ceil(agent.radius / NAV_CELL.cs),
+    walkableHeight: Math.ceil(agent.height / NAV_CELL.ch),
+    walkableClimb: Math.floor(agent.climb / NAV_CELL.ch),
+    walkableSlopeAngle: 45,
+  };
+}
+
+/**
+ * A named world as a triangle soup: its floor at `groundY` and every box as a
+ * closed cuboid (tops walkable, sides walls). Only the tops a soldier can
+ * reach within `climb` join the floor's mesh; the rest become islands no
+ * path can reach, which is what they are.
+ */
+export function worldSoup(world: World, groundY = DEFAULT_NAV_AGENT.groundY): TriangleSoup {
+  const soup = boxSoup(
+    world.floorHalfExtent,
+    world.boxes.map((b) => ({ min: [b.minX, b.minY, b.minZ], max: [b.maxX, b.maxY, b.maxZ] }) as const),
+  );
+  if (groundY !== 0) for (let i = 1; i < 12; i += 3) soup.positions[i] = groundY;
+  return soup;
+}
+
+/**
+ * Everything that decides a bake, hashed: the world (id, floor, every box,
+ * in order), the agent and the voxel grid. The committed bake stores this;
+ * a test recomputes it from the live data, so an edited box, a retuned step
+ * height or a new capsule radius fails until `pnpm gen:nav` is re-run.
+ */
+export function navBakeHash(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): string {
+  const inputs = {
+    world: {
+      id: world.id,
+      floorHalfExtent: world.floorHalfExtent,
+      boxes: world.boxes.map((b) => [b.id, b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ]),
+    },
+    agent,
+    config: navConfigFor(agent),
+  };
+  return createHash('sha256').update(JSON.stringify(inputs)).digest('hex');
+}
+
+/** Bake a named world for an agent. */
+export function bakeWorld(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): Promise<Uint8Array> {
+  return bakeNavMesh(worldSoup(world, agent.groundY), navConfigFor(agent));
 }
