@@ -18,16 +18,16 @@ risk spike (failure is an acceptable, written-up outcome — PLAN.md §0.2).
 | 🧍 T-2.29 | E-2.3 sign-off (animation layers) | `docs/playtests/e2-3.md` — **missing** | T-2.25..T-2.28 (all done) | §7.5 |
 | 🧍 T-2.34 | E-2.5 sign-off (projectiles) | `docs/playtests/e2-5.md` — **missing** | T-2.30..T-2.33 (all done) | §7.6 |
 | 🧍 T-2.39 | Soldier's-look sign-off | `docs/playtests/soldier-look.md` — exists, prepared, not run | T-2.35..T-2.38 (all done) | §7.7 |
-| 🧍 T-2.43 | E-2.8 sign-off (prone) | `docs/playtests/e2-8.md` — **missing** | T-2.40..T-2.42 (all done) | §7.8 |
+| 🧍 T-2.43 | E-2.8 sign-off (prone) | `docs/playtests/e2-8.md` — exists, prepared, not run | T-2.40..T-2.42 (all done) | §7.8 |
 
 All five gates' build dependencies are satisfied. All five need the owner in
 the room with another human — an agent cannot close any of them, and must
 never fabricate a verdict or simulate the playtest to get one.
 
 **If nothing here is actionable** (no human available): E-2.8's build tasks
-are done (T-2.42 landed 2026-09-22), so its gate T-2.43 is open too, pending
-its run sheet. Writing the three missing run sheets (`e2-3.md`, `e2-5.md`,
-`e2-8.md`), modeled on `e2-2.md` and `soldier-look.md`, is real unblocked work an agent can do
+are done (T-2.42 landed 2026-09-22), so its gate T-2.43 is open too; its
+run sheet `e2-8.md` is prepared. Writing the two missing run sheets
+(`e2-3.md`, `e2-5.md`), modeled on `e2-2.md` and `soldier-look.md`, is real unblocked work an agent can do
 — it does not require a human, only requires not inventing a verdict inside
 it. Past that, **E-2.7** (combat audio, PLAN.md §7 epic table) needs breaking
 out into leaf tasks and is blocked on an assets sourcing decision (R1, §9
@@ -182,7 +182,7 @@ tree runtime), all with no dependencies.
 Still an epic (PLAN.md §7 epic table). Blocked on an art/audio sourcing
 decision (R1, §9 Q2) before it can be split into leaf tasks.
 
-### E-2.8 — Prone stance & voluntary crawl (§7.8) — awaiting T-2.43 (run sheet first)
+### E-2.8 — Prone stance & voluntary crawl (§7.8) — awaiting T-2.43 (run sheet ready)
 
 Reopens ADR-002's prone exclusion; see `docs/adr/016-prone-stance.md`. Not
 the downed crawl B-05 removed (that stays removed) — a voluntary stance for
@@ -194,7 +194,7 @@ a standing, alive soldier, built on the crouch (T-2.20) and crawl-gait
 | T-2.40 | DONE | T-2.20, T-2.13 |
 | T-2.41 | DONE | T-2.40, T-2.06 |
 | T-2.42 | DONE | T-2.40, T-2.41 |
-| 🧍 T-2.43 | OPEN — run sheet `e2-8.md` missing, write it first | T-2.40..T-2.42 |
+| 🧍 T-2.43 | OPEN — run sheet `e2-8.md` prepared, not run | T-2.40..T-2.42 |
 
 ---
 
