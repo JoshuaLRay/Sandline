@@ -151,6 +151,13 @@ export interface Slot {
    */
   pouch: number[];
   nextThrowAt: number;
+  /**
+   * The pouch item in hand, as a PROJECTILE_IDS index, or -1 while a gun is.
+   * Presentation only: it is replicated so the rest of the squad sees a
+   * grenade or a launcher in hand, and it gates nothing — the pouch and the
+   * cooldown above decide every Throw, whichever way it was asked for.
+   */
+  heldProjectile: number;
   health: HealthState;
   /** T-2.15: authoritative revive ownership/progress for this downed soldier. */
   reviveBySlot: number;
@@ -297,6 +304,7 @@ export class Session {
         pitch: 0,
         pouch: fullPouch(),
         nextThrowAt: 0,
+        heldProjectile: -1,
         health: createHealth(),
         reviveBySlot: -1,
         reviveProgressSeconds: 0,
@@ -376,6 +384,7 @@ export class Session {
       // forever. Fire resolves against the session's current time.
       onFire: (c, msg) => this.applyFire(c, msg),
       onThrow: (c, msg) => this.applyThrow(c, msg),
+      onEquip: (c, msg) => this.applyEquip(c, msg),
       onClosed: (c) => this.releaseSlot(c),
     });
     if (conn.state === 'closed') return false;
@@ -445,6 +454,8 @@ export class Session {
     slot.connection = null;
     slot.input = idleInput(slot.yaw);
     slot.interactHeld = false;
+    // A bot has a gun in hand, not whatever the departed player was holding.
+    slot.heldProjectile = -1;
     // Anything still queued belongs to someone who has left. A bot that walked
     // out the departed player's last few inputs would look briefly possessed.
     slot.queue.length = 0;
@@ -545,6 +556,8 @@ export class Session {
       slot.weapon = getWeapon(id);
       slot.weaponState = createWeaponState(slot.weapon);
     }
+    // A shot is a gun in hand, whatever the last Equip said.
+    slot.heldProjectile = -1;
 
     const nowSeconds = this.nowMs / 1000;
     finishReload(slot.weapon, slot.weaponState, nowSeconds);
@@ -730,6 +743,29 @@ export class Session {
       ownerNetId: slot.netId,
       state: createProjectileState(origin, launchVelocity(def, yaw, pitch)),
     });
+  }
+
+  /**
+   * A switch of what is in the hands: the loadout index, guns first and the
+   * pouch after them. Out-of-range is dropped like every other index. A gun
+   * switch is the same one a Fire with a new weapon index makes, so the
+   * body shows the new gun before its first shot.
+   */
+  private applyEquip(conn: ServerConnection, msg: Extract<Message, { kind: 'Equip' }>): void {
+    const slot = this.slots.find((s) => s.connection === conn);
+    if (!slot) return;
+    const gun = WEAPON_IDS[msg.item];
+    if (gun !== undefined) {
+      if (gun !== slot.weapon.id) {
+        slot.weapon = getWeapon(gun);
+        slot.weaponState = createWeaponState(slot.weapon);
+      }
+      slot.heldProjectile = -1;
+      return;
+    }
+    const pouchIndex = msg.item - WEAPON_IDS.length;
+    if (projectileByIndex(pouchIndex) === null) return;
+    slot.heldProjectile = pouchIndex;
   }
 
   /** The boxes and the floor a projectile collides with: the shared world. */
@@ -1152,6 +1188,7 @@ export class Session {
           [COMPONENT_IDS.Weapon]: [
             Math.max(0, (WEAPON_IDS as readonly string[]).indexOf(s.weapon.id)),
             Math.min(100, Math.round(reloadProgress(s.weapon, s.weaponState, this.nowMs / 1000) * 100)),
+            s.heldProjectile + 1,
           ],
         },
       }));

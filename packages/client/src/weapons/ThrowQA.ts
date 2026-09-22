@@ -248,7 +248,8 @@ export class ThrowQA {
       return `${mark}${i + 5} ${getProjectile(id).name} x${this.count(i)}`;
     }).join('   ');
     const cooldown = this.cooldownLeft(now);
-    const state = cooldown > 0 ? `ready in ${cooldown.toFixed(1)}s` : this.count() > 0 ? 'hold G to aim, release to throw' : 'empty';
+    const use = def.kind === 'rocket' ? 'click to fire, RMB aims' : 'hold LMB to aim, release to throw';
+    const state = cooldown > 0 ? `ready in ${cooldown.toFixed(1)}s` : this.count() > 0 ? `${use} (G quick-throws)` : 'empty';
     return `${pouch}\n${def.name}  ${state}  ${this.live.length} in flight (predicted)`;
   }
 }

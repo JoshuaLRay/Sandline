@@ -107,8 +107,10 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     name: 'Weapon',
     // T-2.26. The weapon in hand (an index into WEAPON_IDS) and the reload in
     // progress as a percentage, so a remote soldier's body can show a reload
-    // as a curve of the server's clock, the way the vault is.
-    fields: [uint('index', 2), uint('reloadProgress', 7)],
+    // as a curve of the server's clock, the way the vault is. `pouch` is 0
+    // while a gun is in hand and 1 + a PROJECTILE_IDS index while a grenade
+    // or a rocket is (an Equip), so the body can hold the right thing.
+    fields: [uint('index', 2), uint('reloadProgress', 7), uint('pouch', 2)],
   },
   {
     id: COMPONENT_IDS.Projectile,

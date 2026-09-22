@@ -251,6 +251,9 @@ function createGreyBoxRig(root: THREE.Mesh): HumanoidRig {
        */
       return false;
     },
+    // A diagnostic fixture: it always holds its one box rifle.
+    setHeld() {},
+    held: 'carbine',
   };
 }
 

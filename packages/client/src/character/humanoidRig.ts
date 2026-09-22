@@ -148,6 +148,15 @@ export interface HumanoidRig {
    */
   hold(state: WeaponHold): void;
   /**
+   * What is in the hands, by loadout id (a weapons.json or projectiles.json
+   * id). Swaps the model on the aim attachment and moves the grips the next
+   * `hold` solves the hands onto. The carbine is the rig's own rifle; a rig
+   * with nothing to swap (the grey box) ignores it.
+   */
+  setHeld(id: string): void;
+  /** The loadout id `setHeld` last took; the carbine until then. */
+  readonly held: string;
+  /**
    * Show a hit (T-2.27). A LAYER, on the same three rules as `hold`: applied
    * after the pose driver, never accumulating, and restoring the driver's own
    * bits exactly when it ends. `react(null)` ends it — and with nothing live

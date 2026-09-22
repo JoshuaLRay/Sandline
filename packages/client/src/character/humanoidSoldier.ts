@@ -14,6 +14,7 @@ import { plateau } from './locomotionPose.ts';
 import { solveTwoBone } from './twoBoneIk.ts';
 import { DOWNED_BODY_LIFT_M, HUMANOID_HIT_HALF_HEIGHT, HUMANOID_HIT_RADIUS, HUMANOID_ROOT_LIFT_M, PRONE_BODY_LIFT_M } from './humanoidPlaceholder.ts';
 import { type CellName, type PaletteName, remapGeometryUv, soldierAtlas } from './soldierTexture.ts';
+import { type WeaponModel, createWeaponModel, hasWeaponModel } from '../weapons/weaponModels.ts';
 
 /**
  * The M2 soldier: a skinned humanoid built in code (T-2.22).
@@ -103,6 +104,8 @@ export const AIM_IN_CHEST: [number, number, number] = [-0.3, 0.15, 0.05];
 /** Where the hands go, in aim space: the grip behind, the foregrip ahead. */
 const GRIP_RIGHT: [number, number, number] = [0, -0.08, 0.17];
 const GRIP_LEFT: [number, number, number] = [0.02, -0.02, 0.36];
+/** The loadout id the rig's own textured rifle stands for. */
+const DEFAULT_HELD = 'carbine';
 /** Elbow hints in chest space: out to the side and down. */
 const ELBOW_HINT_RIGHT: [number, number, number] = [-0.25, -0.6, -0.1];
 const ELBOW_HINT_LEFT: [number, number, number] = [0.45, -0.25, 0.1];
@@ -446,6 +449,10 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
   const chestOrigin = new THREE.Vector3().fromArray(JOINTS.chest);
   const inChest = (model: [number, number, number]): THREE.Vector3 => new THREE.Vector3().fromArray(model).sub(chestOrigin);
   const toWell = new THREE.Vector3().fromArray(MAG_WELL).sub(new THREE.Vector3().fromArray(GRIP_LEFT));
+  // The grips move with what is held (`setHeld`); the carbine's until then,
+  // which is what every build-time pose is solved on.
+  let gripRight = GRIP_RIGHT;
+  let gripLeft = GRIP_LEFT;
   const holdRifle = (
     side: 'left' | 'right',
     aimTurn: THREE.Quaternion,
@@ -453,7 +460,7 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     aimRest: AimRest,
     reach = 0,
   ): { upper: THREE.Quaternion; lower: THREE.Quaternion } => {
-    const grip = new THREE.Vector3().fromArray(side === 'left' ? GRIP_LEFT : GRIP_RIGHT);
+    const grip = new THREE.Vector3().fromArray(side === 'left' ? gripLeft : gripRight);
     // The left hand on its way to the magazine well, in the rifle's frame.
     // Branching rather than scaling by zero keeps a reach of 0 bit-exact.
     if (side === 'left' && reach > 0) grip.addScaledVector(toWell, reach);
@@ -625,6 +632,31 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     return true;
   };
 
+  // -- What is in the hands. Other models are built the first time they are
+  // held, so a soldier who only ever carries the carbine costs its one draw.
+  let held = DEFAULT_HELD;
+  const models = new Map<string, WeaponModel>();
+  const setHeld = (id: string): void => {
+    const key = id === DEFAULT_HELD || !hasWeaponModel(id) ? DEFAULT_HELD : id;
+    if (key === held) return;
+    held = key;
+    rifle.visible = key === DEFAULT_HELD;
+    for (const [modelId, model] of models) model.object.visible = modelId === key;
+    if (key === DEFAULT_HELD) {
+      gripRight = GRIP_RIGHT;
+      gripLeft = GRIP_LEFT;
+      return;
+    }
+    let model = models.get(key);
+    if (!model) {
+      model = createWeaponModel(key);
+      models.set(key, model);
+      aim.add(model.object);
+    }
+    gripRight = model.spec.gripRight;
+    gripLeft = model.spec.gripLeft;
+  };
+
   const rig: HumanoidRig = {
     kind: 'skinned',
     root,
@@ -646,6 +678,10 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     aimAt: (pitchRadians, weight) => hold({ pitch: pitchRadians, weight }),
     hold,
     react,
+    setHeld,
+    get held() {
+      return held;
+    },
   };
   registerRig(rig);
   return root;
