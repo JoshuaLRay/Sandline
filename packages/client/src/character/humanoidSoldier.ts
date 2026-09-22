@@ -313,24 +313,42 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
   /** Box faces in Three's build order: +X, -X, +Y, -Y, +Z (front), -Z (back). */
   const shirt: CellName[] = ['uniformPlain', 'uniformPlain', 'uniformPlain', 'uniformPlain', 'torsoFront', 'torsoBack'];
   const carrier: CellName[] = ['vest', 'vest', 'gearPlain', 'gearPlain', 'vest', 'pack'];
-  add('hips', 'belt', placed(new THREE.BoxGeometry(0.36, 0.2, 0.26), 0, 0.92, 0));
-  add('spine', shirt, placed(new THREE.BoxGeometry(0.32, 0.18, 0.24), 0, 1.09, 0));
-  add('chest', shirt, placed(new THREE.BoxGeometry(0.4, 0.38, 0.26), 0, 1.31, 0));
-  add('chest', carrier, placed(new THREE.BoxGeometry(0.44, 0.26, 0.32), 0, 1.3, 0));
-  add('chest', 'pack', placed(new THREE.BoxGeometry(0.34, 0.4, 0.16), 0, 1.24, -0.22));
+  add('hips', 'belt', placed(new THREE.BoxGeometry(0.38, 0.22, 0.28), 0, 0.92, 0));
+  add('spine', shirt, placed(new THREE.BoxGeometry(0.34, 0.18, 0.26), 0, 1.09, 0));
+  add('chest', shirt, placed(new THREE.BoxGeometry(0.42, 0.38, 0.28), 0, 1.31, 0));
+  add('chest', carrier, placed(new THREE.BoxGeometry(0.45, 0.3, 0.34), 0, 1.3, 0));
+  // The pack is the deepest thing on the body and so the one most able to
+  // poke out of the capsule the server resolves hits against. Kept inside it.
+  add('chest', 'pack', placed(new THREE.BoxGeometry(0.34, 0.4, 0.15), 0, 1.24, -0.215));
+  // The collar, and the pouches the texture alone can only imply. Gear that
+  // breaks the outline is most of what tells a 2002 soldier from a mannequin.
+  add('chest', 'uniformPlain', placed(new THREE.BoxGeometry(0.22, 0.08, 0.22), 0, 1.5, 0));
+  for (const x of [-0.13, 0, 0.13]) {
+    add('chest', 'pouch', placed(new THREE.BoxGeometry(0.1, 0.12, 0.07), x, 1.26, 0.19));
+  }
   for (const side of ['left', 'right'] as const) {
     const s = side === 'left' ? 1 : -1;
-    add('chest', 'sleeve', placed(new THREE.SphereGeometry(0.09, 8, 6), s * 0.2, 1.44, 0));
-    add(`upper-arm-${side}`, 'sleeve', placed(new THREE.CapsuleGeometry(0.055, UPPER_ARM_M, 3, 8), s * 0.2, 1.44 - UPPER_ARM_M / 2, 0));
-    add(`lower-arm-${side}`, 'sleeve', placed(new THREE.CapsuleGeometry(0.05, LOWER_ARM_M, 3, 8), s * 0.2, 1.14 - LOWER_ARM_M / 2, 0));
-    add(`hand-${side}`, 'glove', placed(new THREE.BoxGeometry(0.07, 0.11, 0.06), s * 0.2, 0.81, 0));
-    add(`upper-leg-${side}`, 'trouser', placed(new THREE.CapsuleGeometry(0.075, 0.42, 3, 8), s * 0.11, 0.69, 0));
-    add(`lower-leg-${side}`, 'trouser', placed(new THREE.CapsuleGeometry(0.06, 0.42, 3, 8), s * 0.11, 0.27, 0));
-    add(`foot-${side}`, 'boot', placed(new THREE.BoxGeometry(0.13, 0.1, 0.28), s * 0.11, 0.05, 0.05));
+    add('hips', 'pouch', placed(new THREE.BoxGeometry(0.1, 0.13, 0.08), s * 0.15, 0.93, 0.12));
+    // A shoulder slab, not a ball: the era built a shoulder out of flats.
+    add('chest', 'sleeve', placed(new THREE.BoxGeometry(0.13, 0.15, 0.25), s * 0.2, 1.43, 0));
+    add(`upper-arm-${side}`, 'sleeve', placed(new THREE.CapsuleGeometry(0.068, UPPER_ARM_M, 2, 6), s * 0.2, 1.44 - UPPER_ARM_M / 2, 0));
+    add(`lower-arm-${side}`, 'sleeve', placed(new THREE.CapsuleGeometry(0.06, LOWER_ARM_M, 2, 6), s * 0.2, 1.14 - LOWER_ARM_M / 2, 0));
+    add(`hand-${side}`, 'glove', placed(new THREE.BoxGeometry(0.095, 0.13, 0.095), s * 0.2, 0.81, 0));
+    add(`upper-leg-${side}`, 'trouser', placed(new THREE.CapsuleGeometry(0.092, 0.42, 2, 6), s * 0.11, 0.69, 0));
+    add(`lower-leg-${side}`, 'trouser', placed(new THREE.CapsuleGeometry(0.075, 0.42, 2, 6), s * 0.11, 0.27, 0));
+    // The boot's upper, on the shin that wears it, so the trouser does not
+    // stop in mid-air above a block: the ankle is where a chunky boot most
+    // obviously fails to be attached to anything.
+    add(`lower-leg-${side}`, 'boot', placed(new THREE.BoxGeometry(0.15, 0.14, 0.17), s * 0.11, 0.15, 0.01));
+    // Oversized boots, read at distance on a CRT and kept ever since.
+    add(`foot-${side}`, 'boot', placed(new THREE.BoxGeometry(0.17, 0.14, 0.34), s * 0.11, 0.07, 0.06));
   }
-  add('neck', 'neck', placed(new THREE.CylinderGeometry(0.055, 0.06, 0.12, 8), 0, 1.53, 0));
-  add('head', 'face', placed(new THREE.SphereGeometry(0.12, 10, 8), 0, 1.7, 0));
-  add('head', 'helmet', placed(new THREE.SphereGeometry(0.145, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), 0, 1.72, 0));
+  add('neck', 'neck', placed(new THREE.CylinderGeometry(0.058, 0.065, 0.12, 6), 0, 1.53, 0));
+  add('head', 'face', placed(new THREE.SphereGeometry(0.125, 8, 6), 0, 1.7, 0));
+  add('head', 'helmet', placed(new THREE.SphereGeometry(0.152, 8, 4, 0, Math.PI * 2, 0, Math.PI * 0.55), 0, 1.72, 0));
+  // The brim. One disc at the dome's rim, and the single strongest era cue
+  // the whole model has: a helmet without one reads as a swimming cap.
+  add('head', 'helmet', placed(new THREE.CylinderGeometry(0.172, 0.162, 0.03, 8), 0, 1.695, 0));
 
   const mesh = new THREE.SkinnedMesh(
     weld(segments),

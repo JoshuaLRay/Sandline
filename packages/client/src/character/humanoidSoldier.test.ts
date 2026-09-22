@@ -4,7 +4,7 @@ import { DEFAULT_HITBOX } from '@sandline/server';
 import { DEFAULT_MUZZLE_RIG } from '@sandline/shared';
 import { HUMANOID_BONES, type HumanoidBoneName, rigOf, requireRig } from './humanoidRig.ts';
 import { AIM_IN_CHEST, createHumanoidSoldier, soldierSkin } from './humanoidSoldier.ts';
-import { HUMANOID_ROOT_LIFT_M, createHumanoidPlaceholder } from './humanoidPlaceholder.ts';
+import { HUMANOID_HIT_RADIUS, HUMANOID_ROOT_LIFT_M, createHumanoidPlaceholder } from './humanoidPlaceholder.ts';
 import { createLocomotionPoseDriver } from './locomotionPose.ts';
 import { ATLAS_SIZE, CELLS, CELL_SIZE, soldierAtlas } from './soldierTexture.ts';
 import type { LocomotionResult } from './locomotionState.ts';
@@ -148,6 +148,33 @@ describe('skinned soldier (T-2.22)', () => {
     // Same geometry either way: a palette is never a mesh change.
     expect(soldierSkin(a).geometry.getAttribute('uv').array)
       .toEqual(soldierSkin(b).geometry.getAttribute('uv').array);
+  });
+
+  it('keeps the chunky silhouette inside the capsule the server shoots at (T-2.31)', () => {
+    // A stockier soldier is an art change; a soldier whose shoulder, pack or
+    // boot sticks out of DEFAULT_HITBOX is a netcode bug wearing art's
+    // clothes — you would see rounds pass through visible kit. The skin may
+    // be any shape it likes inside the capsule's radius and no shape outside.
+    const soldier = createHumanoidSoldier('local');
+    const skin = soldierSkin(soldier);
+    const position = skin.geometry.getAttribute('position');
+    let worst = 0;
+    for (let i = 0; i < position.count; i += 1) {
+      worst = Math.max(worst, Math.hypot(position.getX(i), position.getZ(i)));
+    }
+    expect(worst).toBeLessThanOrEqual(HUMANOID_HIT_RADIUS);
+    // And it genuinely fills that capsule rather than hiding in the middle of
+    // it: a thin soldier in a fat hitbox is the same fault the other way up.
+    expect(worst).toBeGreaterThan(HUMANOID_HIT_RADIUS * 0.8);
+  });
+
+  it('stays inside the triangle guard after the silhouette pass (T-2.31)', () => {
+    const tris = soldierSkin(createHumanoidSoldier('local')).geometry.index!.count / 3;
+    // Faceting the limbs bought more than the gear slabs cost, so this went
+    // DOWN. Both bounds matter: the ceiling is ADR-013's budget, the floor
+    // catches a "simplification" that quietly deletes the era's gear.
+    expect(tris).toBeLessThan(4000);
+    expect(tris).toBeGreaterThan(600);
   });
 
   it('keeps local and remote soldiers on one skeleton without sharing materials', () => {
