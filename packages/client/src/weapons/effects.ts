@@ -177,6 +177,8 @@ export interface Vec3Like {
   z: number;
 }
 
+const STILL: Vec3Like = { x: 0, y: 0, z: 0 };
+
 /** The throw for a shot: right and back of the muzzle with a seeded variation. */
 export function ejectVelocity(forwardX: number, forwardZ: number, shotIndex: number): Vec3Like {
   const vary = (k: number): number => 1 + SHELL_EJECT_VARIATION * (2 * unitFromSeed(seedFrom(shotIndex, k)) - 1);
@@ -454,16 +456,22 @@ export class WeaponEffects {
    * takes; `floorY` is where the shell will come to rest — the feet, since
    * the character is standing on whatever it lands on.
    */
-  fire(muzzle: THREE.Vector3, forwardX: number, forwardZ: number, floorY: number, shotIndex: number, now: number): void {
+  fire(
+    muzzle: Vec3Like,
+    forwardX: number,
+    forwardZ: number,
+    floorY: number,
+    shotIndex: number,
+    now: number,
+    carrier: Vec3Like = STILL,
+  ): void {
     const flash = this.claim(this.flashes);
     flash.live = true;
     flash.born = now;
     const size = 0.22 + 0.12 * unitFromSeed(seedFrom(shotIndex, 11));
     flash.sprite.scale.set(size, size, 1);
     flash.material.rotation = 2 * Math.PI * unitFromSeed(seedFrom(shotIndex, 12));
-    this.scratch.set(muzzle.x + forwardX * FLASH_FORWARD_M, muzzle.y, muzzle.z + forwardZ * FLASH_FORWARD_M);
-    flash.sprite.position.copy(this.scratch);
-    flash.light.position.copy(this.scratch);
+    this.placeFlash(flash, muzzle, forwardX, forwardZ);
     flash.sprite.visible = true;
     flash.light.visible = true;
     flash.material.opacity = 1;
@@ -472,9 +480,12 @@ export class WeaponEffects {
     const shell = this.claim(this.shells);
     shell.live = true;
     shell.born = now;
-    shell.origin.copy(muzzle);
+    shell.origin.set(muzzle.x, muzzle.y, muzzle.z);
+    // The shell leaves a moving rifle already moving with it (B-02). Without
+    // the carrier's velocity a shooter running backward overtakes their own
+    // brass, and it tumbles back into the middle of a first-person view.
     const v = ejectVelocity(forwardX, forwardZ, shotIndex);
-    shell.velocity.set(v.x, v.y, v.z);
+    shell.velocity.set(v.x + carrier.x, v.y, v.z + carrier.z);
     shell.spinX = 8 + 10 * unitFromSeed(seedFrom(shotIndex, 21));
     shell.spinY = 4 + 8 * unitFromSeed(seedFrom(shotIndex, 22));
     shell.restY = floorY + SHELL_SIZE_M.y / 2;
@@ -482,6 +493,26 @@ export class WeaponEffects {
     shell.material.opacity = 1;
     shell.mesh.visible = true;
     this.placeShell(shell, 0);
+  }
+
+  /**
+   * Once per frame, after the camera: keep every live flash on the muzzle the
+   * frame is drawn from (B-02).
+   *
+   * A flash lives two frames, but the muzzle it belongs to does not stand
+   * still for them — and the shot that lit it was taken on a TICK, from where
+   * the character is at the end of that tick, while the camera renders from a
+   * position interpolated up to a tick behind that. In first person that gap
+   * runs straight down the view axis when moving forward or backward, so a
+   * flash left where the shot put it sat in front of the near plane one frame
+   * and behind it the next: a screen-filling sprite blinking on and off with
+   * every round, which read as the view strobing. Riding the drawn muzzle, it
+   * sits exactly where it does for a shooter standing still, every frame.
+   */
+  followMuzzle(muzzle: Vec3Like, forwardX: number, forwardZ: number): void {
+    for (const flash of this.flashes) {
+      if (flash.live) this.placeFlash(flash, muzzle, forwardX, forwardZ);
+    }
   }
 
   /**
@@ -720,6 +751,12 @@ export class WeaponEffects {
       const back = f < 1 / 3 ? f * 3 : 1 - (f - 1 / 3) * 1.5;
       for (const { part, z } of flinch.bases) part.position.z = z - FLINCH_BACK_M * back;
     }
+  }
+
+  private placeFlash(flash: FlashSlot, muzzle: Vec3Like, forwardX: number, forwardZ: number): void {
+    this.scratch.set(muzzle.x + forwardX * FLASH_FORWARD_M, muzzle.y, muzzle.z + forwardZ * FLASH_FORWARD_M);
+    flash.sprite.position.copy(this.scratch);
+    flash.light.position.copy(this.scratch);
   }
 
   private retireFlash(flash: FlashSlot): void {

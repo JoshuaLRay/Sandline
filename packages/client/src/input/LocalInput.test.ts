@@ -1,7 +1,5 @@
 /**
- * B-02: recoil's view kick must stay out of the yaw the gait classifies
- * movement against. `yaw` (sent to the server, and used for the camera) is
- * allowed to carry the kick; `bodyYaw` must not.
+ * LocalInput's key handling: the stance toggles and what cancels them.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { LocalInput } from './LocalInput.ts';
@@ -24,7 +22,7 @@ function fakeTarget() {
   };
 }
 
-describe('LocalInput yaw vs bodyYaw (B-02)', () => {
+describe('LocalInput', () => {
   let win: ReturnType<typeof fakeTarget>;
   let doc: ReturnType<typeof fakeTarget>;
   let restore: () => void;
@@ -61,20 +59,6 @@ describe('LocalInput yaw vs bodyYaw (B-02)', () => {
   });
 
   afterEach(() => restore());
-
-  it('keeps a recoil kick out of bodyYaw while it still reaches yaw', () => {
-    const canvas = fakeTarget();
-    const input = new LocalInput(canvas as unknown as HTMLElement);
-
-    win.dispatch('mousemove', { movementX: -100, movementY: 0 });
-    const yawBefore = input.yaw;
-    const bodyYawBefore = input.bodyYaw;
-    expect(yawBefore).toBe(bodyYawBefore);
-
-    input.setViewOffset(37, 0);
-    expect(input.yaw).not.toBe(yawBefore);
-    expect(input.bodyYaw).toBe(bodyYawBefore);
-  });
 
   it('B-06: crouch is a toggle on C, not held-Ctrl', () => {
     const canvas = fakeTarget();

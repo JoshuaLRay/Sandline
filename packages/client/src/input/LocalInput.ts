@@ -383,20 +383,6 @@ export class LocalInput {
     return ((Math.round(yaw) % WIRE_ANGLE_UNITS) + WIRE_ANGLE_UNITS) % WIRE_ANGLE_UNITS;
   }
 
-  /**
-   * Facing yaw WITHOUT recoil's view kick (B-02). Recoil's offset is a camera
-   * shake, not a turn of the body, so anything classifying movement direction
-   * against facing — the gait's forward/back lean, twist and knee-bend terms —
-   * must use this instead of `yaw`. Each shot's kick has a randomized sideways
-   * sign (weapons/recoil.ts), so feeding `yaw` into that classification made
-   * its direction angle jitter shot to shot, which read as the run animation
-   * strobing while firing.
-   */
-  get bodyYaw(): number {
-    const yaw = this.yawAccum;
-    return ((Math.round(yaw) % WIRE_ANGLE_UNITS) + WIRE_ANGLE_UNITS) % WIRE_ANGLE_UNITS;
-  }
-
   sample(): MoveInput {
     const on = (...codes: string[]): boolean => codes.some((c) => this.held.has(c));
     // Edge-triggered: true if held now OR tapped since the last sample.
