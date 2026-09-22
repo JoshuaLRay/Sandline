@@ -38,6 +38,12 @@ export const PITCH_LIMIT_UP_DEG = 89;
 export const PITCH_LIMIT_DOWN_DEG = 80;
 export const PITCH_LIMIT_FIRST_PERSON_DEG = 89;
 
+/**
+ * Hold to aim a grenade, release to throw it (T-2.32). G is the muscle memory
+ * a shooter arrives with, which is why the netgraph moved to N for it.
+ */
+export const THROW_KEY = 'KeyG';
+
 /** True while a text field has focus: keys typed there are not game input. */
 export function isTextField(target: EventTarget | null): boolean {
   return (
@@ -75,6 +81,16 @@ export class LocalInput {
    * is a shot that simply never happens, which reads as the gun being broken.
    */
   private triggerEdge = false;
+  /**
+   * The throw key was RELEASED since the last tick, latched (T-2.32).
+   *
+   * A throw is aimed on the hold and committed on the release, so the release
+   * is the edge that matters — and like the trigger's, it can fall entirely
+   * between two 30 Hz samples. A tap that threw nothing would read as the
+   * grenade being swallowed, which is the same complaint the trigger latch
+   * exists to prevent.
+   */
+  private throwReleased = false;
   private yawAccum = 0;
   private pitchAccum = 0;
   /**
@@ -108,11 +124,18 @@ export class LocalInput {
       // Key auto-repeat would flip the shoulder every repeat while V is held.
       if (e.code === 'KeyV' && !e.repeat) pressShoulderKey(this.viewState);
     });
-    addEventListener('keyup', (e) => this.held.delete(e.code));
+    addEventListener('keyup', (e) => {
+      // The latch is set on the release of a key that was actually down, so a
+      // stray keyup (alt-tab, a key released after a blur) throws nothing.
+      if (e.code === THROW_KEY && this.held.has(THROW_KEY)) this.throwReleased = true;
+      this.held.delete(e.code);
+    });
     // Losing focus mid-key leaves a key stuck down forever otherwise.
     addEventListener('blur', () => {
       this.held.clear();
       this.buttons.clear();
+      // A throw interrupted by losing the window is cancelled, not thrown.
+      this.throwReleased = false;
       endAds(this.viewState);
     });
 
@@ -210,6 +233,21 @@ export class LocalInput {
   /** Current crouch intent; the locomotion classifier consumes the rendered result plus this visual state. */
   get crouching(): boolean {
     return this.held.has('ControlLeft') || this.held.has('ControlRight') || this.held.has('KeyC');
+  }
+
+  /** Holding the throw key: the arc is being aimed (T-2.32). */
+  get throwHeld(): boolean {
+    return this.held.has(THROW_KEY);
+  }
+
+  /**
+   * Whether the throw key came up since the last call, and clear the latch.
+   * Call exactly once per tick, like `consumeTriggerEdge`.
+   */
+  consumeThrowRelease(): boolean {
+    const released = this.throwReleased;
+    this.throwReleased = false;
+    return released;
   }
 
   /** Left mouse held: pull the trigger. Cadence is the weapon's, not the mouse's. */

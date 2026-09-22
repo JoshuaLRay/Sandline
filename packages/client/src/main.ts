@@ -43,6 +43,9 @@ import {
   sin,
   DEFAULT_MUZZLE_RIG,
   type MuzzleStance,
+  type ProjectileWorld,
+  dirFromYawPitch,
+  getProjectile,
   eyePosition,
   muzzlePosition,
   toRadians,
@@ -68,6 +71,7 @@ import { DEFAULT_WORLD, type WorldBoxKind, boxCentre, surfaceAt } from '@sandlin
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
+import { PROJECTILE_ORDER, ThrowQA } from './weapons/ThrowQA.ts';
 import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
 import { WeaponEffects } from './weapons/effects.ts';
 import { addShake, applyShake, createShake, decayShake } from './camera/cameraShake.ts';
@@ -296,6 +300,105 @@ function remoteMesh(netId: number): THREE.Mesh {
     shootable.push(mesh);
   }
   return mesh;
+}
+
+/**
+ * Grenades and rockets in the page (T-2.32).
+ *
+ * `throws` is the numbers — the pouch, the cooldown, the arc, the predicted
+ * ghosts — and everything below it here is the picture: one mesh per
+ * projectile, whether it is a ghost of our own or a replicated one somebody
+ * else threw, and one line for the arc the thrower is aiming along.
+ */
+const throws = new ThrowQA();
+
+/** The world a projectile collides with: the shared boxes and the same floor. */
+function projectileWorld(): ProjectileWorld {
+  return { boxes: DEFAULT_WORLD, groundY: config.groundY };
+}
+
+/**
+ * One shape per projectile in the data, built once: a sphere for a grenade and
+ * a stub of a cylinder for a rocket. No art (§7.5 rule 4) — the shapes are the
+ * radius the collision actually uses, so what you see is what bounces.
+ */
+const PROJECTILE_SHAPES = PROJECTILE_ORDER.map((id, index) => {
+  const def = getProjectile(id);
+  return index === 0
+    ? {
+        geometry: new THREE.SphereGeometry(def.radiusM, 10, 8) as THREE.BufferGeometry,
+        material: new THREE.MeshStandardMaterial({ color: 0x3e4b32, roughness: 0.7 }) as THREE.Material,
+      }
+    : {
+        geometry: new THREE.CylinderGeometry(def.radiusM, def.radiusM * 0.6, 0.5, 8) as THREE.BufferGeometry,
+        material: new THREE.MeshStandardMaterial({ color: 0x6a6157, roughness: 0.5, emissive: 0x2a1405 }) as THREE.Material,
+      };
+});
+
+/** Live projectile meshes, keyed "p<netId>" for replicated and "g<id>" for ghosts. */
+const projectileMeshes = new Map<string, THREE.Mesh>();
+
+function projectileMesh(key: string, kind: number): THREE.Mesh {
+  let mesh = projectileMeshes.get(key);
+  if (!mesh) {
+    const shape = PROJECTILE_SHAPES[kind] ?? PROJECTILE_SHAPES[0];
+    mesh = new THREE.Mesh(shape?.geometry, shape?.material);
+    mesh.castShadow = true;
+    mesh.name = `projectile ${key}`;
+    scene.add(mesh);
+    projectileMeshes.set(key, mesh);
+  }
+  return mesh;
+}
+
+function dropProjectileMesh(key: string): void {
+  const mesh = projectileMeshes.get(key);
+  if (!mesh) return;
+  scene.remove(mesh);
+  projectileMeshes.delete(key);
+}
+
+/**
+ * The arc, drawn once and rewritten in place.
+ *
+ * A fixed buffer with a draw range rather than `setFromPoints` every frame:
+ * the preview updates at the display's rate for as long as the key is held,
+ * and reallocating a geometry attribute sixty times a second to draw eighty
+ * points is the one shape of garbage this harness has otherwise avoided
+ * (T-2.10's pools exist for the same reason).
+ */
+const MAX_ARC_POINTS = 128;
+const arcPositions = new Float32Array(MAX_ARC_POINTS * 3);
+const arcGeometry = new THREE.BufferGeometry();
+arcGeometry.setAttribute('position', new THREE.BufferAttribute(arcPositions, 3));
+arcGeometry.setDrawRange(0, 0);
+const arcLine = new THREE.Line(
+  arcGeometry,
+  new THREE.LineBasicMaterial({ color: 0xffd08a, transparent: true, opacity: 0.85 }),
+);
+arcLine.visible = false;
+arcLine.frustumCulled = false;
+scene.add(arcLine);
+
+/** Where the arc says it will go off: a small ring on the ground, or in the air. */
+const arcMarker = new THREE.Mesh(
+  new THREE.RingGeometry(0.22, 0.3, 16),
+  new THREE.MeshBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.8, side: THREE.DoubleSide }),
+);
+arcMarker.visible = false;
+scene.add(arcMarker);
+
+const throwOrigin = new THREE.Vector3();
+const projectileHeading = new THREE.Vector3();
+const UP = new THREE.Vector3(0, 1, 0);
+
+/** Point a projectile along its flight. A sphere does not care; a rocket does. */
+function pointAlong(mesh: THREE.Mesh, vx: number, vy: number, vz: number): void {
+  const speed = Math.hypot(vx, vy, vz);
+  if (speed < 1e-3) return;
+  projectileHeading.set(vx / speed, vy / speed, vz / speed);
+  // The cylinder's own axis is +Y, so that is the vector being turned.
+  mesh.quaternion.setFromUnitVectors(UP, projectileHeading);
 }
 
 const combat = new CombatQA(scene, shootable);
@@ -896,6 +999,25 @@ function frame(): void {
         tickNumber * TICK_SECONDS,
       );
     }
+
+    /**
+     * The throw (T-2.32): aimed while the key is held, committed on the
+     * release, and flown on the tick like everything else. The server decides
+     * whether it happened; this is the picture of it leaving the hand, and the
+     * same two refusals the server applies are applied here so the picture
+     * cannot promise a grenade the server will refuse.
+     */
+    throws.tick(projectileWorld());
+    const canThrow = net.vitality === 'alive' && !net.simulated?.vault;
+    const released = input.consumeThrowRelease();
+    if (released && canThrow && here) {
+      const direction = dirFromYawPitch(aimYaw, aimPitch);
+      const eye = eyePosition(here.x, here.y, here.z);
+      const from = throws.origin(eye, direction, projectileWorld());
+      if (throws.throwFrom(from, aimYaw, aimPitch, tickNumber * TICK_SECONDS) !== null) {
+        net.throwProjectile(tickNumber, aimYaw, aimPitch, throws.kind);
+      }
+    }
   }
 
   server?.pump(now);
@@ -1062,6 +1184,79 @@ function frame(): void {
   );
 
   /**
+   * Projectiles (T-2.32): the replicated ones at the interpolation delay, like
+   * every other thing the server owns, and our own predicted ghosts between
+   * their ticks. A ghost and its twin are never both drawn — `bind` matches
+   * them up, and `isGhosted` is how the twin knows to stay out of the picture
+   * until the ghost is gone.
+   */
+  const seenProjectiles = new Set<string>();
+  const liveProjectiles = net?.projectiles() ?? [];
+  throws.bind(liveProjectiles, net?.slot ?? -1);
+  for (const id of throws.takeRetired()) dropProjectileMesh(`g${id}`);
+  for (const projectile of liveProjectiles) {
+    if (throws.isGhosted(projectile.netId)) continue;
+    const key = `p${projectile.netId}`;
+    seenProjectiles.add(key);
+    const mesh = projectileMesh(key, projectile.kind);
+    mesh.position.set(projectile.x, projectile.y, projectile.z);
+    pointAlong(mesh, projectile.vx, projectile.vy, projectile.vz);
+  }
+  for (const ghost of throws.ghosts) {
+    const key = `g${ghost.id}`;
+    seenProjectiles.add(key);
+    const mesh = projectileMesh(key, ghost.kind);
+    // Between ticks, like the local player: the ghost steps at 30 Hz and the
+    // display does not.
+    const a = clock.alpha;
+    mesh.position.set(
+      ghost.prev.x + (ghost.state.x - ghost.prev.x) * a,
+      ghost.prev.y + (ghost.state.y - ghost.prev.y) * a,
+      ghost.prev.z + (ghost.state.z - ghost.prev.z) * a,
+    );
+    pointAlong(mesh, ghost.state.vx, ghost.state.vy, ghost.state.vz);
+  }
+  for (const key of [...projectileMeshes.keys()]) {
+    if (!seenProjectiles.has(key)) dropProjectileMesh(key);
+  }
+
+  /**
+   * The arc, while the throw key is held: `projectileArc`'s own points, from
+   * the eye along the converged aim, over the world the server will fly the
+   * real one through. It is a promise the server keeps to within half a round
+   * trip of the thrower's movement, and nothing else.
+   */
+  const aiming = input.throwHeld && net?.vitality === 'alive' && !sim?.vault && throws.count() > 0;
+  arcLine.visible = aiming;
+  arcMarker.visible = false;
+  if (aiming) {
+    const world = projectileWorld();
+    const direction = dirFromYawPitch(aimYaw, aimPitch);
+    const eye = eyePosition(rx, ry, rz);
+    const from = throws.origin(eye, direction, world);
+    throwOrigin.set(from.x, from.y, from.z);
+    const arc = throws.arc(from, aimYaw, aimPitch, world);
+    const count = Math.min(arc.points.length, MAX_ARC_POINTS);
+    for (let i = 0; i < count; i += 1) {
+      const point = arc.points[i];
+      if (!point) break;
+      arcPositions[i * 3] = point.x;
+      arcPositions[i * 3 + 1] = point.y;
+      arcPositions[i * 3 + 2] = point.z;
+    }
+    arcGeometry.setDrawRange(0, count);
+    (arcGeometry.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
+    arcGeometry.computeBoundingSphere();
+    const end = arc.detonation ?? arc.impact?.point ?? null;
+    if (end) {
+      arcMarker.visible = true;
+      arcMarker.position.set(end.x, end.y + 0.02, end.z);
+      // Flat on the ground where it lands; a blast in the air gets no ring.
+      arcMarker.rotation.set(-Math.PI / 2, 0, 0);
+    }
+  }
+
+  /**
    * Camera (T-2.01). The pivot, shoulder and arm arithmetic lives in
    * `cameraSolve.ts`, where a test can reach it; what remains here is the
    * Three.js bookkeeping — the Euler, the field-of-view ease, and assignment.
@@ -1224,6 +1419,7 @@ function frame(): void {
         `  hips ${localFeet.drop.toFixed(2)}  step ${localFeet.step.toFixed(3)}\n` +
         `${input.locked ? 'mouse captured - Esc to release' : 'CLICK to capture mouse'}\n` +
         `\n${combat.readout(clock.tick * TICK_SECONDS, input.ads)}\n` +
+        `${throws.readout(clock.tick * TICK_SECONDS)}\n` +
         `${effects.readout()}\n` +
         `\n${netReadout()}`;
     }
@@ -1258,16 +1454,24 @@ addEventListener('keydown', (e) => {
     localFeet.resetPeak();
     combat.reset();
   effects.reset();
+    // The pouch is a range's, not a match's: T gives the grenades back too.
+    for (const id of throws.takeRetired()) dropProjectileMesh(`g${id}`);
+    throws.reset();
+    for (const id of throws.takeRetired()) dropProjectileMesh(`g${id}`);
   }
-  // 1-4 pick a weapon. Switching is instant and reloads: a range, not a match.
+  // 1-4 pick a weapon, 5-6 the pouch. Switching is instant and reloads: a
+  // range, not a match.
   const slot = Number.parseInt(e.code.replace('Digit', ''), 10);
   if (e.code.startsWith('Digit') && slot >= 1 && slot <= WEAPON_ORDER.length) {
     combat.selectWeapon(slot - 1);
   }
+  if (e.code.startsWith('Digit') && slot > WEAPON_ORDER.length && slot <= WEAPON_ORDER.length + PROJECTILE_ORDER.length) {
+    throws.select(slot - WEAPON_ORDER.length - 1);
+  }
   if (e.code === 'KeyH') toggleHud();
-  // G for graph. H already hides the HUD, and the netgraph is the one panel
-  // worth reaching for without taking your hand off the mouse.
-  if (e.code === 'KeyG') netgraph.root.classList.toggle('collapsed');
+  // N for netgraph. It was G until T-2.32 needed G for the grenade, which is
+  // the more valuable piece of muscle memory; H still hides the whole HUD.
+  if (e.code === 'KeyN') netgraph.root.classList.toggle('collapsed');
   // V is owned by LocalInput: in TPS it swaps shoulders; in FPS it exits FPS
   // and restores the stored TPS shoulder. ADS is the automatic FPS entry path.
 

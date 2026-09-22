@@ -45,6 +45,32 @@ const V = COMPONENT_IDS.Velocity;
 const H = COMPONENT_IDS.Health;
 const TICK_MS = TICK_SECONDS * 1000;
 
+/** A projectile as this client currently sees it (T-2.32). */
+export interface SeenProjectile {
+  netId: number;
+  /** Index into PROJECTILE_IDS. */
+  kind: number;
+  /** Squad slot that threw it, which is how a client recognises its own. */
+  ownerSlot: number;
+  x: number;
+  y: number;
+  z: number;
+  /** Replicated velocity, for pointing a rocket along its flight. */
+  vx: number;
+  vy: number;
+  vz: number;
+}
+
+/** A blast, released to the renderer when the render clock reaches its tick. */
+export interface ServerDetonation {
+  netId: number;
+  kind: number;
+  x: number;
+  y: number;
+  z: number;
+  targets: readonly { netId: number; damage: number }[];
+}
+
 export interface ServerShot {
   shooterNetId: number;
   /** 0 when the shot hit nothing. */
@@ -178,6 +204,28 @@ export class NetClient {
   private readonly remoteReviveProgressValues = new Map<number, number>();
   /** Each remote's weapon index and reload progress 0..1, for the body (T-2.26). */
   private readonly remoteWeapons = new Map<number, { index: number; reloadProgress: number }>();
+  /**
+   * Projectiles in flight (T-2.32), kept apart from the soldiers.
+   *
+   * Same interpolation, different list: they are rendered at the same delay as
+   * everything else replicated, but a caller asking for "the other players"
+   * must not be handed a grenade — `remotes()` builds a soldier's mesh, a pose
+   * driver and a foot solver for everything it returns.
+   */
+  private readonly projectileBuffers = new Map<number, InterpolationBuffer>();
+  private readonly projectileInfo = new Map<number, { kind: number; ownerSlot: number; vx: number; vy: number; vz: number }>();
+  /** Server time a projectile was last in a snapshot, for retiring its buffer. */
+  private readonly projectileGoneAt = new Map<number, number>();
+  /**
+   * Blasts that have arrived and are not yet due (T-2.33).
+   *
+   * A Detonation names the tick it happened on, and projectiles are drawn a
+   * hundred milliseconds behind server time like every other replicated thing.
+   * Drawing the blast on arrival would put it a tenth of a second in front of
+   * a grenade the player can still see in the air, so it waits here until the
+   * render clock reaches its tick.
+   */
+  private readonly pendingDetonations: { dueAtMs: number; event: ServerDetonation }[] = [];
   private readonly remoteReviverSlots = new Map<number, number>();
   private readonly remoteSlots = new Map<number, number>();
   /** Local time the newest snapshot landed, for anchoring the server clock. */
@@ -205,6 +253,11 @@ export class NetClient {
 
   /** Authoritative shot outcomes. Set by the renderer to draw tracers. */
   onShot: ((shot: ServerShot) => void) | null = null;
+  /**
+   * A blast, at the moment the render clock reaches the tick it happened on.
+   * Never at the moment it arrives — see `pendingDetonations`.
+   */
+  onDetonation: ((event: ServerDetonation) => void) | null = null;
   /** Seated in a slot. Remote sessions surface this in the HUD (T-1.5.02). */
   onJoined: ((slot: number, room: string) => void) | null = null;
   /** The host said goodbye, and why — typed, so the UI can act on it. */
@@ -381,6 +434,10 @@ export class NetClient {
     this.remoteVitalities.clear();
     this.remoteReviveProgressValues.clear();
     this.remoteWeapons.clear();
+    this.projectileBuffers.clear();
+    this.projectileInfo.clear();
+    this.projectileGoneAt.clear();
+    this.pendingDetonations.length = 0;
     this.remoteReviverSlots.clear();
     this.remoteSlots.clear();
     this.recentInputs.length = 0;
@@ -452,6 +509,45 @@ export class NetClient {
   }
 
   /**
+   * Throw a projectile (T-2.32). Reliable, like Fire, and for the same reason:
+   * a dropped throw is a grenade the player spent and never got.
+   *
+   * No render time. The server does not rewind a projectile's spawn — see the
+   * Throw message's note — so there is nothing to claim about when we were.
+   */
+  throwProjectile(tick: number, yaw: number, pitch: number, projectile: number): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage({ kind: 'Throw', tick, yaw, pitch, projectile }), 'reliable');
+  }
+
+  /** Every projectile in flight, sampled at the interpolation delay. */
+  projectiles(): SeenProjectile[] {
+    const out: SeenProjectile[] = [];
+    const renderAt = this.serverClockMs - INTERPOLATION_DELAY_MS;
+    for (const [netId, buffer] of this.projectileBuffers) {
+      // Gone from the world: keep drawing it only until the render clock has
+      // caught up with the last place the server put it.
+      const goneAt = this.projectileGoneAt.get(netId);
+      if (goneAt !== undefined && renderAt > goneAt) continue;
+      const sample = buffer.sample(renderAt);
+      const info = this.projectileInfo.get(netId);
+      if (!sample || !info) continue;
+      out.push({
+        netId,
+        kind: info.kind,
+        ownerSlot: info.ownerSlot,
+        x: sample.x,
+        y: sample.y,
+        z: sample.z,
+        vx: info.vx,
+        vy: info.vy,
+        vz: info.vz,
+      });
+    }
+    return out;
+  }
+
+  /**
    * Send a heartbeat if one is due. Once a second is plenty for a median over
    * sixteen samples, and it doubles as the keep-alive the server's timeout
    * expects.
@@ -501,6 +597,41 @@ export class NetClient {
       this.serverClockMs = this.newestServerMs + (now - this.lastArrivalAt);
     } else {
       this.serverClockMs += frameMs;
+    }
+
+    this.flushDetonations();
+    this.forgetStaleProjectiles();
+  }
+
+  /** Release every blast the render clock has now reached, oldest first. */
+  private flushDetonations(): void {
+    if (this.pendingDetonations.length === 0) return;
+    const renderAt = this.serverClockMs - INTERPOLATION_DELAY_MS;
+    let i = 0;
+    while (i < this.pendingDetonations.length) {
+      const pending = this.pendingDetonations[i];
+      if (pending === undefined || pending.dueAtMs > renderAt) {
+        i += 1;
+        continue;
+      }
+      this.pendingDetonations.splice(i, 1);
+      this.onDetonation?.(pending.event);
+    }
+  }
+
+  /**
+   * Drop the buffers of projectiles that left the world a while ago. Held past
+   * the render clock rather than deleted on the spot, because the snapshot that
+   * removes one arrives an interpolation delay before it stops being drawn.
+   */
+  private forgetStaleProjectiles(): void {
+    if (this.projectileGoneAt.size === 0) return;
+    const horizon = this.serverClockMs - INTERPOLATION_DELAY_MS * 4;
+    for (const [netId, goneAt] of this.projectileGoneAt) {
+      if (goneAt > horizon) continue;
+      this.projectileGoneAt.delete(netId);
+      this.projectileBuffers.delete(netId);
+      this.projectileInfo.delete(netId);
     }
   }
 
@@ -591,6 +722,22 @@ export class NetClient {
         this.onRoster?.(msg.slots);
         break;
 
+      case 'Detonation':
+        // Queued, not drawn: the tick it names is in the future of what this
+        // client is currently rendering (T-2.33).
+        this.pendingDetonations.push({
+          dueAtMs: msg.tick * TICK_MS,
+          event: {
+            netId: msg.netId,
+            kind: msg.projectile,
+            x: msg.x,
+            y: msg.y,
+            z: msg.z,
+            targets: msg.targets,
+          },
+        });
+        break;
+
       case 'HitEvent':
         this.onShot?.({
           shooterNetId: msg.shooterNetId,
@@ -656,6 +803,7 @@ export class NetClient {
     serverMs: number,
     lastProcessedInputTick: number,
   ): void {
+    const projectilesSeen = new Set<number>();
     for (const entity of entities) {
       const transform = entity.components[T];
       if (!transform) continue;
@@ -663,6 +811,34 @@ export class NetClient {
       const x = dequantize(transform[0] as number, POSITION);
       const y = dequantize(transform[1] as number, POSITION);
       const z = dequantize(transform[2] as number, POSITION);
+
+      /**
+       * A projectile, not a soldier (T-2.32). Branching on the component is
+       * what makes a grenade a grenade here: netIds are opaque, and an entity
+       * that fell into the remote list would be handed a humanoid mesh, a pose
+       * driver and a foot solver by the renderer.
+       */
+      const projectile = entity.components[COMPONENT_IDS.Projectile];
+      if (projectile) {
+        projectilesSeen.add(entity.netId);
+        this.projectileGoneAt.delete(entity.netId);
+        let buffer = this.projectileBuffers.get(entity.netId);
+        if (!buffer) {
+          buffer = new InterpolationBuffer();
+          this.projectileBuffers.set(entity.netId, buffer);
+        }
+        buffer.push({ tick, serverTimeMs: serverMs, x, y, z, yaw: 0, crouched: false });
+        const velocity = entity.components[V];
+        this.projectileInfo.set(entity.netId, {
+          kind: (projectile[0] as number | undefined) ?? 0,
+          ownerSlot: (projectile[1] as number | undefined) ?? 0,
+          vx: velocity ? dequantize(velocity[0] as number, VELOCITY) : 0,
+          vy: velocity ? dequantize(velocity[1] as number, VELOCITY) : 0,
+          vz: velocity ? dequantize(velocity[2] as number, VELOCITY) : 0,
+        });
+        continue;
+      }
+
       const playerSlot = entity.components[COMPONENT_IDS.PlayerSlot];
       const crouch = entity.components[COMPONENT_IDS.Crouch];
       if (playerSlot) this.remoteSlots.set(entity.netId, playerSlot[0] as number);
@@ -732,6 +908,17 @@ export class NetClient {
         const encodedReviverSlot = (health[5] as number | undefined) ?? 0;
         this.remoteReviverSlots.set(entity.netId, encodedReviverSlot === 0 ? -1 : encodedReviverSlot - 1);
       }
+    }
+
+    /**
+     * Anything that was a projectile and is no longer in the world has gone
+     * off. Note WHEN rather than forgetting it: it is still being drawn, a
+     * hundred milliseconds behind, and the blast that replaces it is waiting
+     * on the same clock.
+     */
+    for (const netId of this.projectileBuffers.keys()) {
+      if (projectilesSeen.has(netId) || this.projectileGoneAt.has(netId)) continue;
+      this.projectileGoneAt.set(netId, serverMs);
     }
   }
 
