@@ -134,13 +134,18 @@ const CROUCHED: PoseOffsets = {
   'foot-right': { euler: [-0.1, 0, 0] },
 };
 
-/** On the back, arms out, the rifle hidden. The hips carry the whole turn. */
+/**
+ * On the back, one shoulder rolled clear of the ground, the near arm folded
+ * in to clutch the abdomen and the far arm open on the ground, rifle hidden
+ * (B-05). The hips carry the lying-down turn; the chest carries the roll.
+ */
 const DOWNED: PoseOffsets = {
   hips: { position: [0, DOWNED_BODY_LIFT_M - JOINTS.hips[1], 0], quaternion: DOWNED_TURN },
+  chest: { euler: [0, 0.35, 0] },
   'upper-arm-left': { euler: [0, 0, 0.55] },
   'lower-arm-left': { euler: [-0.35, 0, 0] },
-  'upper-arm-right': { euler: [0, 0, -0.55] },
-  'lower-arm-right': { euler: [-0.35, 0, 0] },
+  'upper-arm-right': { euler: [-0.5, 0, 0.3] },
+  'lower-arm-right': { euler: [-0.6, 0, 0] },
   'upper-leg-left': { euler: [0, 0, 0.08] },
   'upper-leg-right': { euler: [0, 0, -0.08] },
 };
