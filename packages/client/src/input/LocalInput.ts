@@ -89,6 +89,12 @@ export class LocalInput {
    */
   private triggerEdge = false;
   /**
+   * The trigger came up since the last tick, latched. A held grenade is
+   * thrown on the release, so the release is an edge that must not be
+   * dropped between two samples either.
+   */
+  private triggerReleased = false;
+  /**
    * The throw key was RELEASED since the last tick, latched (T-2.32).
    *
    * A throw is aimed on the hold and committed on the release, so the release
@@ -200,6 +206,7 @@ export class LocalInput {
       if (e.button === 2) beginAds(this.viewState);
     });
     addEventListener('mouseup', (e) => {
+      if (e.button === 0 && this.buttons.has(0)) this.triggerReleased = true;
       this.buttons.delete(e.button);
       if (e.button === 2) endAds(this.viewState);
     });
@@ -305,6 +312,16 @@ export class LocalInput {
     const edge = this.triggerEdge;
     this.triggerEdge = false;
     return edge;
+  }
+
+  /**
+   * Whether the trigger came up since the last call, and clear the latch.
+   * Call exactly once per tick, like `consumeTriggerEdge`.
+   */
+  consumeTriggerRelease(): boolean {
+    const released = this.triggerReleased;
+    this.triggerReleased = false;
+    return released;
   }
 
   /** Current crouch intent; the locomotion classifier consumes the rendered result plus this visual state. */

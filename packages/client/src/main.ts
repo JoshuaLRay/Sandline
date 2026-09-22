@@ -72,6 +72,8 @@ import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { PROJECTILE_ORDER, ThrowQA } from './weapons/ThrowQA.ts';
+import { PouchTrigger } from './weapons/pouchTrigger.ts';
+import { ViewModel } from './weapons/viewModel.ts';
 import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
 import { SCORCH_REACH_M, WeaponEffects } from './weapons/effects.ts';
 import { addImpulse, addShake, applyShake, blastShake, createShake, decayShake } from './camera/cameraShake.ts';
@@ -315,6 +317,40 @@ function remoteMesh(netId: number): THREE.Mesh {
  * else threw, and one line for the arc the thrower is aiming along.
  */
 const throws = new ThrowQA();
+
+/**
+ * What is in the hands. The guns are 1-4 and the pouch 5-6, and a grenade or
+ * a rocket is EQUIPPED like a gun and used with the trigger (`PouchTrigger`);
+ * G stays a quick throw of the selected pouch item. The server hears every
+ * switch (`net.equip`) so the rest of the squad sees the right thing held.
+ */
+let holdingPouch = false;
+const pouchTrigger = new PouchTrigger();
+/** The loadout index sent last, and to which client, so a switch is sent once. */
+let equipSent: { net: NetClient; item: number } | null = null;
+function loadoutItem(): number {
+  return holdingPouch ? WEAPON_ORDER.length + throws.kind : combat.weaponIndex;
+}
+/** The loadout id in hand, for the models. */
+function heldId(): string {
+  return holdingPouch ? throws.def.id : combat.weapon.id;
+}
+function equipGun(index: number): void {
+  combat.selectWeapon(index);
+  holdingPouch = false;
+  pouchTrigger.cancel();
+}
+function equipPouch(index: number): void {
+  // Nothing to hold: an empty pouch slot stays on the gun, but is still
+  // selected for G.
+  throws.select(index);
+  if (throws.count(index) <= 0) return;
+  holdingPouch = true;
+  pouchTrigger.cancel();
+}
+
+/** The weapon in hand in first person, drawn over the world. */
+const viewModel = new ViewModel();
 
 /** The world a projectile collides with: the shared boxes and the same floor. */
 function projectileWorld(): ProjectileWorld {
@@ -1048,6 +1084,17 @@ function frame(): void {
       : { x: 0, y: cam.eyeHeight, z: 0 };
     muzzle.set(m.x, m.y, m.z);
 
+    // Tell the server what is in hand: once per switch, and again after a join.
+    const item = loadoutItem();
+    if (!net.joined) {
+      if (equipSent?.net === net) equipSent = null;
+    } else if (equipSent?.net !== net || equipSent.item !== item) {
+      net.equip(item);
+      equipSent = { net, item };
+    }
+
+    const triggerEdge = input.consumeTriggerEdge();
+    const triggerReleased = input.consumeTriggerRelease();
     const shot = combat.tick(tickNumber, tickNumber * TICK_SECONDS, {
       origin: muzzle,
       yaw: aimYaw,
@@ -1055,8 +1102,9 @@ function frame(): void {
       // Downed or dead: no weapon in hand. The server refuses the Fire
       // anyway; refusing here too keeps the predicted tracer honest.
       // Both hands on the wall during a vault (T-2.21); the server refuses too.
-      firing: input.firing && net.vitality === 'alive' && !net.simulated?.vault,
-      triggerEdge: input.consumeTriggerEdge(),
+      // A grenade or a rocket in hand: the trigger is theirs, not the gun's.
+      firing: !holdingPouch && input.firing && net.vitality === 'alive' && !net.simulated?.vault,
+      triggerEdge: !holdingPouch && triggerEdge,
       ads: input.ads,
     });
     // The local machine decides WHEN the trigger pulled; the server decides
@@ -1103,13 +1151,24 @@ function frame(): void {
      */
     throws.tick(projectileWorld());
     const canThrow = net.vitality === 'alive' && !net.simulated?.vault;
-    const released = input.consumeThrowRelease();
-    if (released && canThrow && here) {
+    const pouch = pouchTrigger.update({
+      holding: holdingPouch,
+      kind: throws.def.kind,
+      triggerEdge,
+      triggerHeld: input.firing,
+      triggerReleased,
+      ads: input.ads,
+      throwHeld: input.throwHeld,
+      throwReleased: input.consumeThrowRelease(),
+    });
+    if (pouch.launch && canThrow && here) {
       const direction = dirFromYawPitch(aimYaw, aimPitch);
       const eye = eyePosition(here.x, here.y, here.z);
       const from = throws.origin(eye, direction, projectileWorld());
       if (throws.throwFrom(from, aimYaw, aimPitch, tickNumber * TICK_SECONDS) !== null) {
         net.throwProjectile(tickNumber, aimYaw, aimPitch, throws.kind);
+        // The last one gone: back to the gun, as a shooter does.
+        if (holdingPouch && throws.count() <= 0) equipGun(combat.weaponIndex);
       }
     }
   }
@@ -1191,12 +1250,13 @@ function frame(): void {
     // view points, recoil included, the rifle kicks with each shot, and a
     // reload is a curve of the weapon's own clock; it fades out through a vault.
     kick = decayKick(kick, dt);
+    playerRig.setHeld(heldId());
     playerRig.hold({
       pitch: wireToRadians(input.pitch),
       weight: 1 - localPoseDriver.vaultWeight,
       kickBack: kick.back,
       kickUp: kick.up,
-      reload: combat.reloadProgress((clock.tick + clock.alpha) * TICK_SECONDS),
+      reload: holdingPouch ? 0 : combat.reloadProgress((clock.tick + clock.alpha) * TICK_SECONDS),
     });
   }
 
@@ -1250,6 +1310,10 @@ function frame(): void {
       // server's shot events and their reload from the snapshot (T-2.26).
       const remoteKick = decayKick(remoteKicks.get(netId) ?? createKick(), dt);
       remoteKicks.set(netId, remoteKick);
+      const remoteHeld = net?.remoteWeapon(netId);
+      remoteRig.setHeld(
+        (remoteHeld && remoteHeld.pouch >= 0 ? PROJECTILE_ORDER[remoteHeld.pouch] : WEAPON_IDS[remoteHeld?.index ?? 0]) ?? WEAPON_IDS[0],
+      );
       remoteRig.hold({
         pitch: wireToRadians(sample.pitch > 511 ? sample.pitch - 1024 : sample.pitch),
         weight: 1 - driver.vaultWeight,
@@ -1329,7 +1393,7 @@ function frame(): void {
    * real one through. It is a promise the server keeps to within half a round
    * trip of the thrower's movement, and nothing else.
    */
-  const aiming = input.throwHeld && net?.vitality === 'alive' && !sim?.vault && throws.count() > 0;
+  const aiming = pouchTrigger.aiming && net?.vitality === 'alive' && !sim?.vault && throws.count() > 0;
   arcLine.visible = aiming;
   arcMarker.visible = false;
   if (aiming) {
@@ -1578,6 +1642,24 @@ function frame(): void {
   }
 
   renderer.render(scene, camera);
+  /**
+   * The weapon in hand in first person, over the world. Hidden whenever the
+   * body is shown instead (third person, downed) and through a vault, when
+   * both hands are on the wall.
+   */
+  viewModel.update({
+    visible: input.firstPerson && !downed && !!net && !sim?.vault,
+    held: heldId(),
+    ads: input.ads && !holdingPouch,
+    winding: aiming && holdingPouch && throws.def.kind === 'thrown',
+    kickBack: kick.back,
+    kickUp: kick.up,
+    reload: holdingPouch ? 0 : combat.reloadProgress((clock.tick + clock.alpha) * TICK_SECONDS),
+    speed,
+    dt,
+    aspect: camera.aspect,
+  });
+  viewModel.render(renderer);
   requestAnimationFrame(frame);
 }
 player.visible = false;
@@ -1589,7 +1671,8 @@ addEventListener('keydown', (e) => {
   if (isTextField(e.target)) return;
   // R is reload, not reset: this is a shooter now and R is muscle memory.
   // Reset moved to T.
-  if (e.code === 'KeyR') combat.requestReload(clock.tick * TICK_SECONDS);
+  // Nothing to reload with a grenade or a launcher in hand.
+  if (e.code === 'KeyR' && !holdingPouch) combat.requestReload(clock.tick * TICK_SECONDS);
   // T resets the local readouts only. Position is authoritative now, so
   // teleporting to spawn needs a server-side respawn — that is T-1.19.
   if (e.code === 'KeyT') {
@@ -1604,14 +1687,14 @@ addEventListener('keydown', (e) => {
     for (const id of throws.takeRetired()) dropProjectileMesh(`g${id}`);
     lastBlast = null;
   }
-  // 1-4 pick a weapon, 5-6 the pouch. Switching is instant and reloads: a
-  // range, not a match.
+  // 1-4 pick a weapon, 5-6 the pouch: each one EQUIPS, and the trigger uses
+  // what is in hand. Switching is instant and reloads: a range, not a match.
   const slot = Number.parseInt(e.code.replace('Digit', ''), 10);
   if (e.code.startsWith('Digit') && slot >= 1 && slot <= WEAPON_ORDER.length) {
-    combat.selectWeapon(slot - 1);
+    equipGun(slot - 1);
   }
   if (e.code.startsWith('Digit') && slot > WEAPON_ORDER.length && slot <= WEAPON_ORDER.length + PROJECTILE_ORDER.length) {
-    throws.select(slot - WEAPON_ORDER.length - 1);
+    equipPouch(slot - WEAPON_ORDER.length - 1);
   }
   if (e.code === 'KeyH') toggleHud();
   // N for netgraph. It was G until T-2.32 needed G for the grenade, which is

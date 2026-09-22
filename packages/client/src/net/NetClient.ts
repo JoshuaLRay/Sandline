@@ -62,6 +62,15 @@ export interface SeenProjectile {
 }
 
 /** A blast, released to the renderer when the render clock reaches its tick. */
+/** What a remote soldier has in hand, from their replicated Weapon component. */
+export interface RemoteWeapon {
+  /** Index into WEAPON_IDS: the gun they carry, in hand or not. */
+  index: number;
+  reloadProgress: number;
+  /** Index into PROJECTILE_IDS while a grenade or rocket is in hand; -1 while the gun is. */
+  pouch: number;
+}
+
 export interface ServerDetonation {
   netId: number;
   kind: number;
@@ -208,7 +217,7 @@ export class NetClient {
   private readonly remoteVitalities = new Map<number, Vitality>();
   private readonly remoteReviveProgressValues = new Map<number, number>();
   /** Each remote's weapon index and reload progress 0..1, for the body (T-2.26). */
-  private readonly remoteWeapons = new Map<number, { index: number; reloadProgress: number }>();
+  private readonly remoteWeapons = new Map<number, RemoteWeapon>();
   /**
    * Projectiles in flight (T-2.32), kept apart from the soldiers.
    *
@@ -363,8 +372,8 @@ export class NetClient {
   }
 
   /** The weapon a remote holds and how far through a reload it is (T-2.26). */
-  remoteWeapon(netId: number): { index: number; reloadProgress: number } {
-    return this.remoteWeapons.get(netId) ?? { index: 0, reloadProgress: 0 };
+  remoteWeapon(netId: number): RemoteWeapon {
+    return this.remoteWeapons.get(netId) ?? { index: 0, reloadProgress: 0, pouch: -1 };
   }
 
   /** NetId of the downed teammate this client is currently reviving, or 0. */
@@ -524,6 +533,16 @@ export class NetClient {
   throwProjectile(tick: number, yaw: number, pitch: number, projectile: number): void {
     if (!this.joinedFlag) return;
     this.transport.send(encodeMessage({ kind: 'Throw', tick, yaw, pitch, projectile }), 'reliable');
+  }
+
+  /**
+   * Say what is in the hands: a loadout index, guns first and then the pouch.
+   * Reliable, and once per switch — it is what the rest of the squad sees
+   * held, and a lost one would leave them watching the wrong weapon.
+   */
+  equip(item: number): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage({ kind: 'Equip', item }), 'reliable');
   }
 
   /** Every projectile in flight, sampled at the interpolation delay. */
@@ -910,6 +929,7 @@ export class NetClient {
         this.remoteWeapons.set(entity.netId, {
           index: (weapon[0] as number | undefined) ?? 0,
           reloadProgress: ((weapon[1] as number | undefined) ?? 0) / 100,
+          pouch: ((weapon[2] as number | undefined) ?? 0) - 1,
         });
       }
       const health = entity.components[H];

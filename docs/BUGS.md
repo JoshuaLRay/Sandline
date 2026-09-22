@@ -17,6 +17,8 @@ Status: **OPEN** (not investigated/fixed) · **IN PROGRESS** · **FIXED**
 | B-04 | Weapons | Rocket launcher cannot be equipped or fired. | FIXED | — |
 | B-05 | Downed state | Downed players should lie on their back clutching their abdomen (one shoulder off the ground), be unable to crawl, be forced into TPS view, and have no movement while downed. Currently crawling is possible and this needs to be removed. | FIXED | — |
 | B-06 | Input | Holding Ctrl to crouch, then pressing another key, fires a browser shortcut (find, bookmark, print, etc.) instead of reaching the game — only Space was preventDefault'd. preventDefault now covers every key while the mouse is captured, but Ctrl+W (crouch-walk forward) is one of the browser's *reserved* combos that no amount of preventDefault can stop, so crouch was also moved off Ctrl entirely: it's now a toggle on C. Clicking into the canvas now also requests fullscreen and arms the Keyboard Lock API (Chromium only), which *does* reclaim those reserved combos while fullscreen — the HUD's "mouse captured" line says "shortcuts locked out" when it's engaged. See PLAN.md §8 R13. | FIXED | — |
+| B-07 | Grenades | After B-03's retune grenades are too heavy: a level throw dropped at ~7 m and nothing went past ~10 m. | FIXED | — |
+| B-08 | Weapons | Grenades and rockets should be equipped like the other weapons and used with a click, not thrown from a separate key. | FIXED | — |
 
 ---
 

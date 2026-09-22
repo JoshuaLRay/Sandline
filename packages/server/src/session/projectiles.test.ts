@@ -79,6 +79,10 @@ function connect(session: Session, now = 0) {
     get netId() {
       return netId;
     },
+    send(msg: Message): void {
+      pair.b.send(encodeMessage(msg));
+      pair.settle();
+    },
     throwOne(overrides: Partial<Extract<Message, { kind: 'Throw' }>> = {}): void {
       pair.b.send(
         encodeMessage({ kind: 'Throw', tick: 0, yaw: 0, pitch: 0, projectile: FRAG, ...overrides }),
@@ -324,5 +328,53 @@ describe('the rocket (T-2.31)', () => {
     expect(rocket?.z ?? -6).toBeGreaterThan(-6 + 5);
     // And its sag over that is centimetres, not the grenade's metres.
     expect(rocket?.y ?? 0).toBeGreaterThan(1.3);
+  });
+});
+
+/** The replicated Weapon component of this client's own soldier: [gun, reload %, pouch]. */
+function heldBy(store: SnapshotStore, netId: number): number[] | undefined {
+  const entity = store.current?.entities.find((e) => e.netId === netId);
+  return entity?.components[COMPONENT_IDS.Weapon] as number[] | undefined;
+}
+
+describe('equipping (grenade and rocket in hand)', () => {
+  it('replicates a pouch item in hand, and a gun again after a gun equip', () => {
+    const session = new Session();
+    const client = connect(session);
+    client.run(2);
+    expect(heldBy(client.store, client.netId)?.[2]).toBe(0);
+
+    // Loadout index: four guns first, then the pouch — 5 is the rocket.
+    client.send({ kind: 'Equip', item: 4 + ROCKET });
+    client.run(2);
+    expect(session.slots[0]?.heldProjectile).toBe(ROCKET);
+    expect(heldBy(client.store, client.netId)?.[2]).toBe(1 + ROCKET);
+
+    // A gun equip swaps the weapon itself, before any shot is fired.
+    client.send({ kind: 'Equip', item: 2 });
+    client.run(2);
+    expect(session.slots[0]?.heldProjectile).toBe(-1);
+    expect(session.slots[0]?.weapon.id).toBe('breacher');
+    expect(heldBy(client.store, client.netId)?.slice(0, 3)).toEqual([2, 0, 0]);
+  });
+
+  it('drops an out-of-range item without changing what is held', () => {
+    const session = new Session();
+    const client = connect(session);
+    client.send({ kind: 'Equip', item: 4 + FRAG });
+    client.send({ kind: 'Equip', item: 7 });
+    client.run(1);
+    expect(session.slots[0]?.heldProjectile).toBe(FRAG);
+  });
+
+  it('throws from the pouch whatever is in hand, and a Fire puts a gun back', () => {
+    const session = new Session();
+    const client = connect(session);
+    client.send({ kind: 'Equip', item: 4 + FRAG });
+    client.throwOne({ pitch: 0, yaw: 0 });
+    client.run(1);
+    expect(session.slots[0]?.pouch[FRAG]).toBe(getProjectile('frag').carried - 1);
+    client.send({ kind: 'Fire', tick: 0, yaw: 0, pitch: 0, renderTimeMs: 0, weapon: 0, ads: false });
+    expect(session.slots[0]?.heldProjectile).toBe(-1);
   });
 });

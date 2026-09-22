@@ -12,7 +12,7 @@ import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isRoomCode } from './roomCode.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 14;
+export const PROTOCOL_VERSION = 15;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -79,6 +79,7 @@ export const MessageType = {
   Roster: 11,
   Throw: 12,
   Detonation: 13,
+  Equip: 14,
 } as const;
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
 
@@ -225,6 +226,14 @@ export type Message =
    */
   | { kind: 'Throw'; tick: number; yaw: number; pitch: number; projectile: number }
   /**
+   * What is in the hands: an index into the loadout, the guns (WEAPON_IDS)
+   * first and the pouch (PROJECTILE_IDS) after them. A grenade or a rocket is
+   * held like a gun and used with the trigger, so the rest of the squad needs
+   * to see it in hand before it is thrown, not only after. Sent once per
+   * switch, reliably; bounds-checked by the server like every other index.
+   */
+  | { kind: 'Equip'; item: number }
+  /**
    * A projectile going off (T-2.31): where, which kind, the tick it happened
    * on, and what each soldier in reach took.
    *
@@ -343,6 +352,10 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(msg.yaw & 0xfff, 12);
       w.writeBits(msg.pitch & 0xfff, 12);
       w.writeBits(msg.projectile & 0x3, 2);
+      break;
+    case 'Equip':
+      w.writeBits(MessageType.Equip, TYPE_BITS);
+      w.writeBits(msg.item & 0x7, 3);
       break;
     case 'Detonation': {
       w.writeBits(MessageType.Detonation, TYPE_BITS);
@@ -513,6 +526,8 @@ export function decodeMessage(bytes: Uint8Array): Message {
           pitch: r.readBits(12),
           projectile: r.readBits(2),
         };
+      case MessageType.Equip:
+        return { kind: 'Equip', item: r.readBits(3) };
       case MessageType.Detonation: {
         const netId = r.readVarUint();
         const projectile = r.readBits(2);
