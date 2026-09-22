@@ -621,6 +621,9 @@ function startSession(choice: LobbyChoice): void {
   const net = new NetClient(server.transport, choice.kind === 'remote' ? choice.name : 'qa', config);
   net.onShot = (shot) => onServerShot(net, shot);
   net.onDetonation = (event) => onServerDetonation(net, event);
+  // A throw key released while there was no session to throw into is not a
+  // throw waiting to happen: drain the latch rather than open with a grenade.
+  input.consumeThrowRelease();
 
   if (remote && choice.kind === 'remote') {
     /**
@@ -1316,7 +1319,10 @@ function frame(): void {
     if (end) {
       arcMarker.visible = true;
       arcMarker.position.set(end.x, end.y + 0.02, end.z);
-      // Flat on the ground where it lands; a blast in the air gets no ring.
+      // Laid flat wherever the arc ends, which for a thrown grenade is the
+      // ground it has rolled to rest on and for a rocket is the wall it stops
+      // against — a ring hanging in the air is the honest picture of an arc
+      // whose fuse runs out mid-flight.
       arcMarker.rotation.set(-Math.PI / 2, 0, 0);
     }
   }

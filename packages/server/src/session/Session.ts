@@ -206,6 +206,18 @@ function fullPouch(): number[] {
  */
 const LAUNCH_AHEAD_M = 0.55;
 
+/**
+ * Projectiles a session will carry at once.
+ *
+ * The pouch and the cooldown already bound this far below the cap — six
+ * players with three grenades each, and none of them free to throw faster
+ * than the data allows — so this is a rail, not a rule: it exists so that a
+ * future load-out with a deeper pouch cannot quietly put a session's snapshot
+ * over the ADR-012 bandwidth budget, at about a hundred bits per projectile
+ * per tick.
+ */
+export const MAX_PROJECTILES = 24;
+
 /** One projectile the session owns. The state is T-2.30's; the rest is identity. */
 interface ActiveProjectile {
   netId: number;
@@ -688,6 +700,8 @@ export class Session {
     if (nowSeconds < slot.nextThrowAt) return;
     const left = slot.pouch[msg.projectile] ?? 0;
     if (left <= 0) return;
+    // Nothing is spent on a throw the session has no room for.
+    if (this.projectiles.length >= MAX_PROJECTILES) return;
     slot.pouch[msg.projectile] = left - 1;
     slot.nextThrowAt = nowSeconds + def.cooldownSeconds;
 

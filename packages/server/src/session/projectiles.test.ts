@@ -34,7 +34,7 @@ import {
   isRangeTarget,
   vitality,
 } from '@sandline/shared';
-import { Session } from './Session.ts';
+import { MAX_PROJECTILES, Session } from './Session.ts';
 
 const TICK_MS = 1000 / 30;
 
@@ -220,6 +220,23 @@ describe('the pouch (T-2.31)', () => {
     client.run(2);
     expect(projectilesIn(client.store)).toHaveLength(1);
     expect(session.slots[0]?.pouch[FRAG]).toBe(getProjectile('frag').carried - 1);
+  });
+
+  it('will not fill the air past the session\'s cap', () => {
+    const session = new Session();
+    const client = connect(session);
+    // Reach in and refill: the pouch and the cooldown hold this far below the
+    // cap by themselves, which is the point of the cap being a rail.
+    const slot = session.slots[0];
+    if (!slot) throw new Error('no slot');
+    for (let i = 0; i < MAX_PROJECTILES + 4; i += 1) {
+      slot.pouch[FRAG] = 9;
+      slot.nextThrowAt = 0;
+      client.throwOne({ pitch: 0 });
+      client.run(1);
+    }
+    expect(session.projectilesInFlight).toBe(MAX_PROJECTILES);
+    expect(projectilesIn(client.store).length).toBe(MAX_PROJECTILES);
   });
 
   it('refuses an index that is not a projectile', () => {
