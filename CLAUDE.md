@@ -37,6 +37,7 @@ ADRs that section names → implement. That's the whole loop. See
 | `pnpm bench:rapier` | deterministic vs default vs SIMD physics cost |
 | `pnpm bench:nav` | Recast init, bake and Detour query cost |
 | `pnpm gen:trig` | regenerate the committed trig table |
+| `pnpm gen:nav` | re-bake every named world's navmesh; required after editing a world, `MoveConfig` or the hitbox (a test fails until you do) |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
 
 ---

@@ -5,6 +5,7 @@ import {
   DEFAULT_WORLD,
   DEFAULT_WORLD_ID,
   WORLD_IDS,
+  FLOOR_MARGIN_M,
   type WorldBox,
   figureBox,
   getWorld,
@@ -234,5 +235,20 @@ describe('named worlds (T-3.02)', () => {
   it('answers an unknown id with undefined, or a throw naming the ids it has', () => {
     expect(getWorld('atlantis')).toBeUndefined();
     expect(() => requireWorld('atlantis')).toThrow(/unknown world 'atlantis'.*range/);
+  });
+});
+
+describe('a world names its floor (T-3.03)', () => {
+  const cover = [{ id: 'c', x: 12, y: 0, z: -3, w: 2, h: 1, d: 2 }];
+  it('takes the file floor when it has one: the range stands on 100 m either way', () => {
+    expect(requireWorld('range').floorHalfExtent).toBe(100);
+    expect(loadWorld({ id: 'f', floor: { halfExtent: 30 }, cover }).floorHalfExtent).toBe(30);
+  });
+  it('otherwise derives it from the outermost box plus the margin', () => {
+    expect(loadWorld({ id: 'f', cover }).floorHalfExtent).toBe(13 + FLOOR_MARGIN_M);
+  });
+  it('refuses a floor that is not a positive size', () => {
+    expect(() => loadWorld({ id: 'f', floor: { halfExtent: 0 }, cover })).toThrow(/floor.halfExtent/);
+    expect(() => loadWorld({ id: 'f', floor: 5, cover })).toThrow(/floor.halfExtent/);
   });
 });

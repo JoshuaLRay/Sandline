@@ -15,6 +15,7 @@
     "sim-run": "tsx packages/tools/src/sim-run.ts",
     "gen:trig": "tsx packages/tools/src/gen-trig-table.ts",
     "gen:nav-spike": "tsx packages/tools/src/gen-nav-spike.ts",
+    "gen:nav": "tsx packages/tools/src/gen-nav.ts",
     "bench:rapier": "tsx packages/tools/src/bench-rapier.ts",
     "bench:nav": "tsx packages/tools/src/bench-nav.ts",
     "test:parity-browsers": "vitest run --config vitest.browser.config.ts",
