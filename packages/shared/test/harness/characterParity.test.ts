@@ -44,7 +44,8 @@ const WORLD: WorldBox[] = [
   boxFrom({ id: 'crate', x: -4, y: 0, z: 8, w: 2, h: 0.8, d: 2 }, 'cover'),
   boxFrom({ id: 'post', x: 3, y: 0, z: 6, w: 0.18, h: 1.4, d: 0.18 }, 'post-minor'),
   // T-2.21: a hurdle on the opening straight, too tall to step and low
-  // enough to vault, so the vault arithmetic runs on every engine too.
+  // enough to vault, so the vault arithmetic runs on every engine too. The
+  // script presses jump at it; walking into it alone does not vault.
   boxFrom({ id: 'hurdle', x: 0, y: 0, z: 6.6, w: 4, h: 0.9, d: 0.5 }, 'cover'),
 ];
 
@@ -60,7 +61,8 @@ function inputAt(tick: number): MoveInput {
     moveX: phase === 6 ? 1 : phase === 8 ? -1 : 0,
     moveY: phase === 4 && tick % 50 < 5 ? 0 : 1,
     yaw,
-    jump: tick % 50 === 5 && (phase === 3 || phase === 7),
+    // Tick 45 is jump pressed at the hurdle: vaulting needs it (T-2.21).
+    jump: (tick % 50 === 5 && (phase === 3 || phase === 7)) || tick === 45,
     sprint: phase === 1 || phase === 5 || phase === 9,
     crouch: phase === 6,
   };

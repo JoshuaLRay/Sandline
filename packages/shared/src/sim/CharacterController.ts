@@ -122,7 +122,7 @@ export interface MoveConfig {
   stepHeight: number;
   /**
    * Vault (T-2.21): an obstacle taller than a step and no taller than this
-   * is vaulted when walked into with forward intent. The traversal covers
+   * is vaulted when jump is pressed against it with forward intent. The traversal covers
    * `vaultDistance` along the facing in `vaultSeconds`, rising to the
    * obstacle's top plus `vaultLip` at the midpoint to clear the edge, and
    * looks `vaultProbe` beyond the footprint's front edge for the obstacle.
@@ -242,13 +242,15 @@ export function stepCharacter(
   const active = state.vault ?? null;
   if (active) return advanceVault(active, dt, config, world);
 
-  // A vault begins here, before ordinary movement: walking into a vaultable
-  // obstacle with forward intent, on the ground, standing, not firing.
+  // A vault begins here, before ordinary movement: jump pressed at a vaultable
+  // obstacle with forward intent, on the ground, standing, not firing. Walking
+  // into one without jump never vaults; jump with nothing vaultable ahead
+  // falls through to an ordinary jump below.
   if (
     state.grounded &&
     !downed &&
     level === 0 &&
-    !input.jump &&
+    input.jump &&
     input.firing !== true &&
     my > 0.5 &&
     Math.abs(mx) <= 0.5
