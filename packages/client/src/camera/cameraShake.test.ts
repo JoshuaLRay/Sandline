@@ -43,6 +43,8 @@ const RIFLE: WeaponDef = {
   recoilMaxDeg: 4,
   recoilRecoveryPerSec: 8,
   recoilAdsScale: 0.5,
+  spreadProneScale: 0.7,
+  recoilProneScale: 0.6,
   shakePosM: 0.02,
   shakeRollDeg: 0.4,
 };

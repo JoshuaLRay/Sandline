@@ -44,6 +44,9 @@ const ROWS: Row[] = [
   { key: 'recoilMaxDeg', label: 'Recoil cap', min: 0, max: 20, step: 0.5 },
   { key: 'recoilRecoveryPerSec', label: 'Recoil recovery', min: 1, max: 30, step: 0.5 },
   { key: 'recoilAdsScale', label: 'Recoil aimed x', min: 0, max: 1, step: 0.05 },
+  // T-2.42. Prone braces both the cone and the kick, same shape as ADS above.
+  { key: 'spreadProneScale', label: 'Cone prone x', min: 0, max: 1, step: 0.05 },
+  { key: 'recoilProneScale', label: 'Recoil prone x', min: 0, max: 1, step: 0.05 },
   // T-2.09. Shake moves the picture, never the aim; the camera panel's
   // "Shake" scales all of these at once for the player who dislikes it.
   { key: 'shakePosM', label: 'Shake (m)', min: 0, max: 0.1, step: 0.002 },
@@ -63,6 +66,7 @@ export const JSON_ORDER: (keyof WeaponDef)[] = [
   'falloffEndM', 'falloffMinFraction', 'maxRangeM', 'magSize', 'reloadSeconds',
   'auto',
   'recoilKickDeg', 'recoilDriftDeg', 'recoilMaxDeg', 'recoilRecoveryPerSec', 'recoilAdsScale',
+  'spreadProneScale', 'recoilProneScale',
   'shakePosM', 'shakeRollDeg',
 ];
 

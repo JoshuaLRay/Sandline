@@ -22,6 +22,8 @@
     "recoilMaxDeg": 6.0,
     "recoilRecoveryPerSec": 9,
     "recoilAdsScale": 0.6,
+    "spreadProneScale": 0.75,
+    "recoilProneScale": 0.8,
     "shakePosM": 0.012,
     "shakeRollDeg": 0.25
   },
@@ -48,6 +50,8 @@
     "recoilMaxDeg": 8.0,
     "recoilRecoveryPerSec": 6,
     "recoilAdsScale": 0.7,
+    "spreadProneScale": 0.65,
+    "recoilProneScale": 0.7,
     "shakePosM": 0.03,
     "shakeRollDeg": 0.6
   },
@@ -74,6 +78,8 @@
     "recoilMaxDeg": 9.0,
     "recoilRecoveryPerSec": 5,
     "recoilAdsScale": 0.8,
+    "spreadProneScale": 0.85,
+    "recoilProneScale": 0.9,
     "shakePosM": 0.04,
     "shakeRollDeg": 0.8
   },
@@ -100,6 +106,8 @@
     "recoilMaxDeg": 6.0,
     "recoilRecoveryPerSec": 10,
     "recoilAdsScale": 0.7,
+    "spreadProneScale": 0.8,
+    "recoilProneScale": 0.85,
     "shakePosM": 0.018,
     "shakeRollDeg": 0.35
   }

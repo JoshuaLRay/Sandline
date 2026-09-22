@@ -538,6 +538,9 @@ export class Session {
     // Mid-vault both hands are on the wall (T-2.21). The client stops pulling
     // the trigger too; refusing here keeps a lying client from firing.
     if (slot.state.vault) return;
+    // Prone (T-2.42) is NOT refused here: unlike downed, it is a voluntary
+    // stance with the weapon still in hand. It only narrows `tryFire`'s cone
+    // below, the same way ADS already does.
 
     const id = WEAPON_IDS[msg.weapon];
     if (id === undefined) return; // Out-of-range index: drop it, do not throw.
@@ -558,7 +561,7 @@ export class Session {
      * client generating them faster than the weapon allows is the cadence in
      * `tryFire` below, which is the server's own and is the real protection.
      */
-    const shot = tryFire(slot.weapon, slot.weaponState, nowSeconds, msg.ads);
+    const shot = tryFire(slot.weapon, slot.weaponState, nowSeconds, msg.ads, slot.state.prone);
     if (shot === null) {
       // Cadence, reload or an empty magazine. Auto-reload so a player who
       // empties a magazine is not stuck until they think to press a key.

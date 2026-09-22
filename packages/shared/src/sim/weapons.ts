@@ -77,6 +77,17 @@ export interface WeaponDef {
   recoilRecoveryPerSec: number;
   recoilAdsScale: number;
   /**
+   * Prone (T-2.42): braced against the ground, so both spread and recoil
+   * scale down the same way `recoilAdsScale` scales down while aiming — a
+   * per-weapon data multiplier, not a hardcoded branch. `spreadProneScale`
+   * tightens the base cone (`currentConeUnits`); `recoilProneScale` tightens
+   * the view kick (`recoil.ts`, client-only — the ray itself never moves for
+   * recoil). Composes with ADS rather than replacing it: prone-and-aiming
+   * multiplies both scales.
+   */
+  spreadProneScale: number;
+  recoilProneScale: number;
+  /**
    * Camera shake (T-2.09): the jolt one shot gives the PICTURE, as a
    * positional amplitude in metres and a roll in degrees. Distinct from
    * recoil, which moves the aim; shake never does. Scaled by
@@ -182,6 +193,8 @@ function parseWeaponDef(key: string, raw: unknown): WeaponDef {
     recoilMaxDeg: num(row, 'recoilMaxDeg', key, 0, 60),
     recoilRecoveryPerSec: num(row, 'recoilRecoveryPerSec', key, 0.1, 100),
     recoilAdsScale: num(row, 'recoilAdsScale', key, 0, 1),
+    spreadProneScale: num(row, 'spreadProneScale', key, 0, 1),
+    recoilProneScale: num(row, 'recoilProneScale', key, 0, 1),
     shakePosM: num(row, 'shakePosM', key, 0, 0.5),
     shakeRollDeg: num(row, 'shakeRollDeg', key, 0, 10),
   };
@@ -325,9 +338,17 @@ export function isReloading(state: WeaponState, now: number): boolean {
   return state.reloadEndsAt > now;
 }
 
-/** Current cone half-angle in binary angle units, base plus accumulated bloom. */
-export function currentConeUnits(def: WeaponDef, state: WeaponState, ads: boolean): number {
-  const base = degToAngle(ads ? def.adsSpreadDeg : def.hipSpreadDeg);
+/**
+ * Current cone half-angle in binary angle units, base plus accumulated bloom.
+ *
+ * Prone (T-2.42) scales the BASE cone by `spreadProneScale`, same as aiming
+ * already picks `adsSpreadDeg` over `hipSpreadDeg` — a braced stance is
+ * tighter, not a different mechanism. Bloom (the heat of sustained fire) is
+ * unaffected by stance; only the composed and capped total is.
+ */
+export function currentConeUnits(def: WeaponDef, state: WeaponState, ads: boolean, prone = false): number {
+  const baseDeg = (ads ? def.adsSpreadDeg : def.hipSpreadDeg) * (prone ? def.spreadProneScale : 1);
+  const base = degToAngle(baseDeg);
   const max = degToAngle(def.maxSpreadDeg);
   const cone = base + state.bloomUnits;
   return cone > max ? max : cone;
@@ -384,13 +405,14 @@ export function tryFire(
   state: WeaponState,
   now: number,
   ads: boolean,
+  prone = false,
 ): Shot | null {
   finishReload(def, state, now);
   if (isReloading(state, now)) return null;
   if (now < state.nextShotAt) return null;
   if (state.ammo <= 0) return null;
 
-  const coneUnits = currentConeUnits(def, state, ads);
+  const coneUnits = currentConeUnits(def, state, ads, prone);
   const shotIndex = state.shotIndex;
   state.ammo -= 1;
   state.shotIndex += 1;

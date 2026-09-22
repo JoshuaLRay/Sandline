@@ -19,6 +19,7 @@ function ctx(overrides: { firing?: boolean; triggerEdge?: boolean } = {}) {
     firing: overrides.firing ?? false,
     triggerEdge: overrides.triggerEdge ?? false,
     ads: false,
+    prone: false,
   };
 }
 

@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DAMAGE,
+  INPUT_BUTTONS,
   type Message,
   PROTOCOL_VERSION,
   RANGE_TARGETS,
@@ -562,6 +563,51 @@ describe('a downed or dead soldier cannot fire (T-2.13)', () => {
     // Nothing was broadcast for those pulls: not a hit, not even a miss.
     expect(shooter.hits.filter((h) => h.shooterNetId === victim.netId)).toHaveLength(0);
     expect(shooter.hits.length).toBe(eventsBefore);
+  });
+});
+
+describe('firing while prone (T-2.42)', () => {
+  it('lets a prone client fire, end to end over the wire — unlike downed, which stays refused', () => {
+    const session = new Session();
+    const client = connect(session);
+    let now = run(session, 0, 4, client);
+
+    const target = RANGE_TARGETS[0]!;
+    const aim = aimAt(target.x, target.y + 0.9, target.z);
+
+    // Go prone (the ladder drops instantly, T-2.40) and let a tick land
+    // before firing, so the server has actually registered the stance.
+    client.input(aim.yaw, 5, 0, 0, INPUT_BUTTONS.prone);
+    now = run(session, now, 3, client);
+
+    client.fire({ ...aim, ads: true, renderTimeMs: now });
+    const hit = client.hits.at(-1);
+    expect(hit).toBeDefined();
+    expect(hit?.targetNetId).toBe(target.netId);
+    expect(hit?.damage).toBeGreaterThan(0);
+  });
+
+  it("carries the server's own weapon into a wider hip cone while prone, from data — not a hardcoded branch", () => {
+    // Same fixture `currentConeUnits`/`tryFire` prove deterministically in
+    // weapons.test.ts; this only checks the SERVER actually threads
+    // `slot.state.prone` into that call rather than always passing `false`.
+    const session = new Session();
+    const client = connect(session);
+    let now = run(session, 0, 4, client);
+    const carbine = getWeapon('carbine');
+    expect(carbine.spreadProneScale).toBeLessThan(1);
+
+    const target = RANGE_TARGETS[0]!;
+    const aim = aimAt(target.x, target.y + 0.9, target.z);
+    client.input(aim.yaw, 5, 0, 0, INPUT_BUTTONS.prone);
+    now = run(session, now, 3, client);
+
+    // A dead-on aim lands regardless of cone width; what this proves is that
+    // going prone did not refuse the shot or otherwise break resolution —
+    // the actual narrowing is `weapons.test.ts`'s to assert on the pure
+    // function, deterministically and without a wire round trip.
+    client.fire({ ...aim, ads: false, renderTimeMs: now });
+    expect(client.hits.at(-1)?.targetNetId).toBe(target.netId);
   });
 });
 

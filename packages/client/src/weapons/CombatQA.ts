@@ -94,6 +94,8 @@ export interface FireContext {
   /** Trigger went down since the last tick. Semi-automatics need this. */
   triggerEdge: boolean;
   ads: boolean;
+  /** Prone (T-2.42): narrows the cone the same way `ads` does, from data. */
+  prone: boolean;
 }
 
 export class CombatQA {
@@ -206,7 +208,7 @@ export class CombatQA {
 
     let fired: Shot | null = null;
     if (allowsFire(this.def, ctx.firing, ctx.triggerEdge)) {
-      fired = tryFire(this.def, this.state, now, ctx.ads);
+      fired = tryFire(this.def, this.state, now, ctx.ads, ctx.prone);
       if (fired !== null) this.shotsFired += 1;
     }
 
@@ -335,8 +337,8 @@ export class CombatQA {
   }
 
   /** Current cone half-angle in degrees, for the HUD. */
-  coneDegrees(ads: boolean): number {
-    return (currentConeUnits(this.def, this.state, ads) / ANGLE_UNITS) * 360;
+  coneDegrees(ads: boolean, prone = false): number {
+    return (currentConeUnits(this.def, this.state, ads, prone) / ANGLE_UNITS) * 360;
   }
 
   readout(now: number, ads: boolean): string {

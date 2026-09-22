@@ -37,6 +37,8 @@ const RIFLE: WeaponDef = {
   recoilMaxDeg: 4,
   recoilRecoveryPerSec: 8,
   recoilAdsScale: 0.5,
+  spreadProneScale: 0.7,
+  recoilProneScale: 0.6,
   shakePosM: 0.02,
   shakeRollDeg: 0.4,
 };
@@ -72,6 +74,24 @@ describe('recoil kicks (T-2.08)', () => {
     const ads = kickFor(RIFLE, 3, true);
     expect(ads.pitch).toBeCloseTo(hip.pitch * 0.5, 12);
     expect(ads.yaw).toBeCloseTo(hip.yaw * 0.5, 12);
+  });
+
+  it('scales the kick down while prone (T-2.42), composing with ADS rather than replacing it', () => {
+    const hip = kickFor(RIFLE, 3, false);
+    const prone = kickFor(RIFLE, 3, false, true);
+    expect(prone.pitch).toBeCloseTo(hip.pitch * RIFLE.recoilProneScale, 12);
+    expect(prone.yaw).toBeCloseTo(hip.yaw * RIFLE.recoilProneScale, 12);
+
+    const adsProne = kickFor(RIFLE, 3, true, true);
+    expect(adsProne.pitch).toBeCloseTo(hip.pitch * RIFLE.recoilAdsScale * RIFLE.recoilProneScale, 12);
+    // Standing (the default) is untouched: prone is opt-in, not a silent rescale.
+    expect(kickFor(RIFLE, 3, false).pitch).toBeCloseTo(hip.pitch, 12);
+  });
+
+  it('threads prone through applyKick, not only kickFor', () => {
+    const s = applyKick(createRecoil(), RIFLE, 1, false, true);
+    const expected = kickFor(RIFLE, 1, false, true);
+    expect(s.pitch).toBeCloseTo(expected.pitch, 12);
   });
 
   it('accumulates a burst exactly, then caps at recoilMaxDeg', () => {

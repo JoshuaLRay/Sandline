@@ -1049,6 +1049,9 @@ function frame(): void {
       firing: input.firing && net.vitality === 'alive' && !net.simulated?.vault,
       triggerEdge: input.consumeTriggerEdge(),
       ads: input.ads,
+      // Prone (T-2.42) is allowed to fire, unlike downed above: it only
+      // narrows the cone and the kick, the same way `ads` already does.
+      prone: net.simulated?.prone === true,
     });
     // The local machine decides WHEN the trigger pulled; the server decides
     // what that shot hit. Both run the same cadence, so a shot the client
@@ -1059,7 +1062,7 @@ function frame(): void {
       net.fire(tickNumber, aimYaw, aimPitch, combat.weaponIndex, input.ads);
       // Kick AFTER the shot is sent: this shot goes where the view pointed,
       // the next goes where the kick leaves it.
-      recoil = applyKick(recoil, combat.weapon, combat.shotsFired, input.ads);
+      recoil = applyKick(recoil, combat.weapon, combat.shotsFired, input.ads, net.simulated?.prone === true);
       input.setViewOffset(recoil.yaw, recoil.pitch);
       shake = addShake(shake, combat.weapon, input.ads);
       kick = addKick(kick, combat.weapon, input.ads);
@@ -1477,7 +1480,7 @@ function frame(): void {
    * the arms enclose is where pellets can land.
    */
   if (crosshair) {
-    const cone = coneGapPx(combat.coneDegrees(ads), camera.fov);
+    const cone = coneGapPx(combat.coneDegrees(ads, net?.simulated?.prone === true), camera.fov);
     const gap = Math.round(Math.max(ads ? ADS_GAP_MIN_PX : HIP_GAP_MIN_PX, cone));
     if (gap !== crosshairGap) {
       crosshairGap = gap;

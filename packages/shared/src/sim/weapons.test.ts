@@ -49,6 +49,8 @@ const FIXTURE: WeaponDef = {
   recoilMaxDeg: 5,
   recoilRecoveryPerSec: 8,
   recoilAdsScale: 0.5,
+  spreadProneScale: 0.6,
+  recoilProneScale: 0.7,
   shakePosM: 0.02,
   shakeRollDeg: 0.4,
 };
@@ -245,6 +247,38 @@ describe('bloom', () => {
   });
 });
 
+describe('prone tuning (T-2.42)', () => {
+  it('tightens the base cone from data, composing with ADS rather than replacing it', () => {
+    const state = createWeaponState(FIXTURE);
+    expect(currentConeUnits(FIXTURE, state, false, true)).toBe(
+      degToAngle(FIXTURE.hipSpreadDeg * FIXTURE.spreadProneScale),
+    );
+    expect(currentConeUnits(FIXTURE, state, true, true)).toBe(
+      degToAngle(FIXTURE.adsSpreadDeg * FIXTURE.spreadProneScale),
+    );
+    // Standing (the default) is untouched: prone is opt-in, not a silent rescale.
+    expect(currentConeUnits(FIXTURE, state, false, false)).toBe(degToAngle(FIXTURE.hipSpreadDeg));
+    expect(currentConeUnits(FIXTURE, state, false)).toBe(degToAngle(FIXTURE.hipSpreadDeg));
+  });
+
+  it('leaves bloom untouched by stance: only the base narrows', () => {
+    const state = createWeaponState(FIXTURE);
+    state.bloomUnits = degToAngle(1);
+    const standingCone = currentConeUnits(FIXTURE, state, false, false);
+    const proneCone = currentConeUnits(FIXTURE, state, false, true);
+    expect(standingCone - proneCone).toBe(
+      degToAngle(FIXTURE.hipSpreadDeg) - degToAngle(FIXTURE.hipSpreadDeg * FIXTURE.spreadProneScale),
+    );
+  });
+
+  it("carries the shot's prone-scaled cone through tryFire, not just currentConeUnits", () => {
+    const state = createWeaponState(FIXTURE);
+    const shot = tryFire(FIXTURE, state, 0, false, true);
+    expect(shot).not.toBeNull();
+    expect(shot!.coneUnits).toBe(degToAngle(FIXTURE.hipSpreadDeg * FIXTURE.spreadProneScale));
+  });
+});
+
 describe('weapon data', () => {
   it('ships a table that validates', () => {
     expect(Object.keys(WEAPONS).length).toBeGreaterThanOrEqual(3);
@@ -270,6 +304,9 @@ describe('weapon data', () => {
     // kick is refused rather than clamping every shot.
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', recoilRecoveryPerSec: 0 } })).toThrow(/recoilRecoveryPerSec/);
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', recoilAdsScale: 2 } })).toThrow(/recoilAdsScale/);
+    // T-2.42: prone's spread/recoil scales are data too, validated the same way.
+    expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', spreadProneScale: 1.5 } })).toThrow(/spreadProneScale/);
+    expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', recoilProneScale: -0.1 } })).toThrow(/recoilProneScale/);
     expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', recoilMaxDeg: 0.5 } })).toThrow(/recoilMaxDeg/);
     const { recoilKickDeg: _k, ...missing } = { ...FIXTURE, id: 'a' };
     void _k;

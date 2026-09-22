@@ -52,10 +52,12 @@ function weaponSeed(id: string): number {
 
 /**
  * The kick for one shot, before capping: straight up by the kick, sideways by
- * the drift with a sign seeded from (weapon, shotIndex). Aiming scales both.
+ * the drift with a sign seeded from (weapon, shotIndex). Aiming scales both;
+ * prone (T-2.42) scales both again the same way, from `recoilProneScale` —
+ * braced against the ground is a tighter kick, not a different mechanism.
  */
-export function kickFor(def: WeaponDef, shotIndex: number, ads: boolean): RecoilState {
-  const scale = (ads ? def.recoilAdsScale : 1) * WIRE_UNITS_PER_DEGREE;
+export function kickFor(def: WeaponDef, shotIndex: number, ads: boolean, prone = false): RecoilState {
+  const scale = (ads ? def.recoilAdsScale : 1) * (prone ? def.recoilProneScale : 1) * WIRE_UNITS_PER_DEGREE;
   const sign = unitFromSeed(seedFrom(weaponSeed(def.id), shotIndex)) < 0.5 ? -1 : 1;
   return { pitch: def.recoilKickDeg * scale, yaw: sign * def.recoilDriftDeg * scale };
 }
@@ -68,8 +70,8 @@ export function kickFor(def: WeaponDef, shotIndex: number, ads: boolean): Recoil
  * pattern's sideways drift within it, which is what makes a long burst feel
  * like fighting the weapon rather than watching it stop.
  */
-export function applyKick(state: RecoilState, def: WeaponDef, shotIndex: number, ads: boolean): RecoilState {
-  const kick = kickFor(def, shotIndex, ads);
+export function applyKick(state: RecoilState, def: WeaponDef, shotIndex: number, ads: boolean, prone = false): RecoilState {
+  const kick = kickFor(def, shotIndex, ads, prone);
   const max = def.recoilMaxDeg * WIRE_UNITS_PER_DEGREE;
   const pitch = Math.min(max, state.pitch + kick.pitch);
   const yaw = Math.max(-max, Math.min(max, state.yaw + kick.yaw));
