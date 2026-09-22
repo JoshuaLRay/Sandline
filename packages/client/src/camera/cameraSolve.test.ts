@@ -314,3 +314,30 @@ describe('prone camera (T-2.41)', () => {
   });
 });
 
+describe('crouch camera', () => {
+  it('drops the pivot to the crouch height in both views, and lifts it back', () => {
+    const cfg = DEFAULT_CAMERA_CONFIG;
+    const crouch = solveCamera(view({ firstPerson: true, crouched: true }), cfg, createCameraSolve(), 0);
+    expect(crouch.position.y).toBeCloseTo(cfg.crouchEyeHeight, 9);
+    expect(crouch.position.y).toBeLessThan(cfg.eyeHeight);
+    expect(crouch.crouchBlend).toBe(1);
+
+    const third = solveCamera(view({ crouched: true }), cfg, createCameraSolve(), 0);
+    expect(third.focus.y).toBeCloseTo(cfg.crouchEyeHeight + cfg.shoulderUp, 9);
+    const lifted = solveCamera(view(), cfg, third, 0);
+    expect(lifted.focus.y).toBeCloseTo(cfg.eyeHeight + cfg.shoulderUp, 9);
+  });
+
+  it('yields to prone rather than stacking with it', () => {
+    const cfg = DEFAULT_CAMERA_CONFIG;
+    const both = solveCamera(view({ firstPerson: true, crouched: true, prone: true }), cfg, createCameraSolve(), 0);
+    expect(both.position.y).toBeCloseTo(cfg.proneEyeHeight, 9);
+    expect(both.crouchBlend).toBe(0);
+  });
+
+  it('sits between standing and prone', () => {
+    const cfg = DEFAULT_CAMERA_CONFIG;
+    expect(cfg.crouchEyeHeight).toBeLessThan(cfg.eyeHeight);
+    expect(cfg.crouchEyeHeight).toBeGreaterThan(cfg.proneEyeHeight);
+  });
+});
