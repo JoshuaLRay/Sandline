@@ -80,4 +80,5 @@ wherever the last person left. That is the design, not a bug — but restart
 
 - `packages/shared/CLAUDE.md` — determinism constraints for that tree specifically; loads automatically when you touch it.
 - `docs/DEPLOYING.md` — deployment recipe, teardown, and the things that will waste your afternoon.
+- `docs/BUGS.md` — running list of reported gameplay bugs not yet scoped into a `PLAN.md` task.
 - `README.md` — the human-facing overview. Prefer this file for agent work.
