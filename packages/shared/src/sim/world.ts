@@ -20,12 +20,19 @@
  * cannot express — slopes, stairs beyond a step, round columns — is not in
  * this world and is not what a firefight in a grey box needs first.
  *
- * DATA, NOT CODE. Cover comes from `data/world.json` (standing rule 4), and
- * the generated pieces — the distance-post grid, the sprint-lane rails, the
- * reference figure — are built here from the same numbers the client used to
- * hard-code. Positions are what the renderer draws; there is no second copy.
+ * DATA, NOT CODE. Cover comes from `data/worlds/<id>.json` (standing rule 4),
+ * and the generated pieces — the distance-post grid, the sprint-lane rails,
+ * the reference figure — are built here from the same numbers the client used
+ * to hard-code, for the worlds whose file asks for them. Positions are what
+ * the renderer draws; there is no second copy.
+ *
+ * NAMED WORLDS (T-3.02). A world is a value, chosen by id: a session is built
+ * with one, names it in `JoinAck`, and the client builds the same boxes from
+ * the same file with the same function (`getWorld`). `range` is the QA range
+ * this list always was, and the default. A world file is imported statically
+ * below rather than read from disk, because this module runs in the page too.
  */
-import RAW_WORLD from '../data/world.json' with { type: 'json' };
+import RANGE_WORLD from '../data/worlds/range.json' with { type: 'json' };
 import { POSITION } from '../net/quantize.ts';
 
 export type WorldBoxKind = 'post-minor' | 'post-major' | 'rail' | 'figure' | 'cover';
@@ -140,8 +147,8 @@ function isSpec(value: unknown): value is BoxSpec {
   );
 }
 
-/** Validate world.json once at import, as weapons.json is. */
-export function loadCover(raw: unknown = RAW_WORLD): WorldBox[] {
+/** Validate a world file's `cover` list, as weapons.json is validated. */
+export function loadCover(raw: unknown = RANGE_WORLD): WorldBox[] {
   if (typeof raw !== 'object' || raw === null || !Array.isArray((raw as { cover?: unknown }).cover)) {
     throw new Error('world.json: expected { cover: [...] }');
   }
@@ -155,17 +162,79 @@ export function loadCover(raw: unknown = RAW_WORLD): WorldBox[] {
   });
 }
 
+/** The generated pieces a world file may ask for, in the order they are laid down. */
+export const GENERATED_PIECES = ['posts', 'rails', 'figure'] as const;
+export type GeneratedPiece = (typeof GENERATED_PIECES)[number];
+
+/** A named world: the one value every consumer of the scenery reads. */
+export interface World {
+  id: string;
+  boxes: readonly WorldBox[];
+}
+
+/** A world id is what travels in `JoinAck`: short, lowercase, no spaces. */
+const WORLD_ID = /^[a-z][a-z0-9-]{0,31}$/;
+
 /**
- * Everything solid. The order is fixed — posts, rails, figure, cover — so
- * indices are stable across client and server, which the renderer relies on
- * for nothing yet but a hit event might one day name a box by it.
+ * Build a world from its file. Everything solid, in a fixed order — generated
+ * pieces as `GENERATED_PIECES` orders them, then cover — so indices are
+ * stable across client and server, which the renderer relies on for nothing
+ * yet but a hit event might one day name a box by it.
  */
-export const DEFAULT_WORLD: readonly WorldBox[] = [
-  ...postBoxes(),
-  ...railBoxes(),
-  figureBox(),
-  ...loadCover(),
-];
+export function loadWorld(raw: unknown): World {
+  if (typeof raw !== 'object' || raw === null) throw new Error('world file: expected an object');
+  const file = raw as { id?: unknown; generate?: unknown };
+  if (typeof file.id !== 'string' || !WORLD_ID.test(file.id)) {
+    throw new Error(`world file: id must match ${WORLD_ID}, got ${JSON.stringify(file.id)}`);
+  }
+  const generate = file.generate ?? [];
+  if (!Array.isArray(generate) || !generate.every((g) => (GENERATED_PIECES as readonly unknown[]).includes(g))) {
+    throw new Error(`world '${file.id}': generate must list only ${GENERATED_PIECES.join(', ')}`);
+  }
+  const wants = (piece: GeneratedPiece): boolean => generate.includes(piece);
+  return {
+    id: file.id,
+    boxes: [
+      ...(wants('posts') ? postBoxes() : []),
+      ...(wants('rails') ? railBoxes() : []),
+      ...(wants('figure') ? [figureBox()] : []),
+      ...loadCover(raw),
+    ],
+  };
+}
+
+/** Every world this build knows, by id. Validated once, at import. */
+const WORLDS: ReadonlyMap<string, World> = new Map(
+  [RANGE_WORLD].map((raw) => {
+    const world = loadWorld(raw);
+    return [world.id, world] as const;
+  }),
+);
+
+/** The world a session gets when nobody names one. */
+export const DEFAULT_WORLD_ID = 'range';
+
+/** The ids `getWorld` answers for. */
+export const WORLD_IDS: readonly string[] = [...WORLDS.keys()];
+
+/** The world with this id, or undefined when this build does not have it. */
+export function getWorld(id: string): World | undefined {
+  return WORLDS.get(id);
+}
+
+/** Like `getWorld`, for an id that must exist; throws with the known ids when it does not. */
+export function requireWorld(id: string): World {
+  const world = WORLDS.get(id);
+  if (!world) throw new Error(`unknown world '${id}' (this build has: ${WORLD_IDS.join(', ')})`);
+  return world;
+}
+
+/**
+ * The range world's boxes. The default world every pure function falls back
+ * to when a caller passes none — tests, benches, and the lobby backdrop. A
+ * session never relies on it: it is built with a world and passes it on.
+ */
+export const DEFAULT_WORLD: readonly WorldBox[] = requireWorld(DEFAULT_WORLD_ID).boxes;
 
 export interface WorldRay {
   origin: { x: number; y: number; z: number };

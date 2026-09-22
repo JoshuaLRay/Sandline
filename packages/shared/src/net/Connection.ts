@@ -9,6 +9,7 @@
  * testable.
  */
 import type { Transport } from './Transport.ts';
+import { DEFAULT_WORLD_ID } from '../sim/world.ts';
 import {
   type DisconnectCode,
   type Message,
@@ -171,10 +172,10 @@ export class ServerConnection {
     }
   }
 
-  accept(netId: number, slot: number, serverTick: number, room = ''): void {
+  accept(netId: number, slot: number, serverTick: number, room = '', world = DEFAULT_WORLD_ID): void {
     this.netId = netId;
     this.slot = slot;
-    this.send({ kind: 'JoinAck', netId, slot, serverTick, room });
+    this.send({ kind: 'JoinAck', netId, slot, serverTick, room, world });
   }
 
   /** Tell the squad who is in it. Six entries, always (ADR-001). */

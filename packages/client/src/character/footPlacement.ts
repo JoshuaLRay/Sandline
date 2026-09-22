@@ -121,8 +121,12 @@ export interface FootPlacementDriver {
 }
 
 export interface FootPlacementOptions {
-  /** The solid world. The shared list, or a test's own. */
-  world?: readonly WorldBox[];
+  /**
+   * The solid world. The shared list, or a test's own — or a getter for the
+   * session's named world (T-3.02), which is not known until a join and can
+   * change on the next one.
+   */
+  world?: readonly WorldBox[] | (() => readonly WorldBox[]);
   /** Movement config, for the step height, the ground and the body's footprint. */
   config?: MoveConfig;
 }
@@ -203,7 +207,8 @@ export function createFootPlacementDriver(
   options: FootPlacementOptions = {},
 ): FootPlacementDriver {
   const rig = isHumanoidRig(target) ? target : requireRig(target);
-  const world = options.world ?? DEFAULT_WORLD;
+  const worldOption = options.world ?? DEFAULT_WORLD;
+  const world = (): readonly WorldBox[] => (typeof worldOption === 'function' ? worldOption() : worldOption);
   const config = options.config ?? DEFAULT_MOVE_CONFIG;
   const legs: Leg[] = [];
   for (const side of ['left', 'right'] as const) {
@@ -268,7 +273,7 @@ export function createFootPlacementDriver(
       scratchRoot.z,
       config.radius,
       feetY + config.stepHeight,
-      world,
+      world(),
       config.groundY,
     );
     return feetY - support <= FOOT_AIRBORNE_M;
@@ -311,7 +316,7 @@ export function createFootPlacementDriver(
       scratchFoot.z,
       FOOT_HALF_M,
       feetY + config.stepHeight,
-      world,
+      world(),
       config.groundY,
     );
     return clamp(support - feetY, FOOT_RANGE_M);

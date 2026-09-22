@@ -21,6 +21,7 @@ import {
   stepCharacter,
 } from '../sim/CharacterController.ts';
 import { TICK_SECONDS } from '../sim/Clock.ts';
+import { DEFAULT_WORLD, type WorldBox } from '../sim/world.ts';
 
 export interface PredictionEntry {
   tick: number;
@@ -87,6 +88,11 @@ export class Predictor {
     initial: MoveState,
     private readonly config: MoveConfig = DEFAULT_MOVE_CONFIG,
     private readonly historyLength = DEFAULT_HISTORY,
+    /**
+     * The session's named world (T-3.02), from `JoinAck`: prediction must
+     * collide with exactly the boxes the server collides with.
+     */
+    private readonly world: readonly WorldBox[] = DEFAULT_WORLD,
   ) {
     this.state = initial;
   }
@@ -102,7 +108,7 @@ export class Predictor {
 
   /** Apply one input immediately and remember it for replay. */
   predict(tick: number, input: MoveInput): MoveState {
-    this.state = stepCharacter(this.state, input, TICK_SECONDS, this.config);
+    this.state = stepCharacter(this.state, input, TICK_SECONDS, this.config, this.world);
     this.history.push({ tick, input, state: this.state });
     if (this.history.length > this.historyLength) this.history.shift();
     return this.state;
@@ -173,7 +179,7 @@ export class Predictor {
     let replayed = serverState;
     this.history = [];
     for (const entry of unacked) {
-      replayed = stepCharacter(replayed, entry.input, TICK_SECONDS, this.config);
+      replayed = stepCharacter(replayed, entry.input, TICK_SECONDS, this.config, this.world);
       this.history.push({ tick: entry.tick, input: entry.input, state: replayed });
     }
     this.state = replayed;

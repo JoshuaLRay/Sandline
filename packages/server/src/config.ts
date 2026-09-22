@@ -1,4 +1,5 @@
 /** Environment-derived server config (T-0.07). */
+import { DEFAULT_WORLD_ID, WORLD_IDS } from '@sandline/shared';
 import { DEFAULT_MAX_ROOMS, DEFAULT_ROOM_GRACE_MS } from './session/Registry.ts';
 
 export interface ServerConfig {
@@ -9,6 +10,8 @@ export interface ServerConfig {
   maxRooms: number;
   /** How long an emptied room lives before it is reclaimed, ms. */
   roomGraceMs: number;
+  /** The named world every room on this host is built with (T-3.02). */
+  world: string;
 }
 
 function intFromEnv(name: string, fallback: number): number {
@@ -17,6 +20,14 @@ function intFromEnv(name: string, fallback: number): number {
   const n = Number.parseInt(raw, 10);
   if (!Number.isFinite(n)) throw new Error(`${name} must be an integer, got '${raw}'`);
   return n;
+}
+
+/** `WORLD=range pnpm host`. An id this build lacks is a startup error, not a room of nothing. */
+function worldFromEnv(): string {
+  const raw = process.env['WORLD'];
+  if (raw === undefined || raw === '') return DEFAULT_WORLD_ID;
+  if (!WORLD_IDS.includes(raw)) throw new Error(`WORLD must be one of ${WORLD_IDS.join('|')}, got '${raw}'`);
+  return raw;
 }
 
 export function loadConfig(): ServerConfig {
@@ -30,5 +41,6 @@ export function loadConfig(): ServerConfig {
     logLevel: level as ServerConfig['logLevel'],
     maxRooms: intFromEnv('MAX_ROOMS', DEFAULT_MAX_ROOMS),
     roomGraceMs: intFromEnv('ROOM_GRACE_MS', DEFAULT_ROOM_GRACE_MS),
+    world: worldFromEnv(),
   };
 }

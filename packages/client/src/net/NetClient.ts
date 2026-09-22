@@ -38,6 +38,8 @@ import {
   encodeMessage,
   type Vitality,
   vitalityFromCode,
+  type World,
+  getWorld,
 } from '@sandline/shared';
 
 const T = COMPONENT_IDS.Transform;
@@ -167,6 +169,12 @@ export class NetClient {
   private disconnectReasonValue: string | null = null;
   private disconnectCodeValue: DisconnectCode | null = null;
   private roomValue = '';
+  /**
+   * The session's named world, built from `JoinAck`'s id by the same function
+   * the server used (T-3.02). Null until joined. Prediction collides with it
+   * and the renderer draws it.
+   */
+  private worldValue: World | null = null;
   /**
    * Who is in the six slots, as the host last said (T-1.5.04). Empty until
    * seated; six entries after. The lobby's roster is drawn from this.
@@ -310,6 +318,11 @@ export class NetClient {
   }
 
   /** The room code the host seated us in; empty on an in-page session. */
+  /** The world the host named in `JoinAck`, or null before a join. */
+  get world(): World | null {
+    return this.worldValue;
+  }
+
   get room(): string {
     return this.roomValue;
   }
@@ -403,6 +416,16 @@ export class NetClient {
    * slot on the spot instead of after the heartbeat timeout — a leaving
    * player's row in everyone else's roster flips back to bot immediately.
    */
+  /** End the connection from this side with a typed reason the UI can act on. */
+  private refuse(code: DisconnectCode, reason: string): void {
+    if (this.transport.isOpen) this.transport.send(encodeMessage({ kind: 'Disconnect', code, reason }));
+    this.joinedFlag = false;
+    this.disconnectReasonValue = reason;
+    this.disconnectCodeValue = code;
+    this.onDisconnect?.(reason, code);
+    this.transport.close(code);
+  }
+
   leave(): void {
     if (this.transport.isOpen) {
       this.transport.send(encodeMessage({ kind: 'Disconnect', code: 'left', reason: 'left' }));
@@ -438,6 +461,7 @@ export class NetClient {
     this.disconnectReasonValue = null;
     this.disconnectCodeValue = null;
     this.roomValue = '';
+    this.worldValue = null;
     this.rosterValue = [];
     this.healthValue = 0;
     this.maxHealthValue = 0;
@@ -695,7 +719,16 @@ export class NetClient {
     }
 
     switch (msg.kind) {
-      case 'JoinAck':
+      case 'JoinAck': {
+        const world = getWorld(msg.world);
+        if (!world) {
+          // A world this build does not have: refuse, typed, rather than draw
+          // the wrong scenery and predict against boxes the server does not
+          // collide with. Never counted as joined.
+          this.refuse('unknown world', `host named world '${msg.world}', which this build does not have — reload for a newer build`);
+          break;
+        }
+        this.worldValue = world;
         this.netIdValue = msg.netId;
         this.slotValue = msg.slot;
         this.roomValue = msg.room;
@@ -705,6 +738,7 @@ export class NetClient {
         // JoinAck does not say where we spawned, and assuming the origin
         // guarantees a large bogus correction on the first snapshot.
         break;
+      }
 
       case 'Delta': {
         const result = this.store.applyDelta(msg.tick, msg.baselineTick, msg.payload);
@@ -955,7 +989,7 @@ export class NetClient {
 
   private reconcile(authoritative: MoveState, lastProcessedInputTick: number): void {
     if (!this.predictor) {
-      this.predictor = new Predictor(authoritative, this.moveConfig);
+      this.predictor = new Predictor(authoritative, this.moveConfig, undefined, this.worldValue?.boxes);
       return;
     }
     if (lastProcessedInputTick < 0) return;

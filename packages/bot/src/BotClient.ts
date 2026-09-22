@@ -28,6 +28,8 @@ import {
   dequantize,
   distance,
   encodeMessage,
+  type WorldBox,
+  requireWorld,
 } from '@sandline/shared';
 
 const T = COMPONENT_IDS.Transform;
@@ -104,6 +106,7 @@ class InputWalk {
 export class BotClient {
   readonly store = new SnapshotStore();
   private predictor: Predictor | null = null;
+  private worldBoxes: readonly WorldBox[] | undefined;
   private readonly walk: InputWalk;
   private readonly script: readonly MoveInput[] | null;
   private netId = -1;
@@ -217,6 +220,10 @@ export class BotClient {
       case 'JoinAck':
         this.netId = msg.netId;
         this.room = msg.room;
+        // Predict against the host's named world (T-3.02). A bot is a test
+        // instrument built with the host: an unknown id is a mismatched build,
+        // and should fail loudly rather than measure the wrong world.
+        this.worldBoxes = requireWorld(msg.world).boxes;
         this.joinedFlag = true;
         // The predictor is NOT created here. JoinAck does not say where we
         // spawned, and assuming the origin guarantees a large bogus correction
@@ -274,7 +281,7 @@ export class BotClient {
 
     // First authoritative word on where we are: adopt it as the baseline.
     if (!this.predictor) {
-      this.predictor = new Predictor(authoritative);
+      this.predictor = new Predictor(authoritative, undefined, undefined, this.worldBoxes);
       return;
     }
 

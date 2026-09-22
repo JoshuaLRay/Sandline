@@ -33,10 +33,10 @@ it. Past that, **E-2.7** (combat audio, PLAN.md §7 epic table) needs breaking
 out into leaf tasks and is blocked on an assets sourcing decision (R1, §9
 Q2 — purchased/commissioned/in-house).
 
-**M3 is broken out** (PLAN.md §7.9). T-3.01 (the Recast spike) is done.
-The next build tasks are **T-3.02** (named worlds, which with T-3.01 unblocks
-T-3.03's real bake) and **T-3.07** (behaviour tree runtime). Neither has
-any dependencies.
+**M3 is broken out** (PLAN.md §7.9). T-3.01 (the Recast spike) and T-3.02
+(named worlds) are done. The next build tasks are **T-3.03** (bake the range
+world and commit it, with a staleness hash) and **T-3.07** (behaviour tree
+runtime, no dependencies).
 
 ---
 
@@ -209,8 +209,8 @@ once before the first M3 task — it is short and every task leans on it.
 | Task | Status | Depends |
 |---|---|---|
 | ⚠️ T-3.01 | DONE | — |
-| T-3.02 | OPEN | — |
-| T-3.03 | BLOCKED | T-3.01, T-3.02 |
+| T-3.02 | DONE | — |
+| T-3.03 | OPEN | T-3.01, T-3.02 |
 | T-3.04 | BLOCKED | T-3.03 |
 
 ### E-3.2 — AI locomotion
