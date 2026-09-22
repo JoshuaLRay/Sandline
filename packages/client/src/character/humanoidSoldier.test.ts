@@ -331,6 +331,29 @@ describe('skinned soldier (T-2.22)', () => {
     const facing = new THREE.Vector3(Math.sin(0.7), 0, Math.cos(0.7));
     expect(head.clone().sub(soldier.position).dot(facing)).toBeGreaterThan(0.4);
     expect(foot.clone().sub(soldier.position).dot(facing)).toBeLessThan(-0.4);
+    // Head up off the ground and looking along the facing, not into the dirt.
+    const ground = soldier.position.y - HUMANOID_ROOT_LIFT_M;
+    expect(head.y - ground).toBeGreaterThan(0.3);
+    const headQ = rig.bone('head')!.getWorldQuaternion(new THREE.Quaternion());
+    const face = new THREE.Vector3(0, 0, 1).applyQuaternion(headQ);
+    expect(face.dot(facing)).toBeGreaterThan(0.95);
+    expect(new THREE.Vector3(0, 1, 0).applyQuaternion(headQ).y).toBeGreaterThan(0.95);
+    // No part of the skin under the ground.
+    const skin = soldierSkin(soldier);
+    skin.skeleton.update();
+    const vertices = skin.geometry.getAttribute('position') as THREE.BufferAttribute;
+    let lowest = Infinity;
+    for (let i = 0; i < vertices.count; i += 1) {
+      const v = skin.applyBoneTransform(i, new THREE.Vector3().fromBufferAttribute(vertices, i)).applyMatrix4(skin.matrixWorld);
+      lowest = Math.min(lowest, v.y);
+    }
+    expect(lowest - ground).toBeGreaterThan(-0.01);
+    // The rifle lies forward along the ground, butt at the right shoulder.
+    const muzzle = new THREE.Vector3(0, 0, 1).applyQuaternion(rig.aim.getWorldQuaternion(new THREE.Quaternion()));
+    expect(muzzle.dot(facing)).toBeGreaterThan(0.99);
+    const butt = worldOf(soldier, 'aim');
+    expect(butt.y - ground).toBeLessThan(0.35);
+    expect(butt.distanceTo(worldOf(soldier, 'upper-arm-right'))).toBeLessThan(0.25);
     const prone = boneSnapshot(soldier);
     expect(prone).not.toEqual(crouched);
     expect(prone).not.toEqual(downed);
