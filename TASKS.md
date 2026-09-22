@@ -5,7 +5,8 @@ the answer to "what's next" — read it first, and read only the one `PLAN.md`
 section a task names. See `/CLAUDE.md` for the full routing rules.
 
 Legend: **DONE** · **OPEN** (deps satisfied, not started) · **BLOCKED** (deps
-unsatisfied) · 🧍 = real acceptance criterion is human feel, not a test.
+unsatisfied) · 🧍 = real acceptance criterion is human feel, not a test · ⚠️ =
+risk spike (failure is an acceptable, written-up outcome — PLAN.md §0.2).
 
 ---
 
@@ -31,6 +32,11 @@ blocked. Writing the two missing run sheets (`e2-3.md`, `e2-5.md`), modeled on
 it. Past that, **E-2.7** (combat audio, PLAN.md §7 epic table) needs breaking
 out into leaf tasks and is blocked on an assets sourcing decision (R1, §9
 Q2 — purchased/commissioned/in-house).
+
+**M3 is broken out** (PLAN.md §7.9). Once T-2.42 is done, the next build
+tasks are **T-3.01** (⚠️ Recast in Node and all three browser engines — the
+spike ADR-006 rests on), **T-3.02** (named worlds) and **T-3.07** (behaviour
+tree runtime), all with no dependencies.
 
 ---
 
@@ -192,7 +198,102 @@ a standing, alive soldier, built on the crouch (T-2.20) and crawl-gait
 
 ---
 
-## M3–M5
+## M3 — AI & squad command (PLAN.md §7.9) — broken out 2026-09-22
+
+Broken out ahead of M2's exit gate at the owner's request; M2's rows above
+still come first in scan order. Read §7.9's preamble (rules, scope calls)
+once before the first M3 task — it is short and every task leans on it.
+
+### E-3.1 — Navmesh pipeline
+
+| Task | Status | Depends |
+|---|---|---|
+| ⚠️ T-3.01 | OPEN | — |
+| T-3.02 | OPEN | — |
+| T-3.03 | BLOCKED | T-3.01, T-3.02 |
+| T-3.04 | BLOCKED | T-3.03 |
+
+### E-3.2 — AI locomotion
+
+| Task | Status | Depends |
+|---|---|---|
+| T-3.05 | BLOCKED | T-3.04 |
+| T-3.06 | BLOCKED | T-3.05 |
+
+### E-3.3 — Behaviour tree runtime
+
+| Task | Status | Depends |
+|---|---|---|
+| T-3.07 | OPEN | — |
+| T-3.08 | BLOCKED | T-3.07 |
+| T-3.09 | BLOCKED | T-3.08 |
+
+### E-3.6 (entities) — Enemies exist before they think
+
+| Task | Status | Depends |
+|---|---|---|
+| T-3.10 | BLOCKED | T-3.08 |
+| T-3.11 | BLOCKED | T-3.10 |
+| T-3.12 | BLOCKED | T-3.10 |
+
+### E-3.4 — Perception
+
+| Task | Status | Depends |
+|---|---|---|
+| T-3.13 | BLOCKED | T-3.07 |
+| T-3.14 | BLOCKED | T-3.13, T-3.10 |
+
+### E-3.5 — Combat AI
+
+| Task | Status | Depends |
+|---|---|---|
+| T-3.15 | BLOCKED | T-3.10, T-3.13 |
+| T-3.16 | BLOCKED | T-3.15 |
+| T-3.17 | BLOCKED | T-3.16 |
+| T-3.18 | BLOCKED | T-3.04 |
+| T-3.19 | BLOCKED | T-3.18, T-3.13 |
+| T-3.20 | BLOCKED | T-3.05, T-3.14, T-3.15, T-3.19 |
+| T-3.21 | BLOCKED | T-3.20, T-3.16, T-3.06 |
+| T-3.22 | BLOCKED | T-3.20 |
+
+### E-3.6 — Enemy archetypes (slice set: rifleman, MG — ADR-015)
+
+| Task | Status | Depends |
+|---|---|---|
+| T-3.23 | BLOCKED | T-3.21, T-3.22 |
+| 🧍 T-3.24 | BLOCKED — run sheet `e3-5.md` to be written first | T-3.11, T-3.17, T-3.23 |
+
+### E-3.7 — Friendly bot
+
+| Task | Status | Depends |
+|---|---|---|
+| T-3.25 | BLOCKED | T-3.06, T-3.08 |
+| T-3.26 | BLOCKED | T-3.25, T-3.20 |
+
+### E-3.8 — Order system
+
+| Task | Status | Depends |
+|---|---|---|
+| T-3.27 | BLOCKED | T-3.08 |
+| T-3.28 | BLOCKED | T-3.27, T-3.26, T-3.19 |
+| T-3.29 | BLOCKED | T-3.27 |
+| 🧍 T-3.30 | BLOCKED — run sheet `e3-8.md` to be written first | T-3.11, T-3.25, T-3.26, T-3.28, T-3.29 |
+
+### E-3.9 — AI director and the grey-box mission
+
+| Task | Status | Depends |
+|---|---|---|
+| T-3.31 | BLOCKED | T-3.02, T-3.04, T-3.18 |
+| T-3.32 | BLOCKED | T-3.10, T-3.31 |
+| T-3.33 | BLOCKED | T-3.32, T-3.14 |
+| T-3.34 | BLOCKED | T-3.31, T-3.32 |
+| T-3.35 | BLOCKED | T-3.23, T-3.28, T-3.33, T-3.34 |
+| 🧍 T-3.36 | BLOCKED — run sheet `m3-solo.md` to be written first | T-3.24, T-3.30, T-3.35 |
+| 🧍 T-3.37 | BLOCKED — run sheet `m3-six.md` to be written first; needs six people | T-3.35 |
+
+---
+
+## M4–M5
 
 Epics only, not broken out — see PLAN.md §7 (epic tables) and §4 (milestone
 table). Nothing here is a task an agent can pick up; they get leaf tasks at

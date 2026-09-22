@@ -1450,6 +1450,361 @@ pose-driver contracts rather than adding a second one.
 
 **Risk:** highest uncertainty in the project after M1. Combat AI that reads as competent is genuinely hard. Budget generously and expect the estimate to move.
 
+**Broken out 2026-09-22 — see §7.9** for the leaf tasks (T-3.01..T-3.37).
+
+### 7.9 M3 leaf tasks — broken out 2026-09-22
+
+Broken out at the owner's request **ahead of M2's exit gate**, which §0.5
+would otherwise have waited for. That is deliberate and it is bounded: M3's
+tasks depend on M2's *build* — the controller, the fire path, the downed
+state, grenades, the rig — all of which is in, and on none of M2's four open
+🧍 verdicts. The tracker still hands out M2's remaining work first (T-2.42,
+then the gates), because `/next-task` scans milestones in order. M3 is broken
+out now because it is R3, the highest-uncertainty milestone after M1, and its
+first tasks — the navmesh spike and the behaviour tree runtime — need nothing
+M2 has left to decide. If a pending M2 gate changes the controller or the
+fire path, the M3 tasks downstream of it are re-read before they start, not
+rewritten now.
+
+**What already exists.** More of the substrate than the epic table suggests,
+and none of the behaviour:
+
+- **Six slots with bot backfill** (T-1.13, ADR-001). A bot slot today is an
+  idle input on a live entity — `Session` steps it through `stepCharacter`
+  like anyone else, records it into the lag-compensation history, and swaps it
+  for a human in place on join. Backfill is already structural; what is
+  missing is a brain.
+- **One movement model and one world.** `stepCharacter` over `DEFAULT_WORLD`'s
+  axis-aligned boxes (T-1.12), with crouch, prone and the vault rule (T-2.20,
+  T-2.40, T-2.21). Soldiers do not collide with *each other* — the controller
+  collides with boxes only — so local avoidance is the only thing that will
+  keep a squad from walking through itself.
+- **The whole combat path.** `rayWorld`, hitscan with lag compensation, damage
+  zones, `applyDamage` with downed/bleed-out/revive (T-1.17..T-1.19, T-2.13,
+  T-2.15), grenades and rockets on a pure-arithmetic stepper with blast
+  occlusion by the same box list (T-2.30, T-2.31). A blast's three-probe
+  visibility test (shin, chest, head) is already the shape a line-of-sight
+  check wants.
+- **Entities that come and go.** Projectiles (T-2.31) were the first spawns
+  and despawns on the wire, with their own netId range above the range
+  targets'. Enemies are the second.
+- **The in-page session runs the server in the browser** (`LocalServer`
+  constructs a real `Session`). Anything the AI needs — including Recast's
+  WASM — must therefore initialise in Chromium, Firefox and WebKit as well as
+  in Node, not only on the host.
+- **Nothing else.** No navmesh, no `recast-navigation` dependency, no
+  `shared/src/ai/`, no `server/src/ai/`, no enemy entity, no interest
+  management (every client is sent every entity), no second world.
+
+**Five rules for every task here.**
+
+1. **The AI plays by the player's rules.** A brain produces a `MoveInput` and
+   a trigger pull; `stepCharacter` moves it, the fire path shoots for it,
+   `applyDamage` hurts it. No second movement model, no AI-only hitscan, no
+   damage shortcut. This is what makes a bot's movement collide, vault and
+   crouch exactly as a person's does, what makes an enemy shootable through
+   the same lag-compensated history, and what makes a human taking over a
+   bot's slot (ADR-001) a change of *input source* rather than of entity.
+2. **Server-only, replicated, never predicted** (§2.3). AI may diverge across
+   engines freely; it still takes its randomness from the seeded PRNG
+   (seeded from tick + netId) and reads no clock, so a headless run is
+   reproducible and a failing seed can be replayed.
+3. **Behaviour at 10 Hz, locomotion at 30 Hz** (ADR-012). A brain decides
+   intent on its tenth-of-a-second; path following turns the latest intent
+   into an input every tick.
+4. **Data over code** (§0.3 rule 4). Archetypes, perception ranges, accuracy,
+   behaviour trees, encounters and director tuning are JSON validated at
+   import the way `weapons.json` is. A number that decides whether an AI reads
+   as competent is a number someone will tune in a playtest.
+5. **Competence is measured before it is judged.** Every behaviour task ships
+   a seeded headless scenario that reports the number it is about — time to
+   reach cover, fraction of time exposed, suppression dealt — and asserts a
+   floor. The 🧍 gates judge whether those numbers *read* as competent; they
+   are never the first place anyone finds out the behaviour does not happen.
+
+**Scope decisions made in this breakout** (raise at the next gate if wrong):
+
+- **Two archetypes are built, not five.** ADR-015 cuts the slice to rifleman
+  and MG. E-3.6's schema is written to hold RPG, sniper and officer, but they
+  are not authored or tuned in M3 — that is content, and §4.1 cut variety,
+  not structure.
+- **Any player may order any bot** (ADR-001). §1.3 gives the Team Leader
+  "order authority", but classes do not exist until E-4.7; until then
+  authority is not class-gated, and target marking is open to everyone.
+- **The mission is minimal.** M3's exit gate needs "the same grey-box
+  mission" to exist, so E-3.9 gets one box-world map, one encounter file and
+  one objective type. That is a fixture for the gate, not E-4.4's mission
+  scripting, and it says so in its files.
+- **An AI CPU budget is proposed, not locked:** brains, perception, path
+  following and avoidance together at **≤ 25 % of the 33.3 ms tick** with
+  forty enemies and five friendly bots, mirroring the share ADR-005's
+  addendum gave physics. T-3.35 measures it; if the number is wrong, change
+  it there with the measurement beside it.
+
+**Not in this milestone.** AI going prone (enemies and bots crouch; prone is
+a player's choice until a gate asks for more), vehicles and mounted weapons
+(E-4.8), RPG/sniper/officer archetypes, class-gated orders, voice or text
+comms, and any mission scripting beyond what T-3.34 names.
+
+#### T-3.01 — ⚠️ Recast in both runtimes
+- **Depends:** —
+- **Files:** `packages/server/src/ai/nav/NavMesh.ts`, `packages/tools/src/nav/bake.ts`, `packages/server/package.json`, `packages/tools/package.json`, `docs/adr/006-recast-navigation.md` (addendum), tests, browser test config
+- **Do:** Add `recast-navigation` (ADR-006; pin the exact version, as ADR-005's addendum pinned Rapier's). Bake a navmesh in Node from a hand-built triangle soup of a floor and a few boxes, export it to bytes, and load those bytes back through a `NavMesh` wrapper exposing only what M3 needs: nearest point on mesh, path (corridor + straight path), and a mesh raycast. Initialise it in Node **and** in the browser runtimes the parity job already runs, because `LocalServer` runs the session in the page. Measure WASM init time, bake time and query cost.
+- **Done when:** tests load the same exported bytes in Node and in Chromium plus one non-V8 engine and get a path between the same two points on each, with the path's length divergence logged and bounded (§2.3 — AI is not parity-critical, so this is a sanity bound, not a gate); init is awaited before a session's first tick in both runtimes; the ADR-006 addendum records the version, init cost, bake time and µs per path query. If Recast cannot run in one of the runtimes, the write-up says so and what the fallback would cost — that is an acceptable outcome of a spike.
+- **Size:** M
+
+#### T-3.02 — Named worlds
+- **Depends:** —
+- **Files:** `packages/shared/src/sim/world.ts`, `packages/shared/src/data/worlds/*.json` (today's `world.json` becomes `worlds/range.json`), `net/protocol.ts`, `Session.ts`, `server/src/config.ts`, `client/src/net/*`, `client/src/main.ts`, tests
+- **Do:** Today every consumer imports one `DEFAULT_WORLD`. Make the world a value a session is constructed with, chosen by id (`WORLD=range pnpm host`, defaulting to `range`), sent in `JoinAck` (protocol bump), and built on the client from the same data by the same function. `range` is the only world when this lands; T-3.31 adds the second. Generated pieces (posts, rails, reference figure) belong to the range world's definition, not to every world.
+- **Done when:** tests assert a session built with a named world collides, shoots and throws against that world's boxes and no other; that `JoinAck` round-trips the id and a client given an unknown id refuses the join with a typed reason rather than rendering the wrong scenery; that the range world is box-for-box what `DEFAULT_WORLD` was (the existing world tests pass unchanged against it). `pnpm verify` green.
+- **Size:** M
+
+#### T-3.03 — The box world, baked and committed
+- **Depends:** T-3.01, T-3.02
+- **Files:** `packages/tools/src/nav/bake.ts`, `packages/tools/src/gen-nav.ts`, `packages/server/src/ai/nav/baked/*`, root `package.json` (`gen:nav`), tests
+- **Do:** Triangulate every box of a named world (top faces walkable, sides as walls) and bake it with agent parameters derived from `MoveConfig` and the hitbox — radius from the capsule, height from standing height, climb from the step height — not typed in twice. Commit the bake per world, as `gen:trig` commits the trig table. The bake records a hash of the world's boxes and the agent parameters; a test recomputes it and fails if the committed bake is stale. This is ADR-006's "the level pipeline and the navmesh bake must be wired together or they will silently drift", enforced.
+- **Done when:** tests assert every spawn point and range target is on the mesh; a path exists from spawn to the far end of the range and to both sides of the east/west walls; sampling every returned path against `rayWorld` at knee height finds no segment that passes through a box; a soldier-sized gap narrower than the capsule is not walkable; and editing a box in the world data fails the staleness test until `pnpm gen:nav` is re-run.
+- **Size:** M
+
+#### T-3.04 — Vault links
+- **Depends:** T-3.03
+- **Files:** `packages/tools/src/nav/bake.ts`, `packages/server/src/ai/nav/NavMesh.ts`, tests
+- **Do:** Generate an off-mesh link across every box the controller's vault rule would vault (T-2.21 — reuse its height/depth predicate, do not restate it), in both directions, flagged as a vault so path following knows to walk into it with forward intent. Nothing else becomes a link in M3.
+- **Done when:** tests assert a path across the low wall uses its link and is shorter than going round; a box above vault height gets no link; every link's two ends are on the mesh; the staleness hash covers the vault parameters, so retuning the vault forces a re-bake.
+- **Size:** S
+
+#### T-3.05 — Path following as input
+- **Depends:** T-3.04
+- **Files:** `packages/server/src/ai/locomotion/followPath.ts`, `packages/server/src/ai/nav/NavMesh.ts`, tests
+- **Do:** A pure function from (corridor, current `MoveState`, intent) to a `MoveInput`: yaw toward the next corner, move axes, walk/sprint/crouch from the intent, forward intent into a vault link. It is stepped at 30 Hz and the result goes through `stepCharacter` like a human's input (rule 1). Arrival radius, corner smoothing and repath on a stuck detector (no progress along the corridor for N ticks) are data.
+- **Done when:** a headless session test drives a bot slot from spawn to a goal 60 m away and it arrives inside the arrival radius within a bounded number of ticks; it crosses the low wall by vaulting; a bot pushed off its corridor (teleported sideways) repaths and still arrives; a goal off the mesh resolves to the nearest point on it; the bot's server position and a replay of its inputs through `stepCharacter` agree exactly (they are the same function).
+- **Size:** M
+
+#### T-3.06 — Local avoidance
+- **Depends:** T-3.05
+- **Files:** `packages/server/src/ai/locomotion/avoidance.ts`, tests
+- **Do:** Detour's crowd for avoidance velocities only: agent positions are written into the crowd from each `MoveState` every tick and the crowd's desired velocity is turned into the move axes — the crowd never moves an agent itself, `stepCharacter` does (rule 1). Humans are obstacles in the crowd, not agents.
+- **Done when:** six bots sent through the west doorway from opposite sides all get through within a bounded time with no deadlock; no two soldiers' capsules overlap by more than a logged epsilon for more than N consecutive ticks; a bot routes around a standing human rather than through them; crowd cost per tick with 45 agents is logged.
+- **Size:** M
+
+#### T-3.07 — Behaviour tree runtime
+- **Depends:** —
+- **Files:** `packages/shared/src/ai/bt.ts`, `packages/shared/src/ai/blackboard.ts`, `packages/shared/src/data/trees/*.json`, `packages/shared/src/index.ts`, tests
+- **Do:** Sequence, selector, parallel, inverter, cooldown, timeout, condition and action nodes with a `running` status; a typed blackboard; trees authored as JSON and validated at import, with conditions and actions looked up by name in a registry the server fills. Shared, not server, because it is platform-free logic (§3) — it imports nothing and reads no clock: time is the tick handed in, randomness the seeded PRNG.
+- **Done when:** unit tests cover every node's success/failure/running semantics, re-entry into a running branch, a cooldown and a timeout measured in ticks, a tree referencing an unregistered action failing at load with its name, and two runs from the same seed producing the same sequence of actions.
+- **Size:** M
+
+#### T-3.08 — Brains on the session
+- **Depends:** T-3.07
+- **Files:** `packages/server/src/ai/Brain.ts`, `packages/server/src/session/Session.ts`, tests
+- **Do:** A bot slot owns a brain; the session ticks brains at 10 Hz, staggered by netId across the three ticks so the load is flat, and path following at 30 Hz from the brain's latest intent. A human taking over a slot stops its brain on the same tick; a human leaving hands the slot to a fresh brain that starts from the entity's current state, not from where the old brain was (ADR-001). Per-brain cost is measured.
+- **Done when:** tests assert each brain runs exactly every third tick and never on another, that the six brains are spread across all three phases, that a join stops a brain before its next input is produced and a leave restarts one, and that a slot's netId, position and health survive both swaps. `pnpm bot` numbers are unchanged with idle brains.
+- **Size:** S
+
+#### T-3.09 — AI debug view
+- **Depends:** T-3.08
+- **Files:** `packages/shared/src/net/protocol.ts`, `packages/server/src/ai/debug.ts`, `packages/client/src/ui/AiDebug.ts`, `packages/client/src/main.ts`, tests
+- **Do:** An opt-in `AiDebug` message — current tree path, intent, corridor, perception cones and known targets, chosen cover — sent only to clients that ask and only when the host allows it (`AI_DEBUG=1`), drawn by a client overlay on a free key. Nobody can judge an AI they cannot see the reasons of, and every 🧍 gate in this milestone runs with it available.
+- **Done when:** tests assert the message round-trips; a host without the flag sends nothing and a client that did not ask receives nothing (bytes counted); the overlay's geometry is built from the message and nothing else. A browser run shows a bot's path and tree state over the world.
+- **Size:** M
+
+#### T-3.10 — Enemy entities
+- **Depends:** T-3.08
+- **Files:** `packages/shared/src/data/enemies.json`, `packages/shared/src/sim/enemies.ts`, `ecs/components.ts`, `net/schema.ts`, `net/protocol.ts`, `Session.ts`, `server/src/net/lagComp.ts`, tests
+- **Do:** Enemies as the second class of entity that comes and goes, after projectiles: their own netId range, an archetype in data (health, weapon, perception block, accuracy block, tree id, `downable: false`), spawned and despawned by the session, stepped through `stepCharacter` with a brain of their own, recorded into the hitbox history every tick so a human's lag-compensated shot resolves against them exactly as against a slot, and hurt through `applyDamage`. An `Enemy` component (archetype index, faction) replicates beside `Transform`, `Velocity`, `Crouch` and `Health` (protocol bump). A dead enemy stays as a corpse for a data-set time, then despawns. Range targets stay in the range world.
+- **Done when:** session tests over the real wire assert an enemy spawns, moves and despawns in the deltas a client decodes; a human's shot at an enemy's head at 20 m under 150 ms of simulated latency lands on the head zone; an enemy dies rather than going down, stops producing input the tick it dies, and despawns on schedule; enemy netIds never collide with slots, range targets or projectiles; `isRangeTarget` and the projectile test stay bounded.
+- **Size:** L
+
+#### T-3.11 — Enemies in the page
+- **Depends:** T-3.10
+- **Files:** `packages/client/src/net/NetClient.ts`, `packages/client/src/character/*`, `packages/client/src/main.ts`, tests
+- **Do:** Draw enemies from the interpolation buffer on the same humanoid rig, pose driver, fire/reload layers, hit reactions and foot placement a remote soldier uses (T-2.22..T-2.28), in an enemy palette from the atlas (T-2.38) that reads as the other side at 40 m. A corpse holds its death pose and is removed when the entity despawns.
+- **Done when:** tests assert an `Enemy` entity gets a soldier mesh in the enemy palette and a slot never does; that it is never handed to the squad's roster or HUD; that despawn removes every object it created. A browser run on the in-page session shows an enemy standing, walking and falling.
+- **Size:** M
+
+#### T-3.12 — Interest management
+- **Depends:** T-3.10
+- **Files:** `packages/server/src/session/Session.ts`, `packages/server/src/session/relevance.ts`, `packages/tools/src/bench-bandwidth.ts`, tests
+- **Do:** ADR-012's ~120 m relevance radius, per client, from that client's slot: entities outside it are despawned from that client's view and respawned on re-entry through the delta path that already supports both. Slots are always relevant (the squad is always on the HUD). `bench:bandwidth` gains a scenario of six slots and forty moving enemies.
+- **Done when:** session tests assert an enemy leaving the radius despawns for that client only and reappears with current state on return; a client's ack/baseline bookkeeping survives an entity leaving and re-entering; `pnpm bench:bandwidth` reports the 46-entity scenario under ADR-012's 18 KB/s target, or, if it is not, under the 40 KB/s review line with the reason written into ADR-012 as an addendum.
+- **Size:** M
+
+#### T-3.13 — Vision and awareness
+- **Depends:** T-3.07
+- **Files:** `packages/shared/src/ai/perception.ts`, archetype perception block in `enemies.json`, tests
+- **Do:** Pure functions of (observer, target, world): a view cone and range from the archetype, line of sight by `rayWorld` from the observer's eye to the target's shin, chest and head (the blast's probe shape), and an awareness level that *accumulates* over time in view — faster when close, moving, firing or standing, slower when crouched, prone or at the cone's edge — and decays out of view. Detection is awareness crossing a threshold, never a single visible frame.
+- **Done when:** unit tests over fixture geometry assert a target behind a full wall is never seen and one behind a low wall is seen standing and not crouched; awareness rises monotonically in view and falls out of it; a prone target at 40 m takes longer to detect than a standing one; a target outside the cone is not seen at any range; all of it with table trig and no clock.
+- **Size:** M
+
+#### T-3.14 — Hearing, memory and target choice
+- **Depends:** T-3.13, T-3.10
+- **Files:** `packages/shared/src/ai/stimuli.ts`, `packages/shared/src/ai/memory.ts`, `Session.ts`, tests
+- **Do:** The session emits stimuli — a shot (at the shooter), an impact and a near miss (at the point), a detonation, a sprinting soldier — each with a loudness radius in data. A brain's memory holds a last known position, time and confidence per target, fed by sight and by stimuli and decaying without either. Target choice prefers the visible, the close and the one shooting at it, and deprioritises the downed (data).
+- **Done when:** tests assert a shot is heard inside its radius and not outside, an unseen shooter's last known position is where the shot came from, memory decays to forgotten on its data-set time, a visible target beats a remembered one, and a downed target is chosen only when nothing else is known.
+- **Size:** M
+
+#### T-3.15 — AI fire through the authoritative path
+- **Depends:** T-3.10, T-3.13
+- **Files:** `packages/server/src/session/Session.ts`, `packages/server/src/ai/aim.ts`, archetype accuracy block, tests
+- **Do:** A brain pulls the trigger through the same fire path a human's `Fire` takes — same weapon data, cooldown, bloom, magazine and reload, same `HitEvent` — with no rewind, because a server-side shooter sees the present. Aim error comes from the archetype: a base cone widened by target distance and speed and by the shooter's own suppression, narrowed by time on target. An AI never fires without line of sight to what it is aiming at, except when suppressing (T-3.21).
+- **Done when:** session tests assert an enemy's shot produces a `HitEvent` with its netId, damages a slot through `applyDamage` and can down it; over a seeded run of 300 shots at 20 m the hit rate lies inside the band the archetype's data describes; time on target narrows the spread; an enemy reloads when empty and cannot fire while reloading; and no shot is fired through a wall.
+- **Size:** M
+
+#### T-3.16 — Suppression in the sim
+- **Depends:** T-3.15
+- **Files:** `packages/shared/src/sim/suppression.ts`, `packages/shared/src/data/suppression.json`, `ecs/components.ts`, `net/schema.ts`, `Session.ts`, tests
+- **Do:** A near miss is a shot whose ray passes within a data-set distance of a soldier's capsule without hitting it; blasts and impacts nearby count too. Every soldier — slot or enemy — carries a suppression level that near misses raise and time decays. For AI it widens aim and raises the brain's urge to take cover (read by T-3.20). For humans it widens the weapon cone server-side by a data-set amount and replicates as a `Suppression` component so the page can show it (protocol bump).
+- **Done when:** tests assert the closest-approach test against a capsule (miss by 0.4 m counts, 3 m does not, a hit is not a near miss); the level rises per near miss, saturates and decays on its curve; a suppressed shooter's measured spread is wider by the data's amount; the component round-trips and a client's local weapon cone mirrors the replicated level.
+- **Size:** M
+
+#### T-3.17 — Suppression in the page
+- **Depends:** T-3.16
+- **Files:** `packages/client/src/ui/*`, `packages/client/src/camera/cameraShake.ts`, `packages/client/src/main.ts`, tests
+- **Do:** Being suppressed reads on screen: a vignette and desaturation scaled by the replicated level, a small camera jolt per near miss, and the crosshair's cone showing the widened spread. Stateless per frame like every other effect.
+- **Done when:** tests assert the effect is zero at zero suppression and monotonic in it, that 30 and 120 fps render the same picture at the same level, and that the crosshair cone equals the replicated spread. A browser run with a bot firing past the camera.
+- **Size:** S
+
+#### T-3.18 — Cover points in the bake
+- **Depends:** T-3.04
+- **Files:** `packages/tools/src/nav/cover.ts`, `packages/server/src/ai/nav/baked/*`, tests
+- **Do:** Generate cover points along every box face a soldier can stand against, on the mesh: position, the face normal it protects along, and height class — **low** (crouch conceals, standing fires over) or **high** (standing conceals, fire by stepping out), from the box height against the crouched and standing eye heights. Stored beside the navmesh, under the same staleness hash.
+- **Done when:** tests assert every point is on the mesh and within a capsule radius of its box; the low wall yields low points and the east/west walls high ones; no point is generated inside a box or in a gap too narrow to stand in; the counts per world are logged; editing a box fails the staleness test.
+- **Size:** M
+
+#### T-3.19 — Cover query and reservation
+- **Depends:** T-3.18, T-3.13
+- **Files:** `packages/server/src/ai/cover.ts`, tests
+- **Do:** "Best cover from these threats": candidates within a path distance, scored by protection (line of sight from each threat's eye to the point's concealed probes is blocked), by a firing position existing (standing over low cover, or a side step out of high cover, has sight of the threat), by path cost, and against crowding friends. A point is reserved by whoever chooses it and released when they leave it or die.
+- **Done when:** tests over fixture geometry assert a crate protects against a threat in front and not one behind; moving the threat round invalidates the point; two brains asking at once get different points; a point with no firing position is never chosen for combat; the query's cost for 40 brains is logged.
+- **Size:** M
+
+#### T-3.20 — The rifleman's fight
+- **Depends:** T-3.05, T-3.14, T-3.15, T-3.19
+- **Files:** `packages/shared/src/data/trees/rifleman.json`, `packages/server/src/ai/actions/*`, tests, `packages/tools/src/sim-run.ts` (scenario)
+- **Do:** A tree that engages from cover: detect → move to cover facing the threat → peek, fire a burst, return → reload in cover → relocate when the cover is flanked (the threat can see the concealed probes) → advance cover to cover when unopposed. Suppression and damage push it toward cover; a clear target and full magazine pull it out.
+- **Done when:** a seeded `pnpm sim-run --scenario cover-duel` against a scripted shooter reports and asserts, over 20 seeds: the enemy reaches cover within a data-set time of first contact in at least 90 % of runs; it spends under a data-set fraction of the fight exposed while not firing; it never reloads exposed when cover is in reach; a shooter moved to its flank makes it relocate within a bound. The numbers are logged every run.
+- **Size:** L
+
+#### T-3.21 — Suppress and flank
+- **Depends:** T-3.20, T-3.16, T-3.06
+- **Files:** `packages/server/src/ai/group.ts`, `packages/shared/src/data/trees/*.json`, `packages/server/src/ai/nav/NavMesh.ts`, tests, sim-run scenario
+- **Do:** Enemies spawned together share a group blackboard. When a target is pinned in cover, the group assigns a suppressor — firing at the target's last known position and its cover, without line of sight, to keep its suppression high — and a flanker, which paths with a query filter that penalises polygons the target can see, to a cover point with sight of the target's concealed side.
+- **Done when:** a seeded `sim-run --scenario pinned` against a scripted soldier holding cover reports and asserts that the soldier's suppression level stays above a data-set floor for most of the flank, that the flanker reaches a position with line of sight to the concealed side in at least a data-set share of seeds, and that the flanker's route is measurably less exposed than the direct one.
+- **Size:** L
+
+#### T-3.22 — AI grenades
+- **Depends:** T-3.20
+- **Files:** `packages/server/src/ai/throw.ts`, `Session.ts`, tree data, tests
+- **Do:** A target that has been static in cover for a data-set time is a grenade target. The brain searches launch pitch through `projectileArc` (T-2.30 — the same stepper the server flies it on) for an arc that ends within the blast's reach of the target and not of itself or a friend, then throws through the same session path a human's `Throw` takes, from the same pouch and cooldown.
+- **Done when:** tests assert a thrown AI grenade lands within blast reach of a crouched target behind the low wall; no throw is chosen whose landing point is within blast reach of the thrower or a group member; the pouch and cooldown hold; a moving target is not thrown at.
+- **Size:** M
+
+#### T-3.23 — Rifleman and MG
+- **Depends:** T-3.21, T-3.22
+- **Files:** `packages/shared/src/data/enemies.json`, `packages/shared/src/data/weapons.json` (an LMG entry), trees, tests, sim-run scenario
+- **Do:** The two slice archetypes (ADR-015). The rifleman is T-3.20/T-3.21's tree. The MG deploys before it fires (data-set time, stationary), fires long bursts with a wide cone, is the group's preferred suppressor, relocates rarely and badly, and is the thing the marksman exists to answer. RPG, sniper and officer are valid in the schema and absent from the data.
+- **Done when:** schema tests accept all five archetype shapes and the data contains exactly two; a seeded scenario asserts the MG's suppression dealt per second is at least a data-set multiple of the rifleman's, that it relocates less often, and that it cannot fire while not deployed.
+- **Size:** M
+
+#### T-3.24 — 🧍 Combat AI sign-off
+- **Depends:** T-3.11, T-3.17, T-3.23
+- **Files:** `docs/playtests/e3-5.md`
+- **Do:** Two people on the host, AI debug available, against a mixed group of riflemen and an MG in the range world. Do enemies take cover in a way that reads as a decision rather than a coincidence; does the MG pin you; does being flanked feel like being outplayed or like being cheated; does a grenade come when you camp; can you tell an enemy from a squadmate at 40 m. Tune the archetype data while the feel is in hand.
+- **Done when:** a written verdict, on a run sheet prepared before the session as `e2-2.md` was, naming what it does and does not establish (it does not establish the mission, T-3.36).
+- **Size:** S
+
+#### T-3.25 — Formation following
+- **Depends:** T-3.06, T-3.08
+- **Files:** `packages/server/src/ai/friendly/formation.ts`, `packages/shared/src/data/squad.json`, trees, tests
+- **Do:** The six slots split into two fireteams of three (§1.2), fixed in data. A friendly bot follows its fireteam's lead — the first human in the fireteam, else the first human in the squad, else slot 0's bot — at a formation offset (wedge, file) projected onto the mesh, walking when the lead walks and sprinting when they sprint, and closing up when the lead stops.
+- **Done when:** headless tests with one human stand-in walking a route assert each bot stays within a data-set band of its formation slot for most of the route, rejoins after a corner, never takes the lead's own position, and that the lead changes correctly as humans join and leave fireteams.
+- **Size:** M
+
+#### T-3.26 — Friendly bots fight and revive
+- **Depends:** T-3.25, T-3.20
+- **Files:** friendly trees, `packages/server/src/ai/actions/*`, `Session.ts`, tests
+- **Do:** A friendly bot uses the same perception, fire, cover and grenade actions an enemy does, bounded to its formation: it takes cover near its slot rather than roaming, holds fire when a squadmate is on the line of fire (segment against friendly capsules), and revives a downed squadmate — lifting today's `reviver.isBot` exclusion so a bot revives through the same held-interact path and the same range and timer a human uses.
+- **Done when:** session tests assert a bot revives a downed human in the same time a human reviver would; a bot never fires when a friendly capsule is on the segment; a bot under fire takes cover within its formation band; a seeded scenario of five bots against a rifleman group reports and asserts kills without friendly hits.
+- **Size:** M
+
+#### T-3.27 — Orders on the wire
+- **Depends:** T-3.08
+- **Files:** `packages/shared/src/net/protocol.ts`, `packages/shared/src/sim/orders.ts`, `Session.ts`, tests
+- **Do:** An `Order` message — move, attack, hold, regroup, revive — with a point or a target netId, addressed to one bot, a fireteam or all, and a `Mark` message for target marking. Untrusted: the sender must be a human in the session, a target must exist, and an order to a human-held slot is dropped (ADR-001: any player may order any *bot*). The last order to a bot wins, whoever gave it, and the session broadcasts each bot's current order and each mark so every client can show them (protocol bump).
+- **Done when:** protocol round-trip tests; session tests assert an order from a human reaches the named bots and not others, an order to a human slot is ignored, two humans ordering the same bot leave the later order standing and both clients see it, marks expire on their data-set time, and garbage fields are refused.
+- **Size:** M
+
+#### T-3.28 — Bots carry out orders
+- **Depends:** T-3.27, T-3.26, T-3.19
+- **Files:** friendly trees, `packages/server/src/ai/friendly/orders.ts`, tests
+- **Do:** An order pre-empts the formation branch through the blackboard: move goes to the point and takes the best cover there facing the likeliest threat; attack prioritises the target and advances to a firing position; hold stays and engages from where it stands; regroup returns to formation; revive goes and revives the named soldier. A marked enemy outranks unmarked ones for every bot. An order finishes, fails (unreachable, target dead) or is replaced — and says which.
+- **Done when:** headless tests per order kind assert the bot does the thing and reports completion; an unreachable move reports failure rather than standing still silently; a hold survives contact; a marked target is engaged before a closer unmarked one.
+- **Size:** M
+
+#### T-3.29 — Order wheel and marking in the page
+- **Depends:** T-3.27
+- **Files:** `packages/client/src/ui/OrderWheel.ts`, `packages/client/src/input/LocalInput.ts`, `packages/client/src/main.ts`, tests
+- **Do:** Hold Q for a radial wheel, choose by mouse direction, release to issue it at the point under the converged aim (the same raycast the crosshair uses); number keys while held pick one bot or a fireteam. A tap of F marks the enemy under the crosshair. Current orders and marks are drawn in the world from what the server broadcasts. No held modifier combos (R13).
+- **Done when:** tests assert the wheel's direction-to-order mapping, that the order's point is the aim convergence point, that a release latches like the throw's release so a quick flick is never lost, and that the in-world markers are built from the broadcast state and not from what this client sent. A browser run issues each order to a bot on the in-page session.
+- **Size:** M
+
+#### T-3.30 — 🧍 Squad command sign-off
+- **Depends:** T-3.11, T-3.25, T-3.26, T-3.28, T-3.29
+- **Files:** `docs/playtests/e3-8.md`
+- **Do:** One person with five bots, then two people sharing them. Do the bots feel like a squad or like followers; does an order get done the way it was meant; does the wheel stay out of the way in a firefight; do bots revive you when it matters; does sharing bots between two humans cause confusion about who is in charge.
+- **Done when:** a written verdict, on a run sheet prepared before the session, naming what it does and does not establish.
+- **Size:** S
+
+#### T-3.31 — The grey-box mission map
+- **Depends:** T-3.02, T-3.04, T-3.18
+- **Files:** `packages/shared/src/data/worlds/greybox-01.json`, its bake under `server/src/ai/nav/baked/`, tests
+- **Do:** A second world in boxes, sized for a six-man element: a squad start, an objective area, and **two viable approach routes** (§1.2) — one with long sight lines for an overwatch fireteam, one with close cover for an assault fireteam — plus enemy spawn zones behind the objective and on both routes. It is a fixture for M3's exit gate, not E-4.3's level format.
+- **Done when:** tests assert both routes are connected paths on its navmesh from start to objective that share no polygon for a data-set share of their length; every spawn zone is on the mesh; each route has cover points along it; a soldier walks either route in the controller without getting stuck (headless, path following); the bake is committed and fresh.
+- **Size:** M
+
+#### T-3.32 — Encounters and spawning
+- **Depends:** T-3.10, T-3.31
+- **Files:** `packages/shared/src/data/encounters/*.json`, `packages/server/src/ai/director/spawner.ts`, `Session.ts`, tests
+- **Do:** An encounter file per world: groups (archetypes, counts, spawn zone, initial posture — patrol, hold, garrison), triggers (the squad entering a zone, a group dying, a time since start) and reinforcement waves. The spawner never places an enemy where any human can see it (line of sight from every human's eye to the spawn point's probes), and caps enemies alive.
+- **Done when:** tests assert groups spawn on their triggers and not before; a spawn point visible to a human is skipped for the next valid one; the alive cap holds under repeated waves; posture is honoured on spawn.
+- **Size:** M
+
+#### T-3.33 — The director
+- **Depends:** T-3.32, T-3.14
+- **Files:** `packages/server/src/ai/director/director.ts`, `packages/shared/src/data/director.json`, tests
+- **Do:** An intensity estimate from recent damage to the squad, enemies in contact and squad suppression; waves are held while intensity is high and brought forward while it is low, inside the encounter's bounds. Enemy counts and wave sizes scale on **human count, not squad size** (ADR-001), from a table in data — five bots add nothing.
+- **Done when:** tests assert one human and five bots get the table's one-human budget and six humans the six-human budget; swapping a bot for a human mid-mission changes the next wave, not the current one; a wave is delayed while intensity is above its threshold and never delayed past the encounter's maximum.
+- **Size:** M
+
+#### T-3.34 — The objective
+- **Depends:** T-3.31, T-3.32
+- **Files:** `packages/server/src/session/mission.ts`, `packages/shared/src/net/protocol.ts`, `packages/client/src/ui/*`, tests
+- **Do:** Exactly what the exit gate needs: one objective type — clear the objective area and hold it for a data-set time — evaluated on the server, a `Mission` state message (in progress, complete, failed on a squad wipe), a HUD line, and a restart that resets the encounter and respawns the squad on the start line. Everything else is E-4.4's.
+- **Done when:** session tests assert completion when the area is clear and held, failure when every slot is dead, and a restart that puts the world back to the start state; the message round-trips and the HUD reads it.
+- **Size:** M
+
+#### T-3.35 — The mission, headless
+- **Depends:** T-3.23, T-3.28, T-3.33, T-3.34
+- **Files:** `packages/tools/src/sim-run.ts` (scenario), `packages/tools/src/bench-tickrate.ts`, `.github/workflows/ci.yml` (a short-seed job), tests
+- **Do:** `pnpm sim-run --scenario mission --seeds 20` plays greybox-01 with six friendly bots against the encounter, at the director's one-human and six-human budgets (a test override of the human count — the one place a bot is counted as a person, and only in this tool). Report completion rate and time, and the exit gate's two claims as numbers: the share of time enemies under fire spend in cover, and suppression episodes per engagement. Measure AI cost per tick at forty enemies and five bots.
+- **Done when:** the scenario asserts a completion rate floor at both budgets, an in-cover share and suppression rate floor, and AI cost under the proposed 25 % of the tick; every number is logged every run, and a three-seed version runs in CI. A failing seed prints the seed.
+- **Size:** M
+
+#### T-3.36 — 🧍 M3 exit gate: one player, five bots
+- **Depends:** T-3.24, T-3.30, T-3.35
+- **Files:** `docs/playtests/m3-solo.md`
+- **Do:** One person plays greybox-01 with five bots, start to finish, at least twice — once by each route. Do enemies demonstrably take cover and suppress; is the mission completable; do the bots pull their weight without being ordered every ten seconds.
+- **Done when:** a written verdict on a run sheet prepared before the session, stating whether this half of M3's exit gate passed.
+- **Size:** S
+
+#### T-3.37 — 🧍 M3 exit gate: six players
+- **Depends:** T-3.35
+- **Files:** `docs/playtests/m3-six.md`
+- **Do:** Six people on the deployed host play the same mission, same encounter file, no bots. Does it hold up at the six-human budget; does the two-fireteam split happen on its own; does the host hold its tick and bandwidth with six real sockets and a full encounter (netgraph and `/healthz` recorded). Best run after T-3.36, since it is the cheaper session to reschedule.
+- **Done when:** a written verdict on a run sheet prepared before the session, stating whether this half of M3's exit gate passed. M3 closes when both T-3.36 and T-3.37 have.
+- **Size:** S
+
 ### M4 — Content systems (~9–11 wks)
 
 | Epic | Scope |
@@ -1585,3 +1940,14 @@ decision worth taking deliberately rather than on the way past. M2's exit gate
 remains the overall human judgement that third-person combat feels good — and
 with grenades in, that firefight now has something in it that the other person
 has to move away from.
+
+**M3 is broken out (§7.9, 2026-09-22), ahead of M2's exit gate, at the
+owner's request.** It does not jump the queue: M2's remaining build task
+(T-2.42) and its gates still come first. The first M3 tasks with nothing in
+front of them are T-3.01 (the ⚠️ Recast spike — do this one early, because
+ADR-006's choice is only as good as Recast running in all three browser
+engines as well as Node), T-3.02 (named worlds) and T-3.07 (the behaviour
+tree runtime). §7.9 records four scope calls made while breaking it out —
+two archetypes not five, unclassed order authority, a minimal mission, and a
+proposed AI CPU budget — for the owner to overrule at the first M3 gate if
+any is wrong.
