@@ -13,7 +13,7 @@ import {
 import { plateau } from './locomotionPose.ts';
 import { solveTwoBone } from './twoBoneIk.ts';
 import { DOWNED_BODY_LIFT_M, HUMANOID_HIT_HALF_HEIGHT, HUMANOID_HIT_RADIUS, HUMANOID_ROOT_LIFT_M } from './humanoidPlaceholder.ts';
-import { type CellName, remapGeometryUv, soldierAtlas } from './soldierTexture.ts';
+import { type CellName, type PaletteName, remapGeometryUv, soldierAtlas } from './soldierTexture.ts';
 
 /**
  * The M2 soldier: a skinned humanoid built in code (T-2.22).
@@ -570,6 +570,30 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
   };
   registerRig(rig);
   return root;
+}
+
+/**
+ * Repaint a live soldier (T-2.33). A palette is a texture swap and nothing
+ * else — same geometry, same skeleton, same material type, same draw call —
+ * so a slot that flips from bot to human changes colour on the entity that is
+ * already standing there. ADR-001's bot/human swap on a live entity is the
+ * load-bearing decision of the project; this is what it looks like.
+ *
+ * A no-op on the grey box, which has no atlas to swap and is a diagnostic
+ * fixture rather than a soldier.
+ */
+export function setSoldierPalette(root: THREE.Object3D, palette: PaletteName): boolean {
+  const skin = root.getObjectByName('soldier');
+  if (!(skin instanceof THREE.SkinnedMesh)) return false;
+  const atlas = soldierAtlas(palette);
+  for (const mesh of [skin, root.getObjectByName('rifle')]) {
+    if (!(mesh instanceof THREE.Mesh)) continue;
+    const material = mesh.material as THREE.MeshLambertMaterial;
+    if (material.map === atlas) continue;
+    material.map = atlas;
+    material.needsUpdate = true;
+  }
+  return true;
 }
 
 /** The skinned mesh under a soldier root, for tests and diagnostics. */

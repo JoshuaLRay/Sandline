@@ -1,21 +1,26 @@
 {
-  "comment": "Soldier atlas palettes (T-2.30). Standing rule 4: the look is data. Each palette paints the same atlas arithmetic, so a variant costs a texture and never a mesh, a material type or a draw call. Hex strings, sRGB, as a painter would name them.",
+  "comment": "Soldier atlas palettes (T-2.30, slots added T-2.33). Standing rule 4: the look is data. Every palette is `base` with a few keys overridden, so a squad of six is one set of colours wearing six markings rather than six unrelated colour schemes — which is what a squad looks like. A palette costs one 256x256 texture and never a mesh, a material type or a draw call. Hex strings, sRGB, as a painter would name them.",
+  "base": {
+    "skin": "#c99572",
+    "skinShade": "#a87454",
+    "uniform": "#6b7250",
+    "uniformLight": "#7d8560",
+    "uniformShade": "#4f553b",
+    "webbing": "#9c9066",
+    "webbingShade": "#6f6647",
+    "gear": "#4a4f3c",
+    "gearShade": "#34382a",
+    "boot": "#5a4632",
+    "bootShade": "#3d301f",
+    "metal": "#2b2e2a",
+    "metalShade": "#191b18",
+    "accent": "#9a5433"
+  },
   "palettes": {
     "local": {
-      "skin": "#c99572",
-      "skinShade": "#a87454",
-      "uniform": "#6b7250",
-      "uniformLight": "#7d8560",
-      "uniformShade": "#4f553b",
-      "webbing": "#9c9066",
-      "webbingShade": "#6f6647",
-      "gear": "#4a4f3c",
-      "gearShade": "#34382a",
-      "boot": "#5a4632",
-      "bootShade": "#3d301f",
-      "metal": "#2b2e2a",
-      "metalShade": "#191b18",
-      "accent": "#9a5433"
+      "uniform": "#727a55",
+      "uniformLight": "#858e66",
+      "accent": "#e0d7a8"
     },
     "remote": {
       "skin": "#c08a68",
@@ -23,15 +28,22 @@
       "uniform": "#77785a",
       "uniformLight": "#898a69",
       "uniformShade": "#585a42",
-      "webbing": "#a2966d",
-      "webbingShade": "#756c4d",
-      "gear": "#4f5142",
-      "gearShade": "#383a2f",
-      "boot": "#5f4a36",
-      "bootShade": "#413324",
-      "metal": "#2b2e2a",
-      "metalShade": "#191b18",
       "accent": "#3f6a86"
-    }
+    },
+    "bot": {
+      "skin": "#b98d6c",
+      "skinShade": "#9a6b4d",
+      "uniform": "#6a6c58",
+      "uniformLight": "#797c66",
+      "uniformShade": "#4e5042",
+      "webbing": "#8b8468",
+      "accent": "#6d7066"
+    },
+    "slot-1": { "accent": "#c4682a" },
+    "slot-2": { "accent": "#3f79a8" },
+    "slot-3": { "accent": "#6fa03c" },
+    "slot-4": { "accent": "#b53d3d" },
+    "slot-5": { "accent": "#9a6bb0" },
+    "slot-6": { "accent": "#d6b43a" }
   }
 }

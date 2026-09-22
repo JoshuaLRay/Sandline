@@ -17,8 +17,10 @@ import {
   CELL_SIZE,
   type CellName,
   PALETTES,
+  SLOT_PALETTES,
   cellUv,
   paintSoldierAtlas,
+  paletteFor,
   paletteNames,
   remapGeometryUv,
   soldierAtlas,
@@ -148,8 +150,9 @@ describe('the soldier atlas (T-2.30)', () => {
     // A boot's `v` is 0 at the sole on every side face.
     expect(apart(texelAt(data, ...cellUv('boot', 0.5, 2.5 / CELL_SIZE)), rgbOf(p.metalShade))).toBeLessThan(16);
     expect(apart(texelAt(data, ...cellUv('boot', 0.5, 40 / CELL_SIZE)), rgbOf(p.boot))).toBeLessThan(20);
-    // The helmet's band sits just above its rim.
-    expect(apart(texelAt(data, ...cellUv('helmet', 0.9, 6.5 / CELL_SIZE)), rgbOf(p.webbingShade))).toBeLessThan(16);
+    // The helmet's rim sits in its own shadow. (The band above it carries the
+    // slot's colour and belongs to T-2.33's tests, not this one.)
+    expect(apart(texelAt(data, ...cellUv('helmet', 0.9, 1.5 / CELL_SIZE)), rgbOf(p.gearShade))).toBeLessThan(16);
     // The trouser blouses into the boot rather than ending in mid-air.
     expect(apart(texelAt(data, ...cellUv('trouser', 0.5, 2.5 / CELL_SIZE)), rgbOf(p.uniformShade))).toBeLessThan(20);
   });
@@ -158,11 +161,69 @@ describe('the soldier atlas (T-2.30)', () => {
     const keys = Object.keys(PALETTES.local).sort();
     expect(paletteNames().length).toBeGreaterThanOrEqual(2);
     for (const name of paletteNames()) {
+      // Every override is merged onto `base`, so a one-line slot palette is
+      // still a complete one and can never paint an undefined colour.
       expect(Object.keys(PALETTES[name]).sort()).toEqual(keys);
       for (const value of Object.values(PALETTES[name])) expect(value).toMatch(/^#[0-9a-f]{6}$/);
-      // Every palette paints, and paints something distinguishable.
       const data = paintSoldierAtlas(PALETTES[name]);
       expect(data.length).toBe(ATLAS_SIZE * ATLAS_SIZE * 4);
+    }
+  });
+});
+
+describe('squad colours (T-2.33)', () => {
+  it('gives ADR-001\'s six slots a marking each, all on the same uniform', () => {
+    expect(SLOT_PALETTES.length).toBe(6);
+    const accents = SLOT_PALETTES.map((name) => PALETTES[name].accent);
+    expect(new Set(accents).size).toBe(6);
+    // A squad is one set of colours wearing six markings, not six colour
+    // schemes: everything but the marking is the same soldier.
+    for (const name of SLOT_PALETTES) {
+      const { accent: _accent, ...rest } = PALETTES[name];
+      const { accent: _base, ...baseRest } = PALETTES['slot-1'];
+      expect(rest).toEqual(baseRest);
+    }
+  });
+
+  it('reads the palette off the roster, and a bot is not a squadmate', () => {
+    expect(paletteFor({ local: true })).toBe('local');
+    expect(paletteFor({ slot: 0, human: true })).toBe('slot-1');
+    expect(paletteFor({ slot: 5, human: true })).toBe('slot-6');
+    // A bot is a bot in whatever slot it sits: ADR-001 fills the same six
+    // slots either way, and the colour is what says which you are shouting at.
+    expect(paletteFor({ slot: 2, human: false })).toBe('bot');
+    // Before the roster arrives, the distinction the harness has always
+    // drawn — and still does.
+    expect(paletteFor({})).toBe('remote');
+    expect(paletteFor({ slot: -1 })).toBe('remote');
+    expect(paletteFor({ slot: 99 })).toBe('remote');
+  });
+
+  it('puts the marking where a squad seen from the side can read it', () => {
+    // The helmet mark and the vest patch both face front. A soldier walking
+    // past you shows neither, so the shoulder carries it too.
+    for (const name of ['slot-2', 'slot-4'] as const) {
+      const data = paintSoldierAtlas(PALETTES[name]);
+      const accent = rgbOf(PALETTES[name].accent);
+      const at = (cell: 'sleeve' | 'helmet' | 'vest', x: number, y: number): number =>
+        apart(texelAt(data, ...cellUv(cell, x / CELL_SIZE, y / CELL_SIZE)), accent);
+      expect(at('sleeve', 9.5, 45.5)).toBeLessThan(16);
+      expect(at('vest', 31.5, 46.5)).toBeLessThan(16);
+      // The helmet band, a third of the way up the dome and NOT at the rim,
+      // where T-2.31's brim occludes it exactly. Sampled away from the tape
+      // strip, so this also proves the band goes all the way round.
+      expect(at('helmet', 40.5, 20.5)).toBeLessThan(16);
+    }
+  });
+
+  it('costs a texture per palette and nothing else — no mesh, no material type', () => {
+    // Six soldiers of six slots are six draws of the same geometry and the
+    // same material class; only the map differs.
+    const textures = SLOT_PALETTES.map((name) => soldierAtlas(name));
+    expect(new Set(textures).size).toBe(6);
+    for (const texture of textures) {
+      expect(texture.image.width).toBe(ATLAS_SIZE);
+      expect(texture.magFilter).toBe(THREE.NearestFilter);
     }
   });
 });

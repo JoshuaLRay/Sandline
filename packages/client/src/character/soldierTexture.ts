@@ -102,11 +102,46 @@ type PaletteColorName =
   | 'metalShade'
   | 'accent';
 
-export const PALETTES: Record<PaletteName, SoldierPalette> = RAW_PALETTES.palettes;
+/**
+ * Every palette is `base` with a few keys overridden (T-2.33), so a squad of
+ * six is one set of colours wearing six markings rather than six unrelated
+ * colour schemes — which is what a squad looks like, and what keeps a slot
+ * colour to one line of data.
+ */
+const BASE = RAW_PALETTES.base as SoldierPalette;
+export const PALETTES = Object.fromEntries(
+  Object.entries(RAW_PALETTES.palettes as Record<string, Partial<SoldierPalette>>)
+    .map(([name, over]) => [name, { ...BASE, ...over }]),
+) as Record<PaletteName, SoldierPalette>;
 
 /** Every palette name in the data, for a caller that wants to walk them. */
 export function paletteNames(): PaletteName[] {
   return Object.keys(PALETTES) as PaletteName[];
+}
+
+/** The squad-slot palettes, in slot order, as the data declares them. */
+export const SLOT_PALETTES = paletteNames()
+  .filter((name) => name.startsWith('slot-'))
+  .sort();
+
+/**
+ * Which palette a soldier wears (T-2.33). ADR-001's squad is always six and a
+ * slot is a bot until a person takes it, so this is driven by the roster and
+ * re-asked as it changes: a slot that flips from bot to human changes colour
+ * on the live entity, which is the swap the whole architecture rests on made
+ * visible. `remote` is the fallback for a soldier whose slot is not known
+ * yet — the distinction the harness has always drawn, and still does.
+ */
+export function paletteFor(who: {
+  local?: boolean | undefined;
+  /** Absent means "the roster has not said yet", which is not the same as a bot. */
+  human?: boolean | undefined;
+  slot?: number | undefined;
+}): PaletteName {
+  if (who.local) return 'local';
+  if (who.human === false) return 'bot';
+  const slot = who.slot ?? -1;
+  return SLOT_PALETTES[slot] ?? 'remote';
 }
 
 type RGB = [number, number, number];
@@ -237,10 +272,18 @@ export function paintSoldierAtlas(palette: SoldierPalette): Uint8Array {
   const helmet = cell('helmet');
   helmet.fill(gear);
   helmet.grain(0, 0, CELL_SIZE, CELL_SIZE, 12);
-  helmet.band(4, 6, webbingShade, gearShade); // the band around the shell
+  // The band around the shell carries the SLOT's colour (T-2.33). A patch
+  // does not survive forty metres and a helmet band does: it is the one
+  // marking visible from every angle, at every range, in every pose, and it
+  // is what real units used a helmet band for.
+  //
+  // It sits a THIRD of the way up the dome, not at the rim where a band
+  // belongs, because T-2.31's brim occludes the rim exactly — the first
+  // version of this was painted correctly and invisible.
+  helmet.band(17, 7, accent, gearShade);
   helmet.rect(0, 0, CELL_SIZE, 4, gearShade); // the rim, in its own shadow
-  helmet.rect(12, 5, 8, 4, accent); // a squad mark, front and centre
-  for (let x = 2; x < CELL_SIZE; x += 11) helmet.rect(x, 12, 2, 2, gearShade); // rivets
+  helmet.rect(12, 18, 8, 5, webbingShade); // the strip of tape every band has
+  for (let x = 2; x < CELL_SIZE; x += 11) helmet.rect(x, 9, 2, 2, gearShade); // rivets
 
   // -- Torso front: collar, placket, chest pockets. --
   const torsoFront = cell('torsoFront');
@@ -272,7 +315,8 @@ export function paintSoldierAtlas(palette: SoldierPalette): Uint8Array {
   }
   vest.rect(0, 40, CELL_SIZE, 5, webbing); // the strap across the chest
   vest.rect(0, 39, CELL_SIZE, 1, gearShade);
-  vest.rect(28, 44, 8, 6, accent); // squad mark on the plate
+  vest.rect(22, 42, 20, 8, accent); // the slot's colour on the plate
+  vest.outline(22, 42, 20, 8, gearShade);
 
   // -- Belt: buckle at the front, pouches either side. --
   const belt = cell('belt');
@@ -292,8 +336,13 @@ export function paintSoldierAtlas(palette: SoldierPalette): Uint8Array {
   sleeve.grain(0, 0, CELL_SIZE, CELL_SIZE, 12);
   sleeve.band(3, 6, uniformShade, uniformShade); // cuff
   sleeve.rect(0, 30, CELL_SIZE, 2, uniformShade); // seam up the arm
-  sleeve.rect(4, 40, 12, 10, uniformLight); // shoulder patch
-  sleeve.outline(4, 40, 12, 10, uniformShade);
+  // The slot's marking, on the shoulder where it reads from the side (T-2.33).
+  // The helmet mark and the vest patch are both front-facing; a squad seen
+  // from anywhere but head-on needs one that is not.
+  sleeve.rect(3, 39, 15, 12, accent);
+  sleeve.outline(3, 39, 15, 12, uniformShade);
+  sleeve.rect(33, 39, 15, 12, accent);
+  sleeve.outline(33, 39, 15, 12, uniformShade);
 
   // -- Glove. --
   const glove = cell('glove');

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { DEFAULT_HITBOX } from '@sandline/server';
 import { DEFAULT_MUZZLE_RIG } from '@sandline/shared';
 import { HUMANOID_BONES, type HumanoidBoneName, rigOf, requireRig } from './humanoidRig.ts';
-import { AIM_IN_CHEST, createHumanoidSoldier, soldierSkin } from './humanoidSoldier.ts';
+import { AIM_IN_CHEST, createHumanoidSoldier, setSoldierPalette, soldierSkin } from './humanoidSoldier.ts';
 import { HUMANOID_HIT_RADIUS, HUMANOID_ROOT_LIFT_M, createHumanoidPlaceholder } from './humanoidPlaceholder.ts';
 import { createLocomotionPoseDriver } from './locomotionPose.ts';
 import { ATLAS_SIZE, CELLS, CELL_SIZE, soldierAtlas } from './soldierTexture.ts';
@@ -191,6 +191,37 @@ describe('skinned soldier (T-2.22)', () => {
     // catches a "simplification" that quietly deletes the era's gear.
     expect(tris).toBeLessThan(4000);
     expect(tris).toBeGreaterThan(600);
+  });
+
+  it('repaints a live soldier without touching mesh, skeleton or pose (T-2.33)', () => {
+    // ADR-001's bot/human swap happens on a LIVE entity, never by rebuilding
+    // the session. A slot changing hands must therefore be a texture swap and
+    // nothing else — not a new mesh, not a new material, not a lost pose.
+    const soldier = createHumanoidSoldier('remote');
+    const skin = soldierSkin(soldier);
+    const rig = requireRig(soldier);
+    rig.setPose('crouched');
+    const before = {
+      geometry: skin.geometry,
+      material: skin.material,
+      skeleton: skin.skeleton,
+      bones: boneSnapshot(soldier),
+    };
+
+    expect(setSoldierPalette(soldier, 'slot-3')).toBe(true);
+    expect((skin.material as THREE.MeshLambertMaterial).map).toBe(soldierAtlas('slot-3'));
+    expect(skin.geometry).toBe(before.geometry);
+    expect(skin.material).toBe(before.material);
+    expect(skin.skeleton).toBe(before.skeleton);
+    expect(boneSnapshot(soldier)).toEqual(before.bones);
+    expect(rig.pose).toBe('crouched');
+    // The rifle follows the body it is held by.
+    expect(((soldier.getObjectByName('rifle') as THREE.Mesh).material as THREE.MeshLambertMaterial).map)
+      .toBe(soldierAtlas('slot-3'));
+
+    // The grey box has no atlas to swap and says so rather than throwing:
+    // `?greybox` is a diagnostic fixture, not a soldier.
+    expect(setSoldierPalette(createHumanoidPlaceholder('remote'), 'slot-3')).toBe(false);
   });
 
   it('keeps local and remote soldiers on one skeleton without sharing materials', () => {
