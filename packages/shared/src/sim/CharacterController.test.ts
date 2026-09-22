@@ -266,7 +266,7 @@ describe('crouch height and clearance (T-2.20)', () => {
   });
 });
 
-describe('downed: crawling (T-2.13)', () => {
+describe('downed: immobile (T-2.13, B-05)', () => {
   const forward = (extra: Partial<MoveInput> = {}): MoveInput => ({
     moveX: 0,
     moveY: 1,
@@ -282,12 +282,11 @@ describe('downed: crawling (T-2.13)', () => {
     return { dz: s.z, y: s.y };
   };
 
-  it('moves at the crawl speed, and sprint does not lift it', () => {
+  it('cannot crawl: forward intent produces no movement, sprint included', () => {
     const ticks = 30;
-    const crawl = travel(forward({ downed: true }), ticks);
-    expect(crawl.dz).toBeCloseTo(DEFAULT_MOVE_CONFIG.crawlSpeed * TICK_SECONDS * ticks, 9);
-    expect(travel(forward({ downed: true, sprint: true }), ticks).dz).toBeCloseTo(crawl.dz, 12);
-    expect(crawl.dz).toBeLessThan(travel(forward({ crouch: true }), ticks).dz);
+    expect(travel(forward({ downed: true }), ticks).dz).toBe(0);
+    expect(travel(forward({ downed: true, sprint: true }), ticks).dz).toBe(0);
+    expect(travel(forward({ downed: true, moveX: 1 }), ticks).dz).toBe(0);
   });
 
   it('cannot jump', () => {

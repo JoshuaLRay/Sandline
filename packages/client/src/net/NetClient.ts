@@ -130,7 +130,7 @@ export interface NetStats {
   tickDrift: number;
   health: number;
   maxHealth: number;
-  /** Alive, downed (crawling, bleeding out) or dead (waiting to respawn). */
+  /** Alive, downed (immobile, bleeding out) or dead (waiting to respawn). */
   vitality: Vitality;
   /** Whole seconds left of the bleed-out or the respawn, from the server. */
   vitalTimer: number;
@@ -194,8 +194,9 @@ export class NetClient {
   private maxHealthValue = 0;
   /**
    * Replicated with the health (T-2.13). Vitality is gameplay, not cosmetic:
-   * the predictor needs it to crawl when the server crawls, and the timer is
-   * the server's count rather than one started when a zero was first seen.
+   * the predictor needs it to hold still when the server does (B-05), and the
+   * timer is the server's count rather than one started when a zero was
+   * first seen.
    */
   private vitalityValue: Vitality = 'alive';
   private vitalTimerValue = 0;
@@ -340,7 +341,7 @@ export class NetClient {
     };
   }
 
-  /** On their feet, crawling, or waiting to respawn — the server's word. */
+  /** On their feet, downed and immobile, or waiting to respawn — the server's word. */
   get vitality(): Vitality {
     return this.vitalityValue;
   }
@@ -455,8 +456,8 @@ export class NetClient {
    *  would be worse than dropping it. */
   tick(tickNumber: number, input: MoveInput, pitch: number): void {
     if (!this.joinedFlag || !this.predictor) return;
-    // The server crawls a downed soldier whatever buttons arrive; predict the
-    // same, or every tick down is a correction (T-2.13).
+    // The server holds a downed soldier still whatever buttons arrive; predict
+    // the same, or every tick down is a correction (T-2.13, B-05).
     const predicted = this.vitalityValue === 'downed' ? { ...input, downed: true } : input;
     this.predictor.predict(tickNumber, predicted);
     const buttons =

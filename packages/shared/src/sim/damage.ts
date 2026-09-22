@@ -14,8 +14,8 @@
  * 80 ms late.
  *
  * DOWNED BEFORE DEAD (T-2.13, E-2.6). Health reaching zero no longer kills:
- * the soldier is DOWNED — on the ground, crawling, unable to fire — with a
- * bleed-out timer running. A teammate can revive them (T-2.15); nobody does,
+ * the soldier is DOWNED — on the ground, immobile, unable to fire (B-05) —
+ * with a bleed-out timer running. A teammate can revive them (T-2.15); nobody does,
  * and the timer expires into death, which then respawns as before. Damage to
  * a downed soldier does not touch health (there is none) but CUTS the timer,
  * so a squad can finish someone rather than wait, and a downed player under

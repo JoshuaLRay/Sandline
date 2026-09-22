@@ -9,7 +9,6 @@ const speeds: LocomotionSpeeds = {
   walkSpeed: 4.2,
   sprintSpeed: 6.8,
   crouchSpeed: 1.9,
-  crawlSpeed: 1.2,
 };
 
 function sample(
@@ -69,9 +68,12 @@ describe('locomotion state classifier (T-2.17)', () => {
     expect(sample(speeds.sprintSpeed, 0).state).toBe('sprint');
   });
 
-  it('uses explicit crouch and crawl states rather than re-selecting movement speed', () => {
+  it('uses an explicit crouch state rather than re-selecting movement speed', () => {
     expect(sample(speeds.crouchSpeed, 0, { crouched: true }).state).toBe('crouch-walk');
-    expect(sample(speeds.crawlSpeed, 0, { downed: true }).state).toBe('crawl');
+  });
+
+  it('treats downed as idle even if a stale velocity sample is nonzero (B-05: no crawling)', () => {
+    expect(sample(speeds.walkSpeed, 0, { downed: true }).state).toBe('idle');
   });
 
   it('marks airborne samples without inventing a separate movement state', () => {

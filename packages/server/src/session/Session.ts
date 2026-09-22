@@ -639,7 +639,8 @@ export class Session {
            * A killed player stops moving immediately: their queued inputs are
            * intent from before they died, and letting a corpse run out its
            * buffer looks like the hit did not register. A DOWNED player keeps
-           * their queue: they are still moving, at a crawl, on the next tick.
+           * their queue too — the controller ignores it and holds them still
+           * (B-05) — so a revive or death still lands on the tick it should.
            */
           if (result.killed) target.queue.length = 0;
         }
@@ -874,7 +875,8 @@ export class Session {
       /**
        * Dead players do not move and do not fall: they wait out the timer and
        * reappear at their own spawn point with full health. Downed ones fall
-       * through to the movement below and crawl (`input.downed`).
+       * through to the movement below, where `input.downed` holds them still
+       * (B-05).
        */
       if (isDead(slot.health)) {
         if (readyToRespawn(slot.health, nowSeconds)) {
@@ -952,8 +954,9 @@ export class Session {
           slot.input = idleInput(slot.yaw);
         }
       }
-      // Vitality decides the gait, not the client: a downed soldier crawls
-      // whatever buttons arrive, and the predictor applies the same rule.
+      // Vitality decides movement, not the client: a downed soldier is held
+      // still whatever buttons arrive (B-05), and the predictor applies the
+      // same rule.
       slot.input.downed = isDowned(slot.health);
       slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig);
       /**

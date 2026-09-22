@@ -5,7 +5,7 @@
  * CharacterController remains the owner of movement physics; this only turns
  * the rendered result into a visual locomotion state.
  */
-export type LocomotionState = 'idle' | 'walk' | 'sprint' | 'crouch-walk' | 'crawl' | 'vault';
+export type LocomotionState = 'idle' | 'walk' | 'sprint' | 'crouch-walk' | 'vault';
 
 export type MovementDirection =
   | 'forward'
@@ -57,7 +57,6 @@ export interface LocomotionSpeeds {
   walkSpeed: number;
   sprintSpeed: number;
   crouchSpeed: number;
-  crawlSpeed: number;
 }
 
 const SPEED_EPSILON = 0.05;
@@ -117,12 +116,11 @@ export function classifyLocomotion(
     // Whatever else is true of the body, it is over the obstacle.
     state = 'vault';
     modeSpeed = speeds.walkSpeed;
-  } else if (speed <= SPEED_EPSILON) {
+  } else if (input.downed || speed <= SPEED_EPSILON) {
+    // Downed (B-05): immobile, so this is unconditionally idle regardless of
+    // whatever velocity a stale sample carries.
     state = 'idle';
-    modeSpeed = input.downed ? speeds.crawlSpeed : input.crouched ? speeds.crouchSpeed : speeds.walkSpeed;
-  } else if (input.downed) {
-    state = 'crawl';
-    modeSpeed = speeds.crawlSpeed;
+    modeSpeed = input.crouched ? speeds.crouchSpeed : speeds.walkSpeed;
   } else if (input.crouched) {
     state = 'crouch-walk';
     modeSpeed = speeds.crouchSpeed;
