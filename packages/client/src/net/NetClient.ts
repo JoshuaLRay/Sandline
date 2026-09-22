@@ -78,6 +78,10 @@ export interface ServerShot {
   x: number;
   y: number;
   z: number;
+  /** Where the shot left the barrel: the shooter's rewound eye position (B-01). */
+  originX: number;
+  originY: number;
+  originZ: number;
   damage: number;
 }
 
@@ -745,6 +749,9 @@ export class NetClient {
           x: msg.x,
           y: msg.y,
           z: msg.z,
+          originX: msg.originX,
+          originY: msg.originY,
+          originZ: msg.originZ,
           damage: msg.damage,
         });
         break;

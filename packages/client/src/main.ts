@@ -473,14 +473,25 @@ const link = { ...DEFAULT_LINK };
 const peerLink = { ...DEFAULT_LINK };
 
 /**
- * Draw the authoritative result of a shot. The muzzle is derived from the
- * shooter's own replicated position, so a remote player's tracer leaves their
- * barrel rather than the world origin.
+ * Draw the authoritative result of a shot, from the server's own rewound
+ * origin (B-01) rather than an approximation of where the shooter now is.
+ *
+ * That approximation — the shooter's CURRENT replicated position — used to be
+ * the only origin available here, and it drifts from the true muzzle by
+ * however far the shooter has moved since the round trip plus the
+ * interpolation delay: for a strafing shooter, easily a metre or more. At
+ * typical range that reads as a slightly crooked tracer; at close range the
+ * same absolute drift is a large fraction of the distance to the target, and
+ * the line can look like it left at a steep angle to the way the shooter was
+ * actually facing. The server already resolves every shot from a rewound
+ * origin (T-1.18); it now sends that same point instead of leaving the client
+ * to guess one.
  */
 const shotOrigin = new THREE.Vector3();
 const shotEnd = new THREE.Vector3();
 function onServerShot(net: NetClient, shot: ServerShot): void {
   shotEnd.set(shot.x, shot.y, shot.z);
+  shotOrigin.set(shot.originX, shot.originY, shot.originZ);
   landImpact(net, shot);
   if (shot.shooterNetId !== net.netId) {
     // Their rifle kicks on their body (T-2.26): the server's event is the
@@ -493,18 +504,14 @@ function onServerShot(net: NetClient, shot: ServerShot): void {
   if (shot.shooterNetId === net.netId) {
     // Our own shot: the tracer is already drawn, so this only lands the hit
     // marker and the damage number.
-    shotOrigin.set(muzzle.x, muzzle.y, muzzle.z);
     combat.drawServerShot(shotOrigin, shotEnd, shot.targetNetId, shot.damage, clock.tick * TICK_SECONDS);
     return;
   }
   /**
    * Someone else's shot. There is nothing to predict — we never saw their
    * trigger — so this is the one case where a tracer legitimately arrives on
-   * the server's schedule, drawn from their replicated position.
+   * the server's schedule, drawn from the point the server says it left.
    */
-  const mesh = remoteMeshes.get(shot.shooterNetId);
-  if (mesh) shotOrigin.set(mesh.position.x, mesh.position.y - 0.9 + 1.05, mesh.position.z);
-  else shotOrigin.set(shot.x, shot.y, shot.z);
   combat.drawTracer(shotOrigin, shotEnd, clock.tick * TICK_SECONDS);
   combat.drawServerShot(shotOrigin, shotEnd, shot.targetNetId, shot.damage, clock.tick * TICK_SECONDS);
 }

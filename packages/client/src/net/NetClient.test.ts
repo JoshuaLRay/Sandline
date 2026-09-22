@@ -12,6 +12,7 @@ import {
   BitWriter,
   COMPONENT_IDS,
   INTERPOLATION_DELAY_MS,
+  type Message,
   POSITION,
   TICK_SECONDS,
   VELOCITY,
@@ -21,7 +22,7 @@ import {
   quantize,
   writeDelta,
 } from '@sandline/shared';
-import { NetClient, type ServerDetonation } from './NetClient.ts';
+import { NetClient, type ServerDetonation, type ServerShot } from './NetClient.ts';
 
 const TICK_MS = TICK_SECONDS * 1000;
 const T = COMPONENT_IDS.Transform;
@@ -53,10 +54,13 @@ function fed() {
   const pair = createLoopbackPair();
   const net = new NetClient(pair.b, 'tester');
   const blasts: ServerDetonation[] = [];
+  const shots: ServerShot[] = [];
   net.onDetonation = (event) => blasts.push(event);
+  net.onShot = (event) => shots.push(event);
   return {
     net,
     blasts,
+    shots,
     /** Deliver a full snapshot for `tick`, as a Delta with no baseline. */
     snapshot(tick: number, entities: WorldSnapshot['entities']): void {
       const w = new BitWriter();
@@ -69,6 +73,24 @@ function fed() {
     detonation(tick: number, netId = 2001): void {
       pair.a.send(
         encodeMessage({ kind: 'Detonation', netId, projectile: 0, tick, x: 1, y: 0.2, z: 3, targets: [] }),
+      );
+      pair.settle();
+    },
+    hitEvent(overrides: Partial<Extract<Message, { kind: 'HitEvent' }>> = {}): void {
+      pair.a.send(
+        encodeMessage({
+          kind: 'HitEvent',
+          shooterNetId: 4,
+          targetNetId: 0,
+          x: 20,
+          y: 1.5,
+          z: 3,
+          originX: 0,
+          originY: 1.55,
+          originZ: 0,
+          damage: 0,
+          ...overrides,
+        }),
       );
       pair.settle();
     },
@@ -157,5 +179,25 @@ describe('a blast waits for its tick (T-2.33)', () => {
     for (let i = 0; i < 40; i += 1) client.net.advanceClock(TICK_MS);
     expect(client.net.projectiles()).toHaveLength(0);
     expect(client.blasts).toHaveLength(0);
+  });
+});
+
+describe('a shot carries its own origin on the wire (B-01)', () => {
+  it('hands the origin the server sent straight through, not something derived here', () => {
+    /**
+     * The regression this guards: the client used to have no origin of its
+     * own for someone else's shot, and approximated one from their replicated
+     * position at draw time — which drifts from the true muzzle by however
+     * far a strafing shooter moved during the round trip and the
+     * interpolation delay. The fix moves the origin onto the wire, computed
+     * once by the server from the same rewound position it already traces
+     * the shot from; this only has to prove the value survives encode/decode
+     * and reaches `onShot` unchanged.
+     */
+    const client = fed();
+    client.hitEvent({ shooterNetId: 4, targetNetId: 0, x: 20, y: 1.5, z: 3, originX: -6, originY: 1.5625, originZ: -2 });
+
+    expect(client.shots).toHaveLength(1);
+    expect(client.shots[0]).toMatchObject({ originX: -6, originY: 1.5625, originZ: -2 });
   });
 });
