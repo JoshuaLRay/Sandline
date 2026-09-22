@@ -13,6 +13,7 @@ import {
 import { plateau } from './locomotionPose.ts';
 import { solveTwoBone } from './twoBoneIk.ts';
 import { DOWNED_BODY_LIFT_M, HUMANOID_HIT_HALF_HEIGHT, HUMANOID_HIT_RADIUS, HUMANOID_ROOT_LIFT_M } from './humanoidPlaceholder.ts';
+import { type CellName, remapGeometryUv, soldierAtlas } from './soldierTexture.ts';
 
 /**
  * The M2 soldier: a skinned humanoid built in code (T-2.22).
@@ -20,10 +21,18 @@ import { DOWNED_BODY_LIFT_M, HUMANOID_HIT_HALF_HEIGHT, HUMANOID_HIT_RADIUS, HUMA
  * One `SkinnedMesh` on a seventeen-bone skeleton, GPU-skinned like the
  * production soldier will be (ADR-013 budgets 45–65 bones and GPU skinning
  * per character), authored here as primitives welded into one geometry with
- * one vertex-coloured material: one draw call per soldier where the grey box
+ * one textured material: one draw call per soldier where the grey box
  * spent twelve. No asset, no loader, no licence to document: the model is
  * this file, and the M4/M5 Blender → glTF pipeline replaces it by delivering
  * a mesh whose bones carry the names in HUMANOID_BONES.
+ *
+ * THE DETAIL IS IN THE TEXTURE, NOT THE TRIANGLES (T-2.30). Each primitive
+ * names a cell of the generated atlas in `soldierTexture.ts` and is welded
+ * with its UVs remapped into it, the way an early-2000s console character
+ * carried its whole detail budget in one small hand-painted diffuse. Flat
+ * per-segment vertex colours came out when the atlas went in: they could not
+ * express a pouch, a seam, a bootlace or a face, and those are the things
+ * that make the silhouette read as a soldier rather than as primitives.
  *
  * THE ROOT IS STILL THE HITBOX. The factory returns the same invisible
  * capsule the grey box returns — `DEFAULT_HITBOX` on the server — and the
@@ -172,7 +181,6 @@ const scratchOffset = new THREE.Vector3();
 interface Segment {
   geometry: THREE.BufferGeometry;
   bone: number;
-  color: THREE.Color;
 }
 
 const scratchMatrix = new THREE.Matrix4();
@@ -191,11 +199,17 @@ function placed(geometry: THREE.BufferGeometry, x: number, y: number, z: number,
  * Weld the segments into one geometry with rigid skin weights: every vertex
  * belongs wholly to its segment's bone. Segments meet at the joints with
  * overlapping caps, so bending a joint keeps the surface closed.
+ *
+ * THE UVs COME THROUGH (T-2.30). Each segment arrives already remapped into
+ * its atlas cell by `remapGeometryUv`, so welding only has to carry `uv`
+ * across the way it carries `position` — the flat per-segment vertex colour
+ * this used to synthesise is gone, because the atlas says everything it said
+ * and the things it could not: pouches, seams, laces, a face.
  */
 function weld(segments: Segment[]): THREE.BufferGeometry {
   const positions: number[] = [];
   const normals: number[] = [];
-  const colors: number[] = [];
+  const uvs: number[] = [];
   const skinIndices: number[] = [];
   const skinWeights: number[] = [];
   const indices: number[] = [];
@@ -203,11 +217,12 @@ function weld(segments: Segment[]): THREE.BufferGeometry {
     const source = segment.geometry;
     const position = source.getAttribute('position');
     const normal = source.getAttribute('normal');
+    const uv = source.getAttribute('uv');
     const offset = positions.length / 3;
     for (let i = 0; i < position.count; i += 1) {
       positions.push(position.getX(i), position.getY(i), position.getZ(i));
       normals.push(normal.getX(i), normal.getY(i), normal.getZ(i));
-      colors.push(segment.color.r, segment.color.g, segment.color.b);
+      uvs.push(uv.getX(i), uv.getY(i));
       skinIndices.push(segment.bone, 0, 0, 0);
       skinWeights.push(1, 0, 0, 0);
     }
@@ -222,7 +237,7 @@ function weld(segments: Segment[]): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndices, 4));
   geometry.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeights, 4));
   geometry.setIndex(indices);
@@ -276,46 +291,50 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
   aim.name = 'aim';
   aim.position.fromArray(AIM_IN_CHEST);
   chest.add(aim);
-  const rifle = new THREE.Mesh(
-    new THREE.BoxGeometry(0.06, 0.1, 0.9),
-    new THREE.MeshStandardMaterial({ color: 0x20231f, roughness: 0.8 }),
-  );
+  const atlas = soldierAtlas(variant);
+  const rifleGeometry = new THREE.BoxGeometry(0.06, 0.1, 0.9);
+  // On the long faces `u` runs stock to muzzle, which is how the one rifle
+  // cell gets furniture, a magazine and a barrel out of a single box.
+  remapGeometryUv(rifleGeometry, 'rifle');
+  const rifle = new THREE.Mesh(rifleGeometry, new THREE.MeshStandardMaterial({ map: atlas, roughness: 0.9, metalness: 0 }));
   rifle.name = 'rifle';
   rifle.position.set(0, 0, 0.4);
   rifle.castShadow = true;
   aim.add(rifle);
 
-  // -- Skin: primitives around the joints, welded, rigidly weighted. --
-  const skin = new THREE.Color(0xc99572);
-  const uniform = new THREE.Color(local ? 0x5f6748 : 0x6f7458);
-  const cloth = new THREE.Color(local ? 0x7b8068 : 0x686d5b);
-  const gear = new THREE.Color(0x2f3329);
+  // -- Skin: primitives around the joints, welded, rigidly weighted. Each one
+  // names the atlas cell its surface is painted in; a box may name six, one
+  // per face, which is where the torso gets a front and a back. --
   const segments: Segment[] = [];
-  const add = (name: HumanoidBoneName, color: THREE.Color, geometry: THREE.BufferGeometry): void => {
-    segments.push({ geometry, bone: boneIndex(name), color });
+  const add = (name: HumanoidBoneName, cell: CellName | CellName[], geometry: THREE.BufferGeometry): void => {
+    remapGeometryUv(geometry, cell);
+    segments.push({ geometry, bone: boneIndex(name) });
   };
-  add('hips', uniform, placed(new THREE.BoxGeometry(0.36, 0.2, 0.26), 0, 0.92, 0));
-  add('spine', cloth, placed(new THREE.BoxGeometry(0.32, 0.18, 0.24), 0, 1.09, 0));
-  add('chest', cloth, placed(new THREE.BoxGeometry(0.4, 0.38, 0.26), 0, 1.31, 0));
-  add('chest', gear, placed(new THREE.BoxGeometry(0.44, 0.26, 0.32), 0, 1.3, 0));
-  add('chest', gear, placed(new THREE.BoxGeometry(0.34, 0.4, 0.16), 0, 1.24, -0.22));
+  /** Box faces in Three's build order: +X, -X, +Y, -Y, +Z (front), -Z (back). */
+  const shirt: CellName[] = ['uniformPlain', 'uniformPlain', 'uniformPlain', 'uniformPlain', 'torsoFront', 'torsoBack'];
+  const carrier: CellName[] = ['vest', 'vest', 'gearPlain', 'gearPlain', 'vest', 'pack'];
+  add('hips', 'belt', placed(new THREE.BoxGeometry(0.36, 0.2, 0.26), 0, 0.92, 0));
+  add('spine', shirt, placed(new THREE.BoxGeometry(0.32, 0.18, 0.24), 0, 1.09, 0));
+  add('chest', shirt, placed(new THREE.BoxGeometry(0.4, 0.38, 0.26), 0, 1.31, 0));
+  add('chest', carrier, placed(new THREE.BoxGeometry(0.44, 0.26, 0.32), 0, 1.3, 0));
+  add('chest', 'pack', placed(new THREE.BoxGeometry(0.34, 0.4, 0.16), 0, 1.24, -0.22));
   for (const side of ['left', 'right'] as const) {
     const s = side === 'left' ? 1 : -1;
-    add('chest', cloth, placed(new THREE.SphereGeometry(0.09, 8, 6), s * 0.2, 1.44, 0));
-    add(`upper-arm-${side}`, uniform, placed(new THREE.CapsuleGeometry(0.055, UPPER_ARM_M, 3, 8), s * 0.2, 1.44 - UPPER_ARM_M / 2, 0));
-    add(`lower-arm-${side}`, uniform, placed(new THREE.CapsuleGeometry(0.05, LOWER_ARM_M, 3, 8), s * 0.2, 1.14 - LOWER_ARM_M / 2, 0));
-    add(`hand-${side}`, skin, placed(new THREE.BoxGeometry(0.07, 0.11, 0.06), s * 0.2, 0.81, 0));
-    add(`upper-leg-${side}`, uniform, placed(new THREE.CapsuleGeometry(0.075, 0.42, 3, 8), s * 0.11, 0.69, 0));
-    add(`lower-leg-${side}`, uniform, placed(new THREE.CapsuleGeometry(0.06, 0.42, 3, 8), s * 0.11, 0.27, 0));
-    add(`foot-${side}`, gear, placed(new THREE.BoxGeometry(0.13, 0.1, 0.28), s * 0.11, 0.05, 0.05));
+    add('chest', 'sleeve', placed(new THREE.SphereGeometry(0.09, 8, 6), s * 0.2, 1.44, 0));
+    add(`upper-arm-${side}`, 'sleeve', placed(new THREE.CapsuleGeometry(0.055, UPPER_ARM_M, 3, 8), s * 0.2, 1.44 - UPPER_ARM_M / 2, 0));
+    add(`lower-arm-${side}`, 'sleeve', placed(new THREE.CapsuleGeometry(0.05, LOWER_ARM_M, 3, 8), s * 0.2, 1.14 - LOWER_ARM_M / 2, 0));
+    add(`hand-${side}`, 'glove', placed(new THREE.BoxGeometry(0.07, 0.11, 0.06), s * 0.2, 0.81, 0));
+    add(`upper-leg-${side}`, 'trouser', placed(new THREE.CapsuleGeometry(0.075, 0.42, 3, 8), s * 0.11, 0.69, 0));
+    add(`lower-leg-${side}`, 'trouser', placed(new THREE.CapsuleGeometry(0.06, 0.42, 3, 8), s * 0.11, 0.27, 0));
+    add(`foot-${side}`, 'boot', placed(new THREE.BoxGeometry(0.13, 0.1, 0.28), s * 0.11, 0.05, 0.05));
   }
-  add('neck', skin, placed(new THREE.CylinderGeometry(0.055, 0.06, 0.12, 8), 0, 1.53, 0));
-  add('head', skin, placed(new THREE.SphereGeometry(0.12, 10, 8), 0, 1.7, 0));
-  add('head', gear, placed(new THREE.SphereGeometry(0.145, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), 0, 1.72, 0));
+  add('neck', 'neck', placed(new THREE.CylinderGeometry(0.055, 0.06, 0.12, 8), 0, 1.53, 0));
+  add('head', 'face', placed(new THREE.SphereGeometry(0.12, 10, 8), 0, 1.7, 0));
+  add('head', 'helmet', placed(new THREE.SphereGeometry(0.145, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), 0, 1.72, 0));
 
   const mesh = new THREE.SkinnedMesh(
     weld(segments),
-    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }),
+    new THREE.MeshStandardMaterial({ map: atlas, roughness: 1, metalness: 0 }),
   );
   mesh.name = 'soldier';
   mesh.castShadow = true;

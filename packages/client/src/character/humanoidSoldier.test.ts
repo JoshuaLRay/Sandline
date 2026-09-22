@@ -6,6 +6,7 @@ import { HUMANOID_BONES, type HumanoidBoneName, rigOf, requireRig } from './huma
 import { AIM_IN_CHEST, createHumanoidSoldier, soldierSkin } from './humanoidSoldier.ts';
 import { HUMANOID_ROOT_LIFT_M, createHumanoidPlaceholder } from './humanoidPlaceholder.ts';
 import { createLocomotionPoseDriver } from './locomotionPose.ts';
+import { ATLAS_SIZE, CELLS, CELL_SIZE, soldierAtlas } from './soldierTexture.ts';
 import type { LocomotionResult } from './locomotionState.ts';
 
 const WALK: LocomotionResult = {
@@ -99,6 +100,54 @@ describe('skinned soldier (T-2.22)', () => {
     expect(skin.castShadow).toBe(true);
     // Well inside ADR-013's 8–15k triangles.
     expect(skin.geometry.index!.count / 3).toBeLessThan(4000);
+  });
+
+  it('textures the whole soldier from one atlas, every vertex inside a cell (T-2.30)', () => {
+    const soldier = createHumanoidSoldier('local');
+    const skin = soldierSkin(soldier);
+    const material = skin.material as THREE.MeshStandardMaterial;
+    expect(material.map).toBe(soldierAtlas('local'));
+    // The atlas replaced the flat per-segment vertex colours outright: it says
+    // everything they said and the things they could not.
+    expect(material.vertexColors).toBe(false);
+    expect(skin.geometry.getAttribute('color')).toBeUndefined();
+
+    const uv = skin.geometry.getAttribute('uv');
+    expect(uv.count).toBe(skin.geometry.getAttribute('position').count);
+    // Every vertex sits strictly inside some cell — never on a cell boundary,
+    // which under nearest filtering is a stripe of the neighbouring part.
+    const origins = new Set(Object.values(CELLS).map((c) => `${c.x},${c.y}`));
+    const used = new Set<string>();
+    for (let i = 0; i < uv.count; i += 1) {
+      const x = Math.floor(uv.getX(i) * ATLAS_SIZE);
+      const y = Math.floor(uv.getY(i) * ATLAS_SIZE);
+      const origin = `${Math.floor(x / CELL_SIZE) * CELL_SIZE},${Math.floor(y / CELL_SIZE) * CELL_SIZE}`;
+      expect(origins.has(origin)).toBe(true);
+      used.add(origin);
+    }
+    // The body reaches for most of the atlas; a layout mostly unused is a
+    // layout that has drifted from the model.
+    expect(used.size).toBeGreaterThanOrEqual(10);
+
+    // The rifle is textured from the same atlas, so it stays the second draw
+    // rather than becoming a third material.
+    const rifle = soldier.getObjectByName('rifle') as THREE.Mesh;
+    expect((rifle.material as THREE.MeshStandardMaterial).map).toBe(soldierAtlas('local'));
+  });
+
+  it('gives each variant its own palette off one shared texture (T-2.30)', () => {
+    const a = createHumanoidSoldier('local');
+    const b = createHumanoidSoldier('remote');
+    expect((soldierSkin(a).material as THREE.MeshStandardMaterial).map)
+      .not.toBe((soldierSkin(b).material as THREE.MeshStandardMaterial).map);
+    // Two soldiers of the same variant share the texture: six of a squad are
+    // six draws of one 256² atlas, not six atlases.
+    const c = createHumanoidSoldier('local');
+    expect((soldierSkin(c).material as THREE.MeshStandardMaterial).map)
+      .toBe((soldierSkin(a).material as THREE.MeshStandardMaterial).map);
+    // Same geometry either way: a palette is never a mesh change.
+    expect(soldierSkin(a).geometry.getAttribute('uv').array)
+      .toEqual(soldierSkin(b).geometry.getAttribute('uv').array);
   });
 
   it('keeps local and remote soldiers on one skeleton without sharing materials', () => {

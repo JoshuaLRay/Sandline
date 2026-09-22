@@ -1,0 +1,37 @@
+{
+  "comment": "Soldier atlas palettes (T-2.30). Standing rule 4: the look is data. Each palette paints the same atlas arithmetic, so a variant costs a texture and never a mesh, a material type or a draw call. Hex strings, sRGB, as a painter would name them.",
+  "palettes": {
+    "local": {
+      "skin": "#c99572",
+      "skinShade": "#a87454",
+      "uniform": "#6b7250",
+      "uniformLight": "#7d8560",
+      "uniformShade": "#4f553b",
+      "webbing": "#9c9066",
+      "webbingShade": "#6f6647",
+      "gear": "#4a4f3c",
+      "gearShade": "#34382a",
+      "boot": "#5a4632",
+      "bootShade": "#3d301f",
+      "metal": "#2b2e2a",
+      "metalShade": "#191b18",
+      "accent": "#9a5433"
+    },
+    "remote": {
+      "skin": "#c08a68",
+      "skinShade": "#9f6c4c",
+      "uniform": "#77785a",
+      "uniformLight": "#898a69",
+      "uniformShade": "#585a42",
+      "webbing": "#a2966d",
+      "webbingShade": "#756c4d",
+      "gear": "#4f5142",
+      "gearShade": "#383a2f",
+      "boot": "#5f4a36",
+      "bootShade": "#413324",
+      "metal": "#2b2e2a",
+      "metalShade": "#191b18",
+      "accent": "#3f6a86"
+    }
+  }
+}

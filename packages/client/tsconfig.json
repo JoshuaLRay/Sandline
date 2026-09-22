@@ -6,6 +6,6 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"]
   },
-  "include": ["src/**/*.ts", "vite.config.ts"],
+  "include": ["src/**/*.ts", "src/**/*.json", "vite.config.ts"],
   "references": [{ "path": "../shared" }]
 }
