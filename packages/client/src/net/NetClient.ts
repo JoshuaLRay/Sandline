@@ -11,6 +11,8 @@
  * shoot).
  */
 import {
+  type BotOrder,
+  type TargetMark,
   COMPONENT_IDS,
   suppressionFromWire,
   ClockSync,
@@ -271,6 +273,14 @@ export class NetClient {
    */
   private readonly remoteEnemies = new Map<number, RemoteEnemy>();
   /**
+   * Every bot's current order and every standing mark, as the host last
+   * broadcast them whole (T-3.27). What this client sent is not here until
+   * the host says so: the markers show what the squad is doing, not what it
+   * was asked (T-3.29).
+   */
+  private ordersValue: readonly BotOrder[] = [];
+  private marksValue: readonly TargetMark[] = [];
+  /**
    * Server time a remote soldier or enemy was last in a snapshot (T-3.11).
    * The six slots never leave, but an enemy's corpse despawns, and T-3.12's
    * relevance radius will take entities in and out of view. Like a
@@ -360,6 +370,16 @@ export class NetClient {
 
   get roster(): readonly RosterEntry[] {
     return this.rosterValue;
+  }
+
+  /** Every bot's current order, from the host's last `Orders` broadcast. */
+  get orders(): readonly BotOrder[] {
+    return this.ordersValue;
+  }
+
+  /** Every standing mark, from the host's last `Marks` broadcast. */
+  get marks(): readonly TargetMark[] {
+    return this.marksValue;
   }
 
   get joined(): boolean {
@@ -524,6 +544,8 @@ export class NetClient {
     this.remoteSlots.clear();
     this.remoteEnemies.clear();
     this.remoteGoneAt.clear();
+    this.ordersValue = [];
+    this.marksValue = [];
     this.recentInputs.length = 0;
     this.newestServerMs = 0;
     this.serverClockMs = 0;
@@ -628,6 +650,22 @@ export class NetClient {
     this.aiDebugWanted = on;
     if (!this.joinedFlag) return;
     this.transport.send(encodeMessage({ kind: 'AiDebugRequest', on }), 'reliable');
+  }
+
+  /**
+   * Give an order (T-3.29), built by the wheel. Reliable: a lost order is a
+   * squad that never moved. The host decides whether it stands and says so
+   * in `Orders`.
+   */
+  order(msg: Extract<Message, { kind: 'Order' }>): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage(msg), 'reliable');
+  }
+
+  /** Mark a point or an enemy (T-3.29). Reliable, like an order. */
+  mark(msg: Extract<Message, { kind: 'Mark' }>): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage(msg), 'reliable');
   }
 
   /** Every projectile in flight, sampled at the interpolation delay. */
@@ -894,6 +932,14 @@ export class NetClient {
 
       case 'AiDebug':
         this.onAiDebug?.(msg);
+        break;
+
+      case 'Orders':
+        this.ordersValue = msg.orders;
+        break;
+
+      case 'Marks':
+        this.marksValue = msg.marks;
         break;
 
       case 'HitEvent':

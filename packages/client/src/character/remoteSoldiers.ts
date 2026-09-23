@@ -144,6 +144,12 @@ export class RemoteSoldiers {
     return this.entries.has(netId);
   }
 
+  /** Whose mesh this is, for what the aim ray hit (T-3.29); null if it is nobody's. */
+  netIdOf(object: THREE.Object3D): number | null {
+    for (const [netId, entry] of this.entries) if (entry.mesh === object) return netId;
+    return null;
+  }
+
   get size(): number {
     return this.entries.size;
   }

@@ -54,7 +54,7 @@ import {
 } from '@sandline/shared';
 import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
-import { type ClientLink, DEFAULT_LINK, type LinkConditions, LocalServer } from './net/LocalServer.ts';
+import { type ClientLink, DEFAULT_LINK, type LinkConditions, LocalServer, type LocalServerOptions } from './net/LocalServer.ts';
 import { type NavMesh, initNav } from '@sandline/server/nav';
 import { NetClient, type ServerDetonation, type ServerShot } from './net/NetClient.ts';
 import {
@@ -69,7 +69,7 @@ import {
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
 import { QaEnemies, QaSuppressor } from './net/qaEnemies.ts';
-import { DEFAULT_WORLD_ID, type World, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
+import { DEFAULT_WORLD_ID, buildTree, type World, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
@@ -97,6 +97,8 @@ import { createFootPlacementDriver } from './character/footPlacement.ts';
 import { RemoteSoldiers } from './character/remoteSoldiers.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
+import { type AimSubject, OrderWheelView, buildMark, orderFromRelease } from './ui/OrderWheel.ts';
+import { type MarkerVec, OrderMarkerOverlay, orderMarkers } from './ui/OrderMarkers.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
 import { createNetworkPanel } from './ui/NetworkPanel.ts';
 import { type LobbyChoice, createLobby, readStoredKey, readStoredName } from './ui/Lobby.ts';
@@ -146,6 +148,14 @@ scene.add(ground);
 scene.add(new THREE.GridHelper(200, 100, 0x8a7550, 0x6a5940));
 /** T-3.09: the AI debug overlay, off until B. */
 const aiDebug = new AiDebugOverlay(document.body);
+/**
+ * T-3.29: hold Q for the order wheel, tap F to mark. The wheel is the
+ * picture of what `LocalInput` holds; the markers are the host's broadcast
+ * orders and marks, never what this page sent.
+ */
+const orderWheel = new OrderWheelView(document.body);
+const orderMarkerOverlay = new OrderMarkerOverlay(document.body);
+scene.add(orderMarkerOverlay.object);
 scene.add(aiDebug.object);
 
 /**
@@ -700,16 +710,31 @@ const navReady = initNav();
 const qaEnemiesWanted = new URLSearchParams(location.search).has('enemies');
 /** `?suppress` (T-3.17): a rifleman firing past the player's camera — see `qaEnemies.ts`. */
 const qaSuppressWanted = new URLSearchParams(location.search).has('suppress');
-const qaNavMesh: Promise<NavMesh | null> = qaEnemiesWanted
+/**
+ * `?squad` (T-3.29): the in-page bots run the committed `friendly` tree, with
+ * the range's cover — they follow in formation, fight, and carry out what the
+ * order wheel tells them. Needs the navmesh too; combine with `?enemies` for
+ * something to attack.
+ */
+const qaSquadWanted = new URLSearchParams(location.search).has('squad');
+const qaSquad: Promise<LocalServerOptions> = qaSquadWanted
+  ? Promise.all([import('@sandline/server/brain'), import('@sandline/server/nav/baked')]).then(
+      ([brain, baked]) => ({
+        brainTree: buildTree('friendly', brain.createBrainRegistry()),
+        cover: baked.bakedCoverFor(DEFAULT_WORLD_ID),
+      }),
+    )
+  : Promise.resolve({});
+const qaNavMesh: Promise<NavMesh | null> = qaEnemiesWanted || qaSquadWanted
   ? navReady.then(() => import('@sandline/server/nav/baked')).then((baked) => baked.loadWorldNavMesh(DEFAULT_WORLD_ID))
   : Promise.resolve(null);
 
 function chooseSession(choice: LobbyChoice): void {
-  if (choice.kind === 'local') void Promise.all([navReady, qaNavMesh]).then(([, navMesh]) => startSession(choice, navMesh));
+  if (choice.kind === 'local') void Promise.all([navReady, qaNavMesh, qaSquad]).then(([, navMesh, squad]) => startSession(choice, navMesh, squad));
   else startSession(choice);
 }
 
-function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null): void {
+function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: LocalServerOptions = {}): void {
   if (live) leaveSession(null);
 
   // One config object, shared by reference with both the session and the
@@ -717,10 +742,10 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null): void {
   // (Remote: the host owns the authoritative config and this one only predicts,
   // so the movement panel moves prediction alone and will mispredict until the
   // host is restarted to match. Tuning is an in-page-session activity.)
-  const local = choice.kind === 'local' ? new LocalServer(link, config, qaNav ? { navMesh: qaNav } : {}) : null;
+  const local = choice.kind === 'local' ? new LocalServer(link, config, { ...(qaNav ? { navMesh: qaNav } : {}), ...squad }) : null;
   // The projectile panel's rows, as they stand, for this session from its first throw.
   if (local) PROJECTILE_ORDER.forEach((_, i) => local.tuneProjectile(i, throws.defOf(i)));
-  const qaEnemies = local && qaNav ? new QaEnemies(local) : null;
+  const qaEnemies = local && qaNav && qaEnemiesWanted ? new QaEnemies(local) : null;
   // Slot netIds are 1..6 in slot order, so slot 1's soldier is netId 2.
   const qaSuppressor = local && qaSuppressWanted ? new QaSuppressor(local, 2) : null;
   const remote = choice.kind === 'remote' ? new RemoteServer(choice.host) : null;
@@ -734,6 +759,9 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null): void {
   // A throw key released while there was no session to throw into is not a
   // throw waiting to happen: drain the latch rather than open with a grenade.
   input.consumeThrowRelease();
+  // Nor is an order or a mark.
+  input.consumeOrderRelease();
+  input.consumeMarkPress();
 
   if (remote && choice.kind === 'remote') {
     /**
@@ -830,6 +858,7 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
   const gone = live;
   live = null;
   aiDebug.clear();
+  orderMarkerOverlay.clear();
   if (gone) {
     gone.net.leave();
     gone.remote?.close();
@@ -1007,6 +1036,27 @@ shootable.push(ground);
  */
 let aimYaw = 0;
 let aimPitch = 0;
+/** The soldier the crosshair's ray hit first this frame, by netId; null if it hit none. */
+let aimNetId: number | null = null;
+/** What is under the crosshair, for an order or a mark. */
+function aimSubject(net: NetClient): AimSubject {
+  const id = aimNetId;
+  const enemy = id !== null && net.remoteEnemy(id) !== null;
+  const vitality = id === null ? 'alive' : net.remoteVitality(id);
+  return {
+    point: { x: aimPoint.x, y: aimPoint.y, z: aimPoint.z },
+    netId: id,
+    enemy: enemy && vitality !== 'dead',
+    downedMate: id !== null && !enemy && vitality === 'downed',
+  };
+}
+/** What the crosshair is on, for the stats: who an attack, a revive or a mark would name. */
+function aimReadout(): string {
+  const net = live?.net;
+  if (!net || aimNetId === null) return 'aim: nobody';
+  const who = net.remoteEnemy(aimNetId) ? 'enemy' : `slot ${net.remoteSlot(aimNetId) + 1}`;
+  return `aim: ${who} ${aimNetId} (${net.remoteVitality(aimNetId)})`;
+}
 const crosshair = document.getElementById('crosshair');
 const downedBanner = document.getElementById('downed');
 /** Last gap written to the reticle, so the style is only touched on change. */
@@ -1242,6 +1292,19 @@ function frame(): void {
         if (holdingPouch && throws.count() <= 0) equipGun(combat.weaponIndex);
       }
     }
+
+    /**
+     * Orders and marks (T-3.29), on the tick like the throw, from latches so a
+     * flick between two samples still counts. The point is the converged aim
+     * — the crosshair's own raycast — which has not moved while the wheel was
+     * open, since the wheel takes the mouse.
+     */
+    const release = input.consumeOrderRelease();
+    if (release) {
+      const order = orderFromRelease(release, aimSubject(net));
+      if (order) net.order(order);
+    }
+    if (input.consumeMarkPress()) net.mark(buildMark(aimSubject(net)));
   }
 
   server?.pump(now);
@@ -1346,6 +1409,24 @@ function frame(): void {
   // it is in no roster and on no HUD. Anything the client no longer returns
   // has despawned, and everything drawn for it goes with it.
   remotes.update(net, dt);
+
+  // T-3.29: the squad's orders and marks, where the soldiers they name are drawn.
+  if (net) {
+    const drawn = net.remotes();
+    const bySlot = new Map<number, MarkerVec>();
+    for (const [netId, at] of drawn) {
+      const slot = net.remoteSlot(netId);
+      if (slot >= 0) bySlot.set(slot, at);
+    }
+    const self = { x: rx, y: ry, z: rz };
+    orderMarkerOverlay.show(
+      orderMarkers(net.orders, net.marks, {
+        slot: (slot) => (slot === net.slot ? self : bySlot.get(slot) ?? null),
+        netId: (netId) => (netId === net.netId ? self : drawn.get(netId) ?? null),
+      }),
+    );
+  }
+  orderWheel.update(input.orderWheel);
 
   player.position.set(rx, ry + 0.9, rz);
 
@@ -1558,6 +1639,7 @@ function frame(): void {
   aimRaycaster.set(aimOrigin, aimDirection);
   aimRaycaster.far = AIM_RANGE;
   const [reticleHit] = aimRaycaster.intersectObjects(shootable, false);
+  aimNetId = reticleHit ? remotes.netIdOf(reticleHit.object) : null;
   if (reticleHit) {
     aimPoint.copy(reticleHit.point);
   } else {
@@ -1580,6 +1662,10 @@ function frame(): void {
       crosshairGap = gap;
       crosshair.style.setProperty('--gap', `${gap}px`);
     }
+    // T-3.29: what an attack, a revive or a mark would name, on the reticle itself.
+    const subject = net ? aimSubject(net) : null;
+    const over = subject?.enemy ? 'enemy' : subject?.downedMate ? 'downed' : subject?.netId != null ? 'soldier' : '';
+    if (crosshair.dataset['aim'] !== over) crosshair.dataset['aim'] = over;
   }
 
   /**
@@ -1607,6 +1693,7 @@ function frame(): void {
         `feet at ${rx.toFixed(1)},${rz.toFixed(1)}  L ${localFeet.offset('left').toFixed(2)}  R ${localFeet.offset('right').toFixed(2)}` +
         `  hips ${localFeet.drop.toFixed(2)}  step ${localFeet.step.toFixed(3)}\n` +
         `${input.locked ? `mouse captured - Esc to release${input.immersive ? '  (fullscreen, shortcuts locked out)' : ''}` : 'CLICK to capture mouse'}\n` +
+        `${aimReadout()}\n` +
         `\n${combat.readout(clock.tick * TICK_SECONDS, input.ads)}\n` +
         `${throws.readout(clock.tick * TICK_SECONDS)}` +
         `${lastBlast ? `\nlast blast ${lastBlast.name}  ${lastBlast.damage.toFixed(0)} dmg on ${lastBlast.targets}` : ''}\n` +
@@ -1656,6 +1743,7 @@ function frame(): void {
 
   renderer.render(scene, camera);
   aiDebug.render(camera, innerWidth, innerHeight);
+  orderMarkerOverlay.render(camera, innerWidth, innerHeight);
   /**
    * The weapon in hand in first person, over the world. Hidden whenever the
    * body is shown instead (third person, downed) and through a vault, when
@@ -1703,7 +1791,8 @@ addEventListener('keydown', (e) => {
   }
   // 1-4 pick a weapon, 5-6 the pouch: each one EQUIPS, and the trigger uses
   // what is in hand. Switching is instant and reloads: a range, not a match.
-  const slot = Number.parseInt(e.code.replace('Digit', ''), 10);
+  // While the order wheel is open the number keys pick who hears it (T-3.29).
+  const slot = input.orderWheel ? -1 : Number.parseInt(e.code.replace('Digit', ''), 10);
   if (e.code.startsWith('Digit') && slot >= 1 && slot <= WEAPON_ORDER.length) {
     equipGun(slot - 1);
   }

@@ -197,4 +197,76 @@ describe('LocalInput', () => {
     expect(prevented).toBe(false);
     expect(calls).toEqual(['pointer', 'fullscreen', 'pointer', 'pointer']);
   });
+
+  describe('the order wheel and the mark (T-3.29)', () => {
+    /** An input with the pointer captured, as it is in play. */
+    function captured() {
+      const canvas = fakeTarget();
+      const d = doc as unknown as Record<string, unknown>;
+      d['pointerLockElement'] = canvas;
+      const input = new LocalInput(canvas as unknown as HTMLElement);
+      doc.dispatch('pointerlockchange');
+      expect(input.locked).toBe(true);
+      return input;
+    }
+
+    it('a quick flick — Q down, the mouse right, Q up — between two ticks is latched, with its direction', () => {
+      const input = captured();
+      const yaw = input.yaw;
+      win.dispatch('keydown', { code: 'KeyQ', target: null, preventDefault() {} });
+      expect(input.orderWheel).not.toBeNull();
+      win.dispatch('mousemove', { movementX: 60, movementY: 0 });
+      win.dispatch('keyup', { code: 'KeyQ', target: null });
+      // The wheel closed on the release, before any tick looked.
+      expect(input.orderWheel).toBeNull();
+      const release = input.consumeOrderRelease();
+      expect(release).toEqual({ pointer: { dx: 60, dy: 0 }, address: { to: 'all' } });
+      // Read once: the next tick sees nothing.
+      expect(input.consumeOrderRelease()).toBeNull();
+      // The wheel took the mouse: the view did not turn, so the aim point stayed put.
+      expect(input.yaw).toBe(yaw);
+      // Once it is closed the mouse turns the view again.
+      win.dispatch('mousemove', { movementX: 60, movementY: 0 });
+      expect(input.yaw).not.toBe(yaw);
+    });
+
+    it('number keys while it is open choose who hears it', () => {
+      const input = captured();
+      win.dispatch('keydown', { code: 'KeyQ', target: null, preventDefault() {} });
+      win.dispatch('keydown', { code: 'Digit3', target: null, preventDefault() {} });
+      expect(input.orderWheel?.address).toEqual({ to: 'slot', index: 2 });
+      win.dispatch('keydown', { code: 'Digit8', target: null, preventDefault() {} });
+      win.dispatch('mousemove', { movementX: 0, movementY: -50 });
+      win.dispatch('keyup', { code: 'KeyQ', target: null });
+      expect(input.consumeOrderRelease()?.address).toEqual({ to: 'fireteam', index: 1 });
+      // Opened again, it starts from everyone and the centre.
+      win.dispatch('keydown', { code: 'KeyQ', target: null, preventDefault() {} });
+      expect(input.orderWheel).toEqual({ pointer: { dx: 0, dy: 0 }, address: { to: 'all' } });
+    });
+
+    it('losing the window closes it on nothing, and a stray Q up gives nothing', () => {
+      const input = captured();
+      win.dispatch('keydown', { code: 'KeyQ', target: null, preventDefault() {} });
+      win.dispatch('mousemove', { movementX: 60, movementY: 0 });
+      win.dispatch('blur');
+      win.dispatch('keyup', { code: 'KeyQ', target: null });
+      expect(input.orderWheel).toBeNull();
+      expect(input.consumeOrderRelease()).toBeNull();
+      win.dispatch('keyup', { code: 'KeyQ', target: null });
+      expect(input.consumeOrderRelease()).toBeNull();
+    });
+
+    it('a tap of F is latched once', () => {
+      const input = captured();
+      win.dispatch('keydown', { code: 'KeyF', target: null, preventDefault() {} });
+      win.dispatch('keyup', { code: 'KeyF', target: null });
+      expect(input.consumeMarkPress()).toBe(true);
+      expect(input.consumeMarkPress()).toBe(false);
+      // Auto-repeat on a held F is not a second mark.
+      win.dispatch('keydown', { code: 'KeyF', target: null, preventDefault() {} });
+      win.dispatch('keydown', { code: 'KeyF', target: null, repeat: true, preventDefault() {} });
+      expect(input.consumeMarkPress()).toBe(true);
+      expect(input.consumeMarkPress()).toBe(false);
+    });
+  });
 });
