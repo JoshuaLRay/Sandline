@@ -228,6 +228,62 @@ describe('squad colours (T-2.33)', () => {
   });
 });
 
+describe('the enemy palette (T-3.11)', () => {
+  /** Mean colour over some cells of a palette's atlas. */
+  function meanOf(name: keyof typeof PALETTES, cells: readonly CellName[]): [number, number, number] {
+    const data = paintSoldierAtlas(PALETTES[name]);
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    let n = 0;
+    for (const cell of cells) {
+      const { x: ox, y: oy } = CELLS[cell];
+      for (let y = oy; y < oy + CELL_SIZE; y += 1) {
+        for (let x = ox; x < ox + CELL_SIZE; x += 1) {
+          const i = (y * ATLAS_SIZE + x) * 4;
+          r += data[i]!;
+          g += data[i + 1]!;
+          b += data[i + 2]!;
+          n += 1;
+        }
+      }
+    }
+    return [r / n, g / n, b / n];
+  }
+  const UNIFORM: readonly CellName[] = ['torsoFront', 'torsoBack', 'sleeve', 'trouser', 'vest', 'uniformPlain'];
+  const FRIENDLY = paletteNames().filter((name) => name !== 'enemy');
+
+  it('is chosen for an enemy whatever else is said, and for nothing else', () => {
+    expect(paletteFor({ enemy: true })).toBe('enemy');
+    expect(paletteFor({ enemy: true, slot: 2, human: true })).toBe('enemy');
+    expect(paletteFor({ enemy: true, local: true })).toBe('enemy');
+    for (const who of [{}, { local: true }, { slot: 0, human: true }, { slot: 3, human: false }, { enemy: false, slot: 1 }]) {
+      expect(paletteFor(who)).not.toBe('enemy');
+    }
+    expect(SLOT_PALETTES).not.toContain('enemy');
+  });
+
+  it('reads as the other side at distance: a cool uniform against the squad\'s warm olive, and darker', () => {
+    // At 40 m a soldier is a few dozen pixels on the lowest mips, which are
+    // averages. So the test is on averages: the uniform's mean hue, and the
+    // whole atlas's mean brightness — the 1x1 mip.
+    const warmth = (name: keyof typeof PALETTES): number => {
+      const [r, , b] = meanOf(name, UNIFORM);
+      return r - b;
+    };
+    const brightness = (name: keyof typeof PALETTES): number => {
+      const [r, g, b] = meanOf(name, Object.keys(CELLS) as CellName[]);
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    expect(warmth('enemy')).toBeLessThan(0);
+    for (const name of FRIENDLY) {
+      expect(warmth(name)).toBeGreaterThan(0);
+      expect(warmth(name) - warmth('enemy')).toBeGreaterThan(25);
+      expect(brightness(name) - brightness('enemy')).toBeGreaterThan(8);
+    }
+  });
+});
+
 describe('remapping a primitive into a cell (T-2.30)', () => {
   it('moves a whole geometry into one cell and leaves its positions alone', () => {
     const geometry = new THREE.CapsuleGeometry(0.05, 0.3, 3, 8);

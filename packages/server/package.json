@@ -25,6 +25,14 @@
     "./nav": {
       "types": "./src/ai/nav/NavMesh.ts",
       "default": "./src/ai/nav/NavMesh.ts"
+    },
+    "./nav/baked": {
+      "types": "./src/ai/nav/bakedNav.ts",
+      "default": "./src/ai/nav/bakedNav.ts"
+    },
+    "./brain": {
+      "types": "./src/ai/Brain.ts",
+      "default": "./src/ai/Brain.ts"
     }
   }
 }

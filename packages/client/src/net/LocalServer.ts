@@ -42,8 +42,8 @@ import {
   type Transport,
   createLoopbackPair,
 } from '@sandline/shared';
-import { Session } from '@sandline/server/session';
-import { initNav, isNavReady } from '@sandline/server/nav';
+import { type EnemySpawn, Session } from '@sandline/server/session';
+import { type NavMesh, initNav, isNavReady } from '@sandline/server/nav';
 
 export interface LinkConditions {
   latencyMs: number;
@@ -58,6 +58,16 @@ export const DEFAULT_LINK: LinkConditions = {
   jitterMs: 0,
   lossRate: 0,
 };
+
+/** What the in-page session is built with beyond its link and tuning. */
+export interface LocalServerOptions {
+  /**
+   * The world's navmesh, for anything that walks (T-3.08). Off by default:
+   * the bake costs a few hundred kB of bundle (see `bakedNav.ts`), and only
+   * the `?enemies` QA page (T-3.11) loads it, on demand.
+   */
+  navMesh?: NavMesh;
+}
 
 /** One client's link to the in-page session, tunable on its own. */
 export interface ClientLink {
@@ -88,6 +98,17 @@ export class LocalServer {
   private readonly sims: NetSim[] = [];
   private readonly pairs: { settle: () => void }[] = [];
   private peers = 0;
+  /**
+   * The page clock at the session's first step. The session runs on its own
+   * clock from there, starting at zero — the clock its connections were
+   * registered on. Handing it the page's `performance.now()` directly meant
+   * a connection registered at 0 and first stepped at, say, 8000 was judged
+   * silent for eight seconds and dropped for a heartbeat timeout before its
+   * Join was read: clicking "Practise here" more than five seconds after the
+   * page loaded never joined (found in T-3.11's browser run).
+   */
+  private origin: number | null = null;
+  private sessionNow = 0;
 
   /**
    * The way to make one: waits for the session's WASM (Recast, T-3.01) to
@@ -100,11 +121,14 @@ export class LocalServer {
   }
 
   /** Throws unless `initNav()` has resolved; prefer `LocalServer.create`. */
-  constructor(conditions: LinkConditions = DEFAULT_LINK, moveConfig?: MoveConfig) {
+  constructor(conditions: LinkConditions = DEFAULT_LINK, moveConfig?: MoveConfig, options: LocalServerOptions = {}) {
     if (!isNavReady()) throw new Error('LocalServer before initNav() resolved: use LocalServer.create()');
     // The page is its own host, so it allows AI debug (T-3.09): a report still
     // goes only to a client that asks for one.
-    this.session = new Session(moveConfig, '', undefined, { aiDebug: true });
+    this.session = new Session(moveConfig, '', undefined, {
+      aiDebug: true,
+      ...(options.navMesh ? { navMesh: options.navMesh } : {}),
+    });
     this.local = this.attach(conditions, LOCAL_SEEDS);
     this.transport = this.local.transport;
   }
@@ -140,7 +164,7 @@ export class LocalServer {
     const clientSide = new NetSim(pair.b, down);
     this.sims.push(serverSide, clientSide);
     this.pairs.push(pair);
-    this.session.addConnection(serverSide, 0);
+    this.session.addConnection(serverSide, this.sessionNow);
 
     const link: ClientLink = {
       transport: clientSide,
@@ -157,6 +181,19 @@ export class LocalServer {
     };
     link.setConditions(conditions);
     return link;
+  }
+
+  /**
+   * Put an enemy into the in-page session (T-3.10), for the QA page
+   * (T-3.11). Nothing else spawns them until E-3.9's spawner.
+   */
+  spawnEnemy(archetype: string, at: EnemySpawn): number | null {
+    return this.session.spawnEnemy(archetype, at);
+  }
+
+  /** NetIds of the enemies in the session right now, corpses included. */
+  get enemyNetIds(): number[] {
+    return this.session.enemies.map((e) => e.netId);
   }
 
   /** Set the human's own link. Other clients keep whatever they were given. */
@@ -177,7 +214,9 @@ export class LocalServer {
   /** Advance the authoritative simulation one tick. */
   step(nowMs: number): void {
     this.pump(nowMs);
-    this.session.step(nowMs);
+    this.origin ??= nowMs;
+    this.sessionNow = Math.max(this.sessionNow, nowMs - this.origin);
+    this.session.step(this.sessionNow);
     this.pump(nowMs);
   }
 

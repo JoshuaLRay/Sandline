@@ -73,6 +73,15 @@ export interface RemoteWeapon {
   pouch: number;
 }
 
+/**
+ * What makes a remote entity an enemy (T-3.11): its replicated `Enemy`
+ * component, archetype (an ENEMY_IDS index) and side. Sent once, on the spawn.
+ */
+export interface RemoteEnemy {
+  archetype: number;
+  faction: number;
+}
+
 export interface ServerDetonation {
   netId: number;
   kind: number;
@@ -250,6 +259,22 @@ export class NetClient {
   private readonly pendingDetonations: { dueAtMs: number; event: ServerDetonation }[] = [];
   private readonly remoteReviverSlots = new Map<number, number>();
   private readonly remoteSlots = new Map<number, number>();
+  /**
+   * Remotes carrying an `Enemy` component (T-3.11). An enemy is interpolated
+   * and drawn exactly as a remote soldier is — same buffer, same rig — so it
+   * lives in the same list; this is what tells the renderer to paint it as
+   * the other side, and what keeps it out of anything keyed by slot. It never
+   * gets a `remoteSlots` entry: enemies carry no PlayerSlot.
+   */
+  private readonly remoteEnemies = new Map<number, RemoteEnemy>();
+  /**
+   * Server time a remote soldier or enemy was last in a snapshot (T-3.11).
+   * The six slots never leave, but an enemy's corpse despawns, and T-3.12's
+   * relevance radius will take entities in and out of view. Like a
+   * projectile, it is drawn until the render clock catches up with the last
+   * place the server put it, and forgotten a while after.
+   */
+  private readonly remoteGoneAt = new Map<number, number>();
   /** Local time the newest snapshot landed, for anchoring the server clock. */
   private lastArrivalAt = 0;
 
@@ -383,6 +408,11 @@ export class NetClient {
     return this.remoteSlots.get(netId) ?? -1;
   }
 
+  /** The remote's `Enemy` component, or null for anything that is not an enemy — every slot included (T-3.11). */
+  remoteEnemy(netId: number): RemoteEnemy | null {
+    return this.remoteEnemies.get(netId) ?? null;
+  }
+
   remoteReviveProgress(netId: number): number {
     return this.remoteReviveProgressValues.get(netId) ?? 0;
   }
@@ -397,7 +427,9 @@ export class NetClient {
     let best = 0;
     let progress = 0;
     for (const [netId, reviverSlot] of this.remoteReviverSlots) {
-      if (reviverSlot !== this.slotValue) continue;
+      // Nobody revives an enemy (T-3.11): it never goes down, and it is not
+      // a teammate for the HUD's revive prompt to name.
+      if (reviverSlot !== this.slotValue || this.remoteEnemies.has(netId)) continue;
       const p = this.remoteReviveProgressValues.get(netId) ?? 0;
       if (p >= progress) {
         progress = p;
@@ -481,6 +513,8 @@ export class NetClient {
     this.pendingDetonations.length = 0;
     this.remoteReviverSlots.clear();
     this.remoteSlots.clear();
+    this.remoteEnemies.clear();
+    this.remoteGoneAt.clear();
     this.recentInputs.length = 0;
     this.newestServerMs = 0;
     this.serverClockMs = 0;
@@ -668,6 +702,7 @@ export class NetClient {
 
     this.flushDetonations();
     this.forgetStaleProjectiles();
+    this.forgetStaleRemotes();
   }
 
   /** Release every blast the render clock has now reached, oldest first. */
@@ -702,6 +737,32 @@ export class NetClient {
     }
   }
 
+  /**
+   * Drop everything held about a remote that left the world a while ago
+   * (T-3.11): its buffer and every per-entity state beside it, so a despawned
+   * enemy leaves nothing behind in this client. Same horizon as projectiles.
+   */
+  private forgetStaleRemotes(): void {
+    if (this.remoteGoneAt.size === 0) return;
+    const horizon = this.serverClockMs - INTERPOLATION_DELAY_MS * 4;
+    for (const [netId, goneAt] of this.remoteGoneAt) {
+      if (goneAt > horizon) continue;
+      this.remoteGoneAt.delete(netId);
+      this.buffers.delete(netId);
+      this.remoteVitalities.delete(netId);
+      this.remoteReviveProgressValues.delete(netId);
+      this.remoteReviverSlots.delete(netId);
+      this.remoteWeapons.delete(netId);
+      this.remoteSlots.delete(netId);
+      this.remoteEnemies.delete(netId);
+    }
+  }
+
+  /** How many remotes this client holds any state for, drawn or not. Tests watch it drain. */
+  get remotesHeld(): number {
+    return this.buffers.size;
+  }
+
   /** Smoothed local position, or null before the first authoritative state. */
   renderPosition(frameMs: number): { x: number; y: number; z: number } | null {
     return this.predictor ? this.predictor.renderPosition(frameMs) : null;
@@ -716,11 +777,17 @@ export class NetClient {
     return this.remoteVitalities.get(netId) ?? 'alive';
   }
 
-  /** Every remote entity, sampled at the interpolation delay. */
+  /**
+   * Every remote soldier and enemy, sampled at the interpolation delay. One
+   * that has left the world is still returned until the render clock passes
+   * the last snapshot that had it, and never after (T-3.11).
+   */
   remotes(): Map<number, InterpResult> {
     const out = new Map<number, InterpResult>();
     const renderAt = this.serverClockMs - INTERPOLATION_DELAY_MS;
     for (const [netId, buffer] of this.buffers) {
+      const goneAt = this.remoteGoneAt.get(netId);
+      if (goneAt !== undefined && renderAt > goneAt) continue;
       const sample = buffer.sample(renderAt);
       if (sample) out.set(netId, sample);
     }
@@ -889,6 +956,7 @@ export class NetClient {
     lastProcessedInputTick: number,
   ): void {
     const projectilesSeen = new Set<number>();
+    const remotesSeen = new Set<number>();
     for (const entity of entities) {
       const transform = entity.components[T];
       if (!transform) continue;
@@ -960,6 +1028,15 @@ export class NetClient {
         continue;
       }
 
+      remotesSeen.add(entity.netId);
+      this.remoteGoneAt.delete(entity.netId);
+      const enemy = entity.components[COMPONENT_IDS.Enemy];
+      if (enemy) {
+        this.remoteEnemies.set(entity.netId, {
+          archetype: (enemy[0] as number | undefined) ?? 0,
+          faction: (enemy[1] as number | undefined) ?? 0,
+        });
+      }
       let buffer = this.buffers.get(entity.netId);
       if (!buffer) {
         buffer = new InterpolationBuffer();
@@ -1007,6 +1084,11 @@ export class NetClient {
     for (const netId of this.projectileBuffers.keys()) {
       if (projectilesSeen.has(netId) || this.projectileGoneAt.has(netId)) continue;
       this.projectileGoneAt.set(netId, serverMs);
+    }
+    // The same for a remote soldier or enemy: a despawned corpse (T-3.11).
+    for (const netId of this.buffers.keys()) {
+      if (remotesSeen.has(netId) || this.remoteGoneAt.has(netId)) continue;
+      this.remoteGoneAt.set(netId, serverMs);
     }
   }
 

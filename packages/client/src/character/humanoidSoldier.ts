@@ -711,6 +711,24 @@ export function setSoldierPalette(root: THREE.Object3D, palette: PaletteName): b
   return true;
 }
 
+/**
+ * Free what one soldier made for itself (T-3.11): the hit capsule's, the
+ * skin's and the carbine's geometry and material, and the skeleton. Enemies
+ * come and go by the dozen, and a removed mesh that still holds its buffers
+ * is a GPU leak per despawn. The palette atlases are shared across every
+ * soldier (`soldierAtlas` caches them) and a held weapon's materials are
+ * shared across every model, so neither is touched.
+ */
+export function disposeSoldier(root: THREE.Object3D): void {
+  const own = [root, root.getObjectByName('soldier'), root.getObjectByName('rifle')];
+  for (const part of own) {
+    if (!(part instanceof THREE.Mesh)) continue;
+    part.geometry.dispose();
+    for (const material of Array.isArray(part.material) ? part.material : [part.material]) material.dispose();
+    if (part instanceof THREE.SkinnedMesh) part.skeleton.dispose();
+  }
+}
+
 /** The skinned mesh under a soldier root, for tests and diagnostics. */
 export function soldierSkin(root: THREE.Object3D): THREE.SkinnedMesh {
   const skin = root.getObjectByName('soldier');

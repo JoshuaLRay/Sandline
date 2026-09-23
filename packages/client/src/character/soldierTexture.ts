@@ -131,13 +131,20 @@ export const SLOT_PALETTES = paletteNames()
  * on the live entity, which is the swap the whole architecture rests on made
  * visible. `remote` is the fallback for a soldier whose slot is not known
  * yet — the distinction the harness has always drawn, and still does.
+ *
+ * An enemy (T-3.11) wears `enemy` whatever else is said about it: it has no
+ * slot, and the one thing its body must say at 40 m is which side it is on.
+ * A slot is never an enemy — the caller asks the entity's own `Enemy`
+ * component, which a slot never carries.
  */
 export function paletteFor(who: {
+  enemy?: boolean | undefined;
   local?: boolean | undefined;
   /** Absent means "the roster has not said yet", which is not the same as a bot. */
   human?: boolean | undefined;
   slot?: number | undefined;
 }): PaletteName {
+  if (who.enemy) return 'enemy';
   if (who.local) return 'local';
   if (who.human === false) return 'bot';
   const slot = who.slot ?? -1;

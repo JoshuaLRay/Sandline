@@ -1,5 +1,5 @@
 {
-  "comment": "Soldier atlas palettes (T-2.30, slots added T-2.33). Standing rule 4: the look is data. Every palette is `base` with a few keys overridden, so a squad of six is one set of colours wearing six markings rather than six unrelated colour schemes — which is what a squad looks like. A palette costs one 256x256 texture and never a mesh, a material type or a draw call. Hex strings, sRGB, as a painter would name them.",
+  "comment": "Soldier atlas palettes (T-2.30, slots added T-2.33, the enemy T-3.11). Standing rule 4: the look is data. Every palette is `base` with a few keys overridden, so a squad of six is one set of colours wearing six markings rather than six unrelated colour schemes — which is what a squad looks like. A palette costs one 256x256 texture and never a mesh, a material type or a draw call. Hex strings, sRGB, as a painter would name them.",
   "base": {
     "skin": "#c99572",
     "skinShade": "#a87454",
@@ -38,6 +38,18 @@
       "uniformShade": "#4e5042",
       "webbing": "#8b8468",
       "accent": "#6d7066"
+    },
+    "enemy": {
+      "skin": "#b88a66",
+      "skinShade": "#976848",
+      "uniform": "#5a6270",
+      "uniformLight": "#6b7482",
+      "uniformShade": "#3f4552",
+      "webbing": "#3b3a35",
+      "webbingShade": "#272622",
+      "gear": "#2e3036",
+      "gearShade": "#1e1f24",
+      "accent": "#8e2c26"
     },
     "slot-1": { "accent": "#c4682a" },
     "slot-2": { "accent": "#3f79a8" },
