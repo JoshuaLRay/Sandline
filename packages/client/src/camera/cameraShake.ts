@@ -25,7 +25,7 @@
  * exp(-rate x dt) and the oscillation runs on elapsed seconds, so 30 and
  * 120 fps trace the same picture.
  */
-import { type ProjectileDef, type WeaponDef, blastDamageOn } from '@sandline/shared';
+import { type ProjectileDef, SUPPRESSION, type WeaponDef, blastDamageOn } from '@sandline/shared';
 import type { WorldBox } from '@sandline/shared';
 import type { CameraSolve } from './cameraSolve.ts';
 
@@ -106,6 +106,28 @@ export function blastShake(
     posM: BLAST_SHAKE_POS_M * clamped,
     rollRad: ((BLAST_SHAKE_ROLL_DEG * Math.PI) / 180) * clamped,
   };
+}
+
+/** One near miss's jolt (T-3.17): smaller than the carbine's own kick, a flinch rather than a blow. */
+export const NEAR_MISS_SHAKE_POS_M = 0.02;
+export const NEAR_MISS_SHAKE_ROLL_DEG = 0.6;
+
+/**
+ * The jolt for a rise in the replicated suppression level (T-3.17).
+ *
+ * The page is not told about near misses one by one; it is told the level
+ * (T-3.16), and a near miss is what makes it jump. So a rise from `from` to
+ * `to` is felt as `(to - from) / SUPPRESSION.nearMiss` near misses' worth of
+ * jolt — one for one near miss, a fraction for an impact beside you, two for
+ * a two-round burst landing between snapshots — capped at three, since the
+ * level saturates anyway. A fall, or no change, is nothing: decay is quiet.
+ * Nothing here touches the aim, for the reason at the top of this file.
+ */
+export function suppressionJolt(from: number, to: number): { posM: number; rollRad: number } {
+  const rise = to - from;
+  if (!(rise > 0) || !(SUPPRESSION.nearMiss > 0)) return { posM: 0, rollRad: 0 };
+  const misses = Math.min(3, rise / SUPPRESSION.nearMiss);
+  return { posM: NEAR_MISS_SHAKE_POS_M * misses, rollRad: ((NEAR_MISS_SHAKE_ROLL_DEG * Math.PI) / 180) * misses };
 }
 
 /** Let the envelope decay and the phase advance over `dtSeconds`. */

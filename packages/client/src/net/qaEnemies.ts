@@ -81,3 +81,41 @@ export class QaEnemies {
     });
   }
 }
+
+/**
+ * `?suppress` (T-3.17): one rifleman 25 m up the firing lane shooting at the
+ * squadmate in slot 1, who stands 1.5 m beside the player's spawn in slot 0.
+ * Its misses go past the player's camera, which is the point: a way to see
+ * the vignette, the colour draining and the jolt without being the one shot.
+ * A QA fixture like the patrol, not an enemy behaviour — it fires at one
+ * netId and knows nothing else — and it respawns when it despawns.
+ */
+export const QA_SUPPRESSOR_PLACEMENT: Placement = { at: { x: -2.25, y: 0, z: 19 }, yaw: 512 };
+
+/** A tree that wants to shoot `netId`, forever (T-3.15's trigger). */
+export function shootTree(netId: number): BrainTree {
+  const registry = new BtRegistry<BrainBody, BrainMemory>().action('shoot', ({ blackboard }) => {
+    blackboard.set('fireAt', netId);
+    return 'running';
+  });
+  return buildTree(parseTreeDef({ id: 'qa-shoot', root: { type: 'action', name: 'shoot' } }), registry);
+}
+
+export class QaSuppressor {
+  private netId: number | null = null;
+
+  constructor(
+    private readonly server: LocalServer,
+    /** Who it shoots at: slot 1's soldier, beside the player. */
+    private readonly targetNetId: number,
+  ) {
+    this.step();
+  }
+
+  /** Respawn it once it has despawned. Cheap; call once a tick. */
+  step(): void {
+    if (this.netId != null && this.server.enemyNetIds.includes(this.netId)) return;
+    const { at, yaw } = QA_SUPPRESSOR_PLACEMENT;
+    this.netId = this.server.spawnEnemy('rifleman', { ...at, yaw, tree: shootTree(this.targetNetId) });
+  }
+}
