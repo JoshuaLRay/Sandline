@@ -344,6 +344,14 @@ export class PathFollower {
     return this.stuckRepaths;
   }
 
+  /**
+   * Walking a vault leg not yet crossed: the input is lined up on the link,
+   * and local avoidance (T-3.06) leaves it alone.
+   */
+  get onVault(): boolean {
+    return this.follow !== null && onVaultLeg(this.follow, this.follow.leg);
+  }
+
   /** The path being walked, or null. */
   get path(): NavPath | null {
     return this.follow?.path ?? null;

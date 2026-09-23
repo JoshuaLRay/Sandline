@@ -20,6 +20,8 @@
  * may differ by a few millimetres between engines and nothing reconciles it.
  */
 import {
+  Crowd,
+  type CrowdParams,
   NavMeshQuery,
   type NavMesh as DetourNavMesh,
   importNavMesh,
@@ -236,6 +238,14 @@ export class NavMesh {
       t,
       point: { x: s.x + (to.x - s.x) * t, y: s.y + (to.y - s.y) * t, z: s.z + (to.z - s.z) * t },
     };
+  }
+
+  /**
+   * A Detour crowd over this mesh (T-3.06), for local avoidance. Its owner
+   * destroys it, before this mesh is destroyed.
+   */
+  crowd(params: CrowdParams): Crowd {
+    return new Crowd(this.mesh, params);
   }
 
   /** Every off-mesh link in the mesh, as baked. */
