@@ -20,6 +20,7 @@ Status: **OPEN** (not investigated/fixed) · **IN PROGRESS** · **FIXED**
 | B-07 | Grenades | After B-03's retune grenades are too heavy: a level throw dropped at ~7 m and nothing went past ~10 m. | FIXED | — |
 | B-08 | Weapons | Grenades and rockets should be equipped like the other weapons and used with a click, not thrown from a separate key. | FIXED | — |
 | B-09 | Weapons/stance | Found during T-2.42: a CROUCHED soldier's shots still trace from standing eye height (1.55 m, above the 1.2 m crouch hit volume), so crouching behind low cover shoots over it with the body hidden. Throws (grenade/rocket origin, client arc and server) also leave from standing eye height in every stance, prone included. T-2.42 lowered only the prone gun trace; the fix is the same shape (`eyePosition`'s stance input plus a `crouchEyeHeight` on the muzzle rig). | OPEN | — |
+| B-10 | Input/camera | Turning the view with the mouse felt slightly choppy while movement was smooth — each step moved "a little too much". The camera read yaw and pitch rounded to wire precision (1/1024 turn, 0.35°, about two pixels at the default sensitivity), so the view stood still and then jumped a whole step. The camera now takes the unrounded mouse angles (`LocalInput.viewYaw`, `fineSin` in `cameraSolve.ts`); the wire and the simulation still get whole units. | FIXED | — |
 
 ---
 
