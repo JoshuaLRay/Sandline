@@ -69,7 +69,7 @@ import {
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
 import { QaEnemies, QaSuppressor } from './net/qaEnemies.ts';
-import { DEFAULT_WORLD_ID, buildTree, type World, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
+import { DEFAULT_WORLD_ID, buildTree, getWorld, type World, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
@@ -711,6 +711,12 @@ const qaEnemiesWanted = new URLSearchParams(location.search).has('enemies');
 /** `?suppress` (T-3.17): a rifleman firing past the player's camera — see `qaEnemies.ts`. */
 const qaSuppressWanted = new URLSearchParams(location.search).has('suppress');
 /**
+ * `?world=greybox-01` (T-3.31): the named world the in-page session is built
+ * with, the range when absent or unknown. The page draws whatever world the
+ * session names in JoinAck, as it does for a host's `WORLD=`.
+ */
+const qaWorld: World = getWorld(new URLSearchParams(location.search).get('world') ?? '') ?? requireWorld(DEFAULT_WORLD_ID);
+/**
  * `?squad` (T-3.29): the in-page bots run the committed `friendly` tree, with
  * the range's cover — they follow in formation, fight, and carry out what the
  * order wheel tells them. Needs the navmesh too; combine with `?enemies` for
@@ -721,12 +727,12 @@ const qaSquad: Promise<LocalServerOptions> = qaSquadWanted
   ? Promise.all([import('@sandline/server/brain'), import('@sandline/server/nav/baked')]).then(
       ([brain, baked]) => ({
         brainTree: buildTree('friendly', brain.createBrainRegistry()),
-        cover: baked.bakedCoverFor(DEFAULT_WORLD_ID),
+        cover: baked.bakedCoverFor(qaWorld.id),
       }),
     )
   : Promise.resolve({});
 const qaNavMesh: Promise<NavMesh | null> = qaEnemiesWanted || qaSquadWanted
-  ? navReady.then(() => import('@sandline/server/nav/baked')).then((baked) => baked.loadWorldNavMesh(DEFAULT_WORLD_ID))
+  ? navReady.then(() => import('@sandline/server/nav/baked')).then((baked) => baked.loadWorldNavMesh(qaWorld.id))
   : Promise.resolve(null);
 
 function chooseSession(choice: LobbyChoice): void {
@@ -742,7 +748,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
   // (Remote: the host owns the authoritative config and this one only predicts,
   // so the movement panel moves prediction alone and will mispredict until the
   // host is restarted to match. Tuning is an in-page-session activity.)
-  const local = choice.kind === 'local' ? new LocalServer(link, config, { ...(qaNav ? { navMesh: qaNav } : {}), ...squad }) : null;
+  const local = choice.kind === 'local' ? new LocalServer(link, config, { ...(qaNav ? { navMesh: qaNav } : {}), ...squad, world: qaWorld }) : null;
   // The projectile panel's rows, as they stand, for this session from its first throw.
   if (local) PROJECTILE_ORDER.forEach((_, i) => local.tuneProjectile(i, throws.defOf(i)));
   const qaEnemies = local && qaNav && qaEnemiesWanted ? new QaEnemies(local) : null;

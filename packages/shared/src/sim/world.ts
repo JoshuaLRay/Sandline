@@ -33,6 +33,7 @@
  * below rather than read from disk, because this module runs in the page too.
  */
 import RANGE_WORLD from '../data/worlds/range.json' with { type: 'json' };
+import GREYBOX_01_WORLD from '../data/worlds/greybox-01.json' with { type: 'json' };
 import { POSITION } from '../net/quantize.ts';
 
 export type WorldBoxKind = 'post-minor' | 'post-major' | 'rail' | 'figure' | 'cover';
@@ -178,6 +179,135 @@ export interface World {
    * `FLOOR_MARGIN_M`.
    */
   floorHalfExtent: number;
+  /** T-3.31: where a mission on this world starts, what it takes, and the ways there; null for a world with none. */
+  mission: WorldMission | null;
+}
+
+/* -- Missions (T-3.31) --------------------------------------------------------- */
+
+/** A circle on the ground. */
+export interface GroundArea {
+  x: number;
+  z: number;
+  radius: number;
+}
+
+/** What a route is for (§1.2): a fireteam's way to the objective. */
+export const ROUTE_ROLES = ['overwatch', 'assault'] as const;
+export type RouteRole = (typeof ROUTE_ROLES)[number];
+
+/** A way from the start to the objective, walked through `via` in order. */
+export interface MissionRoute {
+  id: string;
+  role: RouteRole;
+  via: readonly { x: number; z: number }[];
+}
+
+/** Where enemies may appear (T-3.32): behind the objective, or on a route by its id. */
+export interface SpawnZone extends GroundArea {
+  id: string;
+  /** `objective`, or a route id. */
+  on: string;
+}
+
+/** What the world's own tests hold its routes to (the file's numbers, not the tests'). */
+export interface MissionChecks {
+  /** How finely a route's path is sampled, metres. */
+  sampleM: number;
+  /** The share of each route's length on polygons the other never touches. */
+  minDistinctShare: number;
+  /** A baked cover point this near a sample is cover there, metres. */
+  coverWithinM: number;
+  /** The longest stretch of a route with no cover, by route role, metres. */
+  maxUncoveredM: Readonly<Record<RouteRole, number>>;
+  /** A clear eye-height sight line the overwatch route has along itself and the assault route does not, metres. */
+  sightM: number;
+}
+
+export interface WorldMission {
+  start: GroundArea;
+  objective: GroundArea;
+  routes: readonly MissionRoute[];
+  spawnZones: readonly SpawnZone[];
+  checks: MissionChecks;
+}
+
+function finite(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v);
+}
+
+function exactKeys(where: string, v: unknown, keys: readonly string[]): Record<string, unknown> {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error(`${where}: expected an object`);
+  const o = v as Record<string, unknown>;
+  for (const k of Object.keys(o)) if (!keys.includes(k)) throw new Error(`${where}: unknown key '${k}'`);
+  for (const k of keys) if (!(k in o)) throw new Error(`${where}: missing '${k}'`);
+  return o;
+}
+
+function area(where: string, v: unknown, extra: readonly string[] = []): GroundArea & Record<string, unknown> {
+  const o = exactKeys(where, v, ['x', 'z', 'radius', ...extra]);
+  if (!finite(o['x']) || !finite(o['z'])) throw new Error(`${where}: x and z must be numbers`);
+  if (!finite(o['radius']) || o['radius'] <= 0) throw new Error(`${where}: radius must be a positive number`);
+  return o as GroundArea & Record<string, unknown>;
+}
+
+function positive(where: string, v: unknown): number {
+  if (!finite(v) || v <= 0) throw new Error(`${where} must be a positive number`);
+  return v;
+}
+
+/** Validate a world file's `mission` block. */
+export function loadMission(worldId: string, raw: unknown): WorldMission {
+  const at = `world '${worldId}': mission`;
+  const m = exactKeys(at, raw, ['start', 'objective', 'routes', 'spawnZones', 'checks']);
+  const start = area(`${at}.start`, m['start']);
+  const objective = area(`${at}.objective`, m['objective']);
+  if (!Array.isArray(m['routes']) || m['routes'].length === 0) throw new Error(`${at}.routes: expected a non-empty list`);
+  const ids = new Set<string>();
+  const routes: MissionRoute[] = m['routes'].map((r, i) => {
+    const o = exactKeys(`${at}.routes[${i}]`, r, ['id', 'role', 'via']);
+    if (typeof o['id'] !== 'string' || o['id'] === '' || o['id'] === 'objective') throw new Error(`${at}.routes[${i}]: id must be a name other than 'objective'`);
+    if (ids.has(o['id'])) throw new Error(`${at}.routes: duplicate id '${o['id']}'`);
+    ids.add(o['id']);
+    if (!(ROUTE_ROLES as readonly unknown[]).includes(o['role'])) throw new Error(`${at}.routes[${i}]: role must be one of ${ROUTE_ROLES.join(', ')}`);
+    if (!Array.isArray(o['via'])) throw new Error(`${at}.routes[${i}].via: expected a list`);
+    const via = o['via'].map((p, j) => {
+      const q = exactKeys(`${at}.routes[${i}].via[${j}]`, p, ['x', 'z']);
+      if (!finite(q['x']) || !finite(q['z'])) throw new Error(`${at}.routes[${i}].via[${j}]: x and z must be numbers`);
+      return { x: q['x'], z: q['z'] };
+    });
+    return { id: o['id'], role: o['role'] as RouteRole, via };
+  });
+  for (const role of ROUTE_ROLES) {
+    if (!routes.some((r) => r.role === role)) throw new Error(`${at}.routes: no ${role} route`);
+  }
+  if (!Array.isArray(m['spawnZones']) || m['spawnZones'].length === 0) throw new Error(`${at}.spawnZones: expected a non-empty list`);
+  const zoneIds = new Set<string>();
+  const spawnZones: SpawnZone[] = m['spawnZones'].map((z, i) => {
+    const o = area(`${at}.spawnZones[${i}]`, z, ['id', 'on']);
+    if (typeof o['id'] !== 'string' || o['id'] === '') throw new Error(`${at}.spawnZones[${i}]: id must be a name`);
+    if (zoneIds.has(o['id'])) throw new Error(`${at}.spawnZones: duplicate id '${o['id']}'`);
+    zoneIds.add(o['id']);
+    if (typeof o['on'] !== 'string' || (o['on'] !== 'objective' && !ids.has(o['on']))) {
+      throw new Error(`${at}.spawnZones[${i}]: on must be 'objective' or a route id, got ${JSON.stringify(o['on'])}`);
+    }
+    return { id: o['id'], on: o['on'], x: o.x, z: o.z, radius: o.radius };
+  });
+  const c = exactKeys(`${at}.checks`, m['checks'], ['sampleM', 'minDistinctShare', 'coverWithinM', 'maxUncoveredM', 'sightM']);
+  const share = c['minDistinctShare'];
+  if (!finite(share) || share <= 0 || share > 1) throw new Error(`${at}.checks.minDistinctShare must be in (0, 1]`);
+  const uncovered = exactKeys(`${at}.checks.maxUncoveredM`, c['maxUncoveredM'], ROUTE_ROLES);
+  const checks: MissionChecks = {
+    sampleM: positive(`${at}.checks.sampleM`, c['sampleM']),
+    minDistinctShare: share,
+    coverWithinM: positive(`${at}.checks.coverWithinM`, c['coverWithinM']),
+    maxUncoveredM: {
+      overwatch: positive(`${at}.checks.maxUncoveredM.overwatch`, uncovered['overwatch']),
+      assault: positive(`${at}.checks.maxUncoveredM.assault`, uncovered['assault']),
+    },
+    sightM: positive(`${at}.checks.sightM`, c['sightM']),
+  };
+  return { start: { x: start.x, z: start.z, radius: start.radius }, objective: { x: objective.x, z: objective.z, radius: objective.radius }, routes, spawnZones, checks };
 }
 
 /** Open ground left round a world's outermost box when its file names no floor. */
@@ -220,12 +350,13 @@ export function loadWorld(raw: unknown): World {
     }
     floorHalfExtent = half;
   }
-  return { id: file.id, boxes, floorHalfExtent };
+  const mission = (raw as { mission?: unknown }).mission;
+  return { id: file.id, boxes, floorHalfExtent, mission: mission === undefined ? null : loadMission(file.id, mission) };
 }
 
 /** Every world this build knows, by id. Validated once, at import. */
 const WORLDS: ReadonlyMap<string, World> = new Map(
-  [RANGE_WORLD].map((raw) => {
+  [RANGE_WORLD, GREYBOX_01_WORLD].map((raw) => {
     const world = loadWorld(raw);
     return [world.id, world] as const;
   }),
