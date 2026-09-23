@@ -84,6 +84,7 @@ import {
   writeDelta,
   type EnemyDef,
   type Encounter,
+  type MissionView,
   ENEMY_NET_ID_LIMIT,
   FIRST_ENEMY_NET_ID,
   buildTree,
@@ -134,6 +135,7 @@ import type { CombatWorld } from '../ai/actions/combat.ts';
 import type { EnemyPosture } from '../ai/actions/posture.ts';
 import { Spawner, type SpawnerHost } from '../ai/director/spawner.ts';
 import { Director } from '../ai/director/director.ts';
+import { MissionRun } from './mission.ts';
 import type { DownedMate, SquadView } from '../ai/actions/friendly.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
@@ -626,8 +628,13 @@ export class Session {
    * (T-3.02), and names in every `JoinAck`. Fixed for the session's life.
    */
   readonly world: World;
-  private readonly spawnerValue: Spawner | null;
-  private readonly directorValue: Director | null;
+  private spawnerValue: Spawner | null;
+  private directorValue: Director | null;
+  /** T-3.34: the mission's objective, whenever the session has an encounter to play. */
+  private readonly missionRun: MissionRun | null;
+  /** T-3.34: the tick the current attempt began on: mission time counts from here. */
+  private missionStartTick = 0;
+  private readonly encounter: Encounter | null;
 
   constructor(
     private readonly moveConfig: MoveConfig = DEFAULT_MOVE_CONFIG,
@@ -640,8 +647,11 @@ export class Session {
     this.world = typeof world === 'string' ? requireWorld(world) : world;
     this.navMesh = options.navMesh ?? null;
     // T-3.33: an encounter is paced by the director, from the fight and the humans in it.
-    this.directorValue = options.encounter ? new Director() : null;
-    this.spawnerValue = options.encounter ? new Spawner(options.encounter, this.world, this.spawnerHost(), undefined, this.directorValue!) : null;
+    this.encounter = options.encounter ?? null;
+    this.directorValue = null;
+    this.spawnerValue = null;
+    this.startEncounter();
+    this.missionRun = this.encounter && this.world.mission ? new MissionRun() : null;
     const mesh = this.navMesh;
     this.cover =
       options.cover && options.cover.length > 0
@@ -786,6 +796,85 @@ export class Session {
   }
 
   /** Enemies in the session, living and dead, oldest first (T-3.10). */
+  // -------------------------------------------------------------------------
+  // T-3.34: the mission
+  // -------------------------------------------------------------------------
+
+  /** Where the mission stands, or null for a session with none. */
+  get mission(): Readonly<MissionView> | null {
+    return this.missionRun?.current ?? null;
+  }
+
+  /** A fresh director and spawner for the encounter, counting mission time from now. */
+  private startEncounter(): void {
+    if (!this.encounter) return;
+    this.missionStartTick = this.currentTick;
+    this.directorValue = new Director();
+    this.spawnerValue = new Spawner(this.encounter, this.world, this.spawnerHost(), undefined, this.directorValue);
+  }
+
+  /** Evaluate the objective, at the end of a tick, and tell everyone when what they see of it changed. */
+  private stepMission(): void {
+    const run = this.missionRun;
+    const area = this.world.mission?.objective;
+    if (!run || !area) return;
+    const inside = (p: { x: number; z: number }) => Math.sqrt((p.x - area.x) ** 2 + (p.z - area.z) ** 2) <= area.radius;
+    const changed = run.step({
+      enemiesInside: this.enemyList.filter((e) => !isDead(e.health) && inside(e.state)).length,
+      squadInside: this.slots.filter((s) => !isDead(s.health) && inside(s.state)).length,
+      wiped: this.slots.every((s) => isDead(s.health)),
+    });
+    if (changed) this.broadcastMission();
+  }
+
+  private broadcastMission(): void {
+    if (!this.missionRun) return;
+    const msg = { kind: 'Mission', ...this.missionRun.current } as const;
+    for (const c of this.connections) if (c.state === 'active') c.send(msg);
+  }
+
+  /** A seated human asked to start again: honoured once the mission is over, won or lost. */
+  private requestRestart(conn: ServerConnection): void {
+    if (!this.humanFor(conn) || !this.missionRun || this.missionRun.current.state === 'progress') return;
+    this.restartMission();
+  }
+
+  /**
+   * Put the world back to where the mission starts: every enemy and
+   * projectile gone, every order and mark with them, every slot alive on its
+   * spawn point with a full load-out, and the encounter played again from
+   * its first tick — a new attempt.
+   */
+  restartMission(): void {
+    for (const enemy of this.enemyList) {
+      this.killEnemy(enemy);
+      this.hitboxes.forget(enemy.netId);
+    }
+    this.enemyList.length = 0;
+    this.groups.clear();
+    this.projectiles.length = 0;
+    for (const slot of this.slots) {
+      respawn(slot.health);
+      const point = spawnFor(slot.index);
+      slot.state = createMoveState(point.x, point.y, point.z);
+      slot.queue.length = 0;
+      slot.input = idleInput(slot.yaw);
+      slot.interactHeld = false;
+      slot.weaponState = createWeaponState(slot.weapon);
+      slot.suppression = createSuppression();
+      slot.pouch = this.fullPouch();
+      slot.nextThrowAt = 0;
+      this.orders[slot.index] = null;
+      this.orderRuns[slot.index] = null;
+    }
+    this.marks = [];
+    this.broadcastOrders();
+    this.broadcastMarks();
+    this.startEncounter();
+    this.missionRun?.reset();
+    this.broadcastMission();
+  }
+
   /** T-3.33: the director pacing the encounter, when the session was given one. */
   get director(): Director | null {
     return this.directorValue;
@@ -1097,6 +1186,7 @@ export class Session {
       onAiDebugRequest: (c, on) => this.applyAiDebugRequest(c, on),
       onOrder: (c, msg) => this.applyOrder(c, msg),
       onMark: (c, msg) => this.applyMark(c, msg),
+      onMissionRestart: (c) => this.requestRestart(c),
       onClosed: (c) => this.releaseSlot(c),
     });
     if (conn.state === 'closed') return false;
@@ -1161,6 +1251,7 @@ export class Session {
       conn.send({ kind: 'Orders', orders: this.currentOrders() });
     }
     conn.send({ kind: 'Marks', marks: [...this.marks] });
+    if (this.missionRun) conn.send({ kind: 'Mission', ...this.missionRun.current });
     return true;
   }
 
@@ -1988,7 +2079,7 @@ export class Session {
 
     // T-3.32: the encounter's spawns, on mission time (ticks since the session began), before anyone perceives.
     if (this.spawnerValue) {
-      const seconds = this.currentTick * TICK_SECONDS;
+      const seconds = (this.currentTick - this.missionStartTick) * TICK_SECONDS;
       const at = now / 1000;
       const living = this.enemyList.filter((e) => !isDead(e.health));
       this.directorValue!.sample({
@@ -2038,7 +2129,8 @@ export class Session {
        * (B-05).
        */
       if (isDead(slot.health)) {
-        if (readyToRespawn(slot.health, nowSeconds)) {
+        // T-3.34: on a mission that does not respawn, the dead wait for a restart.
+        if ((this.missionRun?.respawns ?? true) && readyToRespawn(slot.health, nowSeconds)) {
           respawn(slot.health);
           const point = spawnFor(slot.index);
           slot.state = createMoveState(point.x, point.y, point.z);
@@ -2189,6 +2281,7 @@ export class Session {
      */
     this.stepProjectiles();
     this.expireMarks();
+    this.stepMission();
     const snapshot = this.buildSnapshot();
     this.broadcast(snapshot);
     this.sendAiDebug();

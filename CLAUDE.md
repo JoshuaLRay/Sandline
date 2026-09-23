@@ -34,6 +34,7 @@ ADRs that section names → implement. That's the whole loop. See
 | `?suppress` | a rifleman on the in-page range firing past your camera at the squadmate beside you — the suppression vignette, desaturation, jolt and crosshair |
 | `MAX_ROOMS=4 ROOM_GRACE_MS=60000 pnpm host` | rooms per process and how long an empty room lives |
 | `WORLD=range pnpm host` | the named world every room is built with (`data/worlds/*.json`): `range` (the default) or `greybox-01`, the mission map (T-3.31) |
+| `?mission` | the grey-box mission in the page: its encounter paced by the director, the objective on the HUD (clear the compound, hold it 30 s), P to play again once it is won or lost; add `&squad` for bots that fight beside you |
 | `?world=greybox-01` | the in-page session on that world: the mission map's two lanes, the objective compound behind them |
 | `JOIN_KEY=… pnpm host` | every Join must carry this key (lobby's Key field, `pnpm bot --key`); `IDLE_TIMEOUT_MS` / `MAX_SESSION_MS` drop idle and long-connected players (0 = off) |
 | `AI_DEBUG=1 pnpm host` | clients may ask for AI debug reports (B in the page); without it the host sends none |

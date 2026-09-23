@@ -1,0 +1,5 @@
+{
+  "$comment": "T-3.34. The one objective M3's exit gate needs: clear the world's mission objective area (World.mission.objective) and hold it. The hold counts while no living enemy stands inside the area and at least one living squad soldier (human or bot) does; it goes back to zero whenever a living enemy is inside; the mission is complete once it has counted `holdSeconds`. It fails on a squad wipe: all six slots dead at once. With `respawn` false, a dead slot stays dead for the mission (downed and revived is the way back), so a wipe is possible at all; a restart brings everyone back on the start line.",
+  "holdSeconds": 30,
+  "respawn": false
+}

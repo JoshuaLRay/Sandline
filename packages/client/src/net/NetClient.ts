@@ -12,6 +12,7 @@
  */
 import {
   type BotOrder,
+  type MissionView,
   type TargetMark,
   COMPONENT_IDS,
   suppressionFromWire,
@@ -280,6 +281,8 @@ export class NetClient {
    */
   private ordersValue: readonly BotOrder[] = [];
   private marksValue: readonly TargetMark[] = [];
+  /** T-3.34: where the mission stands, as the host last said; null with none. */
+  private missionValue: MissionView | null = null;
   /**
    * Server time a remote soldier or enemy was last in a snapshot (T-3.11).
    * The six slots never leave, but an enemy's corpse despawns, and T-3.12's
@@ -375,6 +378,11 @@ export class NetClient {
   /** Every bot's current order, from the host's last `Orders` broadcast. */
   get orders(): readonly BotOrder[] {
     return this.ordersValue;
+  }
+
+  /** T-3.34: the mission, from the host's last `Mission` message; null when it has none. */
+  get mission(): MissionView | null {
+    return this.missionValue;
   }
 
   /** Every standing mark, from the host's last `Marks` broadcast. */
@@ -546,6 +554,7 @@ export class NetClient {
     this.remoteGoneAt.clear();
     this.ordersValue = [];
     this.marksValue = [];
+    this.missionValue = null;
     this.recentInputs.length = 0;
     this.newestServerMs = 0;
     this.serverClockMs = 0;
@@ -660,6 +669,12 @@ export class NetClient {
   order(msg: Extract<Message, { kind: 'Order' }>): void {
     if (!this.joinedFlag) return;
     this.transport.send(encodeMessage(msg), 'reliable');
+  }
+
+  /** T-3.34: ask the host to start the mission again. It does so once the mission is over. */
+  restartMission(): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage({ kind: 'MissionRestart' }), 'reliable');
   }
 
   /** Mark a point or an enemy (T-3.29). Reliable, like an order. */
@@ -941,6 +956,12 @@ export class NetClient {
       case 'Marks':
         this.marksValue = msg.marks;
         break;
+
+      case 'Mission': {
+        const { kind: _kind, ...view } = msg;
+        this.missionValue = view;
+        break;
+      }
 
       case 'HitEvent':
         this.onShot?.({
