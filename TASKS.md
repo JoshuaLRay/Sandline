@@ -36,9 +36,10 @@ Q2 — purchased/commissioned/in-house).
 **M3 is broken out** (PLAN.md §7.9). E-3.1's navmesh pipeline is done:
 T-3.01 (the Recast spike), T-3.02 (named worlds), T-3.03 (the range baked
 and committed, with a staleness hash) and T-3.04 (vault links); E-3.2 is
-done too — path following (T-3.05) and local avoidance (T-3.06). The next
-build tasks are **T-3.07** (behaviour tree runtime, no dependencies) and
-**T-3.18** (cover points in the bake).
+done too — path following (T-3.05) and local avoidance (T-3.06), and so is
+the behaviour tree runtime (T-3.07). The next build tasks are **T-3.08**
+(brains on the session), **T-3.13** (perception) and **T-3.18** (cover
+points in the bake).
 
 ---
 
@@ -226,8 +227,8 @@ once before the first M3 task — it is short and every task leans on it.
 
 | Task | Status | Depends |
 |---|---|---|
-| T-3.07 | OPEN | — |
-| T-3.08 | BLOCKED | T-3.07 |
+| T-3.07 | DONE | — |
+| T-3.08 | OPEN | T-3.07 |
 | T-3.09 | BLOCKED | T-3.08 |
 
 ### E-3.6 (entities) — Enemies exist before they think
@@ -242,7 +243,7 @@ once before the first M3 task — it is short and every task leans on it.
 
 | Task | Status | Depends |
 |---|---|---|
-| T-3.13 | BLOCKED | T-3.07 |
+| T-3.13 | OPEN | T-3.07 |
 | T-3.14 | BLOCKED | T-3.13, T-3.10 |
 
 ### E-3.5 — Combat AI

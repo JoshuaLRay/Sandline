@@ -13,3 +13,5 @@ export * from './sim/damage.ts';
 export * from './net/vaultWire.ts';
 export * from './ecs/components.ts';
 export * from './ecs/world.ts';
+export * from './ai/blackboard.ts';
+export * from './ai/bt.ts';

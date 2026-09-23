@@ -1,0 +1,4 @@
+{
+  "id": "idle",
+  "root": { "type": "action", "name": "idle" }
+}
