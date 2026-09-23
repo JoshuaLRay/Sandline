@@ -78,6 +78,8 @@ export interface LocalServerOptions {
   cover?: SessionOptions['cover'];
   /** The named world the session is built with (`?world=`, T-3.31); the range by default. */
   world?: World;
+  /** T-3.34's `?mission`: the encounter the session plays, and with it the objective. */
+  encounter?: SessionOptions['encounter'];
 }
 
 /** One client's link to the in-page session, tunable on its own. */
@@ -141,6 +143,7 @@ export class LocalServer {
       ...(options.navMesh ? { navMesh: options.navMesh } : {}),
       ...(options.brainTree ? { brainTree: options.brainTree } : {}),
       ...(options.cover ? { cover: options.cover } : {}),
+      ...(options.encounter ? { encounter: options.encounter } : {}),
     });
     this.local = this.attach(conditions, LOCAL_SEEDS);
     this.transport = this.local.transport;

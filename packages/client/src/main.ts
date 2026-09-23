@@ -69,7 +69,7 @@ import {
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
 import { QaEnemies, QaSuppressor } from './net/qaEnemies.ts';
-import { DEFAULT_WORLD_ID, buildTree, getWorld, type World, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
+import { DEFAULT_WORLD_ID, buildTree, encounterFor, getWorld, type World, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
@@ -97,6 +97,7 @@ import { createFootPlacementDriver } from './character/footPlacement.ts';
 import { RemoteSoldiers } from './character/remoteSoldiers.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
+import { RESTART_KEY, missionLine } from './ui/missionHud.ts';
 import { type AimSubject, OrderWheelView, buildMark, orderFromRelease } from './ui/OrderWheel.ts';
 import { type MarkerVec, OrderMarkerOverlay, orderMarkers } from './ui/OrderMarkers.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
@@ -715,7 +716,16 @@ const qaSuppressWanted = new URLSearchParams(location.search).has('suppress');
  * with, the range when absent or unknown. The page draws whatever world the
  * session names in JoinAck, as it does for a host's `WORLD=`.
  */
-const qaWorld: World = getWorld(new URLSearchParams(location.search).get('world') ?? '') ?? requireWorld(DEFAULT_WORLD_ID);
+/**
+ * `?mission` (T-3.34): the grey-box mission in the page — its world (unless
+ * `?world=` names another with an encounter), its encounter, paced by the
+ * director, the objective and its HUD line, P to play again once it is over.
+ * With `&squad` the bots fight beside you.
+ */
+const qaMissionWanted = new URLSearchParams(location.search).has('mission');
+const qaWorld: World =
+  getWorld(new URLSearchParams(location.search).get('world') ?? '') ?? requireWorld(qaMissionWanted ? 'greybox-01' : DEFAULT_WORLD_ID);
+const qaEncounter = qaMissionWanted ? encounterFor(qaWorld.id) : undefined;
 /**
  * `?squad` (T-3.29): the in-page bots run the committed `friendly` tree, with
  * the range's cover — they follow in formation, fight, and carry out what the
@@ -730,8 +740,10 @@ const qaSquad: Promise<LocalServerOptions> = qaSquadWanted
         cover: baked.bakedCoverFor(qaWorld.id),
       }),
     )
-  : Promise.resolve({});
-const qaNavMesh: Promise<NavMesh | null> = qaEnemiesWanted || qaSquadWanted
+  : qaEncounter
+    ? import('@sandline/server/nav/baked').then((baked) => ({ cover: baked.bakedCoverFor(qaWorld.id) }))
+    : Promise.resolve({});
+const qaNavMesh: Promise<NavMesh | null> = qaEnemiesWanted || qaSquadWanted || qaEncounter
   ? navReady.then(() => import('@sandline/server/nav/baked')).then((baked) => baked.loadWorldNavMesh(qaWorld.id))
   : Promise.resolve(null);
 
@@ -748,7 +760,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
   // (Remote: the host owns the authoritative config and this one only predicts,
   // so the movement panel moves prediction alone and will mispredict until the
   // host is restarted to match. Tuning is an in-page-session activity.)
-  const local = choice.kind === 'local' ? new LocalServer(link, config, { ...(qaNav ? { navMesh: qaNav } : {}), ...squad, world: qaWorld }) : null;
+  const local = choice.kind === 'local' ? new LocalServer(link, config, { ...(qaNav ? { navMesh: qaNav } : {}), ...squad, world: qaWorld, ...(qaEncounter ? { encounter: qaEncounter } : {}) }) : null;
   // The projectile panel's rows, as they stand, for this session from its first throw.
   if (local) PROJECTILE_ORDER.forEach((_, i) => local.tuneProjectile(i, throws.defOf(i)));
   const qaEnemies = local && qaNav && qaEnemiesWanted ? new QaEnemies(local) : null;
@@ -1065,6 +1077,8 @@ function aimReadout(): string {
 }
 const crosshair = document.getElementById('crosshair');
 const downedBanner = document.getElementById('downed');
+/** T-3.34: the mission's one line, from the host's `Mission` message. */
+const missionHud = document.getElementById('mission');
 /** Last gap written to the reticle, so the style is only touched on change. */
 let crosshairGap = -1;
 
@@ -1573,6 +1587,11 @@ function frame(): void {
     // No weapon in hand while downed: nothing for a reticle to promise.
     crosshair.classList.toggle('hidden', downed);
   }
+  if (missionHud) {
+    const text = missionLine(net?.mission ?? null);
+    if (missionHud.textContent !== text) missionHud.textContent = text;
+    missionHud.classList.toggle('shown', text.length > 0);
+  }
   if (downedBanner) {
     const stats = net?.stats;
     const timer = stats?.vitalTimer ?? 0;
@@ -1806,6 +1825,8 @@ addEventListener('keydown', (e) => {
     equipPouch(slot - WEAPON_ORDER.length - 1);
   }
   if (e.code === 'KeyH') toggleHud();
+  // P asks the host to start the mission again; it only does once the mission is over (T-3.34).
+  if (e.code === RESTART_KEY && !e.repeat) live?.net.restartMission();
   // N for netgraph. It was G until T-2.32 needed G for the grenade, which is
   // the more valuable piece of muscle memory; H still hides the whole HUD.
   if (e.code === 'KeyN') netgraph.root.classList.toggle('collapsed');

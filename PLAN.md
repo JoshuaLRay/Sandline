@@ -1855,6 +1855,48 @@ comms, and any mission scripting beyond what T-3.34 names.
 - **Do:** Exactly what the exit gate needs: one objective type — clear the objective area and hold it for a data-set time — evaluated on the server, a `Mission` state message (in progress, complete, failed on a squad wipe), a HUD line, and a restart that resets the encounter and respawns the squad on the start line. Everything else is E-4.4's.
 - **Done when:** session tests assert completion when the area is clear and held, failure when every slot is dead, and a restart that puts the world back to the start state; the message round-trips and the HUD reads it.
 - **Size:** M
+- **Completed 2026-09-23.**
+  - **Data.** `data/mission.json` (parsed in `shared/src/sim/mission.ts`, unknown keys refused): `holdSeconds` 30, and `respawn` false. With respawn on, T-2.13's timer brings every dead slot back, so "every slot dead" could never last a tick and no squad could be wiped; downed-and-revived is the way back during a mission, and a restart brings everyone back.
+  - **The rule** (`server/src/session/mission.ts`, `MissionRun`), evaluated at the end of every tick:
+    - held counts a tick when no living enemy is inside the objective circle and a living squad soldier, human or bot, is;
+    - any living enemy inside resets it to zero; the squad stepping out with the area clear pauses it;
+    - complete at the hold; failed when all six slots are dead;
+    - both are final until `reset`.
+
+    `step` reports a change only for a new state, a change of clearness, or a whole second of hold, so a hold sends about one message a second.
+  - **Session.** A session given an encounter on a world with a mission has one (`Session.mission`); without an encounter it has none and sends nothing.
+    - Mission time (the spawner and director) counts from the attempt's start tick.
+    - Dead slots do not respawn while a mission's `respawn` is false.
+    - The state is broadcast on every reported change and sent on seating.
+    - `MissionRestart` from a seated human is honoured only once the mission is complete or failed. `restartMission()` then:
+      - removes every enemy (its cover released, its hitbox history forgotten), its groups, and every projectile;
+      - clears every order and mark and broadcasts both empty;
+      - respawns every slot on its own spawn point, with full health and a fresh weapon, suppression and pouch;
+      - builds a new director and spawner, so the encounter plays from its first tick;
+      - resets the mission as attempt 2, 3 …, and broadcasts it.
+  - **Protocol 22.** Tag 15's sub-kind 6 carries a two-bit variant, which keeps sub-kind 7 free:
+    - `Mission` (state from `MISSION_STATES`, `clear`, `heldTicks`, `holdTicks`, `attempt`), in ticks so it round-trips exactly;
+    - `MissionRestart`.
+
+    A variant past the restart, a state past the last, and held beyond the hold are `ProtocolError`s. `ServerConnection.onMissionRestart`, `ClientConnection.onMission`.
+  - **Client.**
+    - `NetClient.mission` holds the last `Mission` and is cleared on rejoin; `restartMission()` sends the request.
+    - `ui/missionHud.ts`'s `missionLine` is the one HUD line (`#mission`, top centre): clear the compound, hold it, complete, or failed, with held/hold seconds and the attempt.
+    - P (`RESTART_KEY`) asks for the restart.
+    - `?mission` builds the in-page session on the grey-box map (unless `?world=` names another) with its encounter and cover.
+  - **Tests.**
+    - `mission.test.ts` (server), the rule on its own: hold, pause, reset by an enemy, complete at 900 ticks, final until reset, a failure after reset; and change reporting (3 in 90 held ticks).
+    - On a real `Session` with a human over loopback:
+      - the state is sent on seating;
+      - an area with two garrison riflemen in it and the lead inside holds nothing for 60 ticks;
+      - killed, the area clears and completes after 900 held ticks with 34 messages in all;
+      - five slots dead leaves it in progress, the sixth fails it, and after 20 more seconds every slot is still dead and it is still failed;
+      - a restart asked for mid-mission is refused; after a wipe it puts every slot alive on its spawn point at full health with no orders and no enemies, and the encounter spawns anew at mission second 0 with new netIds, attempt 2;
+      - no encounter means no mission.
+    - `sim/mission.test.ts` (shared): every state round-trips with both clear values, the restart round-trips, four malformed messages are refused, and the data is refused by name.
+    - `missionHud.test.ts`: the line for each state, from messages that went through the wire.
+    - `orders.test.ts` pins protocol 22.
+  - `pnpm bot` is unchanged: 0.0116 m peak divergence. A browser look at `?mission&squad` showed the HUD line reading "Objective: clear the compound · held 0/30 s".
 
 #### T-3.35 — The mission, headless
 - **Depends:** T-3.23, T-3.28, T-3.33, T-3.34

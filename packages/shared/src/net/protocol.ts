@@ -11,9 +11,10 @@ import { HEALTH, POSITION, dequantize, quantize } from './quantize.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isRoomCode } from './roomCode.ts';
 import { MAX_MARKS, ORDER_KINDS, type BotOrder, type OrderAddress, type OrderKind, type OrderPoint, type TargetMark } from '../sim/orders.ts';
+import { MISSION_STATES, type MissionView } from '../sim/mission.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 21;
+export const PROTOCOL_VERSION = 22;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -108,7 +109,13 @@ export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
 const TYPE_BITS = 4;
 
 /** Sub-kinds under `MessageType.Ext`, three bits: the wire order. */
-const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks: 5 } as const;
+const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks: 5, Mission: 6 } as const;
+/**
+ * T-3.34: under `EXT.Mission`, a two-bit variant — the host's state, or a
+ * client's restart — so the mission family takes one sub-kind and the
+ * last (7) stays free.
+ */
+const MISSION_VARIANT = { State: 0, Restart: 1 } as const;
 const EXT_BITS = 3;
 const ORDER_KIND_BITS = 3;
 const ADDRESS_TO = ['slot', 'fireteam', 'all'] as const;
@@ -389,7 +396,11 @@ export type Message =
   /** T-3.27: every bot's current order, whole, whenever one changes and on seating. Host to client. */
   | { kind: 'Orders'; orders: readonly BotOrder[] }
   /** T-3.27: every standing mark, whole, whenever one is made or expires and on seating. Host to client. */
-  | { kind: 'Marks'; marks: readonly TargetMark[] };
+  | { kind: 'Marks'; marks: readonly TargetMark[] }
+  /** T-3.34: where the mission stands, on every change, each second of a hold, and on seating. Host to client. */
+  | ({ kind: 'Mission' } & MissionView)
+  /** T-3.34: a player asking for the mission to start again. Client to host; honoured once it is over. */
+  | { kind: 'MissionRestart' };
 
 export class ProtocolError extends Error {}
 
@@ -579,6 +590,21 @@ export function encodeMessage(msg: Message): Uint8Array {
       }
       break;
     }
+    case 'Mission':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Mission, EXT_BITS);
+      w.writeBits(MISSION_VARIANT.State, 2);
+      w.writeBits(MISSION_STATES.indexOf(msg.state), 2);
+      w.writeBool(msg.clear);
+      w.writeVarUint(msg.heldTicks);
+      w.writeVarUint(msg.holdTicks);
+      w.writeVarUint(msg.attempt);
+      break;
+    case 'MissionRestart':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Mission, EXT_BITS);
+      w.writeBits(MISSION_VARIANT.Restart, 2);
+      break;
     case 'Marks': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Marks, EXT_BITS);
@@ -892,6 +918,19 @@ export function decodeMessage(bytes: Uint8Array): Message {
               marks.push({ id, from, point: readPoint(r), target: readOptionalTarget(r), expiresTick: r.readVarUint() });
             }
             return { kind: 'Marks', marks };
+          }
+          case EXT.Mission: {
+            const variant = r.readBits(2);
+            if (variant === MISSION_VARIANT.Restart) return { kind: 'MissionRestart' };
+            if (variant !== MISSION_VARIANT.State) throw new ProtocolError(`unknown mission message ${variant}`);
+            const state = MISSION_STATES[r.readBits(2)];
+            if (state === undefined) throw new ProtocolError('unknown mission state');
+            const clear = r.readBool();
+            const heldTicks = r.readVarUint();
+            const holdTicks = r.readVarUint();
+            const attempt = r.readVarUint();
+            if (heldTicks > holdTicks) throw new ProtocolError('mission held past its hold');
+            return { kind: 'Mission', state, clear, heldTicks, holdTicks, attempt };
           }
           default:
             throw new ProtocolError(`unknown extended message ${sub}`);

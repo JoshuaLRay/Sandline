@@ -507,6 +507,24 @@ canvas { display: block; touch-action: none; }
   display: none;
 }
 #downed.shown { display: block; }
+/* T-3.34: the mission's line, top centre. */
+#mission {
+  position: fixed;
+  left: 50%;
+  top: 12px;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  display: none;
+  pointer-events: none;
+  z-index: 6;
+}
+#mission.shown { display: block; }
 #crosshair.hidden { display: none; }
 
 
