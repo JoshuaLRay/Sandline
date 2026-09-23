@@ -366,6 +366,21 @@ export class CoverSystem {
 
   private readonly sights = new Map<string, ThreatSight>();
 
+  /**
+   * Reserve point `index` for `owner` without a query (T-3.21: a group sends
+   * its flanker to a point chosen for its sight of the target, not for
+   * hiding from it). Releases what `owner` held; false if another holds it.
+   */
+  reserve(owner: number, index: number): boolean {
+    const holder = this.heldBy.get(index);
+    if (holder !== undefined && holder !== owner) return false;
+    if (index < 0 || index >= this.points.length) return false;
+    this.release(owner);
+    this.heldBy.set(index, owner);
+    this.held.set(owner, { index, arrived: false });
+    return true;
+  }
+
   /** Whether `owner`'s point still hides it from every one of `threats`; false when it holds none. */
   stillProtects(owner: number, threats: readonly Vec3[]): boolean {
     const r = this.held.get(owner);

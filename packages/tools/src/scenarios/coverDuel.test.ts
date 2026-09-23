@@ -22,7 +22,8 @@ describe('cover-duel (T-3.20)', () => {
     expect(summary.worstRelocateS).not.toBeNull();
     expect(summary.worstRelocateS!).toBeLessThanOrEqual(COVER_DUEL.maxRelocateSeconds);
     expect(Math.min(...summary.results.map((r) => r.shotsFired))).toBeGreaterThanOrEqual(COVER_DUEL.minShotsFired);
-  });
+    // Every seed, headless: seconds, not milliseconds, when the suite runs beside it.
+  }, 60_000);
 
   it('is a gate that bites: the same runs fail a stricter threshold, each by name', () => {
     const strict = judge(summary.results, {

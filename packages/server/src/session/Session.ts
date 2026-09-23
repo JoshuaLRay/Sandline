@@ -122,6 +122,7 @@ import { BRAIN_PERIOD_TICKS, Brain, type BrainTree, createBrainRegistry, default
 import { type AiDebugSource, buildAiDebug } from '../ai/debug.ts';
 import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, visibleAimPoint } from '../ai/aim.ts';
 import { CoverSystem, DEFAULT_COVER_BODY } from '../ai/cover.ts';
+import { EnemyGroup } from '../ai/group.ts';
 import type { CombatWorld } from '../ai/actions/combat.ts';
 import type { CoverPoint } from '../ai/nav/baked/types.ts';
 import { pathLength } from '../ai/nav/NavMesh.ts';
@@ -144,6 +145,9 @@ const PRONE_HITBOX_HEIGHT = 2 * ((DEFAULT_HITBOX.proneHalfHeight ?? DEFAULT_HITB
  * (`ENEMY_FACTION_BITS` wide), so no faction is ever mistaken for the squad.
  */
 const SQUAD = -1;
+
+/** The aim id suppressive fire is timed on (T-3.21): a point, not a soldier. */
+const SUPPRESSIVE_AIM = -1;
 
 /** A soldier's eye where it stands now, in its stance: prone, crouched (the cover body's crouched eye, T-3.19) or standing. */
 function soldierEye(state: MoveState): { x: number; y: number; z: number } {
@@ -370,6 +374,8 @@ export interface EnemyEntity {
   lastDamagedAt: number;
   /** T-3.20: the session's world as its fighting leaves see it; the same object for every enemy. */
   readonly combat: CombatWorld;
+  /** T-3.21: the group it was spawned into (`EnemySpawn.group`), or null. */
+  readonly group: EnemyGroup | null;
 }
 
 /** Where and how to spawn an enemy. */
@@ -384,6 +390,11 @@ export interface EnemySpawn {
   faction?: number;
   /** A tree to run instead of the archetype's own — tests, and later encounters. */
   tree?: BrainTree;
+  /**
+   * T-3.21: enemies spawned with the same group id share a group — its
+   * target, and the suppress and flank roles it hands out.
+   */
+  group?: number;
 }
 
 /** What a session is built with beyond its tuning, room and world. */
@@ -685,10 +696,45 @@ export class Session {
       suppression: createSuppression(),
       lastDamagedAt: -Infinity,
       combat: this.combatWorld,
+      group: at.group === undefined ? null : this.groupFor(at.group),
     };
+    enemy.group?.add(enemy.netId);
     enemy.brain = new Brain(enemy, at.tree ?? this.enemyTree(def.tree));
     this.enemyList.push(enemy);
     return enemy.netId;
+  }
+
+  /** T-3.21: enemy groups by the id they were spawned with. */
+  private readonly groups = new Map<number, EnemyGroup>();
+
+  private groupFor(id: number): EnemyGroup {
+    let group = this.groups.get(id);
+    if (!group) {
+      group = new EnemyGroup(id);
+      this.groups.set(id, group);
+    }
+    return group;
+  }
+
+  /** A group by id, for tests and the scenario. */
+  group(id: number): EnemyGroup | null {
+    return this.groups.get(id) ?? null;
+  }
+
+  /**
+   * Groups think at the brains' 10 Hz, on the tick before the first phase,
+   * so every member thinks on what its group decided (T-3.21).
+   */
+  private thinkGroups(nowSeconds: number): void {
+    if (this.groups.size === 0 || this.currentTick % BRAIN_PERIOD_TICKS !== 0) return;
+    const world = { cover: this.cover, boxes: this.world.boxes, mesh: this.navMesh };
+    for (const group of this.groups.values()) {
+      const members = group.members.flatMap((id) => {
+        const e = this.enemyList.find((x) => x.netId === id);
+        return e ? [{ netId: e.netId, state: e.state, alive: !isDead(e.health), memory: e.memory, target: e.target }] : [];
+      });
+      group.think(members, world, nowSeconds);
+    }
   }
 
   private enemyTree(id: string): BrainTree {
@@ -1467,6 +1513,7 @@ export class Session {
 
     const nowSeconds = now / 1000;
     this.perceive(nowSeconds);
+    this.thinkGroups(nowSeconds);
     this.thinkBrains();
     this.driveBots();
     this.enemyHands(nowSeconds);
@@ -1751,24 +1798,28 @@ export class Session {
       finishReload(weapon, ws, nowSeconds);
       if (ws.ammo === 0) startReload(weapon, ws, nowSeconds);
 
-      const targetId = enemy.brain?.fireAt ?? null;
-      const target = targetId === null ? null : this.soldier(targetId);
-      if (!target || target.netId === enemy.netId || isDead(target.health)) {
-        enemy.aim = null;
-        continue;
-      }
       // Mid-vault both hands are on the wall, for an AI as for a player (T-2.21).
       if (enemy.state.vault) continue;
       // Its own eye in its own stance: crouched behind low cover it sees (and
       // shoots) over nothing a crouched head would not (T-3.20).
       const eye = soldierEye(enemy.state);
-      const point = visibleAimPoint(eye, aimPoints(target.state, target.state.crouched, target.state.prone), this.world.boxes);
+      const targetId = enemy.brain?.fireAt ?? null;
+      const target = targetId === null ? null : this.soldier(targetId);
+      const shootable = target && target.netId !== enemy.netId && !isDead(target.health) ? target : null;
+      let point = shootable ? visibleAimPoint(eye, aimPoints(shootable.state, shootable.state.crouched, shootable.state.prone), this.world.boxes) : null;
+      let aimAt = shootable?.netId ?? SUPPRESSIVE_AIM;
+      // No line of sight, no shot — except suppressive fire (T-3.21): a brain
+      // with nobody to shoot at but a point to keep heads down at fires there,
+      // through whatever is in the way, by every other rule a shot follows.
+      if (!point && targetId === null) {
+        point = enemy.brain?.read('suppressAt') ?? null;
+        aimAt = SUPPRESSIVE_AIM;
+      }
       if (!point) {
-        // No line of sight, no shot (suppressive fire is T-3.21's exception).
         enemy.aim = null;
         continue;
       }
-      if (!enemy.aim || enemy.aim.netId !== target.netId) enemy.aim = { netId: target.netId, since: nowSeconds };
+      if (!enemy.aim || enemy.aim.netId !== aimAt) enemy.aim = { netId: aimAt, since: nowSeconds };
 
       const line = aimAngles(eye, point);
       // It faces what it shoots at, and the snapshot says so.
@@ -1786,7 +1837,7 @@ export class Session {
       const dz = point.z - eye.z;
       const cone = aimConeDeg(enemy.def.accuracy, {
         distanceM: Math.sqrt(dx * dx + dy * dy + dz * dz),
-        targetSpeedMps: target.speed,
+        targetSpeedMps: aimAt === SUPPRESSIVE_AIM ? 0 : (shootable?.speed ?? 0),
         suppression: suppressionLevel(enemy.suppression, nowSeconds),
         timeOnTargetSeconds: nowSeconds - enemy.aim.since,
       });
