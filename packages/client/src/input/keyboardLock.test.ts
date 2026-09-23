@@ -69,7 +69,7 @@ describe('keyboard lock (PLAN.md §8 R13)', () => {
     expect(unlock).toHaveBeenCalledTimes(1);
   });
 
-  it('locks an explicit key list that leaves Tab out, so Alt+Tab reaches the OS', () => {
+  it('locks an explicit key list that leaves Tab, Alt and Meta out, so Alt+Tab reaches the OS', () => {
     const lock = vi.fn().mockResolvedValue(undefined);
     stubGlobals({ lock, unlock: vi.fn() });
 
@@ -81,9 +81,13 @@ describe('keyboard lock (PLAN.md §8 R13)', () => {
     // No-argument lock() would capture every key, Alt+Tab included.
     const codes = lock.mock.calls[0]![0] as string[];
     expect(codes).toEqual([...LOCKED_KEY_CODES]);
-    expect(codes).not.toContain('Tab');
+    // A locked modifier never reaches the OS either, which then sees Alt+Tab
+    // as a bare Tab — so the modifiers of every window-switch chord are out.
+    for (const code of ['Tab', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight']) {
+      expect(codes).not.toContain(code);
+    }
     // The shortcuts the lock exists for stay reclaimed.
-    for (const code of ['KeyW', 'ControlLeft', 'AltLeft', 'Escape', 'F11']) {
+    for (const code of ['KeyW', 'ControlLeft', 'ControlRight', 'Escape', 'F11']) {
       expect(codes).toContain(code);
     }
     expect(new Set(codes).size).toBe(codes.length);
