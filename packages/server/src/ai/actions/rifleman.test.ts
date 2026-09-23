@@ -65,7 +65,7 @@ describe('the rifleman tree (T-3.20)', () => {
     const body = { netId: 3, state: createMoveState(0, 0, 0), yaw: 0, health: { current: 100, max: 100, downedAt: null, diedAt: null } };
     const brain = new Brain(body, buildTree('rifleman', createBrainRegistry()));
     for (let t = 0; t < 30; t += 3) brain.think(t);
-    expect(brain.tree.runningPath().at(-1)).toMatch(/standDown/);
+    expect(brain.tree.runningPath().at(-1)).toMatch(/atEase/);
     expect(brain.read('fireAt')).toBeNull();
     expect(brain.read('intent')).toBeNull();
     expect(brain.read('crouch')).toBe(false);

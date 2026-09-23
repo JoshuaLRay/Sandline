@@ -83,6 +83,7 @@ import {
   stepCharacter,
   writeDelta,
   type EnemyDef,
+  type Encounter,
   ENEMY_NET_ID_LIMIT,
   FIRST_ENEMY_NET_ID,
   buildTree,
@@ -130,6 +131,8 @@ import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, visibleAimPoint } 
 import { CoverSystem, DEFAULT_COVER_BODY } from '../ai/cover.ts';
 import { EnemyGroup } from '../ai/group.ts';
 import type { CombatWorld } from '../ai/actions/combat.ts';
+import type { EnemyPosture } from '../ai/actions/posture.ts';
+import { Spawner, type SpawnerHost } from '../ai/director/spawner.ts';
 import type { DownedMate, SquadView } from '../ai/actions/friendly.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
@@ -393,6 +396,9 @@ interface ActiveProjectile {
  */
 export const MAX_ENEMIES = 64;
 
+/** T-3.32: a spawn candidate counts as on the navmesh when its nearest mesh point is this near, metres. */
+export const SPAWN_ON_MESH_M = 0.3;
+
 /**
  * One enemy the session owns (T-3.10). Shaped like the parts of a `Slot` the
  * shared systems read — a `MoveState`, a yaw in wire units, a `HealthState` —
@@ -458,6 +464,10 @@ export interface EnemyEntity {
   deployedAt: number | null;
   /** T-3.23: rounds into the current burst, and when a pause after the last one ends (seconds). */
   burst: { rounds: number; pauseUntil: number };
+  /** T-3.32: what it does with nothing to fight (`actions/posture.ts`), or null to stand down. */
+  readonly posture: EnemyPosture | null;
+  /** T-3.32: a garrison fights from inside its area; anyone else may take cover anywhere. */
+  coverNear(): { x: number; z: number; withinM: number } | null;
 }
 
 /** Where and how to spawn an enemy. */
@@ -477,6 +487,8 @@ export interface EnemySpawn {
    * target, and the suppress and flank roles it hands out.
    */
   group?: number;
+  /** T-3.32: the posture it spawns in and returns to (`actions/posture.ts`); none stands down. */
+  posture?: EnemyPosture;
 }
 
 /** What a session is built with beyond its tuning, room and world. */
@@ -495,6 +507,13 @@ export interface SessionOptions {
    * brain finds cover, and a rifleman fights in the open.
    */
   cover?: readonly CoverPoint[];
+  /**
+   * T-3.32: the encounter the session plays out (`encounterFor(world.id)`):
+   * its groups spawned on their triggers by a `Spawner`, out of every
+   * human's sight, under its alive cap. None: nothing spawns but what a
+   * caller spawns itself.
+   */
+  encounter?: Encounter;
   /**
    * T-3.09: whether clients may ask for AI debug reports (`AI_DEBUG=1 pnpm
    * host`). Off by default: a host that does not allow it sends nothing, and
@@ -606,6 +625,7 @@ export class Session {
    * (T-3.02), and names in every `JoinAck`. Fixed for the session's life.
    */
   readonly world: World;
+  private readonly spawnerValue: Spawner | null;
 
   constructor(
     private readonly moveConfig: MoveConfig = DEFAULT_MOVE_CONFIG,
@@ -617,6 +637,7 @@ export class Session {
   ) {
     this.world = typeof world === 'string' ? requireWorld(world) : world;
     this.navMesh = options.navMesh ?? null;
+    this.spawnerValue = options.encounter ? new Spawner(options.encounter, this.world, this.spawnerHost()) : null;
     const mesh = this.navMesh;
     this.cover =
       options.cover && options.cover.length > 0
@@ -761,6 +782,39 @@ export class Session {
   }
 
   /** Enemies in the session, living and dead, oldest first (T-3.10). */
+  /** T-3.32: the encounter's spawner, when the session was given one. */
+  get spawner(): Spawner | null {
+    return this.spawnerValue;
+  }
+
+  /** The session as the spawner sees it. */
+  private spawnerHost(): SpawnerHost {
+    const living = (h: HealthState) => !isDead(h);
+    return {
+      humanEyes: () =>
+        this.slots
+          .filter((s) => !s.isBot && living(s.health))
+          .map((s) => eyePosition(s.state.x, s.state.y, s.state.z, DEFAULT_MUZZLE_RIG, s.state.prone)),
+      squadFeet: () => this.slots.filter((s) => living(s.health)).map((s) => ({ x: s.state.x, z: s.state.z })),
+      enemyFeet: () => this.enemyList.filter((e) => living(e.health)).map((e) => ({ x: e.state.x, z: e.state.z })),
+      isAlive: (netId) => {
+        const e = this.enemyList.find((x) => x.netId === netId);
+        return e !== undefined && living(e.health);
+      },
+      spawn: (archetype, at) => this.spawnEnemy(archetype, at),
+      ...(this.navMesh
+        ? {
+            ground: (p: { x: number; y: number; z: number }) => {
+              const hit = this.navMesh!.nearestPoint(p);
+              if (!hit) return null;
+              const off = Math.sqrt((hit.point.x - p.x) ** 2 + (hit.point.z - p.z) ** 2);
+              return off <= SPAWN_ON_MESH_M ? { x: p.x, y: hit.point.y, z: p.z } : null;
+            },
+          }
+        : {}),
+    };
+  }
+
   get enemies(): readonly EnemyEntity[] {
     return this.enemyList;
   }
@@ -831,6 +885,11 @@ export class Session {
       still: createStillWatch(),
       deployedAt: null,
       burst: { rounds: 0, pauseUntil: 0 },
+      posture: at.posture ?? null,
+      coverNear: () => {
+        const area = at.posture?.kind === 'garrison' ? at.posture.area : null;
+        return area ? { x: area.x, z: area.z, withinM: area.radius } : null;
+      },
     };
     enemy.group?.add(enemy.netId);
     enemy.brain = new Brain(enemy, at.tree ?? this.enemyTree(def.tree));
@@ -1917,6 +1976,9 @@ export class Session {
       else if (conn.isExpired(now, this.maxSessionMs)) conn.reject('session limit');
       else if (conn.isIdle(now, this.idleTimeoutMs)) conn.reject('idle');
     }
+
+    // T-3.32: the encounter's spawns, on mission time (ticks since the session began), before anyone perceives.
+    this.spawnerValue?.step(this.currentTick * TICK_SECONDS);
 
     const nowSeconds = now / 1000;
     this.perceive(nowSeconds);
