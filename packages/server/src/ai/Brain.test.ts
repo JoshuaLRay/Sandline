@@ -9,7 +9,7 @@ import { ClientConnection, MAX_SLOTS, applyDamage, buildTree, createLoopbackPair
 import { type NavMesh, initNav } from './nav/NavMesh.ts';
 import { loadWorldNavMesh } from './nav/bakedNav.ts';
 import { Session } from '../session/Session.ts';
-import { BRAIN_PERIOD_TICKS, Brain, type BrainTree, brainPhase, createBrainRegistry, defaultBrainTree } from './Brain.ts';
+import { BRAIN_PERIOD_TICKS, Brain, type BrainTree, brainPhase, createBrainRegistry, defaultBrainTree, freshMemory } from './Brain.ts';
 
 const TICK_MS = 1000 / 30;
 
@@ -187,7 +187,7 @@ describe('brains and the slot swap (T-3.08, ADR-001)', () => {
     expect(fresh).not.toBe(oldBrain);
     expect(fresh.isStopped).toBe(false);
     expect(fresh.thoughtCount).toBe(0);
-    expect(fresh.memory).toEqual({ intent: null, fireAt: null });
+    expect(fresh.memory).toEqual(freshMemory());
     expect(fresh.startedAt).toEqual(leftAt);
     expect(slot.netId).toBe(netId);
     expect(slot.state).toMatchObject(leftAt);
