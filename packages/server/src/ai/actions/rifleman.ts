@@ -44,6 +44,7 @@ function num(args: BtArgs, key: string, fallback: number): number {
 /** Hands down: nothing to shoot, nothing to reload, stance and gaze as given. */
 function hands(frame: Frame, crouch: boolean, lookAt: Vec3 | null): void {
   frame.blackboard.set('fireAt', null);
+  frame.blackboard.set('suppressAt', null);
   frame.blackboard.set('reload', false);
   frame.blackboard.set('crouch', crouch);
   frame.blackboard.set('lookAt', lookAt);
@@ -156,6 +157,7 @@ export function registerRiflemanLeaves(registry: BrainRegistry): BrainRegistry {
           const eye = threatEye(body);
           if (!point || !eye) return 'failure';
           const bb = frame.blackboard;
+          bb.set('suppressAt', null);
           const burstTicks = Math.round(num(args, 'burstSeconds', 1.2) * BRAIN_TICKS_PER_SECOND);
           const reserve = num(args, 'reserve', 0.3);
           bb.set('reload', false);
@@ -232,7 +234,8 @@ export function registerRiflemanLeaves(registry: BrainRegistry): BrainRegistry {
           const body = frame.ctx;
           if (!isCombatBody(body)) return 'failure';
           const point = heldPoint(body);
-          const home = point !== null && across(body.state, point) <= THERE_M;
+          // With no point held (a suppressor fighting where it stands), where it is is home.
+          const home = point === null || across(body.state, point) <= THERE_M;
           // Back to the point first — a peek out of high cover cut short by
           // the magazine leaves it standing out past the edge.
           frame.blackboard.set('intent', point && !home ? { goal: { x: point.x, y: point.y, z: point.z }, pace: 'walk' } : null);
@@ -292,6 +295,59 @@ export function registerRiflemanLeaves(registry: BrainRegistry): BrainRegistry {
         halt(frame) {
           frame.blackboard.set('fireAt', null);
         },
+      })
+      /** T-3.21: whether its group has given it `role` (`suppressor` or `flanker`). */
+      .condition('hasRole', ({ ctx }, args) => isCombatBody(ctx) && ctx.group !== null && ctx.group.role(ctx.netId) === args['role'])
+      /**
+       * Suppress (T-3.21): stand and fire at the group's pinned target where it
+       * was last known, just over its cover, with or without a line of sight —
+       * the session honours `suppressAt` only while `fireAt` is null. It stays
+       * where it is; its own cover is whatever it had.
+       */
+      .action('suppress', {
+        tick(frame) {
+          const body = frame.ctx;
+          const at = isCombatBody(body) ? (body.group?.suppressPoint() ?? null) : null;
+          if (!isCombatBody(body) || !at) return 'failure';
+          frame.blackboard.set('phase', null);
+          // To where it can see the spot first, if the group found it somewhere better.
+          const from = body.group?.suppressFrom ?? null;
+          if (from && across(body.state, from) > THERE_M) {
+            hands(frame, false, null);
+            walkTo(frame, body, from, at);
+            return 'running';
+          }
+          frame.blackboard.set('intent', null);
+          hands(frame, false, at);
+          frame.blackboard.set('suppressAt', at);
+          return 'running';
+        },
+        halt(frame) {
+          frame.blackboard.set('suppressAt', null);
+        },
+      })
+      /**
+       * Flank (T-3.21): walk the group's route — priced by what the target can
+       * see — point by point to the flank point, quietly; there, stand, face
+       * the target and shoot it when it shows.
+       */
+      .action('flank', (frame) => {
+        const body = frame.ctx;
+        if (!isCombatBody(body) || body.target === null) return 'failure';
+        const flank = body.group?.flank ?? null;
+        if (!flank || flank.netId !== body.netId) return 'failure';
+        const eye = threatEye(body);
+        frame.blackboard.set('phase', null);
+        if (!flank.arrived) {
+          const next = flank.route[flank.waypoint] ?? flank.point;
+          hands(frame, false, null);
+          walkTo(frame, body, next, eye);
+          return 'running';
+        }
+        frame.blackboard.set('intent', null);
+        hands(frame, false, eye);
+        frame.blackboard.set('fireAt', body.target);
+        return 'running';
       })
       /** Nothing known to fight: hands down, cover given up, standing still. */
       .action('standDown', (frame) => {

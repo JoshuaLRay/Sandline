@@ -14,6 +14,11 @@
  * `--parity` do not apply).
  *
  *   pnpm sim-run --scenario cover-duel
+ *
+ * `pinned` (T-3.21) is the same kind: two riflemen in one group against a
+ * scripted soldier holding cover, over every seed in `scenarios/pinned.json`.
+ *
+ *   pnpm sim-run --scenario pinned
  */
 import { Simulation } from '../../shared/src/sim/Simulation.ts';
 import { divergence } from '../../shared/test/harness/parity.ts';
@@ -27,6 +32,18 @@ const flag = (name: string): boolean => process.argv.includes(`--${name}`);
 const scenarioName = arg('scenario', 'fall');
 const ticks = Number.parseInt(arg('ticks', '1000'), 10);
 const parity = flag('parity');
+
+if (scenarioName === 'pinned') {
+  const { reportPinned, summarisePinned } = await import('./scenarios/pinned.ts');
+  const summary = await summarisePinned();
+  console.log(reportPinned(summary));
+  if (summary.failures.length > 0) {
+    for (const f of summary.failures) console.error(`FAIL: ${f}`);
+    process.exit(1);
+  }
+  console.log('OK: every threshold met');
+  process.exit(0);
+}
 
 if (scenarioName === 'cover-duel') {
   const { report, summarise } = await import('./scenarios/coverDuel.ts');
@@ -51,7 +68,7 @@ const SCENARIOS: Record<string, (sim: Simulation) => void> = {
 
 const build = SCENARIOS[scenarioName];
 if (!build) {
-  console.error(`unknown scenario '${scenarioName}'. available: ${[...Object.keys(SCENARIOS), 'cover-duel'].join(', ')}`);
+  console.error(`unknown scenario '${scenarioName}'. available: ${[...Object.keys(SCENARIOS), 'cover-duel', 'pinned'].join(', ')}`);
   process.exit(1);
 }
 

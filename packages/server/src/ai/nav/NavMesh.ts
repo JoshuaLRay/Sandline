@@ -23,6 +23,7 @@ import {
   Crowd,
   type CrowdParams,
   NavMeshQuery,
+  QueryFilter,
   type NavMesh as DetourNavMesh,
   importNavMesh,
   init,
@@ -55,6 +56,15 @@ export interface NavPath {
 export const NAV_FLAG_WALK = 1;
 export const NAV_FLAG_VAULT = 2;
 export const NAV_AREA_VAULT = 1;
+/** T-3.21: the area a polygon is given, for one query, when a path is asked to avoid it. */
+export const NAV_AREA_AVOID = 2;
+
+/** One walkable polygon of the mesh, by ref: its corners and the centre of them. */
+export interface NavPolygon {
+  ref: number;
+  centre: NavPoint;
+  corners: readonly NavPoint[];
+}
 /** Detour's straight-path flag for a point that starts an off-mesh connection. */
 const DT_STRAIGHTPATH_OFFMESH_CONNECTION = 4;
 
@@ -178,12 +188,87 @@ export class NavMesh {
    * what path following asks (T-3.05).
    */
   path(from: NavPoint, to: NavPoint, searchM?: number): NavPath | null {
+    return this.pathWith(from, to, searchM, undefined);
+  }
+
+  /**
+   * Every walkable polygon of the mesh (not the off-mesh links), with the
+   * centre of its vertices. Read once and kept: the mesh is static.
+   */
+  polygons(): readonly NavPolygon[] {
+    if (this.polygonCache) return this.polygonCache;
+    const out: NavPolygon[] = [];
+    for (let t = 0; t < this.mesh.getMaxTiles(); t++) {
+      const tile = this.mesh.getTile(t);
+      const header = tile.header();
+      if (!header) continue;
+      const base = this.mesh.getPolyRefBase(tile);
+      for (let i = 0; i < header.polyCount(); i++) {
+        const poly = tile.polys(i);
+        // Type 1 is an off-mesh connection's polygon: a vault, not ground.
+        if (poly.getType() !== 0) continue;
+        let x = 0;
+        let y = 0;
+        let z = 0;
+        const corners: NavPoint[] = [];
+        const n = poly.vertCount();
+        for (let v = 0; v < n; v++) {
+          const vi = poly.verts(v) * 3;
+          const corner = { x: tile.verts(vi), y: tile.verts(vi + 1), z: tile.verts(vi + 2) };
+          corners.push(corner);
+          x += corner.x;
+          y += corner.y;
+          z += corner.z;
+        }
+        out.push({ ref: base + i, centre: { x: x / n, y: y / n, z: z / n }, corners });
+      }
+    }
+    this.polygonCache = out;
+    return out;
+  }
+
+  /**
+   * A path that avoids ground the caller does not want to cross (T-3.21): each
+   * polygon `penalise` picks costs `cost` times its length to walk, so the
+   * route goes round when a way round exists and straight through when none
+   * is cheaper. Done with Detour's own machinery — the picked polygons are
+   * given an area of their own for the one query, priced by a query filter,
+   * and put back — so the mesh is unchanged afterwards and every other query
+   * sees what it always saw.
+   */
+  pathAvoiding(from: NavPoint, to: NavPoint, penalise: (polygon: NavPolygon) => boolean, cost: number, searchM?: number): NavPath | null {
+    const marked: { ref: number; area: number }[] = [];
+    for (const polygon of this.polygons()) {
+      if (!penalise(polygon)) continue;
+      const area = this.mesh.getPolyArea(polygon.ref).area;
+      // A vault's area is its own; it stays priced as a vault.
+      if (area === NAV_AREA_VAULT) continue;
+      marked.push({ ref: polygon.ref, area });
+      this.mesh.setPolyArea(polygon.ref, NAV_AREA_AVOID);
+    }
+    // One filter per mesh, re-priced per query: Detour filters are wasm objects the binding cannot free.
+    const filter = (this.avoidFilter ??= new QueryFilter());
+    filter.includeFlags = 0xffff;
+    filter.excludeFlags = 0;
+    filter.setAreaCost(NAV_AREA_AVOID, cost);
+    try {
+      return this.pathWith(from, to, searchM, filter);
+    } finally {
+      for (const m of marked) this.mesh.setPolyArea(m.ref, m.area);
+    }
+  }
+
+  private polygonCache: NavPolygon[] | null = null;
+  private avoidFilter: QueryFilter | null = null;
+
+  private pathWith(from: NavPoint, to: NavPoint, searchM: number | undefined, filter: QueryFilter | undefined): NavPath | null {
     const snap = (p: NavPoint) => (searchM === undefined ? this.nearestPoint(p) : this.resolvePoint(p, searchM));
     const start = snap(from);
     const end = snap(to);
     if (!start || !end) return null;
     const found = this.query.findPath(start.polyRef, end.polyRef, start.point, end.point, {
       maxPathPolys: MAX_CORRIDOR,
+      ...(filter ? { filter } : {}),
     });
     if (!found.success || found.polys.size === 0) {
       found.polys.destroy();

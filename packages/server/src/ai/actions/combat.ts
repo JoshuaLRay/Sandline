@@ -13,6 +13,7 @@
 import { DEFAULT_MUZZLE_RIG, type SuppressionState, type TargetMemory, type WeaponDef, type WeaponState, type WorldBox } from '@sandline/shared';
 import type { BrainBody } from '../Brain.ts';
 import type { CoverSystem } from '../cover.ts';
+import type { EnemyGroup } from '../group.ts';
 
 export type Vec3 = { x: number; y: number; z: number };
 
@@ -40,6 +41,8 @@ export interface CombatBody extends BrainBody {
   /** When it was last hurt, seconds, or −Infinity. */
   readonly lastDamagedAt: number;
   readonly combat: CombatWorld;
+  /** T-3.21: the group it was spawned with, or null for one on its own. */
+  readonly group: EnemyGroup | null;
 }
 
 export function isCombatBody(body: BrainBody): body is CombatBody {

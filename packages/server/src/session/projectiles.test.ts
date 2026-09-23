@@ -122,6 +122,9 @@ function projectilesIn(store: SnapshotStore): { netId: number; x: number; y: num
   return out;
 }
 
+/** Ticks for a frag's fuse to run out, and a few over: from the data, so retuning the fuse moves it. */
+const FUSE_TICKS = Math.ceil(getProjectile('frag').fuseSeconds * 30) + 5;
+
 describe('throwing (T-2.31)', () => {
   it('spawns an entity that flies, and takes it away when it goes off', () => {
     const session = new Session();
@@ -157,7 +160,7 @@ describe('throwing (T-2.31)', () => {
     const session = new Session();
     const client = connect(session);
     client.throwOne({ pitch: 0 });
-    client.run(85);
+    client.run(FUSE_TICKS);
     const detonation = client.detonations[0];
     expect(detonation).toBeDefined();
     // The snapshot that carries the despawn is the tick the blast is stamped
@@ -172,7 +175,7 @@ describe('throwing (T-2.31)', () => {
     const client = connect(session);
     const before = session.slots.map((s) => s.health.current);
     client.throwOne({ pitch: STRAIGHT_DOWN });
-    client.run(85);
+    client.run(FUSE_TICKS);
 
     const detonation = client.detonations[0];
     expect(detonation).toBeDefined();
@@ -188,7 +191,7 @@ describe('throwing (T-2.31)', () => {
     const client = connect(session);
     const before = session.slots.map((s) => s.health.current);
     client.throwOne({ pitch: 0, yaw: 0 });
-    client.run(85);
+    client.run(FUSE_TICKS);
     expect(client.detonations.length).toBe(1);
     expect(client.detonations[0]?.targets).toHaveLength(0);
     expect(session.slots.map((s) => s.health.current)).toEqual(before);
@@ -198,7 +201,7 @@ describe('throwing (T-2.31)', () => {
     const session = new Session();
     const client = connect(session);
     client.throwOne({ pitch: STRAIGHT_DOWN });
-    client.run(85);
+    client.run(FUSE_TICKS);
     expect(vitality(session.slots[0]?.health as never)).toBe('downed');
   });
 });
@@ -215,7 +218,7 @@ describe('the pouch (T-2.31)', () => {
       client.run(cooldownTicks);
     }
     // Everything thrown has long since gone off; count the blasts, not the air.
-    client.run(85);
+    client.run(FUSE_TICKS);
     expect(client.detonations.length).toBe(carried);
     expect(session.slots[0]?.pouch[FRAG]).toBe(0);
   });

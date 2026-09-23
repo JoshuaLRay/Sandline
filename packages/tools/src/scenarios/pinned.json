@@ -1,0 +1,9 @@
+{
+  "$comment": "T-3.21 pinned thresholds, asserted over `seeds` runs by `pnpm sim-run --scenario pinned` and its test. A soldier holds the low wall; two riflemen in one group engage from up range for `fightSeconds`. During the flank (roles handed out until the flanker reaches its point) the soldier's suppression must be at or above `suppressionFloor` for at least `minSuppressedShare` of the time; the flanker must reach a point with sight of the soldier's concealed side in at least `minFlankRate` of the runs; and the ground it walked must be seen by the soldier no more than `maxExposureRatio` as often as the direct route's — measurably less, by at least 15 %.",
+  "seeds": 20,
+  "fightSeconds": 45,
+  "suppressionFloor": 0.3,
+  "minSuppressedShare": 0.6,
+  "minFlankRate": 0.8,
+  "maxExposureRatio": 0.85
+}

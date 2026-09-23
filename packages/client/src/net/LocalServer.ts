@@ -36,6 +36,7 @@
  */
 import {
   type MoveConfig,
+  type ProjectileDef,
   NetSim,
   type NetSimOptions,
   TICK_SECONDS,
@@ -189,6 +190,19 @@ export class LocalServer {
    */
   spawnEnemy(archetype: string, at: EnemySpawn): number | null {
     return this.session.spawnEnemy(archetype, at);
+  }
+
+  /**
+   * Retune a projectile for the in-page session (the projectile panel): the
+   * server throws what the page predicts. A remote host keeps its own data.
+   */
+  tuneProjectile(index: number, def: Readonly<ProjectileDef>): void {
+    this.session.tuneProjectile(index, def);
+  }
+
+  /** The row the in-page session throws for a projectile index, as tuned. */
+  projectileDef(index: number): Readonly<ProjectileDef> | null {
+    return this.session.projectileDef(index);
   }
 
   /** NetIds of the enemies in the session right now, corpses included. */

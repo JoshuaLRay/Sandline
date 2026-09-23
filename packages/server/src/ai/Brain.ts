@@ -42,6 +42,11 @@ export interface BrainMemory {
   crouch: boolean;
   reload: boolean;
   lookAt: NavPoint | null;
+  /**
+   * T-3.21: a point to fire at without a line of sight — a suppressor's aim
+   * at a pinned target's last known position. Used only while `fireAt` is null.
+   */
+  suppressAt: NavPoint | null;
   /** T-3.20: a leaf's own step through a manoeuvre (a peek's out, fire, back), and the tick it began. */
   phase: string | null;
   phaseAt: number;
@@ -49,7 +54,7 @@ export interface BrainMemory {
 
 /** A blackboard as every brain starts it. */
 export function freshMemory(): BrainMemory {
-  return { intent: null, fireAt: null, crouch: false, reload: false, lookAt: null, phase: null, phaseAt: 0 };
+  return { intent: null, fireAt: null, crouch: false, reload: false, lookAt: null, suppressAt: null, phase: null, phaseAt: 0 };
 }
 
 /** The entity a brain drives, read live: the session's own slot, never a copy. */

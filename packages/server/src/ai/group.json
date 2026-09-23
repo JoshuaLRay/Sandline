@@ -1,0 +1,11 @@
+{
+  "$comment": "T-3.21 group tactics. A group's target is pinned once every member has lost sight of it for pinSeconds. Then one member suppresses — fires at the target's last known position raised by suppressAimUpM, just over its cover, without a line of sight — and one flanks: to a free cover point between flankMinM and flankMaxM of the target from which a standing eye sees the target's crouched body, along a path that costs flankExposureCost times as much wherever the target's standing eye can see a soldier's chest. waypointM: how close to each point of that route counts as reached. Detour prices a whole polygon, and on the untiled range mesh one spans tens of metres, so the chosen route is also tried through each hidden point of a waypointGridM grid reaching waypointSearchM past the route's ends, and the cheapest priced route wins.",
+  "pinSeconds": 1.0,
+  "suppressAimUpM": 1.3,
+  "flankMinM": 6,
+  "flankMaxM": 30,
+  "flankExposureCost": 8,
+  "waypointM": 1.0,
+  "waypointGridM": 2,
+  "waypointSearchM": 10
+}
