@@ -29,9 +29,10 @@ are done (T-2.42 landed 2026-09-22), so its gate T-2.43 is open too; its
 run sheet `e2-8.md` is prepared. Writing the two missing run sheets
 (`e2-3.md`, `e2-5.md`), modeled on `e2-2.md` and `soldier-look.md`, is real unblocked work an agent can do
 — it does not require a human, only requires not inventing a verdict inside
-it. Past that, **E-2.7** (combat audio, PLAN.md §7 epic table) needs breaking
-out into leaf tasks and is blocked on an assets sourcing decision (R1, §9
-Q2 — purchased/commissioned/in-house).
+it. **E-2.7** (combat audio) is broken out (PLAN.md §7.10, ADR-017: made
+in-house by AI). Its first task, **T-2.44** (the synthesiser and render
+pipeline), is open. The owner can record the voice lines any time, from
+`docs/audio/voice-script.md`.
 
 **M3 is broken out** (PLAN.md §7.9). E-3.1's navmesh pipeline is done:
 T-3.01 (the Recast spike), T-3.02 (named worlds), T-3.03 (the range baked
@@ -210,10 +211,22 @@ T-3.36, T-3.37) wait on their run sheets and people.
 | T-2.38 | DONE | T-2.35 |
 | 🧍 T-2.39 | OPEN | T-2.35..T-2.38 |
 
-### E-2.7 — Combat audio — not broken out yet
+### E-2.7 — Combat audio (§7.10) — broken out 2026-09-23
 
-Still an epic (PLAN.md §7 epic table). Blocked on an art/audio sourcing
-decision (R1, §9 Q2) before it can be split into leaf tasks.
+Made in-house per `docs/adr/017-in-house-audio.md`: effects synthesised from
+code and rendered offline, voices recorded by people and processed by code,
+placed in the world with Web Audio. Claude cannot hear, so the owner listens
+on the deployed site's sound board (`?sounds`, T-2.45).
+
+| Task | Status | Depends |
+|---|---|---|
+| T-2.44 | OPEN | — |
+| T-2.45 | BLOCKED | T-2.44 |
+| T-2.46 | BLOCKED | T-2.45 |
+| T-2.47 | BLOCKED | T-2.45 |
+| T-2.48 | BLOCKED — also needs the owner's recordings (`docs/audio/voice-script.md`) to process real lines; the pipeline itself is tested on generated signals | T-2.44 |
+| T-2.49 | BLOCKED — ships with synthesised chirps until recordings arrive | T-2.45, T-2.48 |
+| 🧍 T-2.50 | BLOCKED — run sheet `e2-7.md` to be written | T-2.46, T-2.47, T-2.49 |
 
 ### E-2.8 — Prone stance & voluntary crawl (§7.8) — awaiting T-2.43 (run sheet ready)
 
