@@ -44,10 +44,7 @@ import {
   type ProjectileWorld,
   blastDamageOn,
   createProjectileState,
-  dirFromYawPitch,
   getProjectile,
-  launchOrigin,
-  launchVelocity,
   projectileByIndex,
   stepProjectile,
   tableToWire,
@@ -124,6 +121,7 @@ import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, visibleAimPoint } 
 import { CoverSystem, DEFAULT_COVER_BODY } from '../ai/cover.ts';
 import { EnemyGroup } from '../ai/group.ts';
 import type { CombatWorld } from '../ai/actions/combat.ts';
+import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
 import type { CoverPoint } from '../ai/nav/baked/types.ts';
 import { pathLength } from '../ai/nav/NavMesh.ts';
 import { PathFollower } from '../ai/locomotion/followPath.ts';
@@ -286,12 +284,11 @@ const idleInput = (yaw = 0): MoveInput => ({
 
 
 /**
- * How far ahead of the eye a projectile is born. Far enough to be clear of the
- * thrower's own capsule (0.35 m radius) and no further; `launchOrigin` sweeps
- * the gap, so standing against a wall shortens it rather than posting a
- * grenade through the wall.
+ * The squad slot a projectile thrown by an enemy names on the wire (T-3.22):
+ * the 3-bit field's top value, which no slot has (six slots, 0..5), so no
+ * client takes an enemy's grenade for its own.
  */
-const LAUNCH_AHEAD_M = 0.55;
+const NO_SLOT = 7;
 
 /**
  * Projectiles a session will carry at once.
@@ -376,6 +373,14 @@ export interface EnemyEntity {
   readonly combat: CombatWorld;
   /** T-3.21: the group it was spawned into (`EnemySpawn.group`), or null. */
   readonly group: EnemyGroup | null;
+  /**
+   * T-3.22: its pouch and throw cooldown, a slot's (T-2.31): a full load-out
+   * of this session's rows on spawn, spent by the same throw path.
+   */
+  pouch: number[];
+  nextThrowAt: number;
+  /** T-3.22: how long its target has been still, as it knows it — fed on its think ticks. */
+  readonly still: StillWatch;
 }
 
 /** Where and how to spawn an enemy. */
@@ -561,6 +566,8 @@ export class Session {
         this.enemyList
           .filter((e) => e.netId !== netId && e.faction === faction && !isDead(e.health))
           .map((e) => ({ x: e.state.x, y: e.state.y, z: e.state.z })),
+      projectileDef: (index) => this.projectileDef(index),
+      projectileWorld: () => this.projectileWorld(),
     };
     this.brainTree = options.brainTree ?? defaultBrainTree();
     this.aiDebugAllowed = options.aiDebug ?? false;
@@ -697,6 +704,9 @@ export class Session {
       lastDamagedAt: -Infinity,
       combat: this.combatWorld,
       group: at.group === undefined ? null : this.groupFor(at.group),
+      pouch: this.fullPouch(),
+      nextThrowAt: 0,
+      still: createStillWatch(),
     };
     enemy.group?.add(enemy.netId);
     enemy.brain = new Brain(enemy, at.tree ?? this.enemyTree(def.tree));
@@ -761,6 +771,11 @@ export class Session {
   /** Projectiles in the air right now. The harness HUD reads it (T-2.32). */
   get projectilesInFlight(): number {
     return this.projectiles.length;
+  }
+
+  /** Who threw each projectile in the air and where it is now: the tests' view of a throw (T-3.22). */
+  projectilesNow(): { netId: number; kind: number; ownerNetId: number; x: number; y: number; z: number }[] {
+    return this.projectiles.map((p) => ({ netId: p.netId, kind: p.kind, ownerNetId: p.ownerNetId, x: p.state.x, y: p.state.y, z: p.state.z }));
   }
 
   /** Humans seated right now. What a registry reclaims on (T-1.5.05). */
@@ -1298,30 +1313,43 @@ export class Session {
     if (!isAlive(slot.health)) return;
     if (slot.state.vault) return;
 
-    const def = this.projectileDefs[msg.projectile] ?? null;
-    if (def === null) return; // Out-of-range index: drop it, do not throw.
-    const nowSeconds = this.nowMs / 1000;
-    if (nowSeconds < slot.nextThrowAt) return;
-    const left = slot.pouch[msg.projectile] ?? 0;
-    if (left <= 0) return;
-    // Nothing is spent on a throw the session has no room for.
-    if (this.projectiles.length >= MAX_PROJECTILES) return;
-    slot.pouch[msg.projectile] = left - 1;
-    slot.nextThrowAt = nowSeconds + def.cooldownSeconds;
+    this.launch(slot, slot.index, msg.projectile, msg.yaw, msg.pitch);
+  }
 
-    const yaw = msg.yaw & 0xfff;
-    const pitch = msg.pitch & 0xfff;
-    const direction = dirFromYawPitch(yaw, pitch);
-    const eye = eyePosition(slot.state.x, slot.state.y, slot.state.z);
-    const origin = launchOrigin(def, eye, direction, LAUNCH_AHEAD_M, this.projectileWorld());
+  /**
+   * The throw itself, for a slot's Throw and an enemy brain's alike (T-3.22):
+   * the index bounds-checked, the thrower's own pouch and cooldown, the
+   * session's cap, then the launch `throwLaunch` computes from its eye.
+   * Returns whether anything left the hand.
+   */
+  private launch(
+    thrower: { netId: number; state: MoveState; pouch: number[]; nextThrowAt: number },
+    ownerSlot: number,
+    projectile: number,
+    yawIn: number,
+    pitchIn: number,
+  ): boolean {
+    const def = this.projectileDefs[projectile] ?? null;
+    if (def === null) return false; // Out-of-range index: drop it, do not throw.
+    const nowSeconds = this.nowMs / 1000;
+    if (nowSeconds < thrower.nextThrowAt) return false;
+    const left = thrower.pouch[projectile] ?? 0;
+    if (left <= 0) return false;
+    // Nothing is spent on a throw the session has no room for.
+    if (this.projectiles.length >= MAX_PROJECTILES) return false;
+    thrower.pouch[projectile] = left - 1;
+    thrower.nextThrowAt = nowSeconds + def.cooldownSeconds;
+
+    const { origin, velocity } = throwLaunch(def, throwEye(thrower.state), yawIn, pitchIn, this.projectileWorld());
     this.projectiles.push({
       netId: this.nextProjectileNetId++,
       def,
-      kind: msg.projectile,
-      ownerSlot: slot.index,
-      ownerNetId: slot.netId,
-      state: createProjectileState(origin, launchVelocity(def, yaw, pitch)),
+      kind: projectile,
+      ownerSlot,
+      ownerNetId: thrower.netId,
+      state: createProjectileState(origin, velocity),
     });
+    return true;
   }
 
   /**
@@ -1735,6 +1763,7 @@ export class Session {
         }
       }
       enemy.target = chooseTarget(enemy.memory, enemy.state, nowSeconds);
+      watchStill(enemy.still, enemy.target, enemy.memory, enemy.state.y, nowSeconds);
     }
   }
 
@@ -1757,6 +1786,14 @@ export class Session {
       // a request still standing on the finishing tick restarts it unfilled.
       finishReload(enemy.weapon, enemy.weaponState, nowSeconds);
       if (brain.read('reload')) startReload(enemy.weapon, enemy.weaponState, nowSeconds);
+      // A throw it asked for on this think, made once (T-3.22). Mid-vault the
+      // hands are on the wall, as for a player; it faces the way it threw.
+      const toss = brain.take('throwAt');
+      if (toss && !enemy.state.vault && this.launch(enemy, NO_SLOT, toss.projectile, toss.yaw, toss.pitch)) {
+        enemy.yaw = tableToWire(toss.yaw);
+        enemy.input.yaw = enemy.yaw;
+        enemy.pitch = tableToWire(toss.pitch);
+      }
       const look = brain.read('lookAt');
       if (!look || enemy.state.vault || enemy.follower?.onVault) continue;
       const dx = look.x - enemy.state.x;
