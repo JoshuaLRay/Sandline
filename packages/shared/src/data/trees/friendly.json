@@ -1,0 +1,5 @@
+{
+  "$comment": "T-3.25. A friendly bot: follow its fireteam's lead in formation (server/src/ai/friendly/formation.ts, tuned in data/squad.json). Fighting and reviving come with T-3.26.",
+  "id": "friendly",
+  "root": { "type": "action", "name": "follow" }
+}

@@ -121,6 +121,8 @@ import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, visibleAimPoint } 
 import { CoverSystem, DEFAULT_COVER_BODY } from '../ai/cover.ts';
 import { EnemyGroup } from '../ai/group.ts';
 import type { CombatWorld } from '../ai/actions/combat.ts';
+import type { SquadView } from '../ai/actions/friendly.ts';
+import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
 import type { CoverPoint } from '../ai/nav/baked/types.ts';
 import { pathLength } from '../ai/nav/NavMesh.ts';
@@ -166,6 +168,8 @@ const C = COMPONENT_IDS.Crouch;
 
 export interface Slot {
   index: number;
+  /** T-3.25: the squad's formation, as a bot's brain reads it (the same view for every slot). */
+  readonly squad: SquadView;
   netId: number;
   isBot: boolean;
   state: MoveState;
@@ -582,9 +586,12 @@ export class Session {
     this.idleTimeoutMs = options.idleTimeoutMs ?? 0;
     this.maxSessionMs = options.maxSessionMs ?? 0;
     // Six slots exist from the moment the session does (ADR-001).
+    this.formation = new Formation((p) => (mesh ? (mesh.nearestPoint(p)?.point ?? null) : p));
+    const squad: SquadView = { place: (index) => this.formation.place(index) };
     for (let i = 0; i < MAX_SLOTS; i++) {
       this.slots.push({
         index: i,
+        squad,
         netId: this.nextNetId++,
         isBot: true,
         state: createMoveState(spawnFor(i).x, spawnFor(i).y, spawnFor(i).z),
@@ -722,6 +729,19 @@ export class Session {
     enemy.brain = new Brain(enemy, at.tree ?? this.enemyTree(def.tree));
     this.enemyList.push(enemy);
     return enemy.netId;
+  }
+
+  /** T-3.25: the squad's fireteams following their leads, fed every tick. */
+  private readonly formation: Formation;
+
+  /** Where a slot's formation puts it this tick, or null (a human, a lead, nowhere to stand): for tests and the page. */
+  formationPlace(slotIndex: number): FormationPlace | null {
+    return this.formation.place(slotIndex);
+  }
+
+  /** The slot a slot follows: its fireteam's lead (T-3.25). */
+  leadFor(slotIndex: number): number {
+    return this.formation.leadFor(slotIndex);
   }
 
   /** T-3.21: enemy groups by the id they were spawned with. */
@@ -1572,6 +1592,19 @@ export class Session {
     const nowSeconds = now / 1000;
     this.perceive(nowSeconds);
     this.thinkGroups(nowSeconds);
+    // T-3.25: where every slot is and is heading, before a bot's brain asks for its place.
+    this.formation.update(
+      this.slots.map((s) => ({
+        index: s.index,
+        human: !s.isBot,
+        x: s.state.x,
+        y: s.state.y,
+        z: s.state.z,
+        yaw: s.yaw,
+        speed: this.slotSpeed[s.index] ?? 0,
+        sprint: s.input.sprint,
+      })),
+    );
     this.thinkBrains();
     this.driveBots();
     this.enemyHands(nowSeconds);
