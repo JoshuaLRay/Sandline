@@ -31,6 +31,7 @@ import {
   decodeMessage,
   encodeMessage,
   getProjectile,
+  isEnemyNetId,
   isRangeTarget,
   vitality,
 } from '@sandline/shared';
@@ -138,6 +139,8 @@ describe('throwing (T-2.31)', () => {
     expect(projectile?.netId).toBeGreaterThanOrEqual(FIRST_PROJECTILE_NET_ID);
     expect(session.slots.some((s) => s.netId === projectile?.netId)).toBe(false);
     expect(isRangeTarget(projectile?.netId ?? 0)).toBe(false);
+    // Nor an enemy's (T-3.10): that band sits below projectiles, bounded.
+    expect(isEnemyNetId(projectile?.netId ?? 0)).toBe(false);
 
     const startZ = projectile?.z ?? 0;
     client.run(5);

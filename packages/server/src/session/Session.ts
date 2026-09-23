@@ -83,9 +83,15 @@ import {
   quantize,
   stepCharacter,
   writeDelta,
+  type EnemyDef,
+  ENEMY_NET_ID_LIMIT,
+  FIRST_ENEMY_NET_ID,
+  buildTree,
+  enemyIndex,
+  getEnemy,
 } from '@sandline/shared';
 import { DEFAULT_HITBOX, HitboxHistory, capsuleFor, clampRewindMs, rayCapsule, resolveShot } from '../net/lagComp.ts';
-import { BRAIN_PERIOD_TICKS, Brain, type BrainTree, defaultBrainTree } from '../ai/Brain.ts';
+import { BRAIN_PERIOD_TICKS, Brain, type BrainTree, createBrainRegistry, defaultBrainTree } from '../ai/Brain.ts';
 import { type AiDebugSource, buildAiDebug } from '../ai/debug.ts';
 import { PathFollower } from '../ai/locomotion/followPath.ts';
 import { Avoidance, type AvoidanceEntry } from '../ai/locomotion/avoidance.ts';
@@ -254,6 +260,55 @@ interface ActiveProjectile {
   state: ProjectileState;
 }
 
+/**
+ * Enemies a session will carry at once, corpses included (T-3.10).
+ *
+ * A rail like `MAX_PROJECTILES`, not a design number: E-3.9's spawner caps
+ * enemies alive by encounter data, well below this. It exists so that a
+ * runaway spawner cannot put a snapshot, the avoidance crowd or the AI budget
+ * past what T-3.12 and T-3.35 measure — forty enemies and five bots — by more
+ * than a margin.
+ */
+export const MAX_ENEMIES = 64;
+
+/**
+ * One enemy the session owns (T-3.10). Shaped like the parts of a `Slot` the
+ * shared systems read — a `MoveState`, a yaw in wire units, a `HealthState` —
+ * so the same `stepCharacter`, the same hitbox history and the same
+ * `applyDamage` serve it, and a `Brain` can drive it as it drives a bot.
+ */
+export interface EnemyEntity {
+  readonly netId: number;
+  readonly def: EnemyDef;
+  /** Index into ENEMY_IDS: what goes on the wire. */
+  readonly archetype: number;
+  readonly faction: number;
+  state: MoveState;
+  /** Facing, wire units, as a slot's. */
+  yaw: number;
+  pitch: number;
+  input: MoveInput;
+  health: HealthState;
+  /** Its brain, stopped on the tick it dies. */
+  brain: Brain | null;
+  /** Path following for the brain's intent, made on the first one, as a bot's. */
+  follower: PathFollower | null;
+}
+
+/** Where and how to spawn an enemy. */
+export interface EnemySpawn {
+  /** Feet position. */
+  x: number;
+  y: number;
+  z: number;
+  /** Facing, wire units. */
+  yaw?: number;
+  /** Side, 0 (hostile to the squad) by default. */
+  faction?: number;
+  /** A tree to run instead of the archetype's own — tests, and later encounters. */
+  tree?: BrainTree;
+}
+
 /** What a session is built with beyond its tuning, room and world. */
 export interface SessionOptions {
   /**
@@ -298,6 +353,14 @@ export class Session {
    */
   private readonly projectiles: ActiveProjectile[] = [];
   private nextProjectileNetId = FIRST_PROJECTILE_NET_ID;
+  /**
+   * Enemies (T-3.10): the second class of entity that comes and goes. Spawned
+   * by `spawnEnemy`, despawned by the session when a corpse's time is up.
+   */
+  private readonly enemyList: EnemyEntity[] = [];
+  private nextEnemyNetId = FIRST_ENEMY_NET_ID;
+  /** Archetype trees bound to the server's registry, built once per tree id. */
+  private readonly enemyTrees = new Map<string, BrainTree>();
   private currentTick = 0;
   /**
    * Server time at the last tick, in ms. Still injected — the session reads no
@@ -407,6 +470,60 @@ export class Session {
       aiDebugSent: this.aiDebugSent,
       aiDebugBytesSent: this.aiDebugBytesSent,
     };
+  }
+
+  /** Enemies in the session, living and dead, oldest first (T-3.10). */
+  get enemies(): readonly EnemyEntity[] {
+    return this.enemyList;
+  }
+
+  /**
+   * Put an enemy into the world (T-3.10): a fresh netId from the enemy band,
+   * full health from its archetype, and a brain of its own running the
+   * archetype's tree. Returns its netId, or null when the session is at
+   * `MAX_ENEMIES` or has spent the band. It is stepped, recorded and sent from
+   * the next tick on.
+   */
+  spawnEnemy(archetype: string, at: EnemySpawn): number | null {
+    const def = getEnemy(archetype);
+    if (this.enemyList.length >= MAX_ENEMIES || this.nextEnemyNetId >= ENEMY_NET_ID_LIMIT) return null;
+    const yaw = at.yaw ?? 0;
+    const enemy: EnemyEntity = {
+      netId: this.nextEnemyNetId++,
+      def,
+      archetype: enemyIndex(def.id),
+      faction: at.faction ?? 0,
+      state: createMoveState(at.x, at.y, at.z),
+      yaw,
+      pitch: 0,
+      input: idleInput(yaw),
+      health: { current: def.health, max: def.health, downedAt: null, diedAt: null },
+      brain: null,
+      follower: null,
+    };
+    enemy.brain = new Brain(enemy, at.tree ?? this.enemyTree(def.tree));
+    this.enemyList.push(enemy);
+    return enemy.netId;
+  }
+
+  private enemyTree(id: string): BrainTree {
+    let tree = this.enemyTrees.get(id);
+    if (!tree) {
+      tree = buildTree(id, createBrainRegistry());
+      this.enemyTrees.set(id, tree);
+    }
+    return tree;
+  }
+
+  /**
+   * An enemy has died: its brain stops and it produces no more input, from
+   * this moment. Called wherever the killing damage lands — a shot between
+   * ticks or a blast inside one — so no later step can move it.
+   */
+  private killEnemy(enemy: EnemyEntity): void {
+    enemy.brain?.stop();
+    enemy.follower = null;
+    enemy.input = idleInput(enemy.yaw);
   }
 
   /** Projectiles in the air right now. The harness HUD reads it (T-2.32). */
@@ -571,6 +688,10 @@ export class Session {
     for (const slot of this.slots) {
       if (!slot.brain) continue;
       sources.push({ netId: slot.netId, position: slot.state, brain: slot.brain, follower: this.followers[slot.index] ?? null });
+    }
+    for (const enemy of this.enemyList) {
+      if (!enemy.brain) continue;
+      sources.push({ netId: enemy.netId, position: enemy.state, brain: enemy.brain, follower: enemy.follower });
     }
     const wire = encodeMessage(buildAiDebug(this.currentTick, sources));
     for (const conn of this.aiDebugClients) {
@@ -792,8 +913,16 @@ export class Session {
            */
           if (result.killed) target.queue.length = 0;
         }
-        // Range targets take no damage yet: they have no health because they
-        // have no behaviour. Both arrive together when M2 gives them AI.
+        // An enemy is hurt by the same rules, except that it dies at zero
+        // rather than going down (T-3.10, its archetype's `downable`).
+        const enemy = target ? undefined : this.enemyList.find((e) => e.netId === hit.netId);
+        if (enemy) {
+          const result = applyDamage(enemy.health, dealt, this.nowMs / 1000, DAMAGE, enemy.def.downable);
+          dealt = result.applied;
+          if (result.killed) this.killEnemy(enemy);
+        }
+        // Range targets take no damage: they are the range's fixtures, not
+        // enemies, and stay so (T-3.10).
       }
 
       // A scenery stop is a hit event on netId 0 at the wall: everyone draws
@@ -1004,6 +1133,22 @@ export class Session {
       if (result.killed) slot.queue.length = 0;
       targets.push({ netId: slot.netId, damage: result.applied });
     }
+    // Enemies take the blast on the same terms (T-3.10), dying at zero.
+    for (const enemy of this.enemyList) {
+      if (isDead(enemy.health)) continue;
+      const height = enemy.state.prone ? PRONE_HITBOX_HEIGHT : enemy.state.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT;
+      const damage = blastDamageOn(
+        projectile.def,
+        at,
+        { x: enemy.state.x, y: enemy.state.y, z: enemy.state.z },
+        height,
+        this.world.boxes,
+      );
+      if (damage <= 0) continue;
+      const result = applyDamage(enemy.health, damage, nowSeconds, DAMAGE, enemy.def.downable);
+      if (result.killed) this.killEnemy(enemy);
+      targets.push({ netId: enemy.netId, damage: result.applied });
+    }
 
     const event: Message = {
       kind: 'Detonation',
@@ -1152,6 +1297,8 @@ export class Session {
     // Resolve revive interaction after consuming this tick's input, so a newly pressed E starts immediately.
     this.updateRevives();
 
+    this.stepEnemies(nowSeconds);
+
     // Record AFTER stepping, so the history holds the post-tick positions that
     // the snapshot about to go out will describe. Recording pre-step would
     // rewind clients to a world half a tick behind the one they were shown.
@@ -1167,6 +1314,14 @@ export class Session {
      */
     for (const target of RANGE_TARGETS) {
       this.hitboxes.record(target.netId, now, target.x, target.y, target.z);
+    }
+    /**
+     * Enemies on the same schedule (T-3.10), corpses included — a shot already
+     * in flight resolves against where the body lies, as a slot's does — so a
+     * human's rewound shot resolves against an enemy exactly as against a slot.
+     */
+    for (const enemy of this.enemyList) {
+      this.hitboxes.record(enemy.netId, now, enemy.state.x, enemy.state.y, enemy.state.z, enemy.state.crouched, enemy.state.prone);
     }
 
     this.currentTick++;
@@ -1193,6 +1348,42 @@ export class Session {
     for (const slot of this.slots) {
       if (slot.brain?.due(this.currentTick)) slot.brain.think(this.currentTick);
     }
+    // Enemies' netIds are consecutive, so they spread over the phases too.
+    for (const enemy of this.enemyList) {
+      // However it died, a dead enemy's brain is stopped before it can think.
+      if (isDead(enemy.health)) {
+        if (enemy.brain && !enemy.brain.isStopped) this.killEnemy(enemy);
+        continue;
+      }
+      if (enemy.brain?.due(this.currentTick)) enemy.brain.think(this.currentTick);
+    }
+  }
+
+  /**
+   * Step every living enemy through `stepCharacter` with the input its brain's
+   * intent produced (or an idle one), and take away corpses whose time is up.
+   * A corpse is not stepped: like a dead slot it lies where it fell.
+   */
+  private stepEnemies(nowSeconds: number): void {
+    let expired = false;
+    for (const enemy of this.enemyList) {
+      if (isDead(enemy.health)) {
+        if (nowSeconds - (enemy.health.diedAt as number) >= enemy.def.corpseSeconds) expired = true;
+        continue;
+      }
+      enemy.input.downed = false;
+      enemy.state = stepCharacter(enemy.state, enemy.input, TICK_SECONDS, this.moveConfig, this.world.boxes);
+      enemy.yaw = enemy.input.yaw;
+    }
+    if (!expired) return;
+    const kept = this.enemyList.filter((enemy) => {
+      const gone = isDead(enemy.health) && nowSeconds - (enemy.health.diedAt as number) >= enemy.def.corpseSeconds;
+      // Out of the history too, or a rewound shot could still find the corpse.
+      if (gone) this.hitboxes.forget(enemy.netId);
+      return !gone;
+    });
+    this.enemyList.length = 0;
+    for (const enemy of kept) this.enemyList.push(enemy);
   }
 
   /**
@@ -1218,9 +1409,22 @@ export class Session {
       // Stood still again: its input is the idle one just made, and stays so.
       if (!intent) this.followers[slot.index] = null;
     }
+    // Living enemies walk their brains' intents the same way (T-3.10). A
+    // corpse is out of the crowd altogether: nobody steers round the dead.
+    const living = this.enemyList.filter((e) => !isDead(e.health));
+    const enemyInputs: (MoveInput | null)[] = living.map((enemy) => {
+      const intent = enemy.brain?.intent ?? null;
+      if (!enemy.follower) {
+        if (!intent) return null;
+        enemy.follower = new PathFollower(mesh, this.world.boxes, undefined, this.moveConfig);
+      }
+      const input = enemy.follower.step(enemy.state, intent, enemy.yaw).input;
+      if (!intent) enemy.follower = null;
+      return input;
+    });
     if (!this.avoidance) {
-      if (inputs.every((i) => !i)) return;
-      this.avoidance = new Avoidance(mesh, MAX_SLOTS, undefined, this.moveConfig);
+      if (inputs.every((i) => !i) && enemyInputs.every((i) => !i)) return;
+      this.avoidance = new Avoidance(mesh, MAX_SLOTS + MAX_ENEMIES, undefined, this.moveConfig);
     }
     const entries: AvoidanceEntry[] = this.slots.map((slot) => ({
       id: slot.netId,
@@ -1228,11 +1432,18 @@ export class Session {
       input: inputs[slot.index] ?? null,
       hold: this.followers[slot.index]?.onVault ?? false,
     }));
+    living.forEach((enemy, i) => {
+      entries.push({ id: enemy.netId, state: enemy.state, input: enemyInputs[i] ?? null, hold: enemy.follower?.onVault ?? false });
+    });
     const steered = this.avoidance.step(entries);
     for (const slot of this.slots) {
       const input = steered[slot.index];
       if (inputs[slot.index] && input) slot.input = input;
     }
+    living.forEach((enemy, i) => {
+      const input = steered[this.slots.length + i];
+      if (enemyInputs[i] && input) enemy.input = input;
+    });
   }
 
   /** Clear all revive state owned by, or stored on, a reused slot. */
@@ -1378,9 +1589,45 @@ export class Session {
       }));
 
     /**
-     * Projectiles are entities like any other, and the only ones that come and
-     * go: they carry a Transform and a Velocity — the velocity so a client can
-     * point a rocket along its flight and smooth between samples — and a
+     * Enemies (T-3.10): a soldier's Transform, Velocity, Health and Crouch,
+     * and an Enemy saying which archetype and whose side — what tells a client
+     * this soldier is not a squadmate. No PlayerSlot, no Vault, no Weapon.
+     * A corpse's Health timer counts down to its despawn.
+     */
+    for (const e of this.enemyList) {
+      const corpseLeft = isDead(e.health)
+        ? Math.max(0, e.def.corpseSeconds - (this.nowMs / 1000 - (e.health.diedAt as number)))
+        : 0;
+      entities.push({
+        netId: e.netId,
+        components: {
+          [T]: [
+            quantize(e.state.x, POSITION),
+            quantize(e.state.y, POSITION),
+            quantize(e.state.z, POSITION),
+            e.yaw & 0x3ff,
+            e.pitch & 0x3ff,
+          ],
+          [V]: [quantize(0, VELOCITY), quantize(e.state.vy, VELOCITY), quantize(0, VELOCITY)],
+          [H]: [
+            Math.round(e.health.current),
+            Math.round(e.health.max),
+            vitalityCode(vitality(e.health)),
+            Math.min(63, Math.ceil(corpseLeft)),
+            0,
+            0,
+          ],
+          [C]: [e.state.crouched ? 1 : 0, e.state.prone ? 1 : 0],
+          [COMPONENT_IDS.Enemy]: [e.archetype, e.faction],
+        },
+      });
+    }
+
+    /**
+     * Projectiles are entities like any other, and were the first to come and
+     * go (enemies, above, are the second): they carry a Transform and a
+     * Velocity — the velocity so a client can point a rocket along its flight
+     * and smooth between samples — and a
      * Projectile saying which kind and whose. No health, no stance, nothing
      * a soldier needs. They cost their component mask and about a hundred bits
      * a tick each while they are in the air, and nothing at all once they are

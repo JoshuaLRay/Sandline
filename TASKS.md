@@ -38,9 +38,10 @@ T-3.01 (the Recast spike), T-3.02 (named worlds), T-3.03 (the range baked
 and committed, with a staleness hash) and T-3.04 (vault links); E-3.2 is
 done too — path following (T-3.05) and local avoidance (T-3.06), and so is
 the behaviour tree runtime (T-3.07), and brains tick on the session
-(T-3.08), with an AI debug view on B (T-3.09). The next build tasks are
-**T-3.10** (enemy entities), **T-3.13** (perception), **T-3.18** (cover
-points in the bake) and **T-3.27** (orders on the wire).
+(T-3.08), with an AI debug view on B (T-3.09), and enemies exist as
+entities (T-3.10). The next build tasks are **T-3.11** (enemies in the
+page), **T-3.12** (interest management), **T-3.13** (perception),
+**T-3.18** (cover points in the bake) and **T-3.27** (orders on the wire).
 
 ---
 
@@ -236,9 +237,9 @@ once before the first M3 task — it is short and every task leans on it.
 
 | Task | Status | Depends |
 |---|---|---|
-| T-3.10 | OPEN | T-3.08 |
-| T-3.11 | BLOCKED | T-3.10 |
-| T-3.12 | BLOCKED | T-3.10 |
+| T-3.10 | DONE | T-3.08 |
+| T-3.11 | OPEN | T-3.10 |
+| T-3.12 | OPEN | T-3.10 |
 
 ### E-3.4 — Perception
 

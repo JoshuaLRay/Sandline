@@ -289,3 +289,33 @@ describe('damage data', () => {
     expect(() => parseDamageConfig({ ...DAMAGE, maxHealth: 'lots' })).toThrow(/maxHealth/);
   });
 });
+
+describe('not downable (T-3.10)', () => {
+  it('kills outright at zero health: no downed phase, no bleed-out, nothing to revive', () => {
+    const h = createHealth(CONFIG);
+    const first = applyDamage(h, 60, 10, CONFIG, false);
+    expect(first).toMatchObject({ applied: 60, downed: false, killed: false, remaining: 40 });
+    expect(isAlive(h)).toBe(true);
+
+    const last = applyDamage(h, 90, 11, CONFIG, false);
+    expect(last).toMatchObject({ applied: 40, downed: false, killed: true, remaining: 0 });
+    expect(vitality(h)).toBe('dead');
+    expect(h.downedAt).toBeNull();
+    expect(h.diedAt).toBe(11);
+    expect(revive(h, CONFIG)).toBe(false);
+    expect(expireBleedOut(h, 100, CONFIG)).toBe(false);
+  });
+
+  it('never kills twice', () => {
+    const h = createHealth(CONFIG);
+    applyDamage(h, 200, 1, CONFIG, false);
+    expect(applyDamage(h, 50, 2, CONFIG, false)).toMatchObject({ applied: 0, killed: false });
+    expect(h.diedAt).toBe(1);
+  });
+
+  it('leaves the downable default exactly as it was', () => {
+    const h = createHealth(CONFIG);
+    expect(applyDamage(h, 200, 1, CONFIG)).toMatchObject({ downed: true, killed: false });
+    expect(isDowned(h)).toBe(true);
+  });
+});
