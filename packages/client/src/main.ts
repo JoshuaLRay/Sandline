@@ -93,6 +93,7 @@ import { type KickState, addKick, createKick, decayKick } from './character/weap
 import { createLocomotionPoseDriver, type LocomotionPoseDriver } from './character/locomotionPose.ts';
 import { type FootPlacementDriver, createFootPlacementDriver } from './character/footPlacement.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
+import { AiDebugOverlay } from './ui/AiDebug.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
 import { createNetworkPanel } from './ui/NetworkPanel.ts';
 import { type LobbyChoice, createLobby, readStoredName } from './ui/Lobby.ts';
@@ -139,6 +140,9 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 scene.add(new THREE.GridHelper(200, 100, 0x8a7550, 0x6a5940));
+/** T-3.09: the AI debug overlay, off until B. */
+const aiDebug = new AiDebugOverlay(document.body);
+scene.add(aiDebug.object);
 
 /**
  * THE WORLD, drawn from the shared list (T-1.12).
@@ -711,6 +715,9 @@ function startSession(choice: LobbyChoice): void {
   const net = new NetClient(server.transport, choice.kind === 'remote' ? choice.name : 'qa', config);
   net.onShot = (shot) => onServerShot(net, shot);
   net.onDetonation = (event) => onServerDetonation(net, event);
+  // T-3.09: B's overlay, carried across sessions; the wish is resent on JoinAck.
+  net.onAiDebug = (report) => aiDebug.show(report);
+  net.requestAiDebug(aiDebug.isEnabled);
   // A throw key released while there was no session to throw into is not a
   // throw waiting to happen: drain the latch rather than open with a grenade.
   input.consumeThrowRelease();
@@ -809,6 +816,7 @@ function startSession(choice: LobbyChoice): void {
 function leaveSession(message: { text: string; tone: 'info' | 'error' } | null): void {
   const gone = live;
   live = null;
+  aiDebug.clear();
   if (gone) {
     gone.net.leave();
     gone.remote?.close();
@@ -1694,6 +1702,7 @@ function frame(): void {
   }
 
   renderer.render(scene, camera);
+  aiDebug.render(camera, innerWidth, innerHeight);
   /**
    * The weapon in hand in first person, over the world. Hidden whenever the
    * body is shown instead (third person, downed) and through a vault, when
@@ -1752,6 +1761,11 @@ addEventListener('keydown', (e) => {
   // N for netgraph. It was G until T-2.32 needed G for the grenade, which is
   // the more valuable piece of muscle memory; H still hides the whole HUD.
   if (e.code === 'KeyN') netgraph.root.classList.toggle('collapsed');
+  // B for brains (T-3.09): the AI debug overlay, asked of the host on demand.
+  if (e.code === 'KeyB' && !e.repeat) {
+    aiDebug.setEnabled(!aiDebug.isEnabled);
+    live?.net.requestAiDebug(aiDebug.isEnabled);
+  }
   // V is owned by LocalInput: in TPS it swaps shoulders; in FPS it exits FPS
   // and restores the stored TPS shoulder. ADS is the automatic FPS entry path.
 

@@ -31,6 +31,7 @@ ADRs that section names → implement. That's the whole loop. See
 | `?host=ws://…&room=K7PM` | pre-fills the lobby |
 | `MAX_ROOMS=4 ROOM_GRACE_MS=60000 pnpm host` | rooms per process and how long an empty room lives |
 | `WORLD=range pnpm host` | the named world every room is built with (`data/worlds/*.json`; `range` is the default and, for now, the only one) |
+| `AI_DEBUG=1 pnpm host` | clients may ask for AI debug reports (B in the page); without it the host sends none |
 | `curl localhost:8080/healthz` | rooms, players, protocol version |
 | `pnpm sim-run --scenario crowd --ticks 1800` | headless simulation, reports µs/tick |
 | `pnpm sim-run --scenario fall --ticks 1000 --parity` | two instances, reports divergence |

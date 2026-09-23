@@ -12,7 +12,7 @@ import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isRoomCode } from './roomCode.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 16;
+export const PROTOCOL_VERSION = 17;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -86,10 +86,70 @@ export const MessageType = {
   Throw: 12,
   Detonation: 13,
   Equip: 14,
+  /**
+   * T-3.09: the AI debug family, both directions. The four-bit tag had one
+   * value left, so one bit after it says which: a client's request, or the
+   * host's report. Either is refused by the side that should not receive it.
+   */
+  AiDebug: 15,
 } as const;
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
 
 const TYPE_BITS = 4;
+
+/** How a debugged brain's intent asks to be walked. The order is the wire encoding. */
+export const AI_DEBUG_PACES = ['walk', 'sprint', 'crouch'] as const;
+export type AiDebugPace = (typeof AI_DEBUG_PACES)[number];
+
+/** Caps on an AiDebug report's lists: a debug view, not a way to flood a client. */
+export const AI_DEBUG_LIMITS = Object.freeze({
+  brains: 64,
+  treeDepth: 16,
+  corridor: 64,
+  cones: 4,
+  targets: 16,
+});
+
+export interface AiDebugPoint {
+  x: number;
+  y: number;
+  z: number;
+}
+
+/**
+ * One perception cone: from the brain's position, facing `yaw`, `halfAngle`
+ * either side of it, out to `range`. Angles in wire units (1/1024 turn, 0
+ * along +Z, a quarter turn along +X — `stepCharacter`'s forward).
+ */
+export interface AiDebugCone {
+  yaw: number;
+  halfAngle: number;
+  /** Metres, to the centimetre. */
+  range: number;
+}
+
+/**
+ * Everything one brain's reasons are drawn from (T-3.09). The overlay builds
+ * its geometry from this and nothing else, so the bot's own position travels
+ * too rather than being looked up from a snapshot at a different tick.
+ */
+export interface AiDebugBrain {
+  netId: number;
+  /** Where the body stood when the report was built. */
+  position: AiDebugPoint;
+  /** The running branch, root first (`runningPath`). */
+  tree: readonly string[];
+  /** Where locomotion was asked to go, and how; null stands it still. */
+  intent: (AiDebugPoint & { pace: AiDebugPace }) | null;
+  /** The string-pulled path being walked: start, each corner, end. Empty when none. */
+  corridor: readonly AiDebugPoint[];
+  /** Perception cones (T-3.13); empty until perception exists. */
+  cones: readonly AiDebugCone[];
+  /** Targets the brain knows about and where it believes they are (T-3.13). */
+  targets: readonly (AiDebugPoint & { netId: number })[];
+  /** The cover point the brain chose (T-3.18); null when none. */
+  cover: AiDebugPoint | null;
+}
 
 /** One tick of input, as carried on the wire. */
 export interface InputFrame {
@@ -280,7 +340,17 @@ export type Message =
    * can show six rows with a name or "bot" in each — replicated state carries
    * positions and health, not who is driving.
    */
-  | { kind: 'Roster'; slots: RosterEntry[] };
+  | { kind: 'Roster'; slots: RosterEntry[] }
+  /**
+   * T-3.09: a client asking for (or no longer wanting) AI debug reports. A
+   * host that was not started with `AI_DEBUG=1` ignores it and sends nothing.
+   */
+  | { kind: 'AiDebugRequest'; on: boolean }
+  /**
+   * T-3.09: every bot brain's reasons as of `tick`, sent only to clients that
+   * asked, only by a host that allows it.
+   */
+  | { kind: 'AiDebug'; tick: number; brains: readonly AiDebugBrain[] };
 
 export class ProtocolError extends Error {}
 
@@ -434,8 +504,101 @@ export function encodeMessage(msg: Message): Uint8Array {
         w.writeString(entry.name);
       }
       break;
+    case 'AiDebugRequest':
+      w.writeBits(MessageType.AiDebug, TYPE_BITS);
+      w.writeBool(false);
+      w.writeBool(msg.on);
+      break;
+    case 'AiDebug': {
+      w.writeBits(MessageType.AiDebug, TYPE_BITS);
+      w.writeBool(true);
+      w.writeVarUint(msg.tick);
+      const brains = msg.brains.slice(0, AI_DEBUG_LIMITS.brains);
+      w.writeVarUint(brains.length);
+      for (const b of brains) writeAiDebugBrain(w, b);
+      break;
+    }
   }
   return w.toUint8Array();
+}
+
+function writePoint(w: BitWriter, p: AiDebugPoint): void {
+  w.writeBits(quantize(p.x, POSITION), POSITION.bits);
+  w.writeBits(quantize(p.y, POSITION), POSITION.bits);
+  w.writeBits(quantize(p.z, POSITION), POSITION.bits);
+}
+
+function readPoint(r: BitReader): AiDebugPoint {
+  return {
+    x: dequantize(r.readBits(POSITION.bits), POSITION),
+    y: dequantize(r.readBits(POSITION.bits), POSITION),
+    z: dequantize(r.readBits(POSITION.bits), POSITION),
+  };
+}
+
+/** A list count, refused on read past its cap rather than trusted. */
+function readCount(r: BitReader, cap: number, what: string): number {
+  const n = r.readVarUint();
+  if (n > cap) throw new ProtocolError(`AiDebug ${what} count ${n} exceeds ${cap}`);
+  return n;
+}
+
+function writeAiDebugBrain(w: BitWriter, b: AiDebugBrain): void {
+  w.writeVarUint(b.netId);
+  writePoint(w, b.position);
+  const tree = b.tree.slice(0, AI_DEBUG_LIMITS.treeDepth);
+  w.writeVarUint(tree.length);
+  for (const node of tree) w.writeString(node);
+  w.writeBool(b.intent !== null);
+  if (b.intent) {
+    writePoint(w, b.intent);
+    w.writeBits(Math.max(0, AI_DEBUG_PACES.indexOf(b.intent.pace)), 2);
+  }
+  const corridor = b.corridor.slice(0, AI_DEBUG_LIMITS.corridor);
+  w.writeVarUint(corridor.length);
+  for (const p of corridor) writePoint(w, p);
+  const cones = b.cones.slice(0, AI_DEBUG_LIMITS.cones);
+  w.writeVarUint(cones.length);
+  for (const c of cones) {
+    w.writeBits(c.yaw & 0x3ff, 10);
+    w.writeBits(Math.min(512, Math.max(0, Math.round(c.halfAngle))), 10);
+    w.writeVarUint(Math.max(0, Math.round(c.range * 100)));
+  }
+  const targets = b.targets.slice(0, AI_DEBUG_LIMITS.targets);
+  w.writeVarUint(targets.length);
+  for (const t of targets) {
+    w.writeVarUint(t.netId);
+    writePoint(w, t);
+  }
+  w.writeBool(b.cover !== null);
+  if (b.cover) writePoint(w, b.cover);
+}
+
+function readAiDebugBrain(r: BitReader): AiDebugBrain {
+  const netId = r.readVarUint();
+  const position = readPoint(r);
+  const tree: string[] = [];
+  for (let i = readCount(r, AI_DEBUG_LIMITS.treeDepth, 'tree'); i > 0; i -= 1) tree.push(r.readString());
+  let intent: AiDebugBrain['intent'] = null;
+  if (r.readBool()) {
+    const at = readPoint(r);
+    const pace = AI_DEBUG_PACES[r.readBits(2)];
+    if (!pace) throw new ProtocolError('AiDebug pace out of range');
+    intent = { ...at, pace };
+  }
+  const corridor: AiDebugPoint[] = [];
+  for (let i = readCount(r, AI_DEBUG_LIMITS.corridor, 'corridor'); i > 0; i -= 1) corridor.push(readPoint(r));
+  const cones: AiDebugCone[] = [];
+  for (let i = readCount(r, AI_DEBUG_LIMITS.cones, 'cone'); i > 0; i -= 1) {
+    cones.push({ yaw: r.readBits(10), halfAngle: r.readBits(10), range: r.readVarUint() / 100 });
+  }
+  const targets: (AiDebugPoint & { netId: number })[] = [];
+  for (let i = readCount(r, AI_DEBUG_LIMITS.targets, 'target'); i > 0; i -= 1) {
+    const id = r.readVarUint();
+    targets.push({ netId: id, ...readPoint(r) });
+  }
+  const cover = r.readBool() ? readPoint(r) : null;
+  return { netId, position, tree, intent, corridor, cones, targets, cover };
 }
 
 /** A timestamp as whole, non-negative milliseconds. */
@@ -576,6 +739,13 @@ export function decodeMessage(bytes: Uint8Array): Message {
           slots.push({ human, name: r.readString() });
         }
         return { kind: 'Roster', slots };
+      }
+      case MessageType.AiDebug: {
+        if (!r.readBool()) return { kind: 'AiDebugRequest', on: r.readBool() };
+        const tick = r.readVarUint();
+        const brains: AiDebugBrain[] = [];
+        for (let i = readCount(r, AI_DEBUG_LIMITS.brains, 'brain'); i > 0; i -= 1) brains.push(readAiDebugBrain(r));
+        return { kind: 'AiDebug', tick, brains };
       }
       default:
         throw new ProtocolError(`unknown message type ${type}`);

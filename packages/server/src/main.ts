@@ -15,6 +15,7 @@
  *   pnpm host
  *   LINK_LATENCY_MS=100 LINK_JITTER_MS=20 LINK_LOSS=0.05 pnpm host
  *   MAX_ROOMS=4 ROOM_GRACE_MS=60000 pnpm host      # T-1.5.05: rooms per process, reclaim grace
+ *   AI_DEBUG=1 pnpm host                           # T-3.09: clients may ask for AI debug reports
  */
 import { SessionHost, hostBanner, linkFromEnv } from './session/SessionHost.ts';
 import { loadConfig } from './config.ts';
@@ -28,7 +29,7 @@ const host = new SessionHost({
   port: config.port,
   log,
   link,
-  registry: { maxRooms: config.maxRooms, graceMs: config.roomGraceMs, world: config.world },
+  registry: { maxRooms: config.maxRooms, graceMs: config.roomGraceMs, world: config.world, aiDebug: config.aiDebug },
 });
 const port = await host.start();
 
@@ -37,6 +38,7 @@ log.info('host ready', {
   maxRooms: config.maxRooms,
   roomGraceMs: config.roomGraceMs,
   world: config.world,
+  aiDebug: config.aiDebug,
   health: `http://localhost:${port}/healthz`,
 });
 

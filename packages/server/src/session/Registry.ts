@@ -65,6 +65,8 @@ export interface RegistryOptions {
   moveConfig?: MoveConfig;
   /** The named world every room is built with (T-3.02). Defaults to the range. */
   world?: string;
+  /** T-3.09: rooms answer clients' AI debug requests (`AI_DEBUG=1`). Off by default. */
+  aiDebug?: boolean;
   /** Called when a room is reclaimed, with why. For the host's log. */
   onReclaim?: (room: Room, reason: string) => void;
 }
@@ -84,6 +86,7 @@ export class Registry {
   readonly graceMs: number;
   private readonly moveConfig: MoveConfig | undefined;
   readonly world: string | undefined;
+  readonly aiDebug: boolean;
   private readonly onReclaim: ((room: Room, reason: string) => void) | undefined;
 
   constructor(options: RegistryOptions = {}) {
@@ -92,6 +95,7 @@ export class Registry {
     this.rng = new Sfc32(options.seed ?? 0x2e0a);
     this.moveConfig = options.moveConfig;
     this.world = options.world;
+    this.aiDebug = options.aiDebug ?? false;
     this.onReclaim = options.onReclaim;
   }
 
@@ -134,7 +138,7 @@ export class Registry {
     while (this.rooms.has(code)) code = generateRoomCode(() => this.rng.next());
     const room: Room = {
       code,
-      session: new Session(this.moveConfig, code, this.world),
+      session: new Session(this.moveConfig, code, this.world, { aiDebug: this.aiDebug }),
       createdAt: now,
       simTimeMs: 0,
       emptySince: now,

@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AI_DEBUG_LIMITS,
+  AI_DEBUG_PACES,
+  type AiDebugBrain,
   DISCONNECT_CODES,
   type DisconnectCode,
   MAX_PRIOR_INPUTS,
   type Message,
+  MessageType,
   PROTOCOL_VERSION,
   ProtocolError,
   checkHandshake,
@@ -222,8 +226,14 @@ describe('malformed input', () => {
     expect(() => decodeMessage(new Uint8Array(0))).toThrow(ProtocolError);
   });
 
-  it('rejects an unknown message type', () => {
-    expect(() => decodeMessage(new Uint8Array([0x0f]))).toThrow(/unknown message type/);
+  it('has no unknown message type left to send: every four-bit tag is spoken for (T-3.09)', () => {
+    // 15 was the last free tag and is the AI debug family now, so what the
+    // old test sent as "unknown" is a request to stop reports: harmless.
+    expect(new Set(Object.values(MessageType)).size).toBe(16);
+    expect(decodeMessage(new Uint8Array([0x0f]))).toEqual({ kind: 'AiDebugRequest', on: false });
+    // A report cut short is refused, not half-read.
+    const report = encodeMessage({ kind: 'AiDebug', tick: 91233, brains: [] });
+    expect(() => decodeMessage(report.slice(0, 1))).toThrow(ProtocolError);
   });
 
   it('rejects a truncated message rather than returning partial data', () => {
@@ -344,5 +354,71 @@ describe('typed rejections and room codes (T-1.5.04)', () => {
     // Confusables are refused rather than guessed at.
     expect(isRoomCode(normalizeRoomCode('O7PM'))).toBe(false);
     expect(isRoomCode('K7P')).toBe(false);
+  });
+});
+
+describe('AiDebug (T-3.09)', () => {
+  const brain: AiDebugBrain = {
+    netId: 4,
+    position: { x: 12.5, y: 0, z: -3.25 },
+    tree: ['root selector', 'root.children[1] sequence', 'root.children[1].children[0] action:move-to'],
+    intent: { x: 20, y: 0.25, z: -8.5, pace: 'sprint' },
+    corridor: [
+      { x: 12.5, y: 0.25, z: -3.25 },
+      { x: 16, y: 0.25, z: -5 },
+      { x: 20, y: 0.25, z: -8.5 },
+    ],
+    cones: [{ yaw: 300, halfAngle: 64, range: 45.5 }],
+    targets: [{ netId: 2, x: -1, y: 0, z: 30 }],
+    cover: { x: 18.75, y: 0, z: -7 },
+  };
+  const idle: AiDebugBrain = {
+    netId: 6,
+    position: { x: -4, y: 0, z: 0 },
+    tree: ['root action:idle'],
+    intent: null,
+    corridor: [],
+    cones: [],
+    targets: [],
+    cover: null,
+  };
+
+  it.each<Message>([
+    { kind: 'AiDebugRequest', on: true },
+    { kind: 'AiDebugRequest', on: false },
+    { kind: 'AiDebug', tick: 0, brains: [] },
+    { kind: 'AiDebug', tick: 91233, brains: [brain, idle] },
+  ])('round-trips %o', (msg) => {
+    expect(decodeMessage(encodeMessage(msg))).toEqual(msg);
+  });
+
+  it('round-trips every pace', () => {
+    for (const pace of AI_DEBUG_PACES) {
+      const msg: Message = { kind: 'AiDebug', tick: 3, brains: [{ ...brain, intent: { ...brain.intent!, pace } }] };
+      expect(decodeMessage(encodeMessage(msg))).toEqual(msg);
+    }
+  });
+
+  it('caps its lists on write and refuses a count past the cap on read', () => {
+    const long: Message = {
+      kind: 'AiDebug',
+      tick: 1,
+      brains: [{ ...brain, corridor: Array.from({ length: AI_DEBUG_LIMITS.corridor + 10 }, (_, i) => ({ x: i, y: 0, z: 0 })) }],
+    };
+    const got = decodeMessage(encodeMessage(long));
+    expect(got.kind === 'AiDebug' && got.brains[0]!.corridor.length).toBe(AI_DEBUG_LIMITS.corridor);
+
+    const w = new BitWriter();
+    w.writeBits(MessageType.AiDebug, 4);
+    w.writeBool(true);
+    w.writeVarUint(1);
+    w.writeVarUint(AI_DEBUG_LIMITS.brains + 1);
+    expect(() => decodeMessage(w.toUint8Array())).toThrow(ProtocolError);
+  });
+
+  it('a whole squad of walking brains stays a small debug message', () => {
+    const bytes = encodeMessage({ kind: 'AiDebug', tick: 9000, brains: Array.from({ length: 5 }, () => brain) }).length;
+    console.log(`[T-3.09] five brains with a 3-point corridor, a cone, a target and cover: ${bytes} B`);
+    expect(bytes).toBeLessThan(1200);
   });
 });

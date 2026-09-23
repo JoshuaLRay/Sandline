@@ -102,7 +102,9 @@ export class LocalServer {
   /** Throws unless `initNav()` has resolved; prefer `LocalServer.create`. */
   constructor(conditions: LinkConditions = DEFAULT_LINK, moveConfig?: MoveConfig) {
     if (!isNavReady()) throw new Error('LocalServer before initNav() resolved: use LocalServer.create()');
-    this.session = new Session(moveConfig);
+    // The page is its own host, so it allows AI debug (T-3.09): a report still
+    // goes only to a client that asks for one.
+    this.session = new Session(moveConfig, '', undefined, { aiDebug: true });
     this.local = this.attach(conditions, LOCAL_SEEDS);
     this.transport = this.local.transport;
   }
