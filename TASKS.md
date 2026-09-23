@@ -50,8 +50,10 @@ human fire path (T-3.15), and rounds going past suppress every soldier (T-3.16),
 pinned target (T-3.21, `--scenario pinned`), and throw grenades at a target
 gone still in cover (T-3.22), and the slice's two archetypes exist — the
 rifleman and an MG that deploys, suppresses first and relocates rarely
-(T-3.23, `--scenario mg`). The next build task is **T-3.27** (orders on the
-wire); the combat AI sign-off (🧍 T-3.24) waits on its run sheet.
+(T-3.23, `--scenario mg`), and friendly bots follow their fireteam's lead in
+formation (T-3.25, the `friendly` tree). The next build tasks are **T-3.26**
+(friendly bots fight and revive) and **T-3.27** (orders on the wire); the
+combat AI sign-off (🧍 T-3.24) waits on its run sheet.
 
 ---
 
@@ -282,8 +284,8 @@ once before the first M3 task — it is short and every task leans on it.
 
 | Task | Status | Depends |
 |---|---|---|
-| T-3.25 | BLOCKED | T-3.06, T-3.08 |
-| T-3.26 | BLOCKED | T-3.25, T-3.20 |
+| T-3.25 | DONE | T-3.06, T-3.08 |
+| T-3.26 | OPEN | T-3.25, T-3.20 |
 
 ### E-3.8 — Order system
 

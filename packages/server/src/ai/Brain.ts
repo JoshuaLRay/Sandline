@@ -18,6 +18,7 @@ import type { LocomotionIntent } from './locomotion/followPath.ts';
 import type { NavPoint } from './nav/NavMesh.ts';
 import { registerRiflemanLeaves } from './actions/rifleman.ts';
 import { registerGrenadeLeaves } from './actions/grenade.ts';
+import { registerFriendlyLeaves } from './actions/friendly.ts';
 
 /** Ticks between a brain's thoughts: 30 Hz sim, 10 Hz brains. */
 export const BRAIN_PERIOD_TICKS = 3;
@@ -91,14 +92,15 @@ export function brainPhase(netId: number): number {
 /**
  * The server's leaves. `idle` wants nothing and never finishes; the rest are
  * the rifleman's fight (T-3.20, `actions/rifleman.ts`) and its grenades
- * (T-3.22, `actions/grenade.ts`), which fail on a body that is not a fighter.
+ * (T-3.22, `actions/grenade.ts`), which fail on a body that is not a fighter;
+ * and the friendly bot's `follow` (T-3.25, `actions/friendly.ts`).
  */
 export function createBrainRegistry(): BrainRegistry {
   const registry = new BtRegistry<BrainBody, BrainMemory>().action('idle', ({ blackboard }) => {
     blackboard.set('intent', null);
     return 'running';
   });
-  return registerGrenadeLeaves(registerRiflemanLeaves(registry));
+  return registerFriendlyLeaves(registerGrenadeLeaves(registerRiflemanLeaves(registry)));
 }
 
 let idleTree: BrainTree | null = null;
