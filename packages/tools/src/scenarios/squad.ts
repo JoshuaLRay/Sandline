@@ -6,8 +6,9 @@
  * range's low wall, kept alive so the formation has somewhere to be; it
  * fires but once — a burst up range in the first second, opening the fight
  * as a player would, so every run has contact. Slots 1–5 are bots running
- * the committed `friendly` tree: they follow it, see and hear the enemy, take cover near their places, fire (never
- * through a squadmate), throw grenades and revive whoever goes down. A group
+ * the committed `friendly` tree: they follow it, see and hear the enemy,
+ * take cover near their places, fire (never through a squadmate), throw
+ * grenades and revive whoever goes down. A group
  * of riflemen runs the committed `rifleman` tree from up range, north of the
  * west walls. Nobody else is healed: bots go down, bleed out and die, enemies
  * die.
