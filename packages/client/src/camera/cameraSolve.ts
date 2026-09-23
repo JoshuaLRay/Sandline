@@ -18,13 +18,15 @@
  *
  * ANGLES. Yaw arrives unsigned and already wrapped; pitch arrives SIGNED,
  * because its limits are asymmetric (89 degrees up, 80 down) and a signed
- * accumulator is what makes that expressible. Both are wire units and the
- * camera reads them at wire precision, which is deliberate and NOT the
- * precision the aim path uses: replication precision answers how accurately a
- * character must be drawn, aim precision decides where a ray lands at 100 m
- * (note 17). Do not unify them.
+ * accumulator is what makes that expressible. Both are in wire units but NOT
+ * rounded to them: the camera is the player's own eye, and it must follow the
+ * mouse at the mouse's own resolution. Snapping it to 1/1024 turn (0.35
+ * degrees, roughly two pixels of mouse at the default sensitivity) made
+ * turning visibly step while movement, interpolated every frame, stayed
+ * smooth. Wire precision is for what goes on the wire and for drawing OTHER
+ * characters; aim precision is its own path again (note 17).
  */
-import { WIRE_ANGLE_UNITS, cos, sin, wireToTable } from '@sandline/shared';
+import { ANGLE_UNITS, WIRE_ANGLE_UNITS, sin } from '@sandline/shared';
 import type { CameraConfig } from './cameraConfig.ts';
 import { solveCollisionArmLength, type CameraCollider } from './cameraColliders.ts';
 import { solveArmLength } from './followCamera.ts';
@@ -35,9 +37,9 @@ export interface CameraView {
   x: number;
   y: number;
   z: number;
-  /** Yaw in wire-angle units, unsigned and wrapped (`LocalInput.yaw`). */
+  /** Yaw in wire-angle units, unsigned, wrapped and fractional (`LocalInput.viewYaw`). */
   yawWire: number;
-  /** Pitch in wire-angle units, SIGNED (`LocalInput.pitch`). */
+  /** Pitch in wire-angle units, SIGNED and fractional (`LocalInput.pitch`). */
   pitchWire: number;
   /** Pitch as -1..1 across its current limit. Shapes the arm, not the view. */
   pitchFraction: number;
@@ -68,7 +70,7 @@ export interface CameraSolve {
   direction: Vec3;
   /** Yaw-only forward, for turning the character mesh. */
   forward: { x: number; z: number };
-  /** Table-angle yaw and pitch, for the Euler the renderer sets. */
+  /** Table-angle yaw and pitch, fractional, for the Euler the renderer sets. */
   yawAngle: number;
   pitchAngle: number;
   /** Arm length after shortening. Zero in first person. */
@@ -113,6 +115,26 @@ export function createCameraSolve(): CameraSolve {
   };
 }
 
+/** Wire units, fractional and possibly signed, to table units in [0, ANGLE_UNITS). Never rounded. */
+export function fineTableAngle(wire: number): number {
+  const t = (wire * (ANGLE_UNITS / WIRE_ANGLE_UNITS)) % ANGLE_UNITS;
+  return t < 0 ? t + ANGLE_UNITS : t;
+}
+
+/**
+ * sin of a fractional table angle: the shared table, interpolated between its
+ * neighbouring entries. Exactly the table's value at a whole angle, and
+ * continuous between them, so a sub-unit turn moves the view by a sub-unit
+ * amount instead of nothing and then a whole step. Linear interpolation over a
+ * 4096-entry circle is within ~3e-7 of the true sine.
+ */
+export function fineSin(a: number): number {
+  const i = Math.floor(a);
+  const f = a - i;
+  const s0 = sin(i);
+  return f === 0 ? s0 : s0 + (sin(i + 1) - s0) * f;
+}
+
 /**
  * Solve the camera for one frame, writing into `out` and returning it.
  *
@@ -128,19 +150,14 @@ export function solveCamera(
   dtSeconds = 1 / 60,
   collider?: CameraCollider,
 ): CameraSolve {
-  const yawAngle = wireToTable(view.yawWire);
-  /**
-   * Pitch is signed; a wire angle is a position on a circle and has no sign.
-   * Wrap before converting, or a downward pitch indexes the trig table
-   * negatively.
-   */
-  const pitchAngle = wireToTable(
-    ((view.pitchWire % WIRE_ANGLE_UNITS) + WIRE_ANGLE_UNITS) % WIRE_ANGLE_UNITS,
-  );
+  // Pitch is signed; `fineTableAngle` wraps it, or a downward pitch would
+  // index the trig table negatively.
+  const yawAngle = fineTableAngle(view.yawWire);
+  const pitchAngle = fineTableAngle(view.pitchWire);
 
-  const fwdX = sin(yawAngle);
-  const fwdZ = cos(yawAngle);
-  const cosP = cos(pitchAngle);
+  const fwdX = fineSin(yawAngle);
+  const fwdZ = fineSin(yawAngle + ANGLE_UNITS / 4);
+  const cosP = fineSin(pitchAngle + ANGLE_UNITS / 4);
 
   out.yawAngle = yawAngle;
   out.pitchAngle = pitchAngle;
@@ -202,7 +219,7 @@ export function solveCamera(
 
   // View direction: the horizontal component shrinks as the pitch steepens.
   const dx = fwdX * cosP;
-  const dy = sin(pitchAngle);
+  const dy = fineSin(pitchAngle);
   const dz = fwdZ * cosP;
   out.direction.x = dx;
   out.direction.y = dy;

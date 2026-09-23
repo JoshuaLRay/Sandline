@@ -1487,7 +1487,7 @@ function frame(): void {
       x: rx,
       y: ry,
       z: rz,
-      yawWire: input.yaw,
+      yawWire: input.viewYaw,
       pitchWire: input.pitch,
       pitchFraction: input.pitchFraction,
       ads: input.ads,

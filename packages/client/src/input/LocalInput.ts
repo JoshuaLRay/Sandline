@@ -378,6 +378,17 @@ export class LocalInput {
     return ((Math.round(this.viewPitch) % units) + units) % units;
   }
 
+  /**
+   * Yaw for the camera: wrapped to 0..1024 but NOT rounded. The wire and the
+   * simulation take whole units (`yaw`); the view follows the mouse at full
+   * resolution, or turning steps 0.35 degrees at a time while everything
+   * else moves smoothly.
+   */
+  get viewYaw(): number {
+    const yaw = (this.yawAccum + this.offsetYaw) % WIRE_ANGLE_UNITS;
+    return yaw < 0 ? yaw + WIRE_ANGLE_UNITS : yaw;
+  }
+
   get yaw(): number {
     const yaw = this.yawAccum + this.offsetYaw;
     return ((Math.round(yaw) % WIRE_ANGLE_UNITS) + WIRE_ANGLE_UNITS) % WIRE_ANGLE_UNITS;

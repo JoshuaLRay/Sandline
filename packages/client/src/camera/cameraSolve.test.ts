@@ -14,8 +14,8 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CAMERA_CONFIG } from './cameraConfig.ts';
 import { CAMERA_COLLISION_MARGIN, type CameraCollider } from './cameraColliders.ts';
-import { DEFAULT_MUZZLE_RIG, muzzlePosition } from '@sandline/shared';
-import { type CameraView, createCameraSolve, solveCamera } from './cameraSolve.ts';
+import { DEFAULT_MUZZLE_RIG, muzzlePosition, sin } from '@sandline/shared';
+import { type CameraView, createCameraSolve, fineSin, fineTableAngle, solveCamera } from './cameraSolve.ts';
 
 const cfg = DEFAULT_CAMERA_CONFIG;
 /** Wire-angle units per degree: the wire carries 1024 per turn. */
@@ -339,5 +339,38 @@ describe('crouch camera', () => {
     const cfg = DEFAULT_CAMERA_CONFIG;
     expect(cfg.crouchEyeHeight).toBeLessThan(cfg.eyeHeight);
     expect(cfg.crouchEyeHeight).toBeGreaterThan(cfg.proneEyeHeight);
+  });
+});
+
+describe('view angle resolution', () => {
+  it('turns by a fraction of a wire unit instead of snapping to whole ones', () => {
+    // One pixel at the default 0.55 units/px. Snapped to the wire this was
+    // either no turn at all or a whole 0.35 degree step: the choppy mouse.
+    const a = solve({ yawWire: 100 });
+    const b = solve({ yawWire: 100.55 });
+    const whole = solve({ yawWire: 101 });
+    const turned = Math.atan2(b.direction.x, b.direction.z) - Math.atan2(a.direction.x, a.direction.z);
+    const step = Math.atan2(whole.direction.x, whole.direction.z) - Math.atan2(a.direction.x, a.direction.z);
+    expect(turned).toBeGreaterThan(0);
+    expect(turned / step).toBeCloseTo(0.55, 2);
+  });
+
+  it('pitches by a fraction of a wire unit too, including downward', () => {
+    const a = solve({ pitchWire: -20 });
+    const b = solve({ pitchWire: -20.5 });
+    expect(b.direction.y).toBeLessThan(a.direction.y);
+  });
+
+  it('matches the shared table exactly at whole angles and stays close between them', () => {
+    for (let a = 0; a < 4096; a += 37) expect(fineSin(a)).toBe(sin(a));
+    for (let a = 0.25; a < 4096; a += 13.7) {
+      expect(Math.abs(fineSin(a) - Math.sin((a / 4096) * Math.PI * 2))).toBeLessThan(1e-5);
+    }
+  });
+
+  it('wraps signed and out-of-range angles into one turn', () => {
+    expect(fineTableAngle(-1)).toBe(4092);
+    expect(fineTableAngle(1024.5)).toBe(2);
+    expect(fineTableAngle(-0.25)).toBe(4095);
   });
 });
