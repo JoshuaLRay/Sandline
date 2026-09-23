@@ -6,6 +6,7 @@ import {
   DEFAULT_WORLD_ID,
   WORLD_IDS,
   FLOOR_MARGIN_M,
+  ROUTE_ROLES,
   type WorldBox,
   figureBox,
   getWorld,
@@ -22,6 +23,7 @@ import {
   surfaceAt,
 } from './world.ts';
 import { POSITION, dequantize, quantize } from '../net/quantize.ts';
+import GREYBOX_01 from '../data/worlds/greybox-01.json' with { type: 'json' };
 
 const box = (id: string, x: number, y: number, z: number, w: number, h: number, d: number): WorldBox =>
   boxFrom({ id, x, y, z, w, h, d }, 'cover');
@@ -250,5 +252,35 @@ describe('a world names its floor (T-3.03)', () => {
   it('refuses a floor that is not a positive size', () => {
     expect(() => loadWorld({ id: 'f', floor: { halfExtent: 0 }, cover })).toThrow(/floor.halfExtent/);
     expect(() => loadWorld({ id: 'f', floor: 5, cover })).toThrow(/floor.halfExtent/);
+  });
+});
+
+describe('a world may carry a mission (T-3.31)', () => {
+  const RAW = GREYBOX_01 as unknown as { mission: Record<string, unknown> };
+  const withMission = (edit: (m: Record<string, unknown>) => void) => {
+    const mission = structuredClone(RAW.mission);
+    edit(mission);
+    return { id: 'm', cover: [], mission };
+  };
+
+  it('the grey-box map has one, with both route roles and a zone behind the objective; the range has none', () => {
+    const greybox = requireWorld('greybox-01');
+    expect(WORLD_IDS).toEqual(expect.arrayContaining(['range', 'greybox-01']));
+    expect(requireWorld('range').mission).toBeNull();
+    expect(greybox.mission!.routes.map((r) => r.role).sort()).toEqual([...ROUTE_ROLES].sort());
+    expect(greybox.mission!.spawnZones.some((z) => z.on === 'objective')).toBe(true);
+    // The squad starts where the six slots spawn.
+    for (const p of SPAWN_POINTS) expect(Math.sqrt((p.x - greybox.mission!.start.x) ** 2 + (p.z - greybox.mission!.start.z) ** 2)).toBeLessThanOrEqual(greybox.mission!.start.radius);
+  });
+
+  it('refuses a mission missing a role, a zone on a route nobody named, and bad numbers — by name', () => {
+    expect(() => loadWorld(withMission((m) => (m['routes'] as unknown[]).pop()))).toThrow(/no assault route/);
+    expect(() => loadWorld(withMission((m) => ((m['spawnZones'] as Record<string, unknown>[])[1]!['on'] = 'river')))).toThrow(/on must be 'objective' or a route id/);
+    expect(() => loadWorld(withMission((m) => ((m['routes'] as Record<string, unknown>[])[1]!['id'] = 'overwatch')))).toThrow(/duplicate id 'overwatch'/);
+    expect(() => loadWorld(withMission((m) => ((m['routes'] as Record<string, unknown>[])[0]!['role'] = 'sniper')))).toThrow(/role must be one of/);
+    expect(() => loadWorld(withMission((m) => ((m['checks'] as Record<string, unknown>)['minDistinctShare'] = 1.5)))).toThrow(/minDistinctShare/);
+    expect(() => loadWorld(withMission((m) => ((m['objective'] as Record<string, unknown>)['radius'] = 0)))).toThrow(/objective: radius/);
+    expect(() => loadWorld(withMission((m) => (m['colour'] = 'red')))).toThrow(/unknown key 'colour'/);
+    expect(() => loadWorld(withMission((m) => delete m['checks']))).toThrow(/missing 'checks'/);
   });
 });

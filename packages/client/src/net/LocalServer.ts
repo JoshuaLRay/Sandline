@@ -41,6 +41,7 @@ import {
   type NetSimOptions,
   TICK_SECONDS,
   type Transport,
+  type World,
   createLoopbackPair,
 } from '@sandline/shared';
 import { type EnemySpawn, Session, type SessionOptions } from '@sandline/server/session';
@@ -75,6 +76,8 @@ export interface LocalServerOptions {
    */
   brainTree?: SessionOptions['brainTree'];
   cover?: SessionOptions['cover'];
+  /** The named world the session is built with (`?world=`, T-3.31); the range by default. */
+  world?: World;
 }
 
 /** One client's link to the in-page session, tunable on its own. */
@@ -133,7 +136,7 @@ export class LocalServer {
     if (!isNavReady()) throw new Error('LocalServer before initNav() resolved: use LocalServer.create()');
     // The page is its own host, so it allows AI debug (T-3.09): a report still
     // goes only to a client that asks for one.
-    this.session = new Session(moveConfig, '', undefined, {
+    this.session = new Session(moveConfig, '', options.world, {
       aiDebug: true,
       ...(options.navMesh ? { navMesh: options.navMesh } : {}),
       ...(options.brainTree ? { brainTree: options.brainTree } : {}),

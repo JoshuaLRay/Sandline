@@ -57,7 +57,10 @@ over the wire (T-3.27, protocol 21), which the bots carry out and report on
 (T-3.28), from an order wheel on Q and a mark on F in the page, drawn in the
 world from the host's broadcast (T-3.29, `?squad` for eyes). E-3.8's build
 tasks are done; its sign-off (🧍 T-3.30) and the combat AI sign-off (🧍
-T-3.24) wait on their run sheets.
+T-3.24) wait on their run sheets. E-3.9 has begun: the grey-box mission map
+is a second named world with an overwatch and an assault route, spawn zones
+and its bake (T-3.31, `WORLD=greybox-01`, `?world=greybox-01` for eyes). The
+next build task is **T-3.32** (encounters and spawning).
 
 ---
 
@@ -304,8 +307,8 @@ once before the first M3 task — it is short and every task leans on it.
 
 | Task | Status | Depends |
 |---|---|---|
-| T-3.31 | BLOCKED | T-3.02, T-3.04, T-3.18 |
-| T-3.32 | BLOCKED | T-3.10, T-3.31 |
+| T-3.31 | DONE | T-3.02, T-3.04, T-3.18 |
+| T-3.32 | OPEN | T-3.10, T-3.31 |
 | T-3.33 | BLOCKED | T-3.32, T-3.14 |
 | T-3.34 | BLOCKED | T-3.31, T-3.32 |
 | T-3.35 | BLOCKED | T-3.23, T-3.28, T-3.33, T-3.34 |

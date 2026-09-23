@@ -33,7 +33,8 @@ ADRs that section names → implement. That's the whole loop. See
 | `?squad` | the in-page bots run the `friendly` tree with the range's cover: they follow in formation, fight, and take orders — hold Q for the wheel (the mouse picks, 1–6 a slot, 7–8 a fireteam, 0 everyone; release to order), tap F to mark; add `&suppress` or `&enemies` for someone to attack |
 | `?suppress` | a rifleman on the in-page range firing past your camera at the squadmate beside you — the suppression vignette, desaturation, jolt and crosshair |
 | `MAX_ROOMS=4 ROOM_GRACE_MS=60000 pnpm host` | rooms per process and how long an empty room lives |
-| `WORLD=range pnpm host` | the named world every room is built with (`data/worlds/*.json`; `range` is the default and, for now, the only one) |
+| `WORLD=range pnpm host` | the named world every room is built with (`data/worlds/*.json`): `range` (the default) or `greybox-01`, the mission map (T-3.31) |
+| `?world=greybox-01` | the in-page session on that world: the mission map's two lanes, the objective compound behind them |
 | `JOIN_KEY=… pnpm host` | every Join must carry this key (lobby's Key field, `pnpm bot --key`); `IDLE_TIMEOUT_MS` / `MAX_SESSION_MS` drop idle and long-connected players (0 = off) |
 | `AI_DEBUG=1 pnpm host` | clients may ask for AI debug reports (B in the page); without it the host sends none |
 | `curl localhost:8080/healthz` | rooms, players, protocol version |
