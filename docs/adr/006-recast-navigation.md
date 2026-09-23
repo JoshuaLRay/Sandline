@@ -117,3 +117,12 @@ is a small fraction of that.
 the range's boxes), crowd cost (T-3.06 measures 45 agents), and off-mesh
 links (T-3.04). The spike's agent parameters are typed in by hand in
 `tools/src/nav/bake.ts`; T-3.03 derives them from `MoveConfig`.
+
+**Crowd cost (T-3.06).** Local avoidance uses Detour's crowd for velocities
+only — positions are written in from each `MoveState` every tick and the
+crowd never moves a soldier. With 45 agents in two ranks crossing head-on on
+open ground, one crowd update (placement, avoidance, read-back) costs about
+0.4 ms mean and 1.2–1.4 ms worst in Node, ~1.2 % of the tick: well inside
+§7.9's proposed 8.3 ms. Detour has no right of way, so a data-set patience
+rule (`avoidance.json`) breaks the deadlock two soldiers meet in a one-wide
+doorway.

@@ -1,0 +1,18 @@
+{
+  "$comment": "Local avoidance tuning (T-3.06), read and validated by avoidance.ts. Distances are metres, times seconds. radiusMarginM: personal space added to the soldier's capsule radius for the crowd, so bots steer to keep a gap rather than to graze. collisionQueryRangeM: how far away another soldier or a wall is considered. separationWeight: Detour's push apart from near neighbours (0 is none). The rest are Detour's obstacle avoidance parameters: horizonS is how far ahead a collision is looked for; velBias, weightDesVel, weightCurVel, weightSide and weightToi weigh a candidate velocity by how far it is from the one asked for, from the one being walked, by which side it passes on, and by how soon it collides; adaptiveDivs, adaptiveRings and adaptiveDepth size the sampling pattern (more is steadier and dearer).",
+  "radiusMarginM": 0.05,
+  "collisionQueryRangeM": 3,
+  "separationWeight": 2,
+  "horizonS": 1.5,
+  "velBias": 0.4,
+  "weightDesVel": 2,
+  "weightCurVel": 0.75,
+  "weightSide": 0.75,
+  "weightToi": 2.5,
+  "adaptiveDivs": 7,
+  "adaptiveRings": 2,
+  "adaptiveDepth": 5,
+  "patienceTicks": 30,
+  "assertTicks": 30,
+  "blockedFraction": 0.5
+}
