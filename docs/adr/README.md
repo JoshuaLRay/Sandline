@@ -10,7 +10,7 @@ in place — the reasoning history is the point.
 An **addendum** is the other legal edit: the decision stands, but what we have
 since measured or hit changes the reasoning behind it. The Status column counts
 them, so a reader can tell at a glance which decisions have been revisited
-without opening all fifteen files.
+without opening every file.
 
 **If you are an agent working a task from `PLAN.md`:** read the ADRs your task
 touches before you start. A decision marked 🔒 in the plan is not yours to
@@ -34,6 +34,8 @@ different choice.
 | [013](013-performance-budget.md) | Performance budget | Accepted |
 | [014](014-determinism-policy.md) | Determinism policy | Accepted |
 | [015](015-estimate-reality.md) | Estimates as floor; slice scope cut | Accepted |
+| [016](016-prone-stance.md) | Prone stance and voluntary crawl (reopens ADR-002's prone row) | Accepted |
+| [017](017-in-house-audio.md) | Combat audio made in-house: synthesised effects, processed recorded voices | Accepted |
 
 ## Template
 

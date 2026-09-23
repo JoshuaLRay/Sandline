@@ -841,7 +841,7 @@ using the T-1.xx tasks above as the template for granularity.
 | E-2.4 | Weapon feel | Recoil patterns, camera shake, muzzle flash, tracers, shell ejection · 🧍 |
 | E-2.5 | Projectile weapons | Grenades, RPG — ballistic arcs, network-replicated |
 | E-2.6 | Downed & revive | Bleed-out timer, crawl state, revive interaction |
-| E-2.7 | Combat audio | Positional Web Audio, weapon layers, distance falloff, occlusion approximation |
+| E-2.7 | Combat audio | Positional Web Audio, weapon layers, distance falloff, occlusion approximation — broken out in §7.10; made in-house per [ADR-017](./docs/adr/017-in-house-audio.md) (synthesised effects, processed recorded voices) |
 | E-2.8 | Prone stance & voluntary crawl | Authoritative prone height/hit volume, prone crawl speed, fire-from-prone — see [ADR-016](./docs/adr/016-prone-stance.md), which reopens the v1 exclusion in ADR-002 |
 
 **Exit gate:** 🧍 A human plays a grey-box firefight and signs off that it feels good.
@@ -1965,6 +1965,156 @@ netcode and the squad architecture — not breadth.
 
 ---
 
+### 7.10 E-2.7 leaf tasks — broken out 2026-09-23
+
+[ADR-017](./docs/adr/017-in-house-audio.md) answers R1 and §9 Q2 for audio:
+**everything in-house, made by AI.** Effects are synthesised from code and
+rendered offline into committed files. Voices are recorded by people and
+processed by code. The page places both in the world with Web Audio.
+Claude cannot hear, so the owner's ear is the gate, on a sound board on the
+deployed site. E-2.7 is the last M2 epic. It does not jump M3's gates or
+B-11; it is agent work that can run beside them.
+
+**Three rules for this epic:**
+1. **Audio is presentation.** Nothing in `shared` or the server plays or
+   waits on a sound. Every sound hangs off state or an event every client
+   already has — shots, hit events, detonations, near misses, gait phase,
+   vitality — so no protocol change is needed. A client that hears nothing
+   plays the same game.
+2. **Data over code** (rule 4): every recipe, voice profile, falloff curve,
+   occlusion amount and limit is JSON, validated like the rest.
+3. **Rendered once, committed, checked.** As with `gen:nav`: seeded offline
+   renders, committed outputs, and a test that fails when the data changes
+   without a re-render. No machine renders its own version.
+
+**What already exists.** Shot events for local predicted and remote shots
+(T-1.17, T-2.08), hit events with points and normals (T-2.11), detonations
+announced with their tick (T-2.33), near-miss geometry (T-3.16), the gait
+phase and stance (T-2.18, T-2.20, T-2.40), vitality (T-2.13), the world
+boxes and `rayWorld` for occlusion (T-1.12), and the deployed QA site where
+the owner listens (T-1.5.07, the T-3.35 follow-up).
+
+#### T-2.44 — The synthesiser and the render pipeline
+- **Depends:** —
+- **Files:** `packages/tools/src/audio/` (DSP), `packages/tools/src/gen-audio.ts`, `packages/shared/src/data/audio/sounds.json` (+ its parser), committed renders under `packages/client/public/audio/`, tests
+- **Do:** A small DSP library in TypeScript: oscillators, seeded noise (the shared PRNG), biquad filters, envelopes, waveshaping, delay, and a generated-impulse reverb, mixed at 48 kHz. A recipe format that layers these. It is validated, with unknown keys refused, and names each sound's layers, lengths and variants. `pnpm gen:audio` renders every recipe to 16-bit PCM and encodes it for the web; pick the format against what every target browser plays, and add the encoder as a dev dependency. It commits the renders plus a hash of their inputs. One placeholder sound (a click) proves the path end to end.
+- **Done when:**
+  - a render is byte-identical when repeated;
+  - a test fails when a recipe or the DSP changes without a re-render;
+  - measured peak, loudness and length stay within each recipe's declared bounds;
+  - nothing clips;
+  - `pnpm verify` needs no audio device.
+- **Size:** M
+
+#### T-2.45 — Positional playback and the sound board
+- **Depends:** T-2.44
+- **Files:** `packages/client/src/audio/` (engine), `packages/shared/src/data/audio/mix.json`, `packages/client/src/ui/SoundBoard.ts`, `main.ts`, tests
+- **Do:** An audio engine on Web Audio:
+  - the context is unlocked on the first click (browser autoplay rules);
+  - the listener follows the camera, and each sound has its own panner;
+  - falloff is a data curve per sound class;
+  - occlusion: a ray from the listener to the source through the world's boxes, and a hit adds a low-pass and a gain cut, both from data;
+  - a voice limit with priority (your own shots and near misses before distant fire);
+  - the speed of sound, so a distant blast is seen before it is heard.
+
+  Master, effects and voice volume controls go in the page's panels. **`?sounds`** is a sound board on the deployed site: every sound and voice line, each variant, played in place, next to a picture of its waveform and its measured numbers. It is how the owner listens and reports.
+- **Done when:**
+  - the pure parts are unit-tested: falloff, occlusion (a box between gives the attenuation, a clear line gives none), voice stealing under the limit, and the sound delay at distance;
+  - the engine runs headless against a fake audio context in a test;
+  - the sound board lists every committed sound.
+- **Size:** M
+
+#### T-2.46 — Weapon sounds
+- **Depends:** T-2.45
+- **Files:** `data/audio/sounds.json` (weapon recipes), renders, `packages/client/src/audio/weaponSounds.ts`, tests
+- **Do:**
+  - **Guns:** recipes for the four guns and the enemy LMG, each layered as mechanism, report and tail, with near and far versions and several seeded variants per shot so automatic fire does not machine-gun one sample;
+  - **Handling:** reload stages (out, in, bolt), dry fire and equip;
+  - **Wiring:** to the local predicted shot and to remote shot events.
+
+  The far version is chosen and blended by distance.
+- **Done when:**
+  - every weapon has its sounds and its render bounds hold;
+  - automatic fire at each gun's cadence never plays the same variant twice in a row (tested);
+  - the owner has listened on the sound board at least once, and what they said is recorded in the completion note. That is not a sign-off: T-2.50 is.
+- **Size:** M
+
+#### T-2.47 — World and body sounds
+- **Depends:** T-2.45
+- **Files:** `data/audio/sounds.json` (world recipes), renders, `packages/client/src/audio/worldSounds.ts`, tests
+- **Do:**
+  - **Rounds going past:** the supersonic crack and whiz, placed by T-3.16's near-miss geometry;
+  - **Impacts:** per box kind (post, wall, crate, ground);
+  - **Grenade:** throw, bounce and explosion;
+  - **Rocket:** launch, flight loop and explosion, with a distant version of each explosion;
+  - **Footsteps:** by stance and pace, timed from the gait phase so feet and sound agree;
+  - **Movement:** vault and landing;
+  - **Bodies:** hit, downed and body fall.
+
+  Everything hangs off state or events every client already has.
+- **Done when:**
+  - footsteps land on the gait's foot contacts (tested against the pose driver's phase);
+  - a near miss plays its crack on the side it passed;
+  - an explosion's distant version is chosen by distance;
+  - render bounds hold.
+- **Size:** M
+
+#### T-2.48 — The voice pipeline
+- **Depends:** T-2.44
+- **Files:** `assets/voice/raw/` (uploads), `packages/shared/src/data/audio/voices.json` (lines and profiles), `packages/tools/src/gen-voice.*`, committed outputs under `packages/client/public/audio/voice/`, `docs/audio/voice-script.md`, tests
+- **Do:** `pnpm gen:voice` turns raw uploads into game lines. It:
+  - finds each take in a file read with pauses and names it from the script;
+  - trims and normalises loudness;
+  - applies a **voice profile** per soldier: pitch and formant shift (deeper without the slowed-down sound of pitch alone), EQ, and saturation for a shout;
+  - adds the radio treatment (band-pass, grit, squelch clicks) and a distance treatment;
+  - makes seeded variants.
+
+  Pick the formant-preserving method; a dev-only Python library run in an agent's session or in CI is allowed, per ADR-017. The script the owner records from is `docs/audio/voice-script.md`. Only recordings of people who have agreed are processed.
+- **Done when:**
+  - on a generated test signal (a synthetic voiced tone), a profile's pitch shift moves the fundamental by its data-set amount, with formants within tolerance of their own shift;
+  - the take splitter finds every take in a test file of tones and silences;
+  - loudness lands within its target;
+  - a raw upload committed without re-processing fails a check, as for effects.
+- **Size:** M
+
+#### T-2.49 — Callouts in play
+- **Depends:** T-2.45, T-2.48
+- **Files:** `data/audio/callouts.json`, `packages/client/src/audio/callouts.ts`, tests
+- **Do:** Events become lines:
+  - contact on a new sighting, and reloading when a reload starts;
+  - frag out on a throw, and a grenade warning when one lands near;
+  - man down, and "I'm hit" / "I'm down";
+  - reviving and "you're up";
+  - enemy down;
+  - the order acknowledgements (copy, moving, holding, regrouping, can't get there);
+  - the objective lines.
+
+  Each soldier speaks with its own profile, so each slot sounds like one person. Rules:
+  - a squadmate nearby is positional; a distant one comes over the radio treatment;
+  - per-line and per-speaker cooldowns, so nobody talks over themselves;
+  - at most one voice at a time on the radio.
+
+  Until recordings arrive, each line is a synthesised radio chirp, so the wiring ships first and the voices drop in.
+- **Done when:**
+  - each event plays its line once within its cooldown and never twice at once (tested);
+  - the radio/positional choice follows distance;
+  - a missing recording falls back to the chirp without an error.
+- **Size:** S
+
+#### T-2.50 — 🧍 E-2.7 sign-off: combat audio
+- **Depends:** T-2.46, T-2.47, T-2.49
+- **Files:** `docs/playtests/e2-7.md` (run sheet — not a verdict)
+- **Do:** A run sheet in the shape of `e2-8.md`, played on the deployed site. It covers:
+  - the sound board;
+  - a firefight on the range and on the mission map;
+  - two people over the host;
+  - whether a shot's direction and distance can be told by ear;
+  - whether walls muffle what they should;
+  - whether callouts help or nag;
+  - whether it reads as 2002.
+- **Done when:** the owner has played it and written the verdict. An agent can write the run sheet and must not invent the verdict.
+- **Size:** S (the owner's time)
+
 ## 8. Risk register
 
 | # | Risk | Severity | Mitigation | Owner milestone |
@@ -1994,6 +2144,9 @@ These block estimation, not implementation — M0 can start today regardless.
    roughly four months.
 2. **Art sourcing.** Purchased assets vs. commissioned vs. in-house? This is R1,
    the project's largest cost, and it should be decided before M4.
+   **Answered for audio 2026-09-23** ([ADR-017](./docs/adr/017-in-house-audio.md)):
+   in-house, made by AI. Effects are synthesised from code; voices are
+   recorded by people and processed by code. Art for M4 is still open.
 3. **Desktop-only confirmation.** Recommended and assumed (ADR-002). Mobile
    Safari support would add months.
 4. ~~**Where does this repo live?**~~ **Resolved 2026-09-17.** Split out of an
@@ -2068,9 +2221,9 @@ and all four can be judged in one sitting from their run sheets.
    values remain data-driven; adjust them when a concrete playtest issue
    appears rather than reopening completed gates without a reason.
 
-E-2.7 (combat audio) is the last M2 epic and remains an epic until its turn;
-it is the one that needs assets bought or made (R1, §9 Q2), which is a
-decision worth taking deliberately rather than on the way past. M2's exit gate
+E-2.7 (combat audio) is the last M2 epic. It waited for the decision on
+whether its sounds are bought or made (R1, §9 Q2). That was taken on
+2026-09-23 (ADR-017: made in-house, by AI), and it is broken out in §7.10. M2's exit gate
 remains the overall human judgement that third-person combat feels good — and
 with grenades in, that firefight now has something in it that the other person
 has to move away from.
