@@ -31,6 +31,7 @@ import {
   initNav,
 } from '../../../server/src/ai/nav/NavMesh.ts';
 import { DEFAULT_HITBOX, type Hitbox } from '../../../server/src/net/lagComp.ts';
+import { type CoverEyes, DEFAULT_COVER_EYES, coverHashInputs } from './cover.ts';
 
 /** An axis-aligned box, min and max corners, in world metres. */
 export interface SoupBox {
@@ -219,7 +220,7 @@ export function worldSoup(world: World, groundY = DEFAULT_NAV_AGENT.groundY): Tr
  * a test recomputes it from the live data, so an edited box, a retuned step
  * height or a new capsule radius fails until `pnpm gen:nav` is re-run.
  */
-export function navBakeHash(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): string {
+export function navBakeHash(world: World, agent: NavAgent = DEFAULT_NAV_AGENT, eyes: CoverEyes = DEFAULT_COVER_EYES): string {
   const inputs = {
     world: {
       id: world.id,
@@ -231,6 +232,9 @@ export function navBakeHash(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): 
     // How vault links are searched for and kept (T-3.04). The vault rule's
     // own numbers are in `agent`; the rule itself is the controller's code.
     links: { spacing: LINK_SPACING_M, approachMargin: APPROACH_MARGIN_M, endOnMesh: LINK_END_ON_MESH_M },
+    // How cover points are sampled and classed (T-3.18): stored beside the
+    // mesh, so under the same hash.
+    cover: coverHashInputs(eyes),
   };
   return createHash('sha256').update(JSON.stringify(inputs)).digest('hex');
 }

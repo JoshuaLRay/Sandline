@@ -16,7 +16,9 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { WORLD_IDS, requireWorld } from '@sandline/shared';
-import { DEFAULT_NAV_AGENT, bakeWorld, navBakeHash } from './nav/bake.ts';
+import { NavMesh, initNav } from '../../server/src/ai/nav/NavMesh.ts';
+import { DEFAULT_NAV_AGENT, bakeWorld, navBakeHash, onMesh } from './nav/bake.ts';
+import { coverCounts, coverPoints } from './nav/cover.ts';
 
 const dir = new URL('../../server/src/ai/nav/baked/', import.meta.url);
 mkdirSync(dir, { recursive: true });
@@ -30,6 +32,12 @@ for (const id of ids) {
   const t0 = performance.now();
   const bytes = await bakeWorld(world);
   const ms = performance.now() - t0;
+  // Cover (T-3.18), checked against the mesh just baked.
+  await initNav();
+  const mesh = NavMesh.load(bytes);
+  const cover = coverPoints(world, DEFAULT_NAV_AGENT, (p) => onMesh(mesh, p, DEFAULT_NAV_AGENT.climb));
+  mesh.destroy();
+  const counts = coverCounts(cover);
   const lines = Buffer.from(bytes).toString('base64').match(/.{1,100}/g) ?? [];
   const out = `${HEADER}
 import type { BakedNav } from './types.ts';
@@ -44,10 +52,14 @@ export const BAKED: BakedNav = {
   base64: [
     ${lines.map((l) => `'${l}'`).join(',\n    ')},
   ].join(''),
+  // T-3.18: ${counts.total} cover points, ${counts.low} low and ${counts.high} high.
+  cover: [
+    ${cover.map((c) => JSON.stringify(c)).join(',\n    ')},
+  ],
 };
 `;
   writeFileSync(new URL(`${id}.ts`, dir), out);
-  console.log(`baked '${id}': ${bytes.length} bytes in ${ms.toFixed(0)} ms`);
+  console.log(`baked '${id}': ${bytes.length} bytes in ${ms.toFixed(0)} ms; cover ${counts.total} points (${counts.low} low, ${counts.high} high)`);
 }
 
 const index = `${HEADER}
