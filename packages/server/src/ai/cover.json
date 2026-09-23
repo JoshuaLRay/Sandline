@@ -1,0 +1,14 @@
+{
+  "$comment": "T-3.19. Cover choice tuning. Candidates are cover points within maxPathM of path; each is scored protection x weights.protection (the fraction of threats it hides the concealed body from) + weights.firing when a firing position exists, less weights.pathPerM per metre walked and weights.crowd per friend within crowdRadiusM. A high point's firing position is a side step of sideStepM either way along its face. A reservation is released once its holder, having come within arriveM, is more than leaveM from it, or dies.",
+  "maxPathM": 30,
+  "sideStepM": 1.2,
+  "crowdRadiusM": 2.5,
+  "arriveM": 0.6,
+  "leaveM": 1.5,
+  "weights": {
+    "protection": 10,
+    "firing": 4,
+    "pathPerM": 0.2,
+    "crowd": 3
+  }
+}
