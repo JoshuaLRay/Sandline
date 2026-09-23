@@ -13,7 +13,6 @@ import {
 
 /** Our own numbers, so retuning stimuli.json never changes what these prove. */
 const RAW = {
-  nearMissM: 1,
   kinds: {
     shot: { radiusM: 100, confidence: 0.8 },
     impact: { radiusM: 10, confidence: 0.3 },
@@ -38,7 +37,7 @@ describe('stimuli (T-3.14)', () => {
     const bad: unknown[] = [
       null,
       { ...RAW, extra: 1 },
-      { ...RAW, nearMissM: -1 },
+      { ...RAW, nearMissM: 1 },
       { ...RAW, kinds: { ...RAW.kinds, whisper: { radiusM: 1, confidence: 1 } } },
       { ...RAW, kinds: { ...RAW.kinds, shot: undefined } },
       { ...RAW, kinds: { ...RAW.kinds, shot: { radiusM: 'far', confidence: 1 } } },

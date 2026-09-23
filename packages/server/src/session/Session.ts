@@ -93,10 +93,8 @@ import {
   getEnemy,
   type Stimulus,
   type TargetMemory,
-  STIMULI,
   beginThink,
   chooseTarget,
-  closestApproach,
   createTargetMemory,
   forgetTarget,
   hears,
@@ -107,6 +105,17 @@ import {
   stepAwareness,
   wireToTable,
   degToAngle,
+  type SuppressionState,
+  SUPPRESSION,
+  blastSuppression,
+  capsuleGap,
+  createSuppression,
+  isNearMiss,
+  passCapsule,
+  raiseSuppression,
+  suppressionConeUnits,
+  suppressionLevel,
+  suppressionToWire,
 } from '@sandline/shared';
 import { DEFAULT_HITBOX, HitboxHistory, capsuleFor, clampRewindMs, rayCapsule, resolveShot } from '../net/lagComp.ts';
 import { BRAIN_PERIOD_TICKS, Brain, type BrainTree, createBrainRegistry, defaultBrainTree } from '../ai/Brain.ts';
@@ -125,6 +134,18 @@ const HITBOX_HEIGHT = 2 * (DEFAULT_HITBOX.halfHeight + DEFAULT_HITBOX.radius);
 const CROUCH_HITBOX_HEIGHT = 2 * ((DEFAULT_HITBOX.crouchHalfHeight ?? DEFAULT_HITBOX.halfHeight) + DEFAULT_HITBOX.radius);
 /** T-2.40: prone's own hit-volume height, lower again than crouch's. */
 const PRONE_HITBOX_HEIGHT = 2 * ((DEFAULT_HITBOX.proneHalfHeight ?? DEFAULT_HITBOX.halfHeight) + DEFAULT_HITBOX.radius);
+
+/**
+ * The side slots are on, for suppression (T-3.16): past every enemy faction
+ * (`ENEMY_FACTION_BITS` wide), so no faction is ever mistaken for the squad.
+ */
+const SQUAD = -1;
+
+/** A soldier's capsule where it stands now, as the trace and the near miss both see it. */
+function soldierCapsule(state: MoveState): { centre: { x: number; y: number; z: number }; halfHeight: number; radius: number } {
+  const { halfHeight, centerOffsetY } = capsuleFor(DEFAULT_HITBOX, state.crouched, state.prone);
+  return { centre: { x: state.x, y: state.y + centerOffsetY, z: state.z }, halfHeight, radius: DEFAULT_HITBOX.radius };
+}
 
 const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
@@ -176,6 +197,11 @@ export interface Slot {
    */
   weapon: WeaponDef;
   weaponState: WeaponState;
+  /**
+   * T-3.16: how suppressed this soldier is. Rounds past it raise it; it
+   * widens the weapon cone by `SUPPRESSION.coneDeg` at full, and replicates.
+   */
+  suppression: SuppressionState;
   /** Aim pitch, in wire units. Movement only replicates yaw; shots need both. */
   pitch: number;
   /**
@@ -332,6 +358,8 @@ export interface EnemyEntity {
   aim: { netId: number; since: number } | null;
   /** Horizontal speed over its last step, m/s, as `slotSpeed` is a slot's. */
   speed: number;
+  /** T-3.16: how suppressed it is — widens its aim, and T-3.20's urge to take cover reads it. */
+  suppression: SuppressionState;
 }
 
 /** Where and how to spawn an enemy. */
@@ -496,6 +524,7 @@ export class Session {
         connection: null,
         weapon: getWeapon(WEAPON_IDS[0]),
         weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
+        suppression: createSuppression(),
         pitch: 0,
         pouch: fullPouch(),
         nextThrowAt: 0,
@@ -578,6 +607,7 @@ export class Session {
       weaponState: createWeaponState(getWeapon(def.weapon)),
       aim: null,
       speed: 0,
+      suppression: createSuppression(),
     };
     enemy.brain = new Brain(enemy, at.tree ?? this.enemyTree(def.tree));
     this.enemyList.push(enemy);
@@ -898,7 +928,8 @@ export class Session {
     const rewoundTo = this.nowMs - clampRewindMs(this.nowMs, msg.renderTimeMs);
     const shooterThen = this.hitboxes.stateAt(slot.netId, rewoundTo);
     const proneThen = shooterThen?.prone ?? slot.state.prone;
-    const shot = tryFire(slot.weapon, slot.weaponState, nowSeconds, msg.ads, proneThen);
+    // T-3.16: suppression widens the cone by its data's amount, at the level the page is told.
+    const shot = tryFire(slot.weapon, slot.weaponState, nowSeconds, msg.ads, proneThen, suppressionConeUnits(suppressionLevel(slot.suppression, nowSeconds)));
     if (shot === null) {
       // Cadence, reload or an empty magazine. Auto-reload so a player who
       // empties a magazine is not stuck until they think to press a key.
@@ -1061,11 +1092,13 @@ export class Session {
   }
 
   /**
-   * The sounds one pellet makes after it leaves the muzzle (T-3.14): an impact
-   * where it stopped, and a near miss at the closest point of its path to
-   * every living enemy it passed within `nearMissM` of without hitting.
-   * Traced against the present, not the rewound world: what an enemy hears is
-   * the round going past it now.
+   * What one pellet does after it leaves the muzzle besides what it hits
+   * (T-3.14 hearing, T-3.16 suppression). An impact is heard where it stopped
+   * and suppresses every soldier of the other side whose capsule is within
+   * `impactRadiusM` of it; a near miss — the path passing within `nearMissM`
+   * of a capsule without touching it — suppresses that soldier, and an enemy
+   * hears it at the closest point. Traced against the present, not the
+   * rewound world: what a soldier feels is the round going past it now.
    */
   private emitShotStimuli(
     shooterNetId: number,
@@ -1075,14 +1108,47 @@ export class Session {
     impact: { x: number; y: number; z: number } | null,
     hitNetId: number,
   ): void {
+    const nowSeconds = this.nowMs / 1000;
     if (impact) this.stimuli.push({ kind: 'impact', at: { x: impact.x, y: impact.y, z: impact.z }, sourceNetId: shooterNetId });
-    for (const enemy of this.enemyList) {
-      if (enemy.netId === hitNetId || isDead(enemy.health)) continue;
-      const height = enemy.state.prone ? PRONE_HITBOX_HEIGHT : enemy.state.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT;
-      const chest = { x: enemy.state.x, y: enemy.state.y + height * 0.5, z: enemy.state.z };
-      const pass = closestApproach(origin, dir, length, chest);
-      if (pass.distance <= STIMULI.nearMissM) this.stimuli.push({ kind: 'nearMiss', at: pass.at, sourceNetId: shooterNetId });
+    const shooter = this.side(shooterNetId);
+    for (const soldier of this.livingSoldiers()) {
+      if (soldier.netId === hitNetId || soldier.netId === shooterNetId) continue;
+      if (!this.hostile(shooter, soldier.side)) continue;
+      const capsule = soldierCapsule(soldier.state);
+      const pass = passCapsule(origin, dir, length, capsule);
+      if (isNearMiss(pass.gap)) {
+        raiseSuppression(soldier.suppression, SUPPRESSION.nearMiss, nowSeconds);
+        if (soldier.side !== SQUAD) this.stimuli.push({ kind: 'nearMiss', at: pass.at, sourceNetId: shooterNetId });
+      }
+      if (impact && capsuleGap(impact, capsule) <= SUPPRESSION.impactRadiusM) raiseSuppression(soldier.suppression, SUPPRESSION.impact, nowSeconds);
     }
+  }
+
+  /**
+   * Every living soldier — slot or enemy — as much of it as suppression needs:
+   * where it stands, its level, and its side (`SQUAD` for a slot, else the
+   * enemy's faction).
+   */
+  private livingSoldiers(): { netId: number; state: MoveState; suppression: SuppressionState; side: number }[] {
+    const out: { netId: number; state: MoveState; suppression: SuppressionState; side: number }[] = [];
+    for (const slot of this.slots) if (!isDead(slot.health)) out.push({ netId: slot.netId, state: slot.state, suppression: slot.suppression, side: SQUAD });
+    for (const e of this.enemyList) if (!isDead(e.health)) out.push({ netId: e.netId, state: e.state, suppression: e.suppression, side: e.faction });
+    return out;
+  }
+
+  /** Whose side a netId is on: `SQUAD`, an enemy's faction, or null for no soldier. */
+  private side(netId: number): number | null {
+    if (this.slots.some((s) => s.netId === netId)) return SQUAD;
+    return this.enemyList.find((e) => e.netId === netId)?.faction ?? null;
+  }
+
+  /**
+   * Whether rounds from `from` suppress a soldier on `to`. Only the other
+   * side's fire pins a soldier down: a squadmate's rounds past your ear, or a
+   * grenade you threw yourself, do not. Fire from nobody in particular does.
+   */
+  private hostile(from: number | null, to: number): boolean {
+    return from === null || from !== to;
   }
 
   /**
@@ -1282,6 +1348,15 @@ export class Session {
     // T-3.14: heard at the blast, and a threat from whoever threw it.
     this.stimuli.push({ kind: 'detonation', at: { x: at.x, y: at.y, z: at.z }, sourceNetId: projectile.ownerNetId });
 
+    // T-3.16: a blast suppresses the other side inside its radius, less with distance.
+    const thrower = this.side(projectile.ownerNetId);
+    for (const soldier of this.livingSoldiers()) {
+      if (!this.hostile(thrower, soldier.side)) continue;
+      const centre = soldierCapsule(soldier.state).centre;
+      const d = Math.sqrt((centre.x - at.x) ** 2 + (centre.y - at.y) ** 2 + (centre.z - at.z) ** 2);
+      raiseSuppression(soldier.suppression, blastSuppression(d), nowSeconds);
+    }
+
     const event: Message = {
       kind: 'Detonation',
       netId: projectile.netId,
@@ -1340,6 +1415,7 @@ export class Session {
           slot.input = idleInput(slot.yaw);
     slot.interactHeld = false;
           slot.weaponState = createWeaponState(slot.weapon);
+          slot.suppression = createSuppression();
           slot.pouch = fullPouch();
           slot.nextThrowAt = 0;
         }
@@ -1589,7 +1665,7 @@ export class Session {
       const cone = aimConeDeg(enemy.def.accuracy, {
         distanceM: Math.sqrt(dx * dx + dy * dy + dz * dz),
         targetSpeedMps: target.speed,
-        suppression: 0, // T-3.16 supplies the level.
+        suppression: suppressionLevel(enemy.suppression, nowSeconds),
         timeOnTargetSeconds: nowSeconds - enemy.aim.since,
       });
       const aimed = aimError(line.yaw, line.pitch, cone, aimSeed(this.currentTick, enemy.netId, shot.shotIndex));
@@ -1857,6 +1933,8 @@ export class Session {
             Math.min(100, Math.round(reloadProgress(s.weapon, s.weaponState, this.nowMs / 1000) * 100)),
             s.heldProjectile + 1,
           ],
+          // T-3.16: how suppressed, so the page can show it and widen its cone to match.
+          [COMPONENT_IDS.Suppression]: [suppressionToWire(suppressionLevel(s.suppression, this.nowMs / 1000))],
         },
       }));
 

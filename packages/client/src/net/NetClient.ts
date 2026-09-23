@@ -12,6 +12,7 @@
  */
 import {
   COMPONENT_IDS,
+  suppressionFromWire,
   ClockSync,
   type DisconnectCode,
   type RosterEntry,
@@ -218,6 +219,8 @@ export class NetClient {
   private serverClockMs = 0;
   private healthValue = 0;
   private maxHealthValue = 0;
+  /** T-3.16: the server's word on how suppressed this player is, 0..1. */
+  private suppressionValue = 0;
   /**
    * Replicated with the health (T-2.13). Vitality is gameplay, not cosmetic:
    * the predictor needs it to hold still when the server does (B-05), and the
@@ -396,6 +399,11 @@ export class NetClient {
     return this.vitalityValue;
   }
 
+  /** How suppressed the server says this player is, 0..1, as replicated (T-3.16). */
+  get suppression(): number {
+    return this.suppressionValue;
+  }
+
   get reviveProgress(): number {
     return this.reviveProgressValue;
   }
@@ -500,6 +508,7 @@ export class NetClient {
     this.rosterValue = [];
     this.healthValue = 0;
     this.maxHealthValue = 0;
+    this.suppressionValue = 0;
     this.vitalityValue = 'alive';
     this.vitalTimerValue = 0;
     this.reviveProgressValue = 0;
@@ -1007,6 +1016,8 @@ export class NetClient {
           const encodedReviverSlot = (health[5] as number | undefined) ?? 0;
           this.reviverSlotValue = encodedReviverSlot === 0 ? -1 : encodedReviverSlot - 1;
         }
+        const suppression = entity.components[COMPONENT_IDS.Suppression];
+        if (suppression) this.suppressionValue = suppressionFromWire((suppression[0] as number | undefined) ?? 0);
         const velocity = entity.components[V];
         this.reconcile(
           {

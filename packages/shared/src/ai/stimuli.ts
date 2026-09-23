@@ -53,11 +53,10 @@ export interface StimulusKindDef {
 
 export interface StimulusConfig {
   /**
-   * A shot that passes within this distance of a soldier's chest without
-   * hitting it is a near miss at its closest point, metres. T-3.16 replaces
-   * this with a capsule test and its own data.
+   * Which kind carries how far. What counts as a near miss is not here: it is
+   * T-3.16's capsule test and `data/suppression.json`, one rule for what a
+   * soldier hears go past and what suppresses it.
    */
-  nearMissM: number;
   kinds: Readonly<Record<StimulusKind, StimulusKindDef>>;
 }
 
@@ -89,7 +88,7 @@ function num(row: Row, key: string, where: string, min: number, max: number): nu
 /** Validate a stimulus table: every kind present, nothing else. */
 export function parseStimulusConfig(raw: unknown): StimulusConfig {
   const row = obj(raw, 'stimuli');
-  only(row, ['nearMissM', 'kinds'], 'stimuli');
+  only(row, ['kinds'], 'stimuli');
   const kindsRow = obj(row['kinds'], 'stimuli.kinds');
   only(kindsRow, STIMULUS_KINDS, 'stimuli.kinds');
   const kinds = {} as Record<StimulusKind, StimulusKindDef>;
@@ -101,7 +100,7 @@ export function parseStimulusConfig(raw: unknown): StimulusConfig {
     // Above zero: a confidence of 0 would be heard and forgotten in one breath.
     kinds[kind] = Object.freeze({ radiusM: num(k, 'radiusM', where, 0, 1000), confidence: num(k, 'confidence', where, 0.01, 1) });
   }
-  return Object.freeze({ nearMissM: num(row, 'nearMissM', 'stimuli', 0, 10), kinds: Object.freeze(kinds) });
+  return Object.freeze({ kinds: Object.freeze(kinds) });
 }
 
 /** The committed stimulus table, validated at import. */

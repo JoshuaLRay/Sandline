@@ -50,6 +50,13 @@ export const Projectile = defineComponent({ kind: Types.ui8, ownerSlot: Types.ui
  */
 export const Enemy = defineComponent({ archetype: Types.ui8, faction: Types.ui8 });
 
+/**
+ * How suppressed a soldier is (T-3.16): the level, 0..63 for 0..1
+ * (`suppressionToWire`). Sent for the squad's slots, so the page can show it
+ * and widen its predicted cone by the same amount the server widens the shot.
+ */
+export const Suppression = defineComponent({ level: Types.ui8 });
+
 /** Marker: this entity is sent to clients. */
 export const Replicated = defineComponent();
 
@@ -75,6 +82,8 @@ export const COMPONENT_IDS = {
   Projectile: 8,
   /** T-3.10: an enemy — which archetype, and which side. */
   Enemy: 9,
+  /** T-3.16: how suppressed this soldier is. */
+  Suppression: 10,
 } as const;
 
 export type ComponentName = keyof typeof COMPONENT_IDS;

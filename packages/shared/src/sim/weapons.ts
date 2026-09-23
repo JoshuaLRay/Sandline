@@ -338,13 +338,16 @@ export function isReloading(state: WeaponState, now: number): boolean {
  * `prone` is a stance input like `ads` (T-2.42): it scales the clamped cone by
  * the weapon's own `proneSpreadScale`, so how much steadier a gun is on the
  * ground is a row in the weapon table rather than a number in here.
+ *
+ * `extraUnits` is added last, past the clamp and the stance: suppression
+ * (T-3.16) widens a cone by exactly its data's amount, whatever the gun.
  */
-export function currentConeUnits(def: WeaponDef, state: WeaponState, ads: boolean, prone = false): number {
+export function currentConeUnits(def: WeaponDef, state: WeaponState, ads: boolean, prone = false, extraUnits = 0): number {
   const base = degToAngle(ads ? def.adsSpreadDeg : def.hipSpreadDeg);
   const max = degToAngle(def.maxSpreadDeg);
   const cone = base + state.bloomUnits;
   const clamped = cone > max ? max : cone;
-  return prone ? clamped * def.proneSpreadScale : clamped;
+  return (prone ? clamped * def.proneSpreadScale : clamped) + extraUnits;
 }
 
 /** Bloom recovery. Call once per tick with the tick's dt; never with a clock read. */
@@ -399,13 +402,15 @@ export function tryFire(
   now: number,
   ads: boolean,
   prone = false,
+  /** Added to the cone as `currentConeUnits` adds it: suppression (T-3.16). */
+  extraConeUnits = 0,
 ): Shot | null {
   finishReload(def, state, now);
   if (isReloading(state, now)) return null;
   if (now < state.nextShotAt) return null;
   if (state.ammo <= 0) return null;
 
-  const coneUnits = currentConeUnits(def, state, ads, prone);
+  const coneUnits = currentConeUnits(def, state, ads, prone, extraConeUnits);
   const shotIndex = state.shotIndex;
   state.ammo -= 1;
   state.shotIndex += 1;

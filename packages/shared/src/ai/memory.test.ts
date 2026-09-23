@@ -19,7 +19,6 @@ import { type StimulusConfig, parseStimulusConfig } from './stimuli.ts';
 const RAW = { forgetSeconds: 10, threatSeconds: 3, visibleWeight: 4, proximityM: 20, threatFactor: 2, downedFactor: 0 };
 const M: MemoryConfig = parseMemoryConfig(RAW);
 const S: StimulusConfig = parseStimulusConfig({
-  nearMissM: 1,
   kinds: {
     shot: { radiusM: 100, confidence: 0.8 },
     impact: { radiusM: 10, confidence: 0.3 },

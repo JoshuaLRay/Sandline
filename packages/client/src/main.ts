@@ -1156,6 +1156,8 @@ function frame(): void {
       // Prone fires (T-2.42), with the predicted stance as a cone input — the
       // replayed one, not the key, so it matches what the server resolves.
       prone: net.simulated?.prone ?? false,
+      // T-3.16: the server widens a suppressed shot; the prediction widens with it.
+      suppression: net.suppression,
     });
     // The local machine decides WHEN the trigger pulled; the server decides
     // what that shot hit. Both run the same cadence, so a shot the client
@@ -1547,7 +1549,7 @@ function frame(): void {
    * the arms enclose is where pellets can land.
    */
   if (crosshair) {
-    const cone = coneGapPx(combat.coneDegrees(ads, sim?.prone ?? false), camera.fov);
+    const cone = coneGapPx(combat.coneDegrees(ads, sim?.prone ?? false, net?.suppression ?? 0), camera.fov);
     const gap = Math.round(Math.max(ads ? ADS_GAP_MIN_PX : HIP_GAP_MIN_PX, cone));
     if (gap !== crosshairGap) {
       crosshairGap = gap;

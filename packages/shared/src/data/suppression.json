@@ -1,0 +1,12 @@
+{
+  "$comment": "T-3.16. A near miss is a round passing within nearMissM of a soldier's capsule SURFACE without hitting it; an impact counts within impactRadiusM of that surface (and a round that lands close has usually also passed close, so the two stack). Every raise is added to a level in 0..1 that holds for holdSeconds after the latest raise and then falls at decayPerSec. coneDeg is how much wider a human's weapon cone is at level 1 (linear below it); an AI's aim reads the level through its archetype's suppressionFactor instead.",
+  "nearMissM": 1.0,
+  "nearMiss": 0.2,
+  "impactRadiusM": 2.0,
+  "impact": 0.08,
+  "blastRadiusM": 10,
+  "blast": 0.6,
+  "holdSeconds": 0.75,
+  "decayPerSec": 0.35,
+  "coneDeg": 1.5
+}
