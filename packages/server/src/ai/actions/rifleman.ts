@@ -48,6 +48,7 @@ function hands(frame: Frame, crouch: boolean, lookAt: Vec3 | null): void {
   frame.blackboard.set('reload', false);
   frame.blackboard.set('crouch', crouch);
   frame.blackboard.set('lookAt', lookAt);
+  frame.blackboard.set('interact', false);
 }
 
 function heldPoint(body: CombatBody) {
@@ -148,8 +149,12 @@ export function registerRiflemanLeaves(registry: BrainRegistry): BrainRegistry {
         let point = heldPoint(body);
         // `keep` (the MG's way back to cover): the point it holds, flanked or not — moving is `flanked`'s to decide.
         const keep = args['keep'] === true && point !== null;
-        if (!point || (!keep && !cover.stillProtects(body.netId, [eye]))) {
-          point = cover.choose(body.netId, { from: body.state, threats: [eye], friends: body.combat.friendsOf(body.netId, body.faction) })?.point ?? null;
+        // A friendly bot's cover is near its formation place (T-3.26); one it holds that the formation has left behind is given up.
+        const near = body.coverNear?.() ?? null;
+        const inReach = (p: { x: number; z: number }) => near === null || Math.sqrt((p.x - near.x) ** 2 + (p.z - near.z) ** 2) <= near.withinM;
+        if (!point || (!keep && !cover.stillProtects(body.netId, [eye])) || !inReach(point)) {
+          const accept = near ? { accept: inReach } : {};
+          point = cover.choose(body.netId, { from: body.state, threats: [eye], friends: body.combat.friendsOf(body.netId, body.faction), ...accept })?.point ?? null;
         }
         if (!point) return 'failure';
         hands(frame, false, null);

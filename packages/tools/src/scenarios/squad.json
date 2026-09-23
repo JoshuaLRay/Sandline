@@ -1,0 +1,8 @@
+{
+  "$comment": "T-3.26 squad thresholds, asserted over `seeds` runs by `pnpm sim-run --scenario squad` and its test. A human lead holds the low wall's south side; the five bots run the committed `friendly` tree; a group of `riflemen` riflemen comes from up range. Over `fightSeconds` the squad must kill at least `minKillShare` of every rifleman spawned, across all runs, and no round fired by a slot may hurt a slot, in any run.",
+  "seeds": 10,
+  "fightSeconds": 90,
+  "riflemen": 3,
+  "minKillShare": 0.8,
+  "maxFriendlyHits": 0
+}

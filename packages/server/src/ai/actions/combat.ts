@@ -53,6 +53,11 @@ export interface CombatBody extends BrainBody {
   readonly nextThrowAt: number;
   /** T-3.22: how long its target has been still, as it knows it. */
   readonly still: StillWatch;
+  /**
+   * T-3.26: where its cover must be — a friendly bot's formation place, and
+   * how far from it — or absent/null for an enemy, which may go anywhere.
+   */
+  coverNear?(): { x: number; z: number; withinM: number } | null;
 }
 
 export function isCombatBody(body: BrainBody): body is CombatBody {

@@ -1,5 +1,5 @@
 {
-  "$comment": "T-3.25. The squad's two fireteams of three (§1.2), by slot index, fixed: slot order is fireteam order. Each follows its lead in its own formation. A formation is offsets from the lead, [right, back] in metres in the lead's direction of travel, one per follower rank: the lead's own fireteam first, then the other, each in slot order, so the other fireteam falls in behind when both follow one lead — in file, down the middle of the wedge. Stopped (under stillMps), the lead's followers close up to closeUpScale of those offsets. A follower walks when the lead walks and sprints when the lead sprints — or when it is more than catchUpM from its place, to rejoin; within arriveM of its place with the lead still, it stands. A place nearer the lead than minFromLeadM (a wall squeezed it in) is refused for the one straight behind. While the lead sprints, the offsets to the side close to sprintSpreadScale: a running fireteam tightens up, and a follower on the outside of a corner cannot outrun a lead who is already running. bandM + bandPerM × the offset's length: how far from its place a follower may be and still count as in formation — what the tests hold it to over a route (looser the further back the place).",
+  "$comment": "T-3.25. The squad's two fireteams of three (§1.2), by slot index, fixed: slot order is fireteam order. Each follows its lead in its own formation. A formation is offsets from the lead, [right, back] in metres in the lead's direction of travel, one per follower rank: the lead's own fireteam first, then the other, each in slot order, so the other fireteam falls in behind when both follow one lead — in file, down the middle of the wedge. Stopped (under stillMps), the lead's followers close up to closeUpScale of those offsets. A follower walks when the lead walks and sprints when the lead sprints — or when it is more than catchUpM from its place, to rejoin; within arriveM of its place with the lead still, it stands. A place nearer the lead than minFromLeadM (a wall squeezed it in) is refused for the one straight behind. While the lead sprints, the offsets to the side close to sprintSpreadScale: a running fireteam tightens up, and a follower on the outside of a corner cannot outrun a lead who is already running. bandM + bandPerM × the offset's length: how far from its place a follower may be and still count as in formation — what the tests hold it to over a route (looser the further back the place). T-3.26, bot: a friendly bot sees, aims and fires by `archetype`'s perception and accuracy (an enemies.json row) with the slot's own gun; takes cover only at points within its formation band (bandM + bandPerM × its offset) of its formation place; holds fire while a squadmate's capsule, grown by friendlyMarginM, is on the line to its aim point; and revives a downed squadmate within reviveSeekM, holding interact from reviveReachFraction of the revive range.",
   "fireteams": [
     { "slots": [0, 1, 2], "formation": "wedge" },
     { "slots": [3, 4, 5], "formation": "file" }
@@ -15,5 +15,11 @@
   "minFromLeadM": 1.2,
   "sprintSpreadScale": 0.4,
   "bandM": 2.5,
-  "bandPerM": 0.25
+  "bandPerM": 0.25,
+  "bot": {
+    "archetype": "rifleman",
+    "friendlyMarginM": 0.5,
+    "reviveSeekM": 30,
+    "reviveReachFraction": 0.6
+  }
 }

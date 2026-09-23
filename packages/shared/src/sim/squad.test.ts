@@ -22,5 +22,10 @@ describe('the squad (T-3.25)', () => {
     expect(() => parseSquadConfig({ ...RAW_SQUAD, formations: { ...RAW_SQUAD.formations, file: [[0, 0.5], [0, 3], [0, 6], [0, 9], [0, 12]] } })).toThrow(/within 1 m/);
     expect(() => parseSquadConfig({ ...RAW_SQUAD, closeUpScale: 0 })).toThrow(/closeUpScale/);
     expect(() => parseSquadConfig({ ...RAW_SQUAD, colour: 'green' })).toThrow(/colour/);
+    // T-3.26: a bot fights as an archetype that exists, and reaches a downed squadmate before it revives.
+    expect(SQUAD.bot.archetype).toBe('rifleman');
+    expect(() => parseSquadConfig({ ...RAW_SQUAD, bot: { ...RAW_SQUAD.bot, archetype: 'sniper' } })).toThrow(/sniper/);
+    expect(() => parseSquadConfig({ ...RAW_SQUAD, bot: { ...RAW_SQUAD.bot, reviveReachFraction: 0 } })).toThrow(/reviveReachFraction/);
+    expect(() => parseSquadConfig({ ...RAW_SQUAD, bot: { ...RAW_SQUAD.bot, courage: 1 } })).toThrow(/courage/);
   });
 });
