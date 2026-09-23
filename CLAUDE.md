@@ -29,6 +29,7 @@ ADRs that section names → implement. That's the whole loop. See
 | `pnpm bot --url ws://localhost:8080 --count 2 --ticks 600` | same bots over real sockets; numbers should match the line above |
 | `pnpm bot --url ws://localhost:8080 --room K7PM --count 1` | a bot into a room people are in |
 | `?host=ws://…&room=K7PM` | pre-fills the lobby |
+| `?enemies` | three riflemen on the in-page range (one standing, two patrolling), respawned after each despawn |
 | `MAX_ROOMS=4 ROOM_GRACE_MS=60000 pnpm host` | rooms per process and how long an empty room lives |
 | `WORLD=range pnpm host` | the named world every room is built with (`data/worlds/*.json`; `range` is the default and, for now, the only one) |
 | `AI_DEBUG=1 pnpm host` | clients may ask for AI debug reports (B in the page); without it the host sends none |

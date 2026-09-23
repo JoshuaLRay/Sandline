@@ -123,3 +123,26 @@ describe('LocalServer per-client links', () => {
     expect(server.inFlight).toBe(peer.inFlight);
   });
 });
+
+describe('LocalServer clock', () => {
+  beforeAll(() => initNav());
+
+  it('joins however long the page was open before the session started (T-3.11)', () => {
+    // The page's clock is performance.now(), which is seconds in by the time
+    // anyone clicks. Past the five-second heartbeat timeout this used to drop
+    // the connection before its Join was read.
+    const server = new LocalServer(LAN);
+    const mine = new NetClient(server.transport, 'me');
+    mine.join();
+    settleThrough(server, 60_000, 60_033, 60_066);
+    expect(mine.joined).toBe(true);
+
+    // A client attached later, on the session's clock as it then stands.
+    const peer = server.connect(LAN);
+    const theirs = new NetClient(peer.transport, 'them');
+    theirs.join();
+    settleThrough(server, 60_100, 60_133);
+    expect(theirs.joined).toBe(true);
+    expect(mine.joined).toBe(true);
+  });
+});

@@ -55,7 +55,7 @@ import {
 import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { type ClientLink, DEFAULT_LINK, type LinkConditions, LocalServer } from './net/LocalServer.ts';
-import { initNav } from '@sandline/server/nav';
+import { type NavMesh, initNav } from '@sandline/server/nav';
 import { NetClient, type ServerDetonation, type ServerShot } from './net/NetClient.ts';
 import {
   HostUrlError,
@@ -68,6 +68,7 @@ import {
   shareLink,
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
+import { QaEnemies } from './net/qaEnemies.ts';
 import { DEFAULT_WORLD_ID, type World, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
@@ -87,11 +88,11 @@ import {
 } from './character/humanoidPlaceholder.ts';
 import { requireRig, rigOf } from './character/humanoidRig.ts';
 import { FROM_THE_FRONT, hitReactionFrom, shooterDirection } from './character/hitReaction.ts';
-import { createHumanoidSoldier, setSoldierPalette } from './character/humanoidSoldier.ts';
-import { paletteFor } from './character/soldierTexture.ts';
-import { type KickState, addKick, createKick, decayKick } from './character/weaponKick.ts';
-import { createLocomotionPoseDriver, type LocomotionPoseDriver } from './character/locomotionPose.ts';
-import { type FootPlacementDriver, createFootPlacementDriver } from './character/footPlacement.ts';
+import { createHumanoidSoldier } from './character/humanoidSoldier.ts';
+import { addKick, createKick, decayKick } from './character/weaponKick.ts';
+import { createLocomotionPoseDriver } from './character/locomotionPose.ts';
+import { createFootPlacementDriver } from './character/footPlacement.ts';
+import { RemoteSoldiers } from './character/remoteSoldiers.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
@@ -307,11 +308,16 @@ scene.add(player);
  * now the other five slots of the authoritative session (ADR-001: six, always),
  * arriving over the wire and rendered at the interpolation delay. If they stand
  * still it is because nothing is driving them — not because they are scenery.
+ * Since T-3.11 enemies are drawn by the same path in the enemy palette; see
+ * `remoteSoldiers.ts`.
  */
-const remoteMeshes = new Map<number, THREE.Mesh>();
-const remotePoseDrivers = new Map<number, LocomotionPoseDriver>();
-const remoteFeet = new Map<number, FootPlacementDriver>();
-const remoteRenderedPrev = new Map<number, { x: number; z: number }>();
+const remotes = new RemoteSoldiers({
+  scene,
+  shootable,
+  create: createSoldier,
+  world: () => activeWorld.boxes,
+  config,
+});
 
 /** A signed wire angle (1024 per turn) in radians. */
 function wireToRadians(wire: number): number {
@@ -323,25 +329,6 @@ function wireToRadians(wire: number): number {
  * remote's from the server's shot event by shooter. Both decay per frame.
  */
 let kick = createKick();
-const remoteKicks = new Map<number, KickState>();
-
-function remoteMesh(netId: number): THREE.Mesh {
-  let mesh = remoteMeshes.get(netId);
-  if (!mesh) {
-    // The root is the server's hitbox capsule (see humanoidSoldier.ts), so
-    // the non-recursive raycasts below hit exactly what the server would.
-    mesh = createSoldier('remote');
-    mesh.name = `net ${netId}`;
-    scene.add(mesh);
-    remoteMeshes.set(netId, mesh);
-    remotePoseDrivers.set(netId, createLocomotionPoseDriver(mesh));
-    remoteFeet.set(netId, createFootPlacementDriver(mesh, { world: () => activeWorld.boxes, config }));
-    // Created on demand, so it has to join the list on demand too. Leaving
-    // remote players out is what produced the down-and-left shots.
-    shootable.push(mesh);
-  }
-  return mesh;
-}
 
 /**
  * Grenades and rockets in the page (T-2.32).
@@ -517,6 +504,8 @@ interface LiveSession {
   remote: RemoteServer | null;
   sparring: SparringPartner | null;
   sparringLink: ClientLink | null;
+  /** `?enemies` on the in-page session (T-3.11), else null. */
+  qaEnemies: QaEnemies | null;
   choice: LobbyChoice;
   /** The panel of link sliders, rebuilt per session: it binds to `local`. */
   networkPanel: Panel;
@@ -570,7 +559,7 @@ function onServerShot(net: NetClient, shot: ServerShot): void {
     // replicated beside their reload.
     const held = net.remoteWeapon(shot.shooterNetId);
     const def = getWeapon(WEAPON_IDS[held.index] ?? WEAPON_IDS[0]);
-    remoteKicks.set(shot.shooterNetId, addKick(remoteKicks.get(shot.shooterNetId) ?? createKick(), def, false));
+    remotes.kick(shot.shooterNetId, (k) => addKick(k, def, false));
   }
   if (shot.shooterNetId === net.netId) {
     // Our own shot: the tracer is already drawn, so this only lands the hit
@@ -602,7 +591,7 @@ function landImpact(net: NetClient, shot: ServerShot): void {
     if (surface) effects.impact(surface.point, surface.normal, now);
     return;
   }
-  const target = shot.targetNetId === net.netId ? player : remoteMeshes.get(shot.targetNetId);
+  const target = shot.targetNetId === net.netId ? player : remotes.get(shot.targetNetId);
   // A downed soldier is already on the ground; the flinch belongs to the upright.
   const targetDowned = shot.targetNetId === net.netId ? net.vitality !== 'alive' : net.remoteVitality(shot.targetNetId) !== 'alive';
   if (!target || targetDowned) return;
@@ -614,7 +603,7 @@ function landImpact(net: NetClient, shot: ServerShot): void {
    * the damage itself. A shooter with no mesh yet — a shot from someone who
    * has not been interpolated — reads as a shot from the front.
    */
-  const shooter = shot.shooterNetId === net.netId ? player : remoteMeshes.get(shot.shooterNetId);
+  const shooter = shot.shooterNetId === net.netId ? player : remotes.get(shot.shooterNetId);
   const from = shooter
     ? shooterDirection(shooter.position.x - target.position.x, shooter.position.z - target.position.z, target.rotation.y)
     : FROM_THE_FRONT;
@@ -667,7 +656,7 @@ function onServerDetonation(net: NetClient, event: ServerDetonation): void {
   }
 
   for (const target of event.targets) {
-    const mesh = target.netId === net.netId ? player : remoteMeshes.get(target.netId);
+    const mesh = target.netId === net.netId ? player : remotes.get(target.netId);
     const downed = target.netId === net.netId
       ? net.vitality !== 'alive'
       : net.remoteVitality(target.netId) !== 'alive';
@@ -696,12 +685,23 @@ function onServerDetonation(net: NetClient, event: ServerDetonation): void {
  */
 const navReady = initNav();
 
+/**
+ * `?enemies` (T-3.11): three riflemen downrange in the in-page session, two
+ * of them patrolling — see `qaEnemies.ts`. Walking needs the range's navmesh
+ * in the session, and the bake is a few hundred kB, so it is imported here,
+ * on demand, and nowhere else in the page.
+ */
+const qaEnemiesWanted = new URLSearchParams(location.search).has('enemies');
+const qaNavMesh: Promise<NavMesh | null> = qaEnemiesWanted
+  ? navReady.then(() => import('@sandline/server/nav/baked')).then((baked) => baked.loadWorldNavMesh(DEFAULT_WORLD_ID))
+  : Promise.resolve(null);
+
 function chooseSession(choice: LobbyChoice): void {
-  if (choice.kind === 'local') void navReady.then(() => startSession(choice));
+  if (choice.kind === 'local') void Promise.all([navReady, qaNavMesh]).then(([, navMesh]) => startSession(choice, navMesh));
   else startSession(choice);
 }
 
-function startSession(choice: LobbyChoice): void {
+function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null): void {
   if (live) leaveSession(null);
 
   // One config object, shared by reference with both the session and the
@@ -709,7 +709,8 @@ function startSession(choice: LobbyChoice): void {
   // (Remote: the host owns the authoritative config and this one only predicts,
   // so the movement panel moves prediction alone and will mispredict until the
   // host is restarted to match. Tuning is an in-page-session activity.)
-  const local = choice.kind === 'local' ? new LocalServer(link, config) : null;
+  const local = choice.kind === 'local' ? new LocalServer(link, config, qaNav ? { navMesh: qaNav } : {}) : null;
+  const qaEnemies = local && qaNav ? new QaEnemies(local) : null;
   const remote = choice.kind === 'remote' ? new RemoteServer(choice.host) : null;
   const server: SessionSource = local ?? (remote as RemoteServer);
   const net = new NetClient(server.transport, choice.kind === 'remote' ? choice.name : 'qa', config);
@@ -797,7 +798,7 @@ function startSession(choice: LobbyChoice): void {
   );
   panels.insertBefore(networkPanel.root, netgraph.root);
 
-  live = { server, net, local, remote, sparring, sparringLink, choice, networkPanel };
+  live = { server, net, local, remote, sparring, sparringLink, qaEnemies, choice, networkPanel };
   lobby.hide();
   squadPanel.setVisible(true);
   player.visible = !input.firstPerson;
@@ -822,15 +823,7 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
     gone.remote?.close();
     gone.networkPanel.root.remove();
   }
-  for (const [netId, mesh] of remoteMeshes) {
-    scene.remove(mesh);
-    const at = shootable.indexOf(mesh);
-    if (at >= 0) shootable.splice(at, 1);
-    remoteMeshes.delete(netId);
-    remotePoseDrivers.delete(netId);
-    remoteFeet.delete(netId);
-    remoteRenderedPrev.delete(netId);
-  }
+  remotes.clear();
   combat.reset();
   effects.reset();
   playerRig.setPose('standing');
@@ -838,10 +831,6 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
   playerRig.aimAt(0, 0);
   kick = createKick();
   localFeet.reset();
-  remoteKicks.clear();
-  remotePoseDrivers.clear();
-  remoteFeet.clear();
-  remoteRenderedPrev.clear();
   simPrev = null;
   simCur = null;
   player.visible = false;
@@ -1128,6 +1117,7 @@ function frame(): void {
       if (speed > peakSpeed) peakSpeed = speed;
     }
 
+    live?.qaEnemies?.step();
     server.step(now);
 
     const here = net.simulated;
@@ -1321,78 +1311,13 @@ function frame(): void {
 
   const downed = localDowned;
 
-  // Remote characters at the interpolation delay (T-1.16). Their locomotion
-  // comes from the same rendered samples used to place them, so animation never
-  // feeds back into interpolation, hitboxes, or authoritative movement.
-  const seenRemoteIds = new Set<number>();
-  for (const [netId, sample] of net?.remotes() ?? []) {
-    seenRemoteIds.add(netId);
-    const mesh = remoteMesh(netId);
-    // The slot's colours (T-2.33), re-asked every frame rather than fixed at
-    // creation: a slot flips between bot and human on the LIVE entity
-    // (ADR-001), and the body is where that should show. A repaint is a
-    // texture swap the call itself skips when nothing changed.
-    const remoteSlot = net?.remoteSlot(netId) ?? -1;
-    setSoldierPalette(mesh, paletteFor({ slot: remoteSlot, human: net?.roster[remoteSlot]?.human }));
-    mesh.position.set(sample.x, sample.y + 0.9, sample.z);
-    const remoteYaw = wireToTable(sample.yaw);
-    mesh.rotation.y = Math.atan2(sin(remoteYaw), cos(remoteYaw));
-
-    const previous = remoteRenderedPrev.get(netId);
-    const remoteVelocityX = previous && dt > 0 ? (sample.x - previous.x) / dt : 0;
-    const remoteVelocityZ = previous && dt > 0 ? (sample.z - previous.z) / dt : 0;
-    const remoteDowned = net?.remoteVitality(netId) === 'downed';
-    const driver = remotePoseDrivers.get(netId)!;
-    const remoteLocomotion = classifyLocomotion(
-      {
-        velocityX: remoteVelocityX,
-        velocityZ: remoteVelocityZ,
-        grounded: true,
-        crouched: sample.crouched,
-        prone: sample.prone,
-        downed: remoteDowned,
-        facingYaw: sample.yaw,
-        vaultProgress: sample.vaultElapsed == null ? null : Math.min(1, sample.vaultElapsed / config.vaultSeconds),
-      },
-      config,
-    );
-    const remoteRig = requireRig(mesh);
-    if (remoteDowned) {
-      remoteRig.setPose('downed');
-      driver.reset();
-      remoteRig.aimAt(0, 0);
-    } else {
-      remoteRig.setPose(sample.prone ? 'prone' : sample.crouched ? 'crouched' : 'standing');
-      driver.update(remoteLocomotion, dt);
-      // Their replicated aim pitch, the one the server traces their shots
-      // along, unsigned on the wire like yaw (T-2.25); their kick from the
-      // server's shot events and their reload from the snapshot (T-2.26).
-      const remoteKick = decayKick(remoteKicks.get(netId) ?? createKick(), dt);
-      remoteKicks.set(netId, remoteKick);
-      const remoteHeld = net?.remoteWeapon(netId);
-      remoteRig.setHeld(
-        (remoteHeld && remoteHeld.pouch >= 0 ? PROJECTILE_ORDER[remoteHeld.pouch] : WEAPON_IDS[remoteHeld?.index ?? 0]) ?? WEAPON_IDS[0],
-      );
-      remoteRig.hold({
-        pitch: wireToRadians(sample.pitch > 511 ? sample.pitch - 1024 : sample.pitch),
-        weight: 1 - driver.vaultWeight,
-        kickBack: remoteKick.back,
-        kickUp: remoteKick.up,
-        reload: net?.remoteWeapon(netId).reloadProgress ?? 0,
-      });
-    }
-    // Their feet stand on what is under them (T-2.28). The mesh is already at
-    // its interpolated place, so the layer reads the world the same way the
-    // local one does; a vaulting or downed soldier gets none.
-    remoteFeet.get(netId)?.update(
-      { feetY: sample.y, active: !remoteDowned && driver.vaultWeight === 0 },
-      dt,
-    );
-    remoteRenderedPrev.set(netId, { x: sample.x, z: sample.z });
-  }
-  for (const netId of remoteRenderedPrev.keys()) {
-    if (!seenRemoteIds.has(netId)) remoteRenderedPrev.delete(netId);
-  }
+  // Remote characters at the interpolation delay (T-1.16), squad and enemy
+  // alike (T-3.11): one rig, one pose driver, one weapon layer, one set of
+  // feet. What differs is the paint, chosen from the entity's own components —
+  // an `Enemy` component means the other side, and an enemy has no slot, so
+  // it is in no roster and on no HUD. Anything the client no longer returns
+  // has despawned, and everything drawn for it goes with it.
+  remotes.update(net, dt);
 
   player.position.set(rx, ry + 0.9, rz);
 
