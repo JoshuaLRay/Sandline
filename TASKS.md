@@ -47,8 +47,9 @@ human fire path (T-3.15), and rounds going past suppress every soldier (T-3.16),
 (T-3.17, `?suppress` for eyes), and cover points are baked beside the navmesh
 (T-3.18) and queried and reserved (T-3.19), and the rifleman fights from it
 (T-3.20, `pnpm sim-run --scenario cover-duel`), and groups suppress and flank a
-pinned target (T-3.21, `--scenario pinned`). The next build tasks are
-**T-3.22** (AI grenades) and **T-3.27** (orders on the wire).
+pinned target (T-3.21, `--scenario pinned`), and throw grenades at a target
+gone still in cover (T-3.22). The next build tasks are **T-3.23** (rifleman
+and MG) and **T-3.27** (orders on the wire).
 
 ---
 
@@ -266,13 +267,13 @@ once before the first M3 task — it is short and every task leans on it.
 | T-3.19 | DONE | T-3.18, T-3.13 |
 | T-3.20 | DONE | T-3.05, T-3.14, T-3.15, T-3.19 |
 | T-3.21 | DONE | T-3.20, T-3.16, T-3.06 |
-| T-3.22 | OPEN | T-3.20 |
+| T-3.22 | DONE | T-3.20 |
 
 ### E-3.6 — Enemy archetypes (slice set: rifleman, MG — ADR-015)
 
 | Task | Status | Depends |
 |---|---|---|
-| T-3.23 | BLOCKED | T-3.21, T-3.22 |
+| T-3.23 | OPEN | T-3.21, T-3.22 |
 | 🧍 T-3.24 | BLOCKED — run sheet `e3-5.md` to be written first | T-3.11, T-3.17, T-3.23 |
 
 ### E-3.7 — Friendly bot

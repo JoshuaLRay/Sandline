@@ -1,5 +1,5 @@
 {
-  "$comment": "T-3.20. The rifleman engages from cover. With a threat known: first any role its group gave it (T-3.21) \u2014 a suppressor fires at the pinned target without sight (reloading where it stands when low), a flanker walks the group's route to its flank point; otherwise, relocate when its point is flanked; in cover, reload when low, advance when unopposed, peek and fire a burst unless pressured (at most one peek per cooldown), else stay down; out of cover, take cover; with none to take, fight in the open. Nothing known: stand down. Numbers are the leaves' args.",
+  "$comment": "T-3.20. The rifleman engages from cover. With a threat known: first a grenade at a target that has sat still in cover (T-3.22, tuned in server/src/ai/throw.json) if one can be thrown clear of every friend; then any role its group gave it (T-3.21) \u2014 a suppressor fires at the pinned target without sight (reloading where it stands when low), a flanker walks the group's route to its flank point; otherwise, relocate when its point is flanked; in cover, reload when low, advance when unopposed, peek and fire a burst unless pressured (at most one peek per cooldown), else stay down; out of cover, take cover; with none to take, fight in the open. Nothing known: stand down. Numbers are the leaves' args.",
   "id": "rifleman",
   "root": {
     "type": "selector",
@@ -17,6 +17,20 @@
             "type": "selector",
             "reactive": true,
             "children": [
+              {
+                "type": "sequence",
+                "reactive": true,
+                "children": [
+                  {
+                    "type": "condition",
+                    "name": "grenadeTarget"
+                  },
+                  {
+                    "type": "action",
+                    "name": "throwGrenade"
+                  }
+                ]
+              },
               {
                 "type": "sequence",
                 "reactive": true,

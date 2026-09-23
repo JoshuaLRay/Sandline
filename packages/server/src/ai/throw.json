@@ -1,0 +1,15 @@
+{
+  "$comment": "T-3.22 AI grenades. A target whose known position has stayed within staticRadiusM for staticSeconds, and whose crouched body the thrower's standing eye cannot see (it is in cover), is a grenade target between minRangeM and maxRangeM. The brain walks launch pitches from pitchMinDeg to pitchMaxDeg every pitchStepDeg through projectileArc — the stepper the server flies it with — and throws the one whose detonation lands nearest the target, within reachFraction of the blast radius of the middle of its crouched body and further than the blast radius plus safetyMarginM from itself and every friend (measured flat, which is never nearer than the real distance). A search that finds nothing is not tried again for retrySeconds; one that throws, not for againSeconds — the first has to go off before a second is worth throwing. A target known to be downed is not thrown at. projectile: which row of projectiles.json it throws.",
+  "projectile": "frag",
+  "staticSeconds": 3,
+  "staticRadiusM": 1,
+  "minRangeM": 8,
+  "maxRangeM": 35,
+  "pitchMinDeg": -10,
+  "pitchMaxDeg": 80,
+  "pitchStepDeg": 2,
+  "reachFraction": 0.5,
+  "safetyMarginM": 1.5,
+  "retrySeconds": 1,
+  "againSeconds": 5
+}

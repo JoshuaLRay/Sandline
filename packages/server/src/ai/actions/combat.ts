@@ -10,10 +10,11 @@
  * slot, a test's bare body) is simply not a fighter, and the fighting leaves
  * fail on it rather than throw.
  */
-import { DEFAULT_MUZZLE_RIG, type SuppressionState, type TargetMemory, type WeaponDef, type WeaponState, type WorldBox } from '@sandline/shared';
+import { DEFAULT_MUZZLE_RIG, type ProjectileDef, type ProjectileWorld, type SuppressionState, type TargetMemory, type WeaponDef, type WeaponState, type WorldBox } from '@sandline/shared';
 import type { BrainBody } from '../Brain.ts';
 import type { CoverSystem } from '../cover.ts';
 import type { EnemyGroup } from '../group.ts';
+import type { StillWatch } from '../throw.ts';
 
 export type Vec3 = { x: number; y: number; z: number };
 
@@ -28,6 +29,10 @@ export interface CombatWorld {
   eyeOf(netId: number): Vec3 | null;
   /** Feet of the other living soldiers on `faction`'s side, for crowding. */
   friendsOf(netId: number, faction: number): Vec3[];
+  /** T-3.22: this session's row for a PROJECTILE_IDS index (tuned or shipped), or null. */
+  projectileDef(index: number): Readonly<ProjectileDef> | null;
+  /** T-3.22: what a projectile collides with here. */
+  projectileWorld(): ProjectileWorld;
 }
 
 /** A body that can fight: an enemy, as the session builds it. */
@@ -43,6 +48,11 @@ export interface CombatBody extends BrainBody {
   readonly combat: CombatWorld;
   /** T-3.21: the group it was spawned with, or null for one on its own. */
   readonly group: EnemyGroup | null;
+  /** T-3.22: what it carries to throw, indexed like PROJECTILE_IDS, and when it may next throw (seconds). */
+  readonly pouch: readonly number[];
+  readonly nextThrowAt: number;
+  /** T-3.22: how long its target has been still, as it knows it. */
+  readonly still: StillWatch;
 }
 
 export function isCombatBody(body: BrainBody): body is CombatBody {
