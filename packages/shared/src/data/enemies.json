@@ -9,7 +9,18 @@
     "corpseSeconds": 10,
     "perception": {
       "visionRangeM": 80,
-      "fovDeg": 120
+      "fovDeg": 120,
+      "detectAt": 0.7,
+      "nearRatePerSec": 3.5,
+      "farRatePerSec": 0.2,
+      "maxRatePerSec": 3,
+      "decayPerSec": 0.25,
+      "crouchFactor": 0.6,
+      "proneFactor": 0.25,
+      "movingSpeedMps": 0.5,
+      "movingFactor": 1.5,
+      "firingFactor": 3,
+      "edgeFactor": 0.3
     },
     "accuracy": {
       "baseConeDeg": 2

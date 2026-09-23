@@ -16,6 +16,22 @@ import { RANGE_TARGETS, isRangeTarget } from './range.ts';
 import { MAX_SLOTS } from '../net/Connection.ts';
 
 /** A valid row of our own, so retuning enemies.json never changes what these prove. */
+const PERCEPTION = {
+  visionRangeM: 50,
+  fovDeg: 90,
+  detectAt: 0.5,
+  nearRatePerSec: 2,
+  farRatePerSec: 0.5,
+  maxRatePerSec: 2,
+  decayPerSec: 0.1,
+  crouchFactor: 0.5,
+  proneFactor: 0.2,
+  movingSpeedMps: 1,
+  movingFactor: 2,
+  firingFactor: 2,
+  edgeFactor: 0.5,
+};
+
 const ROW = {
   id: 'rifleman',
   name: 'Test rifleman',
@@ -24,7 +40,7 @@ const ROW = {
   tree: 'idle',
   downable: false,
   corpseSeconds: 4,
-  perception: { visionRangeM: 50, fovDeg: 90 },
+  perception: PERCEPTION,
   accuracy: { baseConeDeg: 1.5 },
 };
 
@@ -58,7 +74,12 @@ describe('enemy archetypes (T-3.10)', () => {
     ['a mismatched id', { id: 'mg' }, /id field/],
     ['an unknown key', { armour: 3 }, /armour/],
     ['a missing perception block', { perception: undefined }, /perception/],
-    ['an unknown perception key', { perception: { visionRangeM: 50, fovDeg: 90, smell: 1 } }, /smell/],
+    ['an unknown perception key', { perception: { ...PERCEPTION, smell: 1 } }, /smell/],
+    ['a missing perception number', { perception: { ...PERCEPTION, detectAt: undefined } }, /detectAt/],
+    ['a zero detection threshold', { perception: { ...PERCEPTION, detectAt: 0 } }, /detectAt/],
+    ['a crouch factor past 1', { perception: { ...PERCEPTION, crouchFactor: 1.5 } }, /crouchFactor/],
+    ['far faster than near', { perception: { ...PERCEPTION, farRatePerSec: 3 } }, /farRatePerSec/],
+    ['prone faster than crouched', { perception: { ...PERCEPTION, proneFactor: 0.6 } }, /proneFactor/],
     ['a missing accuracy number', { accuracy: {} }, /baseConeDeg/],
   ])('refuses %s', (_label, change, message) => {
     expect(() => parseEnemyTable(table({ ...ROW, ...change }))).toThrow(message);

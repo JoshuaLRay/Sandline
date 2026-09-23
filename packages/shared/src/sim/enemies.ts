@@ -8,8 +8,8 @@
  * rifleman a rifleman is here, as data: its health, its weapon, the tree its
  * brain runs, whether it can be downed (no — an enemy dies), how long its
  * corpse lies, and the perception and accuracy blocks later tasks read
- * (T-3.13 perception, T-3.16 aim). Those two blocks hold the fewest numbers
- * that name what they are for; the tasks that use them add the rest.
+ * (T-3.13 perception, T-3.16 aim). T-3.13 filled in the perception block;
+ * the accuracy block still holds only the number that names it.
  *
  * SHARED because the client names an archetype off the `Enemy` component's
  * index (T-3.11) and the server builds one from the same row.
@@ -23,6 +23,28 @@ export interface EnemyPerception {
   visionRangeM: number;
   /** Full width of its view cone, degrees. */
   fovDeg: number;
+  /** Awareness (0..1) at or past which a target is detected (T-3.13). */
+  detectAt: number;
+  /** Awareness rise per second for a target at the eye: standing, still, dead ahead, fully exposed. */
+  nearRatePerSec: number;
+  /** The same at the edge of vision range. Between the two it falls on the square of closeness. */
+  farRatePerSec: number;
+  /** Ceiling on the rise per second whatever the factors say, so no one think detects. */
+  maxRatePerSec: number;
+  /** Awareness fall per second while a target is not seen. */
+  decayPerSec: number;
+  /** Rate multiplier for a crouched target (standing is 1). */
+  crouchFactor: number;
+  /** Rate multiplier for a prone target. */
+  proneFactor: number;
+  /** Horizontal speed, m/s, at or past which a target counts as moving. */
+  movingSpeedMps: number;
+  /** Rate multiplier for a moving target. */
+  movingFactor: number;
+  /** Rate multiplier for a target that fired this think. */
+  firingFactor: number;
+  /** Rate multiplier at the cone's edge, rising linearly (in the cosine) to 1 dead ahead. */
+  edgeFactor: number;
 }
 
 export interface EnemyAccuracy {
@@ -125,6 +147,48 @@ function bool(row: Row, key: string, where: string): boolean {
   return v;
 }
 
+const PERCEPTION_KEYS = [
+  'visionRangeM',
+  'fovDeg',
+  'detectAt',
+  'nearRatePerSec',
+  'farRatePerSec',
+  'maxRatePerSec',
+  'decayPerSec',
+  'crouchFactor',
+  'proneFactor',
+  'movingSpeedMps',
+  'movingFactor',
+  'firingFactor',
+  'edgeFactor',
+] as const;
+
+function parsePerception(raw: unknown, where: string): EnemyPerception {
+  const row = obj(raw, where);
+  only(row, PERCEPTION_KEYS, where);
+  const out: EnemyPerception = {
+    visionRangeM: num(row, 'visionRangeM', where, 1, 500),
+    fovDeg: num(row, 'fovDeg', where, 1, 360),
+    // Above zero: a threshold of 0 would detect on no sighting at all.
+    detectAt: num(row, 'detectAt', where, 0.01, 1),
+    nearRatePerSec: num(row, 'nearRatePerSec', where, 0, 100),
+    farRatePerSec: num(row, 'farRatePerSec', where, 0, 100),
+    maxRatePerSec: num(row, 'maxRatePerSec', where, 0, 100),
+    decayPerSec: num(row, 'decayPerSec', where, 0, 100),
+    crouchFactor: num(row, 'crouchFactor', where, 0, 1),
+    proneFactor: num(row, 'proneFactor', where, 0, 1),
+    movingSpeedMps: num(row, 'movingSpeedMps', where, 0, 20),
+    movingFactor: num(row, 'movingFactor', where, 1, 10),
+    firingFactor: num(row, 'firingFactor', where, 1, 10),
+    edgeFactor: num(row, 'edgeFactor', where, 0, 1),
+  };
+  // "Faster when close" is the rule, not a tuning choice.
+  if (out.farRatePerSec > out.nearRatePerSec) throw new EnemyDataError(`${where}: farRatePerSec is above nearRatePerSec`);
+  // "Slower when prone than crouched", likewise.
+  if (out.proneFactor > out.crouchFactor) throw new EnemyDataError(`${where}: proneFactor is above crouchFactor`);
+  return out;
+}
+
 const DEF_KEYS = ['id', 'name', 'health', 'weapon', 'tree', 'downable', 'corpseSeconds', 'perception', 'accuracy'] as const;
 
 function parseEnemyDef(key: string, raw: unknown): EnemyDef {
@@ -139,8 +203,7 @@ function parseEnemyDef(key: string, raw: unknown): EnemyDef {
   if (!TREE_DEFS.has(tree)) throw new EnemyDataError(`${where}.tree: unknown tree "${tree}"`);
   const downable = bool(row, 'downable', where);
 
-  const perception = obj(row['perception'], `${where}.perception`);
-  only(perception, ['visionRangeM', 'fovDeg'], `${where}.perception`);
+  const perception = parsePerception(row['perception'], `${where}.perception`);
   const accuracy = obj(row['accuracy'], `${where}.accuracy`);
   only(accuracy, ['baseConeDeg'], `${where}.accuracy`);
 
@@ -153,10 +216,7 @@ function parseEnemyDef(key: string, raw: unknown): EnemyDef {
     tree,
     downable,
     corpseSeconds: num(row, 'corpseSeconds', where, 0, 600),
-    perception: {
-      visionRangeM: num(perception, 'visionRangeM', `${where}.perception`, 1, 500),
-      fovDeg: num(perception, 'fovDeg', `${where}.perception`, 1, 360),
-    },
+    perception,
     accuracy: {
       baseConeDeg: num(accuracy, 'baseConeDeg', `${where}.accuracy`, 0, 45),
     },

@@ -16,3 +16,4 @@ export * from './ecs/components.ts';
 export * from './ecs/world.ts';
 export * from './ai/blackboard.ts';
 export * from './ai/bt.ts';
+export * from './ai/perception.ts';
