@@ -187,7 +187,7 @@ describe('brains and the slot swap (T-3.08, ADR-001)', () => {
     expect(fresh).not.toBe(oldBrain);
     expect(fresh.isStopped).toBe(false);
     expect(fresh.thoughtCount).toBe(0);
-    expect(fresh.memory).toEqual({ intent: null });
+    expect(fresh.memory).toEqual({ intent: null, fireAt: null });
     expect(fresh.startedAt).toEqual(leftAt);
     expect(slot.netId).toBe(netId);
     expect(slot.state).toMatchObject(leftAt);

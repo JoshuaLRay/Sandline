@@ -42,8 +42,9 @@ the behaviour tree runtime (T-3.07), and brains tick on the session
 entities (T-3.10) drawn in the page (T-3.11, `?enemies` for eyes), and
 each client is sent only what is within 120 m of it (T-3.12), and
 perception exists as pure functions (T-3.13), wired on the session into
-hearing, memory and target choice (T-3.14). The next build tasks are
-**T-3.15** (AI fire),
+hearing, memory and target choice (T-3.14), and a brain can shoot through the
+human fire path (T-3.15). The next build tasks are
+**T-3.16** (suppression in the sim),
 **T-3.18** (cover points in the bake) and **T-3.27** (orders on the wire).
 
 ---
@@ -255,8 +256,8 @@ once before the first M3 task — it is short and every task leans on it.
 
 | Task | Status | Depends |
 |---|---|---|
-| T-3.15 | OPEN | T-3.10, T-3.13 |
-| T-3.16 | BLOCKED | T-3.15 |
+| T-3.15 | DONE | T-3.10, T-3.13 |
+| T-3.16 | OPEN | T-3.15 |
 | T-3.17 | BLOCKED | T-3.16 |
 | T-3.18 | OPEN | T-3.04 |
 | T-3.19 | BLOCKED | T-3.18, T-3.13 |
