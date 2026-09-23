@@ -56,6 +56,12 @@ export interface BrainMemory {
   throwAt: { projectile: number; yaw: number; pitch: number } | null;
   /** T-3.22: the earliest it searches for a throw again, seconds: a fruitless search, or a throw, waits before the next. */
   throwNextAt: number;
+  /**
+   * T-3.23: when its point was first seen to be flanked (null while it is
+   * not), and when `flanked` last sent it to relocate — the MG's patience.
+   */
+  flankedAt: number | null;
+  relocatedAt: number;
   /** T-3.20: a leaf's own step through a manoeuvre (a peek's out, fire, back), and the tick it began. */
   phase: string | null;
   phaseAt: number;
@@ -63,7 +69,7 @@ export interface BrainMemory {
 
 /** A blackboard as every brain starts it. */
 export function freshMemory(): BrainMemory {
-  return { intent: null, fireAt: null, crouch: false, reload: false, lookAt: null, suppressAt: null, throwAt: null, throwNextAt: 0, phase: null, phaseAt: 0 };
+  return { intent: null, fireAt: null, crouch: false, reload: false, lookAt: null, suppressAt: null, throwAt: null, throwNextAt: 0, flankedAt: null, relocatedAt: -Infinity, phase: null, phaseAt: 0 };
 }
 
 /** The entity a brain drives, read live: the session's own slot, never a copy. */

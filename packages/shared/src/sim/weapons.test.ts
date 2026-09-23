@@ -3,6 +3,7 @@ import { ANGLE_UNITS } from '../math/angles.ts';
 import { cos } from '../math/trig.ts';
 import {
   WEAPONS,
+  WEAPON_IDS,
   allowsFire,
   type WeaponDef,
   createWeaponState,
@@ -213,9 +214,12 @@ describe('auto vs semi', () => {
     expect(allowsFire(SEMI, false, false)).toBe(false);
   });
 
-  it('ships exactly one automatic weapon in the current table', () => {
+  it('ships exactly one automatic weapon in the players\' loadout, and the MG\'s LMG outside it', () => {
     const autos = Object.values(WEAPONS).filter((w) => w.auto).map((w) => w.id);
-    expect(autos).toEqual(['carbine']);
+    expect(autos.filter((id) => (WEAPON_IDS as readonly string[]).includes(id))).toEqual(['carbine']);
+    // T-3.23: a row for an enemy's gun, not in the wire order a player selects from.
+    expect(autos).toContain('lmg');
+    expect(WEAPON_IDS as readonly string[]).not.toContain('lmg');
   });
 });
 

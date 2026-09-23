@@ -4,7 +4,7 @@
     "name": "Rifleman",
     "health": 100,
     "weapon": "carbine",
-    "tree": "idle",
+    "tree": "rifleman",
     "downable": false,
     "corpseSeconds": 10,
     "perception": {
@@ -31,11 +31,59 @@
       "settleSeconds": 1.5,
       "maxConeDeg": 10,
       "holdBloomDeg": 1.0,
+      "burstRounds": 6,
+      "burstPauseSeconds": 0.3,
       "hitBand": {
         "rangeM": 20,
         "min": 0.4,
         "max": 0.75
       }
+    }
+  },
+  "mg": {
+    "id": "mg",
+    "name": "Machine gunner",
+    "health": 120,
+    "weapon": "lmg",
+    "tree": "mg",
+    "downable": false,
+    "corpseSeconds": 10,
+    "perception": {
+      "visionRangeM": 80,
+      "fovDeg": 120,
+      "detectAt": 0.7,
+      "nearRatePerSec": 3.5,
+      "farRatePerSec": 0.2,
+      "maxRatePerSec": 3,
+      "decayPerSec": 0.25,
+      "crouchFactor": 0.6,
+      "proneFactor": 0.25,
+      "movingSpeedMps": 0.5,
+      "movingFactor": 1.5,
+      "firingFactor": 3,
+      "edgeFactor": 0.3
+    },
+    "accuracy": {
+      "baseConeDeg": 2.0,
+      "distanceDoublingM": 55,
+      "speedFactorPerMps": 0.15,
+      "suppressionFactor": 1.5,
+      "acquireFactor": 3,
+      "settleSeconds": 2.5,
+      "maxConeDeg": 14,
+      "holdBloomDeg": 6.0,
+      "burstRounds": 45,
+      "burstPauseSeconds": 0.25,
+      "hitBand": {
+        "rangeM": 20,
+        "min": 0.2,
+        "max": 0.6
+      }
+    },
+    "prefersRole": "suppressor",
+    "deploy": {
+      "seconds": 1.5,
+      "movingSpeedMps": 0.2
     }
   }
 }

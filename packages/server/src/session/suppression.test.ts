@@ -35,6 +35,9 @@ import { type BrainTree, createBrainRegistry } from '../ai/Brain.ts';
 import { DEFAULT_HITBOX } from '../net/lagComp.ts';
 import { type EnemyEntity, Session } from './Session.ts';
 
+/** A rifleman that stands where it is put: the archetype's own tree fights (T-3.23), and these measure what it senses. */
+const STILL = () => buildTree('idle', createBrainRegistry());
+
 const TICK_MS = 1000 / 30;
 const CARBINE = getWeapon('carbine');
 /** Wire yaw facing −Z, towards the spawn line. */
@@ -124,7 +127,7 @@ function withEnemy() {
   const client = connect(session);
   client.run(3);
   const eye = client.eye();
-  const id = session.spawnEnemy('rifleman', { x: eye.x, y: 0, z: eye.z + 30, yaw: FACING_SPAWN }) as number;
+  const id = session.spawnEnemy('rifleman', { x: eye.x, y: 0, z: eye.z + 30, yaw: FACING_SPAWN, tree: STILL() }) as number;
   client.run(3);
   return { session, client, id };
 }
@@ -156,7 +159,7 @@ describe('suppression on the session (T-3.16)', () => {
     expect(level(session, id)).toBeCloseTo(SUPPRESSION.nearMiss, 9);
 
     // A second enemy, hit square: hurt, not suppressed.
-    const other = session.spawnEnemy('rifleman', { x: feet.x + 6, y: 0, z: feet.z, yaw: FACING_SPAWN }) as number;
+    const other = session.spawnEnemy('rifleman', { x: feet.x + 6, y: 0, z: feet.z, yaw: FACING_SPAWN, tree: STILL() }) as number;
     client.run(3);
     client.fire({ x: feet.x + 6, y: DEFAULT_HITBOX.centerOffsetY, z: feet.z });
     client.run(1);
@@ -198,7 +201,7 @@ describe('suppression on the session (T-3.16)', () => {
     // Behind east wall A (x 6..9, z 3.85..4.15, 2.4 m tall), 1.3 m clear of
     // its face: the round stops on the wall, too far off for a near miss and
     // close enough for an impact.
-    const id = session.spawnEnemy('rifleman', { x: 7.5, y: 0, z: 4.15 + DEFAULT_HITBOX.radius + 1.3, yaw: FACING_SPAWN }) as number;
+    const id = session.spawnEnemy('rifleman', { x: 7.5, y: 0, z: 4.15 + DEFAULT_HITBOX.radius + 1.3, yaw: FACING_SPAWN, tree: STILL() }) as number;
     client.run(3);
     client.fire({ x: 7.5, y: 1.2, z: 3.85 });
     client.run(1);

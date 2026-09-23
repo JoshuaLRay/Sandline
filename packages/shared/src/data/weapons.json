@@ -106,5 +106,32 @@
     "recoilAdsScale": 0.7,
     "shakePosM": 0.018,
     "shakeRollDeg": 0.35
+  },
+  "lmg": {
+    "id": "lmg",
+    "name": "Light machine gun",
+    "rpm": 900,
+    "damage": 24,
+    "pellets": 1,
+    "hipSpreadDeg": 3.2,
+    "adsSpreadDeg": 0.9,
+    "proneSpreadScale": 0.5,
+    "bloomPerShotDeg": 0.06,
+    "maxSpreadDeg": 7.5,
+    "bloomDecayDegPerSec": 3.0,
+    "falloffStartM": 30,
+    "falloffEndM": 75,
+    "falloffMinFraction": 0.6,
+    "maxRangeM": 200,
+    "magSize": 100,
+    "reloadSeconds": 4.5,
+    "auto": true,
+    "recoilKickDeg": 0.4,
+    "recoilDriftDeg": 0.3,
+    "recoilMaxDeg": 7.0,
+    "recoilRecoveryPerSec": 7,
+    "recoilAdsScale": 0.7,
+    "shakePosM": 0.016,
+    "shakeRollDeg": 0.35
   }
 }

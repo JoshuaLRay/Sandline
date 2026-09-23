@@ -381,6 +381,14 @@ export interface EnemyEntity {
   nextThrowAt: number;
   /** T-3.22: how long its target has been still, as it knows it — fed on its think ticks. */
   readonly still: StillWatch;
+  /**
+   * T-3.23: since when it has stood still, seconds, or null while it moves —
+   * for an archetype that deploys (the MG), which fires only once this is
+   * its `deploy.seconds` old. Null for one that does not.
+   */
+  deployedAt: number | null;
+  /** T-3.23: rounds into the current burst, and when a pause after the last one ends (seconds). */
+  burst: { rounds: number; pauseUntil: number };
 }
 
 /** Where and how to spawn an enemy. */
@@ -707,6 +715,8 @@ export class Session {
       pouch: this.fullPouch(),
       nextThrowAt: 0,
       still: createStillWatch(),
+      deployedAt: null,
+      burst: { rounds: 0, pauseUntil: 0 },
     };
     enemy.group?.add(enemy.netId);
     enemy.brain = new Brain(enemy, at.tree ?? this.enemyTree(def.tree));
@@ -741,7 +751,7 @@ export class Session {
     for (const group of this.groups.values()) {
       const members = group.members.flatMap((id) => {
         const e = this.enemyList.find((x) => x.netId === id);
-        return e ? [{ netId: e.netId, state: e.state, alive: !isDead(e.health), memory: e.memory, target: e.target }] : [];
+        return e ? [{ netId: e.netId, state: e.state, alive: !isDead(e.health), memory: e.memory, target: e.target, prefers: e.def.prefersRole }] : [];
       });
       group.think(members, world, nowSeconds);
     }
@@ -1258,10 +1268,30 @@ export class Session {
       const pass = passCapsule(origin, dir, length, capsule);
       if (isNearMiss(pass.gap)) {
         raiseSuppression(soldier.suppression, SUPPRESSION.nearMiss, nowSeconds);
+        this.dealt(shooterNetId, SUPPRESSION.nearMiss);
         if (soldier.side !== SQUAD) this.stimuli.push({ kind: 'nearMiss', at: pass.at, sourceNetId: shooterNetId });
       }
-      if (impact && capsuleGap(impact, capsule) <= SUPPRESSION.impactRadiusM) raiseSuppression(soldier.suppression, SUPPRESSION.impact, nowSeconds);
+      if (impact && capsuleGap(impact, capsule) <= SUPPRESSION.impactRadiusM) {
+        raiseSuppression(soldier.suppression, SUPPRESSION.impact, nowSeconds);
+        this.dealt(shooterNetId, SUPPRESSION.impact);
+      }
     }
+  }
+
+  /**
+   * T-3.23: suppression each shooter has dealt, summed as the data's amounts
+   * before any target's cap — what its rounds did, not what the targets could
+   * still take. The MG scenario compares archetypes by it.
+   */
+  private readonly suppressionDealt = new Map<number, number>();
+
+  private dealt(shooterNetId: number, amount: number): void {
+    this.suppressionDealt.set(shooterNetId, (this.suppressionDealt.get(shooterNetId) ?? 0) + amount);
+  }
+
+  /** Suppression a shooter's rounds have dealt so far (T-3.23). */
+  suppressionDealtBy(netId: number): number {
+    return this.suppressionDealt.get(netId) ?? 0;
   }
 
   /**
@@ -1864,10 +1894,18 @@ export class Session {
       enemy.input.yaw = enemy.yaw;
       enemy.pitch = tableToWire(line.pitch);
 
-      // Trigger discipline: a burst, then wait for the gun to settle.
+      // T-3.23: a gun that deploys is aimed but not fired until it has been still its deploy time.
+      if (!this.deployed(enemy, nowSeconds)) continue;
+      // Trigger discipline: a burst, then wait for the gun to settle — and a
+      // burst of the archetype's length, then a pause (T-3.23).
       if (ws.bloomUnits > degToAngle(enemy.def.accuracy.holdBloomDeg)) continue;
+      if (nowSeconds < enemy.burst.pauseUntil) continue;
       const shot = tryFire(weapon, ws, nowSeconds, true, enemy.state.prone);
       if (shot === null) continue;
+      if (++enemy.burst.rounds >= enemy.def.accuracy.burstRounds) {
+        enemy.burst.rounds = 0;
+        enemy.burst.pauseUntil = nowSeconds + enemy.def.accuracy.burstPauseSeconds;
+      }
 
       const dx = point.x - eye.x;
       const dy = point.y - eye.y;
@@ -1883,6 +1921,12 @@ export class Session {
       // The last round out starts the reload on the same tick.
       if (ws.ammo === 0) startReload(weapon, ws, nowSeconds);
     }
+  }
+
+  /** Whether an enemy may fire as far as deploying goes (T-3.23): always, for an archetype that does not deploy. */
+  deployed(enemy: EnemyEntity, nowSeconds = this.nowMs / 1000): boolean {
+    const deploy = enemy.def.deploy;
+    return !deploy || (enemy.deployedAt !== null && nowSeconds - enemy.deployedAt >= deploy.seconds - 1e-9);
   }
 
   /** A slot or an enemy by netId, as much of it as a shooter aims with. */
@@ -1929,6 +1973,9 @@ export class Session {
       const fromZ = enemy.state.z;
       enemy.state = stepCharacter(enemy.state, enemy.input, TICK_SECONDS, this.moveConfig, this.world.boxes);
       enemy.speed = Math.sqrt((enemy.state.x - fromX) ** 2 + (enemy.state.z - fromZ) ** 2) / TICK_SECONDS;
+      // T-3.23: a gun that deploys packs up the moment it moves, and settles again only standing still.
+      const deploy = enemy.def.deploy;
+      if (deploy) enemy.deployedAt = enemy.speed > deploy.movingSpeedMps || enemy.state.vault ? null : (enemy.deployedAt ?? nowSeconds);
       enemy.yaw = enemy.input.yaw;
       // Its gun recovers as a slot's does (T-3.15): firing adds bloom, only this takes it away.
       decayBloom(enemy.weapon, enemy.weaponState, TICK_SECONDS);

@@ -76,6 +76,8 @@ export interface GroupMember {
   readonly alive: boolean;
   readonly memory: TargetMemory;
   readonly target: number | null;
+  /** T-3.23: the role its archetype is handed first (the MG suppresses), or null. */
+  readonly prefers?: GroupRole | null;
 }
 
 /** What a group plans against: the session's cover, geometry and mesh. */
@@ -258,7 +260,9 @@ export class EnemyGroup {
    * `flankExposureCost` times as much), so a longer covered way round beats a
    * short walk in the open; the suppressor is, of the rest, the nearest to
    * the target that can see the spot it will fire at, or the nearest if none
-   * can. Nothing is assigned when no flank point exists — a suppressor alone
+   * can. T-3.23: a member that prefers to suppress (the MG) is never the
+   * flanker, and of the rest is the suppressor if any is; a group of nothing
+   * but such members gets no roles. Nothing is assigned when no flank point exists — a suppressor alone
    * pins nobody the group can then kill.
    */
   private assign(living: readonly GroupMember[], world: GroupWorld): void {
@@ -278,7 +282,10 @@ export class EnemyGroup {
     // What the target sees, once for every route this assignment prices.
     const seen = this.seenPolygons(feet, world);
     let best: { member: GroupMember; point: CoverPoint; index: number; cost: number; route: NavPoint[] } | null = null;
-    for (const member of [...living].sort((a, b) => a.netId - b.netId)) {
+    // A member that would rather suppress (the MG) is not sent round, while anyone else can be.
+    const rather = (m: GroupMember) => m.prefers === 'suppressor';
+    const flankers = living.some((m) => !rather(m)) ? living.filter((m) => !rather(m)) : [];
+    for (const member of [...flankers].sort((a, b) => a.netId - b.netId)) {
       for (const c of candidates) {
         const route = this.route(member.state, c.point, seen, world);
         if (!route) continue;
@@ -291,8 +298,11 @@ export class EnemyGroup {
     const aim = this.suppressPoint()!;
     const others = living.filter((m) => m.netId !== chosen.member.netId);
     const near = (m: GroupMember) => Math.hypot(m.state.x - feet.x, m.state.z - feet.z);
-    const withSight = others.filter((m) => clear({ x: m.state.x, y: m.state.y + DEFAULT_MUZZLE_RIG.eyeHeight, z: m.state.z }, aim, world.boxes));
-    const pool = withSight.length > 0 ? withSight : others;
+    // One whose archetype suppresses first, if there is one (T-3.23); of those, one that sees the spot.
+    const preferred = others.filter((m) => m.prefers === 'suppressor');
+    const candidatesFor = preferred.length > 0 ? preferred : others;
+    const withSight = candidatesFor.filter((m) => clear({ x: m.state.x, y: m.state.y + DEFAULT_MUZZLE_RIG.eyeHeight, z: m.state.z }, aim, world.boxes));
+    const pool = withSight.length > 0 ? withSight : candidatesFor;
     const suppressor = pool.reduce((a, b) => (near(a) <= near(b) ? a : b));
     cover.reserve(chosen.member.netId, chosen.index);
     this.suppressFrom = this.suppressSpot(suppressor, aim, chosen.index, world);
