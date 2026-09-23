@@ -8,6 +8,8 @@ import {
   FLOOR_MARGIN_M,
   ROUTE_ROLES,
   type WorldBox,
+  type WorldHit,
+  type WorldRay,
   figureBox,
   getWorld,
   loadWorld,
@@ -23,6 +25,7 @@ import {
   surfaceAt,
 } from './world.ts';
 import { POSITION, dequantize, quantize } from '../net/quantize.ts';
+import { Sfc32, seedFrom } from '../math/prng.ts';
 import GREYBOX_01 from '../data/worlds/greybox-01.json' with { type: 'json' };
 
 const box = (id: string, x: number, y: number, z: number, w: number, h: number, d: number): WorldBox =>
@@ -282,5 +285,109 @@ describe('a world may carry a mission (T-3.31)', () => {
     expect(() => loadWorld(withMission((m) => ((m['objective'] as Record<string, unknown>)['radius'] = 0)))).toThrow(/objective: radius/);
     expect(() => loadWorld(withMission((m) => (m['colour'] = 'red')))).toThrow(/unknown key 'colour'/);
     expect(() => loadWorld(withMission((m) => delete m['checks']))).toThrow(/missing 'checks'/);
+  });
+});
+
+describe('rayWorld is unchanged by its T-3.35 speed-up', () => {
+  /** The implementation before T-3.35, verbatim: the reference the fast one must equal. */
+  function rayWorldBefore(
+    ray: WorldRay,
+    world: readonly WorldBox[],
+    inflate = 0,
+  ): WorldHit | null {
+    const { origin: o, direction: d, maxDistance } = ray;
+    let best: WorldBox | null = null;
+    let bestT = maxDistance;
+    /** Axis (0/1/2) and sign of the face the ray entered through, or -1 inside. */
+    let bestAxis = -1;
+    let bestSign = 0;
+    for (const box of world) {
+      let tNear = 0;
+      let tFar = bestT;
+      let miss = false;
+      let axisIndex = -1;
+      let axisSign = 0;
+      for (const axis of ['x', 'y', 'z'] as const) {
+        const oa = o[axis];
+        const da = d[axis];
+        const lo = (axis === 'x' ? box.minX : axis === 'y' ? box.minY : box.minZ) - inflate;
+        const hi = (axis === 'x' ? box.maxX : axis === 'y' ? box.maxY : box.maxZ) + inflate;
+        if (da === 0) {
+          if (oa < lo || oa > hi) {
+            miss = true;
+            break;
+          }
+          continue;
+        }
+        let t1 = (lo - oa) / da;
+        let t2 = (hi - oa) / da;
+        // WHICH face is the near one follows from the direction's sign, and the
+        // swap below is about to throw that information away.
+        const sign = da > 0 ? -1 : 1;
+        if (t1 > t2) {
+          const swap = t1;
+          t1 = t2;
+          t2 = swap;
+        }
+        if (t1 > tNear) {
+          tNear = t1;
+          axisIndex = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
+          axisSign = sign;
+        }
+        if (t2 < tFar) tFar = t2;
+        if (tNear > tFar) {
+          miss = true;
+          break;
+        }
+      }
+      if (miss) continue;
+      // tNear <= tFar <= bestT here; a strictly nearer box replaces the best.
+      if (best === null || tNear < bestT) {
+        best = box;
+        bestT = tNear;
+        bestAxis = axisIndex;
+        bestSign = axisSign;
+      }
+    }
+    if (best === null) return null;
+    return {
+      box: best,
+      distance: bestT,
+      point: { x: o.x + d.x * bestT, y: o.y + d.y * bestT, z: o.z + d.z * bestT },
+      normal: {
+        x: bestAxis === 0 ? bestSign : 0,
+        y: bestAxis === 1 ? bestSign : 0,
+        z: bestAxis === 2 ? bestSign : 0,
+      },
+    };
+  }
+
+  it('gives the same hit — box, distance, point and normal — on thousands of seeded rays over both worlds, with and without a radius', () => {
+    const rng = new Sfc32(seedFrom(335, 0x3a7));
+    let hits = 0;
+    let rays = 0;
+    for (const id of WORLD_IDS) {
+      const boxes = requireWorld(id).boxes;
+      for (let i = 0; i < 4000; i++) {
+        const o = { x: (rng.next() * 2 - 1) * 60, y: rng.next() * 3, z: (rng.next() * 2 - 1) * 60 };
+        let dx = rng.next() * 2 - 1;
+        let dy = (rng.next() * 2 - 1) * 0.3;
+        let dz = rng.next() * 2 - 1;
+        // Some rays along an axis, where the slab test takes its zero-direction branch.
+        if (i % 7 === 0) dy = 0;
+        if (i % 11 === 0) dx = 0;
+        if (i % 13 === 0) dz = 0;
+        const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+        const ray = { origin: o, direction: { x: dx / len, y: dy / len, z: dz / len }, maxDistance: 1 + rng.next() * 80 };
+        for (const inflate of [0, 0.25]) {
+          const now = rayWorld(ray, boxes, inflate);
+          expect(now).toEqual(rayWorldBefore(ray, boxes, inflate));
+          rays++;
+          if (now) hits++;
+        }
+      }
+    }
+    console.log(`[rayWorld] ${rays} rays over ${WORLD_IDS.length} worlds, ${hits} hits: every answer the same as before`);
+    expect(hits).toBeGreaterThan(rays / 20);
   });
 });

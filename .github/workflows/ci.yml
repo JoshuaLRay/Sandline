@@ -40,3 +40,18 @@ jobs:
       # runs on Firefox and WebKit only.
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm test:parity-browsers
+
+  # T-3.35: the grey-box mission played headless on three seeds at both
+  # budgets, with the AI's cost at forty enemies. The twenty-seed run that
+  # asserts completion is `pnpm sim-run --scenario mission --seeds 20`.
+  mission:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm sim-run --scenario mission --seeds 3

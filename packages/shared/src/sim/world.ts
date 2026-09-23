@@ -427,51 +427,111 @@ export function rayWorld(
   inflate = 0,
 ): WorldHit | null {
   const { origin: o, direction: d, maxDistance } = ray;
+  /**
+   * T-3.35: the segment's own bounds, for a reject before the slab test. A
+   * hit lies on the segment, so a box clear of its bounds (by more than a
+   * hair, for rounding) cannot be hit: skipping it changes no answer, and
+   * most boxes in a world are nowhere near most rays. Cover queries and
+   * flank routing cast thousands a think; this and the unrolled axes below
+   * are what keep forty enemies inside the tick.
+   */
+  const endX = o.x + d.x * maxDistance;
+  const endY = o.y + d.y * maxDistance;
+  const endZ = o.z + d.z * maxDistance;
+  const pad = inflate + REJECT_PAD_M;
+  const segMinX = (o.x < endX ? o.x : endX) - pad;
+  const segMaxX = (o.x > endX ? o.x : endX) + pad;
+  const segMinY = (o.y < endY ? o.y : endY) - pad;
+  const segMaxY = (o.y > endY ? o.y : endY) + pad;
+  const segMinZ = (o.z < endZ ? o.z : endZ) - pad;
+  const segMaxZ = (o.z > endZ ? o.z : endZ) + pad;
   let best: WorldBox | null = null;
   let bestT = maxDistance;
   /** Axis (0/1/2) and sign of the face the ray entered through, or -1 inside. */
   let bestAxis = -1;
   let bestSign = 0;
   for (const box of world) {
+    if (box.maxX < segMinX || box.minX > segMaxX || box.maxY < segMinY || box.minY > segMaxY || box.maxZ < segMinZ || box.minZ > segMaxZ) continue;
     let tNear = 0;
     let tFar = bestT;
-    let miss = false;
     let axisIndex = -1;
     let axisSign = 0;
-    for (const axis of ['x', 'y', 'z'] as const) {
-      const oa = o[axis];
-      const da = d[axis];
-      const lo = (axis === 'x' ? box.minX : axis === 'y' ? box.minY : box.minZ) - inflate;
-      const hi = (axis === 'x' ? box.maxX : axis === 'y' ? box.maxY : box.maxZ) + inflate;
-      if (da === 0) {
-        if (oa < lo || oa > hi) {
-          miss = true;
-          break;
+    // The three axes, written out: the same arithmetic in the same order as
+    // one loop over them, without a loop's keyed lookups.
+    // x
+    {
+      const lo = box.minX - inflate;
+      const hi = box.maxX + inflate;
+      if (d.x === 0) {
+        if (o.x < lo || o.x > hi) continue;
+      } else {
+        let t1 = (lo - o.x) / d.x;
+        let t2 = (hi - o.x) / d.x;
+        // WHICH face is the near one follows from the direction's sign, and the
+        // swap below is about to throw that information away.
+        const sign = d.x > 0 ? -1 : 1;
+        if (t1 > t2) {
+          const swap = t1;
+          t1 = t2;
+          t2 = swap;
         }
-        continue;
-      }
-      let t1 = (lo - oa) / da;
-      let t2 = (hi - oa) / da;
-      // WHICH face is the near one follows from the direction's sign, and the
-      // swap below is about to throw that information away.
-      const sign = da > 0 ? -1 : 1;
-      if (t1 > t2) {
-        const swap = t1;
-        t1 = t2;
-        t2 = swap;
-      }
-      if (t1 > tNear) {
-        tNear = t1;
-        axisIndex = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
-        axisSign = sign;
-      }
-      if (t2 < tFar) tFar = t2;
-      if (tNear > tFar) {
-        miss = true;
-        break;
+        if (t1 > tNear) {
+          tNear = t1;
+          axisIndex = 0;
+          axisSign = sign;
+        }
+        if (t2 < tFar) tFar = t2;
+        if (tNear > tFar) continue;
       }
     }
-    if (miss) continue;
+    // y
+    {
+      const lo = box.minY - inflate;
+      const hi = box.maxY + inflate;
+      if (d.y === 0) {
+        if (o.y < lo || o.y > hi) continue;
+      } else {
+        let t1 = (lo - o.y) / d.y;
+        let t2 = (hi - o.y) / d.y;
+        const sign = d.y > 0 ? -1 : 1;
+        if (t1 > t2) {
+          const swap = t1;
+          t1 = t2;
+          t2 = swap;
+        }
+        if (t1 > tNear) {
+          tNear = t1;
+          axisIndex = 1;
+          axisSign = sign;
+        }
+        if (t2 < tFar) tFar = t2;
+        if (tNear > tFar) continue;
+      }
+    }
+    // z
+    {
+      const lo = box.minZ - inflate;
+      const hi = box.maxZ + inflate;
+      if (d.z === 0) {
+        if (o.z < lo || o.z > hi) continue;
+      } else {
+        let t1 = (lo - o.z) / d.z;
+        let t2 = (hi - o.z) / d.z;
+        const sign = d.z > 0 ? -1 : 1;
+        if (t1 > t2) {
+          const swap = t1;
+          t1 = t2;
+          t2 = swap;
+        }
+        if (t1 > tNear) {
+          tNear = t1;
+          axisIndex = 2;
+          axisSign = sign;
+        }
+        if (t2 < tFar) tFar = t2;
+        if (tNear > tFar) continue;
+      }
+    }
     // tNear <= tFar <= bestT here; a strictly nearer box replaces the best.
     if (best === null || tNear < bestT) {
       best = box;
@@ -492,6 +552,9 @@ export function rayWorld(
     },
   };
 }
+
+/** How far past a ray's own bounds a box must lie before `rayWorld` skips it without the slab test, metres: rounding, and far more. */
+const REJECT_PAD_M = 1e-6;
 
 export interface WorldSurface {
   box: WorldBox;
