@@ -94,7 +94,7 @@ function sees(from: Vec3, to: Vec3, boxes: ReturnType<typeof requireWorld>['boxe
  * off to one side, from which its point no longer hides it and nothing
  * stands in the way. Nearest first; null if the world offers none.
  */
-function flankFor(point: CoverPoint, world: ReturnType<typeof requireWorld>): Vec3 | null {
+export function flankFor(point: CoverPoint, world: ReturnType<typeof requireWorld>): Vec3 | null {
   const tx = -point.nz;
   const tz = point.nx;
   for (const back of [6, 9, 12]) {

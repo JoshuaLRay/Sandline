@@ -21,12 +21,17 @@ import {
   PROTOCOL_VERSION,
   STIMULI,
   SnapshotStore,
+  buildTree,
   createLoopbackPair,
   decodeMessage,
   encodeMessage,
   eyePosition,
 } from '@sandline/shared';
+import { createBrainRegistry } from '../ai/Brain.ts';
 import { type EnemyEntity, Session } from './Session.ts';
+
+/** A rifleman that stands where it is put: the archetype's own tree fights (T-3.23), and these measure what it senses. */
+const STILL = () => buildTree('idle', createBrainRegistry());
 
 const TICK_MS = 1000 / 30;
 /** Wire yaw facing −Z, back towards the spawn line. 0 faces +Z, away from it. */
@@ -114,8 +119,8 @@ describe('hearing, memory and target choice (T-3.14)', () => {
     const eye = shooterEye(session);
     const r = STIMULI.kinds.shot.radiusM;
     // Both face away, down range: neither can see the shooter, only hear it.
-    const near = session.spawnEnemy('rifleman', { x: eye.x, y: 0, z: eye.z + r - 5 }) as number;
-    const far = session.spawnEnemy('rifleman', { x: eye.x, y: 0, z: eye.z + r + 5 }) as number;
+    const near = session.spawnEnemy('rifleman', { x: eye.x, y: 0, z: eye.z + r - 5, tree: STILL() }) as number;
+    const far = session.spawnEnemy('rifleman', { x: eye.x, y: 0, z: eye.z + r + 5, tree: STILL() }) as number;
     client.run(3);
     expect(enemy(session, near).memory.entries.size).toBe(0);
 
@@ -129,7 +134,7 @@ describe('hearing, memory and target choice (T-3.14)', () => {
     const session = new Session(undefined, '', 'range');
     const client = connect(session);
     client.run(3);
-    const id = session.spawnEnemy('rifleman', { x: 0, y: 0, z: 40 }) as number;
+    const id = session.spawnEnemy('rifleman', { x: 0, y: 0, z: 40, tree: STILL() }) as number;
     client.run(3);
     const eye = shooterEye(session);
     client.fire(sky(session));
@@ -148,7 +153,7 @@ describe('hearing, memory and target choice (T-3.14)', () => {
     const session = new Session(undefined, '', 'range');
     const client = connect(session);
     client.run(3);
-    const id = session.spawnEnemy('rifleman', { x: 0, y: 0, z: 40 }) as number;
+    const id = session.spawnEnemy('rifleman', { x: 0, y: 0, z: 40, tree: STILL() }) as number;
     client.run(3);
     client.fire(sky(session));
     client.run(1);
@@ -170,7 +175,7 @@ describe('hearing, memory and target choice (T-3.14)', () => {
     const session = new Session(undefined, '', 'range');
     const client = connect(session);
     client.run(3);
-    const id = session.spawnEnemy('rifleman', { x: 0, y: 0, z: 30 }) as number;
+    const id = session.spawnEnemy('rifleman', { x: 0, y: 0, z: 30, tree: STILL() }) as number;
     client.run(3);
     const e = enemy(session, id);
     // Past its shoulder, a metre wide at chest height: a miss that is heard.
@@ -186,7 +191,7 @@ describe('hearing, memory and target choice (T-3.14)', () => {
     const client = connect(session);
     client.run(3);
     const slot = session.slots[0]!.state;
-    const id = session.spawnEnemy('rifleman', { x: slot.x, y: 0, z: slot.z + 20, yaw: FACING_SPAWN }) as number;
+    const id = session.spawnEnemy('rifleman', { x: slot.x, y: 0, z: slot.z + 20, yaw: FACING_SPAWN, tree: STILL() }) as number;
     const e = enemy(session, id);
     client.run(3);
     // Awareness is rising but nothing is detected on the first think.
@@ -208,7 +213,7 @@ describe('hearing, memory and target choice (T-3.14)', () => {
     const slot = session.slots[0]!.state;
     const r = STIMULI.kinds.sprint.radiusM;
     // Behind the shooter, facing away from it: it can only hear.
-    const id = session.spawnEnemy('rifleman', { x: slot.x, y: 0, z: slot.z - r + 3, yaw: FACING_SPAWN }) as number;
+    const id = session.spawnEnemy('rifleman', { x: slot.x, y: 0, z: slot.z - r + 3, yaw: FACING_SPAWN, tree: STILL() }) as number;
     const e = enemy(session, id);
     client.run(3);
     for (let i = 0; i < 12; i++) {

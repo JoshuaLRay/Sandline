@@ -11,12 +11,19 @@
  * (T-3.13 perception, T-3.15 aim). T-3.13 filled in the perception block,
  * T-3.15 the accuracy block.
  *
+ * T-3.23: five archetypes have a place in the wire order, and each has a
+ * SHAPE — the block of its own it must carry and no other archetype may: the
+ * MG's `deploy`, the RPG's `launcher`, the sniper's `scope`, the officer's
+ * `command`; the rifleman has none. The data holds two (ADR-015: rifleman and
+ * MG); the other three are valid rows the schema accepts, waiting for their art.
+ *
  * SHARED because the client names an archetype off the `Enemy` component's
  * index (T-3.11) and the server builds one from the same row.
  */
 import RAW_ENEMIES from '../data/enemies.json' with { type: 'json' };
 import { TREE_DEFS } from '../ai/bt.ts';
-import { WEAPON_IDS } from './weapons.ts';
+import { WEAPONS } from './weapons.ts';
+import { PROJECTILE_IDS } from './ballistics.ts';
 
 export interface EnemyPerception {
   /** How far this archetype can see anything at all, metres. */
@@ -75,12 +82,45 @@ export interface EnemyAccuracy {
    */
   holdBloomDeg: number;
   /**
+   * T-3.23: a burst is this many rounds, and then it lets go of the trigger
+   * for `burstPauseSeconds` — the rifleman's short bursts, the MG's long ones.
+   * Holding for bloom above paces a burst; this ends it.
+   */
+  burstRounds: number;
+  burstPauseSeconds: number;
+  /**
    * The hit rate this archetype is tuned to — rule 5's number, written down
    * where the tuning is. Firing at a standing, still, unsuppressed soldier
    * `rangeM` away, a seeded run lands between `min` and `max` (T-3.15's test).
    */
   hitBand: { rangeM: number; min: number; max: number };
 }
+
+/** The MG's (T-3.23): it fires only once it has stood still this long. */
+export interface EnemyDeploy {
+  /** Seconds stationary before it may fire. */
+  seconds: number;
+  /** Horizontal speed, m/s, above which it counts as moving, and packs up. */
+  movingSpeedMps: number;
+}
+
+/** The RPG's: what it fires, a `PROJECTILE_IDS` entry. Not built (ADR-015). */
+export interface EnemyLauncher {
+  projectile: string;
+}
+
+/** The sniper's: how long it holds a sight picture before it fires. Not built (ADR-015). */
+export interface EnemyScope {
+  aimSeconds: number;
+}
+
+/** The officer's: how far its orders carry. Not built (ADR-015). */
+export interface EnemyCommand {
+  radiusM: number;
+}
+
+/** A group role (T-3.21) an archetype is given first when there is a choice. */
+export type EnemyRolePreference = 'suppressor' | 'flanker';
 
 export interface EnemyDef {
   id: string;
@@ -103,16 +143,35 @@ export interface EnemyDef {
   corpseSeconds: number;
   perception: EnemyPerception;
   accuracy: EnemyAccuracy;
+  /** T-3.23: the group role it is handed first (the MG suppresses), or null for none. */
+  prefersRole: EnemyRolePreference | null;
+  /** T-3.23: the archetype's own block — the one its shape names — or null where the shape has none. */
+  deploy: EnemyDeploy | null;
+  launcher: EnemyLauncher | null;
+  scope: EnemyScope | null;
+  command: EnemyCommand | null;
 }
 
 /**
  * Wire order for archetypes, as `PROJECTILE_IDS` is for projectiles: the index
  * is the `Enemy` component's `archetype` field, so reordering this is a
- * PROTOCOL_VERSION bump. Three bits on the wire hold the five archetypes the
- * schema is written for (ADR-015 builds two); T-3.23 appends the MG.
+ * PROTOCOL_VERSION bump (appending is not: an old client names an index it
+ * has no row for as nothing). Three bits on the wire hold the five archetypes
+ * the schema is written for; ADR-015 builds the first two, so the data holds
+ * rows for those alone and `enemyByIndex` is null for the rest.
  */
-export const ENEMY_IDS = ['rifleman'] as const;
+export const ENEMY_IDS = ['rifleman', 'mg', 'rpg', 'sniper', 'officer'] as const;
 export type EnemyId = (typeof ENEMY_IDS)[number];
+
+/** Each archetype's own block (its shape): required on it, refused on every other. None for the rifleman. */
+export const ENEMY_SHAPES: Readonly<Record<EnemyId, 'deploy' | 'launcher' | 'scope' | 'command' | null>> = {
+  rifleman: null,
+  mg: 'deploy',
+  rpg: 'launcher',
+  sniper: 'scope',
+  officer: 'command',
+};
+const SHAPE_BLOCKS = ['deploy', 'launcher', 'scope', 'command'] as const;
 
 /** Bits of the `Enemy` component's archetype index: eight archetypes. */
 export const ENEMY_ARCHETYPE_BITS = 3;
@@ -228,6 +287,8 @@ const ACCURACY_KEYS = [
   'settleSeconds',
   'maxConeDeg',
   'holdBloomDeg',
+  'burstRounds',
+  'burstPauseSeconds',
   'hitBand',
 ] as const;
 
@@ -251,6 +312,9 @@ function parseAccuracy(raw: unknown, where: string): EnemyAccuracy {
     settleSeconds: num(row, 'settleSeconds', where, 0, 30),
     maxConeDeg: num(row, 'maxConeDeg', where, 0, 45),
     holdBloomDeg: num(row, 'holdBloomDeg', where, 0, 45),
+    // Whole rounds, at least one: a burst of none never fires.
+    burstRounds: Math.round(num(row, 'burstRounds', where, 1, 500)),
+    burstPauseSeconds: num(row, 'burstPauseSeconds', where, 0, 30),
     hitBand: parseHitBand(row['hitBand'], `${where}.hitBand`),
   };
   if (out.maxConeDeg < out.baseConeDeg) throw new EnemyDataError(`${where}: maxConeDeg is below baseConeDeg`);
@@ -258,7 +322,33 @@ function parseAccuracy(raw: unknown, where: string): EnemyAccuracy {
   return out;
 }
 
-const DEF_KEYS = ['id', 'name', 'health', 'weapon', 'tree', 'downable', 'corpseSeconds', 'perception', 'accuracy'] as const;
+const DEF_KEYS = ['id', 'name', 'health', 'weapon', 'tree', 'downable', 'corpseSeconds', 'perception', 'accuracy', 'prefersRole', ...SHAPE_BLOCKS] as const;
+
+function parseDeploy(raw: unknown, where: string): EnemyDeploy {
+  const row = obj(raw, where);
+  only(row, ['seconds', 'movingSpeedMps'], where);
+  return { seconds: num(row, 'seconds', where, 0, 30), movingSpeedMps: num(row, 'movingSpeedMps', where, 0, 10) };
+}
+
+function parseLauncher(raw: unknown, where: string): EnemyLauncher {
+  const row = obj(raw, where);
+  only(row, ['projectile'], where);
+  const projectile = str(row, 'projectile', where);
+  if (!(PROJECTILE_IDS as readonly string[]).includes(projectile)) throw new EnemyDataError(`${where}.projectile: unknown projectile "${projectile}"`);
+  return { projectile };
+}
+
+function parseScope(raw: unknown, where: string): EnemyScope {
+  const row = obj(raw, where);
+  only(row, ['aimSeconds'], where);
+  return { aimSeconds: num(row, 'aimSeconds', where, 0, 30) };
+}
+
+function parseCommand(raw: unknown, where: string): EnemyCommand {
+  const row = obj(raw, where);
+  only(row, ['radiusM'], where);
+  return { radiusM: num(row, 'radiusM', where, 1, 500) };
+}
 
 function parseEnemyDef(key: string, raw: unknown): EnemyDef {
   const where = `enemy "${key}"`;
@@ -267,13 +357,25 @@ function parseEnemyDef(key: string, raw: unknown): EnemyDef {
   const id = str(row, 'id', where);
   if (id !== key) throw new EnemyDataError(`${where}: id field says "${id}"`);
   const weapon = str(row, 'weapon', where);
-  if (!(WEAPON_IDS as readonly string[]).includes(weapon)) throw new EnemyDataError(`${where}.weapon: unknown weapon "${weapon}"`);
+  // Any row of weapons.json, not only the players' loadout (WEAPON_IDS): the MG's LMG is carried by nobody else.
+  if (!WEAPONS[weapon]) throw new EnemyDataError(`${where}.weapon: unknown weapon "${weapon}"`);
   const tree = str(row, 'tree', where);
   if (!TREE_DEFS.has(tree)) throw new EnemyDataError(`${where}.tree: unknown tree "${tree}"`);
   const downable = bool(row, 'downable', where);
 
   const perception = parsePerception(row['perception'], `${where}.perception`);
   const accuracy = parseAccuracy(row['accuracy'], `${where}.accuracy`);
+
+  const prefers = row['prefersRole'];
+  if (prefers !== undefined && prefers !== 'suppressor' && prefers !== 'flanker') {
+    throw new EnemyDataError(`${where}.prefersRole must be "suppressor" or "flanker", got ${String(prefers)}`);
+  }
+  // The shape: its own block present, every other archetype's absent.
+  const shape = ENEMY_SHAPES[key as EnemyId];
+  for (const block of SHAPE_BLOCKS) {
+    if (block === shape && row[block] === undefined) throw new EnemyDataError(`${where}: a ${key} needs a "${block}" block`);
+    if (block !== shape && row[block] !== undefined) throw new EnemyDataError(`${where}: "${block}" is not a ${key}'s`);
+  }
 
   return {
     id,
@@ -286,10 +388,15 @@ function parseEnemyDef(key: string, raw: unknown): EnemyDef {
     corpseSeconds: num(row, 'corpseSeconds', where, 0, 600),
     perception,
     accuracy,
+    prefersRole: prefers ?? null,
+    deploy: shape === 'deploy' ? parseDeploy(row['deploy'], `${where}.deploy`) : null,
+    launcher: shape === 'launcher' ? parseLauncher(row['launcher'], `${where}.launcher`) : null,
+    scope: shape === 'scope' ? parseScope(row['scope'], `${where}.scope`) : null,
+    command: shape === 'command' ? parseCommand(row['command'], `${where}.command`) : null,
   };
 }
 
-/** Validate an archetype table. Every `ENEMY_IDS` entry must be present, and nothing else. */
+/** Validate an archetype table: rows only for `ENEMY_IDS` entries, at least one, each in its own shape. */
 export function parseEnemyTable(raw: unknown): Record<string, EnemyDef> {
   const table = obj(raw, 'enemies');
   const out: Record<string, EnemyDef> = {};
@@ -297,7 +404,7 @@ export function parseEnemyTable(raw: unknown): Record<string, EnemyDef> {
     if (!(ENEMY_IDS as readonly string[]).includes(key)) throw new EnemyDataError(`enemy "${key}": not in ENEMY_IDS (the wire order)`);
     out[key] = Object.freeze(parseEnemyDef(key, value));
   }
-  for (const id of ENEMY_IDS) if (!out[id]) throw new EnemyDataError(`enemy "${id}": in ENEMY_IDS but missing from the data`);
+  if (Object.keys(out).length === 0) throw new EnemyDataError('enemies: no archetypes');
   return out;
 }
 
@@ -313,7 +420,7 @@ export function getEnemy(id: string): EnemyDef {
 /** The archetype at a wire index, or null for an index nothing has. */
 export function enemyByIndex(index: number): EnemyDef | null {
   const id = ENEMY_IDS[index];
-  return id === undefined ? null : getEnemy(id);
+  return id === undefined ? null : (ENEMIES[id] ?? null);
 }
 
 /** An archetype's wire index. */

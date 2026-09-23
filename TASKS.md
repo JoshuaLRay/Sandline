@@ -48,8 +48,10 @@ human fire path (T-3.15), and rounds going past suppress every soldier (T-3.16),
 (T-3.18) and queried and reserved (T-3.19), and the rifleman fights from it
 (T-3.20, `pnpm sim-run --scenario cover-duel`), and groups suppress and flank a
 pinned target (T-3.21, `--scenario pinned`), and throw grenades at a target
-gone still in cover (T-3.22). The next build tasks are **T-3.23** (rifleman
-and MG) and **T-3.27** (orders on the wire).
+gone still in cover (T-3.22), and the slice's two archetypes exist — the
+rifleman and an MG that deploys, suppresses first and relocates rarely
+(T-3.23, `--scenario mg`). The next build task is **T-3.27** (orders on the
+wire); the combat AI sign-off (🧍 T-3.24) waits on its run sheet.
 
 ---
 
@@ -273,7 +275,7 @@ once before the first M3 task — it is short and every task leans on it.
 
 | Task | Status | Depends |
 |---|---|---|
-| T-3.23 | OPEN | T-3.21, T-3.22 |
+| T-3.23 | DONE | T-3.21, T-3.22 |
 | 🧍 T-3.24 | BLOCKED — run sheet `e3-5.md` to be written first | T-3.11, T-3.17, T-3.23 |
 
 ### E-3.7 — Friendly bot

@@ -18,6 +18,8 @@ const ACCURACY: EnemyAccuracy = {
   settleSeconds: 2,
   maxConeDeg: 12,
   holdBloomDeg: 1,
+  burstRounds: 5,
+  burstPauseSeconds: 0.4,
   hitBand: { rangeM: 20, min: 0, max: 1 },
 };
 

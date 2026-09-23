@@ -75,11 +75,15 @@ function pressured(body: CombatBody, args: BtArgs): boolean {
   return suppressionLevel(body.suppression, now) >= num(args, 'suppression', 0.3) || now - body.lastDamagedAt < num(args, 'hurtSeconds', 1.5);
 }
 
-/** Walk to `goal`: a sprint along the path when far, a walk facing `face` when close. */
-function walkTo(frame: Frame, body: CombatBody, goal: Vec3, face: Vec3 | null): void {
+/**
+ * Walk to `goal`: a sprint along the path when far, a walk facing `face` when
+ * close. With `sprint` false (the MG's `takeCover`, T-3.23) it walks the whole
+ * way, facing the threat — a gun that heavy is not run with.
+ */
+function walkTo(frame: Frame, body: CombatBody, goal: Vec3, face: Vec3 | null, sprint = true): void {
   const far = across(body.state, goal) > SPRINT_BEYOND_M;
-  frame.blackboard.set('intent', { goal: { x: goal.x, y: goal.y, z: goal.z }, pace: far ? 'sprint' : 'walk' });
-  frame.blackboard.set('lookAt', far ? null : face);
+  frame.blackboard.set('intent', { goal: { x: goal.x, y: goal.y, z: goal.z }, pace: far && sprint ? 'sprint' : 'walk' });
+  frame.blackboard.set('lookAt', far && sprint ? null : face);
 }
 
 /** Register the rifleman's leaves on a brain registry. */
@@ -88,11 +92,30 @@ export function registerRiflemanLeaves(registry: BrainRegistry): BrainRegistry {
     registry
       // --- conditions -------------------------------------------------------
       .condition('hasThreat', ({ ctx }) => isCombatBody(ctx) && threatEye(ctx) !== null)
-      /** Its point no longer hides it from the threat: the threat has come round (or it never had one to lose). */
-      .condition('flanked', ({ ctx }) => {
-        if (!isCombatBody(ctx) || !ctx.combat.cover || !heldPoint(ctx)) return false;
-        const eye = threatEye(ctx);
-        return eye !== null && !ctx.combat.cover.stillProtects(ctx.netId, [eye]);
+      /**
+       * Its point no longer hides it from the threat: the threat has come
+       * round (or it never had one to lose). T-3.23's MG relocates rarely:
+       * `seconds` says how long it must have been flanked before this says
+       * so, `restSeconds` how long after it last said so before it will again.
+       * Both 0 (the rifleman): the moment it is flanked, every time.
+       */
+      .condition('flanked', ({ ctx, blackboard }, args) => {
+        const raw = (() => {
+          if (!isCombatBody(ctx) || !ctx.combat.cover || !heldPoint(ctx)) return false;
+          const eye = threatEye(ctx);
+          return eye !== null && !ctx.combat.cover.stillProtects(ctx.netId, [eye]);
+        })();
+        if (!raw || !isCombatBody(ctx)) {
+          blackboard.set('flankedAt', null);
+          return false;
+        }
+        const now = ctx.combat.now();
+        const since = blackboard.get('flankedAt') ?? now;
+        blackboard.set('flankedAt', since);
+        if (now - since < num(args, 'seconds', 0)) return false;
+        if (now - blackboard.get('relocatedAt') < num(args, 'restSeconds', 0)) return false;
+        blackboard.set('relocatedAt', now);
+        return true;
       })
       .condition('inCover', ({ ctx, blackboard }) => isCombatBody(ctx) && inCover(ctx, blackboard.get('phase') !== null))
       .condition('lowAmmo', ({ ctx }, args) => isCombatBody(ctx) && lowAmmo(ctx, num(args, 'fraction', 0.3)))
@@ -111,17 +134,21 @@ export function registerRiflemanLeaves(registry: BrainRegistry): BrainRegistry {
       // --- actions ----------------------------------------------------------
       /**
        * To cover: the point it holds while that still hides it, else the best
-       * the query offers (T-3.19), reserved. Running on the way, success on
+       * the query offers (T-3.19), reserved. Args (T-3.23, the MG's): `keep`
+       * goes back to the point it holds whether or not it still hides it;
+       * `sprint: false` walks the whole way. Running on the way, success on
        * arrival, failure when there is none to be had.
        */
-      .action('takeCover', (frame) => {
+      .action('takeCover', (frame, args) => {
         const body = frame.ctx;
         if (!isCombatBody(body) || !body.combat.cover) return 'failure';
         const eye = threatEye(body);
         if (!eye) return 'failure';
         const cover = body.combat.cover;
         let point = heldPoint(body);
-        if (!point || !cover.stillProtects(body.netId, [eye])) {
+        // `keep` (the MG's way back to cover): the point it holds, flanked or not — moving is `flanked`'s to decide.
+        const keep = args['keep'] === true && point !== null;
+        if (!point || (!keep && !cover.stillProtects(body.netId, [eye]))) {
           point = cover.choose(body.netId, { from: body.state, threats: [eye], friends: body.combat.friendsOf(body.netId, body.faction) })?.point ?? null;
         }
         if (!point) return 'failure';
@@ -130,7 +157,7 @@ export function registerRiflemanLeaves(registry: BrainRegistry): BrainRegistry {
           frame.blackboard.set('intent', null);
           return 'success';
         }
-        walkTo(frame, body, point, eye);
+        walkTo(frame, body, point, eye, args['sprint'] !== false);
         return 'running';
       })
       /** In cover, down: concealed in the point's stance, facing the threat, still. */

@@ -1,0 +1,11 @@
+{
+  "$comment": "T-3.23 MG thresholds, asserted over `seeds` runs by `pnpm sim-run --scenario mg` and its test. Each seed runs four fights, once with the MG and once with a rifleman in the same place. Pinned (`pinnedSeconds`): that archetype and a rifleman in one group against a soldier holding the low wall, as `pinned` does; the suppression the group's suppressor deals per second while it holds the role, the MG's over the rifleman's, must be at least `minSuppressionRatio`, and the MG must take the role in at least `minMgSuppressorRate` of its runs. Flanked (`flankedSeconds`): that archetype alone against a shooter who goes round to its flank each time it has held a point for `flankEverySeconds`; the MG's relocations over the rifleman's must be at most `maxRelocationRatio`, with the rifleman relocating at least `minRiflemanRelocations` times in all. In every MG fight it fires, and never within its deploy time of having moved.",
+  "seeds": 10,
+  "pinnedSeconds": 40,
+  "flankedSeconds": 60,
+  "flankEverySeconds": 4,
+  "minSuppressionRatio": 1.5,
+  "minMgSuppressorRate": 1,
+  "maxRelocationRatio": 0.6,
+  "minRiflemanRelocations": 10
+}

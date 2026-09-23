@@ -7,7 +7,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { createTargetMemory, requireWorld, rememberSeen } from '@sandline/shared';
 import { CoverSystem } from './cover.ts';
-import { EnemyGroup, GROUP, type GroupMember, parseGroupConfig, pricedLength, seesConcealed, seesGround } from './group.ts';
+import { EnemyGroup, GROUP, type GroupMember, type GroupRole, parseGroupConfig, pricedLength, seesConcealed, seesGround } from './group.ts';
 import RAW_GROUP from './group.json' with { type: 'json' };
 import { type NavMesh, initNav, pathLength } from './nav/NavMesh.ts';
 import { bakedCoverFor, loadWorldNavMesh } from './nav/bakedNav.ts';
@@ -87,6 +87,36 @@ describe('pinning and roles (T-3.21)', () => {
     // Its peeking does not reshuffle them.
     group.think([member(10, a, true, t + 0.1), member(11, b, false, t + 0.1)], world, t + 0.1);
     expect(group.roles.size).toBe(2);
+  });
+
+  it('makes a member that prefers to suppress (the MG, T-3.23) the suppressor, never the flanker', () => {
+    const world = () => ({ cover: new CoverSystem(bakedCoverFor('range'), range.boxes), boxes: range.boxes, mesh });
+    const a = { x: -7.5, z: 12 };
+    const b = { x: -3, z: 12 };
+    const t = GROUP.pinSeconds + 0.1;
+    const pin = (group: EnemyGroup, w: ReturnType<typeof world>, prefers: [GroupRole | null, GroupRole | null]) => {
+      const at = (now: number, visible: boolean) => [
+        { ...member(10, a, visible, now), prefers: prefers[0] },
+        { ...member(11, b, false, now), prefers: prefers[1] },
+      ];
+      group.think(at(0, true), w, 0);
+      group.think(at(0.1, false), w, 0.1);
+      group.think(at(t, false), w, t);
+    };
+    // Left to itself the group picks one flanker; whichever that is, make it the MG and it suppresses instead.
+    const plain = new EnemyGroup(1);
+    pin(plain, world(), [null, null]);
+    const flanker = plain.flank!.netId;
+    const other = flanker === 10 ? 11 : 10;
+    const prefers: [GroupRole | null, GroupRole | null] = flanker === 10 ? ['suppressor', null] : [null, 'suppressor'];
+    const withMg = new EnemyGroup(2);
+    pin(withMg, world(), prefers);
+    expect(withMg.role(flanker)).toBe('suppressor');
+    expect(withMg.role(other)).toBe('flanker');
+    // A group of nothing but MGs sends nobody round, so hands out nothing.
+    const allMg = new EnemyGroup(3);
+    pin(allMg, world(), ['suppressor', 'suppressor']);
+    expect(allMg.roles.size).toBe(0);
   });
 
   it('hands out nothing with one member, and ends the flank when the flanker dies', () => {
