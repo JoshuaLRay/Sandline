@@ -38,6 +38,9 @@ export interface ServerConnectionEvents {
   onAck?: (conn: ServerConnection, tick: number) => void;
   /** T-3.09: the client wants AI debug reports, or no longer does. */
   onAiDebugRequest?: (conn: ServerConnection, on: boolean) => void;
+  /** T-3.27: a player's order to bots, and a mark — untrusted; the session checks both. */
+  onOrder?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Order' }>) => void;
+  onMark?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Mark' }>) => void;
   onClosed?: (conn: ServerConnection, reason: string) => void;
 }
 
@@ -199,6 +202,14 @@ export class ServerConnection {
       case 'AiDebugRequest':
         this.events.onAiDebugRequest?.(this, msg.on);
         break;
+      case 'Order':
+        this.lastActive = now;
+        this.events.onOrder?.(this, msg);
+        break;
+      case 'Mark':
+        this.lastActive = now;
+        this.events.onMark?.(this, msg);
+        break;
       case 'Ack':
         if (msg.tick > this.lastAckedTick) this.lastAckedTick = msg.tick;
         this.events.onAck?.(this, msg.tick);
@@ -261,6 +272,9 @@ export interface ClientConnectionEvents {
   onSnapshot?: (msg: Extract<Message, { kind: 'Snapshot' }>) => void;
   onPong?: (msg: Extract<Message, { kind: 'Pong' }>) => void;
   onRoster?: (slots: RosterEntry[]) => void;
+  /** T-3.27: every bot's current order, and every standing mark, as the host last sent them. */
+  onOrders?: (orders: Extract<Message, { kind: 'Orders' }>['orders']) => void;
+  onMarks?: (marks: Extract<Message, { kind: 'Marks' }>['marks']) => void;
   onClosed?: (reason: string, code: DisconnectCode | null) => void;
 }
 
@@ -315,6 +329,12 @@ export class ClientConnection {
         break;
       case 'Roster':
         this.events.onRoster?.(msg.slots);
+        break;
+      case 'Orders':
+        this.events.onOrders?.(msg.orders);
+        break;
+      case 'Marks':
+        this.events.onMarks?.(msg.marks);
         break;
       case 'Disconnect':
         this.rejectionReason = msg.reason;

@@ -418,8 +418,8 @@ describe('AiDebug (T-3.09)', () => {
     expect(got.kind === 'AiDebug' && got.brains[0]!.corridor.length).toBe(AI_DEBUG_LIMITS.corridor);
 
     const w = new BitWriter();
-    w.writeBits(MessageType.AiDebug, 4);
-    w.writeBool(true);
+    w.writeBits(MessageType.Ext, 4);
+    w.writeBits(1, 3); // the AI debug report
     w.writeVarUint(1);
     w.writeVarUint(AI_DEBUG_LIMITS.brains + 1);
     expect(() => decodeMessage(w.toUint8Array())).toThrow(ProtocolError);

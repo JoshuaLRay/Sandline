@@ -10,9 +10,10 @@ import { BitReader, BitWriter } from './BitStream.ts';
 import { HEALTH, POSITION, dequantize, quantize } from './quantize.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isRoomCode } from './roomCode.ts';
+import { MAX_MARKS, ORDER_KINDS, type BotOrder, type OrderAddress, type OrderKind, type OrderPoint, type TargetMark } from '../sim/orders.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 20;
+export const PROTOCOL_VERSION = 21;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -96,15 +97,21 @@ export const MessageType = {
   Detonation: 13,
   Equip: 14,
   /**
-   * T-3.09: the AI debug family, both directions. The four-bit tag had one
-   * value left, so one bit after it says which: a client's request, or the
-   * host's report. Either is refused by the side that should not receive it.
+   * The extended family: the four-bit tag's last value, then a three-bit
+   * sub-kind (`EXT`) — T-3.09's AI debug request and report, and T-3.27's
+   * orders and marks. Each is refused by the side that should not receive it.
    */
-  AiDebug: 15,
+  Ext: 15,
 } as const;
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
 
 const TYPE_BITS = 4;
+
+/** Sub-kinds under `MessageType.Ext`, three bits: the wire order. */
+const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks: 5 } as const;
+const EXT_BITS = 3;
+const ORDER_KIND_BITS = 3;
+const ADDRESS_TO = ['slot', 'fireteam', 'all'] as const;
 
 /** How a debugged brain's intent asks to be walked. The order is the wire encoding. */
 export const AI_DEBUG_PACES = ['walk', 'sprint', 'crouch'] as const;
@@ -370,7 +377,19 @@ export type Message =
    * T-3.09: every bot brain's reasons as of `tick`, sent only to clients that
    * asked, only by a host that allows it.
    */
-  | { kind: 'AiDebug'; tick: number; brains: readonly AiDebugBrain[] };
+  | { kind: 'AiDebug'; tick: number; brains: readonly AiDebugBrain[] }
+  /**
+   * T-3.27: a player's order to bots — a kind, whom it is for, and the point
+   * or target it needs (`sim/orders.ts`). Client to host; the host checks
+   * everything the wire cannot.
+   */
+  | { kind: 'Order'; order: OrderKind; address: OrderAddress; point: OrderPoint | null; target: number | null }
+  /** T-3.27: a player marking a point, or a target at it, for the squad. Client to host. */
+  | { kind: 'Mark'; point: OrderPoint; target: number | null }
+  /** T-3.27: every bot's current order, whole, whenever one changes and on seating. Host to client. */
+  | { kind: 'Orders'; orders: readonly BotOrder[] }
+  /** T-3.27: every standing mark, whole, whenever one is made or expires and on seating. Host to client. */
+  | { kind: 'Marks'; marks: readonly TargetMark[] };
 
 export class ProtocolError extends Error {}
 
@@ -526,13 +545,57 @@ export function encodeMessage(msg: Message): Uint8Array {
       }
       break;
     case 'AiDebugRequest':
-      w.writeBits(MessageType.AiDebug, TYPE_BITS);
-      w.writeBool(false);
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.AiDebugRequest, EXT_BITS);
       w.writeBool(msg.on);
       break;
+    case 'Order':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Order, EXT_BITS);
+      w.writeBits(ORDER_KINDS.indexOf(msg.order), ORDER_KIND_BITS);
+      w.writeBits(ADDRESS_TO.indexOf(msg.address.to), 2);
+      w.writeBits(msg.address.to === 'all' ? 0 : msg.address.index & 0x7, 3);
+      writeOptionalPoint(w, msg.point);
+      writeOptionalTarget(w, msg.target);
+      break;
+    case 'Mark':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Mark, EXT_BITS);
+      writePoint(w, msg.point);
+      writeOptionalTarget(w, msg.target);
+      break;
+    case 'Orders': {
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Orders, EXT_BITS);
+      // One per bot at most: six slots is the whole squad (ADR-001).
+      const orders = msg.orders.slice(0, 6);
+      w.writeBits(orders.length, 3);
+      for (const o of orders) {
+        w.writeBits(o.slot & 0x7, 3);
+        w.writeBits(ORDER_KINDS.indexOf(o.order), ORDER_KIND_BITS);
+        w.writeBits(o.from & 0x7, 3);
+        writeOptionalPoint(w, o.point);
+        writeOptionalTarget(w, o.target);
+      }
+      break;
+    }
+    case 'Marks': {
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Marks, EXT_BITS);
+      const marks = msg.marks.slice(0, MAX_MARKS);
+      w.writeVarUint(marks.length);
+      for (const m of marks) {
+        w.writeVarUint(m.id);
+        w.writeBits(m.from & 0x7, 3);
+        writePoint(w, m.point);
+        writeOptionalTarget(w, m.target);
+        w.writeVarUint(m.expiresTick);
+      }
+      break;
+    }
     case 'AiDebug': {
-      w.writeBits(MessageType.AiDebug, TYPE_BITS);
-      w.writeBool(true);
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.AiDebug, EXT_BITS);
       w.writeVarUint(msg.tick);
       const brains = msg.brains.slice(0, AI_DEBUG_LIMITS.brains);
       w.writeVarUint(brains.length);
@@ -541,6 +604,32 @@ export function encodeMessage(msg: Message): Uint8Array {
     }
   }
   return w.toUint8Array();
+}
+
+function writeOptionalPoint(w: BitWriter, p: OrderPoint | null): void {
+  w.writeBool(p !== null);
+  if (p) writePoint(w, p);
+}
+
+function readOptionalPoint(r: BitReader): OrderPoint | null {
+  return r.readBool() ? readPoint(r) : null;
+}
+
+function writeOptionalTarget(w: BitWriter, target: number | null): void {
+  w.writeBool(target !== null);
+  if (target !== null) w.writeVarUint(target);
+}
+
+function readOptionalTarget(r: BitReader): number | null {
+  return r.readBool() ? r.readVarUint() : null;
+}
+
+/** An order kind off the wire, refused past the last one. */
+function readOrderKind(r: BitReader): OrderKind {
+  const i = r.readBits(ORDER_KIND_BITS);
+  const kind = ORDER_KINDS[i];
+  if (kind === undefined) throw new ProtocolError(`unknown order kind ${i}`);
+  return kind;
 }
 
 function writePoint(w: BitWriter, p: AiDebugPoint): void {
@@ -560,7 +649,7 @@ function readPoint(r: BitReader): AiDebugPoint {
 /** A list count, refused on read past its cap rather than trusted. */
 function readCount(r: BitReader, cap: number, what: string): number {
   const n = r.readVarUint();
-  if (n > cap) throw new ProtocolError(`AiDebug ${what} count ${n} exceeds ${cap}`);
+  if (n > cap) throw new ProtocolError(`${what} count ${n} exceeds ${cap}`);
   return n;
 }
 
@@ -764,12 +853,49 @@ export function decodeMessage(bytes: Uint8Array): Message {
         }
         return { kind: 'Roster', slots };
       }
-      case MessageType.AiDebug: {
-        if (!r.readBool()) return { kind: 'AiDebugRequest', on: r.readBool() };
-        const tick = r.readVarUint();
-        const brains: AiDebugBrain[] = [];
-        for (let i = readCount(r, AI_DEBUG_LIMITS.brains, 'brain'); i > 0; i -= 1) brains.push(readAiDebugBrain(r));
-        return { kind: 'AiDebug', tick, brains };
+      case MessageType.Ext: {
+        const sub = r.readBits(EXT_BITS);
+        switch (sub) {
+          case EXT.AiDebugRequest:
+            return { kind: 'AiDebugRequest', on: r.readBool() };
+          case EXT.AiDebug: {
+            const tick = r.readVarUint();
+            const brains: AiDebugBrain[] = [];
+            for (let i = readCount(r, AI_DEBUG_LIMITS.brains, 'brain'); i > 0; i -= 1) brains.push(readAiDebugBrain(r));
+            return { kind: 'AiDebug', tick, brains };
+          }
+          case EXT.Order: {
+            const order = readOrderKind(r);
+            const to = ADDRESS_TO[r.readBits(2)];
+            if (to === undefined) throw new ProtocolError('unknown order addressee');
+            const index = r.readBits(3);
+            const address: OrderAddress = to === 'all' ? { to } : { to, index };
+            return { kind: 'Order', order, address, point: readOptionalPoint(r), target: readOptionalTarget(r) };
+          }
+          case EXT.Mark:
+            return { kind: 'Mark', point: readPoint(r), target: readOptionalTarget(r) };
+          case EXT.Orders: {
+            const orders: BotOrder[] = [];
+            for (let i = r.readBits(3); i > 0; i -= 1) {
+              const slot = r.readBits(3);
+              const order = readOrderKind(r);
+              const from = r.readBits(3);
+              orders.push({ slot, order, from, point: readOptionalPoint(r), target: readOptionalTarget(r) });
+            }
+            return { kind: 'Orders', orders };
+          }
+          case EXT.Marks: {
+            const marks: TargetMark[] = [];
+            for (let i = readCount(r, MAX_MARKS, 'mark'); i > 0; i -= 1) {
+              const id = r.readVarUint();
+              const from = r.readBits(3);
+              marks.push({ id, from, point: readPoint(r), target: readOptionalTarget(r), expiresTick: r.readVarUint() });
+            }
+            return { kind: 'Marks', marks };
+          }
+          default:
+            throw new ProtocolError(`unknown extended message ${sub}`);
+        }
       }
       default:
         throw new ProtocolError(`unknown message type ${type}`);

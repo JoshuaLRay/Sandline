@@ -89,6 +89,10 @@ import {
   enemyIndex,
   getEnemy,
   SQUAD as SQUAD_CONFIG,
+  ORDERS,
+  orderProblem,
+  type BotOrder,
+  type TargetMark,
   formationBand,
   type Stimulus,
   type TargetMemory,
@@ -961,6 +965,8 @@ export class Session {
       onThrow: (c, msg) => this.applyThrow(c, msg),
       onEquip: (c, msg) => this.applyEquip(c, msg),
       onAiDebugRequest: (c, on) => this.applyAiDebugRequest(c, on),
+      onOrder: (c, msg) => this.applyOrder(c, msg),
+      onMark: (c, msg) => this.applyMark(c, msg),
       onClosed: (c) => this.releaseSlot(c),
     });
     if (conn.state === 'closed') return false;
@@ -1017,7 +1023,119 @@ export class Session {
 
     conn.accept(slot.netId, slot.index, this.currentTick, this.room, this.world.id);
     this.broadcastRoster();
+    // T-3.27: a human is nobody's to order, so whatever this slot's bot was told
+    // lapses; and the newcomer is shown the squad's orders and marks as they stand.
+    if (this.orders[slot.index]) {
+      this.orders[slot.index] = null;
+      this.broadcastOrders();
+    } else {
+      conn.send({ kind: 'Orders', orders: this.currentOrders() });
+    }
+    conn.send({ kind: 'Marks', marks: [...this.marks] });
     return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // T-3.27: orders and marks
+  // -------------------------------------------------------------------------
+
+  /** Each slot's current order, or null: only ever a bot's. */
+  private readonly orders: (BotOrder | null)[] = Array.from({ length: MAX_SLOTS }, () => null);
+  private marks: TargetMark[] = [];
+  private nextMarkId = 1;
+
+  /** The order a slot's bot is under, or null (T-3.27). */
+  orderFor(slotIndex: number): BotOrder | null {
+    return this.orders[slotIndex] ?? null;
+  }
+
+  /** Every standing mark (T-3.27). */
+  get currentMarks(): readonly TargetMark[] {
+    return this.marks;
+  }
+
+  private currentOrders(): BotOrder[] {
+    return this.orders.filter((o): o is BotOrder => o !== null);
+  }
+
+  private broadcastOrders(): void {
+    const orders = this.currentOrders();
+    for (const c of this.connections) if (c.state === 'active') c.send({ kind: 'Orders', orders });
+  }
+
+  private broadcastMarks(): void {
+    const marks = [...this.marks];
+    for (const c of this.connections) if (c.state === 'active') c.send({ kind: 'Marks', marks });
+  }
+
+  /** The human seated on a connection, or null: only a human may order or mark. */
+  private humanFor(conn: ServerConnection): Slot | null {
+    const slot = this.slots.find((s) => s.connection === conn);
+    return slot && !slot.isBot ? slot : null;
+  }
+
+  /** Whether a netId is someone in this session now: a slot, or a living enemy. */
+  private exists(netId: number): boolean {
+    return this.slots.some((s) => s.netId === netId) || this.enemyList.some((e) => e.netId === netId && !isDead(e.health));
+  }
+
+  /**
+   * An order from a player (T-3.27), untrusted: a well-formed order
+   * (`orderProblem`), from a human seated here, at a target that exists — an
+   * attack at a living enemy, a revive at a squadmate — to addressees of whom
+   * only the bots take it (ADR-001: any player may order any bot, and nobody
+   * a human). The last order to a bot stands, whoever gave it; every client
+   * is sent the squad's orders whole.
+   */
+  private applyOrder(conn: ServerConnection, msg: Extract<Message, { kind: 'Order' }>): void {
+    const from = this.humanFor(conn);
+    if (!from) return;
+    if (orderProblem(msg, SQUAD_CONFIG.fireteams.length) !== null) return;
+    if (msg.target !== null) {
+      const wanted = msg.order === 'revive' ? this.slots.some((s) => s.netId === msg.target) : this.enemyList.some((e) => e.netId === msg.target && !isDead(e.health));
+      if (!wanted) return;
+    }
+    const a = msg.address;
+    const addressed = a.to === 'slot' ? [a.index] : a.to === 'fireteam' ? [...SQUAD_CONFIG.fireteams[a.index]!.slots] : this.slots.map((s) => s.index);
+    const bots = addressed.filter((i) => this.slots[i]?.isBot === true);
+    if (bots.length === 0) return;
+    for (const i of bots) {
+      this.orders[i] = { slot: i, order: msg.order, point: msg.point ? { ...msg.point } : null, target: msg.target, from: from.index };
+    }
+    this.broadcastOrders();
+  }
+
+  /**
+   * A mark from a player (T-3.27): a point, and a target at it if that target
+   * exists. It stands for `ORDERS.markSeconds`; a player past
+   * `ORDERS.marksPerPlayer` loses their oldest.
+   */
+  private applyMark(conn: ServerConnection, msg: Extract<Message, { kind: 'Mark' }>): void {
+    const from = this.humanFor(conn);
+    if (!from) return;
+    if (![msg.point.x, msg.point.y, msg.point.z].every(Number.isFinite)) return;
+    if (msg.target !== null && !this.exists(msg.target)) return;
+    const mine = this.marks.filter((m) => m.from === from.index);
+    if (mine.length >= ORDERS.marksPerPlayer) {
+      const oldest = mine[0]!;
+      this.marks = this.marks.filter((m) => m !== oldest);
+    }
+    this.marks.push({
+      id: this.nextMarkId++,
+      from: from.index,
+      point: { ...msg.point },
+      target: msg.target,
+      expiresTick: this.currentTick + Math.round(ORDERS.markSeconds / TICK_SECONDS),
+    });
+    this.broadcastMarks();
+  }
+
+  /** Marks whose time is up go, and everyone is told (T-3.27). */
+  private expireMarks(): void {
+    const kept = this.marks.filter((m) => m.expiresTick > this.currentTick);
+    if (kept.length === this.marks.length) return;
+    this.marks = kept;
+    this.broadcastMarks();
   }
 
   private releaseSlot(conn: ServerConnection): void {
@@ -1880,6 +1998,7 @@ export class Session {
      * where it is still in the air.
      */
     this.stepProjectiles();
+    this.expireMarks();
     const snapshot = this.buildSnapshot();
     this.broadcast(snapshot);
     this.sendAiDebug();

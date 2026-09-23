@@ -12,6 +12,7 @@ export * from './sim/range.ts';
 export * from './sim/damage.ts';
 export * from './sim/enemies.ts';
 export * from './sim/squad.ts';
+export * from './sim/orders.ts';
 export * from './sim/suppression.ts';
 export * from './net/vaultWire.ts';
 export * from './ecs/components.ts';
