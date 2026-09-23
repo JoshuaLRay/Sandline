@@ -14,7 +14,7 @@ import { RemoteSoldiers } from '../character/remoteSoldiers.ts';
 import { soldierAtlas } from '../character/soldierTexture.ts';
 import { LocalServer } from './LocalServer.ts';
 import { NetClient } from './NetClient.ts';
-import { QA_ENEMY_PLACEMENTS, QaEnemies } from './qaEnemies.ts';
+import { QA_ENEMY_PLACEMENTS, QaEnemies, QaSuppressor } from './qaEnemies.ts';
 
 const TICK_MS = TICK_SECONDS * 1000;
 const LAN = { latencyMs: 0, jitterMs: 0, lossRate: 0 };
@@ -86,5 +86,31 @@ describe('enemies on the in-page range (T-3.11)', () => {
     // The squad is still six, and no enemy has a slot to be listed under.
     expect(net.roster).toHaveLength(6);
     for (const id of enemyIds) expect(net.remoteSlot(id)).toBe(-1);
+  });
+});
+
+describe('?suppress (T-3.17)', () => {
+  beforeAll(() => initNav());
+
+  it("fires past the player's camera: the player's replicated suppression rises, and the shooter respawns", () => {
+    const server = new LocalServer(LAN, DEFAULT_MOVE_CONFIG);
+    const net = new NetClient(server.transport, 'qa');
+    net.join();
+    for (let i = 0; i < 4; i++) server.step(0);
+    expect(net.joined).toBe(true);
+    // Slot 1's soldier, beside the player in slot 0.
+    const suppressor = new QaSuppressor(server, 2);
+    const first = server.enemyNetIds[0];
+    expect(first).toBeDefined();
+    let peak = 0;
+    for (let tick = 1; tick <= 30 * 30; tick++) {
+      server.step(tick * TICK_MS);
+      suppressor.step();
+      peak = Math.max(peak, net.suppression);
+    }
+    console.log(`?suppress: peak replicated suppression ${peak.toFixed(2)} over 30 s`);
+    expect(peak).toBeGreaterThan(0);
+    // Still exactly one shooter, whatever happened to the first.
+    expect(server.enemyNetIds).toHaveLength(1);
   });
 });

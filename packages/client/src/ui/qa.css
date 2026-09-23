@@ -205,6 +205,25 @@ canvas { display: block; touch-action: none; }
   user-select: all;
 }
 /**
+ * T-3.17: the suppression vignette. Full screen, under the reticle and the
+ * panels, never in the way of a click; `suppressionLook.ts` writes the
+ * grey layer's backdrop filter and the vignette's opacity and gradient from
+ * the replicated level.
+ */
+#suppression {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  display: none;
+}
+#suppression .suppression-grey,
+#suppression .suppression-vignette {
+  position: absolute;
+  inset: 0;
+}
+#suppression .suppression-vignette { opacity: 0; }
+
+/**
  * A fixed centre reticle, always. The shot is converged on what the centre
  * covers (see the aim convergence in main.ts), so the crosshair never moves;
  * what moves is its GAP. Four arms sit `--gap` pixels out from the centre,

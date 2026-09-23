@@ -68,7 +68,7 @@ import {
   shareLink,
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
-import { QaEnemies } from './net/qaEnemies.ts';
+import { QaEnemies, QaSuppressor } from './net/qaEnemies.ts';
 import { DEFAULT_WORLD_ID, type World, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
@@ -78,7 +78,9 @@ import { PouchTrigger } from './weapons/pouchTrigger.ts';
 import { ViewModel } from './weapons/viewModel.ts';
 import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
 import { SCORCH_REACH_M, WeaponEffects } from './weapons/effects.ts';
-import { addImpulse, addShake, applyShake, blastShake, createShake, decayShake } from './camera/cameraShake.ts';
+import { addImpulse, addShake, applyShake, blastShake, createShake, decayShake, suppressionJolt } from './camera/cameraShake.ts';
+import { SuppressionOverlay } from './ui/suppressionLook.ts';
+import { crosshairGapPx } from './ui/crosshair.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
 import {
   HUMANOID_CROUCH_HIT_HEIGHT_M,
@@ -506,6 +508,8 @@ interface LiveSession {
   sparringLink: ClientLink | null;
   /** `?enemies` on the in-page session (T-3.11), else null. */
   qaEnemies: QaEnemies | null;
+  /** `?suppress` on the in-page session (T-3.17), else null. */
+  qaSuppressor: QaSuppressor | null;
   choice: LobbyChoice;
   /** The panel of link sliders, rebuilt per session: it binds to `local`. */
   networkPanel: Panel;
@@ -692,6 +696,8 @@ const navReady = initNav();
  * on demand, and nowhere else in the page.
  */
 const qaEnemiesWanted = new URLSearchParams(location.search).has('enemies');
+/** `?suppress` (T-3.17): a rifleman firing past the player's camera — see `qaEnemies.ts`. */
+const qaSuppressWanted = new URLSearchParams(location.search).has('suppress');
 const qaNavMesh: Promise<NavMesh | null> = qaEnemiesWanted
   ? navReady.then(() => import('@sandline/server/nav/baked')).then((baked) => baked.loadWorldNavMesh(DEFAULT_WORLD_ID))
   : Promise.resolve(null);
@@ -711,6 +717,8 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null): void {
   // host is restarted to match. Tuning is an in-page-session activity.)
   const local = choice.kind === 'local' ? new LocalServer(link, config, qaNav ? { navMesh: qaNav } : {}) : null;
   const qaEnemies = local && qaNav ? new QaEnemies(local) : null;
+  // Slot netIds are 1..6 in slot order, so slot 1's soldier is netId 2.
+  const qaSuppressor = local && qaSuppressWanted ? new QaSuppressor(local, 2) : null;
   const remote = choice.kind === 'remote' ? new RemoteServer(choice.host) : null;
   const server: SessionSource = local ?? (remote as RemoteServer);
   const net = new NetClient(server.transport, choice.kind === 'remote' ? choice.name : 'qa', config);
@@ -798,7 +806,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null): void {
   );
   panels.insertBefore(networkPanel.root, netgraph.root);
 
-  live = { server, net, local, remote, sparring, sparringLink, qaEnemies, choice, networkPanel };
+  live = { server, net, local, remote, sparring, sparringLink, qaEnemies, qaSuppressor, choice, networkPanel };
   lobby.hide();
   squadPanel.setVisible(true);
   player.visible = !input.firstPerson;
@@ -992,15 +1000,12 @@ const downedBanner = document.getElementById('downed');
 let crosshairGap = -1;
 
 /**
- * The crosshair gap in pixels for a cone half-angle, at the current field of
- * view: the on-screen radius of the cone at the centre of the view. This is
- * what makes the reticle honest — the gap is the inaccuracy, drawn at the size
- * it actually has on screen, so bloom opening the cone visibly opens the arms.
+ * T-3.17: being suppressed, on screen — a vignette and the colour draining,
+ * from the replicated level alone, and a jolt each time the level jumps.
  */
-function coneGapPx(coneHalfDeg: number, fovDeg: number): number {
-  const half = innerHeight / 2;
-  return (Math.tan((coneHalfDeg * Math.PI) / 180) / Math.tan((fovDeg * Math.PI) / 360)) * half;
-}
+const suppressionOverlay = new SuppressionOverlay(document.body);
+/** The level the last frame saw, so a rise between snapshots jolts the camera once. */
+let lastSuppression = 0;
 /** Hip fire never reads as precise: the arms sit at least this far out. */
 const HIP_GAP_MIN_PX = 26;
 const ADS_GAP_MIN_PX = 4;
@@ -1119,6 +1124,7 @@ function frame(): void {
     }
 
     live?.qaEnemies?.step();
+    live?.qaSuppressor?.step();
     server.step(now);
 
     const here = net.simulated;
@@ -1234,6 +1240,12 @@ function frame(): void {
     input.setViewOffset(recoil.yaw, recoil.pitch);
   }
   shake = decayShake(shake, dt);
+  // T-3.17: a near miss is a jump in the level; the jolt lands once, on the frame that sees it.
+  const suppressionNow = net?.suppression ?? 0;
+  const jolt = suppressionJolt(lastSuppression, suppressionNow);
+  if (jolt.posM > 0) shake = addImpulse(shake, jolt.posM, jolt.rollRad);
+  lastSuppression = suppressionNow;
+  suppressionOverlay.render(suppressionNow);
 
   /**
    * Render BETWEEN ticks, exactly as the local harness did before it was
@@ -1549,7 +1561,7 @@ function frame(): void {
    * the arms enclose is where pellets can land.
    */
   if (crosshair) {
-    const cone = coneGapPx(combat.coneDegrees(ads, sim?.prone ?? false, net?.suppression ?? 0), camera.fov);
+    const cone = crosshairGapPx(combat.coneDegrees(ads, sim?.prone ?? false, net?.suppression ?? 0), camera.fov, innerHeight);
     const gap = Math.round(Math.max(ads ? ADS_GAP_MIN_PX : HIP_GAP_MIN_PX, cone));
     if (gap !== crosshairGap) {
       crosshairGap = gap;
