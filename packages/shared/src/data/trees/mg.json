@@ -1,5 +1,5 @@
 {
-  "$comment": "T-3.23. The MG gunner: a rifleman's fight, heavier. With a threat known: as the group's suppressor (it is handed that role first, `prefersRole`), fire on the pinned target without sight, reloading where it stands only when nearly dry; relocate when its point is flanked, but only once it has been flanked 3 s and no sooner than 20 s after the last time, and at a walk; in cover, reload when low, else fire long bursts (3.5 s) from it unless pressured, else stay down; out of cover, walk back to the point it holds (flanked or not: moving is the flanked branch's to decide), or to new cover if it holds none; with none, fight in the open. It never flanks, advances or throws. The session will not let it fire until it has stood still for its archetype's deploy time, so every move costs it that again. Nothing known: stand down.",
+  "$comment": "T-3.23. The MG gunner: a rifleman's fight, heavier. With a threat known: as the group's suppressor (it is handed that role first, `prefersRole`), fire on the pinned target without sight, reloading where it stands only when nearly dry; relocate when its point is flanked, but only once it has been flanked 3 s and no sooner than 20 s after the last time, and at a walk; in cover, reload when low, else fire long bursts (3.5 s) from it unless pressured, else stay down; out of cover, walk back to the point it holds (flanked or not: moving is the flanked branch's to decide), or to new cover if it holds none; with none, fight in the open. It never flanks, advances or throws. The session will not let it fire until it has stood still for its archetype's deploy time, so every move costs it that again. Nothing known: at ease — its posture (T-3.32), or standing down with none.",
   "id": "mg",
   "root": {
     "type": "selector",
@@ -162,7 +162,7 @@
       },
       {
         "type": "action",
-        "name": "standDown"
+        "name": "atEase"
       }
     ]
   }

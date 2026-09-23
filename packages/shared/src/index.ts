@@ -5,6 +5,7 @@ export * from './sim/physics.ts';
 export * from './sim/Simulation.ts';
 export * from './sim/CharacterController.ts';
 export * from './sim/world.ts';
+export * from './sim/encounters.ts';
 export * from './sim/weapons.ts';
 export * from './sim/ballistics.ts';
 export * from './sim/muzzle.ts';
