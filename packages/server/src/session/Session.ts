@@ -90,6 +90,21 @@ import {
   buildTree,
   enemyIndex,
   getEnemy,
+  type Stimulus,
+  type TargetMemory,
+  STIMULI,
+  beginThink,
+  chooseTarget,
+  closestApproach,
+  createTargetMemory,
+  forgetTarget,
+  hears,
+  isDetected,
+  rememberHeard,
+  rememberSeen,
+  sight,
+  stepAwareness,
+  wireToTable,
 } from '@sandline/shared';
 import { DEFAULT_HITBOX, HitboxHistory, capsuleFor, clampRewindMs, rayCapsule, resolveShot } from '../net/lagComp.ts';
 import { BRAIN_PERIOD_TICKS, Brain, type BrainTree, createBrainRegistry, defaultBrainTree } from '../ai/Brain.ts';
@@ -295,6 +310,15 @@ export interface EnemyEntity {
   brain: Brain | null;
   /** Path following for the brain's intent, made on the first one, as a bot's. */
   follower: PathFollower | null;
+  /**
+   * T-3.14: what it knows about the squad — last known positions, confidence,
+   * threats — fed by sight on its think ticks and by every stimulus it hears.
+   */
+  memory: TargetMemory;
+  /** T-3.13 awareness per slot netId, stepped on its think ticks. */
+  awareness: Map<number, number>;
+  /** The target its memory chose on its latest think, or null (T-3.14). */
+  target: number | null;
 }
 
 /** Where and how to spawn an enemy. */
@@ -379,6 +403,16 @@ export class Session {
   private nextEnemyNetId = FIRST_ENEMY_NET_ID;
   /** Archetype trees bound to the server's registry, built once per tree id. */
   private readonly enemyTrees = new Map<string, BrainTree>();
+  /**
+   * T-3.14: stimuli emitted since the last step — shots and their impacts and
+   * near misses between ticks, blasts and sprints inside the last one — heard
+   * by every living enemy at the start of the next.
+   */
+  private readonly stimuli: Stimulus[] = [];
+  /** Per slot, the tick it last fired, for perception's `firing` (T-3.13). */
+  private readonly lastFiredTick: number[] = [];
+  /** Per slot, horizontal speed over its last step, m/s, for perception and sprint. */
+  private readonly slotSpeed: number[] = [];
   private currentTick = 0;
   /**
    * Server time at the last tick, in ms. Still injected — the session reads no
@@ -461,6 +495,8 @@ export class Session {
         brainGeneration: 0,
       });
       this.followers.push(null);
+      this.lastFiredTick.push(-Infinity);
+      this.slotSpeed.push(0);
       this.giveBrain(this.slots[i]!);
     }
   }
@@ -522,6 +558,9 @@ export class Session {
       health: { current: def.health, max: def.health, downedAt: null, diedAt: null },
       brain: null,
       follower: null,
+      memory: createTargetMemory(),
+      awareness: new Map(),
+      target: null,
     };
     enemy.brain = new Brain(enemy, at.tree ?? this.enemyTree(def.tree));
     this.enemyList.push(enemy);
@@ -894,6 +933,9 @@ export class Session {
     // A prone shooter's shot leaves from a prone eye (T-2.42), not 0.75 m above
     // the body — otherwise lying behind cover would still shoot over it.
     const origin = eyePosition(at.x, at.y, at.z, DEFAULT_MUZZLE_RIG, proneThen);
+    // T-3.14: the shot is heard where it was fired from, once per trigger pull.
+    this.stimuli.push({ kind: 'shot', at: origin, sourceNetId: slot.netId });
+    this.lastFiredTick[slot.index] = this.currentTick;
 
     for (const dir of shotDirections(slot.weapon, shot, slot.netId, msg.tick, yaw, pitch)) {
       const hit = resolveShot(
@@ -946,6 +988,7 @@ export class Session {
         // Range targets take no damage: they are the range's fixtures, not
         // enemies, and stay so (T-3.10).
       }
+      this.emitShotStimuli(slot.netId, origin, dir, hit ? hit.distance : slot.weapon.maxRangeM, hit?.point ?? null, hit?.netId ?? 0);
 
       // A scenery stop is a hit event on netId 0 at the wall: everyone draws
       // the tracer ending there, nobody takes damage (T-1.12).
@@ -975,6 +1018,31 @@ export class Session {
             damage: 0,
           };
       for (const c of this.connections) c.send(event);
+    }
+  }
+
+  /**
+   * The sounds one pellet makes after it leaves the muzzle (T-3.14): an impact
+   * where it stopped, and a near miss at the closest point of its path to
+   * every living enemy it passed within `nearMissM` of without hitting.
+   * Traced against the present, not the rewound world: what an enemy hears is
+   * the round going past it now.
+   */
+  private emitShotStimuli(
+    shooterNetId: number,
+    origin: { x: number; y: number; z: number },
+    dir: { x: number; y: number; z: number },
+    length: number,
+    impact: { x: number; y: number; z: number } | null,
+    hitNetId: number,
+  ): void {
+    if (impact) this.stimuli.push({ kind: 'impact', at: { x: impact.x, y: impact.y, z: impact.z }, sourceNetId: shooterNetId });
+    for (const enemy of this.enemyList) {
+      if (enemy.netId === hitNetId || isDead(enemy.health)) continue;
+      const height = enemy.state.prone ? PRONE_HITBOX_HEIGHT : enemy.state.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT;
+      const chest = { x: enemy.state.x, y: enemy.state.y + height * 0.5, z: enemy.state.z };
+      const pass = closestApproach(origin, dir, length, chest);
+      if (pass.distance <= STIMULI.nearMissM) this.stimuli.push({ kind: 'nearMiss', at: pass.at, sourceNetId: shooterNetId });
     }
   }
 
@@ -1172,6 +1240,9 @@ export class Session {
       targets.push({ netId: enemy.netId, damage: result.applied });
     }
 
+    // T-3.14: heard at the blast, and a threat from whoever threw it.
+    this.stimuli.push({ kind: 'detonation', at: { x: at.x, y: at.y, z: at.z }, sourceNetId: projectile.ownerNetId });
+
     const event: Message = {
       kind: 'Detonation',
       netId: projectile.netId,
@@ -1200,10 +1271,11 @@ export class Session {
       else if (conn.isIdle(now, this.idleTimeoutMs)) conn.reject('idle');
     }
 
+    const nowSeconds = now / 1000;
+    this.perceive(nowSeconds);
     this.thinkBrains();
     this.driveBots();
 
-    const nowSeconds = now / 1000;
     for (const slot of this.slots) {
       /**
        * Bleed-out (T-2.13): a downed soldier nobody reached dies here, and
@@ -1300,7 +1372,16 @@ export class Session {
       // still whatever buttons arrive (B-05), and the predictor applies the
       // same rule.
       slot.input.downed = isDowned(slot.health);
+      const fromX = slot.state.x;
+      const fromZ = slot.state.z;
       slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig, this.world.boxes);
+      const moved = Math.sqrt((slot.state.x - fromX) ** 2 + (slot.state.z - fromZ) ** 2) / TICK_SECONDS;
+      this.slotSpeed[slot.index] = moved;
+      // T-3.14: a soldier running faster than a walk is heard where they are
+      // (past the midpoint of walk and sprint, so a walk's rounding never counts).
+      if (slot.input.sprint && moved > (this.moveConfig.walkSpeed + this.moveConfig.sprintSpeed) / 2) {
+        this.stimuli.push({ kind: 'sprint', at: { x: slot.state.x, y: slot.state.y, z: slot.state.z }, sourceNetId: slot.netId });
+      }
       /**
        * Recover weapon bloom, every tick, for every slot.
        *
@@ -1361,6 +1442,54 @@ export class Session {
     const snapshot = this.buildSnapshot();
     this.broadcast(snapshot);
     this.sendAiDebug();
+  }
+
+  /**
+   * Hearing and sight (T-3.14), before brains think so a brain acts on this
+   * tick's knowledge.
+   *
+   * Every living enemy hears, every tick, each stimulus since the last step
+   * that a squad slot made within its kind's radius of its ears. On its think
+   * tick it also looks: T-3.13 awareness of each living slot is stepped by
+   * the think period, a detected, visible slot is remembered as seen, a dead
+   * one is forgotten (it will respawn somewhere else), and target choice runs
+   * over what memory then holds.
+   */
+  private perceive(nowSeconds: number): void {
+    const heard = this.stimuli.splice(0);
+    if (this.enemyList.length === 0) return;
+    const squad = heard.filter((s) => this.slots.some((slot) => slot.netId === s.sourceNetId));
+    const dt = BRAIN_PERIOD_TICKS * TICK_SECONDS;
+    for (const enemy of this.enemyList) {
+      if (isDead(enemy.health)) continue;
+      const eye = eyePosition(enemy.state.x, enemy.state.y, enemy.state.z, DEFAULT_MUZZLE_RIG, enemy.state.prone);
+      for (const stimulus of squad) if (hears(eye, stimulus)) rememberHeard(enemy.memory, stimulus, nowSeconds);
+      if (!enemy.brain?.due(this.currentTick)) continue;
+
+      beginThink(enemy.memory, nowSeconds);
+      const perception = enemy.def.perception;
+      const observer = { eye, yaw: wireToTable(enemy.yaw) };
+      for (const slot of this.slots) {
+        if (isDead(slot.health)) {
+          forgetTarget(enemy.memory, slot.netId);
+          enemy.awareness.delete(slot.netId);
+          continue;
+        }
+        const target = {
+          feet: { x: slot.state.x, y: slot.state.y, z: slot.state.z },
+          stance: slot.state.prone ? ('prone' as const) : slot.state.crouched ? ('crouched' as const) : ('standing' as const),
+          speed: this.slotSpeed[slot.index] ?? 0,
+          firing: this.currentTick - (this.lastFiredTick[slot.index] ?? -Infinity) <= BRAIN_PERIOD_TICKS,
+        };
+        const sighting = sight(observer, target, this.world.boxes, perception, this.moveConfig);
+        const awareness = stepAwareness(enemy.awareness.get(slot.netId) ?? 0, sighting, target, perception, dt);
+        enemy.awareness.set(slot.netId, awareness);
+        if (sighting.visible && isDetected(awareness, perception)) {
+          rememberSeen(enemy.memory, slot.netId, target.feet, nowSeconds, isDowned(slot.health));
+        }
+      }
+      enemy.target = chooseTarget(enemy.memory, enemy.state, nowSeconds);
+    }
   }
 
   /**
