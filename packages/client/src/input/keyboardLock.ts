@@ -12,10 +12,11 @@
  * correct across exits (Esc held, F11, the browser's own UI) that this code
  * never sees directly.
  *
- * Tab is deliberately left out of the lock (`LOCKED_KEY_CODES`): a no-argument
- * `lock()` captures Alt+Tab too, and Alt+Tab is how people get out of a
- * fullscreen game. With Tab unlocked the OS sees it and switches windows;
- * the page loses focus, fullscreen stays, and coming back resumes as before.
+ * Tab, Alt and the OS key are deliberately left out of the lock
+ * (`LOCKED_KEY_CODES`): a no-argument `lock()` captures Alt+Tab too, and
+ * Alt+Tab (Cmd+Tab, Win+Tab) is how people get out of a fullscreen game.
+ * With those unlocked the OS sees the whole chord and switches windows; the
+ * page loses focus, fullscreen stays, and coming back resumes as before.
  */
 
 interface KeyboardLockApi {
@@ -25,11 +26,14 @@ interface KeyboardLockApi {
 
 /**
  * Every `KeyboardEvent.code` the lock reclaims — the UI Events code set minus
- * Tab, so Alt+Tab (and Tab alone) stays the OS's. Chromium locks by physical
- * key, not by combination, so leaving Tab out is the only way to let Alt+Tab
- * through; Alt stays locked because Alt+F4, Alt+Space and Alt+letter menu
- * accelerators are exactly the kind of shortcut the lock is for. The game
- * binds nothing to Tab.
+ * Tab, Alt and Meta, so Alt+Tab, Cmd+Tab and Win+Tab stay the OS's.
+ * Chromium locks by physical key, not by combination, and a locked key never
+ * reaches the OS at all: with Alt locked the OS never learns Alt is down and
+ * sees Alt+Tab as a bare Tab, so leaving Tab alone out is not enough — the
+ * modifier has to go too. What that gives back to the OS is what every other
+ * fullscreen game gives back (Alt+F4, the Windows key); the shortcuts the
+ * lock exists for are Ctrl ones (B-06), and Ctrl stays locked. The game binds
+ * nothing to Tab, Alt or Meta.
  */
 export const LOCKED_KEY_CODES: readonly string[] = [
   // Writing system keys
@@ -38,8 +42,8 @@ export const LOCKED_KEY_CODES: readonly string[] = [
   ...'0123456789'.split('').map((d) => `Digit${d}`),
   ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((l) => `Key${l}`),
   // Functional keys
-  'AltLeft', 'AltRight', 'Backspace', 'CapsLock', 'ContextMenu', 'ControlLeft',
-  'ControlRight', 'Enter', 'MetaLeft', 'MetaRight', 'ShiftLeft', 'ShiftRight', 'Space',
+  'Backspace', 'CapsLock', 'ContextMenu', 'ControlLeft', 'ControlRight', 'Enter',
+  'ShiftLeft', 'ShiftRight', 'Space',
   'Convert', 'KanaMode', 'Lang1', 'Lang2', 'NonConvert',
   // Control pad and arrows
   'Delete', 'End', 'Help', 'Home', 'Insert', 'PageDown', 'PageUp',
@@ -69,7 +73,7 @@ export function keyboardLockSupported(): boolean {
 }
 
 /**
- * Locks every reserved key but Tab (see `LOCKED_KEY_CODES`) while `element` is the fullscreen element, unlocks
+ * Locks every reserved key but Tab, Alt and Meta (see `LOCKED_KEY_CODES`) while `element` is the fullscreen element, unlocks
  * on exit. Call once; the `fullscreenchange` listener lives for the page.
  * A no-op where the API doesn't exist.
  */
