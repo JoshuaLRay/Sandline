@@ -111,8 +111,12 @@ export const PROJECTILE_IDS = ['frag', 'rocket'] as const;
  * when this arrived. A projectile's id is never reused within a session: a
  * recycled one arriving at a client that still holds the old grenade would be
  * a grenade that teleports, which is exactly what NetId exists to prevent.
+ *
+ * 16384 since T-3.10, which gave enemies the band below (`FIRST_ENEMY_NET_ID`,
+ * enemies.ts, says why they take the cheaper ids). Projectiles are the one
+ * range left open upward, so nothing can ever count into them.
  */
-export const FIRST_PROJECTILE_NET_ID = 2000;
+export const FIRST_PROJECTILE_NET_ID = 16384;
 export type ProjectileId = (typeof PROJECTILE_IDS)[number];
 
 // ---------------------------------------------------------------------------

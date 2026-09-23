@@ -1,0 +1,18 @@
+{
+  "rifleman": {
+    "id": "rifleman",
+    "name": "Rifleman",
+    "health": 100,
+    "weapon": "carbine",
+    "tree": "idle",
+    "downable": false,
+    "corpseSeconds": 10,
+    "perception": {
+      "visionRangeM": 80,
+      "fovDeg": 120
+    },
+    "accuracy": {
+      "baseConeDeg": 2
+    }
+  }
+}

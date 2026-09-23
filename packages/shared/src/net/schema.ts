@@ -9,6 +9,7 @@
  * quantization step never looks dirty and never gets resent forever.
  */
 import { COMPONENT_IDS, type ComponentName } from '../ecs/components.ts';
+import { ENEMY_ARCHETYPE_BITS, ENEMY_FACTION_BITS } from '../sim/enemies.ts';
 import { ANGLE_BITS_WIRE, HEALTH, POSITION, VELOCITY, dequantize, quantize, quantizeAngle } from './quantize.ts';
 
 export interface FieldSpec {
@@ -120,6 +121,14 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // — and neither of which changes for the life of the entity, so they cost
     // their bits once on the spawn and nothing per tick after (T-1.04).
     fields: [uint('kind', 2), uint('ownerSlot', 3)],
+  },
+  {
+    id: COMPONENT_IDS.Enemy,
+    name: 'Enemy',
+    // T-3.10. `archetype` indexes ENEMY_IDS and `faction` names the side; like
+    // a projectile's identity neither changes for the life of the entity, so
+    // they cost their bits once, on the spawn. Widths from enemies.ts.
+    fields: [uint('archetype', ENEMY_ARCHETYPE_BITS), uint('faction', ENEMY_FACTION_BITS)],
   },
 ];
 

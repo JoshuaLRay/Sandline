@@ -42,6 +42,14 @@ export const NetId = defineComponent({ id: Types.ui32 });
  */
 export const Projectile = defineComponent({ kind: Types.ui8, ownerSlot: Types.ui8 });
 
+/**
+ * An enemy (T-3.10): which archetype (an ENEMY_IDS index) and which side.
+ * Position, stance and health ride `Transform`, `Velocity`, `Crouch` and
+ * `Health` as a soldier's do; this is what tells a client the soldier is the
+ * other side's, and never changes for the life of the entity.
+ */
+export const Enemy = defineComponent({ archetype: Types.ui8, faction: Types.ui8 });
+
 /** Marker: this entity is sent to clients. */
 export const Replicated = defineComponent();
 
@@ -65,6 +73,8 @@ export const COMPONENT_IDS = {
   Weapon: 7,
   /** T-2.31: a projectile in flight — which kind, and whose. */
   Projectile: 8,
+  /** T-3.10: an enemy — which archetype, and which side. */
+  Enemy: 9,
 } as const;
 
 export type ComponentName = keyof typeof COMPONENT_IDS;
