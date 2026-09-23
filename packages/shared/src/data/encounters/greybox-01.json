@@ -1,5 +1,5 @@
 {
-  "$comment": "T-3.32. The grey-box mission's enemies (world greybox-01, T-3.31), played by server/src/ai/director/spawner.ts. A group: `members` (archetype and count), the spawn `zone` it appears in (the world's mission.spawnZones), its `posture` (hold: stand where it spawned facing `face`, the start by default; patrol: walk from where it spawned through `route` and round again; garrison: take cover inside `at` and fight from there), its `trigger` (start; time, seconds since the start; enter, any living squad soldier inside an area; dead, another group with every member sent and none alive), and `waves` (again every `everySeconds`, `count` waves in all). `areas` are the places triggers and postures may name, beside the mission's own `start` and `objective`. Never more than `aliveCap` enemies alive; never a spawn a human can see at any of the `probes` heights above its feet.",
+  "$comment": "T-3.32. The grey-box mission's enemies (world greybox-01, T-3.31), played by server/src/ai/director/spawner.ts. A group: `members` (archetype and count), the spawn `zone` it appears in (the world's mission.spawnZones), its `posture` (hold: stand where it spawned facing `face`, the start by default; patrol: walk from where it spawned through `route` and round again; garrison: take cover inside `at` and fight from there), its `trigger` (start; time, seconds since the start; enter, any living squad soldier inside an area; dead, another group with every member sent and none alive), and `waves` (again every `everySeconds`, `count` waves in all — never sooner than `minSeconds` nor later than `maxSeconds`, the director's bounds, T-3.33). Every wave's size and the alive cap are the file's for six humans; the director scales them to the humans seated. `areas` are the places triggers and postures may name, beside the mission's own `start` and `objective`. Never more than `aliveCap` enemies alive; never a spawn a human can see at any of the `probes` heights above its feet.",
   "world": "greybox-01",
   "aliveCap": 10,
   "probes": [0.3, 1.0, 1.7],
@@ -36,7 +36,7 @@
       "zone": "behind-objective",
       "posture": { "kind": "garrison", "at": "objective" },
       "trigger": { "kind": "dead", "group": "garrison" },
-      "waves": { "count": 3, "everySeconds": 25 }
+      "waves": { "count": 3, "everySeconds": 25, "minSeconds": 15, "maxSeconds": 45 }
     },
     {
       "id": "late",

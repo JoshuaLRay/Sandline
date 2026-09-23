@@ -56,6 +56,26 @@ export interface SpawnerHost {
   ground?(p: Vec3): Vec3 | null;
 }
 
+/**
+ * How big waves are and when the next one goes (T-3.33's director). Without
+ * one, `FIXED_PACING`: the file as written, each wave `everySeconds` after
+ * the last.
+ */
+export interface Pacing {
+  /** A member count as a wave sends it now. */
+  waveSize(count: number): number;
+  /** The alive cap now, from the file's. */
+  aliveCap(fileCap: number): number;
+  /** Whether a group's next wave goes now, `since` seconds after its last, inside the file's bounds. */
+  waveDue(since: number, waves: EncounterGroup['waves']): boolean;
+}
+
+export const FIXED_PACING: Pacing = {
+  waveSize: (count) => count,
+  aliveCap: (cap) => cap,
+  waveDue: (since, waves) => since >= waves.everySeconds,
+};
+
 /** One spawn, or one candidate given up because a human could see it. */
 export interface SpawnEvent {
   seconds: number;
@@ -114,7 +134,8 @@ interface GroupRun {
   sessionGroup: number;
   firedAt: number | null;
   wavesSent: number;
-  nextWaveAt: number;
+  lastWaveAt: number;
+  waveTimes: number[];
   spawned: number[];
 }
 
@@ -137,9 +158,10 @@ export class Spawner {
     private readonly host: SpawnerHost,
     /** The first session group id to hand out; one per encounter group. */
     firstGroupId = 1000,
+    private readonly pacing: Pacing = FIXED_PACING,
   ) {
     if (encounter.world !== world.id) throw new Error(`encounter for '${encounter.world}' on world '${world.id}'`);
-    this.runs = encounter.groups.map((def, i) => ({ def, sessionGroup: firstGroupId + i, firedAt: null, wavesSent: 0, nextWaveAt: 0, spawned: [] }));
+    this.runs = encounter.groups.map((def, i) => ({ def, sessionGroup: firstGroupId + i, firedAt: null, wavesSent: 0, lastWaveAt: 0, waveTimes: [], spawned: [] }));
     for (const zone of world.mission!.spawnZones) {
       const points: Vec3[] = [];
       for (const c of zoneCandidates(zone)) {
@@ -165,6 +187,11 @@ export class Spawner {
   /** The netIds a group has spawned, in order. */
   spawnedBy(groupId: string): readonly number[] {
     return this.run(groupId).spawned;
+  }
+
+  /** When each wave of a group was sent, seconds. */
+  wavesOf(groupId: string): readonly number[] {
+    return this.run(groupId).waveTimes;
   }
 
   /** Members queued and not yet placed. */
@@ -204,8 +231,13 @@ export class Spawner {
 
   private enqueue(run: GroupRun, seconds: number): void {
     run.wavesSent++;
-    run.nextWaveAt = seconds + run.def.waves.everySeconds;
-    for (const m of run.def.members) for (let i = 0; i < m.count; i++) this.queue.push({ run, wave: run.wavesSent, archetype: m.archetype });
+    run.lastWaveAt = seconds;
+    run.waveTimes.push(seconds);
+    // Sized now, by the pacing: a wave already on its way keeps its size.
+    for (const m of run.def.members) {
+      const count = this.pacing.waveSize(m.count);
+      for (let i = 0; i < count; i++) this.queue.push({ run, wave: run.wavesSent, archetype: m.archetype });
+    }
   }
 
   /** The posture a member of `def` spawns in, resolved at `at`. */
@@ -228,7 +260,7 @@ export class Spawner {
         if (!this.triggered(run, seconds)) continue;
         run.firedAt = seconds;
         this.enqueue(run, seconds);
-      } else if (run.wavesSent < run.def.waves.count && seconds >= run.nextWaveAt) {
+      } else if (run.wavesSent < run.def.waves.count && this.pacing.waveDue(seconds - run.lastWaveAt, run.def.waves)) {
         this.enqueue(run, seconds);
       }
     }
@@ -239,7 +271,8 @@ export class Spawner {
     let alive = taken.length;
     /** Zones with nowhere left this tick: later members for them wait too. */
     const full = new Set<string>();
-    for (let i = 0; i < this.queue.length && alive < this.encounter.aliveCap; ) {
+    const cap = this.pacing.aliveCap(this.encounter.aliveCap);
+    for (let i = 0; i < this.queue.length && alive < cap; ) {
       const item = this.queue[i]!;
       const zone = item.run.def.zone;
       if (full.has(zone)) {

@@ -9,7 +9,9 @@ import {
   type Encounter,
   TICK_SECONDS,
   type World,
+  budgetFor,
   encounterFor,
+  scaled,
   loadWorld,
   parseEncounter,
   requireWorld,
@@ -140,7 +142,7 @@ describe('groups spawn on their triggers, and not before (T-3.32)', () => {
 
   it('a group with waves is not dead until its last wave has come and died', () => {
     const host = fakeHost();
-    const e = encounter([group('waves', { kind: 'start' }, { waves: { count: 3, everySeconds: 4 } }), group('then', { kind: 'dead', group: 'waves' })]);
+    const e = encounter([group('waves', { kind: 'start' }, { waves: { count: 3, everySeconds: 4, minSeconds: 4, maxSeconds: 4 } }), group('then', { kind: 'dead', group: 'waves' })]);
     const spawner = new Spawner(e, WORLD, host);
     let t = run(spawner, 0, 1);
     host.kill(spawner.spawnedBy('waves')[0]!);
@@ -215,7 +217,7 @@ describe('never where a human can see (T-3.32)', () => {
 describe('the alive cap holds under repeated waves (T-3.32)', () => {
   it('never more alive than the cap; what it holds back comes as the living die', () => {
     const host = fakeHost();
-    const e = encounter([{ ...group('horde', { kind: 'start' }, { waves: { count: 6, everySeconds: 1 } }), members: [{ archetype: 'rifleman', count: 4 }] }], 5);
+    const e = encounter([{ ...group('horde', { kind: 'start' }, { waves: { count: 6, everySeconds: 1, minSeconds: 1, maxSeconds: 1 } }), members: [{ archetype: 'rifleman', count: 4 }] }], 5);
     const spawner = new Spawner(e, WORLD, host);
     let peak = 0;
     let t = run(spawner, 0, 10, () => (peak = Math.max(peak, host.alive)));
@@ -255,6 +257,8 @@ describe('the committed encounter (T-3.32)', () => {
     expect(bad([{ ...group('g', { kind: 'start' }), posture: { kind: 'dance' } }])).toThrow(/posture.kind must be one of/);
     expect(bad([group('g', { kind: 'soon' })])).toThrow(/trigger.kind must be one of/);
     expect(bad([group('g', { kind: 'start' })], { aliveCap: 0 })).toThrow(/aliveCap/);
+    expect(bad([group('g', { kind: 'start' }, { waves: { count: 2, everySeconds: 10, minSeconds: 20, maxSeconds: 30 } })])).toThrow(/minSeconds ≤ everySeconds ≤ maxSeconds/);
+    expect(bad([group('g', { kind: 'start' }, { waves: { count: 2, everySeconds: 10 } })])).toThrow(/missing 'minSeconds'/);
     expect(bad([group('g', { kind: 'start' }, { colour: 'red' })])).toThrow(/unknown key 'colour'/);
     expect(() => parseEncounter({ world: 'range', aliveCap: 4, probes: [1], areas: {}, groups: [] })).toThrow(/has no mission/);
   });
@@ -298,7 +302,9 @@ describe('posture is honoured on spawn, on the grey-box map (T-3.32)', () => {
 
   it('spawns every group at once in its zone, none knowing of the squad', () => {
     const log = session.spawner!.log;
-    expect(log.map((l) => l.group).sort()).toEqual(['garrison', 'garrison', 'garrison', 'hold', 'patrol']);
+    // No human seated: the director's one-human budget sizes every wave (T-3.33).
+    const size = (n: number) => scaled(n, budgetFor(0).size);
+    expect(log.map((l) => l.group).sort()).toEqual([...Array(size(3)).fill('garrison'), ...Array(size(1)).fill('hold'), ...Array(size(1)).fill('patrol')]);
     for (const l of log) {
       const zone = world.mission!.spawnZones.find((z) => z.id === e.groups.find((g) => g.id === l.group)!.zone)!;
       expect(Math.hypot(l.point.x - zone.x, l.point.z - zone.z)).toBeLessThanOrEqual(zone.radius + 1e-6);

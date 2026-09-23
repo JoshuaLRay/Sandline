@@ -1824,6 +1824,30 @@ comms, and any mission scripting beyond what T-3.34 names.
 - **Do:** An intensity estimate from recent damage to the squad, enemies in contact and squad suppression; waves are held while intensity is high and brought forward while it is low, inside the encounter's bounds. Enemy counts and wave sizes scale on **human count, not squad size** (ADR-001), from a table in data — five bots add nothing.
 - **Done when:** tests assert one human and five bots get the table's one-human budget and six humans the six-human budget; swapping a bot for a human mid-mission changes the next wave, not the current one; a wave is delayed while intensity is above its threshold and never delayed past the encounter's maximum.
 - **Size:** M
+- **Completed 2026-09-23.**
+  - **Data.** `data/director.json`, parsed in `shared/src/sim/director.ts` by hand, unknown keys refused by name:
+    - `intensity`: `windowSeconds` 8, `damageFull` 150, `contactFull` 6, and weights damage 0.5, contact 0.3, suppression 0.2, which must sum to 1;
+    - `holdAbove` 0.6 and `forwardBelow` 0.2, the second below the first;
+    - `budget`: one row per human count, 1 to 6 in order, with `size` and `aliveCap` factors 0.5, 0.6 … 1.0. Six humans is the encounter file as written.
+    - `budgetFor(humans)` clamps no human to the one-human row and more than six to the six-human row; `scaled(count, factor)` rounds and never goes below one.
+  - **Encounter waves** gain required `minSeconds` and `maxSeconds`, with min ≤ every ≤ max: the bounds the director paces inside. The grey-box counterattack uses 15 / 25 / 45 s.
+  - **The spawner** takes a `Pacing` (`waveSize`, `aliveCap`, `waveDue(since, waves)`); `FIXED_PACING` is T-3.32's behaviour. A wave is sized when it is queued, so a wave already on its way keeps its size. `wavesOf(group)` gives each wave's send time.
+  - **The director** (`server/src/ai/director/director.ts`) is the session's pacing whenever it has an encounter. It is sampled every tick before the spawner steps, with:
+    - the humans seated (slots that are not bots);
+    - the squad's summed health, whose drops are damage kept for the window;
+    - living enemies with a target;
+    - the mean of the slots' suppression levels.
+
+    `waveDue` is false before `minSeconds` and true from `maxSeconds`. Between them it holds above `holdAbove`, sends below `forwardBelow`, and otherwise sends at `everySeconds`. `Session.director` exposes it.
+  - **Tests** (`director.test.ts`):
+    - each intensity part, the damage window forgetting what fell out of it, and each part capped at 1;
+    - five kinds of bad tuning refused;
+    - with min 10 / every 20 / max 40 on the tick grid: a hot fight (intensity 1.00) sends at 40.00 s and no later, a calm one (0.00) at 10.03 s, a middling one (0.40) at 20.00 s;
+    - through a spawner, a wave held for 30 s of hot fighting goes within two ticks of the fight cooling;
+    - a human arriving while the first wave waits in the queue behind the cap leaves it at the one-human size (3 of 6) and makes the second wave the six-human size (6);
+    - on a real `Session` with the committed grey-box encounter over loopback, one human and five bots spawn a garrison of 3 with a cap of 5, and six humans a garrison of 4 with a cap of 10 — the table's rows, counted from the humans alone.
+
+    `spawner.test.ts` now expects the one-human budget in its bot-only session, and refuses waves with bad or missing bounds.
 
 #### T-3.34 — The objective
 - **Depends:** T-3.31, T-3.32

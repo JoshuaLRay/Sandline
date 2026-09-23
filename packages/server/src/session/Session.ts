@@ -133,6 +133,7 @@ import { EnemyGroup } from '../ai/group.ts';
 import type { CombatWorld } from '../ai/actions/combat.ts';
 import type { EnemyPosture } from '../ai/actions/posture.ts';
 import { Spawner, type SpawnerHost } from '../ai/director/spawner.ts';
+import { Director } from '../ai/director/director.ts';
 import type { DownedMate, SquadView } from '../ai/actions/friendly.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
@@ -626,6 +627,7 @@ export class Session {
    */
   readonly world: World;
   private readonly spawnerValue: Spawner | null;
+  private readonly directorValue: Director | null;
 
   constructor(
     private readonly moveConfig: MoveConfig = DEFAULT_MOVE_CONFIG,
@@ -637,7 +639,9 @@ export class Session {
   ) {
     this.world = typeof world === 'string' ? requireWorld(world) : world;
     this.navMesh = options.navMesh ?? null;
-    this.spawnerValue = options.encounter ? new Spawner(options.encounter, this.world, this.spawnerHost()) : null;
+    // T-3.33: an encounter is paced by the director, from the fight and the humans in it.
+    this.directorValue = options.encounter ? new Director() : null;
+    this.spawnerValue = options.encounter ? new Spawner(options.encounter, this.world, this.spawnerHost(), undefined, this.directorValue!) : null;
     const mesh = this.navMesh;
     this.cover =
       options.cover && options.cover.length > 0
@@ -782,6 +786,11 @@ export class Session {
   }
 
   /** Enemies in the session, living and dead, oldest first (T-3.10). */
+  /** T-3.33: the director pacing the encounter, when the session was given one. */
+  get director(): Director | null {
+    return this.directorValue;
+  }
+
   /** T-3.32: the encounter's spawner, when the session was given one. */
   get spawner(): Spawner | null {
     return this.spawnerValue;
@@ -1978,7 +1987,19 @@ export class Session {
     }
 
     // T-3.32: the encounter's spawns, on mission time (ticks since the session began), before anyone perceives.
-    this.spawnerValue?.step(this.currentTick * TICK_SECONDS);
+    if (this.spawnerValue) {
+      const seconds = this.currentTick * TICK_SECONDS;
+      const at = now / 1000;
+      const living = this.enemyList.filter((e) => !isDead(e.health));
+      this.directorValue!.sample({
+        seconds,
+        humans: this.slots.filter((s) => !s.isBot).length,
+        squadHealth: this.slots.reduce((a, s) => a + s.health.current, 0),
+        contact: living.filter((e) => e.target !== null).length,
+        suppression: this.slots.reduce((a, s) => a + suppressionLevel(s.suppression, at), 0) / this.slots.length,
+      });
+      this.spawnerValue.step(seconds);
+    }
 
     const nowSeconds = now / 1000;
     this.perceive(nowSeconds);
