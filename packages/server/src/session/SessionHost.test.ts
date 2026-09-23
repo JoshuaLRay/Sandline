@@ -56,7 +56,7 @@ interface FakeClient {
 }
 
 /** A client on a loopback pair, attached to the host with no socket at all. */
-function attachFake(host: SessionHost, name = 'test', room = ''): FakeClient {
+function attachFake(host: SessionHost, name = 'test', room = '', key = ''): FakeClient {
   const pair = createLoopbackPair();
   const received: Message[] = [];
   pair.b.onMessage((bytes) => received.push(decodeMessage(bytes)));
@@ -79,7 +79,7 @@ function attachFake(host: SessionHost, name = 'test', room = ''): FakeClient {
       return this.ack?.room ?? '';
     },
   };
-  client.send({ kind: 'Join', version: PROTOCOL_VERSION, name, room });
+  client.send({ kind: 'Join', version: PROTOCOL_VERSION, name, room, ...(key === '' ? {} : { key }) });
   pair.settle();
   return client;
 }
@@ -611,5 +611,97 @@ describe('SessionHost — over a real socket', () => {
     expect(refused).toBe(true);
     expect(host.openConnections).toBe(1);
     first.socket.close();
+  });
+});
+
+describe('SessionHost — join key', () => {
+  it('lets anyone in when no key is set, whatever they offer', () => {
+    const { host } = newHost();
+    expect(attachFake(host, 'a').ack).toBeDefined();
+    expect(attachFake(host, 'b', '', 'anything').ack).toBeDefined();
+    expect(host.health()).toMatchObject({ keyRequired: false });
+  });
+
+  it('seats a client with the right key', () => {
+    const { host } = newHost({ joinKey: 'correct horse' });
+    const client = attachFake(host, 'a', '', 'correct horse');
+    expect(client.ack).toBeDefined();
+    expect(host.health()).toMatchObject({ keyRequired: true });
+  });
+
+  it('refuses a missing or wrong key before any room exists, and says which', () => {
+    const { host } = newHost({ joinKey: 'correct horse' });
+    const none = attachFake(host, 'a');
+    const wrong = attachFake(host, 'b', '', 'correct hors');
+    expect(none.bye).toMatchObject({ code: 'bad key', reason: 'this host needs a join key' });
+    expect(wrong.bye).toMatchObject({ code: 'bad key', reason: 'wrong join key' });
+    expect(none.ack).toBeUndefined();
+    // The whole point: a stranger's Join costs no room.
+    expect(host.registry.size).toBe(0);
+  });
+
+  it('answers a real code and a made-up one identically without the key', () => {
+    const { host } = newHost({ joinKey: 'k' });
+    const owner = attachFake(host, 'owner', '', 'k');
+    const real = attachFake(host, 'x', owner.room, 'nope');
+    const fake = attachFake(host, 'y', 'KKKK', 'nope');
+    expect(real.bye?.code).toBe('bad key');
+    expect(fake.bye?.code).toBe('bad key');
+  });
+});
+
+describe('SessionHost — idle and session limits', () => {
+  /** An input frame (yaw in wire units, 0..1023); `yaw` differing from the last one is what a mouse move looks like. */
+  const input = (tick: number, yaw = 0): Message => ({
+    kind: 'Input',
+    tick,
+    moveX: 0,
+    moveY: 0,
+    yaw,
+    pitch: 0,
+    buttons: 0,
+  });
+
+  it('drops a player who keeps the socket alive but never does anything', () => {
+    const { host, clock } = newHost({ registry: { idleTimeoutMs: 2000 } });
+    const client = attachFake(host);
+    // Exactly what a backgrounded tab sends: the same still input, and pings.
+    for (let i = 1; i <= 90 && !client.bye; i++) {
+      client.send(input(i));
+      client.send({ kind: 'Ping', id: i, clientTime: i });
+      run(host, clock, 1, client);
+    }
+    expect(client.bye).toMatchObject({ code: 'idle' });
+    expect(host.openConnections).toBe(0);
+  });
+
+  it('keeps a player who is looking around', () => {
+    const { host, clock } = newHost({ registry: { idleTimeoutMs: 2000 } });
+    const client = attachFake(host);
+    for (let i = 1; i <= 90; i++) {
+      client.send(input(i, i % 1024));
+      run(host, clock, 1, client);
+    }
+    expect(client.bye).toBeUndefined();
+  });
+
+  it('drops even an active player once the session limit is reached', () => {
+    const { host, clock } = newHost({ registry: { maxSessionMs: 2000 } });
+    const client = attachFake(host);
+    for (let i = 1; i <= 90 && !client.bye; i++) {
+      client.send(input(i, i % 1024));
+      run(host, clock, 1, client);
+    }
+    expect(client.bye).toMatchObject({ code: 'session limit' });
+  });
+
+  it('never drops anyone for either reason when both limits are off', () => {
+    const { host, clock } = newHost();
+    const client = attachFake(host);
+    for (let i = 1; i <= 150; i++) {
+      client.send(input(i));
+      run(host, clock, 1, client);
+    }
+    expect(client.bye).toBeUndefined();
   });
 });

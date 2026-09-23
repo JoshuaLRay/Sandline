@@ -46,6 +46,7 @@
  * test below drives the host by hand with no timers and no sockets — the same
  * rule `Session` and `ServerConnection` already follow.
  */
+import { createHash, timingSafeEqual } from 'node:crypto';
 import {
   BaseTransport,
   type Channel,
@@ -235,6 +236,23 @@ export interface SessionHostOptions {
    * every seat in every room plus a handful for handshakes in flight.
    */
   maxConnections?: number;
+  /**
+   * The shared password every Join must carry (`JOIN_KEY`). Empty or absent
+   * lets anyone with the address in, which is right for a laptop and wrong for
+   * a public host someone else's bill does not depend on.
+   */
+  joinKey?: string;
+}
+
+/**
+ * Compare a key in time that does not depend on where it first differs.
+ *
+ * Hashing first gives both sides the same length, which `timingSafeEqual`
+ * requires, and means a key's length does not leak either.
+ */
+function keyMatches(offered: string, expected: string): boolean {
+  const digest = (v: string): Buffer => createHash('sha256').update(v, 'utf8').digest();
+  return timingSafeEqual(digest(offered), digest(expected));
 }
 
 export class SessionHost {
@@ -248,6 +266,7 @@ export class SessionHost {
   /** Handshaking, not yet in a room. Timed out here; rooms time out their own. */
   private readonly pending = new Set<ServerConnection>();
   private readonly maxConnections: number;
+  private readonly joinKey: string;
   private connections = 0;
   private handle: WsServerHandle | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -271,6 +290,7 @@ export class SessionHost {
       },
     });
     this.maxConnections = options.maxConnections ?? this.registry.maxRooms * MAX_SLOTS + 8;
+    this.joinKey = options.joinKey ?? '';
   }
 
   /** Open the socket and start ticking. Resolves with the bound port. */
@@ -330,6 +350,7 @@ export class SessionHost {
       ...this.registry.stats,
       connections: this.connections,
       maxConnections: this.maxConnections,
+      keyRequired: this.joinKey !== '',
       link: this.link ? hostBanner(0, this.link).link : 'raw socket',
     };
   }
@@ -395,6 +416,16 @@ export class SessionHost {
     this.pending.delete(conn);
     if (this.draining) {
       conn.reject('host draining');
+      return;
+    }
+    /**
+     * The key is checked BEFORE a room is made or looked up. A stranger's Join
+     * must cost no room, no seat and no tick, and must not learn whether the
+     * code it guessed exists: `bad key` answers every room the same way.
+     */
+    if (this.joinKey !== '' && !keyMatches(conn.key, this.joinKey)) {
+      this.log.warn('join refused: bad key', { offered: conn.key === '' ? 'none' : 'wrong' });
+      conn.reject('bad key', conn.key === '' ? 'this host needs a join key' : 'wrong join key');
       return;
     }
     let room: Room | undefined;

@@ -165,9 +165,9 @@ export class BotClient {
   room = '';
 
   /** Handshake. An empty room asks the host to make one (T-1.5.04). */
-  join(room = ''): void {
+  join(room = '', key = ''): void {
     this.transport.send(
-      encodeMessage({ kind: 'Join', version: PROTOCOL_VERSION, name: this.options.name, room }),
+      encodeMessage({ kind: 'Join', version: PROTOCOL_VERSION, name: this.options.name, room, ...(key === '' ? {} : { key }) }),
     );
   }
 

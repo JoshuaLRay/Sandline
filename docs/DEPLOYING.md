@@ -206,6 +206,47 @@ run Host once, which does both.
 Either way, the result to check: open the published page in two browsers on
 two networks. Host, join, play. That is T-1.5.08's setup.
 
+### Locking it: the join key and player limits
+
+A public address with nothing in front of it can be found. Nobody who finds it
+can make **more** machines (only the deploy token can, and it lives in the
+repo's secrets). What they can do is keep **this** one awake: a machine that
+stops itself when nobody is connected never stops while somebody is. Two
+defences:
+
+**A join key.** Set one and every Join must carry it; anything else is refused
+as `bad key` before a room is made or looked up, so a stranger costs one
+refused handshake and nothing else.
+
+```bash
+fly secrets set JOIN_KEY='a few random words'   # restarts the machine with it
+fly secrets unset JOIN_KEY                      # open again
+```
+
+Players type it into the lobby's **Key** field once; the browser remembers
+it. It is never put in the URL or in **Copy link**, so pasting a room link into
+a chat does not hand out the key. `pnpm bot` takes `--key` (or reads
+`JOIN_KEY` from its own environment). `/healthz` reports `keyRequired`, never
+the key. Unset (the default, and what `pnpm host` on a laptop wants), anyone
+with the address can join exactly as before.
+
+Use a passphrase, not a word: nothing rate-limits guesses beyond the
+connection cap.
+
+**Player limits**, on by default everywhere:
+
+| Variable | Default | Drops a player who… |
+|---|---|---|
+| `IDLE_TIMEOUT_MS` | 600000 (10 min) | has not moved, looked, pressed or fired in that long — a forgotten or backgrounded tab |
+| `MAX_SESSION_MS` | 14400000 (4 h) | has been connected that long, active or not — a script faking activity |
+
+`0` turns either off. A dropped player sees why in the lobby (`idle`,
+`session limit`) and can simply join again; the room outlives them by
+`ROOM_GRACE_MS` as it would any leave.
+
+The last line of defence is outside the code: a spending limit or billing
+alert on the Fly account, and `fly scale count 0` between playtests.
+
 ### Redeploy
 
 ```bash

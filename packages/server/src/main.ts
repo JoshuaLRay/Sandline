@@ -16,6 +16,8 @@
  *   LINK_LATENCY_MS=100 LINK_JITTER_MS=20 LINK_LOSS=0.05 pnpm host
  *   MAX_ROOMS=4 ROOM_GRACE_MS=60000 pnpm host      # T-1.5.05: rooms per process, reclaim grace
  *   AI_DEBUG=1 pnpm host                           # T-3.09: clients may ask for AI debug reports
+ *   JOIN_KEY=hunter2 pnpm host                     # every Join must carry this key
+ *   IDLE_TIMEOUT_MS=600000 MAX_SESSION_MS=14400000 pnpm host   # per-player limits; 0 turns one off
  */
 import { SessionHost, hostBanner, linkFromEnv } from './session/SessionHost.ts';
 import { loadConfig } from './config.ts';
@@ -29,7 +31,15 @@ const host = new SessionHost({
   port: config.port,
   log,
   link,
-  registry: { maxRooms: config.maxRooms, graceMs: config.roomGraceMs, world: config.world, aiDebug: config.aiDebug },
+  joinKey: config.joinKey,
+  registry: {
+    maxRooms: config.maxRooms,
+    graceMs: config.roomGraceMs,
+    world: config.world,
+    aiDebug: config.aiDebug,
+    idleTimeoutMs: config.idleTimeoutMs,
+    maxSessionMs: config.maxSessionMs,
+  },
 });
 const port = await host.start();
 
@@ -39,6 +49,10 @@ log.info('host ready', {
   roomGraceMs: config.roomGraceMs,
   world: config.world,
   aiDebug: config.aiDebug,
+  // Never the key itself: the log is not a secret store.
+  joinKey: config.joinKey === '' ? 'none - anyone with the address can join' : 'required',
+  idleTimeoutMs: config.idleTimeoutMs,
+  maxSessionMs: config.maxSessionMs,
   health: `http://localhost:${port}/healthz`,
 });
 

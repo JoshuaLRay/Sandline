@@ -29,6 +29,9 @@ const T = COMPONENT_IDS.Transform;
 const SAMPLES: Message[] = [
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: 'K7PM' },
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: '' },
+  { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: 'K7PM', key: 'correct horse' },
+  { kind: 'Disconnect', code: 'bad key', reason: 'wrong join key' },
+  { kind: 'Disconnect', code: 'session limit', reason: 'session limit' },
   { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM', world: 'range' },
   { kind: 'Ack', tick: 4242 },
   { kind: 'Ping', id: 7, clientTime: 1234567 },
@@ -334,6 +337,12 @@ describe('typed rejections and room codes (T-1.5.04)', () => {
     expect(checkHandshake(join('K7PM')).ok).toBe(true);
     const bad = checkHandshake(join('hello'));
     expect(bad).toMatchObject({ ok: false, code: 'no such room' });
+  });
+
+  it('refuses an oversized join key as a bad key, not a protocol error', () => {
+    const join = (key: string): Message => ({ kind: 'Join', version: PROTOCOL_VERSION, name: 'x', room: '', key });
+    expect(checkHandshake(join('k'.repeat(128))).ok).toBe(true);
+    expect(checkHandshake(join('k'.repeat(129)))).toMatchObject({ ok: false, code: 'bad key' });
   });
 
   it('generates codes only from the voice-safe alphabet', () => {
