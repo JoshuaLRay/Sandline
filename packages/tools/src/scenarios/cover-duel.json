@@ -1,0 +1,12 @@
+{
+  "$comment": "T-3.20 cover-duel thresholds: rule 5's numbers for the rifleman's fight, asserted over `seeds` runs by `pnpm sim-run --scenario cover-duel` and its test. A run is `fightSeconds` long; the shooter is moved to the rifleman's flank `flankAfterCoverSeconds` after it first reaches cover.",
+  "seeds": 20,
+  "fightSeconds": 40,
+  "flankAfterCoverSeconds": 8,
+  "maxSecondsToCover": 5,
+  "minCoverRate": 0.9,
+  "maxExposedIdleFraction": 0.2,
+  "maxReloadTicksExposed": 0,
+  "maxRelocateSeconds": 3,
+  "minShotsFired": 1
+}

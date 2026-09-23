@@ -1,0 +1,76 @@
+{
+  "$comment": "T-3.20. The rifleman engages from cover. With a threat known: relocate when its point is flanked; in cover, reload when low, advance when unopposed, peek and fire a burst unless pressured (at most one peek per cooldown), else stay down; out of cover, take cover; with none to take, fight in the open. Nothing known: stand down. Numbers are the leaves' args.",
+  "id": "rifleman",
+  "root": {
+    "type": "selector",
+    "reactive": true,
+    "children": [
+      {
+        "type": "sequence",
+        "reactive": true,
+        "children": [
+          { "type": "condition", "name": "hasThreat" },
+          {
+            "type": "selector",
+            "reactive": true,
+            "children": [
+              {
+                "type": "sequence",
+                "reactive": true,
+                "children": [
+                  { "type": "condition", "name": "flanked" },
+                  { "type": "action", "name": "takeCover" }
+                ]
+              },
+              {
+                "type": "sequence",
+                "reactive": true,
+                "children": [
+                  { "type": "condition", "name": "inCover" },
+                  {
+                    "type": "selector",
+                    "reactive": true,
+                    "children": [
+                      {
+                        "type": "sequence",
+                        "reactive": true,
+                        "children": [
+                          { "type": "condition", "name": "lowAmmo", "args": { "fraction": 0.3 } },
+                          { "type": "action", "name": "reload" }
+                        ]
+                      },
+                      {
+                        "type": "sequence",
+                        "reactive": false,
+                        "children": [
+                          { "type": "condition", "name": "unopposed", "args": { "seconds": 5 } },
+                          { "type": "action", "name": "advance", "args": { "minGainM": 4, "closestM": 12 } }
+                        ]
+                      },
+                      {
+                        "type": "cooldown",
+                        "ticks": 45,
+                        "child": {
+                          "type": "sequence",
+                          "reactive": true,
+                          "children": [
+                            { "type": "inverter", "child": { "type": "condition", "name": "pressured", "args": { "suppression": 0.35, "hurtSeconds": 1.5 } } },
+                            { "type": "action", "name": "peek", "args": { "burstSeconds": 1.0, "reserve": 0.3 } }
+                          ]
+                        }
+                      },
+                      { "type": "action", "name": "hide" }
+                    ]
+                  }
+                ]
+              },
+              { "type": "action", "name": "takeCover" },
+              { "type": "action", "name": "engageOpen" }
+            ]
+          }
+        ]
+      },
+      { "type": "action", "name": "standDown" }
+    ]
+  }
+}

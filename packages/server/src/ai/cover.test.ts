@@ -7,7 +7,7 @@
  * range's committed cover and navmesh, as the session will.
  */
 import { describe, expect, it } from 'vitest';
-import { SPAWN_POINTS, loadWorld, requireWorld } from '@sandline/shared';
+import { SPAWN_POINTS, loadWorld, rayWorld, requireWorld } from '@sandline/shared';
 import { COVER, CoverSystem, concealedProbes, firingPosition, parseCoverConfig, protects } from './cover.ts';
 import type { CoverPoint } from './nav/baked/types.ts';
 import { initNav, pathLength } from './nav/NavMesh.ts';
@@ -52,9 +52,24 @@ describe('cover tuning (T-3.19)', () => {
 });
 
 describe('protection and firing positions (T-3.19)', () => {
-  it('probes a low point crouched and a high one standing', () => {
-    expect(concealedProbes(CRATE_WEST).map((p) => p.y).at(-1)).toBeLessThan(1.2);
-    expect(concealedProbes(WALL_MIDDLE).map((p) => p.y).at(-1)).toBe(1.55);
+  it('probes a low point crouched and a high one standing, across the body\'s width', () => {
+    expect(Math.max(...concealedProbes(CRATE_WEST).map((p) => p.y))).toBeLessThan(1.2);
+    expect(Math.max(...concealedProbes(WALL_MIDDLE).map((p) => p.y))).toBe(1.55);
+    // Centre line and both edges along the face (the south face runs along x).
+    expect(new Set(concealedProbes(CRATE_WEST).map((p) => p.x))).toEqual(new Set([-0.25, -0.25 - 0.35, -0.25 + 0.35]));
+    expect(new Set(concealedProbes(CRATE_WEST).map((p) => p.z))).toEqual(new Set([-1.05]));
+  });
+
+  it('does not count a point whose shoulder shows past the end of its wall', () => {
+    // North-east of the wall: the line to the point's centre crosses the wall
+    // just inside its end, the line to its east shoulder just outside.
+    const northEast = eye(9, 30);
+    const chest = { x: WALL_END.x, y: 0.9, z: WALL_END.z };
+    const d = { x: chest.x - northEast.x, y: chest.y - northEast.y, z: chest.z - northEast.z };
+    const len = Math.hypot(d.x, d.y, d.z);
+    expect(rayWorld({ origin: northEast, direction: { x: d.x / len, y: d.y / len, z: d.z / len }, maxDistance: len }, boxes)).not.toBeNull();
+    expect(protects(WALL_END, northEast, boxes)).toBe(false);
+    expect(protects(WALL_END, eye(0, 30), boxes)).toBe(true);
   });
 
   it('a crate protects against a threat in front and not one behind', () => {

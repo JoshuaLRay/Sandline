@@ -15,9 +15,13 @@
  */
 import { Blackboard, type BtTree, type BehaviorTree, BtRegistry, type HealthState, type MoveState, buildTree } from '@sandline/shared';
 import type { LocomotionIntent } from './locomotion/followPath.ts';
+import type { NavPoint } from './nav/NavMesh.ts';
+import { registerRiflemanLeaves } from './actions/rifleman.ts';
 
 /** Ticks between a brain's thoughts: 30 Hz sim, 10 Hz brains. */
 export const BRAIN_PERIOD_TICKS = 3;
+/** Session ticks a second: the unit a tree's `tick` is in (bt.ts), whatever the think rate. */
+export const BRAIN_TICKS_PER_SECOND = 30;
 
 /** What every brain remembers. Trees that need more extend it in their own task. */
 export interface BrainMemory {
@@ -29,6 +33,23 @@ export interface BrainMemory {
    * the human fire path whenever the weapon and a line of sight allow.
    */
   fireAt: number | null;
+  /**
+   * T-3.20: the stance and hands a fighting brain asks for. `crouch` is held
+   * while set (the session writes it into the input); `reload` asks for a
+   * reload of what is in hand; `lookAt` turns the body to face a point while
+   * it walks, strafing rather than turning its back (null: face the way it goes).
+   */
+  crouch: boolean;
+  reload: boolean;
+  lookAt: NavPoint | null;
+  /** T-3.20: a leaf's own step through a manoeuvre (a peek's out, fire, back), and the tick it began. */
+  phase: string | null;
+  phaseAt: number;
+}
+
+/** A blackboard as every brain starts it. */
+export function freshMemory(): BrainMemory {
+  return { intent: null, fireAt: null, crouch: false, reload: false, lookAt: null, phase: null, phaseAt: 0 };
 }
 
 /** The entity a brain drives, read live: the session's own slot, never a copy. */
@@ -47,12 +68,17 @@ export function brainPhase(netId: number): number {
   return netId % BRAIN_PERIOD_TICKS;
 }
 
-/** The server's leaves. `idle` wants nothing and never finishes. */
+/**
+ * The server's leaves. `idle` wants nothing and never finishes; the rest are
+ * the rifleman's fight (T-3.20, `actions/rifleman.ts`), which fail on a body
+ * that is not a fighter.
+ */
 export function createBrainRegistry(): BrainRegistry {
-  return new BtRegistry<BrainBody, BrainMemory>().action('idle', ({ blackboard }) => {
+  const registry = new BtRegistry<BrainBody, BrainMemory>().action('idle', ({ blackboard }) => {
     blackboard.set('intent', null);
     return 'running';
   });
+  return registerRiflemanLeaves(registry);
 }
 
 let idleTree: BrainTree | null = null;
@@ -79,7 +105,7 @@ export class Brain {
     this.startedAt = { x: body.state.x, y: body.state.y, z: body.state.z };
     this.bt = tree.instantiate({
       seed: (Math.imul(body.netId, 0x9e3779b1) ^ Math.imul(generation + 1, 0x85ebca6b)) >>> 0,
-      blackboard: new Blackboard<BrainMemory>({ intent: null, fireAt: null }),
+      blackboard: new Blackboard<BrainMemory>(freshMemory()),
       ctx: body,
     });
   }
@@ -112,6 +138,11 @@ export class Brain {
   /** Who it wants to shoot, as of the last thought; null once stopped (T-3.15). */
   get fireAt(): number | null {
     return this.stopped ? null : this.bt.blackboard.get('fireAt');
+  }
+
+  /** Any key of the latest thought's blackboard (T-3.20's stance and hands); the fresh value once stopped. */
+  read<K extends keyof BrainMemory>(key: K): BrainMemory[K] {
+    return this.stopped ? freshMemory()[key] : this.bt.blackboard.get(key);
   }
 
   get isStopped(): boolean {

@@ -6,6 +6,14 @@
  * committed golden hash, which was rejected as R10 "determinism theater".
  *
  *   pnpm sim-run --scenario fall --ticks 1000 --parity
+ *
+ * `cover-duel` (T-3.20) is a different kind of scenario: not the physics
+ * sandbox but the authoritative session, a rifleman against a scripted
+ * shooter over every seed in `scenarios/cover-duel.json`. It prints each
+ * run's numbers and exits 1 when any threshold is missed (`--ticks` and
+ * `--parity` do not apply).
+ *
+ *   pnpm sim-run --scenario cover-duel
  */
 import { Simulation } from '../../shared/src/sim/Simulation.ts';
 import { divergence } from '../../shared/test/harness/parity.ts';
@@ -20,6 +28,18 @@ const scenarioName = arg('scenario', 'fall');
 const ticks = Number.parseInt(arg('ticks', '1000'), 10);
 const parity = flag('parity');
 
+if (scenarioName === 'cover-duel') {
+  const { report, summarise } = await import('./scenarios/coverDuel.ts');
+  const summary = await summarise();
+  console.log(report(summary));
+  if (summary.failures.length > 0) {
+    for (const f of summary.failures) console.error(`FAIL: ${f}`);
+    process.exit(1);
+  }
+  console.log('OK: every threshold met');
+  process.exit(0);
+}
+
 const SCENARIOS: Record<string, (sim: Simulation) => void> = {
   fall: (sim) => { sim.spawnActor({ x: 0, y: 10, z: 0 }); },
   crowd: (sim) => {
@@ -31,7 +51,7 @@ const SCENARIOS: Record<string, (sim: Simulation) => void> = {
 
 const build = SCENARIOS[scenarioName];
 if (!build) {
-  console.error(`unknown scenario '${scenarioName}'. available: ${Object.keys(SCENARIOS).join(', ')}`);
+  console.error(`unknown scenario '${scenarioName}'. available: ${[...Object.keys(SCENARIOS), 'cover-duel'].join(', ')}`);
   process.exit(1);
 }
 

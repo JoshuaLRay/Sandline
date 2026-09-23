@@ -46,6 +46,7 @@
  * 10 Hz brains): a 30-tick cooldown is one second either way.
  */
 import TREE_IDLE from '../data/trees/idle.json' with { type: 'json' };
+import TREE_RIFLEMAN from '../data/trees/rifleman.json' with { type: 'json' };
 import { Sfc32 } from '../math/prng.ts';
 import type { Blackboard } from './blackboard.ts';
 
@@ -168,7 +169,8 @@ export function parseTreeDef(raw: unknown): BtTreeDef {
   const id = raw['id'];
   if (typeof id !== 'string' || id.length === 0) throw new BtDataError('tree.id: expected a non-empty string');
   for (const key of Object.keys(raw)) {
-    if (key !== 'id' && key !== 'root') throw new BtDataError(`tree '${id}': unknown key "${key}"`);
+    // `$comment` is a note for whoever edits the file, as in every other data file.
+    if (key !== 'id' && key !== 'root' && key !== '$comment') throw new BtDataError(`tree '${id}': unknown key "${key}"`);
   }
   try {
     return { id, root: parseNode(raw['root'], 'root') };
@@ -181,7 +183,7 @@ export function parseTreeDef(raw: unknown): BtTreeDef {
 /** Every committed tree, validated at import. Keyed by id. */
 export const TREE_DEFS: ReadonlyMap<string, BtTreeDef> = (() => {
   const map = new Map<string, BtTreeDef>();
-  for (const raw of [TREE_IDLE]) {
+  for (const raw of [TREE_IDLE, TREE_RIFLEMAN]) {
     const def = parseTreeDef(raw);
     if (map.has(def.id)) throw new BtDataError(`tree '${def.id}': duplicate id`);
     map.set(def.id, def);

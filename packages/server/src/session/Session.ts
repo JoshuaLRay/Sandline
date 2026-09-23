@@ -121,6 +121,10 @@ import { DEFAULT_HITBOX, HitboxHistory, capsuleFor, clampRewindMs, rayCapsule, r
 import { BRAIN_PERIOD_TICKS, Brain, type BrainTree, createBrainRegistry, defaultBrainTree } from '../ai/Brain.ts';
 import { type AiDebugSource, buildAiDebug } from '../ai/debug.ts';
 import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, visibleAimPoint } from '../ai/aim.ts';
+import { CoverSystem, DEFAULT_COVER_BODY } from '../ai/cover.ts';
+import type { CombatWorld } from '../ai/actions/combat.ts';
+import type { CoverPoint } from '../ai/nav/baked/types.ts';
+import { pathLength } from '../ai/nav/NavMesh.ts';
 import { PathFollower } from '../ai/locomotion/followPath.ts';
 import { Avoidance, type AvoidanceEntry } from '../ai/locomotion/avoidance.ts';
 import type { NavMesh } from '../ai/nav/NavMesh.ts';
@@ -140,6 +144,12 @@ const PRONE_HITBOX_HEIGHT = 2 * ((DEFAULT_HITBOX.proneHalfHeight ?? DEFAULT_HITB
  * (`ENEMY_FACTION_BITS` wide), so no faction is ever mistaken for the squad.
  */
 const SQUAD = -1;
+
+/** A soldier's eye where it stands now, in its stance: prone, crouched (the cover body's crouched eye, T-3.19) or standing. */
+function soldierEye(state: MoveState): { x: number; y: number; z: number } {
+  const h = state.prone ? DEFAULT_MUZZLE_RIG.proneEyeHeight : state.crouched ? (DEFAULT_COVER_BODY.crouched[2] as number) : DEFAULT_MUZZLE_RIG.eyeHeight;
+  return { x: state.x, y: state.y + h, z: state.z };
+}
 
 /** A soldier's capsule where it stands now, as the trace and the near miss both see it. */
 function soldierCapsule(state: MoveState): { centre: { x: number; y: number; z: number }; halfHeight: number; radius: number } {
@@ -360,6 +370,10 @@ export interface EnemyEntity {
   speed: number;
   /** T-3.16: how suppressed it is — widens its aim, and T-3.20's urge to take cover reads it. */
   suppression: SuppressionState;
+  /** T-3.20: when it was last hurt, seconds, or −Infinity — damage pushes a rifleman to cover. */
+  lastDamagedAt: number;
+  /** T-3.20: the session's world as its fighting leaves see it; the same object for every enemy. */
+  readonly combat: CombatWorld;
 }
 
 /** Where and how to spawn an enemy. */
@@ -385,6 +399,13 @@ export interface SessionOptions {
   navMesh?: NavMesh;
   /** The tree every bot slot's brain runs. The committed `idle` by default. */
   brainTree?: BrainTree;
+  /**
+   * T-3.20: the world's baked cover points (`bakedCoverFor`, T-3.18), for
+   * fighting brains to take. Passed in rather than imported, as the navmesh
+   * is, so the in-page session does not load every world's bake. None: no
+   * brain finds cover, and a rifleman fights in the open.
+   */
+  cover?: readonly CoverPoint[];
   /**
    * T-3.09: whether clients may ask for AI debug reports (`AI_DEBUG=1 pnpm
    * host`). Off by default: a host that does not allow it sends nothing, and
@@ -464,6 +485,10 @@ export class Session {
   private snapshotsSent = 0;
   private bytesSent = 0;
   private readonly navMesh: NavMesh | null;
+  /** T-3.19's cover over this world's baked points, or null without any. */
+  readonly cover: CoverSystem | null;
+  /** T-3.20: what fighting leaves see of the session; every enemy is handed this one. */
+  private readonly combatWorld: CombatWorld;
   private readonly brainTree: BrainTree;
   /**
    * Per slot, the path follower walking its brain's intent, made the first
@@ -503,6 +528,33 @@ export class Session {
   ) {
     this.world = typeof world === 'string' ? requireWorld(world) : world;
     this.navMesh = options.navMesh ?? null;
+    const mesh = this.navMesh;
+    this.cover =
+      options.cover && options.cover.length > 0
+        ? new CoverSystem(
+            options.cover,
+            this.world.boxes,
+            mesh
+              ? (a, b) => {
+                  const path = mesh.path(a, b);
+                  return path ? pathLength(path.points) : null;
+                }
+              : undefined,
+          )
+        : null;
+    this.combatWorld = {
+      cover: this.cover,
+      boxes: this.world.boxes,
+      now: () => this.nowMs / 1000,
+      eyeOf: (netId) => {
+        const s = this.soldier(netId);
+        return s && !isDead(s.health) ? soldierEye(s.state) : null;
+      },
+      friendsOf: (netId, faction) =>
+        this.enemyList
+          .filter((e) => e.netId !== netId && e.faction === faction && !isDead(e.health))
+          .map((e) => ({ x: e.state.x, y: e.state.y, z: e.state.z })),
+    };
     this.brainTree = options.brainTree ?? defaultBrainTree();
     this.aiDebugAllowed = options.aiDebug ?? false;
     this.idleTimeoutMs = options.idleTimeoutMs ?? 0;
@@ -608,6 +660,8 @@ export class Session {
       aim: null,
       speed: 0,
       suppression: createSuppression(),
+      lastDamagedAt: -Infinity,
+      combat: this.combatWorld,
     };
     enemy.brain = new Brain(enemy, at.tree ?? this.enemyTree(def.tree));
     this.enemyList.push(enemy);
@@ -629,6 +683,7 @@ export class Session {
    * ticks or a blast inside one — so no later step can move it.
    */
   private killEnemy(enemy: EnemyEntity): void {
+    this.cover?.release(enemy.netId);
     enemy.brain?.stop();
     enemy.follower = null;
     enemy.input = idleInput(enemy.yaw);
@@ -1053,6 +1108,7 @@ export class Session {
         if (enemy) {
           const result = applyDamage(enemy.health, dealt, this.nowMs / 1000, DAMAGE, enemy.def.downable);
           dealt = result.applied;
+          if (dealt > 0) enemy.lastDamagedAt = this.nowMs / 1000;
           if (result.killed) this.killEnemy(enemy);
         }
         // Range targets take no damage: they are the range's fixtures, not
@@ -1341,6 +1397,7 @@ export class Session {
       );
       if (damage <= 0) continue;
       const result = applyDamage(enemy.health, damage, nowSeconds, DAMAGE, enemy.def.downable);
+      if (result.applied > 0) enemy.lastDamagedAt = nowSeconds;
       if (result.killed) this.killEnemy(enemy);
       targets.push({ netId: enemy.netId, damage: result.applied });
     }
@@ -1389,6 +1446,7 @@ export class Session {
     this.perceive(nowSeconds);
     this.thinkBrains();
     this.driveBots();
+    this.enemyHands(nowSeconds);
 
     for (const slot of this.slots) {
       /**
@@ -1611,6 +1669,45 @@ export class Session {
   }
 
   /**
+   * A fighting brain's stance and hands, onto its input (T-3.20): the crouch
+   * it holds, a reload it asks for, and the point it faces while it walks —
+   * strafing towards its goal rather than turning its back on the threat, the
+   * move turned so the ground covered is the path follower's. Not mid-vault:
+   * a vault is walked straight at the wall. And its cover reservation is kept
+   * honest: released once it has left the point, or died.
+   */
+  private enemyHands(nowSeconds: number): void {
+    for (const enemy of this.enemyList) {
+      const alive = !isDead(enemy.health);
+      this.cover?.track(enemy.netId, enemy.state, alive);
+      const brain = enemy.brain;
+      if (!alive || !brain) continue;
+      enemy.input.crouch = brain.read('crouch');
+      // Settle a reload that has just finished before asking for another, or
+      // a request still standing on the finishing tick restarts it unfilled.
+      finishReload(enemy.weapon, enemy.weaponState, nowSeconds);
+      if (brain.read('reload')) startReload(enemy.weapon, enemy.weaponState, nowSeconds);
+      const look = brain.read('lookAt');
+      if (!look || enemy.state.vault || enemy.follower?.onVault) continue;
+      const dx = look.x - enemy.state.x;
+      const dz = look.z - enemy.state.z;
+      if (dx * dx + dz * dz < 1e-6) continue;
+      const input = enemy.input;
+      const from = (input.yaw / 1024) * Math.PI * 2;
+      // World direction of the move (the controller's frame: forward (sin, cos), right (−cos, sin)).
+      const wx = input.moveY * Math.sin(from) - input.moveX * Math.cos(from);
+      const wz = input.moveY * Math.cos(from) + input.moveX * Math.sin(from);
+      const yaw = ((Math.round((Math.atan2(dx, dz) / (Math.PI * 2)) * 1024) % 1024) + 1024) % 1024;
+      const to = (yaw / 1024) * Math.PI * 2;
+      input.moveY = wx * Math.sin(to) + wz * Math.cos(to);
+      input.moveX = -wx * Math.cos(to) + wz * Math.sin(to);
+      input.yaw = yaw;
+      // Sprinting is forward only: a strafe is a walk.
+      if (input.sprint && input.moveY < 0.7) input.sprint = false;
+    }
+  }
+
+  /**
    * AI trigger pulls (T-3.15), every tick, for every living enemy whose brain
    * names someone to shoot.
    *
@@ -1639,7 +1736,9 @@ export class Session {
       }
       // Mid-vault both hands are on the wall, for an AI as for a player (T-2.21).
       if (enemy.state.vault) continue;
-      const eye = eyePosition(enemy.state.x, enemy.state.y, enemy.state.z, DEFAULT_MUZZLE_RIG, enemy.state.prone);
+      // Its own eye in its own stance: crouched behind low cover it sees (and
+      // shoots) over nothing a crouched head would not (T-3.20).
+      const eye = soldierEye(enemy.state);
       const point = visibleAimPoint(eye, aimPoints(target.state, target.state.crouched, target.state.prone), this.world.boxes);
       if (!point) {
         // No line of sight, no shot (suppressive fire is T-3.21's exception).

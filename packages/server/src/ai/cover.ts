@@ -7,7 +7,8 @@
  *   - **protection**: the fraction of threats whose eye has no line of sight
  *     to any of the point's concealed probes — shin, chest and eye of the body
  *     in the stance the point conceals (crouched behind low cover, standing
- *     behind high), traced through the same boxes the shots are;
+ *     behind high), on its centre line and at both edges, traced through the
+ *     same boxes the shots are;
  *   - **a firing position**: standing up at a low point, or a side step out of
  *     a high one, from which the soldier's eye can see the threat. A point
  *     without one hides a soldier who can do nothing from it, and is never
@@ -102,6 +103,8 @@ export interface CoverBody {
   crouched: readonly number[];
   /** The eye a soldier fires from, standing. */
   fireEye: number;
+  /** Half the body's width along the face: where its edge probes go. */
+  widthM: number;
 }
 
 export function coverBodyFrom(move: MoveConfig = DEFAULT_MOVE_CONFIG): CoverBody {
@@ -112,6 +115,7 @@ export function coverBodyFrom(move: MoveConfig = DEFAULT_MOVE_CONFIG): CoverBody
     standing: [shin, DEFAULT_HITBOX.centerOffsetY, eye],
     crouched: [shin, DEFAULT_HITBOX.crouchCenterOffsetY ?? DEFAULT_HITBOX.centerOffsetY, crouchedEye],
     fireEye: eye,
+    widthM: DEFAULT_HITBOX.radius,
   };
 }
 
@@ -126,10 +130,22 @@ function clear(from: Vec3, to: Vec3, boxes: readonly WorldBox[]): boolean {
   return rayWorld({ origin: from, direction: { x: dx / length, y: dy / length, z: dz / length }, maxDistance: length }, boxes) === null;
 }
 
-/** The concealed body's probes at a point: shin, chest and eye in the stance it hides. */
+/**
+ * The concealed body's probes at a point: shin, chest and eye in the stance it
+ * hides, each on the body's centre line and at both edges of it along the
+ * face (±`widthM`, the hitbox radius). The edges matter at a wall's end: a
+ * point whose centre line is hidden can still leave a shoulder out past the
+ * end, and a threat that sees the shoulder hits it (T-3.20 found this).
+ */
 export function concealedProbes(point: CoverPoint, body: CoverBody = DEFAULT_COVER_BODY): Vec3[] {
   const heights = point.height === 'low' ? body.crouched : body.standing;
-  return heights.map((h) => ({ x: point.x, y: point.y + h, z: point.z }));
+  const tx = -point.nz;
+  const tz = point.nx;
+  const out: Vec3[] = [];
+  for (const side of [0, -1, 1]) {
+    for (const h of heights) out.push({ x: point.x + tx * body.widthM * side, y: point.y + h, z: point.z + tz * body.widthM * side });
+  }
+  return out;
 }
 
 /** Whether a point hides its concealed body from a threat's eye: no probe in sight. */
@@ -193,6 +209,8 @@ export interface CoverQuery {
    * one threat. False for a point to hide at — reloading, or bleeding.
    */
   combat?: boolean;
+  /** Only points this accepts are candidates (T-3.20: an advance takes only cover nearer the target). */
+  accept?: (point: CoverPoint) => boolean;
 }
 
 export interface CoverChoice {
@@ -281,6 +299,7 @@ export class CoverSystem {
     this.points.forEach((point, index) => {
       const holder = this.heldBy.get(index);
       if (holder !== undefined && holder !== owner) return;
+      if (query.accept && !query.accept(point)) return;
       const straight = straightLine(query.from, point);
       if (straight > maxPathM) return;
       let hidden = 0;

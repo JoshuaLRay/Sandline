@@ -38,6 +38,7 @@ ADRs that section names → implement. That's the whole loop. See
 | `curl localhost:8080/healthz` | rooms, players, protocol version |
 | `pnpm sim-run --scenario crowd --ticks 1800` | headless simulation, reports µs/tick |
 | `pnpm sim-run --scenario fall --ticks 1000 --parity` | two instances, reports divergence |
+| `pnpm sim-run --scenario cover-duel` | a rifleman against a scripted shooter over 20 seeds; reports and asserts time to cover, exposure, reloads and relocation (T-3.20) |
 | `pnpm bench:rapier` | deterministic vs default vs SIMD physics cost |
 | `pnpm bench:nav` | Recast init, bake and Detour query cost |
 | `pnpm gen:trig` | regenerate the committed trig table |
