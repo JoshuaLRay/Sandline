@@ -6,6 +6,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  LOCKED_KEY_CODES,
   armKeyboardLock,
   keyboardLockSupported,
   requestFullscreenForKeyboardLock,
@@ -66,6 +67,26 @@ describe('keyboard lock (PLAN.md §8 R13)', () => {
     doc.fullscreenElement = null;
     doc.dispatch('fullscreenchange');
     expect(unlock).toHaveBeenCalledTimes(1);
+  });
+
+  it('locks an explicit key list that leaves Tab out, so Alt+Tab reaches the OS', () => {
+    const lock = vi.fn().mockResolvedValue(undefined);
+    stubGlobals({ lock, unlock: vi.fn() });
+
+    const element = {} as Element;
+    armKeyboardLock(element);
+    doc.fullscreenElement = element;
+    doc.dispatch('fullscreenchange');
+
+    // No-argument lock() would capture every key, Alt+Tab included.
+    const codes = lock.mock.calls[0]![0] as string[];
+    expect(codes).toEqual([...LOCKED_KEY_CODES]);
+    expect(codes).not.toContain('Tab');
+    // The shortcuts the lock exists for stay reclaimed.
+    for (const code of ['KeyW', 'ControlLeft', 'AltLeft', 'Escape', 'F11']) {
+      expect(codes).toContain(code);
+    }
+    expect(new Set(codes).size).toBe(codes.length);
   });
 
   it('does not lock when fullscreen belongs to a different element', () => {
