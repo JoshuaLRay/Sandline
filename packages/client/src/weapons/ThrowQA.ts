@@ -90,7 +90,18 @@ export interface LiveProjectile {
 
 export class ThrowQA {
   private index = 0;
-  private readonly counts: number[] = PROJECTILE_ORDER.map((id) => getProjectile(id).carried);
+  /**
+   * Working copies of the shipped rows, one per projectile, that the tuning
+   * panel edits in place — the preview arc, the pouch and the throw all read
+   * these, and `onTune` hands each edit to the in-page session so the server
+   * throws what the page predicts.
+   */
+  private readonly working: ProjectileDef[] = PROJECTILE_ORDER.map((id) => ({ ...getProjectile(id) }));
+  private readonly counts: number[] = this.working.map((def) => def.carried);
+  /** Called with (index, row) after every edit and reset. */
+  onTune: ((index: number, def: Readonly<ProjectileDef>) => void) | null = null;
+  /** Called when the selected projectile changes, so a panel can rebind. */
+  onSelect: ((index: number) => void) | null = null;
   private nextThrowAt = 0;
   private readonly live: Ghost[] = [];
   private nextGhostId = 1;
@@ -102,7 +113,7 @@ export class ThrowQA {
   }
 
   get def(): ProjectileDef {
-    return getProjectile(PROJECTILE_ORDER[this.index] as string);
+    return this.working[this.index] as ProjectileDef;
   }
 
   get ghosts(): readonly Ghost[] {
@@ -120,7 +131,30 @@ export class ThrowQA {
 
   select(index: number): void {
     if (index < 0 || index >= PROJECTILE_ORDER.length) return;
+    const changed = index !== this.index;
     this.index = index;
+    if (changed) this.onSelect?.(index);
+  }
+
+  /** The working row for a projectile index (the selected one's is `def`). */
+  defOf(index: number): ProjectileDef {
+    return (this.working[index] ?? this.working[0]) as ProjectileDef;
+  }
+
+  /** An edit to the working row at `index` is done: pass it on, and settle the pouch. */
+  tuned(index = this.index): void {
+    const def = this.defOf(index);
+    if ((this.counts[index] ?? 0) > def.carried) this.counts[index] = def.carried;
+    this.onTune?.(index, def);
+  }
+
+  /** Put the row at `index` back to the shipped data. */
+  resetDef(index = this.index): ProjectileDef {
+    const fresh = { ...getProjectile(PROJECTILE_ORDER[index] as string) };
+    this.working[index] = fresh;
+    this.tuned(index);
+    this.onSelect?.(index);
+    return fresh;
   }
 
   /** Whether a throw would be allowed right now, by this client's copy. */
@@ -235,17 +269,17 @@ export class ThrowQA {
   reset(): void {
     for (const ghost of this.live) this.retired.push(ghost.id);
     this.live.length = 0;
-    PROJECTILE_ORDER.forEach((id, i) => {
-      this.counts[i] = getProjectile(id).carried;
+    this.working.forEach((def, i) => {
+      this.counts[i] = def.carried;
     });
     this.nextThrowAt = 0;
   }
 
   readout(now: number): string {
     const def = this.def;
-    const pouch = PROJECTILE_ORDER.map((id, i) => {
+    const pouch = this.working.map((row, i) => {
       const mark = i === this.index ? '>' : ' ';
-      return `${mark}${i + 5} ${getProjectile(id).name} x${this.count(i)}`;
+      return `${mark}${i + 5} ${row.name} x${this.count(i)}`;
     }).join('   ');
     const cooldown = this.cooldownLeft(now);
     const use = def.kind === 'rocket' ? 'click to fire, RMB aims' : 'hold LMB to aim, release to throw';

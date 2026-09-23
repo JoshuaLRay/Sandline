@@ -105,6 +105,7 @@ import { createSquadPanel } from './ui/SquadPanel.ts';
 import { isTextField } from './input/LocalInput.ts';
 import { createTuningPanel } from './ui/TuningPanel.ts';
 import { createWeaponPanel } from './ui/WeaponPanel.ts';
+import { createProjectilePanel } from './ui/ProjectilePanel.ts';
 
 /* -- Scene ----------------------------------------------------------------- */
 
@@ -633,7 +634,8 @@ function landImpact(net: NetClient, shot: ServerShot): void {
  */
 function onServerDetonation(net: NetClient, event: ServerDetonation): void {
   const now = clock.tick * TICK_SECONDS;
-  const def = getProjectile(PROJECTILE_ORDER[event.kind] ?? PROJECTILE_ORDER[0]);
+  // The page's row for it: a tuned blast radius draws at the tuned size.
+  const def = throws.defOf(event.kind);
   const centre = { x: event.x, y: event.y, z: event.z };
 
   /**
@@ -716,6 +718,8 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null): void {
   // so the movement panel moves prediction alone and will mispredict until the
   // host is restarted to match. Tuning is an in-page-session activity.)
   const local = choice.kind === 'local' ? new LocalServer(link, config, qaNav ? { navMesh: qaNav } : {}) : null;
+  // The projectile panel's rows, as they stand, for this session from its first throw.
+  if (local) PROJECTILE_ORDER.forEach((_, i) => local.tuneProjectile(i, throws.defOf(i)));
   const qaEnemies = local && qaNav ? new QaEnemies(local) : null;
   // Slot netIds are 1..6 in slot order, so slot 1's soldier is netId 2.
   const qaSuppressor = local && qaSuppressWanted ? new QaSuppressor(local, 2) : null;
@@ -894,6 +898,14 @@ const movementPanel = createTuningPanel(
   (v) => input.setInvertY(v),
 );
 const weaponPanel = createWeaponPanel(combat);
+/**
+ * Grenade and rocket tuning: the page's rows, handed to the in-page session on
+ * every edit so the server throws what the aim arc shows (a remote host keeps
+ * its own data). The live session is looked up at edit time, and each new
+ * in-page session is given the current rows when it starts.
+ */
+const projectilePanel = createProjectilePanel(throws);
+throws.onTune = (index, def) => live?.local?.tuneProjectile(index, def);
 const cameraPanel = createCameraPanel(cam);
 const ZERO_STATS = {
   rttMs: 0,
@@ -953,6 +965,7 @@ panels.append(
   netgraph.root,
   movementPanel.root,
   weaponPanel.root,
+  projectilePanel.root,
   cameraPanel.root,
 );
 document.body.appendChild(panels);

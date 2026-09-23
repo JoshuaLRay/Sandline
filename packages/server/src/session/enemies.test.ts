@@ -33,6 +33,7 @@ import {
   encodeMessage,
   eyePosition,
   getEnemy,
+  getProjectile,
   getWeapon,
   isEnemyNetId,
   isRangeTarget,
@@ -352,7 +353,8 @@ describe('an enemy dies, and stays dead (T-3.10)', () => {
     });
     pair.b.send(encodeMessage({ kind: 'Throw', tick: 0, yaw: 0, pitch: (-1024 >>> 0) & 0xfff, projectile: 0 }));
     pair.settle();
-    for (let i = 0; i < 90 && detonations.length === 0; i++) {
+    // Through the fuse, from the data, and a few ticks over.
+    for (let i = 0; i < Math.ceil(getProjectile('frag').fuseSeconds * 30) + 5 && detonations.length === 0; i++) {
       pair.settle();
       session.step((session.tick + 1) * TICK_MS);
       pair.settle();

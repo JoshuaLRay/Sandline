@@ -280,10 +280,6 @@ const idleInput = (yaw = 0): MoveInput => ({
   firing: false,
 });
 
-/** A full load-out of every projectile, as the data says it is carried. */
-function fullPouch(): number[] {
-  return PROJECTILE_IDS.map((id) => getProjectile(id).carried);
-}
 
 /**
  * How far ahead of the eye a projectile is born. Far enough to be clear of the
@@ -578,7 +574,7 @@ export class Session {
         weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
         suppression: createSuppression(),
         pitch: 0,
-        pouch: fullPouch(),
+        pouch: this.fullPouch(),
         nextThrowAt: 0,
         heldProjectile: -1,
         health: createHealth(),
@@ -636,6 +632,33 @@ export class Session {
    * `MAX_ENEMIES` or has spent the band. It is stepped, recorded and sent from
    * the next tick on.
    */
+  /**
+   * This session's projectile rows, indexed like PROJECTILE_IDS: the shipped
+   * data unless the QA page has retuned one (`tuneProjectile`). Per session,
+   * so tuning the in-page range never changes what a host's rooms throw.
+   */
+  private readonly projectileDefs: ProjectileDef[] = PROJECTILE_IDS.map((id) => ({ ...getProjectile(id) }));
+
+  /** A full load-out of every projectile, as this session's rows say it is carried. */
+  private fullPouch(): number[] {
+    return this.projectileDefs.map((def) => def.carried);
+  }
+
+  /** The projectile row a wire index throws in this session, or null. */
+  projectileDef(index: number): Readonly<ProjectileDef> | null {
+    return this.projectileDefs[index] ?? null;
+  }
+
+  /**
+   * Retune one projectile for this session from now on (the in-page
+   * projectile panel). Out-of-range indices are ignored. What is already in
+   * the air flies the row it was thrown with.
+   */
+  tuneProjectile(index: number, def: Readonly<ProjectileDef>): void {
+    if (index < 0 || index >= this.projectileDefs.length) return;
+    this.projectileDefs[index] = { ...def };
+  }
+
   spawnEnemy(archetype: string, at: EnemySpawn): number | null {
     const def = getEnemy(archetype);
     if (this.enemyList.length >= MAX_ENEMIES || this.nextEnemyNetId >= ENEMY_NET_ID_LIMIT) return null;
@@ -1229,7 +1252,7 @@ export class Session {
     if (!isAlive(slot.health)) return;
     if (slot.state.vault) return;
 
-    const def = projectileByIndex(msg.projectile);
+    const def = this.projectileDefs[msg.projectile] ?? null;
     if (def === null) return; // Out-of-range index: drop it, do not throw.
     const nowSeconds = this.nowMs / 1000;
     if (nowSeconds < slot.nextThrowAt) return;
@@ -1474,7 +1497,7 @@ export class Session {
     slot.interactHeld = false;
           slot.weaponState = createWeaponState(slot.weapon);
           slot.suppression = createSuppression();
-          slot.pouch = fullPouch();
+          slot.pouch = this.fullPouch();
           slot.nextThrowAt = 0;
         }
         // Still recorded into the hitbox history below, so a shot already in
