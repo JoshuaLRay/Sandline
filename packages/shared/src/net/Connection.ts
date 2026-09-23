@@ -36,6 +36,8 @@ export interface ServerConnectionEvents {
   onThrow?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Throw' }>) => void;
   onEquip?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Equip' }>) => void;
   onAck?: (conn: ServerConnection, tick: number) => void;
+  /** T-3.09: the client wants AI debug reports, or no longer does. */
+  onAiDebugRequest?: (conn: ServerConnection, on: boolean) => void;
   onClosed?: (conn: ServerConnection, reason: string) => void;
 }
 
@@ -154,6 +156,9 @@ export class ServerConnection {
         break;
       case 'Equip':
         this.events.onEquip?.(this, msg);
+        break;
+      case 'AiDebugRequest':
+        this.events.onAiDebugRequest?.(this, msg.on);
         break;
       case 'Ack':
         if (msg.tick > this.lastAckedTick) this.lastAckedTick = msg.tick;

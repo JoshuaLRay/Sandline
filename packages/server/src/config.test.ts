@@ -36,4 +36,15 @@ describe('loadConfig (T-0.07)', () => {
     process.env['WORLD'] = 'atlantis';
     expect(() => loadConfig()).toThrow(/WORLD must be one of range/);
   });
+
+  it('allows AI debug reports only when AI_DEBUG=1 (T-3.09)', () => {
+    delete process.env['AI_DEBUG'];
+    expect(loadConfig().aiDebug).toBe(false);
+    process.env['AI_DEBUG'] = '0';
+    expect(loadConfig().aiDebug).toBe(false);
+    process.env['AI_DEBUG'] = '1';
+    expect(loadConfig().aiDebug).toBe(true);
+    process.env['AI_DEBUG'] = 'yes';
+    expect(() => loadConfig()).toThrow(/AI_DEBUG must be 0 or 1/);
+  });
 });

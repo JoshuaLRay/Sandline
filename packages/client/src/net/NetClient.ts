@@ -286,6 +286,9 @@ export class NetClient {
   onDisconnect: ((reason: string, code: DisconnectCode) => void) | null = null;
   /** The squad changed. */
   onRoster: ((slots: RosterEntry[]) => void) | null = null;
+  /** T-3.09: an AI debug report, from a host that allows them, after `requestAiDebug(true)`. */
+  onAiDebug: ((report: Extract<Message, { kind: 'AiDebug' }>) => void) | null = null;
+  private aiDebugWanted = false;
 
   constructor(
     private readonly transport: Transport,
@@ -569,6 +572,21 @@ export class NetClient {
     this.transport.send(encodeMessage({ kind: 'Equip', item }), 'reliable');
   }
 
+  /**
+   * Ask for AI debug reports, or stop them (T-3.09). Reliable: a lost request
+   * would leave the overlay blank, or the host sending to a client that no
+   * longer draws it. A host without `AI_DEBUG=1` ignores it.
+   *
+   * The wish outlives the connection: asked before seating, or across a
+   * rejoin, it is sent on the next JoinAck, since a host forgets a client's
+   * request with its slot.
+   */
+  requestAiDebug(on: boolean): void {
+    this.aiDebugWanted = on;
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage({ kind: 'AiDebugRequest', on }), 'reliable');
+  }
+
   /** Every projectile in flight, sampled at the interpolation delay. */
   projectiles(): SeenProjectile[] {
     const out: SeenProjectile[] = [];
@@ -733,6 +751,7 @@ export class NetClient {
         this.slotValue = msg.slot;
         this.roomValue = msg.room;
         this.joinedFlag = true;
+        if (this.aiDebugWanted) this.transport.send(encodeMessage({ kind: 'AiDebugRequest', on: true }), 'reliable');
         this.onJoined?.(msg.slot, msg.room);
         // The predictor is NOT created here, for the reason BotClient gives:
         // JoinAck does not say where we spawned, and assuming the origin
@@ -795,6 +814,10 @@ export class NetClient {
             targets: msg.targets,
           },
         });
+        break;
+
+      case 'AiDebug':
+        this.onAiDebug?.(msg);
         break;
 
       case 'HitEvent':

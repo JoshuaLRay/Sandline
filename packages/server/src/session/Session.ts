@@ -85,7 +85,8 @@ import {
   writeDelta,
 } from '@sandline/shared';
 import { DEFAULT_HITBOX, HitboxHistory, capsuleFor, clampRewindMs, rayCapsule, resolveShot } from '../net/lagComp.ts';
-import { Brain, type BrainTree, defaultBrainTree } from '../ai/Brain.ts';
+import { BRAIN_PERIOD_TICKS, Brain, type BrainTree, defaultBrainTree } from '../ai/Brain.ts';
+import { type AiDebugSource, buildAiDebug } from '../ai/debug.ts';
 import { PathFollower } from '../ai/locomotion/followPath.ts';
 import { Avoidance, type AvoidanceEntry } from '../ai/locomotion/avoidance.ts';
 import type { NavMesh } from '../ai/nav/NavMesh.ts';
@@ -262,6 +263,12 @@ export interface SessionOptions {
   navMesh?: NavMesh;
   /** The tree every bot slot's brain runs. The committed `idle` by default. */
   brainTree?: BrainTree;
+  /**
+   * T-3.09: whether clients may ask for AI debug reports (`AI_DEBUG=1 pnpm
+   * host`). Off by default: a host that does not allow it sends nothing, and
+   * one that does sends only to the clients that asked.
+   */
+  aiDebug?: boolean;
 }
 
 export interface SessionStats {
@@ -270,6 +277,9 @@ export interface SessionStats {
   bots: number;
   snapshotsSent: number;
   bytesSent: number;
+  /** T-3.09: AI debug reports sent, and their bytes — counted apart from snapshots. */
+  aiDebugSent: number;
+  aiDebugBytesSent: number;
 }
 
 export class Session {
@@ -307,6 +317,11 @@ export class Session {
   private readonly followers: (PathFollower | null)[] = [];
   /** Local avoidance, made with the first follower and stepped every tick after. */
   private avoidance: Avoidance | null = null;
+  private readonly aiDebugAllowed: boolean;
+  /** Connections that asked for AI debug reports (T-3.09), while the host allows it. */
+  private readonly aiDebugClients = new Set<ServerConnection>();
+  private aiDebugSent = 0;
+  private aiDebugBytesSent = 0;
 
   /**
    * `moveConfig` is a REFERENCE, not a copy. The in-page QA server shares one
@@ -331,6 +346,7 @@ export class Session {
     this.world = typeof world === 'string' ? requireWorld(world) : world;
     this.navMesh = options.navMesh ?? null;
     this.brainTree = options.brainTree ?? defaultBrainTree();
+    this.aiDebugAllowed = options.aiDebug ?? false;
     // Six slots exist from the moment the session does (ADR-001).
     for (let i = 0; i < MAX_SLOTS; i++) {
       this.slots.push({
@@ -388,6 +404,8 @@ export class Session {
       bots: this.slots.filter((s) => s.isBot).length,
       snapshotsSent: this.snapshotsSent,
       bytesSent: this.bytesSent,
+      aiDebugSent: this.aiDebugSent,
+      aiDebugBytesSent: this.aiDebugBytesSent,
     };
   }
 
@@ -449,6 +467,7 @@ export class Session {
       onFire: (c, msg) => this.applyFire(c, msg),
       onThrow: (c, msg) => this.applyThrow(c, msg),
       onEquip: (c, msg) => this.applyEquip(c, msg),
+      onAiDebugRequest: (c, on) => this.applyAiDebugRequest(c, on),
       onClosed: (c) => this.releaseSlot(c),
     });
     if (conn.state === 'closed') return false;
@@ -510,6 +529,7 @@ export class Session {
 
   private releaseSlot(conn: ServerConnection): void {
     this.connections.delete(conn);
+    this.aiDebugClients.delete(conn);
     const slot = this.slots.find((s) => s.connection === conn);
     if (!slot) return;
     // Hand the entity back to a bot; it keeps its position and its netId.
@@ -526,6 +546,39 @@ export class Session {
     slot.queue.length = 0;
     this.giveBrain(slot);
     this.broadcastRoster();
+  }
+
+  /**
+   * T-3.09: a client asking for AI debug reports. A host that does not allow
+   * them ignores the request outright — it does not even remember it — so
+   * turning the flag on later could never start sending to a client that
+   * asked of a host that said no.
+   */
+  private applyAiDebugRequest(conn: ServerConnection, on: boolean): void {
+    if (!this.aiDebugAllowed) return;
+    if (on) this.aiDebugClients.add(conn);
+    else this.aiDebugClients.delete(conn);
+  }
+
+  /**
+   * At the brains' 10 Hz, every running brain's reasons to every client that
+   * asked. Unreliable: each report replaces the last, so a lost one is only a
+   * tenth of a second of a stale overlay. Nothing is built when nobody asked.
+   */
+  private sendAiDebug(): void {
+    if (this.aiDebugClients.size === 0 || this.currentTick % BRAIN_PERIOD_TICKS !== 0) return;
+    const sources: AiDebugSource[] = [];
+    for (const slot of this.slots) {
+      if (!slot.brain) continue;
+      sources.push({ netId: slot.netId, position: slot.state, brain: slot.brain, follower: this.followers[slot.index] ?? null });
+    }
+    const wire = encodeMessage(buildAiDebug(this.currentTick, sources));
+    for (const conn of this.aiDebugClients) {
+      if (conn.state !== 'active' || !conn.transport.isOpen) continue;
+      conn.transport.send(wire, 'unreliable');
+      this.aiDebugSent++;
+      this.aiDebugBytesSent += wire.length;
+    }
   }
 
   /**
@@ -1129,6 +1182,7 @@ export class Session {
     const snapshot = this.buildSnapshot();
     this.history.store(snapshot);
     this.broadcast(snapshot);
+    this.sendAiDebug();
   }
 
   /**
@@ -1387,5 +1441,6 @@ export class Session {
     this.avoidance = null;
     for (const conn of [...this.connections]) conn.reject('host draining', reason);
     this.connections.clear();
+    this.aiDebugClients.clear();
   }
 }

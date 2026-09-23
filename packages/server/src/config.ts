@@ -12,6 +12,8 @@ export interface ServerConfig {
   roomGraceMs: number;
   /** The named world every room on this host is built with (T-3.02). */
   world: string;
+  /** T-3.09: `AI_DEBUG=1` lets clients ask for AI debug reports. */
+  aiDebug: boolean;
 }
 
 function intFromEnv(name: string, fallback: number): number {
@@ -30,6 +32,14 @@ function worldFromEnv(): string {
   return raw;
 }
 
+/** `AI_DEBUG=1 pnpm host`. Anything but unset, empty, `0` or `1` is a startup error. */
+function aiDebugFromEnv(): boolean {
+  const raw = process.env['AI_DEBUG'];
+  if (raw === undefined || raw === '' || raw === '0') return false;
+  if (raw === '1') return true;
+  throw new Error(`AI_DEBUG must be 0 or 1, got '${raw}'`);
+}
+
 export function loadConfig(): ServerConfig {
   const level = process.env['LOG_LEVEL'] ?? 'info';
   if (!['debug', 'info', 'warn', 'error'].includes(level)) {
@@ -42,5 +52,6 @@ export function loadConfig(): ServerConfig {
     maxRooms: intFromEnv('MAX_ROOMS', DEFAULT_MAX_ROOMS),
     roomGraceMs: intFromEnv('ROOM_GRACE_MS', DEFAULT_ROOM_GRACE_MS),
     world: worldFromEnv(),
+    aiDebug: aiDebugFromEnv(),
   };
 }
