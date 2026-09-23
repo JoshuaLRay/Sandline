@@ -15,6 +15,13 @@ export interface ServerConfig {
   /** T-3.09: `AI_DEBUG=1` lets clients ask for AI debug reports. */
   aiDebug: boolean;
   /**
+   * `HOST_AI=1`: rooms get the AI the in-page session has — the world's
+   * navmesh and cover, friendly bots that follow, fight and take orders, and
+   * on a world with an encounter the mission. Off by default, so a bare
+   * `pnpm host` stays the netcode instrument `pnpm bot --url` compares against.
+   */
+  hostAi: boolean;
+  /**
    * `JOIN_KEY`: the shared password a Join must carry. Empty means none, which
    * is what `pnpm host` on a laptop wants. A deployed host sets it as a secret.
    */
@@ -60,6 +67,14 @@ function aiDebugFromEnv(): boolean {
   throw new Error(`AI_DEBUG must be 0 or 1, got '${raw}'`);
 }
 
+/** `HOST_AI=1 pnpm host`. As `AI_DEBUG`: unset, empty, `0` or `1`, and anything else a startup error. */
+function hostAiFromEnv(): boolean {
+  const raw = process.env['HOST_AI'];
+  if (raw === undefined || raw === '' || raw === '0') return false;
+  if (raw === '1') return true;
+  throw new Error(`HOST_AI must be 0 or 1, got '${raw}'`);
+}
+
 export function loadConfig(): ServerConfig {
   const level = process.env['LOG_LEVEL'] ?? 'info';
   if (!['debug', 'info', 'warn', 'error'].includes(level)) {
@@ -73,6 +88,7 @@ export function loadConfig(): ServerConfig {
     roomGraceMs: intFromEnv('ROOM_GRACE_MS', DEFAULT_ROOM_GRACE_MS),
     world: worldFromEnv(),
     aiDebug: aiDebugFromEnv(),
+    hostAi: hostAiFromEnv(),
     joinKey: process.env['JOIN_KEY'] ?? '',
     idleTimeoutMs: nonNegative('IDLE_TIMEOUT_MS', DEFAULT_IDLE_TIMEOUT_MS),
     maxSessionMs: nonNegative('MAX_SESSION_MS', DEFAULT_MAX_SESSION_MS),

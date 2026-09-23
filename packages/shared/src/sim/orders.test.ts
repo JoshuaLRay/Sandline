@@ -17,8 +17,8 @@ function roundTrip(msg: Message): Message {
 
 describe('orders on the wire (T-3.27)', () => {
   it('bumps the protocol', () => {
-    // 21 brought orders; T-3.34's mission messages made it 22.
-    expect(PROTOCOL_VERSION).toBe(22);
+    // 21 brought orders; T-3.34's mission messages made it 22, and the Join's map choice 23.
+    expect(PROTOCOL_VERSION).toBe(23);
   });
 
   it('round-trips every order kind to every kind of addressee', () => {

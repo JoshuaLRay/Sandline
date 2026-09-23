@@ -55,6 +55,8 @@ export class ServerConnection {
   room = '';
   /** The join key the client offered; empty for none. The host checks it. */
   key = '';
+  /** The world the client asked a new room to be built with; empty for the host's default. */
+  world = '';
   /** Latest tick this client acknowledged; the delta baseline. */
   lastAckedTick = -1;
   private lastHeard: number;
@@ -174,6 +176,7 @@ export class ServerConnection {
       this.name = join.name;
       this.room = join.room;
       this.key = join.key ?? '';
+      this.world = join.world ?? '';
       this.state = 'active';
       this.events.onJoined?.(this);
       return;
@@ -306,8 +309,8 @@ export class ClientConnection {
   }
 
   /** Open the handshake. An empty room asks the host to create one. */
-  join(name: string, room = '', key = ''): void {
-    this.send({ kind: 'Join', version: PROTOCOL_VERSION, name, room, ...(key === '' ? {} : { key }) });
+  join(name: string, room = '', key = '', world = ''): void {
+    this.send({ kind: 'Join', version: PROTOCOL_VERSION, name, room, ...(key === '' ? {} : { key }), ...(world === '' ? {} : { world }) });
   }
 
   private handle(data: Uint8Array): void {

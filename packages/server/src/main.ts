@@ -37,6 +37,7 @@ const host = new SessionHost({
     graceMs: config.roomGraceMs,
     world: config.world,
     aiDebug: config.aiDebug,
+    ai: config.hostAi,
     idleTimeoutMs: config.idleTimeoutMs,
     maxSessionMs: config.maxSessionMs,
   },
@@ -49,6 +50,7 @@ log.info('host ready', {
   roomGraceMs: config.roomGraceMs,
   world: config.world,
   aiDebug: config.aiDebug,
+  hostAi: config.hostAi,
   // Never the key itself: the log is not a secret store.
   joinKey: config.joinKey === '' ? 'none - anyone with the address can join' : 'required',
   idleTimeoutMs: config.idleTimeoutMs,

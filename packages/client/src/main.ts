@@ -799,7 +799,8 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
     let roomJoined = choice.room;
     remote.onReady = () => {
       net.resetForRejoin();
-      net.join(roomJoined, choice.key);
+      // The map only means something to a room being made (T-3.35 follow-up); a rejoin takes the room's.
+      net.join(roomJoined, choice.key, roomJoined === '' ? choice.world : '');
     };
     net.onJoined = (_slot, room) => {
       if (net.world) useWorld(net.world);

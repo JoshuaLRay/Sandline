@@ -13,23 +13,31 @@ URL flags you used and roughly where you were standing.
 
 ## Before you start
 
-**Run the page.** `pnpm --filter @sandline/client dev`, then open
-`http://localhost:5173/` and pick **Practise here**. That is the in-page
-session. It is the only place the AI can be tested today: the hosted server
-(`pnpm host`) builds rooms with no navmesh, cover or encounter, so hosted bots
-stand still and hosted rooms have no enemies. Use `pnpm host` only for the
-network and the two-people items marked **[host]**.
+**Everything here runs on the deployed QA site: no terminal, nothing
+local.** The site is **https://joshualray.github.io/Sandline/**. It rebuilds a few minutes after anything merges
+to `main`. The lobby's corner shows the build's commit, so check it matches
+the latest merge before a session.
 
-**URL flags (combine with `&`):**
+**Two ways in:**
+- **Solo** — click a link below. It opens the page with the right flags. Then press **Practise here — you and a bot, no host**. The whole session, AI and all, runs in your browser.
+- **With other people** — on the plain site, set **Map** in the lobby (Mission or Range), press **Host a room**, and give the others the room code (or the **Copy link** button's link). Everyone else opens the site, types the code, and presses **Join**.
+  - The host field is filled in for you. The host runs the same AI as the page: bots that follow and fight, and the mission on the Mission map. B works there too.
+  - The host sleeps when nobody is on it, so the first join can take a few seconds.
+  - If it asks for a key, it's the join key set on the host.
 
-| Flag | Gives you |
+**Solo links:**
+
+| Link | Gives you |
 |---|---|
-| `?mission` | the grey-box mission: map, encounter, director, objective and HUD line |
-| `?squad` | bots follow you in formation, fight, revive and take orders |
-| `?enemies` | three riflemen on the range (one standing, two patrolling), respawned |
-| `?suppress` | one rifleman on the range firing past you at the squadmate beside you |
-| `?world=greybox-01` | the mission map with no mission on it |
-| `?greybox` | grey-box soldiers instead of the skinned ones |
+| [Mission with squad](https://joshualray.github.io/Sandline/?mission&squad) | the grey-box mission with bots that fight beside you: map, encounter, director, objective and HUD line |
+| [Mission alone](https://joshualray.github.io/Sandline/?mission) | the same, with the bots standing still |
+| [Squad + range enemies](https://joshualray.github.io/Sandline/?squad&enemies) | bots that follow and take orders, and three riflemen on the range (one standing, two patrolling, respawned) |
+| [Squad + suppressor](https://joshualray.github.io/Sandline/?squad&suppress) | bots, and one rifleman firing past you at the squadmate beside you |
+| [Range enemies](https://joshualray.github.io/Sandline/?enemies) | the three riflemen, no bot AI |
+| [Suppressor](https://joshualray.github.io/Sandline/?suppress) | the suppression look on its own |
+| [Squad only](https://joshualray.github.io/Sandline/?squad) | formation following with nobody to fight |
+| [Mission map, empty](https://joshualray.github.io/Sandline/?world=greybox-01) | the map with no mission on it |
+| [Grey-box soldiers](https://joshualray.github.io/Sandline/?greybox) | grey-box soldiers instead of the skinned ones |
 
 **Keys:**
 
@@ -50,19 +58,18 @@ network and the two-people items marked **[host]**.
 | Esc | release the mouse |
 
 **Know before you judge:**
-- **Slot 2 is a person.** "Practise here" puts a scripted sparring partner in slot 2 as a *human*. The director counts it, so the in-page mission is the two-human budget.
+- **The page counts two humans.** Practise here puts a scripted sparring partner in slot 2 as a *human*, so the director uses the two-human budget. On the host, the budget is the people actually in the room.
 - **The bots are expected to lose.** They lose most firefights today: about 30% completion at one human in the headless run. This is logged as B-11. Note how they lose; don't file "the bots lost" on its own.
-- **Your eyes are the evidence.** Every item below already has headless tests and they pass. What's asked here is what tests can't answer: does it look right, read right, feel right.
+- **Your eyes are the evidence.** Every item below already has headless tests, and CI runs them on every change. What's asked here is what tests can't answer: does it look right, read right, feel right.
 
 ---
 
 ## M3 — newest first
 
 ### T-3.35 — The mission, headless
-Mostly a machine check; run it once so you've seen the numbers.
-- [ ] `pnpm sim-run --scenario mission --seeds 20` ends `OK: every threshold met`. Note the two completion rates, cover share, episodes per engagement and AI cost %.
-- [ ] `pnpm bench:tickrate`'s last line reports AI cost at 40 enemies under 25%. Note the number for your machine: it depends on how fast the machine is.
-- [ ] Nothing here needs the page.
+Nothing to play. Read the numbers once, in GitHub.
+- [ ] **Where:** repo → Actions → the latest **CI** run on `main` → the **mission** job → its last step. It plays three seeds at each budget, then prints completion, "enemies under fire in cover", "suppression episodes per engagement" and "AI cost at 40 enemies and 5 bots", and ends `OK: every threshold met`. Note the numbers.
+- [ ] **Twenty seeds:** the full 20-seed run that asserts completion is the same scenario with more seeds. Ask for it to be run if you want the rates rather than three samples.
 
 ### T-3.34 — The objective (`?mission&squad`)
 - [ ] **HUD line:** on joining, the top-centre line reads "Objective: clear the compound · held 0/30 s".
@@ -76,14 +83,17 @@ Mostly a machine check; run it once so you've seen the numbers.
 - [ ] **Restart, refused:** pressing P mid-mission does nothing.
 - [ ] **Restart, after:** pressing P after a win or a loss brings everyone back on the spawn line at full health, clears enemies, grenades and orders, respawns the enemies, and the line shows "attempt 2".
 - [ ] **Judgement:** is 30 s of hold right? Is no-respawn the right call, or does it make a wipe feel cheap? (`data/mission.json` has `holdSeconds` and `respawn`.)
-- [ ] **[host]** Needs the host to support missions (T-3.35 didn't wire it). Skip for now.
+- [ ] **With people:** host a room with **Map: Mission**, and have one or two others join.
+  - [ ] Everyone sees the same HUD line and count.
+  - [ ] The enemies come in bigger waves than solo, because the budget follows the people in the room.
+  - [ ] A restart (P) from anyone, once it's over, resets it for everyone.
 
 ### T-3.33 — The director (`?mission`, then again with `&squad`)
 Hard to see directly. Watch for the effects.
 - [ ] **Counterattack pacing:** once the garrison is dead, a counterattack comes in three waves.
   - [ ] Keep up a heavy fight (lots of shooting, taking damage): the next wave should hang back, up to 45 s.
   - [ ] Keep it quiet: it should come sooner, about 15 s.
-- [ ] **Six-human budget:** you can't run it in the page. The headless run covers it. Just note whether the page's two-human budget feels too many or too few.
+- [ ] **Budgets:** solo is the two-human budget; a room is the budget of its people. Six people is the full encounter, and the headless run covers it. Note whether each budget feels like too many enemies or too few.
 - [ ] **Judgement:** does the pressure rise and fall, or is it flat?
 
 ### T-3.32 — Encounters and spawning (`?mission`)
@@ -129,7 +139,7 @@ Covered by T-3.29's checks. Add these:
 
 ### T-3.27 — Orders on the wire
 No direct QA. Covered by T-3.29.
-- [ ] **[host]** Two people in one room: orders one person gives, the other person sees drawn too. One person can't order the other's slot.
+- [ ] **With people:** host a room, and have someone join. Orders one person gives, the other sees drawn too. Neither of you can order the other's slot: the order simply isn't given.
 
 ### T-3.26 — Friendly bots fight and revive (`?squad&enemies`)
 - [ ] **Fighting:** bots see, fire at and kill riflemen, and use cover near their formation places.
@@ -195,8 +205,8 @@ T-3.13 to T-3.23 below are its inputs. Treat them as the draft run sheet.
 - [ ] **Stance:** crouching or going prone at range delays being noticed. Sprinting across its view gets you noticed faster.
 - [ ] **No wallhacks:** it doesn't notice you through walls.
 
-### T-3.12 — Interest management **[host]**
-- [ ] Nothing to see in the page. On the host with two people 120 m+ apart, the netgraph's bandwidth drops. Coming back into range, the other soldier reappears **in the right place, with no pop from the old position**.
+### T-3.12 — Interest management (host a room: Map: Mission, with one other person)
+- [ ] Nothing to see solo. On the host with two people 120 m+ apart, the netgraph's bandwidth drops. Coming back into range, the other soldier reappears **in the right place, with no pop from the old position**.
 
 ### T-3.11 — Enemies in the page (`?enemies`)
 - [ ] **Palette:** enemies are cool slate, clearly different from the squad's olive at range.
@@ -209,7 +219,7 @@ T-3.13 to T-3.23 below are its inputs. Treat them as the draft run sheet.
 ### T-3.09 — AI debug overlay (B)
 - [ ] **Contents:** each brain shows its path, its intent post, vision cones, known targets, chosen cover, and a label with its running branch.
 - [ ] **Toggling:** B again hides it all.
-- [ ] **[host]** Without `AI_DEBUG=1` on the host, the overlay says it's waiting and shows nothing. With it, it works.
+- [ ] **With people:** B works in a hosted room too; the QA host allows it.
 
 ### T-3.08 / T-3.07 — Brains on the session / behaviour-tree runtime
 - [ ] No direct QA. Everything above exercises them.
@@ -225,7 +235,7 @@ T-3.13 to T-3.23 below are its inputs. Treat them as the draft run sheet.
 ### T-3.04 / T-3.03 / T-3.02 / T-3.01 — Vault links, the baked navmesh, named worlds, Recast
 - [ ] **Vaulting:** bots use the range's low wall to vault (B shows the corridor crossing it).
 - [ ] **Unreachable ground:** they never try to walk through a box or into a gap narrower than a soldier.
-- [ ] **[host]** `WORLD=greybox-01 pnpm host`: the page draws the mission map when you join. `curl localhost:8080/healthz` shows protocol 22.
+- [ ] **Map choice:** host a room with **Map: Mission** and the page draws the mission map. Host one with **Map: Range** and it draws the range. Anyone joining by code gets the host's choice, whatever their own lobby says.
 
 ---
 
@@ -268,7 +278,7 @@ Ten minutes. Only confirm nothing has broken since its sign-off.
 - [ ] **Movement (M1):** walk, sprint, crouch, jump, step onto slabs, vault the low wall. Collisions: nothing walks through a post or wall, and nor do your shots.
 - [ ] **Weapons (M2):** all four guns fire at their cadence, bloom and recoil recover, reload works, tracers run along the shot, and there's no strobing while firing on the move (B-02).
 - [ ] **Health (M2):** downed on damage (no crawling, forced third person, B-05), revive with E, bleed-out. Death respawns you **outside a mission only**.
-- [ ] **Netcode (M1/M1.5) [host]:** two people join by room code. Set Poor or Awful in the link panel: you feel correction on yourself, while the other person just looks late. Firing at a moving target under latency still registers.
-- [ ] **Lobby (M1.5):** name and room fields, typing in them doesn't move you, and a bad room code gives a clear error. An https page against `ws://` fails exactly as CLAUDE.md warns.
+- [ ] **Netcode (M1/M1.5), with people:** two people join by room code. Set Poor or Awful in the link panel: you feel correction on yourself, while the other person just looks late. Firing at a moving target under latency still registers.
+- [ ] **Lobby (M1.5):** name and room fields, typing in them doesn't move you, and a bad room code gives a clear error ("no such room").
 - [ ] **Camera:** shoulder swap (V), ADS into first person, and the camera never clips through walls.
 - [ ] **Input:** Esc frees the mouse on one press, F11 leaves fullscreen, and Ctrl combos don't fire browser shortcuts (B-06).
