@@ -4,6 +4,7 @@ import { COMPONENT_IDS } from '../ecs/components.ts';
 import { SnapshotHistory, readDelta, writeDelta } from './delta.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { Sfc32 } from '../math/prng.ts';
+import { SUPPRESSION_BITS, suppressionFromWire, suppressionToWire } from '../sim/suppression.ts';
 
 const T = COMPONENT_IDS.Transform;
 const H = COMPONENT_IDS.Health;
@@ -147,6 +148,25 @@ describe('delta compression (T-1.04)', () => {
     // Identity never changes, so a tick later it costs nothing.
     const still: WorldSnapshot = { tick: 3, entities: next.entities };
     expect(encodeDelta(still, next).length).toBeLessThan(10);
+  });
+
+  it('carries a slot\'s suppression level, and resends it only when it changes (T-3.16)', () => {
+    const base = makeWorld(1, 3);
+    const top = (1 << SUPPRESSION_BITS) - 1;
+    const withLevel = (tick: number, wire: number): WorldSnapshot => ({
+      tick,
+      entities: base.entities.map((e, i) => (i === 0 ? { ...e, components: { ...e.components, [COMPONENT_IDS.Suppression]: [wire] } } : e)),
+    });
+    for (const wire of [0, 1, suppressionToWire(0.5), top]) {
+      const next = withLevel(2, wire);
+      const got = decodeDelta(encodeDelta(next, base), base);
+      expectSameWorld(got, next);
+      expect(suppressionFromWire(got.entities[0]!.components[COMPONENT_IDS.Suppression]![0] as number)).toBeCloseTo(wire / top, 12);
+    }
+    const held = withLevel(3, 20);
+    const again = withLevel(4, 20);
+    const falling = withLevel(4, 19);
+    expect(encodeDelta(again, held).length).toBeLessThan(encodeDelta(falling, held).length);
   });
 
   it('carries despawns', () => {

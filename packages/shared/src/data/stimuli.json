@@ -1,5 +1,4 @@
 {
-  "nearMissM": 1.5,
   "kinds": {
     "shot": { "radiusM": 150, "confidence": 0.8 },
     "impact": { "radiusM": 12, "confidence": 0.3 },

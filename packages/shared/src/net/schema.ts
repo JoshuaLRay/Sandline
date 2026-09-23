@@ -10,6 +10,7 @@
  */
 import { COMPONENT_IDS, type ComponentName } from '../ecs/components.ts';
 import { ENEMY_ARCHETYPE_BITS, ENEMY_FACTION_BITS } from '../sim/enemies.ts';
+import { SUPPRESSION_BITS } from '../sim/suppression.ts';
 import { ANGLE_BITS_WIRE, HEALTH, POSITION, VELOCITY, dequantize, quantize, quantizeAngle } from './quantize.ts';
 
 export interface FieldSpec {
@@ -129,6 +130,13 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // a projectile's identity neither changes for the life of the entity, so
     // they cost their bits once, on the spawn. Widths from enemies.ts.
     fields: [uint('archetype', ENEMY_ARCHETYPE_BITS), uint('faction', ENEMY_FACTION_BITS)],
+  },
+  {
+    id: COMPONENT_IDS.Suppression,
+    name: 'Suppression',
+    // T-3.16. The level in 1/63 steps (`suppressionToWire`). A delta resends it
+    // only while it changes: nothing at rest, a few bits a tick while it decays.
+    fields: [uint('level', SUPPRESSION_BITS)],
   },
 ];
 
