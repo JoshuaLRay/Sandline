@@ -33,6 +33,7 @@ import {
   WEAPON_IDS,
   type WeaponDef,
   type WeaponState,
+  type Shot,
   DEFAULT_WORLD_ID,
   type World,
   requireWorld,
@@ -105,10 +106,12 @@ import {
   sight,
   stepAwareness,
   wireToTable,
+  degToAngle,
 } from '@sandline/shared';
 import { DEFAULT_HITBOX, HitboxHistory, capsuleFor, clampRewindMs, rayCapsule, resolveShot } from '../net/lagComp.ts';
 import { BRAIN_PERIOD_TICKS, Brain, type BrainTree, createBrainRegistry, defaultBrainTree } from '../ai/Brain.ts';
 import { type AiDebugSource, buildAiDebug } from '../ai/debug.ts';
+import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, visibleAimPoint } from '../ai/aim.ts';
 import { PathFollower } from '../ai/locomotion/followPath.ts';
 import { Avoidance, type AvoidanceEntry } from '../ai/locomotion/avoidance.ts';
 import type { NavMesh } from '../ai/nav/NavMesh.ts';
@@ -319,6 +322,16 @@ export interface EnemyEntity {
   awareness: Map<number, number>;
   /** The target its memory chose on its latest think, or null (T-3.14). */
   target: number | null;
+  /** T-3.15: the archetype's gun, and its magazine, cadence, bloom and reload — a slot's `WeaponState`. */
+  readonly weapon: WeaponDef;
+  weaponState: WeaponState;
+  /**
+   * T-3.15: who it is aiming at and since when (seconds), for time on target.
+   * Null when it is not aiming, or has lost sight of what it was.
+   */
+  aim: { netId: number; since: number } | null;
+  /** Horizontal speed over its last step, m/s, as `slotSpeed` is a slot's. */
+  speed: number;
 }
 
 /** Where and how to spawn an enemy. */
@@ -546,6 +559,10 @@ export class Session {
       memory: createTargetMemory(),
       awareness: new Map(),
       target: null,
+      weapon: getWeapon(def.weapon),
+      weaponState: createWeaponState(getWeapon(def.weapon)),
+      aim: null,
+      speed: 0,
     };
     enemy.brain = new Brain(enemy, at.tree ?? this.enemyTree(def.tree));
     this.enemyList.push(enemy);
@@ -918,18 +935,40 @@ export class Session {
     // A prone shooter's shot leaves from a prone eye (T-2.42), not 0.75 m above
     // the body — otherwise lying behind cover would still shoot over it.
     const origin = eyePosition(at.x, at.y, at.z, DEFAULT_MUZZLE_RIG, proneThen);
-    // T-3.14: the shot is heard where it was fired from, once per trigger pull.
-    this.stimuli.push({ kind: 'shot', at: origin, sourceNetId: slot.netId });
     this.lastFiredTick[slot.index] = this.currentTick;
+    this.traceShot(slot.netId, slot.weapon, shot, msg.tick, origin, yaw, pitch, msg.renderTimeMs, rewoundTo);
+  }
 
-    for (const dir of shotDirections(slot.weapon, shot, slot.netId, msg.tick, yaw, pitch)) {
+  /**
+   * Everything after the trigger: one trigger pull's pellets traced, damage
+   * applied, stimuli made and `HitEvent`s sent. A human's `Fire` comes here
+   * rewound to the instant it was looking at; an AI's (T-3.15) with no rewind
+   * at all — `renderTimeMs` and `rewoundTo` both the present — because a
+   * server-side shooter sees the world as it is. One path, so an enemy's round
+   * hurts a slot through exactly the `applyDamage` a player's hurts an enemy.
+   */
+  private traceShot(
+    shooterNetId: number,
+    weapon: WeaponDef,
+    shot: Shot,
+    tick: number,
+    origin: { x: number; y: number; z: number },
+    yaw: number,
+    pitch: number,
+    renderTimeMs: number,
+    rewoundTo: number,
+  ): void {
+    // T-3.14: the shot is heard where it was fired from, once per trigger pull.
+    this.stimuli.push({ kind: 'shot', at: origin, sourceNetId: shooterNetId });
+
+    for (const dir of shotDirections(weapon, shot, shooterNetId, tick, yaw, pitch)) {
       const hit = resolveShot(
         this.hitboxes,
         {
-          shooterNetId: slot.netId,
-          ray: { origin, direction: dir, maxDistance: slot.weapon.maxRangeM },
+          shooterNetId,
+          ray: { origin, direction: dir, maxDistance: weapon.maxRangeM },
           nowMs: this.nowMs,
-          clientRenderTimeMs: msg.renderTimeMs,
+          clientRenderTimeMs: renderTimeMs,
         },
         DEFAULT_HITBOX,
         this.world.boxes,
@@ -947,7 +986,7 @@ export class Session {
           targetState?.position.y ?? 0,
           targetState?.prone ? PRONE_HITBOX_HEIGHT : targetState?.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT,
         );
-        dealt = zoneDamage(damageAtDistance(slot.weapon, hit.distance), zone);
+        dealt = zoneDamage(damageAtDistance(weapon, hit.distance), zone);
 
         const target = this.slots.find((s) => s.netId === hit.netId);
         if (target) {
@@ -973,14 +1012,14 @@ export class Session {
         // Range targets take no damage: they are the range's fixtures, not
         // enemies, and stay so (T-3.10).
       }
-      this.emitShotStimuli(slot.netId, origin, dir, hit ? hit.distance : slot.weapon.maxRangeM, hit?.point ?? null, hit?.netId ?? 0);
+      this.emitShotStimuli(shooterNetId, origin, dir, hit ? hit.distance : weapon.maxRangeM, hit?.point ?? null, hit?.netId ?? 0);
 
       // A scenery stop is a hit event on netId 0 at the wall: everyone draws
       // the tracer ending there, nobody takes damage (T-1.12).
       const event: Message = hit
         ? {
             kind: 'HitEvent',
-            shooterNetId: slot.netId,
+            shooterNetId,
             targetNetId: hit.netId,
             x: hit.point.x,
             y: hit.point.y,
@@ -992,11 +1031,11 @@ export class Session {
           }
         : {
             kind: 'HitEvent',
-            shooterNetId: slot.netId,
+            shooterNetId,
             targetNetId: 0,
-            x: origin.x + dir.x * slot.weapon.maxRangeM,
-            y: origin.y + dir.y * slot.weapon.maxRangeM,
-            z: origin.z + dir.z * slot.weapon.maxRangeM,
+            x: origin.x + dir.x * weapon.maxRangeM,
+            y: origin.y + dir.y * weapon.maxRangeM,
+            z: origin.z + dir.z * weapon.maxRangeM,
             originX: origin.x,
             originY: origin.y,
             originZ: origin.z,
@@ -1412,6 +1451,9 @@ export class Session {
       this.hitboxes.record(enemy.netId, now, enemy.state.x, enemy.state.y, enemy.state.z, enemy.state.crouched, enemy.state.prone);
     }
 
+    // After everyone has moved and been recorded: an AI shoots at this tick's world.
+    this.fireEnemies(nowSeconds);
+
     this.currentTick++;
     /**
      * Projectiles fly LAST, after the bodies have moved and been recorded and
@@ -1476,6 +1518,79 @@ export class Session {
   }
 
   /**
+   * AI trigger pulls (T-3.15), every tick, for every living enemy whose brain
+   * names someone to shoot.
+   *
+   * It fires through the human path: the archetype's `WeaponDef`, `tryFire`'s
+   * cadence, magazine and reload, the weapon's bloom and aimed cone, and
+   * `traceShot`'s damage and `HitEvent` — with no rewind, since it sees the
+   * present. What it adds is the aim: a point on the target it can see (never
+   * one behind a wall), the true line to it, and the archetype's aim error
+   * around that line. Losing sight, or changing target, starts time on target
+   * again. An empty magazine starts a reload the moment it empties, whether
+   * or not it goes on shooting.
+   */
+  private fireEnemies(nowSeconds: number): void {
+    for (const enemy of this.enemyList) {
+      if (isDead(enemy.health)) continue;
+      const weapon = enemy.weapon;
+      const ws = enemy.weaponState;
+      finishReload(weapon, ws, nowSeconds);
+      if (ws.ammo === 0) startReload(weapon, ws, nowSeconds);
+
+      const targetId = enemy.brain?.fireAt ?? null;
+      const target = targetId === null ? null : this.soldier(targetId);
+      if (!target || target.netId === enemy.netId || isDead(target.health)) {
+        enemy.aim = null;
+        continue;
+      }
+      // Mid-vault both hands are on the wall, for an AI as for a player (T-2.21).
+      if (enemy.state.vault) continue;
+      const eye = eyePosition(enemy.state.x, enemy.state.y, enemy.state.z, DEFAULT_MUZZLE_RIG, enemy.state.prone);
+      const point = visibleAimPoint(eye, aimPoints(target.state, target.state.crouched, target.state.prone), this.world.boxes);
+      if (!point) {
+        // No line of sight, no shot (suppressive fire is T-3.21's exception).
+        enemy.aim = null;
+        continue;
+      }
+      if (!enemy.aim || enemy.aim.netId !== target.netId) enemy.aim = { netId: target.netId, since: nowSeconds };
+
+      const line = aimAngles(eye, point);
+      // It faces what it shoots at, and the snapshot says so.
+      enemy.yaw = tableToWire(line.yaw);
+      enemy.input.yaw = enemy.yaw;
+      enemy.pitch = tableToWire(line.pitch);
+
+      // Trigger discipline: a burst, then wait for the gun to settle.
+      if (ws.bloomUnits > degToAngle(enemy.def.accuracy.holdBloomDeg)) continue;
+      const shot = tryFire(weapon, ws, nowSeconds, true, enemy.state.prone);
+      if (shot === null) continue;
+
+      const dx = point.x - eye.x;
+      const dy = point.y - eye.y;
+      const dz = point.z - eye.z;
+      const cone = aimConeDeg(enemy.def.accuracy, {
+        distanceM: Math.sqrt(dx * dx + dy * dy + dz * dz),
+        targetSpeedMps: target.speed,
+        suppression: 0, // T-3.16 supplies the level.
+        timeOnTargetSeconds: nowSeconds - enemy.aim.since,
+      });
+      const aimed = aimError(line.yaw, line.pitch, cone, aimSeed(this.currentTick, enemy.netId, shot.shotIndex));
+      this.traceShot(enemy.netId, weapon, shot, this.currentTick, eye, aimed.yaw, aimed.pitch, this.nowMs, this.nowMs);
+      // The last round out starts the reload on the same tick.
+      if (ws.ammo === 0) startReload(weapon, ws, nowSeconds);
+    }
+  }
+
+  /** A slot or an enemy by netId, as much of it as a shooter aims with. */
+  private soldier(netId: number): { netId: number; state: MoveState; health: HealthState; speed: number } | null {
+    const slot = this.slots.find((s) => s.netId === netId);
+    if (slot) return { netId, state: slot.state, health: slot.health, speed: this.slotSpeed[slot.index] ?? 0 };
+    const enemy = this.enemyList.find((e) => e.netId === netId);
+    return enemy ? { netId, state: enemy.state, health: enemy.health, speed: enemy.speed } : null;
+  }
+
+  /**
    * 10 Hz brains (T-3.08): each on the tick its netId's phase names, so the
    * six are spread two to a tick rather than all landing on one.
    */
@@ -1507,8 +1622,13 @@ export class Session {
         continue;
       }
       enemy.input.downed = false;
+      const fromX = enemy.state.x;
+      const fromZ = enemy.state.z;
       enemy.state = stepCharacter(enemy.state, enemy.input, TICK_SECONDS, this.moveConfig, this.world.boxes);
+      enemy.speed = Math.sqrt((enemy.state.x - fromX) ** 2 + (enemy.state.z - fromZ) ** 2) / TICK_SECONDS;
       enemy.yaw = enemy.input.yaw;
+      // Its gun recovers as a slot's does (T-3.15): firing adds bloom, only this takes it away.
+      decayBloom(enemy.weapon, enemy.weaponState, TICK_SECONDS);
     }
     if (!expired) return;
     const kept = this.enemyList.filter((enemy) => {

@@ -23,7 +23,19 @@
       "edgeFactor": 0.3
     },
     "accuracy": {
-      "baseConeDeg": 2
+      "baseConeDeg": 1.4,
+      "distanceDoublingM": 40,
+      "speedFactorPerMps": 0.15,
+      "suppressionFactor": 1.5,
+      "acquireFactor": 3,
+      "settleSeconds": 1.5,
+      "maxConeDeg": 10,
+      "holdBloomDeg": 1.0,
+      "hitBand": {
+        "rangeM": 20,
+        "min": 0.4,
+        "max": 0.75
+      }
     }
   }
 }

@@ -8,8 +8,8 @@
  * rifleman a rifleman is here, as data: its health, its weapon, the tree its
  * brain runs, whether it can be downed (no — an enemy dies), how long its
  * corpse lies, and the perception and accuracy blocks later tasks read
- * (T-3.13 perception, T-3.16 aim). T-3.13 filled in the perception block;
- * the accuracy block still holds only the number that names it.
+ * (T-3.13 perception, T-3.15 aim). T-3.13 filled in the perception block,
+ * T-3.15 the accuracy block.
  *
  * SHARED because the client names an archetype off the `Enemy` component's
  * index (T-3.11) and the server builds one from the same row.
@@ -47,9 +47,39 @@ export interface EnemyPerception {
   edgeFactor: number;
 }
 
+/**
+ * How well an archetype aims (T-3.15), read by `server/src/ai/aim.ts`. The aim
+ * error is a cone around the true line to the target, applied before the
+ * weapon's own cone and bloom — the gun is the gun a player carries; this is
+ * the hand and the eye holding it.
+ */
 export interface EnemyAccuracy {
-  /** Aim error before distance, target speed or suppression widen it, degrees. */
+  /** Aim error half-angle, degrees, at the muzzle, settled on a still target, unsuppressed. */
   baseConeDeg: number;
+  /** Metres of target distance over which the cone widens by another `baseConeDeg`. */
+  distanceDoublingM: number;
+  /** Cone growth per m/s of the target's speed: ×(1 + speed × this). */
+  speedFactorPerMps: number;
+  /** Cone growth at full suppression (level 1, T-3.16): ×(1 + level × this). */
+  suppressionFactor: number;
+  /** The cone's multiplier the moment it starts aiming at a target, falling to 1 over `settleSeconds`. */
+  acquireFactor: number;
+  /** Seconds of continuous time on target until the acquire widening is gone. */
+  settleSeconds: number;
+  /** Ceiling on the aim cone whatever the factors say, degrees. */
+  maxConeDeg: number;
+  /**
+   * Trigger discipline: it does not pull while its weapon's bloom is above
+   * this many degrees, so it fires in bursts rather than spraying at the
+   * weapon's worst cone.
+   */
+  holdBloomDeg: number;
+  /**
+   * The hit rate this archetype is tuned to — rule 5's number, written down
+   * where the tuning is. Firing at a standing, still, unsuppressed soldier
+   * `rangeM` away, a seeded run lands between `min` and `max` (T-3.15's test).
+   */
+  hitBand: { rangeM: number; min: number; max: number };
 }
 
 export interface EnemyDef {
@@ -189,6 +219,45 @@ function parsePerception(raw: unknown, where: string): EnemyPerception {
   return out;
 }
 
+const ACCURACY_KEYS = [
+  'baseConeDeg',
+  'distanceDoublingM',
+  'speedFactorPerMps',
+  'suppressionFactor',
+  'acquireFactor',
+  'settleSeconds',
+  'maxConeDeg',
+  'holdBloomDeg',
+  'hitBand',
+] as const;
+
+function parseHitBand(raw: unknown, where: string): EnemyAccuracy['hitBand'] {
+  const row = obj(raw, where);
+  only(row, ['rangeM', 'min', 'max'], where);
+  return { rangeM: num(row, 'rangeM', where, 1, 500), min: num(row, 'min', where, 0, 1), max: num(row, 'max', where, 0, 1) };
+}
+
+function parseAccuracy(raw: unknown, where: string): EnemyAccuracy {
+  const row = obj(raw, where);
+  only(row, ACCURACY_KEYS, where);
+  const out: EnemyAccuracy = {
+    baseConeDeg: num(row, 'baseConeDeg', where, 0, 45),
+    // Above zero: it is a divisor.
+    distanceDoublingM: num(row, 'distanceDoublingM', where, 0.1, 1000),
+    speedFactorPerMps: num(row, 'speedFactorPerMps', where, 0, 10),
+    suppressionFactor: num(row, 'suppressionFactor', where, 0, 10),
+    // At least 1: time on target narrows the cone, never widens it.
+    acquireFactor: num(row, 'acquireFactor', where, 1, 10),
+    settleSeconds: num(row, 'settleSeconds', where, 0, 30),
+    maxConeDeg: num(row, 'maxConeDeg', where, 0, 45),
+    holdBloomDeg: num(row, 'holdBloomDeg', where, 0, 45),
+    hitBand: parseHitBand(row['hitBand'], `${where}.hitBand`),
+  };
+  if (out.maxConeDeg < out.baseConeDeg) throw new EnemyDataError(`${where}: maxConeDeg is below baseConeDeg`);
+  if (out.hitBand.min > out.hitBand.max) throw new EnemyDataError(`${where}.hitBand: min is above max`);
+  return out;
+}
+
 const DEF_KEYS = ['id', 'name', 'health', 'weapon', 'tree', 'downable', 'corpseSeconds', 'perception', 'accuracy'] as const;
 
 function parseEnemyDef(key: string, raw: unknown): EnemyDef {
@@ -204,8 +273,7 @@ function parseEnemyDef(key: string, raw: unknown): EnemyDef {
   const downable = bool(row, 'downable', where);
 
   const perception = parsePerception(row['perception'], `${where}.perception`);
-  const accuracy = obj(row['accuracy'], `${where}.accuracy`);
-  only(accuracy, ['baseConeDeg'], `${where}.accuracy`);
+  const accuracy = parseAccuracy(row['accuracy'], `${where}.accuracy`);
 
   return {
     id,
@@ -217,9 +285,7 @@ function parseEnemyDef(key: string, raw: unknown): EnemyDef {
     downable,
     corpseSeconds: num(row, 'corpseSeconds', where, 0, 600),
     perception,
-    accuracy: {
-      baseConeDeg: num(accuracy, 'baseConeDeg', `${where}.accuracy`, 0, 45),
-    },
+    accuracy,
   };
 }
 

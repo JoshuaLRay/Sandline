@@ -32,6 +32,18 @@ const PERCEPTION = {
   edgeFactor: 0.5,
 };
 
+const ACCURACY = {
+  baseConeDeg: 1.5,
+  distanceDoublingM: 30,
+  speedFactorPerMps: 0.2,
+  suppressionFactor: 1,
+  acquireFactor: 2,
+  settleSeconds: 1,
+  maxConeDeg: 8,
+  holdBloomDeg: 1,
+  hitBand: { rangeM: 20, min: 0.3, max: 0.6 },
+};
+
 const ROW = {
   id: 'rifleman',
   name: 'Test rifleman',
@@ -41,7 +53,7 @@ const ROW = {
   downable: false,
   corpseSeconds: 4,
   perception: PERCEPTION,
-  accuracy: { baseConeDeg: 1.5 },
+  accuracy: ACCURACY,
 };
 
 const table = (row: Record<string, unknown>) => ({ rifleman: row });
@@ -81,6 +93,13 @@ describe('enemy archetypes (T-3.10)', () => {
     ['far faster than near', { perception: { ...PERCEPTION, farRatePerSec: 3 } }, /farRatePerSec/],
     ['prone faster than crouched', { perception: { ...PERCEPTION, proneFactor: 0.6 } }, /proneFactor/],
     ['a missing accuracy number', { accuracy: {} }, /baseConeDeg/],
+    ['an unknown accuracy key', { accuracy: { ...ACCURACY, luck: 1 } }, /luck/],
+    ['a zero doubling distance', { accuracy: { ...ACCURACY, distanceDoublingM: 0 } }, /distanceDoublingM/],
+    ['an acquire factor that narrows', { accuracy: { ...ACCURACY, acquireFactor: 0.5 } }, /acquireFactor/],
+    ['a ceiling under the base cone', { accuracy: { ...ACCURACY, maxConeDeg: 1 } }, /maxConeDeg/],
+    ['a missing hit band', { accuracy: { ...ACCURACY, hitBand: undefined } }, /hitBand/],
+    ['a hit band upside down', { accuracy: { ...ACCURACY, hitBand: { rangeM: 20, min: 0.7, max: 0.2 } } }, /min is above max/],
+    ['a hit rate past 1', { accuracy: { ...ACCURACY, hitBand: { rangeM: 20, min: 0.2, max: 1.2 } } }, /max/],
   ])('refuses %s', (_label, change, message) => {
     expect(() => parseEnemyTable(table({ ...ROW, ...change }))).toThrow(message);
   });

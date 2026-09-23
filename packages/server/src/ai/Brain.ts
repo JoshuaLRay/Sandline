@@ -23,6 +23,12 @@ export const BRAIN_PERIOD_TICKS = 3;
 export interface BrainMemory {
   /** What locomotion should be doing; null stands the soldier still. */
   intent: LocomotionIntent | null;
+  /**
+   * The netId it wants to shoot, or null to hold fire (T-3.15). The trigger
+   * pull: while it is set the session aims at that soldier and fires through
+   * the human fire path whenever the weapon and a line of sight allow.
+   */
+  fireAt: number | null;
 }
 
 /** The entity a brain drives, read live: the session's own slot, never a copy. */
@@ -73,7 +79,7 @@ export class Brain {
     this.startedAt = { x: body.state.x, y: body.state.y, z: body.state.z };
     this.bt = tree.instantiate({
       seed: (Math.imul(body.netId, 0x9e3779b1) ^ Math.imul(generation + 1, 0x85ebca6b)) >>> 0,
-      blackboard: new Blackboard<BrainMemory>({ intent: null }),
+      blackboard: new Blackboard<BrainMemory>({ intent: null, fireAt: null }),
       ctx: body,
     });
   }
@@ -101,6 +107,11 @@ export class Brain {
   /** The latest intent, as of the last thought; null once stopped. */
   get intent(): Readonly<LocomotionIntent> | null {
     return this.stopped ? null : this.bt.blackboard.get('intent');
+  }
+
+  /** Who it wants to shoot, as of the last thought; null once stopped (T-3.15). */
+  get fireAt(): number | null {
+    return this.stopped ? null : this.bt.blackboard.get('fireAt');
   }
 
   get isStopped(): boolean {
