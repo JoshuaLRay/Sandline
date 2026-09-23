@@ -5,6 +5,7 @@
  *   pnpm bot --count 6 --ticks 600 --latency 200 --loss 0.2
  *   pnpm bot --url ws://localhost:8080 --count 2 --ticks 600   # a real host, real sockets
  *   pnpm bot --url ws://localhost:8080 --room K7PM             # into a room people are in
+ *   pnpm bot --url wss://… --key hunter2                       # a host with JOIN_KEY set
  */
 import { CORRECTION_THRESHOLD_M, POSITION } from '@sandline/shared';
 import { type ScenarioResult, formatRow, runScenario } from './harness.ts';
@@ -24,6 +25,7 @@ function flag(name: string): string | null {
 
 const url = flag('url');
 const room = flag('room') ?? '';
+const key = flag('key') ?? process.env['JOIN_KEY'] ?? '';
 const count = arg('count', 2);
 const ticks = arg('ticks', 600);
 const latencyMs = arg('latency', 0);
@@ -50,7 +52,7 @@ if (url) {
       `  --latency/--jitter/--loss here only select the thresholds asserted below.`,
     );
   }
-  const remote = await runRemoteScenario({ url, bots: count, ticks, seed: 1, room });
+  const remote = await runRemoteScenario({ url, bots: count, ticks, seed: 1, room, key });
   result = { ...remote, latencyMs, lossRate };
   endedEarly = remote.endedEarly;
   console.log(`  room                ${remote.room || '(none — did not join)'}`);

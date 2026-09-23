@@ -47,4 +47,17 @@ describe('loadConfig (T-0.07)', () => {
     process.env['AI_DEBUG'] = 'yes';
     expect(() => loadConfig()).toThrow(/AI_DEBUG must be 0 or 1/);
   });
+
+  it('reads the join key and per-player limits, with limits on by default', () => {
+    delete process.env['JOIN_KEY'];
+    delete process.env['IDLE_TIMEOUT_MS'];
+    delete process.env['MAX_SESSION_MS'];
+    expect(loadConfig()).toMatchObject({ joinKey: '', idleTimeoutMs: 600_000, maxSessionMs: 14_400_000 });
+    process.env['JOIN_KEY'] = 'hunter2';
+    process.env['IDLE_TIMEOUT_MS'] = '0';
+    process.env['MAX_SESSION_MS'] = '60000';
+    expect(loadConfig()).toMatchObject({ joinKey: 'hunter2', idleTimeoutMs: 0, maxSessionMs: 60_000 });
+    process.env['IDLE_TIMEOUT_MS'] = '-1';
+    expect(() => loadConfig()).toThrow(/IDLE_TIMEOUT_MS must be 0/);
+  });
 });

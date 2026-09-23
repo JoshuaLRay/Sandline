@@ -48,9 +48,24 @@ export class ServerConnection {
   name = '';
   /** The room code the client asked for; empty means "make me one" (T-1.5.04). */
   room = '';
+  /** The join key the client offered; empty for none. The host checks it. */
+  key = '';
   /** Latest tick this client acknowledged; the delta baseline. */
   lastAckedTick = -1;
   private lastHeard: number;
+  /**
+   * When a PERSON last did something: moved, looked, pressed a button, fired,
+   * threw or switched weapon. Not `lastHeard`: a client sends an input frame
+   * every tick whether anyone is at the keyboard or not, and pings on a timer,
+   * so a tab left open in the background is heard from forever. This is what
+   * lets a host drop it (`idle`) and stop paying for the machine.
+   */
+  private lastActive: number;
+  /** When this connection joined its room, on the room's clock. */
+  private joinedAt: number;
+  /** The previous input's look, so a mouse move counts as activity. */
+  private lastYaw = Number.NaN;
+  private lastPitch = Number.NaN;
   /**
    * Most recent time the owner told us about.
    *
@@ -71,6 +86,8 @@ export class ServerConnection {
     now: number,
   ) {
     this.lastHeard = now;
+    this.lastActive = now;
+    this.joinedAt = now;
     this.currentNow = now;
     transport.onMessage((data) => this.handle(data, this.currentNow));
     transport.onClose((reason) => this.markClosed(reason));
@@ -108,6 +125,18 @@ export class ServerConnection {
   resetClock(now: number): void {
     this.currentNow = now;
     this.lastHeard = now;
+    this.lastActive = now;
+    this.joinedAt = now;
+  }
+
+  /** Nothing a person did has arrived for `limitMs`. Zero or less never idles. */
+  isIdle(now: number, limitMs: number): boolean {
+    return limitMs > 0 && now - this.lastActive > limitMs;
+  }
+
+  /** Joined more than `limitMs` ago. Zero or less never expires. */
+  isExpired(now: number, limitMs: number): boolean {
+    return limitMs > 0 && now - this.joinedAt > limitMs;
   }
 
   /** Feed a message with an explicit timestamp. */
@@ -139,6 +168,7 @@ export class ServerConnection {
       const join = msg as Extract<Message, { kind: 'Join' }>;
       this.name = join.name;
       this.room = join.room;
+      this.key = join.key ?? '';
       this.state = 'active';
       this.events.onJoined?.(this);
       return;
@@ -146,15 +176,24 @@ export class ServerConnection {
 
     switch (msg.kind) {
       case 'Input':
+        if (msg.moveX !== 0 || msg.moveY !== 0 || msg.buttons !== 0 || msg.yaw !== this.lastYaw || msg.pitch !== this.lastPitch) {
+          // The first input always counts: NaN equals nothing.
+          this.lastActive = now;
+        }
+        this.lastYaw = msg.yaw;
+        this.lastPitch = msg.pitch;
         this.events.onInput?.(this, msg);
         break;
       case 'Fire':
+        this.lastActive = now;
         this.events.onFire?.(this, msg);
         break;
       case 'Throw':
+        this.lastActive = now;
         this.events.onThrow?.(this, msg);
         break;
       case 'Equip':
+        this.lastActive = now;
         this.events.onEquip?.(this, msg);
         break;
       case 'AiDebugRequest':
@@ -245,8 +284,8 @@ export class ClientConnection {
   }
 
   /** Open the handshake. An empty room asks the host to create one. */
-  join(name: string, room = ''): void {
-    this.send({ kind: 'Join', version: PROTOCOL_VERSION, name, room });
+  join(name: string, room = '', key = ''): void {
+    this.send({ kind: 'Join', version: PROTOCOL_VERSION, name, room, ...(key === '' ? {} : { key }) });
   }
 
   private handle(data: Uint8Array): void {

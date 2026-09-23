@@ -350,6 +350,17 @@ export interface SessionOptions {
    * one that does sends only to the clients that asked.
    */
   aiDebug?: boolean;
+  /**
+   * Drop a player nobody has driven for this long, ms (`IDLE_TIMEOUT_MS`).
+   * Unset or zero never does. A deployed host sets it so a forgotten tab
+   * cannot keep a machine that stops itself when empty from ever stopping.
+   */
+  idleTimeoutMs?: number;
+  /**
+   * Drop any player connected this long, ms (`MAX_SESSION_MS`), active or not.
+   * Unset or zero never does. The backstop for a client that fakes activity.
+   */
+  maxSessionMs?: number;
 }
 
 export interface SessionStats {
@@ -422,6 +433,8 @@ export class Session {
   /** Local avoidance, made with the first follower and stepped every tick after. */
   private avoidance: Avoidance | null = null;
   private readonly aiDebugAllowed: boolean;
+  private readonly idleTimeoutMs: number;
+  private readonly maxSessionMs: number;
   /** Connections that asked for AI debug reports (T-3.09), while the host allows it. */
   private readonly aiDebugClients = new Set<ServerConnection>();
   private aiDebugSent = 0;
@@ -451,6 +464,8 @@ export class Session {
     this.navMesh = options.navMesh ?? null;
     this.brainTree = options.brainTree ?? defaultBrainTree();
     this.aiDebugAllowed = options.aiDebug ?? false;
+    this.idleTimeoutMs = options.idleTimeoutMs ?? 0;
+    this.maxSessionMs = options.maxSessionMs ?? 0;
     // Six slots exist from the moment the session does (ADR-001).
     for (let i = 0; i < MAX_SLOTS; i++) {
       this.slots.push({
@@ -1252,6 +1267,8 @@ export class Session {
       conn.setNow(now);
       if (conn.isTimedOut(now)) conn.reject('heartbeat timeout');
       // (The code doubles as the text: a client shows exactly that.)
+      else if (conn.isExpired(now, this.maxSessionMs)) conn.reject('session limit');
+      else if (conn.isIdle(now, this.idleTimeoutMs)) conn.reject('idle');
     }
 
     const nowSeconds = now / 1000;

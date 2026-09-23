@@ -82,6 +82,8 @@ export interface RemoteScenarioOptions {
   seed?: number;
   /** Room code to join; empty asks the host for a fresh room (T-1.5.05). */
   room?: string;
+  /** The host's `JOIN_KEY`, if it has one. */
+  key?: string;
   /** Ms to wait for every bot's JoinAck before giving up. */
   joinTimeoutMs?: number;
   /** Ms to keep receiving after the last input, so in-flight deltas land. */
@@ -124,6 +126,7 @@ export async function runRemoteScenario(
     joinTimeoutMs = 5000,
     drainMs = 500,
     room = '',
+    key = '',
   } = options;
 
   const transports: SocketTransport[] = [];
@@ -145,11 +148,11 @@ export async function runRemoteScenario(
     const joinDeadline = performance.now() + joinTimeoutMs;
     const [leader, ...followers] = clients;
     if (leader) {
-      leader.join(room);
+      leader.join(room, key);
       while (!leader.joined && !leader.metrics.disconnectReason && performance.now() < joinDeadline) {
         await sleep(5);
       }
-      for (const bot of followers) bot.join(leader.room);
+      for (const bot of followers) bot.join(leader.room, key);
     }
     while (!clients.every((b) => b.joined) && performance.now() < joinDeadline) await sleep(5);
 

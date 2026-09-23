@@ -12,7 +12,7 @@ import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isRoomCode } from './roomCode.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 18;
+export const PROTOCOL_VERSION = 19;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -59,6 +59,15 @@ export const DISCONNECT_CODES = [
    * against boxes the server does not collide with.
    */
   'unknown world',
+  /**
+   * The host requires a join key (`JOIN_KEY`) and this Join did not carry the
+   * right one. Terminal: the retry would carry the same key.
+   */
+  'bad key',
+  /** No input from this player for the host's idle limit (`IDLE_TIMEOUT_MS`). */
+  'idle',
+  /** Connected for the host's session limit (`MAX_SESSION_MS`); rejoin to keep playing. */
+  'session limit',
 ] as const;
 export type DisconnectCode = (typeof DISCONNECT_CODES)[number];
 const DISCONNECT_CODE_BITS = 4;
@@ -171,7 +180,18 @@ export type Message =
    * one field, and a client that could "create" without also joining would
    * have made a room nobody is in.
    */
-  | { kind: 'Join'; version: number; name: string; room: string }
+  | {
+      kind: 'Join';
+      version: number;
+      name: string;
+      room: string;
+      /**
+       * The host's join key, as the player typed it. Absent and empty mean the
+       * same: no key, which a host without `JOIN_KEY` accepts and one with it
+       * refuses as `bad key`.
+       */
+      key?: string;
+    }
   | {
       kind: 'JoinAck';
       netId: number;
@@ -362,6 +382,7 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(msg.version, 8);
       w.writeString(msg.name);
       w.writeString(msg.room);
+      w.writeString(msg.key ?? '');
       break;
     case 'JoinAck':
       w.writeBits(MessageType.JoinAck, TYPE_BITS);
@@ -633,7 +654,10 @@ export function decodeMessage(bytes: Uint8Array): Message {
          */
         const version = r.readBits(8);
         if (version !== PROTOCOL_VERSION) return { kind: 'Join', version, name: '', room: '' };
-        return { kind: 'Join', version, name: r.readString(), room: r.readString() };
+        const name = r.readString();
+        const room = r.readString();
+        const key = r.readString();
+        return key === '' ? { kind: 'Join', version, name, room } : { kind: 'Join', version, name, room, key };
       }
       case MessageType.JoinAck:
         return {
@@ -781,6 +805,9 @@ export function checkHandshake(msg: Message): HandshakeResult {
   }
   if (msg.name.length === 0 || msg.name.length > 32) {
     return { ok: false, code: 'protocol error', reason: 'name must be 1-32 characters' };
+  }
+  if ((msg.key ?? '').length > 128) {
+    return { ok: false, code: 'bad key', reason: 'join key must be at most 128 characters' };
   }
   if (msg.room !== '' && !isRoomCode(msg.room)) {
     return { ok: false, code: 'no such room', reason: `'${msg.room}' is not a room code` };
