@@ -2,7 +2,9 @@
  * Authoritative session and tick loop (T-1.13, ADR-012).
  *
  * Fixed 30 Hz: drain inputs, step the simulation, build a per-client delta
- * against that client's last acknowledged tick, broadcast.
+ * against that client's last acknowledged tick, broadcast. What each client is
+ * sent is the part of the world within its relevance radius (T-3.12,
+ * `relevance.ts`), and its baselines are the views it was sent.
  *
  * ADR-001: six slots, always. Unfilled slots are bots, so a joining player
  * takes over an existing entity rather than spawning a new one, and a leaving
@@ -25,7 +27,6 @@ import {
   type RosterEntry,
   ServerConnection,
   VELOCITY,
-  SnapshotHistory,
   TICK_SECONDS,
   type Transport,
   type WorldSnapshot,
@@ -96,6 +97,7 @@ import { type AiDebugSource, buildAiDebug } from '../ai/debug.ts';
 import { PathFollower } from '../ai/locomotion/followPath.ts';
 import { Avoidance, type AvoidanceEntry } from '../ai/locomotion/avoidance.ts';
 import type { NavMesh } from '../ai/nav/NavMesh.ts';
+import { ClientView } from './relevance.ts';
 
 /**
  * Full standing height of a hitbox: cylinder plus both caps. Hit zones are
@@ -339,8 +341,13 @@ export interface SessionStats {
 
 export class Session {
   readonly slots: Slot[] = [];
-  private readonly history = new SnapshotHistory(64);
   private readonly connections = new Set<ServerConnection>();
+  /**
+   * T-3.12: each client's view of the world — the filtered snapshots it was
+   * sent, which are its delta baselines. Keyed weakly so a closed connection
+   * takes its history with it.
+   */
+  private readonly views = new WeakMap<ServerConnection, ClientView>();
   /**
    * Per-entity position history for lag compensation (T-1.18). Written once per
    * tick for every slot, read when a Fire arrives.
@@ -1335,7 +1342,6 @@ export class Session {
      */
     this.stepProjectiles();
     const snapshot = this.buildSnapshot();
-    this.history.store(snapshot);
     this.broadcast(snapshot);
     this.sendAiDebug();
   }
@@ -1661,14 +1667,22 @@ export class Session {
     for (const conn of this.connections) {
       if (conn.state !== 'active') continue;
 
-      // Per-client baseline: whatever they last acknowledged. If that has aged
-      // out of the ring they get a full snapshot, which is self-healing.
-      const baseline = conn.lastAckedTick >= 0 ? this.history.get(conn.lastAckedTick) : null;
+      const slot = this.slots.find((sl) => sl.connection === conn);
+      let view = this.views.get(conn);
+      if (!view) {
+        view = new ClientView();
+        this.views.set(conn, view);
+      }
+      // Per-client baseline: the VIEW they were sent at the tick they last
+      // acknowledged (T-3.12) — an entity out of their radius then and in it
+      // now is a spawn, the reverse a despawn. If it has aged out of the ring
+      // they get a full view, which is self-healing.
+      const baseline = conn.lastAckedTick >= 0 ? view.history.get(conn.lastAckedTick) : null;
+      const current = view.next(snapshot, slot ? slot.netId : null);
       const w = new BitWriter();
-      writeDelta(w, snapshot, baseline);
+      writeDelta(w, current, baseline);
       const payload = w.toUint8Array();
 
-      const slot = this.slots.find((sl) => sl.connection === conn);
       const wire = encodeMessage({
         kind: 'Delta',
         tick: snapshot.tick,
