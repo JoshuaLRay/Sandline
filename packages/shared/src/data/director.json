@@ -1,0 +1,19 @@
+{
+  "$comment": "T-3.33. The director paces an encounter's reinforcement waves and sizes every wave. INTENSITY is 0..1: `weights.damage` × (damage the squad took in the last `windowSeconds`, over `damageFull`, capped at 1) + `weights.contact` × (living enemies that know of a squad soldier, over `contactFull`, capped at 1) + `weights.suppression` × (the squad's mean suppression, 0..1). A group's next wave is never sent before its file's `waves.minSeconds` since the last, and always by `waves.maxSeconds`; between them it is held while intensity is above `holdAbove`, sent as soon as `minSeconds` allows while intensity is below `forwardBelow`, and otherwise sent at `waves.everySeconds`. BUDGET is by the number of HUMANS seated (ADR-001: bots fill slots, they are not players the mission is for) — no human counts as one: each wave's member counts and the encounter's alive cap are multiplied by the row's `size` and `aliveCap`, rounded, and never below one. A wave's size is fixed when it is sent, so a human joining mid-mission changes the next wave, not the one on its way. Six humans is the file as written.",
+  "intensity": {
+    "windowSeconds": 8,
+    "damageFull": 150,
+    "contactFull": 6,
+    "weights": { "damage": 0.5, "contact": 0.3, "suppression": 0.2 }
+  },
+  "holdAbove": 0.6,
+  "forwardBelow": 0.2,
+  "budget": [
+    { "humans": 1, "size": 0.5, "aliveCap": 0.5 },
+    { "humans": 2, "size": 0.6, "aliveCap": 0.6 },
+    { "humans": 3, "size": 0.7, "aliveCap": 0.7 },
+    { "humans": 4, "size": 0.8, "aliveCap": 0.8 },
+    { "humans": 5, "size": 0.9, "aliveCap": 0.9 },
+    { "humans": 6, "size": 1.0, "aliveCap": 1.0 }
+  ]
+}

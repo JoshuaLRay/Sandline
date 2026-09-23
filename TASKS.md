@@ -62,7 +62,9 @@ is a second named world with an overwatch and an assault route, spawn zones
 and its bake (T-3.31, `WORLD=greybox-01`, `?world=greybox-01` for eyes), and
 an encounter file per world spawns its groups on their triggers, out of every
 human's sight and under an alive cap, in the posture each group is given
-(T-3.32). The next build tasks are **T-3.33** (the director) and **T-3.34**.
+(T-3.32), paced by a director from the fight's intensity and sized by the
+humans seated, not the squad (T-3.33). The next build task is **T-3.34**
+(the objective).
 
 ---
 
@@ -311,7 +313,7 @@ once before the first M3 task — it is short and every task leans on it.
 |---|---|---|
 | T-3.31 | DONE | T-3.02, T-3.04, T-3.18 |
 | T-3.32 | DONE | T-3.10, T-3.31 |
-| T-3.33 | OPEN | T-3.32, T-3.14 |
+| T-3.33 | DONE | T-3.32, T-3.14 |
 | T-3.34 | OPEN | T-3.31, T-3.32 |
 | T-3.35 | BLOCKED | T-3.23, T-3.28, T-3.33, T-3.34 |
 | 🧍 T-3.36 | BLOCKED — run sheet `m3-solo.md` to be written first | T-3.24, T-3.30, T-3.35 |

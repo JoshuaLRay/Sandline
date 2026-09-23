@@ -49,8 +49,12 @@ export interface EncounterGroup {
   zone: string;
   posture: Posture;
   trigger: Trigger;
-  /** Spawn again `everySeconds` after each wave, `count` waves in all (the first included). */
-  waves: { count: number; everySeconds: number };
+  /**
+   * Spawn again after each wave, `count` waves in all (the first included):
+   * `everySeconds` after the last as a rule, never sooner than `minSeconds`
+   * nor later than `maxSeconds` — the bounds the director (T-3.33) paces inside.
+   */
+  waves: { count: number; everySeconds: number; minSeconds: number; maxSeconds: number };
 }
 
 export interface Encounter {
@@ -184,10 +188,18 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
       throw new EncounterDataError(`${gw}.trigger.kind must be one of ${TRIGGER_KINDS.join(', ')}`);
     }
 
-    let waves = { count: 1, everySeconds: 0 };
+    let waves = { count: 1, everySeconds: 0, minSeconds: 0, maxSeconds: 0 };
     if (o['waves'] !== undefined) {
-      const wo = obj(`${gw}.waves`, o['waves'], ['count', 'everySeconds']);
-      waves = { count: whole(`${gw}.waves.count`, wo['count'], 1, 32), everySeconds: num(`${gw}.waves.everySeconds`, wo['everySeconds'], 0.1) };
+      const wo = obj(`${gw}.waves`, o['waves'], ['count', 'everySeconds', 'minSeconds', 'maxSeconds']);
+      waves = {
+        count: whole(`${gw}.waves.count`, wo['count'], 1, 32),
+        everySeconds: num(`${gw}.waves.everySeconds`, wo['everySeconds'], 0.1),
+        minSeconds: num(`${gw}.waves.minSeconds`, wo['minSeconds'], 0.1),
+        maxSeconds: num(`${gw}.waves.maxSeconds`, wo['maxSeconds'], 0.1),
+      };
+      if (!(waves.minSeconds <= waves.everySeconds && waves.everySeconds <= waves.maxSeconds)) {
+        throw new EncounterDataError(`${gw}.waves: needs minSeconds ≤ everySeconds ≤ maxSeconds, got ${waves.minSeconds}, ${waves.everySeconds}, ${waves.maxSeconds}`);
+      }
     }
     return { id: o['id'], members, zone: o['zone'], posture, trigger, waves };
   });
