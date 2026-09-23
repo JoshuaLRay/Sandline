@@ -14,13 +14,33 @@ export interface ServerConfig {
   world: string;
   /** T-3.09: `AI_DEBUG=1` lets clients ask for AI debug reports. */
   aiDebug: boolean;
+  /**
+   * `JOIN_KEY`: the shared password a Join must carry. Empty means none, which
+   * is what `pnpm host` on a laptop wants. A deployed host sets it as a secret.
+   */
+  joinKey: string;
+  /** `IDLE_TIMEOUT_MS`: drop a player who has not moved or looked in this long. 0 = never. */
+  idleTimeoutMs: number;
+  /** `MAX_SESSION_MS`: drop any player connected this long. 0 = never. */
+  maxSessionMs: number;
 }
+
+/** Ten minutes: long enough for a break between rounds, short enough for a forgotten tab. */
+export const DEFAULT_IDLE_TIMEOUT_MS = 10 * 60_000;
+/** Four hours: longer than any playtest, shorter than a weekend of a bot holding the machine up. */
+export const DEFAULT_MAX_SESSION_MS = 4 * 60 * 60_000;
 
 function intFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];
   if (raw === undefined) return fallback;
   const n = Number.parseInt(raw, 10);
   if (!Number.isFinite(n)) throw new Error(`${name} must be an integer, got '${raw}'`);
+  return n;
+}
+
+function nonNegative(name: string, fallback: number): number {
+  const n = intFromEnv(name, fallback);
+  if (n < 0) throw new Error(`${name} must be 0 (off) or a positive number of ms, got '${n}'`);
   return n;
 }
 
@@ -53,5 +73,8 @@ export function loadConfig(): ServerConfig {
     roomGraceMs: intFromEnv('ROOM_GRACE_MS', DEFAULT_ROOM_GRACE_MS),
     world: worldFromEnv(),
     aiDebug: aiDebugFromEnv(),
+    joinKey: process.env['JOIN_KEY'] ?? '',
+    idleTimeoutMs: nonNegative('IDLE_TIMEOUT_MS', DEFAULT_IDLE_TIMEOUT_MS),
+    maxSessionMs: nonNegative('MAX_SESSION_MS', DEFAULT_MAX_SESSION_MS),
   };
 }

@@ -26,7 +26,7 @@ import { checkRoomInput, HostUrlError, parseHostUrl } from '../net/RemoteServer.
 
 export type LobbyChoice =
   | { kind: 'local' }
-  | { kind: 'remote'; host: string; room: string; name: string };
+  | { kind: 'remote'; host: string; room: string; name: string; key: string };
 
 export interface LobbyOptions {
   /** The host baked into the build (T-1.5.07); empty when there is none. */
@@ -39,6 +39,8 @@ export interface LobbyOptions {
   presetRoom: string;
   /** Last name used, from storage. */
   name: string;
+  /** Last join key used, from storage. */
+  key: string;
   pageProtocol: string;
   buildStamp: string;
   onChoose: (choice: LobbyChoice) => void;
@@ -55,6 +57,29 @@ export interface Lobby {
 }
 
 const NAME_KEY = 'sandline.name';
+const JOIN_KEY = 'sandline.joinKey';
+
+/**
+ * The join key is remembered in this browser so a player types it once. It is
+ * never put in the URL or the share link: a link gets pasted into chats, and a
+ * key in it would be a key for everyone the chat reaches.
+ */
+export function readStoredKey(): string {
+  try {
+    return localStorage.getItem(JOIN_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function storeKey(key: string): void {
+  try {
+    if (key === '') localStorage.removeItem(JOIN_KEY);
+    else localStorage.setItem(JOIN_KEY, key);
+  } catch {
+    // Preference only.
+  }
+}
 
 export function readStoredName(): string {
   try {
@@ -125,6 +150,14 @@ export function createLobby(options: LobbyOptions): Lobby {
   hostInput.placeholder = options.defaultHost || 'wss://… or ws://192.168.x.x:8080';
   hostInput.value = options.presetHost ?? options.defaultHost;
 
+  const keyInput = document.createElement('input');
+  keyInput.type = 'password';
+  keyInput.spellcheck = false;
+  keyInput.autocomplete = 'off';
+  keyInput.maxLength = 128;
+  keyInput.placeholder = 'if the host needs one';
+  keyInput.value = options.key;
+
   const roomInput = document.createElement('input');
   roomInput.type = 'text';
   roomInput.spellcheck = false;
@@ -179,8 +212,10 @@ export function createLobby(options: LobbyOptions): Lobby {
       room = checked.room;
       roomInput.value = room;
     }
+    const key = keyInput.value.trim();
+    storeKey(key);
     say('', 'info');
-    options.onChoose({ kind: 'remote', host, room, name });
+    options.onChoose({ kind: 'remote', host, room, name, key });
   };
 
   const hostButton = button('Host a room', 'lobby-primary', () => remote(false));
@@ -195,7 +230,7 @@ export function createLobby(options: LobbyOptions): Lobby {
   roomInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') remote(true);
   });
-  for (const input of [nameInput, hostInput]) {
+  for (const input of [nameInput, hostInput, keyInput]) {
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') remote(roomInput.value.trim() !== '');
     });
@@ -223,6 +258,7 @@ export function createLobby(options: LobbyOptions): Lobby {
     message,
     field('Name', nameInput),
     field('Host', hostInput),
+    field('Key', keyInput),
     hostButton,
     joinRow,
     help,

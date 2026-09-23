@@ -97,7 +97,7 @@ import { classifyLocomotion, type LocomotionResult } from './character/locomotio
 import { AiDebugOverlay } from './ui/AiDebug.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
 import { createNetworkPanel } from './ui/NetworkPanel.ts';
-import { type LobbyChoice, createLobby, readStoredName } from './ui/Lobby.ts';
+import { type LobbyChoice, createLobby, readStoredKey, readStoredName } from './ui/Lobby.ts';
 import type { Panel } from './ui/Panel.ts';
 import { createSquadPanel } from './ui/SquadPanel.ts';
 import { isTextField } from './input/LocalInput.ts';
@@ -741,7 +741,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null): void {
     let roomJoined = choice.room;
     remote.onReady = () => {
       net.resetForRejoin();
-      net.join(roomJoined);
+      net.join(roomJoined, choice.key);
     };
     net.onJoined = (_slot, room) => {
       if (net.world) useWorld(net.world);
@@ -933,6 +933,7 @@ const lobby = createLobby({
   presetHostError,
   presetRoom,
   name: readStoredName() || 'qa',
+  key: readStoredKey(),
   pageProtocol: location.protocol,
   buildStamp: `${__BUILD_SHA__} · ${__BUILD_TIME__}`,
   onChoose: chooseSession,

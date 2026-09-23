@@ -174,6 +174,14 @@ export function explainRejection(code: DisconnectCode | null, reason: string | n
       return 'you left';
     case 'unknown world':
       return 'the host is running a map this build does not have — reload the page to get the current one';
+    case 'bad key':
+      return reason === 'this host needs a join key'
+        ? 'this host needs a join key — ask whoever runs it and type it in the Key field'
+        : 'wrong join key — check the Key field';
+    case 'idle':
+      return 'dropped for being idle — join again when you are back';
+    case 'session limit':
+      return 'connected for as long as this host allows in one go — join again to keep playing';
     case 'protocol error':
     case 'other':
     case null:

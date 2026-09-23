@@ -67,6 +67,9 @@ export interface RegistryOptions {
   world?: string;
   /** T-3.09: rooms answer clients' AI debug requests (`AI_DEBUG=1`). Off by default. */
   aiDebug?: boolean;
+  /** Per-player limits every room enforces. See `SessionOptions`. */
+  idleTimeoutMs?: number;
+  maxSessionMs?: number;
   /** Called when a room is reclaimed, with why. For the host's log. */
   onReclaim?: (room: Room, reason: string) => void;
 }
@@ -87,6 +90,8 @@ export class Registry {
   private readonly moveConfig: MoveConfig | undefined;
   readonly world: string | undefined;
   readonly aiDebug: boolean;
+  private readonly idleTimeoutMs: number;
+  private readonly maxSessionMs: number;
   private readonly onReclaim: ((room: Room, reason: string) => void) | undefined;
 
   constructor(options: RegistryOptions = {}) {
@@ -96,6 +101,8 @@ export class Registry {
     this.moveConfig = options.moveConfig;
     this.world = options.world;
     this.aiDebug = options.aiDebug ?? false;
+    this.idleTimeoutMs = options.idleTimeoutMs ?? 0;
+    this.maxSessionMs = options.maxSessionMs ?? 0;
     this.onReclaim = options.onReclaim;
   }
 
@@ -138,7 +145,11 @@ export class Registry {
     while (this.rooms.has(code)) code = generateRoomCode(() => this.rng.next());
     const room: Room = {
       code,
-      session: new Session(this.moveConfig, code, this.world, { aiDebug: this.aiDebug }),
+      session: new Session(this.moveConfig, code, this.world, {
+        aiDebug: this.aiDebug,
+        idleTimeoutMs: this.idleTimeoutMs,
+        maxSessionMs: this.maxSessionMs,
+      }),
       createdAt: now,
       simTimeMs: 0,
       emptySince: now,
