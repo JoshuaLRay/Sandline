@@ -43,7 +43,7 @@ import {
   type Transport,
   createLoopbackPair,
 } from '@sandline/shared';
-import { type EnemySpawn, Session } from '@sandline/server/session';
+import { type EnemySpawn, Session, type SessionOptions } from '@sandline/server/session';
 import { type NavMesh, initNav, isNavReady } from '@sandline/server/nav';
 
 export interface LinkConditions {
@@ -68,6 +68,13 @@ export interface LocalServerOptions {
    * the `?enemies` QA page (T-3.11) loads it, on demand.
    */
   navMesh?: NavMesh;
+  /**
+   * The tree the bot slots run, and the cover they take (T-3.29's `?squad`:
+   * the committed `friendly` tree, so the in-page bots follow and take
+   * orders). The committed idle tree and no cover by default.
+   */
+  brainTree?: SessionOptions['brainTree'];
+  cover?: SessionOptions['cover'];
 }
 
 /** One client's link to the in-page session, tunable on its own. */
@@ -129,6 +136,8 @@ export class LocalServer {
     this.session = new Session(moveConfig, '', undefined, {
       aiDebug: true,
       ...(options.navMesh ? { navMesh: options.navMesh } : {}),
+      ...(options.brainTree ? { brainTree: options.brainTree } : {}),
+      ...(options.cover ? { cover: options.cover } : {}),
     });
     this.local = this.attach(conditions, LOCAL_SEEDS);
     this.transport = this.local.transport;

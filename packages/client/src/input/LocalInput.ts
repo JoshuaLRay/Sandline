@@ -9,10 +9,11 @@
  * radians here and back later would reintroduce the float drift the table
  * exists to avoid.
  */
-import { WIRE_ANGLE_UNITS, type MoveInput } from '@sandline/shared';
+import { WIRE_ANGLE_UNITS, type MoveInput, type OrderAddress } from '@sandline/shared';
 import { beginAds, createViewState, endAds, pressShoulderKey, shoulderSide } from './viewState.ts';
 import { composePitch } from '../weapons/recoil.ts';
 import { armKeyboardLock, requestFullscreenForKeyboardLock } from './keyboardLock.ts';
+import { type WheelPointer, type WheelRelease, addressForDigit, moveWheelPointer } from '../ui/OrderWheel.ts';
 
 export interface InputOptions {
   /** Wire-angle units per pixel of mouse movement. */
@@ -50,6 +51,11 @@ export const PITCH_LIMIT_FIRST_PERSON_DEG = 89;
  * a shooter arrives with, which is why the netgraph moved to N for it.
  */
 export const THROW_KEY = 'KeyG';
+
+/** Hold for the order wheel, release to give the order (T-3.29). */
+export const ORDER_KEY = 'KeyQ';
+/** Tap to mark what is under the crosshair (T-3.29). */
+export const MARK_KEY = 'KeyF';
 
 /** True while a text field has focus: keys typed there are not game input. */
 export function isTextField(target: EventTarget | null): boolean {
@@ -104,6 +110,20 @@ export class LocalInput {
    * exists to prevent.
    */
   private throwReleased = false;
+  /**
+   * The order wheel while Q is held (T-3.29): where its pointer is and who
+   * will hear the order. Mouse motion goes here instead of the view, so the
+   * point under the crosshair stays the one the wheel was opened on.
+   */
+  private wheel: { pointer: WheelPointer; address: OrderAddress } | null = null;
+  /**
+   * The wheel as Q came up, latched like the throw's release: a flick that
+   * opens, points and releases between two 30 Hz samples still gives its
+   * order, and the choice is the one made at the release, not at the sample.
+   */
+  private wheelReleased: WheelRelease | null = null;
+  /** F went down since the last tick, latched: a mark is a tap. */
+  private markPressed = false;
   /**
    * Crouch is a toggle (B-06 follow-up), not a held key: it used to be Ctrl,
    * and holding Ctrl while pressing another key (movement, weapon slots)
@@ -169,12 +189,18 @@ export class LocalInput {
       // Same reason: auto-repeat would flip crouch/prone on and off every
       // repeat while C or Z is held down instead of toggling once per press.
       if (!e.repeat) this.pressStanceKey(e.code);
+      if (!e.repeat) this.pressOrderKey(e.code);
     });
     addEventListener('keyup', (e) => {
       if (e.code === 'Space') this.jumpSuppressed = false;
       // The latch is set on the release of a key that was actually down, so a
       // stray keyup (alt-tab, a key released after a blur) throws nothing.
       if (e.code === THROW_KEY && this.held.has(THROW_KEY)) this.throwReleased = true;
+      // Same for the wheel: only a Q that opened it gives an order.
+      if (e.code === ORDER_KEY && this.wheel) {
+        this.wheelReleased = { pointer: this.wheel.pointer, address: this.wheel.address };
+        this.wheel = null;
+      }
       this.held.delete(e.code);
     });
     // Losing focus mid-key leaves a key stuck down forever otherwise.
@@ -184,6 +210,9 @@ export class LocalInput {
       this.jumpSuppressed = false;
       // A throw interrupted by losing the window is cancelled, not thrown.
       this.throwReleased = false;
+      // And an order: the wheel closes on nothing.
+      this.wheel = null;
+      this.wheelReleased = null;
       endAds(this.viewState);
     });
 
@@ -217,11 +246,16 @@ export class LocalInput {
         this.held.clear();
         this.buttons.clear();
         this.jumpSuppressed = false;
+        this.wheel = null;
         endAds(this.viewState);
       }
     });
     addEventListener('mousemove', (e) => {
       if (!this.locked) return;
+      if (this.wheel) {
+        this.wheel.pointer = moveWheelPointer(this.wheel.pointer, e.movementX, e.movementY);
+        return;
+      }
       this.yawAccum -= e.movementX * this.sensitivity;
       // Positive pitch means looking UP, so moving the mouse down (movementY
       // positive) must DECREASE it.
@@ -251,6 +285,19 @@ export class LocalInput {
         this.jumpSuppressed = true;
         this.pressed.delete('Space');
       }
+    }
+  }
+
+  /**
+   * Q opens the wheel, pointed nowhere and addressed to everyone; a number
+   * key while it is open readdresses it; F latches a mark.
+   */
+  private pressOrderKey(code: string): void {
+    if (code === ORDER_KEY) this.wheel = { pointer: { dx: 0, dy: 0 }, address: { to: 'all' } };
+    else if (code === MARK_KEY) this.markPressed = true;
+    else if (this.wheel && code.startsWith('Digit')) {
+      const address = addressForDigit(Number.parseInt(code.slice(5), 10));
+      if (address) this.wheel.address = address;
     }
   }
 
@@ -379,6 +426,28 @@ export class LocalInput {
     const released = this.throwReleased;
     this.throwReleased = false;
     return released;
+  }
+
+  /** The wheel while Q is held, for drawing; null when it is closed. */
+  get orderWheel(): { readonly pointer: WheelPointer; readonly address: OrderAddress } | null {
+    return this.wheel;
+  }
+
+  /**
+   * The wheel as Q came up since the last call, and clear the latch. Call
+   * exactly once per tick, like `consumeThrowRelease`.
+   */
+  consumeOrderRelease(): WheelRelease | null {
+    const released = this.wheelReleased;
+    this.wheelReleased = null;
+    return released;
+  }
+
+  /** Whether F went down since the last call, and clear the latch. */
+  consumeMarkPress(): boolean {
+    const pressed = this.markPressed;
+    this.markPressed = false;
+    return pressed;
   }
 
   /** Left mouse held: pull the trigger. Cadence is the weapon's, not the mouse's. */

@@ -54,8 +54,10 @@ rifleman and an MG that deploys, suppresses first and relocates rarely
 formation (T-3.25, the `friendly` tree) and fight and revive beside it
 (T-3.26, `--scenario squad`), and players can order bots and mark targets
 over the wire (T-3.27, protocol 21), which the bots carry out and report on
-(T-3.28). The next build task is **T-3.29** (the order wheel and marking in
-the page); the combat AI sign-off (🧍 T-3.24) waits on its run sheet.
+(T-3.28), from an order wheel on Q and a mark on F in the page, drawn in the
+world from the host's broadcast (T-3.29, `?squad` for eyes). E-3.8's build
+tasks are done; its sign-off (🧍 T-3.30) and the combat AI sign-off (🧍
+T-3.24) wait on their run sheets.
 
 ---
 
@@ -295,7 +297,7 @@ once before the first M3 task — it is short and every task leans on it.
 |---|---|---|
 | T-3.27 | DONE | T-3.08 |
 | T-3.28 | DONE | T-3.27, T-3.26, T-3.19 |
-| T-3.29 | OPEN | T-3.27 |
+| T-3.29 | DONE | T-3.27 |
 | 🧍 T-3.30 | BLOCKED — run sheet `e3-8.md` to be written first | T-3.11, T-3.25, T-3.26, T-3.28, T-3.29 |
 
 ### E-3.9 — AI director and the grey-box mission
