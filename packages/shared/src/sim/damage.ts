@@ -222,6 +222,8 @@ const NOTHING = (health: HealthState): DamageResult => ({
  * timer: `bleedOutSeconds x amount / maxHealth`. Exhausting it kills, and
  * that is the only way a shot kills.
  *
+ * Not downable (T-3.10, an enemy): reaching zero kills outright.
+ *
  * Dead: nothing, and never a second kill. That matters for more than
  * tidiness: with lag compensation two players can both land the finishing
  * shot on a target that was downed in each of their rewound worlds, and
@@ -232,6 +234,12 @@ export function applyDamage(
   amount: number,
   nowSeconds: number,
   config: DamageConfig = DAMAGE,
+  /**
+   * T-3.10: false for something that dies at zero health rather than going
+   * down — an enemy. The shot that empties it is the killing shot; there is
+   * no downed phase, no bleed-out and nothing to revive.
+   */
+  downable = true,
 ): DamageResult {
   if (!Number.isFinite(amount) || amount <= 0) return NOTHING(health);
   const state = vitality(health);
@@ -247,12 +255,16 @@ export function applyDamage(
 
   const applied = Math.min(amount, health.current);
   health.current -= applied;
-  const downed = health.current <= 0;
-  if (downed) {
+  const emptied = health.current <= 0;
+  if (emptied) {
     health.current = 0;
+    if (!downable) {
+      health.diedAt = nowSeconds;
+      return { applied, downed: false, killed: true, bleedOutCutSeconds: 0, remaining: 0 };
+    }
     health.downedAt = nowSeconds;
   }
-  return { applied, downed, killed: false, bleedOutCutSeconds: 0, remaining: health.current };
+  return { applied, downed: emptied, killed: false, bleedOutCutSeconds: 0, remaining: health.current };
 }
 
 /** Seconds of bleed-out left, or 0 when not downed or already due. */

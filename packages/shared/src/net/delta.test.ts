@@ -127,6 +127,28 @@ describe('delta compression (T-1.04)', () => {
     expectSameWorld(got, next);
   });
 
+  it('carries an enemy spawn whole, archetype and faction included (T-3.10)', () => {
+    const base = makeWorld(1, 3);
+    const enemy = {
+      netId: 2000,
+      components: {
+        [T]: [5, 6, 7, 8, 9],
+        [COMPONENT_IDS.Velocity]: [1, 2, 3],
+        [H]: [100, 100, 0, 0, 0, 0],
+        [COMPONENT_IDS.Crouch]: [1, 0],
+        // The widest values the fields hold: a width mismatch corrupts these.
+        [COMPONENT_IDS.Enemy]: [7, 3],
+      },
+    };
+    const next: WorldSnapshot = { tick: 2, entities: [...base.entities, enemy] };
+    const got = decodeDelta(encodeDelta(next, base), base);
+    expectSameWorld(got, next);
+    expect(got.entities.find((e) => e.netId === 2000)?.components[COMPONENT_IDS.Enemy]).toEqual([7, 3]);
+    // Identity never changes, so a tick later it costs nothing.
+    const still: WorldSnapshot = { tick: 3, entities: next.entities };
+    expect(encodeDelta(still, next).length).toBeLessThan(10);
+  });
+
   it('carries despawns', () => {
     const base = makeWorld(1, 4);
     const next: WorldSnapshot = { tick: 2, entities: base.entities.filter((e) => e.netId !== 2) };
