@@ -85,6 +85,10 @@ import {
   writeDelta,
 } from '@sandline/shared';
 import { DEFAULT_HITBOX, HitboxHistory, capsuleFor, clampRewindMs, rayCapsule, resolveShot } from '../net/lagComp.ts';
+import { Brain, type BrainTree, defaultBrainTree } from '../ai/Brain.ts';
+import { PathFollower } from '../ai/locomotion/followPath.ts';
+import { Avoidance, type AvoidanceEntry } from '../ai/locomotion/avoidance.ts';
+import type { NavMesh } from '../ai/nav/NavMesh.ts';
 
 /**
  * Full standing height of a hitbox: cylinder plus both caps. Hit zones are
@@ -175,6 +179,13 @@ export interface Slot {
    * release, on silence past the repeat window, or when the seat changes.
    */
   interactHeld: boolean;
+  /**
+   * The bot's brain (T-3.08), or null while a human drives. Owned by the
+   * occupant, not the entity: a join stops it, a leave builds a new one.
+   */
+  brain: Brain | null;
+  /** How many brains this slot has had; seeds each new one differently. */
+  brainGeneration: number;
 }
 
 /** ADR-012: repeat a missing input this many ticks, then treat it as idle. */
@@ -242,6 +253,17 @@ interface ActiveProjectile {
   state: ProjectileState;
 }
 
+/** What a session is built with beyond its tuning, room and world. */
+export interface SessionOptions {
+  /**
+   * The navmesh bots walk their brains' intents on (T-3.05, T-3.06). Without
+   * one an intent goes unwalked and the bot stands; idle brains never need it.
+   */
+  navMesh?: NavMesh;
+  /** The tree every bot slot's brain runs. The committed `idle` by default. */
+  brainTree?: BrainTree;
+}
+
 export interface SessionStats {
   tick: number;
   players: number;
@@ -275,6 +297,16 @@ export class Session {
   private nextNetId = 1;
   private snapshotsSent = 0;
   private bytesSent = 0;
+  private readonly navMesh: NavMesh | null;
+  private readonly brainTree: BrainTree;
+  /**
+   * Per slot, the path follower walking its brain's intent, made the first
+   * time that brain wants to go somewhere and dropped when it stops wanting
+   * to. A bot with none has its input left alone, exactly as before brains.
+   */
+  private readonly followers: (PathFollower | null)[] = [];
+  /** Local avoidance, made with the first follower and stepped every tick after. */
+  private avoidance: Avoidance | null = null;
 
   /**
    * `moveConfig` is a REFERENCE, not a copy. The in-page QA server shares one
@@ -294,8 +326,11 @@ export class Session {
     readonly room = '',
     /** A world id (`WORLD=range pnpm host`), or a built world — tests make their own. */
     world: string | World = DEFAULT_WORLD_ID,
+    options: SessionOptions = {},
   ) {
     this.world = typeof world === 'string' ? requireWorld(world) : world;
+    this.navMesh = options.navMesh ?? null;
+    this.brainTree = options.brainTree ?? defaultBrainTree();
     // Six slots exist from the moment the session does (ADR-001).
     for (let i = 0; i < MAX_SLOTS; i++) {
       this.slots.push({
@@ -321,8 +356,25 @@ export class Session {
         reviveBySlot: -1,
         reviveProgressSeconds: 0,
         interactHeld: false,
+        brain: null,
+        brainGeneration: 0,
       });
+      this.followers.push(null);
+      this.giveBrain(this.slots[i]!);
     }
+  }
+
+  /** A fresh brain for a bot slot, starting from the entity as it stands. */
+  private giveBrain(slot: Slot): void {
+    slot.brain = new Brain(slot, this.brainTree, slot.brainGeneration++);
+    this.followers[slot.index] = null;
+  }
+
+  /** A human has the slot: the brain stops now, before it produces another input. */
+  private takeBrain(slot: Slot): void {
+    slot.brain?.stop();
+    slot.brain = null;
+    this.followers[slot.index] = null;
   }
 
   get tick(): number {
@@ -413,6 +465,7 @@ export class Session {
     // Take over the bot's entity in place: same netId, no spawn, no despawn.
     // Revive ownership belongs to the connection occupying a slot, not to the persistent entity.
     this.clearReviveStateForSlot(slot.index);
+    this.takeBrain(slot);
     slot.isBot = false;
     slot.connection = conn;
     slot.staleTicks = 0;
@@ -471,6 +524,7 @@ export class Session {
     // Anything still queued belongs to someone who has left. A bot that walked
     // out the departed player's last few inputs would look briefly possessed.
     slot.queue.length = 0;
+    this.giveBrain(slot);
     this.broadcastRoster();
   }
 
@@ -924,6 +978,9 @@ export class Session {
       // (The code doubles as the text: a client shows exactly that.)
     }
 
+    this.thinkBrains();
+    this.driveBots();
+
     const nowSeconds = now / 1000;
     for (const slot of this.slots) {
       /**
@@ -1072,6 +1129,56 @@ export class Session {
     const snapshot = this.buildSnapshot();
     this.history.store(snapshot);
     this.broadcast(snapshot);
+  }
+
+  /**
+   * 10 Hz brains (T-3.08): each on the tick its netId's phase names, so the
+   * six are spread two to a tick rather than all landing on one.
+   */
+  private thinkBrains(): void {
+    for (const slot of this.slots) {
+      if (slot.brain?.due(this.currentTick)) slot.brain.think(this.currentTick);
+    }
+  }
+
+  /**
+   * 30 Hz locomotion: every bot whose brain wants to go somewhere has its
+   * latest intent walked by path following, then steered round everyone else.
+   * A bot whose brain wants nothing, and never has since it last stood still,
+   * keeps whatever input it has — an idle one — exactly as before brains.
+   */
+  private driveBots(): void {
+    const mesh = this.navMesh;
+    if (!mesh) return;
+    const inputs: (MoveInput | null)[] = this.slots.map(() => null);
+    for (const slot of this.slots) {
+      const brain = slot.brain;
+      if (!slot.isBot || !brain) continue;
+      const intent = brain.intent;
+      let follower = this.followers[slot.index] ?? null;
+      if (!follower) {
+        if (!intent) continue;
+        follower = this.followers[slot.index] = new PathFollower(mesh, this.world.boxes, undefined, this.moveConfig);
+      }
+      inputs[slot.index] = follower.step(slot.state, intent, slot.yaw).input;
+      // Stood still again: its input is the idle one just made, and stays so.
+      if (!intent) this.followers[slot.index] = null;
+    }
+    if (!this.avoidance) {
+      if (inputs.every((i) => !i)) return;
+      this.avoidance = new Avoidance(mesh, MAX_SLOTS, undefined, this.moveConfig);
+    }
+    const entries: AvoidanceEntry[] = this.slots.map((slot) => ({
+      id: slot.netId,
+      state: slot.state,
+      input: inputs[slot.index] ?? null,
+      hold: this.followers[slot.index]?.onVault ?? false,
+    }));
+    const steered = this.avoidance.step(entries);
+    for (const slot of this.slots) {
+      const input = steered[slot.index];
+      if (inputs[slot.index] && input) slot.input = input;
+    }
   }
 
   /** Clear all revive state owned by, or stored on, a reused slot. */
@@ -1276,6 +1383,8 @@ export class Session {
 
   /** Every seated connection is told the host is draining, then dropped. */
   close(reason = 'session closed'): void {
+    this.avoidance?.destroy();
+    this.avoidance = null;
     for (const conn of [...this.connections]) conn.reject('host draining', reason);
     this.connections.clear();
   }

@@ -37,9 +37,10 @@ Q2 — purchased/commissioned/in-house).
 T-3.01 (the Recast spike), T-3.02 (named worlds), T-3.03 (the range baked
 and committed, with a staleness hash) and T-3.04 (vault links); E-3.2 is
 done too — path following (T-3.05) and local avoidance (T-3.06), and so is
-the behaviour tree runtime (T-3.07). The next build tasks are **T-3.08**
-(brains on the session), **T-3.13** (perception) and **T-3.18** (cover
-points in the bake).
+the behaviour tree runtime (T-3.07), and brains tick on the session
+(T-3.08). The next build tasks are **T-3.09** (AI debug view),
+**T-3.10** (enemy entities), **T-3.13** (perception), **T-3.18** (cover
+points in the bake) and **T-3.27** (orders on the wire).
 
 ---
 
@@ -228,14 +229,14 @@ once before the first M3 task — it is short and every task leans on it.
 | Task | Status | Depends |
 |---|---|---|
 | T-3.07 | DONE | — |
-| T-3.08 | OPEN | T-3.07 |
-| T-3.09 | BLOCKED | T-3.08 |
+| T-3.08 | DONE | T-3.07 |
+| T-3.09 | OPEN | T-3.08 |
 
 ### E-3.6 (entities) — Enemies exist before they think
 
 | Task | Status | Depends |
 |---|---|---|
-| T-3.10 | BLOCKED | T-3.08 |
+| T-3.10 | OPEN | T-3.08 |
 | T-3.11 | BLOCKED | T-3.10 |
 | T-3.12 | BLOCKED | T-3.10 |
 
@@ -277,7 +278,7 @@ once before the first M3 task — it is short and every task leans on it.
 
 | Task | Status | Depends |
 |---|---|---|
-| T-3.27 | BLOCKED | T-3.08 |
+| T-3.27 | OPEN | T-3.08 |
 | T-3.28 | BLOCKED | T-3.27, T-3.26, T-3.19 |
 | T-3.29 | BLOCKED | T-3.27 |
 | 🧍 T-3.30 | BLOCKED — run sheet `e3-8.md` to be written first | T-3.11, T-3.25, T-3.26, T-3.28, T-3.29 |
