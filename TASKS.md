@@ -53,9 +53,9 @@ rifleman and an MG that deploys, suppresses first and relocates rarely
 (T-3.23, `--scenario mg`), and friendly bots follow their fireteam's lead in
 formation (T-3.25, the `friendly` tree) and fight and revive beside it
 (T-3.26, `--scenario squad`), and players can order bots and mark targets
-over the wire (T-3.27, protocol 21). The next build tasks are **T-3.28**
-(bots carry out orders) and **T-3.29**; the combat AI sign-off (🧍 T-3.24)
-waits on its run sheet.
+over the wire (T-3.27, protocol 21), which the bots carry out and report on
+(T-3.28). The next build task is **T-3.29** (the order wheel and marking in
+the page); the combat AI sign-off (🧍 T-3.24) waits on its run sheet.
 
 ---
 
@@ -294,7 +294,7 @@ once before the first M3 task — it is short and every task leans on it.
 | Task | Status | Depends |
 |---|---|---|
 | T-3.27 | DONE | T-3.08 |
-| T-3.28 | OPEN | T-3.27, T-3.26, T-3.19 |
+| T-3.28 | DONE | T-3.27, T-3.26, T-3.19 |
 | T-3.29 | OPEN | T-3.27 |
 | 🧍 T-3.30 | BLOCKED — run sheet `e3-8.md` to be written first | T-3.11, T-3.25, T-3.26, T-3.28, T-3.29 |
 

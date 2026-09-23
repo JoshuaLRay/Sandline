@@ -92,6 +92,8 @@ import {
   ORDERS,
   orderProblem,
   type BotOrder,
+  type OrderKind,
+  type OrderPoint,
   type TargetMark,
   formationBand,
   type Stimulus,
@@ -173,6 +175,20 @@ interface AiBody {
   aim: { netId: number; since: number } | null;
   burst: { rounds: number; pauseUntil: number };
 }
+
+/** T-3.28: how an order ended — finished, failed, or replaced by another (or by a human taking the slot). */
+export type OrderOutcome = 'done' | 'failed' | 'replaced';
+
+export interface OrderReport {
+  slot: number;
+  order: OrderKind;
+  outcome: OrderOutcome;
+  reason: string;
+  tick: number;
+}
+
+/** A move's point is reachable when a path ends this near it, metres (T-3.28). */
+const ORDER_REACH_M = 1;
 
 /** T-3.26: the archetype a friendly bot sees, aims and fires by (`squad.json`'s bot.archetype), with its slot's own gun. */
 const BOT_ARCHETYPE = getEnemy(SQUAD_CONFIG.bot.archetype);
@@ -636,7 +652,29 @@ export class Session {
     this.maxSessionMs = options.maxSessionMs ?? 0;
     // Six slots exist from the moment the session does (ADR-001).
     this.formation = new Formation((p) => (mesh ? (mesh.nearestPoint(p)?.point ?? null) : p));
-    const squad: SquadView = { place: (index) => this.formation.place(index), downedNear: (index) => this.downedNear(index) };
+    const squad: SquadView = {
+      place: (index) => this.formation.place(index),
+      downedNear: (index) => this.downedNear(index),
+      order: (index) => {
+        const order = this.orders[index];
+        const run = this.orderRuns[index];
+        return order && run ? { ...order, status: run.status, anchor: run.anchor } : null;
+      },
+      report: (index, outcome, reason) => this.orderOutcome(index, outcome, reason),
+      reachable: (from, to) => {
+        const m = this.navMesh;
+        if (!m) return false;
+        const path = m.path(from, to);
+        const end = path?.points[path.points.length - 1];
+        return !!end && Math.sqrt((end.x - to.x) ** 2 + (end.z - to.z) ** 2) <= ORDER_REACH_M;
+      },
+      soldier: (netId) => {
+        const slot = this.slots.find((sl) => sl.netId === netId);
+        if (slot) return { netId, index: slot.index, x: slot.state.x, y: slot.state.y, z: slot.state.z, downed: isDowned(slot.health), dead: isDead(slot.health) };
+        const e = this.enemyList.find((en) => en.netId === netId);
+        return e ? { netId, index: -1, x: e.state.x, y: e.state.y, z: e.state.z, downed: false, dead: isDead(e.health) } : null;
+      },
+    };
     // The squad's side of the world (T-3.26): the same world, with squadmates as the friends.
     this.squadCombat = {
       ...this.combatWorld,
@@ -817,6 +855,30 @@ export class Session {
 
   get friendlyHits(): number {
     return this.friendlyHitCount;
+  }
+
+  /**
+   * T-3.28: whom a bot fights. The enemy its attack order names, while that
+   * one lives; else a marked enemy it knows of, the nearest; else its own
+   * choice by memory. A mark outranks nearness: every bot takes a marked
+   * enemy over a closer unmarked one.
+   */
+  private botTarget(slot: Slot, nowSeconds: number): number | null {
+    const order = this.orders[slot.index];
+    if (order?.order === 'attack' && order.target !== null && this.enemyList.some((e) => e.netId === order.target && !isDead(e.health))) return order.target;
+    let best: number | null = null;
+    let bestD = Infinity;
+    for (const mark of this.marks) {
+      if (mark.target === null) continue;
+      const entry = slot.memory.entries.get(mark.target);
+      if (!entry) continue;
+      const d = (entry.x - slot.state.x) ** 2 + (entry.z - slot.state.z) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = mark.target;
+      }
+    }
+    return best ?? chooseTarget(slot.memory, slot.state, nowSeconds);
   }
 
   /** T-3.26: the nearest downed squadmate within `bot.reviveSeekM` of a slot that nobody else is reviving. */
@@ -1026,8 +1088,7 @@ export class Session {
     // T-3.27: a human is nobody's to order, so whatever this slot's bot was told
     // lapses; and the newcomer is shown the squad's orders and marks as they stand.
     if (this.orders[slot.index]) {
-      this.orders[slot.index] = null;
-      this.broadcastOrders();
+      this.endOrder(slot.index, 'replaced', 'a human took the slot');
     } else {
       conn.send({ kind: 'Orders', orders: this.currentOrders() });
     }
@@ -1041,6 +1102,48 @@ export class Session {
 
   /** Each slot's current order, or null: only ever a bot's. */
   private readonly orders: (BotOrder | null)[] = Array.from({ length: MAX_SLOTS }, () => null);
+  /**
+   * T-3.28: how each standing order is going — active, or done and still
+   * standing (a move that has arrived holds there until told otherwise) —
+   * and its anchor: a hold's point, or where the bot stood when told.
+   */
+  private readonly orderRuns: ({ status: 'active' | 'done'; anchor: OrderPoint } | null)[] = Array.from({ length: MAX_SLOTS }, () => null);
+  /** T-3.28: what became of each order — finished, failed, or replaced — newest last, the last 64. */
+  readonly orderReports: OrderReport[] = [];
+
+  /** Record an order's outcome (T-3.28). */
+  private reportOrder(slot: number, outcome: OrderOutcome, reason: string): void {
+    const order = this.orders[slot];
+    if (!order) return;
+    this.orderReports.push({ slot, order: order.order, outcome, reason, tick: this.currentTick });
+    if (this.orderReports.length > 64) this.orderReports.shift();
+  }
+
+  /** An order is over: reported, taken off the bot, and every client told. */
+  private endOrder(slot: number, outcome: OrderOutcome, reason: string): void {
+    if (!this.orders[slot]) return;
+    this.reportOrder(slot, outcome, reason);
+    this.orders[slot] = null;
+    this.orderRuns[slot] = null;
+    this.broadcastOrders();
+  }
+
+  /**
+   * A bot's brain saying how its order went (T-3.28). Done: a move stays,
+   * holding where it arrived, until replaced; the others are over. Failed:
+   * over. Said once — a second "done" for a move that has arrived is nothing.
+   */
+  private orderOutcome(slot: number, outcome: 'done' | 'failed', reason: string): void {
+    const order = this.orders[slot];
+    const run = this.orderRuns[slot];
+    if (!order || !run || run.status === 'done') return;
+    if (outcome === 'done' && (order.order === 'move' || order.order === 'hold')) {
+      this.reportOrder(slot, 'done', reason);
+      run.status = 'done';
+      return;
+    }
+    this.endOrder(slot, outcome, reason);
+  }
   private marks: TargetMark[] = [];
   private nextMarkId = 1;
 
@@ -1100,7 +1203,11 @@ export class Session {
     const bots = addressed.filter((i) => this.slots[i]?.isBot === true);
     if (bots.length === 0) return;
     for (const i of bots) {
+      // T-3.28: the order it was under, if it had not finished, is replaced; either way it is reported.
+      if (this.orders[i]) this.reportOrder(i, this.orderRuns[i]?.status === 'done' ? 'done' : 'replaced', `${msg.order} from slot ${from.index}`);
       this.orders[i] = { slot: i, order: msg.order, point: msg.point ? { ...msg.point } : null, target: msg.target, from: from.index };
+      const at = this.slots[i]!.state;
+      this.orderRuns[i] = { status: 'active', anchor: msg.point ? { ...msg.point } : { x: at.x, y: at.y, z: at.z } };
     }
     this.broadcastOrders();
   }
@@ -2087,7 +2194,7 @@ export class Session {
         slot.awareness.set(enemy.netId, awareness);
         if (sighting.visible && isDetected(awareness, perception)) rememberSeen(slot.memory, enemy.netId, target.feet, nowSeconds, false);
       }
-      slot.target = chooseTarget(slot.memory, slot.state, nowSeconds);
+      slot.target = this.botTarget(slot, nowSeconds);
       watchStill(slot.still, slot.target, slot.memory, slot.state.y, nowSeconds);
     }
   }

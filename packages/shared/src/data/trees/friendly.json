@@ -1,10 +1,95 @@
 {
-  "$comment": "T-3.25/T-3.26. A friendly bot. First, a downed squadmate within reach of it (squad.json bot.reviveSeekM) that nobody else is reviving, unless it is pinned down itself: go to them and hold interact, through the human's revive path. Then, with an enemy known: the rifleman's fight on its own slot \u2014 a grenade at an enemy gone still in cover, reload when low, relocate when flanked, peek and fire from cover unless pressured, else stay down, else take cover (only cover within its formation band of its formation place), else fight where it stands. It never fires with a squadmate on the line (the session holds the trigger). Nothing known: follow its fireteam's lead in formation (server/src/ai/friendly/formation.ts).",
+  "$comment": "T-3.25/T-3.26/T-3.28. A friendly bot. First, an order a player gave it (T-3.28, server/src/ai/friendly/orders.ts): move, attack, hold, regroup or revive \u2014 it pre-empts everything below until it finishes, fails or is replaced. Then, a downed squadmate within reach of it (squad.json bot.reviveSeekM) that nobody else is reviving, unless it is pinned down itself: go to them and hold interact, through the human's revive path. Then, with an enemy known: the rifleman's fight on its own slot \u2014 a grenade at an enemy gone still in cover, reload when low, relocate when flanked, peek and fire from cover unless pressured, else stay down, else take cover (only cover within its formation band of its formation place), else fight where it stands. It never fires with a squadmate on the line (the session holds the trigger). Nothing known: follow its fireteam's lead in formation (server/src/ai/friendly/formation.ts).",
   "id": "friendly",
   "root": {
     "type": "selector",
     "reactive": true,
     "children": [
+      {
+        "type": "sequence",
+        "reactive": true,
+        "children": [
+          {
+            "type": "condition",
+            "name": "ordered",
+            "args": {
+              "kind": "move"
+            }
+          },
+          {
+            "type": "action",
+            "name": "orderMove"
+          }
+        ]
+      },
+      {
+        "type": "sequence",
+        "reactive": true,
+        "children": [
+          {
+            "type": "condition",
+            "name": "ordered",
+            "args": {
+              "kind": "attack"
+            }
+          },
+          {
+            "type": "action",
+            "name": "orderAttack"
+          }
+        ]
+      },
+      {
+        "type": "sequence",
+        "reactive": true,
+        "children": [
+          {
+            "type": "condition",
+            "name": "ordered",
+            "args": {
+              "kind": "hold"
+            }
+          },
+          {
+            "type": "action",
+            "name": "orderHold"
+          }
+        ]
+      },
+      {
+        "type": "sequence",
+        "reactive": true,
+        "children": [
+          {
+            "type": "condition",
+            "name": "ordered",
+            "args": {
+              "kind": "regroup"
+            }
+          },
+          {
+            "type": "action",
+            "name": "orderRegroup"
+          }
+        ]
+      },
+      {
+        "type": "sequence",
+        "reactive": true,
+        "children": [
+          {
+            "type": "condition",
+            "name": "ordered",
+            "args": {
+              "kind": "revive"
+            }
+          },
+          {
+            "type": "action",
+            "name": "orderRevive"
+          }
+        ]
+      },
       {
         "type": "sequence",
         "reactive": true,
