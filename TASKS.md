@@ -45,8 +45,8 @@ perception exists as pure functions (T-3.13), wired on the session into
 hearing, memory and target choice (T-3.14), and a brain can shoot through the
 human fire path (T-3.15), and rounds going past suppress every soldier (T-3.16), which the page shows
 (T-3.17, `?suppress` for eyes), and cover points are baked beside the navmesh
-(T-3.18). The next build tasks are **T-3.19** (cover query and reservation)
-and **T-3.27** (orders on the wire).
+(T-3.18) and queried and reserved (T-3.19). The next build tasks are
+**T-3.20** (the rifleman's fight) and **T-3.27** (orders on the wire).
 
 ---
 
@@ -261,8 +261,8 @@ once before the first M3 task — it is short and every task leans on it.
 | T-3.16 | DONE | T-3.15 |
 | T-3.17 | DONE | T-3.16 |
 | T-3.18 | DONE | T-3.04 |
-| T-3.19 | OPEN | T-3.18, T-3.13 |
-| T-3.20 | BLOCKED | T-3.05, T-3.14, T-3.15, T-3.19 |
+| T-3.19 | DONE | T-3.18, T-3.13 |
+| T-3.20 | OPEN | T-3.05, T-3.14, T-3.15, T-3.19 |
 | T-3.21 | BLOCKED | T-3.20, T-3.16, T-3.06 |
 | T-3.22 | BLOCKED | T-3.20 |
 
