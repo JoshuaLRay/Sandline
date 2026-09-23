@@ -10,6 +10,7 @@
  */
 import RAW_SQUAD from '../data/squad.json' with { type: 'json' };
 import { MAX_SLOTS } from '../net/Connection.ts';
+import { ENEMIES } from './enemies.ts';
 
 /** An offset from the lead: metres to its right, and behind it. */
 export type FormationOffset = readonly [right: number, back: number];
@@ -19,6 +20,18 @@ export interface Fireteam {
   readonly slots: readonly number[];
   /** A key of `SquadConfig.formations`. */
   readonly formation: string;
+}
+
+/** T-3.26: how a friendly bot fights and revives. */
+export interface SquadBotConfig {
+  /** An enemies.json row whose perception and accuracy a bot uses (with its own slot's gun). */
+  readonly archetype: string;
+  /** A squadmate's capsule grown by this blocks a bot's shot, metres. */
+  readonly friendlyMarginM: number;
+  /** A downed squadmate within this is one a bot goes to revive, metres. */
+  readonly reviveSeekM: number;
+  /** Share of the revive range a bot closes to before it holds interact. */
+  readonly reviveReachFraction: number;
 }
 
 export interface SquadConfig {
@@ -34,6 +47,7 @@ export interface SquadConfig {
   /** How far from its place a follower may be and still be in formation: this, plus `bandPerM` a metre of its offset. */
   readonly bandM: number;
   readonly bandPerM: number;
+  readonly bot: SquadBotConfig;
 }
 
 /** Hand-written for the reason `weapons.ts` gives: zod would be a new runtime dep. */
@@ -49,7 +63,7 @@ function num(row: Record<string, unknown>, key: string, min: number, max: number
 export function parseSquadConfig(raw: unknown): SquadConfig {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new SquadDataError('squad: expected an object');
   const row = raw as Record<string, unknown>;
-  const keys = ['$comment', 'fireteams', 'formations', 'stillMps', 'closeUpScale', 'catchUpM', 'arriveM', 'minFromLeadM', 'sprintSpreadScale', 'bandM', 'bandPerM'];
+  const keys = ['$comment', 'fireteams', 'formations', 'stillMps', 'closeUpScale', 'catchUpM', 'arriveM', 'minFromLeadM', 'sprintSpreadScale', 'bandM', 'bandPerM', 'bot'];
   for (const k of Object.keys(row)) if (!keys.includes(k)) throw new SquadDataError(`squad: unknown key "${k}"`);
 
   const rawFormations = row['formations'];
@@ -88,6 +102,16 @@ export function parseSquadConfig(raw: unknown): SquadConfig {
   });
   if (seen.size !== MAX_SLOTS) throw new SquadDataError(`squad.fireteams: every one of the ${MAX_SLOTS} slots must be in a fireteam`);
 
+  const rawBot = row['bot'];
+  if (typeof rawBot !== 'object' || rawBot === null || Array.isArray(rawBot)) throw new SquadDataError('squad.bot: expected an object');
+  const bot = rawBot as Record<string, unknown>;
+  for (const k of Object.keys(bot)) {
+    if (!['archetype', 'friendlyMarginM', 'reviveSeekM', 'reviveReachFraction'].includes(k)) throw new SquadDataError(`squad.bot: unknown key "${k}"`);
+  }
+  const archetype = bot['archetype'];
+  if (typeof archetype !== 'string' || !ENEMIES[archetype]) throw new SquadDataError(`squad.bot.archetype: no enemies.json row "${String(archetype)}"`);
+  const botNum = (key: string, min: number, max: number) => num(bot, key, min, max);
+
   return {
     fireteams,
     formations,
@@ -100,6 +124,13 @@ export function parseSquadConfig(raw: unknown): SquadConfig {
     sprintSpreadScale: num(row, 'sprintSpreadScale', 0, 1),
     bandM: num(row, 'bandM', 0.1, 50),
     bandPerM: num(row, 'bandPerM', 0, 5),
+    bot: {
+      archetype,
+      friendlyMarginM: botNum('friendlyMarginM', 0, 5),
+      reviveSeekM: botNum('reviveSeekM', 0, 500),
+      // Above zero and at most the whole range: it must be in reach to revive at all.
+      reviveReachFraction: botNum('reviveReachFraction', 0.05, 1),
+    },
   };
 }
 

@@ -24,6 +24,11 @@
  * pinned and flanked fights and compares them, over `scenarios/mg.json`.
  *
  *   pnpm sim-run --scenario mg
+ *
+ * `squad` (T-3.26): five friendly bots and a human lead against a group of
+ * riflemen, over `scenarios/squad.json`.
+ *
+ *   pnpm sim-run --scenario squad
  */
 import { Simulation } from '../../shared/src/sim/Simulation.ts';
 import { divergence } from '../../shared/test/harness/parity.ts';
@@ -42,6 +47,18 @@ if (scenarioName === 'pinned') {
   const { reportPinned, summarisePinned } = await import('./scenarios/pinned.ts');
   const summary = await summarisePinned();
   console.log(reportPinned(summary));
+  if (summary.failures.length > 0) {
+    for (const f of summary.failures) console.error(`FAIL: ${f}`);
+    process.exit(1);
+  }
+  console.log('OK: every threshold met');
+  process.exit(0);
+}
+
+if (scenarioName === 'squad') {
+  const { reportSquad, summariseSquad } = await import('./scenarios/squad.ts');
+  const summary = await summariseSquad();
+  console.log(reportSquad(summary));
   if (summary.failures.length > 0) {
     for (const f of summary.failures) console.error(`FAIL: ${f}`);
     process.exit(1);
@@ -85,7 +102,7 @@ const SCENARIOS: Record<string, (sim: Simulation) => void> = {
 
 const build = SCENARIOS[scenarioName];
 if (!build) {
-  console.error(`unknown scenario '${scenarioName}'. available: ${[...Object.keys(SCENARIOS), 'cover-duel', 'pinned', 'mg'].join(', ')}`);
+  console.error(`unknown scenario '${scenarioName}'. available: ${[...Object.keys(SCENARIOS), 'cover-duel', 'pinned', 'mg', 'squad'].join(', ')}`);
   process.exit(1);
 }
 

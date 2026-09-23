@@ -88,8 +88,11 @@ import {
   buildTree,
   enemyIndex,
   getEnemy,
+  SQUAD as SQUAD_CONFIG,
+  formationBand,
   type Stimulus,
   type TargetMemory,
+  type EnemyAccuracy,
   beginThink,
   chooseTarget,
   createTargetMemory,
@@ -121,7 +124,7 @@ import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, visibleAimPoint } 
 import { CoverSystem, DEFAULT_COVER_BODY } from '../ai/cover.ts';
 import { EnemyGroup } from '../ai/group.ts';
 import type { CombatWorld } from '../ai/actions/combat.ts';
-import type { SquadView } from '../ai/actions/friendly.ts';
+import type { DownedMate, SquadView } from '../ai/actions/friendly.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
 import type { CoverPoint } from '../ai/nav/baked/types.ts';
@@ -145,6 +148,30 @@ const PRONE_HITBOX_HEIGHT = 2 * ((DEFAULT_HITBOX.proneHalfHeight ?? DEFAULT_HITB
  * (`ENEMY_FACTION_BITS` wide), so no faction is ever mistaken for the squad.
  */
 const SQUAD = -1;
+
+/**
+ * What the AI's hands and trigger read and write (T-3.26): an enemy, or a
+ * friendly bot's slot — the same fields on both, so one path drives both.
+ */
+interface AiBody {
+  readonly netId: number;
+  state: MoveState;
+  yaw: number;
+  pitch: number;
+  input: MoveInput;
+  weapon: WeaponDef;
+  weaponState: WeaponState;
+  brain: Brain | null;
+  health: HealthState;
+  pouch: number[];
+  nextThrowAt: number;
+  suppression: SuppressionState;
+  aim: { netId: number; since: number } | null;
+  burst: { rounds: number; pauseUntil: number };
+}
+
+/** T-3.26: the archetype a friendly bot sees, aims and fires by (`squad.json`'s bot.archetype), with its slot's own gun. */
+const BOT_ARCHETYPE = getEnemy(SQUAD_CONFIG.bot.archetype);
 
 /** The aim id suppressive fire is timed on (T-3.21): a point, not a soldier. */
 const SUPPRESSIVE_AIM = -1;
@@ -170,6 +197,24 @@ export interface Slot {
   index: number;
   /** T-3.25: the squad's formation, as a bot's brain reads it (the same view for every slot). */
   readonly squad: SquadView;
+  /**
+   * T-3.26: a friendly bot's fighting half, what an enemy's leaves read
+   * (`CombatBody`): its side (the squad's), what it knows of the enemy and
+   * whom it has chosen, when it was last hurt, the squad's view of the world,
+   * the still-watch its grenades need, and its aim and burst.
+   */
+  readonly faction: number;
+  target: number | null;
+  memory: TargetMemory;
+  awareness: Map<number, number>;
+  lastDamagedAt: number;
+  readonly combat: CombatWorld;
+  readonly group: EnemyGroup | null;
+  readonly still: StillWatch;
+  aim: { netId: number; since: number } | null;
+  burst: { rounds: number; pauseUntil: number };
+  /** Where a bot's cover must be: its formation place, its formation band round (`formationBand`), or null when it has none. */
+  coverNear(): { x: number; z: number; withinM: number } | null;
   netId: number;
   isBot: boolean;
   state: MoveState;
@@ -587,11 +632,31 @@ export class Session {
     this.maxSessionMs = options.maxSessionMs ?? 0;
     // Six slots exist from the moment the session does (ADR-001).
     this.formation = new Formation((p) => (mesh ? (mesh.nearestPoint(p)?.point ?? null) : p));
-    const squad: SquadView = { place: (index) => this.formation.place(index) };
+    const squad: SquadView = { place: (index) => this.formation.place(index), downedNear: (index) => this.downedNear(index) };
+    // The squad's side of the world (T-3.26): the same world, with squadmates as the friends.
+    this.squadCombat = {
+      ...this.combatWorld,
+      friendsOf: (netId) => this.slots.filter((s) => s.netId !== netId && !isDead(s.health)).map((s) => ({ x: s.state.x, y: s.state.y, z: s.state.z })),
+    };
+    this.botsDriven = this.brainTree !== defaultBrainTree();
     for (let i = 0; i < MAX_SLOTS; i++) {
       this.slots.push({
         index: i,
         squad,
+        faction: SQUAD,
+        target: null,
+        memory: createTargetMemory(),
+        awareness: new Map(),
+        lastDamagedAt: -Infinity,
+        combat: this.squadCombat,
+        group: null,
+        still: createStillWatch(),
+        aim: null,
+        burst: { rounds: 0, pauseUntil: 0 },
+        coverNear: () => {
+          const place = this.formation.place(i);
+          return place ? { x: place.goal.x, z: place.goal.z, withinM: formationBand(place.offset) } : null;
+        },
         netId: this.nextNetId++,
         isBot: true,
         state: createMoveState(spawnFor(i).x, spawnFor(i).y, spawnFor(i).z),
@@ -733,6 +798,40 @@ export class Session {
 
   /** T-3.25: the squad's fireteams following their leads, fed every tick. */
   private readonly formation: Formation;
+  /** T-3.26: the squad's side of the world, as a friendly bot's leaves read it. */
+  private readonly squadCombat: CombatWorld;
+  /**
+   * T-3.26: bot slots run a tree that fights (anything but the default idle
+   * one), so the session perceives for them and applies their hands. With the
+   * default a bot slot is exactly what it always was.
+   */
+  private readonly botsDriven: boolean;
+  /** Rounds fired by a slot that hurt a slot (T-3.26): what the squad scenario holds at zero. */
+  private friendlyHitCount = 0;
+  /** When each enemy last fired, ticks: a friendly bot sees a firing soldier sooner, as an enemy does. */
+  private readonly enemyFiredTick = new Map<number, number>();
+
+  get friendlyHits(): number {
+    return this.friendlyHitCount;
+  }
+
+  /** T-3.26: the nearest downed squadmate within `bot.reviveSeekM` of a slot that nobody else is reviving. */
+  private downedNear(index: number): DownedMate | null {
+    const me = this.slots[index];
+    if (!me || !isAlive(me.health)) return null;
+    let best: DownedMate | null = null;
+    let bestD = SQUAD_CONFIG.bot.reviveSeekM;
+    for (const s of this.slots) {
+      if (s === me || !isDowned(s.health)) continue;
+      if (s.reviveBySlot >= 0 && s.reviveBySlot !== index) continue;
+      const d = Math.sqrt((s.state.x - me.state.x) ** 2 + (s.state.z - me.state.z) ** 2);
+      if (d <= bestD) {
+        bestD = d;
+        best = { index: s.index, x: s.state.x, y: s.state.y, z: s.state.z, reachM: DAMAGE.downed.reviveRangeM };
+      }
+    }
+    return best;
+  }
 
   /** Where a slot's formation puts it this tick, or null (a human, a lead, nowhere to stand): for tests and the page. */
   formationPlace(slotIndex: number): FormationPlace | null {
@@ -1207,6 +1306,10 @@ export class Session {
         if (target) {
           const result = applyDamage(target.health, dealt, this.nowMs / 1000);
           dealt = result.applied;
+          if (dealt > 0) {
+            target.lastDamagedAt = this.nowMs / 1000;
+            if (this.slots.some((sl) => sl.netId === shooterNetId)) this.friendlyHitCount++;
+          }
           /**
            * A killed player stops moving immediately: their queued inputs are
            * intent from before they died, and letting a corpse run out its
@@ -1527,6 +1630,7 @@ export class Session {
       );
       if (damage <= 0) continue;
       const result = applyDamage(slot.health, damage, nowSeconds);
+      if (result.applied > 0) slot.lastDamagedAt = nowSeconds;
       // A killed player stops moving immediately, as under fire (see applyFire).
       if (result.killed) slot.queue.length = 0;
       targets.push({ netId: slot.netId, damage: result.applied });
@@ -1828,6 +1932,45 @@ export class Session {
       enemy.target = chooseTarget(enemy.memory, enemy.state, nowSeconds);
       watchStill(enemy.still, enemy.target, enemy.memory, enemy.state.y, nowSeconds);
     }
+    if (this.botsDriven) this.perceiveForBots(heard, nowSeconds);
+  }
+
+  /**
+   * T-3.26: a friendly bot's hearing and sight, the enemies' turned round: it
+   * hears the enemy's rounds and sees enemies by its archetype's perception
+   * (`squad.json` bot.archetype), into its own memory and target.
+   */
+  private perceiveForBots(heard: readonly Stimulus[], nowSeconds: number): void {
+    const hostile = heard.filter((s) => this.enemyList.some((e) => e.netId === s.sourceNetId));
+    const dt = BRAIN_PERIOD_TICKS * TICK_SECONDS;
+    const perception = BOT_ARCHETYPE.perception;
+    for (const slot of this.slots) {
+      if (!slot.isBot || !slot.brain || !isAlive(slot.health)) continue;
+      const eye = eyePosition(slot.state.x, slot.state.y, slot.state.z, DEFAULT_MUZZLE_RIG, slot.state.prone);
+      for (const stimulus of hostile) if (hears(eye, stimulus)) rememberHeard(slot.memory, stimulus, nowSeconds);
+      if (!slot.brain.due(this.currentTick)) continue;
+      beginThink(slot.memory, nowSeconds);
+      const observer = { eye, yaw: wireToTable(slot.yaw) };
+      for (const enemy of this.enemyList) {
+        if (isDead(enemy.health)) {
+          forgetTarget(slot.memory, enemy.netId);
+          slot.awareness.delete(enemy.netId);
+          continue;
+        }
+        const target = {
+          feet: { x: enemy.state.x, y: enemy.state.y, z: enemy.state.z },
+          stance: enemy.state.prone ? ('prone' as const) : enemy.state.crouched ? ('crouched' as const) : ('standing' as const),
+          speed: enemy.speed,
+          firing: this.currentTick - (this.enemyFiredTick.get(enemy.netId) ?? -Infinity) <= BRAIN_PERIOD_TICKS,
+        };
+        const sighting = sight(observer, target, this.world.boxes, perception, this.moveConfig);
+        const awareness = stepAwareness(slot.awareness.get(enemy.netId) ?? 0, sighting, target, perception, dt);
+        slot.awareness.set(enemy.netId, awareness);
+        if (sighting.visible && isDetected(awareness, perception)) rememberSeen(slot.memory, enemy.netId, target.feet, nowSeconds, false);
+      }
+      slot.target = chooseTarget(slot.memory, slot.state, nowSeconds);
+      watchStill(slot.still, slot.target, slot.memory, slot.state.y, nowSeconds);
+    }
   }
 
   /**
@@ -1842,39 +1985,51 @@ export class Session {
     for (const enemy of this.enemyList) {
       const alive = !isDead(enemy.health);
       this.cover?.track(enemy.netId, enemy.state, alive);
-      const brain = enemy.brain;
-      if (!alive || !brain) continue;
-      enemy.input.crouch = brain.read('crouch');
-      // Settle a reload that has just finished before asking for another, or
-      // a request still standing on the finishing tick restarts it unfilled.
-      finishReload(enemy.weapon, enemy.weaponState, nowSeconds);
-      if (brain.read('reload')) startReload(enemy.weapon, enemy.weaponState, nowSeconds);
-      // A throw it asked for on this think, made once (T-3.22). Mid-vault the
-      // hands are on the wall, as for a player; it faces the way it threw.
-      const toss = brain.take('throwAt');
-      if (toss && !enemy.state.vault && this.launch(enemy, NO_SLOT, toss.projectile, toss.yaw, toss.pitch)) {
-        enemy.yaw = tableToWire(toss.yaw);
-        enemy.input.yaw = enemy.yaw;
-        enemy.pitch = tableToWire(toss.pitch);
-      }
-      const look = brain.read('lookAt');
-      if (!look || enemy.state.vault || enemy.follower?.onVault) continue;
-      const dx = look.x - enemy.state.x;
-      const dz = look.z - enemy.state.z;
-      if (dx * dx + dz * dz < 1e-6) continue;
-      const input = enemy.input;
-      const from = (input.yaw / 1024) * Math.PI * 2;
-      // World direction of the move (the controller's frame: forward (sin, cos), right (−cos, sin)).
-      const wx = input.moveY * Math.sin(from) - input.moveX * Math.cos(from);
-      const wz = input.moveY * Math.cos(from) + input.moveX * Math.sin(from);
-      const yaw = ((Math.round((Math.atan2(dx, dz) / (Math.PI * 2)) * 1024) % 1024) + 1024) % 1024;
-      const to = (yaw / 1024) * Math.PI * 2;
-      input.moveY = wx * Math.sin(to) + wz * Math.cos(to);
-      input.moveX = -wx * Math.cos(to) + wz * Math.sin(to);
-      input.yaw = yaw;
-      // Sprinting is forward only: a strafe is a walk.
-      if (input.sprint && input.moveY < 0.7) input.sprint = false;
+      if (alive && enemy.brain) this.aiHands(enemy, NO_SLOT, enemy.follower?.onVault ?? false, nowSeconds);
     }
+    // T-3.26: friendly bots' hands the same way, when they run a tree that uses them.
+    if (!this.botsDriven) return;
+    for (const slot of this.slots) {
+      if (!slot.isBot) continue;
+      const able = isAlive(slot.health);
+      this.cover?.track(slot.netId, slot.state, able);
+      if (able && slot.brain) this.aiHands(slot, slot.index, this.followers[slot.index]?.onVault ?? false, nowSeconds);
+    }
+  }
+
+  /** One AI soldier's stance, reload, throw and gaze onto its input (`enemyHands`). */
+  private aiHands(body: AiBody, ownerSlot: number, onVault: boolean, nowSeconds: number): void {
+    const brain = body.brain!;
+    body.input.crouch = brain.read('crouch');
+    // Settle a reload that has just finished before asking for another, or
+    // a request still standing on the finishing tick restarts it unfilled.
+    finishReload(body.weapon, body.weaponState, nowSeconds);
+    if (brain.read('reload')) startReload(body.weapon, body.weaponState, nowSeconds);
+    // A throw it asked for on this think, made once (T-3.22). Mid-vault the
+    // hands are on the wall, as for a player; it faces the way it threw.
+    const toss = brain.take('throwAt');
+    if (toss && !body.state.vault && this.launch(body, ownerSlot, toss.projectile, toss.yaw, toss.pitch)) {
+      body.yaw = tableToWire(toss.yaw);
+      body.input.yaw = body.yaw;
+      body.pitch = tableToWire(toss.pitch);
+    }
+    const look = brain.read('lookAt');
+    if (!look || body.state.vault || onVault) return;
+    const dx = look.x - body.state.x;
+    const dz = look.z - body.state.z;
+    if (dx * dx + dz * dz < 1e-6) return;
+    const input = body.input;
+    const from = (input.yaw / 1024) * Math.PI * 2;
+    // World direction of the move (the controller's frame: forward (sin, cos), right (−cos, sin)).
+    const wx = input.moveY * Math.sin(from) - input.moveX * Math.cos(from);
+    const wz = input.moveY * Math.cos(from) + input.moveX * Math.sin(from);
+    const yaw = ((Math.round((Math.atan2(dx, dz) / (Math.PI * 2)) * 1024) % 1024) + 1024) % 1024;
+    const to = (yaw / 1024) * Math.PI * 2;
+    input.moveY = wx * Math.sin(to) + wz * Math.cos(to);
+    input.moveX = -wx * Math.cos(to) + wz * Math.sin(to);
+    input.yaw = yaw;
+    // Sprinting is forward only: a strafe is a walk.
+    if (input.sprint && input.moveY < 0.7) input.sprint = false;
   }
 
   /**
@@ -1893,67 +2048,102 @@ export class Session {
   private fireEnemies(nowSeconds: number): void {
     for (const enemy of this.enemyList) {
       if (isDead(enemy.health)) continue;
-      const weapon = enemy.weapon;
-      const ws = enemy.weaponState;
-      finishReload(weapon, ws, nowSeconds);
-      if (ws.ammo === 0) startReload(weapon, ws, nowSeconds);
-
-      // Mid-vault both hands are on the wall, for an AI as for a player (T-2.21).
-      if (enemy.state.vault) continue;
-      // Its own eye in its own stance: crouched behind low cover it sees (and
-      // shoots) over nothing a crouched head would not (T-3.20).
-      const eye = soldierEye(enemy.state);
-      const targetId = enemy.brain?.fireAt ?? null;
-      const target = targetId === null ? null : this.soldier(targetId);
-      const shootable = target && target.netId !== enemy.netId && !isDead(target.health) ? target : null;
-      let point = shootable ? visibleAimPoint(eye, aimPoints(shootable.state, shootable.state.crouched, shootable.state.prone), this.world.boxes) : null;
-      let aimAt = shootable?.netId ?? SUPPRESSIVE_AIM;
-      // No line of sight, no shot — except suppressive fire (T-3.21): a brain
-      // with nobody to shoot at but a point to keep heads down at fires there,
-      // through whatever is in the way, by every other rule a shot follows.
-      if (!point && targetId === null) {
-        point = enemy.brain?.read('suppressAt') ?? null;
-        aimAt = SUPPRESSIVE_AIM;
-      }
-      if (!point) {
-        enemy.aim = null;
-        continue;
-      }
-      if (!enemy.aim || enemy.aim.netId !== aimAt) enemy.aim = { netId: aimAt, since: nowSeconds };
-
-      const line = aimAngles(eye, point);
-      // It faces what it shoots at, and the snapshot says so.
-      enemy.yaw = tableToWire(line.yaw);
-      enemy.input.yaw = enemy.yaw;
-      enemy.pitch = tableToWire(line.pitch);
-
-      // T-3.23: a gun that deploys is aimed but not fired until it has been still its deploy time.
-      if (!this.deployed(enemy, nowSeconds)) continue;
-      // Trigger discipline: a burst, then wait for the gun to settle — and a
-      // burst of the archetype's length, then a pause (T-3.23).
-      if (ws.bloomUnits > degToAngle(enemy.def.accuracy.holdBloomDeg)) continue;
-      if (nowSeconds < enemy.burst.pauseUntil) continue;
-      const shot = tryFire(weapon, ws, nowSeconds, true, enemy.state.prone);
-      if (shot === null) continue;
-      if (++enemy.burst.rounds >= enemy.def.accuracy.burstRounds) {
-        enemy.burst.rounds = 0;
-        enemy.burst.pauseUntil = nowSeconds + enemy.def.accuracy.burstPauseSeconds;
-      }
-
-      const dx = point.x - eye.x;
-      const dy = point.y - eye.y;
-      const dz = point.z - eye.z;
-      const cone = aimConeDeg(enemy.def.accuracy, {
-        distanceM: Math.sqrt(dx * dx + dy * dy + dz * dz),
-        targetSpeedMps: aimAt === SUPPRESSIVE_AIM ? 0 : (shootable?.speed ?? 0),
-        suppression: suppressionLevel(enemy.suppression, nowSeconds),
-        timeOnTargetSeconds: nowSeconds - enemy.aim.since,
-      });
-      const aimed = aimError(line.yaw, line.pitch, cone, aimSeed(this.currentTick, enemy.netId, shot.shotIndex));
-      this.traceShot(enemy.netId, weapon, shot, this.currentTick, eye, aimed.yaw, aimed.pitch, this.nowMs, this.nowMs);
-      // The last round out starts the reload on the same tick.
-      if (ws.ammo === 0) startReload(weapon, ws, nowSeconds);
+      if (this.aiShoot(enemy, enemy.def.accuracy, this.deployed(enemy, nowSeconds), false, nowSeconds)) this.enemyFiredTick.set(enemy.netId, this.currentTick);
     }
+    // T-3.26: friendly bots fire by the same path, holding fire while a squadmate is on the line.
+    if (!this.botsDriven) return;
+    for (const slot of this.slots) {
+      if (!slot.isBot || !slot.brain || !isAlive(slot.health)) continue;
+      if (this.aiShoot(slot, BOT_ARCHETYPE.accuracy, true, true, nowSeconds)) this.lastFiredTick[slot.index] = this.currentTick;
+    }
+  }
+
+  /**
+   * One AI soldier's trigger this tick (`fireEnemies`); true when a round left
+   * the gun. `mayFire` false aims without firing (an MG not yet deployed);
+   * `spareFriends` holds fire while a squadmate's capsule, grown by
+   * `bot.friendlyMarginM`, is on the line to the aim point (T-3.26).
+   */
+  private aiShoot(shooter: AiBody, accuracy: EnemyAccuracy, mayFire: boolean, spareFriends: boolean, nowSeconds: number): boolean {
+    const weapon = shooter.weapon;
+    const ws = shooter.weaponState;
+    finishReload(weapon, ws, nowSeconds);
+    if (ws.ammo === 0) startReload(weapon, ws, nowSeconds);
+
+    // Mid-vault both hands are on the wall, for an AI as for a player (T-2.21).
+    if (shooter.state.vault) return false;
+    // Its own eye in its own stance: crouched behind low cover it sees (and
+    // shoots) over nothing a crouched head would not (T-3.20).
+    const eye = soldierEye(shooter.state);
+    const targetId = shooter.brain?.fireAt ?? null;
+    const target = targetId === null ? null : this.soldier(targetId);
+    const shootable = target && target.netId !== shooter.netId && !isDead(target.health) ? target : null;
+    let point = shootable ? visibleAimPoint(eye, aimPoints(shootable.state, shootable.state.crouched, shootable.state.prone), this.world.boxes) : null;
+    let aimAt = shootable?.netId ?? SUPPRESSIVE_AIM;
+    // No line of sight, no shot — except suppressive fire (T-3.21): a brain
+    // with nobody to shoot at but a point to keep heads down at fires there,
+    // through whatever is in the way, by every other rule a shot follows.
+    if (!point && targetId === null) {
+      point = shooter.brain?.read('suppressAt') ?? null;
+      aimAt = SUPPRESSIVE_AIM;
+    }
+    if (!point) {
+      shooter.aim = null;
+      return false;
+    }
+    if (!shooter.aim || shooter.aim.netId !== aimAt) shooter.aim = { netId: aimAt, since: nowSeconds };
+
+    const line = aimAngles(eye, point);
+    // It faces what it shoots at, and the snapshot says so.
+    shooter.yaw = tableToWire(line.yaw);
+    shooter.input.yaw = shooter.yaw;
+    shooter.pitch = tableToWire(line.pitch);
+
+    // T-3.23: a gun that deploys is aimed but not fired until it has been still its deploy time.
+    if (!mayFire) return false;
+    // T-3.26: never through a squadmate.
+    if (spareFriends && this.friendOnLine(shooter.netId, eye, point)) return false;
+    // Trigger discipline: a burst, then wait for the gun to settle — and a
+    // burst of the archetype's length, then a pause (T-3.23).
+    if (ws.bloomUnits > degToAngle(accuracy.holdBloomDeg)) return false;
+    if (nowSeconds < shooter.burst.pauseUntil) return false;
+    const shot = tryFire(weapon, ws, nowSeconds, true, shooter.state.prone);
+    if (shot === null) return false;
+    if (++shooter.burst.rounds >= accuracy.burstRounds) {
+      shooter.burst.rounds = 0;
+      shooter.burst.pauseUntil = nowSeconds + accuracy.burstPauseSeconds;
+    }
+
+    const dx = point.x - eye.x;
+    const dy = point.y - eye.y;
+    const dz = point.z - eye.z;
+    const cone = aimConeDeg(accuracy, {
+      distanceM: Math.sqrt(dx * dx + dy * dy + dz * dz),
+      targetSpeedMps: aimAt === SUPPRESSIVE_AIM ? 0 : (shootable?.speed ?? 0),
+      suppression: suppressionLevel(shooter.suppression, nowSeconds),
+      timeOnTargetSeconds: nowSeconds - shooter.aim.since,
+    });
+    const aimed = aimError(line.yaw, line.pitch, cone, aimSeed(this.currentTick, shooter.netId, shot.shotIndex));
+    this.traceShot(shooter.netId, weapon, shot, this.currentTick, eye, aimed.yaw, aimed.pitch, this.nowMs, this.nowMs);
+    // The last round out starts the reload on the same tick.
+    if (ws.ammo === 0) startReload(weapon, ws, nowSeconds);
+    return true;
+  }
+
+  /** Whether a living squadmate's capsule, grown by `bot.friendlyMarginM`, crosses the segment `eye` → `point` (T-3.26). */
+  friendOnLine(shooterNetId: number, eye: { x: number; y: number; z: number }, point: { x: number; y: number; z: number }): boolean {
+    const dx = point.x - eye.x;
+    const dy = point.y - eye.y;
+    const dz = point.z - eye.z;
+    const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (length < 1e-6) return false;
+    const ray = { origin: eye, direction: { x: dx / length, y: dy / length, z: dz / length }, maxDistance: length };
+    for (const slot of this.slots) {
+      if (slot.netId === shooterNetId || isDead(slot.health)) continue;
+      const capsule = soldierCapsule(slot.state);
+      if (rayCapsule(ray, capsule.centre, capsule.radius + SQUAD_CONFIG.bot.friendlyMarginM, capsule.halfHeight + SQUAD_CONFIG.bot.friendlyMarginM) !== null) return true;
+    }
+    return false;
   }
 
   /** Whether an enemy may fire as far as deploying goes (T-3.23): always, for an archetype that does not deploy. */
@@ -2125,7 +2315,6 @@ export class Session {
       const reviver = target.reviveBySlot >= 0 ? this.slots[target.reviveBySlot] : undefined;
       if (
         !reviver ||
-        reviver.isBot ||
         !isAlive(reviver.health) ||
         !this.holdingInteract(reviver) ||
         this.distanceSq(reviver, target) > rangeSq
@@ -2140,7 +2329,7 @@ export class Session {
     // target, however many downed teammates are in reach. The next one is
     // claimed the tick after the first revive completes and frees the reviver.
     for (const reviver of this.slots) {
-      if (reviver.isBot || !isAlive(reviver.health) || !this.holdingInteract(reviver)) continue;
+      if (!isAlive(reviver.health) || !this.holdingInteract(reviver)) continue;
       if (this.slots.some((t) => t.reviveBySlot === reviver.index)) continue;
       let best: Slot | null = null;
       let bestDistance = Number.POSITIVE_INFINITY;
@@ -2171,8 +2360,13 @@ export class Session {
     }
   }
 
-  /** Holding E as of the newest real input, and not silent past the repeat window. */
+  /**
+   * Holding E as of the newest real input, and not silent past the repeat
+   * window — or, for a bot (T-3.26), its brain asking to: the same lock, range
+   * and timer a human's held E gets.
+   */
   private holdingInteract(slot: Slot): boolean {
+    if (slot.isBot) return slot.brain?.read('interact') ?? false;
     return slot.interactHeld && slot.staleTicks <= MAX_INPUT_REPEAT;
   }
 

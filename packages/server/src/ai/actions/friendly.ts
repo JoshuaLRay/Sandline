@@ -7,14 +7,32 @@
  * slot's place and walks there at the pace it says; standing still when there
  * is none (it leads, or there is nowhere on the mesh to stand) or when it has
  * arrived with the lead stopped. It never finishes: following is what a
- * friendly bot does until a later tree gives it something else (T-3.26).
+ * friendly bot does when there is nothing else to do.
+ *
+ * T-3.26: `downedMate` and `revive` — to a downed squadmate nobody else has,
+ * then hold interact where a human would, through the same held-E path, range
+ * and timer (`Session.updateRevives`). The fight itself is the rifleman's
+ * leaves (`actions/rifleman.ts`), on the slot's own `CombatBody`.
  */
+import { SQUAD } from '@sandline/shared';
 import type { BrainBody, BrainRegistry } from '../Brain.ts';
 import type { FormationPlace } from '../friendly/formation.ts';
+
+/** A downed squadmate a bot could revive (T-3.26). */
+export interface DownedMate {
+  index: number;
+  x: number;
+  y: number;
+  z: number;
+  /** How near a reviver must be to start and keep a revive, metres (the human's range). */
+  reachM: number;
+}
 
 /** The squad as a slot's brain sees it. */
 export interface SquadView {
   place(slotIndex: number): FormationPlace | null;
+  /** T-3.26: the nearest downed squadmate within `reviveSeekM` that nobody else is reviving, or null. */
+  downedNear(slotIndex: number): DownedMate | null;
 }
 
 /** A slot the session gave a squad view: a bot that can follow. */
@@ -28,11 +46,39 @@ export function isSquadBody(body: BrainBody): body is SquadBody {
 }
 
 export function registerFriendlyLeaves(registry: BrainRegistry): BrainRegistry {
-  return registry.action('follow', ({ ctx, blackboard }) => {
-    if (!isSquadBody(ctx)) return 'failure';
-    const place = ctx.squad.place(ctx.index);
-    blackboard.set('intent', place?.intent ?? null);
-    blackboard.set('lookAt', null);
-    return 'running';
-  });
+  return registry
+    .action('follow', ({ ctx, blackboard }) => {
+      if (!isSquadBody(ctx)) return 'failure';
+      const place = ctx.squad.place(ctx.index);
+      blackboard.set('intent', place?.intent ?? null);
+      blackboard.set('lookAt', null);
+      blackboard.set('fireAt', null);
+      blackboard.set('crouch', false);
+      blackboard.set('interact', false);
+      return 'running';
+    })
+    .condition('downedMate', ({ ctx }) => isSquadBody(ctx) && ctx.squad.downedNear(ctx.index) !== null)
+    /** To the downed squadmate, then hold interact beside it until it is up. */
+    .action('revive', ({ ctx, blackboard }) => {
+      if (!isSquadBody(ctx)) return 'failure';
+      const mate = ctx.squad.downedNear(ctx.index);
+      if (!mate) return 'failure';
+      blackboard.set('fireAt', null);
+      blackboard.set('suppressAt', null);
+      blackboard.set('reload', false);
+      blackboard.set('lookAt', null);
+      const reach = mate.reachM * SQUAD.bot.reviveReachFraction;
+      const d = Math.sqrt((ctx.state.x - mate.x) ** 2 + (ctx.state.z - mate.z) ** 2);
+      if (d > reach) {
+        blackboard.set('interact', false);
+        blackboard.set('crouch', false);
+        blackboard.set('intent', { goal: { x: mate.x, y: mate.y, z: mate.z }, pace: d > 4 ? 'sprint' : 'walk' });
+        return 'running';
+      }
+      // There: kneel beside it and hold interact, as a human would.
+      blackboard.set('intent', null);
+      blackboard.set('crouch', true);
+      blackboard.set('interact', true);
+      return 'running';
+    });
 }

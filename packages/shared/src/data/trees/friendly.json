@@ -1,5 +1,157 @@
 {
-  "$comment": "T-3.25. A friendly bot: follow its fireteam's lead in formation (server/src/ai/friendly/formation.ts, tuned in data/squad.json). Fighting and reviving come with T-3.26.",
+  "$comment": "T-3.25/T-3.26. A friendly bot. First, a downed squadmate within reach of it (squad.json bot.reviveSeekM) that nobody else is reviving, unless it is pinned down itself: go to them and hold interact, through the human's revive path. Then, with an enemy known: the rifleman's fight on its own slot \u2014 a grenade at an enemy gone still in cover, reload when low, relocate when flanked, peek and fire from cover unless pressured, else stay down, else take cover (only cover within its formation band of its formation place), else fight where it stands. It never fires with a squadmate on the line (the session holds the trigger). Nothing known: follow its fireteam's lead in formation (server/src/ai/friendly/formation.ts).",
   "id": "friendly",
-  "root": { "type": "action", "name": "follow" }
+  "root": {
+    "type": "selector",
+    "reactive": true,
+    "children": [
+      {
+        "type": "sequence",
+        "reactive": true,
+        "children": [
+          {
+            "type": "condition",
+            "name": "downedMate"
+          },
+          {
+            "type": "inverter",
+            "child": {
+              "type": "condition",
+              "name": "pressured",
+              "args": {
+                "suppression": 0.6,
+                "hurtSeconds": 1.0
+              }
+            }
+          },
+          {
+            "type": "action",
+            "name": "revive"
+          }
+        ]
+      },
+      {
+        "type": "sequence",
+        "reactive": true,
+        "children": [
+          {
+            "type": "condition",
+            "name": "hasThreat"
+          },
+          {
+            "type": "selector",
+            "reactive": true,
+            "children": [
+              {
+                "type": "sequence",
+                "reactive": true,
+                "children": [
+                  {
+                    "type": "condition",
+                    "name": "grenadeTarget"
+                  },
+                  {
+                    "type": "action",
+                    "name": "throwGrenade"
+                  }
+                ]
+              },
+              {
+                "type": "sequence",
+                "reactive": true,
+                "children": [
+                  {
+                    "type": "condition",
+                    "name": "flanked"
+                  },
+                  {
+                    "type": "action",
+                    "name": "takeCover"
+                  }
+                ]
+              },
+              {
+                "type": "sequence",
+                "reactive": true,
+                "children": [
+                  {
+                    "type": "condition",
+                    "name": "inCover"
+                  },
+                  {
+                    "type": "selector",
+                    "reactive": true,
+                    "children": [
+                      {
+                        "type": "sequence",
+                        "reactive": true,
+                        "children": [
+                          {
+                            "type": "condition",
+                            "name": "lowAmmo",
+                            "args": {
+                              "fraction": 0.3
+                            }
+                          },
+                          {
+                            "type": "action",
+                            "name": "reload"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "cooldown",
+                        "ticks": 45,
+                        "child": {
+                          "type": "sequence",
+                          "reactive": true,
+                          "children": [
+                            {
+                              "type": "inverter",
+                              "child": {
+                                "type": "condition",
+                                "name": "pressured",
+                                "args": {
+                                  "suppression": 0.35,
+                                  "hurtSeconds": 1.5
+                                }
+                              }
+                            },
+                            {
+                              "type": "action",
+                              "name": "peek",
+                              "args": {
+                                "burstSeconds": 1.0,
+                                "reserve": 0.3
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "type": "action",
+                        "name": "hide"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "action",
+                "name": "takeCover"
+              },
+              {
+                "type": "action",
+                "name": "engageOpen"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "action",
+        "name": "follow"
+      }
+    ]
+  }
 }
