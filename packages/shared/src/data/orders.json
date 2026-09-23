@@ -1,0 +1,5 @@
+{
+  "$comment": "T-3.27. A mark stands for markSeconds from when it was made, and each player keeps at most marksPerPlayer — a new one past that retires their oldest. What each order kind needs is the rule in sim/orders.ts, not data.",
+  "markSeconds": 20,
+  "marksPerPlayer": 3
+}
