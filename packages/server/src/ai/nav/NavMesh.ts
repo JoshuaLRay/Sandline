@@ -237,6 +237,17 @@ export class NavMesh {
    * sees what it always saw.
    */
   pathAvoiding(from: NavPoint, to: NavPoint, penalise: (polygon: NavPolygon) => boolean, cost: number, searchM?: number): NavPath | null {
+    return this.avoiding(penalise, cost, (path) => path(from, to, searchM));
+  }
+
+  /**
+   * `pathAvoiding` for many queries at once (T-3.35): the picked polygons are
+   * marked once, `run` asks for as many paths as it likes against them, and
+   * they are put back. A flank assignment prices a route to every candidate
+   * point for every member against the one set of polygons the target sees;
+   * marking them per query was a fifth of forty enemies' tick.
+   */
+  avoiding<T>(penalise: (polygon: NavPolygon) => boolean, cost: number, run: (path: (from: NavPoint, to: NavPoint, searchM?: number) => NavPath | null) => T): T {
     const marked: { ref: number; area: number }[] = [];
     for (const polygon of this.polygons()) {
       if (!penalise(polygon)) continue;
@@ -252,7 +263,7 @@ export class NavMesh {
     filter.excludeFlags = 0;
     filter.setAreaCost(NAV_AREA_AVOID, cost);
     try {
-      return this.pathWith(from, to, searchM, filter);
+      return run((from, to, searchM) => this.pathWith(from, to, searchM, filter));
     } finally {
       for (const m of marked) this.mesh.setPolyArea(m.ref, m.area);
     }

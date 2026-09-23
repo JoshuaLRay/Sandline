@@ -362,7 +362,8 @@ canvas { display: block; touch-action: none; }
   text-transform: uppercase;
   color: var(--amber);
 }
-.lobby-field input {
+.lobby-field input,
+.lobby-field select {
   padding: 8px 10px;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid var(--rule);
@@ -373,7 +374,7 @@ canvas { display: block; touch-action: none; }
   letter-spacing: normal;
   text-transform: none;
 }
-.lobby-field input:focus-visible { outline: 2px solid var(--amber); outline-offset: -1px; }
+.lobby-field input:focus-visible, .lobby-field select:focus-visible { outline: 2px solid var(--amber); outline-offset: -1px; }
 .lobby-field input.lobby-code {
   font-size: 18px;
   letter-spacing: 0.3em;

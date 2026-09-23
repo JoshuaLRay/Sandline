@@ -48,6 +48,17 @@ describe('loadConfig (T-0.07)', () => {
     expect(() => loadConfig()).toThrow(/AI_DEBUG must be 0 or 1/);
   });
 
+  it('runs the AI in its rooms only when HOST_AI=1 (the deployed QA host)', () => {
+    delete process.env['AI_DEBUG'];
+    delete process.env['HOST_AI'];
+    expect(loadConfig().hostAi).toBe(false);
+    process.env['HOST_AI'] = '1';
+    expect(loadConfig().hostAi).toBe(true);
+    process.env['HOST_AI'] = 'on';
+    expect(() => loadConfig()).toThrow(/HOST_AI must be 0 or 1/);
+    delete process.env['HOST_AI'];
+  });
+
   it('reads the join key and per-player limits, with limits on by default', () => {
     delete process.env['JOIN_KEY'];
     delete process.env['IDLE_TIMEOUT_MS'];

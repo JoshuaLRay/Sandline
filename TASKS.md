@@ -65,8 +65,11 @@ human's sight and under an alive cap, in the posture each group is given
 (T-3.32), paced by a director from the fight's intensity and sized by the
 humans seated, not the squad (T-3.33), toward one objective — clear the
 compound and hold it — evaluated on the server, broadcast, shown on the HUD,
-and restartable (T-3.34, protocol 22, `?mission` for eyes). The next build
-task is **T-3.35** (the mission, headless).
+and restartable (T-3.34, protocol 22, `?mission` for eyes), and played
+headless by six bots at both budgets with the exit gate's claims as numbers
+(T-3.35, `pnpm sim-run --scenario mission`; the bots lose most fights —
+docs/BUGS.md B-11). M3's build tasks are done; its gates (🧍 T-3.24, T-3.30,
+T-3.36, T-3.37) wait on their run sheets and people.
 
 ---
 
@@ -317,7 +320,7 @@ once before the first M3 task — it is short and every task leans on it.
 | T-3.32 | DONE | T-3.10, T-3.31 |
 | T-3.33 | DONE | T-3.32, T-3.14 |
 | T-3.34 | DONE | T-3.31, T-3.32 |
-| T-3.35 | OPEN | T-3.23, T-3.28, T-3.33, T-3.34 |
+| T-3.35 | DONE | T-3.23, T-3.28, T-3.33, T-3.34 |
 | 🧍 T-3.36 | BLOCKED — run sheet `m3-solo.md` to be written first | T-3.24, T-3.30, T-3.35 |
 | 🧍 T-3.37 | BLOCKED — run sheet `m3-six.md` to be written first; needs six people | T-3.35 |
 

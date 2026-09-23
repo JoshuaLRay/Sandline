@@ -14,7 +14,7 @@ import { MAX_MARKS, ORDER_KINDS, type BotOrder, type OrderAddress, type OrderKin
 import { MISSION_STATES, type MissionView } from '../sim/mission.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 22;
+export const PROTOCOL_VERSION = 23;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -205,6 +205,14 @@ export type Message =
        * refuses as `bad key`.
        */
       key?: string;
+      /**
+       * T-3.35 follow-up: the named world a room is to be built with, asked
+       * for by the player who creates it (`room` empty). Absent and empty
+       * mean the host's own default; a host ignores it for a room that
+       * exists, and one it does not know is the default too. JoinAck names
+       * the world the room has, whatever was asked.
+       */
+      world?: string;
     }
   | {
       kind: 'JoinAck';
@@ -413,6 +421,7 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeString(msg.name);
       w.writeString(msg.room);
       w.writeString(msg.key ?? '');
+      w.writeString(msg.world ?? '');
       break;
     case 'JoinAck':
       w.writeBits(MessageType.JoinAck, TYPE_BITS);
@@ -772,7 +781,8 @@ export function decodeMessage(bytes: Uint8Array): Message {
         const name = r.readString();
         const room = r.readString();
         const key = r.readString();
-        return key === '' ? { kind: 'Join', version, name, room } : { kind: 'Join', version, name, room, key };
+        const world = r.readString();
+        return { kind: 'Join', version, name, room, ...(key === '' ? {} : { key }), ...(world === '' ? {} : { world }) };
       }
       case MessageType.JoinAck:
         return {

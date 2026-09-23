@@ -37,6 +37,7 @@ ADRs that section names → implement. That's the whole loop. See
 | `?mission` | the grey-box mission in the page: its encounter paced by the director, the objective on the HUD (clear the compound, hold it 30 s), P to play again once it is won or lost; add `&squad` for bots that fight beside you |
 | `?world=greybox-01` | the in-page session on that world: the mission map's two lanes, the objective compound behind them |
 | `JOIN_KEY=… pnpm host` | every Join must carry this key (lobby's Key field, `pnpm bot --key`); `IDLE_TIMEOUT_MS` / `MAX_SESSION_MS` drop idle and long-connected players (0 = off) |
+| `HOST_AI=1 pnpm host` | rooms get the AI the page has: the world's navmesh and cover, friendly bots that follow, fight and take orders, and the mission on the mission map. The lobby's **Map** picks the world a new room is built on (protocol 23). The deployed QA host runs it (`fly.toml`); off by default so `pnpm bot --url` stays comparable |
 | `AI_DEBUG=1 pnpm host` | clients may ask for AI debug reports (B in the page); without it the host sends none |
 | `curl localhost:8080/healthz` | rooms, players, protocol version |
 | `pnpm sim-run --scenario crowd --ticks 1800` | headless simulation, reports µs/tick |
@@ -45,6 +46,7 @@ ADRs that section names → implement. That's the whole loop. See
 | `pnpm sim-run --scenario pinned` | two riflemen in a group against a soldier holding cover over 20 seeds; reports and asserts suppression kept up, flanks reached and route exposure (T-3.21) |
 | `pnpm sim-run --scenario mg` | the MG and the rifleman through the same pinned and flanked fights over 10 seeds; reports and asserts suppression per second, relocations, and that the MG never fires undeployed (T-3.23) |
 | `pnpm sim-run --scenario squad` | five friendly bots and a human lead against three riflemen over 10 seeds; reports and asserts kills, no friendly hits, bots downed and revived (T-3.26) |
+| `pnpm sim-run --scenario mission --seeds 20` | six friendly bots play the grey-box mission at the director's one- and six-human budgets; reports completion rate and time, enemies under fire in cover, suppression episodes per engagement, and AI cost at 40 enemies and 5 bots; asserts the floors in `scenarios/mission.json` (completion only over 10+ seeds). CI runs `--seeds 3` (T-3.35) |
 | `pnpm bench:rapier` | deterministic vs default vs SIMD physics cost |
 | `pnpm bench:nav` | Recast init, bake and Detour query cost |
 | `pnpm gen:trig` | regenerate the committed trig table |

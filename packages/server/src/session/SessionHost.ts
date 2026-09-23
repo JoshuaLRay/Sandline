@@ -430,7 +430,7 @@ export class SessionHost {
     }
     let room: Room | undefined;
     if (conn.room === '') {
-      const made = this.registry.create(this.now());
+      const made = this.registry.create(this.now(), conn.world);
       if (!made) {
         conn.reject('host full', `this host holds ${this.registry.maxRooms} rooms and all are in use`);
         return;

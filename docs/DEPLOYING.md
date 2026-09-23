@@ -132,6 +132,13 @@ be opened from disk or pasted anywhere accepting a single HTML file.
 
 ## The deployed host (T-1.5.07)
 
+**The QA host runs the AI** (`HOST_AI = "1"` and `AI_DEBUG = "1"` in
+`fly.toml`). Every room gets its world's navmesh and cover and friendly bots
+that follow, fight and take orders, and a room built on the mission map plays
+the mission. The lobby's **Map** is the world a *new* room is built on; a
+joiner gets the room's. So everything in `docs/playtests/qa-backlog.md` can be
+played on the published site with nobody running anything locally.
+
 The published page is https, so the host it joins must be **`wss://`**, and a
 `wss://` host means a real deployment with TLS in front of it. This is half of
 "join from the QA site", not a follow-on: without it the lobby on the published

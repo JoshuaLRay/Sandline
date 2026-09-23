@@ -29,6 +29,13 @@ primary_region = "iad"
   # (`fly secrets set JOIN_KEY=…`, DEPLOYING.md), because this file is public.
   IDLE_TIMEOUT_MS = "600000"
   MAX_SESSION_MS = "14400000"
+  # The QA host runs the AI (T-3.35 follow-up): rooms get their world's
+  # navmesh and cover, friendly bots that follow, fight and take orders, and
+  # the mission on a world that has one — so a QA run needs nobody's laptop.
+  # AI_DEBUG lets a tester press B for the brains' overlay; it shows the
+  # enemies' reasoning to anyone in the room, which is what a QA host is for.
+  HOST_AI = "1"
+  AI_DEBUG = "1"
 
 [http_service]
   internal_port = 8080

@@ -534,6 +534,16 @@ export interface SessionOptions {
    * Unset or zero never does. The backstop for a client that fakes activity.
    */
   maxSessionMs?: number;
+  /**
+   * T-3.35: count this many humans for the director's budget instead of the
+   * slots humans hold. The ONE place a bot is counted as a person, and only
+   * the headless mission tool (`pnpm sim-run --scenario mission`) sets it, to
+   * play the one-human and six-human budgets with six bots. Never set by a
+   * host or the page: ADR-001's budget is the humans seated.
+   */
+  testHumanCount?: number;
+  /** T-3.35: time the AI's share of every tick (`Session.aiMs`), for the mission tool's cost measure. Off by default. */
+  profileAi?: boolean;
 }
 
 export interface SessionStats {
@@ -635,6 +645,10 @@ export class Session {
   /** T-3.34: the tick the current attempt began on: mission time counts from here. */
   private missionStartTick = 0;
   private readonly encounter: Encounter | null;
+  private readonly testHumanCount: number | null;
+  private readonly profileAi: boolean;
+  /** T-3.35: milliseconds spent in the AI's share of every tick so far, when `profileAi` is on; 0 otherwise. */
+  aiMs = 0;
 
   constructor(
     private readonly moveConfig: MoveConfig = DEFAULT_MOVE_CONFIG,
@@ -648,6 +662,8 @@ export class Session {
     this.navMesh = options.navMesh ?? null;
     // T-3.33: an encounter is paced by the director, from the fight and the humans in it.
     this.encounter = options.encounter ?? null;
+    this.testHumanCount = options.testHumanCount ?? null;
+    this.profileAi = options.profileAi ?? false;
     this.directorValue = null;
     this.spawnerValue = null;
     this.startEncounter();
@@ -1351,6 +1367,18 @@ export class Session {
    */
   private applyOrder(conn: ServerConnection, msg: Extract<Message, { kind: 'Order' }>): void {
     const from = this.humanFor(conn);
+    if (!from) return;
+    this.orderFrom(from.index, msg);
+  }
+
+  /**
+   * An order given as slot `fromIndex`, with every check `applyOrder` makes
+   * but who may give it. A client's orders come through `applyOrder`, which
+   * lets only a seated human give one; T-3.35's headless mission tool plays
+   * the squad leader with six bots, and gives its orders here.
+   */
+  orderFrom(fromIndex: number, msg: Omit<Extract<Message, { kind: 'Order' }>, 'kind'>): void {
+    const from = this.slots[fromIndex];
     if (!from) return;
     if (orderProblem(msg, SQUAD_CONFIG.fireteams.length) !== null) return;
     if (msg.target !== null) {
@@ -2078,13 +2106,14 @@ export class Session {
     }
 
     // T-3.32: the encounter's spawns, on mission time (ticks since the session began), before anyone perceives.
+    const aiFrom = this.profileAi ? performance.now() : 0;
     if (this.spawnerValue) {
       const seconds = (this.currentTick - this.missionStartTick) * TICK_SECONDS;
       const at = now / 1000;
       const living = this.enemyList.filter((e) => !isDead(e.health));
       this.directorValue!.sample({
         seconds,
-        humans: this.slots.filter((s) => !s.isBot).length,
+        humans: this.testHumanCount ?? this.slots.filter((s) => !s.isBot).length,
         squadHealth: this.slots.reduce((a, s) => a + s.health.current, 0),
         contact: living.filter((e) => e.target !== null).length,
         suppression: this.slots.reduce((a, s) => a + suppressionLevel(s.suppression, at), 0) / this.slots.length,
@@ -2111,6 +2140,7 @@ export class Session {
     this.thinkBrains();
     this.driveBots();
     this.enemyHands(nowSeconds);
+    if (this.profileAi) this.aiMs += performance.now() - aiFrom;
 
     for (const slot of this.slots) {
       /**
@@ -2240,7 +2270,9 @@ export class Session {
     // Resolve revive interaction after consuming this tick's input, so a newly pressed E starts immediately.
     this.updateRevives();
 
+    const walkFrom = this.profileAi ? performance.now() : 0;
     this.stepEnemies(nowSeconds);
+    if (this.profileAi) this.aiMs += performance.now() - walkFrom;
 
     // Record AFTER stepping, so the history holds the post-tick positions that
     // the snapshot about to go out will describe. Recording pre-step would
@@ -2268,7 +2300,9 @@ export class Session {
     }
 
     // After everyone has moved and been recorded: an AI shoots at this tick's world.
+    const fireFrom = this.profileAi ? performance.now() : 0;
     this.fireEnemies(nowSeconds);
+    if (this.profileAi) this.aiMs += performance.now() - fireFrom;
 
     this.currentTick++;
     /**

@@ -36,8 +36,11 @@
  * player gets `room full`, a request for one room too many gets `host full`,
  * and the rooms that exist keep ticking at the rate they promised.
  */
-import { type MoveConfig, Sfc32, TICK_SECONDS, generateRoomCode } from '@sandline/shared';
-import { Session } from './Session.ts';
+import { DEFAULT_WORLD_ID, type MoveConfig, Sfc32, TICK_SECONDS, WORLD_IDS, buildTree, encounterFor, generateRoomCode } from '@sandline/shared';
+import { Session, type SessionOptions } from './Session.ts';
+import { createBrainRegistry } from '../ai/Brain.ts';
+import type { NavMesh } from '../ai/nav/NavMesh.ts';
+import { bakedCoverFor, bakedNavFor, loadWorldNavMesh } from '../ai/nav/bakedNav.ts';
 
 const TICK_MS = TICK_SECONDS * 1000;
 
@@ -67,6 +70,14 @@ export interface RegistryOptions {
   world?: string;
   /** T-3.09: rooms answer clients' AI debug requests (`AI_DEBUG=1`). Off by default. */
   aiDebug?: boolean;
+  /**
+   * `HOST_AI=1`: rooms are built with the AI — their world's navmesh (loaded
+   * once per world and shared by every room on it; queries are synchronous,
+   * so rooms never meet in one) and cover, the friendly tree on bot slots,
+   * and the world's encounter, with its mission, where it has one. Off by
+   * default: bots stand, as T-1.5 built them. `initNav()` must have resolved.
+   */
+  ai?: boolean;
   /** Per-player limits every room enforces. See `SessionOptions`. */
   idleTimeoutMs?: number;
   maxSessionMs?: number;
@@ -90,6 +101,8 @@ export class Registry {
   private readonly moveConfig: MoveConfig | undefined;
   readonly world: string | undefined;
   readonly aiDebug: boolean;
+  readonly ai: boolean;
+  private readonly meshes = new Map<string, NavMesh>();
   private readonly idleTimeoutMs: number;
   private readonly maxSessionMs: number;
   private readonly onReclaim: ((room: Room, reason: string) => void) | undefined;
@@ -101,6 +114,7 @@ export class Registry {
     this.moveConfig = options.moveConfig;
     this.world = options.world;
     this.aiDebug = options.aiDebug ?? false;
+    this.ai = options.ai ?? false;
     this.idleTimeoutMs = options.idleTimeoutMs ?? 0;
     this.maxSessionMs = options.maxSessionMs ?? 0;
     this.onReclaim = options.onReclaim;
@@ -137,7 +151,33 @@ export class Registry {
    * that seating fails — the creator's socket died during the handshake — the
    * room must not live forever with nobody in it.
    */
-  create(now: number): Room | null {
+  /**
+   * The world a new room is built with: the one its creator asked for when
+   * this build has it (T-3.35 follow-up: the lobby's choice), else the host's.
+   */
+  worldFor(asked = ''): string | undefined {
+    return asked !== '' && WORLD_IDS.includes(asked) ? asked : this.world;
+  }
+
+  /** What a room on `world` is built with beyond its limits: the AI, with `ai`. */
+  private aiFor(world: string | undefined): SessionOptions {
+    const id = world ?? DEFAULT_WORLD_ID;
+    if (!this.ai || !bakedNavFor(id)) return {};
+    let mesh = this.meshes.get(id);
+    if (!mesh) {
+      mesh = loadWorldNavMesh(id);
+      this.meshes.set(id, mesh);
+    }
+    const encounter = encounterFor(id);
+    return {
+      navMesh: mesh,
+      cover: bakedCoverFor(id),
+      brainTree: buildTree('friendly', createBrainRegistry()),
+      ...(encounter ? { encounter } : {}),
+    };
+  }
+
+  create(now: number, askedWorld = ''): Room | null {
     if (this.rooms.size >= this.maxRooms) return null;
     let code = generateRoomCode(() => this.rng.next());
     // 24^4 codes against at most a handful of rooms: a collision is rare, and
@@ -145,7 +185,8 @@ export class Registry {
     while (this.rooms.has(code)) code = generateRoomCode(() => this.rng.next());
     const room: Room = {
       code,
-      session: new Session(this.moveConfig, code, this.world, {
+      session: new Session(this.moveConfig, code, this.worldFor(askedWorld), {
+        ...this.aiFor(this.worldFor(askedWorld)),
         aiDebug: this.aiDebug,
         idleTimeoutMs: this.idleTimeoutMs,
         maxSessionMs: this.maxSessionMs,
@@ -200,5 +241,7 @@ export class Registry {
   close(reason: string): void {
     for (const room of this.rooms.values()) room.session.close(reason);
     this.rooms.clear();
+    for (const mesh of this.meshes.values()) mesh.destroy();
+    this.meshes.clear();
   }
 }

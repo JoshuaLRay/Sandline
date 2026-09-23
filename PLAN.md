@@ -1904,6 +1904,26 @@ comms, and any mission scripting beyond what T-3.34 names.
 - **Do:** `pnpm sim-run --scenario mission --seeds 20` plays greybox-01 with six friendly bots against the encounter, at the director's one-human and six-human budgets (a test override of the human count — the one place a bot is counted as a person, and only in this tool). Report completion rate and time, and the exit gate's two claims as numbers: the share of time enemies under fire spend in cover, and suppression episodes per engagement. Measure AI cost per tick at forty enemies and five bots.
 - **Done when:** the scenario asserts a completion rate floor at both budgets, an in-cover share and suppression rate floor, and AI cost under the proposed 25 % of the tick; every number is logged every run, and a three-seed version runs in CI. A failing seed prints the seed.
 - **Size:** M
+- **Completed 2026-09-23.**
+  - **Scenario** (`tools/src/scenarios/mission.ts`, `mission.json`, `pnpm sim-run --scenario mission [--seeds N]`). A `Session` on greybox-01 with its navmesh, cover, the committed encounter, and the `friendly` tree on all six slots.
+    - **Human count:** `SessionOptions.testHumanCount` sets the director's human count to each of `budgets` (1, 6). It is documented as the one place a bot counts as a person, and nothing but this tool sets it.
+    - **Seeds:** a seed moves each bot up to a metre off its spawn point. Runs are deterministic: the same 20-seed numbers twice over, and the test replays a seed exactly.
+    - **Leader:** with no human, slot 0 is a bot lead that goes nowhere, so a scripted leader gives orders through `Session.orderFrom(slot, order)` — `applyOrder`'s checks, minus "only a seated human", which a client's orders still go through. It moves fireteam 1 up the overwatch route and fireteam 2 up the assault route one stop at a time, advancing when every member on its feet is within `arriveM` 6 m or after `stopSeconds` 60 s, then holds the objective's centre. It sends the nearest bot on its feet to revive each downed one, and back to its stop after.
+    - **Per run:** outcome and time; enemies spawned and killed; bots dead; enemy-ticks under fire (suppression ≥ 0.25, or hurt in the last 2 s) and of those in a cover point the enemy holds (within 0.6 m); squad suppression episodes (a slot's level rising through 0.5); and engagements (stretches in which any enemy has a target).
+    - **Judge:** completion per budget is asserted only over `completionMinSeeds` 10 or more seeds; three runs cannot measure a rate, so the CI job reports it. Cover share, episodes per engagement and AI share are asserted on every run. A failure names the seeds that did not complete.
+  - **Baseline over 20 seeds:**
+    - completion 30% at one human (mean 50 s) and 15% at six (49 s);
+    - enemies under fire in cover 32%;
+    - 7.39 suppression episodes per engagement.
+
+    Floors: completion 20% / 10%, cover 25%, episodes 2, AI 25%. The completion floors catch regression and are not a target. The bots lose most firefights: a probe had them firing a third of the enemies' rounds, with 56% of their fire-ready ticks with a line held for a squadmate in it. Spreading the leader's points and taking cover on contact were tried and did not help (3–4 of 10 each, 0 of 10 together). Filed as `docs/BUGS.md` B-11.
+  - **AI cost.** `SessionOptions.profileAi` times the AI's share of a tick into `Session.aiMs`: spawner and director, perception, groups, formation, brains, bot driving, enemy hands, enemy walking and enemy fire. `benchAi` puts 40 riflemen (the rifleman tree, groups of four, spread over the zones and route stops) beside five friendly bots and one human on greybox-01 for 20 s. First measure: 10.65 ms a tick (32%). A profile showed `rayWorld` at 36% of the time, through cover queries and group flank routing. Two changes, both with identical results:
+    - `rayWorld` skips a box outside the segment's bounds (plus 1 µm) and unrolls its three axes — the same arithmetic in the same order; `world.test.ts` compares it with the old implementation, kept verbatim, over 16,000 seeded rays on both worlds with and without a radius;
+    - `NavMesh.avoiding(penalise, cost, run)` marks the avoided polygons once for many queries. A group's flank assignment prices every member-to-candidate route against one marking, and `pathAvoiding` is now one query through it.
+
+    After: 4.2–4.4 ms of a 4.4–4.6 ms step, 12.5–13% of the 33.3 ms tick; `bench:tickrate` measures 14.8% on its warm-up-heavy run. The cover-duel, pinned, mg and squad scenarios are unchanged.
+  - **CI:** a `mission` job runs `pnpm sim-run --scenario mission --seeds 3`.
+  - **Tests** (`mission.test.ts`): a seed at each budget is played; the one-human run replays exactly; the six-human budget spawns more enemies; every number is reported; the judge bites on completion (naming seed 1), cover, episodes and AI share, and does not assert completion under 10 seeds. The wall-clock share is not asserted in a unit test, only by the scenario.
 
 #### T-3.36 — 🧍 M3 exit gate: one player, five bots
 - **Depends:** T-3.24, T-3.30, T-3.35

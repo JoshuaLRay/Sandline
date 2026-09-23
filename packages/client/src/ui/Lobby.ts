@@ -26,7 +26,18 @@ import { checkRoomInput, HostUrlError, parseHostUrl } from '../net/RemoteServer.
 
 export type LobbyChoice =
   | { kind: 'local' }
-  | { kind: 'remote'; host: string; room: string; name: string; key: string };
+  | { kind: 'remote'; host: string; room: string; name: string; key: string; world: string };
+
+/**
+ * The maps a new room can be built with (T-3.35 follow-up), as the Join asks
+ * for them: the host builds the room on the chosen world, with its mission
+ * where it has one and the host runs its AI (`HOST_AI=1`). Joining a room
+ * takes whatever map it was made with.
+ */
+export const LOBBY_MAPS: readonly { world: string; label: string }[] = [
+  { world: 'greybox-01', label: 'Mission — clear and hold the compound' },
+  { world: 'range', label: 'Range — the QA range, no mission' },
+];
 
 export interface LobbyOptions {
   /** The host baked into the build (T-1.5.07); empty when there is none. */
@@ -97,7 +108,7 @@ function storeName(name: string): void {
   }
 }
 
-function field(label: string, input: HTMLInputElement): HTMLLabelElement {
+function field(label: string, input: HTMLElement): HTMLLabelElement {
   const wrap = document.createElement('label');
   wrap.className = 'lobby-field';
   const text = document.createElement('span');
@@ -158,6 +169,14 @@ export function createLobby(options: LobbyOptions): Lobby {
   keyInput.placeholder = 'if the host needs one';
   keyInput.value = options.key;
 
+  const mapInput = document.createElement('select');
+  for (const m of LOBBY_MAPS) {
+    const option = document.createElement('option');
+    option.value = m.world;
+    option.textContent = m.label;
+    mapInput.append(option);
+  }
+
   const roomInput = document.createElement('input');
   roomInput.type = 'text';
   roomInput.spellcheck = false;
@@ -215,7 +234,7 @@ export function createLobby(options: LobbyOptions): Lobby {
     const key = keyInput.value.trim();
     storeKey(key);
     say('', 'info');
-    options.onChoose({ kind: 'remote', host, room, name, key });
+    options.onChoose({ kind: 'remote', host, room, name, key, world: room === '' ? mapInput.value : '' });
   };
 
   const hostButton = button('Host a room', 'lobby-primary', () => remote(false));
@@ -259,6 +278,7 @@ export function createLobby(options: LobbyOptions): Lobby {
     field('Name', nameInput),
     field('Host', hostInput),
     field('Key', keyInput),
+    field('Map', mapInput),
     hostButton,
     joinRow,
     help,

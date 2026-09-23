@@ -101,4 +101,14 @@ for (const r of rows) {
   const kb = (r.bytesPerSecPerPlayer * scale) / 1024;
   console.log(`    ${String(r.hz).padStart(2)}Hz  ${kb.toFixed(1).padStart(5)} KB/s per player  ${kb <= 18 ? 'within budget' : kb <= 40 ? 'over target, under review line' : 'EXCEEDS review line'}`);
 }
+
+// T-3.35: the AI's share of the 30 Hz tick at M3's load — forty riflemen and
+// five friendly bots beside one human on the mission map, measured in the
+// session itself rather than projected. The mission scenario asserts it.
+const { MISSION_SCENARIO, benchAi } = await import('./scenarios/mission.ts');
+const ai = await benchAi();
+console.log(
+  `\n  AI at ${ai.enemies} enemies and ${ai.bots} bots (greybox-01): ${(ai.aiUsPerTick / 1000).toFixed(2)} ms of a ${(ai.stepUsPerTick / 1000).toFixed(2)} ms tick, ` +
+    `${(ai.aiShare * 100).toFixed(1)}% of the 33.3 ms budget (ceiling ${MISSION_SCENARIO.maxAiShare * 100}%)`,
+);
 export {};

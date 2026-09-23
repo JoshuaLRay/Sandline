@@ -20,12 +20,15 @@
 import { DEFAULT_MUZZLE_RIG, type TargetMemory, type WorldBox, rayWorld } from '@sandline/shared';
 import { type CoverSystem, DEFAULT_COVER_BODY } from './cover.ts';
 import type { CoverPoint } from './nav/baked/types.ts';
-import type { NavMesh, NavPoint } from './nav/NavMesh.ts';
+import type { NavMesh, NavPath, NavPoint } from './nav/NavMesh.ts';
 import RAW_GROUP from './group.json' with { type: 'json' };
 
 type Vec3 = { x: number; y: number; z: number };
 
 export type GroupRole = 'suppressor' | 'flanker';
+
+/** A path query against polygons already marked to avoid (`NavMesh.avoiding`). */
+type PathOf = (from: NavPoint, to: NavPoint, searchM?: number) => NavPath | null;
 
 /** Group tuning (`group.json`). */
 export interface GroupConfig {
@@ -281,18 +284,23 @@ export class EnemyGroup {
     if (candidates.length === 0) return;
     // What the target sees, once for every route this assignment prices.
     const seen = this.seenPolygons(feet, world);
-    let best: { member: GroupMember; point: CoverPoint; index: number; cost: number; route: NavPoint[] } | null = null;
+    let best = null as { member: GroupMember; point: CoverPoint; index: number; cost: number; route: NavPoint[] } | null;
     // A member that would rather suppress (the MG) is not sent round, while anyone else can be.
     const rather = (m: GroupMember) => m.prefers === 'suppressor';
     const flankers = living.some((m) => !rather(m)) ? living.filter((m) => !rather(m)) : [];
-    for (const member of [...flankers].sort((a, b) => a.netId - b.netId)) {
-      for (const c of candidates) {
-        const route = this.route(member.state, c.point, seen, world);
-        if (!route) continue;
-        const cost = pricedLength([member.state, ...route], feet, world.boxes, flankExposureCost);
-        if (!best || cost < best.cost) best = { member, point: c.point, index: c.index, cost, route };
+    // Every route against one marking of what the target sees (`NavMesh.avoiding`): the same routes, priced once.
+    const price = (pathOf?: PathOf) => {
+      for (const member of [...flankers].sort((a, b) => a.netId - b.netId)) {
+        for (const c of candidates) {
+          const route = this.route(member.state, c.point, seen, world, pathOf);
+          if (!route) continue;
+          const cost = pricedLength([member.state, ...route], feet, world.boxes, flankExposureCost);
+          if (!best || cost < best.cost) best = { member, point: c.point, index: c.index, cost, route };
+        }
       }
-    }
+    };
+    if (world.mesh && seen) world.mesh.avoiding((poly) => seen.has(poly.ref), flankExposureCost, price);
+    else price();
     if (!best) return;
     const chosen = best;
     const aim = this.suppressPoint()!;
@@ -353,10 +361,10 @@ export class EnemyGroup {
   }
 
   /** The flanker's route: the target's sight priced, on the mesh; a straight line without one. */
-  route(from: Vec3, point: CoverPoint, seen: Set<number> | null, world: GroupWorld): NavPoint[] | null {
+  route(from: Vec3, point: CoverPoint, seen: Set<number> | null, world: GroupWorld, pathOf?: PathOf): NavPoint[] | null {
     const to = { x: point.x, y: point.y, z: point.z };
     if (!world.mesh || !seen) return [to];
-    const path = world.mesh.pathAvoiding(from, to, (poly) => seen.has(poly.ref), this.config.flankExposureCost, 4);
+    const path = pathOf ? pathOf(from, to, 4) : world.mesh.pathAvoiding(from, to, (poly) => seen.has(poly.ref), this.config.flankExposureCost, 4);
     return path ? [...path.points.slice(1), to] : null;
   }
 
