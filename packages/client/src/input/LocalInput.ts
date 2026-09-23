@@ -153,6 +153,7 @@ export class LocalInput {
       // Typing in the lobby's fields is not movement, and Space in a name
       // field must stay a space (T-1.5.06).
       if (isTextField(e.target)) return;
+      if (this.releaseKey(e)) return;
       // With the mouse captured, the canvas owns the keyboard: every key we
       // handle gets preventDefault, not just Space. Otherwise Ctrl (crouch)
       // held alongside a movement or weapon key fires whatever browser
@@ -251,6 +252,33 @@ export class LocalInput {
         this.pressed.delete('Space');
       }
     }
+  }
+
+  /**
+   * Escape and F11 hand the mouse back on a single press. Keyboard Lock
+   * (keyboardLock.ts) captures every key, Escape included, so without this
+   * the browser only lets go of the pointer and fullscreen after Escape is
+   * HELD for two seconds, and F11 does nothing at all. Escape frees the
+   * mouse and stays fullscreen; F11 leaves fullscreen too. The next click
+   * on the canvas takes both back, as it always has. Where the lock isn't
+   * active the browser already does this itself and these calls no-op.
+   */
+  private releaseKey(e: KeyboardEvent): boolean {
+    if (e.code === 'Escape') {
+      document.exitPointerLock?.();
+      return true;
+    }
+    if (e.code === 'F11') {
+      // Only when the page itself is fullscreen: otherwise F11 is the
+      // browser's own fullscreen toggle and stays the browser's.
+      if (document.fullscreenElement) {
+        e.preventDefault();
+        document.exitFullscreen?.().catch(() => {});
+      }
+      document.exitPointerLock?.();
+      return true;
+    }
+    return false;
   }
 
   setSensitivity(value: number): void {
