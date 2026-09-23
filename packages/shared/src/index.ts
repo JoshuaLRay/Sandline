@@ -17,3 +17,5 @@ export * from './ecs/world.ts';
 export * from './ai/blackboard.ts';
 export * from './ai/bt.ts';
 export * from './ai/perception.ts';
+export * from './ai/stimuli.ts';
+export * from './ai/memory.ts';
