@@ -167,4 +167,34 @@ describe('LocalInput', () => {
     win.dispatch('keyup', { code: 'ControlRight', target: null });
     expect(input.crouching).toBe(true);
   });
+
+  it('one Escape press frees the mouse; F11 also leaves page fullscreen', () => {
+    const canvas = fakeTarget();
+    const root = {} as Element;
+    const calls: string[] = [];
+    const d = doc as unknown as Record<string, unknown>;
+    d['fullscreenElement'] = root;
+    d['exitPointerLock'] = () => calls.push('pointer');
+    d['exitFullscreen'] = () => {
+      calls.push('fullscreen');
+      d['fullscreenElement'] = null;
+      return Promise.resolve();
+    };
+    new LocalInput(canvas as unknown as HTMLElement, { fullscreenTarget: root });
+
+    let prevented = false;
+    const preventDefault = () => (prevented = true);
+    win.dispatch('keydown', { code: 'Escape', target: null, preventDefault });
+    expect(calls).toEqual(['pointer']);
+
+    win.dispatch('keydown', { code: 'F11', target: null, preventDefault });
+    expect(calls).toEqual(['pointer', 'fullscreen', 'pointer']);
+    expect(prevented).toBe(true);
+
+    // Not page-fullscreen: F11 stays the browser's own toggle.
+    prevented = false;
+    win.dispatch('keydown', { code: 'F11', target: null, preventDefault });
+    expect(prevented).toBe(false);
+    expect(calls).toEqual(['pointer', 'fullscreen', 'pointer', 'pointer']);
+  });
 });
