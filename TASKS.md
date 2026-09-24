@@ -80,8 +80,10 @@ the level format (T-4.09), mission sequence (T-4.14), reconnect
 (T-4.18), HUD (T-4.25), classes (T-4.27), mounted MG (T-4.29), regions ADR
 addendum (T-4.30) and observability (T-4.33) — and two owner decisions gate
 the rest. Art sourcing is decided (🧍 T-4.01, ADR-018: authored as code,
-with procedural animation), so the generator library (T-4.04) and the
-characters from assets (T-4.08) are open. Where progress lives is decided
+with procedural animation): the generator library and its first kit piece
+are done (T-4.04, `pnpm gen:art`, the wall on `?assets`), and the characters
+from assets (T-4.08) are open; the kit (T-4.10) waits on the level format
+(T-4.09). Where progress lives is decided
 too (🧍 T-4.21, ADR-019: on the host, per campaign), so player identity
 (T-4.22) is open.
 
@@ -371,7 +373,7 @@ the owner may still overrule before T-4.23.
 | 🧍 T-4.01 | DONE — option A, art authored as code (ADR-018) | — |
 | T-4.02 | DONE | — |
 | T-4.03 | DONE | T-4.02 |
-| T-4.04 | OPEN | T-4.01, T-4.02 |
+| T-4.04 | DONE | T-4.01, T-4.02 |
 
 ### E-4.2 — Runtime loading, streaming, LOD, budgets
 

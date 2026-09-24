@@ -2287,6 +2287,43 @@ free to go whenever.
   Either way, one kit piece goes end to end into the manifest.
 - **Done when:** one piece passes the pipeline and the budgets and draws in the page.
 - **Size:** M
+- **Completed 2026-09-24** (ADR-018, option A: code-authored). The
+  generator library is in `tools/src/art/`:
+  - `noise.ts`: seeded, integer-hashed, tileable value noise and fBm, with
+    no clock and no `Math.random`.
+  - `atlas.ts`: family atlases of square cells, each with a 4-texel gutter
+    that wraps the pattern so edges and mips never sample a neighbour, plus
+    the `plaster` and `concrete` painters.
+  - `mesh.ts`: `MeshBuilder.box`. It cuts each face into tiles of its
+    surface's size, each tile mapping the whole cell, so UVs never leave
+    their cell and a shared atlas needs no repeat. A box marked `collide`
+    records itself as a collision box.
+  - `piece.ts`: a piece is a recipe (id, budget class, family, tile sizes,
+    `build`). `pieceDocument` writes a glTF with the family material and
+    `sandline.class`/`sandline.collision` on the scene.
+  - `pnpm gen:art` writes each piece to `assets/src/<id>.glb`, and
+    `gen:assets` does the rest.
+
+  The first piece is `wall-plaster-4m` (family `kit-a`, 512² atlas): 4 m
+  long, 3 m high and 0.3 m thick. Plaster sits on a concrete plinth 3 cm
+  proud of each face, under a coping that overhangs 4 cm, with flush ends
+  so runs butt together. It has 88 triangles and three collision boxes;
+  its web copy is 40,680 bytes, within the kit budget. Tests
+  (`art/art.test.ts`):
+  - the committed source is byte-for-byte what the generator writes;
+  - the collision boxes bound the mesh exactly and hold every vertex;
+  - every UV is inside its cell;
+  - it is in the manifest, within budget, with the same collision;
+  - tiles are cut and partial tiles mapped correctly, and every triangle
+    faces its normal;
+  - bad boxes and unknown surfaces are refused;
+  - the atlas is deterministic and its gutters tile.
+
+  The first plaster read as rounded panels repeating every 2 m, so its
+  repair patches were made smaller, warped and lower in contrast after a
+  headless render. `?assets` now lays the shelf out by each asset's width;
+  a production build shows the soldier and the wall with no grey box.
+  **Whether it looks right is the owner's call** on the deployed site.
 
 #### E-4.2 — Runtime loading, streaming, LOD, budgets
 
