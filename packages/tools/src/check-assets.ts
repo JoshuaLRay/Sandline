@@ -18,7 +18,7 @@ for (const a of ASSET_MANIFEST.assets) {
       `${a.materials}/${b?.materials ?? '?'} materials, ${a.textures.length}/${b?.textures ?? '?'} textures (largest ${side}/${b?.textureSize ?? '?'}), ${a.bytes} bytes`,
   );
 }
-console.log(`initial download: ${total}/${ASSET_BUDGETS.initialDownloadBytes} bytes over ${ASSET_MANIFEST.assets.length} assets`);
+console.log(`all manifest web copies: ${total} bytes over ${ASSET_MANIFEST.assets.length} assets (T-4.06 checks the initial pack separately with pnpm check:packs)`);
 const over = checkBudgets(ASSET_MANIFEST);
 for (const line of over) console.error(`OVER BUDGET  ${line}`);
 if (over.length > 0) process.exit(1);
