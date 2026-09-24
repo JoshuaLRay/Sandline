@@ -1,0 +1,14 @@
+{
+  "$comment": "T-4.13: the first kit level keeps the grey-box mission objective unchanged: clear the compound and hold it for 30 seconds.",
+  "id": "mission-01",
+  "world": "mission-01",
+  "respawn": false,
+  "objectives": [
+    {
+      "type": "clear-and-hold",
+      "area": "objective",
+      "holdSeconds": 30,
+      "label": "the compound"
+    }
+  ]
+}

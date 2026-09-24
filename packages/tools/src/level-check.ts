@@ -43,6 +43,16 @@ const LEGACY_COLLISION_JOINS: Record<string, readonly (readonly [string, string]
     ['compound-north', 'compound-west-n'],
     ['compound-north', 'compound-east-n'],
   ],
+  // mission-01 intentionally preserves greybox-01's proven collision layout,
+  // including these same six structural joins.
+  'mission-01': [
+    ['east-bound', 'as-wall-2'],
+    ['east-bound', 'as-wall-4'],
+    ['compound-south', 'compound-west-s'],
+    ['compound-south', 'compound-east-s'],
+    ['compound-north', 'compound-west-n'],
+    ['compound-north', 'compound-east-n'],
+  ],
   // The kit gallery assembles a house by embedding walls and pillars at its
   // corners. Names here refer to piece instances, covering their layered boxes.
   'kit-gallery': [

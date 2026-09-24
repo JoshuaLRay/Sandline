@@ -23,6 +23,7 @@
  * load-time error rather than a group that never comes.
  */
 import GREYBOX_01 from '../data/encounters/greybox-01.json' with { type: 'json' };
+import MISSION_01 from '../data/encounters/mission-01.json' with { type: 'json' };
 import { ENEMIES } from './enemies.ts';
 import { type GroundArea, type World, getWorld } from './world.ts';
 
@@ -222,7 +223,7 @@ export function resolveArea(ref: AreaRef, encounter: Encounter, world: World): G
 }
 
 /** Every committed encounter, by world id. Validated once, at import. */
-const ENCOUNTERS: ReadonlyMap<string, Encounter> = new Map([GREYBOX_01].map((raw) => {
+const ENCOUNTERS: ReadonlyMap<string, Encounter> = new Map([GREYBOX_01, MISSION_01].map((raw) => {
   const e = parseEncounter(raw);
   return [e.world, e] as const;
 }));

@@ -1,0 +1,136 @@
+{
+  "$comment": "T-4.13: mission-01 keeps greybox-01's encounter pacing and groups on the same named spawn zones.",
+  "world": "mission-01",
+  "aliveCap": 10,
+  "probes": [
+    0.3,
+    1,
+    1.7
+  ],
+  "areas": {
+    "overwatch-mid": {
+      "x": -20,
+      "z": 30,
+      "radius": 8
+    },
+    "assault-entry": {
+      "x": 22,
+      "z": 12,
+      "radius": 7
+    },
+    "behind-spine": {
+      "x": 0,
+      "z": 60,
+      "radius": 12
+    }
+  },
+  "groups": [
+    {
+      "id": "garrison",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 3
+        },
+        {
+          "archetype": "mg",
+          "count": 1
+        }
+      ],
+      "zone": "behind-objective",
+      "posture": {
+        "kind": "garrison",
+        "at": "objective"
+      },
+      "trigger": {
+        "kind": "start"
+      }
+    },
+    {
+      "id": "overwatch-patrol",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 2
+        }
+      ],
+      "zone": "overwatch-flank",
+      "posture": {
+        "kind": "patrol",
+        "route": [
+          {
+            "x": -24,
+            "z": 22
+          },
+          {
+            "x": -26,
+            "z": 50
+          }
+        ]
+      },
+      "trigger": {
+        "kind": "start"
+      }
+    },
+    {
+      "id": "assault-hold",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 2
+        }
+      ],
+      "zone": "assault-flank",
+      "posture": {
+        "kind": "hold",
+        "face": "assault-entry"
+      },
+      "trigger": {
+        "kind": "enter",
+        "area": "assault-entry"
+      }
+    },
+    {
+      "id": "counterattack",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 3
+        }
+      ],
+      "zone": "behind-objective",
+      "posture": {
+        "kind": "garrison",
+        "at": "objective"
+      },
+      "trigger": {
+        "kind": "dead",
+        "group": "garrison"
+      },
+      "waves": {
+        "count": 3,
+        "everySeconds": 25,
+        "minSeconds": 15,
+        "maxSeconds": 45
+      }
+    },
+    {
+      "id": "late",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 2
+        }
+      ],
+      "zone": "overwatch-flank",
+      "posture": {
+        "kind": "hold",
+        "face": "overwatch-mid"
+      },
+      "trigger": {
+        "kind": "time",
+        "seconds": 300
+      }
+    }
+  ]
+}
