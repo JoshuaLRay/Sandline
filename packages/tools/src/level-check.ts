@@ -6,8 +6,8 @@
  * writes deterministic PNGs for human review. It intentionally has no editor
  * dependency and no browser dependency.
  */
-import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
-import { basename, dirname, join, resolve } from 'node:path';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
 import {
@@ -18,7 +18,6 @@ import {
   rayWorld,
   type AssetManifest,
   type LevelBoxSpec,
-  type NavPoint as SharedNavPoint,
   type World,
   type WorldMission,
 } from '@sandline/shared';
@@ -673,13 +672,9 @@ function drawCamera(world: World, yaw: number): PNG {
 function writePng(path: string, png: PNG): void {
   mkdirSync(dirname(path), { recursive: true });
   const bytes = PNG.sync.write(png);
-  writeBinary(path, bytes);
+  writeFileSync(path, bytes);
 }
 
-function writeBinary(path: string, bytes: Uint8Array): void {
-  const fs = require('node:fs') as typeof import('node:fs');
-  fs.writeFileSync(path, bytes);
-}
 
 export function renderReviewRenders(world: World, outputDir = DEFAULT_RENDER_DIR): ReviewRenders {
   const dir = join(outputDir, world.id);
@@ -758,8 +753,7 @@ async function main(): Promise<void> {
     const status = report.issues.length === 0 ? 'PASS' : 'FAIL';
     console.log(
       '[level-check] ' + status + ' ' + report.id +
-      ' | boxes=' + report.budgets.instances +
-      ' pieces=' + report.budgets.instances +
+      ' | pieces=' + report.budgets.instances +
       ' bytes=' + report.budgets.bytes +
       ' triangles=' + report.budgets.triangles,
     );
