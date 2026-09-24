@@ -30,7 +30,7 @@
  *
  *   pnpm sim-run --scenario squad
  *
- * `mission` (T-3.35): six friendly bots play greybox-01 against its encounter
+ * `mission` (T-3.35, T-4.13): six friendly bots play mission-01 against its encounter
  * at the director's one-human and six-human budgets, over `--seeds` seeds
  * (`scenarios/mission.json`'s by default), and the AI's cost at forty
  * enemies and five bots.
