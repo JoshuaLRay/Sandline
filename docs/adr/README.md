@@ -36,8 +36,9 @@ different choice.
 | [015](015-estimate-reality.md) | Estimates as floor; slice scope cut | Accepted |
 | [016](016-prone-stance.md) | Prone stance and voluntary crawl (reopens ADR-002's prone row) | Accepted |
 | [017](017-in-house-audio.md) | Combat audio made in-house: synthesised effects, processed recorded voices | Accepted |
-| [018](018-art-sourcing.md) | Art made in-house as code: generated meshes and atlases, procedural animation | Accepted |
+| [018](018-art-sourcing.md) | Art made in-house as code: generated meshes and atlases, procedural animation | Accepted · 1 addendum |
 | [019](019-persistence.md) | Campaign progress lives on the host: per-campaign squads, anonymous IDs, SQLite on a Fly volume | Accepted · 1 addendum |
+| [020](020-setting.md) | The setting: Afghanistan, winter 2001–2002, US infantry in desert camouflage | Accepted |
 
 ## Template
 

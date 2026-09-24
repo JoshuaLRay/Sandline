@@ -7,7 +7,11 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
+import { ASSET_MANIFEST } from '@sandline/shared';
 import { AssetLoader, gltfParser } from './loader.ts';
+import { loadDetailedSkin, provideDetailedSkin } from '../character/assetSoldier.ts';
+import { HUMANOID_HIT_RADIUS } from '../character/humanoidPlaceholder.ts';
+import { createHumanoidSoldier, setSoldierPalette, soldierSkin } from '../character/humanoidSoldier.ts';
 
 describe('the asset loader on a GPU (T-4.05)', () => {
   it('loads the soldier with its decoders, draws it, and gives the memory back', async () => {
@@ -63,6 +67,42 @@ describe('the asset loader on a GPU (T-4.05)', () => {
     renderer.render(scene, camera);
     console.log(`memory before ${JSON.stringify(before)}, loaded ${JSON.stringify(loaded)}, after ${JSON.stringify(renderer.info.memory)}`);
     expect(renderer.info.memory).toEqual(before);
+    renderer.dispose();
+  });
+
+  it('loads the detailed soldier and puts it on a live rig, in model space after dequantizing (T-4.08)', async () => {
+    const renderer = new THREE.WebGLRenderer({ canvas: document.createElement('canvas') });
+    const loader = new AssetLoader({
+      baseUrl: '/',
+      parse: gltfParser({ renderer, transcoderPath: new URL('../../node_modules/three/examples/jsm/libs/basis/', import.meta.url).href }),
+    });
+    const skin = await loadDetailedSkin(loader);
+    expect(skin).not.toBeNull();
+    const entry = ASSET_MANIFEST.assets.find((a) => a.id === 'soldier-dcu')!;
+    expect(skin!.geometry.index!.count / 3).toBe(entry.triangles);
+    expect(skin!.geometry.groups.map((g) => g.materialIndex)).toEqual([0, 1]);
+    // Positions are back in the rig's model space: feet on the ground, helmet at 1.9 m, inside the capsule.
+    const p = skin!.geometry.getAttribute('position');
+    let minY = Infinity;
+    let maxY = -Infinity;
+    let radius = 0;
+    for (let i = 0; i < p.count; i++) {
+      minY = Math.min(minY, p.getY(i));
+      maxY = Math.max(maxY, p.getY(i));
+      radius = Math.max(radius, Math.hypot(p.getX(i), p.getZ(i)));
+    }
+    expect(minY).toBeCloseTo(0, 2);
+    expect(maxY).toBeGreaterThan(1.88);
+    expect(radius).toBeLessThanOrEqual(HUMANOID_HIT_RADIUS + 0.002);
+    expect((skin!.material.map as THREE.CompressedTexture).isCompressedTexture).toBe(true);
+    expect(skin!.material.map!.magFilter).toBe(THREE.LinearFilter);
+    const soldier = createHumanoidSoldier('local');
+    setSoldierPalette(soldier, 'slot-2');
+    expect(soldierSkin(soldier).geometry).toBe(skin!.geometry);
+    const scene = new THREE.Scene();
+    scene.add(soldier);
+    renderer.render(scene, new THREE.PerspectiveCamera());
+    provideDetailedSkin(null);
     renderer.dispose();
   });
 });

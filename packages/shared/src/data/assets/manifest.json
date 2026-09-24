@@ -580,6 +580,27 @@
       ]
     },
     {
+      "id": "soldier-dcu",
+      "source": "assets/src/soldier-dcu.glb",
+      "file": "assets/soldier-dcu.glb",
+      "inputHash": "0d26a627feb3f972d5c11cce8baf2fa143f7f2ff1dc1d7081dd2ad439aff2087",
+      "hash": "995c8d2de625b4c41562ffeb991821868a457e8be961ea274a3e8454844ee476",
+      "bytes": 626512,
+      "class": "character",
+      "triangles": 3948,
+      "bones": 17,
+      "materials": 2,
+      "textures": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
       "id": "soldier",
       "source": "assets/src/soldier.glb",
       "file": "assets/soldier.glb",

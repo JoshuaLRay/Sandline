@@ -15,6 +15,7 @@ import { solveTwoBone } from './twoBoneIk.ts';
 import { DOWNED_BODY_LIFT_M, HUMANOID_HIT_HALF_HEIGHT, HUMANOID_HIT_RADIUS, HUMANOID_ROOT_LIFT_M, PRONE_BODY_LIFT_M } from './humanoidPlaceholder.ts';
 import { type CellName, type PaletteName, remapGeometryUv, soldierAtlas } from './soldierTexture.ts';
 import { type WeaponModel, createWeaponModel, hasWeaponModel } from '../weapons/weaponModels.ts';
+import { accentMaterial, detailedSkin } from './assetSoldier.ts';
 
 /**
  * The M2 soldier: a skinned humanoid built in code (T-2.22).
@@ -52,7 +53,7 @@ import { type WeaponModel, createWeaponModel, hasWeaponModel } from '../weapons/
 export type SoldierVariant = 'local' | 'remote';
 
 /** Model-space joint positions, metres, feet at y = 0, facing +Z, +X the soldier's left. */
-const JOINTS: Record<HumanoidBoneName, [number, number, number]> = {
+export const JOINTS: Record<HumanoidBoneName, [number, number, number]> = {
   hips: [0, 0.95, 0],
   spine: [0, 1.05, 0],
   chest: [0, 1.27, 0],
@@ -72,7 +73,7 @@ const JOINTS: Record<HumanoidBoneName, [number, number, number]> = {
   'foot-right': [-0.11, 0.06, 0],
 };
 
-const PARENT: Record<HumanoidBoneName, HumanoidBoneName | null> = {
+export const PARENT: Record<HumanoidBoneName, HumanoidBoneName | null> = {
   hips: null,
   spine: 'hips',
   chest: 'spine',
@@ -700,11 +701,29 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
 export function setSoldierPalette(root: THREE.Object3D, palette: PaletteName): boolean {
   const skin = root.getObjectByName('soldier');
   if (!(skin instanceof THREE.SkinnedMesh)) return false;
+  // T-4.08: a squad soldier wears the detailed skin once it has loaded; an
+  // enemy keeps the code-built one until it has a model of its own. The
+  // code-built geometry and material are kept on the soldier to go back to.
+  const code = (skin.userData['codeSkin'] ??= { geometry: skin.geometry, material: skin.material }) as {
+    geometry: THREE.BufferGeometry;
+    material: THREE.MeshLambertMaterial;
+  };
+  const detailed = palette === 'enemy' ? null : detailedSkin();
+  if (detailed) {
+    if (skin.geometry !== detailed.geometry) skin.geometry = detailed.geometry;
+    const accent = accentMaterial(palette);
+    const current = skin.material as THREE.Material | THREE.Material[];
+    if (!Array.isArray(current) || current[0] !== detailed.material || current[1] !== accent) skin.material = [detailed.material, accent];
+  } else if (skin.geometry !== code.geometry) {
+    skin.geometry = code.geometry;
+    skin.material = code.material;
+  }
+  // The code-built material keeps its palette even while the detailed skin
+  // is worn, ready for a swap back; the rifle follows the body it is held by.
   const atlas = soldierAtlas(palette);
-  for (const mesh of [skin, root.getObjectByName('rifle')]) {
-    if (!(mesh instanceof THREE.Mesh)) continue;
-    const material = mesh.material as THREE.MeshLambertMaterial;
-    if (material.map === atlas) continue;
+  const rifle = root.getObjectByName('rifle');
+  for (const material of [code.material, rifle instanceof THREE.Mesh ? (rifle.material as THREE.MeshLambertMaterial) : null]) {
+    if (!material || material.map === atlas) continue;
     material.map = atlas;
     material.needsUpdate = true;
   }
@@ -723,8 +742,12 @@ export function disposeSoldier(root: THREE.Object3D): void {
   const own = [root, root.getObjectByName('soldier'), root.getObjectByName('rifle')];
   for (const part of own) {
     if (!(part instanceof THREE.Mesh)) continue;
-    part.geometry.dispose();
-    for (const material of Array.isArray(part.material) ? part.material : [part.material]) material.dispose();
+    // A soldier wearing the shared detailed skin (T-4.08) frees its own code-built skin, never the shared one.
+    const code = part.userData['codeSkin'] as { geometry: THREE.BufferGeometry; material: THREE.Material } | undefined;
+    const geometry = code?.geometry ?? part.geometry;
+    const materials = code ? [code.material] : Array.isArray(part.material) ? part.material : [part.material];
+    geometry.dispose();
+    for (const material of materials) material.dispose();
     if (part instanceof THREE.SkinnedMesh) part.skeleton.dispose();
   }
 }

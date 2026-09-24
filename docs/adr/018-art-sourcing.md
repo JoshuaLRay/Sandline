@@ -251,3 +251,20 @@ mitigation is replaced by procedural animation.
 - **T-4.04, T-4.08, T-4.10 and T-4.12 are unblocked.** T-4.04 is the
   generator library and its first kit piece. T-4.08 puts the characters on
   the loader, from generated sources.
+
+## Addendum — 2026-09-24: the character fidelity target is raised (ADR-020)
+
+The owner judged the code-built soldier "like something from Roblox" and
+asked for characters "much more detailed", like *Conflict: Desert Storm*
+(2002). This decision stands: art is authored as code. Its first
+consequence, "characters stay where T-2.35 took them", is withdrawn.
+Characters are now built to `docs/art/direction.md`:
+- shaped, smoothly weighted forms of 3,000–6,000 triangles;
+- gear modelled where it breaks the silhouette;
+- a 1024² diffuse, smoothly filtered.
+
+T-4.08's detailed soldier (`soldier-dcu`: 3,948 triangles, a 1024² atlas)
+is the first. The way out named in decision 6 (buying characters and mocap,
+option E2) stays open if generated characters cannot reach the bar the
+owner sets.
+

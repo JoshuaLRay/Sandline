@@ -42,7 +42,8 @@ describe('the committed assets (T-4.02)', () => {
         expect(await statsOfBytes(web)).toEqual({ class: kind, triangles, bones, materials, textures, lods, collision });
       });
 
-      it('is exactly what a re-run writes', async () => {
+      // A 1024² character atlas takes several seconds to encode (T-4.08).
+      it('is exactly what a re-run writes', { timeout: 60_000 }, async () => {
         expect(sha256(await processAsset(read(entry.source)))).toBe(entry.hash);
       });
     });
