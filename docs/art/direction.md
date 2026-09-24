@@ -53,7 +53,7 @@ physically based shine, no screen-space effects.
 - **Squad marking:** an armband on the left arm and a band on the helmet's
   back, in the slot's colour (`soldierPalette.json`, `accent`).
 
-### The enemy fighter (T-4.35)
+### The enemy fighter (`fighter`, T-4.35)
 
 - **Dress:**
   - shalwar kameez: a long shirt over loose trousers, in earth colours;

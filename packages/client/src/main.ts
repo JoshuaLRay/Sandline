@@ -31,7 +31,7 @@
 import { showAssetShelf } from './assets/shelf.ts';
 import { LevelPieces } from './assets/levelPieces.ts';
 import { AssetLoader, gltfParser } from './assets/loader.ts';
-import { loadDetailedSkin } from './character/assetSoldier.ts';
+import { loadDetailedSkin, loadFighterSkin } from './character/assetSoldier.ts';
 import { loadWeaponAssets } from './weapons/weaponAssets.ts';
 import * as THREE from 'three';
 import {
@@ -341,6 +341,8 @@ if (!greyBox && !new URLSearchParams(location.search).has('codesoldier')) {
   void loadDetailedSkin(assetLoader).then((skin) => {
     if (skin) setSoldierPalette(player, 'local');
   });
+  // T-4.35: every enemy wears the fighter once it has loaded; remotes take it on their next palette set.
+  void loadFighterSkin(assetLoader);
 }
 
 /**

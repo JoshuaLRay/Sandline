@@ -7,7 +7,19 @@
  */
 import { afterEach, describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { DETAILED_SOLDIER_ASSET, accentMaterial, detailedSkinFromArrays, provideDetailedSkin } from './assetSoldier.ts';
+import {
+  DETAILED_SOLDIER_ASSET,
+  FIGHTER_PARTS,
+  FIGHTER_VARIANTS,
+  type FighterSkin,
+  accentMaterial,
+  detailedSkinFromArrays,
+  fighterMaterials,
+  fighterVariantFor,
+  parseFighterLook,
+  provideDetailedSkin,
+  provideFighterSkin,
+} from './assetSoldier.ts';
 import { HUMANOID_BONES, requireRig } from './humanoidRig.ts';
 import { HUMANOID_ROOT_LIFT_M } from './humanoidPlaceholder.ts';
 import { JOINTS, createHumanoidSoldier, disposeSoldier, setSoldierPalette, soldierSkin } from './humanoidSoldier.ts';
@@ -80,7 +92,7 @@ describe('the detailed soldier on the live rig (T-4.08)', () => {
     expect(requireRig(s).pose).toBe('crouched');
   });
 
-  it('leaves an enemy in the code-built skin, and takes a soldier back to it when it becomes one', () => {
+  it('leaves an enemy in the code-built skin until the fighter loads, and takes a soldier back to it when it becomes one', () => {
     const skin = standIn();
     provideDetailedSkin(skin);
     const s = createHumanoidSoldier('remote');
@@ -146,6 +158,93 @@ describe('the detailed soldier on the live rig (T-4.08)', () => {
     let shared = 0;
     let own = 0;
     skin.geometry.addEventListener('dispose', () => shared++);
+    code.addEventListener('dispose', () => own++);
+    disposeSoldier(s);
+    expect(shared).toBe(0);
+    expect(own).toBe(1);
+  });
+});
+
+/** A fighter stand-in: the stand-in soldier's quads, one group a part in `FIGHTER_PARTS` order. */
+function fighterStandIn(): FighterSkin {
+  const soldier = standIn();
+  const geometry = soldier.geometry.clone();
+  geometry.clearGroups();
+  const count = geometry.index!.count;
+  const per = Math.floor(count / 3 / FIGHTER_PARTS.length) * 3;
+  FIGHTER_PARTS.forEach((_, i) => geometry.addGroup(i * per, i === FIGHTER_PARTS.length - 1 ? count - i * per : per, i));
+  const material = new THREE.MeshLambertMaterial();
+  material.name = 'fighter';
+  return { geometry, material };
+}
+
+describe('the enemy fighter on the live rig (T-4.35)', () => {
+  afterEach(() => {
+    provideFighterSkin(null);
+    provideDetailedSkin(null);
+  });
+
+  it('dresses every enemy as the fighter, and no squad soldier; the rig untouched', () => {
+    const fighter = fighterStandIn();
+    provideFighterSkin(fighter);
+    provideDetailedSkin(standIn());
+    const enemy = createHumanoidSoldier('remote');
+    const squad = createHumanoidSoldier('remote');
+    const skeleton = soldierSkin(enemy).skeleton;
+    const bones = snapshot(enemy);
+    setSoldierPalette(enemy, 'enemy', { variant: 0 });
+    setSoldierPalette(squad, 'slot-2');
+    expect(soldierSkin(enemy).geometry).toBe(fighter.geometry);
+    expect(soldierSkin(squad).geometry).not.toBe(fighter.geometry);
+    expect(soldierSkin(enemy).skeleton).toBe(skeleton);
+    expect(snapshot(enemy)).toEqual(bones);
+    // A soldier changing sides changes clothes and nothing else.
+    setSoldierPalette(squad, 'enemy', { variant: 1 });
+    expect(soldierSkin(squad).geometry).toBe(fighter.geometry);
+  });
+
+  it('wears one headgear or the other by variant, tinted by the variant, and the bandolier on the gunner only', () => {
+    provideFighterSkin(fighterStandIn());
+    const pakol = FIGHTER_VARIANTS.findIndex((v) => v.headgear === 'pakol');
+    const turban = FIGHTER_VARIANTS.findIndex((v) => v.headgear === 'turban');
+    const shown = (m: THREE.Material | undefined) => m?.visible ?? false;
+    const [body, cloth, p, t, band] = fighterMaterials(pakol, false);
+    expect([body, cloth, p, t, band].map(shown)).toEqual([true, true, true, false, false]);
+    expect((cloth as THREE.MeshLambertMaterial).color.getHexString()).toBe(new THREE.Color(FIGHTER_VARIANTS[pakol]!.cloth).getHexString());
+    expect((p as THREE.MeshLambertMaterial).color.getHexString()).toBe(new THREE.Color(FIGHTER_VARIANTS[pakol]!.head).getHexString());
+    expect(fighterMaterials(turban, false).map(shown)).toEqual([true, true, false, true, false]);
+    expect(fighterMaterials(turban, true).map(shown)).toEqual([true, true, false, true, true]);
+    // Shared by every fighter who looks the same: no material a fighter.
+    expect(fighterMaterials(turban, true)).toBe(fighterMaterials(turban, true));
+    // And one texture for them all.
+    const enemy = createHumanoidSoldier('remote');
+    setSoldierPalette(enemy, 'enemy', { variant: turban, gunner: true });
+    expect(soldierSkin(enemy).material).toBe(fighterMaterials(turban, true));
+  });
+
+  it('keeps a fighter’s variant for its life, and spreads a group across the variants', () => {
+    expect(fighterVariantFor(40)).toBe(fighterVariantFor(40));
+    const seen = new Set(Array.from({ length: 12 }, (_, i) => fighterVariantFor(1000 + i)));
+    expect(seen.size).toBe(FIGHTER_VARIANTS.length);
+    expect(FIGHTER_VARIANTS.some((v) => v.headgear === 'pakol') && FIGHTER_VARIANTS.some((v) => v.headgear === 'turban')).toBe(true);
+    for (const n of [-7, 0, 123456]) expect(fighterVariantFor(n)).toBeGreaterThanOrEqual(0);
+  });
+
+  it('refuses a look file with a headgear or a colour it cannot draw', () => {
+    expect(() => parseFighterLook({ variants: [] })).toThrow(/non-empty/);
+    expect(() => parseFighterLook({ variants: [{ headgear: 'helmet', cloth: '#aabbcc', head: '#aabbcc' }] })).toThrow(/headgear/);
+    expect(() => parseFighterLook({ variants: [{ headgear: 'pakol', cloth: 'tan', head: '#aabbcc' }] })).toThrow(/cloth/);
+  });
+
+  it('frees a despawned fighter’s own skin, never the shared fighter', () => {
+    const fighter = fighterStandIn();
+    provideFighterSkin(fighter);
+    const s = createHumanoidSoldier('remote');
+    const code = soldierSkin(s).geometry;
+    setSoldierPalette(s, 'enemy');
+    let shared = 0;
+    let own = 0;
+    fighter.geometry.addEventListener('dispose', () => shared++);
     code.addEventListener('dispose', () => own++);
     disposeSoldier(s);
     expect(shared).toBe(0);

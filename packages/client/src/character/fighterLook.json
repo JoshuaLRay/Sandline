@@ -1,0 +1,11 @@
+{
+  "comment": "T-4.35: the enemy fighter's variants (standing rule 4: the look is data). One geometry and one atlas; a variant picks the headgear (pakol or turban) and multiplies the pale-painted cloth and headgear by its colours (sRGB hex). An enemy's variant is its netId modulo the list, so a group of fighters is a mix and a fighter keeps its look for its life. The MG gunner adds the bandolier, whatever the variant.",
+  "variants": [
+    { "headgear": "pakol", "cloth": "#c9b99a", "head": "#9a8a70" },
+    { "headgear": "turban", "cloth": "#8f8578", "head": "#2c2a28" },
+    { "headgear": "pakol", "cloth": "#9c8466", "head": "#6e6250" },
+    { "headgear": "turban", "cloth": "#b8ab92", "head": "#e2dccd" },
+    { "headgear": "pakol", "cloth": "#7c806c", "head": "#b09c7a" },
+    { "headgear": "turban", "cloth": "#a58f72", "head": "#4a4036" }
+  ]
+}
