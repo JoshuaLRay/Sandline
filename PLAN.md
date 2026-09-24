@@ -6,6 +6,11 @@ A browser-based, 6-player co-op third-person squad shooter in the spirit of
 early-2000s console squad tactics games. Original IP — no licensed names,
 characters, or assets.
 
+**Setting** ([ADR-020](./docs/adr/020-setting.md), 2026-09-24): Afghanistan,
+winter 2001–2002. US infantry in desert camouflage against irregular
+fighters. The look is a 2002 console shooter at its best
+(`docs/art/direction.md`).
+
 > `SANDLINE` is a placeholder codename. Rename before any public artifact.
 
 > **Revision 2.1.** Incorporates external technical review: determinism scoping
@@ -2396,12 +2401,108 @@ free to go whenever.
 - **Done when:** the probe runs on the kit level (T-4.13) and on a synthetic worst case, logged and asserted.
 - **Size:** M
 
-##### T-4.08 — Characters from assets
+##### T-4.08 — Characters from assets: the detailed soldier
 - **Depends:** T-4.01, T-4.05
-- **Files:** `packages/client/src/character/assetSoldier.ts`, tests
-- **Do:** A loaded skinned glTF that implements T-2.22's rig contract: the named bones, the aim attachment, poses, gait, aim offsets, reload and hit-reaction layers, and feet. Clips come from the asset when ADR-018's path provides them. The code-built soldier stays as the fallback and as `?greybox`. The squad and enemy palettes (T-2.38, T-3.11) carry over.
-- **Done when:** the rig contract's existing tests pass against the asset soldier, and its triangles and bones pass the budgets.
+- **Files:** `packages/tools/src/art/characters/` (the generator), `packages/client/src/character/assetSoldier.ts`, tests
+- **Do:** *Re-scoped 2026-09-24 by the owner (ADR-020, ADR-018's addendum):*
+  the character must be "much more detailed", like *Conflict: Desert Storm*
+  (2002), a US soldier in Afghanistan in desert camouflage, not the
+  code-built soldier re-exported. So:
+  - generate a detailed soldier to `docs/art/direction.md`, on the rig's own
+    17 bones and joints;
+  - load it through the asset pipeline;
+  - wear it on the live rig, so T-2.22's contract (poses, gait, aim, reload,
+    hit layers, IK, feet) holds unchanged;
+  - carry the squad's palettes over as the marking's colour.
+
+  The code-built soldier stays as the fallback, as `?codesoldier`, and as
+  the enemy until T-4.35. `?greybox` stays.
+- **Done when:** the rig contract's tests pass against the asset soldier,
+  its triangles and bones pass the budgets, it stays inside the hit
+  capsule, and the owner judges it on the deployed site.
 - **Size:** L
+- **Completed 2026-09-24.** The generator, `tools/src/art/characters/`:
+  - `skin.ts`: superellipse lofts with per-ring bone weights, front and back
+    depths, a back drop (the helmet's skirt), bumps (the nose and ears),
+    smooth welded normals, and v by height;
+  - `soldierAtlas.ts`: a 1024² atlas with fourteen regions — DCU
+    three-colour camouflage with weave, creases and seams; an Interceptor
+    vest with MOLLE rows; pouches with flaps; boots; gloves; webbing; the
+    goggles; and a face with soft shading, stubble, brows, small eyes, a
+    nose, a mouth and the chinstrap;
+  - `soldier.ts`: the head and neck, the collar, the PASGT helmet with its
+    strap and goggles, the Interceptor vest, three magazine pouches, a
+    radio pouch and two grenade pouches, the pack, the pelvis, belt and
+    canteen, the legs with cargo pockets, the boots, and the arms with
+    cuffs, gloved hands and thumbs;
+  - `document.ts`: writes the glTF source, 17 bones at `JOINTS` with the
+    identity bind, two primitives, `sandline.class: character`.
+
+  `soldier-dcu` has 3,948 triangles (the old soldier had 900), 17 bones and
+  2 materials, one 1024² KTX2 texture, and a 626,616-byte web copy, all
+  within budget. Its widest point is 0.283 m of the 0.35 m capsule.
+
+  In the page (`assetSoldier.ts`):
+  - the loaded primitives are merged and dequantized back into model space
+    (the pipeline folds dequantization into the inverse binds, and the rig
+    binds with its own);
+  - `setSoldierPalette` swaps the shared geometry and atlas onto a squad
+    soldier's live skinned mesh, with the slot's accent as the second
+    material; an enemy gets the code-built skin back;
+  - `disposeSoldier` frees only a soldier's own skin;
+  - `main.ts` loads it at start unless `?codesoldier` or `?greybox` is set.
+
+  Tests:
+  - tools: the source is current; it is on the rig's bones, joints and
+    order; it has over 3,000 triangles and is within budget; it stays
+    inside the capsule and fills it; weights sum to one and 10%+ of
+    vertices blend; every body UV is inside its region; normals are unit;
+  - client: the swap leaves the rig's bones and skeleton alone, a slot
+    change swaps only the marking, an enemy goes back to the code skin, a
+    crouch carries head vertices down, the hands stay on the rifle in every
+    pose, a gait returns to rest, and despawning frees only the soldier's
+    own skin;
+  - browser: the real asset loads, dequantizes into model space (feet at 0,
+    helmet at 1.9 m, inside the capsule), is smooth-filtered, and is worn
+    and drawn.
+
+  Reviewed in headless daylight renders. The first face read as a doll
+  (big eyes, a flat cylinder, a heavy chinstrap), so the head gained a jaw,
+  a nose and ears, the eyes shrank under a shadowed brow, and the face's
+  painted shading was softened. **Whether it reaches the bar is the
+  owner's call** on the deployed site. Still primitive: the rifle (T-4.36)
+  and the enemies (T-4.35).
+
+##### T-4.35 — The enemy fighter
+- **Depends:** T-4.08
+- **Files:** `packages/tools/src/art/characters/fighter.ts` (+ its atlas), `assetSoldier.ts` (the enemy skin), tests
+- **Do:** The irregular fighter of `docs/art/direction.md`: shalwar kameez,
+  a waistcoat or field jacket, a pakol or a turban and a scarf, a chest
+  rig, and sandals or worn boots. It is built on the same rig and within
+  the same capsule, and worn by every enemy in place of the `enemy`
+  palette's code-built soldier. The MG gunner is told apart by a bandolier
+  and the PKM. A small set of variants (headgear, colours) comes from one
+  geometry and atlas family.
+- **Done when:** the same tests as T-4.08's pass for the fighter, its
+  silhouette differs from the squad's (a test on the bounding profile:
+  no helmet, no vest, loose cloth), and the owner judges it on the deployed
+  site.
+- **Size:** L
+
+##### T-4.36 — Period weapons
+- **Depends:** T-4.08
+- **Files:** `packages/tools/src/art/weapons/`, `client/src/weapons/weaponModels.ts`, `data/weapons.json` names, tests
+- **Do:** The squad's M4 carbine, M249 and the M203 under an M4, and the
+  enemy's AK-pattern rifle, PKM and RPG-7, generated to
+  `docs/art/direction.md` (1–3k triangles each, one weapons atlas). They
+  replace the code-built weapon models behind the same `WeaponModelSpec`
+  (grips, sight, eye relief, hip), so the IK hold, the viewmodel and the
+  muzzle rig change nothing. The loadout's display names become the
+  period's; generic, with no manufacturer marks (ADR-020).
+- **Done when:** every weapon's grips and sight are where its spec says
+  (the existing weapon-hold tests pass on each), budgets pass, and the
+  owner judges them on the deployed site.
+- **Size:** M
 
 #### E-4.3 — Level format, kit, lightmaps
 

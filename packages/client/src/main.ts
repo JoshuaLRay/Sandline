@@ -31,6 +31,7 @@
 import { showAssetShelf } from './assets/shelf.ts';
 import { LevelPieces } from './assets/levelPieces.ts';
 import { AssetLoader, gltfParser } from './assets/loader.ts';
+import { loadDetailedSkin } from './character/assetSoldier.ts';
 import * as THREE from 'three';
 import {
   Clock,
@@ -93,7 +94,7 @@ import {
 } from './character/humanoidPlaceholder.ts';
 import { requireRig, rigOf } from './character/humanoidRig.ts';
 import { FROM_THE_FRONT, hitReactionFrom, shooterDirection } from './character/hitReaction.ts';
-import { createHumanoidSoldier } from './character/humanoidSoldier.ts';
+import { createHumanoidSoldier, setSoldierPalette } from './character/humanoidSoldier.ts';
 import { addKick, createKick, decayKick } from './character/weaponKick.ts';
 import { createLocomotionPoseDriver } from './character/locomotionPose.ts';
 import { createFootPlacementDriver } from './character/footPlacement.ts';
@@ -254,7 +255,9 @@ function buildScenery(world: World): void {
 }
 /** T-4.10: a level's kit pieces, drawn through the asset loader; `?kit` labels each one. */
 const kitWanted = new URLSearchParams(location.search).has('kit');
-const levelPieces = new LevelPieces(scene, new AssetLoader({ renderer, parse: gltfParser({ renderer }) }));
+/** The page's one asset loader (T-4.05): level pieces and the detailed soldier share its cache. */
+const assetLoader = new AssetLoader({ renderer, parse: gltfParser({ renderer }) });
+const levelPieces = new LevelPieces(scene, assetLoader);
 buildScenery(activeWorld);
 // T-4.05: `?assets` stands every asset the pipeline made in a row behind the spawn line.
 if (new URLSearchParams(location.search).has('assets')) void showAssetShelf(scene, renderer);
@@ -324,6 +327,17 @@ const localPoseDriver = createLocomotionPoseDriver(playerRig);
  */
 const localFeet = createFootPlacementDriver(playerRig, { world: () => activeWorld.boxes, config });
 scene.add(player);
+/**
+ * T-4.08: the squad wears the detailed soldier (`soldier-dcu`) once it has
+ * loaded, swapped onto the live rig; until then, and with `?codesoldier` or
+ * `?greybox`, the code-built one. Remote squad soldiers take it the next time
+ * their palette is set, which is every frame.
+ */
+if (!greyBox && !new URLSearchParams(location.search).has('codesoldier')) {
+  void loadDetailedSkin(assetLoader).then((skin) => {
+    if (skin) setSoldierPalette(player, 'local');
+  });
+}
 
 /**
  * Remote characters, created on demand from replicated entities.
