@@ -19,6 +19,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
+      # T-4.03: ADR-013's budgets, every asset's numbers against its class,
+      # printed so an overrun names the asset in the job log. `pnpm verify`
+      # already fails on one; this is the readable line.
+      - run: pnpm check:assets
 
   # ADR-014: the transcendental-drift bug is invisible on a V8-to-V8 pairing.
   # Node and Chrome are both V8, so parity MUST also run on a non-V8 engine or

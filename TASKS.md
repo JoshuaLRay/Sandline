@@ -72,6 +72,16 @@ headless by six bots at both budgets with the exit gate's claims as numbers
 docs/BUGS.md B-11). M3's build tasks are done; its gates (🧍 T-3.24, T-3.30,
 T-3.36, T-3.37) wait on their run sheets and people.
 
+**M4 is broken out** (PLAN.md §7.11), behind everything above in scan
+order. The asset pipeline is done (T-4.02, `pnpm gen:assets`) with its budgets
+in CI (T-4.03, `pnpm check:assets`) and the loader (T-4.05, `?assets` for
+eyes), so streaming (T-4.06) and LOD/instancing (T-4.07) are open, beside
+the level format (T-4.09), mission sequence (T-4.14), reconnect
+(T-4.18), HUD (T-4.25), classes (T-4.27), mounted MG (T-4.29), regions ADR
+addendum (T-4.30) and observability (T-4.33) — and two owner decisions gate
+the rest: art sourcing (🧍 T-4.01 — its options paper is written, ADR-018
+Proposed, waiting on the owner's choice) and where progress lives (🧍 T-4.21).
+
 ---
 
 ## M0 — Foundations (PLAN.md §5)
@@ -339,8 +349,104 @@ once before the first M3 task — it is short and every task leans on it.
 
 ---
 
-## M4–M5
+## M4 — Content pipeline & the full slice (PLAN.md §7.11) — broken out 2026-09-24
+
+Broken out ahead of M3's exit gate at the owner's request; everything above
+still comes first in scan order, and T-4.34 is not reached before M3's gate
+is passed. Read §7.11's preamble (rules, what exists, order of work) once
+before the first M4 task. Two rows are the owner's decisions, not agent
+work: **T-4.01** (art sourcing, ADR-018) gates every content task, and
+**T-4.21** (where progress lives, ADR-019, §9 Q5) gates the saves. An agent
+may draft either ADR's options for the owner, never decide them.
+
+### E-4.1 — Asset pipeline
+
+| Task | Status | Depends |
+|---|---|---|
+| 🧍 T-4.01 | OPEN — options written (`docs/adr/018-art-sourcing.md`, Proposed); the owner decides | — |
+| T-4.02 | DONE | — |
+| T-4.03 | DONE | T-4.02 |
+| T-4.04 | BLOCKED | T-4.01, T-4.02 |
+
+### E-4.2 — Runtime loading, streaming, LOD, budgets
+
+| Task | Status | Depends |
+|---|---|---|
+| T-4.05 | DONE | T-4.02 |
+| T-4.06 | OPEN | T-4.05 |
+| T-4.07 | OPEN | T-4.05 |
+| T-4.08 | BLOCKED | T-4.01, T-4.05 |
+
+### E-4.3 — Level format, kit, lightmaps
+
+| Task | Status | Depends |
+|---|---|---|
+| T-4.09 | OPEN | — |
+| T-4.10 | BLOCKED | T-4.04, T-4.09 |
+| T-4.11 | BLOCKED | T-4.09 |
+| ⚠️ T-4.12 | BLOCKED | T-4.09, T-4.10 |
+| T-4.13 | BLOCKED | T-4.10, T-4.11, T-4.14 |
+
+### E-4.4 — Mission scripting
+
+| Task | Status | Depends |
+|---|---|---|
+| T-4.14 | OPEN | — |
+| T-4.15 | BLOCKED | T-4.14 |
+| T-4.16 | BLOCKED | T-4.14 |
+| T-4.17 | BLOCKED | T-4.14, T-3.35 |
+
+### E-4.5 — Matchmaking, parties, regions, reconnect, invites
+
+| Task | Status | Depends |
+|---|---|---|
+| T-4.18 | OPEN | — |
+| T-4.19 | BLOCKED | T-4.14 |
+| T-4.20 | BLOCKED | T-4.30, T-4.31 |
+
+### E-4.6 — Persistence
+
+| Task | Status | Depends |
+|---|---|---|
+| 🧍 T-4.21 | OPEN — the owner's decision | — |
+| T-4.22 | BLOCKED | T-4.21 |
+| T-4.23 | BLOCKED | T-4.21, T-4.22, T-4.16 |
+| T-4.24 | BLOCKED | T-4.22, T-4.23 |
+
+### E-4.7 — HUD, menus, class selection, scoreboard
+
+| Task | Status | Depends |
+|---|---|---|
+| T-4.25 | OPEN | — |
+| T-4.26 | BLOCKED | T-4.25 |
+| T-4.27 | OPEN | — |
+| T-4.28 | BLOCKED | T-4.25 |
+
+### E-4.8 — Vehicles (the mounted MG only, §4.1)
+
+| Task | Status | Depends |
+|---|---|---|
+| T-4.29 | OPEN | — |
+
+### E-4.9 — Deployment, multi-region
+
+| Task | Status | Depends |
+|---|---|---|
+| T-4.30 | OPEN | — |
+| T-4.31 | BLOCKED | T-4.30 |
+| T-4.32 | BLOCKED | T-4.31 |
+| T-4.33 | OPEN | — |
+
+### M4 exit gate
+
+| Task | Status | Depends |
+|---|---|---|
+| 🧍 T-4.34 | BLOCKED — run sheet `m4.md` to be written; after M3's gate | T-4.13, T-4.17, T-4.23, T-4.25, T-4.26, T-4.27, T-4.29 |
+
+---
+
+## M5
 
 Epics only, not broken out — see PLAN.md §7 (epic tables) and §4 (milestone
-table). Nothing here is a task an agent can pick up; they get leaf tasks at
-their own planning gate (§0.5).
+table). Nothing here is a task an agent can pick up; it gets leaf tasks at
+its own planning gate (§0.5).

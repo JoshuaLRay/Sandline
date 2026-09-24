@@ -23,7 +23,10 @@
     "bench:bandwidth": "tsx packages/tools/src/bench-bandwidth.ts",
     "bench:tickrate": "tsx packages/tools/src/bench-tickrate.ts",
     "host": "tsx packages/server/src/main.ts",
-    "bot": "tsx packages/bot/src/main.ts"
+    "bot": "tsx packages/bot/src/main.ts",
+    "gen:assets": "tsx packages/tools/src/gen-assets.ts",
+    "export:soldier": "tsx packages/tools/src/export-soldier.ts",
+    "check:assets": "tsx packages/tools/src/check-assets.ts"
   },
   "devDependencies": {
     "@dimforge/rapier3d-compat": "0.20.0",

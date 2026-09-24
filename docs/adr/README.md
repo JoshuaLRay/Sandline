@@ -36,6 +36,7 @@ different choice.
 | [015](015-estimate-reality.md) | Estimates as floor; slice scope cut | Accepted |
 | [016](016-prone-stance.md) | Prone stance and voluntary crawl (reopens ADR-002's prone row) | Accepted |
 | [017](017-in-house-audio.md) | Combat audio made in-house: synthesised effects, processed recorded voices | Accepted |
+| [018](018-art-sourcing.md) | Where the art comes from (meshes, textures, animation) | Proposed — awaiting the owner |
 
 ## Template
 

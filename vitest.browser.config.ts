@@ -18,6 +18,10 @@ import { defineConfig } from 'vitest/config';
  * includes Chromium, because a page that cannot load the navmesh is broken
  * for its most common player whatever V8 on the host does.
  *
+ * `assets-browsers` — T-4.05. The asset loader through three's real decoders
+ * on a real WebGL2 context: the memory counters only move on a GPU. Chromium
+ * only: its headless build draws with SwiftShader, which CI always has.
+ *
  * CHROMIUM_PATH points Playwright at a Chromium it did not download itself,
  * for machines whose preinstalled browser is not the build this Playwright
  * pins.
@@ -57,6 +61,19 @@ export default defineConfig({
               { browser: 'firefox' },
               { browser: 'webkit' },
             ],
+          },
+        },
+      },
+      {
+        test: {
+          name: 'assets-browsers',
+          root: './packages/client',
+          include: ['src/assets/**/*.browser.test.ts'],
+          browser: {
+            enabled: true,
+            provider: 'playwright',
+            headless: true,
+            instances: [{ browser: 'chromium', ...(chromiumPath ? { launch: { executablePath: chromiumPath } } : {}) }],
           },
         },
       },
