@@ -2735,6 +2735,7 @@ free to go whenever.
   - `pnpm sim-run --scenario mission` passes on it;
   - it is selectable in the lobby's Map and plays on the deployed site.
 - **Size:** M
+- **Completed 2026-09-24.** `mission-01` preserves greybox-01's two tactical routes, objective, spawn zones and collision geometry, then dresses the start, overwatch road, assault lane and qalat compound with T-4.10's dirt/road/paving kit tiles. It has its own mission and encounter records, committed nav/cover bake, is the lobby's first mission map, `?mission` opens it, and the default headless mission scenario runs against it.
 
 #### E-4.4 — Mission scripting
 
