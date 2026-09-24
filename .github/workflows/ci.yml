@@ -40,6 +40,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm check:packs
+      - run: pnpm --filter @sandline/client build
       - run: pnpm check:load-time
 
   # ADR-014: the transcendental-drift bug is invisible on a V8-to-V8 pairing.
