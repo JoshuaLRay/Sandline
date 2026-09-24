@@ -99,7 +99,7 @@ function text(where: string, value: unknown, max: number): string {
   return value;
 }
 
-function area(where: string, value: unknown, encounter: Encounter, world: World): AreaRef {
+function area(where: string, value: unknown, encounter: Encounter, _world: World): AreaRef {
   if (typeof value === 'string') {
     if (value !== 'start' && value !== 'objective' && !(value in encounter.areas)) throw new EventDataError(`${where}: no area '${value}'`);
     return value;

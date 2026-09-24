@@ -63,7 +63,7 @@ const SAMPLES: Message[] = [
       {
         id: 'north-gate',
         active: true,
-        boxes: [{ id: 'blocker:north-gate/0', kind: 'blocker', minX: -4.75, minY: 0, minZ: -3.2, maxX: -2.75, maxY: 3, maxZ: -2.8 }],
+        boxes: [{ id: 'blocker:north-gate/0', kind: 'blocker', minX: -4.75, minY: 0, minZ: -3.25, maxX: -2.75, maxY: 3, maxZ: -2.75 }],
       },
     ],
   },

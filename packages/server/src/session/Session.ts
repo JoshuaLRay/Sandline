@@ -710,7 +710,7 @@ export class Session {
     options: SessionOptions = {},
   ) {
     this.world = typeof world === 'string' ? requireWorld(world) : world;
-    this.collisionBoxes = [...this.collisionBoxes];
+    this.collisionBoxes = [...this.world.boxes];
     this.navMesh = options.navMesh ?? null;
     // T-3.33: an encounter is paced by the director, from the fight and the humans in it.
     this.encounter = options.encounter ?? null;

@@ -337,6 +337,9 @@ export class NetClient {
   onRoster: ((slots: RosterEntry[]) => void) | null = null;
   /** T-3.09: an AI debug report, from a host that allows them, after `requestAiDebug(true)`. */
   onAiDebug: ((report: Extract<Message, { kind: 'AiDebug' }>) => void) | null = null;
+  /** T-4.15: authored mission UI/radio cues. */
+  onScriptMessage: ((text: string) => void) | null = null;
+  onScriptCallout: ((id: string) => void) | null = null;
   private aiDebugWanted = false;
 
   constructor(

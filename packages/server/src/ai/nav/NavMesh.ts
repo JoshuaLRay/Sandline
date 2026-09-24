@@ -270,11 +270,9 @@ export class NavMesh {
       for (const ref of refs) {
         const count = this.blockedRefs.get(ref) ?? 0;
         if (count === 0) {
-          const flags = this.mesh.getPolyFlags(ref);
-          if (flags.success) {
-            this.originalFlags.set(ref, flags.flags);
-            this.mesh.setPolyFlags(ref, 0);
-          }
+          const flags = this.mesh.getPolyFlags(ref).flags;
+          this.originalFlags.set(ref, flags);
+          this.mesh.setPolyFlags(ref, 0);
         }
         this.blockedRefs.set(ref, count + 1);
       }
