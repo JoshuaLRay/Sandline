@@ -12,9 +12,10 @@ import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isRoomCode } from './roomCode.ts';
 import { MAX_MARKS, ORDER_KINDS, type BotOrder, type OrderAddress, type OrderKind, type OrderPoint, type TargetMark } from '../sim/orders.ts';
 import { MISSION_STATES, OBJECTIVE_TYPES, type MissionView } from '../sim/mission.ts';
+import type { ScriptBlockerState } from '../sim/events.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 25;
+export const PROTOCOL_VERSION = 26;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -109,13 +110,15 @@ export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
 const TYPE_BITS = 4;
 
 /** Sub-kinds under `MessageType.Ext`, three bits: the wire order. */
-const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks: 5, Mission: 6 } as const;
+const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks: 5, Mission: 6, Events: 7 } as const;
 /**
  * T-3.34: under `EXT.Mission`, a two-bit variant — the host's state, or a
  * client's restart — so the mission family takes one sub-kind and the
  * last (7) stays free.
  */
 const MISSION_VARIANT = { State: 0, Restart: 1 } as const;
+/** T-4.15: state plus transient message/callout notifications. */
+const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2 } as const;
 const EXT_BITS = 3;
 const ORDER_KIND_BITS = 3;
 const ADDRESS_TO = ['slot', 'fireteam', 'all'] as const;
@@ -422,7 +425,13 @@ export type Message =
   /** T-3.34: where the mission stands, on every change, each second of a hold, and on seating. Host to client. */
   | ({ kind: 'Mission' } & MissionView)
   /** T-3.34: a player asking for the mission to start again. Client to host; honoured once it is over. */
-  | { kind: 'MissionRestart' };
+  | { kind: 'MissionRestart' }
+  /** T-4.15: all dynamic blockers, whole, whenever one changes and on seating. Host to client. */
+  | { kind: 'ScriptState'; blockers: readonly ScriptBlockerState[] }
+  /** T-4.15: an authored on-screen mission message. Host to client. */
+  | { kind: 'ScriptMessage'; text: string }
+  /** T-4.15: an authored E-2.7 callout id. Host to client. */
+  | { kind: 'ScriptCallout'; id: string };
 
 export class ProtocolError extends Error {}
 
@@ -635,6 +644,40 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Mission, EXT_BITS);
       w.writeBits(MISSION_VARIANT.Restart, 2);
+      break;
+    case 'ScriptState': {
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Events, EXT_BITS);
+      w.writeBits(EVENT_VARIANT.State, 2);
+      const blockers = msg.blockers.slice(0, 32);
+      w.writeVarUint(blockers.length);
+      for (const blocker of blockers) {
+        w.writeString(blocker.id);
+        w.writeBool(blocker.active);
+        const boxes = blocker.boxes.slice(0, 16);
+        w.writeVarUint(boxes.length);
+        for (const box of boxes) {
+          w.writeBits(quantize(box.minX, POSITION), POSITION.bits);
+          w.writeBits(quantize(box.minY, POSITION), POSITION.bits);
+          w.writeBits(quantize(box.minZ, POSITION), POSITION.bits);
+          w.writeBits(quantize(box.maxX, POSITION), POSITION.bits);
+          w.writeBits(quantize(box.maxY, POSITION), POSITION.bits);
+          w.writeBits(quantize(box.maxZ, POSITION), POSITION.bits);
+        }
+      }
+      break;
+    }
+    case 'ScriptMessage':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Events, EXT_BITS);
+      w.writeBits(EVENT_VARIANT.Message, 2);
+      w.writeString(msg.text);
+      break;
+    case 'ScriptCallout':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Events, EXT_BITS);
+      w.writeBits(EVENT_VARIANT.Callout, 2);
+      w.writeString(msg.id);
       break;
     case 'Marks': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -980,6 +1023,32 @@ export function decodeMessage(bytes: Uint8Array): Message {
             if (objectives === 0 || objective >= objectives) throw new ProtocolError('objective out of the mission');
             if (progress > goal) throw new ProtocolError('objective past its goal');
             return { kind: 'Mission', state, attempt, objective, objectives, type, label, satisfied, progress, goal };
+          }
+          case EXT.Events: {
+            const variant = r.readBits(2);
+            if (variant === EVENT_VARIANT.Message) return { kind: 'ScriptMessage', text: r.readString() };
+            if (variant === EVENT_VARIANT.Callout) return { kind: 'ScriptCallout', id: r.readString() };
+            if (variant !== EVENT_VARIANT.State) throw new ProtocolError(`unknown event message ${variant}`);
+            const blockers: ScriptBlockerState[] = [];
+            for (let i = readCount(r, 32, 'blocker'); i > 0; i -= 1) {
+              const id = r.readString();
+              const active = r.readBool();
+              const boxes = [];
+              for (let j = readCount(r, 16, 'blocker box'), k = 0; k < j; k += 1) {
+                boxes.push({
+                  id: `blocker:${id}/${k}`,
+                  kind: 'blocker' as const,
+                  minX: dequantize(r.readBits(POSITION.bits), POSITION),
+                  minY: dequantize(r.readBits(POSITION.bits), POSITION),
+                  minZ: dequantize(r.readBits(POSITION.bits), POSITION),
+                  maxX: dequantize(r.readBits(POSITION.bits), POSITION),
+                  maxY: dequantize(r.readBits(POSITION.bits), POSITION),
+                  maxZ: dequantize(r.readBits(POSITION.bits), POSITION),
+                });
+              }
+              blockers.push({ id, active, boxes });
+            }
+            return { kind: 'ScriptState', blockers };
           }
           default:
             throw new ProtocolError(`unknown extended message ${sub}`);

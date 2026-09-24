@@ -159,6 +159,8 @@ export class Spawner {
     /** The first session group id to hand out; one per encounter group. */
     firstGroupId = 1000,
     private readonly pacing: Pacing = FIXED_PACING,
+    /** T-4.15: when true, first waves are activated by the mission event runner. */
+    private readonly externalTriggers = false,
   ) {
     if (encounter.world !== world.id) throw new Error(`encounter for '${encounter.world}' on world '${world.id}'`);
     this.runs = encounter.groups.map((def, i) => ({ def, sessionGroup: firstGroupId + i, firedAt: null, wavesSent: 0, lastWaveAt: 0, waveTimes: [], spawned: [] }));
@@ -213,6 +215,15 @@ export class Spawner {
     return run;
   }
 
+  /** Activate a group's first wave from T-4.15's event runner. Idempotent. */
+  activate(groupId: string, seconds: number): boolean {
+    const run = this.run(groupId);
+    if (run.firedAt !== null) return false;
+    run.firedAt = seconds;
+    this.enqueue(run, seconds);
+    return true;
+  }
+
   private triggered(run: GroupRun, seconds: number): boolean {
     const t = run.def.trigger;
     switch (t.kind) {
@@ -257,9 +268,8 @@ export class Spawner {
   step(seconds: number): void {
     for (const run of this.runs) {
       if (run.firedAt === null) {
-        if (!this.triggered(run, seconds)) continue;
-        run.firedAt = seconds;
-        this.enqueue(run, seconds);
+        if (this.externalTriggers || !this.triggered(run, seconds)) continue;
+        this.activate(run.def.id, seconds);
       } else if (run.wavesSent < run.def.waves.count && this.pacing.waveDue(seconds - run.lastWaveAt, run.def.waves)) {
         this.enqueue(run, seconds);
       }

@@ -40,7 +40,7 @@ import MISSION_01_LEVEL from '../data/levels/mission-01.json' with { type: 'json
 import { POSITION } from '../net/quantize.ts';
 import { type PlacedPiece, expandLevel } from './level.ts';
 
-export type WorldBoxKind = 'post-minor' | 'post-major' | 'rail' | 'figure' | 'cover';
+export type WorldBoxKind = 'post-minor' | 'post-major' | 'rail' | 'figure' | 'cover' | 'blocker';
 
 /** An axis-aligned box in world space. Ready for the arithmetic, not authoring. */
 export interface WorldBox {

@@ -43,6 +43,8 @@ import {
   type Vitality,
   vitalityFromCode,
   type World,
+  type WorldBox,
+  type ScriptBlockerState,
   getWorld,
 } from '@sandline/shared';
 
@@ -188,6 +190,10 @@ export class NetClient {
    * and the renderer draws it.
    */
   private worldValue: World | null = null;
+  /** Static world collision plus currently active T-4.15 blocker boxes. Mutated in place so Predictor sees toggles. */
+  private readonly worldBoxesValue: WorldBox[] = [];
+  private blockerStateValue: readonly ScriptBlockerState[] = [];
+  private scriptMessageValue = '';
   /**
    * Who is in the six slots, as the host last said (T-1.5.04). Empty until
    * seated; six entries after. The lobby's roster is drawn from this.
@@ -331,6 +337,9 @@ export class NetClient {
   onRoster: ((slots: RosterEntry[]) => void) | null = null;
   /** T-3.09: an AI debug report, from a host that allows them, after `requestAiDebug(true)`. */
   onAiDebug: ((report: Extract<Message, { kind: 'AiDebug' }>) => void) | null = null;
+  /** T-4.15: authored mission UI/radio cues. */
+  onScriptMessage: ((text: string) => void) | null = null;
+  onScriptCallout: ((id: string) => void) | null = null;
   private aiDebugWanted = false;
 
   constructor(
@@ -367,6 +376,19 @@ export class NetClient {
   /** The world the host named in `JoinAck`, or null before a join. */
   get world(): World | null {
     return this.worldValue;
+  }
+
+  /** The collision world prediction, local effects and camera should use. */
+  get worldBoxes(): readonly WorldBox[] {
+    return this.worldBoxesValue;
+  }
+
+  get blockers(): readonly ScriptBlockerState[] {
+    return this.blockerStateValue;
+  }
+
+  get scriptMessage(): string {
+    return this.scriptMessageValue;
   }
 
   get room(): string {
@@ -556,6 +578,9 @@ export class NetClient {
     this.disconnectCodeValue = null;
     this.roomValue = '';
     this.worldValue = null;
+    this.worldBoxesValue.length = 0;
+    this.blockerStateValue = [];
+    this.scriptMessageValue = '';
     this.rosterValue = [];
     this.healthValue = 0;
     this.maxHealthValue = 0;
@@ -900,6 +925,7 @@ export class NetClient {
           break;
         }
         this.worldValue = world;
+        this.worldBoxesValue.splice(0, this.worldBoxesValue.length, ...world.boxes);
         this.netIdValue = msg.netId;
         this.slotValue = msg.slot;
         this.roomValue = msg.room;
@@ -988,6 +1014,25 @@ export class NetClient {
         this.missionValue = view;
         break;
       }
+
+      case 'ScriptState':
+        this.blockerStateValue = msg.blockers;
+        this.worldBoxesValue.splice(
+          0,
+          this.worldBoxesValue.length,
+          ...(this.worldValue?.boxes ?? []),
+          ...msg.blockers.filter((b) => b.active).flatMap((b) => b.boxes),
+        );
+        break;
+
+      case 'ScriptMessage':
+        this.scriptMessageValue = msg.text;
+        this.onScriptMessage?.(msg.text);
+        break;
+
+      case 'ScriptCallout':
+        this.onScriptCallout?.(msg.id);
+        break;
 
       case 'HitEvent':
         this.onShot?.({
@@ -1198,7 +1243,7 @@ export class NetClient {
 
   private reconcile(authoritative: MoveState, lastProcessedInputTick: number): void {
     if (!this.predictor) {
-      this.predictor = new Predictor(authoritative, this.moveConfig, undefined, this.worldValue?.boxes);
+      this.predictor = new Predictor(authoritative, this.moveConfig, undefined, this.worldBoxesValue);
       return;
     }
     if (lastProcessedInputTick < 0) return;

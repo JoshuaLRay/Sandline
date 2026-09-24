@@ -88,6 +88,9 @@ import {
   type Encounter,
   type MissionView,
   type MissionDef,
+  type EventScript,
+  type ScriptBlockerState,
+  type WorldBox,
   type GroundArea,
   checkMission,
   missionFor,
@@ -143,6 +146,7 @@ import type { EnemyPosture } from '../ai/actions/posture.ts';
 import { Spawner, type SpawnerHost } from '../ai/director/spawner.ts';
 import { Director } from '../ai/director/director.ts';
 import { MissionRun } from './mission.ts';
+import { EventRun, type EventHost } from './events.ts';
 import type { DownedMate, SquadView } from '../ai/actions/friendly.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
@@ -557,6 +561,8 @@ export interface SessionOptions {
    * session with an encounter and neither plays none.
    */
   mission?: MissionDef;
+  /** T-4.15: authored mission events; encounter triggers are included automatically. */
+  events?: EventScript;
   /**
    * T-3.09: whether clients may ask for AI debug reports (`AI_DEBUG=1 pnpm
    * host`). Off by default: a host that does not allow it sends nothing, and
@@ -678,10 +684,15 @@ export class Session {
    * (T-3.02), and names in every `JoinAck`. Fixed for the session's life.
    */
   readonly world: World;
+  /** Static world boxes plus every currently active T-4.15 blocker. Mutated in place for all systems holding it. */
+  private readonly collisionBoxes: WorldBox[];
+  private readonly blockerStates = new Map<string, ScriptBlockerState>();
   private spawnerValue: Spawner | null;
   private directorValue: Director | null;
   /** T-3.34: the mission's objective, whenever the session has an encounter to play. */
   private readonly missionRun: MissionRun | null;
+  /** T-4.15: encounter triggers and authored mission events, reset with each attempt. */
+  private readonly eventRun: EventRun | null;
   /** T-3.34: the tick the current attempt began on: mission time counts from here. */
   private missionStartTick = 0;
   private readonly encounter: Encounter | null;
@@ -699,6 +710,7 @@ export class Session {
     options: SessionOptions = {},
   ) {
     this.world = typeof world === 'string' ? requireWorld(world) : world;
+    this.collisionBoxes = [...this.world.boxes];
     this.navMesh = options.navMesh ?? null;
     // T-3.33: an encounter is paced by the director, from the fight and the humans in it.
     this.encounter = options.encounter ?? null;
@@ -706,7 +718,6 @@ export class Session {
     this.profileAi = options.profileAi ?? false;
     this.directorValue = null;
     this.spawnerValue = null;
-    this.startEncounter();
     const missionDef = options.mission ?? missionFor(this.world.id);
     if (this.encounter && this.world.mission && missionDef) {
       checkMission(missionDef, this.encounter, this.world);
@@ -715,12 +726,16 @@ export class Session {
     } else {
       this.missionRun = null;
     }
+    this.startEncounter();
+    this.eventRun = this.encounter
+      ? new EventRun(options.events ?? { world: this.world.id, blockers: [], events: [] }, this.encounter, this.world, this.eventHost())
+      : null;
     const mesh = this.navMesh;
     this.cover =
       options.cover && options.cover.length > 0
         ? new CoverSystem(
             options.cover,
-            this.world.boxes,
+            this.collisionBoxes,
             mesh
               ? (a, b) => {
                   const path = mesh.path(a, b);
@@ -731,7 +746,7 @@ export class Session {
         : null;
     this.combatWorld = {
       cover: this.cover,
-      boxes: this.world.boxes,
+      boxes: this.collisionBoxes,
       now: () => this.nowMs / 1000,
       eyeOf: (netId) => {
         const s = this.soldier(netId);
@@ -875,7 +890,7 @@ export class Session {
     if (!this.encounter) return;
     this.missionStartTick = this.currentTick;
     this.directorValue = new Director();
-    this.spawnerValue = new Spawner(this.encounter, this.world, this.spawnerHost(), undefined, this.directorValue);
+    this.spawnerValue = new Spawner(this.encounter, this.world, this.spawnerHost(), undefined, this.directorValue, true);
   }
 
   /** Evaluate the objective, at the end of a tick, and tell everyone when what they see of it changed. */
@@ -947,7 +962,9 @@ export class Session {
     this.broadcastMarks();
     this.startEncounter();
     this.missionRun?.reset();
+    this.eventRun?.reset();
     this.broadcastMission();
+    this.broadcastScriptState();
   }
 
   /** T-3.33: the director pacing the encounter, when the session was given one. */
@@ -986,6 +1003,55 @@ export class Session {
           }
         : {}),
     };
+  }
+
+  /** The session as T-4.15's event runner sees it. */
+  private eventHost(): EventHost {
+    return {
+      squadFeet: () => this.slots.filter((s) => !isDead(s.health)).map((s) => ({ x: s.state.x, z: s.state.z })),
+      groupDead: (id) => this.spawnerValue?.dead(id) ?? false,
+      spawnGroup: (id, seconds) => this.spawnerValue?.activate(id, seconds) ?? false,
+      objective: () => {
+        const m = this.missionRun?.current;
+        return m ? { index: m.objective, state: m.state } : null;
+      },
+      setObjective: (index) => {
+        const changed = this.missionRun?.setObjective(index) ?? false;
+        if (changed) this.broadcastMission();
+        return changed;
+      },
+      setBlocker: (blocker) => this.setBlocker(blocker),
+      message: (text) => {
+        const msg: Message = { kind: 'ScriptMessage', text };
+        for (const conn of this.connections) if (conn.state === 'active') conn.send(msg);
+      },
+      callout: (id) => {
+        const msg: Message = { kind: 'ScriptCallout', id };
+        for (const conn of this.connections) if (conn.state === 'active') conn.send(msg);
+      },
+    };
+  }
+
+  private scriptBlockers(): ScriptBlockerState[] {
+    return [...this.blockerStates.values()].map((b) => ({ id: b.id, active: b.active, boxes: b.boxes }));
+  }
+
+  /** One blocker changed: collision, nav and every client change together. */
+  private setBlocker(blocker: ScriptBlockerState): void {
+    this.blockerStates.set(blocker.id, blocker);
+    this.collisionBoxes.splice(
+      0,
+      this.collisionBoxes.length,
+      ...this.world.boxes,
+      ...[...this.blockerStates.values()].filter((b) => b.active).flatMap((b) => b.boxes),
+    );
+    this.navMesh?.setBlocker(blocker.id, blocker.boxes, blocker.active);
+    this.broadcastScriptState();
+  }
+
+  private broadcastScriptState(): void {
+    const msg: Message = { kind: 'ScriptState', blockers: this.scriptBlockers() };
+    for (const conn of this.connections) if (conn.state === 'active') conn.send(msg);
   }
 
   get enemies(): readonly EnemyEntity[] {
@@ -1164,7 +1230,7 @@ export class Session {
    */
   private thinkGroups(nowSeconds: number): void {
     if (this.groups.size === 0 || this.currentTick % BRAIN_PERIOD_TICKS !== 0) return;
-    const world = { cover: this.cover, boxes: this.world.boxes, mesh: this.navMesh };
+    const world = { cover: this.cover, boxes: this.collisionBoxes, mesh: this.navMesh };
     for (const group of this.groups.values()) {
       const members = group.members.flatMap((id) => {
         const e = this.enemyList.find((x) => x.netId === id);
@@ -1331,6 +1397,7 @@ export class Session {
     }
     conn.send({ kind: 'Marks', marks: [...this.marks] });
     if (this.missionRun) conn.send({ kind: 'Mission', ...this.missionRun.current });
+    conn.send({ kind: 'ScriptState', blockers: this.scriptBlockers() });
     return true;
   }
 
@@ -1794,7 +1861,7 @@ export class Session {
           clientRenderTimeMs: renderTimeMs,
         },
         DEFAULT_HITBOX,
-        this.world.boxes,
+        this.collisionBoxes,
       );
 
       let dealt = 0;
@@ -2034,7 +2101,7 @@ export class Session {
 
   /** The boxes and the floor a projectile collides with: this session's world. */
   private projectileWorld(): ProjectileWorld {
-    return { boxes: this.world.boxes, groundY: this.moveConfig.groundY };
+    return { boxes: this.collisionBoxes, groundY: this.moveConfig.groundY };
   }
 
   /**
@@ -2128,7 +2195,7 @@ export class Session {
         at,
         { x: slot.state.x, y: slot.state.y, z: slot.state.z },
         height,
-        this.world.boxes,
+        this.collisionBoxes,
       );
       if (damage <= 0) continue;
       const result = applyDamage(slot.health, damage, nowSeconds);
@@ -2146,7 +2213,7 @@ export class Session {
         at,
         { x: enemy.state.x, y: enemy.state.y, z: enemy.state.z },
         height,
-        this.world.boxes,
+        this.collisionBoxes,
       );
       if (damage <= 0) continue;
       const result = applyDamage(enemy.health, damage, nowSeconds, DAMAGE, enemy.def.downable);
@@ -2208,6 +2275,7 @@ export class Session {
         contact: living.filter((e) => e.target !== null).length,
         suppression: this.slots.reduce((a, s) => a + suppressionLevel(s.suppression, at), 0) / this.slots.length,
       });
+      this.eventRun?.step(seconds);
       this.spawnerValue.step(seconds);
     }
 
@@ -2285,7 +2353,7 @@ export class Session {
           slot.pendingInputTick = ahead.tick;
           slot.staleTicks = 0;
           slot.input.downed = isDowned(slot.health);
-          slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig, this.world.boxes);
+          slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig, this.collisionBoxes);
           extra -= 1;
         }
 
@@ -2332,7 +2400,7 @@ export class Session {
       slot.input.downed = isDowned(slot.health);
       const fromX = slot.state.x;
       const fromZ = slot.state.z;
-      slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig, this.world.boxes);
+      slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig, this.collisionBoxes);
       const moved = Math.sqrt((slot.state.x - fromX) ** 2 + (slot.state.z - fromZ) ** 2) / TICK_SECONDS;
       this.slotSpeed[slot.index] = moved;
       // T-3.14: a soldier running faster than a walk is heard where they are
@@ -2448,7 +2516,7 @@ export class Session {
           speed: this.slotSpeed[slot.index] ?? 0,
           firing: this.currentTick - (this.lastFiredTick[slot.index] ?? -Infinity) <= BRAIN_PERIOD_TICKS,
         };
-        const sighting = sight(observer, target, this.world.boxes, perception, this.moveConfig);
+        const sighting = sight(observer, target, this.collisionBoxes, perception, this.moveConfig);
         const awareness = stepAwareness(enemy.awareness.get(slot.netId) ?? 0, sighting, target, perception, dt);
         enemy.awareness.set(slot.netId, awareness);
         if (sighting.visible && isDetected(awareness, perception)) {
@@ -2489,7 +2557,7 @@ export class Session {
           speed: enemy.speed,
           firing: this.currentTick - (this.enemyFiredTick.get(enemy.netId) ?? -Infinity) <= BRAIN_PERIOD_TICKS,
         };
-        const sighting = sight(observer, target, this.world.boxes, perception, this.moveConfig);
+        const sighting = sight(observer, target, this.collisionBoxes, perception, this.moveConfig);
         const awareness = stepAwareness(slot.awareness.get(enemy.netId) ?? 0, sighting, target, perception, dt);
         slot.awareness.set(enemy.netId, awareness);
         if (sighting.visible && isDetected(awareness, perception)) rememberSeen(slot.memory, enemy.netId, target.feet, nowSeconds, false);
@@ -2604,7 +2672,7 @@ export class Session {
     const targetId = shooter.brain?.fireAt ?? null;
     const target = targetId === null ? null : this.soldier(targetId);
     const shootable = target && target.netId !== shooter.netId && !isDead(target.health) ? target : null;
-    let point = shootable ? visibleAimPoint(eye, aimPoints(shootable.state, shootable.state.crouched, shootable.state.prone, DEFAULT_HITBOX, lyingPose(shootable)), this.world.boxes) : null;
+    let point = shootable ? visibleAimPoint(eye, aimPoints(shootable.state, shootable.state.crouched, shootable.state.prone, DEFAULT_HITBOX, lyingPose(shootable)), this.collisionBoxes) : null;
     let aimAt = shootable?.netId ?? SUPPRESSIVE_AIM;
     // No line of sight, no shot — except suppressive fire (T-3.21): a brain
     // with nobody to shoot at but a point to keep heads down at fires there,
@@ -2731,7 +2799,7 @@ export class Session {
       enemy.input.downed = false;
       const fromX = enemy.state.x;
       const fromZ = enemy.state.z;
-      enemy.state = stepCharacter(enemy.state, enemy.input, TICK_SECONDS, this.moveConfig, this.world.boxes);
+      enemy.state = stepCharacter(enemy.state, enemy.input, TICK_SECONDS, this.moveConfig, this.collisionBoxes);
       enemy.speed = Math.sqrt((enemy.state.x - fromX) ** 2 + (enemy.state.z - fromZ) ** 2) / TICK_SECONDS;
       // T-3.23: a gun that deploys packs up the moment it moves, and settles again only standing still.
       const deploy = enemy.def.deploy;
@@ -2768,7 +2836,7 @@ export class Session {
       let follower = this.followers[slot.index] ?? null;
       if (!follower) {
         if (!intent) continue;
-        follower = this.followers[slot.index] = new PathFollower(mesh, this.world.boxes, undefined, this.moveConfig);
+        follower = this.followers[slot.index] = new PathFollower(mesh, this.collisionBoxes, undefined, this.moveConfig);
       }
       inputs[slot.index] = follower.step(slot.state, intent, slot.yaw).input;
       // Stood still again: its input is the idle one just made, and stays so.
@@ -2781,7 +2849,7 @@ export class Session {
       const intent = enemy.brain?.intent ?? null;
       if (!enemy.follower) {
         if (!intent) return null;
-        enemy.follower = new PathFollower(mesh, this.world.boxes, undefined, this.moveConfig);
+        enemy.follower = new PathFollower(mesh, this.collisionBoxes, undefined, this.moveConfig);
       }
       const input = enemy.follower.step(enemy.state, intent, enemy.yaw).input;
       if (!intent) enemy.follower = null;

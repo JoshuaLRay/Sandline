@@ -410,7 +410,7 @@ the owner may still overrule before T-4.23.
 | Task | Status | Depends |
 |---|---|---|
 | T-4.14 | DONE | — |
-| T-4.15 | OPEN | T-4.14 |
+| T-4.15 | DONE | T-4.14 |
 | T-4.16 | OPEN | T-4.14 |
 | T-4.17 | DONE | T-4.14, T-3.35 |
 
