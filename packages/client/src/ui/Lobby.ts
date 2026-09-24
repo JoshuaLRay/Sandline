@@ -35,7 +35,8 @@ export type LobbyChoice =
  * takes whatever map it was made with.
  */
 export const LOBBY_MAPS: readonly { world: string; label: string }[] = [
-  { world: 'greybox-01', label: 'Mission — clear and hold the compound' },
+  { world: 'mission-01', label: 'Mission 01 — clear and hold the qalat' },
+  { world: 'greybox-01', label: 'Grey box — mission layout fixture' },
   { world: 'range', label: 'Range — the QA range, no mission' },
   { world: 'kit-gallery', label: 'Kit gallery — every kit piece, walkable' },
 ];
