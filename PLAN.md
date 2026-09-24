@@ -2828,6 +2828,28 @@ free to go whenever.
 - **Do:** T-3.35's scenario takes any mission file. Its scripted leader works through the objectives in order, using the objective types' own hints: an area to reach, a target to destroy. CI runs three seeds of every committed mission.
 - **Done when:** every committed mission completes at least once in the CI seeds, or the job says why not, per mission.
 - **Size:** M
+- **Completed 2026-09-24.** `pnpm sim-run --scenario mission --mission <file>`
+  validates and plays any mission file on its named world's navmesh and
+  encounter. `--all-missions` discovers every JSON in
+  `packages/shared/src/data/missions/`, independent of the static registry;
+  CI plays seeds 1–3 at both director budgets. The scripted leader follows
+  each current objective's area or living destroy target, including enter
+  and group-death spawn prerequisites, holds position for survive, and
+  restores revivers to the current objective. The grey-box opening routes
+  and T-3.35 combat/AI-cost checks remain intact.
+  - Each run reports its stopped objective, progress, time and reason:
+    squad wipe, defended area overrun, or simulation timeout, with area or
+    group counts. Every file gets a completion summary, even after another
+    file fails to load or run.
+  - **Owner-confirmed CI policy:** gameplay losses are warnings; invalid
+    files and runner errors fail. The committed grey-box mission completes
+    0/6 CI runs, all squad wipes, matching the unchanged runner and known
+    B-11. This task reports that balance problem without changing it.
+  - **Validation:** `pnpm verify` passes (134 files, 1,712 tests). Tests cover
+    real-session objective transitions, named destroy targets and
+    prerequisites, filesystem discovery, three seeds at both budgets,
+    bad-file isolation, and completion/timeout reporting. The every-mission
+    three-seed command exits 0 with the expected gameplay diagnostics.
 
 #### E-4.5 — Matchmaking, parties, regions, reconnect, invites
 

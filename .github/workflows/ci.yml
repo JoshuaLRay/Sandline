@@ -45,9 +45,10 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm test:parity-browsers
 
-  # T-3.35: the grey-box mission played headless on three seeds at both
-  # budgets, with the AI's cost at forty enemies. The twenty-seed run that
-  # asserts completion is `pnpm sim-run --scenario mission --seeds 20`.
+  # T-4.17: discover every committed mission file; three seeds at both budgets.
+  # Each mission completes at least once, or reports why (gameplay losses are
+  # diagnostic; invalid files and runner errors fail). See known balance bug B-11.
+  # Keep T-3.35's combat/AI-cost gate as a separate step, even after a mission fails.
   mission:
     runs-on: ubuntu-latest
     steps:
@@ -58,4 +59,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm sim-run --scenario mission --all-missions --seeds 3
       - run: pnpm sim-run --scenario mission --seeds 3
+        if: ${{ !cancelled() }}
