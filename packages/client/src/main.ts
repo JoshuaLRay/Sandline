@@ -74,7 +74,7 @@ import {
 } from './net/RemoteServer.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
 import { QaEnemies, QaSuppressor } from './net/qaEnemies.ts';
-import { DEFAULT_WORLD_ID, buildTree, encounterFor, getWorld, type World, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
+import { DEFAULT_WORLD_ID, buildTree, encounterFor, getWorld, type World, type WorldBox, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
@@ -208,6 +208,7 @@ const worldMaterials: Record<WorldBoxKind, THREE.Material> = {
   rail: new THREE.MeshStandardMaterial({ color: 0xc2532e, roughness: 1 }),
   figure: new THREE.MeshStandardMaterial({ color: 0x8b6f47, roughness: 0.9 }),
   cover: new THREE.MeshStandardMaterial({ color: 0x7a6a52, roughness: 0.95 }),
+  blocker: new THREE.MeshStandardMaterial({ color: 0x5b4934, roughness: 0.9 }),
 };
 /** The box every world entry collides as. The figure also gets its capsule. */
 const invisible = new THREE.MeshBasicMaterial({ visible: false });
@@ -217,6 +218,13 @@ const invisible = new THREE.MeshBasicMaterial({ visible: false });
  * a host names another in `JoinAck`; the lobby is drawn over it.
  */
 let activeWorld: World = requireWorld(DEFAULT_WORLD_ID);
+
+/** Static world plus the live session's replicated blocker boxes. */
+function collisionBoxes(): readonly WorldBox[] {
+  const boxes = live?.net.worldBoxes;
+  return boxes && boxes.length > 0 ? boxes : activeWorld.boxes;
+}
+
 /** Every mesh the current world added, so the next world can take them away. */
 const worldMeshes: THREE.Mesh[] = [];
 
@@ -254,6 +262,42 @@ function buildScenery(world: World): void {
     }
   }
   void levelPieces.show(world, kitWanted);
+}
+
+/** T-4.15 blocker meshes are separate from static scenery because their state changes at runtime. */
+const blockerMeshes = new Map<string, THREE.Mesh>();
+
+function removeBlockerMesh(key: string, mesh: THREE.Mesh): void {
+  scene.remove(mesh);
+  mesh.geometry.dispose();
+  for (const list of [shootable, cameraScenery]) {
+    const at = list.indexOf(mesh);
+    if (at >= 0) list.splice(at, 1);
+  }
+  blockerMeshes.delete(key);
+}
+
+function syncBlockers(net: NetClient | null): void {
+  const wanted = new Set<string>();
+  for (const blocker of net?.blockers ?? []) {
+    if (!blocker.active) continue;
+    blocker.boxes.forEach((box, index) => {
+      const key = `${blocker.id}/${index}`;
+      wanted.add(key);
+      if (blockerMeshes.has(key)) return;
+      const centre = boxCentre(box);
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(centre.w, centre.h, centre.d), worldMaterials.blocker);
+      mesh.position.set(centre.x, centre.y, centre.z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.name = `blocker ${blocker.id}`;
+      scene.add(mesh);
+      shootable.push(mesh);
+      cameraScenery.push(mesh);
+      blockerMeshes.set(key, mesh);
+    });
+  }
+  for (const [key, mesh] of [...blockerMeshes]) if (!wanted.has(key)) removeBlockerMesh(key, mesh);
 }
 /** T-4.10: a level's kit pieces, drawn through the asset loader; `?kit` labels each one. */
 const kitWanted = new URLSearchParams(location.search).has('kit');
@@ -327,7 +371,7 @@ const localPoseDriver = createLocomotionPoseDriver(playerRig);
  * feet will stand on with it, and reading the same world the controller
  * collides with.
  */
-const localFeet = createFootPlacementDriver(playerRig, { world: () => activeWorld.boxes, config });
+const localFeet = createFootPlacementDriver(playerRig, { world: () => collisionBoxes(), config });
 scene.add(player);
 /**
  * T-4.08: the squad wears the detailed soldier (`soldier-dcu`) once it has
@@ -359,7 +403,7 @@ const remotes = new RemoteSoldiers({
   scene,
   shootable,
   create: createSoldier,
-  world: () => activeWorld.boxes,
+  world: () => collisionBoxes(),
   config,
 });
 
@@ -421,7 +465,7 @@ const scopeOverlay = new ScopeOverlay();
 
 /** The world a projectile collides with: the session's boxes and the same floor. */
 function projectileWorld(): ProjectileWorld {
-  return { boxes: activeWorld.boxes, groundY: config.groundY };
+  return { boxes: collisionBoxes(), groundY: config.groundY };
 }
 
 /**
@@ -633,7 +677,7 @@ function onServerShot(net: NetClient, shot: ServerShot): void {
 function landImpact(net: NetClient, shot: ServerShot): void {
   const now = clock.tick * TICK_SECONDS;
   if (shot.targetNetId === 0) {
-    const surface = surfaceAt(shot, activeWorld.boxes);
+    const surface = surfaceAt(shot, collisionBoxes());
     // The wire rounds the point to 1/64 m; the mark goes on the face itself.
     if (surface) effects.impact(surface.point, surface.normal, now);
     return;
@@ -685,7 +729,7 @@ function onServerDetonation(net: NetClient, event: ServerDetonation): void {
    * close enough below it. A rocket against a wall three metres up leaves no
    * ring on the floor beneath it.
    */
-  const support = supportUnder(event.x, event.z, 0.15, event.y, activeWorld.boxes, config.groundY);
+  const support = supportUnder(event.x, event.z, 0.15, event.y, collisionBoxes(), config.groundY);
   effects.blast(centre, def.blastRadiusM, event.y - support <= SCORCH_REACH_M ? support : null, now);
 
   // Our own camera, by what reached US. `net.simulated` is where the server
@@ -698,7 +742,7 @@ function onServerDetonation(net: NetClient, event: ServerDetonation): void {
       centre,
       { x: here.x, y: here.y, z: here.z },
       here.crouched ? HUMANOID_CROUCH_HIT_HEIGHT_M : HUMANOID_HIT_HEIGHT_M,
-      activeWorld.boxes,
+      collisionBoxes(),
     );
     if (impulse.posM > 0) shake = addImpulse(shake, impulse.posM, impulse.rollRad);
   }
@@ -801,6 +845,16 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
   const remote = choice.kind === 'remote' ? new RemoteServer(choice.host) : null;
   const server: SessionSource = local ?? (remote as RemoteServer);
   const net = new NetClient(server.transport, choice.kind === 'remote' ? choice.name : 'qa', config);
+  net.onScriptMessage = (text) => {
+    scriptNotice = text;
+    scriptNoticeUntil = performance.now() + 5000;
+  };
+  net.onScriptCallout = (id) => {
+    // E-2.7's recorded-callout player is still a later task; surface the cue
+    // now so scripted missions are observable rather than silently dropping it.
+    scriptNotice = `Radio: ${id}`;
+    scriptNoticeUntil = performance.now() + 3000;
+  };
   net.onShot = (shot) => onServerShot(net, shot);
   net.onDetonation = (event) => onServerDetonation(net, event);
   // T-3.09: B's overlay, carried across sessions; the wish is resent on JoinAck.
@@ -922,6 +976,9 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
 function leaveSession(message: { text: string; tone: 'info' | 'error' } | null): void {
   const gone = live;
   live = null;
+  scriptNotice = '';
+  scriptNoticeUntil = 0;
+  syncBlockers(null);
   aiDebug.clear();
   orderMarkerOverlay.clear();
   if (gone) {
@@ -1136,6 +1193,8 @@ let rejoinNoticeUntil = 0;
 let rejoinNotice = '';
 /** T-3.34: the mission's one line, from the host's `Mission` message. */
 const missionHud = document.getElementById('mission');
+let scriptNotice = '';
+let scriptNoticeUntil = 0;
 /** Last gap written to the reticle, so the style is only touched on change. */
 let crosshairGap = -1;
 
@@ -1220,6 +1279,7 @@ function squadStatus(): string {
 }
 
 function frame(): void {
+  syncBlockers(live?.net ?? null);
   const now = performance.now();
   const dt = (now - last) / 1000;
   const steps = clock.advance(dt);
@@ -1653,7 +1713,9 @@ function frame(): void {
     crosshair.classList.toggle('sighted', ads && input.firstPerson && !holdingPouch);
   }
   if (missionHud) {
-    const text = missionLine(net?.mission ?? null);
+    const mission = missionLine(net?.mission ?? null);
+    const notice = performance.now() < scriptNoticeUntil ? scriptNotice : '';
+    const text = [mission, notice].filter((x) => x.length > 0).join(' — ');
     if (missionHud.textContent !== text) missionHud.textContent = text;
     missionHud.classList.toggle('shown', text.length > 0);
   }
