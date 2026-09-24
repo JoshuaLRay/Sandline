@@ -10,7 +10,6 @@ import {
   TICK_SECONDS,
   createLoopbackPair,
   decodeMessage,
-  encounterFor,
   encodeMessage,
   missionFor,
   parseEncounter,
