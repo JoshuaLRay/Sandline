@@ -82,7 +82,7 @@ Nothing to play. Read the numbers once, in GitHub.
 - [ ] **Fail:** let the whole squad die (all six). Nobody should respawn: this is deliberate, respawn is off during a mission. The line reads "mission failed · P to try again".
 - [ ] **Restart, refused:** pressing P mid-mission does nothing.
 - [ ] **Restart, after:** pressing P after a win or a loss brings everyone back on the spawn line at full health, clears enemies, grenades and orders, respawns the enemies, and the line shows "attempt 2".
-- [ ] **Judgement:** is 30 s of hold right? Is no-respawn the right call, or does it make a wipe feel cheap? (`data/mission.json` has `holdSeconds` and `respawn`.)
+- [ ] **Judgement:** is 30 s of hold right? Is no-respawn the right call, or does it make a wipe feel cheap? (`data/missions/greybox-01.json` has the objective's `holdSeconds` and the mission's `respawn`.)
 - [ ] **With people:** host a room with **Map: Mission**, and have one or two others join.
   - [ ] Everyone sees the same HUD line and count.
   - [ ] The enemies come in bigger waves than solo, because the budget follows the people in the room.

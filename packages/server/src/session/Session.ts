@@ -87,6 +87,11 @@ import {
   type EnemyDef,
   type Encounter,
   type MissionView,
+  type MissionDef,
+  type GroundArea,
+  checkMission,
+  missionFor,
+  resolveArea,
   ENEMY_NET_ID_LIMIT,
   FIRST_ENEMY_NET_ID,
   buildTree,
@@ -547,6 +552,12 @@ export interface SessionOptions {
    */
   encounter?: Encounter;
   /**
+   * T-4.14: the mission played with the encounter, its objectives in order.
+   * Defaults to the world's committed one (`missionFor(world.id)`); a
+   * session with an encounter and neither plays none.
+   */
+  mission?: MissionDef;
+  /**
    * T-3.09: whether clients may ask for AI debug reports (`AI_DEBUG=1 pnpm
    * host`). Off by default: a host that does not allow it sends nothing, and
    * one that does sends only to the clients that asked.
@@ -696,7 +707,14 @@ export class Session {
     this.directorValue = null;
     this.spawnerValue = null;
     this.startEncounter();
-    this.missionRun = this.encounter && this.world.mission ? new MissionRun() : null;
+    const missionDef = options.mission ?? missionFor(this.world.id);
+    if (this.encounter && this.world.mission && missionDef) {
+      checkMission(missionDef, this.encounter, this.world);
+      const encounter = this.encounter;
+      this.missionRun = new MissionRun(missionDef, (ref) => resolveArea(ref, encounter, this.world));
+    } else {
+      this.missionRun = null;
+    }
     const mesh = this.navMesh;
     this.cover =
       options.cover && options.cover.length > 0
@@ -863,13 +881,23 @@ export class Session {
   /** Evaluate the objective, at the end of a tick, and tell everyone when what they see of it changed. */
   private stepMission(): void {
     const run = this.missionRun;
-    const area = this.world.mission?.objective;
-    if (!run || !area) return;
-    const inside = (p: { x: number; z: number }) => Math.sqrt((p.x - area.x) ** 2 + (p.z - area.z) ** 2) <= area.radius;
+    if (!run) return;
+    const inside = (a: GroundArea) => (p: { x: number; z: number }) => Math.sqrt((p.x - a.x) ** 2 + (p.z - a.z) ** 2) <= a.radius;
+    const living = this.slots.filter((s) => !isDead(s.health));
+    const standing = this.slots.filter((s) => isAlive(s.health));
+    const spawner = this.spawnerValue;
     const changed = run.step({
-      enemiesInside: this.enemyList.filter((e) => !isDead(e.health) && inside(e.state)).length,
-      squadInside: this.slots.filter((s) => !isDead(s.health) && inside(s.state)).length,
-      wiped: this.slots.every((s) => isDead(s.health)),
+      enemiesIn: (a) => this.enemyList.filter((e) => !isDead(e.health) && inside(a)(e.state)).length,
+      squadIn: (a) => living.filter((s) => inside(a)(s.state)).length,
+      standing: () => standing.length,
+      standingIn: (a) => standing.filter((s) => inside(a)(s.state)).length,
+      wiped: () => this.slots.every((s) => isDead(s.health)),
+      group: (id) => {
+        if (!spawner) return { dead: false, spawned: 0, down: 0 };
+        const placed = spawner.spawnedBy(id);
+        const alive = (netId: number) => this.enemyList.some((e) => e.netId === netId && !isDead(e.health));
+        return { dead: spawner.dead(id), spawned: placed.length, down: placed.filter((n) => !alive(n)).length };
+      },
     });
     if (changed) this.broadcastMission();
   }
