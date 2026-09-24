@@ -2717,6 +2717,7 @@ free to go whenever.
   It also renders a top-down map PNG and a few fixed-camera screenshots for review. It runs in CI on every level.
 - **Done when:** each check has a failing fixture, and greybox-01 passes.
 - **Size:** M
+- **Completed 2026-09-24.** `packages/tools/src/level-check.ts` now validates every committed level for positive-volume collision overlap, unreachable navmesh polygons, spawn-zone visibility from the mission start, route-leg connectivity, and aggregate placed-piece download budget. It writes a deterministic top-down review map plus three fixed-camera PNGs; `level-check.test.ts` has a failing fixture for every check and runs the validator over every committed level in CI. `greybox-01` and `kit-gallery` pass.
 
 ##### T-4.12 — ⚠️ Baked lighting
 - **Depends:** T-4.09, T-4.10
