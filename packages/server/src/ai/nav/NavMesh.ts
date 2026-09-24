@@ -65,6 +65,14 @@ export interface NavPolygon {
   centre: NavPoint;
   corners: readonly NavPoint[];
 }
+
+/** X/Z bounds are enough to mark polygons covered by a dynamic blocker. */
+export interface NavBlockerBox {
+  minX: number;
+  minZ: number;
+  maxX: number;
+  maxZ: number;
+}
 /** Detour's straight-path flag for a point that starts an off-mesh connection. */
 const DT_STRAIGHTPATH_OFFMESH_CONNECTION = 4;
 
@@ -228,6 +236,68 @@ export class NavMesh {
   }
 
   /**
+   * Toggle a T-4.15 blocker without rebuilding the mesh. Polygons whose
+   * ground-plane bounds overlap one of the blocker's boxes have their walk
+   * flags cleared while the blocker is active. Overlapping blockers are
+   * reference-counted, so opening one cannot reopen ground another still
+   * occupies.
+   */
+  setBlocker(id: string, boxes: readonly NavBlockerBox[], active: boolean): void {
+    let refs = this.blockerRefs.get(id);
+    if (!refs) {
+      refs = this.polygons()
+        .filter((polygon) => {
+          let minX = Infinity;
+          let minZ = Infinity;
+          let maxX = -Infinity;
+          let maxZ = -Infinity;
+          for (const p of polygon.corners) {
+            minX = Math.min(minX, p.x);
+            minZ = Math.min(minZ, p.z);
+            maxX = Math.max(maxX, p.x);
+            maxZ = Math.max(maxZ, p.z);
+          }
+          return boxes.some((box) => maxX > box.minX && minX < box.maxX && maxZ > box.minZ && minZ < box.maxZ);
+        })
+        .map((polygon) => polygon.ref);
+      this.blockerRefs.set(id, refs);
+    }
+
+    const wasActive = this.activeBlockers.has(id);
+    if (active === wasActive) return;
+    if (active) {
+      this.activeBlockers.add(id);
+      for (const ref of refs) {
+        const count = this.blockedRefs.get(ref) ?? 0;
+        if (count === 0) {
+          const flags = this.mesh.getPolyFlags(ref);
+          if (flags.success) {
+            this.originalFlags.set(ref, flags.flags);
+            this.mesh.setPolyFlags(ref, 0);
+          }
+        }
+        this.blockedRefs.set(ref, count + 1);
+      }
+      return;
+    }
+
+    this.activeBlockers.delete(id);
+    for (const ref of refs) {
+      const count = this.blockedRefs.get(ref) ?? 0;
+      if (count <= 1) {
+        this.blockedRefs.delete(ref);
+        const flags = this.originalFlags.get(ref);
+        if (flags !== undefined) {
+          this.mesh.setPolyFlags(ref, flags);
+          this.originalFlags.delete(ref);
+        }
+      } else {
+        this.blockedRefs.set(ref, count - 1);
+      }
+    }
+  }
+
+  /**
    * A path that avoids ground the caller does not want to cross (T-3.21): each
    * polygon `penalise` picks costs `cost` times its length to walk, so the
    * route goes round when a way round exists and straight through when none
@@ -271,6 +341,10 @@ export class NavMesh {
 
   private polygonCache: NavPolygon[] | null = null;
   private avoidFilter: QueryFilter | null = null;
+  private readonly blockerRefs = new Map<string, number[]>();
+  private readonly activeBlockers = new Set<string>();
+  private readonly blockedRefs = new Map<number, number>();
+  private readonly originalFlags = new Map<number, number>();
 
   private pathWith(from: NavPoint, to: NavPoint, searchM: number | undefined, filter: QueryFilter | undefined): NavPath | null {
     const snap = (p: NavPoint) => (searchM === undefined ? this.nearestPoint(p) : this.resolvePoint(p, searchM));
