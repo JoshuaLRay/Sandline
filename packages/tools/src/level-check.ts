@@ -31,6 +31,32 @@ const REACH_M = 0.5;
 const OVERLAP_EPS_M = 1e-9;
 const SPAWN_PROBES_M = [0.3, 1.0, 1.7] as const;
 
+// These joints were present in greybox-01 before level validation was added.
+// Its committed nav/cover bakes depend on the exact collision geometry. Keep
+// the exceptions pair-specific so any new overlap still fails validation.
+const LEGACY_COLLISION_JOINS: Record<string, readonly (readonly [string, string])[]> = {
+  'greybox-01': [
+    ['east-bound', 'as-wall-2'],
+    ['east-bound', 'as-wall-4'],
+    ['compound-south', 'compound-west-s'],
+    ['compound-south', 'compound-east-s'],
+    ['compound-north', 'compound-west-n'],
+    ['compound-north', 'compound-east-n'],
+  ],
+  // The kit gallery assembles a house by embedding walls and pillars at its
+  // corners. Names here refer to piece instances, covering their layered boxes.
+  'kit-gallery': [
+    ['house-s', 'house-w'], ['house-s', 'house-p1'],
+    ['house-s', 'house-e'], ['house-s', 'house-p2'],
+    ['house-n', 'house-w'], ['house-n', 'house-p3'],
+    ['house-n', 'house-e'], ['house-n', 'house-p4'],
+    ['house-w', 'house-p1'], ['house-w', 'house-p3'],
+    ['house-e', 'house-p4'], ['house-e', 'house-p2'],
+    ['house-parapet-s', 'house-parapet-w'],
+    ['house-parapet-n', 'house-parapet-w'],
+  ],
+};
+
 export interface LevelIssue {
   check: 'collision-overlap' | 'navmesh-island' | 'spawn-visibility' | 'route-connectivity' | 'piece-budget';
   message: string;
@@ -103,13 +129,20 @@ function boxExtents(box: LevelBoxSpec | WorldBox): { minX: number; maxX: number;
   };
 }
 
-export function collisionOverlaps(boxes: readonly (LevelBoxSpec | WorldBox)[]): LevelIssue[] {
+export function collisionOverlaps(
+  boxes: readonly (LevelBoxSpec | WorldBox)[],
+  allowedJoins: readonly (readonly [string, string])[] = [],
+): LevelIssue[] {
   const out: LevelIssue[] = [];
+  const permitted = new Set(allowedJoins.map(([a, b]) => [a, b].sort().join('\0')));
   for (let i = 0; i < boxes.length; i++) {
     const a = boxes[i]!;
     const ae = boxExtents(a);
     for (let j = i + 1; j < boxes.length; j++) {
       const b = boxes[j]!;
+      const aName = a.piece ?? a.id;
+      const bName = b.piece ?? b.id;
+      if (permitted.has([aName, bName].sort().join('\0'))) continue;
       const be = boxExtents(b);
       if (
         axisOverlap(ae.minX, ae.maxX, be.minX, be.maxX) > OVERLAP_EPS_M &&
@@ -311,7 +344,7 @@ function rootFor(world: World, nav: LevelNavProbe): NavPoint {
 }
 
 export function checkLevel(world: World, nav: LevelNavProbe, manifest: AssetManifest = ASSET_MANIFEST): LevelCheckReport {
-  const overlapIssues = collisionOverlaps(world.boxes);
+  const overlapIssues = collisionOverlaps(world.boxes, LEGACY_COLLISION_JOINS[world.id]);
   const islandIssues = navmeshIslands(nav, rootFor(world, nav));
   const spawnIssues = visibleSpawnZones(world);
   const routeResult = world.mission === null
@@ -376,15 +409,15 @@ function setPixel(png: PNG, x: number, y: number, color: Rgba): void {
 }
 
 function drawLine(png: PNG, a: { x: number; y: number }, b: { x: number; y: number }, color: Rgba, width = 1): void {
-  const dx = Math.abs(b.x - a.x);
-  const sx = a.x < b.x ? 1 : -1;
-  const dy = -Math.abs(b.y - a.y);
-  const sy = a.y < b.y ? 1 : -1;
-  let err = dx + dy;
   let x = Math.round(a.x);
   let y = Math.round(a.y);
   const ex = Math.round(b.x);
   const ey = Math.round(b.y);
+  const dx = Math.abs(ex - x);
+  const sx = x < ex ? 1 : -1;
+  const dy = -Math.abs(ey - y);
+  const sy = y < ey ? 1 : -1;
+  let err = dx + dy;
   const radius = Math.max(0, Math.floor(width / 2));
   for (;;) {
     for (let oy = -radius; oy <= radius; oy++) {

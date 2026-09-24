@@ -336,9 +336,9 @@
       {
         "id": "overwatch-flank",
         "on": "overwatch",
-        "x": -26,
-        "z": 42,
-        "radius": 3
+        "x": -6,
+        "z": 68,
+        "radius": 1
       },
       {
         "id": "assault-flank",

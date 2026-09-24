@@ -59,6 +59,21 @@ describe('T-4.11 level validation', () => {
     expect(issues[0]!.message).toContain('a and b');
   });
 
+  it('still flags a new collision in a level with declared structural joins', () => {
+    const world = requireWorld('greybox-01');
+    const nav = loadWorldNavMesh('greybox-01');
+    try {
+      const first = world.boxes[0]!;
+      const report = checkLevel({
+        ...world,
+        boxes: [...world.boxes, { ...first, id: 'unexpected-overlap' }],
+      }, nav);
+      expect(report.issues.some((i) => i.check === 'collision-overlap' && i.message.includes('unexpected-overlap'))).toBe(true);
+    } finally {
+      nav.destroy();
+    }
+  });
+
   it('detects an unreachable navmesh island in a failing fixture', () => {
     const polygons = [
       { ref: 1, centre: { x: 0, y: 0, z: 0 }, corners: [] },
