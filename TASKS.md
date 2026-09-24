@@ -86,8 +86,9 @@ are done (T-4.04, `pnpm gen:art`, the wall on `?assets`), and the characters
 from assets (T-4.08) are open, and with the level format done (T-4.09,
 `data/levels/`, greybox-01 the first level) the kit (T-4.10) and level
 validation (T-4.11) are open. The slice kit is done (T-4.10: 25 code-authored
-pieces, `data/kit.json`, `?kit` for the walkable gallery), so baked lighting
-(⚠️ T-4.12) is open too. **The setting is Afghanistan, winter 2001–2002**
+pieces, `data/kit.json`, `?kit` for the walkable gallery), and the baked-lighting
+spike is done (T-4.12): the fallback keeps the sun + hemisphere and adds
+per-piece baked vertex AO without breaking instancing. **The setting is Afghanistan, winter 2001–2002**
 (ADR-020; the brief is `docs/art/direction.md`). The squad now wears the
 detailed desert-camouflage soldier (T-4.08) and carries period weapons
 (T-4.36; enemies hold the AK, PKM and RPG-7), and every enemy is the
@@ -401,7 +402,7 @@ the owner may still overrule before T-4.23.
 | T-4.09 | DONE | — |
 | T-4.10 | DONE | T-4.04, T-4.09 |
 | T-4.11 | DONE | T-4.09 |
-| ⚠️ T-4.12 | OPEN | T-4.09, T-4.10 |
+| ⚠️ T-4.12 | DONE | T-4.09, T-4.10 |
 | T-4.13 | DONE | T-4.10, T-4.11, T-4.14 |
 
 ### E-4.4 — Mission scripting

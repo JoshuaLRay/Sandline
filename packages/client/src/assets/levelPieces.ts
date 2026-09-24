@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import type { PlacedPiece, World } from '@sandline/shared';
 import { instanceAsset, type InstancedAsset } from './instances.ts';
+import { bakeStaticPieceAo } from './lightmaps.ts';
 import type { AssetLoader, LoadedAsset } from './loader.ts';
 
 export class LevelPieces {
@@ -42,6 +43,9 @@ export class LevelPieces {
           return;
         }
 
+        // T-4.12 fallback: bake deterministic static AO once onto the shared
+        // template geometry before T-4.07 turns it into InstancedMeshes.
+        bakeStaticPieceAo(asset.object);
         asset.object.traverse((object) => {
           if (!(object instanceof THREE.Mesh)) return;
           object.castShadow = true;

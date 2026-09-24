@@ -27,7 +27,8 @@
     "gen:assets": "tsx packages/tools/src/gen-assets.ts",
     "export:soldier": "tsx packages/tools/src/export-soldier.ts",
     "check:assets": "tsx packages/tools/src/check-assets.ts",
-    "gen:art": "tsx packages/tools/src/gen-art.ts"
+    "gen:art": "tsx packages/tools/src/gen-art.ts",
+    "bake:light": "tsx packages/tools/src/bake-light.ts"
   },
   "devDependencies": {
     "@dimforge/rapier3d-compat": "0.20.0",
