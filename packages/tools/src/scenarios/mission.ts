@@ -53,7 +53,7 @@ import { createMissionLeader } from './missionLeader.ts';
 export const MISSION_SCENARIO = THRESHOLDS;
 export type MissionConfig = typeof THRESHOLDS;
 
-const WORLD_ID = 'greybox-01';
+const WORLD_ID = 'mission-01';
 const TICKS_PER_SECOND = Math.round(1 / TICK_SECONDS);
 const TICK_MS = 1000 / TICKS_PER_SECOND;
 /** Within this of a cover point it holds, a soldier is in it, metres: the fighting leaves' "there" and a little over. */
