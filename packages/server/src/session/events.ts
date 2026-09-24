@@ -19,6 +19,13 @@ import {
   resolveArea,
 } from '@sandline/shared';
 
+export interface EventCheckpoint {
+  fired: string[];
+  flags: [string, boolean][];
+  blockers: ScriptBlockerState[];
+  previousObjective: { index: number; state: MissionStatus } | null;
+}
+
 export interface EventHost {
   squadFeet(): readonly { x: number; z: number }[];
   groupDead(id: string): boolean;
@@ -64,6 +71,31 @@ export class EventRun {
   /** Full blocker state for replication, in authored order. */
   get blockers(): readonly ScriptBlockerState[] {
     return this.script.blockers.map((b) => this.blockerState.get(b.id) ?? { id: b.id, active: b.active, boxes: b.boxes });
+  }
+
+  /** State needed to resume scripted events from an objective checkpoint. */
+  checkpoint(): EventCheckpoint {
+    return {
+      fired: [...this.fired],
+      flags: [...this.flags],
+      blockers: this.blockers.map((b) => ({ ...b, boxes: [...b.boxes] })),
+      previousObjective: this.previousObjective ? { ...this.previousObjective } : null,
+    };
+  }
+
+  /** Restore a previously captured checkpoint without replaying already-fired events. */
+  restore(checkpoint: EventCheckpoint): void {
+    this.fired.clear();
+    for (const id of checkpoint.fired) this.fired.add(id);
+    this.flags.clear();
+    for (const [id, value] of checkpoint.flags) this.flags.set(id, value);
+    this.previousObjective = checkpoint.previousObjective ? { ...checkpoint.previousObjective } : null;
+    this.blockerState.clear();
+    for (const b of checkpoint.blockers) {
+      const state = { ...b, boxes: [...b.boxes] };
+      this.blockerState.set(b.id, state);
+      this.host.setBlocker(state);
+    }
   }
 
   /** Start a new mission attempt. */
