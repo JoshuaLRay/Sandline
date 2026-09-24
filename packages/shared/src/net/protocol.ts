@@ -14,7 +14,7 @@ import { MAX_MARKS, ORDER_KINDS, type BotOrder, type OrderAddress, type OrderKin
 import { MISSION_STATES, type MissionView } from '../sim/mission.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 23;
+export const PROTOCOL_VERSION = 24;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -213,6 +213,12 @@ export type Message =
        * the world the room has, whatever was asked.
        */
       world?: string;
+      /**
+       * T-4.18: the token the last JoinAck gave this client, offered on a
+       * reconnect to take its own slot back. Absent and empty mean a fresh
+       * join; an unknown or expired token is a fresh join too, never an error.
+       */
+      resume?: string;
     }
   | {
       kind: 'JoinAck';
@@ -222,6 +228,14 @@ export type Message =
       room: string;
       /** The session's named world (T-3.02); the client builds it with `getWorld`. */
       world: string;
+      /**
+       * T-4.18: this seat's resume token. Offered in a Join after a dropped
+       * socket, within the host's grace time, it seats the client back in
+       * this slot. A new one with every seating.
+       */
+      resume: string;
+      /** T-4.18: whether this JoinAck seated the client back in its own slot. */
+      resumed: boolean;
     }
   | {
       kind: 'Input';
@@ -422,6 +436,7 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeString(msg.room);
       w.writeString(msg.key ?? '');
       w.writeString(msg.world ?? '');
+      w.writeString(msg.resume ?? '');
       break;
     case 'JoinAck':
       w.writeBits(MessageType.JoinAck, TYPE_BITS);
@@ -430,6 +445,8 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeVarUint(msg.serverTick);
       w.writeString(msg.room);
       w.writeString(msg.world);
+      w.writeString(msg.resume);
+      w.writeBits(msg.resumed ? 1 : 0, 1);
       break;
     case 'Input':
       w.writeBits(MessageType.Input, TYPE_BITS);
@@ -782,7 +799,16 @@ export function decodeMessage(bytes: Uint8Array): Message {
         const room = r.readString();
         const key = r.readString();
         const world = r.readString();
-        return { kind: 'Join', version, name, room, ...(key === '' ? {} : { key }), ...(world === '' ? {} : { world }) };
+        const resume = r.readString();
+        return {
+          kind: 'Join',
+          version,
+          name,
+          room,
+          ...(key === '' ? {} : { key }),
+          ...(world === '' ? {} : { world }),
+          ...(resume === '' ? {} : { resume }),
+        };
       }
       case MessageType.JoinAck:
         return {
@@ -792,6 +818,8 @@ export function decodeMessage(bytes: Uint8Array): Message {
           serverTick: r.readVarUint(),
           room: r.readString(),
           world: r.readString(),
+          resume: r.readString(),
+          resumed: r.readBits(1) === 1,
         };
       case MessageType.Input: {
         const tick = r.readVarUint();

@@ -48,8 +48,9 @@ function human(session: Session, name: string) {
       client.send({ kind: 'Input', tick: ++tick, moveX: 0, moveY, yaw, pitch: 0, buttons: sprint ? INPUT_BUTTONS.sprint : 0 });
       pair.settle();
     },
+    // A goodbye, not a dropped socket: a drop keeps a claim on the seat (T-4.18).
     leave() {
-      pair.b.close('gone');
+      client.leave();
       pair.settle();
     },
   };

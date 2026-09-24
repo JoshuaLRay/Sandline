@@ -14,6 +14,7 @@ import {
   HEARTBEAT_TIMEOUT_MS,
   MAX_SLOTS,
   PROTOCOL_VERSION,
+  RESUME,
   type Message,
   type Transport,
   createLoopbackPair,
@@ -56,7 +57,7 @@ interface FakeClient {
 }
 
 /** A client on a loopback pair, attached to the host with no socket at all. */
-function attachFake(host: SessionHost, name = 'test', room = '', key = ''): FakeClient {
+function attachFake(host: SessionHost, name = 'test', room = '', key = '', resume = ''): FakeClient {
   const pair = createLoopbackPair();
   const received: Message[] = [];
   pair.b.onMessage((bytes) => received.push(decodeMessage(bytes)));
@@ -79,7 +80,7 @@ function attachFake(host: SessionHost, name = 'test', room = '', key = ''): Fake
       return this.ack?.room ?? '';
     },
   };
-  client.send({ kind: 'Join', version: PROTOCOL_VERSION, name, room, ...(key === '' ? {} : { key }) });
+  client.send({ kind: 'Join', version: PROTOCOL_VERSION, name, room, ...(key === '' ? {} : { key }), ...(resume === '' ? {} : { resume }) });
   pair.settle();
   return client;
 }
@@ -286,6 +287,113 @@ describe('SessionHost — the roster (T-1.5.04)', () => {
     b.settle();
     a.settle();
     expect(host.registry.get(a.room)?.session.players).toBe(1);
+  });
+});
+
+describe('SessionHost — reconnecting into your own slot (T-4.18)', () => {
+  /** Run the host with every live client pinging each tick, so nobody times out over a long wait. */
+  function runTalking(host: SessionHost, clock: ReturnType<typeof fakeClock>, ticks: number, ...clients: FakeClient[]): void {
+    for (let i = 0; i < ticks; i++) {
+      for (const c of clients) if (c.transport.isOpen) c.send({ kind: 'Ping', id: i, clientTime: 0 });
+      clock.advance(TICK_MS);
+      host.tickNow();
+      for (const c of clients) c.settle();
+    }
+  }
+
+  /** Two players in a room, A mid-fight: hurt, moved off its spawn, on its second weapon. */
+  function midFight() {
+    const { host, clock } = newHost();
+    const a = attachFake(host, 'alpha');
+    const b = attachFake(host, 'bravo', a.room);
+    const session = host.registry.get(a.room)!.session;
+    const mine = session.slots[a.ack!.slot]!;
+    for (let tick = 1; tick <= 20; tick++) {
+      a.send({ kind: 'Input', tick, moveX: 0, moveY: 1, yaw: 0, pitch: 0, buttons: 0 });
+      runTalking(host, clock, 1, a, b);
+    }
+    a.send({ kind: 'Equip', item: 1 });
+    runTalking(host, clock, 2, a, b);
+    mine.health.current = 37;
+    return { host, clock, a, b, session, mine };
+  }
+
+  it('takes a dropped player back into the same slot, soldier and state, and swaps the bot out', () => {
+    const { host, clock, a, b, session, mine } = midFight();
+    const { slot, netId, resume } = a.ack!;
+    expect(resume).toMatch(/^[0-9a-f]{32}$/);
+    const held = { x: mine.state.x, z: mine.state.z, weapon: mine.weapon.id };
+    expect(held.weapon).not.toBe('carbine');
+
+    // The socket dies (not a goodbye): the bot plays the soldier meanwhile.
+    a.transport.close('socket closed');
+    runTalking(host, clock, 30, b);
+    expect(mine.isBot).toBe(true);
+    expect(session.players).toBe(1);
+
+    const back = attachFake(host, 'alpha', a.room, '', resume);
+    expect(back.ack).toMatchObject({ slot, netId, resumed: true });
+    expect(back.ack!.resume).not.toBe(resume);
+    expect(mine.isBot).toBe(false);
+    expect(mine.health.current).toBe(37);
+    expect(mine.weapon.id).toBe(held.weapon);
+    expect(Math.hypot(mine.state.x - held.x, mine.state.z - held.z)).toBeLessThan(0.5);
+    expect(session.players).toBe(2);
+    expect(back.roster?.slots[slot]).toMatchObject({ human: true, name: 'alpha' });
+  });
+
+  it('keeps the seat from newcomers while the claim lasts', () => {
+    const { host, clock, a, b } = midFight();
+    const { slot } = a.ack!;
+    a.transport.close('socket closed');
+    runTalking(host, clock, 5, b);
+    const c = attachFake(host, 'charlie', a.room);
+    expect(c.ack?.slot).not.toBe(slot);
+    expect(c.ack?.slot).not.toBe(b.ack?.slot);
+  });
+
+  it('after the grace time the slot is the bot\'s for good: the token seats a fresh join, not a resume', () => {
+    const { host, clock, a, b, session } = midFight();
+    const { resume } = a.ack!;
+    a.transport.close('socket closed');
+    runTalking(host, clock, Math.ceil((RESUME.graceSeconds * 1000) / TICK_MS) + 5, b);
+    const late = attachFake(host, 'alpha', a.room, '', resume);
+    expect(late.ack?.resumed).toBe(false);
+    expect(session.players).toBe(2);
+  });
+
+  it('keeps no claim for a player who left, and a used token does not work twice', () => {
+    const { host, clock, a, b } = midFight();
+    const { slot, resume } = a.ack!;
+    a.send({ kind: 'Disconnect', code: 'left', reason: 'left' });
+    a.settle();
+    runTalking(host, clock, 2, b);
+    // A newcomer may take the seat at once.
+    const c = attachFake(host, 'charlie', a.room);
+    expect(c.ack?.slot).toBe(slot);
+    // And the departed player's token is no claim on anything.
+    const d = attachFake(host, 'alpha', a.room, '', resume);
+    expect(d.ack?.resumed).toBe(false);
+  });
+
+  it('takes the seat back from its own stale connection when the host has not noticed the drop yet', () => {
+    const { host, clock, a, b, mine } = midFight();
+    const { slot, netId, resume } = a.ack!;
+    // The link died silently: the host still thinks A is there.
+    expect(mine.connection).not.toBeNull();
+    const back = attachFake(host, 'alpha', a.room, '', resume);
+    expect(back.ack).toMatchObject({ slot, netId, resumed: true });
+    a.settle();
+    expect(a.bye).toMatchObject({ code: 'other', reason: 'resumed on a new connection' });
+    runTalking(host, clock, 3, back, b);
+    expect(mine.isBot).toBe(false);
+  });
+
+  it('treats a token it never issued as a fresh join, not an error', () => {
+    const { host } = newHost();
+    const a = attachFake(host, 'alpha', '', '', 'ffffffffffffffffffffffffffffffff');
+    expect(a.ack?.resumed).toBe(false);
+    expect(a.bye).toBeUndefined();
   });
 });
 

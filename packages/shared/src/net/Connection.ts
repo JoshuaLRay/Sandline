@@ -57,6 +57,8 @@ export class ServerConnection {
   key = '';
   /** The world the client asked a new room to be built with; empty for the host's default. */
   world = '';
+  /** T-4.18: the resume token the client offered; empty for a fresh join. */
+  resume = '';
   /** Latest tick this client acknowledged; the delta baseline. */
   lastAckedTick = -1;
   private lastHeard: number;
@@ -177,6 +179,7 @@ export class ServerConnection {
       this.room = join.room;
       this.key = join.key ?? '';
       this.world = join.world ?? '';
+      this.resume = join.resume ?? '';
       this.state = 'active';
       this.events.onJoined?.(this);
       return;
@@ -236,10 +239,10 @@ export class ServerConnection {
     }
   }
 
-  accept(netId: number, slot: number, serverTick: number, room = '', world = DEFAULT_WORLD_ID): void {
+  accept(netId: number, slot: number, serverTick: number, room = '', world = DEFAULT_WORLD_ID, resume = '', resumed = false): void {
     this.netId = netId;
     this.slot = slot;
-    this.send({ kind: 'JoinAck', netId, slot, serverTick, room, world });
+    this.send({ kind: 'JoinAck', netId, slot, serverTick, room, world, resume, resumed });
   }
 
   /** Tell the squad who is in it. Six entries, always (ADR-001). */

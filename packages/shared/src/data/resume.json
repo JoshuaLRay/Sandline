@@ -1,0 +1,4 @@
+{
+  "$comment": "T-4.18. A player whose socket drops (not one who leaves) keeps a claim on their slot for graceSeconds: their soldier's bot plays on, and a Join carrying the seat's resume token within the grace takes the slot back, soldier, health and weapon as they stand. After it the slot is the bot's for good. Shorter than the room's own grace (ROOM_GRACE_MS, 120 s by default), so a room kept alive for a returning player still has their seat in it.",
+  "graceSeconds": 60
+}

@@ -106,7 +106,7 @@ describe('Session — a slot reused by a different client (T-1.5.02)', () => {
     expect(s.slots[0]!.queue).toHaveLength(0);
     expect(s.slots[0]!.newestInputTick).toBe(120);
     const leftAt = s.slots[0]!.state.z;
-    first.pair.b.close('gone');
+    first.pair.b.close('left'); // a goodbye frees the seat at once; a drop would keep a claim (T-4.18)
 
     // Someone else sits down in the same slot and counts from 1, as every
     // client does — their page just loaded.
@@ -131,7 +131,7 @@ describe('Session — a slot reused by a different client (T-1.5.02)', () => {
     for (let tick = 1; tick <= 50; tick++) first.input(tick, 0, 1);
     s.step(16);
     expect(s.slots[0]!.lastProcessedInputTick).toBeGreaterThan(0);
-    first.pair.b.close('gone');
+    first.pair.b.close('left'); // a goodbye frees the seat at once; a drop would keep a claim (T-4.18)
 
     // A stale ack would send the new client reconciling against a tick it never
     // predicted, which snaps it and discards every pending prediction.
@@ -145,7 +145,7 @@ describe('Session — a slot reused by a different client (T-1.5.02)', () => {
     const s = new Session();
     const c = connectClient(s, 'leaver');
     for (let tick = 1; tick <= 20; tick++) c.input(tick, 0, 1);
-    c.pair.b.close('gone');
+    c.pair.b.close('left'); // a goodbye frees the seat at once; a drop would keep a claim (T-4.18)
     expect(s.slots[0]!.isBot).toBe(true);
     expect(s.slots[0]!.queue).toHaveLength(0);
   });
@@ -495,7 +495,7 @@ describe('Session revive interaction (T-2.15)', () => {
     // The reviver leaves mid-interaction. The same world slot is immediately
     // available for the next connection, so its revive ownership must not
     // survive the client/slot handoff.
-    reviver.pair.b.close('gone');
+    reviver.pair.b.close('left'); // a goodbye frees the seat at once; a drop would keep a claim (T-4.18)
     reviver.pair.settle();
     expect(s.slots[reviverSlot.index]!.isBot).toBe(true);
     expect(targetSlot.reviveBySlot).toBe(-1);
