@@ -65,7 +65,11 @@ export const JSON_ORDER: (keyof WeaponDef)[] = [
   'auto',
   'recoilKickDeg', 'recoilDriftDeg', 'recoilMaxDeg', 'recoilRecoveryPerSec', 'recoilAdsScale',
   'shakePosM', 'shakeRollDeg',
+  'scopeFovDeg',
 ];
+
+/** Fields only some weapons have: written back when the weapon has them. */
+export const OPTIONAL_FIELDS: readonly (keyof WeaponDef)[] = ['scopeFovDeg'];
 
 export function createWeaponPanel(combat: CombatQA): Panel {
   const panel = createPanel('weapon', 'Weapon tuning');
@@ -83,7 +87,8 @@ export function createWeaponPanel(combat: CombatQA): Panel {
 
   function refreshReadout(): void {
     const def = combat.weapon;
-    const body = JSON_ORDER.map((key) => `    ${JSON.stringify(key)}: ${JSON.stringify(def[key])}`)
+    const body = JSON_ORDER.filter((key) => def[key] !== undefined)
+      .map((key) => `    ${JSON.stringify(key)}: ${JSON.stringify(def[key])}`)
       .join(',\n');
     readout.textContent = `  ${JSON.stringify(def.id)}: {\n${body}\n  }`;
   }

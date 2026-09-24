@@ -18,6 +18,29 @@ import { type BuiltMesh, WeaponBuilder } from './mesh.ts';
 
 type Build = (b: WeaponBuilder) => void;
 
+/**
+ * THE SIGHT LINE. At ADS the viewmodel puts a weapon's sight point
+ * (`weaponModels.ts`) on the view axis, so the line through it parallel to
+ * the bore is the screen's centre. Every squad weapon's sights are built on
+ * that line: a rear aperture open round it, a front post whose tip is on it,
+ * and nothing else across it — so the post tip is where the shot goes and
+ * nothing hides it (`weapons.test.ts` traces the line). The marksman's
+ * scope is not traced: at full ADS the page draws its view as an overlay
+ * and hides the rifle (`scopeOverlay.ts`).
+ */
+export const RIFLE_SIGHT_Y = 0.075;
+export const SHOTGUN_SIGHT_Y = 0.05;
+export const PISTOL_SIGHT_Y = 0.03;
+export const AT4_SIGHT: readonly [number, number] = [0.07, 0.12];
+/** A rear aperture's open radius: a ghost ring wide enough to frame the post. */
+const APERTURE = 0.0055;
+
+/** A front sight post from `base` up to its tip on the sight line, two ears either side. */
+function frontPost(b: WeaponBuilder, z0: number, z1: number, base: number, tip: number): void {
+  b.box([-0.0022, base, z0], [0.0022, tip, z1], 'steel');
+  for (const x of [-0.009, 0.006]) b.box([x, base, z0 - 0.004], [x + 0.003, tip - 0.004, z1 + 0.004], 'steel');
+}
+
 /** The M4's lower half and stock, shared with the DMR: buffer tube, stock, lower, grip, magazine, well. */
 function arLower(b: WeaponBuilder): void {
   b.lathe([
@@ -76,21 +99,23 @@ function arUpper(b: WeaponBuilder): void {
 const M4: Build = (b) => {
   arLower(b);
   arUpper(b);
-  // The carry handle, its rear sight where the eye looks through it.
+  // The carry handle, kept under the sight line, and its rear sight: an
+  // open aperture the eye looks through, centred on the line (SIGHT_Y).
   b.extrude([
     [0.2, 0.034],
     [0.232, 0.034],
-    [0.226, 0.066],
-    [0.2, 0.066],
+    [0.226, 0.056],
+    [0.2, 0.056],
   ], 0.012, 'steel');
   b.extrude([
     [0.33, 0.034],
     [0.36, 0.034],
-    [0.36, 0.066],
-    [0.336, 0.066],
+    [0.36, 0.056],
+    [0.336, 0.056],
   ], 0.012, 'steel');
-  b.box([-0.012, 0.062, 0.2], [0.012, 0.076, 0.36], 'steel');
-  b.box([-0.01, 0.076, 0.245], [0.01, 0.089, 0.268], 'steel');
+  b.box([-0.012, 0.054, 0.2], [0.012, 0.062, 0.36], 'steel');
+  b.box([-0.012, 0.062, 0.248], [0.012, 0.066, 0.266], 'steel');
+  b.ring(0.251, 0.263, APERTURE, 0.012, 12, 'steel', RIFLE_SIGHT_Y);
   // Handguard, its cap and the delta ring; the front sight's base and post; the barrel and flash hider.
   b.lathe([
     [0.398, 0.036],
@@ -106,14 +131,14 @@ const M4: Build = (b) => {
     [0.555, 0.016],
     [0.59, 0.016],
   ], 10, 'steel', 0);
+  // The front sight's A-frame, and its post, whose tip is the sight line.
   b.extrude([
     [0.56, 0.012],
     [0.592, 0.012],
     [0.582, 0.05],
-    [0.578, 0.078],
-    [0.573, 0.078],
     [0.57, 0.05],
   ], 0.007, 'steel');
+  frontPost(b, 0.573, 0.578, 0.05, RIFLE_SIGHT_Y);
   b.lathe([
     [0.59, 0.0095],
     [0.78, 0.0085],
@@ -200,7 +225,8 @@ const SHOTGUN: Build = (b) => {
     [0.5, 0.028],
     [0.506, 0.024],
   ], 12, 'polymer', -0.027);
-  b.box([-0.004, 0.034, 0.87], [0.004, 0.046, 0.878], 'brass');
+  // The bead: its top is the sight line.
+  b.box([-0.004, 0.042, 0.87], [0.004, SHOTGUN_SIGHT_Y, 0.878], 'brass');
 };
 
 const PISTOL: Build = (b) => {
@@ -229,8 +255,10 @@ const PISTOL: Build = (b) => {
     [0.49, 0.006],
     [0.505, 0.006],
   ], 8, 'steel', 0.002);
-  b.box([-0.003, 0.022, 0.482], [0.003, 0.03, 0.488], 'steel');
-  b.box([-0.011, 0.022, 0.31], [0.011, 0.031, 0.32], 'steel');
+  // Front post and rear notch, flush along the sight line: the post sits in
+  // the notch with light either side.
+  b.box([-0.0022, 0.022, 0.482], [0.0022, PISTOL_SIGHT_Y, 0.488], 'steel');
+  for (const side of [-1, 1]) b.box(side < 0 ? [-0.011, 0.022, 0.31] : [0.0035, 0.022, 0.31], side < 0 ? [-0.0035, PISTOL_SIGHT_Y, 0.32] : [0.011, PISTOL_SIGHT_Y, 0.32], 'steel');
 };
 
 const GRENADE: Build = (b) => {
@@ -288,8 +316,13 @@ const AT4: Build = (b) => {
     [0.39, -0.06],
     [0.36, -0.06],
   ], 0.014, 'polymer');
-  b.box([0.046, 0.1, 0.17], [0.09, 0.14, 0.25], 'steel');
-  b.box([0.05, 0.105, 0.196], [0.086, 0.135, 0.2], 'glass');
+  // The pop-up sights on the left of the tube: a rear aperture on its
+  // bracket, and a front post between two ears, both on the sight line.
+  b.box([0.03, 0.1, 0.19], [0.064, 0.108, 0.206], 'steel');
+  b.ring(0.192, 0.204, APERTURE, 0.013, 12, 'steel', AT4_SIGHT[1], AT4_SIGHT[0]);
+  b.box([0.03, 0.1, 0.49], [0.084, 0.106, 0.5], 'steel');
+  for (const x of [0.058, 0.078]) b.box([x, 0.106, 0.49], [x + 0.004, 0.118, 0.5], 'steel');
+  b.box([AT4_SIGHT[0] - 0.0022, 0.106, 0.492], [AT4_SIGHT[0] + 0.0022, AT4_SIGHT[1], 0.498], 'steel');
 };
 
 const M249: Build = (b) => {
@@ -317,8 +350,11 @@ const M249: Build = (b) => {
   ], 0.015, 'polymer');
   // The 200-round box hanging under the left of the receiver.
   b.box([-0.03, -0.19, 0.28], [0.075, -0.05, 0.42], 'olive');
-  b.box([-0.012, 0.07, 0.46], [0.012, 0.09, 0.56], 'polymer');
-  for (const z of [0.47, 0.55]) b.box([-0.01, 0.045, z], [0.01, 0.07, z + 0.012], 'steel');
+  // The carry handle, folded down under the sight line; the rear aperture on the feed cover.
+  b.box([-0.012, 0.053, 0.46], [0.012, 0.061, 0.56], 'polymer');
+  for (const z of [0.47, 0.55]) b.box([-0.01, 0.045, z], [0.01, 0.053, z + 0.012], 'steel');
+  b.box([-0.01, 0.055, 0.25], [0.01, 0.066, 0.27], 'steel');
+  b.ring(0.254, 0.266, APERTURE, 0.012, 12, 'steel', RIFLE_SIGHT_Y);
   b.lathe([
     [0.5, 0.034],
     [0.66, 0.034],
@@ -335,7 +371,8 @@ const M249: Build = (b) => {
     [0.89, 0.016],
     [0.94, 0.016],
   ], 8, 'steel', 0.012);
-  b.box([-0.005, 0.02, 0.85], [0.005, 0.075, 0.87], 'steel');
+  b.box([-0.006, 0.02, 0.85], [0.006, 0.05, 0.87], 'steel');
+  frontPost(b, 0.857, 0.863, 0.05, RIFLE_SIGHT_Y);
   for (const x of [-0.016, 0.016]) b.lathe([
     [0.68, 0.007],
     [0.88, 0.006],

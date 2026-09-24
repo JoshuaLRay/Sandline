@@ -37,11 +37,10 @@ export type HumanoidVariant = 'local' | 'remote';
 /**
  * How the visible parts are arranged on the hit capsule (T-2.14).
  *
- * THE POSE MOVES THE PARTS, NEVER THE ROOT. The server's hitbox is the same
- * upright capsule whether a soldier is standing or downed, so the client's
- * shootable root must stay exactly where and how it is; only the children
- * lie down. A downed soldier is therefore still hit where the server says
- * they are hit, and the parts are the picture of it.
+ * THE POSE MOVES THE PARTS, NEVER THE ROOT. The root is the client's
+ * upright pick capsule and stays exactly where and how it is; only the
+ * children lie down. The server shoots each pose as the body is drawn
+ * (`lagComp.ts` `POSED_BODIES`, fitted to the skinned rig).
  */
 export type { HumanoidPose } from './humanoidRig.ts';
 
@@ -53,6 +52,11 @@ export const PRONE_BODY_LIFT_M = 0.3;
 export const HUMANOID_ROOT_LIFT_M = 0.9;
 
 type RestTransform = RigTransform;
+
+/** How far up the body a dead grey box's arms move, metres: from the shoulders to past the head. */
+const DEAD_ARM_RAISE_M = 0.6;
+/** A dead grey box's arms point the other way along the body: above the head, not at the hips. */
+const ARM_FLIP = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
 
 /** Lying on the back, head forward (+Z): turn the up axis onto forward, then face up. */
 const DOWNED_TURN = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, Math.PI, 0, 'YXZ'));
@@ -301,12 +305,18 @@ export function setHumanoidPose(root: THREE.Object3D, pose: HumanoidPose): void 
     // Turn the rest pose about the root's origin, then drop it to the ground.
     // Prone and downed differ only in which turn: prone keeps the face down
     // and the weapon forward, downed adds the extra flip onto the back.
-    const turn = pose === 'prone' ? PRONE_TURN : DOWNED_TURN;
-    const lift = pose === 'prone' ? PRONE_BODY_LIFT_M : DOWNED_BODY_LIFT_M;
-    scratchPosition.fromArray(rest.position).applyQuaternion(turn);
+    // Dead is prone's turn with the arms flipped up past the head.
+    const faceDown = pose === 'prone' || pose === 'dead';
+    const turn = faceDown ? PRONE_TURN : DOWNED_TURN;
+    const lift = faceDown ? PRONE_BODY_LIFT_M : DOWNED_BODY_LIFT_M;
+    const armUp = pose === 'dead' && part.name.startsWith('arm-');
+    scratchPosition.fromArray(rest.position);
+    if (armUp) scratchPosition.y += DEAD_ARM_RAISE_M;
+    scratchPosition.applyQuaternion(turn);
     scratchPosition.y += lift - HUMANOID_ROOT_LIFT_M;
     part.position.copy(scratchPosition);
     scratchQuaternion.fromArray(rest.quaternion);
+    if (armUp) scratchQuaternion.premultiply(ARM_FLIP);
     part.quaternion.copy(turn).multiply(scratchQuaternion);
   }
   root.userData['pose'] = pose;

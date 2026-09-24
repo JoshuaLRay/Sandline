@@ -220,7 +220,7 @@ export class RemoteSoldiers {
     const lying = state.vitality !== 'alive';
     const rig = requireRig(mesh);
     if (lying) {
-      rig.setPose('downed');
+      rig.setPose(state.vitality === 'dead' ? 'dead' : 'downed');
       entry.pose.reset();
       rig.aimAt(0, 0);
     } else {

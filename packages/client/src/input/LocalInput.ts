@@ -156,6 +156,7 @@ export class LocalInput {
   private offsetYaw = 0;
   private offsetPitch = 0;
   private sensitivity: number;
+  private lookScale = 1;
   private invertY: boolean;
   /** Explicit camera/shoulder/ADS state. ADS changes camera mode but never the stored shoulder. */
   private readonly viewState = createViewState();
@@ -256,11 +257,12 @@ export class LocalInput {
         this.wheel.pointer = moveWheelPointer(this.wheel.pointer, e.movementX, e.movementY);
         return;
       }
-      this.yawAccum -= e.movementX * this.sensitivity;
+      const turn = this.sensitivity * this.lookScale;
+      this.yawAccum -= e.movementX * turn;
       // Positive pitch means looking UP, so moving the mouse down (movementY
       // positive) must DECREASE it.
       const dy = this.invertY ? -e.movementY : e.movementY;
-      this.pitchAccum -= dy * this.sensitivity;
+      this.pitchAccum -= dy * turn;
       this.pitchAccum = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitchAccum));
     });
   }
@@ -330,6 +332,15 @@ export class LocalInput {
 
   setSensitivity(value: number): void {
     this.sensitivity = value;
+  }
+
+  /**
+   * A multiplier on the look, for a magnified view: through a scope the
+   * same mouse travel should move the reticle across the same share of the
+   * picture, so the page scales the turn by the zoom.
+   */
+  setLookScale(value: number): void {
+    this.lookScale = Number.isFinite(value) && value > 0 ? value : 1;
   }
 
   setInvertY(value: boolean): void {

@@ -164,11 +164,11 @@ describe('enemies in the page (T-3.11)', () => {
     // Killed: it never goes down (T-3.10), it is dead, and it lies there.
     for (const end = tick + 30; tick < end; tick += 1) {
       h.frame(tick, [slotEntity(4, 1), enemyEntity(2000, -5, 40, 'dead')]);
-      if (tick > 18) expect(rig.pose).toBe('downed');
+      if (tick > 18) expect(rig.pose).toBe('dead');
     }
     // A corpse takes no hit reaction: it is already on the ground.
     expect(rig.react({ turn: 0.3, lean: 0.2, head: 0 })).toBe(true);
-    expect(rig.pose).toBe('downed');
+    expect(rig.pose).toBe('dead');
   });
 
   it('removes every object it created when the entity despawns', () => {

@@ -6,6 +6,7 @@ import {
   type HumanoidPose,
   type HitReaction,
   type HumanoidRig,
+  isLyingHelpless,
   type RigTransform,
   type WeaponHold,
   registerRig,
@@ -187,6 +188,33 @@ const PRONE: PoseOffsets = {
   'upper-leg-right': { euler: [0, 0, -0.12] },
   'lower-leg-left': { euler: [0.15, 0, 0] },
   'lower-leg-right': { euler: [0.15, 0, 0] },
+};
+
+/**
+ * Dead: face down and flat, the head turned to one side, both arms stretched
+ * out above the head on the ground, the legs straight and a little apart, no
+ * weapon. Prone's turn without its arch, so nobody reads a body as a soldier
+ * fighting from the ground or one waiting for a revive (on the back).
+ *
+ * The upper arms turn about the body's front axis, past straight up, so they
+ * lie in the shoulders' plane — which the hips' turn has laid flat on the
+ * ground — in a V over the head.
+ */
+const DEAD_ARM_SPREAD = 2.75;
+/** Flat has no elbows to sink onto: the dead body sits this much above prone's hips. */
+const DEAD_RAISE_M = 0.05;
+const DEAD: PoseOffsets = {
+  hips: { position: [0, PRONE_BODY_LIFT_M - PRONE_SINK_M + DEAD_RAISE_M - JOINTS.hips[1], 0], quaternion: PRONE_TURN },
+  neck: { euler: [0, 0.5, 0] },
+  head: { euler: [0, 0.7, 0] },
+  'upper-arm-left': { euler: [0, 0, DEAD_ARM_SPREAD] },
+  'lower-arm-left': { euler: [0, 0, 0.15] },
+  'upper-arm-right': { euler: [0, 0, -DEAD_ARM_SPREAD] },
+  'lower-arm-right': { euler: [0, 0, -0.15] },
+  'upper-leg-left': { euler: [0, 0, 0.1] },
+  'upper-leg-right': { euler: [0, 0, -0.1] },
+  'foot-left': { euler: [0.6, 0, 0] },
+  'foot-right': { euler: [0.6, 0, 0] },
 };
 
 /**
@@ -492,8 +520,10 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     // Prone solves its own hold onto the rifle laid along the ground.
     prone: { ...PRONE, ...armsFor(PRONE_AIM) },
     downed: { ...standing, ...DOWNED },
+    // Dead lets go of the rifle: its arms are its own.
+    dead: DEAD,
   };
-  const aimRests: Record<HumanoidPose, AimRest> = { standing: AIM_REST, crouched: AIM_REST, prone: PRONE_AIM, downed: AIM_REST };
+  const aimRests: Record<HumanoidPose, AimRest> = { standing: AIM_REST, crouched: AIM_REST, prone: PRONE_AIM, downed: AIM_REST, dead: AIM_REST };
   let aimRest = AIM_REST;
 
   // -- The rig. --
@@ -521,7 +551,7 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
         quaternion: bone.quaternion.toArray() as [number, number, number, number],
       });
     }
-    aim.visible = next !== 'downed';
+    aim.visible = !isLyingHelpless(next);
     // A pose re-bases the attachment too: at the pose's rest, until the
     // weapon layer says otherwise.
     aimRest = aimRests[next];
@@ -617,7 +647,7 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     head.quaternion.fromArray(bases.get('head')!.quaternion);
     // A soldier on the ground does not react: they are already down, and the
     // reaction would be a picture of a fight they are out of.
-    if (!reaction || pose === 'downed') return true;
+    if (!reaction || isLyingHelpless(pose)) return true;
     const turn = Number.isFinite(reaction.turn) ? reaction.turn : 0;
     const lean = Number.isFinite(reaction.lean) ? reaction.lean : 0;
     if (turn === 0 && lean === 0) return true;

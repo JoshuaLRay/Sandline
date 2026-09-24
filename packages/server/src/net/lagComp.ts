@@ -29,7 +29,7 @@
  * is no restore step to get wrong.
  */
 
-import { DEFAULT_WORLD, type WorldBox, rayWorld } from '@sandline/shared';
+import { DEFAULT_WORLD, type HitZone, type WorldBox, cos, rayWorld, sin, wireToTable, zoneAt } from '@sandline/shared';
 
 /**
  * How far back a shot may be rewound, whatever the client claims.
@@ -57,10 +57,15 @@ export interface Vec3 {
 }
 
 /**
- * A hitbox: a capsule standing on the entity's feet position.
+ * A hitbox: the body as capsules on the entity's feet position.
  *
- * One box for now. Head/torso/limb zones and their multipliers are T-1.19; this
- * returns the impact point so that classification has something to work from.
+ * Standing is one vertical capsule, zoned by the impact's height up it
+ * (T-1.19). Every other stance is shaped part by part, because its body is
+ * not a short upright capsule: a crouch leans forward over its knees, and a
+ * body on the ground is 1.9 m long and 0.5 m high, head toward its facing.
+ * Those are a capsule per leg, torso, head and arm in the body's own frame,
+ * fitted to the rig's skin in that pose and turning with the facing, each
+ * carrying the zone it scores.
  */
 export interface Hitbox {
   radius: number;
@@ -71,23 +76,116 @@ export interface Hitbox {
   /** Crouched capsule geometry; feet remain the authoritative position. */
   crouchHalfHeight?: number;
   crouchCenterOffsetY?: number;
-  /** Prone capsule geometry (T-2.40): lower again than crouch, feet unchanged. */
+  /**
+   * Prone as an upright capsule (T-2.40): lower again than crouch, feet
+   * unchanged. Only read when `posed` has no prone body.
+   */
   proneHalfHeight?: number;
   proneCenterOffsetY?: number;
+  /**
+   * Every stance but standing as capsules in the body's frame, turning with
+   * its facing. A stance with none here falls back to an upright capsule.
+   */
+  posed?: Partial<Record<PosedStance, readonly BodyPartSpec[]>>;
+  /**
+   * Standing's arms, held out on the rifle past the upright capsule: extra
+   * capsules in the body's frame, beside the one zoned by height.
+   */
+  standingArms?: readonly BodyPartSpec[];
 }
+
+/** The stances a body is shaped for part by part: every one but standing. */
+export type PosedStance = 'crouched' | 'prone' | 'downed' | 'dead';
+/** Every stance a hitbox has a shape for. */
+export type BodyStance = 'standing' | PosedStance;
+
+/**
+ * One capsule of a posed body, between two points in the body's frame:
+ * `[right, up, forward]` metres from the feet position, forward being the
+ * facing (where a lying body's head is), right the body's own right.
+ */
+export interface BodyPartSpec {
+  from: readonly [number, number, number];
+  to: readonly [number, number, number];
+  radius: number;
+  /**
+   * What a hit here scores; null reads it from the impact's height, as on
+   * the upright capsule. Arms score as torso, the band they are drawn in
+   * standing, so no stance turns a chest-high shot into a limb hit.
+   */
+  zone: HitZone | null;
+}
+
+/**
+ * The posed bodies, fitted to the rig's skin in each pose
+ * (`humanoidSoldier.ts`; `humanoidSoldier.test.ts` holds the two together):
+ * a capsule per leg, the torso, the head and each arm, each along the
+ * principal axis of the skin that bone group carries. Crouched leans into
+ * its rifle; prone is face down on the elbows, head and shoulders up; downed
+ * is on the back, a shoulder rolled up; dead is face down and flat, the arms
+ * in a V past the head. Refit by the same test if the rig changes.
+ */
+export const POSED_BODIES: Record<PosedStance, readonly BodyPartSpec[]> = {
+  crouched: [
+    { from: [-0.11, 0.51, 0.15], to: [-0.14, 0.03, 0.46], radius: 0.23, zone: 'limb' }, // left leg
+    { from: [0.15, 0.03, 0.46], to: [0.13, 0.51, 0.15], radius: 0.23, zone: 'limb' }, // right leg
+    { from: [0, 0.61, 0.1], to: [0, 0.93, 0.11], radius: 0.31, zone: 'torso' }, // torso
+    { from: [0, 1.15, 0.17], to: [0.01, 1.32, 0.19], radius: 0.17, zone: 'head' }, // head
+    { from: [-0.21, 1.03, 0.12], to: [0.29, 0.82, 0.5], radius: 0.07, zone: 'torso' }, // left arm
+    { from: [0.31, 0.82, 0.11], to: [0.28, 0.88, 0.23], radius: 0.23, zone: 'torso' }, // right arm
+  ],
+  prone: [
+    { from: [-0.2, 0.23, -0.85], to: [-0.11, 0.19, -0.08], radius: 0.17, zone: 'limb' }, // left leg
+    { from: [0.21, 0.23, -0.84], to: [0.12, 0.19, -0.08], radius: 0.17, zone: 'limb' }, // right leg
+    { from: [0, 0.14, 0.06], to: [0, 0.24, 0.38], radius: 0.31, zone: 'torso' }, // torso
+    { from: [0, 0.4, 0.55], to: [0.01, 0.58, 0.58], radius: 0.17, zone: 'head' }, // head
+    { from: [-0.22, 0.28, 0.51], to: [0.21, 0.16, 0.86], radius: 0.11, zone: 'torso' }, // left arm
+    { from: [0.37, 0.17, 0.53], to: [0.23, 0.18, 0.58], radius: 0.22, zone: 'torso' }, // right arm
+  ],
+  downed: [
+    { from: [0.17, 0.3, -0.85], to: [0.1, 0.27, -0.07], radius: 0.16, zone: 'limb' }, // left leg
+    { from: [-0.18, 0.3, -0.85], to: [-0.12, 0.27, -0.07], radius: 0.16, zone: 'limb' }, // right leg
+    { from: [0, 0.36, 0.06], to: [0.01, 0.3, 0.4], radius: 0.31, zone: 'torso' }, // torso
+    { from: [0, 0.29, 0.63], to: [-0.01, 0.29, 0.81], radius: 0.17, zone: 'head' }, // head
+    { from: [0.53, 0.19, -0.04], to: [0.17, 0.19, 0.49], radius: 0.09, zone: 'torso' }, // left arm
+    { from: [0.11, 0.67, 0.08], to: [-0.19, 0.32, 0.45], radius: 0.11, zone: 'torso' }, // right arm
+  ],
+  dead: [
+    { from: [-0.2, 0.22, -0.97], to: [-0.1, 0.27, -0.06], radius: 0.15, zone: 'limb' }, // left leg
+    { from: [0.2, 0.22, -0.97], to: [0.12, 0.27, -0.06], radius: 0.15, zone: 'limb' }, // right leg
+    { from: [0, 0.17, 0.06], to: [0, 0.23, 0.4], radius: 0.29, zone: 'torso' }, // torso
+    { from: [0, 0.24, 0.64], to: [0, 0.24, 0.81], radius: 0.17, zone: 'head' }, // head
+    { from: [-0.21, 0.25, 0.47], to: [-0.41, 0.25, 1.1], radius: 0.08, zone: 'torso' }, // left arm
+    { from: [0.2, 0.25, 0.47], to: [0.4, 0.25, 1.1], radius: 0.07, zone: 'torso' }, // right arm
+  ],
+};
+
+/**
+ * Standing's arms on the rifle, fitted the same way as the posed bodies.
+ * Zoned by height like the rest of the standing body, so they score as the
+ * torso band they are in (T-1.19).
+ */
+export const STANDING_ARMS: readonly BodyPartSpec[] = [
+  { from: [-0.21, 1.44, -0.01], to: [0.29, 1.4, 0.42], radius: 0.07, zone: null }, // left arm, across to the foregrip
+  { from: [0.31, 1.24, 0.05], to: [0.28, 1.35, 0.14], radius: 0.23, zone: null }, // right arm, on the grip
+];
 
 /** Matches the 1.8 m reference figure the movement harness is scaled against. */
 export const DEFAULT_HITBOX: Hitbox = {
   radius: 0.35,
   halfHeight: 0.55,
   centerOffsetY: 0.9,
+  // The upright crouch and prone capsules stand in for the posed bodies
+  // where one capsule is enough: suppression's near misses (T-3.16).
   crouchHalfHeight: 0.25,
   crouchCenterOffsetY: 0.6,
   proneHalfHeight: 0.05,
   proneCenterOffsetY: 0.4,
+  posed: POSED_BODIES,
+  standingArms: STANDING_ARMS,
 };
 
-/** The capsule geometry for a stance (T-2.40): prone beats crouch beats standing. */
+/** The capsule geometry for an upright stance (T-2.40): prone beats crouch beats standing. */
 export function capsuleFor(
   hitbox: Hitbox,
   crouched: boolean,
@@ -108,6 +206,68 @@ export function capsuleFor(
   return { halfHeight: hitbox.halfHeight, centerOffsetY: hitbox.centerOffsetY };
 }
 
+/** The stance a body's shape follows: dead beats downed beats prone beats crouched. */
+export function bodyStance(crouched: boolean, prone: boolean, lying: 'downed' | 'dead' | null = null): BodyStance {
+  return lying ?? (prone ? 'prone' : crouched ? 'crouched' : 'standing');
+}
+
+/** One capsule of a body in the world: a segment and a radius, with the zone it scores (null: by height). */
+export interface BodyPart {
+  a: Vec3;
+  b: Vec3;
+  radius: number;
+  zone: HitZone | null;
+}
+
+/**
+ * A body's capsules in the world: at `feet`, facing wire yaw `yaw`. Standing
+ * is one vertical capsule whose zone is read from the impact's height; posed
+ * stances turn with the facing (table trig, as the client's mesh
+ * turns, `remoteSoldiers.ts`).
+ */
+export function bodyParts(hitbox: Hitbox, stance: BodyStance, feet: Vec3, yaw = 0): BodyPart[] {
+  const posed = stance === 'standing' ? undefined : hitbox.posed?.[stance];
+  const angle = wireToTable(yaw);
+  const fx = sin(angle);
+  const fz = cos(angle);
+  // The body's right, facing +Z, is -X (three's model space: the left is +X).
+  const place = (p: readonly [number, number, number]): Vec3 => ({
+    x: feet.x - p[0] * fz + p[2] * fx,
+    y: feet.y + p[1],
+    z: feet.z + p[0] * fx + p[2] * fz,
+  });
+  const specs = (list: readonly BodyPartSpec[]): BodyPart[] =>
+    list.map((part) => ({ a: place(part.from), b: place(part.to), radius: part.radius, zone: part.zone }));
+  if (posed !== undefined) return specs(posed);
+  const { halfHeight, centerOffsetY } = capsuleFor(hitbox, stance === 'crouched', stance !== 'standing' && stance !== 'crouched');
+  const y = feet.y + centerOffsetY;
+  const upright: BodyPart = { a: { x: feet.x, y: y - halfHeight, z: feet.z }, b: { x: feet.x, y: y + halfHeight, z: feet.z }, radius: hitbox.radius, zone: null };
+  return stance === 'standing' && hitbox.standingArms ? [upright, ...specs(hitbox.standingArms)] : [upright];
+}
+
+/** The nearest part a ray meets, and how far along it. */
+export function rayBody(ray: Ray, parts: readonly BodyPart[], grow = 0): { distance: number; part: BodyPart } | null {
+  let best: { distance: number; part: BodyPart } | null = null;
+  for (const part of parts) {
+    const d = raySegmentCapsule(ray, part.a, part.b, part.radius + grow);
+    if (d !== null && (best === null || d < best.distance)) best = { distance: d, part };
+  }
+  return best;
+}
+
+/**
+ * The zone a hit on `part` scores: the part's own on a posed body, else the
+ * impact's height up the standing capsule (T-1.19).
+ */
+export function zoneOfHit(part: BodyPart, point: Vec3, feetY: number, hitbox: Hitbox = DEFAULT_HITBOX): HitZone {
+  if (part.zone !== null) return part.zone;
+  return zoneAt(point.y, feetY, 2 * (hitbox.halfHeight + hitbox.radius));
+}
+
+/** What lies on the ground and is not prone: 0 not, 1 downed, 2 dead. */
+type LyingCode = 0 | 1 | 2;
+const LYING: readonly ('downed' | 'dead' | null)[] = [null, 'downed', 'dead'];
+
 interface Sample {
   timeMs: number;
   x: number;
@@ -115,6 +275,17 @@ interface Sample {
   z: number;
   crouched: boolean;
   prone: boolean;
+  /** Wire yaw: which way a lying body lies. */
+  yaw: number;
+  lying: LyingCode;
+}
+
+/** How a body stands, besides where: its stance flags, its facing and whether it is down. */
+export interface BodyPose {
+  crouched?: boolean;
+  prone?: boolean;
+  yaw?: number;
+  lying?: 'downed' | 'dead' | null;
 }
 
 /**
@@ -131,11 +302,11 @@ class Track {
 
   constructor(private readonly capacity: number) {}
 
-  record(timeMs: number, x: number, y: number, z: number, crouched = false, prone = false): void {
+  record(timeMs: number, x: number, y: number, z: number, crouched: boolean, prone: boolean, yaw: number, lying: LyingCode): void {
     this.head = (this.head + 1) % this.capacity;
     const existing = this.samples[this.head];
     if (existing === undefined) {
-      this.samples[this.head] = { timeMs, x, y, z, crouched, prone };
+      this.samples[this.head] = { timeMs, x, y, z, crouched, prone, yaw, lying };
     } else {
       existing.timeMs = timeMs;
       existing.x = x;
@@ -143,6 +314,8 @@ class Track {
       existing.z = z;
       existing.crouched = crouched;
       existing.prone = prone;
+      existing.yaw = yaw;
+      existing.lying = lying;
     }
     if (this.count < this.capacity) this.count += 1;
   }
@@ -197,11 +370,24 @@ class Track {
       x: older.x + (newer.x - older.x) * t,
       y: older.y + (newer.y - older.y) * t,
       z: older.z + (newer.z - older.z) * t,
-      // Stance changes at the authoritative sample boundary, not halfway through the position interpolation span.
-      crouched: timeMs >= newer.timeMs ? newer.crouched : older.crouched,
-      prone: timeMs >= newer.timeMs ? newer.prone : older.prone,
+      // Stance (and a lying body's facing) changes at the authoritative
+      // sample boundary, not halfway through the position interpolation span.
+      crouched: older.crouched,
+      prone: older.prone,
+      yaw: older.yaw,
+      lying: older.lying,
     };
   }
+}
+
+/** A body as the history holds it at one moment. */
+export interface HistoryState {
+  position: Vec3;
+  crouched: boolean;
+  prone: boolean;
+  yaw: number;
+  lying: 'downed' | 'dead' | null;
+  stance: BodyStance;
 }
 
 /** Per-entity position history, written once per tick by the session. */
@@ -213,13 +399,14 @@ export class HitboxHistory {
     private readonly capacity: number = DEFAULT_CAPACITY,
   ) {}
 
-  record(netId: number, timeMs: number, x: number, y: number, z: number, crouched = false, prone = false): void {
+  record(netId: number, timeMs: number, x: number, y: number, z: number, crouched = false, prone = false, pose: Omit<BodyPose, 'crouched' | 'prone'> = {}): void {
     let track = this.tracks.get(netId);
     if (track === undefined) {
       track = new Track(this.capacity);
       this.tracks.set(netId, track);
     }
-    track.record(timeMs, x, y, z, crouched, prone);
+    const lying: LyingCode = pose.lying === 'dead' ? 2 : pose.lying === 'downed' ? 1 : 0;
+    track.record(timeMs, x, y, z, crouched, prone, pose.yaw ?? 0, lying);
   }
 
   positionAt(netId: number, timeMs: number): Vec3 | null {
@@ -227,11 +414,18 @@ export class HitboxHistory {
     return sample === undefined || sample === null ? null : { x: sample.x, y: sample.y, z: sample.z };
   }
 
-  stateAt(netId: number, timeMs: number): { position: Vec3; crouched: boolean; prone: boolean } | null {
+  stateAt(netId: number, timeMs: number): HistoryState | null {
     const sample = this.tracks.get(netId)?.sampleAt(timeMs, this.windowMs);
     return sample === undefined || sample === null
       ? null
-      : { position: { x: sample.x, y: sample.y, z: sample.z }, crouched: sample.crouched, prone: sample.prone };
+      : {
+          position: { x: sample.x, y: sample.y, z: sample.z },
+          crouched: sample.crouched,
+          prone: sample.prone,
+          yaw: sample.yaw,
+          lying: LYING[sample.lying] ?? null,
+          stance: bodyStance(sample.crouched, sample.prone, LYING[sample.lying] ?? null),
+        };
   }
 
   /** Newest recorded position, i.e. no rewind at all. */
@@ -273,44 +467,68 @@ export interface Ray {
 
 /**
  * Ray against a Y-axis-aligned capsule. Returns the distance along the ray, or
- * null. Only `Math.sqrt` and arithmetic, both exactly specified by IEEE-754.
- *
- * Infinite-cylinder test first, accepted only where it lands between the cap
- * centres; then each cap as a sphere. Nearest positive root wins.
+ * null. The upright case of `raySegmentCapsule`.
  */
 export function rayCapsule(ray: Ray, center: Vec3, radius: number, halfHeight: number): number | null {
+  return raySegmentCapsule(ray, { x: center.x, y: center.y - halfHeight, z: center.z }, { x: center.x, y: center.y + halfHeight, z: center.z }, radius);
+}
+
+/**
+ * Ray against the capsule around segment a→b. Returns the distance along the
+ * ray, or null. Only `Math.sqrt` and arithmetic, both exactly specified by
+ * IEEE-754.
+ *
+ * Infinite-cylinder test first, accepted only where it lands between the cap
+ * centres; then each cap as a sphere. Nearest root in [0, maxDistance] wins,
+ * so a ray starting inside finds where it leaves.
+ */
+export function raySegmentCapsule(ray: Ray, a: Vec3, b: Vec3, radius: number): number | null {
   const { origin: o, direction: d, maxDistance } = ray;
   let best = Infinity;
+  const r2 = radius * radius;
 
-  // Cylinder body: solve in the XZ plane, then bound the Y of the hit.
-  const ox = o.x - center.x;
-  const oz = o.z - center.z;
-  const a = d.x * d.x + d.z * d.z;
-  if (a > 1e-12) {
-    const b = 2 * (ox * d.x + oz * d.z);
-    const c = ox * ox + oz * oz - radius * radius;
-    const disc = b * b - 4 * a * c;
-    if (disc >= 0) {
-      const root = Math.sqrt(disc);
-      for (const t of [(-b - root) / (2 * a), (-b + root) / (2 * a)]) {
-        if (t < 0 || t > maxDistance || t >= best) continue;
-        const y = o.y + d.y * t - center.y;
-        if (y >= -halfHeight && y <= halfHeight) best = t;
+  const bax = b.x - a.x;
+  const bay = b.y - a.y;
+  const baz = b.z - a.z;
+  const baba = bax * bax + bay * bay + baz * baz;
+  const oax = o.x - a.x;
+  const oay = o.y - a.y;
+  const oaz = o.z - a.z;
+
+  // Cylinder body: the ray's distance from the axis, in the plane across it.
+  if (baba > 1e-12) {
+    const bard = bax * d.x + bay * d.y + baz * d.z;
+    const baoa = bax * oax + bay * oay + baz * oaz;
+    const rdoa = d.x * oax + d.y * oay + d.z * oaz;
+    const rdrd = d.x * d.x + d.y * d.y + d.z * d.z;
+    const oaoa = oax * oax + oay * oay + oaz * oaz;
+    const qa = baba * rdrd - bard * bard;
+    const qb = baba * rdoa - baoa * bard;
+    const qc = baba * oaoa - baoa * baoa - r2 * baba;
+    if (qa > 1e-12) {
+      const disc = qb * qb - qa * qc;
+      if (disc >= 0) {
+        const root = Math.sqrt(disc);
+        for (const t of [(-qb - root) / qa, (-qb + root) / qa]) {
+          if (t < 0 || t > maxDistance || t >= best) continue;
+          const along = baoa + t * bard;
+          if (along >= 0 && along <= baba) best = t;
+        }
       }
     }
   }
 
   // Caps.
-  for (const capY of [center.y - halfHeight, center.y + halfHeight]) {
-    const px = o.x - center.x;
-    const py = o.y - capY;
-    const pz = o.z - center.z;
-    const b = 2 * (px * d.x + py * d.y + pz * d.z);
-    const c = px * px + py * py + pz * pz - radius * radius;
-    const disc = b * b - 4 * c;
+  for (const cap of baba > 1e-12 ? [a, b] : [a]) {
+    const px = o.x - cap.x;
+    const py = o.y - cap.y;
+    const pz = o.z - cap.z;
+    const hb = px * d.x + py * d.y + pz * d.z;
+    const c = px * px + py * py + pz * pz - r2;
+    const disc = hb * hb - c;
     if (disc < 0) continue;
     const root = Math.sqrt(disc);
-    for (const t of [(-b - root) / 2, (-b + root) / 2]) {
+    for (const t of [-hb - root, -hb + root]) {
       if (t < 0 || t > maxDistance || t >= best) continue;
       best = t;
     }
@@ -340,6 +558,8 @@ export interface ShotHit {
   /** Where the hitbox was taken from, for the hit event and for debugging. */
   rewoundTo: number;
   rewindMs: number;
+  /** The zone the hit scores (T-1.19); meaningless on scenery. */
+  zone: HitZone;
 }
 
 /**
@@ -368,31 +588,25 @@ export function resolveShot(
   let best: ShotHit | null =
     scenery === null
       ? null
-      : { netId: 0, distance: scenery.distance, point: scenery.point, rewoundTo, rewindMs };
+      : { netId: 0, distance: scenery.distance, point: scenery.point, rewoundTo, rewindMs, zone: 'torso' };
 
   for (const netId of history.netIds()) {
     if (netId === query.shooterNetId) continue;
     const state = history.stateAt(netId, rewoundTo);
     if (state === null) continue;
     const feet = state.position;
-    const { halfHeight, centerOffsetY } = capsuleFor(hitbox, state.crouched, state.prone);
-    const center: Vec3 = { x: feet.x, y: feet.y + centerOffsetY, z: feet.z };
-    const distance = rayCapsule(query.ray, center, hitbox.radius, halfHeight);
-    if (distance === null) continue;
+    const hit = rayBody(query.ray, bodyParts(hitbox, state.stance, feet, state.yaw));
+    if (hit === null) continue;
+    const { distance } = hit;
     if (best !== null && distance >= best.distance) continue;
 
     const { origin: o, direction: d } = query.ray;
-    best = {
-      netId,
-      distance,
-      point: {
-        x: o.x + d.x * distance,
-        y: o.y + d.y * distance,
-        z: o.z + d.z * distance,
-      },
-      rewoundTo,
-      rewindMs,
+    const point = {
+      x: o.x + d.x * distance,
+      y: o.y + d.y * distance,
+      z: o.z + d.z * distance,
     };
+    best = { netId, distance, point, rewoundTo, rewindMs, zone: zoneOfHit(hit.part, point, feet.y, hitbox) };
   }
   return best;
 }

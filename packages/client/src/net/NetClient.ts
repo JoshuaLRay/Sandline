@@ -566,9 +566,10 @@ export class NetClient {
    *  would be worse than dropping it. */
   tick(tickNumber: number, input: MoveInput, pitch: number): void {
     if (!this.joinedFlag || !this.predictor) return;
-    // The server holds a downed soldier still whatever buttons arrive; predict
-    // the same, or every tick down is a correction (T-2.13, B-05).
-    const predicted = this.vitalityValue === 'downed' ? { ...input, downed: true } : input;
+    // The server holds a downed or dead soldier still whatever buttons arrive;
+    // predict the same, or every tick down is a correction and a dead player
+    // appears to run around (T-2.13, B-05).
+    const predicted = this.vitalityValue !== 'alive' ? { ...input, downed: true } : input;
     this.predictor.predict(tickNumber, predicted);
     const buttons =
       (input.jump ? INPUT_BUTTONS.jump : 0) |

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { DEFAULT_HITBOX } from '@sandline/server';
+import { DEFAULT_HITBOX, bodyParts } from '@sandline/server';
 import { DEFAULT_MUZZLE_RIG } from '@sandline/shared';
 import { HUMANOID_BONES, type HumanoidBoneName, rigOf, requireRig } from './humanoidRig.ts';
 import { AIM_IN_CHEST, createHumanoidSoldier, setSoldierPalette, soldierSkin } from './humanoidSoldier.ts';
@@ -306,6 +306,88 @@ describe('skinned soldier (T-2.22)', () => {
     expect(soldier.position.toArray()).toEqual(rootBefore.p);
     expect(soldier.quaternion.toArray()).toEqual(rootBefore.q);
     expect(soldier.geometry).toBe(rootBefore.g);
+  });
+
+  it('is shot where it is drawn: the server body covers the skin in every pose, and is no bigger', () => {
+    const distanceToSegment = (p: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3): number => {
+      const ab = b.clone().sub(a);
+      const t = ab.lengthSq() > 0 ? Math.max(0, Math.min(1, p.clone().sub(a).dot(ab) / ab.lengthSq())) : 0;
+      return p.distanceTo(a.clone().addScaledVector(ab, t));
+    };
+    for (const pose of ['standing', 'crouched', 'prone', 'downed', 'dead'] as const) {
+      const soldier = createHumanoidSoldier('remote');
+      soldier.position.set(0, HUMANOID_ROOT_LIFT_M, 0);
+      requireRig(soldier).setPose(pose);
+      soldier.updateMatrixWorld(true);
+      const skin = soldierSkin(soldier);
+      skin.skeleton.update();
+      const vertices = skin.geometry.getAttribute('position') as THREE.BufferAttribute;
+      const points: THREE.Vector3[] = [];
+      for (let i = 0; i < vertices.count; i += 1) {
+        points.push(skin.applyBoneTransform(i, new THREE.Vector3().fromBufferAttribute(vertices, i)).applyMatrix4(skin.matrixWorld));
+      }
+      // Feet at the origin, facing +Z: the server's frame for the same body.
+      const parts = bodyParts(DEFAULT_HITBOX, pose, { x: 0, y: 0, z: 0 }, 0).map((p) => ({
+        a: new THREE.Vector3(p.a.x, p.a.y, p.a.z),
+        b: new THREE.Vector3(p.b.x, p.b.y, p.b.z),
+        radius: p.radius,
+      }));
+      const outside = (p: THREE.Vector3) => Math.min(...parts.map((c) => distanceToSegment(p, c.a, c.b) - c.radius));
+      // Covers: 95% of the skin's vertices are inside a capsule, within 5 cm, and none far out.
+      const covered = points.filter((p) => outside(p) <= 0.05).length / points.length;
+      const worst = Math.max(...points.map(outside));
+      console.log(`${pose}: ${(covered * 100).toFixed(1)}% of the skin inside the server body, farthest out ${(worst * 100).toFixed(0)} cm`);
+      expect(covered, pose).toBeGreaterThan(0.95);
+      expect(worst, pose).toBeLessThan(0.15);
+      // No bigger: every capsule's axis runs through the skin, not through air.
+      for (const c of parts) {
+        for (const t of [0, 0.5, 1]) {
+          const q = c.a.clone().lerp(c.b, t);
+          const nearest = Math.min(...points.map((p) => p.distanceTo(q)));
+          expect(nearest, `${pose} capsule axis at ${t}`).toBeLessThan(c.radius + 0.02);
+        }
+      }
+    }
+  });
+
+  it('lies dead face down with both hands above the head on the ground, unlike downed', () => {
+    const soldier = createHumanoidSoldier('remote');
+    soldier.position.set(3, HUMANOID_ROOT_LIFT_M, -2);
+    soldier.rotation.y = 0.7;
+    const rig = requireRig(soldier);
+    rig.setPose('downed');
+    const downed = boneSnapshot(soldier);
+    rig.setPose('dead');
+    expect(rig.pose).toBe('dead');
+    expect(rig.aim.visible).toBe(false);
+    expect(boneSnapshot(soldier)).not.toEqual(downed);
+    const facing = new THREE.Vector3(Math.sin(0.7), 0, Math.cos(0.7));
+    const ground = soldier.position.y - HUMANOID_ROOT_LIFT_M;
+    const along = (name: HumanoidBoneName) => worldOf(soldier, name).sub(soldier.position).dot(facing);
+    // Head forward, feet back, both hands past the head.
+    expect(along('head')).toBeGreaterThan(0.4);
+    expect(along('foot-left')).toBeLessThan(-0.4);
+    for (const hand of ['hand-left', 'hand-right'] as const) {
+      expect(along(hand), hand).toBeGreaterThan(along('head') + 0.1);
+      expect(worldOf(soldier, hand).y - ground, hand).toBeLessThan(0.3);
+    }
+    // Face down: the chest's front points at the ground.
+    const chestQ = rig.bone('chest')!.getWorldQuaternion(new THREE.Quaternion());
+    expect(new THREE.Vector3(0, 0, 1).applyQuaternion(chestQ).y).toBeLessThan(-0.9);
+    // Flat on the ground, and nothing under it.
+    const skin = soldierSkin(soldier);
+    skin.skeleton.update();
+    const vertices = skin.geometry.getAttribute('position') as THREE.BufferAttribute;
+    let lowest = Infinity;
+    let highest = -Infinity;
+    for (let i = 0; i < vertices.count; i += 1) {
+      const v = skin.applyBoneTransform(i, new THREE.Vector3().fromBufferAttribute(vertices, i)).applyMatrix4(skin.matrixWorld);
+      lowest = Math.min(lowest, v.y);
+      highest = Math.max(highest, v.y);
+    }
+    console.log(`dead: skin from ${(lowest - ground).toFixed(3)} to ${(highest - ground).toFixed(3)} m over the ground`);
+    expect(lowest - ground).toBeGreaterThan(-0.03);
+    expect(highest - ground).toBeLessThan(0.55);
   });
 
   it('goes prone by moving bones only, structurally distinct from crouch and downed, and restores exactly (T-2.41)', () => {

@@ -9,12 +9,15 @@
 import { describe, expect, it } from 'vitest';
 import { type WorldBox, boxFrom } from '@sandline/shared';
 import {
+  DEFAULT_HITBOX,
   HitboxHistory,
   type Hitbox,
   MAX_REWIND_MS,
   type Ray,
+  bodyParts,
   clampRewindMs,
   rayCapsule,
+  raySegmentCapsule,
   resolveShot,
 } from './lagComp.ts';
 
@@ -421,5 +424,90 @@ describe('scenery stops a shot (T-1.12)', () => {
     const hit = resolveShot(new HitboxHistory(), query, BOX, wall);
     expect(hit?.netId).toBe(0);
     expect(hit?.distance).toBeCloseTo(29.85, 9);
+  });
+});
+
+describe('the body is where the model is, in every stance', () => {
+  const NOW = 1000;
+  /** Wire yaw: a quarter turn faces +X. */
+  const QUARTER = 256;
+  const lying = (lie: 'downed' | 'dead' | null, prone: boolean, yaw: number) => {
+    const history = new HitboxHistory();
+    history.record(TARGET, NOW, 0, 0, 10, false, prone, { yaw, lying: lie });
+    return history;
+  };
+  const shotAt = (history: HitboxHistory, y: number, x = 0) =>
+    resolveShot(history, { shooterNetId: SHOOTER, ray: { origin: { x, y, z: 0 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 100 }, nowMs: NOW, clientRenderTimeMs: NOW }, DEFAULT_HITBOX, NO_WORLD);
+
+  it('traces a capsule along any segment, not only an upright one', () => {
+    // Lying along X at 0.3 m up, 1 m long, radius 0.2, 5 m out.
+    const a = { x: -0.5, y: 0.3, z: 5 };
+    const b = { x: 0.5, y: 0.3, z: 5 };
+    const ray = (x: number, y: number): Ray => ({ origin: { x, y, z: 0 }, direction: { x: 0, y: 0, z: 1 }, maxDistance: 100 });
+    expect(raySegmentCapsule(ray(0, 0.3), a, b, 0.2)).toBeCloseTo(4.8, 9);
+    expect(raySegmentCapsule(ray(0.6, 0.3), a, b, 0.2)).toBeCloseTo(5 - Math.sqrt(0.04 - 0.01), 9); // the cap
+    expect(raySegmentCapsule(ray(0, 0.6), a, b, 0.2)).toBeNull(); // over it
+    expect(raySegmentCapsule(ray(0.8, 0.3), a, b, 0.2)).toBeNull(); // past the end
+    // A zero-length segment is a sphere.
+    const centre = { x: 0, y: 0.3, z: 5 };
+    expect(raySegmentCapsule(ray(0, 0.3), centre, centre, 0.2)).toBeCloseTo(4.8, 9);
+    // And the upright case agrees with the old vertical capsule.
+    const up = rayCapsule(ray(0, 1), { x: 0, y: 0.9, z: 5 }, 0.35, 0.55);
+    expect(up).toBeCloseTo(4.65, 9);
+  });
+
+  for (const [name, lie, prone] of [['prone', null, true], ['downed', 'downed', false], ['dead', 'dead', false]] as const) {
+    it(`a ${name} body lies on the ground: a chest-high shot goes over it, a low one hits`, () => {
+      const history = lying(lie, prone, 0);
+      expect(shotAt(history, 1.2)).toBeNull();
+      const low = shotAt(history, 0.25);
+      expect(low?.netId).toBe(TARGET);
+      // Facing +Z, toward the shooter: the head is nearest, so it is what a low shot meets.
+      expect(low?.distance).toBeLessThan(10);
+    });
+
+    it(`a ${name} body lies along its facing: long one way, narrow the other`, () => {
+      // Facing +X, the body lies across the shot: hit well off its feet position.
+      const across = lying(lie, prone, QUARTER);
+      expect(shotAt(across, 0.25, 0.6)?.netId).toBe(TARGET);
+      expect(shotAt(across, 0.25, -0.6)?.netId).toBe(TARGET);
+      // Facing +Z, the same offsets are beside it.
+      const along = lying(lie, prone, 0);
+      expect(shotAt(along, 0.25, 0.75)).toBeNull();
+    });
+  }
+
+  it('scores a lying head as a head, and the legs as limbs', () => {
+    // Facing +X across the shot: feet toward -X, head toward +X.
+    const across = lying('downed', false, QUARTER);
+    const parts = bodyParts(DEFAULT_HITBOX, 'downed', { x: 0, y: 0, z: 10 }, QUARTER);
+    const head = parts.find((p) => p.zone === 'head')!;
+    expect(head.b.x).toBeGreaterThan(0.5);
+    // The crown, past where the torso's capsule reaches.
+    expect(shotAt(across, head.b.y, head.b.x)?.zone).toBe('head');
+    expect(shotAt(across, 0.3, -0.6)?.zone).toBe('limb');
+    expect(shotAt(across, 0.35, 0.2)?.zone).toBe('torso');
+  });
+
+  it('keeps the standing zones by height, and a crouch forward over its knees', () => {
+    const history = new HitboxHistory();
+    history.record(TARGET, NOW, 0, 0, 10, false, false, { yaw: 0 });
+    expect(shotAt(history, 1.7)?.zone).toBe('head');
+    expect(shotAt(history, 1.1)?.zone).toBe('torso');
+    expect(shotAt(history, 0.4)?.zone).toBe('limb');
+    const crouched = new HitboxHistory();
+    crouched.record(TARGET, NOW, 0, 0, 10, true, false, { yaw: 0 });
+    // The crouched head is under 1.5 m, and nothing of the body is at 1.6.
+    expect(shotAt(crouched, 1.3)?.zone).toBe('head');
+    expect(shotAt(crouched, 1.6)).toBeNull();
+  });
+
+  it('rewinds the facing and the fall with the position: a body is shot as it lay then', () => {
+    const history = new HitboxHistory();
+    history.record(TARGET, NOW - 100, 0, 0, 10, false, false, { yaw: 0 });
+    history.record(TARGET, NOW, 0, 0, 10, false, false, { yaw: 0, lying: 'downed' });
+    expect(history.stateAt(TARGET, NOW - 50)?.stance).toBe('standing');
+    expect(history.stateAt(TARGET, NOW)?.stance).toBe('downed');
+    expect(history.stateAt(TARGET, NOW)?.lying).toBe('downed');
   });
 });
