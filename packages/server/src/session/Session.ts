@@ -684,6 +684,11 @@ export class Session {
   private readonly missionRun: MissionRun | null;
   /** T-3.34: the tick the current attempt began on: mission time counts from here. */
   private missionStartTick = 0;
+  /** T-4.16: squad spawn positions and completed encounter groups at the latest objective checkpoint. */
+  private missionCheckpointState: {
+    spawns: { x: number; y: number; z: number }[];
+    completedGroups: string[];
+  } | null = null;
   private readonly encounter: Encounter | null;
   private readonly testHumanCount: number | null;
   private readonly profileAi: boolean;
@@ -871,35 +876,53 @@ export class Session {
   }
 
   /** A fresh director and spawner for the encounter, counting mission time from now. */
-  private startEncounter(): void {
+  private startEncounter(completedGroups: readonly string[] = []): void {
     if (!this.encounter) return;
     this.missionStartTick = this.currentTick;
     this.directorValue = new Director();
-    this.spawnerValue = new Spawner(this.encounter, this.world, this.spawnerHost(), undefined, this.directorValue);
+    this.spawnerValue = new Spawner(this.encounter, this.world, this.spawnerHost(), undefined, this.directorValue, completedGroups);
   }
 
   /** Evaluate the objective, at the end of a tick, and tell everyone when what they see of it changed. */
   private stepMission(): void {
     const run = this.missionRun;
     if (!run) return;
+    const beforeObjective = run.current.objective;
     const inside = (a: GroundArea) => (p: { x: number; z: number }) => Math.sqrt((p.x - a.x) ** 2 + (p.z - a.z) ** 2) <= a.radius;
     const living = this.slots.filter((s) => !isDead(s.health));
     const standing = this.slots.filter((s) => isAlive(s.health));
     const spawner = this.spawnerValue;
+    const alive = (netId: number) => this.enemyList.some((e) => e.netId === netId && !isDead(e.health));
     const changed = run.step({
       enemiesIn: (a) => this.enemyList.filter((e) => !isDead(e.health) && inside(a)(e.state)).length,
       squadIn: (a) => living.filter((s) => inside(a)(s.state)).length,
       standing: () => standing.length,
       standingIn: (a) => standing.filter((s) => inside(a)(s.state)).length,
       wiped: () => this.slots.every((s) => isDead(s.health)),
+      protectedLost: (id) => {
+        if (!spawner || !spawner.fired(id)) return false;
+        const placed = spawner.spawnedBy(id);
+        return placed.length > 0 && placed.every((n) => !alive(n));
+      },
       group: (id) => {
         if (!spawner) return { dead: false, spawned: 0, down: 0 };
         const placed = spawner.spawnedBy(id);
-        const alive = (netId: number) => this.enemyList.some((e) => e.netId === netId && !isDead(e.health));
         return { dead: spawner.dead(id), spawned: placed.length, down: placed.filter((n) => !alive(n)).length };
       },
     });
+    if (run.current.state === 'progress' && run.current.objective > beforeObjective) this.captureMissionCheckpoint();
     if (changed) this.broadcastMission();
+  }
+
+  /** Remember where the squad may retry and which earlier encounter groups must stay dead. */
+  private captureMissionCheckpoint(): void {
+    const spawner = this.spawnerValue;
+    const completedGroups =
+      spawner && this.encounter ? this.encounter.groups.filter((g) => spawner.dead(g.id)).map((g) => g.id) : [];
+    this.missionCheckpointState = {
+      spawns: this.slots.map((s) => ({ x: s.state.x, y: s.state.y, z: s.state.z })),
+      completedGroups,
+    };
   }
 
   private broadcastMission(): void {
@@ -908,19 +931,15 @@ export class Session {
     for (const c of this.connections) if (c.state === 'active') c.send(msg);
   }
 
-  /** A seated human asked to start again: honoured once the mission is over, won or lost. */
+  /** A seated human asked to start again: failed missions retry their checkpoint; completed missions start over. */
   private requestRestart(conn: ServerConnection): void {
     if (!this.humanFor(conn) || !this.missionRun || this.missionRun.current.state === 'progress') return;
-    this.restartMission();
+    if (this.missionRun.current.state === 'failed') this.retryMission();
+    else this.restartMission();
   }
 
-  /**
-   * Put the world back to where the mission starts: every enemy and
-   * projectile gone, every order and mark with them, every slot alive on its
-   * spawn point with a full load-out, and the encounter played again from
-   * its first tick — a new attempt.
-   */
-  restartMission(): void {
+  /** Clear transient mission state and restore a fresh squad at the supplied spawn positions. */
+  private resetMissionWorld(spawns: readonly { x: number; y: number; z: number }[], completedGroups: readonly string[]): void {
     for (const enemy of this.enemyList) {
       this.killEnemy(enemy);
       this.hitboxes.forget(enemy.netId);
@@ -930,7 +949,7 @@ export class Session {
     this.projectiles.length = 0;
     for (const slot of this.slots) {
       respawn(slot.health);
-      const point = spawnFor(slot.index);
+      const point = spawns[slot.index] ?? spawnFor(slot.index);
       slot.state = createMoveState(point.x, point.y, point.z);
       slot.queue.length = 0;
       slot.input = idleInput(slot.yaw);
@@ -945,7 +964,34 @@ export class Session {
     this.marks = [];
     this.broadcastOrders();
     this.broadcastMarks();
-    this.startEncounter();
+    this.startEncounter(completedGroups);
+  }
+
+  /** Retry a failed mission from the latest completed-objective checkpoint. */
+  retryMission(): void {
+    const run = this.missionRun;
+    if (!run || run.current.state !== 'failed') return;
+    const saved = this.missionCheckpointState;
+    const spawns = saved?.spawns ?? this.slots.map((slot) => {
+      const point = spawnFor(slot.index);
+      return { x: point.x, y: point.y, z: point.z };
+    });
+    this.resetMissionWorld(spawns, saved?.completedGroups ?? []);
+    run.retry();
+    this.broadcastMission();
+  }
+
+  /**
+   * Full restart: every enemy and projectile gone, every order and mark with
+   * them, every slot alive on its original spawn point, and objective zero.
+   */
+  restartMission(): void {
+    const spawns = this.slots.map((slot) => {
+      const point = spawnFor(slot.index);
+      return { x: point.x, y: point.y, z: point.z };
+    });
+    this.missionCheckpointState = null;
+    this.resetMissionWorld(spawns, []);
     this.missionRun?.reset();
     this.broadcastMission();
   }
