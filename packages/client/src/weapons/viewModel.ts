@@ -22,6 +22,7 @@
  */
 import * as THREE from 'three';
 import { plateau } from '../character/locomotionPose.ts';
+import { SCOPE_IN } from '../ui/scopeOverlay.ts';
 import { type WeaponModel, type Vec3Tuple, createWeaponModel, weaponAssetsVersion } from './weaponModels.ts';
 
 export interface ViewModelState {
@@ -44,6 +45,11 @@ export interface ViewModelState {
   dt: number;
   /** Aspect ratio of the view. */
   aspect: number;
+  /**
+   * The item in hand has a scope (`scopeFovDeg`): once shouldered the rifle
+   * is hidden and the page draws the scope's view (`scopeOverlay.ts`).
+   */
+  scoped?: boolean;
 }
 
 /** Field of view of the viewmodel camera, degrees. Fixed: ADS zooms the world, not the gun. */
@@ -57,8 +63,12 @@ const LOWERED_M = 0.25;
 /** Walk bob: metres of rise and fall at a run, and its cadence in radians per metre travelled. */
 const BOB_M = 0.012;
 const BOB_PER_M = 5.5;
-/** At ADS the sight sits this far under the view axis, so it frames the reticle instead of covering it. */
-const ADS_DROP_M = 0.01;
+/**
+ * At ADS the sight line is the view axis exactly: the rear aperture is
+ * centred on the screen and the front post's tip is the screen's centre,
+ * where the shot goes. The crosshair is hidden then; the sights are the aim.
+ */
+const ADS_DROP_M = 0;
 
 const GLOVE = new THREE.MeshLambertMaterial({ color: 0x2c2a25 });
 const SLEEVE = new THREE.MeshLambertMaterial({ color: 0x4c5436 });
@@ -109,6 +119,17 @@ export class ViewModel {
   private raise = 0;
   private bobPhase = 0;
   private windBlend = 0;
+  private scopeUp = false;
+
+  /** Whether the eye is at a scope this frame: the rifle is hidden and the scope's view is the picture. */
+  get scoped(): boolean {
+    return this.scopeUp;
+  }
+
+  /** 0 at the hip, 1 fully aimed. */
+  get adsAmount(): number {
+    return this.adsBlend;
+  }
 
   constructor() {
     this.scene.add(new THREE.AmbientLight(0xd8c8a8, 2.4));
@@ -145,6 +166,8 @@ export class ViewModel {
     if (!state.visible) {
       // Back in first person, the item comes up rather than popping in.
       this.raise = 0;
+      this.adsBlend = 0;
+      this.scopeUp = false;
       return;
     }
     const dt = Math.max(0, Math.min(0.1, state.dt));
@@ -186,6 +209,9 @@ export class ViewModel {
     // The holder places the sight itself at the origin of `sway`: aim space
     // turned half a turn, so its (x, y, z) lands at (-x, y, -z).
     this.holder.position.set(spec.sight[0], -spec.sight[1], spec.sight[2] - spec.eyeRelief);
+    // At the eyepiece the scope's view replaces the rifle, whose tube would fill it.
+    this.scopeUp = !!state.scoped && state.ads && this.current === wanted && this.adsBlend >= SCOPE_IN;
+    if (this.scopeUp) this.sway.visible = false;
   }
 
   private show(model: WeaponModel): void {

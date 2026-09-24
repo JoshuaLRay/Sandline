@@ -5,14 +5,17 @@
  */
 import { describe, expect, it } from 'vitest';
 import { WEAPONS } from '@sandline/shared';
-import { JSON_ORDER } from './WeaponPanel.ts';
+import { JSON_ORDER, OPTIONAL_FIELDS } from './WeaponPanel.ts';
 
 describe('weapon panel paste-back (T-2.12 prep)', () => {
   it('lists every field of every shipped weapon exactly once, and nothing else', () => {
     for (const def of Object.values(WEAPONS)) {
       const keys = Object.keys(def).sort();
-      expect([...JSON_ORDER].sort()).toEqual(keys);
+      // Every field the weapon has, and every field but the optional ones it lacks.
+      expect(JSON_ORDER.filter((k) => !OPTIONAL_FIELDS.includes(k) || k in def).sort()).toEqual(keys);
     }
+    // Each optional field is shipped on at least one weapon, so the list is not stale.
+    for (const k of OPTIONAL_FIELDS) expect(Object.values(WEAPONS).some((d) => k in d), k).toBe(true);
     expect(new Set(JSON_ORDER).size).toBe(JSON_ORDER.length);
   });
 });

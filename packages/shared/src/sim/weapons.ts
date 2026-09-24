@@ -90,6 +90,13 @@ export interface WeaponDef {
    */
   shakePosM: number;
   shakeRollDeg: number;
+  /**
+   * Aimed through a magnified scope: the vertical field of view, degrees,
+   * that first-person ADS narrows the view to, where the page draws the
+   * scope's own view instead of the rifle. Absent for iron sights.
+   * Presentation only; the spread is `adsSpreadDeg` either way.
+   */
+  scopeFovDeg?: number;
 }
 
 /**
@@ -192,6 +199,7 @@ function parseWeaponDef(key: string, raw: unknown): WeaponDef {
     shakePosM: num(row, 'shakePosM', key, 0, 0.5),
     shakeRollDeg: num(row, 'shakeRollDeg', key, 0, 10),
   };
+  if (row['scopeFovDeg'] !== undefined) def.scopeFovDeg = num(row, 'scopeFovDeg', key, 2, 60);
 
   if (!Number.isInteger(def.pellets)) throw new WeaponDataError(`weapon "${key}": pellets must be an integer`);
   if (!Number.isInteger(def.magSize)) throw new WeaponDataError(`weapon "${key}": magSize must be an integer`);

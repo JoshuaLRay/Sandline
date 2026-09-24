@@ -9,6 +9,8 @@
  *     are profiles, which is how a gunsmith draws them;
  *   - `lathe`: a radius profile turned round an axis parallel to +Z, for
  *     barrels, handguards, buffer tubes, scopes, tubes and warheads;
+ *   - `ring`, an open aperture turned round an axis parallel to +Z: a rear
+ *     sight the eye looks through, with a hole in it;
  *   - `box`, for everything else.
  *
  * UVs are planar per part into its atlas region: an extrusion's sides map
@@ -172,6 +174,32 @@ export class WeaponBuilder {
           else this.out.indices.push(centre, b, a);
         }
       }
+    }
+    return this;
+  }
+
+  /**
+   * A flat ring between radii `inner` and `outer`, from z0 to z1, round the
+   * axis through (x, y) parallel to +Z: a rear sight's aperture. The hole is
+   * open, so the eye looks through it; faces are flat (a machined part).
+   */
+  ring(z0: number, z1: number, inner: number, outer: number, sides: number, region: WeaponRegion, y = 0, x = 0): this {
+    const at = (r: number, a: number, z: number) => [x + Math.cos(a) * r, y + Math.sin(a) * r, z];
+    for (let i = 0; i < sides; i++) {
+      const a0 = (i / sides) * Math.PI * 2;
+      const a1 = ((i + 1) / sides) * Math.PI * 2;
+      const mid = (a0 + a1) / 2;
+      const radial = [Math.cos(mid), Math.sin(mid), 0];
+      const [f0, f1] = [i / sides, (i + 1) / sides];
+      const uvs: P2[] = [this.uv(region, f0, 0), this.uv(region, f1, 0), this.uv(region, f1, 1), this.uv(region, f0, 1)];
+      for (const [z, dir] of [
+        [z0, -1],
+        [z1, 1],
+      ] as const) {
+        this.quad([at(inner, a0, z), at(inner, a1, z), at(outer, a1, z), at(outer, a0, z)], [0, 0, dir], uvs);
+      }
+      this.quad([at(outer, a0, z0), at(outer, a1, z0), at(outer, a1, z1), at(outer, a0, z1)], radial, uvs);
+      this.quad([at(inner, a0, z0), at(inner, a1, z0), at(inner, a1, z1), at(inner, a0, z1)], radial.map((c) => -c), uvs);
     }
     return this;
   }

@@ -527,6 +527,50 @@ canvas { display: block; touch-action: none; }
 }
 #mission.shown { display: block; }
 #crosshair.hidden { display: none; }
+/* First-person ADS: the weapon's sights are the aim, their post on the screen's centre. */
+#crosshair.sighted { display: none; }
+
+/**
+ * The marksman's scope (scopeOverlay.ts): black outside a round lens, a fine
+ * duplex reticle across it, its centre the screen's centre. Heavy posts
+ * outside, fine wire in the middle, a dot where the shot goes.
+ */
+#scope {
+  --lens: min(92vh, 92vw);
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  display: none;
+  z-index: 4;
+}
+#scope.up { display: block; }
+#scope .lens {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--lens);
+  height: var(--lens);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  /* The shadow is the black outside the lens; the inset ring is the eyepiece's edge. */
+  box-shadow: 0 0 0 200vmax #000, inset 0 0 calc(var(--lens) * 0.06) calc(var(--lens) * 0.02) rgba(0, 0, 0, 0.85);
+}
+#scope .wire,
+#scope .post,
+#scope .dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: #0a0a0a;
+}
+#scope .wire.h { width: calc(var(--lens) * 0.5); height: 1px; transform: translate(-50%, -50%); }
+#scope .wire.v { width: 1px; height: calc(var(--lens) * 0.5); transform: translate(-50%, -50%); }
+#scope .post.left,
+#scope .post.right { width: calc(var(--lens) * 0.25); height: 4px; margin-top: -2px; }
+#scope .post.left { margin-left: calc(var(--lens) * -0.5); }
+#scope .post.right { margin-left: calc(var(--lens) * 0.25); }
+#scope .post.down { width: 4px; height: calc(var(--lens) * 0.25); margin-left: -2px; margin-top: calc(var(--lens) * 0.25); }
+#scope .dot { width: 3px; height: 3px; border-radius: 50%; transform: translate(-50%, -50%); background: #b3261e; }
 
 
 /* T-3.09: the AI debug overlay's labels, projected over the world. */

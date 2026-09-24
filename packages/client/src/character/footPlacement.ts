@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { DEFAULT_MOVE_CONFIG, DEFAULT_WORLD, type MoveConfig, type WorldBox, supportUnder } from '@sandline/shared';
-import { type HumanoidRig, isHumanoidRig, requireRig } from './humanoidRig.ts';
+import { type HumanoidRig, isHumanoidRig, isLyingHelpless, requireRig } from './humanoidRig.ts';
 import { type TwoBoneSolution, solveTwoBone } from './twoBoneIk.ts';
 
 /**
@@ -420,7 +420,7 @@ export function createFootPlacementDriver(
       const on = input.active && Number.isFinite(input.feetY) && grounded(input.feetY);
       // Going down is not a blend: the downed pose is lying on the ground,
       // and a spring tail on its legs would be a picture of nothing.
-      if (!on && rig.pose === 'downed') {
+      if (!on && isLyingHelpless(rig.pose)) {
         for (const leg of legs) {
           leg.offset = 0;
           leg.velocity = 0;

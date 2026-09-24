@@ -81,6 +81,7 @@ import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { PROJECTILE_ORDER, ThrowQA } from './weapons/ThrowQA.ts';
 import { PouchTrigger } from './weapons/pouchTrigger.ts';
 import { ViewModel } from './weapons/viewModel.ts';
+import { ScopeOverlay, scopedFov, scopedLookScale } from './ui/scopeOverlay.ts';
 import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
 import { SCORCH_REACH_M, WeaponEffects } from './weapons/effects.ts';
 import { addImpulse, addShake, applyShake, blastShake, createShake, decayShake, suppressionJolt } from './camera/cameraShake.ts';
@@ -414,6 +415,7 @@ function equipPouch(index: number): void {
 
 /** The weapon in hand in first person, drawn over the world. */
 const viewModel = new ViewModel();
+const scopeOverlay = new ScopeOverlay();
 
 /** The world a projectile collides with: the session's boxes and the same floor. */
 function projectileWorld(): ProjectileWorld {
@@ -1411,7 +1413,7 @@ function frame(): void {
         grounded: sim?.grounded ?? true,
         crouched: input.crouching,
         prone: input.proning,
-        downed: net?.vitality === 'downed',
+        downed: net !== null && net.vitality !== 'alive',
         facingYaw: input.yaw,
         // The predicted vault's clock, carried to the frame like the position.
         vaultProgress: sim?.vault ? Math.min(1, (sim.vault.elapsed + clock.alpha * TICK_SECONDS) / config.vaultSeconds) : null,
@@ -1421,12 +1423,13 @@ function frame(): void {
   }
   renderedPrev = { x: rx, z: rz };
 
-  const localDowned = net?.vitality === 'downed';
+  const localVitality = net?.vitality ?? 'alive';
+  const localDowned = localVitality !== 'alive';
   // The pose first, then the gait on top of it (T-2.22): the driver composes
   // on the pose's base transforms, so the order is what makes a crouch-walk
   // the crouch with a gait on it.
   if (localDowned) {
-    playerRig.setPose('downed');
+    playerRig.setPose(localVitality === 'dead' ? 'dead' : 'downed');
     localPoseDriver.reset();
     playerRig.aimAt(0, 0);
   } else {
@@ -1605,8 +1608,12 @@ function frame(): void {
   const ads = input.ads;
 
   // Field of view IS the aim cue. Eased rather than snapped so it reads as
-  // shouldering a weapon instead of a hard cut.
-  const targetFov = camSolve.fov;
+  // shouldering a weapon instead of a hard cut. Through a scope in first
+  // person the same ease carries on to the scope's field, and the look
+  // slows with the zoom so the reticle can be laid on a head at range.
+  const scopeFov = input.firstPerson && !downed && !holdingPouch ? combat.weapon.scopeFovDeg : undefined;
+  const targetFov = scopeFov === undefined ? camSolve.fov : scopedFov(cam.baseFov, scopeFov, camSolve.adsBlend);
+  input.setLookScale(scopeFov === undefined ? 1 : scopedLookScale(cam.baseFov, targetFov));
   if (Math.abs(camera.fov - targetFov) > 0.01) {
     camera.fov = targetFov;
     camera.updateProjectionMatrix();
@@ -1615,6 +1622,9 @@ function frame(): void {
     crosshair.classList.toggle('ads', ads);
     // No weapon in hand while downed: nothing for a reticle to promise.
     crosshair.classList.toggle('hidden', downed);
+    // Aimed in first person the weapon's own sights are the aim (their post
+    // tip is the screen's centre), so the crosshair gets out of their way.
+    crosshair.classList.toggle('sighted', ads && input.firstPerson && !holdingPouch);
   }
   if (missionHud) {
     const text = missionLine(net?.mission ?? null);
@@ -1625,7 +1635,10 @@ function frame(): void {
     const stats = net?.stats;
     const timer = stats?.vitalTimer ?? 0;
     let text = '';
-    if (downed) {
+    if (localVitality === 'dead') {
+      // Dead is not downed: nobody can revive a body, and the timer is the respawn's.
+      text = timer > 0 ? `KILLED — back in ${timer}s` : 'KILLED';
+    } else if (downed) {
       if ((stats?.reviverSlot ?? -1) >= 0) {
         const name = net?.roster[stats?.reviverSlot ?? -1]?.name || 'A teammate';
         text = `DOWNED — ${name} is reviving you ${Math.round(stats?.reviveProgress ?? 0)}% — ${timer}s`;
@@ -1814,8 +1827,10 @@ function frame(): void {
     speed,
     dt,
     aspect: camera.aspect,
+    scoped: !holdingPouch && combat.weapon.scopeFovDeg !== undefined,
   });
   viewModel.render(renderer);
+  scopeOverlay.set(viewModel.scoped);
   requestAnimationFrame(frame);
 }
 player.visible = false;

@@ -57,6 +57,12 @@ export interface DownedConfig {
 export interface DamageConfig {
   maxHealth: number;
   respawnSeconds: number;
+  /**
+   * Seconds a respawned soldier takes no damage (spawn protection). Starts
+   * when they are back on their feet, so a spawn point under fire does not
+   * kill them again before they can move.
+   */
+  respawnImmunitySeconds: number;
   downed: DownedConfig;
   zones: Record<HitZone, ZoneRule>;
 }
@@ -113,6 +119,7 @@ export function parseDamageConfig(raw: unknown): DamageConfig {
   return {
     maxHealth: num(row, 'maxHealth', 'damage', 1, 1000),
     respawnSeconds: num(row, 'respawnSeconds', 'damage', 0, 60),
+    respawnImmunitySeconds: num(row, 'respawnImmunitySeconds', 'damage', 0, 30),
     downed,
     zones,
   };
@@ -153,6 +160,8 @@ export interface HealthState {
   downedAt: number | null;
   /** Server time of death, or null while alive or downed. */
   diedAt: number | null;
+  /** Server time spawn protection ends; damage before it is ignored. Absent when never respawned. */
+  immuneUntil?: number;
 }
 
 export type Vitality = 'alive' | 'downed' | 'dead';
@@ -242,6 +251,7 @@ export function applyDamage(
   downable = true,
 ): DamageResult {
   if (!Number.isFinite(amount) || amount <= 0) return NOTHING(health);
+  if (isImmune(health, nowSeconds)) return NOTHING(health);
   const state = vitality(health);
   if (state === 'dead') return NOTHING(health);
 
@@ -324,12 +334,23 @@ export function respawnRemaining(health: HealthState, nowSeconds: number, config
   return left > 0 ? left : 0;
 }
 
-/** Restore to full and clear both the downed and the death state. */
-export function respawn(health: HealthState, config: DamageConfig = DAMAGE): void {
+/**
+ * Restore to full and clear both the downed and the death state. With the
+ * server time handed in, the soldier is also immune for
+ * `respawnImmunitySeconds` from then.
+ */
+export function respawn(health: HealthState, config: DamageConfig = DAMAGE, nowSeconds?: number): void {
   health.current = config.maxHealth;
   health.max = config.maxHealth;
   health.downedAt = null;
   health.diedAt = null;
+  if (nowSeconds === undefined) delete health.immuneUntil;
+  else health.immuneUntil = nowSeconds + config.respawnImmunitySeconds;
+}
+
+/** Whether spawn protection is still on at this time. */
+export function isImmune(health: HealthState, nowSeconds: number): boolean {
+  return health.immuneUntil !== undefined && nowSeconds < health.immuneUntil;
 }
 
 /**

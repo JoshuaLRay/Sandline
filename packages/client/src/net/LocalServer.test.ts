@@ -146,3 +146,39 @@ describe('LocalServer clock', () => {
     expect(mine.joined).toBe(true);
   });
 });
+
+describe('a dead player stays where they fell (QA: dead players could run around)', () => {
+  beforeAll(() => initNav());
+
+  it('predicts a dead soldier held still, however hard they push forward, and matches the server', async () => {
+    const { TICK_SECONDS } = await import('@sandline/shared');
+    const server = new LocalServer(LAN);
+    const net = new NetClient(server.transport, 'me');
+    net.join();
+    settleThrough(server, 0);
+    expect(net.joined).toBe(true);
+    const session = (server as unknown as { session: { slots: { netId: number; health: { diedAt: number | null; downedAt: number | null; current: number } }[] } }).session;
+    const mine = session.slots.find((s) => s.netId === net.netId)!;
+    const forward = { moveX: 0, moveY: 1, yaw: 0, jump: false, sprint: true, crouch: false, prone: false, interact: false, firing: false } as Parameters<NetClient['tick']>[1];
+    let now = 0;
+    const run = (ticks: number) => {
+      for (let i = 0; i < ticks; i++) {
+        now += TICK_SECONDS * 1000;
+        net.tick(server.tick + 1, forward, 0);
+        server.step(now);
+      }
+    };
+    run(10);
+    expect(net.vitality).toBe('alive');
+    // Killed where they stand.
+    mine.health.current = 0;
+    mine.health.downedAt = now / 1000;
+    mine.health.diedAt = now / 1000;
+    run(10);
+    expect(net.vitality).toBe('dead');
+    const fell = { ...net.simulated! };
+    run(30);
+    const after = net.simulated!;
+    expect(Math.hypot(after.x - fell.x, after.z - fell.z)).toBeLessThan(1e-6);
+  });
+});

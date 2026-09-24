@@ -48,6 +48,8 @@ import {
   projectileByIndex,
   stepProjectile,
   tableToWire,
+  sin,
+  cos,
   type HealthState,
   applyDamage,
   vaultToLevels,
@@ -69,7 +71,6 @@ import {
   revive,
   respawn,
   spawnFor,
-  zoneAt,
   zoneDamage,
   encodeMessage,
   finishReload,
@@ -125,7 +126,7 @@ import {
   suppressionLevel,
   suppressionToWire,
 } from '@sandline/shared';
-import { DEFAULT_HITBOX, HitboxHistory, capsuleFor, clampRewindMs, rayCapsule, resolveShot } from '../net/lagComp.ts';
+import { DEFAULT_HITBOX, HitboxHistory, bodyParts, bodyStance, capsuleFor, clampRewindMs, rayBody, rayCapsule, resolveShot } from '../net/lagComp.ts';
 import { BRAIN_PERIOD_TICKS, Brain, type BrainTree, createBrainRegistry, defaultBrainTree } from '../ai/Brain.ts';
 import { type AiDebugSource, buildAiDebug } from '../ai/debug.ts';
 import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, visibleAimPoint } from '../ai/aim.ts';
@@ -212,6 +213,18 @@ function soldierEye(state: MoveState): { x: number; y: number; z: number } {
 function soldierCapsule(state: MoveState): { centre: { x: number; y: number; z: number }; halfHeight: number; radius: number } {
   const { halfHeight, centerOffsetY } = capsuleFor(DEFAULT_HITBOX, state.crouched, state.prone);
   return { centre: { x: state.x, y: state.y + centerOffsetY, z: state.z }, halfHeight, radius: DEFAULT_HITBOX.radius };
+}
+
+/** The point `range` metres from `eye` along table-unit yaw and pitch: where a round so aimed is at that range. */
+function along(eye: { x: number; y: number; z: number }, aim: { yaw: number; pitch: number }, range: number): { x: number; y: number; z: number } {
+  const flat = cos(aim.pitch) * range;
+  return { x: eye.x + sin(aim.yaw) * flat, y: eye.y + sin(aim.pitch) * range, z: eye.z + cos(aim.yaw) * flat };
+}
+
+/** A body's facing and whether it lies downed or dead, as the hitbox history records it. */
+function lyingPose(body: { health: HealthState; yaw: number }): { yaw: number; lying: 'downed' | 'dead' | null } {
+  const v = vitality(body.health);
+  return { yaw: body.yaw, lying: v === 'alive' ? null : v };
 }
 
 const T = COMPONENT_IDS.Transform;
@@ -1662,14 +1675,14 @@ export class Session {
     // the body — otherwise lying behind cover would still shoot over it.
     const origin = eyePosition(at.x, at.y, at.z, DEFAULT_MUZZLE_RIG, proneThen);
     this.lastFiredTick[slot.index] = this.currentTick;
-    this.traceShot(slot.netId, slot.weapon, shot, msg.tick, origin, yaw, pitch, msg.renderTimeMs, rewoundTo);
+    this.traceShot(slot.netId, slot.weapon, shot, msg.tick, origin, yaw, pitch, msg.renderTimeMs);
   }
 
   /**
    * Everything after the trigger: one trigger pull's pellets traced, damage
    * applied, stimuli made and `HitEvent`s sent. A human's `Fire` comes here
    * rewound to the instant it was looking at; an AI's (T-3.15) with no rewind
-   * at all — `renderTimeMs` and `rewoundTo` both the present — because a
+   * at all — `renderTimeMs` the present — because a
    * server-side shooter sees the world as it is. One path, so an enemy's round
    * hurts a slot through exactly the `applyDamage` a player's hurts an enemy.
    */
@@ -1682,7 +1695,6 @@ export class Session {
     yaw: number,
     pitch: number,
     renderTimeMs: number,
-    rewoundTo: number,
   ): void {
     // T-3.14: the shot is heard where it was fired from, once per trigger pull.
     this.stimuli.push({ kind: 'shot', at: origin, sourceNetId: shooterNetId });
@@ -1706,12 +1718,7 @@ export class Session {
          * Zone from the impact point's height up the target's hitbox — which is
          * exactly why T-1.18 returns a point rather than only a distance.
          */
-        const targetState = this.hitboxes.stateAt(hit.netId, rewoundTo);
-        const zone = zoneAt(
-          hit.point.y,
-          targetState?.position.y ?? 0,
-          targetState?.prone ? PRONE_HITBOX_HEIGHT : targetState?.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT,
-        );
+        const zone = hit.zone;
         dealt = zoneDamage(damageAtDistance(weapon, hit.distance), zone);
 
         const target = this.slots.find((s) => s.netId === hit.netId);
@@ -2003,9 +2010,7 @@ export class Session {
       if (netId === excludeNetId) continue;
       const state = this.hitboxes.stateAt(netId, this.nowMs);
       if (state === null) continue;
-      const { halfHeight, centerOffsetY } = capsuleFor(DEFAULT_HITBOX, state.crouched, state.prone);
-      const centre = { x: state.position.x, y: state.position.y + centerOffsetY, z: state.position.z };
-      const distance = rayCapsule(ray, centre, DEFAULT_HITBOX.radius, halfHeight);
+      const distance = rayBody(ray, bodyParts(DEFAULT_HITBOX, state.stance, state.position, state.yaw))?.distance ?? null;
       if (distance === null) continue;
       if (best === null || distance < best) best = distance;
     }
@@ -2161,7 +2166,7 @@ export class Session {
       if (isDead(slot.health)) {
         // T-3.34: on a mission that does not respawn, the dead wait for a restart.
         if ((this.missionRun?.respawns ?? true) && readyToRespawn(slot.health, nowSeconds)) {
-          respawn(slot.health);
+          respawn(slot.health, DAMAGE, nowSeconds);
           const point = spawnFor(slot.index);
           slot.state = createMoveState(point.x, point.y, point.z);
           slot.queue.length = 0;
@@ -2278,7 +2283,7 @@ export class Session {
     // the snapshot about to go out will describe. Recording pre-step would
     // rewind clients to a world half a tick behind the one they were shown.
     for (const slot of this.slots) {
-      this.hitboxes.record(slot.netId, now, slot.state.x, slot.state.y, slot.state.z, slot.state.crouched, slot.state.prone);
+      this.hitboxes.record(slot.netId, now, slot.state.x, slot.state.y, slot.state.z, slot.state.crouched, slot.state.prone, lyingPose(slot));
     }
     /**
      * The range targets are shootable too. They never move, but they are
@@ -2296,7 +2301,7 @@ export class Session {
      * human's rewound shot resolves against an enemy exactly as against a slot.
      */
     for (const enemy of this.enemyList) {
-      this.hitboxes.record(enemy.netId, now, enemy.state.x, enemy.state.y, enemy.state.z, enemy.state.crouched, enemy.state.prone);
+      this.hitboxes.record(enemy.netId, now, enemy.state.x, enemy.state.y, enemy.state.z, enemy.state.crouched, enemy.state.prone, lyingPose(enemy));
     }
 
     // After everyone has moved and been recorded: an AI shoots at this tick's world.
@@ -2514,7 +2519,7 @@ export class Session {
     const targetId = shooter.brain?.fireAt ?? null;
     const target = targetId === null ? null : this.soldier(targetId);
     const shootable = target && target.netId !== shooter.netId && !isDead(target.health) ? target : null;
-    let point = shootable ? visibleAimPoint(eye, aimPoints(shootable.state, shootable.state.crouched, shootable.state.prone), this.world.boxes) : null;
+    let point = shootable ? visibleAimPoint(eye, aimPoints(shootable.state, shootable.state.crouched, shootable.state.prone, DEFAULT_HITBOX, lyingPose(shootable)), this.world.boxes) : null;
     let aimAt = shootable?.netId ?? SUPPRESSIVE_AIM;
     // No line of sight, no shot — except suppressive fire (T-3.21): a brain
     // with nobody to shoot at but a point to keep heads down at fires there,
@@ -2543,6 +2548,21 @@ export class Session {
     // burst of the archetype's length, then a pause (T-3.23).
     if (ws.bloomUnits > degToAngle(accuracy.holdBloomDeg)) return false;
     if (nowSeconds < shooter.burst.pauseUntil) return false;
+    const dx = point.x - eye.x;
+    const dy = point.y - eye.y;
+    const dz = point.z - eye.z;
+    const range = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const cone = aimConeDeg(accuracy, {
+      distanceM: range,
+      targetSpeedMps: aimAt === SUPPRESSIVE_AIM ? 0 : (shootable?.speed ?? 0),
+      suppression: suppressionLevel(shooter.suppression, nowSeconds),
+      timeOnTargetSeconds: nowSeconds - shooter.aim.since,
+    });
+    // The round's own aim error, drawn from the seed the shot about to go will carry.
+    const aimed = aimError(line.yaw, line.pitch, cone, aimSeed(this.currentTick, shooter.netId, ws.shotIndex));
+    // Nor a round the aim error would throw into one: that round is held, and
+    // the next tick draws another.
+    if (spareFriends && this.friendOnLine(shooter.netId, eye, along(eye, aimed, range))) return false;
     const shot = tryFire(weapon, ws, nowSeconds, true, shooter.state.prone);
     if (shot === null) return false;
     if (++shooter.burst.rounds >= accuracy.burstRounds) {
@@ -2550,17 +2570,7 @@ export class Session {
       shooter.burst.pauseUntil = nowSeconds + accuracy.burstPauseSeconds;
     }
 
-    const dx = point.x - eye.x;
-    const dy = point.y - eye.y;
-    const dz = point.z - eye.z;
-    const cone = aimConeDeg(accuracy, {
-      distanceM: Math.sqrt(dx * dx + dy * dy + dz * dz),
-      targetSpeedMps: aimAt === SUPPRESSIVE_AIM ? 0 : (shootable?.speed ?? 0),
-      suppression: suppressionLevel(shooter.suppression, nowSeconds),
-      timeOnTargetSeconds: nowSeconds - shooter.aim.since,
-    });
-    const aimed = aimError(line.yaw, line.pitch, cone, aimSeed(this.currentTick, shooter.netId, shot.shotIndex));
-    this.traceShot(shooter.netId, weapon, shot, this.currentTick, eye, aimed.yaw, aimed.pitch, this.nowMs, this.nowMs);
+    this.traceShot(shooter.netId, weapon, shot, this.currentTick, eye, aimed.yaw, aimed.pitch, this.nowMs);
     // The last round out starts the reload on the same tick.
     if (ws.ammo === 0) startReload(weapon, ws, nowSeconds);
     return true;
@@ -2576,8 +2586,14 @@ export class Session {
     const ray = { origin: eye, direction: { x: dx / length, y: dy / length, z: dz / length }, maxDistance: length };
     for (const slot of this.slots) {
       if (slot.netId === shooterNetId || isDead(slot.health)) continue;
+      // Cautious: the posed body where the friend is drawn, and the upright
+      // capsule round where they stand, each grown by the margin. A bot holds
+      // fire for either.
+      const margin = SQUAD_CONFIG.bot.friendlyMarginM;
+      const parts = bodyParts(DEFAULT_HITBOX, bodyStance(slot.state.crouched, slot.state.prone, lyingPose(slot).lying), slot.state, slot.yaw);
+      if (rayBody(ray, parts, margin) !== null) return true;
       const capsule = soldierCapsule(slot.state);
-      if (rayCapsule(ray, capsule.centre, capsule.radius + SQUAD_CONFIG.bot.friendlyMarginM, capsule.halfHeight + SQUAD_CONFIG.bot.friendlyMarginM) !== null) return true;
+      if (rayCapsule(ray, capsule.centre, capsule.radius + margin, capsule.halfHeight + margin) !== null) return true;
     }
     return false;
   }
@@ -2589,11 +2605,11 @@ export class Session {
   }
 
   /** A slot or an enemy by netId, as much of it as a shooter aims with. */
-  private soldier(netId: number): { netId: number; state: MoveState; health: HealthState; speed: number } | null {
+  private soldier(netId: number): { netId: number; state: MoveState; health: HealthState; speed: number; yaw: number } | null {
     const slot = this.slots.find((s) => s.netId === netId);
-    if (slot) return { netId, state: slot.state, health: slot.health, speed: this.slotSpeed[slot.index] ?? 0 };
+    if (slot) return { netId, state: slot.state, health: slot.health, speed: this.slotSpeed[slot.index] ?? 0, yaw: slot.yaw };
     const enemy = this.enemyList.find((e) => e.netId === netId);
-    return enemy ? { netId, state: enemy.state, health: enemy.health, speed: enemy.speed } : null;
+    return enemy ? { netId, state: enemy.state, health: enemy.health, speed: enemy.speed, yaw: enemy.yaw } : null;
   }
 
   /**

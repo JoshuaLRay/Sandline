@@ -1,6 +1,7 @@
 {
   "maxHealth": 100,
   "respawnSeconds": 5,
+  "respawnImmunitySeconds": 2,
   "downed": {
     "bleedOutSeconds": 30,
     "reviveSeconds": 3,

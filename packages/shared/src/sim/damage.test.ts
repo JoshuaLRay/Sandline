@@ -8,6 +8,7 @@ import {
   createHealth,
   expireBleedOut,
   isAlive,
+  isImmune,
   isDead,
   isDowned,
   parseDamageConfig,
@@ -31,6 +32,7 @@ import {
 const CONFIG: DamageConfig = {
   maxHealth: 100,
   respawnSeconds: 5,
+  respawnImmunitySeconds: 2,
   downed: { bleedOutSeconds: 20, reviveSeconds: 3, reviveRangeM: 1.5, reviveHealthFraction: 0.4 },
   zones: {
     head: { multiplier: 2, minFraction: 0.8 },
@@ -231,6 +233,29 @@ describe('death and respawn', () => {
     expect(h.current).toBe(CONFIG.maxHealth);
     expect(isAlive(h)).toBe(true);
     expect(readyToRespawn(h, 100, CONFIG)).toBe(false);
+  });
+
+  it('makes a respawned soldier immune for respawnImmunitySeconds, then takes damage again', () => {
+    const h = createHealth(CONFIG);
+    applyDamage(h, 500, 10, CONFIG);
+    expireBleedOut(h, 30, CONFIG);
+    respawn(h, CONFIG, 35);
+    expect(isImmune(h, 35)).toBe(true);
+    // A burst on the spawn point in the first two seconds does nothing.
+    expect(applyDamage(h, 500, 35, CONFIG).applied).toBe(0);
+    expect(applyDamage(h, 500, 36.9, CONFIG).applied).toBe(0);
+    expect(h.current).toBe(CONFIG.maxHealth);
+    expect(isAlive(h)).toBe(true);
+    expect(isImmune(h, 37)).toBe(false);
+    expect(applyDamage(h, 30, 37, CONFIG).applied).toBe(30);
+  });
+
+  it('gives no immunity to a soldier who has never respawned, or a respawn with no clock', () => {
+    const h = createHealth(CONFIG);
+    expect(applyDamage(h, 30, 0, CONFIG).applied).toBe(30);
+    respawn(h, CONFIG, 10);
+    respawn(h, CONFIG); // a mission restart
+    expect(applyDamage(h, 30, 10, CONFIG).applied).toBe(30);
   });
 
   it('counts the timer down for the HUD, and floors at zero', () => {

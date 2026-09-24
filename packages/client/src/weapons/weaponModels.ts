@@ -83,8 +83,10 @@ const BUILDERS: Record<string, Builder> = {
     box(g, 'polymer', [0.066, 0.075, 0.22], [0, 0, 0.6]);
     tube(g, 'metal', 0.012, 0.22, [0, 0.005, 0.8]);
     box(g, 'metal', [0.022, 0.03, 0.2], [0, 0.058, 0.36]);
-    box(g, 'metal', [0.012, 0.04, 0.012], [0, 0.058, 0.68]);
-    return { ...RIFLE_GRIPS, sight: [0, 0.075, 0.26], eyeRelief: 0.3, hip: [0.16, -0.15, -0.12] };
+    // The front post: its tip is the sight line.
+    box(g, 'metal', [0.006, 0.04, 0.012], [0, 0.055, 0.68]);
+    // The eye close behind the rear aperture, as it is on a real rifle: the ring frames the post.
+    return { ...RIFLE_GRIPS, sight: [0, 0.075, 0.26], eyeRelief: 0.17, hip: [0.16, -0.15, -0.12] };
   },
   lmg(g) {
     // A heavier carbine with a box under it: the MG gunner's (T-3.23), held as a rifle.
@@ -93,7 +95,7 @@ const BUILDERS: Record<string, Builder> = {
     box(g, 'polymer', [0.035, 0.1, 0.045], [0, -0.09, 0.2], -0.35);
     box(g, 'olive', [0.09, 0.13, 0.13], [0.02, -0.12, 0.35]);
     tube(g, 'metal', 0.014, 0.4, [0, 0.01, 0.72]);
-    return { ...RIFLE_GRIPS, sight: [0, 0.075, 0.26], eyeRelief: 0.3, hip: [0.16, -0.16, -0.12] };
+    return { ...RIFLE_GRIPS, sight: [0, 0.075, 0.26], eyeRelief: 0.17, hip: [0.16, -0.16, -0.12] };
   },
   marksman(g) {
     box(g, 'tan', [0.05, 0.11, 0.24], [0, -0.01, 0.1]);
@@ -119,7 +121,7 @@ const BUILDERS: Record<string, Builder> = {
     tube(g, 'metal', 0.016, 0.38, [0, -0.025, 0.6]);
     // The pump, where the left hand is.
     box(g, 'wood', [0.06, 0.055, 0.16], [0, -0.03, 0.4]);
-    box(g, 'brass', [0.012, 0.018, 0.012], [0, 0.047, 0.86]);
+    box(g, 'brass', [0.012, 0.018, 0.012], [0, 0.041, 0.86]);
     return {
       gripRight: [0, -0.08, 0.2],
       gripLeft: [0.02, -0.04, 0.4],
@@ -174,13 +176,14 @@ const BUILDERS: Record<string, Builder> = {
     tube(g, 'metal', 0.058, 0.05, [0, 0.08, 0.64], 10);
     box(g, 'polymer', [0.035, 0.11, 0.05], [0, -0.01, 0.12], -0.2);
     box(g, 'polymer', [0.035, 0.1, 0.045], [0, -0.005, 0.38], -0.1);
-    box(g, 'metal', [0.03, 0.06, 0.08], [0.07, 0.11, 0.24]);
-    box(g, 'lens', [0.028, 0.03, 0.004], [0.07, 0.12, 0.198]);
+    // The sight block under the sight line, and a post at its front whose tip is the line.
+    box(g, 'metal', [0.03, 0.03, 0.08], [0.07, 0.09, 0.24]);
+    box(g, 'metal', [0.005, 0.015, 0.005], [0.07, 0.1125, 0.28]);
     return {
       gripRight: [0, -0.06, 0.12],
       gripLeft: [0.02, -0.05, 0.38],
       sight: [0.07, 0.12, 0.198],
-      eyeRelief: 0.34,
+      eyeRelief: 0.22,
       hip: [0.14, -0.06, -0.08],
     };
   },

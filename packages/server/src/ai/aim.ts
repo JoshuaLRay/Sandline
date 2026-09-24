@@ -28,7 +28,7 @@ import {
   sin,
   unitFromSeed,
 } from '@sandline/shared';
-import { DEFAULT_HITBOX, type Hitbox, type Vec3, capsuleFor } from '../net/lagComp.ts';
+import { type BodyPose, DEFAULT_HITBOX, type Hitbox, type Vec3, bodyParts, bodyStance, capsuleFor } from '../net/lagComp.ts';
 
 /** What the aim cone is widened and narrowed by, at the moment of the shot. */
 export interface AimConditions {
@@ -86,9 +86,19 @@ export function aimSeed(tick: number, netId: number, shotIndex: number): number 
 
 /**
  * Points on a soldier worth aiming at, best first: the centre of mass, then
- * the head. The head is what shows over a low wall that hides the chest.
+ * the head. The head is what shows over a low wall that hides the chest. A
+ * body on the ground (prone, downed, dead) is aimed at along its length,
+ * where its torso and head lie, so `pose` carries its facing.
  */
-export function aimPoints(feet: Vec3, crouched: boolean, prone: boolean, hitbox: Hitbox = DEFAULT_HITBOX): Vec3[] {
+export function aimPoints(feet: Vec3, crouched: boolean, prone: boolean, hitbox: Hitbox = DEFAULT_HITBOX, pose: Omit<BodyPose, 'crouched' | 'prone'> = {}): Vec3[] {
+  const stance = bodyStance(crouched, prone, pose.lying ?? null);
+  const parts = bodyParts(hitbox, stance, feet, pose.yaw ?? 0);
+  const torso = parts.find((p) => p.zone === 'torso');
+  const head = parts.find((p) => p.zone === 'head');
+  if (torso && head) {
+    const mid = (p: typeof torso): Vec3 => ({ x: (p.a.x + p.b.x) / 2, y: (p.a.y + p.b.y) / 2, z: (p.a.z + p.b.z) / 2 });
+    return [mid(torso), mid(head)];
+  }
   const { halfHeight, centerOffsetY } = capsuleFor(hitbox, crouched, prone);
   const centre = feet.y + centerOffsetY;
   return [

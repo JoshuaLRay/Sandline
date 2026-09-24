@@ -457,10 +457,13 @@ describe('damage, downed, bleed-out and respawn (T-1.19, T-2.13)', () => {
     // Slot 1's spawn, aimed at capsule centre.
     const neighbour = SPAWN_POINTS[1] as { x: number; y: number; z: number };
     const aim = aimAt(neighbour.x, neighbour.y + 0.9, neighbour.z);
+    // A downed body lies on the ground: a chest-high shot passes over it, so
+    // shots on the body aim at its torso there.
+    const low = aimAt(neighbour.x, neighbour.y + 0.35, neighbour.z);
 
-    const fire = (): number | undefined => {
+    const fire = (at: 'standing' | 'lying' = 'standing'): number | undefined => {
       const before = client.hits.length;
-      client.fire({ ...aim, ads: true, renderTimeMs: now });
+      client.fire({ ...(at === 'lying' ? low : aim), ads: true, renderTimeMs: now });
       now = run(session, now, shotTicks, client);
       return client.hits.length > before ? client.hits.at(-1)?.damage : undefined;
     };
@@ -501,10 +504,16 @@ describe('damage, downed, bleed-out and respawn (T-1.19, T-2.13)', () => {
     const range = shootTheNeighbour();
     for (let i = 0; i < SHOTS_TO_DOWN; i += 1) range.fire();
     const before = range.hitsOn();
-    expect(range.fire()).toBe(0);
-    expect(range.fire()).toBe(0);
+    expect(range.fire('lying')).toBe(0);
+    expect(range.fire('lying')).toBe(0);
     // They are hits on the body (the bleed-out is being cut), not misses.
     expect(range.hitsOn()).toBe(before + 2);
+    // And the body is where the model lies: the chest-high shot a standing
+    // soldier would take goes over it.
+    const body = range.client.hits.at(-1)!.targetNetId;
+    const count = range.client.hits.length;
+    range.fire();
+    expect(range.client.hits.slice(count).some((h) => h.targetNetId === body)).toBe(false);
   });
 
   it('left alone, bleeds out and then respawns at full health at their own spawn', () => {
@@ -513,10 +522,10 @@ describe('damage, downed, bleed-out and respawn (T-1.19, T-2.13)', () => {
     // Not firing while waiting: a shot on the body would shorten the bleed-out.
     range.advanceSeconds(DAMAGE.downed.bleedOutSeconds - 1);
     // Still downed: a shot lands on the body for zero.
-    expect(range.fire()).toBe(0);
+    expect(range.fire('lying')).toBe(0);
     // That shot cut the timer by a carbine round's share; ride out the rest,
-    // then the respawn delay, with a margin.
-    range.advanceSeconds(DAMAGE.respawnSeconds + 1.5);
+    // then the respawn delay and the spawn protection, with a margin.
+    range.advanceSeconds(DAMAGE.respawnSeconds + DAMAGE.respawnImmunitySeconds + 1.5);
     // The aim was never adjusted: it still points at slot 1's spawn. A full
     // damage hit means they are standing there again with full health.
     expect(range.fire()).toBeCloseTo(CARBINE_TORSO, 6);
@@ -526,9 +535,12 @@ describe('damage, downed, bleed-out and respawn (T-1.19, T-2.13)', () => {
     const range = shootTheNeighbour();
     for (let i = 0; i < SHOTS_TO_DOWN; i += 1) range.fire();
     // One more bar's worth cuts the whole bleed-out: dead now, not in 30 s.
-    for (let i = 0; i < SHOTS_TO_DOWN; i += 1) range.fire();
-    // Respawned after only the respawn delay from HERE.
+    for (let i = 0; i < SHOTS_TO_DOWN; i += 1) range.fire('lying');
+    // Respawned after only the respawn delay from HERE, and immune for the
+    // first seconds on their feet.
     range.advanceSeconds(DAMAGE.respawnSeconds + 0.5);
+    expect(range.fire()).toBe(0);
+    range.advanceSeconds(DAMAGE.respawnImmunitySeconds);
     expect(range.fire()).toBeCloseTo(CARBINE_TORSO, 6);
   });
 });

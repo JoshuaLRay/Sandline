@@ -82,6 +82,64 @@ function nearest(mesh: { positions: number[]; indices: number[] }, p: readonly n
   return best;
 }
 
+/** The nearest hit of the ray o + t·d (d unit) on the mesh, or null (Möller–Trumbore). */
+function rayMesh(mesh: { positions: number[]; indices: number[] }, o: V, d: V, maxT: number): number | null {
+  const P = (i: number): V => [mesh.positions[i * 3]!, mesh.positions[i * 3 + 1]!, mesh.positions[i * 3 + 2]!];
+  const cross = (a: V, b: V): V => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  let best: number | null = null;
+  for (let t = 0; t < mesh.indices.length; t += 3) {
+    const a = P(mesh.indices[t]!);
+    const e1 = sub(P(mesh.indices[t + 1]!), a);
+    const e2 = sub(P(mesh.indices[t + 2]!), a);
+    const p = cross(d, e2);
+    const det = dot(e1, p);
+    if (Math.abs(det) < 1e-12) continue;
+    const s = sub(o, a);
+    const u = dot(s, p) / det;
+    if (u < 0 || u > 1) continue;
+    const q = cross(s, e1);
+    const v = dot(d, q) / det;
+    if (v < 0 || u + v > 1) continue;
+    const hit = dot(e2, q) / det;
+    if (hit > 0 && hit < maxT && (best === null || hit < best)) best = hit;
+  }
+  return best;
+}
+
+/** The squad's sighted weapons, and where along the bore each front post stands. */
+const SIGHTED: [string, number][] = [
+  ['carbine', 0.573],
+  ['breacher', 0.87],
+  ['sidearm', 0.482],
+  ['rocket', 0.492],
+  ['lmg', 0.857],
+];
+
+describe('the sight line (QA: ADS art obstructs aim)', () => {
+  for (const [id, post] of SIGHTED) {
+    it(`'${weaponAssetId(id, 'squad')}' is looked through: an open aperture, and the post's tip on the screen's centre`, () => {
+      const mesh = buildWeapon(weaponAssetId(id, 'squad').replace('weapon-', ''));
+      const { sight, eyeRelief } = createWeaponModel(id).spec;
+      const eye: V = [sight[0], sight[1], sight[2] - eyeRelief];
+      const along: V = [0, 0, 1];
+      const toPost = post - eye[2];
+      // Round the line, 3 mm out, nothing between the eye and the front sight: the rear sight is open.
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        const from: V = [eye[0] + Math.cos(a) * 0.003, eye[1] + Math.sin(a) * 0.003, eye[2]];
+        expect(rayMesh(mesh, from, along, toPost - 0.012), `${id}: something across the line at ${k * 45}°`).toBeNull();
+      }
+      // Just over the line, nothing at all: the post's tip is the top of the sight picture.
+      expect(rayMesh(mesh, [eye[0], eye[1] + 0.001, eye[2]], along, 2), `${id}: something over the post`).toBeNull();
+      // Just under it, the post — not the rear sight, not the receiver.
+      const under = rayMesh(mesh, [eye[0], eye[1] - 0.0015, eye[2]], along, 2);
+      expect(under, `${id}: no post under the line`).not.toBeNull();
+      expect(eye[2] + under!).toBeGreaterThan(post - 0.012);
+      expect(eye[2] + under!).toBeLessThan(post + 0.012);
+    });
+  }
+});
+
 describe('the period weapons (T-4.36)', () => {
   it('draws every loadout id for both sides with a generated model, ten in all', () => {
     const ids = new Set(HOLDS.map(([id, side]) => weaponAssetId(id, side)));

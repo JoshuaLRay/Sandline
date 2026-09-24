@@ -294,6 +294,14 @@ describe('prone cone (T-2.42)', () => {
 });
 
 describe('weapon data', () => {
+  it('scopes the marksman only, and refuses a scope wider than the view', () => {
+    expect(Object.values(WEAPONS).filter((w) => w.scopeFovDeg !== undefined).map((w) => w.id)).toEqual(['marksman']);
+    const row = { ...WEAPONS['carbine'], scopeFovDeg: 90 };
+    expect(() => parseWeaponTable({ carbine: row })).toThrow(/scopeFovDeg/);
+    expect(parseWeaponTable({ carbine: { ...row, scopeFovDeg: 20 } })['carbine']!.scopeFovDeg).toBe(20);
+    expect(parseWeaponTable({ carbine: WEAPONS['carbine'] })['carbine']!.scopeFovDeg).toBeUndefined();
+  });
+
   it('ships a table that validates', () => {
     expect(Object.keys(WEAPONS).length).toBeGreaterThanOrEqual(3);
     for (const [key, def] of Object.entries(WEAPONS)) {

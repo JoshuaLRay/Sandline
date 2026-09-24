@@ -67,15 +67,26 @@ export const HUMANOID_BONES: readonly HumanoidBoneName[] = [
 ];
 
 /**
- * How the body is arranged on the hit capsule. The capsule itself is the same
- * upright shape in every pose (the server's is), so a pose only ever moves
- * the rig's bones. Vault is T-2.23's to add.
+ * How the body is arranged on the root capsule. The root is the same
+ * upright shape in every pose, so a pose only ever moves the rig's bones;
+ * the server's hit volumes follow the pose (`lagComp.ts` `POSED_BODIES`,
+ * held to this rig's skin by `humanoidSoldier.test.ts`). Vault is T-2.23's
+ * to add.
  *
  * `prone` (T-2.41) is a voluntary combat stance, not `downed`: the weapon
  * stays in hand and the rig keeps reacting to hits, and the body faces down
  * rather than lying on its back.
+ *
+ * `dead` is not `downed`: face down and flat, both arms stretched above the
+ * head on the ground, no weapon, so a body and a soldier waiting on a revive
+ * never look alike.
  */
-export type HumanoidPose = 'standing' | 'crouched' | 'downed' | 'prone';
+export type HumanoidPose = 'standing' | 'crouched' | 'downed' | 'prone' | 'dead';
+
+/** The poses that lie on the ground with no weapon and no reactions. */
+export function isLyingHelpless(pose: HumanoidPose | null): boolean {
+  return pose === 'downed' || pose === 'dead';
+}
 
 export type HumanoidRigKind = 'skinned' | 'grey-box';
 

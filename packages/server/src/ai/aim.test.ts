@@ -5,7 +5,7 @@
  * never changes what they show.
  */
 import { describe, expect, it } from 'vitest';
-import { ANGLE_UNITS, type EnemyAccuracy, type WorldBox, angleDelta, degToAngle } from '@sandline/shared';
+import { ANGLE_UNITS, type EnemyAccuracy, WIRE_ANGLE_UNITS, type WorldBox, angleDelta, degToAngle } from '@sandline/shared';
 import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, lineOfSight, visibleAimPoint } from './aim.ts';
 import { DEFAULT_HITBOX } from '../net/lagComp.ts';
 
@@ -114,8 +114,28 @@ describe('aim line and points (T-3.15)', () => {
     const [chest, head] = aimPoints(feet, false, false);
     expect(chest).toEqual({ x: 1, y: DEFAULT_HITBOX.centerOffsetY, z: 2 });
     expect(head!.y).toBeCloseTo(DEFAULT_HITBOX.centerOffsetY + DEFAULT_HITBOX.halfHeight, 12);
-    expect(aimPoints(feet, true, false)[0]!.y).toBe(DEFAULT_HITBOX.crouchCenterOffsetY);
-    expect(aimPoints(feet, false, true)[0]!.y).toBe(DEFAULT_HITBOX.proneCenterOffsetY);
+    // Crouched is posed: the torso and the head where the crouch holds them.
+    const [torso, crouchedHead] = aimPoints(feet, true, false);
+    expect(torso!.y).toBeGreaterThan(0.45);
+    expect(torso!.y).toBeLessThan(0.8);
+    expect(crouchedHead!.y).toBeGreaterThan(0.9);
+    expect(crouchedHead!.y).toBeLessThan(1.2);
+  });
+
+  it('aims along a body on the ground, torso then head, the way it faces', () => {
+    const feet = { x: 1, y: 0, z: 2 };
+    for (const [pose, prone] of [[{}, true], [{ lying: 'downed' as const }, false], [{ lying: 'dead' as const }, false]] as const) {
+      // Wire yaw: a full turn is WIRE_ANGLE_UNITS.
+      for (const yaw of [0, WIRE_ANGLE_UNITS / 4, WIRE_ANGLE_UNITS / 2]) {
+        const [torso, head] = aimPoints(feet, false, prone, DEFAULT_HITBOX, { ...pose, yaw });
+        // Low, on the body, and the head further along the facing than the torso.
+        expect(torso!.y).toBeLessThan(0.6);
+        expect(head!.y).toBeLessThan(0.7);
+        const facing = yaw === 0 ? { x: 0, z: 1 } : yaw === WIRE_ANGLE_UNITS / 4 ? { x: 1, z: 0 } : { x: 0, z: -1 };
+        const along = (p: { x: number; z: number }) => (p.x - feet.x) * facing.x + (p.z - feet.z) * facing.z;
+        expect(along(head!)).toBeGreaterThan(along(torso!) + 0.2);
+      }
+    }
   });
 
   it('has no line of sight through a wall, and one past it', () => {
