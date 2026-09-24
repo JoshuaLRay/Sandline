@@ -19,6 +19,7 @@
  * travels is `MissionView`.
  */
 import GREYBOX_01 from '../data/missions/greybox-01.json' with { type: 'json' };
+import MISSION_01 from '../data/missions/mission-01.json' with { type: 'json' };
 import type { AreaRef, Encounter } from './encounters.ts';
 import type { World } from './world.ts';
 
@@ -179,7 +180,7 @@ export function checkMission(mission: MissionDef, encounter: Encounter, world: W
 
 /** Every committed mission, by world id. Validated once, at import. */
 const MISSIONS: ReadonlyMap<string, MissionDef> = new Map(
-  [GREYBOX_01].map((raw) => {
+  [GREYBOX_01, MISSION_01].map((raw) => {
     const m = parseMission(raw);
     return [m.world, m] as const;
   }),
