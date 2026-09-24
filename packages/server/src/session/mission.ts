@@ -38,6 +38,8 @@ export interface MissionWorld {
   standingIn(area: GroundArea): number;
   /** Every slot is dead. */
   wiped(): boolean;
+  /** A protected encounter entity has spawned and been lost. */
+  protectedLost(id: string): boolean;
   /** An encounter group: whether it is dead, and how many it has placed and lost so far. */
   group(id: string): { dead: boolean; spawned: number; down: number };
 }
@@ -48,6 +50,11 @@ export class MissionRun {
   private view: MissionView;
   /** Ticks in a row the defended area has been overrun. */
   private breach = 0;
+  /** Mission ticks elapsed across the attempt; retry keeps the time already spent before its checkpoint. */
+  private elapsedTicks = 0;
+  /** Objective to resume from after a failure, and the elapsed time when it began. */
+  private checkpointObjective = 0;
+  private checkpointElapsedTicks = 0;
   private readonly areas: (GroundArea | null)[];
 
   constructor(
@@ -67,6 +74,11 @@ export class MissionRun {
   /** Whether the respawn rule applies (the mission's `respawn`). */
   get respawns(): boolean {
     return this.def.respawn;
+  }
+
+  /** Objective index a failed run retries from; 0 before the first objective completes. */
+  get checkpoint(): number {
+    return this.checkpointObjective;
   }
 
   /** The objective being played, and its resolved area if it has one. */
@@ -101,7 +113,11 @@ export class MissionRun {
     if (this.view.state !== 'progress') return false;
     const before = this.view;
     let next: MissionView = { ...before };
-    if (w.wiped()) {
+    this.elapsedTicks++;
+    const failure = this.def.failure;
+    const timedOut = failure?.timeLimitSeconds !== undefined && this.elapsedTicks >= ticksOf(failure.timeLimitSeconds);
+    const protectedLost = failure?.protectedGroup !== undefined && w.protectedLost(failure.protectedGroup);
+    if (w.wiped() || timedOut || protectedLost) {
       next.state = 'failed';
     } else {
       const { def, area } = this.objective;
@@ -137,8 +153,13 @@ export class MissionRun {
       }
       const done = def.type === 'reach' ? next.satisfied : def.type === 'destroy' ? w.group(def.group).dead : next.progress >= next.goal;
       if (next.state === 'progress' && done) {
-        if (next.objective + 1 < next.objectives) next = this.start(next.objective + 1, next.attempt);
-        else next.state = 'complete';
+        if (next.objective + 1 < next.objectives) {
+          this.checkpointObjective = next.objective + 1;
+          this.checkpointElapsedTicks = this.elapsedTicks;
+          next = this.start(this.checkpointObjective, next.attempt);
+        } else {
+          next.state = 'complete';
+        }
       }
     }
     this.view = next;
@@ -152,8 +173,17 @@ export class MissionRun {
     );
   }
 
-  /** Start again: the first objective, nothing done, the next attempt. */
+  /** Retry after a failure: the latest checkpoint, with earlier objectives still complete. */
+  retry(): void {
+    this.elapsedTicks = this.checkpointElapsedTicks;
+    this.view = this.start(this.checkpointObjective, this.view.attempt + 1);
+  }
+
+  /** Full restart: the first objective, nothing done, the next attempt. */
   reset(): void {
+    this.elapsedTicks = 0;
+    this.checkpointObjective = 0;
+    this.checkpointElapsedTicks = 0;
     this.view = this.start(0, this.view.attempt + 1);
   }
 }
