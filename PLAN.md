@@ -2833,6 +2833,7 @@ free to go whenever.
   - a toggled blocker stops a soldier and a shot, and paths route round it;
   - the client draws it open or shut from replicated state.
 - **Size:** M
+- **Completed 2026-09-24.** Mission events are typed and validated in `shared/src/sim/events.ts` and executed deterministically by `server/src/session/events.ts`. Existing encounter triggers now enter through the same runner; objective start/complete, area entry, time, group-dead and flag triggers drive spawn-group, objective jump, blocker, message/callout and flag actions. Dynamic blocker boxes are authoritative collision and shot geometry, flag matching Detour polygons without a rebake, replicate in protocol 26, and are used by client prediction, effects, camera collision and rendering. Session/protocol/nav regressions cover every trigger/action and blocker movement, shot and pathing behavior.
 
 ##### T-4.16 — Checkpoints, failure and retry
 - **Depends:** T-4.14
