@@ -146,6 +146,11 @@ export class AssetLoader {
     return [...this.entries.keys()];
   }
 
+  /** Manifest metadata for runtime systems such as LOD selection (T-4.07). */
+  manifestEntry(id: string): AssetEntry | undefined {
+    return this.manifest.assets.find((entry) => entry.id === id);
+  }
+
   async load(id: string): Promise<LoadedAsset> {
     let entry = this.entries.get(id);
     if (!entry) {
