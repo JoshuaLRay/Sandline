@@ -1953,6 +1953,8 @@ comms, and any mission scripting beyond what T-3.34 names.
 | E-4.8 | Vehicles — mounted MG first, driveable second |
 | E-4.9 | Deployment — **multi-region** game servers, session allocation, drain and reclaim, observability — **the single-host slice moved to M1.5** (T-1.5.07) |
 
+**Broken out in §7.11 (2026-09-24):** T-4.01–T-4.34. Art sourcing (T-4.01) and where progress lives (T-4.21) are decisions of their own that gate the content and save tasks; the system tasks do not wait for them.
+
 ### M5 — Vertical slice (~6–8 wks at §4.1 scope)
 
 One finished 10-minute mission at the reduced scope in §4.1: **two classes, two
@@ -2113,6 +2115,488 @@ the owner listens (T-1.5.07, the T-3.35 follow-up).
   - whether callouts help or nag;
   - whether it reads as 2002.
 - **Done when:** the owner has played it and written the verdict. An agent can write the run sheet and must not invent the verdict.
+- **Size:** S (the owner's time)
+
+### 7.11 M4 leaf tasks — broken out 2026-09-24
+
+Broken out at the owner's request, **ahead of M3's exit gate**, as M3 was
+broken out ahead of M2's. It does not jump the queue: B-11, the M3 gates
+(🧍 T-3.24, T-3.30, T-3.36, T-3.37) and E-2.7 come first in scan order, and
+M4's gate (T-4.34) is not reached before M3's is passed.
+
+**Two decisions gate parts of M4, and are tasks of their own:**
+- **Art sourcing** (§9 Q2, R1) — answered for audio (ADR-017), still open
+  for meshes, textures and animation. **T-4.01** is that decision. Every
+  task that makes or depends on content (a kit piece, a character model, a
+  clip) waits for it. Every *system* task does not: the pipeline takes glTF
+  whatever made it, and the loader, budgets, level format, mission
+  scripting, persistence, HUD and deployment are all content-agnostic.
+- **Where progress lives** (§9 Q5: the host or each player). **T-4.21** is
+  that decision; the save tasks wait for it.
+
+**Rules for M4:**
+1. **Collision stays boxes.** ADR-014's bit-exact box collision is not
+   reopened by content. A kit piece is a visual mesh **and** a set of
+   axis-aligned collision boxes. A piece is placed at a 90° rotation only,
+   so its boxes stay axis-aligned. The navmesh and cover still bake from
+   boxes (T-3.03, T-3.18).
+2. **Budgets are CI failures from the first asset** (ADR-013): triangles,
+   bones, texture sizes, draw calls, and the initial download. An asset over
+   budget does not merge.
+3. **§4.1's cut holds:** a ~25-piece kit (not 60), two classes (Team Leader
+   and Marksman), and a mounted MG as the only vehicle.
+4. **Shared stays platform-free.** Level *data* and its validation are
+   shared. Loading meshes and textures is the client's, and baking is the
+   tools'.
+5. **Everything testable on the deployed site** (the T-3.35 follow-up): every
+   player-facing task lands playable at https://joshualray.github.io/Sandline/,
+   with the flag or lobby choice its completion note names.
+
+**What already exists.**
+- **Worlds:** named worlds with a mission block (T-3.02, T-3.31), the
+  navmesh and cover bake with staleness hashes (T-3.03, T-3.18), and the
+  code-built soldier behind a rig contract (T-2.22, `humanoidRig.ts`) with
+  its generated texture (T-2.35).
+- **Missions:** encounters, the director and one objective with its
+  `Mission` message and restart (T-3.32 to T-3.34), and the headless
+  mission scenario (T-3.35).
+- **Hosting:** rooms, join codes, the lobby with its map choice, and one
+  deployed host on Fly (M1.5, the T-3.35 follow-up).
+- **Assets:** nothing yet. The client has no glTF path, and the only draw
+  calls are code-built meshes.
+
+**Order of work** (dependencies allowing): the decisions (T-4.01, T-4.21)
+and the pipeline and budgets (T-4.02, T-4.03, T-4.05) first. The level
+format (T-4.09) and mission scripting (T-4.14 to T-4.17) can run beside
+them, because they build on today's box worlds. Content (T-4.04, T-4.08,
+T-4.10, T-4.12, T-4.13) follows T-4.01. Accounts and saves follow T-4.21,
+and multi-region follows its ADR. The HUD, classes and the mounted MG are
+free to go whenever.
+
+---
+
+#### E-4.1 — Asset pipeline
+
+##### T-4.01 — 🧍 Art sourcing decision (ADR-018)
+- **Depends:** —
+- **Files:** `docs/adr/018-art-sourcing.md`, a decision note in §9 Q2
+- **Do:** An agent writes the options paper and the owner decides; the
+  agent must not decide. The options, each with cost, quality ceiling,
+  iteration speed and how it meets ADR-013's budgets:
+  - in-house, authored as code the way the soldier and audio are (ADR-017);
+  - in-house by hand in Blender;
+  - purchased packs;
+  - commissioned;
+  - a mix (for example, code-built kit and props with purchased
+    characters and mocap).
+
+  §4.1's ~35 animation clips are the hardest line item in every option, so
+  the paper says how each option gets them.
+- **Done when:** ADR-018 is Accepted with the owner's choice, and
+  §9 Q2 says so.
+- **Size:** S (agent) + the owner's decision
+
+##### T-4.02 — glTF processing and the asset manifest
+- **Depends:** —
+- **Files:** `packages/tools/src/gen-assets.ts`, `assets/src/` (inputs), `packages/client/public/assets/` (outputs), `packages/shared/src/data/assets/manifest.json` (+ parser), tests
+- **Do:** `pnpm gen:assets` takes every source glTF under `assets/src/`, whatever made it, and:
+  - compresses its geometry (Draco or meshopt) and its textures (KTX2/Basis) with gltf-transform and a Basis encoder (dev dependencies);
+  - writes the web copies;
+  - writes a manifest per asset: id, hash, bytes, triangles, bones, materials, texture sizes, LOD levels and any collision boxes declared in its extras.
+
+  Outputs are committed with an input hash, as `gen:nav` does. A test asset — one of the code-built props, exported to glTF — proves the path.
+- **Done when:**
+  - a re-run is byte-identical;
+  - a test fails when an input changes without a re-run;
+  - the manifest's numbers match the file;
+  - the test asset round-trips.
+- **Size:** M
+
+##### T-4.03 — Budgets enforced in CI
+- **Depends:** T-4.02
+- **Files:** `packages/shared/src/data/assets/budgets.json`, `packages/tools/src/assets/budgets.ts`, `.github/workflows/ci.yml`, tests
+- **Do:** ADR-013's numbers as data:
+  - per character, 8–15k triangles and 45–65 bones;
+  - per prop and kit piece, by class;
+  - texture sizes;
+  - materials per atlas family;
+  - the initial download under 80 MB.
+
+  A check reads the manifest and fails, naming the asset and the number, when anything is over. It runs in `pnpm verify`.
+- **Done when:** an over-budget test asset fails with its name and number, and the committed set passes.
+- **Size:** S
+
+##### T-4.04 — The art source path
+- **Depends:** T-4.01, T-4.02
+- **Files:** as ADR-018 decides; for example `packages/tools/src/art/` (generators that write glTF) or `docs/art/export-conventions.md` plus a validator
+- **Do:** Whatever ADR-018 chose, made concrete and checked:
+  - if code-authored, the generator library and its first piece;
+  - if hand-made or bought, the export conventions (scale, pivot, naming, collision-box markers, LOD naming, texture atlas families) and a validator the pipeline runs.
+
+  Either way, one kit piece goes end to end into the manifest.
+- **Done when:** one piece passes the pipeline and the budgets and draws in the page.
+- **Size:** M
+
+#### E-4.2 — Runtime loading, streaming, LOD, budgets
+
+##### T-4.05 — The asset loader
+- **Depends:** T-4.02
+- **Files:** `packages/client/src/assets/loader.ts`, tests
+- **Do:** glTF loading through three's own loaders and decoders (Draco, meshopt, KTX2), which ship with `three` so no dependency is new. It:
+  - reads the manifest by id;
+  - caches with reference counts, and disposes geometry, textures and materials when the count reaches zero;
+  - pre-warms shaders.
+
+  A missing or corrupt asset falls back to its grey box with a warning, never a blank scene.
+- **Done when:**
+  - load, reuse and dispose are tested against a fake WebGL context;
+  - the renderer's memory counters return to where they started after a load and unload;
+  - the fallback is tested.
+- **Size:** M
+
+##### T-4.06 — Streaming and the load screen
+- **Depends:** T-4.05
+- **Files:** `packages/client/src/assets/packs.ts`, `packages/client/src/ui/LoadScreen.ts`, `packages/shared/src/data/assets/packs.json`, a CI check, tests
+- **Do:** Assets grouped into packs:
+  - the initial pack is the menu, the soldier and the weapons;
+  - each level is its own pack, fetched when it is chosen and before the session starts;
+  - the load screen shows progress;
+  - the budget is the initial download under 80 MB and playable in under 30 s (ADR-013).
+
+  A CI check measures the initial pack's bytes, and a Playwright run on a throttled link times the first frame of play.
+- **Done when:** both numbers are logged every run and asserted, and a level pack fetched twice is not downloaded twice.
+- **Size:** M
+
+##### T-4.07 — LOD, instancing and the draw-call budget
+- **Depends:** T-4.05
+- **Files:** `packages/client/src/assets/lod.ts`, `packages/client/src/assets/instances.ts`, a CI probe, tests
+- **Do:**
+  - LOD levels from the manifest, switched by screen size;
+  - repeated props and kit pieces drawn instanced;
+  - a draw-call and triangle readout in the netgraph.
+
+  A CI probe flies a scripted camera path through a level in headless Chromium and asserts draw calls stay under 300 (the renderer's own count, which is deterministic).
+- **Done when:** the probe runs on the kit level (T-4.13) and on a synthetic worst case, logged and asserted.
+- **Size:** M
+
+##### T-4.08 — Characters from assets
+- **Depends:** T-4.01, T-4.05
+- **Files:** `packages/client/src/character/assetSoldier.ts`, tests
+- **Do:** A loaded skinned glTF that implements T-2.22's rig contract: the named bones, the aim attachment, poses, gait, aim offsets, reload and hit-reaction layers, and feet. Clips come from the asset when ADR-018's path provides them. The code-built soldier stays as the fallback and as `?greybox`. The squad and enemy palettes (T-2.38, T-3.11) carry over.
+- **Done when:** the rig contract's existing tests pass against the asset soldier, and its triangles and bones pass the budgets.
+- **Size:** L
+
+#### E-4.3 — Level format, kit, lightmaps
+
+##### T-4.09 — Level format v1
+- **Depends:** —
+- **Files:** `packages/shared/src/sim/level.ts`, `packages/shared/src/data/levels/*.json`, tests
+- **Do:** A level is a world file grown up. It holds:
+  - kit piece instances (id, position, a 90° rotation);
+  - the pieces' own collision boxes, placed with them, plus free boxes;
+  - the mission block (T-3.31);
+  - an encounter reference.
+
+  `loadLevel` produces the same `World` every consumer already reads, so the controller, shots, navmesh, cover and AI need no change. Box-only worlds still load. The navmesh and cover bake from a level as from a world.
+- **Done when:**
+  - greybox-01, expressed as a level of free boxes, bakes and plays identically to the world (T-3.31's tests pass on it);
+  - a piece rotated by 90° has its boxes rotated with it;
+  - a rotation not a multiple of 90° is refused.
+- **Size:** M
+
+##### T-4.10 — The slice kit (~25 pieces)
+- **Depends:** T-4.04, T-4.09
+- **Files:** kit sources (per ADR-018), `packages/shared/src/data/kit.json` (pieces and their collision and cover), the manifest, tests
+- **Do:** §4.1's ~25 pieces for one compact level: walls (full, low, broken), doorway and window walls, a building shell set, sandbags, crates, a fence, rubble and ground tiles. Each piece carries:
+  - its visual mesh;
+  - its collision boxes and the cover class those make;
+  - its budget class;
+  - a family atlas.
+- **Done when:** every piece passes the budgets, has collision that matches its visible shape (a test compares each piece's bounds with its mesh's), and appears on a kit gallery page (`?kit`) on the deployed site.
+- **Size:** L
+
+##### T-4.11 — Level validation and review renders
+- **Depends:** T-4.09
+- **Files:** `packages/tools/src/level-check.ts`, tests
+- **Do:** No editor UI. Levels are JSON authored by an agent or a person, checked by a tool. It reports:
+  - overlapping collision;
+  - navmesh islands nothing reaches;
+  - spawn zones visible from the start;
+  - route connectivity (T-3.31's checks, generalised);
+  - piece budgets summed per level.
+
+  It also renders a top-down map PNG and a few fixed-camera screenshots for review. It runs in CI on every level.
+- **Done when:** each check has a failing fixture, and greybox-01 passes.
+- **Size:** M
+
+##### T-4.12 — ⚠️ Baked lighting
+- **Depends:** T-4.09, T-4.10
+- **Files:** `packages/tools/src/bake-light.ts`, lightmap outputs in the level pack, `packages/client/src/assets/lightmaps.ts`, tests
+- **Do:** A spike first: can a lightmap bake be done headless, with three's progressive lightmapper in headless Chromium or a small CPU path tracer? It bakes the sun and sky for one level into atlases with a second UV set, KTX2-compressed and within the texture budget. At runtime the lightmaps go on static geometry, with the one cascaded sun shadow for dynamic objects (ADR-013). Failure is a written-up outcome: the fallback is hemisphere light plus the sun and baked ambient occlusion per piece.
+- **Done when:** one level renders with its lightmap under budget and the draw-call probe (T-4.07) still passes, or the spike's write-up records the fallback taken.
+- **Size:** L
+
+##### T-4.13 — The first kit level: mission-01
+- **Depends:** T-4.10, T-4.11, T-4.14
+- **Files:** `packages/shared/src/data/levels/mission-01.json`, its encounter and mission, its bakes
+- **Do:** greybox-01's design built from the kit: the same two routes, the same objective, the same spawn zones. It must look like a place.
+- **Done when:**
+  - T-3.31's route, cover and sight-line tests and T-4.11's checks pass;
+  - `pnpm sim-run --scenario mission` passes on it;
+  - it is selectable in the lobby's Map and plays on the deployed site.
+- **Size:** M
+
+#### E-4.4 — Mission scripting
+
+##### T-4.14 — Objective types and the mission sequence
+- **Depends:** —
+- **Files:** `packages/shared/src/sim/mission.ts` (grown), `packages/shared/src/data/missions/*.json`, `packages/server/src/session/mission.ts`, `packages/shared/src/net/protocol.ts`, `packages/client/src/ui/missionHud.ts`, tests
+- **Do:** T-3.34's one objective becomes a sequence. The types are:
+  - clear-and-hold;
+  - reach an area (all or any of the squad);
+  - destroy a target entity;
+  - defend an area for a time;
+  - survive a time.
+
+  Each is data with its own parameters. The `Mission` message carries the objective's index, type and progress (a protocol bump), and the HUD line reads it.
+- **Done when:**
+  - each type's completion and failure is session-tested;
+  - a three-objective mission runs in order;
+  - the message round-trips and the HUD shows each type.
+- **Size:** M
+
+##### T-4.15 — Triggers and scripted events
+- **Depends:** T-4.14
+- **Files:** `packages/shared/src/sim/events.ts`, `packages/server/src/session/events.ts`, tests
+- **Do:** Encounter triggers (T-3.32) generalised to events. The triggers:
+  - an objective started or completed;
+  - an area entered;
+  - a time;
+  - a group dead;
+  - a flag.
+
+  The actions:
+  - spawn a group;
+  - set an objective;
+  - toggle a **blocker** (a door or gate is a set of boxes switched on or off, with the navmesh polygons flagged to match — no dynamic mesh);
+  - show a message or play a callout (E-2.7);
+  - set a flag.
+
+  All of it is server-side, in data, and deterministic.
+- **Done when:**
+  - every trigger and action is session-tested;
+  - a toggled blocker stops a soldier and a shot, and paths route round it;
+  - the client draws it open or shut from replicated state.
+- **Size:** M
+
+##### T-4.16 — Checkpoints, failure and retry
+- **Depends:** T-4.14
+- **Files:** `packages/server/src/session/mission.ts`, tests
+- **Do:**
+  - Failure conditions per mission: a squad wipe (T-3.34), a time limit, a protected entity lost.
+  - A checkpoint at each completed objective: a retry restores the squad on the checkpoint's spawn points and replays the encounter from that objective.
+  - A full restart, as today.
+- **Done when:** each is session-tested, including a retry after a checkpoint leaving the earlier objectives complete.
+- **Size:** S
+
+##### T-4.17 — Every mission, headless
+- **Depends:** T-4.14, T-3.35
+- **Files:** `packages/tools/src/scenarios/mission.ts` (grown), `.github/workflows/ci.yml`
+- **Do:** T-3.35's scenario takes any mission file. Its scripted leader works through the objectives in order, using the objective types' own hints: an area to reach, a target to destroy. CI runs three seeds of every committed mission.
+- **Done when:** every committed mission completes at least once in the CI seeds, or the job says why not, per mission.
+- **Size:** M
+
+#### E-4.5 — Matchmaking, parties, regions, reconnect, invites
+
+##### T-4.18 — Reconnect into your own slot
+- **Depends:** —
+- **Files:** `packages/server/src/session/Session.ts`, `packages/shared/src/net/protocol.ts`, `packages/client/src/net/RemoteServer.ts`, tests
+- **Do:** Today a dropped player rejoins the room into whatever slot is free. Instead:
+  - the JoinAck carries a resume token;
+  - a player who drops and comes back within a grace time (data) takes back **their** slot — soldier, health, weapon, orders and XP — swapping the bot back out (ADR-001);
+  - after the grace time, the slot is the bot's for good.
+- **Done when:** a loopback test drops and resumes a client mid-fight into the same slot and state, and a resume after the grace time gets a fresh slot.
+- **Size:** M
+
+##### T-4.19 — The room before the mission: parties and ready-up
+- **Depends:** T-4.14
+- **Files:** `packages/server/src/session/Session.ts`, `packages/client/src/ui/RoomLobby.ts`, protocol, tests
+- **Do:** A room has a pre-mission state:
+  - who is in it, their chosen class (T-4.27) and a ready toggle;
+  - the room's creator picks the mission;
+  - the mission starts when everyone is ready, or when the creator starts it.
+
+  The Copy link invite is the party. A mission in progress can still be joined into a bot's slot. Quick-join puts you in a room on that mission with a free slot, or makes one.
+- **Done when:** the pre-mission state is session-tested; quick-join finds and fills a room over the host (tested); it plays on the deployed site.
+- **Size:** M
+
+##### T-4.20 — Region selection
+- **Depends:** T-4.30, T-4.31
+- **Files:** `packages/client/src/net/regions.ts`, the lobby, tests
+- **Do:** The lobby pings each region's host, shows the round trips, and picks the lowest, with a manual override that is remembered. Room codes carry their region, so an invite lands in the right one.
+- **Done when:** the choice logic is unit-tested with fake RTTs, and a code from another region resolves to it.
+- **Size:** S
+
+#### E-4.6 — Persistence
+
+##### T-4.21 — 🧍 Where progress lives, and how it is stored (ADR-019)
+- **Depends:** —
+- **Files:** `docs/adr/019-persistence.md`, §9 Q5
+- **Do:** An agent writes the options and the owner decides.
+  - **Q5:** is campaign progress the host's (the room's), or does each player carry their own soldier?
+  - **Identity:** anonymous durable IDs first, and whether accounts come later.
+  - **Storage:** Postgres (and Redis, if a need for it is shown) on Fly, or a managed service. Covers cost, backup and data retention.
+  - **Privacy:** only what is needed is stored.
+- **Done when:** ADR-019 is Accepted with the owner's choices, and §9 Q5 is answered.
+- **Size:** S (agent) + the owner's decision
+
+##### T-4.22 — Player identity
+- **Depends:** T-4.21
+- **Files:** `packages/server/src/identity/`, protocol (the Join carries a token), `packages/client/src/net/identity.ts`, tests
+- **Do:**
+  - A durable anonymous player ID, issued on the first Join and signed by the host; the client keeps it and sends it back.
+  - A display name bound to it.
+  - Optional account linking later, if ADR-019 says so.
+- **Done when:**
+  - issue, verify and rotate are tested;
+  - a forged or expired token is refused with a typed reason;
+  - nothing personal is stored beyond what ADR-019 allows.
+- **Size:** M
+
+##### T-4.23 — Campaign saves
+- **Depends:** T-4.21, T-4.22, T-4.16
+- **Files:** `packages/server/src/persistence/`, tests
+- **Do:** Completed missions and checkpoints saved as ADR-019 decides, per host or per player, and restored on joining. Writes are idempotent and a failed write is retried. A save format version and migrations exist from the first save.
+- **Done when:** save and restore are tested against a real database in CI (a service container); a migration test passes; a crash mid-write loses nothing that was acknowledged.
+- **Size:** M
+
+##### T-4.24 — Per-soldier XP and ranks
+- **Depends:** T-4.22, T-4.23
+- **Files:** `packages/shared/src/data/progression.json`, `packages/server/src/persistence/xp.ts`, HUD after-action, tests
+- **Do:** The server awards XP from what happened (kills, revives, orders carried, objectives), per a data table. Ranks are thresholds in data. A bot earns nothing, since a bot is nobody's soldier (ADR-001). XP is saved against the player's identity and shown on the after-action screen (T-4.28).
+- **Done when:** the awards are session-tested per event; a bot earns nothing; the saved totals survive a reconnect.
+- **Size:** S
+
+#### E-4.7 — HUD, menus, class selection, scoreboard
+
+##### T-4.25 — The player HUD
+- **Depends:** —
+- **Files:** `packages/client/src/ui/hud/`, tests
+- **Do:** A player's HUD replaces the QA readouts, which stay behind H and N. It shows:
+  - health and vitality;
+  - ammo and grenades;
+  - stance;
+  - the objective line (T-3.34 / T-4.14);
+  - six squad rows (name or bot, alive / downed / dead, current order);
+  - a compass with order and mark markers (T-3.29);
+  - hit markers, a damage direction and the reload.
+
+  Everything is drawn from replicated state alone.
+- **Done when:** each widget is a pure function of state, unit-tested, and it plays on the deployed site.
+- **Size:** M
+
+##### T-4.26 — Menus and settings
+- **Depends:** T-4.25
+- **Files:** `packages/client/src/ui/menu/`, tests
+- **Do:**
+  - a main menu, with the lobby restyled into it;
+  - pause (Esc);
+  - settings: sensitivity, invert, field of view, audio volumes (E-2.7), key bindings (display first), and a graphics quality level that maps to ADR-013's budgets;
+  - settings kept per browser.
+- **Done when:** the menu flows are tested in Playwright, and the settings survive a reload.
+- **Size:** S
+
+##### T-4.27 — Classes: Team Leader and Marksman
+- **Depends:** —
+- **Files:** `packages/shared/src/data/classes.json`, `packages/shared/src/sim/classes.ts`, the server's slot loadouts, the class pick in the room lobby, tests
+- **Do:** §4.1's two classes as data: a loadout (the Marksman's scoped rifle — a new weapon row, with ADS zoom), health, and what each may do. The Team Leader gives orders to the whole squad; others give orders to their own fireteam — a data rule the session enforces. Bots take classes that fill the squad. The class is replicated so the HUD and other players see it.
+- **Done when:** loadouts and the order rule are session-tested, and a bot fills the missing class.
+- **Size:** M
+
+##### T-4.28 — Scoreboard and after-action
+- **Depends:** T-4.25
+- **Files:** `packages/client/src/ui/scoreboard.ts`, protocol (a stats message), tests
+- **Do:**
+  - Tab shows the six slots with kills, deaths, revives, orders given and orders carried;
+  - the mission's end shows an after-action summary: the time, the objectives, and XP once T-4.24 lands.
+
+  Stats are the server's.
+- **Done when:** the stats are session-tested and the message round-trips.
+- **Size:** S
+
+#### E-4.8 — Vehicles (the mounted MG only, §4.1)
+
+##### T-4.29 — The mounted MG
+- **Depends:** —
+- **Files:** `packages/shared/src/data/emplacements.json`, `packages/shared/src/sim/emplacement.ts`, the server, the client, tests
+- **Do:** A static emplacement entity, replicated, that works like this:
+  - mount and dismount with interact;
+  - traverse and elevation limits;
+  - it fires through the human fire path with the LMG's numbers, heat and overheat;
+  - it leaves the gunner's head exposed.
+
+  An enemy MG gunner (T-3.23) takes an emplacement when one is near its post. Driveable vehicles are deferred past the slice.
+- **Done when:**
+  - mount, limits, heat and firing are session-tested;
+  - a human's and an AI's use go through the same path;
+  - it plays on the deployed site.
+- **Size:** M
+
+#### E-4.9 — Deployment, multi-region
+
+##### T-4.30 — Regions and allocation (ADR-011 addendum)
+- **Depends:** —
+- **Files:** `docs/adr/011-regional-session-hosting.md` (addendum)
+- **Do:** A design, with its costs, for:
+  - which regions;
+  - how a client is handed a host and a room (a small allocator, or Fly's own regional routing);
+  - how rooms are named across hosts;
+  - how many machines per region and when they start.
+
+  Owner-visible cost is part of it.
+- **Done when:** the addendum is written and the owner has agreed the cost.
+- **Size:** S
+
+##### T-4.31 — The session allocator
+- **Depends:** T-4.30
+- **Files:** `packages/server/src/allocator/` (or as the addendum decides), `fly.toml`s, tests
+- **Do:** Hands a client a host and a room in its region: creates a room on the least-loaded host, or finds the host that holds a code. Health comes from each host's `/healthz`.
+- **Done when:** allocation, lookup and a dead host are tested with fake hosts, and two regions deploy.
+- **Size:** M
+
+##### T-4.32 — Drain and reclaim on deploy
+- **Depends:** T-4.31
+- **Files:** `packages/server/src/session/SessionHost.ts`, `.github/workflows/host.yml`, tests
+- **Do:** A deploy never kills a running mission:
+  - a draining host takes no new rooms (the existing `host draining`);
+  - the new version takes them;
+  - the old host stops once empty, or after a cap, telling players first.
+- **Done when:** a drain is tested with a fake clock, and a deploy with a room in progress keeps it to the end in a staging run.
+- **Size:** M
+
+##### T-4.33 — Observability
+- **Depends:** —
+- **Files:** `packages/server/src/metrics.ts`, a dashboard definition, alerts
+- **Do:** Each host exports metrics:
+  - tick time, and the AI's share (T-3.35's `profileAi`, sampled);
+  - players, rooms and bytes per player;
+  - reconnects and refusals by code.
+
+  A dashboard shows them, with an alert when ticks overrun.
+- **Done when:** the metrics endpoint is tested, and the dashboard and alert exist.
+- **Size:** S
+
+#### M4 exit gate
+
+##### T-4.34 — 🧍 M4 exit gate
+- **Depends:** T-4.13, T-4.17, T-4.23, T-4.25, T-4.26, T-4.27, T-4.29
+- **Files:** `docs/playtests/m4.md` (run sheet — not a verdict)
+- **Do:** The owner plays, on the deployed site:
+  - mission-01 on the kit, loaded through the pipeline within budget;
+  - a mission with several objectives, triggers and a checkpoint;
+  - as a class they chose;
+  - with progress that is still there the next day.
+- **Done when:** the owner has played it and written the verdict.
 - **Size:** S (the owner's time)
 
 ## 8. Risk register
