@@ -1,12 +1,12 @@
 /**
  * T-4.06 time-to-playable CI probe.
  *
- * Runs the real Vite client in Chromium, throttles the whole page through
+ * Runs the production Vite client in Chromium, throttles the whole page through
  * Chrome DevTools Protocol to 4 Mbit/s with 100 ms latency, chooses the
  * kit-authored mission in the normal lobby, and waits for main.ts to mark the
  * first rendered playable frame. The 30 s ceiling is ADR-013's.
  *
- * Run after installing Chromium: pnpm check:load-time
+ * Run after `pnpm --filter @sandline/client build` and installing Chromium: pnpm check:load-time
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { chromium } from 'playwright';
@@ -25,6 +25,7 @@ function startVite(): ChildProcess {
     '@sandline/client',
     'exec',
     'vite',
+    'preview',
     '--host',
     '127.0.0.1',
     '--port',
