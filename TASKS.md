@@ -81,8 +81,9 @@ the level format (T-4.09), mission sequence (T-4.14), reconnect
 addendum (T-4.30) and observability (T-4.33) — and two owner decisions gate
 the rest. Art sourcing is decided (🧍 T-4.01, ADR-018: authored as code,
 with procedural animation), so the generator library (T-4.04) and the
-characters from assets (T-4.08) are open. Where progress lives (🧍 T-4.21)
-is still the owner's to decide.
+characters from assets (T-4.08) are open. Where progress lives is decided
+too (🧍 T-4.21, ADR-019: on the host, per campaign), so player identity
+(T-4.22) is open.
 
 ---
 
@@ -358,9 +359,9 @@ still comes first in scan order, and T-4.34 is not reached before M3's gate
 is passed. Read §7.11's preamble (rules, what exists, order of work) once
 before the first M4 task. Two rows are the owner's decisions, not agent
 work: **T-4.01** (art sourcing) is decided — ADR-018, art authored as code
-with procedural animation — and **T-4.21** (where progress lives, ADR-019,
-§9 Q5) still gates the saves. An agent
-may draft either ADR's options for the owner, never decide them.
+with procedural animation — and so is **T-4.21** (where progress lives):
+ADR-019, on the host, per campaign. ADR-019's identity, storage and privacy
+lines are agent defaults the owner may still overrule before T-4.23.
 
 ### E-4.1 — Asset pipeline
 
@@ -411,8 +412,8 @@ may draft either ADR's options for the owner, never decide them.
 
 | Task | Status | Depends |
 |---|---|---|
-| 🧍 T-4.21 | OPEN — the owner's decision | — |
-| T-4.22 | BLOCKED | T-4.21 |
+| 🧍 T-4.21 | DONE — on the host (ADR-019) | — |
+| T-4.22 | OPEN | T-4.21 |
 | T-4.23 | BLOCKED | T-4.21, T-4.22, T-4.16 |
 | T-4.24 | BLOCKED | T-4.22, T-4.23 |
 

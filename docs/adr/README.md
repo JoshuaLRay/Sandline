@@ -37,6 +37,7 @@ different choice.
 | [016](016-prone-stance.md) | Prone stance and voluntary crawl (reopens ADR-002's prone row) | Accepted |
 | [017](017-in-house-audio.md) | Combat audio made in-house: synthesised effects, processed recorded voices | Accepted |
 | [018](018-art-sourcing.md) | Art made in-house as code: generated meshes and atlases, procedural animation | Accepted |
+| [019](019-persistence.md) | Campaign progress lives on the host: per-campaign squads, anonymous IDs, one Postgres | Accepted |
 
 ## Template
 

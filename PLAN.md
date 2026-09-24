@@ -2529,6 +2529,19 @@ free to go whenever.
   - **Privacy:** only what is needed is stored.
 - **Done when:** ADR-019 is Accepted with the owner's choices, and §9 Q5 is answered.
 - **Size:** S (agent) + the owner's decision
+- **Completed 2026-09-24.** The owner chose **on the host** for Q5, and
+  ADR-019 is Accepted. A campaign (code, owner, missions, checkpoint, six
+  soldiers with rank and XP) is the unit of progress. The identity,
+  storage and privacy lines are the agent's defaults, which the owner may
+  overrule before T-4.23:
+  - an anonymous, host-signed player ID, and no accounts in the slice;
+  - one Fly Postgres in the host's region, written at checkpoints and
+    mission end, with daily backups kept 7 days;
+  - `pg` as the server's one new runtime dependency;
+  - only the ID, display name and seen-times stored per player, no email
+    or IPs at rest, and 180-day retention.
+
+  T-4.22 is unblocked.
 
 ##### T-4.22 — Player identity
 - **Depends:** T-4.21
@@ -2546,14 +2559,14 @@ free to go whenever.
 ##### T-4.23 — Campaign saves
 - **Depends:** T-4.21, T-4.22, T-4.16
 - **Files:** `packages/server/src/persistence/`, tests
-- **Do:** Completed missions and checkpoints saved as ADR-019 decides, per host or per player, and restored on joining. Writes are idempotent and a failed write is retried. A save format version and migrations exist from the first save.
+- **Do:** Completed missions, checkpoints and the squad's soldiers saved per campaign (ADR-019), under its campaign code, and restored when a room is hosted with that code. Writes are idempotent and a failed write is retried. A save format version and migrations exist from the first save.
 - **Done when:** save and restore are tested against a real database in CI (a service container); a migration test passes; a crash mid-write loses nothing that was acknowledged.
 - **Size:** M
 
 ##### T-4.24 — Per-soldier XP and ranks
 - **Depends:** T-4.22, T-4.23
 - **Files:** `packages/shared/src/data/progression.json`, `packages/server/src/persistence/xp.ts`, HUD after-action, tests
-- **Do:** The server awards XP from what happened (kills, revives, orders carried, objectives), per a data table. Ranks are thresholds in data. A bot earns nothing, since a bot is nobody's soldier (ADR-001). XP is saved against the player's identity and shown on the after-action screen (T-4.28).
+- **Do:** The server awards XP from what happened (kills, revives, orders carried, objectives), per a data table. Ranks are thresholds in data. A bot earns nothing, since a bot is nobody's soldier (ADR-001). XP is saved on the campaign's soldier for that slot, credited to the player who played it (ADR-019), and shown on the after-action screen (T-4.28).
 - **Done when:** the awards are session-tested per event; a bot earns nothing; the saved totals survive a reconnect.
 - **Size:** S
 
@@ -2724,6 +2737,11 @@ These block estimation, not implementation — M0 can start today regardless.
 5. **Session persistence model.** Does a campaign save belong to the host, or
    does every player carry their own soldier's progression across sessions?
    Affects E-4.6 substantially.
+   **Answered 2026-09-24** ([ADR-019](./docs/adr/019-persistence.md)): the
+   host's. A campaign is the unit of progress. It holds the missions done,
+   the checkpoint, and the squad's six soldiers with their ranks and XP,
+   stored by the hosting service under a campaign code. Nothing follows a
+   person between campaigns except their anonymous identity.
 6. **What fights back in M2?** Raised 2026-09-18 by the M1 gate amendment in
    §4. M2's exit gate is "a human plays a grey-box firefight", which presumes
    something that shoots back, but every AI epic sits in M3 and M2 has none.
