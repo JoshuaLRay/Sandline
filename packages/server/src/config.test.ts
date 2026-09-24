@@ -71,4 +71,15 @@ describe('loadConfig (T-0.07)', () => {
     process.env['IDLE_TIMEOUT_MS'] = '-1';
     expect(() => loadConfig()).toThrow(/IDLE_TIMEOUT_MS must be 0/);
   });
+
+  it('reads identity secrets comma-separated and refuses a short one (T-4.22)', () => {
+    delete process.env['IDENTITY_SECRET'];
+    expect(loadConfig().identitySecrets).toEqual([]);
+    const a = 'a'.repeat(32);
+    const b = 'b'.repeat(40);
+    process.env['IDENTITY_SECRET'] = `${a}, ${b}`;
+    expect(loadConfig().identitySecrets).toEqual([a, b]);
+    process.env['IDENTITY_SECRET'] = 'hunter2';
+    expect(() => loadConfig()).toThrow(/IDENTITY_SECRET/);
+  });
 });

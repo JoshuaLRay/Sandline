@@ -93,8 +93,9 @@ per-piece baked vertex AO without breaking instancing. **The setting is Afghanis
 detailed desert-camouflage soldier (T-4.08) and carries period weapons
 (T-4.36; enemies hold the AK, PKM and RPG-7), and every enemy is the
 irregular fighter (T-4.35). Where progress lives is decided
-too (🧍 T-4.21, ADR-019: on the host, per campaign), so player identity
-(T-4.22) is open.
+too (🧍 T-4.21, ADR-019: on the host, per campaign), and player identity
+is done (T-4.22: host-signed anonymous IDs, `IDENTITY_SECRET`); campaign saves
+(T-4.23) wait on checkpoints (T-4.16).
 
 ---
 
@@ -427,7 +428,7 @@ the owner may still overrule before T-4.23.
 | Task | Status | Depends |
 |---|---|---|
 | 🧍 T-4.21 | DONE — on the host (ADR-019) | — |
-| T-4.22 | OPEN | T-4.21 |
+| T-4.22 | DONE | T-4.21 |
 | T-4.23 | BLOCKED | T-4.21, T-4.22, T-4.16 |
 | T-4.24 | BLOCKED | T-4.22, T-4.23 |
 

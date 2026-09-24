@@ -5,6 +5,7 @@ import {
   type AiDebugBrain,
   DISCONNECT_CODES,
   type DisconnectCode,
+  MAX_IDENTITY_TOKEN_LENGTH,
   MAX_PRIOR_INPUTS,
   type Message,
   MessageType,
@@ -35,10 +36,14 @@ const SAMPLES: Message[] = [
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: '', key: 'k', world: 'range' },
   { kind: 'Disconnect', code: 'bad key', reason: 'wrong join key' },
   { kind: 'Disconnect', code: 'session limit', reason: 'session limit' },
-  { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM', world: 'range', resume: '', resumed: false },
+  { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM', world: 'range', resume: '', resumed: false, identity: '' },
   // T-4.18: a seat's resume token, and a reconnect that took its own slot back with it.
-  { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM', world: 'range', resume: '9f2c41d07ab35e6c9f2c41d07ab35e6c', resumed: true },
+  { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM', world: 'range', resume: '9f2c41d07ab35e6c9f2c41d07ab35e6c', resumed: true, identity: '' },
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: 'K7PM', resume: '9f2c41d07ab35e6c9f2c41d07ab35e6c' },
+  // T-4.22: a Join offering a player-identity token, the JoinAck handing one back, and its refusal.
+  { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: '', identity: 'v1.AbCd.1.2.sig' },
+  { kind: 'JoinAck', netId: 3, slot: 0, serverTick: 0, room: 'K7PM', world: 'range', resume: '', resumed: false, identity: 'v1.AbCd.1.2.sig' },
+  { kind: 'Disconnect', code: 'bad identity', reason: 'identity token expired' },
   { kind: 'Ack', tick: 4242 },
   { kind: 'Ping', id: 7, clientTime: 1234567 },
   { kind: 'Pong', id: 7, clientTime: 1234567, serverTime: 1234599 },
@@ -239,6 +244,12 @@ describe('handshake version checking', () => {
     expect(
       checkHandshake({ kind: 'Join', version: PROTOCOL_VERSION, name: 'x'.repeat(33), room: '' }).ok,
     ).toBe(false);
+  });
+
+  it('refuses an over-long identity token as bad identity before the host looks at it (T-4.22)', () => {
+    const join = (identity: string): Message => ({ kind: 'Join', version: PROTOCOL_VERSION, name: 'ok', room: '', identity });
+    expect(checkHandshake(join('x'.repeat(MAX_IDENTITY_TOKEN_LENGTH))).ok).toBe(true);
+    expect(checkHandshake(join('x'.repeat(MAX_IDENTITY_TOKEN_LENGTH + 1)))).toMatchObject({ ok: false, code: 'bad identity' });
   });
 });
 

@@ -59,6 +59,15 @@ export class ServerConnection {
   world = '';
   /** T-4.18: the resume token the client offered; empty for a fresh join. */
   resume = '';
+  /** T-4.22: the identity token the client offered; empty for none. The host verifies it. */
+  identity = '';
+  /**
+   * T-4.22: who this is, once the host has verified or issued an identity:
+   * the durable player ID, and the token the JoinAck hands back. Both empty
+   * on a session that issues none.
+   */
+  playerId = '';
+  identityToken = '';
   /** Latest tick this client acknowledged; the delta baseline. */
   lastAckedTick = -1;
   private lastHeard: number;
@@ -180,6 +189,7 @@ export class ServerConnection {
       this.key = join.key ?? '';
       this.world = join.world ?? '';
       this.resume = join.resume ?? '';
+      this.identity = join.identity ?? '';
       this.state = 'active';
       this.events.onJoined?.(this);
       return;
@@ -242,7 +252,7 @@ export class ServerConnection {
   accept(netId: number, slot: number, serverTick: number, room = '', world = DEFAULT_WORLD_ID, resume = '', resumed = false): void {
     this.netId = netId;
     this.slot = slot;
-    this.send({ kind: 'JoinAck', netId, slot, serverTick, room, world, resume, resumed });
+    this.send({ kind: 'JoinAck', netId, slot, serverTick, room, world, resume, resumed, identity: this.identityToken });
   }
 
   /** Tell the squad who is in it. Six entries, always (ADR-001). */

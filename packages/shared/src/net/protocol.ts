@@ -15,7 +15,7 @@ import { MISSION_STATES, OBJECTIVE_TYPES, type MissionView } from '../sim/missio
 import type { ScriptBlockerState } from '../sim/events.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 26;
+export const PROTOCOL_VERSION = 27;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -71,6 +71,12 @@ export const DISCONNECT_CODES = [
   'idle',
   /** Connected for the host's session limit (`MAX_SESSION_MS`); rejoin to keep playing. */
   'session limit',
+  /**
+   * T-4.22: the player-identity token the Join offered is forged, malformed,
+   * or past its expiry. Terminal for that token: the client forgets it, and
+   * its next Join, without one, is issued a new identity.
+   */
+  'bad identity',
 ] as const;
 export type DisconnectCode = (typeof DISCONNECT_CODES)[number];
 const DISCONNECT_CODE_BITS = 4;
@@ -222,6 +228,13 @@ export type Message =
        * join; an unknown or expired token is a fresh join too, never an error.
        */
       resume?: string;
+      /**
+       * T-4.22 (ADR-019): the player-identity token a host signed for this
+       * client, kept by it and offered on every Join. Absent and empty mean
+       * none, and the host issues one. Unlike `resume`, a token the host did
+       * not sign or that has expired is refused as `bad identity`.
+       */
+      identity?: string;
     }
   | {
       kind: 'JoinAck';
@@ -239,6 +252,12 @@ export type Message =
       resume: string;
       /** T-4.18: whether this JoinAck seated the client back in its own slot. */
       resumed: boolean;
+      /**
+       * T-4.22: the client's identity token: the one it offered, a rotated one
+       * for the same player, or a newly issued one. The client keeps the latest.
+       * Empty from a session that issues none (the in-page one).
+       */
+      identity: string;
     }
   | {
       kind: 'Input';
@@ -446,6 +465,7 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeString(msg.key ?? '');
       w.writeString(msg.world ?? '');
       w.writeString(msg.resume ?? '');
+      w.writeString(msg.identity ?? '');
       break;
     case 'JoinAck':
       w.writeBits(MessageType.JoinAck, TYPE_BITS);
@@ -456,6 +476,7 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeString(msg.world);
       w.writeString(msg.resume);
       w.writeBits(msg.resumed ? 1 : 0, 1);
+      w.writeString(msg.identity);
       break;
     case 'Input':
       w.writeBits(MessageType.Input, TYPE_BITS);
@@ -848,6 +869,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
         const key = r.readString();
         const world = r.readString();
         const resume = r.readString();
+        const identity = r.readString();
         return {
           kind: 'Join',
           version,
@@ -856,6 +878,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
           ...(key === '' ? {} : { key }),
           ...(world === '' ? {} : { world }),
           ...(resume === '' ? {} : { resume }),
+          ...(identity === '' ? {} : { identity }),
         };
       }
       case MessageType.JoinAck:
@@ -868,6 +891,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
           world: r.readString(),
           resume: r.readString(),
           resumed: r.readBits(1) === 1,
+          identity: r.readString(),
         };
       case MessageType.Input: {
         const tick = r.readVarUint();
@@ -1063,6 +1087,9 @@ export function decodeMessage(bytes: Uint8Array): Message {
   }
 }
 
+/** T-4.22: longer than any token a host signs; past it the Join is refused before any crypto. */
+export const MAX_IDENTITY_TOKEN_LENGTH = 256;
+
 export type HandshakeResult =
   | { ok: true }
   | { ok: false; code: DisconnectCode; reason: string };
@@ -1091,6 +1118,9 @@ export function checkHandshake(msg: Message): HandshakeResult {
   }
   if ((msg.key ?? '').length > 128) {
     return { ok: false, code: 'bad key', reason: 'join key must be at most 128 characters' };
+  }
+  if ((msg.identity ?? '').length > MAX_IDENTITY_TOKEN_LENGTH) {
+    return { ok: false, code: 'bad identity', reason: `identity token must be at most ${MAX_IDENTITY_TOKEN_LENGTH} characters` };
   }
   if (msg.room !== '' && !isRoomCode(msg.room)) {
     return { ok: false, code: 'no such room', reason: `'${msg.room}' is not a room code` };

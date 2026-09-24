@@ -240,6 +240,22 @@ with the address can join exactly as before.
 Use a passphrase, not a word: nothing rate-limits guesses beyond the
 connection cap.
 
+**The identity secret (T-4.22).** The host signs every player's anonymous ID
+(ADR-019) with `IDENTITY_SECRET`. Unset, it makes a random one at boot, so
+every saved identity is refused as `bad identity` after a restart or deploy
+(the browser forgets it and is issued a new one, but campaign ownership
+from T-4.23 on hangs off that ID). Set one on a deployed host:
+
+```bash
+fly secrets set IDENTITY_SECRET="$(openssl rand -base64 48)"
+# To retire it: put the new one first, keep the old one after a comma for a
+# while; players' tokens are re-signed with the new one as they next join.
+fly secrets set IDENTITY_SECRET="$(openssl rand -base64 48),<the old one>"
+```
+
+Every secret must be at least 32 characters, or the host refuses to start.
+The boot log says how many are configured, never what they are.
+
 **Player limits**, on by default everywhere:
 
 | Variable | Default | Drops a player who… |

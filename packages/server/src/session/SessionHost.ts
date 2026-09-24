@@ -64,6 +64,7 @@ import { Registry, type RegistryOptions, type Room } from './Registry.ts';
 import { type WsServerHandle, startWsServer } from '../net/WsTransport.ts';
 import type { Logger } from '../log.ts';
 import { initNav } from '../ai/nav/NavMesh.ts';
+import { Identity } from '../identity/Identity.ts';
 
 const TICK_MS = TICK_SECONDS * 1000;
 
@@ -242,6 +243,11 @@ export interface SessionHostOptions {
    * a public host someone else's bill does not depend on.
    */
   joinKey?: string;
+  /**
+   * T-4.22: verifies, issues and rotates player-identity tokens. Absent, the
+   * host makes one with a random secret, so identities last as long as it does.
+   */
+  identity?: Identity;
 }
 
 /**
@@ -267,6 +273,7 @@ export class SessionHost {
   private readonly pending = new Set<ServerConnection>();
   private readonly maxConnections: number;
   private readonly joinKey: string;
+  readonly identity: Identity;
   private connections = 0;
   private handle: WsServerHandle | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -291,6 +298,7 @@ export class SessionHost {
     });
     this.maxConnections = options.maxConnections ?? this.registry.maxRooms * MAX_SLOTS + 8;
     this.joinKey = options.joinKey ?? '';
+    this.identity = options.identity ?? new Identity();
   }
 
   /** Open the socket and start ticking. Resolves with the bound port. */
@@ -428,6 +436,19 @@ export class SessionHost {
       conn.reject('bad key', conn.key === '' ? 'this host needs a join key' : 'wrong join key');
       return;
     }
+    /**
+     * Identity next, still before any room: a forged token is refused as
+     * `bad identity` and costs nothing. Either way the reason is typed, and
+     * the token itself is never logged.
+     */
+    const who = this.identity.admit(conn.identity, conn.name);
+    if (!who.ok) {
+      this.log.warn('join refused: bad identity', { why: who.reason });
+      conn.reject('bad identity', `identity token ${who.reason === 'expired' ? 'expired' : `refused (${who.reason})`}`);
+      return;
+    }
+    conn.playerId = who.playerId;
+    conn.identityToken = who.token;
     let room: Room | undefined;
     if (conn.room === '') {
       const made = this.registry.create(this.now(), conn.world);
@@ -451,6 +472,7 @@ export class SessionHost {
     this.log.info(seated ? 'player seated' : 'player refused', {
       room: room.code,
       name: conn.name,
+      player: conn.playerId,
       slot: conn.slot,
       players: room.session.players,
     });

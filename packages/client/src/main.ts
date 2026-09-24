@@ -73,6 +73,7 @@ import {
   roomFromQuery,
   shareLink,
 } from './net/RemoteServer.ts';
+import { forgetIdentity, readIdentity, storeIdentity } from './net/identity.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
 import { QaEnemies, QaSuppressor } from './net/qaEnemies.ts';
 import { DEFAULT_WORLD_ID, buildTree, encounterFor, getWorld, type World, type WorldBox, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
@@ -930,7 +931,8 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
       const resume = net.resumeToken;
       net.resetForRejoin();
       // The map only means something to a room being made (T-3.35 follow-up); a rejoin takes the room's.
-      net.join(roomJoined, choice.key, roomJoined === '' ? choice.world : '', joinedOnce ? resume : '');
+      // T-4.22: who we are to this host, if it has told us before.
+      net.join(roomJoined, choice.key, roomJoined === '' ? choice.world : '', joinedOnce ? resume : '', readIdentity(choice.host));
     };
     net.onJoined = (_slot, room) => {
       // Back in our own slot the soldier is where we left it; any other slot
@@ -941,6 +943,8 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
       }
       rejoining = false;
       joinedOnce = true;
+      // The JoinAck's token may be a rotated one: keep the latest.
+      storeIdentity(choice.host, net.identityToken);
       const joinedWorld = net.world;
       if (joinedWorld) {
         void prepareLevelAssets(joinedWorld.id).then(() => {
@@ -955,6 +959,8 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
     };
     net.onDisconnect = (reason, code) => {
       remote.noteRefusal(code, reason);
+      // A token the host will not accept is useless to keep: the next Join goes without and is issued a new one.
+      if (code === 'bad identity') forgetIdentity(choice.host);
       // Back to the lobby with the reason on screen. A refusal is the one
       // thing a player must never have to infer from a frozen scene.
       leaveSession({ text: explainRejection(code, reason), tone: 'error' });

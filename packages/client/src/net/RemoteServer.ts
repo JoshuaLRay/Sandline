@@ -180,6 +180,8 @@ export function explainRejection(code: DisconnectCode | null, reason: string | n
         : 'wrong join key — check the Key field';
     case 'idle':
       return 'dropped for being idle — join again when you are back';
+    case 'bad identity':
+      return 'the host did not accept this browser\'s saved player ID, so it has been cleared — join again for a new one';
     case 'session limit':
       return 'connected for as long as this host allows in one go — join again to keep playing';
     case 'protocol error':

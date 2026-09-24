@@ -2953,6 +2953,18 @@ free to go whenever.
   - a forged or expired token is refused with a typed reason;
   - nothing personal is stored beyond what ADR-019 allows.
 - **Size:** M
+- **Completed 2026-09-24.** Tokens are `v1.<id>.<issued>.<expires>.<HMAC-SHA256>`
+  over a 128-bit random ID, signed with `IDENTITY_SECRET` (comma-separated:
+  the first signs, all verify; unset, a random per-process secret). They live
+  180 days and are re-signed on a Join once 7 days old or signed by a retired
+  secret; the old one stays valid until its expiry, since verification is
+  stateless. Refusals are `malformed`, `unknown version`, `bad signature` or
+  `expired`, sent as the Disconnect detail beside the new `bad identity` code
+  (protocol 27); the signature is checked before the expiry, so a forgery is
+  never called expired. The host checks identity after the join key and before
+  any room. `PlayerDirectory` holds ID, name, first/last seen and nothing else,
+  in memory until T-4.23 puts it in SQLite. The client keeps a token per host
+  address and forgets it on `bad identity`. No accounts (ADR-019).
 
 ##### T-4.23 — Campaign saves
 - **Depends:** T-4.21, T-4.22, T-4.16

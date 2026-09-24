@@ -204,6 +204,7 @@ export class NetClient {
   private rejectedDeltas = 0;
   private reconciles = 0;
   private resumeTokenValue = '';
+  private identityTokenValue = '';
   private resumedValue = false;
   /**
    * Counted from `result.corrected`, NOT from `Predictor.corrections`.
@@ -500,7 +501,7 @@ export class NetClient {
   }
 
   /** Handshake. An empty room asks the host to create one (T-1.5.04). */
-  join(room = '', key = '', world = '', resume = ''): void {
+  join(room = '', key = '', world = '', resume = '', identity = ''): void {
     this.transport.send(
       encodeMessage({
         kind: 'Join',
@@ -510,6 +511,7 @@ export class NetClient {
         ...(key === '' ? {} : { key }),
         ...(world === '' ? {} : { world }),
         ...(resume === '' ? {} : { resume }),
+        ...(identity === '' ? {} : { identity }),
       }),
     );
   }
@@ -520,6 +522,14 @@ export class NetClient {
    */
   get resumeToken(): string {
     return this.resumeTokenValue;
+  }
+
+  /**
+   * T-4.22: the player-identity token the last JoinAck carried, empty before
+   * one or from a session that issues none. The page keeps it (`identity.ts`).
+   */
+  get identityToken(): string {
+    return this.identityTokenValue;
   }
 
   /** Whether the last JoinAck put us back in our own slot. */
@@ -930,6 +940,7 @@ export class NetClient {
         this.slotValue = msg.slot;
         this.roomValue = msg.room;
         this.resumeTokenValue = msg.resume;
+        if (msg.identity !== '') this.identityTokenValue = msg.identity;
         this.resumedValue = msg.resumed;
         this.joinedFlag = true;
         if (this.aiDebugWanted) this.transport.send(encodeMessage({ kind: 'AiDebugRequest', on: true }), 'reliable');

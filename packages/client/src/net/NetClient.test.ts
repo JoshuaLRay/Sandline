@@ -214,7 +214,7 @@ describe('the session names its world (T-3.02)', () => {
     let joined = 0;
     net.onJoined = () => joined++;
     net.onDisconnect = (reason, code) => refusals.push({ reason, code });
-    pair.a.send(encodeMessage({ kind: 'JoinAck', netId: 7, slot: 2, serverTick: 0, room: 'K7PM', world, resume: '', resumed: false }));
+    pair.a.send(encodeMessage({ kind: 'JoinAck', netId: 7, slot: 2, serverTick: 0, room: 'K7PM', world, resume: '', resumed: false, identity: '' }));
     pair.settle();
     return { net, fromClient, refusals, joined: () => joined };
   }
@@ -249,7 +249,7 @@ describe('the resume token (T-4.18)', () => {
     const fromClient: Message[] = [];
     pair.a.onMessage((bytes) => fromClient.push(decodeMessage(bytes)));
     const token = '0123456789abcdef0123456789abcdef';
-    pair.a.send(encodeMessage({ kind: 'JoinAck', netId: 7, slot: 2, serverTick: 0, room: 'K7PM', world: 'range', resume: token, resumed: false }));
+    pair.a.send(encodeMessage({ kind: 'JoinAck', netId: 7, slot: 2, serverTick: 0, room: 'K7PM', world: 'range', resume: token, resumed: false, identity: '' }));
     pair.settle();
     expect(net.resumeToken).toBe(token);
     expect(net.resumed).toBe(false);
@@ -258,9 +258,24 @@ describe('the resume token (T-4.18)', () => {
     net.join('K7PM', '', '', net.resumeToken);
     pair.settle();
     expect(fromClient.find((m) => m.kind === 'Join')).toMatchObject({ room: 'K7PM', resume: token });
-    pair.a.send(encodeMessage({ kind: 'JoinAck', netId: 7, slot: 2, serverTick: 90, room: 'K7PM', world: 'range', resume: 'f'.repeat(32), resumed: true }));
+    pair.a.send(encodeMessage({ kind: 'JoinAck', netId: 7, slot: 2, serverTick: 90, room: 'K7PM', world: 'range', resume: 'f'.repeat(32), resumed: true, identity: '' }));
     pair.settle();
     expect(net.resumed).toBe(true);
     expect(net.resumeToken).toBe('f'.repeat(32));
+  });
+});
+
+describe('the identity token (T-4.22)', () => {
+  it('offers the kept token in the Join and keeps the one the JoinAck hands back', () => {
+    const pair = createLoopbackPair();
+    const net = new NetClient(pair.b, 'tester');
+    const fromClient: Message[] = [];
+    pair.a.onMessage((bytes) => fromClient.push(decodeMessage(bytes)));
+    net.join('', '', '', '', 'v1.old');
+    pair.settle();
+    expect(fromClient.find((m) => m.kind === 'Join')).toMatchObject({ identity: 'v1.old' });
+    pair.a.send(encodeMessage({ kind: 'JoinAck', netId: 7, slot: 2, serverTick: 0, room: 'K7PM', world: 'range', resume: '', resumed: false, identity: 'v1.rotated' }));
+    pair.settle();
+    expect(net.identityToken).toBe('v1.rotated');
   });
 });
