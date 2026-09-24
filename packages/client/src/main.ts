@@ -32,6 +32,7 @@ import { showAssetShelf } from './assets/shelf.ts';
 import { LevelPieces } from './assets/levelPieces.ts';
 import { AssetLoader, gltfParser } from './assets/loader.ts';
 import { loadDetailedSkin } from './character/assetSoldier.ts';
+import { loadWeaponAssets } from './weapons/weaponAssets.ts';
 import * as THREE from 'three';
 import {
   Clock,
@@ -333,6 +334,8 @@ scene.add(player);
  * `?greybox`, the code-built one. Remote squad soldiers take it the next time
  * their palette is set, which is every frame.
  */
+// T-4.36: the period weapons, generated, replace the code-built ones as they arrive; `?codeweapons` keeps the old ones.
+if (!new URLSearchParams(location.search).has('codeweapons')) void loadWeaponAssets(assetLoader);
 if (!greyBox && !new URLSearchParams(location.search).has('codesoldier')) {
   void loadDetailedSkin(assetLoader).then((skin) => {
     if (skin) setSoldierPalette(player, 'local');

@@ -2492,7 +2492,7 @@ free to go whenever.
 ##### T-4.36 — Period weapons
 - **Depends:** T-4.08
 - **Files:** `packages/tools/src/art/weapons/`, `client/src/weapons/weaponModels.ts`, `data/weapons.json` names, tests
-- **Do:** The squad's M4 carbine, M249 and the M203 under an M4, and the
+- **Do:** The squad's M4 carbine and M249 (the M203 goes with the Team Leader class, T-4.27), and the
   enemy's AK-pattern rifle, PKM and RPG-7, generated to
   `docs/art/direction.md` (1–3k triangles each, one weapons atlas). They
   replace the code-built weapon models behind the same `WeaponModelSpec`
@@ -2503,6 +2503,46 @@ free to go whenever.
   (the existing weapon-hold tests pass on each), budgets pass, and the
   owner judges them on the deployed site.
 - **Size:** M
+- **Completed 2026-09-24.** Ten weapons generated in `tools/src/art/weapons/`:
+  - squad: an M4 with carry handle, a scoped DMR with folded bipod, a
+    breacher pump shotgun with pistol grip, a service pistol, an M67, an
+    AT4 and an M249 with its 200-round box;
+  - enemy: an AK-pattern rifle with laminate furniture and curved magazine,
+    a PKM, and an RPG-7 with its warhead.
+
+  The builder is `mesh.ts`: side profiles extruded across x (ear-clipped),
+  lathes along +Z, and boxes, each part mapped onto its own atlas region.
+  They share one 512² atlas (`atlas.ts`) and are 120–680 triangles each,
+  all within the weapon budget. Each sits in its loadout id's existing aim
+  space: the grips, sight, eye relief and hip are still `weaponModels.ts`'s
+  code builders' (an `lmg` builder is added), so the IK hold, the
+  viewmodel and the muzzle rig are unchanged.
+
+  `weaponModels.ts` maps each loadout id and side (squad or enemy) to a
+  model. `createWeaponModel(id, side)` draws a shared-geometry clone of the
+  loaded model once it has arrived; `weaponAssets.ts` loads them with
+  Lambert materials and smooth filtering. The rig keys what it holds by
+  item, side (set by `setSoldierPalette`) and asset version, so the
+  carbine becomes the M4, an enemy holds an AK, and a soldier who changes
+  side re-arms. The viewmodel keys by version. `?codeweapons` keeps the
+  code-built models.
+
+  **Not built:** an M203 under the M4, because no loadout item fires one;
+  it belongs with the Team Leader class (T-4.27).
+
+  Tests:
+  - tools: every source is current;
+  - tools: each model's right-hand grip point is within 5 cm of its surface
+    and each squad weapon's sight within 3 cm (point to triangle);
+  - tools: all are within budget, every UV is inside its region, and every
+    triangle faces its normal;
+  - client: the code-built model is drawn until the assets are provided,
+    with the same spec after; enemies get the AK, PKM and RPG-7; the rig's
+    carbine becomes the M4, an enemy holds the AK and re-arms on changing
+    side; the hands land on identical grips.
+
+  A production build shows the squad holding M4s. **The owner judges them**
+  on the deployed site.
 
 #### E-4.3 — Level format, kit, lightmaps
 

@@ -86,6 +86,15 @@ const BUILDERS: Record<string, Builder> = {
     box(g, 'metal', [0.012, 0.04, 0.012], [0, 0.058, 0.68]);
     return { ...RIFLE_GRIPS, sight: [0, 0.075, 0.26], eyeRelief: 0.3, hip: [0.16, -0.15, -0.12] };
   },
+  lmg(g) {
+    // A heavier carbine with a box under it: the MG gunner's (T-3.23), held as a rifle.
+    box(g, 'polymer', [0.05, 0.11, 0.2], [0, -0.01, 0.1]);
+    box(g, 'metal', [0.07, 0.1, 0.34], [0, 0, 0.36]);
+    box(g, 'polymer', [0.035, 0.1, 0.045], [0, -0.09, 0.2], -0.35);
+    box(g, 'olive', [0.09, 0.13, 0.13], [0.02, -0.12, 0.35]);
+    tube(g, 'metal', 0.014, 0.4, [0, 0.01, 0.72]);
+    return { ...RIFLE_GRIPS, sight: [0, 0.075, 0.26], eyeRelief: 0.3, hip: [0.16, -0.16, -0.12] };
+  },
   marksman(g) {
     box(g, 'tan', [0.05, 0.11, 0.24], [0, -0.01, 0.1]);
     box(g, 'metal', [0.06, 0.09, 0.34], [0, 0, 0.38]);
@@ -177,16 +186,74 @@ const BUILDERS: Record<string, Builder> = {
   },
 };
 
+/* -- The generated models (T-4.36) ------------------------------------------- */
+
+/** Which side holds a weapon: the squad's models are the US period's, the enemy's the fighters' (ADR-020). */
+export type WeaponSide = 'squad' | 'enemy';
+
+/**
+ * The generated model a loadout id is drawn as, by side. The enemy has its
+ * own for the ids it carries; anything else it holds is drawn as the squad's.
+ */
+const MODEL_FOR: Record<WeaponSide, Readonly<Record<string, string>>> = {
+  squad: { carbine: 'm4', marksman: 'dmr', breacher: 'shotgun', sidearm: 'pistol', frag: 'm67', rocket: 'at4', lmg: 'm249' },
+  enemy: { carbine: 'ak', lmg: 'pkm', rocket: 'rpg7' },
+};
+
+let templates: ReadonlyMap<string, THREE.Object3D> = new Map();
+let assetsVersion = 0;
+
+/** The asset id of the generated model an id is drawn as for a side, whether or not it has loaded. */
+export function weaponAssetId(id: string, side: WeaponSide): string {
+  const key = hasWeaponModel(id) ? id : 'carbine';
+  return `weapon-${MODEL_FOR[side][key] ?? MODEL_FOR.squad[key]}`;
+}
+
+/** The loaded generated models, by asset id; an empty map goes back to the code-built ones. */
+export function provideWeaponAssets(loaded: ReadonlyMap<string, THREE.Object3D>): void {
+  templates = loaded;
+  assetsVersion++;
+}
+
+/** Bumped whenever the generated models change, so a holder knows to rebuild what it holds. */
+export function weaponAssetsVersion(): number {
+  return assetsVersion;
+}
+
+/** Whether a generated model is ready for this id and side. */
+export function hasWeaponAsset(id: string, side: WeaponSide): boolean {
+  return templates.has(weaponAssetId(id, side));
+}
+
 /** Whether this id has a model of its own (every other id is held as a carbine). */
 export function hasWeaponModel(id: string): boolean {
   return id in BUILDERS;
 }
 
-/** Build the model for a loadout id. Every call is a fresh group; the materials are shared. */
-export function createWeaponModel(id: string): WeaponModel {
+/**
+ * Build the model for a loadout id. Every call is a fresh group. The grips,
+ * sight and hip are always the code builder's, so the hold is the same
+ * either way; what is drawn is the generated model for the side once it has
+ * loaded (T-4.36), sharing its geometry and material with every other, and
+ * the code-built primitives until then.
+ */
+export function createWeaponModel(id: string, side: WeaponSide = 'squad'): WeaponModel {
   const key = hasWeaponModel(id) ? id : 'carbine';
   const object = new THREE.Group();
   object.name = `weapon ${key}`;
   const spec = (BUILDERS[key] as Builder)(object);
+  const template = templates.get(weaponAssetId(key, side));
+  if (template) {
+    for (const child of [...object.children]) {
+      object.remove(child);
+      if (child instanceof THREE.Mesh) child.geometry.dispose();
+    }
+    const drawn = template.clone(true);
+    drawn.traverse((o) => {
+      o.castShadow = true;
+    });
+    object.add(drawn);
+    object.userData['asset'] = weaponAssetId(key, side);
+  }
   return { id: key, object, spec };
 }

@@ -14,7 +14,7 @@ import { plateau } from './locomotionPose.ts';
 import { solveTwoBone } from './twoBoneIk.ts';
 import { DOWNED_BODY_LIFT_M, HUMANOID_HIT_HALF_HEIGHT, HUMANOID_HIT_RADIUS, HUMANOID_ROOT_LIFT_M, PRONE_BODY_LIFT_M } from './humanoidPlaceholder.ts';
 import { type CellName, type PaletteName, remapGeometryUv, soldierAtlas } from './soldierTexture.ts';
-import { type WeaponModel, createWeaponModel, hasWeaponModel } from '../weapons/weaponModels.ts';
+import { type WeaponModel, type WeaponSide, createWeaponModel, hasWeaponAsset, hasWeaponModel, weaponAssetsVersion } from '../weapons/weaponModels.ts';
 import { accentMaterial, detailedSkin } from './assetSoldier.ts';
 
 /**
@@ -635,12 +635,23 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
 
   // -- What is in the hands. Other models are built the first time they are
   // held, so a soldier who only ever carries the carbine costs its one draw.
+  //
+  // T-4.36: once the generated period weapons have loaded, every item is
+  // drawn as its side's model (`setSoldierPalette` records the side), the
+  // carbine included; the rig's own textured rifle stands in until then. A
+  // model is keyed by item, side and asset version, so a soldier who
+  // changes side, or whose weapons arrive, rebuilds what it holds.
   let held = DEFAULT_HELD;
+  let heldKey = DEFAULT_HELD;
   const models = new Map<string, WeaponModel>();
   const setHeld = (id: string): void => {
-    const key = id === DEFAULT_HELD || !hasWeaponModel(id) ? DEFAULT_HELD : id;
-    if (key === held) return;
-    held = key;
+    const item = id === DEFAULT_HELD || !hasWeaponModel(id) ? DEFAULT_HELD : id;
+    const side = (root.userData['side'] as WeaponSide | undefined) ?? 'squad';
+    const generated = hasWeaponAsset(item, side);
+    const key = generated ? `${item}|${side}|${weaponAssetsVersion()}` : item;
+    if (key === heldKey) return;
+    held = item;
+    heldKey = key;
     rifle.visible = key === DEFAULT_HELD;
     for (const [modelId, model] of models) model.object.visible = modelId === key;
     if (key === DEFAULT_HELD) {
@@ -650,7 +661,7 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     }
     let model = models.get(key);
     if (!model) {
-      model = createWeaponModel(key);
+      model = createWeaponModel(item, side);
       models.set(key, model);
       aim.add(model.object);
     }
@@ -708,6 +719,8 @@ export function setSoldierPalette(root: THREE.Object3D, palette: PaletteName): b
     geometry: THREE.BufferGeometry;
     material: THREE.MeshLambertMaterial;
   };
+  // T-4.36: the side decides which period weapons the rig draws (`setHeld`).
+  root.userData['side'] = palette === 'enemy' ? 'enemy' : 'squad';
   const detailed = palette === 'enemy' ? null : detailedSkin();
   if (detailed) {
     if (skin.geometry !== detailed.geometry) skin.geometry = detailed.geometry;

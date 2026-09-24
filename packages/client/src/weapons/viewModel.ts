@@ -22,7 +22,7 @@
  */
 import * as THREE from 'three';
 import { plateau } from '../character/locomotionPose.ts';
-import { type WeaponModel, type Vec3Tuple, createWeaponModel } from './weaponModels.ts';
+import { type WeaponModel, type Vec3Tuple, createWeaponModel, weaponAssetsVersion } from './weaponModels.ts';
 
 export interface ViewModelState {
   /** Draw it at all: first person, alive, not mid-vault. */
@@ -126,13 +126,15 @@ export class ViewModel {
   }
 
   private model(id: string): WeaponModel {
-    let model = this.models.get(id);
+    // Keyed by the asset version too (T-4.36), so the generated weapons replace the code-built ones when they arrive.
+    const key = `${id}|${weaponAssetsVersion()}`;
+    let model = this.models.get(key);
     if (!model) {
       model = createWeaponModel(id);
       model.object.traverse((o) => {
         o.castShadow = false;
       });
-      this.models.set(id, model);
+      this.models.set(key, model);
       this.holder.add(model.object);
     }
     return model;
