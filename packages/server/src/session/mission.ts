@@ -152,6 +152,14 @@ export class MissionRun {
     );
   }
 
+  /** Jump to an authored objective in this attempt (T-4.15 scripted action). */
+  setObjective(index: number): boolean {
+    if (!Number.isInteger(index) || index < 0 || index >= this.def.objectives.length) return false;
+    if (this.view.state === 'progress' && this.view.objective === index) return false;
+    this.view = this.start(index, this.view.attempt);
+    return true;
+  }
+
   /** Start again: the first objective, nothing done, the next attempt. */
   reset(): void {
     this.view = this.start(0, this.view.attempt + 1);
