@@ -2400,6 +2400,16 @@ free to go whenever.
   A CI probe flies a scripted camera path through a level in headless Chromium and asserts draw calls stay under 300 (the renderer's own count, which is deterministic).
 - **Done when:** the probe runs on the kit level (T-4.13) and on a synthetic worst case, logged and asserted.
 - **Size:** M
+- **Completed 2026-09-24.** `client/src/assets/lod.ts` selects manifest-declared
+  LODs by projected screen size; `instances.ts` batches static level pieces
+  by asset id into `InstancedMesh` draws while assigning LOD per placement,
+  so a nearby copy does not force distant copies to stay at LOD0. The
+  netgraph now reports `renderer.info.render.calls` and triangle count.
+  Chromium CI flies the T-4.13 `mission-01` level and a synthetic field of
+  1,200 repeated two-LOD props. Run 763 measured **3 draw calls / 230
+  triangles** on `mission-01` and **2 draw calls / 14,268 triangles** on the
+  synthetic case (237 LOD0 / 963 LOD1), both under ADR-013's 300-call ceiling.
+  PR #116 merged green.
 
 ##### T-4.08 — Characters from assets: the detailed soldier
 - **Depends:** T-4.01, T-4.05
