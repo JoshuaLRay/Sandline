@@ -75,7 +75,7 @@ try {
   await page.goto(URL, { waitUntil: 'domcontentloaded' });
   await page.locator('#load-screen').waitFor({ state: 'hidden' });
   await page.getByRole('button', { name: /Practise here/i }).click();
-  await page.waitForFunction(() => document.body.dataset['playable'] === 'true', undefined, { timeout: PLAYABLE_LIMIT_MS });
+  await page.waitForFunction("document.body.dataset.playable === 'true'", undefined, { timeout: PLAYABLE_LIMIT_MS });
   const elapsed = Date.now() - started;
 
   console.log(
