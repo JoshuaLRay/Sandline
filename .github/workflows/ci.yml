@@ -23,6 +23,24 @@ jobs:
       # printed so an overrun names the asset in the job log. `pnpm verify`
       # already fails on one; this is the readable line.
       - run: pnpm check:assets
+      # T-4.06: the initial pack, not every level asset, owns the 80 MB ceiling.
+      - run: pnpm check:packs
+
+  # T-4.06: a real Chromium page over a throttled 4 Mbit/s link must reach its
+  # first rendered mission frame inside ADR-013's 30 second ceiling.
+  streaming:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm check:packs
+      - run: pnpm check:load-time
 
   # ADR-014: the transcendental-drift bug is invisible on a V8-to-V8 pairing.
   # Node and Chrome are both V8, so parity MUST also run on a non-V8 engine or
