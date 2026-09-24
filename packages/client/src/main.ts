@@ -756,7 +756,7 @@ const qaSuppressWanted = new URLSearchParams(location.search).has('suppress');
 const qaMissionWanted = new URLSearchParams(location.search).has('mission');
 const qaWorld: World =
   getWorld(new URLSearchParams(location.search).get('world') ?? '') ??
-  requireWorld(qaMissionWanted ? 'greybox-01' : new URLSearchParams(location.search).has('kit') ? 'kit-gallery' : DEFAULT_WORLD_ID);
+  requireWorld(qaMissionWanted ? 'mission-01' : new URLSearchParams(location.search).has('kit') ? 'kit-gallery' : DEFAULT_WORLD_ID);
 const qaEncounter = qaMissionWanted ? encounterFor(qaWorld.id) : undefined;
 /**
  * `?squad` (T-3.29): the in-page bots run the committed `friendly` tree, with
