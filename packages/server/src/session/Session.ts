@@ -60,6 +60,7 @@ import {
   vitalTimer,
   vitality,
   DAMAGE,
+  RESUME,
   vitalityCode,
   createMoveState,
   createWeaponState,
@@ -221,6 +222,13 @@ function along(eye: { x: number; y: number; z: number }, aim: { yaw: number; pit
   return { x: eye.x + sin(aim.yaw) * flat, y: eye.y + sin(aim.pitch) * range, z: eye.z + cos(aim.yaw) * flat };
 }
 
+/** 128 random bits, hex: a seat's resume token (T-4.18). Web Crypto, so the in-page session has it too. */
+function newResumeToken(): string {
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 /** A body's facing and whether it lies downed or dead, as the hitbox history records it. */
 function lyingPose(body: { health: HealthState; yaw: number }): { yaw: number; lying: 'downed' | 'dead' | null } {
   const v = vitality(body.health);
@@ -286,6 +294,14 @@ export interface Slot {
   /** Ticks since a real input arrived, for the repeat-then-idle rule. */
   staleTicks: number;
   connection: ServerConnection | null;
+  /**
+   * T-4.18: the seat's resume token — the current occupant's while a person
+   * holds the slot, the dropped one's while their claim lasts — and when the
+   * claim ends, session ms (0: no claim). A claim is made only by a dropped
+   * socket, never by a player who left.
+   */
+  resumeToken: string;
+  reservedUntilMs: number;
   /**
    * Authoritative weapon state.
    *
@@ -774,6 +790,8 @@ export class Session {
         queue: [],
         staleTicks: 0,
         connection: null,
+        resumeToken: '',
+        reservedUntilMs: 0,
         weapon: getWeapon(WEAPON_IDS[0]),
         weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
         suppression: createSuppression(),
@@ -1216,7 +1234,7 @@ export class Session {
       onOrder: (c, msg) => this.applyOrder(c, msg),
       onMark: (c, msg) => this.applyMark(c, msg),
       onMissionRestart: (c) => this.requestRestart(c),
-      onClosed: (c) => this.releaseSlot(c),
+      onClosed: (c, reason) => this.releaseSlot(c, reason),
     });
     if (conn.state === 'closed') return false;
     this.connections.add(conn);
@@ -1224,7 +1242,8 @@ export class Session {
   }
 
   private assignSlot(conn: ServerConnection): boolean {
-    const slot = this.slots.find((s) => s.isBot);
+    const resumed = this.resumeSlot(conn);
+    const slot = resumed ?? this.freeSlot();
     if (!slot) {
       conn.reject('room full');
       return false;
@@ -1270,7 +1289,10 @@ export class Session {
     slot.input = idleInput(slot.yaw);
     slot.interactHeld = false;
 
-    conn.accept(slot.netId, slot.index, this.currentTick, this.room, this.world.id);
+    // A fresh token for every seating: one that has been used cannot be used again.
+    slot.resumeToken = newResumeToken();
+    slot.reservedUntilMs = 0;
+    conn.accept(slot.netId, slot.index, this.currentTick, this.room, this.world.id, slot.resumeToken, resumed !== null);
     this.broadcastRoster();
     // T-3.27: a human is nobody's to order, so whatever this slot's bot was told
     // lapses; and the newcomer is shown the squad's orders and marks as they stand.
@@ -1445,11 +1467,46 @@ export class Session {
     this.broadcastMarks();
   }
 
-  private releaseSlot(conn: ServerConnection): void {
+  /**
+   * T-4.18: the slot a returning player's token claims, or null. The claim
+   * holds while its grace lasts and its bot still has the slot. A token that
+   * names a slot a connection still holds is the same player back before the
+   * host noticed the old socket die (a dead link is only seen at the
+   * heartbeat timeout): the token proves the seat, so the stale connection is
+   * closed and its slot taken.
+   */
+  private resumeSlot(conn: ServerConnection): Slot | null {
+    const token = conn.resume;
+    if (token === '') return null;
+    const slot = this.slots.find((s) => s.resumeToken === token);
+    if (!slot) return null;
+    if (!slot.isBot && slot.connection && slot.connection !== conn) {
+      slot.connection.reject('other', 'resumed on a new connection');
+    }
+    if (!slot.isBot || slot.reservedUntilMs < this.nowMs) return null;
+    return slot;
+  }
+
+  /**
+   * A bot's slot for a newcomer: one nobody has a claim on first; failing
+   * that, rather than refuse a player, the claim that ends soonest is given up.
+   */
+  private freeSlot(): Slot | null {
+    const bots = this.slots.filter((s) => s.isBot);
+    const unclaimed = bots.find((s) => s.reservedUntilMs < this.nowMs);
+    if (unclaimed) return unclaimed;
+    return bots.sort((a, b) => a.reservedUntilMs - b.reservedUntilMs)[0] ?? null;
+  }
+
+  private releaseSlot(conn: ServerConnection, reason = ''): void {
     this.connections.delete(conn);
     this.aiDebugClients.delete(conn);
     const slot = this.slots.find((s) => s.connection === conn);
     if (!slot) return;
+    // T-4.18: a dropped socket keeps a claim on the seat for the grace; a
+    // player who chose to leave keeps none, and the seat is anyone's.
+    slot.reservedUntilMs = reason === 'left' ? 0 : this.nowMs + RESUME.graceSeconds * 1000;
+    if (slot.reservedUntilMs === 0) slot.resumeToken = '';
     // Hand the entity back to a bot; it keeps its position and its netId.
     // A departing reviver must not leave an interaction attached to a persistent entity.
     this.clearReviveStateForSlot(slot.index);

@@ -35,7 +35,10 @@ const SAMPLES: Message[] = [
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: '', key: 'k', world: 'range' },
   { kind: 'Disconnect', code: 'bad key', reason: 'wrong join key' },
   { kind: 'Disconnect', code: 'session limit', reason: 'session limit' },
-  { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM', world: 'range' },
+  { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM', world: 'range', resume: '', resumed: false },
+  // T-4.18: a seat's resume token, and a reconnect that took its own slot back with it.
+  { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM', world: 'range', resume: '9f2c41d07ab35e6c9f2c41d07ab35e6c', resumed: true },
+  { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: 'K7PM', resume: '9f2c41d07ab35e6c9f2c41d07ab35e6c' },
   { kind: 'Ack', tick: 4242 },
   { kind: 'Ping', id: 7, clientTime: 1234567 },
   { kind: 'Pong', id: 7, clientTime: 1234567, serverTime: 1234599 },

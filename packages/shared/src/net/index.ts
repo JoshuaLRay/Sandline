@@ -12,3 +12,4 @@ export * from './clockSync.ts';
 export * from './SnapshotStore.ts';
 export * from './prediction.ts';
 export * from './interpolate.ts';
+export * from './resume.ts';

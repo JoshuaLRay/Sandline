@@ -197,6 +197,8 @@ export class NetClient {
   private snapshotsApplied = 0;
   private rejectedDeltas = 0;
   private reconciles = 0;
+  private resumeTokenValue = '';
+  private resumedValue = false;
   /**
    * Counted from `result.corrected`, NOT from `Predictor.corrections`.
    *
@@ -476,10 +478,31 @@ export class NetClient {
   }
 
   /** Handshake. An empty room asks the host to create one (T-1.5.04). */
-  join(room = '', key = '', world = ''): void {
+  join(room = '', key = '', world = '', resume = ''): void {
     this.transport.send(
-      encodeMessage({ kind: 'Join', version: PROTOCOL_VERSION, name: this.name, room, ...(key === '' ? {} : { key }), ...(world === '' ? {} : { world }) }),
+      encodeMessage({
+        kind: 'Join',
+        version: PROTOCOL_VERSION,
+        name: this.name,
+        room,
+        ...(key === '' ? {} : { key }),
+        ...(world === '' ? {} : { world }),
+        ...(resume === '' ? {} : { resume }),
+      }),
     );
+  }
+
+  /**
+   * T-4.18: the token the host gave this seat, kept across `resetForRejoin`
+   * so a reconnect can offer it and take the same soldier back.
+   */
+  get resumeToken(): string {
+    return this.resumeTokenValue;
+  }
+
+  /** Whether the last JoinAck put us back in our own slot. */
+  get resumed(): boolean {
+    return this.resumedValue;
   }
 
   /**
@@ -880,6 +903,8 @@ export class NetClient {
         this.netIdValue = msg.netId;
         this.slotValue = msg.slot;
         this.roomValue = msg.room;
+        this.resumeTokenValue = msg.resume;
+        this.resumedValue = msg.resumed;
         this.joinedFlag = true;
         if (this.aiDebugWanted) this.transport.send(encodeMessage({ kind: 'AiDebugRequest', on: true }), 'reliable');
         this.onJoined?.(msg.slot, msg.room);

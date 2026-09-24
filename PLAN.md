@@ -2765,6 +2765,13 @@ free to go whenever.
   - after the grace time, the slot is the bot's for good.
 - **Done when:** a loopback test drops and resumes a client mid-fight into the same slot and state, and a resume after the grace time gets a fresh slot.
 - **Size:** M
+- **Completed 2026-09-24.**
+  - **The wire (protocol 24).** `JoinAck` carries a 128-bit `resume` token, new for every seating, and whether it `resumed`. `Join` may offer `resume`. An unknown, used or expired token is a fresh join, never an error.
+  - **The claim.** A dropped socket (anything but a `left` goodbye) keeps its seat for `graceSeconds` (`data/resume.json`, 60 s — under the room's own 120 s grace). Meanwhile the bot plays the soldier (ADR-001), and newcomers get unclaimed slots first; with none left, the claim that ends soonest gives way rather than refusing a player. A player who leaves keeps no claim.
+  - **The resume.** A matching token within the grace takes the slot back as it stands: netId, position, health and weapon, with the bot's orders ended as for any join. A token for a slot its old connection still holds (the host sees a silent drop only at the heartbeat timeout) closes that stale connection, `other: resumed on a new connection`, and takes the seat.
+  - **The page.** `NetClient` keeps the token across `resetForRejoin`; `main.ts` offers it on every reconnect, and the B-17 banner says whether you are back in your soldier or in a new slot.
+  - **Not here.** XP does not exist yet (T-4.24); it lives on the soldier, so it will come back with the slot. `pnpm bot` does not resume.
+  - **Tests:** `SessionHost.test.ts` resumes a client mid-fight (hurt, moved, second weapon) into the same slot and state; a resume after the grace is fresh; newcomers skip a claimed seat; a goodbye leaves no claim and a used token no longer works; a stale connection is replaced. Protocol round-trips, the data parser and the client's token are tested too.
 
 ##### T-4.19 — The room before the mission: parties and ready-up
 - **Depends:** T-4.14

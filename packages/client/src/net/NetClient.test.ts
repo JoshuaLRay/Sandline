@@ -214,7 +214,7 @@ describe('the session names its world (T-3.02)', () => {
     let joined = 0;
     net.onJoined = () => joined++;
     net.onDisconnect = (reason, code) => refusals.push({ reason, code });
-    pair.a.send(encodeMessage({ kind: 'JoinAck', netId: 7, slot: 2, serverTick: 0, room: 'K7PM', world }));
+    pair.a.send(encodeMessage({ kind: 'JoinAck', netId: 7, slot: 2, serverTick: 0, room: 'K7PM', world, resume: '', resumed: false }));
     pair.settle();
     return { net, fromClient, refusals, joined: () => joined };
   }
@@ -239,5 +239,28 @@ describe('the session names its world (T-3.02)', () => {
     // The host is told why, with the same code, rather than seeing a silent drop.
     const bye = fromClient.find((m) => m.kind === 'Disconnect');
     expect(bye).toMatchObject({ kind: 'Disconnect', code: 'unknown world' });
+  });
+});
+
+describe('the resume token (T-4.18)', () => {
+  it('keeps the seat token across a rejoin reset, and offers it in the next Join', () => {
+    const pair = createLoopbackPair();
+    const net = new NetClient(pair.b, 'tester');
+    const fromClient: Message[] = [];
+    pair.a.onMessage((bytes) => fromClient.push(decodeMessage(bytes)));
+    const token = '0123456789abcdef0123456789abcdef';
+    pair.a.send(encodeMessage({ kind: 'JoinAck', netId: 7, slot: 2, serverTick: 0, room: 'K7PM', world: 'range', resume: token, resumed: false }));
+    pair.settle();
+    expect(net.resumeToken).toBe(token);
+    expect(net.resumed).toBe(false);
+    net.resetForRejoin();
+    expect(net.resumeToken).toBe(token);
+    net.join('K7PM', '', '', net.resumeToken);
+    pair.settle();
+    expect(fromClient.find((m) => m.kind === 'Join')).toMatchObject({ room: 'K7PM', resume: token });
+    pair.a.send(encodeMessage({ kind: 'JoinAck', netId: 7, slot: 2, serverTick: 90, room: 'K7PM', world: 'range', resume: 'f'.repeat(32), resumed: true }));
+    pair.settle();
+    expect(net.resumed).toBe(true);
+    expect(net.resumeToken).toBe('f'.repeat(32));
   });
 });

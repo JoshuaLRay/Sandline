@@ -828,15 +828,24 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
      */
     let roomJoined = choice.room;
     let joinedOnce = false;
+    let rejoining = false;
     remote.onReady = () => {
-      // A rejoin after a dropped socket is a new slot, in whatever body that
-      // slot's bot was in (ADR-011): say so, or it reads as a teleport.
-      if (joinedOnce) rejoinNoticeUntil = performance.now() + REJOIN_NOTICE_MS;
+      rejoining = joinedOnce;
+      // The token survives the reset (T-4.18): offered back, it takes our own
+      // slot and soldier again within the host's grace time.
+      const resume = net.resumeToken;
       net.resetForRejoin();
       // The map only means something to a room being made (T-3.35 follow-up); a rejoin takes the room's.
-      net.join(roomJoined, choice.key, roomJoined === '' ? choice.world : '');
+      net.join(roomJoined, choice.key, roomJoined === '' ? choice.world : '', joinedOnce ? resume : '');
     };
     net.onJoined = (_slot, room) => {
+      // Back in our own slot the soldier is where we left it; any other slot
+      // is whatever body its bot was in (ADR-001): say which, or a new body reads as a teleport.
+      if (rejoining) {
+        rejoinNotice = net.resumed ? 'Connection dropped — reconnected to your soldier' : 'Connection dropped — rejoined the room in a new slot';
+        rejoinNoticeUntil = performance.now() + REJOIN_NOTICE_MS;
+      }
+      rejoining = false;
       joinedOnce = true;
       if (net.world) useWorld(net.world);
       roomJoined = room;
@@ -1115,8 +1124,9 @@ const crosshair = document.getElementById('crosshair');
 const downedBanner = document.getElementById('downed');
 /** How long the rejoin notice stays up, ms. */
 const REJOIN_NOTICE_MS = 5000;
-/** Until when the banner says the socket dropped and the host seated us again. */
+/** Until when the banner says the socket dropped and the host seated us again, and what it says. */
 let rejoinNoticeUntil = 0;
+let rejoinNotice = '';
 /** T-3.34: the mission's one line, from the host's `Mission` message. */
 const missionHud = document.getElementById('mission');
 /** Last gap written to the reticle, so the style is only touched on change. */
@@ -1655,7 +1665,7 @@ function frame(): void {
         text = `DOWNED — bleeding out ${timer}s — wait for a teammate to revive you`;
       }
     } else if (performance.now() < rejoinNoticeUntil) {
-      text = 'Connection dropped — rejoined the room in a new slot';
+      text = rejoinNotice;
     } else if ((net?.reviveTargetNetId ?? 0) > 0) {
       const targetNetId = net?.reviveTargetNetId ?? 0;
       const name = net?.roster[net?.remoteSlot(targetNetId) ?? -1]?.name || 'teammate';
