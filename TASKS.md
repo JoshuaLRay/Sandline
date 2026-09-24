@@ -400,7 +400,7 @@ the owner may still overrule before T-4.23.
 |---|---|---|
 | T-4.09 | DONE | — |
 | T-4.10 | DONE | T-4.04, T-4.09 |
-| T-4.11 | OPEN | T-4.09 |
+| T-4.11 | DONE | T-4.09 |
 | ⚠️ T-4.12 | OPEN | T-4.09, T-4.10 |
 | T-4.13 | BLOCKED | T-4.10, T-4.11, T-4.14 |
 
