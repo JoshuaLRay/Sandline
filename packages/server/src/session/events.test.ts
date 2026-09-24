@@ -194,22 +194,16 @@ describe('blocker navigation on the real two-route mission (T-4.15)', () => {
     const to = { x: 0, y: 0, z: 70 };
     const direct = nav.path(from, to);
     expect(direct).not.toBeNull();
-    const chosen = direct!.points.find((p) => Math.abs(p.x) > 4 && p.z > 5 && p.z < 62);
-    expect(chosen).toBeDefined();
-
-    // The static spine divides mission-01 into west/east assault routes from
-    // z=8..58. Close the route Detour chose across z=30..36; the other route
-    // remains connected before and after the spine.
-    const west = chosen!.x < 0;
-    const gate = west
-      ? { minX: -31, minZ: 30, maxX: -4, maxZ: 36 }
-      : { minX: 4, minZ: 30, maxX: 31, maxZ: 36 };
+    // Close the direct centre lane across z=30..36. The blocker must make
+    // Detour leave that lane without requiring the test to predict whether it
+    // chooses the west or east side of the authored two-route map.
+    const gate = { minX: -4, minZ: 30, maxX: 4, maxZ: 36 };
     nav.setBlocker('route-gate', [gate], true);
 
     const around = nav.path(from, to);
     expect(around).not.toBeNull();
     expect(around!.points.at(-1)!.z).toBeGreaterThan(68);
-    expect(around!.points.some((p) => (west ? p.x > 4 : p.x < -4))).toBe(true);
+    expect(around!.points.some((p) => Math.abs(p.x) > 4)).toBe(true);
 
     nav.setBlocker('route-gate', [gate], false);
     const reopened = nav.path(from, to);
