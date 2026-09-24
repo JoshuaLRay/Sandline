@@ -388,7 +388,7 @@ the owner may still overrule before T-4.23.
 | Task | Status | Depends |
 |---|---|---|
 | T-4.05 | DONE | T-4.02 |
-| T-4.06 | OPEN | T-4.05 |
+| T-4.06 | DONE | T-4.05 |
 | T-4.07 | DONE | T-4.05 |
 | T-4.08 | DONE — re-scoped by the owner: the detailed soldier (ADR-020) | T-4.01, T-4.05 |
 | T-4.35 | DONE — the enemy fighter; the owner judges it on the deployed site | T-4.08 |
