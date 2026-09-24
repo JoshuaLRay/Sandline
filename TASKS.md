@@ -76,9 +76,9 @@ T-3.36, T-3.37) wait on their run sheets and people.
 order. The asset pipeline is done (T-4.02, `pnpm gen:assets`) with its budgets
 in CI (T-4.03, `pnpm check:assets`) and the loader (T-4.05, `?assets` for
 eyes); streaming/load-screen gating (T-4.06, `pnpm check:packs`) and LOD/instancing (T-4.07) are done, beside
-the level format (T-4.09), the mission's objective types (T-4.14, done: so
-triggers T-4.15, checkpoints T-4.16 and the room before the mission T-4.19
-are open; every-mission CI T-4.17 is done), HUD (T-4.25), classes (T-4.27), mounted MG (T-4.29), regions ADR
+the level format (T-4.09), the mission's objective types (T-4.14), scripted
+events (T-4.15), checkpoints/retry (T-4.16) and every-mission CI (T-4.17)
+all done; the room before the mission T-4.19 is open, HUD (T-4.25), classes (T-4.27), mounted MG (T-4.29), regions ADR
 addendum (T-4.30) and observability (T-4.33) — and two owner decisions gate
 the rest. Art sourcing is decided (🧍 T-4.01, ADR-018: authored as code,
 with procedural animation): the generator library and its first kit piece
@@ -411,7 +411,7 @@ the owner may still overrule before T-4.23.
 |---|---|---|
 | T-4.14 | DONE | — |
 | T-4.15 | DONE | T-4.14 |
-| T-4.16 | OPEN | T-4.14 |
+| T-4.16 | DONE | T-4.14 |
 | T-4.17 | DONE | T-4.14, T-3.35 |
 
 ### E-4.5 — Matchmaking, parties, regions, reconnect, invites
