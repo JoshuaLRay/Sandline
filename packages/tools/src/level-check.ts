@@ -19,6 +19,7 @@ import {
   type AssetManifest,
   type LevelBoxSpec,
   type World,
+  type WorldBox,
   type WorldMission,
 } from '@sandline/shared';
 import { initNav, type NavMesh, type NavPath, type NavPoint } from '../../server/src/ai/nav/NavMesh.ts';
@@ -81,18 +82,28 @@ function axisOverlap(aMin: number, aMax: number, bMin: number, bMax: number): nu
   return Math.min(aMax, bMax) - Math.max(aMin, bMin);
 }
 
-function boxExtents(box: LevelBoxSpec): { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number } {
+function boxExtents(box: LevelBoxSpec | WorldBox): { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number } {
+  if ('w' in box) {
+    return {
+      minX: box.x - box.w / 2,
+      maxX: box.x + box.w / 2,
+      minY: box.y,
+      maxY: box.y + box.h,
+      minZ: box.z - box.d / 2,
+      maxZ: box.z + box.d / 2,
+    };
+  }
   return {
-    minX: box.x - box.w / 2,
-    maxX: box.x + box.w / 2,
-    minY: box.y,
-    maxY: box.y + box.h,
-    minZ: box.z - box.d / 2,
-    maxZ: box.z + box.d / 2,
+    minX: box.minX,
+    maxX: box.maxX,
+    minY: box.minY,
+    maxY: box.maxY,
+    minZ: box.minZ,
+    maxZ: box.maxZ,
   };
 }
 
-export function collisionOverlaps(boxes: readonly LevelBoxSpec[]): LevelIssue[] {
+export function collisionOverlaps(boxes: readonly (LevelBoxSpec | WorldBox)[]): LevelIssue[] {
   const out: LevelIssue[] = [];
   for (let i = 0; i < boxes.length; i++) {
     const a = boxes[i]!;
@@ -577,7 +588,7 @@ function cameraProject(
   };
 }
 
-function boxCorners(box: LevelBoxSpec): { x: number; y: number; z: number }[] {
+function boxCorners(box: LevelBoxSpec | WorldBox): { x: number; y: number; z: number }[] {
   const e = boxExtents(box);
   return [
     { x: e.minX, y: e.minY, z: e.minZ },
