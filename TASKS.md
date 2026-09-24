@@ -88,8 +88,9 @@ validation (T-4.11) are open. The slice kit is done (T-4.10: 25 code-authored
 pieces, `data/kit.json`, `?kit` for the walkable gallery), so baked lighting
 (⚠️ T-4.12) is open too. **The setting is Afghanistan, winter 2001–2002**
 (ADR-020; the brief is `docs/art/direction.md`). The squad now wears the
-detailed desert-camouflage soldier (T-4.08); the enemy fighter (T-4.35) and
-period weapons (T-4.36) are open. Where progress lives is decided
+detailed desert-camouflage soldier (T-4.08) and carries period weapons
+(T-4.36; enemies hold the AK, PKM and RPG-7); the enemy fighter (T-4.35) is
+open. Where progress lives is decided
 too (🧍 T-4.21, ADR-019: on the host, per campaign), so player identity
 (T-4.22) is open.
 
@@ -390,7 +391,7 @@ the owner may still overrule before T-4.23.
 | T-4.07 | OPEN | T-4.05 |
 | T-4.08 | DONE — re-scoped by the owner: the detailed soldier (ADR-020) | T-4.01, T-4.05 |
 | T-4.35 | OPEN — the enemy fighter | T-4.08 |
-| T-4.36 | OPEN — period weapons | T-4.08 |
+| T-4.36 | DONE — period weapons | T-4.08 |
 
 ### E-4.3 — Level format, kit, lightmaps
 

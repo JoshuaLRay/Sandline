@@ -10,7 +10,7 @@ import { writeFileSync } from 'node:fs';
 import { createIO } from './assets/pipeline.ts';
 import { pieceDocument } from './art/piece.ts';
 import { PIECES } from './art/pieces/index.ts';
-import { CHARACTERS } from './art/characters/index.ts';
+import { GENERATED } from './art/characters/index.ts';
 
 const io = await createIO();
 for (const piece of PIECES) {
@@ -18,7 +18,7 @@ for (const piece of PIECES) {
   writeFileSync(new URL(`../../../assets/src/${piece.id}.glb`, import.meta.url), bytes);
   console.log(`${piece.id}: ${bytes.length} bytes`);
 }
-for (const character of CHARACTERS) {
+for (const character of GENERATED) {
   const bytes = await io.writeBinary(character.document());
   writeFileSync(new URL(`../../../assets/src/${character.id}.glb`, import.meta.url), bytes);
   console.log(`${character.id}: ${bytes.length} bytes`);

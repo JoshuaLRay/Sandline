@@ -1514,6 +1514,216 @@
           ]
         }
       ]
+    },
+    {
+      "id": "weapon-ak",
+      "source": "assets/src/weapon-ak.glb",
+      "file": "assets/weapon-ak.glb",
+      "inputHash": "73cece0801b4894b1170a2dfa64b893b60a9a2050d68d78c6dea27810a420223",
+      "hash": "cd85179f0a8499e3dd11a00c27d3cd971205e047aeb7f09fcc46da8d71fa92fd",
+      "bytes": 203060,
+      "class": "weapon",
+      "triangles": 332,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "weapon-at4",
+      "source": "assets/src/weapon-at4.glb",
+      "file": "assets/weapon-at4.glb",
+      "inputHash": "3f3f609cefe8183c83291278c7c218ec947ceffc50bfe96d6e2c7789d2a4f7a5",
+      "hash": "7e58324521a2e318162fe1705019be2f35e56f131f8dea4f56eb28b7f61d6d88",
+      "bytes": 202456,
+      "class": "weapon",
+      "triangles": 368,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "weapon-dmr",
+      "source": "assets/src/weapon-dmr.glb",
+      "file": "assets/weapon-dmr.glb",
+      "inputHash": "dbdc5cd092ab464e76818a61b99e300d09f4f23854e4e0629071ab3693edd3c8",
+      "hash": "1ec67ea11f1ce3c228a62dfa0d30371d3ea42209c390eaf726e187434206fd32",
+      "bytes": 207288,
+      "class": "weapon",
+      "triangles": 680,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "weapon-m249",
+      "source": "assets/src/weapon-m249.glb",
+      "file": "assets/weapon-m249.glb",
+      "inputHash": "05b06823f1cc2c21282e1aef8699baa551834572debc25d9ad3a1c5d700fdb7b",
+      "hash": "a2d7a909904f56400f4a83d9fc0fd926cbad1ba4836261dba121c0004673c819",
+      "bytes": 203164,
+      "class": "weapon",
+      "triangles": 328,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "weapon-m4",
+      "source": "assets/src/weapon-m4.glb",
+      "file": "assets/weapon-m4.glb",
+      "inputHash": "790fd20fb40e5d2a0b06dc0c90f5bb26ea828fbaec10ff384631e6bca5832e47",
+      "hash": "55285d41cd3ce468526180c0497662b8c83e090fce12902343ba389b4785a881",
+      "bytes": 206376,
+      "class": "weapon",
+      "triangles": 564,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "weapon-m67",
+      "source": "assets/src/weapon-m67.glb",
+      "file": "assets/weapon-m67.glb",
+      "inputHash": "749a62e3f6ddbed74fbde2b32eb43d835f44fbdd7efb7255d33db3e375303c77",
+      "hash": "d41a540452df593e6b56b2cb5511974ad5d510c0b5c4447acc6c6b76d1acc85b",
+      "bytes": 201004,
+      "class": "weapon",
+      "triangles": 244,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "weapon-pistol",
+      "source": "assets/src/weapon-pistol.glb",
+      "file": "assets/weapon-pistol.glb",
+      "inputHash": "4582fd4bc845f92bfed167f7f3fa0ac8abf5fe2c8850b5db3063ca5edb28b2ec",
+      "hash": "d06f8b9bd0ed2884e9ca01db12f56d4e8c7dfa255a2f9d328865c5b3bb666278",
+      "bytes": 200372,
+      "class": "weapon",
+      "triangles": 120,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "weapon-pkm",
+      "source": "assets/src/weapon-pkm.glb",
+      "file": "assets/weapon-pkm.glb",
+      "inputHash": "3f750180202e51bbfb3bbbdeffe99a168f69102bab860e6f2c00a9ab1b48154d",
+      "hash": "d06e99c0acd00d85eeef14ed287574b018726579ed9282f63a6eab08cc65c2f6",
+      "bytes": 202244,
+      "class": "weapon",
+      "triangles": 256,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "weapon-rpg7",
+      "source": "assets/src/weapon-rpg7.glb",
+      "file": "assets/weapon-rpg7.glb",
+      "inputHash": "1c4f106e98c8f2e1e009ab961bdf5d7e57cc863e302bce7b9f831fbd591e1c7f",
+      "hash": "375a267a9b41c120c5a53b419e468e980ed5b6ee6530eb41c6ee3dc10c8bdbac",
+      "bytes": 202688,
+      "class": "weapon",
+      "triangles": 408,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "weapon-shotgun",
+      "source": "assets/src/weapon-shotgun.glb",
+      "file": "assets/weapon-shotgun.glb",
+      "inputHash": "8102ecbe9dd80cf1aee89f3ab4aa328e871f24723df6c040fa8a231f6d91b3a3",
+      "hash": "dc5ffca3cccee23dc08951e1010e301d2bf850cb7559d2bc9962ce1b23fa61a9",
+      "bytes": 202148,
+      "class": "weapon",
+      "triangles": 276,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
     }
   ]
 }
