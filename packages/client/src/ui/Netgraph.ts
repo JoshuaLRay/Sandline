@@ -76,6 +76,9 @@ export interface NetgraphSource {
   interpAheadTicks: number;
   tickDrift: number;
   correctionRate: number;
+  /** T-4.07: renderer.info for the frame just drawn. */
+  drawCalls: number;
+  triangles: number;
 }
 
 const ROW_HEIGHT = 34;
@@ -193,7 +196,9 @@ export function createNetgraph(read: () => NetgraphSource): Panel & { sample: ()
         `snapshot gaps ${(now.snapshotGapRate * 100).toFixed(1)}%\n` +
         `corrections ${(now.correctionRate * 100).toFixed(1)}%\n` +
         `interp ahead ${now.interpAheadTicks} ticks\n` +
-        `tick drift  ${now.tickDrift}`;
+        `tick drift  ${now.tickDrift}\n` +
+        `draw calls  ${now.drawCalls} / 300\n` +
+        `triangles   ${Math.round(now.triangles)}`;
       draw();
     },
   };
