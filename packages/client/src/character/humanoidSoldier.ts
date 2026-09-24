@@ -16,7 +16,13 @@ import { solveTwoBone } from './twoBoneIk.ts';
 import { DOWNED_BODY_LIFT_M, HUMANOID_HIT_HALF_HEIGHT, HUMANOID_HIT_RADIUS, HUMANOID_ROOT_LIFT_M, PRONE_BODY_LIFT_M } from './humanoidPlaceholder.ts';
 import { type CellName, type PaletteName, remapGeometryUv, soldierAtlas } from './soldierTexture.ts';
 import { type WeaponModel, type WeaponSide, createWeaponModel, hasWeaponAsset, hasWeaponModel, weaponAssetsVersion } from '../weapons/weaponModels.ts';
-import { accentMaterial, detailedSkin } from './assetSoldier.ts';
+import { accentMaterial, detailedSkin, fighterMaterials, fighterSkin } from './assetSoldier.ts';
+
+/** T-4.35: how an enemy fighter looks — its variant (`fighterVariantFor`) and whether it carries the MG. */
+export interface FighterLook {
+  variant?: number;
+  gunner?: boolean;
+}
 
 /**
  * The M2 soldier: a skinned humanoid built in code (T-2.22).
@@ -745,12 +751,12 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
  * A no-op on the grey box, which has no atlas to swap and is a diagnostic
  * fixture rather than a soldier.
  */
-export function setSoldierPalette(root: THREE.Object3D, palette: PaletteName): boolean {
+export function setSoldierPalette(root: THREE.Object3D, palette: PaletteName, look: FighterLook = {}): boolean {
   const skin = root.getObjectByName('soldier');
   if (!(skin instanceof THREE.SkinnedMesh)) return false;
-  // T-4.08: a squad soldier wears the detailed skin once it has loaded; an
-  // enemy keeps the code-built one until it has a model of its own. The
-  // code-built geometry and material are kept on the soldier to go back to.
+  // T-4.08: a squad soldier wears the detailed skin once it has loaded, and
+  // T-4.35: an enemy the fighter, in its variant. The code-built geometry and
+  // material are kept on the soldier to go back to.
   const code = (skin.userData['codeSkin'] ??= { geometry: skin.geometry, material: skin.material }) as {
     geometry: THREE.BufferGeometry;
     material: THREE.MeshLambertMaterial;
@@ -758,7 +764,12 @@ export function setSoldierPalette(root: THREE.Object3D, palette: PaletteName): b
   // T-4.36: the side decides which period weapons the rig draws (`setHeld`).
   root.userData['side'] = palette === 'enemy' ? 'enemy' : 'squad';
   const detailed = palette === 'enemy' ? null : detailedSkin();
-  if (detailed) {
+  const fighter = palette === 'enemy' ? fighterSkin() : null;
+  if (fighter) {
+    if (skin.geometry !== fighter.geometry) skin.geometry = fighter.geometry;
+    const materials = fighterMaterials(look.variant ?? 0, look.gunner ?? false);
+    if (skin.material !== materials) skin.material = materials;
+  } else if (detailed) {
     if (skin.geometry !== detailed.geometry) skin.geometry = detailed.geometry;
     const accent = accentMaterial(palette);
     const current = skin.material as THREE.Material | THREE.Material[];

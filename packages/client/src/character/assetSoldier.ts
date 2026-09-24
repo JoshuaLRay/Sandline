@@ -10,8 +10,7 @@
  * rifle and the hit capsule are all the rig's, as they were. The swap
  * happens in `setSoldierPalette`, which the page already calls whenever a
  * soldier's side or slot might have changed. A squad soldier gets the
- * detailed skin; an enemy keeps the code-built one until it has a model of
- * its own (the Afghan fighter, T-4.35).
+ * detailed skin; an enemy the fighter (T-4.35, below).
  *
  * ONE GEOMETRY AND ONE ATLAS FOR THE SQUAD; A MARKING PER SLOT. The geometry
  * and the atlas material are shared by every squad soldier. The second
@@ -29,6 +28,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { AssetLoader } from '../assets/loader.ts';
 import { PALETTES, type PaletteName } from './soldierTexture.ts';
+import RAW_FIGHTER_LOOK from './fighterLook.json' with { type: 'json' };
 
 export const DETAILED_SOLDIER_ASSET = 'soldier-dcu';
 
@@ -151,5 +151,168 @@ export async function loadDetailedSkin(loader: AssetLoader): Promise<DetailedSki
   // Held for the page's life: every squad soldier shares it.
   const skin = detailedSkinFromLoaded(asset.object);
   provideDetailedSkin(skin);
+  return skin;
+}
+
+/* -- The enemy fighter (T-4.35) ------------------------------------------------ */
+
+export const FIGHTER_ASSET = 'fighter';
+
+/**
+ * The fighter's parts, in the order of its material groups: each is a node
+ * named `fighter-<part>` in the asset (tools/src/art/characters/fighter.ts).
+ */
+export const FIGHTER_PARTS = ['body', 'cloth', 'pakol', 'turban', 'bandolier'] as const;
+export type FighterPart = (typeof FIGHTER_PARTS)[number];
+
+export interface FighterVariant {
+  headgear: 'pakol' | 'turban';
+  /** Multiplies the pale-painted kameez, sleeves and trousers. */
+  cloth: string;
+  /** Multiplies the pale-painted headgear. */
+  head: string;
+}
+
+class FighterLookError extends Error {}
+
+export function parseFighterLook(raw: unknown): FighterVariant[] {
+  const variants = (raw as { variants?: unknown } | null)?.variants;
+  if (!Array.isArray(variants) || variants.length === 0) throw new FighterLookError('fighterLook: variants must be a non-empty list');
+  const hex = /^#[0-9a-f]{6}$/i;
+  return variants.map((v, i) => {
+    const o = v as Record<string, unknown>;
+    if (o['headgear'] !== 'pakol' && o['headgear'] !== 'turban') throw new FighterLookError(`fighterLook.variants[${i}].headgear must be pakol or turban`);
+    for (const k of ['cloth', 'head'] as const) {
+      if (typeof o[k] !== 'string' || !hex.test(o[k] as string)) throw new FighterLookError(`fighterLook.variants[${i}].${k} must be a #rrggbb colour`);
+    }
+    return { headgear: o['headgear'], cloth: o['cloth'] as string, head: o['head'] as string };
+  });
+}
+
+export const FIGHTER_VARIANTS: readonly FighterVariant[] = Object.freeze(parseFighterLook(RAW_FIGHTER_LOOK));
+
+/** Which variant a fighter wears: its netId round the list, so it keeps its look for its life. */
+export function fighterVariantFor(netId: number): number {
+  const n = FIGHTER_VARIANTS.length;
+  return ((Math.trunc(netId) % n) + n) % n;
+}
+
+export interface FighterSkin {
+  /** Model space, feet at y = 0; one group a part, in `FIGHTER_PARTS` order. */
+  geometry: THREE.BufferGeometry;
+  /** The atlas, untinted: the body and the bandolier. */
+  material: THREE.MeshLambertMaterial;
+}
+
+let fighter: FighterSkin | null = null;
+
+/** The fighter skin every enemy wears from now on; null goes back to the code-built skin. */
+export function provideFighterSkin(skin: FighterSkin | null): void {
+  fighter = skin;
+  fighterMaterialCache.clear();
+}
+
+export function fighterSkin(): FighterSkin | null {
+  return fighter;
+}
+
+/** Drawn for a part a fighter does not wear: three skips a group whose material is invisible. */
+const HIDDEN = new THREE.MeshBasicMaterial({ visible: false });
+HIDDEN.name = 'fighter hidden part';
+
+const fighterMaterialCache = new Map<string, THREE.Material[]>();
+
+/**
+ * The material for each of the fighter's groups, for a variant and whether
+ * he carries the MG: shared by every fighter who looks the same.
+ */
+export function fighterMaterials(variant: number, gunner: boolean): THREE.Material[] {
+  if (!fighter) throw new Error('fighterMaterials: no fighter skin');
+  const key = `${variant}|${gunner}`;
+  let list = fighterMaterialCache.get(key);
+  if (!list) {
+    const look = FIGHTER_VARIANTS[variant] ?? FIGHTER_VARIANTS[0]!;
+    const atlas = fighter.material;
+    const tinted = (hex: string, name: string) => {
+      const m = new THREE.MeshLambertMaterial({ map: atlas.map, color: new THREE.Color(hex) });
+      m.name = name;
+      return m;
+    };
+    const head = tinted(look.head, `fighter ${look.headgear} ${variant}`);
+    list = [
+      atlas,
+      tinted(look.cloth, `fighter cloth ${variant}`),
+      look.headgear === 'pakol' ? head : HIDDEN,
+      look.headgear === 'turban' ? head : HIDDEN,
+      gunner ? atlas : HIDDEN,
+    ];
+    fighterMaterialCache.set(key, list);
+  }
+  return list;
+}
+
+/** A skinned part's geometry in model space, as `detailedSkinFromLoaded` makes each of the soldier's. */
+function modelSpacePart(mesh: THREE.SkinnedMesh): THREE.BufferGeometry {
+  const bone = mesh.skeleton.bones[0]!;
+  const toModel = new THREE.Matrix4().multiplyMatrices(bone.matrixWorld, mesh.skeleton.boneInverses[0]!);
+  const g = new THREE.BufferGeometry();
+  const src = mesh.geometry;
+  g.setAttribute('position', floatCopy(src.getAttribute('position'), 3).applyMatrix4(toModel));
+  g.setAttribute('normal', floatCopy(src.getAttribute('normal'), 3));
+  g.setAttribute('uv', floatCopy(src.getAttribute('uv'), 2));
+  const joints = src.getAttribute('skinIndex');
+  const j = new Uint16Array(joints.count * 4);
+  for (let i = 0; i < joints.count; i++) for (let k = 0; k < 4; k++) j[i * 4 + k] = joints.getComponent(i, k);
+  g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(j, 4));
+  g.setAttribute('skinWeight', floatCopy(src.getAttribute('skinWeight'), 4));
+  g.setIndex(Array.from({ length: src.index!.count }, (_, i) => src.index!.getX(i)));
+  return g;
+}
+
+/** The fighter skin from a loaded `fighter`: its parts merged in `FIGHTER_PARTS` order, one group each. */
+export function fighterSkinFromLoaded(root: THREE.Object3D): FighterSkin {
+  root.updateMatrixWorld(true);
+  const byName = new Map<string, THREE.SkinnedMesh>();
+  root.traverse((o) => {
+    if (!(o instanceof THREE.SkinnedMesh)) return;
+    // A node's mesh may be named after it or be its child: walk up to the part's name.
+    for (let n: THREE.Object3D | null = o; n; n = n.parent) {
+      if (n.name.startsWith('fighter-')) {
+        byName.set(n.name, o);
+        break;
+      }
+    }
+  });
+  const parts = FIGHTER_PARTS.map((part) => {
+    const mesh = byName.get(`fighter-${part}`);
+    if (!mesh) throw new Error(`${FIGHTER_ASSET}: no part 'fighter-${part}'`);
+    return mesh;
+  });
+  const geometry = mergeGeometries(parts.map(modelSpacePart), true);
+  if (!geometry) throw new Error(`${FIGHTER_ASSET}: its parts do not merge`);
+  geometry.computeBoundingSphere();
+  const map = (parts[0]!.material as THREE.MeshStandardMaterial).map;
+  if (map) {
+    map.magFilter = THREE.LinearFilter;
+    map.minFilter = THREE.LinearMipmapLinearFilter;
+    map.anisotropy = 4;
+  }
+  const material = new THREE.MeshLambertMaterial({ map });
+  material.name = FIGHTER_ASSET;
+  return { geometry, material };
+}
+
+/**
+ * Loads the fighter and provides it. Resolves null, leaving enemies in the
+ * code-built skin, when the asset did not load (the loader has warned why).
+ */
+export async function loadFighterSkin(loader: AssetLoader): Promise<FighterSkin | null> {
+  const asset = await loader.load(FIGHTER_ASSET);
+  if (asset.fallback) {
+    asset.release();
+    return null;
+  }
+  const skin = fighterSkinFromLoaded(asset.object);
+  provideFighterSkin(skin);
   return skin;
 }

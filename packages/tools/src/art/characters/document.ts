@@ -15,6 +15,19 @@ const LINEAR_MIPMAP_LINEAR = 9987;
 const CLAMP_TO_EDGE = 33071;
 
 export function characterDocument(id: string, skin: BuiltSkin, atlasPng: Uint8Array): Document {
+  return skinnedDocument(id, [{ name: id, skin }], atlasPng, true);
+}
+
+/**
+ * A character in named parts (T-4.35): one node and mesh a part, every one on
+ * the same skin and the one atlas material, so the page can show, hide and
+ * tint each (`assetSoldier.ts`). Parts use their first index list only.
+ */
+export function partsDocument(id: string, parts: readonly { name: string; skin: BuiltSkin }[], atlasPng: Uint8Array): Document {
+  return skinnedDocument(id, parts, atlasPng, false);
+}
+
+function skinnedDocument(id: string, parts: readonly { name: string; skin: BuiltSkin }[], atlasPng: Uint8Array, withAccent: boolean): Document {
   const doc = new Document();
   doc.createBuffer();
   const scene = doc.createScene(id).setExtras({ sandline: { class: 'character' } });
@@ -44,29 +57,33 @@ export function characterDocument(id: string, skin: BuiltSkin, atlasPng: Uint8Ar
   const texture = doc.createTexture(`${id} atlas`).setMimeType('image/png').setImage(atlasPng);
   const body = doc.createMaterial(id).setBaseColorTexture(texture).setMetallicFactor(0).setRoughnessFactor(1);
   body.getBaseColorTextureInfo()!.setMagFilter(LINEAR).setMinFilter(LINEAR_MIPMAP_LINEAR).setWrapS(CLAMP_TO_EDGE).setWrapT(CLAMP_TO_EDGE);
-  const accent = doc.createMaterial('accent').setBaseColorFactor([1, 1, 1, 1]).setMetallicFactor(0).setRoughnessFactor(1);
+  const accent = withAccent ? doc.createMaterial('accent').setBaseColorFactor([1, 1, 1, 1]).setMetallicFactor(0).setRoughnessFactor(1) : null;
 
   const acc = (name: string, type: 'VEC2' | 'VEC3' | 'VEC4' | 'SCALAR', array: Float32Array | Uint16Array) => doc.createAccessor(name).setType(type).setArray(array);
-  const position = acc('position', 'VEC3', new Float32Array(skin.positions));
-  const normal = acc('normal', 'VEC3', new Float32Array(skin.normals));
-  const uv = acc('uv', 'VEC2', new Float32Array(skin.uvs));
-  const joints = acc('joints', 'VEC4', new Uint16Array(skin.joints));
-  const weights = acc('weights', 'VEC4', new Float32Array(skin.weights));
-  const mesh = doc.createMesh(id);
-  skin.indices.forEach((indices, m) => {
-    if (indices.length === 0) return;
-    mesh.addPrimitive(
-      doc
-        .createPrimitive()
-        .setMaterial(m === 0 ? body : accent)
-        .setAttribute('POSITION', position)
-        .setAttribute('NORMAL', normal)
-        .setAttribute('TEXCOORD_0', uv)
-        .setAttribute('JOINTS_0', joints)
-        .setAttribute('WEIGHTS_0', weights)
-        .setIndices(acc(`indices ${m}`, 'SCALAR', new Uint16Array(indices))),
-    );
-  });
-  scene.addChild(doc.createNode(id).setMesh(mesh).setSkin(gltfSkin));
+  for (const { name, skin } of parts) {
+    const label = parts.length === 1 ? '' : `${name} `;
+    const position = acc(`${label}position`, 'VEC3', new Float32Array(skin.positions));
+    const normal = acc(`${label}normal`, 'VEC3', new Float32Array(skin.normals));
+    const uv = acc(`${label}uv`, 'VEC2', new Float32Array(skin.uvs));
+    const joints = acc(`${label}joints`, 'VEC4', new Uint16Array(skin.joints));
+    const weights = acc(`${label}weights`, 'VEC4', new Float32Array(skin.weights));
+    const mesh = doc.createMesh(name);
+    skin.indices.forEach((indices, m) => {
+      if (indices.length === 0) return;
+      if (m === 1 && !accent) throw new Error(`${id}: part '${name}' uses the accent, and a parts document has none`);
+      mesh.addPrimitive(
+        doc
+          .createPrimitive()
+          .setMaterial(m === 0 ? body : accent!)
+          .setAttribute('POSITION', position)
+          .setAttribute('NORMAL', normal)
+          .setAttribute('TEXCOORD_0', uv)
+          .setAttribute('JOINTS_0', joints)
+          .setAttribute('WEIGHTS_0', weights)
+          .setIndices(acc(`${label}indices ${m}`, 'SCALAR', new Uint16Array(indices))),
+      );
+    });
+    scene.addChild(doc.createNode(name).setMesh(mesh).setSkin(gltfSkin));
+  }
   return doc;
 }

@@ -2488,6 +2488,47 @@ free to go whenever.
   no helmet, no vest, loose cloth), and the owner judges it on the deployed
   site.
 - **Size:** L
+- **Completed 2026-09-24.** The generator, `tools/src/art/characters/`:
+  - `fighter.ts`: on the soldier's rig and within its capsule, from the same
+    lofts. A bearded face; a scarf round the neck with an end down the chest;
+    a dark wool waistcoat open at the front; a chest rig of three magazine
+    cells on a strap; a cloth sash; the kameez to the knee, its skirt
+    weighted to the hips and both thighs so it hangs between the legs; loose
+    shalwar gathered at the ankle; loose sleeves; bare hands; worn boots. A
+    pakol, a turban with its tail, and the gunner's bandolier, over the
+    shoulder and across the chest and back;
+  - `fighterAtlas.ts`: a 1024² atlas of thirteen regions. The kameez,
+    sleeves, trousers, pakol and turban are painted pale with their weave,
+    folds, seams and dust, for tinting; the face, beard, waistcoat, rig,
+    sash, scarf (a woven check), boots and bandolier (brass in loops) are
+    painted in their own colours;
+  - `document.ts` gains `partsDocument`: one node a part (`fighter-body`,
+    `-cloth`, `-pakol`, `-turban`, `-bandolier`), all on the one skin and
+    the one atlas material.
+
+  `fighter` has 4,360 triangles, 17 bones, one material and one 1024² KTX2
+  texture (a 624,720-byte web copy), within budget.
+
+  In the page (`assetSoldier.ts`), the parts are merged into one geometry,
+  one group a part. `setSoldierPalette(root, 'enemy', look)` puts every
+  enemy in it, with materials for its variant: `fighterLook.json` has six,
+  each a headgear and a colour for the cloth and one for the headgear,
+  multiplying the pale paint; the headgear not worn and, but for the
+  gunner, the bandolier get an invisible material, which three skips. An
+  enemy's variant is its netId round the list (`fighterVariantFor`), and
+  the MG gunner is the archetype that carries the `lmg`. Materials are
+  shared by every fighter who looks the same.
+
+  **Tests:** `fighter.test.ts` holds the fighter to T-4.08's checks (the
+  committed source is current, the rig's bones at its joints, the budget,
+  the capsule, the weights, the UVs, the normals), and to a silhouette that
+  is not the squad's: the head narrower where the helmet flares, the chest
+  standing out less than the vest, cloth between the legs where the soldier
+  has daylight and wider at the knee, and more across the chest on the
+  gunner. `assetSoldier.test.ts` swaps it onto a live enemy (the rig
+  untouched), shows each headgear and the bandolier by variant and gunner,
+  and never frees the shared skin. Rendered headless, six figures side by
+  side. **The owner judges it on the deployed site.**
 
 ##### T-4.36 — Period weapons
 - **Depends:** T-4.08

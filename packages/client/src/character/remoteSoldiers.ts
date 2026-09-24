@@ -13,7 +13,8 @@ import {
 } from '@sandline/shared';
 import { type FootPlacementDriver, createFootPlacementDriver } from './footPlacement.ts';
 import { requireRig } from './humanoidRig.ts';
-import { disposeSoldier, setSoldierPalette } from './humanoidSoldier.ts';
+import { type FighterLook, disposeSoldier, setSoldierPalette } from './humanoidSoldier.ts';
+import { fighterVariantFor } from './assetSoldier.ts';
 import { type LocomotionPoseDriver, createLocomotionPoseDriver } from './locomotionPose.ts';
 import { classifyLocomotion } from './locomotionState.ts';
 import { type PaletteName, paletteFor } from './soldierTexture.ts';
@@ -67,6 +68,8 @@ export interface RemoteSoldierState {
   held: string;
   /** 0..1 through a reload. */
   reload: number;
+  /** T-4.35: an enemy's fighter variant and whether it carries the MG; absent for the squad. */
+  look?: FighterLook;
 }
 
 /**
@@ -99,6 +102,7 @@ export function remoteSoldierState(view: RemoteView, netId: number): RemoteSoldi
       vitality,
       held: enemyByIndex(enemy.archetype)?.weapon ?? WEAPON_IDS[0],
       reload: 0,
+      look: { variant: fighterVariantFor(netId), gunner: enemyByIndex(enemy.archetype)?.weapon === 'lmg' },
     };
   }
   const slot = view.remoteSlot(netId);
@@ -210,7 +214,7 @@ export class RemoteSoldiers {
     // between bot and human on the LIVE entity (ADR-001), and the body is
     // where that should show. A repaint is a texture swap the call itself
     // skips when nothing changed.
-    setSoldierPalette(mesh, state.palette);
+    setSoldierPalette(mesh, state.palette, state.look);
     mesh.position.set(sample.x, sample.y + 0.9, sample.z);
     const yaw = wireToTable(sample.yaw);
     mesh.rotation.y = Math.atan2(sin(yaw), cos(yaw));

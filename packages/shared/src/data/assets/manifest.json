@@ -231,6 +231,27 @@
       ]
     },
     {
+      "id": "fighter",
+      "source": "assets/src/fighter.glb",
+      "file": "assets/fighter.glb",
+      "inputHash": "a30a4f1277d501f637b58716b3750b3c3919b5bd8fc3b7acccfbe9a186cbfcde",
+      "hash": "8aff6973fd141f7f0dce001e0ae68d65941720c10949de3e7684979d57cd3f42",
+      "bytes": 624720,
+      "class": "character",
+      "triangles": 4360,
+      "bones": 17,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
       "id": "ground-dirt-4m",
       "source": "assets/src/ground-dirt-4m.glb",
       "file": "assets/ground-dirt-4m.glb",
