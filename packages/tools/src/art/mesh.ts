@@ -86,6 +86,92 @@ export class MeshBuilder {
     return this;
   }
 
+  /**
+   * An upright prism (a drum, a post): `sides` faces round a circle of
+   * `radius` about (cx, cz), from y0 to y1, with capped ends. Its side faces
+   * share one surface, tiled round the circumference; each cap maps its
+   * disc into the cap surface's cell. A drum with a multiple of four sides
+   * has its bounds at exactly ±radius, so a square collision box round it
+   * is its bounds. Coordinates are rounded to 0.1 mm so trigonometry cannot
+   * put a last-bit difference into committed bytes.
+   */
+  prism(cx: number, cz: number, radius: number, y0: number, y1: number, sides: number, faces: { side: string; cap: string }, options: { collide?: boolean } = {}): this {
+    if (sides < 3 || !(radius > 0) || !(y0 < y1)) throw new Error('prism: needs 3+ sides, a radius and y0 < y1');
+    if (options.collide) this.out.collision.push({ min: [cx - radius, y0, cz - radius], max: [cx + radius, y1, cz + radius] });
+    const r4 = (n: number) => Math.round(n * 1e4) / 1e4;
+    const ring = Array.from({ length: sides + 1 }, (_, i) => {
+      const a = (i / sides) * Math.PI * 2;
+      return [r4(Math.sin(a)), r4(Math.cos(a))] as const;
+    });
+    const tile = this.tileM[faces.side];
+    if (!tile || tile <= 0) throw new Error(`surface '${faces.side}' has no tile size`);
+    const side = cellRect(this.family, faces.side);
+    const circumference = 2 * Math.PI * radius;
+    const height = y1 - y0;
+    // Side quads; u runs round, v down from the top, each tile the whole cell.
+    for (let i = 0; i < sides; i++) {
+      const [sa, ca] = ring[i]!;
+      const [sb, cb] = ring[i + 1]!;
+      const ua = ((i / sides) * circumference) / tile;
+      const ub = (((i + 1) / sides) * circumference) / tile;
+      // A side face may straddle a tile edge; wrap its u into the cell by the tile it starts in.
+      const t0 = Math.floor(ua + 1e-9);
+      const fu = (x: number) => side.u0 + (side.u1 - side.u0) * Math.min(1, x - t0);
+      const fv = (y: number) => side.v0 + (side.v1 - side.v0) * Math.min(1, (y1 - y) / Math.min(height, tile));
+      const nx = r4(Math.sin(((i + 0.5) / sides) * Math.PI * 2));
+      const nz = r4(Math.cos(((i + 0.5) / sides) * Math.PI * 2));
+      const base = this.out.positions.length / 3;
+      const corners: [number, number, number, number][] = [
+        [sa, ca, ua, y1],
+        [sb, cb, ub, y1],
+        [sb, cb, ub, y0],
+        [sa, ca, ua, y0],
+      ];
+      for (const [s, c, u, y] of corners) {
+        this.out.positions.push(r4(cx + s * radius), y, r4(cz + c * radius));
+        this.out.normals.push(nx, 0, nz);
+        this.out.uvs.push(fu(u), fv(y));
+      }
+      this.out.indices.push(base, base + 3, base + 2, base, base + 2, base + 1);
+    }
+    // Caps: a fan round the centre, the disc inscribed in the cap cell.
+    const cap = cellRect(this.family, faces.cap);
+    for (const [y, up] of [
+      [y1, 1],
+      [y0, -1],
+    ] as const) {
+      const centre = this.out.positions.length / 3;
+      const cu = (cap.u0 + cap.u1) / 2;
+      const cv = (cap.v0 + cap.v1) / 2;
+      const hu = (cap.u1 - cap.u0) / 2;
+      const hv = (cap.v1 - cap.v0) / 2;
+      this.out.positions.push(cx, y, cz);
+      this.out.normals.push(0, up, 0);
+      this.out.uvs.push(cu, cv);
+      for (let i = 0; i <= sides; i++) {
+        const [s, c] = ring[i]!;
+        this.out.positions.push(r4(cx + s * radius), y, r4(cz + c * radius));
+        this.out.normals.push(0, up, 0);
+        this.out.uvs.push(cu + s * hu, cv + c * hv);
+      }
+      for (let i = 0; i < sides; i++) {
+        const a = centre + 1 + i;
+        const b = centre + 2 + i;
+        // Seen from above, the ring runs clockwise (sin, cos): +Z then +X.
+        if (up > 0) this.out.indices.push(centre, a, b);
+        else this.out.indices.push(centre, b, a);
+      }
+    }
+    return this;
+  }
+
+  /** A collision box with no mesh of its own, round parts that are drawn but should collide as one. */
+  collider(min: Vec3, max: Vec3): this {
+    for (let a = 0; a < 3; a++) if (!(min[a]! < max[a]!)) throw new Error(`collider: min ${min} must be below max ${max}`);
+    this.out.collision.push({ min: [...min], max: [...max] });
+    return this;
+  }
+
   build(): BuiltMesh {
     return this.out;
   }

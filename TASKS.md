@@ -84,7 +84,9 @@ with procedural animation): the generator library and its first kit piece
 are done (T-4.04, `pnpm gen:art`, the wall on `?assets`), and the characters
 from assets (T-4.08) are open, and with the level format done (T-4.09,
 `data/levels/`, greybox-01 the first level) the kit (T-4.10) and level
-validation (T-4.11) are open. Where progress lives is decided
+validation (T-4.11) are open. The slice kit is done (T-4.10: 25 code-authored
+pieces, `data/kit.json`, `?kit` for the walkable gallery), so baked lighting
+(⚠️ T-4.12) is open too. Where progress lives is decided
 too (🧍 T-4.21, ADR-019: on the host, per campaign), so player identity
 (T-4.22) is open.
 
@@ -390,9 +392,9 @@ the owner may still overrule before T-4.23.
 | Task | Status | Depends |
 |---|---|---|
 | T-4.09 | DONE | — |
-| T-4.10 | OPEN | T-4.04, T-4.09 |
+| T-4.10 | DONE | T-4.04, T-4.09 |
 | T-4.11 | OPEN | T-4.09 |
-| ⚠️ T-4.12 | BLOCKED | T-4.09, T-4.10 |
+| ⚠️ T-4.12 | OPEN | T-4.09, T-4.10 |
 | T-4.13 | BLOCKED | T-4.10, T-4.11, T-4.14 |
 
 ### E-4.4 — Mission scripting

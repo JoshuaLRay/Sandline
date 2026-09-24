@@ -5,7 +5,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { ASSET_MANIFEST, checkBudgets } from '@sandline/shared';
+import { ASSET_MANIFEST, KIT, checkBudgets } from '@sandline/shared';
 import { createIO, sha256 } from '../assets/pipeline.ts';
 import { cellRect, paintAtlas } from './atlas.ts';
 import { KIT_A } from './families.ts';
@@ -27,6 +27,11 @@ describe('generated pieces (T-4.04)', () => {
 
       it('collides where it is seen: the collision boxes bound exactly the mesh', () => {
         const mesh = buildPiece(piece);
+        if (piece.decal) {
+          // A decal is drawn and collides with nothing, by design.
+          expect(mesh.collision).toEqual([]);
+          return;
+        }
         const lo = [Infinity, Infinity, Infinity];
         const hi = [-Infinity, -Infinity, -Infinity];
         for (let i = 0; i < mesh.positions.length; i++) {
@@ -67,6 +72,10 @@ describe('generated pieces (T-4.04)', () => {
       });
     });
   }
+
+  it('the kit file lists exactly the generated pieces (T-4.10)', () => {
+    expect(KIT.map((p) => p.id).sort()).toEqual(PIECES.map((p) => p.id).sort());
+  });
 
   it('the wall: 88 triangles, three collision boxes, plinth and coping proud of the plaster', () => {
     const wall = buildPiece(PIECES.find((p) => p.id === 'wall-plaster-4m')!);

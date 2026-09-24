@@ -1,0 +1,30 @@
+{
+  "$comment": "The slice kit (T-4.10): every code-authored piece a level may place, with the cover class its collision makes (checked in kit.test.ts against the manifest: 'high' stands 1.6 m or more, 'low' 0.6 m to under 1.6 m, 'none' is a platform, a decal or rubble nobody hides behind). Pieces are written by tools/src/art/pieces/ (ADR-018); their collision is the manifest's.",
+  "pieces": [
+    { "id": "wall-plaster-4m", "cover": "high", "about": "4 m compound wall, 3 m high" },
+    { "id": "wall-plaster-2m", "cover": "high", "about": "2 m compound wall, 3 m high" },
+    { "id": "wall-low-4m", "cover": "low", "about": "4 m low wall, 1.1 m" },
+    { "id": "wall-low-2m", "cover": "low", "about": "2 m low wall, 1.1 m" },
+    { "id": "wall-broken-4m", "cover": "high", "about": "4 m wall broken down in steps, brick showing" },
+    { "id": "wall-broken-2m", "cover": "high", "about": "2 m wall broken down in steps" },
+    { "id": "wall-door-4m", "cover": "high", "about": "4 m wall with a 1.2 by 2.2 m doorway" },
+    { "id": "wall-window-4m", "cover": "high", "about": "4 m wall with a 1.2 m window, sill at 1 m" },
+    { "id": "pillar", "cover": "high", "about": "corner pillar, 0.5 m square, 3 m" },
+    { "id": "roof-slab-4m", "cover": "none", "about": "4.6 m roof slab for a 4 m house, placed at y 3" },
+    { "id": "parapet-4m", "cover": "none", "about": "0.6 m roof parapet, placed at y 3.25" },
+    { "id": "stairs-3m", "cover": "none", "about": "outside stair to a 3.25 m roof, climbing +z" },
+    { "id": "concrete-barrier-2m", "cover": "low", "about": "2 m concrete road barrier, 0.9 m" },
+    { "id": "rubble-small", "cover": "none", "about": "small rubble pile, steps over" },
+    { "id": "rubble-large", "cover": "low", "about": "large rubble pile, 1 m" },
+    { "id": "ground-dirt-4m", "cover": "none", "about": "4 m earth ground tile (decal)" },
+    { "id": "ground-road-4m", "cover": "none", "about": "4 m gravel road tile, ruts along z (decal)" },
+    { "id": "ground-paving-4m", "cover": "none", "about": "4 m stone paving tile (decal)" },
+    { "id": "sandbags-2m", "cover": "low", "about": "2 m sandbag run, 0.9 m" },
+    { "id": "sandbags-corner", "cover": "low", "about": "sandbag L, 1.5 m each way" },
+    { "id": "crate-small", "cover": "low", "about": "0.8 m crate" },
+    { "id": "crate-large", "cover": "low", "about": "1.2 m crate" },
+    { "id": "crate-stack", "cover": "high", "about": "large crate with a small one on it, 2 m" },
+    { "id": "drum", "cover": "low", "about": "200-litre drum" },
+    { "id": "fence-wood-2m", "cover": "low", "about": "2 m plank fence, 1.2 m" }
+  ]
+}
