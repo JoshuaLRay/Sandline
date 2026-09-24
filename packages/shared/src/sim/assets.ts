@@ -26,6 +26,8 @@ export interface AssetTexture {
 export interface AssetEntry {
   /** The source's file name without its extension. */
   id: string;
+  /** Its budget class (`budgets.json`), from the source's scene extras `sandline.class`. */
+  class: string;
   /** The source, from the repository root: `assets/src/<id>.glb`. */
   source: string;
   /** The web copy, relative to the page: `assets/<id>.glb`. */
@@ -82,7 +84,7 @@ function vec3(where: string, v: unknown): [number, number, number] {
 
 const HASH = /^[0-9a-f]{64}$/;
 const ID = /^[a-z0-9][a-z0-9-]*$/;
-const ENTRY_KEYS = ['id', 'source', 'file', 'inputHash', 'hash', 'bytes', 'triangles', 'bones', 'materials', 'textures', 'lods', 'collision'] as const;
+const ENTRY_KEYS = ['id', 'class', 'source', 'file', 'inputHash', 'hash', 'bytes', 'triangles', 'bones', 'materials', 'textures', 'lods', 'collision'] as const;
 
 export function parseAssetManifest(raw: unknown): AssetManifest {
   const top = obj('manifest', raw, ['version', 'assets']);
@@ -99,6 +101,7 @@ export function parseAssetManifest(raw: unknown): AssetManifest {
     if (!Array.isArray(e['collision'])) throw new AssetManifestError(`${where}.collision: expected an array`);
     return {
       id,
+      class: str(`${where}.class`, e['class'], ID),
       source: str(`${where}.source`, e['source'], /^assets\/src\/[^/]+\.(glb|gltf)$/),
       file: str(`${where}.file`, e['file'], /^assets\/[^/]+\.glb$/),
       inputHash: str(`${where}.inputHash`, e['inputHash'], HASH),

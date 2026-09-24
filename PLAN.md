@@ -2252,6 +2252,25 @@ free to go whenever.
   A check reads the manifest and fails, naming the asset and the number, when anything is over. It runs in `pnpm verify`.
 - **Done when:** an over-budget test asset fails with its name and number, and the committed set passes.
 - **Size:** S
+- **Completed 2026-09-24.** `shared/src/data/assets/budgets.json` has four
+  classes (character, weapon, prop, kit), each with ceilings on triangles,
+  bones, materials, texture count and texture side, plus the 80 MB download.
+  Every texture must also be KTX2 and a power of two on each side. Every
+  source names its class on its scene's extras (`sandline.class`); the
+  pipeline refuses a source without a known one, and the manifest carries
+  it. The check is pure and shared (`shared/src/sim/budgets.ts`,
+  `checkBudgets`), not in `tools/src/assets/budgets.ts` as planned, so the
+  level check and the page can read the same numbers. It runs in `pnpm
+  verify` as a test and as its own CI step (`pnpm check:assets`,
+  `tools/src/check-assets.ts`, which prints each asset against its limits).
+  Only ceilings are checked: the soldier's 900 triangles and 17 bones sit
+  under ADR-013's character range, and whether a floor applies is ADR-018's.
+  The weapon, prop and kit rows are proposals under ADR-013's draw-call and
+  download ceilings, for the owner to overrule. Tests: the committed set
+  passes; an over-budget asset fails with its name, number and limit, for
+  triangles, bones, materials, texture size, count, format and shape, an
+  unbudgeted class, and the download total; a malformed budget file is
+  refused by name.
 
 ##### T-4.04 — The art source path
 - **Depends:** T-4.01, T-4.02

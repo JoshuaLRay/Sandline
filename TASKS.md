@@ -73,8 +73,9 @@ docs/BUGS.md B-11). M3's build tasks are done; its gates (🧍 T-3.24, T-3.30,
 T-3.36, T-3.37) wait on their run sheets and people.
 
 **M4 is broken out** (PLAN.md §7.11), behind everything above in scan
-order. The asset pipeline is done (T-4.02, `pnpm gen:assets`), so budgets
-(T-4.03) and the loader (T-4.05) are open, beside the level format (T-4.09), mission sequence (T-4.14), reconnect
+order. The asset pipeline is done (T-4.02, `pnpm gen:assets`) with its budgets
+in CI (T-4.03, `pnpm check:assets`), so the loader (T-4.05) is open, beside
+the level format (T-4.09), mission sequence (T-4.14), reconnect
 (T-4.18), HUD (T-4.25), classes (T-4.27), mounted MG (T-4.29), regions ADR
 addendum (T-4.30) and observability (T-4.33) — and two owner decisions gate
 the rest: art sourcing (🧍 T-4.01 — its options paper is written, ADR-018
@@ -363,7 +364,7 @@ may draft either ADR's options for the owner, never decide them.
 |---|---|---|
 | 🧍 T-4.01 | OPEN — options written (`docs/adr/018-art-sourcing.md`, Proposed); the owner decides | — |
 | T-4.02 | DONE | — |
-| T-4.03 | OPEN | T-4.02 |
+| T-4.03 | DONE | T-4.02 |
 | T-4.04 | BLOCKED | T-4.01, T-4.02 |
 
 ### E-4.2 — Runtime loading, streaming, LOD, budgets

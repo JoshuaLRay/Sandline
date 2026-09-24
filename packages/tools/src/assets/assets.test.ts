@@ -38,8 +38,8 @@ describe('the committed assets (T-4.02)', () => {
         const web = read(WEB(entry.file));
         expect(sha256(web)).toBe(entry.hash);
         expect(web.length).toBe(entry.bytes);
-        const { triangles, bones, materials, textures, lods, collision } = entry;
-        expect(await statsOfBytes(web)).toEqual({ triangles, bones, materials, textures, lods, collision });
+        const { class: kind, triangles, bones, materials, textures, lods, collision } = entry;
+        expect(await statsOfBytes(web)).toEqual({ class: kind, triangles, bones, materials, textures, lods, collision });
       });
 
       it('is exactly what a re-run writes', async () => {
@@ -141,7 +141,7 @@ describe('what a source declares (T-4.02)', () => {
   function prop(collision: unknown): Document {
     const doc = new Document();
     doc.createBuffer();
-    const scene = doc.createScene('crate').setExtras({ sandline: { collision } });
+    const scene = doc.createScene('crate').setExtras({ sandline: { class: 'prop', collision } });
     const wood = doc.createMaterial('wood');
     const meshOf = (name: string, geometry: THREE.BufferGeometry) =>
       doc.createMesh(name).addPrimitive(
@@ -171,6 +171,14 @@ describe('what a source declares (T-4.02)', () => {
     expect(() => statsOf(prop([[0, 0, 0, 1, 1]]))).toThrow(/collision box 0/);
     expect(() => statsOf(prop([[0, 0, 0, 1, -1, 1]]))).toThrow(/min must be below/);
     expect(() => statsOf(prop('box'))).toThrow(/array of boxes/);
+  });
+
+  it('refuses a source with no budget class, or one budgets.json does not have', () => {
+    const doc = prop([]);
+    doc.getRoot().listScenes()[0]!.setExtras({ sandline: {} });
+    expect(() => statsOf(doc)).toThrow(/sandline.class: expected one of/);
+    doc.getRoot().listScenes()[0]!.setExtras({ sandline: { class: 'vehicle' } });
+    expect(() => statsOf(doc)).toThrow(/got "vehicle"/);
   });
 
   it('refuses a texture it cannot encode', async () => {

@@ -46,7 +46,7 @@ export function soldierSourceDocument(): Document {
 
   const doc = new Document();
   doc.createBuffer();
-  const scene = doc.createScene('soldier');
+  const scene = doc.createScene('soldier').setExtras({ sandline: { class: 'character' } });
   doc.getRoot().setDefaultScene(scene);
 
   // -- The rig: one node per bone, at its joint relative to its parent. --

@@ -29,7 +29,7 @@ import { read as readKtx } from 'ktx-parse';
 import { ktx2 } from 'ktx2-encoder/gltf-transform';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import { PNG } from 'pngjs';
-import type { AssetEntry, CollisionBox } from '@sandline/shared';
+import { ASSET_BUDGETS, type AssetEntry, type CollisionBox } from '@sandline/shared';
 
 /**
  * A dev dependency's version, from this package's own `node_modules` (pnpm
@@ -154,6 +154,21 @@ export function collisionOf(doc: Document): CollisionBox[] {
   });
 }
 
+/**
+ * Every source names its budget class on the scene's extras,
+ * `{ "sandline": { "class": "prop" } }` (T-4.03): one of `budgets.json`'s
+ * classes. Required, so nothing reaches the manifest unbudgeted.
+ */
+export function classOf(doc: Document): string {
+  const scene = doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0];
+  const raw = ((scene?.getExtras() ?? {}) as { sandline?: { class?: unknown } }).sandline?.class;
+  const known = Object.keys(ASSET_BUDGETS.classes);
+  if (typeof raw !== 'string' || !known.includes(raw)) {
+    throw new Error(`scene extras sandline.class: expected one of ${known.join(', ')}, got ${JSON.stringify(raw)}`);
+  }
+  return raw;
+}
+
 /** Counts what the budgets (T-4.03) are checked against, from the document itself. */
 export function statsOf(doc: Document): AssetStats {
   const root = doc.getRoot();
@@ -181,7 +196,7 @@ export function statsOf(doc: Document): AssetStats {
     const m = LOD_SUFFIX.exec(node.getName());
     if (m) lods = Math.max(lods, Number(m[1]) + 1);
   }
-  return { triangles, bones, materials: root.listMaterials().length, textures, lods, collision: collisionOf(doc) };
+  return { class: classOf(doc), triangles, bones, materials: root.listMaterials().length, textures, lods, collision: collisionOf(doc) };
 }
 
 /** Reads a GLB (compressed or not) and counts it. */

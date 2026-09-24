@@ -4,6 +4,7 @@ import { ASSET_MANIFEST, AssetManifestError, assetById, parseAssetManifest } fro
 const H = 'a'.repeat(64);
 const entry = (over: Record<string, unknown> = {}) => ({
   id: 'crate',
+  class: 'prop',
   source: 'assets/src/crate.glb',
   file: 'assets/crate.glb',
   inputHash: H,
