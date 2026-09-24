@@ -89,7 +89,7 @@ export function instanceAsset(
   const centre = rootCentreWorld.applyMatrix4(rootInverse);
   const radius = box.getBoundingSphere(new THREE.Sphere()).radius;
   const centres = placementMatrices.map((matrix) => centre.clone().applyMatrix4(matrix));
-  const levels = Math.max(1, Math.floor(declaredLods), ...available.values().map((level) => level + 1));
+  const levels = Math.max(1, Math.floor(declaredLods), ...[...available].map((level) => level + 1));
   const availableLevels = [...available].sort((a, b) => a - b);
   const countsByLevel = new Array<number>(levels).fill(0);
   const cameraPosition = new THREE.Vector3();
