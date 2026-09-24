@@ -26,7 +26,8 @@
     "bot": "tsx packages/bot/src/main.ts",
     "gen:assets": "tsx packages/tools/src/gen-assets.ts",
     "export:soldier": "tsx packages/tools/src/export-soldier.ts",
-    "check:assets": "tsx packages/tools/src/check-assets.ts"
+    "check:assets": "tsx packages/tools/src/check-assets.ts",
+    "gen:art": "tsx packages/tools/src/gen-art.ts"
   },
   "devDependencies": {
     "@dimforge/rapier3d-compat": "0.20.0",
