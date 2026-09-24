@@ -58,6 +58,18 @@ const SAMPLES: Message[] = [
   { kind: 'Throw', tick: 900, yaw: 4095, pitch: 3072, projectile: 1 },
   { kind: 'Equip', item: 5 },
   {
+    kind: 'ScriptState',
+    blockers: [
+      {
+        id: 'north-gate',
+        active: true,
+        boxes: [{ id: 'blocker:north-gate/0', kind: 'blocker', minX: -4.75, minY: 0, minZ: -3.2, maxX: -2.75, maxY: 3, maxZ: -2.8 }],
+      },
+    ],
+  },
+  { kind: 'ScriptMessage', text: 'Gate is shut' },
+  { kind: 'ScriptCallout', id: 'contact-front' },
+  {
     kind: 'HitEvent',
     shooterNetId: 3,
     targetNetId: 7,
