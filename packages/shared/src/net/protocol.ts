@@ -11,10 +11,10 @@ import { HEALTH, POSITION, dequantize, quantize } from './quantize.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isRoomCode } from './roomCode.ts';
 import { MAX_MARKS, ORDER_KINDS, type BotOrder, type OrderAddress, type OrderKind, type OrderPoint, type TargetMark } from '../sim/orders.ts';
-import { MISSION_STATES, type MissionView } from '../sim/mission.ts';
+import { MISSION_STATES, OBJECTIVE_TYPES, type MissionView } from '../sim/mission.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 24;
+export const PROTOCOL_VERSION = 25;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -621,10 +621,15 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(EXT.Mission, EXT_BITS);
       w.writeBits(MISSION_VARIANT.State, 2);
       w.writeBits(MISSION_STATES.indexOf(msg.state), 2);
-      w.writeBool(msg.clear);
-      w.writeVarUint(msg.heldTicks);
-      w.writeVarUint(msg.holdTicks);
       w.writeVarUint(msg.attempt);
+      // T-4.14: the current objective of the sequence, its type and progress.
+      w.writeVarUint(msg.objective);
+      w.writeVarUint(msg.objectives);
+      w.writeBits(OBJECTIVE_TYPES.indexOf(msg.type), 3);
+      w.writeString(msg.label);
+      w.writeBool(msg.satisfied);
+      w.writeVarUint(msg.progress);
+      w.writeVarUint(msg.goal);
       break;
     case 'MissionRestart':
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -963,12 +968,18 @@ export function decodeMessage(bytes: Uint8Array): Message {
             if (variant !== MISSION_VARIANT.State) throw new ProtocolError(`unknown mission message ${variant}`);
             const state = MISSION_STATES[r.readBits(2)];
             if (state === undefined) throw new ProtocolError('unknown mission state');
-            const clear = r.readBool();
-            const heldTicks = r.readVarUint();
-            const holdTicks = r.readVarUint();
             const attempt = r.readVarUint();
-            if (heldTicks > holdTicks) throw new ProtocolError('mission held past its hold');
-            return { kind: 'Mission', state, clear, heldTicks, holdTicks, attempt };
+            const objective = r.readVarUint();
+            const objectives = r.readVarUint();
+            const type = OBJECTIVE_TYPES[r.readBits(3)];
+            if (type === undefined) throw new ProtocolError('unknown objective type');
+            const label = r.readString();
+            const satisfied = r.readBool();
+            const progress = r.readVarUint();
+            const goal = r.readVarUint();
+            if (objectives === 0 || objective >= objectives) throw new ProtocolError('objective out of the mission');
+            if (progress > goal) throw new ProtocolError('objective past its goal');
+            return { kind: 'Mission', state, attempt, objective, objectives, type, label, satisfied, progress, goal };
           }
           default:
             throw new ProtocolError(`unknown extended message ${sub}`);

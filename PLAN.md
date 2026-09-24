@@ -2753,6 +2753,39 @@ free to go whenever.
   - a three-objective mission runs in order;
   - the message round-trips and the HUD shows each type.
 - **Size:** M
+- **Completed 2026-09-24.**
+  - **Data.** `data/mission.json` becomes `data/missions/<world>.json`
+    (`missionFor(worldId)`): `respawn` and a list of 1–16 objectives, each
+    a `type`, a HUD `label` and its own parameters —
+    `clear-and-hold` (area, holdSeconds), `reach` (area, who all|any),
+    `destroy` (an encounter group), `defend` (area, seconds, breachSeconds)
+    and `survive` (seconds). An area is `start`, `objective`, an encounter
+    area or a circle. Validated by hand, unknown keys refused by name;
+    `checkMission` holds the names to the world and encounter when a session
+    is built. The grey-box mission is T-3.34's, unchanged: one
+    clear-and-hold of the compound, 30 s, no respawn — so its balance and
+    CI floors do not move.
+  - **The rule** (`server/src/session/mission.ts`). `MissionRun` plays the
+    objectives in order against a `MissionWorld` the session answers:
+    - clear-and-hold as before;
+    - reach completes the tick every standing (alive, not downed) soldier,
+      or any one, is inside;
+    - destroy when the group is dead by the spawner's rule, counting its
+      members down;
+    - defend runs its clock and fails if the area is held by the enemy
+      (living enemy in, no living squad) for `breachSeconds` straight;
+    - survive runs its clock.
+    A squad wipe fails any of them. The next objective starts the tick one
+    completes.
+  - **The wire (protocol 25).** `Mission` carries the objective's index and
+    count, type, label, progress and goal, and whether its condition holds.
+  - **The HUD** names the objective and its step (`Objective 2/3: defend the
+    compound · 20/60 s`), and how a mission ended (a wipe, or an area
+    overrun).
+  - **Tests.** Each type's completion and failure against a hand-driven
+    world and on a real session; a three-objective mission (reach, destroy,
+    survive) in order on the grey-box map; every state and type round-trips;
+    the HUD line for each type; bad files refused by name.
 
 ##### T-4.15 — Triggers and scripted events
 - **Depends:** T-4.14

@@ -1,0 +1,9 @@
+{
+  "$comment": "T-4.14. The grey-box mission (world greybox-01, encounter greybox-01), as T-3.34 made it: one objective, clear the compound and hold it. A mission is a sequence of objectives, played in order; the next starts when one completes, the mission is complete when the last does, and it fails on a squad wipe (all six slots dead at once) whatever the objective. With `respawn` false a dead slot stays dead for the mission (downed and revived is the way back), so a wipe is possible at all; a restart brings everyone back on the start line. Objective types: clear-and-hold (area, holdSeconds: the hold counts while no living enemy is inside and a living squad soldier is, and resets when an enemy is inside); reach (area, who all|any: every standing squad soldier, or any one, inside); destroy (group: an encounter group, every member it will send placed and none alive); defend (area, seconds, breachSeconds: the clock runs, and the objective fails if the area is held by the enemy — a living enemy inside and no living squad soldier — for breachSeconds straight); survive (seconds). An area is 'start', 'objective', one of the encounter's `areas`, or a circle {x, z, radius}. `label` names the objective on the HUD.",
+  "id": "greybox-01",
+  "world": "greybox-01",
+  "respawn": false,
+  "objectives": [
+    { "type": "clear-and-hold", "area": "objective", "holdSeconds": 30, "label": "the compound" }
+  ]
+}
