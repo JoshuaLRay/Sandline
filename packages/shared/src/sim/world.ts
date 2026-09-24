@@ -36,6 +36,7 @@
 import RANGE_WORLD from '../data/worlds/range.json' with { type: 'json' };
 import GREYBOX_01_LEVEL from '../data/levels/greybox-01.json' with { type: 'json' };
 import KIT_GALLERY_LEVEL from '../data/levels/kit-gallery.json' with { type: 'json' };
+import MISSION_01_LEVEL from '../data/levels/mission-01.json' with { type: 'json' };
 import { POSITION } from '../net/quantize.ts';
 import { type PlacedPiece, expandLevel } from './level.ts';
 
@@ -385,7 +386,7 @@ export function loadLevel(raw: unknown): World {
 
 /** Every world this build knows, by id. Validated once, at import. */
 const WORLDS: ReadonlyMap<string, World> = new Map(
-  [loadWorld(RANGE_WORLD), loadLevel(GREYBOX_01_LEVEL), loadLevel(KIT_GALLERY_LEVEL)].map((world) => [world.id, world] as const),
+  [loadWorld(RANGE_WORLD), loadLevel(GREYBOX_01_LEVEL), loadLevel(KIT_GALLERY_LEVEL), loadLevel(MISSION_01_LEVEL)].map((world) => [world.id, world] as const),
 );
 
 /** The world a session gets when nobody names one. */
