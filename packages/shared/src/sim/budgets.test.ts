@@ -56,12 +56,10 @@ describe('asset budgets (T-4.03)', () => {
     expect(check(asset({ textures: [two, two] }))).toEqual(["asset 'crate' (prop): 2 textures, over the budget of 1"]);
   });
 
-  it('fails a class with no budget, and a download over the ceiling', () => {
+  it('fails a class with no budget; T-4.06 checks aggregate initial bytes by pack', () => {
     expect(check(asset({ class: 'vehicle' }))[0]).toMatch(/class 'vehicle' has no budget/);
-    const half = Math.ceil(ASSET_BUDGETS.initialDownloadBytes / 2) + 1;
-    expect(check(asset({ id: 'a', bytes: half }), asset({ id: 'b', bytes: half }))).toEqual([
-      `initial download: ${half * 2} bytes, over the budget of ${ASSET_BUDGETS.initialDownloadBytes}`,
-    ]);
+    const huge = ASSET_BUDGETS.initialDownloadBytes + 1;
+    expect(check(asset({ bytes: huge }))).toEqual([]);
   });
 
   it('refuses a malformed budget file by name', () => {
