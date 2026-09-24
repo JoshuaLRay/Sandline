@@ -2388,6 +2388,16 @@ free to go whenever.
   A CI check measures the initial pack's bytes, and a Playwright run on a throttled link times the first frame of play.
 - **Done when:** both numbers are logged every run and asserted, and a level pack fetched twice is not downloaded twice.
 - **Size:** M
+- **Completed 2026-09-24.** `data/assets/packs.json` splits the initial
+  soldier/weapons from one retained pack per level. `PackLoader` fetches
+  through T-4.05's hash-checking loader, reports byte/asset progress to the
+  blocking load screen, and keeps each completed pack referenced so returning
+  to a level performs no second download. Local/hosted sessions preload their
+  chosen level; joins whose map is only known from `JoinAck` remain behind
+  the load screen until that pack is ready. `pnpm check:packs` logs/asserts
+  the initial pack under 80 MB and level coverage. A Chromium CI probe serves
+  the production build, throttles it to 4 Mbit/s down with 100 ms latency,
+  and logs/asserts the first rendered playable frame under 30 s.
 
 ##### T-4.07 — LOD, instancing and the draw-call budget
 - **Depends:** T-4.05
