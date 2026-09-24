@@ -161,9 +161,18 @@ export class Spawner {
     private readonly pacing: Pacing = FIXED_PACING,
     /** T-4.15: when true, first waves are activated by the mission event runner. */
     private readonly externalTriggers = false,
+    /** Groups completed before a checkpoint retry: keep them dead without respawning them. */
+    completedGroups: readonly string[] = [],
   ) {
     if (encounter.world !== world.id) throw new Error(`encounter for '${encounter.world}' on world '${world.id}'`);
     this.runs = encounter.groups.map((def, i) => ({ def, sessionGroup: firstGroupId + i, firedAt: null, wavesSent: 0, lastWaveAt: 0, waveTimes: [], spawned: [] }));
+    for (const id of completedGroups) {
+      const run = this.runs.find((r) => r.def.id === id);
+      if (!run) throw new Error(`no completed group '${id}'`);
+      run.firedAt = 0;
+      run.wavesSent = run.def.waves.count;
+      run.lastWaveAt = 0;
+    }
     for (const zone of world.mission!.spawnZones) {
       const points: Vec3[] = [];
       for (const c of zoneCandidates(zone)) {
