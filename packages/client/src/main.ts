@@ -31,6 +31,7 @@
 import { showAssetShelf } from './assets/shelf.ts';
 import { LevelPieces } from './assets/levelPieces.ts';
 import { AssetLoader, gltfParser } from './assets/loader.ts';
+import { PackLoader, type PackProgress } from './assets/packs.ts';
 import { loadDetailedSkin, loadFighterSkin } from './character/assetSoldier.ts';
 import { loadWeaponAssets } from './weapons/weaponAssets.ts';
 import * as THREE from 'three';
@@ -109,6 +110,7 @@ import { type MarkerVec, OrderMarkerOverlay, orderMarkers } from './ui/OrderMark
 import { createNetgraph } from './ui/Netgraph.ts';
 import { createNetworkPanel } from './ui/NetworkPanel.ts';
 import { type LobbyChoice, createLobby, readStoredKey, readStoredName } from './ui/Lobby.ts';
+import { LoadScreen } from './ui/LoadScreen.ts';
 import type { Panel } from './ui/Panel.ts';
 import { createSquadPanel } from './ui/SquadPanel.ts';
 import { isTextField } from './input/LocalInput.ts';
@@ -257,8 +259,14 @@ function buildScenery(world: World): void {
 }
 /** T-4.10: a level's kit pieces, drawn through the asset loader; `?kit` labels each one. */
 const kitWanted = new URLSearchParams(location.search).has('kit');
-/** The page's one asset loader (T-4.05): level pieces and the detailed soldier share its cache. */
+/** The page's one asset loader (T-4.05): every pack and renderer shares its cache. */
 const assetLoader = new AssetLoader({ renderer, parse: gltfParser({ renderer }) });
+/** T-4.06: retained initial/level packs keep streamed assets warm across level changes. */
+const packLoader = new PackLoader(assetLoader);
+const loadScreen = new LoadScreen(document.body);
+const showPackProgress = (progress: PackProgress): void => loadScreen.update(progress);
+loadScreen.show('Loading initial assets');
+const initialPackReady = packLoader.loadInitial(showPackProgress);
 const levelPieces = new LevelPieces(scene, assetLoader);
 buildScenery(activeWorld);
 // T-4.05: `?assets` stands every asset the pipeline made in a row behind the spawn line.
@@ -335,14 +343,34 @@ scene.add(player);
  * `?greybox`, the code-built one. Remote squad soldiers take it the next time
  * their palette is set, which is every frame.
  */
-// T-4.36: the period weapons, generated, replace the code-built ones as they arrive; `?codeweapons` keeps the old ones.
-if (!new URLSearchParams(location.search).has('codeweapons')) void loadWeaponAssets(assetLoader);
-if (!greyBox && !new URLSearchParams(location.search).has('codesoldier')) {
-  void loadDetailedSkin(assetLoader).then((skin) => {
-    if (skin) setSoldierPalette(player, 'local');
-  });
-  // T-4.35: every enemy wears the fighter once it has loaded; remotes take it on their next palette set.
-  void loadFighterSkin(assetLoader);
+// T-4.06: the initial pack must be present before the lobby becomes usable.
+const query = new URLSearchParams(location.search);
+const initialPresentationReady = initialPackReady.then(async () => {
+  const jobs: Promise<unknown>[] = [];
+  // T-4.36: period weapons are already in the initial pack; this cache-hit turns them into runtime models.
+  if (!query.has('codeweapons')) jobs.push(loadWeaponAssets(assetLoader));
+  if (!greyBox && !query.has('codesoldier')) {
+    jobs.push(loadDetailedSkin(assetLoader).then((skin) => {
+      if (skin) setSoldierPalette(player, 'local');
+    }));
+  }
+  await Promise.all(jobs);
+  loadScreen.hide();
+});
+let fighterPresentationReady: Promise<unknown> | null = null;
+
+/** Fetch one level's pack and finish its shared character presentation before play. */
+async function prepareLevelAssets(worldId: string): Promise<void> {
+  await initialPresentationReady;
+  const key = `level:${worldId}`;
+  if (!packLoader.isLoaded(key)) loadScreen.show(`Loading ${worldId}`);
+  await packLoader.loadLevel(worldId, showPackProgress);
+  // T-4.35's fighter lives in every level pack. Convert it once after its bytes arrive.
+  if (!greyBox && !query.has('codesoldier')) {
+    fighterPresentationReady ??= loadFighterSkin(assetLoader);
+    await fighterPresentationReady;
+  }
+  loadScreen.hide();
 }
 
 /**
@@ -558,6 +586,8 @@ interface LiveSession {
   networkPanel: Panel;
 }
 let live: LiveSession | null = null;
+/** Set after a joined session has every required pack; cleared on the first rendered frame. */
+let playablePending: NetClient | null = null;
 
 let presetHost: string | null = null;
 let presetHostError: string | null = null;
@@ -780,8 +810,16 @@ const qaNavMesh: Promise<NavMesh | null> = qaEnemiesWanted || qaSquadWanted || q
   : Promise.resolve(null);
 
 function chooseSession(choice: LobbyChoice): void {
-  if (choice.kind === 'local') void Promise.all([navReady, qaNavMesh, qaSquad]).then(([, navMesh, squad]) => startSession(choice, navMesh, squad));
-  else startSession(choice);
+  delete document.body.dataset['playable'];
+  playablePending = null;
+  if (choice.kind === 'local') {
+    void Promise.all([prepareLevelAssets(qaWorld.id), navReady, qaNavMesh, qaSquad])
+      .then(([, , navMesh, squad]) => startSession(choice, navMesh, squad));
+    return;
+  }
+  // Hosting names the level before Join; joining an existing room learns it from JoinAck.
+  if (choice.world !== '') void prepareLevelAssets(choice.world).then(() => startSession(choice));
+  else void initialPresentationReady.then(() => startSession(choice));
 }
 
 function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: LocalServerOptions = {}): void {
@@ -849,7 +887,14 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
       }
       rejoining = false;
       joinedOnce = true;
-      if (net.world) useWorld(net.world);
+      const joinedWorld = net.world;
+      if (joinedWorld) {
+        void prepareLevelAssets(joinedWorld.id).then(() => {
+          if (live?.net !== net) return;
+          useWorld(joinedWorld);
+          playablePending = net;
+        });
+      }
       roomJoined = room;
       remote.markJoined();
       history.replaceState(null, '', shareLink(location.href, choice.host, room, __DEFAULT_HOST__));
@@ -864,6 +909,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
     // The in-page session names its world in JoinAck exactly as a host does.
     net.onJoined = () => {
       if (net.world) useWorld(net.world);
+      playablePending = net;
     };
     net.join();
   }
@@ -922,6 +968,9 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
 function leaveSession(message: { text: string; tone: 'info' | 'error' } | null): void {
   const gone = live;
   live = null;
+  playablePending = null;
+  delete document.body.dataset['playable'];
+  loadScreen.hide();
   aiDebug.clear();
   orderMarkerOverlay.clear();
   if (gone) {
@@ -1839,6 +1888,11 @@ function frame(): void {
   // T-4.07: choose each static placement's LOD from this frame's camera before drawing.
   levelPieces.update(camera);
   renderer.render(scene, camera);
+  // T-4.06 CI times this exact transition: assets ready, session joined, one world frame rendered.
+  if (playablePending && live?.net === playablePending) {
+    document.body.dataset['playable'] = 'true';
+    playablePending = null;
+  }
   aiDebug.render(camera, innerWidth, innerHeight);
   orderMarkerOverlay.render(camera, innerWidth, innerHeight);
   /**
