@@ -39,12 +39,22 @@ export type ObjectiveDef = { label: string } & (
   | { type: 'survive'; seconds: number }
 );
 
+/** Mission-wide failure rules beyond the always-on squad wipe. */
+export interface MissionFailureDef {
+  /** Fail once this many seconds have elapsed in the mission attempt. */
+  timeLimitSeconds?: number;
+  /** Fail when this single-entity encounter group is lost. */
+  protectedGroup?: string;
+}
+
 export interface MissionDef {
   id: string;
   /** The world it is played in. */
   world: string;
   /** Whether a dead slot respawns during the mission. */
   respawn: boolean;
+  /** Optional mission-wide failure rules; a squad wipe always fails. */
+  failure?: MissionFailureDef;
   objectives: readonly ObjectiveDef[];
 }
 
@@ -150,15 +160,36 @@ function parseObjective(where: string, raw: unknown): ObjectiveDef {
 
 /** Validate a mission file. Its areas and groups are names until `checkMission` holds them to an encounter and a world. */
 export function parseMission(raw: unknown): MissionDef {
-  const o = obj('mission', raw, ['id', 'world', 'respawn', 'objectives']);
+  const o = obj('mission', raw, ['id', 'world', 'respawn', 'objectives'], ['failure']);
   const id = typeof o['id'] === 'string' ? o['id'] : '';
   if (!/^[a-z][a-z0-9-]{0,31}$/.test(id)) throw new MissionDataError(`mission.id must be a lowercase id, got ${JSON.stringify(o['id'])}`);
   const where = `mission '${id}'`;
   if (typeof o['world'] !== 'string' || o['world'].length === 0) throw new MissionDataError(`${where}.world must name a world`);
   if (typeof o['respawn'] !== 'boolean') throw new MissionDataError(`${where}.respawn must be true or false, got ${JSON.stringify(o['respawn'])}`);
+  let failure: MissionFailureDef | undefined;
+  if (o['failure'] !== undefined) {
+    const f = obj(`${where}.failure`, o['failure'], [], ['timeLimitSeconds', 'protectedGroup']);
+    if (f['timeLimitSeconds'] === undefined && f['protectedGroup'] === undefined) {
+      throw new MissionDataError(`${where}.failure must set timeLimitSeconds or protectedGroup`);
+    }
+    failure = {};
+    if (f['timeLimitSeconds'] !== undefined) failure.timeLimitSeconds = seconds(`${where}.failure.timeLimitSeconds`, f['timeLimitSeconds']);
+    if (f['protectedGroup'] !== undefined) {
+      if (typeof f['protectedGroup'] !== 'string' || f['protectedGroup'].length === 0) {
+        throw new MissionDataError(`${where}.failure.protectedGroup must name an encounter group`);
+      }
+      failure.protectedGroup = f['protectedGroup'];
+    }
+  }
   const list = o['objectives'];
   if (!Array.isArray(list) || list.length === 0 || list.length > 16) throw new MissionDataError(`${where}.objectives must list 1–16 objectives`);
-  return { id, world: o['world'], respawn: o['respawn'], objectives: list.map((x, i) => parseObjective(`${where}.objectives[${i}]`, x)) };
+  return {
+    id,
+    world: o['world'],
+    respawn: o['respawn'],
+    ...(failure ? { failure } : {}),
+    objectives: list.map((x, i) => parseObjective(`${where}.objectives[${i}]`, x)),
+  };
 }
 
 /**
@@ -176,6 +207,15 @@ export function checkMission(mission: MissionDef, encounter: Encounter, world: W
     }
     if (o.type === 'destroy' && !encounter.groups.some((g) => g.id === o.group)) throw new MissionDataError(`${at}.group: no encounter group '${o.group}'`);
   });
+  const protectedGroup = mission.failure?.protectedGroup;
+  if (protectedGroup) {
+    const group = encounter.groups.find((g) => g.id === protectedGroup);
+    if (!group) throw new MissionDataError(`${where}.failure.protectedGroup: no encounter group '${protectedGroup}'`);
+    const entities = group.members.reduce((n, m) => n + m.count, 0) * group.waves.count;
+    if (entities !== 1) {
+      throw new MissionDataError(`${where}.failure.protectedGroup '${protectedGroup}' must contain exactly one entity, got ${entities}`);
+    }
+  }
 }
 
 /** Every committed mission, by world id. Validated once, at import. */
