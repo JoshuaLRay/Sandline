@@ -77,6 +77,11 @@ describe('mission files (T-4.14)', () => {
     });
     expect(all.objectives.map((o) => o.type)).toEqual(['reach', 'destroy', 'defend', 'survive']);
     const one = (o: unknown) => ({ ...base, objectives: [o] });
+    expect(parseMission({ ...base, failure: { timeLimitSeconds: 120 } }).failure).toEqual({ timeLimitSeconds: 120 });
+    expect(parseMission({ ...base, failure: { protectedGroup: 'garrison' } }).failure).toEqual({ protectedGroup: 'garrison' });
+    expect(() => parseMission({ ...base, failure: {} })).toThrow(/must set timeLimitSeconds or protectedGroup/);
+    expect(() => parseMission({ ...base, failure: { timeLimitSeconds: 0 } })).toThrow(/timeLimitSeconds/);
+    expect(() => parseMission({ ...base, failure: { protectedGroup: '' } })).toThrow(/protectedGroup/);
     expect(() => parseMission({ ...base, flag: 'red' })).toThrow(/unknown key 'flag'/);
     expect(() => parseMission({ ...base, objectives: [] })).toThrow(/1–16 objectives/);
     expect(() => parseMission(one({ type: 'escort', label: 'x' }))).toThrow(/type must be one of/);
@@ -96,6 +101,8 @@ describe('mission files (T-4.14)', () => {
     expect(() => checkMission(bad({ type: 'reach', label: 'x', area: 'assault-entry', who: 'all' }), encounter, world)).not.toThrow();
     expect(() => checkMission(bad({ type: 'reach', label: 'x', area: 'moon', who: 'all' }), encounter, world)).toThrow(/no place 'moon'/);
     expect(() => checkMission(bad({ type: 'destroy', label: 'x', group: 'nobody' }), encounter, world)).toThrow(/no encounter group 'nobody'/);
+    expect(() => checkMission(parseMission({ ...(RAW_GREYBOX as object), failure: { protectedGroup: 'nobody' } }), encounter, world)).toThrow(/no encounter group 'nobody'/);
+    expect(() => checkMission(parseMission({ ...(RAW_GREYBOX as object), failure: { protectedGroup: 'garrison' } }), encounter, world)).toThrow(/must contain exactly one entity/);
     expect(() => checkMission(missionFor('greybox-01')!, encounter, requireWorld('range'))).toThrow(/is for world 'greybox-01'/);
   });
 });
