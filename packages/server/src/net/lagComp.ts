@@ -127,12 +127,12 @@ export interface BodyPartSpec {
  */
 export const POSED_BODIES: Record<PosedStance, readonly BodyPartSpec[]> = {
   crouched: [
-    { from: [-0.11, 0.51, 0.15], to: [-0.14, 0.03, 0.46], radius: 0.23, zone: 'limb' }, // left leg
-    { from: [0.15, 0.03, 0.46], to: [0.13, 0.51, 0.15], radius: 0.23, zone: 'limb' }, // right leg
-    { from: [0, 0.61, 0.1], to: [0, 0.93, 0.11], radius: 0.31, zone: 'torso' }, // torso
-    { from: [0, 1.15, 0.17], to: [0.01, 1.32, 0.19], radius: 0.17, zone: 'head' }, // head
-    { from: [-0.21, 1.03, 0.12], to: [0.29, 0.82, 0.5], radius: 0.07, zone: 'torso' }, // left arm
-    { from: [0.31, 0.82, 0.11], to: [0.28, 0.88, 0.23], radius: 0.23, zone: 'torso' }, // right arm
+    { from: [-0.12, 0.18, 0.19], to: [-0.13, 0.3, 0.34], radius: 0.29, zone: 'limb' }, // left leg
+    { from: [0.12, 0.18, 0.19], to: [0.14, 0.3, 0.34], radius: 0.29, zone: 'limb' }, // right leg
+    { from: [0, 0.43, 0.1], to: [0, 0.75, 0.17], radius: 0.31, zone: 'torso' }, // torso
+    { from: [0, 0.94, 0.28], to: [0.01, 1.12, 0.3], radius: 0.17, zone: 'head' }, // head
+    { from: [0.29, 0.52, 0.51], to: [-0.21, 0.84, 0.21], radius: 0.07, zone: 'torso' }, // left arm
+    { from: [0.31, 0.64, 0.13], to: [0.28, 0.66, 0.27], radius: 0.23, zone: 'torso' }, // right arm
   ],
   prone: [
     { from: [-0.2, 0.23, -0.85], to: [-0.11, 0.19, -0.08], radius: 0.17, zone: 'limb' }, // left leg

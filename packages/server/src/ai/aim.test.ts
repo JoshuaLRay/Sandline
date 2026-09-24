@@ -116,10 +116,10 @@ describe('aim line and points (T-3.15)', () => {
     expect(head!.y).toBeCloseTo(DEFAULT_HITBOX.centerOffsetY + DEFAULT_HITBOX.halfHeight, 12);
     // Crouched is posed: the torso and the head where the crouch holds them.
     const [torso, crouchedHead] = aimPoints(feet, true, false);
-    expect(torso!.y).toBeGreaterThan(0.6);
-    expect(torso!.y).toBeLessThan(0.9);
-    expect(crouchedHead!.y).toBeGreaterThan(1.1);
-    expect(crouchedHead!.y).toBeLessThan(1.4);
+    expect(torso!.y).toBeGreaterThan(0.45);
+    expect(torso!.y).toBeLessThan(0.8);
+    expect(crouchedHead!.y).toBeGreaterThan(0.9);
+    expect(crouchedHead!.y).toBeLessThan(1.2);
   });
 
   it('aims along a body on the ground, torso then head, the way it faces', () => {

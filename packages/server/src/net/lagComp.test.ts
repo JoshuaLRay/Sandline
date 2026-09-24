@@ -497,9 +497,9 @@ describe('the body is where the model is, in every stance', () => {
     expect(shotAt(history, 0.4)?.zone).toBe('limb');
     const crouched = new HitboxHistory();
     crouched.record(TARGET, NOW, 0, 0, 10, true, false, { yaw: 0 });
-    // The crouched head is under 1.5 m, and nothing of the body is at 1.6.
-    expect(shotAt(crouched, 1.3)?.zone).toBe('head');
-    expect(shotAt(crouched, 1.6)).toBeNull();
+    // The crouched head is at the gameplay crouch's 1.2 m, and nothing of the body is above it.
+    expect(shotAt(crouched, 1.15)?.zone).toBe('head');
+    expect(shotAt(crouched, 1.35)).toBeNull();
   });
 
   it('rewinds the facing and the fall with the position: a body is shot as it lay then', () => {
