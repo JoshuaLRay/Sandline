@@ -1010,9 +1010,12 @@ const ZERO_STATS = {
   interpAheadTicks: 0,
   tickDrift: 0,
   correctionRate: 0,
+  drawCalls: 0,
+  triangles: 0,
 };
 const netgraph = createNetgraph(() => {
-  if (!live) return ZERO_STATS;
+  const render = renderer.info.render;
+  if (!live) return { ...ZERO_STATS, drawCalls: render.calls, triangles: render.triangles };
   const n = live.net.stats;
   return {
     rttMs: n.rttMs,
@@ -1023,6 +1026,8 @@ const netgraph = createNetgraph(() => {
     interpAheadTicks: n.interpAheadTicks,
     tickDrift: n.tickDrift,
     correctionRate: n.reconciles === 0 ? 0 : n.corrections / n.reconciles,
+    drawCalls: render.calls,
+    triangles: render.triangles,
   };
 });
 
@@ -1831,6 +1836,8 @@ function frame(): void {
     squadPanel.update(live.net.roster, live.net.slot, live.net.room, squadStatus());
   }
 
+  // T-4.07: choose each static placement's LOD from this frame's camera before drawing.
+  levelPieces.update(camera);
   renderer.render(scene, camera);
   aiDebug.render(camera, innerWidth, innerHeight);
   orderMarkerOverlay.render(camera, innerWidth, innerHeight);
