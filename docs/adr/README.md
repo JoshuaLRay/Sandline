@@ -31,12 +31,12 @@ different choice.
 | [010](010-vite-pnpm.md) | Vite + pnpm workspaces | Accepted |
 | [011](011-regional-session-hosting.md) | Regional session-based hosting | Accepted |
 | [012](012-netcode-shape.md) | Authoritative server netcode shape | Accepted · 3 addenda |
-| [013](013-performance-budget.md) | Performance budget | Accepted |
+| [013](013-performance-budget.md) | Performance budget | Accepted · 1 addendum |
 | [014](014-determinism-policy.md) | Determinism policy | Accepted |
 | [015](015-estimate-reality.md) | Estimates as floor; slice scope cut | Accepted |
 | [016](016-prone-stance.md) | Prone stance and voluntary crawl (reopens ADR-002's prone row) | Accepted |
 | [017](017-in-house-audio.md) | Combat audio made in-house: synthesised effects, processed recorded voices | Accepted |
-| [018](018-art-sourcing.md) | Where the art comes from (meshes, textures, animation) | Proposed — awaiting the owner |
+| [018](018-art-sourcing.md) | Art made in-house as code: generated meshes and atlases, procedural animation | Accepted |
 
 ## Template
 

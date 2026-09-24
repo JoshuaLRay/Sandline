@@ -2201,8 +2201,13 @@ free to go whenever.
   compared on cost, quality ceiling, iteration speed, ADR-013 and the ~35
   clips. The paper notes that about twenty of the clips already exist as
   procedural poses, and that the code-built rig's 17 bones sit under
-  ADR-013's 45–65 floor. **Waiting on the owner's choice**; the row stays
-  open until it is made.
+  ADR-013's 45–65 floor.
+- **Completed 2026-09-24.** The owner chose **option A: in-house, authored
+  as code**. ADR-018 is Accepted, and §9 Q2 is answered for art. ADR-013
+  gains an addendum: its character ranges are ceilings, so the 17-bone,
+  900-triangle code-built soldier is within budget. T-4.04, T-4.08 and the
+  kit tasks are unblocked. T-4.04 becomes the generator library
+  (`tools/src/art/`) and its first kit piece.
 
 ##### T-4.02 — glTF processing and the asset manifest
 - **Depends:** —
@@ -2678,7 +2683,7 @@ free to go whenever.
 
 | # | Risk | Severity | Mitigation | Owner milestone |
 |---|---|---|---|---|
-| R1 | **Art volume** — a TPS needs 80–120 animation clips; art sinks more of these projects than code | Critical | **§4.1 cut: slice ships 2 classes, 2 enemy types, ~35 clips, ~25-piece kit** · one shared humanoid rig for all soldiers and enemies · purchased mocap · prone and vault cut from v1 | M4 |
+| R1 | **Art volume** — a TPS needs 80–120 animation clips; art sinks more of these projects than code | Critical | **§4.1 cut: slice ships 2 classes, 2 enemy types, ~35 clips, ~25-piece kit** · one shared humanoid rig for all soldiers and enemies · ~~purchased mocap~~ art authored as code with procedural animation (ADR-018, 2026-09-24) · prone and vault cut from v1 | M4 |
 | R2 | **Cover-shooter netcode** doesn't feel good in a browser | Critical | M1 answers it for one player against a simulated link · **M1.5 answers the half M1 structurally cannot — two humans, real socket, real latency (§4.2)**. R2 closes at T-1.5.08, not T-1.24 | M1 · M1.5 |
 | R3 | **Combat AI** fails to read as competent | High | Dedicated milestone, early grey-box prototyping, generous buffer | M3 |
 | R4 | **Six players amplifies level cost** — wider levels, ~1.5× encounter density | High | Two-fireteam mission template (§1.2); reuse kit aggressively | M4 |
@@ -2705,7 +2710,10 @@ These block estimation, not implementation — M0 can start today regardless.
    the project's largest cost, and it should be decided before M4.
    **Answered for audio 2026-09-23** ([ADR-017](./docs/adr/017-in-house-audio.md)):
    in-house, made by AI. Effects are synthesised from code; voices are
-   recorded by people and processed by code. Art for M4 is still open.
+   recorded by people and processed by code. **Answered for art 2026-09-24**
+   ([ADR-018](./docs/adr/018-art-sourcing.md), option A): in-house,
+   authored as code. Meshes and atlases come from generators in
+   `tools/src/art/`, and animation stays procedural on the code-built rig.
 3. **Desktop-only confirmation.** Recommended and assumed (ADR-002). Mobile
    Safari support would add months.
 4. ~~**Where does this repo live?**~~ **Resolved 2026-09-17.** Split out of an

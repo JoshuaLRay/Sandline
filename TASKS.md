@@ -79,8 +79,10 @@ eyes), so streaming (T-4.06) and LOD/instancing (T-4.07) are open, beside
 the level format (T-4.09), mission sequence (T-4.14), reconnect
 (T-4.18), HUD (T-4.25), classes (T-4.27), mounted MG (T-4.29), regions ADR
 addendum (T-4.30) and observability (T-4.33) — and two owner decisions gate
-the rest: art sourcing (🧍 T-4.01 — its options paper is written, ADR-018
-Proposed, waiting on the owner's choice) and where progress lives (🧍 T-4.21).
+the rest. Art sourcing is decided (🧍 T-4.01, ADR-018: authored as code,
+with procedural animation), so the generator library (T-4.04) and the
+characters from assets (T-4.08) are open. Where progress lives (🧍 T-4.21)
+is still the owner's to decide.
 
 ---
 
@@ -355,18 +357,19 @@ Broken out ahead of M3's exit gate at the owner's request; everything above
 still comes first in scan order, and T-4.34 is not reached before M3's gate
 is passed. Read §7.11's preamble (rules, what exists, order of work) once
 before the first M4 task. Two rows are the owner's decisions, not agent
-work: **T-4.01** (art sourcing, ADR-018) gates every content task, and
-**T-4.21** (where progress lives, ADR-019, §9 Q5) gates the saves. An agent
+work: **T-4.01** (art sourcing) is decided — ADR-018, art authored as code
+with procedural animation — and **T-4.21** (where progress lives, ADR-019,
+§9 Q5) still gates the saves. An agent
 may draft either ADR's options for the owner, never decide them.
 
 ### E-4.1 — Asset pipeline
 
 | Task | Status | Depends |
 |---|---|---|
-| 🧍 T-4.01 | OPEN — options written (`docs/adr/018-art-sourcing.md`, Proposed); the owner decides | — |
+| 🧍 T-4.01 | DONE — option A, art authored as code (ADR-018) | — |
 | T-4.02 | DONE | — |
 | T-4.03 | DONE | T-4.02 |
-| T-4.04 | BLOCKED | T-4.01, T-4.02 |
+| T-4.04 | OPEN | T-4.01, T-4.02 |
 
 ### E-4.2 — Runtime loading, streaming, LOD, budgets
 
@@ -375,7 +378,7 @@ may draft either ADR's options for the owner, never decide them.
 | T-4.05 | DONE | T-4.02 |
 | T-4.06 | OPEN | T-4.05 |
 | T-4.07 | OPEN | T-4.05 |
-| T-4.08 | BLOCKED | T-4.01, T-4.05 |
+| T-4.08 | OPEN | T-4.01, T-4.05 |
 
 ### E-4.3 — Level format, kit, lightmaps
 

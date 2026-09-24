@@ -52,3 +52,16 @@ shadow-mapped sun**. No realtime global illumination.
   for fidelity the art style does not need.
 - **WebGPU as the baseline.** Rejected for v1: WebGL2 is the safe floor. WebGPU
   may be adopted as a progressive enhancement once the budget is being met.
+
+## Addendum — 2026-09-24: the character ranges are ceilings (ADR-018)
+
+ADR-018 chose art authored as code, with procedural animation on the
+code-built 17-bone rig. The character rows above (8–15k triangles, 45–65
+bones) were written for mocap-driven, hand-sculpted characters, whose
+skeletons carry fingers and twist bones. For this project **only the top of
+each range is a budget**: a character may use up to 15k triangles and 65
+bones, and nothing requires it to use more. The code-built soldier has 900
+triangles and 17 bones. The decision (60 fps on 2020 integrated graphics)
+and every other row stand. The budgets file (`data/assets/budgets.json`,
+T-4.03) already checks only ceilings.
+

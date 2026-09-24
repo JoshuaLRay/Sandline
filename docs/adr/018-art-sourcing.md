@@ -1,7 +1,6 @@
 # ADR-018: Where the art comes from — meshes, textures and animation
 
-- **Status:** Proposed — **awaiting the owner's decision** (T-4.01). An agent
-  wrote the options; it does not choose among them.
+- **Status:** Accepted — option A, chosen by the owner 2026-09-24 (T-4.01)
 - **Date:** 2026-09-24
 - **Plan reference:** §4.1, §7.11 (T-4.01), §9 Q2, R1; ADR-013, ADR-017
 
@@ -196,11 +195,59 @@ T-4.03's budgets apply to its output.
 
 ## Decision
 
-*To be written when the owner chooses. It will state the option (or mix),
-the licence rules if anything is bought, the rig decision, and the ADR-013
-bone-line amendment if needed. §9 Q2 will then record the answer for art,
-as it does for audio.*
+**Option A: in-house, authored as code**, the way the soldier (T-2.22,
+T-2.35) and the audio (ADR-017) are. The owner chose it on 2026-09-24.
+
+1. **Meshes are generators.** Claude writes TypeScript in
+   `packages/tools/src/art/`. Each generator builds a kit piece, prop,
+   weapon or character from primitives, bevels, extrusions and lofts,
+   unwraps it onto its family's atlas, paints the atlas from arithmetic and
+   seeded noise, and writes a glTF source into `assets/src/`. The generators
+   take a seed. `pnpm gen:assets` (T-4.02) processes the output like any
+   other source, the budgets (T-4.03) check it, and a test fails when a
+   generator changes without a re-run. T-4.04 makes this concrete.
+2. **Collision comes from the same numbers as the mesh.** A generator
+   declares its piece's axis-aligned collision boxes (`sandline.collision`)
+   from the dimensions it builds with, so the visual and the physical never
+   disagree (§7.11 rule 1).
+3. **Animation stays procedural.** The ~35 motions are poses in the page's
+   pose driver, as the existing ~20 are. That means no clips, no mocap and
+   no retargeting. The remaining ones (two deaths, the grenade throw, the
+   launcher, weapon swap, mounting the MG, the marksman's bolt, the Team
+   Leader's hand signal, idle variety) are code in the same place.
+4. **The rig stays the code-built 17 bones.** ADR-013's 45–65 bone line was
+   written for mocap skeletons. Its addendum of this date says it is a
+   ceiling for this project, not a floor, and the triangle range likewise.
+   The budgets (T-4.03) already check only ceilings.
+5. **The owner's eye is the gate.** Claude checks what can be measured
+   (budgets, collision against mesh, texel density). Whether it looks right
+   is the owner's call, on the deployed site (`?assets`, and the level
+   itself once T-4.13 lands): "say what's wrong, the generator changes, CI
+   rebuilds".
+6. **Nothing is bought, and nothing is done locally.** E1 stays the named
+   way out: if procedural motion fails the E-2.2, E-2.3 or M4 gates, mocap
+   can be bought and retargeted onto a grown rig without touching the
+   pipeline, loader or kit. That would be a new ADR, not a quiet change.
+
+§9 Q2 is answered for art as it was for audio. R1's "purchased mocap"
+mitigation is replaced by procedural animation.
 
 ## Consequences
 
-*Follow from the decision.*
+- **The quality ceiling is stylised.** Hard-surface work (the kit, props and
+  weapons) can look right for the target era. Characters stay where T-2.35
+  took them: readable, stylised, a step below a hand-sculpted model. Organic
+  detail (rubble, foliage, cloth) is the weakest area and should be kept
+  scarce in level design.
+- **Iteration costs the owner's attention.** Claude can see renders but has
+  no artist's eye, so expect several rounds a piece. The review renders
+  (T-4.11) and `?assets` exist to make each round short.
+- **The cheapest option to keep within budget.** A generator's triangle
+  count and atlas are parameters, so ADR-013 is met by construction and CI
+  proves it.
+- **Everything is reproducible and diffable.** A piece is its recipe, so a
+  change is a reviewable diff and every build makes the same bytes.
+- **No licences to track.** Nothing is bought, so no licence log.
+- **T-4.04, T-4.08, T-4.10 and T-4.12 are unblocked.** T-4.04 is the
+  generator library and its first kit piece. T-4.08 puts the characters on
+  the loader, from generated sources.
