@@ -33,8 +33,8 @@ const AREA: GroundArea = { x: 0, z: 0, radius: 5 };
 const OTHER: GroundArea = { x: 50, z: 0, radius: 5 };
 
 /** A mission of these objectives, its areas resolved by name ('a' is AREA, 'b' OTHER). */
-function runOf(objectives: ObjectiveDef[], respawn = false): MissionRun {
-  const def: MissionDef = { id: 'test', world: 'greybox-01', respawn, objectives };
+function runOf(objectives: ObjectiveDef[], respawn = false, failure?: MissionDef['failure']): MissionRun {
+  const def: MissionDef = { id: 'test', world: 'greybox-01', respawn, ...(failure ? { failure } : {}), objectives };
   return new MissionRun(def, (ref) => (ref === 'b' ? OTHER : typeof ref === 'string' ? AREA : ref));
 }
 
@@ -46,6 +46,7 @@ function fake() {
     standingAll: 6,
     standing: new Map<GroundArea, number>(),
     wipe: false,
+    protected: new Set<string>(),
     groups: new Map<string, { dead: boolean; spawned: number; down: number }>(),
   };
   const world: MissionWorld = {
@@ -54,6 +55,7 @@ function fake() {
     standing: () => w.standingAll,
     standingIn: (a) => w.standing.get(a) ?? 0,
     wiped: () => w.wipe,
+    protectedLost: (id) => w.protected.has(id),
     group: (id) => w.groups.get(id) ?? { dead: false, spawned: 0, down: 0 },
   };
   return { w, world };
@@ -163,6 +165,45 @@ describe('each objective type, on its own (T-4.14)', () => {
     void w;
   });
 
+  it('fails on a mission time limit or a protected entity loss', () => {
+    const timed = runOf([{ type: 'survive', label: 'x', seconds: 10 }], false, { timeLimitSeconds: 2 });
+    const a = fake();
+    for (let i = 0; i < ticks(2) - 1; i++) timed.step(a.world);
+    expect(timed.current.state).toBe('progress');
+    timed.step(a.world);
+    expect(timed.current.state).toBe('failed');
+
+    const protectedRun = runOf([{ type: 'survive', label: 'x', seconds: 10 }], false, { protectedGroup: 'vip' });
+    const b = fake();
+    protectedRun.step(b.world);
+    expect(protectedRun.current.state).toBe('progress');
+    b.w.protected.add('vip');
+    protectedRun.step(b.world);
+    expect(protectedRun.current.state).toBe('failed');
+  });
+
+  it('retries from the latest completed-objective checkpoint and a full reset starts over', () => {
+    const run = runOf([
+      { type: 'reach', label: 'the ford', area: 'b', who: 'any' },
+      { type: 'survive', label: 'the night', seconds: 10 },
+    ]);
+    const { w, world } = fake();
+    w.standing.set(OTHER, 1);
+    run.step(world);
+    expect(run.current).toMatchObject({ state: 'progress', objective: 1, attempt: 1 });
+    expect(run.checkpoint).toBe(1);
+    w.wipe = true;
+    run.step(world);
+    expect(run.current.state).toBe('failed');
+
+    run.retry();
+    expect(run.current).toMatchObject({ state: 'progress', objective: 1, attempt: 2, progress: 0 });
+    expect(run.checkpoint).toBe(1);
+    run.reset();
+    expect(run.current).toMatchObject({ state: 'progress', objective: 0, attempt: 3, progress: 0 });
+    expect(run.checkpoint).toBe(0);
+  });
+
   it('plays a sequence in order: each objective starts the tick the one before completes', () => {
     const run = runOf([
       { type: 'reach', label: 'the ford', area: 'b', who: 'any' },
@@ -211,8 +252,16 @@ const ENCOUNTER = parseEncounter({
   groups: [{ id: 'g', members: [{ archetype: 'rifleman', count: 2 }], zone: 'behind-objective', posture: { kind: 'garrison', at: 'objective' }, trigger: { kind: 'start' } }],
 });
 
-function mission(def?: MissionDef, humans?: number) {
-  const session = new Session(undefined, '', world, { encounter: ENCOUNTER, ...(def ? { mission: def } : {}), ...(humans ? { testHumanCount: humans } : {}) });
+const PROTECTED_ENCOUNTER = parseEncounter({
+  world: 'greybox-01',
+  aliveCap: 10,
+  probes: [0.3, 1.0, 1.7],
+  areas: {},
+  groups: [{ id: 'vip', members: [{ archetype: 'rifleman', count: 1 }], zone: 'behind-objective', posture: { kind: 'garrison', at: 'objective' }, trigger: { kind: 'start' } }],
+});
+
+function mission(def?: MissionDef, humans?: number, encounter = ENCOUNTER) {
+  const session = new Session(undefined, '', world, { encounter, ...(def ? { mission: def } : {}), ...(humans ? { testHumanCount: humans } : {}) });
   const pair = createLoopbackPair();
   session.addConnection(pair.a, 0);
   const seen: Extract<Message, { kind: 'Mission' }>[] = [];
@@ -292,6 +341,84 @@ describe('the mission on a session (T-3.34, T-4.14)', () => {
     m.step(30 * 20);
     expect(m.session.slots.every((s) => s.health.diedAt !== null)).toBe(true);
     expect(m.session.mission!.state).toBe('failed');
+  });
+
+  it('fails on the mission time limit and when its protected entity is lost', () => {
+    const timed = mission({
+      id: 'timed',
+      world: 'greybox-01',
+      respawn: false,
+      failure: { timeLimitSeconds: 1 },
+      objectives: [{ type: 'survive', label: 'hold out', seconds: 10 }],
+    });
+    timed.step(ticks(1));
+    expect(timed.session.mission!.state).toBe('failed');
+
+    const protectedMission = mission(
+      {
+        id: 'protected',
+        world: 'greybox-01',
+        respawn: false,
+        failure: { protectedGroup: 'vip' },
+        objectives: [{ type: 'survive', label: 'keep the guide alive', seconds: 10 }],
+      },
+      6,
+      PROTECTED_ENCOUNTER,
+    );
+    protectedMission.step(2);
+    expect(protectedMission.session.enemies).toHaveLength(1);
+    protectedMission.kill(protectedMission.session.enemies[0]!.health);
+    protectedMission.step(1);
+    expect(protectedMission.session.mission!.state).toBe('failed');
+  });
+
+  it('retries a failed checkpoint with earlier objectives and encounter groups still complete, while full restart starts over', () => {
+    const m = mission(
+      def(
+        { type: 'destroy', label: 'the garrison', group: 'g' },
+        { type: 'survive', label: 'the night', seconds: 60 },
+      ),
+      6,
+    );
+    m.step(2);
+    expect(m.session.enemies).toHaveLength(2);
+
+    const checkpoint = m.session.slots.map((slot, i) => ({ x: start.x + i * 0.5, y: slot.state.y, z: start.z + 6 + i * 0.25 }));
+    m.session.slots.forEach((slot, i) => {
+      const point = checkpoint[i]!;
+      slot.state = { ...slot.state, x: point.x, y: point.y, z: point.z };
+    });
+    for (const enemy of m.session.enemies) m.kill(enemy.health);
+    m.step(1);
+    expect(m.session.mission).toMatchObject({ state: 'progress', objective: 1, attempt: 1 });
+
+    for (const slot of m.session.slots) {
+      slot.state = { ...slot.state, x: slot.state.x + 40, z: slot.state.z + 40 };
+      m.kill(slot.health);
+    }
+    m.step(1);
+    expect(m.session.mission!.state).toBe('failed');
+
+    m.send({ kind: 'MissionRestart' });
+    expect(m.session.mission).toMatchObject({ state: 'progress', objective: 1, attempt: 2, progress: 0 });
+    m.session.slots.forEach((slot, i) => {
+      expect(slot.health.diedAt).toBeNull();
+      expect(slot.health.current).toBe(slot.health.max);
+      expect([slot.state.x, slot.state.y, slot.state.z]).toEqual([checkpoint[i]!.x, checkpoint[i]!.y, checkpoint[i]!.z]);
+    });
+    expect(m.session.spawner!.dead('g')).toBe(true);
+    expect(m.session.spawner!.spawnedBy('g')).toEqual([]);
+    m.step(2);
+    expect(m.session.enemies).toHaveLength(0);
+    expect(m.session.mission!.objective).toBe(1);
+
+    m.session.restartMission();
+    expect(m.session.mission).toMatchObject({ state: 'progress', objective: 0, attempt: 3, progress: 0 });
+    m.session.slots.forEach((slot, i) => {
+      expect([slot.state.x, slot.state.z]).toEqual([SPAWN_POINTS[i]!.x, SPAWN_POINTS[i]!.z]);
+    });
+    m.step(1);
+    expect(m.session.enemies).toHaveLength(2);
   });
 
   it('restarts only once it is over, and then puts the world back to the start', () => {
