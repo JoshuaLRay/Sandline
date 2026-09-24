@@ -20,7 +20,8 @@ import {
   visibleSpawnZones,
   type LevelNavProbe,
 } from './level-check.ts';
-import { initNav, loadWorldNavMesh } from '../../../server/src/ai/nav/NavMesh.ts';
+import { initNav } from '../../../server/src/ai/nav/NavMesh.ts';
+import { loadWorldNavMesh } from '../../../server/src/ai/nav/bakedNav.ts';
 
 const fixtureMission = {
   start: { x: 0, z: 0, radius: 3 },
