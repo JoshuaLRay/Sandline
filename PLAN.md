@@ -2195,6 +2195,14 @@ free to go whenever.
 - **Done when:** ADR-018 is Accepted with the owner's choice, and
   §9 Q2 says so.
 - **Size:** S (agent) + the owner's decision
+- **Options written 2026-09-24** (`docs/adr/018-art-sourcing.md`, Proposed):
+  A code-authored, B Blender by hand, C purchased, D commissioned, E1 code
+  world with bought mocap, E2 code world with bought characters and mocap,
+  compared on cost, quality ceiling, iteration speed, ADR-013 and the ~35
+  clips. The paper notes that about twenty of the clips already exist as
+  procedural poses, and that the code-built rig's 17 bones sit under
+  ADR-013's 45–65 floor. **Waiting on the owner's choice**; the row stays
+  open until it is made.
 
 ##### T-4.02 — glTF processing and the asset manifest
 - **Depends:** —
@@ -2211,6 +2219,25 @@ free to go whenever.
   - the manifest's numbers match the file;
   - the test asset round-trips.
 - **Size:** M
+- **Completed 2026-09-24.** `pnpm gen:assets` (`tools/src/gen-assets.ts`,
+  the steps in `tools/src/assets/pipeline.ts`) runs dedup, prune, KTX2
+  (UASTC, Zstandard, mipmaps; `ktx2-encoder`'s Basis WebAssembly, since no
+  `toktx` binary is needed that way) and meshopt (its decoder ships in
+  `three`'s examples, so no runtime dependency). It writes
+  `client/public/assets/<id>.glb` and `shared/src/data/assets/manifest.json`
+  (parser `shared/src/sim/assets.ts`). Collision boxes are declared on the
+  scene's extras (`sandline.collision`, six numbers a box); LOD levels by a
+  `_LOD<n>` node suffix. The input hash covers the source, the settings and
+  the tools' versions. The test asset is the code-built soldier, exported by
+  `pnpm export:soldier` (`tools/src/assets/soldierSource.ts`): 188,588 →
+  79,828 bytes, 900 triangles, 17 bones, one 256² texture. Tests
+  (`tools/src/assets/assets.test.ts`): a re-run hashes to the committed copy;
+  a one-byte source change goes stale; the manifest's numbers are re-counted
+  from the file; the soldier comes back within 0.104 mm a vertex (worst of
+  989) on the same bones; collision and LODs reach the manifest; bad boxes
+  and unencodable textures are refused. 900 triangles and 17 bones sit under
+  ADR-013's character floors: T-4.03 says whether a floor applies, after
+  ADR-018.
 
 ##### T-4.03 — Budgets enforced in CI
 - **Depends:** T-4.02

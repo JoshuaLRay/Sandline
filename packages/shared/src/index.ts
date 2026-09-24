@@ -8,6 +8,7 @@ export * from './sim/world.ts';
 export * from './sim/encounters.ts';
 export * from './sim/director.ts';
 export * from './sim/mission.ts';
+export * from './sim/assets.ts';
 export * from './sim/weapons.ts';
 export * from './sim/ballistics.ts';
 export * from './sim/muzzle.ts';
