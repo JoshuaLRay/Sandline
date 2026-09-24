@@ -17,8 +17,10 @@
  *   MAX_ROOMS=4 ROOM_GRACE_MS=60000 pnpm host      # T-1.5.05: rooms per process, reclaim grace
  *   AI_DEBUG=1 pnpm host                           # T-3.09: clients may ask for AI debug reports
  *   JOIN_KEY=hunter2 pnpm host                     # every Join must carry this key
+ *   IDENTITY_SECRET=<32+ chars> pnpm host          # T-4.22: player IDs survive a restart
  *   IDLE_TIMEOUT_MS=600000 MAX_SESSION_MS=14400000 pnpm host   # per-player limits; 0 turns one off
  */
+import { Identity } from './identity/Identity.ts';
 import { SessionHost, hostBanner, linkFromEnv } from './session/SessionHost.ts';
 import { loadConfig } from './config.ts';
 import { createLogger } from './log.ts';
@@ -32,6 +34,7 @@ const host = new SessionHost({
   log,
   link,
   joinKey: config.joinKey,
+  identity: new Identity({ secrets: config.identitySecrets }),
   registry: {
     maxRooms: config.maxRooms,
     graceMs: config.roomGraceMs,
@@ -53,6 +56,8 @@ log.info('host ready', {
   hostAi: config.hostAi,
   // Never the key itself: the log is not a secret store.
   joinKey: config.joinKey === '' ? 'none - anyone with the address can join' : 'required',
+  // Never the secret either. Random means every saved identity dies with this process.
+  identitySecret: config.identitySecrets.length === 0 ? 'random - identities do not survive a restart' : `${config.identitySecrets.length} configured`,
   idleTimeoutMs: config.idleTimeoutMs,
   maxSessionMs: config.maxSessionMs,
   health: `http://localhost:${port}/healthz`,

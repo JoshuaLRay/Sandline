@@ -41,6 +41,7 @@ ADRs that section names → implement. That's the whole loop. See
 | `?mission` | the grey-box mission in the page: its encounter paced by the director, the objective on the HUD (clear the compound, hold it 30 s), P to play again once it is won or lost; add `&squad` for bots that fight beside you |
 | `?world=greybox-01` | the in-page session on that world: the mission map's two lanes, the objective compound behind them |
 | `JOIN_KEY=… pnpm host` | every Join must carry this key (lobby's Key field, `pnpm bot --key`); `IDLE_TIMEOUT_MS` / `MAX_SESSION_MS` drop idle and long-connected players (0 = off) |
+| `IDENTITY_SECRET=… pnpm host` | the key(s) player-identity tokens are signed with, comma-separated, 32+ characters each; unset, a random one per process, so identities die with it (T-4.22) |
 | `HOST_AI=1 pnpm host` | rooms get the AI the page has: the world's navmesh and cover, friendly bots that follow, fight and take orders, and the mission on the mission map. The lobby's **Map** picks the world a new room is built on (protocol 23). The deployed QA host runs it (`fly.toml`); off by default so `pnpm bot --url` stays comparable |
 | `AI_DEBUG=1 pnpm host` | clients may ask for AI debug reports (B in the page); without it the host sends none |
 | `curl localhost:8080/healthz` | rooms, players, protocol version |

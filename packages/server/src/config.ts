@@ -1,5 +1,6 @@
 /** Environment-derived server config (T-0.07). */
 import { DEFAULT_WORLD_ID, WORLD_IDS } from '@sandline/shared';
+import { MIN_SECRET_LENGTH, secretsFromEnv } from './identity/Identity.ts';
 import { DEFAULT_MAX_ROOMS, DEFAULT_ROOM_GRACE_MS } from './session/Registry.ts';
 
 export interface ServerConfig {
@@ -26,6 +27,14 @@ export interface ServerConfig {
    * is what `pnpm host` on a laptop wants. A deployed host sets it as a secret.
    */
   joinKey: string;
+  /**
+   * T-4.22: `IDENTITY_SECRET`, the keys player-identity tokens are signed
+   * with, comma-separated: the first signs, all verify, so a secret can be
+   * retired without refusing every player at once. Empty: a random one per
+   * process, which is fine on a laptop and wrong on a deployed host, where a
+   * restart would then refuse every saved identity.
+   */
+  identitySecrets: string[];
   /** `IDLE_TIMEOUT_MS`: drop a player who has not moved or looked in this long. 0 = never. */
   idleTimeoutMs: number;
   /** `MAX_SESSION_MS`: drop any player connected this long. 0 = never. */
@@ -75,6 +84,15 @@ function hostAiFromEnv(): boolean {
   throw new Error(`HOST_AI must be 0 or 1, got '${raw}'`);
 }
 
+/** `IDENTITY_SECRET=…`. A short secret is a startup error, not a forgeable host. */
+function identitySecretsFromEnv(): string[] {
+  const secrets = secretsFromEnv(process.env['IDENTITY_SECRET']);
+  if (secrets.some((s) => s.length < MIN_SECRET_LENGTH)) {
+    throw new Error(`IDENTITY_SECRET: every secret must be at least ${MIN_SECRET_LENGTH} characters`);
+  }
+  return secrets;
+}
+
 export function loadConfig(): ServerConfig {
   const level = process.env['LOG_LEVEL'] ?? 'info';
   if (!['debug', 'info', 'warn', 'error'].includes(level)) {
@@ -90,6 +108,7 @@ export function loadConfig(): ServerConfig {
     aiDebug: aiDebugFromEnv(),
     hostAi: hostAiFromEnv(),
     joinKey: process.env['JOIN_KEY'] ?? '',
+    identitySecrets: identitySecretsFromEnv(),
     idleTimeoutMs: nonNegative('IDLE_TIMEOUT_MS', DEFAULT_IDLE_TIMEOUT_MS),
     maxSessionMs: nonNegative('MAX_SESSION_MS', DEFAULT_MAX_SESSION_MS),
   };
