@@ -2536,8 +2536,11 @@ free to go whenever.
   overrule before T-4.23:
   - an anonymous, host-signed player ID, and no accounts in the slice;
   - one Fly Postgres in the host's region, written at checkpoints and
-    mission end, with daily backups kept 7 days;
-  - `pg` as the server's one new runtime dependency;
+    mission end, with daily backups kept 7 days (**replaced the same day by
+    the owner: SQLite on a Fly volume** through Node's built-in
+    `node:sqlite`, so there is no new runtime dependency and
+    `better-sqlite3` is the allowed fallback; see ADR-019's addendum);
+  - `pg` as the server's one new runtime dependency (dropped with Postgres);
   - only the ID, display name and seen-times stored per player, no email
     or IPs at rest, and 180-day retention.
 
@@ -2560,7 +2563,7 @@ free to go whenever.
 - **Depends:** T-4.21, T-4.22, T-4.16
 - **Files:** `packages/server/src/persistence/`, tests
 - **Do:** Completed missions, checkpoints and the squad's soldiers saved per campaign (ADR-019), under its campaign code, and restored when a room is hosted with that code. Writes are idempotent and a failed write is retried. A save format version and migrations exist from the first save.
-- **Done when:** save and restore are tested against a real database in CI (a service container); a migration test passes; a crash mid-write loses nothing that was acknowledged.
+- **Done when:** save and restore are tested against a real SQLite file (ADR-019's addendum: SQLite on a Fly volume, `node:sqlite`); a migration test passes; a crash mid-write loses nothing that was acknowledged; `fly.toml` mounts the volume and `docs/DEPLOYING.md` warns that `fly apps destroy` deletes every campaign.
 - **Size:** M
 
 ##### T-4.24 — Per-soldier XP and ranks

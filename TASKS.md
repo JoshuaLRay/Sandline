@@ -360,8 +360,9 @@ is passed. Read §7.11's preamble (rules, what exists, order of work) once
 before the first M4 task. Two rows are the owner's decisions, not agent
 work: **T-4.01** (art sourcing) is decided — ADR-018, art authored as code
 with procedural animation — and so is **T-4.21** (where progress lives):
-ADR-019, on the host, per campaign. ADR-019's identity, storage and privacy
-lines are agent defaults the owner may still overrule before T-4.23.
+ADR-019, on the host, per campaign. ADR-019's storage is the owner's (SQLite on a Fly
+volume, its addendum); its identity and privacy lines are agent defaults
+the owner may still overrule before T-4.23.
 
 ### E-4.1 — Asset pipeline
 

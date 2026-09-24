@@ -5,6 +5,8 @@
   lines below are the agent's defaults, which follow from that choice.
   They are written down so the identity task (T-4.22) can start. The owner
   may overrule any of them before campaign saves (T-4.23) land.
+  **Storage changed by the owner, 2026-09-24:** SQLite on a Fly volume,
+  replacing Postgres. See the addendum.
 - **Date:** 2026-09-24
 - **Plan reference:** §7.11 (E-4.6, T-4.21–T-4.24), §9 Q5; ADR-001, ADR-011
 
@@ -115,3 +117,42 @@ service, not the memory of one room process.
   small table set. Fly Postgres sits beside the host. The owner can swap to
   a managed service without changing the code, because it is still
   Postgres.
+
+## Addendum — 2026-09-24: storage is SQLite on a Fly volume (owner's choice)
+
+The owner looked at the alternatives to decision 4's Postgres default and
+chose **SQLite on a Fly volume**. Decisions 1–3 and 5 stand. Decision 4
+now reads as follows.
+
+- **Where.** One SQLite database file on a Fly volume mounted into the host
+  machine (`fly.toml` gains a `[mounts]` section, T-4.23). There is no
+  database server, no second app and no Redis.
+- **How it is reached.** Node's built-in `node:sqlite`, so the server gains
+  **no new runtime dependency**, and `pg` is not added. `node:sqlite` still
+  prints an experimental warning on Node 22. If T-4.23 finds it unfit (a
+  missing feature, or a crash under test), **`better-sqlite3` is the
+  allowed fallback** under this addendum (rule 3), server-only, and the
+  swap is recorded in T-4.23's completion note.
+- **Writes are unchanged:** at checkpoints and mission end, never per tick;
+  idempotent, retried, and versioned from the first save. The database runs
+  in WAL mode, and every save is one transaction, so a crash mid-write
+  loses nothing that was acknowledged.
+- **Backups.** Fly's daily volume snapshots, with retention set to 7 days.
+  Continuous replication (Litestream) is added only if losing up to a day
+  is ever judged too much.
+- **CI.** Save and restore are tested against a real SQLite file, so the
+  Postgres service container T-4.23 planned is not needed.
+
+**What this changes.**
+- **One machine holds the data.** A Fly volume attaches to one machine in
+  one region. The host already runs one machine (`fly.toml`), so nothing
+  changes today. Multi-region (E-4.9) must either keep a campaign in its
+  home region's file or replicate (LiteFS), and T-4.30's addendum decides
+  which.
+- **Teardown must spare the volume.** Stopping the machine between
+  playtests is safe, because the volume stays. `fly apps destroy` deletes
+  the volume and every campaign with it. `docs/DEPLOYING.md` says so when
+  T-4.23 lands.
+- **Cheaper, and one fewer thing to run.** The cost is a volume of a few
+  gigabytes and its snapshots.
+
