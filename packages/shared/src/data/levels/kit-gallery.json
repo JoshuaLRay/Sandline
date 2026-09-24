@@ -1,0 +1,387 @@
+{
+  "id": "kit-gallery",
+  "format": 1,
+  "$comment": "T-4.10: the kit gallery, `?kit` in the page and 'Kit gallery' in the lobby's Map. Every piece of data/kit.json in a grid (7 a row, 6 m apart, rows at z 8 to 32, north of the spawn line), three turned copies at x 24, and a house at z 44 built from the kit: door, windows and a plain wall round a 4 m square with pillars at the corners, the roof slab at y 3, parapets on three sides at y 3.25, and the stair up the open east side. A paved yard before the door and a road up the west side are ground tiles. No mission and no encounter: it is for walking round.",
+  "floor": {
+    "halfExtent": 40
+  },
+  "boxes": [],
+  "pieces": [
+    {
+      "id": "wall-plaster-4m",
+      "piece": "wall-plaster-4m",
+      "x": -18,
+      "z": 8,
+      "rot": 0
+    },
+    {
+      "id": "wall-plaster-2m",
+      "piece": "wall-plaster-2m",
+      "x": -12,
+      "z": 8,
+      "rot": 0
+    },
+    {
+      "id": "wall-low-4m",
+      "piece": "wall-low-4m",
+      "x": -6,
+      "z": 8,
+      "rot": 0
+    },
+    {
+      "id": "wall-low-2m",
+      "piece": "wall-low-2m",
+      "x": 0,
+      "z": 8,
+      "rot": 0
+    },
+    {
+      "id": "wall-broken-4m",
+      "piece": "wall-broken-4m",
+      "x": 6,
+      "z": 8,
+      "rot": 0
+    },
+    {
+      "id": "wall-broken-2m",
+      "piece": "wall-broken-2m",
+      "x": 12,
+      "z": 8,
+      "rot": 0
+    },
+    {
+      "id": "wall-door-4m",
+      "piece": "wall-door-4m",
+      "x": 18,
+      "z": 8,
+      "rot": 0
+    },
+    {
+      "id": "wall-window-4m",
+      "piece": "wall-window-4m",
+      "x": -18,
+      "z": 16,
+      "rot": 0
+    },
+    {
+      "id": "pillar",
+      "piece": "pillar",
+      "x": -12,
+      "z": 16,
+      "rot": 0
+    },
+    {
+      "id": "roof-slab-4m",
+      "piece": "roof-slab-4m",
+      "x": -6,
+      "z": 16,
+      "rot": 0
+    },
+    {
+      "id": "parapet-4m",
+      "piece": "parapet-4m",
+      "x": 0,
+      "z": 16,
+      "rot": 0
+    },
+    {
+      "id": "stairs-3m",
+      "piece": "stairs-3m",
+      "x": 6,
+      "z": 16,
+      "rot": 0
+    },
+    {
+      "id": "concrete-barrier-2m",
+      "piece": "concrete-barrier-2m",
+      "x": 12,
+      "z": 16,
+      "rot": 0
+    },
+    {
+      "id": "rubble-small",
+      "piece": "rubble-small",
+      "x": 18,
+      "z": 16,
+      "rot": 0
+    },
+    {
+      "id": "rubble-large",
+      "piece": "rubble-large",
+      "x": -18,
+      "z": 24,
+      "rot": 0
+    },
+    {
+      "id": "ground-dirt-4m",
+      "piece": "ground-dirt-4m",
+      "x": -12,
+      "z": 24,
+      "rot": 0
+    },
+    {
+      "id": "ground-road-4m",
+      "piece": "ground-road-4m",
+      "x": -6,
+      "z": 24,
+      "rot": 0
+    },
+    {
+      "id": "ground-paving-4m",
+      "piece": "ground-paving-4m",
+      "x": 0,
+      "z": 24,
+      "rot": 0
+    },
+    {
+      "id": "sandbags-2m",
+      "piece": "sandbags-2m",
+      "x": 6,
+      "z": 24,
+      "rot": 0
+    },
+    {
+      "id": "sandbags-corner",
+      "piece": "sandbags-corner",
+      "x": 12,
+      "z": 24,
+      "rot": 0
+    },
+    {
+      "id": "crate-small",
+      "piece": "crate-small",
+      "x": 18,
+      "z": 24,
+      "rot": 0
+    },
+    {
+      "id": "crate-large",
+      "piece": "crate-large",
+      "x": -18,
+      "z": 32,
+      "rot": 0
+    },
+    {
+      "id": "crate-stack",
+      "piece": "crate-stack",
+      "x": -12,
+      "z": 32,
+      "rot": 0
+    },
+    {
+      "id": "drum",
+      "piece": "drum",
+      "x": -6,
+      "z": 32,
+      "rot": 0
+    },
+    {
+      "id": "fence-wood-2m",
+      "piece": "fence-wood-2m",
+      "x": 0,
+      "z": 32,
+      "rot": 0
+    },
+    {
+      "id": "wall-door-4m-90",
+      "piece": "wall-door-4m",
+      "x": 24,
+      "z": 8,
+      "rot": 90
+    },
+    {
+      "id": "sandbags-corner-90",
+      "piece": "sandbags-corner",
+      "x": 24,
+      "z": 16,
+      "rot": 90
+    },
+    {
+      "id": "stairs-3m-180",
+      "piece": "stairs-3m",
+      "x": 24,
+      "z": 24,
+      "rot": 180
+    },
+    {
+      "id": "house-s",
+      "piece": "wall-door-4m",
+      "x": 0,
+      "z": 42,
+      "rot": 0
+    },
+    {
+      "id": "house-n",
+      "piece": "wall-window-4m",
+      "x": 0,
+      "z": 46,
+      "rot": 0
+    },
+    {
+      "id": "house-w",
+      "piece": "wall-plaster-4m",
+      "x": -2,
+      "z": 44,
+      "rot": 90
+    },
+    {
+      "id": "house-e",
+      "piece": "wall-window-4m",
+      "x": 2,
+      "z": 44,
+      "rot": 90
+    },
+    {
+      "id": "house-p1",
+      "piece": "pillar",
+      "x": -2,
+      "z": 42,
+      "rot": 0
+    },
+    {
+      "id": "house-p2",
+      "piece": "pillar",
+      "x": 2,
+      "z": 42,
+      "rot": 0
+    },
+    {
+      "id": "house-p3",
+      "piece": "pillar",
+      "x": -2,
+      "z": 46,
+      "rot": 0
+    },
+    {
+      "id": "house-p4",
+      "piece": "pillar",
+      "x": 2,
+      "z": 46,
+      "rot": 0
+    },
+    {
+      "id": "house-roof",
+      "piece": "roof-slab-4m",
+      "x": 0,
+      "z": 44,
+      "rot": 0,
+      "y": 3
+    },
+    {
+      "id": "house-parapet-s",
+      "piece": "parapet-4m",
+      "x": 0,
+      "z": 41.8,
+      "rot": 0,
+      "y": 3.25
+    },
+    {
+      "id": "house-parapet-n",
+      "piece": "parapet-4m",
+      "x": 0,
+      "z": 46.2,
+      "rot": 0,
+      "y": 3.25
+    },
+    {
+      "id": "house-parapet-w",
+      "piece": "parapet-4m",
+      "x": -2.2,
+      "z": 44,
+      "rot": 90,
+      "y": 3.25
+    },
+    {
+      "id": "house-stairs",
+      "piece": "stairs-3m",
+      "x": 2.85,
+      "z": 44.05,
+      "rot": 0
+    },
+    {
+      "id": "yard-0",
+      "piece": "ground-paving-4m",
+      "x": -4,
+      "z": 38,
+      "rot": 0
+    },
+    {
+      "id": "yard-4",
+      "piece": "ground-paving-4m",
+      "x": 0,
+      "z": 38,
+      "rot": 0
+    },
+    {
+      "id": "yard-8",
+      "piece": "ground-paving-4m",
+      "x": 4,
+      "z": 38,
+      "rot": 0
+    },
+    {
+      "id": "road-0",
+      "piece": "ground-road-4m",
+      "x": -26,
+      "z": 8,
+      "rot": 0
+    },
+    {
+      "id": "road-1",
+      "piece": "ground-road-4m",
+      "x": -26,
+      "z": 12,
+      "rot": 0
+    },
+    {
+      "id": "road-2",
+      "piece": "ground-road-4m",
+      "x": -26,
+      "z": 16,
+      "rot": 0
+    },
+    {
+      "id": "road-3",
+      "piece": "ground-road-4m",
+      "x": -26,
+      "z": 20,
+      "rot": 0
+    },
+    {
+      "id": "road-4",
+      "piece": "ground-road-4m",
+      "x": -26,
+      "z": 24,
+      "rot": 0
+    },
+    {
+      "id": "road-5",
+      "piece": "ground-road-4m",
+      "x": -26,
+      "z": 28,
+      "rot": 0
+    },
+    {
+      "id": "road-6",
+      "piece": "ground-road-4m",
+      "x": -26,
+      "z": 32,
+      "rot": 0
+    },
+    {
+      "id": "road-7",
+      "piece": "ground-road-4m",
+      "x": -26,
+      "z": 36,
+      "rot": 0
+    },
+    {
+      "id": "road-8",
+      "piece": "ground-road-4m",
+      "x": -26,
+      "z": 40,
+      "rot": 0
+    }
+  ],
+  "encounter": null
+}

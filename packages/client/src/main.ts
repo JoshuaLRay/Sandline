@@ -29,6 +29,8 @@
  * Flat ground and boxes only — no slopes or stairs beyond a 0.45 m step.
  */
 import { showAssetShelf } from './assets/shelf.ts';
+import { LevelPieces } from './assets/levelPieces.ts';
+import { AssetLoader, gltfParser } from './assets/loader.ts';
 import * as THREE from 'three';
 import {
   Clock,
@@ -226,9 +228,10 @@ function buildScenery(world: World): void {
   }
   for (const box of world.boxes) {
     const c = boxCentre(box);
+    // A kit piece's box (T-4.10) collides and takes rays but is not drawn: the piece's mesh is (`levelPieces`).
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(c.w, c.h, c.d),
-      box.kind === 'figure' ? invisible : worldMaterials[box.kind],
+      box.kind === 'figure' || box.piece !== undefined ? invisible : worldMaterials[box.kind],
     );
     mesh.position.set(c.x, c.y, c.z);
     mesh.castShadow = box.kind !== 'figure';
@@ -247,7 +250,11 @@ function buildScenery(world: World): void {
       worldMeshes.push(capsule);
     }
   }
+  void levelPieces.show(world, kitWanted);
 }
+/** T-4.10: a level's kit pieces, drawn through the asset loader; `?kit` labels each one. */
+const kitWanted = new URLSearchParams(location.search).has('kit');
+const levelPieces = new LevelPieces(scene, new AssetLoader({ renderer, parse: gltfParser({ renderer }) }));
 buildScenery(activeWorld);
 // T-4.05: `?assets` stands every asset the pipeline made in a row behind the spawn line.
 if (new URLSearchParams(location.search).has('assets')) void showAssetShelf(scene, renderer);
@@ -727,7 +734,8 @@ const qaSuppressWanted = new URLSearchParams(location.search).has('suppress');
  */
 const qaMissionWanted = new URLSearchParams(location.search).has('mission');
 const qaWorld: World =
-  getWorld(new URLSearchParams(location.search).get('world') ?? '') ?? requireWorld(qaMissionWanted ? 'greybox-01' : DEFAULT_WORLD_ID);
+  getWorld(new URLSearchParams(location.search).get('world') ?? '') ??
+  requireWorld(qaMissionWanted ? 'greybox-01' : new URLSearchParams(location.search).has('kit') ? 'kit-gallery' : DEFAULT_WORLD_ID);
 const qaEncounter = qaMissionWanted ? encounterFor(qaWorld.id) : undefined;
 /**
  * `?squad` (T-3.29): the in-page bots run the committed `friendly` tree, with

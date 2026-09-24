@@ -6,6 +6,7 @@ export * from './sim/Simulation.ts';
 export * from './sim/CharacterController.ts';
 export * from './sim/world.ts';
 export * from './sim/level.ts';
+export * from './sim/kit.ts';
 export * from './sim/encounters.ts';
 export * from './sim/director.ts';
 export * from './sim/mission.ts';

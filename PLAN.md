@@ -2466,6 +2466,61 @@ free to go whenever.
   - a family atlas.
 - **Done when:** every piece passes the budgets, has collision that matches its visible shape (a test compares each piece's bounds with its mesh's), and appears on a kit gallery page (`?kit`) on the deployed site.
 - **Size:** L
+- **Completed 2026-09-24** (ADR-018, code-authored). 25 pieces in
+  `tools/src/art/pieces/`, in two families:
+  - **`kit-a`** (architecture and ground; 8 surfaces: plaster, concrete,
+    brick, roofing, dirt, road, paving, rubble):
+    - walls: full, low and broken, each 4 m and 2 m;
+    - a doorway wall (1.2 × 2.2 m) and a window wall (1.2 m, sill at 1 m),
+      whose openings are gaps in the collision too;
+    - a corner pillar;
+    - a building shell of a 4.6 m roof slab (placed at y 3), a parapet (at
+      y 3.25) and a 13-step stair to the roof, every step 0.25 m, under the
+      controller's 0.45 m;
+    - a concrete barrier;
+    - small and large rubble, each colliding as one box round the pile;
+    - three ground tiles, as decals that collide with nothing.
+  - **`prop-a`** (sandbag, crate, planks and drum):
+    - a sandbag run and corner;
+    - small and large crates, and a stack;
+    - a twelve-sided drum, whose bounds are its square collision;
+    - a plank fence colliding as one thin box.
+
+  New in the library:
+  - ten painters;
+  - `MeshBuilder.prism`, with coordinates rounded to 0.1 mm so
+    trigonometry can't reach the committed bytes;
+  - `collider`, for a collision box with no mesh;
+  - `Piece.decal`.
+
+  `shared/src/data/kit.json` and `sim/kit.ts` give each piece a cover class
+  ('high' is 1.6 m or taller, 'low' 0.6 to 1.6 m, 'none' a platform or
+  decal). `checkKit` checks each class against the manifest's collision.
+
+  The page draws a level's pieces through the asset loader
+  (`client/src/assets/levelPieces.ts`), at `rotation.y = rot`, with the
+  piece boxes kept invisible for rays and the camera. `?kit`, and the
+  lobby's **Kit gallery** map, open `data/levels/kit-gallery.json`:
+  - every piece in a grid, each labelled;
+  - three turned copies;
+  - a house built from the kit (door, windows, pillars, roof, parapets and
+    the stair up to the roof);
+  - a paved yard and a road.
+
+  It is baked for navmesh and cover (174 points), and the greybox-01 and
+  range bakes are unchanged.
+
+  Tests: every piece's source is current, its collision bounds its mesh and
+  holds every vertex (decals collide with nothing), its UVs stay in their
+  cells, it is within budget, `kit.json` lists exactly the generated
+  pieces, and each piece's cover class is what its collision makes. A
+  production build of `?kit` was walked and checked.
+
+  **Known:** every piece embeds its family atlas, so the kit's 25 web
+  copies are 3.2 MB against the 80 MB budget. Sharing one atlas file per
+  family belongs with instancing and draw calls (T-4.07).
+
+  **Whether it looks right is the owner's call** on the deployed site.
 
 ##### T-4.11 — Level validation and review renders
 - **Depends:** T-4.09

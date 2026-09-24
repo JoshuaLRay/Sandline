@@ -120,3 +120,133 @@ export function concrete(base: Rgb): Painter {
     return shade(base, k);
   };
 }
+
+/** A texel's own grain: a per-texel random in [0, 1) that tiles because it is keyed on the texel. */
+const grainAt = (u: number, v: number, seed: number): number =>
+  rng((Math.floor(u * 4096) * 73856093) ^ (Math.floor(v * 4096) * 19349663) ^ seed)();
+
+/** Distance in [0, 0.5] from `t` to the nearest whole number: 0 on a joint. */
+const toJoint = (t: number): number => Math.abs(t - Math.round(t));
+
+/**
+ * Coursed mud brick, the wall under the plaster where it has broken away:
+ * `rows` courses a tile, each staggered half a brick, with sunken mortar.
+ */
+export function brick(face: Rgb, mortar: Rgb, rows = 8, perRow = 4): Painter {
+  return (u, v, seed) => {
+    const row = Math.floor(v * rows);
+    const along = u * perRow + (row % 2) * 0.5;
+    // 0 on a joint, 1 in a brick's middle, across and along alike.
+    const joint = Math.min(toJoint(v * rows), toJoint(along)) * 2;
+    const brickId = Math.floor(along) % perRow + row * perRow;
+    const tint = tiledNoise(seed + brickId, u * 2, v * 2, 2) * 0.12 + rng(seed ^ (brickId * 2654435761))() * 0.12;
+    const g = grainAt(u, v, seed);
+    if (joint < 0.08) return shade(mortar, 0.9 + g * 0.1);
+    return shade(face, 0.84 + tint + (g - 0.5) * 0.08);
+  };
+}
+
+/** Flat roofing: tarred screed, dark, with pale dust gathered in low patches. */
+export function roofing(base: Rgb, dust: Rgb): Painter {
+  return (u, v, seed) => {
+    const d = tiledFbm(seed, u * 4, v * 4, 4, 3);
+    const g = grainAt(u, v, seed);
+    return shade(mix(base, dust, d > 0.58 ? (d - 0.58) * 1.6 : 0), 0.9 + (g - 0.5) * 0.1);
+  };
+}
+
+/** Packed earth: sand-brown, mottled at two scales, pebble-flecked. */
+export function dirt(base: Rgb, dark: Rgb): Painter {
+  return (u, v, seed) => {
+    const m = tiledFbm(seed, u * 4, v * 4, 4, 4);
+    const g = grainAt(u, v, seed);
+    const c = mix(base, dark, m * 0.7);
+    return g > 0.97 ? shade(c, 1.18) : g < 0.03 ? shade(c, 0.75) : shade(c, 0.94 + (g - 0.5) * 0.08);
+  };
+}
+
+/** A worn gravel road: grey aggregate over brown, with two darker ruts along v. */
+export function road(base: Rgb, rut: Rgb): Painter {
+  return (u, v, seed) => {
+    const m = tiledFbm(seed, u * 4, v * 4, 4, 3);
+    const g = grainAt(u, v, seed);
+    const ruts = Math.max(0, 1 - Math.abs(toJoint(u * 2 - 0.5) - 0.25) / 0.08);
+    const c = mix(base, rut, Math.min(1, ruts * 0.6 + m * 0.3));
+    return shade(c, 0.9 + (g - 0.5) * 0.16);
+  };
+}
+
+/** Square stone flags, `n` a side a tile, each its own shade, in sandy joints. */
+export function paving(stone: Rgb, joint: Rgb, n = 2): Painter {
+  return (u, v, seed) => {
+    const j = Math.min(toJoint(u * n), toJoint(v * n));
+    const flag = Math.floor(u * n) + Math.floor(v * n) * n;
+    const g = grainAt(u, v, seed);
+    if (j < 0.03) return shade(joint, 0.92 + g * 0.1);
+    const tint = rng(seed ^ (flag * 2246822519))() * 0.14 + tiledNoise(seed + 5, u * 4, v * 4, 4) * 0.1;
+    return shade(stone, 0.84 + tint + (g - 0.5) * 0.06);
+  };
+}
+
+/** Broken masonry: chunks of plaster, brick and concrete in dust. */
+export function rubble(a: Rgb, b: Rgb, c: Rgb): Painter {
+  return (u, v, seed) => {
+    const cell = tiledNoise(seed, u * 8, v * 8, 8);
+    const g = grainAt(u, v, seed);
+    const pick = cell < 0.4 ? a : cell < 0.65 ? b : c;
+    const edge = Math.abs(cell - 0.4) < 0.02 || Math.abs(cell - 0.65) < 0.02 ? 0.7 : 1;
+    return shade(pick, (0.85 + (g - 0.5) * 0.14) * edge);
+  };
+}
+
+/** Sandbags: `rows` courses of stuffed burlap a tile, staggered, darker where the bags meet. */
+export function sandbag(cloth: Rgb, rows = 4, perRow = 2): Painter {
+  return (u, v, seed) => {
+    const row = Math.floor(v * rows);
+    const along = u * perRow + (row % 2) * 0.5;
+    const du = toJoint(along) * 2;
+    const dv = toJoint(v * rows) * 2;
+    // A bag is pillowed: lit in the middle, falling off to its seams.
+    const pillow = Math.min(1, Math.sqrt(du * dv) * 1.8);
+    const weave = ((Math.floor(u * 512) + Math.floor(v * 512)) % 2) * 0.04;
+    const g = grainAt(u, v, seed);
+    return shade(cloth, 0.55 + pillow * 0.45 + weave + (g - 0.5) * 0.06);
+  };
+}
+
+/** Crate side: `boards` horizontal boards in a frame of battens, olive-painted pine gone chalky. */
+export function crate(paint: Rgb, boards = 4): Painter {
+  return (u, v, seed) => {
+    const g = grainAt(u, v, seed);
+    const frame = u < 0.08 || u > 0.92 || v < 0.08 || v > 0.92;
+    const gap = !frame && toJoint(v * boards) < 0.02;
+    const streak = tiledNoise(seed, u * 16, v * boards, 16) * 0.12;
+    if (gap) return shade(paint, 0.35);
+    return shade(paint, (frame ? 0.8 : 0.92) + streak + (g - 0.5) * 0.08);
+  };
+}
+
+/** Weathered grey planks running along v, `boards` a tile. */
+export function planks(wood: Rgb, boards = 6): Painter {
+  return (u, v, seed) => {
+    const g = grainAt(u, v, seed);
+    const board = Math.floor(u * boards);
+    const gap = toJoint(u * boards) < 0.03;
+    const grainLines = tiledNoise(seed + board, u * 64, v * 4, 64) * 0.18;
+    if (gap) return shade(wood, 0.4);
+    return shade(wood, 0.78 + grainLines + rng(seed ^ (board * 40503))() * 0.12 + (g - 0.5) * 0.06);
+  };
+}
+
+/** A painted steel drum, rusting: two ribs round it and rust bleeding at the rims. */
+export function drum(paint: Rgb, rustC: Rgb): Painter {
+  return (u, v, seed) => {
+    const g = grainAt(u, v, seed);
+    const rib = Math.abs(v - 1 / 3) < 0.02 || Math.abs(v - 2 / 3) < 0.02;
+    const rim = Math.min(v, 1 - v);
+    const r = tiledFbm(seed, u * 8, v * 8, 8, 3);
+    const rusty = r > 0.62 || (rim < 0.12 && r > 0.45);
+    const c = rusty ? rustC : paint;
+    return shade(c, (rib ? 1.15 : 0.92) + (g - 0.5) * 0.08);
+  };
+}

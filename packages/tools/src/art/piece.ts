@@ -24,6 +24,8 @@ export interface Piece {
   family: AtlasFamily;
   /** Metres each surface's cell covers. */
   tileM: Readonly<Record<string, number>>;
+  /** A decal (a ground tile): drawn, and colliding with nothing. Every other piece must collide. */
+  decal?: true;
   build(b: MeshBuilder): void;
 }
 

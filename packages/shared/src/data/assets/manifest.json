@@ -3,6 +3,583 @@
   "version": 1,
   "assets": [
     {
+      "id": "concrete-barrier-2m",
+      "source": "assets/src/concrete-barrier-2m.glb",
+      "file": "assets/concrete-barrier-2m.glb",
+      "inputHash": "589213a9481d4b745eac8244be0a770036ba7178688393c293b5fab8aa701510",
+      "hash": "f222c2c5903828063f847b60d223b2827a5f7511f103f2c7290a70614a42c281",
+      "bytes": 146068,
+      "class": "kit",
+      "triangles": 32,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -1,
+            0,
+            -0.3
+          ],
+          "max": [
+            1,
+            0.25,
+            0.3
+          ]
+        },
+        {
+          "min": [
+            -1,
+            0.25,
+            -0.15
+          ],
+          "max": [
+            1,
+            0.9,
+            0.15
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crate-large",
+      "source": "assets/src/crate-large.glb",
+      "file": "assets/crate-large.glb",
+      "inputHash": "ca964c1114f2c27017684e7debbbb08dd2cf01cd45217a44ffbe52d2bffe0f78",
+      "hash": "8dab280b4a90c2e98ae0c9f57c3cb7c70859c6493c3bd36671654d6ecf31c035",
+      "bytes": 73916,
+      "class": "prop",
+      "triangles": 10,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -0.6,
+            0,
+            -0.6
+          ],
+          "max": [
+            0.6,
+            1.2,
+            0.6
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crate-small",
+      "source": "assets/src/crate-small.glb",
+      "file": "assets/crate-small.glb",
+      "inputHash": "be5062ad9b870166134b9613c22d3e4858a34d93313db88cbed8728f0325f495",
+      "hash": "555b2e73bdb6c1981a8e427a1bc1be07aad93e3e668f98f57d0173423ddd82ce",
+      "bytes": 73916,
+      "class": "prop",
+      "triangles": 10,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -0.4,
+            0,
+            -0.4
+          ],
+          "max": [
+            0.4,
+            0.8,
+            0.4
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crate-stack",
+      "source": "assets/src/crate-stack.glb",
+      "file": "assets/crate-stack.glb",
+      "inputHash": "00d155cf1c17711ba45cda5fc00cdaca79dca36cdcb03c853ba064d5a92a65e5",
+      "hash": "395da31c13c7b6a370181d8c095f6369d91d345434a71a076727fab55e7954fa",
+      "bytes": 74060,
+      "class": "prop",
+      "triangles": 20,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -0.6,
+            0,
+            -0.6
+          ],
+          "max": [
+            0.6,
+            1.2,
+            0.6
+          ]
+        },
+        {
+          "min": [
+            -0.5,
+            1.2,
+            -0.45
+          ],
+          "max": [
+            0.3,
+            2,
+            0.35
+          ]
+        }
+      ]
+    },
+    {
+      "id": "drum",
+      "source": "assets/src/drum.glb",
+      "file": "assets/drum.glb",
+      "inputHash": "004d8ef462cf50b8c69c52b02120045adc5b3617928075a1aaf4eadcdc60eda0",
+      "hash": "cb9252e32a454411a9f835fff0f93cd4a442b52a67b634278e620408d64aaaf4",
+      "bytes": 74396,
+      "class": "prop",
+      "triangles": 48,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -0.3,
+            0,
+            -0.3
+          ],
+          "max": [
+            0.3,
+            0.9,
+            0.3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fence-wood-2m",
+      "source": "assets/src/fence-wood-2m.glb",
+      "file": "assets/fence-wood-2m.glb",
+      "inputHash": "130bfcac8b3b04bfe92582de502c5822f7ca98cae201f46e3b2efdb49d2b17ec",
+      "hash": "8377aefdc90846237c4f064fa447a5fe43d185e0fe9336b5a7fe0fa69e431255",
+      "bytes": 74900,
+      "class": "prop",
+      "triangles": 76,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -1,
+            0,
+            -0.05
+          ],
+          "max": [
+            1,
+            1.2,
+            0.05
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ground-dirt-4m",
+      "source": "assets/src/ground-dirt-4m.glb",
+      "file": "assets/ground-dirt-4m.glb",
+      "inputHash": "5ad25f802f2ce51331f4409f7f103a5c0cb3f1731ac0c532099ac59531387d09",
+      "hash": "8ec1b2a2036afa65d4697fde61948aec6cddc8e7802d40bf44077df359b42940",
+      "bytes": 145572,
+      "class": "kit",
+      "triangles": 2,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "ground-paving-4m",
+      "source": "assets/src/ground-paving-4m.glb",
+      "file": "assets/ground-paving-4m.glb",
+      "inputHash": "ece4c3e4c5744feea09632a588506f24a231aef0fc95332bb758a4cd16713de1",
+      "hash": "ee195945ecab70626c57b0bcebdad83a78dffddec3d61ab42f0d96fe82b0caff",
+      "bytes": 145628,
+      "class": "kit",
+      "triangles": 8,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "ground-road-4m",
+      "source": "assets/src/ground-road-4m.glb",
+      "file": "assets/ground-road-4m.glb",
+      "inputHash": "a7f20cc12c1a3a1486675f059a0bb01dde6a2d333ab4672aed5bdd42e82508da",
+      "hash": "b34c33f113e1c80f5e4c72bcede99d2490a35877d7ad41978d2f061a56f48170",
+      "bytes": 145572,
+      "class": "kit",
+      "triangles": 2,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "parapet-4m",
+      "source": "assets/src/parapet-4m.glb",
+      "file": "assets/parapet-4m.glb",
+      "inputHash": "851804e6b70a66870e0fb9476da45d4e2f70311abdb8a87441d2b0ea68a74cb2",
+      "hash": "ffb527a325efb4a6a515b86353271a68ede065ef02b5317027dc76c68e0666fa",
+      "bytes": 146500,
+      "class": "kit",
+      "triangles": 60,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -2.3,
+            0,
+            -0.1
+          ],
+          "max": [
+            2.3,
+            0.55,
+            0.1
+          ]
+        },
+        {
+          "min": [
+            -2.3,
+            0.55,
+            -0.13
+          ],
+          "max": [
+            2.3,
+            0.6,
+            0.13
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pillar",
+      "source": "assets/src/pillar.glb",
+      "file": "assets/pillar.glb",
+      "inputHash": "5b8eebb3cb08b9e3fa9e1f7f2213da64c6c3c92f09b94a48f48b2dccaa37a202",
+      "hash": "36ddb4ba3c3081a0eee5aa7cc11cb5182277a030f029a1767625a64723979553",
+      "bytes": 146280,
+      "class": "kit",
+      "triangles": 38,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -0.25,
+            0,
+            -0.25
+          ],
+          "max": [
+            0.25,
+            0.3,
+            0.25
+          ]
+        },
+        {
+          "min": [
+            -0.22,
+            0.3,
+            -0.22
+          ],
+          "max": [
+            0.22,
+            2.9,
+            0.22
+          ]
+        },
+        {
+          "min": [
+            -0.25,
+            2.9,
+            -0.25
+          ],
+          "max": [
+            0.25,
+            3,
+            0.25
+          ]
+        }
+      ]
+    },
+    {
+      "id": "roof-slab-4m",
+      "source": "assets/src/roof-slab-4m.glb",
+      "file": "assets/roof-slab-4m.glb",
+      "inputHash": "ffe5e9c18db057a0aa11b11bab661fad1e8d1e9f0e471c03134f726acfab91d2",
+      "hash": "5baa8f0712c3b73cdf555a7ef97a663e811ec67bb7e49cf30f9f0976915989d4",
+      "bytes": 146996,
+      "class": "kit",
+      "triangles": 108,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -2.3,
+            0,
+            -2.3
+          ],
+          "max": [
+            2.3,
+            0.25,
+            2.3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rubble-large",
+      "source": "assets/src/rubble-large.glb",
+      "file": "assets/rubble-large.glb",
+      "inputHash": "3e575a0342cc904a5945d12cd59778a77a57b89f0a930bbf6ee3ec1309ac71c2",
+      "hash": "e6aa9481b150ca0f6f80b66d5c2f1a2a41fa874944bf16eb7b5659a46e0ff6b2",
+      "bytes": 146600,
+      "class": "kit",
+      "triangles": 62,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -1.1,
+            0,
+            -0.8
+          ],
+          "max": [
+            1.1,
+            1,
+            0.8
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rubble-small",
+      "source": "assets/src/rubble-small.glb",
+      "file": "assets/rubble-small.glb",
+      "inputHash": "7bb5a164849d681d7ee589950c048d47ea230f891734b072c79ba712787c67af",
+      "hash": "1ccf635cb14c315e35ea0606f1e93b90d7f6768c81105731496c582a95ad5d77",
+      "bytes": 146152,
+      "class": "kit",
+      "triangles": 30,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -0.5,
+            0,
+            -0.4
+          ],
+          "max": [
+            0.6,
+            0.42,
+            0.4
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sandbags-2m",
+      "source": "assets/src/sandbags-2m.glb",
+      "file": "assets/sandbags-2m.glb",
+      "inputHash": "2d65c8b3fad1b8e38bec8045fc8707cd601e2e4a6bc25ac28eb4cd24706b848b",
+      "hash": "11ef84c1c15ce12d5ca1274b92d1cc83ad8a3349f5325d883e4847edc5b39977",
+      "bytes": 74012,
+      "class": "prop",
+      "triangles": 22,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -1,
+            0,
+            -0.3
+          ],
+          "max": [
+            1,
+            0.9,
+            0.3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sandbags-corner",
+      "source": "assets/src/sandbags-corner.glb",
+      "file": "assets/sandbags-corner.glb",
+      "inputHash": "70f29e500550b161fe2f32b24374caca3e19eaf6f9c34d5b9c0ab634b8d4ed61",
+      "hash": "515b8309a97516343ad8a007fa0454e2ddab450810d75d4b0316d3a90ab1c479",
+      "bytes": 74136,
+      "class": "prop",
+      "triangles": 24,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -0.75,
+            0,
+            0.15
+          ],
+          "max": [
+            0.75,
+            0.9,
+            0.75
+          ]
+        },
+        {
+          "min": [
+            0.15,
+            0,
+            -0.75
+          ],
+          "max": [
+            0.75,
+            0.9,
+            0.15
+          ]
+        }
+      ]
+    },
+    {
       "id": "soldier",
       "source": "assets/src/soldier.glb",
       "file": "assets/soldier.glb",
@@ -24,12 +601,694 @@
       "collision": []
     },
     {
+      "id": "stairs-3m",
+      "source": "assets/src/stairs-3m.glb",
+      "file": "assets/stairs-3m.glb",
+      "inputHash": "8b6b0cc83f5664216bec29644feceba6418888fa1b49b052b7fd0787b908625f",
+      "hash": "a7211b52715ee31b0bda5e90b2f05121e24a84e049b28086dc22c03b491b849d",
+      "bytes": 150852,
+      "class": "kit",
+      "triangles": 292,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -0.55,
+            0,
+            -1.95
+          ],
+          "max": [
+            0.55,
+            0.25,
+            -1.65
+          ]
+        },
+        {
+          "min": [
+            -0.55,
+            0,
+            -1.65
+          ],
+          "max": [
+            0.55,
+            0.5,
+            -1.3499999999999999
+          ]
+        },
+        {
+          "min": [
+            -0.55,
+            0,
+            -1.35
+          ],
+          "max": [
+            0.55,
+            0.75,
+            -1.05
+          ]
+        },
+        {
+          "min": [
+            -0.55,
+            0,
+            -1.05
+          ],
+          "max": [
+            0.55,
+            1,
+            -0.75
+          ]
+        },
+        {
+          "min": [
+            -0.55,
+            0,
+            -0.75
+          ],
+          "max": [
+            0.55,
+            1.25,
+            -0.45
+          ]
+        },
+        {
+          "min": [
+            -0.55,
+            0,
+            -0.44999999999999996
+          ],
+          "max": [
+            0.55,
+            1.5,
+            -0.14999999999999997
+          ]
+        },
+        {
+          "min": [
+            -0.55,
+            0,
+            -0.15000000000000013
+          ],
+          "max": [
+            0.55,
+            1.75,
+            0.14999999999999986
+          ]
+        },
+        {
+          "min": [
+            -0.55,
+            0,
+            0.15000000000000013
+          ],
+          "max": [
+            0.55,
+            2,
+            0.4500000000000001
+          ]
+        },
+        {
+          "min": [
+            -0.55,
+            0,
+            0.44999999999999996
+          ],
+          "max": [
+            0.55,
+            2.25,
+            0.75
+          ]
+        },
+        {
+          "min": [
+            -0.55,
+            0,
+            0.7499999999999998
+          ],
+          "max": [
+            0.55,
+            2.5,
+            1.0499999999999998
+          ]
+        },
+        {
+          "min": [
+            -0.55,
+            0,
+            1.05
+          ],
+          "max": [
+            0.55,
+            2.75,
+            1.35
+          ]
+        },
+        {
+          "min": [
+            -0.55,
+            0,
+            1.3499999999999999
+          ],
+          "max": [
+            0.55,
+            3,
+            1.65
+          ]
+        },
+        {
+          "min": [
+            -0.55,
+            0,
+            1.6499999999999997
+          ],
+          "max": [
+            0.55,
+            3.25,
+            1.9499999999999997
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wall-broken-2m",
+      "source": "assets/src/wall-broken-2m.glb",
+      "file": "assets/wall-broken-2m.glb",
+      "inputHash": "4c1aa9a3426f960f5e2fa550229b0bf6dff6885d16e0ce44cdb6ce521fd1e2f5",
+      "hash": "6aac56b8cecb69da64bc86af996af90d3a9772c3fa80f0d60ca4421823b6c7d2",
+      "bytes": 146904,
+      "class": "kit",
+      "triangles": 68,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -1,
+            0,
+            -0.18
+          ],
+          "max": [
+            -0.4,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            -1,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            -0.4,
+            1.4,
+            0.15
+          ]
+        },
+        {
+          "min": [
+            -0.4,
+            0,
+            -0.18
+          ],
+          "max": [
+            0.4,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            -0.4,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            0.4,
+            0.7,
+            0.15
+          ]
+        },
+        {
+          "min": [
+            0.4,
+            0,
+            -0.18
+          ],
+          "max": [
+            1,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            0.4,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            1,
+            1.9,
+            0.15
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wall-broken-4m",
+      "source": "assets/src/wall-broken-4m.glb",
+      "file": "assets/wall-broken-4m.glb",
+      "inputHash": "602e99cd1fd0465864da51796468a0c3aa6004dc2f40c13962b29592b444a82c",
+      "hash": "6e824e091d218c51c232ade4a09c21d38c9cf25783454266d5f7f18386d0d044",
+      "bytes": 148096,
+      "class": "kit",
+      "triangles": 120,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -2,
+            0,
+            -0.18
+          ],
+          "max": [
+            -1.1,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            -2,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            -1.1,
+            2.6,
+            0.15
+          ]
+        },
+        {
+          "min": [
+            -1.1,
+            0,
+            -0.18
+          ],
+          "max": [
+            -0.40000000000000013,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            -1.1,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            -0.40000000000000013,
+            1.9,
+            0.15
+          ]
+        },
+        {
+          "min": [
+            -0.40000000000000013,
+            0,
+            -0.18
+          ],
+          "max": [
+            0.3999999999999999,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            -0.40000000000000013,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            0.3999999999999999,
+            1.2,
+            0.15
+          ]
+        },
+        {
+          "min": [
+            0.3999999999999999,
+            0,
+            -0.18
+          ],
+          "max": [
+            0.9999999999999999,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            0.3999999999999999,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            0.9999999999999999,
+            0.8,
+            0.15
+          ]
+        },
+        {
+          "min": [
+            0.9999999999999999,
+            0,
+            -0.18
+          ],
+          "max": [
+            2,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            0.9999999999999999,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            2,
+            1.6,
+            0.15
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wall-door-4m",
+      "source": "assets/src/wall-door-4m.glb",
+      "file": "assets/wall-door-4m.glb",
+      "inputHash": "4f4da7d24d02a3a8990e4d55ce12a52ebb52da13cb22dbb8317c52a853cdae90",
+      "hash": "f46f9819abf601a3ea38c885ee46cfa52234d5c354851a963c762579c8ddd230",
+      "bytes": 147936,
+      "class": "kit",
+      "triangles": 136,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -2,
+            0,
+            -0.18
+          ],
+          "max": [
+            -0.6,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            -2,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            -0.6,
+            2.9,
+            0.15
+          ]
+        },
+        {
+          "min": [
+            -2,
+            2.9,
+            -0.19
+          ],
+          "max": [
+            -0.6,
+            3,
+            0.19
+          ]
+        },
+        {
+          "min": [
+            0.6,
+            0,
+            -0.18
+          ],
+          "max": [
+            2,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            0.6,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            2,
+            2.9,
+            0.15
+          ]
+        },
+        {
+          "min": [
+            0.6,
+            2.9,
+            -0.19
+          ],
+          "max": [
+            2,
+            3,
+            0.19
+          ]
+        },
+        {
+          "min": [
+            -0.6,
+            2.2,
+            -0.15
+          ],
+          "max": [
+            0.6,
+            2.9,
+            0.15
+          ]
+        },
+        {
+          "min": [
+            -0.6,
+            2.9,
+            -0.19
+          ],
+          "max": [
+            0.6,
+            3,
+            0.19
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wall-low-2m",
+      "source": "assets/src/wall-low-2m.glb",
+      "file": "assets/wall-low-2m.glb",
+      "inputHash": "f988a5963a3a28d1c613026f1711f35c0c0fdaaa258a9480e3c7afbc307b41f5",
+      "hash": "471111e6e23e66c1d433d00380d1789793007c2c4621a782fda8ce550bdfac11",
+      "bytes": 146000,
+      "class": "kit",
+      "triangles": 26,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -1,
+            0,
+            -0.18
+          ],
+          "max": [
+            1,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            -1,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            1,
+            1.1,
+            0.15
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wall-low-4m",
+      "source": "assets/src/wall-low-4m.glb",
+      "file": "assets/wall-low-4m.glb",
+      "inputHash": "9831ec22eaa4ded22b9b1d479b9e163d7dc759018de4cb3ca99d32824cd986de",
+      "hash": "496a9778a12c84de248f59f34e1883a8ed97eeff24ec1b4918ca8fc91638ecc5",
+      "bytes": 146240,
+      "class": "kit",
+      "triangles": 44,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -2,
+            0,
+            -0.18
+          ],
+          "max": [
+            2,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            -2,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            2,
+            1.1,
+            0.15
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wall-plaster-2m",
+      "source": "assets/src/wall-plaster-2m.glb",
+      "file": "assets/wall-plaster-2m.glb",
+      "inputHash": "cf7e6ced0d5c2bead41d5019b3542677edaf3f7afabd63902b67eef7b2e75d30",
+      "hash": "bd56a58a0f10c1eb898481a66302a4ee100ac295683e78ecc2844f7e5aab65a6",
+      "bytes": 146492,
+      "class": "kit",
+      "triangles": 52,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -1,
+            0,
+            -0.18
+          ],
+          "max": [
+            1,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            -1,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            1,
+            2.9,
+            0.15
+          ]
+        },
+        {
+          "min": [
+            -1,
+            2.9,
+            -0.19
+          ],
+          "max": [
+            1,
+            3,
+            0.19
+          ]
+        }
+      ]
+    },
+    {
       "id": "wall-plaster-4m",
       "source": "assets/src/wall-plaster-4m.glb",
       "file": "assets/wall-plaster-4m.glb",
-      "inputHash": "ab6fee7e9c6f8dc81a19518544b6ae8d92e1ecb289452c0e9029223bd3955d04",
-      "hash": "51d8f5b858abee7c5c69c9a0e1b79e7ee474aeaf410680d46b58ccf8fca2db22",
-      "bytes": 40728,
+      "inputHash": "86d1c0ef33906b5dd0414dcd70dd89c20c47cdf86afec34a0c199a1d86e8ec2f",
+      "hash": "16a9cc779368641a927d0b0f91f5f22da83b12f11b0053caccaa003f4e95c26d",
+      "bytes": 146872,
       "class": "kit",
       "triangles": 88,
       "bones": 0,
@@ -75,6 +1334,160 @@
           ],
           "max": [
             2,
+            3,
+            0.19
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wall-window-4m",
+      "source": "assets/src/wall-window-4m.glb",
+      "file": "assets/wall-window-4m.glb",
+      "inputHash": "9934cc9a0bb49a74dd5ebe9b0b1f452094ac449f7be859caa9c75405520cbebb",
+      "hash": "5b463b7d108c71ea72d8048420c5309741cc5928a7bdb59846b7b83b9a1d0594",
+      "bytes": 148764,
+      "class": "kit",
+      "triangles": 180,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -2,
+            0,
+            -0.18
+          ],
+          "max": [
+            -0.6,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            -2,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            -0.6,
+            2.9,
+            0.15
+          ]
+        },
+        {
+          "min": [
+            -2,
+            2.9,
+            -0.19
+          ],
+          "max": [
+            -0.6,
+            3,
+            0.19
+          ]
+        },
+        {
+          "min": [
+            0.6,
+            0,
+            -0.18
+          ],
+          "max": [
+            2,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            0.6,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            2,
+            2.9,
+            0.15
+          ]
+        },
+        {
+          "min": [
+            0.6,
+            2.9,
+            -0.19
+          ],
+          "max": [
+            2,
+            3,
+            0.19
+          ]
+        },
+        {
+          "min": [
+            -0.6,
+            0,
+            -0.18
+          ],
+          "max": [
+            0.6,
+            0.3,
+            0.18
+          ]
+        },
+        {
+          "min": [
+            -0.6,
+            0.3,
+            -0.15
+          ],
+          "max": [
+            0.6,
+            0.95,
+            0.15
+          ]
+        },
+        {
+          "min": [
+            -0.6,
+            0.95,
+            -0.2
+          ],
+          "max": [
+            0.6,
+            1,
+            0.2
+          ]
+        },
+        {
+          "min": [
+            -0.6,
+            2.1,
+            -0.15
+          ],
+          "max": [
+            0.6,
+            2.9,
+            0.15
+          ]
+        },
+        {
+          "min": [
+            -0.6,
+            2.9,
+            -0.19
+          ],
+          "max": [
+            0.6,
             3,
             0.19
           ]
