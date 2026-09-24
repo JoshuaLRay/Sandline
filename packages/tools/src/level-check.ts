@@ -21,7 +21,7 @@ import {
   type World,
   type WorldMission,
 } from '@sandline/shared';
-import { initNav, type NavMesh, type NavPath, type NavPoint, type NavPolygon } from '../../server/src/ai/nav/NavMesh.ts';
+import { initNav, type NavMesh, type NavPath, type NavPoint } from '../../server/src/ai/nav/NavMesh.ts';
 import { bakedNavFor, loadWorldNavMesh } from '../../server/src/ai/nav/bakedNav.ts';
 
 const LEVELS_DIR = fileURLToPath(new URL('../../shared/src/data/levels/', import.meta.url));
