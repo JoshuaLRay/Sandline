@@ -26,7 +26,7 @@ export interface ClassBudget {
 
 export interface AssetBudgets {
   classes: Readonly<Record<string, ClassBudget>>;
-  /** Every web copy in the manifest together, until streaming (T-4.06) says what is loaded first. */
+  /** T-4.06's initial asset pack ceiling; `pnpm check:packs` owns this aggregate. */
   initialDownloadBytes: number;
 }
 
@@ -76,9 +76,7 @@ const powerOfTwo = (n: number): boolean => n > 0 && (n & (n - 1)) === 0;
 /** Every way the manifest is over budget, one line each, naming the asset and the number. Empty when it passes. */
 export function checkBudgets(manifest: AssetManifest, budgets: AssetBudgets = ASSET_BUDGETS): string[] {
   const out: string[] = [];
-  let total = 0;
   for (const a of manifest.assets) {
-    total += a.bytes;
     const b = budgets.classes[a.class];
     if (!b) {
       out.push(`asset '${a.id}': class '${a.class}' has no budget (classes: ${Object.keys(budgets.classes).join(', ')})`);
@@ -97,6 +95,5 @@ export function checkBudgets(manifest: AssetManifest, budgets: AssetBudgets = AS
       if (!powerOfTwo(t.width) || !powerOfTwo(t.height)) out.push(`asset '${a.id}' (${a.class}): texture ${i} is ${t.width}×${t.height}, not a power of two`);
     });
   }
-  if (total > budgets.initialDownloadBytes) out.push(`initial download: ${total} bytes, over the budget of ${budgets.initialDownloadBytes}`);
   return out;
 }
