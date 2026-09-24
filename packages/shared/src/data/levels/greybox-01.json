@@ -1,0 +1,363 @@
+{
+  "id": "greybox-01",
+  "format": 1,
+  "$comment": "T-4.09: greybox-01 as a level of free boxes (level format v1, `sim/level.ts`), moved from data/worlds/ unchanged in every box and number: it expands to the same World, so its committed navmesh and cover bake still match. `pieces` places kit pieces from the asset manifest at a quarter turn; `encounter` names its encounter file. From T-3.31: T-3.31. The grey-box mission map: a fixture for M3's exit gate, not E-4.3's level format. Boxes as in range.json (x/z the centre, y the BOTTOM, w/h/d full sizes, metres). +z is up-range, as on the range, and the squad starts on the same spawn line (z = -6, x -3.75..3.75, `SPAWN_POINTS`), so `mission.start` is drawn round it. A 4 m spine (x -3..3, z 8..58) splits the ground into two lanes, walled on the outside at x = ±32: the WEST lane is the overwatch route — open, long sight lines up its length, a few low walls to go prone or crouch behind; the EAST lane is the assault route — four 17 m high walls from alternate sides (z 13, 25, 38, 50) that zigzag it, so no line runs far up it, with crates and low walls between: close cover all the way. Two low walls by the start cover both routes' first legs. Both come out behind the spine at z 58 and go round the objective compound (x -8..8, z 64..76, 2.4 m walls) to its two side doors (x = ±8, z 69..71.5): west door for overwatch, east for assault. `mission.routes[].via` are the points a route is walked through, in order, from the start's centre to the objective's; `minDistinctShare` is how much of each route's length (sampled every `sampleM` along its navmesh path) must lie on polygons the other route never touches; `coverWithinM` is how near a baked cover point counts as cover at a sample, and `maxUncoveredM` the longest stretch of a route with none; `sightM` is a clear eye-height sight line the overwatch route must have along itself, which the assault route must not. `spawnZones` are where enemies may appear (T-3.32): behind the objective and on each route, `on` naming which.",
+  "floor": {
+    "halfExtent": 100
+  },
+  "boxes": [
+    {
+      "id": "spine",
+      "x": 0,
+      "y": 0,
+      "z": 33,
+      "w": 6,
+      "h": 4,
+      "d": 50
+    },
+    {
+      "id": "west-bound",
+      "x": -32,
+      "y": 0,
+      "z": 33,
+      "w": 0.5,
+      "h": 4,
+      "d": 50
+    },
+    {
+      "id": "east-bound",
+      "x": 32,
+      "y": 0,
+      "z": 33,
+      "w": 0.5,
+      "h": 4,
+      "d": 50
+    },
+    {
+      "id": "start-low-w",
+      "x": -7,
+      "y": 0,
+      "z": -4.5,
+      "w": 3,
+      "h": 1.0,
+      "d": 0.3
+    },
+    {
+      "id": "start-low-e",
+      "x": 7,
+      "y": 0,
+      "z": -4.5,
+      "w": 3,
+      "h": 1.0,
+      "d": 0.3
+    },
+    {
+      "id": "ow-low-1",
+      "x": -18,
+      "y": 0,
+      "z": 19,
+      "w": 4,
+      "h": 1.0,
+      "d": 0.3
+    },
+    {
+      "id": "ow-low-2",
+      "x": -25,
+      "y": 0,
+      "z": 33,
+      "w": 4,
+      "h": 1.0,
+      "d": 0.3
+    },
+    {
+      "id": "ow-low-3",
+      "x": -14,
+      "y": 0,
+      "z": 46,
+      "w": 4,
+      "h": 1.0,
+      "d": 0.3
+    },
+    {
+      "id": "as-wall-1",
+      "x": 11.5,
+      "y": 0,
+      "z": 13,
+      "w": 17,
+      "h": 2.4,
+      "d": 0.4
+    },
+    {
+      "id": "as-wall-2",
+      "x": 23.5,
+      "y": 0,
+      "z": 25,
+      "w": 17,
+      "h": 2.4,
+      "d": 0.4
+    },
+    {
+      "id": "as-wall-3",
+      "x": 11.5,
+      "y": 0,
+      "z": 38,
+      "w": 17,
+      "h": 2.4,
+      "d": 0.4
+    },
+    {
+      "id": "as-wall-4",
+      "x": 23.5,
+      "y": 0,
+      "z": 50,
+      "w": 17,
+      "h": 2.4,
+      "d": 0.4
+    },
+    {
+      "id": "as-crate-1",
+      "x": 15,
+      "y": 0,
+      "z": 0,
+      "w": 1.2,
+      "h": 1.2,
+      "d": 1.2
+    },
+    {
+      "id": "as-crate-6",
+      "x": 21,
+      "y": 0,
+      "z": 4,
+      "w": 1.2,
+      "h": 1.2,
+      "d": 1.2
+    },
+    {
+      "id": "as-crate-7",
+      "x": 27.5,
+      "y": 0,
+      "z": 11,
+      "w": 1.2,
+      "h": 1.2,
+      "d": 1.2
+    },
+    {
+      "id": "as-crate-2",
+      "x": 17,
+      "y": 0,
+      "z": 19,
+      "w": 1.2,
+      "h": 1.2,
+      "d": 1.2
+    },
+    {
+      "id": "as-crate-3",
+      "x": 18.4,
+      "y": 0,
+      "z": 19,
+      "w": 1.2,
+      "h": 1.2,
+      "d": 1.2
+    },
+    {
+      "id": "as-low-1",
+      "x": 17,
+      "y": 0,
+      "z": 31.5,
+      "w": 4,
+      "h": 1.0,
+      "d": 0.3
+    },
+    {
+      "id": "as-crate-4",
+      "x": 17,
+      "y": 0,
+      "z": 44,
+      "w": 1.2,
+      "h": 1.2,
+      "d": 1.2
+    },
+    {
+      "id": "as-crate-5",
+      "x": 18.4,
+      "y": 0,
+      "z": 44,
+      "w": 1.2,
+      "h": 1.2,
+      "d": 1.2
+    },
+    {
+      "id": "as-low-2",
+      "x": 12,
+      "y": 0,
+      "z": 55,
+      "w": 4,
+      "h": 1.0,
+      "d": 0.3
+    },
+    {
+      "id": "compound-south",
+      "x": 0,
+      "y": 0,
+      "z": 64,
+      "w": 16.4,
+      "h": 2.4,
+      "d": 0.4
+    },
+    {
+      "id": "compound-north",
+      "x": 0,
+      "y": 0,
+      "z": 76,
+      "w": 16.4,
+      "h": 2.4,
+      "d": 0.4
+    },
+    {
+      "id": "compound-west-s",
+      "x": -8,
+      "y": 0,
+      "z": 66.5,
+      "w": 0.4,
+      "h": 2.4,
+      "d": 5
+    },
+    {
+      "id": "compound-west-n",
+      "x": -8,
+      "y": 0,
+      "z": 73.75,
+      "w": 0.4,
+      "h": 2.4,
+      "d": 4.5
+    },
+    {
+      "id": "compound-east-s",
+      "x": 8,
+      "y": 0,
+      "z": 66.5,
+      "w": 0.4,
+      "h": 2.4,
+      "d": 5
+    },
+    {
+      "id": "compound-east-n",
+      "x": 8,
+      "y": 0,
+      "z": 73.75,
+      "w": 0.4,
+      "h": 2.4,
+      "d": 4.5
+    },
+    {
+      "id": "objective-crate",
+      "x": 0,
+      "y": 0,
+      "z": 73,
+      "w": 1.2,
+      "h": 1.2,
+      "d": 1.2
+    }
+  ],
+  "pieces": [],
+  "mission": {
+    "start": {
+      "x": 0,
+      "z": -6,
+      "radius": 6
+    },
+    "objective": {
+      "x": 0,
+      "z": 70,
+      "radius": 4
+    },
+    "routes": [
+      {
+        "id": "overwatch",
+        "role": "overwatch",
+        "via": [
+          {
+            "x": -18,
+            "z": 6
+          },
+          {
+            "x": -20,
+            "z": 30
+          },
+          {
+            "x": -18,
+            "z": 56
+          },
+          {
+            "x": -11,
+            "z": 70
+          }
+        ]
+      },
+      {
+        "id": "assault",
+        "role": "assault",
+        "via": [
+          {
+            "x": 24,
+            "z": 9
+          },
+          {
+            "x": 26,
+            "z": 17
+          },
+          {
+            "x": 9,
+            "z": 25
+          },
+          {
+            "x": 26,
+            "z": 38
+          },
+          {
+            "x": 9,
+            "z": 50
+          },
+          {
+            "x": 11,
+            "z": 70
+          }
+        ]
+      }
+    ],
+    "spawnZones": [
+      {
+        "id": "behind-objective",
+        "on": "objective",
+        "x": 0,
+        "z": 86,
+        "radius": 4
+      },
+      {
+        "id": "overwatch-flank",
+        "on": "overwatch",
+        "x": -26,
+        "z": 42,
+        "radius": 3
+      },
+      {
+        "id": "assault-flank",
+        "on": "assault",
+        "x": 28,
+        "z": 34,
+        "radius": 2.5
+      }
+    ],
+    "checks": {
+      "sampleM": 0.5,
+      "minDistinctShare": 0.7,
+      "coverWithinM": 5,
+      "maxUncoveredM": {
+        "overwatch": 24,
+        "assault": 8
+      },
+      "sightM": 40
+    }
+  },
+  "encounter": "greybox-01"
+}

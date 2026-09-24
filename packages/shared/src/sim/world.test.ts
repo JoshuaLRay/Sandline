@@ -26,7 +26,7 @@ import {
 } from './world.ts';
 import { POSITION, dequantize, quantize } from '../net/quantize.ts';
 import { Sfc32, seedFrom } from '../math/prng.ts';
-import GREYBOX_01 from '../data/worlds/greybox-01.json' with { type: 'json' };
+import GREYBOX_01 from '../data/levels/greybox-01.json' with { type: 'json' };
 
 const box = (id: string, x: number, y: number, z: number, w: number, h: number, d: number): WorldBox =>
   boxFrom({ id, x, y, z, w, h, d }, 'cover');

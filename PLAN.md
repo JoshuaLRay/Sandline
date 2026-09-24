@@ -2420,6 +2420,41 @@ free to go whenever.
   - a piece rotated by 90° has its boxes rotated with it;
   - a rotation not a multiple of 90° is refused.
 - **Size:** M
+- **Completed 2026-09-24.** `shared/src/sim/level.ts` has `expandLevel`,
+  `pieceBoxes` and `turn`; `loadLevel` lives in `world.ts` beside
+  `loadWorld`, because the world registry loads levels and `level.ts`
+  imports only types from `world.ts`, so there is no import cycle.
+  - **The format** (`data/levels/<id>.json`): `id`, `format: 1`, `floor`,
+    `boxes` (free boxes, the world file's `cover`), `pieces` (`id`,
+    `piece` = a manifest asset of class kit or prop, `x`/`y`/`z`, `rot`),
+    `mission`, and `encounter`. Unknown keys are refused by name.
+  - **Expansion:** a level expands into the world file it stands for. Each
+    piece's manifest collision boxes are turned and placed as cover boxes
+    `<instance>/<n>`, tagged with `WorldBox.piece`, after the free boxes.
+    `World` gains `pieces` (for the renderer) and `encounter`, which is
+    empty for a world file.
+  - **Turns:** swaps and signs only, so they are exact, with +Z to +X at 90°
+    (the wire yaw, which equals three's `rotation.y`). Any other turn is
+    refused.
+  - **greybox-01 moved** from `data/worlds/` to `data/levels/` unchanged in
+    every number. It is now the first level, loaded by `loadLevel`, and
+    range stays a world file.
+  - **Tests:**
+    - greybox-01 as a level equals the world built from the same data; its
+      committed navmesh and cover bake still match the hash, and T-3.31's,
+      T-3.34's and T-3.35's tests pass on it unchanged;
+    - a wall at 0/90/180/270° has its boxes turned with it;
+    - an off-centre box turns round the piece's origin;
+    - free boxes come first;
+    - 45°, 30°, 91°, −90°, 360° and '90' are refused, as are unknown
+      assets, a character placed as a piece, a duplicate id, an unknown key,
+      format 2 and a box id clash;
+    - each level's encounter exists;
+    - a level whose only solid is a turned wall bakes a mesh with a hole
+      where it stands and cover along it, and a turn changes the bake hash.
+  - **Not yet:** the page draws a piece's collision boxes as grey boxes;
+    drawing the piece's mesh in their place is mission-01's (T-4.13), the
+    first level with pieces.
 
 ##### T-4.10 — The slice kit (~25 pieces)
 - **Depends:** T-4.04, T-4.09
