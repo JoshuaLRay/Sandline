@@ -75,7 +75,7 @@ T-3.36, T-3.37) wait on their run sheets and people.
 **M4 is broken out** (PLAN.md §7.11), behind everything above in scan
 order. The asset pipeline is done (T-4.02, `pnpm gen:assets`) with its budgets
 in CI (T-4.03, `pnpm check:assets`) and the loader (T-4.05, `?assets` for
-eyes), so streaming (T-4.06) is open and LOD/instancing (T-4.07) is done, beside
+eyes); streaming/load-screen gating (T-4.06, `pnpm check:packs`) and LOD/instancing (T-4.07) are done, beside
 the level format (T-4.09), the mission's objective types (T-4.14, done: so
 triggers T-4.15, checkpoints T-4.16 and the room before the mission T-4.19
 are open; every-mission CI T-4.17 is done), HUD (T-4.25), classes (T-4.27), mounted MG (T-4.29), regions ADR
@@ -86,8 +86,9 @@ are done (T-4.04, `pnpm gen:art`, the wall on `?assets`), and the characters
 from assets (T-4.08) are open, and with the level format done (T-4.09,
 `data/levels/`, greybox-01 the first level) the kit (T-4.10) and level
 validation (T-4.11) are open. The slice kit is done (T-4.10: 25 code-authored
-pieces, `data/kit.json`, `?kit` for the walkable gallery), so baked lighting
-(⚠️ T-4.12) is open too. **The setting is Afghanistan, winter 2001–2002**
+pieces, `data/kit.json`, `?kit` for the walkable gallery), and the baked-lighting
+spike is done (T-4.12): the fallback keeps the sun + hemisphere and adds
+per-piece baked vertex AO without breaking instancing. **The setting is Afghanistan, winter 2001–2002**
 (ADR-020; the brief is `docs/art/direction.md`). The squad now wears the
 detailed desert-camouflage soldier (T-4.08) and carries period weapons
 (T-4.36; enemies hold the AK, PKM and RPG-7), and every enemy is the
@@ -388,7 +389,7 @@ the owner may still overrule before T-4.23.
 | Task | Status | Depends |
 |---|---|---|
 | T-4.05 | DONE | T-4.02 |
-| T-4.06 | OPEN | T-4.05 |
+| T-4.06 | DONE | T-4.05 |
 | T-4.07 | DONE | T-4.05 |
 | T-4.08 | DONE — re-scoped by the owner: the detailed soldier (ADR-020) | T-4.01, T-4.05 |
 | T-4.35 | DONE — the enemy fighter; the owner judges it on the deployed site | T-4.08 |
@@ -401,7 +402,7 @@ the owner may still overrule before T-4.23.
 | T-4.09 | DONE | — |
 | T-4.10 | DONE | T-4.04, T-4.09 |
 | T-4.11 | DONE | T-4.09 |
-| ⚠️ T-4.12 | OPEN | T-4.09, T-4.10 |
+| ⚠️ T-4.12 | DONE | T-4.09, T-4.10 |
 | T-4.13 | DONE | T-4.10, T-4.11, T-4.14 |
 
 ### E-4.4 — Mission scripting

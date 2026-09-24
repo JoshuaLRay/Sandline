@@ -1,0 +1,49 @@
+{
+  "$comment": "T-4.06 asset streaming. The app/menu code ships in the page bundle; this file groups manifest assets fetched around it. Initial is the soldier and every weapon. Each world has a level pack loaded before its first playable frame. Assets may appear in more than one pack; the client pack loader retains loaded packs so the underlying AssetLoader fetches each manifest id only once.",
+  "initial": [
+    "soldier-dcu",
+    "weapon-ak",
+    "weapon-at4",
+    "weapon-dmr",
+    "weapon-m249",
+    "weapon-m4",
+    "weapon-m67",
+    "weapon-pistol",
+    "weapon-pkm",
+    "weapon-rpg7",
+    "weapon-shotgun"
+  ],
+  "levels": {
+    "range": ["fighter"],
+    "greybox-01": ["fighter"],
+    "mission-01": ["fighter", "ground-dirt-4m", "ground-paving-4m", "ground-road-4m"],
+    "kit-gallery": [
+      "fighter",
+      "concrete-barrier-2m",
+      "crate-large",
+      "crate-small",
+      "crate-stack",
+      "drum",
+      "fence-wood-2m",
+      "ground-dirt-4m",
+      "ground-paving-4m",
+      "ground-road-4m",
+      "parapet-4m",
+      "pillar",
+      "roof-slab-4m",
+      "rubble-large",
+      "rubble-small",
+      "sandbags-2m",
+      "sandbags-corner",
+      "stairs-3m",
+      "wall-broken-2m",
+      "wall-broken-4m",
+      "wall-door-4m",
+      "wall-low-2m",
+      "wall-low-4m",
+      "wall-plaster-2m",
+      "wall-plaster-4m",
+      "wall-window-4m"
+    ]
+  }
+}

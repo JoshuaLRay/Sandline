@@ -2388,6 +2388,16 @@ free to go whenever.
   A CI check measures the initial pack's bytes, and a Playwright run on a throttled link times the first frame of play.
 - **Done when:** both numbers are logged every run and asserted, and a level pack fetched twice is not downloaded twice.
 - **Size:** M
+- **Completed 2026-09-24.** `data/assets/packs.json` splits the initial
+  soldier/weapons from one retained pack per level. `PackLoader` fetches
+  through T-4.05's hash-checking loader, reports byte/asset progress to the
+  blocking load screen, and keeps each completed pack referenced so returning
+  to a level performs no second download. Local/hosted sessions preload their
+  chosen level; joins whose map is only known from `JoinAck` remain behind
+  the load screen until that pack is ready. `pnpm check:packs` logs/asserts
+  the initial pack under 80 MB and level coverage. A Chromium CI probe serves
+  the production build, throttles it to 4 Mbit/s down with 100 ms latency,
+  and logs/asserts the first rendered playable frame under 30 s.
 
 ##### T-4.07 — LOD, instancing and the draw-call budget
 - **Depends:** T-4.05
@@ -2735,6 +2745,7 @@ free to go whenever.
 - **Do:** A spike first: can a lightmap bake be done headless, with three's progressive lightmapper in headless Chromium or a small CPU path tracer? It bakes the sun and sky for one level into atlases with a second UV set, KTX2-compressed and within the texture budget. At runtime the lightmaps go on static geometry, with the one cascaded sun shadow for dynamic objects (ADR-013). Failure is a written-up outcome: the fallback is hemisphere light plus the sun and baked ambient occlusion per piece.
 - **Done when:** one level renders with its lightmap under budget and the draw-call probe (T-4.07) still passes, or the spike's write-up records the fallback taken.
 - **Size:** L
+- **Completed 2026-09-24 (fallback).** The spike found that the generated kit deliberately tiles a shared UV0 atlas and T-4.07 batches repeated placements by asset id. The current source meshes have no second UV set, so a conventional level lightmap would need unique UV2 ownership per placement and would undo or substantially complicate the proven instancing path. The accepted fallback is ADR-013's existing hemisphere + one shadow-mapped sun plus deterministic per-piece vertex ambient occlusion: it is baked once from each loaded static mesh, stored as vertex colour and shared by every instance, so it adds no texture download and no draw calls. `pnpm bake:light` records the UV2/placement evidence, `lightmaps.test.ts` pins the AO bake, and T-4.07's Chromium draw-call probe remains the CI guard. See `docs/spikes/t-4.12-baked-lighting.md`.
 
 ##### T-4.13 — The first kit level: mission-01
 - **Depends:** T-4.10, T-4.11, T-4.14
