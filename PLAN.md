@@ -2843,6 +2843,16 @@ free to go whenever.
   - A full restart, as today.
 - **Done when:** each is session-tested, including a retry after a checkpoint leaving the earlier objectives complete.
 - **Size:** S
+- **Completed 2026-09-24.** Missions may add a wall-clock-independent
+  `failure` rule for a time limit and/or one protected encounter entity;
+  the existing squad-wipe rule remains universal. Completing an objective
+  records a checkpoint: the squad's positions, elapsed mission time and
+  encounter groups already cleared. A failed `MissionRestart` restores that
+  squad at the checkpoint, resumes the current objective, and rebuilds the
+  encounter without resurrecting cleared groups. A completed mission still
+  takes the existing full-restart path back to objective zero and the original
+  spawn line. Session tests cover the time limit, protected loss, checkpoint
+  retry with earlier work preserved, and the distinct full restart.
 
 ##### T-4.17 — Every mission, headless
 - **Depends:** T-4.14, T-3.35
