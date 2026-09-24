@@ -10,6 +10,7 @@
  * exists to avoid.
  */
 import { WIRE_ANGLE_UNITS, type MoveInput, type OrderAddress } from '@sandline/shared';
+import { MouseGuard } from './mouseGuard.ts';
 import { beginAds, createViewState, endAds, pressShoulderKey, shoulderSide } from './viewState.ts';
 import { composePitch } from '../weapons/recoil.ts';
 import { armKeyboardLock, requestFullscreenForKeyboardLock } from './keyboardLock.ts';
@@ -157,6 +158,8 @@ export class LocalInput {
   private offsetPitch = 0;
   private sensitivity: number;
   private lookScale = 1;
+  /** Drops the browser's bogus pointer-lock jumps (QA: the view spun early in a session). */
+  readonly mouseGuard = new MouseGuard();
   private invertY: boolean;
   /** Explicit camera/shoulder/ADS state. ADS changes camera mode but never the stored shoulder. */
   private readonly viewState = createViewState();
@@ -241,8 +244,13 @@ export class LocalInput {
       this.buttons.delete(e.button);
       if (e.button === 2) endAds(this.viewState);
     });
+    // Taking the lock, going fullscreen and a resize are when browsers report
+    // a bogus jump of the hidden cursor; the guard drops it (mouseGuard.ts).
+    document.addEventListener('fullscreenchange', () => this.mouseGuard.settle());
+    addEventListener('resize', () => this.mouseGuard.settle());
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === canvas;
+      this.mouseGuard.settle();
       if (!this.locked) {
         this.held.clear();
         this.buttons.clear();
@@ -253,6 +261,7 @@ export class LocalInput {
     });
     addEventListener('mousemove', (e) => {
       if (!this.locked) return;
+      if (!this.mouseGuard.accept(e.movementX, e.movementY)) return;
       if (this.wheel) {
         this.wheel.pointer = moveWheelPointer(this.wheel.pointer, e.movementX, e.movementY);
         return;

@@ -210,6 +210,16 @@ describe('LocalInput', () => {
       return input;
     }
 
+    it("ignores the browser's bogus jump as the lock is taken, and turns for the moves after it", () => {
+      const input = captured();
+      const yaw = input.yaw;
+      win.dispatch('mousemove', { movementX: 700, movementY: -300 });
+      expect(input.yaw).toBe(yaw);
+      expect(input.mouseGuard.dropped).toBe(1);
+      win.dispatch('mousemove', { movementX: 60, movementY: 0 });
+      expect(input.yaw).not.toBe(yaw);
+    });
+
     it('a quick flick — Q down, the mouse right, Q up — between two ticks is latched, with its direction', () => {
       const input = captured();
       const yaw = input.yaw;
