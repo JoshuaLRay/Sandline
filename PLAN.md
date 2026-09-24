@@ -2299,6 +2299,35 @@ free to go whenever.
   - the renderer's memory counters return to where they started after a load and unload;
   - the fallback is tested.
 - **Size:** M
+- **Completed 2026-09-24.** `client/src/assets/loader.ts` (`AssetLoader`,
+  `gltfParser`) uses three's GLTFLoader with the meshopt decoder and
+  KTX2Loader. Draco is not wired, because the pipeline never emits it. The
+  Basis transcoder is three's own, found by `import.meta.url` and bundled by
+  Vite. Each id is fetched, its SHA-256 checked against the manifest, parsed
+  once into a template and pre-warmed with `compileAsync`. Every load gets a
+  SkeletonUtils clone that shares the template's geometry, materials and
+  textures, with a skeleton of its own. The last `release()` disposes
+  everything the template holds. An unknown id, a failed fetch, a hash
+  mismatch or a parse error gives the asset's grey box, shaped by its
+  collision boxes (or a metre cube), with a warning.
+
+  Two sets of tests:
+  - Headless (`loader.test.ts`): parse once and share, per-clone skeletons,
+    disposal only at the last release, a pre-warm once per template, and all
+    four fallbacks. One fallback is the real GLTFLoader given KTX2 and no
+    decoder.
+  - Real WebGL2 (`loader.browser.test.ts`, headless Chromium in CI's browser
+    job, project `assets-browsers`): in place of the fake context the task
+    asked for, the committed soldier loads with its 17 bones and a
+    compressed texture and is drawn. Memory goes from
+    {geometries 0, textures 1} to {1, 4}; one release frees only that use's
+    bone texture; the last brings it back to {0, 1}. The 1 is three's DFG
+    lookup table, which the renderer keeps for its lifetime, so the baseline
+    is taken after a warm-up.
+
+  `?assets` stands every manifest asset in a row behind the spawn line, so
+  it can be seen on the deployed site. A production build was checked:
+  `?assets: soldier`, not a grey box, no failed requests.
 
 ##### T-4.06 — Streaming and the load screen
 - **Depends:** T-4.05

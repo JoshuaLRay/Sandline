@@ -28,6 +28,7 @@
  * and stop shots, on the client and the server alike, from one shared list.
  * Flat ground and boxes only — no slopes or stairs beyond a 0.45 m step.
  */
+import { showAssetShelf } from './assets/shelf.ts';
 import * as THREE from 'three';
 import {
   Clock,
@@ -248,6 +249,8 @@ function buildScenery(world: World): void {
   }
 }
 buildScenery(activeWorld);
+// T-4.05: `?assets` stands every asset the pipeline made in a row behind the spawn line.
+if (new URLSearchParams(location.search).has('assets')) void showAssetShelf(scene, renderer);
 
 /** Switch to the world a session named, redrawing only when it changed. */
 function useWorld(world: World): void {

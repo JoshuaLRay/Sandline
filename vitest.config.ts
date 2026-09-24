@@ -26,6 +26,8 @@ export default defineConfig({
           root: './packages/client',
           environment: 'node',
           include: ['src/**/*.test.ts'],
+          // Real-GPU tests run in a browser (vitest.browser.config.ts, `assets-browsers`).
+          exclude: ['src/**/*.browser.test.ts'],
         },
       },
       {
