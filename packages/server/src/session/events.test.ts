@@ -10,6 +10,7 @@ import {
   TICK_SECONDS,
   createLoopbackPair,
   decodeMessage,
+  encounterFor,
   encodeMessage,
   missionFor,
   parseEncounter,
@@ -17,6 +18,8 @@ import {
   requireWorld,
   spawnFor,
 } from '@sandline/shared';
+import { initNav } from '../ai/nav/NavMesh.ts';
+import { loadWorldNavMesh } from '../ai/nav/bakedNav.ts';
 import { EventRun, type EventHost } from './events.ts';
 import { Session } from './Session.ts';
 
@@ -180,5 +183,39 @@ describe('blockers in a real Session (T-4.15)', () => {
     client.hold(1);
     client.run(60);
     expect(session.slots[0]!.state.z).toBeCloseTo(-3.2 - 0.35, 2);
+  });
+});
+
+
+describe('blocker navigation on the real two-route mission (T-4.15)', () => {
+  it('flags the chosen lane closed and Detour routes round it on the other lane', async () => {
+    await initNav();
+    const nav = loadWorldNavMesh('mission-01');
+    const from = { x: 0, y: 0, z: 0 };
+    const to = { x: 0, y: 0, z: 70 };
+    const direct = nav.path(from, to);
+    expect(direct).not.toBeNull();
+    const chosen = direct!.points.find((p) => Math.abs(p.x) > 4 && p.z > 5 && p.z < 62);
+    expect(chosen).toBeDefined();
+
+    // The static spine divides mission-01 into west/east assault routes from
+    // z=8..58. Close the route Detour chose across z=30..36; the other route
+    // remains connected before and after the spine.
+    const west = chosen!.x < 0;
+    const gate = west
+      ? { minX: -31, minZ: 30, maxX: -4, maxZ: 36 }
+      : { minX: 4, minZ: 30, maxX: 31, maxZ: 36 };
+    nav.setBlocker('route-gate', [gate], true);
+
+    const around = nav.path(from, to);
+    expect(around).not.toBeNull();
+    expect(around!.points.at(-1)!.z).toBeGreaterThan(68);
+    expect(around!.points.some((p) => (west ? p.x > 4 : p.x < -4))).toBe(true);
+
+    nav.setBlocker('route-gate', [gate], false);
+    const reopened = nav.path(from, to);
+    expect(reopened).not.toBeNull();
+    expect(reopened!.points.at(-1)!.z).toBeGreaterThan(68);
+    nav.destroy();
   });
 });

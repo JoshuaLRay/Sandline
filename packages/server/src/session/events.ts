@@ -40,7 +40,7 @@ function encounterEvent(group: Encounter['groups'][number]): EventDef {
         : t.kind === 'enter'
           ? { kind: 'enter', area: t.area }
           : { kind: 'group-dead', group: t.group };
-  return { id: `encounter-${group.id}`, trigger, actions: [{ kind: 'spawn-group', group: group.id }] };
+  return { id: `@encounter:${group.id}`, trigger, actions: [{ kind: 'spawn-group', group: group.id }] };
 }
 
 export class EventRun {

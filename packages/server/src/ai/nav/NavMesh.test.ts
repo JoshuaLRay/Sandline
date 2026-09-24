@@ -137,27 +137,6 @@ describe(`NavMesh (${runtime()})`, () => {
     mesh.destroy();
   });
 
-  it('routes around an active blocker and restores the direct route when it opens (T-4.15)', async () => {
-    await initNav();
-    const mesh = NavMesh.load(spikeBytes());
-    const from = { x: -10, y: 0, z: -10 };
-    const to = { x: -10, y: 0, z: 10 };
-    const direct = mesh.path(from, to);
-    expect(direct).not.toBeNull();
-    const directLength = pathLength(direct!.points);
-
-    mesh.setBlocker('gate', [{ minX: -15, minZ: -1.5, maxX: -5, maxZ: 1.5 }], true);
-    const around = mesh.path(from, to);
-    expect(around).not.toBeNull();
-    expect(pathLength(around!.points)).toBeGreaterThan(directLength + 1);
-
-    mesh.setBlocker('gate', [{ minX: -15, minZ: -1.5, maxX: -5, maxZ: 1.5 }], false);
-    const reopened = mesh.path(from, to);
-    expect(reopened).not.toBeNull();
-    expect(pathLength(reopened!.points)).toBeCloseTo(directLength, 2);
-    mesh.destroy();
-  });
-
   it('returns no path to a point with no mesh under it', async () => {
     await initNav();
     const mesh = NavMesh.load(spikeBytes());

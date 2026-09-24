@@ -2266,7 +2266,6 @@ export class Session {
     const aiFrom = this.profileAi ? performance.now() : 0;
     if (this.spawnerValue) {
       const seconds = (this.currentTick - this.missionStartTick) * TICK_SECONDS;
-      this.eventRun?.step(seconds);
       const at = now / 1000;
       const living = this.enemyList.filter((e) => !isDead(e.health));
       this.directorValue!.sample({
@@ -2276,6 +2275,7 @@ export class Session {
         contact: living.filter((e) => e.target !== null).length,
         suppression: this.slots.reduce((a, s) => a + suppressionLevel(s.suppression, at), 0) / this.slots.length,
       });
+      this.eventRun?.step(seconds);
       this.spawnerValue.step(seconds);
     }
 
