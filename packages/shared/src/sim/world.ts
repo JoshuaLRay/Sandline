@@ -20,7 +20,8 @@
  * cannot express — slopes, stairs beyond a step, round columns — is not in
  * this world and is not what a firefight in a grey box needs first.
  *
- * DATA, NOT CODE. Cover comes from `data/worlds/<id>.json` (standing rule 4),
+ * DATA, NOT CODE. Cover comes from `data/worlds/<id>.json` or a level,
+ * `data/levels/<id>.json` (T-4.09, `level.ts`) (standing rule 4),
  * and the generated pieces — the distance-post grid, the sprint-lane rails,
  * the reference figure — are built here from the same numbers the client used
  * to hard-code, for the worlds whose file asks for them. Positions are what
@@ -33,8 +34,9 @@
  * below rather than read from disk, because this module runs in the page too.
  */
 import RANGE_WORLD from '../data/worlds/range.json' with { type: 'json' };
-import GREYBOX_01_WORLD from '../data/worlds/greybox-01.json' with { type: 'json' };
+import GREYBOX_01_LEVEL from '../data/levels/greybox-01.json' with { type: 'json' };
 import { POSITION } from '../net/quantize.ts';
+import { type PlacedPiece, expandLevel } from './level.ts';
 
 export type WorldBoxKind = 'post-minor' | 'post-major' | 'rail' | 'figure' | 'cover';
 
@@ -48,6 +50,8 @@ export interface WorldBox {
   maxX: number;
   maxY: number;
   maxZ: number;
+  /** T-4.09: the level piece instance this box belongs to, for a box a kit piece brought. */
+  piece?: string;
 }
 
 /** Authoring form: centre x/z, BOTTOM y, full sizes. What world.json holds. */
@@ -159,7 +163,10 @@ export function loadCover(raw: unknown = RANGE_WORLD): WorldBox[] {
     if (entry.w <= 0 || entry.h <= 0 || entry.d <= 0) throw new Error(`world.json: cover[${i}] '${entry.id}' has a non-positive size`);
     if (seen.has(entry.id)) throw new Error(`world.json: duplicate id '${entry.id}'`);
     seen.add(entry.id);
-    return boxFrom(entry, 'cover');
+    const box = boxFrom(entry, 'cover');
+    const piece = (entry as { piece?: unknown }).piece;
+    if (typeof piece === 'string') box.piece = piece;
+    return box;
   });
 }
 
@@ -181,6 +188,10 @@ export interface World {
   floorHalfExtent: number;
   /** T-3.31: where a mission on this world starts, what it takes, and the ways there; null for a world with none. */
   mission: WorldMission | null;
+  /** T-4.09: the kit pieces a level places, for the renderer to draw; empty for a box-only world. Their collision is already in `boxes`. */
+  pieces: readonly PlacedPiece[];
+  /** T-4.09: the encounter file a level's mission plays; null for a world file, which has none of its own. */
+  encounter: string | null;
 }
 
 /* -- Missions (T-3.31) --------------------------------------------------------- */
@@ -322,7 +333,7 @@ const WORLD_ID = /^[a-z][a-z0-9-]{0,31}$/;
  * stable across client and server, which the renderer relies on for nothing
  * yet but a hit event might one day name a box by it.
  */
-export function loadWorld(raw: unknown): World {
+export function loadWorld(raw: unknown, level: { pieces: readonly PlacedPiece[]; encounter: string | null } = { pieces: [], encounter: null }): World {
   if (typeof raw !== 'object' || raw === null) throw new Error('world file: expected an object');
   const file = raw as { id?: unknown; generate?: unknown };
   if (typeof file.id !== 'string' || !WORLD_ID.test(file.id)) {
@@ -351,15 +362,29 @@ export function loadWorld(raw: unknown): World {
     floorHalfExtent = half;
   }
   const mission = (raw as { mission?: unknown }).mission;
-  return { id: file.id, boxes, floorHalfExtent, mission: mission === undefined ? null : loadMission(file.id, mission) };
+  return {
+    id: file.id,
+    boxes,
+    floorHalfExtent,
+    mission: mission === undefined ? null : loadMission(file.id, mission),
+    pieces: level.pieces,
+    encounter: level.encounter,
+  };
+}
+
+/**
+ * Build a world from a level file (T-4.09, `level.ts`): the level expanded
+ * into the world file it stands for, its pieces' collision boxes turned and
+ * placed among the free ones, then built as any world is.
+ */
+export function loadLevel(raw: unknown): World {
+  const expanded = expandLevel(raw);
+  return loadWorld(expanded, { pieces: expanded.pieces, encounter: expanded.encounter });
 }
 
 /** Every world this build knows, by id. Validated once, at import. */
 const WORLDS: ReadonlyMap<string, World> = new Map(
-  [RANGE_WORLD, GREYBOX_01_WORLD].map((raw) => {
-    const world = loadWorld(raw);
-    return [world.id, world] as const;
-  }),
+  [loadWorld(RANGE_WORLD), loadLevel(GREYBOX_01_LEVEL)].map((world) => [world.id, world] as const),
 );
 
 /** The world a session gets when nobody names one. */

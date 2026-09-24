@@ -82,8 +82,9 @@ addendum (T-4.30) and observability (T-4.33) — and two owner decisions gate
 the rest. Art sourcing is decided (🧍 T-4.01, ADR-018: authored as code,
 with procedural animation): the generator library and its first kit piece
 are done (T-4.04, `pnpm gen:art`, the wall on `?assets`), and the characters
-from assets (T-4.08) are open; the kit (T-4.10) waits on the level format
-(T-4.09). Where progress lives is decided
+from assets (T-4.08) are open, and with the level format done (T-4.09,
+`data/levels/`, greybox-01 the first level) the kit (T-4.10) and level
+validation (T-4.11) are open. Where progress lives is decided
 too (🧍 T-4.21, ADR-019: on the host, per campaign), so player identity
 (T-4.22) is open.
 
@@ -388,9 +389,9 @@ the owner may still overrule before T-4.23.
 
 | Task | Status | Depends |
 |---|---|---|
-| T-4.09 | OPEN | — |
-| T-4.10 | BLOCKED | T-4.04, T-4.09 |
-| T-4.11 | BLOCKED | T-4.09 |
+| T-4.09 | DONE | — |
+| T-4.10 | OPEN | T-4.04, T-4.09 |
+| T-4.11 | OPEN | T-4.09 |
 | ⚠️ T-4.12 | BLOCKED | T-4.09, T-4.10 |
 | T-4.13 | BLOCKED | T-4.10, T-4.11, T-4.14 |
 
