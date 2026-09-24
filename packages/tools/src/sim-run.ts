@@ -36,6 +36,8 @@
  * enemies and five bots.
  *
  *   pnpm sim-run --scenario mission --seeds 20
+ *   pnpm sim-run --scenario mission --mission path/to/mission.json --seeds 3
+ *   pnpm sim-run --scenario mission --all-missions --seeds 3
  */
 import { Simulation } from '../../shared/src/sim/Simulation.ts';
 import { divergence } from '../../shared/test/harness/parity.ts';
@@ -64,7 +66,18 @@ if (scenarioName === 'pinned') {
 
 if (scenarioName === 'mission') {
   const { MISSION_SCENARIO, reportMission, summariseMission } = await import('./scenarios/mission.ts');
-  const seeds = Number.parseInt(arg('seeds', String(MISSION_SCENARIO.seeds)), 10);
+  const fileMode = flag('mission') || flag('all-missions');
+  const seeds = Number(arg('seeds', String(fileMode ? MISSION_SCENARIO.ciSeeds : MISSION_SCENARIO.seeds)));
+  if (!Number.isSafeInteger(seeds) || seeds < 1) throw new Error('--seeds must be a positive integer');
+  if (fileMode) {
+    if (flag('mission') && flag('all-missions')) throw new Error('choose --mission FILE or --all-missions');
+    const file = arg('mission', '');
+    if (flag('mission') && (!file || file.startsWith('--'))) throw new Error('--mission requires a file path');
+    const { missionFiles, reportMissionFiles, runMissionFiles } = await import('./scenarios/missionFiles.ts');
+    const results = await runMissionFiles(flag('all-missions') ? await missionFiles() : [file], seeds);
+    console.log(reportMissionFiles(results));
+    process.exit(results.some((r) => r.failures.length > 0) ? 1 : 0);
+  }
   const summary = await summariseMission(seeds);
   console.log(reportMission(summary));
   if (summary.failures.length > 0) {

@@ -55,6 +55,7 @@ has the deployment recipe, teardown, and the things that will waste your afterno
 | `curl localhost:8080/healthz` | rooms, players, protocol version (T-1.5.07) |
 | `pnpm sim-run --scenario crowd --ticks 1800` | headless simulation, reports µs/tick |
 | `pnpm sim-run --scenario fall --ticks 1000 --parity` | two instances, reports divergence |
+| `pnpm sim-run --scenario mission --all-missions --seeds 3` | every committed mission, with completion or reasons for losses; `--mission path/to/mission.json` selects one file |
 | `pnpm bench:rapier` | deterministic vs default vs SIMD physics cost |
 | `pnpm gen:trig` | regenerate the committed trig table |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |

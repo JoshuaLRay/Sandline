@@ -1,19 +1,18 @@
 /**
- * `mission` (T-3.35): the grey-box mission played headless, seeded.
+ * `mission` (T-3.35, T-4.17): any mission played headless, seeded.
  *
- * Six friendly bots run the committed `friendly` tree on greybox-01 against
- * its committed encounter, paced by the director, with the director told
+ * Six friendly bots run the committed `friendly` tree on the mission's world
+ * against its encounter, paced by the director, with the director told
  * the squad is `humans` people (`SessionOptions.testHumanCount` — the one
  * place a bot counts as a person, and only here) so both ends of the budget
  * table are played with the same six bots.
  *
  * Nobody human leads, so a scripted squad leader gives the orders a player
- * would (T-3.27's orders, through `Session.orderFrom`): fireteam 1 up the
- * overwatch route and fireteam 2 up the assault route, one stop at a time,
- * each stop reached once every member on its feet is near it (or after a
- * while regardless); at the objective, a hold on its centre. Whoever goes
+ * would (T-3.27's orders, through `Session.orderFrom`), following the current
+ * objective's area or destroy group. An opening clear-and-hold of the map's
+ * objective keeps the overwatch/assault approach from T-3.35. Whoever goes
  * down, the nearest bot on its feet is sent to revive, and goes back to its
- * fireteam's stop after. Everything else — seeing, fighting, cover, grenades
+ * current objective after. Everything else — seeing, fighting, cover, grenades
  * — is the bots' own.
  *
  * Measured per run: whether and when the mission completed or failed;
@@ -23,9 +22,12 @@
  * AI's share of the tick at forty enemies and five bots.
  */
 import {
+  type Encounter,
   type Message,
+  type MissionDef,
+  type MissionView,
+  type World,
   PROTOCOL_VERSION,
-  SQUAD,
   Sfc32,
   TICK_SECONDS,
   buildTree,
@@ -35,7 +37,9 @@ import {
   encounterFor,
   isDead,
   isDowned,
+  missionFor,
   requireWorld,
+  resolveArea,
   seedFrom,
   suppressionLevel,
 } from '@sandline/shared';
@@ -44,6 +48,7 @@ import { createBrainRegistry } from '../../../server/src/ai/Brain.ts';
 import { type NavMesh, initNav } from '../../../server/src/ai/nav/NavMesh.ts';
 import { bakedCoverFor, loadWorldNavMesh } from '../../../server/src/ai/nav/bakedNav.ts';
 import THRESHOLDS from './mission.json' with { type: 'json' };
+import { createMissionLeader } from './missionLeader.ts';
 
 export const MISSION_SCENARIO = THRESHOLDS;
 export type MissionConfig = typeof THRESHOLDS;
@@ -57,6 +62,11 @@ const IN_COVER_M = 0.6;
 const LEADER_EVERY = 15;
 
 export interface MissionRun {
+  mission: string;
+  world: string;
+  objective: MissionView;
+  /** The final objective's state, including why a failed/timed-out run stopped. */
+  detail: string;
   seed: number;
   humans: number;
   outcome: 'complete' | 'failed' | 'timeout';
@@ -74,88 +84,57 @@ export interface MissionRun {
 }
 
 let navReady: Promise<void> | null = null;
-let mesh: NavMesh | null = null;
+const meshes = new Map<string, NavMesh>();
 
-async function worldMesh(): Promise<NavMesh> {
+async function worldMesh(worldId = WORLD_ID): Promise<NavMesh> {
   await (navReady ??= initNav());
-  return (mesh ??= loadWorldNavMesh(WORLD_ID));
+  let mesh = meshes.get(worldId);
+  if (!mesh) {
+    mesh = loadWorldNavMesh(worldId);
+    meshes.set(worldId, mesh);
+  }
+  return mesh;
 }
 
 const flat = (a: { x: number; z: number }, b: { x: number; z: number }) => Math.sqrt((a.x - b.x) ** 2 + (a.z - b.z) ** 2);
 
-export async function runMission(seed: number, humans: number, config: MissionConfig = MISSION_SCENARIO): Promise<MissionRun> {
-  const navMesh = await worldMesh();
-  const world = requireWorld(WORLD_ID);
-  const mission = world.mission!;
+function missionDetail(session: Session, def: MissionDef, encounter: Encounter, world: World, outcome: MissionRun['outcome']): string {
+  const view = session.mission!;
+  const objective = def.objectives[view.objective]!;
+  const parts = [`objective ${view.objective + 1}/${view.objectives} ${view.type} '${view.label}' ${view.progress}/${view.goal}`];
+  const wiped = session.slots.every((s) => isDead(s.health));
+  if (outcome === 'failed') parts.push(wiped ? 'squad wipe' : 'defended area overrun');
+  if (outcome === 'timeout') parts.push('simulation time limit reached');
+  if ('area' in objective) {
+    const area = resolveArea(objective.area, encounter, world);
+    const standing = session.slots.filter((s) => !isDead(s.health) && !isDowned(s.health));
+    parts.push(`standing in area ${standing.filter((s) => flat(s.state, area) <= area.radius).length}/${standing.length}, living enemies in area ${session.enemies.filter((e) => !isDead(e.health) && flat(e.state, area) <= area.radius).length}`);
+  }
+  if (objective.type === 'destroy') {
+    const ids = session.spawner!.spawnedBy(objective.group);
+    parts.push(`group '${objective.group}': triggered=${session.spawner!.fired(objective.group)}, spawned=${ids.length}, alive=${session.enemies.filter((e) => ids.includes(e.netId) && !isDead(e.health)).length}, waves=${session.spawner!.wavesOf(objective.group).length}, pending spawns=${session.spawner!.pending}`);
+  }
+  return parts.join('; ');
+}
+
+export async function runMission(seed: number, humans: number, config: MissionConfig = MISSION_SCENARIO, def: MissionDef = missionFor(WORLD_ID)!): Promise<MissionRun> {
+  const world = requireWorld(def.world);
+  const encounter = encounterFor(def.world);
+  if (!encounter) throw new Error(`mission '${def.id}': no encounter for world '${def.world}'`);
+  const navMesh = await worldMesh(def.world);
   const session = new Session(undefined, '', world, {
     navMesh,
-    cover: bakedCoverFor(WORLD_ID),
+    cover: bakedCoverFor(def.world),
     brainTree: buildTree('friendly', createBrainRegistry()),
-    encounter: encounterFor(WORLD_ID)!,
+    encounter,
+    mission: def,
     testHumanCount: humans,
   });
   // The seed moves each bot a little off its spawn point: the one thing that differs between runs.
   const rng = new Sfc32(seedFrom(seed, 0x315));
-  for (const s of session.slots) s.state = createMoveState(s.state.x + (rng.next() * 2 - 1), 0, s.state.z + (rng.next() * 2 - 1));
+  for (const s of session.slots) s.state = createMoveState(s.state.x + (rng.next() * 2 - 1), s.state.y, s.state.z + (rng.next() * 2 - 1));
 
-  // The leader's routes: fireteam i takes the route of the role it is given, then the objective.
-  const roles = ['overwatch', 'assault'] as const;
-  const stops = SQUAD.fireteams.map((_, i) => {
-    const route = mission.routes.find((r) => r.role === roles[i % roles.length])!;
-    return route.via.map((p) => ({ x: p.x, y: 0, z: p.z }));
-  });
-  const objective = { x: mission.objective.x, y: 0, z: mission.objective.z };
-  const at = SQUAD.fireteams.map(() => 0);
-  const since = SQUAD.fireteams.map(() => 0);
-  const teamOf = (slot: number) => SQUAD.fireteams.findIndex((f) => f.slots.includes(slot));
-  /** Who is sent to revive whom: reviver slot → downed slot. */
-  const reviving = new Map<number, number>();
-  const standing = (i: number) => {
-    const s = session.slots[i]!;
-    return !isDead(s.health) && !isDowned(s.health);
-  };
-  const goalOf = (team: number) => (at[team]! < stops[team]!.length ? stops[team]![at[team]!]! : objective);
-  const orderTeamMember = (slot: number) => {
-    const team = teamOf(slot);
-    const goal = goalOf(team);
-    const last = at[team]! >= stops[team]!.length;
-    session.orderFrom(0, { order: last ? 'hold' : 'move', address: { to: 'slot', index: slot }, point: { ...goal }, target: null });
-  };
-  const orderTeam = (team: number) => {
-    for (const slot of SQUAD.fireteams[team]!.slots) if (!reviving.has(slot)) orderTeamMember(slot);
-  };
-  SQUAD.fireteams.forEach((_, t) => orderTeam(t));
-
-  const lead = () => {
-    const tick = session.tick;
-    SQUAD.fireteams.forEach((f, t) => {
-      if (at[t]! >= stops[t]!.length) return;
-      const goal = goalOf(t);
-      const up = f.slots.filter((i) => standing(i) && !reviving.has(i));
-      const arrived = up.length > 0 && up.every((i) => flat(session.slots[i]!.state, goal) <= config.arriveM);
-      if (arrived || tick - since[t]! >= config.stopSeconds * TICKS_PER_SECOND) {
-        at[t]!++;
-        since[t] = tick;
-        orderTeam(t);
-      }
-    });
-    // Revives: the nearest bot on its feet goes to each downed one; back to its stop once it is up (or gone).
-    for (const [reviver, downed] of [...reviving]) {
-      const d = session.slots[downed]!.health;
-      if (!isDowned(d) || !standing(reviver)) {
-        reviving.delete(reviver);
-        if (standing(reviver)) orderTeamMember(reviver);
-      }
-    }
-    for (const s of session.slots) {
-      if (!isDowned(s.health) || [...reviving.values()].includes(s.index)) continue;
-      const helpers = session.slots.filter((h) => h.index !== s.index && standing(h.index) && !reviving.has(h.index));
-      if (helpers.length === 0) continue;
-      const nearest = helpers.reduce((a, b) => (flat(a.state, s.state) <= flat(b.state, s.state) ? a : b));
-      reviving.set(nearest.index, s.index);
-      session.orderFrom(0, { order: 'revive', address: { to: 'slot', index: nearest.index }, point: null, target: s.netId });
-    }
-  };
+  const lead = createMissionLeader(session, def, encounter, world, config);
 
   let underFireTicks = 0;
   let inCoverUnderFireTicks = 0;
@@ -201,6 +180,10 @@ export async function runMission(seed: number, humans: number, config: MissionCo
     }
   }
   return {
+    mission: def.id,
+    world: def.world,
+    objective: { ...session.mission! },
+    detail: missionDetail(session, def, encounter, world, outcome),
     seed,
     humans,
     outcome,
@@ -308,12 +291,12 @@ export function reportMission(summary: MissionSummary, config: MissionConfig = M
   const lines = summary.runs.map(
     (r) =>
       `  ${r.humans}h seed ${String(r.seed).padStart(2)}: ${r.outcome.padEnd(8)} at ${r.seconds.toFixed(0).padStart(3)} s; enemies killed ${r.enemiesKilled}/${r.enemiesSpawned}, bots dead ${r.botsDead}; ` +
-      `under fire in cover ${r.underFireTicks === 0 ? '-' : ((r.inCoverUnderFireTicks / r.underFireTicks) * 100).toFixed(0) + '%'}, ${r.episodes} suppression episodes in ${r.engagements} engagements`,
+      `under fire in cover ${r.underFireTicks === 0 ? '-' : ((r.inCoverUnderFireTicks / r.underFireTicks) * 100).toFixed(0) + '%'}, ${r.episodes} suppression episodes in ${r.engagements} engagements; ${r.detail}`,
   );
   const done = (humans: number) => summary.runs.filter((r) => r.humans === humans && r.outcome === 'complete');
   const mean = (xs: number[]) => (xs.length === 0 ? NaN : xs.reduce((a, b) => a + b, 0) / xs.length);
   return [
-    `scenario=mission world=${WORLD_ID} seeds=${summary.runs.length / config.budgets.length} budgets=${config.budgets.join(',')} run=${config.runSeconds}s`,
+    `scenario=mission world=${summary.runs[0]?.world ?? WORLD_ID} seeds=${summary.runs.length / config.budgets.length} budgets=${config.budgets.join(',')} run=${config.runSeconds}s`,
     ...lines,
     ...config.budgets.map(
       (h) =>
