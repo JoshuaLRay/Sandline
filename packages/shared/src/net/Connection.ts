@@ -43,6 +43,8 @@ export interface ServerConnectionEvents {
   onMark?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Mark' }>) => void;
   /** T-3.34: a seated player asking for the mission to start again. */
   onMissionRestart?: (conn: ServerConnection) => void;
+  /** T-4.19: pre-mission ready/start controls. */
+  onRoomCommand?: (conn: ServerConnection, msg: Extract<Message, { kind: 'RoomCommand' }>) => void;
   onClosed?: (conn: ServerConnection, reason: string) => void;
 }
 
@@ -61,6 +63,8 @@ export class ServerConnection {
   resume = '';
   /** T-4.22: the identity token the client offered; empty for none. The host verifies it. */
   identity = '';
+  /** T-4.19: match an empty-room Join before creating a room. */
+  quick = false;
   /**
    * T-4.22: who this is, once the host has verified or issued an identity:
    * the durable player ID, and the token the JoinAck hands back. Both empty
@@ -190,6 +194,7 @@ export class ServerConnection {
       this.world = join.world ?? '';
       this.resume = join.resume ?? '';
       this.identity = join.identity ?? '';
+      this.quick = join.quick ?? false;
       this.state = 'active';
       this.events.onJoined?.(this);
       return;
@@ -231,6 +236,10 @@ export class ServerConnection {
       case 'MissionRestart':
         this.lastActive = now;
         this.events.onMissionRestart?.(this);
+        break;
+      case 'RoomCommand':
+        this.lastActive = now;
+        this.events.onRoomCommand?.(this, msg);
         break;
       case 'Ack':
         if (msg.tick > this.lastAckedTick) this.lastAckedTick = msg.tick;
@@ -299,6 +308,8 @@ export interface ClientConnectionEvents {
   onMarks?: (marks: Extract<Message, { kind: 'Marks' }>['marks']) => void;
   /** T-3.34: where the mission stands. */
   onMission?: (mission: Extract<Message, { kind: 'Mission' }>) => void;
+  /** T-4.19: authoritative ready-up state. */
+  onRoomState?: (room: Extract<Message, { kind: 'RoomState' }>) => void;
   onClosed?: (reason: string, code: DisconnectCode | null) => void;
 }
 
@@ -321,9 +332,9 @@ export class ClientConnection {
     transport.onClose((reason) => this.markClosed(reason));
   }
 
-  /** Open the handshake. An empty room asks the host to create one. */
-  join(name: string, room = '', key = '', world = ''): void {
-    this.send({ kind: 'Join', version: PROTOCOL_VERSION, name, room, ...(key === '' ? {} : { key }), ...(world === '' ? {} : { world }) });
+  /** Open the handshake. An empty room creates one unless quick-match is requested. */
+  join(name: string, room = '', key = '', world = '', quick = false): void {
+    this.send({ kind: 'Join', version: PROTOCOL_VERSION, name, room, ...(key === '' ? {} : { key }), ...(world === '' ? {} : { world }), ...(quick ? { quick } : {}) });
   }
 
   private handle(data: Uint8Array): void {
@@ -362,6 +373,9 @@ export class ClientConnection {
         break;
       case 'Mission':
         this.events.onMission?.(msg);
+        break;
+      case 'RoomState':
+        this.events.onRoomState?.(msg);
         break;
       case 'Disconnect':
         this.rejectionReason = msg.reason;

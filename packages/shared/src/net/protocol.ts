@@ -15,7 +15,7 @@ import { MISSION_STATES, OBJECTIVE_TYPES, type MissionView } from '../sim/missio
 import type { ScriptBlockerState } from '../sim/events.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 27;
+export const PROTOCOL_VERSION = 28;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -122,7 +122,8 @@ const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks
  * client's restart — so the mission family takes one sub-kind and the
  * last (7) stays free.
  */
-const MISSION_VARIANT = { State: 0, Restart: 1 } as const;
+const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3 } as const;
+const ROOM_COMMANDS = ['ready', 'start'] as const;
 /** T-4.15: state plus transient message/callout notifications. */
 const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2 } as const;
 const EXT_BITS = 3;
@@ -235,6 +236,8 @@ export type Message =
        * not sign or that has expired is refused as `bad identity`.
        */
       identity?: string;
+      /** T-4.19: empty-room Join may quick-match by selected mission/world. */
+      quick?: boolean;
     }
   | {
       kind: 'JoinAck';
@@ -445,6 +448,10 @@ export type Message =
   | ({ kind: 'Mission' } & MissionView)
   /** T-3.34: a player asking for the mission to start again. Client to host; honoured once it is over. */
   | { kind: 'MissionRestart' }
+  /** T-4.19: authoritative pre-mission room state. Class ids are reserved for T-4.27. */
+  | { kind: 'RoomState'; started: boolean; creator: number; world: string; ready: readonly boolean[]; classes: readonly string[] }
+  /** T-4.19: ready toggle or creator-only force start. */
+  | { kind: 'RoomCommand'; command: (typeof ROOM_COMMANDS)[number]; ready?: boolean }
   /** T-4.15: all dynamic blockers, whole, whenever one changes and on seating. Host to client. */
   | { kind: 'ScriptState'; blockers: readonly ScriptBlockerState[] }
   /** T-4.15: an authored on-screen mission message. Host to client. */
@@ -466,6 +473,7 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeString(msg.world ?? '');
       w.writeString(msg.resume ?? '');
       w.writeString(msg.identity ?? '');
+      w.writeBool(msg.quick ?? false);
       break;
     case 'JoinAck':
       w.writeBits(MessageType.JoinAck, TYPE_BITS);
@@ -665,6 +673,28 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Mission, EXT_BITS);
       w.writeBits(MISSION_VARIANT.Restart, 2);
+      break;
+    case 'RoomState': {
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Mission, EXT_BITS);
+      w.writeBits(MISSION_VARIANT.RoomState, 2);
+      w.writeBool(msg.started);
+      w.writeBits(msg.creator & 0x7, 3);
+      w.writeString(msg.world);
+      const count = Math.min(6, Math.max(msg.ready.length, msg.classes.length));
+      w.writeBits(count, 3);
+      for (let i = 0; i < count; i += 1) {
+        w.writeBool(msg.ready[i] ?? false);
+        w.writeString(msg.classes[i] ?? '');
+      }
+      break;
+    }
+    case 'RoomCommand':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Mission, EXT_BITS);
+      w.writeBits(MISSION_VARIANT.RoomCommand, 2);
+      w.writeBits(ROOM_COMMANDS.indexOf(msg.command), 1);
+      w.writeBool(msg.command === 'ready' ? (msg.ready ?? false) : false);
       break;
     case 'ScriptState': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -870,6 +900,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
         const world = r.readString();
         const resume = r.readString();
         const identity = r.readString();
+        const quick = r.readBool();
         return {
           kind: 'Join',
           version,
@@ -879,6 +910,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
           ...(world === '' ? {} : { world }),
           ...(resume === '' ? {} : { resume }),
           ...(identity === '' ? {} : { identity }),
+          ...(quick ? { quick } : {}),
         };
       }
       case MessageType.JoinAck:
@@ -1032,6 +1064,26 @@ export function decodeMessage(bytes: Uint8Array): Message {
           case EXT.Mission: {
             const variant = r.readBits(2);
             if (variant === MISSION_VARIANT.Restart) return { kind: 'MissionRestart' };
+            if (variant === MISSION_VARIANT.RoomCommand) {
+              const command = ROOM_COMMANDS[r.readBits(1)];
+              if (command === undefined) throw new ProtocolError('unknown room command');
+              const ready = r.readBool();
+              return command === 'ready' ? { kind: 'RoomCommand', command, ready } : { kind: 'RoomCommand', command };
+            }
+            if (variant === MISSION_VARIANT.RoomState) {
+              const started = r.readBool();
+              const creator = r.readBits(3);
+              const world = r.readString();
+              const count = r.readBits(3);
+              if (count > 6) throw new ProtocolError('room has more than six slots');
+              const ready: boolean[] = [];
+              const classes: string[] = [];
+              for (let i = 0; i < count; i += 1) {
+                ready.push(r.readBool());
+                classes.push(r.readString());
+              }
+              return { kind: 'RoomState', started, creator, world, ready, classes };
+            }
             if (variant !== MISSION_VARIANT.State) throw new ProtocolError(`unknown mission message ${variant}`);
             const state = MISSION_STATES[r.readBits(2)];
             if (state === undefined) throw new ProtocolError('unknown mission state');

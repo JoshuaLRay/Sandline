@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { BitWriter } from '../net/BitStream.ts';
-import { MessageType, ProtocolError, decodeMessage, encodeMessage, type Message } from '../net/protocol.ts';
+import { MessageType, decodeMessage, encodeMessage, type Message } from '../net/protocol.ts';
 import RAW_GREYBOX from '../data/missions/greybox-01.json' with { type: 'json' };
 import { encounterFor } from './encounters.ts';
 import { MISSION_STATES, OBJECTIVE_TYPES, checkMission, missionFor, missions, parseMission } from './mission.ts';
@@ -25,7 +25,7 @@ describe('mission messages (T-3.34, T-4.14)', () => {
     expect(decodeMessage(encodeMessage({ kind: 'MissionRestart' }))).toEqual({ kind: 'MissionRestart' });
   });
 
-  it('refuses a variant nobody sends, a state or a type past the last, an objective outside the mission, and progress past its goal', () => {
+  it('refuses malformed room state, a state or a type past the last, an objective outside the mission, and progress past its goal', () => {
     const mission = (fill: (w: BitWriter) => void) => {
       const w = new BitWriter();
       w.writeBits(MessageType.Ext, 4);
@@ -46,8 +46,13 @@ describe('mission messages (T-3.34, T-4.14)', () => {
         w.writeVarUint(o.progress ?? 0);
         w.writeVarUint(o.goal ?? 10);
       });
-    expect(() => decodeMessage(mission((w) => w.writeBits(2, 2)))).toThrow(ProtocolError);
-    expect(() => decodeMessage(mission((w) => w.writeBits(3, 2)))).toThrow(ProtocolError);
+    expect(() => decodeMessage(mission((w) => {
+      w.writeBits(2, 2);
+      w.writeBool(false);
+      w.writeBits(0, 3);
+      w.writeString('mission-01');
+      w.writeBits(7, 3);
+    }))).toThrow(/more than six slots/);
     expect(() => decodeMessage(state({ state: 3 }))).toThrow(/unknown mission state/);
     expect(() => decodeMessage(state({ type: 7 }))).toThrow(/unknown objective type/);
     expect(() => decodeMessage(state({ objective: 3, objectives: 3 }))).toThrow(/out of the mission/);

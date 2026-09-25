@@ -590,6 +590,8 @@ export interface SessionOptions {
   testHumanCount?: number;
   /** T-3.35: time the AI's share of every tick (`Session.aiMs`), for the mission tool's cost measure. Off by default. */
   profileAi?: boolean;
+  /** T-4.19: hosted rooms wait for ready-up before gameplay; direct/local sessions start immediately. */
+  roomLobby?: boolean;
 }
 
 export interface SessionStats {
@@ -704,6 +706,12 @@ export class Session {
   private readonly encounter: Encounter | null;
   private readonly testHumanCount: number | null;
   private readonly profileAi: boolean;
+  /** T-4.19: hosted-room ready-up state. */
+  private readonly roomLobbyEnabled: boolean;
+  private roomStarted: boolean;
+  private creatorSlot = -1;
+  private readonly readySlots: boolean[] = Array.from({ length: MAX_SLOTS }, () => false);
+  private readonly classSlots: string[] = Array.from({ length: MAX_SLOTS }, () => '');
   /** T-3.35: milliseconds spent in the AI's share of every tick so far, when `profileAi` is on; 0 otherwise. */
   aiMs = 0;
 
@@ -722,6 +730,8 @@ export class Session {
     this.encounter = options.encounter ?? null;
     this.testHumanCount = options.testHumanCount ?? null;
     this.profileAi = options.profileAi ?? false;
+    this.roomLobbyEnabled = options.roomLobby ?? false;
+    this.roomStarted = !this.roomLobbyEnabled;
     this.directorValue = null;
     this.spawnerValue = null;
     const missionDef = options.mission ?? missionFor(this.world.id);
@@ -732,7 +742,7 @@ export class Session {
     } else {
       this.missionRun = null;
     }
-    this.startEncounter();
+    if (this.roomStarted) this.startEncounter();
     this.eventRun = this.encounter
       ? new EventRun(options.events ?? { world: this.world.id, blockers: [], events: [] }, this.encounter, this.world, this.eventHost())
       : null;
@@ -1322,6 +1332,11 @@ export class Session {
     return this.projectiles.map((p) => ({ netId: p.netId, kind: p.kind, ownerNetId: p.ownerNetId, x: p.state.x, y: p.state.y, z: p.state.z }));
   }
 
+  /** T-4.19: false only while a hosted room is waiting for ready-up. */
+  get started(): boolean {
+    return this.roomStarted;
+  }
+
   /** Humans seated right now. What a registry reclaims on (T-1.5.05). */
   get players(): number {
     return this.slots.filter((s) => !s.isBot).length;
@@ -1369,16 +1384,17 @@ export class Session {
    */
   admit(conn: ServerConnection): boolean {
     conn.rebind({
-      onInput: (c, msg) => this.applyInput(c, msg),
+      onInput: (c, msg) => { if (this.roomStarted) this.applyInput(c, msg); },
       // NOT the `now` this connection was opened at: that value is frozen
       // forever. Fire resolves against the session's current time.
-      onFire: (c, msg) => this.applyFire(c, msg),
-      onThrow: (c, msg) => this.applyThrow(c, msg),
-      onEquip: (c, msg) => this.applyEquip(c, msg),
+      onFire: (c, msg) => { if (this.roomStarted) this.applyFire(c, msg); },
+      onThrow: (c, msg) => { if (this.roomStarted) this.applyThrow(c, msg); },
+      onEquip: (c, msg) => { if (this.roomStarted) this.applyEquip(c, msg); },
       onAiDebugRequest: (c, on) => this.applyAiDebugRequest(c, on),
-      onOrder: (c, msg) => this.applyOrder(c, msg),
-      onMark: (c, msg) => this.applyMark(c, msg),
-      onMissionRestart: (c) => this.requestRestart(c),
+      onOrder: (c, msg) => { if (this.roomStarted) this.applyOrder(c, msg); },
+      onMark: (c, msg) => { if (this.roomStarted) this.applyMark(c, msg); },
+      onMissionRestart: (c) => { if (this.roomStarted) this.requestRestart(c); },
+      onRoomCommand: (c, msg) => this.applyRoomCommand(c, msg),
       onClosed: (c, reason) => this.releaseSlot(c, reason),
     });
     if (conn.state === 'closed') return false;
@@ -1400,6 +1416,9 @@ export class Session {
     slot.isBot = false;
     slot.connection = conn;
     slot.staleTicks = 0;
+    this.readySlots[slot.index] = false;
+    this.classSlots[slot.index] = '';
+    if (!this.roomStarted && this.creatorSlot < 0) this.creatorSlot = slot.index;
 
     /**
      * Clear the PREVIOUS occupant's input bookkeeping (T-1.5.02).
@@ -1439,6 +1458,7 @@ export class Session {
     slot.reservedUntilMs = 0;
     conn.accept(slot.netId, slot.index, this.currentTick, this.room, this.world.id, slot.resumeToken, resumed !== null);
     this.broadcastRoster();
+    this.broadcastRoomState();
     // T-3.27: a human is nobody's to order, so whatever this slot's bot was told
     // lapses; and the newcomer is shown the squad's orders and marks as they stand.
     if (this.orders[slot.index]) {
@@ -1447,7 +1467,7 @@ export class Session {
       conn.send({ kind: 'Orders', orders: this.currentOrders() });
     }
     conn.send({ kind: 'Marks', marks: [...this.marks] });
-    if (this.missionRun) conn.send({ kind: 'Mission', ...this.missionRun.current });
+    if (this.missionRun && this.roomStarted) conn.send({ kind: 'Mission', ...this.missionRun.current });
     conn.send({ kind: 'ScriptState', blockers: this.scriptBlockers() });
     return true;
   }
@@ -1658,6 +1678,11 @@ export class Session {
     this.clearReviveStateForSlot(slot.index);
     slot.isBot = true;
     slot.connection = null;
+    this.readySlots[slot.index] = false;
+    this.classSlots[slot.index] = '';
+    if (!this.roomStarted && this.creatorSlot === slot.index) {
+      this.creatorSlot = this.slots.find((s) => !s.isBot && s.connection !== null)?.index ?? -1;
+    }
     slot.input = idleInput(slot.yaw);
     slot.interactHeld = false;
     // A bot has a gun in hand, not whatever the departed player was holding.
@@ -1667,6 +1692,8 @@ export class Session {
     slot.queue.length = 0;
     this.giveBrain(slot);
     this.broadcastRoster();
+    this.broadcastRoomState();
+    if (!this.roomStarted && this.everyHumanReady()) this.startRoom();
   }
 
   /**
@@ -1713,6 +1740,46 @@ export class Session {
   private broadcastRoster(): void {
     const roster = this.roster;
     for (const c of this.connections) if (c.state === 'active') c.sendRoster(roster);
+  }
+
+  /** T-4.19: ready-up state is separate from the gameplay roster. */
+  private broadcastRoomState(): void {
+    if (!this.roomLobbyEnabled) return;
+    const creator = this.creatorSlot >= 0 ? this.creatorSlot : 0;
+    const msg = { kind: 'RoomState', started: this.roomStarted, creator, world: this.world.id, ready: [...this.readySlots], classes: [...this.classSlots] } as const;
+    for (const c of this.connections) if (c.state === 'active') c.send(msg);
+  }
+
+  private everyHumanReady(): boolean {
+    const humans = this.slots.filter((slot) => !slot.isBot);
+    return humans.length > 0 && humans.every((slot) => this.readySlots[slot.index] === true);
+  }
+
+  private startRoom(): void {
+    if (this.roomStarted) return;
+    this.roomStarted = true;
+    for (const slot of this.slots) {
+      slot.queue.length = 0;
+      slot.input = idleInput(slot.yaw);
+      slot.pendingInputTick = -1;
+    }
+    this.startEncounter();
+    this.broadcastRoomState();
+    this.broadcastMission();
+    this.broadcastScriptState();
+  }
+
+  private applyRoomCommand(conn: ServerConnection, msg: Extract<Message, { kind: 'RoomCommand' }>): void {
+    if (!this.roomLobbyEnabled || this.roomStarted) return;
+    const slot = this.slots.find((candidate) => candidate.connection === conn && !candidate.isBot);
+    if (!slot) return;
+    if (msg.command === 'ready') {
+      this.readySlots[slot.index] = msg.ready ?? false;
+      if (this.everyHumanReady()) this.startRoom();
+      else this.broadcastRoomState();
+      return;
+    }
+    if (msg.command === 'start' && slot.index === this.creatorSlot) this.startRoom();
   }
 
   private applyInput(conn: ServerConnection, msg: Extract<Message, { kind: 'Input' }>): void {
@@ -2311,6 +2378,14 @@ export class Session {
       // (The code doubles as the text: a client shows exactly that.)
       else if (conn.isExpired(now, this.maxSessionMs)) conn.reject('session limit');
       else if (conn.isIdle(now, this.idleTimeoutMs)) conn.reject('idle');
+    }
+
+    // T-4.19: while waiting, advance time/ticks and send static snapshots, but run no gameplay.
+    // Keeping the tick moving preserves the tick*TICK_MS = room-clock invariant used by rewind.
+    if (!this.roomStarted) {
+      this.currentTick++;
+      this.broadcast(this.buildSnapshot());
+      return;
     }
 
     // T-3.32: the encounter's spawns, on mission time (ticks since the session began), before anyone perceives.

@@ -34,6 +34,10 @@ const SAMPLES: Message[] = [
   // A new room asked for on a named world (the lobby's map choice), with and without a key.
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: '', world: 'greybox-01' },
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: '', key: 'k', world: 'range' },
+  { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: '', world: 'mission-01', quick: true },
+  { kind: 'RoomState', started: false, creator: 0, world: 'mission-01', ready: [true, false, false, false, false, false], classes: ['', '', '', '', '', ''] },
+  { kind: 'RoomCommand', command: 'ready', ready: true },
+  { kind: 'RoomCommand', command: 'start' },
   { kind: 'Disconnect', code: 'bad key', reason: 'wrong join key' },
   { kind: 'Disconnect', code: 'session limit', reason: 'session limit' },
   { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM', world: 'range', resume: '', resumed: false, identity: '' },

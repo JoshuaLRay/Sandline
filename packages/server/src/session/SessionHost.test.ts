@@ -57,7 +57,7 @@ interface FakeClient {
 }
 
 /** A client on a loopback pair, attached to the host with no socket at all. */
-function attachFake(host: SessionHost, name = 'test', room = '', key = '', resume = ''): FakeClient {
+function attachFake(host: SessionHost, name = 'test', room = '', key = '', resume = '', world = '', quick = false): FakeClient {
   const pair = createLoopbackPair();
   const received: Message[] = [];
   pair.b.onMessage((bytes) => received.push(decodeMessage(bytes)));
@@ -80,7 +80,7 @@ function attachFake(host: SessionHost, name = 'test', room = '', key = '', resum
       return this.ack?.room ?? '';
     },
   };
-  client.send({ kind: 'Join', version: PROTOCOL_VERSION, name, room, ...(key === '' ? {} : { key }), ...(resume === '' ? {} : { resume }) });
+  client.send({ kind: 'Join', version: PROTOCOL_VERSION, name, room, ...(key === '' ? {} : { key }), ...(resume === '' ? {} : { resume }), ...(world === '' ? {} : { world }), ...(quick ? { quick } : {}) });
   pair.settle();
   return client;
 }
@@ -306,6 +306,9 @@ describe('SessionHost — reconnecting into your own slot (T-4.18)', () => {
     const { host, clock } = newHost();
     const a = attachFake(host, 'alpha');
     const b = attachFake(host, 'bravo', a.room);
+    // T-4.19 hosted rooms wait for ready-up; this helper explicitly enters the fight it is about to mutate.
+    a.send({ kind: 'RoomCommand', command: 'start' });
+    a.settle();
     const session = host.registry.get(a.room)!.session;
     const mine = session.slots[a.ack!.slot]!;
     for (let tick = 1; tick <= 20; tick++) {
@@ -811,5 +814,53 @@ describe('SessionHost — idle and session limits', () => {
       run(host, clock, 1, client);
     }
     expect(client.bye).toBeUndefined();
+  });
+});
+
+
+describe('SessionHost — room ready-up and quick-join (T-4.19)', () => {
+  it('keeps a hosted room waiting, starts when every human is ready, and lets the creator force start', () => {
+    const { host } = newHost();
+    const creator = attachFake(host, 'creator', '', '', '', 'mission-01');
+    const mate = attachFake(host, 'mate', creator.room);
+    const room = host.registry.get(creator.room)?.session;
+    expect(room?.started).toBe(false);
+    const firstState = [...creator.received].reverse().find((m) => m.kind === 'RoomState');
+    expect(firstState).toMatchObject({ started: false, creator: creator.ack?.slot, world: 'mission-01' });
+
+    creator.send({ kind: 'RoomCommand', command: 'ready', ready: true });
+    creator.settle();
+    expect(room?.started).toBe(false);
+    mate.send({ kind: 'RoomCommand', command: 'ready', ready: true });
+    mate.settle();
+    expect(room?.started).toBe(true);
+    expect([...mate.received].reverse().find((m) => m.kind === 'RoomState')).toMatchObject({ started: true });
+
+    const forced = attachFake(host, 'forced', '', '', '', 'range');
+    const forcedRoom = host.registry.get(forced.room)?.session;
+    expect(forcedRoom?.started).toBe(false);
+    forced.send({ kind: 'RoomCommand', command: 'start' });
+    forced.settle();
+    expect(forcedRoom?.started).toBe(true);
+  });
+
+  it('quick-join fills a matching mission room before making another, and can join one already started', () => {
+    const { host } = newHost();
+    const creator = attachFake(host, 'creator', '', '', '', 'mission-01');
+    const quick = attachFake(host, 'quick', '', '', '', 'mission-01', true);
+    expect(quick.room).toBe(creator.room);
+    expect(host.registry.size).toBe(1);
+
+    creator.send({ kind: 'RoomCommand', command: 'start' });
+    creator.settle();
+    expect(host.registry.get(creator.room)?.session.started).toBe(true);
+    const dropIn = attachFake(host, 'drop-in', '', '', '', 'mission-01', true);
+    expect(dropIn.room).toBe(creator.room);
+    expect(host.registry.get(creator.room)?.session.players).toBe(3);
+
+    const otherMission = attachFake(host, 'other', '', '', '', 'range', true);
+    expect(otherMission.room).not.toBe(creator.room);
+    expect(host.registry.get(otherMission.room)?.session.world.id).toBe('range');
+    expect(host.registry.size).toBe(2);
   });
 });

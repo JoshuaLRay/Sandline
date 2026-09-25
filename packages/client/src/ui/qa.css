@@ -437,6 +437,31 @@ canvas { display: block; touch-action: none; }
 .lobby-message[data-tone='error'] { background: #5a1d1d; color: #ffd9d9; border: 1px solid #a33; }
 .lobby-message[data-tone='info'] { background: rgba(240, 180, 41, 0.12); border: 1px solid var(--rule); }
 
+/* ---- Room ready-up (T-4.19) ------------------------------------------- */
+#room-lobby {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 12, 7, 0.9);
+  backdrop-filter: blur(8px);
+}
+#room-lobby[hidden] { display: none; }
+.room-lobby-card { width: min(520px, 100%); padding: 22px 24px; background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; }
+.room-lobby-card h2 { margin: 0 0 4px; color: var(--amber); text-transform: uppercase; letter-spacing: 0.12em; font-size: 15px; }
+.room-lobby-meta { margin: 0 0 12px; font-size: 10px; opacity: 0.75; }
+.room-lobby-list { list-style: none; margin: 0 0 12px; padding: 0; }
+.room-lobby-list li { display: grid; grid-template-columns: 22px 1fr auto auto; gap: 8px; padding: 7px 6px; border-top: 1px solid var(--rule); font-size: 11px; }
+.room-lobby-list li.me { background: rgba(240, 180, 41, 0.12); }
+.room-lobby-state { color: var(--amber); text-transform: uppercase; font-size: 9px; letter-spacing: 0.08em; }
+.room-lobby-class { opacity: 0.6; font-size: 9px; }
+.room-lobby-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.room-lobby-actions button { margin-top: 0; }
+.room-lobby-copy { grid-column: 1 / -1; }
+
 /* ---- Squad panel (T-1.5.06) ------------------------------------------- */
 .squad-status { margin: 4px 0 8px; font-size: 10px; opacity: 0.8; }
 .squad-code {

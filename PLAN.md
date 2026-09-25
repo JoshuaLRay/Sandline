@@ -2914,6 +2914,7 @@ free to go whenever.
   The Copy link invite is the party. A mission in progress can still be joined into a bot's slot. Quick-join puts you in a room on that mission with a free slot, or makes one.
 - **Done when:** the pre-mission state is session-tested; quick-join finds and fills a room over the host (tested); it plays on the deployed site.
 - **Size:** M
+- **Completed 2026-09-24.** Hosted rooms now wait in a six-slot ready-up state with creator ownership, per-player ready flags, and a reserved class field for T-4.27. The creator chooses the mission while creating the room; all humans ready starts automatically, while the creator can start early. The browser exposes the waiting room, Copy-link party invite, and mission-scoped quick-join. Quick-join prefers a compatible assembling room, can drop into an in-progress mission, and creates a room when none fits. Protocol round-trips and host-level ready/quick-join behavior are covered by tests.
 
 ##### T-4.20 — Region selection
 - **Depends:** T-4.30, T-4.31

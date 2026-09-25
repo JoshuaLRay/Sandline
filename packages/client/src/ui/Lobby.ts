@@ -9,15 +9,15 @@
  * query parameter, where present, PRE-FILLS a field rather than bypassing the
  * screen. Two entry points means only one of them gets tested.
  *
- * THREE BUTTONS, ONE MESSAGE. "Host a room" and "Join a room" send the same
+ * FOUR BUTTONS, ONE MESSAGE. "Host a room", quick-join and "Join a room" send the same
  * `Join` — with an empty code and with one — because the difference is one
  * field (T-1.5.04). "Practice here" is the in-page session the harness has
  * always been, kept because the published page must still work with no host
  * at all, and because the movement and weapon tuning panels only mean anything
  * against a session in this page.
  *
- * NOTHING HERE IS A GAME SCREEN. No matchmaking, parties, regions, ready-checks
- * or class picks: those are E-4.5 and E-4.7, and this is a QA harness that
+ * T-4.19 adds mission-scoped quick-join here; ready-up itself lives in RoomLobby.
+ * Regions and class picks remain later work. This is still a QA harness that
  * needs two humans in one room. The roster it leads to is six rows always —
  * see `SquadPanel` — because a lobby that says "2 players" teaches everyone the
  * wrong model of the game (ADR-001).
@@ -26,7 +26,7 @@ import { checkRoomInput, HostUrlError, parseHostUrl } from '../net/RemoteServer.
 
 export type LobbyChoice =
   | { kind: 'local' }
-  | { kind: 'remote'; host: string; room: string; name: string; key: string; world: string };
+  | { kind: 'remote'; host: string; room: string; name: string; key: string; world: string; quick: boolean };
 
 /**
  * The maps a new room can be built with (T-3.35 follow-up), as the Join asks
@@ -217,7 +217,7 @@ export function createLobby(options: LobbyOptions): Lobby {
     }
   };
 
-  const remote = (wantRoom: boolean): void => {
+  const remote = (wantRoom: boolean, quick = false): void => {
     const name = readName();
     if (name === null) return;
     const host = readHost();
@@ -236,10 +236,11 @@ export function createLobby(options: LobbyOptions): Lobby {
     const key = keyInput.value.trim();
     storeKey(key);
     say('', 'info');
-    options.onChoose({ kind: 'remote', host, room, name, key, world: room === '' ? mapInput.value : '' });
+    options.onChoose({ kind: 'remote', host, room, name, key, world: room === '' ? mapInput.value : '', quick });
   };
 
   const hostButton = button('Host a room', 'lobby-primary', () => remote(false));
+  const quickButton = button('Quick join this mission', 'lobby-secondary', () => remote(false, true));
   const joinButton = button('Join', 'lobby-primary', () => remote(true));
   const localButton = button('Practise here — you and a bot, no host', 'lobby-secondary', () => {
     say('', 'info');
@@ -264,7 +265,7 @@ export function createLobby(options: LobbyOptions): Lobby {
   const help = document.createElement('p');
   help.className = 'lobby-help';
   help.textContent =
-    'Host a room and read its code to the other player, or paste the link. ' +
+    'Host a room and share its link, or quick-join another room on the selected mission. ' +
     'Six slots, always: whoever is not a person is a bot.';
 
   const gap = document.createElement('p');
@@ -280,8 +281,9 @@ export function createLobby(options: LobbyOptions): Lobby {
     field('Name', nameInput),
     field('Host', hostInput),
     field('Key', keyInput),
-    field('Map', mapInput),
+    field('Mission', mapInput),
     hostButton,
+    quickButton,
     joinRow,
     help,
     localButton,
