@@ -42,7 +42,6 @@ const host = new SessionHost({
   link,
   joinKey: config.joinKey,
   identity,
-  campaigns,
   registry: {
     maxRooms: config.maxRooms,
     graceMs: config.roomGraceMs,
