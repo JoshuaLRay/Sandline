@@ -209,8 +209,9 @@ describe('room codes and share links in the lobby (T-1.5.06)', () => {
   it('accepts an empty code as "host a room" and refuses a code that cannot exist', () => {
     expect(checkRoomInput('')).toEqual({ room: '', error: null });
     expect(checkRoomInput(' k7pm ')).toEqual({ room: 'K7PM', error: null });
-    expect(checkRoomInput('O7PM').error).toMatch(/not a room code/);
-    expect(checkRoomInput('K7P').error).toMatch(/not a room code/);
+    expect(checkRoomInput('acde-fghj')).toEqual({ room: 'ACDEFGHJ', error: null });
+    expect(checkRoomInput('O7PM').error).toMatch(/not a room or campaign code/);
+    expect(checkRoomInput('K7P').error).toMatch(/not a room or campaign code/);
   });
 
   it('builds a link that omits the host when it is the build default', () => {
