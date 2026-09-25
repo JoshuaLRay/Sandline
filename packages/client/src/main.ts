@@ -879,6 +879,8 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
   const local = choice.kind === 'local' ? new LocalServer(link, config, { ...(qaNav ? { navMesh: qaNav } : {}), ...squad, world: qaWorld, ...(qaEncounter ? { encounter: qaEncounter } : {}) }) : null;
   // The projectile panel's rows, as they stand, for this session from its first throw.
   if (local) PROJECTILE_ORDER.forEach((_, i) => local.tuneProjectile(i, throws.defOf(i)));
+  // And the weapon panel's, so the server's magazine and cadence are the page's.
+  if (local) WEAPON_ORDER.forEach((_, i) => local.tuneWeapon(i, combat.defOf(i)));
   const qaEnemies = local && qaNav && qaEnemiesWanted ? new QaEnemies(local) : null;
   // Slot netIds are 1..6 in slot order, so slot 1's soldier is netId 2.
   const qaSuppressor = local && qaSuppressWanted ? new QaSuppressor(local, 2) : null;
@@ -1103,6 +1105,8 @@ const movementPanel = createTuningPanel(
   (v) => input.setInvertY(v),
 );
 const weaponPanel = createWeaponPanel(combat);
+// Weapon tuning reaches the in-page session the same way (a remote host keeps its own data).
+combat.onTune = (index, def) => live?.local?.tuneWeapon(index, def);
 /**
  * Grenade and rocket tuning: the page's rows, handed to the in-page session on
  * every edit so the server throws what the aim arc shows (a remote host keeps
@@ -2005,7 +2009,7 @@ addEventListener('keydown', (e) => {
   // R is reload, not reset: this is a shooter now and R is muscle memory.
   // Reset moved to T.
   // Nothing to reload with a grenade or a launcher in hand.
-  if (e.code === 'KeyR' && !holdingPouch) combat.requestReload(clock.tick * TICK_SECONDS);
+  if (e.code === 'KeyR' && !holdingPouch && combat.requestReload(clock.tick * TICK_SECONDS)) live?.net.reload(combat.weaponIndex);
   // T resets the local readouts only. Position is authoritative now, so
   // teleporting to spawn needs a server-side respawn — that is T-1.19.
   if (e.code === 'KeyT') {

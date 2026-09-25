@@ -16,7 +16,7 @@ import type { ScriptBlockerState } from '../sim/events.ts';
 import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 29;
+export const PROTOCOL_VERSION = 30;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -385,8 +385,12 @@ export type Message =
    * held like a gun and used with the trigger, so the rest of the squad needs
    * to see it in hand before it is thrown, not only after. Sent once per
    * switch, reliably; bounds-checked by the server like every other index.
+   *
+   * `reload` (protocol 30): the R key, on the gun at `item`. The page reloads
+   * the moment it goes down; without telling the server its magazine kept the
+   * old count and refused a reload's worth of the player's next shots.
    */
-  | { kind: 'Equip'; item: number }
+  | { kind: 'Equip'; item: number; reload?: boolean }
   /**
    * A projectile going off (T-2.31): where, which kind, the tick it happened
    * on, and what each soldier in reach took.
@@ -556,6 +560,7 @@ export function encodeMessage(msg: Message): Uint8Array {
     case 'Equip':
       w.writeBits(MessageType.Equip, TYPE_BITS);
       w.writeBits(msg.item & 0x7, 3);
+      w.writeBits(msg.reload === true ? 1 : 0, 1);
       break;
     case 'Detonation': {
       w.writeBits(MessageType.Detonation, TYPE_BITS);
@@ -1002,8 +1007,10 @@ export function decodeMessage(bytes: Uint8Array): Message {
           pitch: r.readBits(12),
           projectile: r.readBits(2),
         };
-      case MessageType.Equip:
-        return { kind: 'Equip', item: r.readBits(3) };
+      case MessageType.Equip: {
+        const item = r.readBits(3);
+        return r.readBits(1) === 1 ? { kind: 'Equip', item, reload: true } : { kind: 'Equip', item };
+      }
       case MessageType.Detonation: {
         const netId = r.readVarUint();
         const projectile = r.readBits(2);

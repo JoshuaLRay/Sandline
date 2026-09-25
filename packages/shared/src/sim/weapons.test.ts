@@ -176,6 +176,30 @@ describe('firing state machine', () => {
     expect(state.ammo).toBe(FIXTURE.magSize - 1);
   });
 
+  it('with slack, allows a shot that arrives early but keeps the rate at the rpm', () => {
+    const state = createWeaponState(FIXTURE);
+    expect(tryFire(FIXTURE, state, 0, false, false, 0, 0.05)).not.toBeNull();
+    // 70 ms after a 100 ms cadence: late-then-early arrival, inside the slack.
+    expect(tryFire(FIXTURE, state, 0.07, false, false, 0, 0.05)).not.toBeNull();
+    // Scheduled from when it was due (0.1), not when it came, so the next is due at 0.2.
+    expect(tryFire(FIXTURE, state, 0.14, false, false, 0, 0.05)).toBeNull();
+    expect(tryFire(FIXTURE, state, 0.15, false, false, 0, 0.05)).not.toBeNull();
+    // A burst can never beat the rpm: 0 s, then due 0.1 and 0.2 but not until 0.05 and 0.15.
+    const deep = { ...FIXTURE, magSize: 100 };
+    const burst = createWeaponState(deep);
+    let fired = 0;
+    for (let t = 0; t < 1.0001; t += 1 / 30) if (tryFire(deep, burst, t, false, false, 0, 0.05)) fired += 1;
+    expect(fired).toBeLessThanOrEqual(11);
+  });
+
+  it('judges the end of a reload with the same slack', () => {
+    const state = createWeaponState(FIXTURE);
+    state.ammo = 0;
+    startReload(FIXTURE, state, 0);
+    expect(tryFire(FIXTURE, state, 1.94, false, false, 0, 0.05)).toBeNull();
+    expect(tryFire(FIXTURE, state, 1.96, false, false, 0, 0.05)).not.toBeNull();
+  });
+
   it('refuses a redundant reload on a full magazine', () => {
     const state = createWeaponState(FIXTURE);
     expect(startReload(FIXTURE, state, 0)).toBe(false);

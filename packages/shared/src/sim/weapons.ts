@@ -403,6 +403,17 @@ export interface Shot {
  *
  * `now` is injected: nothing in here reads a clock, which is what makes cadence
  * and reload behaviour exactly testable.
+ *
+ * `slackSeconds` is for a judge that sees the trigger late and unevenly: the
+ * server, which reads each Fire at the tick it ARRIVED on. A client firing on
+ * its own ticks at a steady cadence reaches the server with the gaps bent by
+ * the link and by the 30 Hz step — a 100 ms gap lands as 67 ms often enough
+ * that a third of a held burst was refused as "too fast" and never drawn a
+ * hit. With slack a shot up to that early is allowed, and the next one is
+ * scheduled from where this one was DUE rather than from when it came, so the
+ * weapon's rate over any run of shots is still its rpm: slack moves shots, it
+ * never adds them. The reload is judged with the same slack. The client, which
+ * fires on its own clock, passes 0 and gets exactly the old machine.
  */
 export function tryFire(
   def: WeaponDef,
@@ -412,17 +423,20 @@ export function tryFire(
   prone = false,
   /** Added to the cone as `currentConeUnits` adds it: suppression (T-3.16). */
   extraConeUnits = 0,
+  slackSeconds = 0,
 ): Shot | null {
-  finishReload(def, state, now);
-  if (isReloading(state, now)) return null;
-  if (now < state.nextShotAt) return null;
+  const judged = now + slackSeconds;
+  finishReload(def, state, judged);
+  if (isReloading(state, judged)) return null;
+  if (judged < state.nextShotAt) return null;
   if (state.ammo <= 0) return null;
 
   const coneUnits = currentConeUnits(def, state, ads, prone, extraConeUnits);
   const shotIndex = state.shotIndex;
   state.ammo -= 1;
   state.shotIndex += 1;
-  state.nextShotAt = now + shotIntervalSeconds(def);
+  // Without slack `now >= nextShotAt` here, so this is `now + interval` as before.
+  state.nextShotAt = Math.max(now, state.nextShotAt) + shotIntervalSeconds(def);
   state.bloomUnits += degToAngle(def.bloomPerShotDeg);
 
   return { shotIndex, coneUnits };

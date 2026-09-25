@@ -722,6 +722,15 @@ export class NetClient {
   }
 
   /**
+   * The R key on the gun at `item`. The page's magazine reloads at once; the
+   * server's must too, or it refuses a reload's worth of the next shots.
+   */
+  reload(item: number): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage({ kind: 'Equip', item, reload: true }), 'reliable');
+  }
+
+  /**
    * Ask for AI debug reports, or stop them (T-3.09). Reliable: a lost request
    * would leave the overlay blank, or the host sending to a client that no
    * longer draws it. A host without `AI_DEBUG=1` ignores it.

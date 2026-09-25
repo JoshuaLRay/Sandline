@@ -69,6 +69,7 @@ const SAMPLES: Message[] = [
   },
   { kind: 'Throw', tick: 900, yaw: 4095, pitch: 3072, projectile: 1 },
   { kind: 'Equip', item: 5 },
+  { kind: 'Equip', item: 0, reload: true },
   {
     kind: 'ScriptState',
     blockers: [

@@ -16,10 +16,15 @@ import {
   PROTOCOL_VERSION,
   RANGE_TARGETS,
   SPAWN_POINTS,
+  TICK_SECONDS,
   createLoopbackPair,
+  createWeaponState,
   decodeMessage,
   encodeMessage,
   getWeapon,
+  isReloading,
+  startReload,
+  tryFire,
   isRangeTarget,
 } from '@sandline/shared';
 import { Session } from './Session.ts';
@@ -94,6 +99,11 @@ function connect(session: Session, now = 0) {
     input(yaw: number, tick: number, moveX = 0, moveY = 0, buttons = 0) {
       held = { moveX, moveY, yaw, buttons };
       pair.b.send(encodeMessage({ kind: 'Input', tick, moveX, moveY, yaw, pitch: 0, buttons }));
+      pair.settle();
+    },
+    /** The R key on the gun at `item`. */
+    reload(item = 0) {
+      pair.b.send(encodeMessage({ kind: 'Equip', item, reload: true }));
       pair.settle();
     },
     /** Stop holding anything. */
@@ -337,6 +347,98 @@ describe('firing over the wire', () => {
     const now = run(session, 0, 5, client);
     client.fire({ renderTimeMs: now, yaw: ALONG_THE_LINE });
     expect(client.hits[0]?.targetNetId).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * A held trigger as the page pulls it: the page's own weapon machine on the
+ * page's own 30 Hz clock, auto-reloading on empty as `CombatQA` does, with each
+ * Fire reaching the server on its tick or `lateTicks(i)` steps later — the
+ * uneven arrival a frame that runs two ticks together, or any link, makes.
+ * Fire and the reload key share the reliable channel, so they arrive in order.
+ * Returns what the page fired and what the server registered.
+ */
+function holdTrigger(
+  rounds: number,
+  lateTicks: (shot: number) => number,
+  reloadAtShot = -1,
+  tuned?: Partial<ReturnType<typeof getWeapon>>,
+): { fired: number; registered: number } {
+  const session = new Session();
+  const client = connect(session);
+  let now = run(session, 0, 5, client);
+  const carbine = { ...getWeapon('carbine'), ...tuned };
+  // The weapon panel's edit, as the page hands it to the in-page session.
+  if (tuned) session.tuneWeapon(0, carbine);
+  const page = createWeaponState(carbine);
+  const inFlight: { dueStep: number; send: () => void }[] = [];
+  const queue = (dueStep: number, send: () => void): void => {
+    // In order: nothing overtakes what was sent before it.
+    inFlight.push({ dueStep: Math.max(dueStep, inFlight.at(-1)?.dueStep ?? 0), send });
+  };
+  let fired = 0;
+  for (let step = 0; fired < rounds || inFlight.length > 0; step += 1) {
+    if (step > 30 * 60) throw new Error('held trigger never finished');
+    const pageNow = step * TICK_SECONDS;
+    if (fired < rounds && tryFire(carbine, page, pageNow, false) !== null) {
+      const tick = step;
+      queue(step + lateTicks(fired), () => client.fire({ tick, renderTimeMs: now, yaw: ALONG_THE_LINE }));
+      fired += 1;
+      if (fired === reloadAtShot && startReload(carbine, page, pageNow)) queue(step, () => client.reload(0));
+    }
+    if (page.ammo === 0 && !isReloading(page, pageNow)) startReload(carbine, page, pageNow);
+    while (inFlight.length > 0 && inFlight[0]!.dueStep <= step) inFlight.shift()!.send();
+    now = run(session, now, 1, client);
+  }
+  return { fired, registered: client.hits.length };
+}
+
+describe('a held trigger registers every round the page fires', () => {
+  /** Deterministic "sometimes a tick late": about one Fire in three. */
+  const jitter = (shot: number): number => ((shot * 7) % 3 === 0 ? 1 : 0);
+
+  it('with Fires arriving a tick late now and then, none is refused as too fast', () => {
+    const { fired, registered } = holdTrigger(25, jitter);
+    console.log(`jittered burst: ${registered}/${fired} registered`);
+    expect(registered).toBe(fired);
+  });
+
+  it('across magazines: the server reloads when the magazine empties, not on the next pull', () => {
+    // 100 rounds from a 30-round carbine: three reloads in the middle.
+    const { fired, registered } = holdTrigger(100, () => 0);
+    console.log(`100 rounds across reloads: ${registered}/${fired} registered`);
+    expect(registered).toBe(fired);
+  });
+
+  it('a reload key press mid-magazine reaches the server', () => {
+    const { fired, registered } = holdTrigger(60, jitter, 12);
+    console.log(`R at round 12: ${registered}/${fired} registered`);
+    expect(registered).toBe(fired);
+  });
+
+  it('fires the magazine the weapon panel tuned, not the data file\'s', () => {
+    // The QA report: the carbine's magazine dialled to 100 and held down.
+    const { fired, registered } = holdTrigger(100, jitter, -1, { magSize: 100 });
+    console.log(`tuned 100-round magazine: ${registered}/${fired} registered`);
+    expect(registered).toBe(fired);
+    // A tuned row never leaks into another session.
+    expect(new Session().weaponDef(0)?.magSize).toBe(getWeapon('carbine').magSize);
+  });
+
+  it('still never fires faster than the weapon: slack moves shots, it does not add them', () => {
+    const session = new Session();
+    const client = connect(session);
+    let now = run(session, 0, 5, client);
+    const carbine = getWeapon('carbine');
+    // Two Fires on every server step for three seconds: a client lying about its cadence.
+    for (let i = 0; i < 90; i += 1) {
+      client.fire({ renderTimeMs: now, yaw: ALONG_THE_LINE });
+      client.fire({ renderTimeMs: now, yaw: ALONG_THE_LINE });
+      now = run(session, now, 1, client);
+    }
+    const seconds = 90 * TICK_SECONDS;
+    const allowed = Math.min(carbine.magSize, Math.floor(seconds / (60 / carbine.rpm)) + 1);
+    expect(client.hits.length).toBeLessThanOrEqual(allowed);
   });
 });
 

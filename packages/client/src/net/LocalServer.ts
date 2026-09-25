@@ -41,6 +41,7 @@ import {
   type NetSimOptions,
   TICK_SECONDS,
   type Transport,
+  type WeaponDef,
   type World,
   createLoopbackPair,
 } from '@sandline/shared';
@@ -213,6 +214,20 @@ export class LocalServer {
    */
   tuneProjectile(index: number, def: Readonly<ProjectileDef>): void {
     this.session.tuneProjectile(index, def);
+  }
+
+  /**
+   * Retune a gun for the in-page session (the weapon panel): the server fires
+   * the magazine, cadence and cone the page predicts. A remote host keeps its
+   * own data.
+   */
+  tuneWeapon(index: number, def: Readonly<WeaponDef>): void {
+    this.session.tuneWeapon(index, def);
+  }
+
+  /** The row the in-page session fires for a gun index, as tuned. */
+  weaponDef(index: number): Readonly<WeaponDef> | null {
+    return this.session.weaponDef(index);
   }
 
   /** The row the in-page session throws for a projectile index, as tuned. */

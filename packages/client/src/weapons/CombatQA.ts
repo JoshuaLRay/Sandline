@@ -111,6 +111,8 @@ export class CombatQA {
   private index = 0;
   private def: WeaponDef;
   private state: WeaponState;
+  /** The magazine size the state was last settled against, for `applyWeaponEdit`. */
+  private settledMag: number;
   /**
    * Per-weapon working copies of the shipped definitions.
    *
@@ -121,6 +123,12 @@ export class CombatQA {
   private readonly working = new Map<string, WeaponDef>();
   /** Fired when the active weapon changes, so the panel can rebind its rows. */
   onWeaponChange: ((def: WeaponDef) => void) | null = null;
+  /**
+   * Fired with each retuned row, so the in-page session fires what the page
+   * predicts: a magazine or cadence edited here alone left the server
+   * refusing every shot past its own magazine and cadence.
+   */
+  onTune: ((index: number, def: Readonly<WeaponDef>) => void) | null = null;
   private readonly effects: Fading[] = [];
   private readonly tracerGeometry = new THREE.BufferGeometry();
   private readonly impactGeometry = new THREE.SphereGeometry(0.09, 8, 6);
@@ -139,6 +147,7 @@ export class CombatQA {
   ) {
     this.def = this.workingDef(0);
     this.state = createWeaponState(this.def);
+    this.settledMag = this.def.magSize;
   }
 
   /** The LIVE definition. Mutating it retunes the weapon immediately. */
@@ -167,11 +176,21 @@ export class CombatQA {
   /**
    * Settle the magazine after a stat edit. Dropping mag size below the rounds
    * already loaded would otherwise read as 30/10, and a reload timed against
-   * the old duration would finish at the wrong moment.
+   * the old duration would finish at the wrong moment. A full magazine stays
+   * full at the new size. The in-page session settles its slot by the same
+   * rule (`Session.tuneWeapon`), so both count the same rounds.
    */
   applyWeaponEdit(): void {
-    if (this.state.ammo > this.def.magSize) this.state.ammo = this.def.magSize;
+    const full = this.state.ammo >= this.settledMag;
+    if (full || this.state.ammo > this.def.magSize) this.state.ammo = this.def.magSize;
+    this.settledMag = this.def.magSize;
     this.state.reloadEndsAt = 0;
+    this.onTune?.(this.index, this.def);
+  }
+
+  /** The working row for a weapon index: what the page fires, tuned or not. */
+  defOf(index: number): Readonly<WeaponDef> {
+    return this.workingDef(index);
   }
 
   /** Restore the active weapon to the shipped data, discarding tuning. */
@@ -181,7 +200,9 @@ export class CombatQA {
     this.working.set(id, fresh);
     this.def = fresh;
     this.state = createWeaponState(fresh);
+    this.settledMag = fresh.magSize;
     this.onWeaponChange?.(fresh);
+    this.onTune?.(this.index, fresh);
     return fresh;
   }
 
@@ -191,11 +212,13 @@ export class CombatQA {
     this.index = index;
     this.def = this.workingDef(index);
     this.state = createWeaponState(this.def);
+    this.settledMag = this.def.magSize;
     this.onWeaponChange?.(this.def);
   }
 
-  requestReload(now: number): void {
-    startReload(this.def, this.state, now);
+  /** Start a reload; true when one started (the server is then told). */
+  requestReload(now: number): boolean {
+    return startReload(this.def, this.state, now);
   }
 
   /**
@@ -339,6 +362,7 @@ export class CombatQA {
     for (const effect of this.effects) this.dispose(effect);
     this.effects.length = 0;
     this.state = createWeaponState(this.def);
+    this.settledMag = this.def.magSize;
     this.shotsFired = 0;
     this.pelletsFired = 0;
     this.pelletsHit = 0;

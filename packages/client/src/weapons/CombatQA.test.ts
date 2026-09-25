@@ -89,4 +89,24 @@ describe('CombatQA', () => {
     const sidearm = getWeapon('sidearm');
     expect(combat.readout(100, false)).toContain(`${sidearm.magSize}/${sidearm.magSize}`);
   });
+
+  it('hands every tuning edit to the in-page session, which settles its magazine the same way', () => {
+    const tuned: { index: number; magSize: number }[] = [];
+    combat.onTune = (index, def) => tuned.push({ index, magSize: def.magSize });
+    // A full magazine stays full at the new size: the QA report's 100-round carbine.
+    combat.weapon.magSize = 100;
+    combat.applyWeaponEdit();
+    expect(combat.readout(0, false)).toContain('100/100');
+    expect(tuned).toEqual([{ index: 0, magSize: 100 }]);
+    // A part-used one keeps its rounds, and never more than the new size.
+    run(combat, 0, 30, { firing: true });
+    const left = Number(/(\d+)\/100/.exec(combat.readout(0, false))?.[1]);
+    expect(left).toBeLessThan(100);
+    combat.weapon.magSize = 90;
+    combat.applyWeaponEdit();
+    expect(combat.readout(0, false)).toContain(`${Math.min(left, 90)}/90`);
+    // Reset hands the shipped row over too.
+    combat.resetWeapon();
+    expect(tuned.at(-1)).toEqual({ index: 0, magSize: getWeapon('carbine').magSize });
+  });
 });

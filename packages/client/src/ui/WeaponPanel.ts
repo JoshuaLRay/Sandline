@@ -124,6 +124,7 @@ export function createWeaponPanel(combat: CombatQA): Panel {
       () => def.auto,
       (value) => {
         def.auto = value;
+        combat.applyWeaponEdit();
         refreshReadout();
       },
     );

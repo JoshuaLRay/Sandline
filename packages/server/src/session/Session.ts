@@ -80,6 +80,7 @@ import {
   eyePosition,
   getWeapon,
   shotDirections,
+  shotIntervalSeconds,
   startReload,
   tryFire,
   quantize,
@@ -385,6 +386,21 @@ export const MAX_INPUT_QUEUE = 4;
  * couple of ticks.
  */
 export const MAX_CATCHUP_INPUTS = 2;
+
+/**
+ * How early a Fire may arrive against the weapon's cadence and still count.
+ *
+ * The page pulls the trigger on its own ticks; the server reads each pull at
+ * the 30 Hz step it ARRIVED on. Frames that run two client ticks together, a
+ * link's jitter and the step itself bend the gaps, so a carbine held at its
+ * 100 ms client cadence (720 rpm rounds up to three ticks) was often seen 67
+ * ms apart — under the 83 ms interval — and refused: about a third of a held
+ * burst drew a tracer and never a hit. Two steps covers one late Fire followed
+ * by one early one; `tryFire` schedules from when a shot was due, so the rate
+ * stays the weapon's. Capped at the interval, so no more than one shot can
+ * ever be banked.
+ */
+export const FIRE_SLACK_SECONDS = 2 * TICK_SECONDS;
 
 const idleInput = (yaw = 0): MoveInput => ({
   moveX: 0,
@@ -864,8 +880,8 @@ export class Session {
         connection: null,
         resumeToken: '',
         reservedUntilMs: 0,
-        weapon: getWeapon(WEAPON_IDS[0]),
-        weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
+        weapon: this.slotWeapon(WEAPON_IDS[0]),
+        weaponState: createWeaponState(this.slotWeapon(WEAPON_IDS[0])),
         suppression: createSuppression(),
         pitch: 0,
         pouch: this.fullPouch(),
@@ -1231,6 +1247,45 @@ export class Session {
    * so tuning the in-page range never changes what a host's rooms throw.
    */
   private readonly projectileDefs: ProjectileDef[] = PROJECTILE_IDS.map((id) => ({ ...getProjectile(id) }));
+
+  /**
+   * This session's gun rows, indexed like WEAPON_IDS: the shipped data unless
+   * the QA page's weapon panel has retuned one (`tuneWeapon`). Per session,
+   * like the projectile rows, so the in-page range fires the magazine and
+   * cadence the page shows while a host's rooms keep the data file's.
+   */
+  private readonly weaponDefs: WeaponDef[] = WEAPON_IDS.map((id) => ({ ...getWeapon(id) }));
+
+  /** The gun row a squad slot fires in this session: tuned, or the shipped one. */
+  private slotWeapon(id: string): WeaponDef {
+    return this.weaponDefs[(WEAPON_IDS as readonly string[]).indexOf(id)] ?? getWeapon(id);
+  }
+
+  /** The gun row a wire index fires in this session, as tuned, or null. */
+  weaponDef(index: number): Readonly<WeaponDef> | null {
+    return this.weaponDefs[index] ?? null;
+  }
+
+  /**
+   * Retune one gun for this session from now on (the in-page weapon panel).
+   * Out-of-range indices are ignored. A slot holding it takes the new row at
+   * once, and its magazine settles the way the page's does (`CombatQA`): a
+   * full magazine stays full at the new size, any other never holds more than
+   * it, and a reload timed against the old row is abandoned.
+   */
+  tuneWeapon(index: number, def: Readonly<WeaponDef>): void {
+    const id = WEAPON_IDS[index];
+    if (id === undefined || def.id !== id) return;
+    const row = { ...def };
+    this.weaponDefs[index] = row;
+    for (const slot of this.slots) {
+      if (slot.weapon.id !== id) continue;
+      const full = slot.weaponState.ammo >= slot.weapon.magSize;
+      slot.weapon = row;
+      if (full || slot.weaponState.ammo > row.magSize) slot.weaponState.ammo = row.magSize;
+      slot.weaponState.reloadEndsAt = 0;
+    }
+  }
 
   /** A full load-out of every projectile, as this session's rows say it is carried. */
   private fullPouch(): number[] {
@@ -1967,7 +2022,7 @@ export class Session {
     const id = WEAPON_IDS[msg.weapon];
     if (id === undefined) return; // Out-of-range index: drop it, do not throw.
     if (id !== slot.weapon.id) {
-      slot.weapon = getWeapon(id);
+      slot.weapon = this.slotWeapon(id);
       slot.weaponState = createWeaponState(slot.weapon);
     }
     // A shot is a gun in hand, whatever the last Equip said.
@@ -1995,13 +2050,25 @@ export class Session {
     const shooterThen = this.hitboxes.stateAt(slot.netId, rewoundTo);
     const proneThen = shooterThen?.prone ?? slot.state.prone;
     // T-3.16: suppression widens the cone by its data's amount, at the level the page is told.
-    const shot = tryFire(slot.weapon, slot.weaponState, nowSeconds, msg.ads, proneThen, suppressionConeUnits(suppressionLevel(slot.suppression, nowSeconds)));
+    // Judged with slack: this Fire is read at the tick it arrived on, not the
+    // one it was pulled on (see `FIRE_SLACK_SECONDS`).
+    const slack = Math.min(FIRE_SLACK_SECONDS, shotIntervalSeconds(slot.weapon));
+    const shot = tryFire(slot.weapon, slot.weaponState, nowSeconds, msg.ads, proneThen, suppressionConeUnits(suppressionLevel(slot.suppression, nowSeconds)), slack);
     if (shot === null) {
       // Cadence, reload or an empty magazine. Auto-reload so a player who
       // empties a magazine is not stuck until they think to press a key.
       if (slot.weaponState.ammo === 0) startReload(slot.weapon, slot.weaponState, nowSeconds);
       return;
     }
+    /**
+     * The round that empties the magazine starts the reload, as it does in the
+     * page (`CombatQA`). Waiting for the next refused Fire to start it meant
+     * the server began its reload only when the player, already reloaded on
+     * their own screen, pulled the trigger again — and refused every shot for
+     * the next reload's length: a held trigger lost a whole reload of hits
+     * after every magazine.
+     */
+    if (slot.weaponState.ammo === 0) startReload(slot.weapon, slot.weaponState, nowSeconds);
 
     /**
      * Wire units here, TABLE units in the message.
@@ -2313,10 +2380,13 @@ export class Session {
     const gun = WEAPON_IDS[msg.item];
     if (gun !== undefined) {
       if (gun !== slot.weapon.id) {
-        slot.weapon = getWeapon(gun);
+        slot.weapon = this.slotWeapon(gun);
         slot.weaponState = createWeaponState(slot.weapon);
       }
       slot.heldProjectile = -1;
+      // A reload key press: the page reloads the moment R goes down, and so
+      // must the magazine that decides which of its next shots are real.
+      if (msg.reload === true && isAlive(slot.health)) startReload(slot.weapon, slot.weaponState, this.nowMs / 1000);
       return;
     }
     const pouchIndex = msg.item - WEAPON_IDS.length;

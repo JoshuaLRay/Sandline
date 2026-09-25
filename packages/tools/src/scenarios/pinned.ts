@@ -29,13 +29,18 @@ import {
   createHealth,
   createLoopbackPair,
   createMoveState,
+  createWeaponState,
   decodeMessage,
   encodeMessage,
   eyePosition,
   fromRadians,
+  getWeapon,
+  isReloading,
   requireWorld,
   seedFrom,
+  startReload,
   suppressionLevel,
+  tryFire,
 } from '@sandline/shared';
 import { Session } from '../../../server/src/session/Session.ts';
 import { createBrainRegistry } from '../../../server/src/ai/Brain.ts';
@@ -129,6 +134,14 @@ export async function runPinned(seed: number, config = PINNED): Promise<PinnedRe
   const cycle = Math.round((DOWN_S + UP_S) * TICKS_PER_SECOND);
   const totalTicks = Math.round(config.fightSeconds * TICKS_PER_SECOND);
   let inputTick = 0;
+  /**
+   * The soldier's trigger, pulled as the page pulls it (`CombatQA`): on its own
+   * cadence and magazine, reloading when empty. A Fire every tick would be read
+   * by the server's slack as the carbine's full 720 rpm rather than the page's
+   * 600 (three whole ticks a shot), which is not what a player can do.
+   */
+  const carbine = getWeapon('carbine');
+  const trigger = createWeaponState(carbine);
   let contact: number | null = null;
   let flankStart: number | null = null;
   let flankEnd: number | null = null;
@@ -146,6 +159,8 @@ export async function runPinned(seed: number, config = PINNED): Promise<PinnedRe
   for (let t = 0; t < totalTicks; t++) {
     const now = (session.tick + 1) * (1000 / TICKS_PER_SECOND);
     const up = (t + phase) % cycle >= DOWN_S * TICKS_PER_SECOND;
+    const pageNow = t * TICK_SECONDS;
+    if (trigger.ammo === 0 && !isReloading(trigger, pageNow)) startReload(carbine, trigger, pageNow);
     // Its stance, as a player's is: an input every tick — prone while down, which
     // the low wall hides entirely (crouched, its head shows over the 1.0 m top).
     pair.b.send(
@@ -156,7 +171,7 @@ export async function runPinned(seed: number, config = PINNED): Promise<PinnedRe
       const seen = riflemen
         .map((r) => visibleAimPoint(eye, aimPoints(r.state, r.state.crouched, r.state.prone), world.boxes))
         .find((p) => p !== null);
-      if (seen) {
+      if (seen && tryFire(carbine, trigger, pageNow, true) !== null) {
         const dx = seen.x - eye.x;
         const dy = seen.y - eye.y;
         const dz = seen.z - eye.z;
