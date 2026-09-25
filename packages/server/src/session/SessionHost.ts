@@ -451,7 +451,7 @@ export class SessionHost {
     conn.identityToken = who.token;
     let room: Room | undefined;
     if (conn.room === '') {
-      const made = this.registry.create(this.now(), conn.world);
+      const made = (conn.quick ? this.registry.quickJoin(conn.world) : undefined) ?? this.registry.create(this.now(), conn.world);
       if (!made) {
         conn.reject('host full', `this host holds ${this.registry.maxRooms} rooms and all are in use`);
         return;
