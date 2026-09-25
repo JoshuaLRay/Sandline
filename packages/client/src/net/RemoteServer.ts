@@ -22,7 +22,7 @@
  * are the same picture. On a socket they are different faults, so the phase
  * below is surfaced in the HUD rather than inferred from a frozen screen.
  */
-import { ROOM_CODE_ALPHABET, type DisconnectCode, type Transport, isRoomCode, normalizeRoomCode } from '@sandline/shared';
+import { type DisconnectCode, type Transport, isJoinCode, normalizeRoomCode } from '@sandline/shared';
 import { WsClientTransport } from './WsTransport.ts';
 
 /**
@@ -141,8 +141,7 @@ export function shareLink(pageUrl: string, host: string, room: string, defaultHo
 export function checkRoomInput(raw: string): { room: string; error: string | null } {
   const room = normalizeRoomCode(raw);
   if (room === '') return { room, error: null };
-  const campaign = room.length === 8 && [...room].every((ch) => ROOM_CODE_ALPHABET.includes(ch));
-  if (!isRoomCode(room) && !campaign) {
+  if (!isJoinCode(room)) {
     return {
       room,
       error: `'${room}' is not a room or campaign code — room codes are four characters, campaign codes are eight, and neither uses I, O, 0, 1, S, 5, B, 8, Z or 2`,
