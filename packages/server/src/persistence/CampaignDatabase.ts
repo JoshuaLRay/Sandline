@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
+import { DatabaseSync } from 'node:sqlite';
 import { PlayerDirectory, type PlayerRecord } from '../identity/PlayerDirectory.ts';
 
 export const CAMPAIGN_CODE_ALPHABET = 'ACDEFGHJKMNPRTUVWXY34679';
