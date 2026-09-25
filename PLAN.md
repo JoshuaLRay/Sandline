@@ -2983,6 +2983,7 @@ free to go whenever.
 - **Do:** Completed missions, checkpoints and the squad's soldiers saved per campaign (ADR-019), under its campaign code, and restored when a room is hosted with that code. Writes are idempotent and a failed write is retried. A save format version and migrations exist from the first save.
 - **Done when:** save and restore are tested against a real SQLite file (ADR-019's addendum: SQLite on a Fly volume, `node:sqlite`); a migration test passes; a crash mid-write loses nothing that was acknowledged; `fly.toml` mounts the volume and `docs/DEPLOYING.md` warns that `fly apps destroy` deletes every campaign.
 - **Size:** M
+- **Completed 2026-09-24:** campaigns now live in a versioned `node:sqlite` WAL database with transactional/idempotent retrying saves; checkpoint and mission-end state restores under an eight-character campaign join code, the player directory shares the durable file, and Fly mounts/provisions `/data` for it. Real-file tests cover reopen, migration, mid-write rollback, lost-ack retry and host-process campaign restore.
 
 ##### T-4.24 — Per-soldier XP and ranks
 - **Depends:** T-4.22, T-4.23

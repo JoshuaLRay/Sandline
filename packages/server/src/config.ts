@@ -35,6 +35,8 @@ export interface ServerConfig {
    * restart would then refuse every saved identity.
    */
   identitySecrets: string[];
+  /** T-4.23: SQLite campaign/player database path. */
+  campaignDbPath: string;
   /** `IDLE_TIMEOUT_MS`: drop a player who has not moved or looked in this long. 0 = never. */
   idleTimeoutMs: number;
   /** `MAX_SESSION_MS`: drop any player connected this long. 0 = never. */
@@ -109,6 +111,7 @@ export function loadConfig(): ServerConfig {
     hostAi: hostAiFromEnv(),
     joinKey: process.env['JOIN_KEY'] ?? '',
     identitySecrets: identitySecretsFromEnv(),
+    campaignDbPath: process.env['CAMPAIGN_DB_PATH'] ?? 'sandline.sqlite',
     idleTimeoutMs: nonNegative('IDLE_TIMEOUT_MS', DEFAULT_IDLE_TIMEOUT_MS),
     maxSessionMs: nonNegative('MAX_SESSION_MS', DEFAULT_MAX_SESSION_MS),
   };

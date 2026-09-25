@@ -1,0 +1,17 @@
+export {
+  CAMPAIGN_CODE_ALPHABET,
+  CAMPAIGN_CODE_LENGTH,
+  CAMPAIGN_RETENTION_MS,
+  CAMPAIGN_SAVE_VERSION,
+  CAMPAIGN_SCHEMA_VERSION,
+  CampaignDatabase,
+  SqlitePlayerDirectory,
+  isCampaignCode,
+  newCampaignState,
+  normalizeCampaignCode,
+  type CampaignCheckpoint,
+  type CampaignDatabaseOptions,
+  type CampaignRecord,
+  type CampaignState,
+  type SoldierSave,
+} from './CampaignDatabase.ts';

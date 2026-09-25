@@ -65,6 +65,7 @@ import { type WsServerHandle, startWsServer } from '../net/WsTransport.ts';
 import type { Logger } from '../log.ts';
 import { initNav } from '../ai/nav/NavMesh.ts';
 import { Identity } from '../identity/Identity.ts';
+import { CampaignDatabase, normalizeCampaignCode } from '../persistence/CampaignDatabase.ts';
 
 const TICK_MS = TICK_SECONDS * 1000;
 
@@ -248,6 +249,8 @@ export interface SessionHostOptions {
    * host makes one with a random secret, so identities last as long as it does.
    */
   identity?: Identity;
+  /** T-4.23: durable campaigns. Absent keeps the old ephemeral-room behavior for tests/local embeddings. */
+  campaigns?: CampaignDatabase;
 }
 
 /**
@@ -450,21 +453,55 @@ export class SessionHost {
     conn.playerId = who.playerId;
     conn.identityToken = who.token;
     let room: Room | undefined;
+    const campaigns = this.options.campaigns;
     if (conn.room === '') {
-      const made = (conn.quick ? this.registry.quickJoin(conn.world) : undefined) ?? this.registry.create(this.now(), conn.world);
-      if (!made) {
+      room = conn.quick ? this.registry.quickJoin(conn.world) : undefined;
+      if (!room && campaigns) {
+        if (this.registry.stats.rooms >= this.registry.maxRooms) {
+          conn.reject('host full', `this host holds ${this.registry.maxRooms} rooms and all are in use`);
+          return;
+        }
+        const world = this.registry.worldFor(conn.world) ?? DEFAULT_WORLD_ID;
+        const campaign = campaigns.createCampaign(who.playerId, world);
+        room = this.registry.create(this.now(), world, {
+          code: campaign.code,
+          state: campaign.state,
+          onSave: (state) => { campaigns.saveCampaign(campaign.code, state); },
+        }) ?? undefined;
+        if (!room) {
+          campaigns.deleteCampaign(campaign.code, who.playerId);
+          conn.reject('host full', `this host holds ${this.registry.maxRooms} rooms and all are in use`);
+          return;
+        }
+      } else if (!room) {
+        room = this.registry.create(this.now(), conn.world) ?? undefined;
+      }
+      if (!room) {
         conn.reject('host full', `this host holds ${this.registry.maxRooms} rooms and all are in use`);
         return;
       }
-      room = made;
     } else {
-      room = this.registry.get(conn.room);
+      room = this.registry.get(conn.room) ?? this.registry.getByJoinCode(normalizeCampaignCode(conn.room));
+      if (!room && campaigns) {
+        const campaign = campaigns.loadCampaign(conn.room);
+        if (campaign) {
+          room = this.registry.create(this.now(), campaign.state.world, {
+            code: campaign.code,
+            state: campaign.state,
+            onSave: (state) => { campaigns.saveCampaign(campaign.code, state); },
+          }) ?? undefined;
+          if (!room) {
+            conn.reject('host full', `this host holds ${this.registry.maxRooms} rooms and all are in use`);
+            return;
+          }
+        }
+      }
       if (!room) {
-        conn.reject('no such room', `no room ${conn.room} on this host`);
+        conn.reject('no such room', `no room or campaign ${conn.room} on this host`);
         return;
       }
     }
-    conn.room = room.code;
+    conn.room = room.joinCode;
     // The room's clock, not the host's: see `ServerConnection.resetClock`.
     conn.resetClock(room.simTimeMs);
     const seated = room.session.admit(conn);

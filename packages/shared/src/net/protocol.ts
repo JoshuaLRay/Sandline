@@ -9,7 +9,7 @@
 import { BitReader, BitWriter } from './BitStream.ts';
 import { HEALTH, POSITION, dequantize, quantize } from './quantize.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
-import { isRoomCode } from './roomCode.ts';
+import { isJoinCode } from './roomCode.ts';
 import { MAX_MARKS, ORDER_KINDS, type BotOrder, type OrderAddress, type OrderKind, type OrderPoint, type TargetMark } from '../sim/orders.ts';
 import { MISSION_STATES, OBJECTIVE_TYPES, type MissionView } from '../sim/mission.ts';
 import type { ScriptBlockerState } from '../sim/events.ts';
@@ -1174,8 +1174,8 @@ export function checkHandshake(msg: Message): HandshakeResult {
   if ((msg.identity ?? '').length > MAX_IDENTITY_TOKEN_LENGTH) {
     return { ok: false, code: 'bad identity', reason: `identity token must be at most ${MAX_IDENTITY_TOKEN_LENGTH} characters` };
   }
-  if (msg.room !== '' && !isRoomCode(msg.room)) {
-    return { ok: false, code: 'no such room', reason: `'${msg.room}' is not a room code` };
+  if (msg.room !== '' && !isJoinCode(msg.room)) {
+    return { ok: false, code: 'no such room', reason: `'${msg.room}' is not a room or campaign code` };
   }
   return { ok: true };
 }

@@ -147,6 +147,7 @@ import { Spawner, type SpawnerHost } from '../ai/director/spawner.ts';
 import { Director } from '../ai/director/director.ts';
 import { MissionRun } from './mission.ts';
 import { EventRun, type EventCheckpoint, type EventHost } from './events.ts';
+import type { CampaignState } from '../persistence/CampaignDatabase.ts';
 import type { DownedMate, SquadView } from '../ai/actions/friendly.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
@@ -592,6 +593,10 @@ export interface SessionOptions {
   profileAi?: boolean;
   /** T-4.19: hosted rooms wait for ready-up before gameplay; direct/local sessions start immediately. */
   roomLobby?: boolean;
+  /** T-4.23: durable campaign state restored before anyone joins this room. */
+  campaign?: CampaignState;
+  /** T-4.23: called only at a completed checkpoint or mission end. */
+  onCampaignSave?: (state: CampaignState) => void;
 }
 
 export interface SessionStats {
@@ -712,6 +717,11 @@ export class Session {
   private creatorSlot = -1;
   private readonly readySlots: boolean[] = Array.from({ length: MAX_SLOTS }, () => false);
   private readonly classSlots: string[] = Array.from({ length: MAX_SLOTS }, () => '');
+  /** T-4.23: the durable campaign metadata this room advances. */
+  private readonly campaignCompletedMissions: Set<string>;
+  private readonly campaignSoldiers: CampaignState['soldiers'];
+  private readonly campaignSave: ((state: CampaignState) => void) | null;
+  private readonly missionId: string | null;
   /** T-3.35: milliseconds spent in the AI's share of every tick so far, when `profileAi` is on; 0 otherwise. */
   aiMs = 0;
 
@@ -735,6 +745,11 @@ export class Session {
     this.directorValue = null;
     this.spawnerValue = null;
     const missionDef = options.mission ?? missionFor(this.world.id);
+    this.missionId = missionDef?.id ?? null;
+    this.campaignSave = options.onCampaignSave ?? null;
+    this.campaignCompletedMissions = new Set(options.campaign?.completedMissions ?? []);
+    this.campaignSoldiers = (options.campaign?.soldiers ?? Array.from({ length: MAX_SLOTS }, (_, slot) => ({ slot, classId: '', rank: 0, xp: 0 })))
+      .map((soldier) => ({ ...soldier }));
     if (this.encounter && this.world.mission && missionDef) {
       checkMission(missionDef, this.encounter, this.world);
       const encounter = this.encounter;
@@ -860,6 +875,20 @@ export class Session {
       this.slotSpeed.push(0);
       this.giveBrain(this.slots[i]!);
     }
+    const saved = options.campaign?.checkpoint;
+    if (saved && this.missionRun && saved.mission === this.missionId) {
+      this.missionRun.restoreCheckpoint(saved.objective, saved.elapsedTicks);
+      this.missionCheckpointState = {
+        spawns: saved.spawns.map((point) => ({ ...point })),
+        completedGroups: [...saved.completedGroups],
+        event: saved.event as EventCheckpoint | null,
+      };
+      for (const slot of this.slots) {
+        const point = saved.spawns[slot.index] ?? spawnFor(slot.index);
+        slot.state = createMoveState(point.x, point.y, point.z);
+      }
+      if (saved.event && this.eventRun) this.eventRun.restore(saved.event as EventCheckpoint);
+    }
   }
 
   /** A fresh brain for a bot slot, starting from the entity as it stands. */
@@ -914,6 +943,7 @@ export class Session {
     const run = this.missionRun;
     if (!run) return;
     const beforeObjective = run.current.objective;
+    const beforeState = run.current.state;
     const inside = (a: GroundArea) => (p: { x: number; z: number }) => Math.sqrt((p.x - a.x) ** 2 + (p.z - a.z) ** 2) <= a.radius;
     const living = this.slots.filter((s) => !isDead(s.health));
     const standing = this.slots.filter((s) => isAlive(s.health));
@@ -937,6 +967,11 @@ export class Session {
       },
     });
     if (run.current.state === 'progress' && run.current.objective > beforeObjective) this.captureMissionCheckpoint();
+    if (beforeState === 'progress' && run.current.state === 'complete') {
+      if (this.missionId) this.campaignCompletedMissions.add(this.missionId);
+      this.missionCheckpointState = null;
+      this.persistCampaign();
+    }
     if (changed) this.broadcastMission();
   }
 
@@ -950,6 +985,35 @@ export class Session {
       completedGroups,
       event: this.eventRun?.checkpoint() ?? null,
     };
+    this.persistCampaign();
+  }
+
+  /** T-4.23: checkpoint/mission-end persistence; never called from the tick hot path otherwise. */
+  private persistCampaign(): void {
+    if (!this.campaignSave) return;
+    const saved = this.missionCheckpointState;
+    const run = this.missionRun;
+    const checkpoint = saved && run && this.missionId
+      ? {
+          mission: this.missionId,
+          objective: run.checkpoint,
+          elapsedTicks: run.checkpointElapsed,
+          spawns: saved.spawns.map((point) => ({ ...point })),
+          completedGroups: [...saved.completedGroups],
+          event: saved.event,
+        }
+      : null;
+    const soldiers = this.campaignSoldiers.map((soldier, slot) => ({
+      ...soldier,
+      classId: this.classSlots[slot] || soldier.classId,
+    }));
+    this.campaignSave({
+      formatVersion: 1,
+      world: this.world.id,
+      completedMissions: [...this.campaignCompletedMissions],
+      checkpoint,
+      soldiers,
+    });
   }
 
   private broadcastMission(): void {
@@ -1763,7 +1827,8 @@ export class Session {
       slot.input = idleInput(slot.yaw);
       slot.pendingInputTick = -1;
     }
-    this.startEncounter();
+    this.startEncounter(this.missionCheckpointState?.completedGroups ?? []);
+    if (this.missionCheckpointState?.event && this.eventRun) this.eventRun.restore(this.missionCheckpointState.event);
     this.broadcastRoomState();
     this.broadcastMission();
     this.broadcastScriptState();

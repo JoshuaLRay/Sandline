@@ -8,16 +8,20 @@ describe('loadConfig (T-0.07)', () => {
   it('falls back to defaults', () => {
     delete process.env['PORT'];
     delete process.env['LOG_LEVEL'];
+    delete process.env['CAMPAIGN_DB_PATH'];
     const c = loadConfig();
     expect(c.port).toBe(8080);
     expect(c.logLevel).toBe('info');
+    expect(c.campaignDbPath).toBe('sandline.sqlite');
   });
 
   it('reads overrides from the environment', () => {
     process.env['PORT'] = '9999';
     process.env['LOG_LEVEL'] = 'debug';
+    process.env['CAMPAIGN_DB_PATH'] = '/tmp/campaigns.sqlite';
     expect(loadConfig().port).toBe(9999);
     expect(loadConfig().logLevel).toBe('debug');
+    expect(loadConfig().campaignDbPath).toBe('/tmp/campaigns.sqlite');
   });
 
   it('rejects bad values loudly instead of silently defaulting', () => {

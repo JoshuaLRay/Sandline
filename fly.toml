@@ -17,6 +17,9 @@ primary_region = "iad"
 [env]
   PORT = "8080"
   LOG_LEVEL = "info"
+  # T-4.23: campaign progress and the durable player directory share this SQLite
+  # file. /data is the Fly volume below; WAL keeps acknowledged saves atomic.
+  CAMPAIGN_DB_PATH = "/data/sandline.sqlite"
   # R12: caps, and small ones. Four rooms is 24 players on one shared-cpu-1x
   # machine, far more than a playtest needs and far fewer than a stranger who
   # finds the address could do anything with.
@@ -36,6 +39,10 @@ primary_region = "iad"
   # enemies' reasoning to anyone in the room, which is what a QA host is for.
   HOST_AI = "1"
   AI_DEBUG = "1"
+
+[mounts]
+  source = "sandline_data"
+  destination = "/data"
 
 [http_service]
   internal_port = 8080

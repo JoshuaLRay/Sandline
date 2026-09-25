@@ -41,6 +41,7 @@ import { Session, type SessionOptions } from './Session.ts';
 import { createBrainRegistry } from '../ai/Brain.ts';
 import type { NavMesh } from '../ai/nav/NavMesh.ts';
 import { bakedCoverFor, bakedNavFor, loadWorldNavMesh } from '../ai/nav/bakedNav.ts';
+import type { CampaignState } from '../persistence/CampaignDatabase.ts';
 
 const TICK_MS = TICK_SECONDS * 1000;
 
@@ -50,7 +51,10 @@ export const DEFAULT_ROOM_GRACE_MS = 120_000;
 export const DEFAULT_MAX_ROOMS = 8;
 
 export interface Room {
+  /** Ephemeral process-local registry code. */
   readonly code: string;
+  /** Public code clients join with: campaign code when durable, else the room code. */
+  readonly joinCode: string;
   readonly session: Session;
   /** Registry time the room was made, ms. */
   readonly createdAt: number;
@@ -58,6 +62,12 @@ export interface Room {
   simTimeMs: number;
   /** Registry time the last human left, or null while someone is in it. */
   emptySince: number | null;
+}
+
+export interface CampaignRoomOptions {
+  code: string;
+  state: CampaignState;
+  onSave: (state: CampaignState) => void;
 }
 
 export interface RegistryOptions {
@@ -143,6 +153,11 @@ export class Registry {
     return this.rooms.get(code);
   }
 
+  /** Find a live room by its public join code (T-4.23 campaigns). */
+  getByJoinCode(code: string): Room | undefined {
+    return [...this.rooms.values()].find((room) => room.joinCode === code);
+  }
+
   /**
    * Make a room, or return null at the cap.
    *
@@ -177,20 +192,24 @@ export class Registry {
     };
   }
 
-  create(now: number, askedWorld = ''): Room | null {
+  create(now: number, askedWorld = '', campaign?: CampaignRoomOptions): Room | null {
     if (this.rooms.size >= this.maxRooms) return null;
     let code = generateRoomCode(() => this.rng.next());
     // 24^4 codes against at most a handful of rooms: a collision is rare, and
     // a loop that tries again is cheaper than reasoning about how rare.
     while (this.rooms.has(code)) code = generateRoomCode(() => this.rng.next());
+    const world = campaign?.state.world ?? this.worldFor(askedWorld);
+    const joinCode = campaign?.code ?? code;
     const room: Room = {
       code,
-      session: new Session(this.moveConfig, code, this.worldFor(askedWorld), {
-        ...this.aiFor(this.worldFor(askedWorld)),
+      joinCode,
+      session: new Session(this.moveConfig, joinCode, world, {
+        ...this.aiFor(world),
         aiDebug: this.aiDebug,
         idleTimeoutMs: this.idleTimeoutMs,
         maxSessionMs: this.maxSessionMs,
         roomLobby: true,
+        ...(campaign ? { campaign: campaign.state, onCampaignSave: campaign.onSave } : {}),
       }),
       createdAt: now,
       simTimeMs: 0,
