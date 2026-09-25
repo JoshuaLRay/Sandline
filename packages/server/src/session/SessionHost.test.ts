@@ -306,6 +306,9 @@ describe('SessionHost — reconnecting into your own slot (T-4.18)', () => {
     const { host, clock } = newHost();
     const a = attachFake(host, 'alpha');
     const b = attachFake(host, 'bravo', a.room);
+    // T-4.19 hosted rooms wait for ready-up; this helper explicitly enters the fight it is about to mutate.
+    a.send({ kind: 'RoomCommand', command: 'start' });
+    a.settle();
     const session = host.registry.get(a.room)!.session;
     const mine = session.slots[a.ack!.slot]!;
     for (let tick = 1; tick <= 20; tick++) {
