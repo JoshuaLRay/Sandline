@@ -14,17 +14,34 @@
  */
 export const ROOM_CODE_ALPHABET = 'ACDEFGHJKMNPRTUVWXY34679';
 export const ROOM_CODE_LENGTH = 4;
+/** T-4.23: durable campaigns use the same voice-safe alphabet, at twice the length. */
+export const CAMPAIGN_CODE_LENGTH = 8;
 
 /** Upper-case and strip the separators people put in the middle. */
 export function normalizeRoomCode(raw: string): string {
   return raw.toUpperCase().replace(/[\s_-]+/g, '');
 }
 
-/** True for a string `generateRoomCode` could have produced. */
-export function isRoomCode(code: string): boolean {
-  if (code.length !== ROOM_CODE_LENGTH) return false;
+/** True for a voice-safe code of exactly `length` characters. */
+function isCode(code: string, length: number): boolean {
+  if (code.length !== length) return false;
   for (const ch of code) if (!ROOM_CODE_ALPHABET.includes(ch)) return false;
   return true;
+}
+
+/** True for a string `generateRoomCode` could have produced. */
+export function isRoomCode(code: string): boolean {
+  return isCode(code, ROOM_CODE_LENGTH);
+}
+
+/** T-4.23: true for a durable campaign join code. */
+export function isCampaignCode(code: string): boolean {
+  return isCode(code, CAMPAIGN_CODE_LENGTH);
+}
+
+/** A non-empty code accepted by the Join handshake. */
+export function isJoinCode(code: string): boolean {
+  return isRoomCode(code) || isCampaignCode(code);
 }
 
 /**
