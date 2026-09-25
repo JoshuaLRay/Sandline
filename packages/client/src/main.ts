@@ -114,6 +114,7 @@ import { type LobbyChoice, createLobby, readStoredKey, readStoredName } from './
 import { LoadScreen } from './ui/LoadScreen.ts';
 import type { Panel } from './ui/Panel.ts';
 import { createSquadPanel } from './ui/SquadPanel.ts';
+import { createRoomLobby } from './ui/RoomLobby.ts';
 import { isTextField } from './input/LocalInput.ts';
 import { createTuningPanel } from './ui/TuningPanel.ts';
 import { createWeaponPanel } from './ui/WeaponPanel.ts';
@@ -932,7 +933,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
       net.resetForRejoin();
       // The map only means something to a room being made (T-3.35 follow-up); a rejoin takes the room's.
       // T-4.22: who we are to this host, if it has told us before.
-      net.join(roomJoined, choice.key, roomJoined === '' ? choice.world : '', joinedOnce ? resume : '', readIdentity(choice.host));
+      net.join(roomJoined, choice.key, roomJoined === '' ? choice.world : '', joinedOnce ? resume : '', readIdentity(choice.host), !joinedOnce && roomJoined === '' && choice.quick);
     };
     net.onJoined = (_slot, room) => {
       // Back in our own slot the soldier is where we left it; any other slot
@@ -1050,6 +1051,7 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
   simCur = null;
   player.visible = false;
   squadPanel.setVisible(false);
+  roomLobby.hide();
   if (document.pointerLockElement) document.exitPointerLock();
   lobby.show(message ?? undefined);
 }
@@ -1154,6 +1156,14 @@ const squadPanel = createSquadPanel({
   link: currentShareLink,
 });
 squadPanel.setVisible(false);
+
+const roomLobby = createRoomLobby({
+  onReady: (ready) => live?.net.setRoomReady(ready),
+  onStart: () => live?.net.startRoom(),
+  onLeave: () => leaveSession({ text: 'left the room', tone: 'info' }),
+  link: currentShareLink,
+});
+document.body.appendChild(roomLobby.root);
 
 const lobby = createLobby({
   defaultHost: __DEFAULT_HOST__,
@@ -1948,6 +1958,7 @@ function frame(): void {
   if (live && now - squadAt >= 250) {
     squadAt = now;
     squadPanel.update(live.net.roster, live.net.slot, live.net.room, squadStatus());
+    roomLobby.update(live.net.roster, live.net.slot, live.net.room, live.net.roomState);
   }
 
   // T-4.07: choose each static placement's LOD from this frame's camera before drawing.
