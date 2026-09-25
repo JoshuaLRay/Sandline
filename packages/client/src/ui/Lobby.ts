@@ -185,7 +185,7 @@ export function createLobby(options: LobbyOptions): Lobby {
   roomInput.autocomplete = 'off';
   roomInput.autocapitalize = 'characters';
   roomInput.maxLength = 8;
-  roomInput.placeholder = 'four characters, e.g. K7PM';
+  roomInput.placeholder = 'room (4) or campaign (8) code';
   roomInput.value = options.presetRoom;
   roomInput.className = 'lobby-code';
 
