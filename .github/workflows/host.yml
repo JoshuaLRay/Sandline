@@ -75,8 +75,8 @@ jobs:
       - name: Ensure campaign volume exists
         if: steps.token.outputs.present == 'true'
         run: |
-          app="$(sed -nE 's/^app *= *"([^"]+)".*/\\1/p' fly.toml)"
-          region="$(sed -nE 's/^primary_region *= *"([^"]+)".*/\\1/p' fly.toml)"
+          app="$(sed -nE 's/^app *= *"([^"]+)".*/\1/p' fly.toml)"
+          region="$(sed -nE 's/^primary_region *= *"([^"]+)".*/\1/p' fly.toml)"
           if flyctl volumes list --app "$app" | grep -qw sandline_data; then
             echo "campaign volume sandline_data exists"
           else
