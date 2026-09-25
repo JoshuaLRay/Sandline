@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { BitWriter } from '../net/BitStream.ts';
-import { MessageType, ProtocolError, decodeMessage, encodeMessage, type Message } from '../net/protocol.ts';
+import { MessageType, decodeMessage, encodeMessage, type Message } from '../net/protocol.ts';
 import RAW_GREYBOX from '../data/missions/greybox-01.json' with { type: 'json' };
 import { encounterFor } from './encounters.ts';
 import { MISSION_STATES, OBJECTIVE_TYPES, checkMission, missionFor, missions, parseMission } from './mission.ts';
