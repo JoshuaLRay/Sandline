@@ -1075,6 +1075,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
               const creator = r.readBits(3);
               const world = r.readString();
               const count = r.readBits(3);
+              if (count > 6) throw new ProtocolError('room has more than six slots');
               const ready: boolean[] = [];
               const classes: string[] = [];
               for (let i = 0; i < count; i += 1) {
