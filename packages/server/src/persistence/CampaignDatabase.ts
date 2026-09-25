@@ -197,7 +197,7 @@ export class CampaignDatabase {
         this.db.exec(`PRAGMA user_version = ${next}`);
         this.db.exec('COMMIT');
       } catch (error) {
-        try { this.db.exec('ROLLBACK'); } catch {}
+        try { this.db.exec('ROLLBACK'); } catch { /* rollback is best-effort when the transaction already ended */ }
         throw error;
       }
       version = next;
@@ -224,7 +224,7 @@ export class CampaignDatabase {
         this.fault?.('after-commit');
         return { code, ownerId, state, revision: 1, createdAt: nowMs, updatedAt: nowMs };
       } catch (error) {
-        try { this.db.exec('ROLLBACK'); } catch {}
+        try { this.db.exec('ROLLBACK'); } catch { /* rollback is best-effort when the transaction already ended */ }
         throw error;
       }
     });
@@ -282,7 +282,7 @@ export class CampaignDatabase {
           updatedAt: nowMs,
         };
       } catch (error) {
-        try { this.db.exec('ROLLBACK'); } catch {}
+        try { this.db.exec('ROLLBACK'); } catch { /* rollback is best-effort when the transaction already ended */ }
         throw error;
       }
     });
