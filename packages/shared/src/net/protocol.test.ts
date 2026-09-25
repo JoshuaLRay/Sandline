@@ -17,9 +17,11 @@ import {
 } from './protocol.ts';
 import { BitWriter } from './BitStream.ts';
 import {
+  CAMPAIGN_CODE_LENGTH,
   ROOM_CODE_ALPHABET,
   ROOM_CODE_LENGTH,
   generateRoomCode,
+  isCampaignCode,
   isRoomCode,
   normalizeRoomCode,
 } from './roomCode.ts';
@@ -364,10 +366,11 @@ describe('typed rejections and room codes (T-1.5.04)', () => {
     expect(result.code).toBe('bad version');
   });
 
-  it('accepts an empty room (create) and a well-formed code, and refuses the rest', () => {
+  it('accepts create, room and campaign codes, and refuses the rest', () => {
     const join = (room: string): Message => ({ kind: 'Join', version: PROTOCOL_VERSION, name: 'x', room });
     expect(checkHandshake(join('')).ok).toBe(true);
     expect(checkHandshake(join('K7PM')).ok).toBe(true);
+    expect(checkHandshake(join('ACDEFGHJ')).ok).toBe(true);
     const bad = checkHandshake(join('hello'));
     expect(bad).toMatchObject({ ok: false, code: 'no such room' });
   });
@@ -387,6 +390,10 @@ describe('typed rejections and room codes (T-1.5.04)', () => {
       expect(isRoomCode(code)).toBe(true);
     }
     for (const confusable of 'IO01S5B8Z2') expect(ROOM_CODE_ALPHABET).not.toContain(confusable);
+    const campaign = 'ACDEFGHJ';
+    expect(campaign).toHaveLength(CAMPAIGN_CODE_LENGTH);
+    expect(isCampaignCode(campaign)).toBe(true);
+    expect(isCampaignCode('K7PM')).toBe(false);
   });
 
   it('normalises what a person types, and only that', () => {
