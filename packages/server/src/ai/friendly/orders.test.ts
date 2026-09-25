@@ -135,6 +135,23 @@ describe('a move order (T-3.28)', () => {
     expect(sq.reports(1).map((r) => r.outcome)).toEqual(['done']);
   });
 
+  it('to the top of the range\'s block goes to the ground beside it and reports done, rather than standing there forever', () => {
+    // QA report: a bot stayed on the slab beside the block. The block's top
+    // (1.2 m) is not walkable, but a point near its edge is within the 1 m a
+    // move counts as reachable and never within the 0.4 m a bot counts as there.
+    const sq = squad({ 1: { x: 4, z: 2 } });
+    const { session } = sq;
+    const bot = session.slots[1]!;
+    const point = { x: 9.6, y: 1.2, z: 9.2 };
+    sq.say({ kind: 'Order', order: 'move', address: { to: 'slot', index: 1 }, point, target: null });
+    sq.run(30 * 10);
+    const reports = sq.reports(1);
+    console.log(`move onto the block: ${reports.map((r) => `${r.outcome} (${r.reason})`).join(', ') || 'no report'}, bot ${Math.hypot(bot.state.x - point.x, bot.state.z - point.z).toFixed(2)} m from the point`);
+    expect(reports.map((r) => r.outcome)).toEqual(['done']);
+    // Within 0.4 m of the snapped point, which is within 1 m of the one given.
+    expect(Math.hypot(bot.state.x - point.x, bot.state.z - point.z)).toBeLessThanOrEqual(1.4);
+  });
+
   it('to somewhere it cannot reach reports failure at once, rather than standing there saying nothing', () => {
     const sq = squad({ 1: { x: -3, z: -8 } });
     const { session } = sq;

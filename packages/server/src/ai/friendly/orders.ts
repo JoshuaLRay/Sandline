@@ -33,7 +33,7 @@ type Vec3 = { x: number; y: number; z: number };
 /** A move's cover is within this of its point, metres. */
 export const MOVE_COVER_M = 6;
 /** How near a goal counts as there: the fighting leaves' own measure (`actions/rifleman.ts`). */
-const THERE_M = 0.4;
+export const THERE_M = 0.4;
 /** Beyond this, a bot under orders runs. */
 const SPRINT_BEYOND_M = 3;
 

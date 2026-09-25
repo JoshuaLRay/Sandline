@@ -153,6 +153,7 @@ import type { CampaignState } from '../persistence/CampaignDatabase.ts';
 import { SoldierXp } from '../persistence/xp.ts';
 import type { DownedMate, SquadView } from '../ai/actions/friendly.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
+import { THERE_M } from '../ai/friendly/orders.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
 import type { CoverPoint } from '../ai/nav/baked/types.ts';
 import { pathLength } from '../ai/nav/NavMesh.ts';
@@ -1747,14 +1748,31 @@ export class Session {
     const addressed = a.to === 'slot' ? [a.index] : a.to === 'fireteam' ? [...SQUAD_CONFIG.fireteams[a.index]!.slots] : this.slots.map((s) => s.index);
     const bots = addressed.filter((i) => this.slots[i]?.isBot === true);
     if (bots.length === 0) return;
+    const point = msg.point ? this.onMesh(msg.point) : null;
     for (const i of bots) {
       // T-3.28: the order it was under, if it had not finished, is replaced; either way it is reported.
       if (this.orders[i]) this.reportOrder(i, this.orderRuns[i]?.status === 'done' ? 'done' : 'replaced', `${msg.order} from slot ${from.index}`);
-      this.orders[i] = { slot: i, order: msg.order, point: msg.point ? { ...msg.point } : null, target: msg.target, from: from.index };
+      this.orders[i] = { slot: i, order: msg.order, point: point ? { ...point } : null, target: msg.target, from: from.index };
       const at = this.slots[i]!.state;
-      this.orderRuns[i] = { status: 'active', anchor: msg.point ? { ...msg.point } : { x: at.x, y: at.y, z: at.z }, xpPlayerId: this.xpPlayer(from.index) };
+      this.orderRuns[i] = { status: 'active', anchor: point ? { ...point } : { x: at.x, y: at.y, z: at.z }, xpPlayerId: this.xpPlayer(from.index) };
     }
     this.broadcastOrders();
+  }
+
+  /**
+   * An order's point, moved onto the walkable ground it is within
+   * `ORDER_REACH_M` of. A move aimed at the top of the range's block passed
+   * the 1 m reachability check but could never come within the 0.4 m a bot
+   * counts as there, so the bot stood beside the block forever with the order
+   * never done. Only a point in that gap moves: one already within arrival
+   * distance of the mesh is left exactly as given, and one further than
+   * `ORDER_REACH_M` fails as unreachable as before.
+   */
+  private onMesh(p: OrderPoint): OrderPoint {
+    const hit = this.navMesh?.nearestPoint(p)?.point;
+    const off = hit ? Math.sqrt((hit.x - p.x) ** 2 + (hit.z - p.z) ** 2) : 0;
+    if (!hit || off <= THERE_M || off > ORDER_REACH_M) return { ...p };
+    return { x: hit.x, y: hit.y, z: hit.z };
   }
 
   /**
