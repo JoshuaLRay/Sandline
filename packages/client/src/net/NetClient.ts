@@ -292,6 +292,8 @@ export class NetClient {
   private marksValue: readonly TargetMark[] = [];
   /** T-3.34: where the mission stands, as the host last said; null with none. */
   private missionValue: MissionView | null = null;
+  /** T-4.19: authoritative hosted-room ready-up state; null for direct sessions. */
+  private roomStateValue: Extract<Message, { kind: 'RoomState' }> | null = null;
   /**
    * Server time a remote soldier or enemy was last in a snapshot (T-3.11).
    * The six slots never leave, but an enemy's corpse despawns, and T-3.12's
@@ -336,6 +338,8 @@ export class NetClient {
   onDisconnect: ((reason: string, code: DisconnectCode) => void) | null = null;
   /** The squad changed. */
   onRoster: ((slots: RosterEntry[]) => void) | null = null;
+  /** T-4.19: ready-up room state changed. */
+  onRoomState: ((room: Extract<Message, { kind: 'RoomState' }>) => void) | null = null;
   /** T-3.09: an AI debug report, from a host that allows them, after `requestAiDebug(true)`. */
   onAiDebug: ((report: Extract<Message, { kind: 'AiDebug' }>) => void) | null = null;
   /** T-4.15: authored mission UI/radio cues. */
@@ -403,6 +407,11 @@ export class NetClient {
   /** Every bot's current order, from the host's last `Orders` broadcast. */
   get orders(): readonly BotOrder[] {
     return this.ordersValue;
+  }
+
+  /** T-4.19: null for a direct session; hosted rooms send this on seating and ready/start changes. */
+  get roomState(): Extract<Message, { kind: 'RoomState' }> | null {
+    return this.roomStateValue;
   }
 
   /** T-3.34: the mission, from the host's last `Mission` message; null when it has none. */
@@ -500,8 +509,8 @@ export class NetClient {
     return best;
   }
 
-  /** Handshake. An empty room asks the host to create one (T-1.5.04). */
-  join(room = '', key = '', world = '', resume = '', identity = ''): void {
+  /** Handshake. An empty room creates one unless quick-match is requested (T-4.19). */
+  join(room = '', key = '', world = '', resume = '', identity = '', quick = false): void {
     this.transport.send(
       encodeMessage({
         kind: 'Join',
@@ -512,6 +521,7 @@ export class NetClient {
         ...(world === '' ? {} : { world }),
         ...(resume === '' ? {} : { resume }),
         ...(identity === '' ? {} : { identity }),
+        ...(quick ? { quick } : {}),
       }),
     );
   }
@@ -613,6 +623,7 @@ export class NetClient {
     this.ordersValue = [];
     this.marksValue = [];
     this.missionValue = null;
+    this.roomStateValue = null;
     this.recentInputs.length = 0;
     this.newestServerMs = 0;
     this.serverClockMs = 0;
@@ -728,6 +739,18 @@ export class NetClient {
   order(msg: Extract<Message, { kind: 'Order' }>): void {
     if (!this.joinedFlag) return;
     this.transport.send(encodeMessage(msg), 'reliable');
+  }
+
+  /** T-4.19: set this player's ready flag while the room is waiting. */
+  setRoomReady(ready: boolean): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage({ kind: 'RoomCommand', command: 'ready', ready }), 'reliable');
+  }
+
+  /** T-4.19: creator-only force start; the host ignores it from anyone else. */
+  startRoom(): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage({ kind: 'RoomCommand', command: 'start' }), 'reliable');
   }
 
   /** T-3.34: ask the host to start the mission again. It does so once the mission is over. */
@@ -1025,6 +1048,11 @@ export class NetClient {
         this.missionValue = view;
         break;
       }
+
+      case 'RoomState':
+        this.roomStateValue = msg;
+        this.onRoomState?.(msg);
+        break;
 
       case 'ScriptState':
         this.blockerStateValue = msg.blockers;
