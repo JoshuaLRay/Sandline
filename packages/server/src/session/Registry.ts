@@ -36,7 +36,7 @@
  * player gets `room full`, a request for one room too many gets `host full`,
  * and the rooms that exist keep ticking at the rate they promised.
  */
-import { DEFAULT_WORLD_ID, type MoveConfig, Sfc32, TICK_SECONDS, WORLD_IDS, buildTree, encounterFor, generateRoomCode } from '@sandline/shared';
+import { DEFAULT_WORLD_ID, MAX_SLOTS, type MoveConfig, Sfc32, TICK_SECONDS, WORLD_IDS, buildTree, encounterFor, generateRoomCode } from '@sandline/shared';
 import { Session, type SessionOptions } from './Session.ts';
 import { createBrainRegistry } from '../ai/Brain.ts';
 import type { NavMesh } from '../ai/nav/NavMesh.ts';
@@ -190,6 +190,7 @@ export class Registry {
         aiDebug: this.aiDebug,
         idleTimeoutMs: this.idleTimeoutMs,
         maxSessionMs: this.maxSessionMs,
+        roomLobby: true,
       }),
       createdAt: now,
       simTimeMs: 0,
@@ -197,6 +198,13 @@ export class Registry {
     };
     this.rooms.set(code, room);
     return room;
+  }
+
+  /** T-4.19: find a compatible room with a human seat, preferring one still assembling. */
+  quickJoin(askedWorld = ''): Room | undefined {
+    const world = this.worldFor(askedWorld) ?? DEFAULT_WORLD_ID;
+    const compatible = [...this.rooms.values()].filter((room) => room.session.world.id === world && room.session.players < MAX_SLOTS);
+    return compatible.find((room) => !room.session.started) ?? compatible[0];
   }
 
   /**
