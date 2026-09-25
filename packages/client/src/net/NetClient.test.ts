@@ -30,6 +30,16 @@ const TICK_MS = TICK_SECONDS * 1000;
 const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
 
+it('keeps the host’s private progression for the after-action display', () => {
+  const pair = createLoopbackPair();
+  const net = new NetClient(pair.b, 'tester');
+  const soldiers = Array.from({ length: 6 }, (_, slot) => ({ slot, xp: slot === 0 ? 600 : 0, rank: slot === 0 ? 1 : 0, earned: slot === 0 ? 100 : 0 }));
+  expect(net.progression).toEqual([]);
+  pair.a.send(encodeMessage({ kind: 'Progression', soldiers }));
+  pair.settle();
+  expect(net.progression).toEqual(soldiers);
+});
+
 function projectileEntity(netId: number, x: number, y: number, z: number, kind = 0, ownerSlot = 3) {
   return {
     netId,

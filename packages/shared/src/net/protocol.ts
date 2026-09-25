@@ -13,9 +13,10 @@ import { isJoinCode } from './roomCode.ts';
 import { MAX_MARKS, ORDER_KINDS, type BotOrder, type OrderAddress, type OrderKind, type OrderPoint, type TargetMark } from '../sim/orders.ts';
 import { MISSION_STATES, OBJECTIVE_TYPES, type MissionView } from '../sim/mission.ts';
 import type { ScriptBlockerState } from '../sim/events.ts';
+import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 28;
+export const PROTOCOL_VERSION = 29;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -118,11 +119,9 @@ const TYPE_BITS = 4;
 /** Sub-kinds under `MessageType.Ext`, three bits: the wire order. */
 const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks: 5, Mission: 6, Events: 7 } as const;
 /**
- * T-3.34: under `EXT.Mission`, a two-bit variant — the host's state, or a
- * client's restart — so the mission family takes one sub-kind and the
- * last (7) stays free.
+ * Mission, room and progression messages share a three-bit variant (T-4.24).
  */
-const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3 } as const;
+const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3, Progression: 4 } as const;
 const ROOM_COMMANDS = ['ready', 'start'] as const;
 /** T-4.15: state plus transient message/callout notifications. */
 const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2 } as const;
@@ -448,6 +447,7 @@ export type Message =
   | ({ kind: 'Mission' } & MissionView)
   /** T-3.34: a player asking for the mission to start again. Client to host; honoured once it is over. */
   | { kind: 'MissionRestart' }
+  | { kind: 'Progression'; soldiers: SoldierProgress[] }
   /** T-4.19: authoritative pre-mission room state. Class ids are reserved for T-4.27. */
   | { kind: 'RoomState'; started: boolean; creator: number; world: string; ready: readonly boolean[]; classes: readonly string[] }
   /** T-4.19: ready toggle or creator-only force start. */
@@ -657,7 +657,7 @@ export function encodeMessage(msg: Message): Uint8Array {
     case 'Mission':
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Mission, EXT_BITS);
-      w.writeBits(MISSION_VARIANT.State, 2);
+      w.writeBits(MISSION_VARIANT.State, 3);
       w.writeBits(MISSION_STATES.indexOf(msg.state), 2);
       w.writeVarUint(msg.attempt);
       // T-4.14: the current objective of the sequence, its type and progress.
@@ -672,12 +672,12 @@ export function encodeMessage(msg: Message): Uint8Array {
     case 'MissionRestart':
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Mission, EXT_BITS);
-      w.writeBits(MISSION_VARIANT.Restart, 2);
+      w.writeBits(MISSION_VARIANT.Restart, 3);
       break;
     case 'RoomState': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Mission, EXT_BITS);
-      w.writeBits(MISSION_VARIANT.RoomState, 2);
+      w.writeBits(MISSION_VARIANT.RoomState, 3);
       w.writeBool(msg.started);
       w.writeBits(msg.creator & 0x7, 3);
       w.writeString(msg.world);
@@ -692,10 +692,26 @@ export function encodeMessage(msg: Message): Uint8Array {
     case 'RoomCommand':
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Mission, EXT_BITS);
-      w.writeBits(MISSION_VARIANT.RoomCommand, 2);
+      w.writeBits(MISSION_VARIANT.RoomCommand, 3);
       w.writeBits(ROOM_COMMANDS.indexOf(msg.command), 1);
       w.writeBool(msg.command === 'ready' ? (msg.ready ?? false) : false);
       break;
+    case 'Progression': {
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Mission, EXT_BITS);
+      w.writeBits(MISSION_VARIANT.Progression, 3);
+      if (msg.soldiers.length !== 6) throw new ProtocolError('progression needs six soldiers');
+      for (const [slot, soldier] of msg.soldiers.entries()) {
+        if (soldier.slot !== slot || !Number.isInteger(soldier.rank) || soldier.rank < 0 || soldier.rank >= PROGRESSION.ranks.length ||
+          [soldier.xp, soldier.earned].some((value) => !Number.isInteger(value) || value < 0 || value > 0xffffffff) || soldier.earned > soldier.xp) {
+          throw new ProtocolError('invalid soldier progression');
+        }
+        w.writeVarUint(soldier.xp);
+        w.writeVarUint(soldier.rank);
+        w.writeVarUint(soldier.earned);
+      }
+      break;
+    }
     case 'ScriptState': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Events, EXT_BITS);
@@ -1062,7 +1078,18 @@ export function decodeMessage(bytes: Uint8Array): Message {
             return { kind: 'Marks', marks };
           }
           case EXT.Mission: {
-            const variant = r.readBits(2);
+            const variant = r.readBits(3);
+            if (variant === MISSION_VARIANT.Progression) {
+              const soldiers: SoldierProgress[] = [];
+              for (let slot = 0; slot < 6; slot++) {
+                const xp = r.readVarUint();
+                const rank = r.readVarUint();
+                const earned = r.readVarUint();
+                if (rank >= PROGRESSION.ranks.length || earned > xp) throw new ProtocolError('invalid soldier progression');
+                soldiers.push({ slot, xp, rank, earned });
+              }
+              return { kind: 'Progression', soldiers };
+            }
             if (variant === MISSION_VARIANT.Restart) return { kind: 'MissionRestart' };
             if (variant === MISSION_VARIANT.RoomCommand) {
               const command = ROOM_COMMANDS[r.readBits(1)];

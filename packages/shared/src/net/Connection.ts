@@ -308,6 +308,7 @@ export interface ClientConnectionEvents {
   onMarks?: (marks: Extract<Message, { kind: 'Marks' }>['marks']) => void;
   /** T-3.34: where the mission stands. */
   onMission?: (mission: Extract<Message, { kind: 'Mission' }>) => void;
+  onProgression?: (progression: Extract<Message, { kind: 'Progression' }>) => void;
   /** T-4.19: authoritative ready-up state. */
   onRoomState?: (room: Extract<Message, { kind: 'RoomState' }>) => void;
   onClosed?: (reason: string, code: DisconnectCode | null) => void;
@@ -370,6 +371,9 @@ export class ClientConnection {
         break;
       case 'Marks':
         this.events.onMarks?.(msg.marks);
+        break;
+      case 'Progression':
+        this.events.onProgression?.(msg);
         break;
       case 'Mission':
         this.events.onMission?.(msg);

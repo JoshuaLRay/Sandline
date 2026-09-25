@@ -95,7 +95,9 @@ detailed desert-camouflage soldier (T-4.08) and carries period weapons
 irregular fighter (T-4.35). Where progress lives is decided
 too (🧍 T-4.21, ADR-019: on the host, per campaign), and player identity
 is done (T-4.22: host-signed anonymous IDs, `IDENTITY_SECRET`), and campaign saves
-are durable in SQLite on the Fly volume (T-4.23).
+are durable in SQLite on the Fly volume (T-4.23). Soldiers now earn data-driven
+XP and ranks from human play, saved with the campaign and shown at mission end
+(T-4.24, protocol 29); bots earn nothing.
 
 ---
 
@@ -430,7 +432,7 @@ the owner may still overrule before T-4.23.
 | 🧍 T-4.21 | DONE — on the host (ADR-019) | — |
 | T-4.22 | DONE | T-4.21 |
 | T-4.23 | DONE | T-4.21, T-4.22, T-4.16 |
-| T-4.24 | OPEN | T-4.22, T-4.23 |
+| T-4.24 | DONE | T-4.22, T-4.23 |
 
 ### E-4.7 — HUD, menus, class selection, scoreboard
 

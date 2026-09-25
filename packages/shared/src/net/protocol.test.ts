@@ -30,6 +30,7 @@ import { COMPONENT_IDS } from '../ecs/components.ts';
 const T = COMPONENT_IDS.Transform;
 
 const SAMPLES: Message[] = [
+  { kind: 'Progression', soldiers: Array.from({ length: 6 }, (_, slot) => ({ slot, xp: slot === 0 ? 0xffffffff : 500, rank: slot === 0 ? 4 : 1, earned: 100 })) },
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: 'K7PM' },
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: '' },
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: 'K7PM', key: 'correct horse' },
@@ -97,6 +98,34 @@ const SAMPLES: Message[] = [
     snapshot: { tick: 9, entities: [{ netId: 1, components: { [T]: [100, 200, 300, 400, 500] } }] },
   },
 ];
+
+describe('private progression messages (T-4.24)', () => {
+  const soldiers = () => Array.from({ length: 6 }, (_, slot) => ({ slot, xp: 100, rank: 0, earned: 25 }));
+
+  it('refuses invalid soldier totals, indices and ranks before encoding', () => {
+    expect(() => encodeMessage({ kind: 'Progression', soldiers: [] })).toThrow(ProtocolError);
+    for (const invalid of [{ slot: 6 }, { xp: -1 }, { xp: 2 ** 32 }, { rank: 99 }, { earned: 101 }]) {
+      const rows = soldiers();
+      Object.assign(rows[0]!, invalid);
+      expect(() => encodeMessage({ kind: 'Progression', soldiers: rows })).toThrow(ProtocolError);
+    }
+  });
+
+  it('refuses a truncated report, invalid rank or impossible earned amount on the wire', () => {
+    const bytes = encodeMessage({ kind: 'Progression', soldiers: soldiers() });
+    expect(() => decodeMessage(bytes.slice(0, -1))).toThrow(ProtocolError);
+    for (const [rank, earned] of [[99, 0], [0, 101]]) {
+      const w = new BitWriter();
+      w.writeBits(MessageType.Ext, 4);
+      w.writeBits(6, 3);
+      w.writeBits(4, 3);
+      w.writeVarUint(100);
+      w.writeVarUint(rank!);
+      w.writeVarUint(earned!);
+      expect(() => decodeMessage(w.toUint8Array())).toThrow(/invalid soldier progression/);
+    }
+  });
+});
 
 describe('projectiles on the wire (T-2.31)', () => {
   it('round-trips a Detonation with everyone it caught', () => {

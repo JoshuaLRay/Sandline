@@ -551,6 +551,14 @@ canvas { display: block; touch-action: none; }
   z-index: 6;
 }
 #mission.shown { display: block; }
+#mission.after-action {
+  width: max-content;
+  max-width: calc(100vw - 48px);
+  white-space: pre-line;
+  line-height: 1.7;
+  text-align: center;
+  padding: 10px 16px;
+}
 #crosshair.hidden { display: none; }
 /* First-person ADS: the weapon's sights are the aim, their post on the screen's centre. */
 #crosshair.sighted { display: none; }

@@ -292,6 +292,7 @@ export class NetClient {
   private marksValue: readonly TargetMark[] = [];
   /** T-3.34: where the mission stands, as the host last said; null with none. */
   private missionValue: MissionView | null = null;
+  private progressionValue: Extract<Message, { kind: 'Progression' }>['soldiers'] = [];
   /** T-4.19: authoritative hosted-room ready-up state; null for direct sessions. */
   private roomStateValue: Extract<Message, { kind: 'RoomState' }> | null = null;
   /**
@@ -417,6 +418,10 @@ export class NetClient {
   /** T-3.34: the mission, from the host's last `Mission` message; null when it has none. */
   get mission(): MissionView | null {
     return this.missionValue;
+  }
+
+  get progression(): Readonly<Extract<Message, { kind: 'Progression' }>['soldiers']> {
+    return this.progressionValue;
   }
 
   /** Every standing mark, from the host's last `Marks` broadcast. */
@@ -1043,6 +1048,9 @@ export class NetClient {
         this.marksValue = msg.marks;
         break;
 
+      case 'Progression':
+        this.progressionValue = msg.soldiers;
+        break;
       case 'Mission': {
         const { kind: _kind, ...view } = msg;
         this.missionValue = view;

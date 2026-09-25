@@ -35,7 +35,7 @@ describe('mission messages (T-3.34, T-4.14)', () => {
     };
     const state = (o: { state?: number; type?: number; objective?: number; objectives?: number; progress?: number; goal?: number }) =>
       mission((w) => {
-        w.writeBits(0, 2);
+        w.writeBits(0, 3);
         w.writeBits(o.state ?? 0, 2);
         w.writeVarUint(1);
         w.writeVarUint(o.objective ?? 0);
@@ -47,7 +47,7 @@ describe('mission messages (T-3.34, T-4.14)', () => {
         w.writeVarUint(o.goal ?? 10);
       });
     expect(() => decodeMessage(mission((w) => {
-      w.writeBits(2, 2);
+      w.writeBits(2, 3);
       w.writeBool(false);
       w.writeBits(0, 3);
       w.writeString('mission-01');

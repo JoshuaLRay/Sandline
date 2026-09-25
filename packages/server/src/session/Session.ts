@@ -21,6 +21,7 @@ import {
   type MoveConfig,
   RANGE_TARGETS,
   type Message,
+  type XpEvent,
   type MoveInput,
   type MoveState,
   POSITION,
@@ -148,6 +149,7 @@ import { Director } from '../ai/director/director.ts';
 import { MissionRun } from './mission.ts';
 import { EventRun, type EventCheckpoint, type EventHost } from './events.ts';
 import type { CampaignState } from '../persistence/CampaignDatabase.ts';
+import { SoldierXp } from '../persistence/xp.ts';
 import type { DownedMate, SquadView } from '../ai/actions/friendly.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
@@ -418,6 +420,8 @@ export const MAX_PROJECTILES = 24;
 
 /** One projectile the session owns. The state is T-2.30's; the rest is identity. */
 interface ActiveProjectile {
+  /** The person at launch; a replacement occupant cannot inherit the credit. */
+  xpPlayerId: string | null;
   netId: number;
   def: ProjectileDef;
   /** Index into PROJECTILE_IDS: what goes on the wire. */
@@ -720,6 +724,9 @@ export class Session {
   /** T-4.23: the durable campaign metadata this room advances. */
   private readonly campaignCompletedMissions: Set<string>;
   private readonly campaignSoldiers: CampaignState['soldiers'];
+  private readonly xp: SoldierXp;
+  /** Local sessions have no identity service; keep a temporary identity across seat resumes. */
+  private readonly localPlayers = new Map<number, string>();
   private readonly campaignSave: ((state: CampaignState) => void) | null;
   private readonly missionId: string | null;
   /** T-3.35: milliseconds spent in the AI's share of every tick so far, when `profileAi` is on; 0 otherwise. */
@@ -750,6 +757,7 @@ export class Session {
     this.campaignCompletedMissions = new Set(options.campaign?.completedMissions ?? []);
     this.campaignSoldiers = (options.campaign?.soldiers ?? Array.from({ length: MAX_SLOTS }, (_, slot) => ({ slot, classId: '', rank: 0, xp: 0 })))
       .map((soldier) => ({ ...soldier }));
+    this.xp = new SoldierXp(this.campaignSoldiers);
     if (this.encounter && this.world.mission && missionDef) {
       checkMission(missionDef, this.encounter, this.world);
       const encounter = this.encounter;
@@ -966,12 +974,16 @@ export class Session {
         return { dead: spawner.dead(id), spawned: placed.length, down: placed.filter((n) => !alive(n)).length };
       },
     });
+    if (beforeState === 'progress' && (run.current.objective > beforeObjective || run.current.state === 'complete')) {
+      for (const slot of this.slots) this.awardXp(slot.index, 'objective');
+    }
     if (run.current.state === 'progress' && run.current.objective > beforeObjective) this.captureMissionCheckpoint();
     if (beforeState === 'progress' && run.current.state === 'complete') {
       if (this.missionId) this.campaignCompletedMissions.add(this.missionId);
       this.missionCheckpointState = null;
       this.persistCampaign();
     }
+    if (beforeState === 'progress' && run.current.state === 'failed') this.persistCampaign();
     if (changed) this.broadcastMission();
   }
 
@@ -1020,6 +1032,27 @@ export class Session {
     if (!this.missionRun) return;
     const msg = { kind: 'Mission', ...this.missionRun.current } as const;
     for (const c of this.connections) if (c.state === 'active') c.send(msg);
+  }
+
+  private xpPlayer(slotIndex: number): string | null {
+    const slot = this.slots[slotIndex];
+    if (!slot || slot.isBot || slot.connection?.state !== 'active') return null;
+    return slot.connection.playerId || this.localPlayers.get(slotIndex) || null;
+  }
+
+  private awardXp(slotIndex: number, event: XpEvent, actor = this.xpPlayer(slotIndex)): void {
+    // No mission-end farming, bots, or credit transferred to a new occupant.
+    if (this.missionRun && this.missionRun.current.state !== 'progress' && event !== 'objective') return;
+    if (actor !== this.xpPlayer(slotIndex)) return;
+    if (this.xp.award(slotIndex, actor, event)) this.broadcastProgression();
+  }
+
+  private sendProgression(conn: ServerConnection): void {
+    conn.send({ kind: 'Progression', soldiers: this.xp.view(this.xpPlayer(conn.slot) ?? '') });
+  }
+
+  private broadcastProgression(): void {
+    for (const conn of this.connections) if (conn.state === 'active') this.sendProgression(conn);
   }
 
   /** A seated human asked to start again: failed missions retry their checkpoint; completed missions start over. */
@@ -1080,6 +1113,8 @@ export class Session {
    * them, every slot alive on its original spawn point, and objective zero.
    */
   restartMission(): void {
+    this.xp.restart();
+    this.broadcastProgression();
     const spawns = this.slots.map((slot) => {
       const point = spawnFor(slot.index);
       return { x: point.x, y: point.y, z: point.z };
@@ -1519,8 +1554,10 @@ export class Session {
 
     // A fresh token for every seating: one that has been used cannot be used again.
     slot.resumeToken = newResumeToken();
+    if (!resumed) this.localPlayers.set(slot.index, slot.resumeToken);
     slot.reservedUntilMs = 0;
     conn.accept(slot.netId, slot.index, this.currentTick, this.room, this.world.id, slot.resumeToken, resumed !== null);
+    this.sendProgression(conn);
     this.broadcastRoster();
     this.broadcastRoomState();
     // T-3.27: a human is nobody's to order, so whatever this slot's bot was told
@@ -1547,7 +1584,7 @@ export class Session {
    * standing (a move that has arrived holds there until told otherwise) —
    * and its anchor: a hold's point, or where the bot stood when told.
    */
-  private readonly orderRuns: ({ status: 'active' | 'done'; anchor: OrderPoint } | null)[] = Array.from({ length: MAX_SLOTS }, () => null);
+  private readonly orderRuns: ({ status: 'active' | 'done'; anchor: OrderPoint; xpPlayerId: string | null } | null)[] = Array.from({ length: MAX_SLOTS }, () => null);
   /** T-3.28: what became of each order — finished, failed, or replaced — newest last, the last 64. */
   readonly orderReports: OrderReport[] = [];
 
@@ -1577,6 +1614,7 @@ export class Session {
     const order = this.orders[slot];
     const run = this.orderRuns[slot];
     if (!order || !run || run.status === 'done') return;
+    if (outcome === 'done') this.awardXp(order.from, 'order', run.xpPlayerId);
     if (outcome === 'done' && (order.order === 'move' || order.order === 'hold')) {
       this.reportOrder(slot, 'done', reason);
       run.status = 'done';
@@ -1659,7 +1697,7 @@ export class Session {
       if (this.orders[i]) this.reportOrder(i, this.orderRuns[i]?.status === 'done' ? 'done' : 'replaced', `${msg.order} from slot ${from.index}`);
       this.orders[i] = { slot: i, order: msg.order, point: msg.point ? { ...msg.point } : null, target: msg.target, from: from.index };
       const at = this.slots[i]!.state;
-      this.orderRuns[i] = { status: 'active', anchor: msg.point ? { ...msg.point } : { x: at.x, y: at.y, z: at.z } };
+      this.orderRuns[i] = { status: 'active', anchor: msg.point ? { ...msg.point } : { x: at.x, y: at.y, z: at.z }, xpPlayerId: this.xpPlayer(from.index) };
     }
     this.broadcastOrders();
   }
@@ -2080,7 +2118,10 @@ export class Session {
           const result = applyDamage(enemy.health, dealt, this.nowMs / 1000, DAMAGE, enemy.def.downable);
           dealt = result.applied;
           if (dealt > 0) enemy.lastDamagedAt = this.nowMs / 1000;
-          if (result.killed) this.killEnemy(enemy);
+          if (result.killed) {
+            this.killEnemy(enemy);
+            this.awardXp(this.slots.findIndex((s) => s.netId === shooterNetId), 'kill');
+          }
         }
         // Range targets take no damage: they are the range's fixtures, not
         // enemies, and stay so (T-3.10).
@@ -2254,6 +2295,7 @@ export class Session {
       kind: projectile,
       ownerSlot,
       ownerNetId: thrower.netId,
+      xpPlayerId: this.xpPlayer(this.slots.findIndex((s) => s.netId === thrower.netId)),
       state: createProjectileState(origin, velocity),
     });
     return true;
@@ -2401,7 +2443,10 @@ export class Session {
       if (damage <= 0) continue;
       const result = applyDamage(enemy.health, damage, nowSeconds, DAMAGE, enemy.def.downable);
       if (result.applied > 0) enemy.lastDamagedAt = nowSeconds;
-      if (result.killed) this.killEnemy(enemy);
+      if (result.killed) {
+        this.killEnemy(enemy);
+        this.awardXp(this.slots.findIndex((s) => s.netId === projectile.ownerNetId), 'kill', projectile.xpPlayerId);
+      }
       targets.push({ netId: enemy.netId, damage: result.applied });
     }
 
@@ -3148,6 +3193,7 @@ export class Session {
       if (!isDowned(target.health) || target.reviveBySlot < 0) continue;
       target.reviveProgressSeconds += TICK_SECONDS;
       if (target.reviveProgressSeconds >= DAMAGE.downed.reviveSeconds) {
+        this.awardXp(target.reviveBySlot, 'revive');
         revive(target.health);
         target.reviveBySlot = -1;
         target.reviveProgressSeconds = 0;
