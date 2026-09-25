@@ -72,6 +72,18 @@ jobs:
           fi
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Ensure campaign volume exists
+        if: steps.token.outputs.present == 'true'
+        run: |
+          app="$(sed -nE 's/^app *= *"([^"]+)".*/\\1/p' fly.toml)"
+          region="$(sed -nE 's/^primary_region *= *"([^"]+)".*/\\1/p' fly.toml)"
+          if flyctl volumes list --app "$app" | grep -qw sandline_data; then
+            echo "campaign volume sandline_data exists"
+          else
+            flyctl volumes create sandline_data --app "$app" --region "$region" --size 1 --yes
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       - name: Deploy
         if: steps.token.outputs.present == 'true'
         run: flyctl deploy --remote-only --ha=false
