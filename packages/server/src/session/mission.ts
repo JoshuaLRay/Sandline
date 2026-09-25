@@ -81,6 +81,28 @@ export class MissionRun {
     return this.checkpointObjective;
   }
 
+  /** Elapsed mission ticks captured with the latest checkpoint (T-4.23 persistence). */
+  get checkpointElapsed(): number {
+    return this.checkpointElapsedTicks;
+  }
+
+  /**
+   * Restore the latest durable checkpoint into a new session. The attempt
+   * number starts fresh on a new host process, but objective/time continue.
+   */
+  restoreCheckpoint(objective: number, elapsedTicks: number): void {
+    if (!Number.isInteger(objective) || objective < 0 || objective >= this.def.objectives.length) {
+      throw new Error(`mission checkpoint objective ${objective} is out of range`);
+    }
+    if (!Number.isInteger(elapsedTicks) || elapsedTicks < 0) {
+      throw new Error(`mission checkpoint elapsed ticks ${elapsedTicks} is invalid`);
+    }
+    this.checkpointObjective = objective;
+    this.checkpointElapsedTicks = elapsedTicks;
+    this.elapsedTicks = elapsedTicks;
+    this.view = this.start(objective, 1);
+  }
+
   /** The objective being played, and its resolved area if it has one. */
   get objective(): { def: ObjectiveDef; area: GroundArea | null } {
     return { def: this.def.objectives[this.view.objective]!, area: this.areas[this.view.objective] ?? null };
