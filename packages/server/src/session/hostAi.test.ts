@@ -33,7 +33,9 @@ describe('a room on the map its creator chose (T-3.35 follow-up)', () => {
     const registry = new Registry({ world: 'range', ai: true });
     const mission = registry.create(0, 'greybox-01')!;
     expect(mission.session.mission).toMatchObject({ state: 'progress', attempt: 1 });
-    expect(mission.session.spawner).not.toBeNull();
+    // T-4.19: hosted rooms build mission data immediately but do not start the encounter until ready-up completes.
+    expect(mission.session.spawner).toBeNull();
+    expect(mission.session.started).toBe(false);
     expect(mission.session.cover).not.toBeNull();
     const range = registry.create(0, 'range')!;
     expect(range.session.mission).toBeNull();
@@ -55,9 +57,15 @@ describe('a room on the map its creator chose (T-3.35 follow-up)', () => {
     };
     const first = join('', 'greybox-01');
     expect(first.ack()?.world).toBe('greybox-01');
-    expect(first.got.some((m) => m.kind === 'Mission')).toBe(true);
+    expect(first.got.some((m) => m.kind === 'RoomState' && !m.started)).toBe(true);
+    expect(first.got.some((m) => m.kind === 'Mission')).toBe(false);
     const second = join(first.ack()!.room, 'range');
     expect(second.ack()?.world).toBe('greybox-01');
+    // The creator force-starts; only now is the mission sent and the encounter allowed to run.
+    first.pair.b.send(encodeMessage({ kind: 'RoomCommand', command: 'start' }));
+    first.pair.settle();
+    second.pair.settle();
+    expect(first.got.some((m) => m.kind === 'Mission')).toBe(true);
     // A second of the room: the encounter spawns, as it does in the page.
     for (let i = 0; i < 30; i++) {
       t += TICK_MS;
