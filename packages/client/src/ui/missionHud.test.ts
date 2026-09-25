@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { type Message, type MissionView, TICK_SECONDS, decodeMessage, encodeMessage } from '@sandline/shared';
-import { missionLine } from './missionHud.ts';
+import { afterActionXp, missionLine } from './missionHud.ts';
 
 const T = (s: number) => Math.round(s / TICK_SECONDS);
 const view = (v: Partial<MissionView>): MissionView => {
@@ -16,6 +16,15 @@ const view = (v: Partial<MissionView>): MissionView => {
 };
 
 describe('the mission HUD line (T-3.34, T-4.14)', () => {
+  it('shows your mission credit, the soldier’s rank and total only after success or failure', () => {
+    const soldiers = [{ slot: 0, xp: 525, rank: 1, earned: 25 }, { slot: 1, xp: 50, rank: 0, earned: 0 }];
+    expect(afterActionXp(null, soldiers, 0)).toBe('');
+    expect(afterActionXp(view({}), soldiers, 0)).toBe('');
+    for (const state of ['complete', 'failed'] as const) {
+      expect(afterActionXp(view({ state }), soldiers, 0)).toBe('Soldier 1: you earned 25 XP · Private First Class · 525 XP total');
+      expect(afterActionXp(view({ state }), soldiers, 1)).toContain('Soldier 2: you earned 0 XP');
+    }
+  });
   it('reads each type from the message as it arrives', () => {
     expect(missionLine(null)).toBe('');
     expect(missionLine(view({}))).toBe('Objective: clear the compound  ·  held 0/30 s');

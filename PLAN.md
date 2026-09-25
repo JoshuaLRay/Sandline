@@ -2991,6 +2991,30 @@ free to go whenever.
 - **Do:** The server awards XP from what happened (kills, revives, orders carried, objectives), per a data table. Ranks are thresholds in data. A bot earns nothing, since a bot is nobody's soldier (ADR-001). XP is saved on the campaign's soldier for that slot, credited to the player who played it (ADR-019), and shown on the after-action screen (T-4.28).
 - **Done when:** the awards are session-tested per event; a bot earns nothing; the saved totals survive a reconnect.
 - **Size:** S
+- **Completed 2026-09-24.** `data/progression.json` defines kills (25 XP),
+  completed revives (50), each bot's successfully carried order (10, credited
+  to its human issuer), and completed objectives (100 to each seated human),
+  with five rank thresholds starting at Private. The server alone awards;
+  friendly kills, failed/replaced orders, repeated completion reports and
+  bots earn nothing. Pending orders and grenades remember their initiating
+  player, so replacing an occupant cannot transfer credit. An award requires
+  that same human still to occupy the slot when it resolves.
+
+  XP and the derived rank live on the campaign's soldier and use the existing
+  checkpoint and mission-end SQLite save; failure now saves too. Totals cap
+  at the wire's unsigned 32-bit maximum. Protocol 29 sends all six soldiers'
+  totals and recipient-only earned XP on join and awards. Personal credit
+  survives a live-room reconnect and checkpoint retry, resets on full replay,
+  and is transient across host restarts; saved soldier totals and ranks are
+  durable. It never follows the player to a different campaign.
+
+  The existing mission-end HUD shows your earned XP, rank and total on both
+  success and failure, including credit for other slots you played. The full
+  scoreboard remains T-4.28. Play a mission through the lobby (or `?mission`
+  for in-page practice) to see it. `pnpm verify`: 149 files, 1,807 tests;
+  production client build passed. A production-browser smoke check completed
+  a two-second server mission over a real WebSocket and verified the 100-XP
+  after-action display at 1280px and 640px with no runtime errors or overflow.
 
 #### E-4.7 — HUD, menus, class selection, scoreboard
 

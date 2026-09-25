@@ -105,7 +105,7 @@ import { createFootPlacementDriver } from './character/footPlacement.ts';
 import { RemoteSoldiers } from './character/remoteSoldiers.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
-import { RESTART_KEY, missionLine } from './ui/missionHud.ts';
+import { RESTART_KEY, afterActionXp, missionLine } from './ui/missionHud.ts';
 import { type AimSubject, OrderWheelView, buildMark, orderFromRelease } from './ui/OrderWheel.ts';
 import { type MarkerVec, OrderMarkerOverlay, orderMarkers } from './ui/OrderMarkers.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
@@ -1777,9 +1777,11 @@ function frame(): void {
   if (missionHud) {
     const mission = missionLine(net?.mission ?? null);
     const notice = performance.now() < scriptNoticeUntil ? scriptNotice : '';
-    const text = [mission, notice].filter((x) => x.length > 0).join(' — ');
+    const xp = afterActionXp(net?.mission ?? null, net?.progression ?? [], net?.slot ?? -1);
+    const text = [mission, xp, notice].filter((x) => x.length > 0).join(xp ? '\n' : ' — ');
     if (missionHud.textContent !== text) missionHud.textContent = text;
     missionHud.classList.toggle('shown', text.length > 0);
+    missionHud.classList.toggle('after-action', xp.length > 0);
   }
   if (downedBanner) {
     const stats = net?.stats;

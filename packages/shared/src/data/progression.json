@@ -1,0 +1,10 @@
+{
+  "awards": { "kill": 25, "revive": 50, "order": 10, "objective": 100 },
+  "ranks": [
+    { "name": "Private", "xp": 0 },
+    { "name": "Private First Class", "xp": 500 },
+    { "name": "Specialist", "xp": 1500 },
+    { "name": "Corporal", "xp": 3000 },
+    { "name": "Sergeant", "xp": 6000 }
+  ]
+}

@@ -3,7 +3,7 @@
  * T-4.14): one line, from the host's `Mission` message alone — nothing here
  * decides whether an objective is done.
  */
-import { TICK_SECONDS, type MissionView } from '@sandline/shared';
+import { PROGRESSION, TICK_SECONDS, type MissionView, type SoldierProgress } from '@sandline/shared';
 
 /** The key that asks the host to start the mission again once it is over. */
 export const RESTART_KEY = 'KeyP';
@@ -38,4 +38,12 @@ export function missionLine(view: MissionView | null): string {
   }
   const step = view.objectives > 1 ? ` ${view.objective + 1}/${view.objectives}` : '';
   return `Objective${step}: ${objectiveText(view)}${attempt}`;
+}
+
+/** Mission-end credit comes only from the host, including any other slots you played. */
+export function afterActionXp(view: MissionView | null, soldiers: readonly SoldierProgress[], localSlot: number): string {
+  if (!view || view.state === 'progress') return '';
+  return soldiers.filter((soldier) => soldier.slot === localSlot || soldier.earned > 0)
+    .map((soldier) => `Soldier ${soldier.slot + 1}: you earned ${soldier.earned} XP · ${PROGRESSION.ranks[soldier.rank]?.name ?? 'Unknown rank'} · ${soldier.xp} XP total`)
+    .join('\n');
 }
