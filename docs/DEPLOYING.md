@@ -167,7 +167,7 @@ same image.
 
 ### First deploy, once
 
-Two ways. The workflow does everything; the CLI is for when you want to watch.
+Two ways. The workflow creates the app and its T-4.23 campaign volume when missing, then deploys; the CLI is for when you want to watch.
 
 **From the repository (two secrets).** Needs a Fly account and nothing
 installed.
@@ -199,6 +199,7 @@ run it again — app names are global on Fly.
 ```bash
 fly auth login
 fly launch --no-deploy --copy-config --name sandline-host   # or edit `app` in fly.toml
+fly volumes create sandline_data --region iad --size 1       # once: SQLite campaign/player data
 fly deploy --ha=false                                        # one machine, not two
 fly status                                                   # hostname: sandline-host.fly.dev
 curl https://sandline-host.fly.dev/healthz                   # {"ok":true,"protocol":6,"rooms":0,...}
@@ -308,7 +309,7 @@ fly scale count 0              # stops the machine and keeps it stopped
 fly scale count 1              # bring it back for the next playtest
 ```
 
-To remove it entirely - the app, its address and its certificate:
+To remove it entirely - the app, its address, its certificate **and the mounted campaign volume**. T-4.23 stores every campaign plus the player directory in `/data/sandline.sqlite`; `fly scale count 0` preserves that volume, but `fly apps destroy` deletes it and therefore deletes every campaign. Copy/restore the volume before this command if the saves matter:
 
 ```bash
 fly apps destroy sandline-host
