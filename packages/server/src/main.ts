@@ -18,15 +18,22 @@
  *   AI_DEBUG=1 pnpm host                           # T-3.09: clients may ask for AI debug reports
  *   JOIN_KEY=hunter2 pnpm host                     # every Join must carry this key
  *   IDENTITY_SECRET=<32+ chars> pnpm host          # T-4.22: player IDs survive a restart
+ *   CAMPAIGN_DB_PATH=/path/to/sandline.sqlite pnpm host   # T-4.23: campaign/player SQLite file
  *   IDLE_TIMEOUT_MS=600000 MAX_SESSION_MS=14400000 pnpm host   # per-player limits; 0 turns one off
  */
 import { Identity } from './identity/Identity.ts';
+import { CampaignDatabase, SqlitePlayerDirectory } from './persistence/index.ts';
 import { SessionHost, hostBanner, linkFromEnv } from './session/SessionHost.ts';
 import { loadConfig } from './config.ts';
 import { createLogger } from './log.ts';
 
 const config = loadConfig();
 const log = createLogger(config.logLevel);
+const campaigns = new CampaignDatabase(config.campaignDbPath);
+const identity = new Identity({
+  secrets: config.identitySecrets,
+  directory: new SqlitePlayerDirectory(campaigns),
+});
 
 const link = linkFromEnv();
 const host = new SessionHost({
@@ -34,7 +41,8 @@ const host = new SessionHost({
   log,
   link,
   joinKey: config.joinKey,
-  identity: new Identity({ secrets: config.identitySecrets }),
+  identity,
+  campaigns,
   registry: {
     maxRooms: config.maxRooms,
     graceMs: config.roomGraceMs,
@@ -54,6 +62,7 @@ log.info('host ready', {
   world: config.world,
   aiDebug: config.aiDebug,
   hostAi: config.hostAi,
+  campaignDb: config.campaignDbPath,
   // Never the key itself: the log is not a secret store.
   joinKey: config.joinKey === '' ? 'none - anyone with the address can join' : 'required',
   // Never the secret either. Random means every saved identity dies with this process.
@@ -70,6 +79,7 @@ async function shutdown(signal: string): Promise<void> {
   // `stats` already carries the tick, plus what the session actually did.
   log.info('shutting down', { signal, ...host.registry.stats });
   await host.stop(`host ${signal}`);
+  campaigns.close();
   process.exit(0);
 }
 process.on('SIGTERM', () => void shutdown('SIGTERM'));
