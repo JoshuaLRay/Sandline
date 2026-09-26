@@ -1,62 +1,78 @@
-Complete the next available task from `TASKS.md`.
+Complete one eligible task for Sandline. An explicit ID in $ARGUMENTS selects
+that task; otherwise use the first eligible row in `BACKLOG.md`.
 
-## Procedure
+## Select and claim
 
-1. **Read `/TASKS.md` first, and nothing else.** Do not open `PLAN.md` yet.
-   Check the "Open now" block at the top first, then scan the milestone
-   tables in order (M0 → M1 → M1.5 → M2 → …). Find the first task whose
-   status is `OPEN` and whose `Depends` are all `DONE`.
+1. Confirm the checkout is `JoshuaLRay/Sandline`; fetch current remote state.
+   Preserve dirty work. Start from the repository default branch unless resuming
+   an existing task branch. Read `BACKLOG.md` before task implementation files.
+2. Check open PRs and task work links, including pending feedback/documentation
+   PRs, so captured reports and existing implementations are not overlooked.
+   If requested feedback exists only in an unmerged PR, use that branch as an
+   explicit documented dependency or finish its authorized merge first; do not
+   silently pretend its rows are already on main. Refresh stale REVIEW entries
+   from actual merge/acceptance evidence before selecting dependent work.
+3. Select the first READY leaf in table order with all dependencies DONE. Promote
+   dependency-only BLOCKED rows when their dependencies have actually completed;
+   skip owner/asset/scope blockers, REVIEW and another worker's IN_PROGRESS rows.
+   Resume a branch only when this request owns/continues that task. If the owner
+   specifies a blocked task, explain its exact blocker; do not implement a guess.
+4. Read just that card, applicable nested instructions and relevant ADRs/code.
+   State the selected ID/outcome. Create `task/U-NNN-short-name`; mark IN_PROGRESS
+   with the branch in the Work column. Recheck remote work before publishing the
+   claim. If a task exceeds a focused PR, split it into linked leaves first.
+   A shared GitHub issue assignee can be used as a coordination lock if multiple
+   workers are active; it does not become a second backlog.
 
-2. **If the first open task with satisfied deps is marked 🧍:** stop. Do not
-   implement it. See "Human gates" below.
+## Implement and verify
 
-3. **Open only that task's `PLAN.md` section** — the one named in `TASKS.md`
-   next to it (e.g. "§7.5"). Do not read `PLAN.md` end to end and do not read
-   sibling sections you don't need. Read the task's own `Depends` / `Files` /
-   `Do` / `Done when` / `Size` block.
+5. For a reported bug, inspect existing fixes and reproduce on current code.
+   Record observations separately from hypotheses. Add a targeted failing
+   regression where possible, then fix the cause. If not reproducible, record
+   exact attempts and missing evidence; do not claim it fixed or add speculative
+   behavior. Move genuinely blocked work to BLOCKED with a next action.
+6. Implement only the selected scope, following its acceptance criteria. Resolve
+   routine details locally; stop only for a real missing product decision, asset,
+   permission or inaccessible dependency. Record adjacent issues as new cards;
+   do not absorb them into the current task.
+7. Run focused verification first, then `pnpm verify`. Run additional commands
+   required by affected generators/protocol/CI; use `docs/COMMANDS.md` on demand.
+   Walk every criterion and record actual evidence. For pure documentation work,
+   validate links, dependency order and instruction consistency; repository CI
+   still applies. Never describe an unrun check as passed.
+8. Visual/audio work includes reproducible captures or listening steps and a
+   clearly pending owner quality verdict wherever required. An actual source
+   asset is an acceptance requirement when delivering voices; fixtures and
+   fallback chirps only prove infrastructure. Design approval is also evidence,
+   not something the agent invents.
 
-4. **Read the 🔒 ADRs the section names**, in `docs/adr/`. If the task's
-   `Depends` list points at files from earlier tasks, skim those files to
-   match existing patterns — don't re-read their PLAN.md history.
+## Deliver
 
-5. **Implement exactly that task's scope.** Its file list, its acceptance
-   criteria, nothing adjacent. If the spec is underspecified or looks wrong,
-   stop and report — do not guess or silently substitute a different
-   approach for a 🔒 decision.
+9. Update the card with commands/results, criteria checked, unresolved review
+   points and next action. Append a completion/change line to `docs/CHANGELOG.md`.
+   Mark REVIEW when implementation is ready for review; maintain any linked B-ID
+   history without prematurely marking it fixed. Commit as `U-NNN: description`,
+   push and open/update one PR linking the card and evidence. Report the PR URL.
+10. Watch all required CI checks for the **latest pushed head SHA**. Inspect
+    failures, fix causes within scope, commit/push and repeat. Report real run
+    numbers and head SHAs; a run's database ID is not its displayed run number.
+    A skipped/missing/pending/cancelled check is not a successful run. Do not rely
+    on a green result from an older commit. Surface infrastructure/access blockers.
+11. With no merge authorization, leave the green PR in REVIEW and say exactly
+    what remains. With current/standing merge authorization, resolve conflicts,
+    verify acceptance/reviews and checks, then merge only the verified head.
+    Where every criterion is met, a final PR commit may propose DONE in the index
+    and close linked B-ID rows; that status becomes true only when that commit
+    lands on the target branch. Wait for CI again after that final edit. If merged
+    before acceptance is complete, retain REVIEW until acceptance is recorded.
+12. Verify the merge on the target branch. Refresh status/evidence as needed in a
+    small documentation follow-up, and unlock dependents only from actual DONE
+    evidence. Report ID, outcome, PR, checks and remaining human review. Stop after
+    this task; “next task” does not authorize draining the whole queue.
 
-6. **Run `pnpm verify`.** It must exit 0.
+## Legacy and human gates
 
-7. **Walk each "Done when" criterion explicitly**, one at a time, and confirm
-   it in your own words before moving on. A criterion you can't verify by
-   running something is a criterion you haven't met.
-
-8. **Append the CHANGELOG line.** One line in `docs/CHANGELOG.md`, format
-   `T-<id> — <what changed>`, appended at the end (newest last).
-
-9. **Flip the `TASKS.md` row** for that task from `OPEN` to `DONE` — same
-   commit as the CHANGELOG line (PLAN.md §0.3 rule 7).
-
-10. **Commit** as `T-<id>: <short description>`.
-
-## Human gates — never close these yourself
-
-A task marked 🧍 has a real acceptance criterion that is *feel*, not a test:
-netcode responsiveness, camera, animation, audio, whether something reads as
-good. You can make it compile and pass `pnpm verify`; you cannot judge it.
-
-- **Never write a verdict yourself.** No simulated playtest, no invented
-  "PASS", no filling in a run sheet's judgement sections as if a human sat
-  through it.
-- **If the task's run sheet doesn't exist yet** (check `docs/playtests/` for
-  the file the task names), you *may* create the run sheet itself — the
-  blank instrument the human will use — modeled on an existing prepared one.
-  That is real, unblocked work. Do not fill in its verdict.
-- **Stop and hand it to the owner.** Say which gate is next, whether its run
-  sheet exists, and what — if anything — is still missing before a human can
-  run it. Then look for the next non-🧍 open task instead, if one exists.
-
-## Adapting scope mid-task
-
-If, while implementing, you find the task's spec conflicts with a 🔒 decision
-or an already-completed dependency's actual behavior, stop rather than
-reconcile it silently. Report the conflict; let the owner decide.
+An explicit `T-` request follows `docs/LEGACY-TASK-WORKFLOW.md`. Old M2–M5
+sign-offs do not block independent U-ID work. No procedure may fabricate a
+playtest, fill in a human verdict or silently change a locked product decision.
+If no U-ID is eligible, report its blockers and available legacy options.

@@ -1,5 +1,9 @@
 # SANDLINE — Browser Co-op Squad Shooter
 
+> Ongoing upgrades/bugs after the slice are queued in [BACKLOG.md](BACKLOG.md).
+> This document preserves milestone scope and history. “Next task” uses the
+> ongoing queue unless an explicit legacy T-ID is requested; human gates remain open.
+
 **Project plan & agent-executable task backlog**
 
 A browser-based, 6-player co-op third-person squad shooter in the spirit of
