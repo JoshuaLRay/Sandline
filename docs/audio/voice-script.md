@@ -25,7 +25,8 @@ Uploading).
 - **Two passes of each section, and a third for the pain sounds:**
   - **Normal:** clear, firm, a radio voice. File name ends `-normal`.
   - **Shouted:** as if over gunfire; loud, but don't strain. File name ends `-shout`.
-  - **Hurt** (only the "Hit and down" section): File name ends `-hurt`.
+  - **Hurt** (only the "Hit and down" section, and only its pain sounds,
+    line 5): File name `hit-hurt`.
 - Don't worry about mistakes. Leave a pause and say it again; the extra
   takes get trimmed.
 
@@ -71,7 +72,9 @@ Total time: about fifteen minutes a speaker.
 2. Man down!
 3. I'm down!
 4. I need help here!
-5. Three short pain sounds: a grunt, a sharp breath in, and a groan. Do these in the **hurt** pass.
+5. Three short pain sounds: a grunt, a sharp breath in, and a groan. Do these in the **hurt** pass,
+   and only these: `hit-hurt` is the grunt three times, the breath three times, the groan three
+   times. The normal and shouted passes of this section are lines 1–4.
 
 ### Reviving (`revive-…`)
 1. I've got you!
@@ -113,6 +116,12 @@ These are a bot answering your order wheel.
 4. Commit it, straight to a new branch, then tell Claude. From there the
    pipeline does the rest, and you listen on the deployed site's sound board
    (`?sounds`).
+
+**If a pass has a false start** (a take cut off and said again), you don't
+need to record it again: `pnpm gen:voice` says how many takes it found and
+where each starts, and a line in `assets/voice/raw/<name>/edits.json` —
+`{ "contact-shout": { "drop": [4] } }` — leaves the fifth take out. Claude
+can write that for you from the tool's report.
 
 Two or three different speakers go further than any processing: each slot
 can then sound like a different person, not one person in six profiles.

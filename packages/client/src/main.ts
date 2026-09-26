@@ -1445,6 +1445,7 @@ if (new URLSearchParams(location.search).has('sounds')) {
     sounds: SOUNDS,
     fetchBytes: fetchAudio,
     play: (id, variant) => void audio.unlock().then(() => audio.play(id, { variant })),
+    playFile: (file) => void new Audio(`./audio/${file}`).play().catch(() => undefined),
   });
 }
 

@@ -57,6 +57,8 @@ ADRs that section names → implement. That's the whole loop. See
 | `pnpm bench:nav` | Recast init, bake and Detour query cost |
 | `pnpm gen:trig` | regenerate the committed trig table |
 | `pnpm gen:art` | write every code-authored piece (`tools/src/art/pieces/`) as `assets/src/<id>.glb`; run `pnpm gen:assets` after it. A test fails when a committed source is not what its generator writes (T-4.04, ADR-018) |
+| `pnpm gen:audio` | render every sound recipe (`data/audio/sounds.json`) into `client/public/audio/`; a test fails when a recipe or the DSP changes without it (T-2.44) |
+| `pnpm gen:voice` | turn the voice uploads in `assets/voice/raw/<name>/` (recorded from `docs/audio/voice-script.md`, each with its `CONSENT.md`) into the six slots' lines under `client/public/audio/voice/`; a test fails when an upload, `voices.json` or the pipeline changes without it (T-2.48) |
 | `pnpm bake:light` | inspect a level (mission-01 by default) for T-4.12 lightmap UV/instancing compatibility and print the recorded spike outcome; it writes no files |
 | `pnpm gen:assets` | process every source glTF in `assets/src/` into `client/public/assets/` and the manifest; required after adding or changing a source (a test fails until you do) |
 | `pnpm check:assets` | every asset in the manifest against ADR-013's budgets (`data/assets/budgets.json`), by class; exits 1 naming the asset and the number when one is over |

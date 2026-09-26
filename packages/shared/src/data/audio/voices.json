@@ -1,0 +1,35 @@
+{
+  "$comment": "T-2.48: the voice pipeline's data (ADR-017). `script` is what docs/audio/voice-script.md asks people to record: each section is one file per pass (`<section>-normal`, `<section>-shout`, and `<section>-hurt` where a section has `hurt` lines), every line said `takesPerLine` times with a second of silence between. `render` is which passes become game lines. `split` finds takes: frames louder than `thresholdDb` below the file's loudest frame, runs closer than `minSilenceMs` joined, runs shorter than `minTakeMs` dropped, each padded. `loudness` is the integrated loudness (ITU-R BS.1770) every line is normalised to, with a peak ceiling. `profiles` are the six slots' voices in slot order: pitch and formant shifts in semitones (moved separately, so deeper does not sound slowed), an EQ, and the drive a shout is saturated with; `speaker` picks a recorded speaker by index (sorted folder names), default the slot modulo the speakers there are. `radio` and `distant` are the two treatments beside `dry`; `treatments` is which are rendered. Each line gets `variants` versions, from its takes in turn and a seeded pitch nudge of up to `variantSemitones`.",
+  "sampleRate": 24000,
+  "script": {
+    "takesPerLine": 3,
+    "sections": {
+      "contact": { "lines": ["contact", "contact-front", "contact-left", "contact-right", "enemy-spotted", "machine-gun"], "render": ["shout"] },
+      "firing": { "lines": ["covering-fire", "suppressing", "heads-down"], "render": ["shout"] },
+      "moving": { "lines": ["moving", "moving-up", "on-me", "go-go-go", "taking-cover", "get-down"], "render": ["shout"] },
+      "reload": { "lines": ["reloading", "changing-mag", "cover-me-reloading"], "render": ["shout"] },
+      "grenade": { "lines": ["frag-out", "grenade", "grenade-get-back"], "render": ["shout"] },
+      "hit": { "lines": ["im-hit", "man-down", "im-down", "need-help"], "hurt": ["pain-grunt", "pain-breath", "pain-groan"], "render": ["shout", "hurt"] },
+      "revive": { "lines": ["got-you", "hang-on", "youre-up"], "render": ["normal"] },
+      "kills": { "lines": ["enemy-down", "got-him", "target-down"], "render": ["normal"] },
+      "orders": { "lines": ["copy", "roger", "on-it", "moving-to-position", "holding-here", "regrouping", "cant-get-there"], "render": ["normal"] },
+      "objective": { "lines": ["compound-clear", "holding-objective", "objective-secure"], "render": ["normal"] }
+    }
+  },
+  "split": { "frameMs": 10, "thresholdDb": -35, "minSilenceMs": 600, "minTakeMs": 120, "padBeforeMs": 60, "padAfterMs": 150 },
+  "pitchRangeHz": [60, 500],
+  "loudness": { "targetLufs": -16, "toleranceLu": 0.5, "ceilingDb": -1 },
+  "profiles": [
+    { "id": "s0", "pitch": -2, "formant": -1, "eq": [{ "kind": "peak", "hz": 180, "q": 0.8, "gainDb": 2 }], "shoutDrive": 2 },
+    { "id": "s1", "pitch": 0, "formant": 0, "eq": [], "shoutDrive": 1.5 },
+    { "id": "s2", "pitch": -4, "formant": -2, "eq": [{ "kind": "peak", "hz": 3000, "q": 1, "gainDb": -2 }], "shoutDrive": 2.5 },
+    { "id": "s3", "pitch": 1.5, "formant": 1, "eq": [{ "kind": "highpass", "hz": 120 }], "shoutDrive": 1.5 },
+    { "id": "s4", "pitch": -1, "formant": 0.5, "eq": [{ "kind": "highpass", "hz": 160 }, { "kind": "peak", "hz": 1200, "q": 1.2, "gainDb": 2 }], "shoutDrive": 3 },
+    { "id": "s5", "pitch": -3, "formant": -1.5, "eq": [{ "kind": "peak", "hz": 2500, "q": 1, "gainDb": 3 }], "shoutDrive": 2 }
+  ],
+  "radio": { "highpassHz": 350, "lowpassHz": 3200, "drive": 3, "noiseDb": -36, "squelchIn": "radio-in", "squelchOut": "radio-out" },
+  "distant": { "lowpassHz": 1600, "reverb": { "seconds": 1.4, "mix": 0.4, "damp": 0.5 } },
+  "treatments": ["dry", "radio"],
+  "variants": 2,
+  "variantSemitones": 0.35
+}
