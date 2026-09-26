@@ -15,8 +15,8 @@ risk spike (failure is an acceptable, written-up outcome — PLAN.md §0.2).
 | Task | What | Run sheet | Depends | PLAN.md § |
 |---|---|---|---|---|
 | 🧍 T-2.24 | E-2.2 sign-off (locomotion) | `docs/playtests/e2-2.md` — exists, prepared, not run | T-2.17..T-2.23 (all done) | §7.2 |
-| 🧍 T-2.29 | E-2.3 sign-off (animation layers) | `docs/playtests/e2-3.md` — **missing** | T-2.25..T-2.28 (all done) | §7.5 |
-| 🧍 T-2.34 | E-2.5 sign-off (projectiles) | `docs/playtests/e2-5.md` — **missing** | T-2.30..T-2.33 (all done) | §7.6 |
+| 🧍 T-2.29 | E-2.3 sign-off (animation layers) | `docs/playtests/e2-3.md` — exists, prepared, not run | T-2.25..T-2.28 (all done) | §7.5 |
+| 🧍 T-2.34 | E-2.5 sign-off (projectiles) | `docs/playtests/e2-5.md` — exists, prepared, not run | T-2.30..T-2.33 (all done) | §7.6 |
 | 🧍 T-2.39 | Soldier's-look sign-off | `docs/playtests/soldier-look.md` — exists, prepared, not run | T-2.35..T-2.38 (all done) | §7.7 |
 | 🧍 T-2.43 | E-2.8 sign-off (prone) | `docs/playtests/e2-8.md` — exists, prepared, not run | T-2.40..T-2.42 (all done) | §7.8 |
 | 🧍 T-2.50 | E-2.7 sign-off (combat audio) | `docs/playtests/e2-7.md` — exists, prepared, not run | T-2.46, T-2.47, T-2.49 (all built) | §7.10 |
@@ -27,10 +27,10 @@ never fabricate a verdict or simulate the playtest to get one.
 
 **If nothing here is actionable** (no human available): E-2.8's build tasks
 are done (T-2.42 landed 2026-09-22), so its gate T-2.43 is open too; its
-run sheet `e2-8.md` is prepared. Writing the two missing run sheets
-(`e2-3.md`, `e2-5.md`), modeled on `e2-2.md` and `soldier-look.md`, is real unblocked work an agent can do
-— it does not require a human, only requires not inventing a verdict inside
-it. **E-2.7** (combat audio) is broken out (PLAN.md §7.10, ADR-017: made
+run sheet `e2-8.md` is prepared. Every gate's run sheet now exists
+(`e2-3.md`, `e2-5.md`, `e2-7.md`, `e3-5.md`, `e3-8.md`, `m3-solo.md`,
+`m3-six.md` and `m4.md` were written 2026-09-26); none has been run, and
+none may be filled in by an agent. **E-2.7** (combat audio) is broken out (PLAN.md §7.10, ADR-017: made
 in-house by AI). Its first task, **T-2.44** (the synthesiser and render
 pipeline, `pnpm gen:audio`), is done, and so is T-2.45 (positional playback,
 and the sound board at `?sounds`); the weapon sounds (T-2.46) are built and wait on
@@ -64,7 +64,7 @@ over the wire (T-3.27, protocol 21), which the bots carry out and report on
 (T-3.28), from an order wheel on Q and a mark on F in the page, drawn in the
 world from the host's broadcast (T-3.29, `?squad` for eyes). E-3.8's build
 tasks are done; its sign-off (🧍 T-3.30) and the combat AI sign-off (🧍
-T-3.24) wait on their run sheets. E-3.9 has begun: the grey-box mission map
+T-3.24) wait on the owner; their run sheets are prepared. E-3.9 has begun: the grey-box mission map
 is a second named world with an overwatch and an assault route, spawn zones
 and its bake (T-3.31, `WORLD=greybox-01`, `?world=greybox-01` for eyes), and
 an encounter file per world spawns its groups on their triggers, out of every
@@ -76,7 +76,7 @@ and restartable (T-3.34, protocol 22, `?mission` for eyes), and played
 headless by six bots at both budgets with the exit gate's claims as numbers
 (T-3.35, `pnpm sim-run --scenario mission`; the bots lose most fights —
 docs/BUGS.md B-11). M3's build tasks are done; its gates (🧍 T-3.24, T-3.30,
-T-3.36, T-3.37) wait on their run sheets and people.
+T-3.36, T-3.37) wait on people; their run sheets are prepared.
 
 **M4 is broken out** (PLAN.md §7.11), behind everything above in scan
 order. The asset pipeline is done (T-4.02, `pnpm gen:assets`) with its budgets
@@ -224,7 +224,7 @@ XP and ranks from human play, saved with the campaign and shown at mission end
 | T-2.26 | DONE | T-2.25 |
 | T-2.27 | DONE | T-2.25 |
 | T-2.28 | DONE | T-2.25 |
-| 🧍 T-2.29 | OPEN — run sheet `e2-3.md` missing, write it first | T-2.25..T-2.28 |
+| 🧍 T-2.29 | OPEN — run sheet `e2-3.md` prepared, not run | T-2.25..T-2.28 |
 
 ### E-2.5 — Projectile weapons (§7.6) — awaiting T-2.34
 
@@ -234,7 +234,7 @@ XP and ranks from human play, saved with the campaign and shown at mission end
 | T-2.31 | DONE | T-2.30 |
 | T-2.32 | DONE | T-2.31 |
 | T-2.33 | DONE | T-2.32 |
-| 🧍 T-2.34 | OPEN — run sheet `e2-5.md` missing, write it first | T-2.30..T-2.33 |
+| 🧍 T-2.34 | OPEN — run sheet `e2-5.md` prepared, not run | T-2.30..T-2.33 |
 
 ### The soldier's look (§7.7) — awaiting T-2.39
 
@@ -342,7 +342,7 @@ once before the first M3 task — it is short and every task leans on it.
 | Task | Status | Depends |
 |---|---|---|
 | T-3.23 | DONE | T-3.21, T-3.22 |
-| 🧍 T-3.24 | BLOCKED — run sheet `e3-5.md` to be written first | T-3.11, T-3.17, T-3.23 |
+| 🧍 T-3.24 | OPEN — run sheet `e3-5.md` prepared, not run | T-3.11, T-3.17, T-3.23 |
 
 ### E-3.7 — Friendly bot
 
@@ -358,7 +358,7 @@ once before the first M3 task — it is short and every task leans on it.
 | T-3.27 | DONE | T-3.08 |
 | T-3.28 | DONE | T-3.27, T-3.26, T-3.19 |
 | T-3.29 | DONE | T-3.27 |
-| 🧍 T-3.30 | BLOCKED — run sheet `e3-8.md` to be written first | T-3.11, T-3.25, T-3.26, T-3.28, T-3.29 |
+| 🧍 T-3.30 | OPEN — run sheet `e3-8.md` prepared, not run | T-3.11, T-3.25, T-3.26, T-3.28, T-3.29 |
 
 ### E-3.9 — AI director and the grey-box mission
 
