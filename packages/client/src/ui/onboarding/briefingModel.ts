@@ -20,7 +20,10 @@ export interface Briefing {
 const BRIEF_KEYS = ['Move', 'Fire', 'Aim', 'Reload', 'Crouch', 'Order wheel', 'Mark target', 'Interact / revive', 'Pause menu'];
 
 function seconds(s: number): string {
-  return s >= 60 && s % 60 === 0 ? `${s / 60} min` : `${s} s`;
+  if (s < 60) return `${s} s`;
+  const m = Math.floor(s / 60);
+  const rest = Math.round(s - m * 60);
+  return rest === 0 ? `${m} min` : `${m} min ${rest} s`;
 }
 
 /** One objective as the briefing says it. */

@@ -1,14 +1,37 @@
 {
-  "$comment": "T-4.13: the first kit level keeps the grey-box mission objective unchanged: clear the compound and hold it for 30 seconds.",
+  "$comment": "T-5.02: the slice mission (PLAN.md §7.12). Five objectives across mission-01: clear the patrol holding the west lane, then the position holding the east lane, take the compound and hold it, hold it against the counterattack, and fall back to the start line past an ambush. The dead respawn: ten minutes is too long to play a man down. Each objective completing is a checkpoint (T-4.16); the messages, callouts and the ambush are the script's (data/scripts/mission-01.json).",
   "id": "mission-01",
   "world": "mission-01",
-  "respawn": false,
+  "respawn": true,
   "objectives": [
+    {
+      "type": "destroy",
+      "group": "overwatch-patrol",
+      "label": "the west-lane patrol"
+    },
+    {
+      "type": "destroy",
+      "group": "assault-hold",
+      "label": "the east-lane position"
+    },
     {
       "type": "clear-and-hold",
       "area": "objective",
-      "holdSeconds": 30,
+      "holdSeconds": 60,
       "label": "the compound"
+    },
+    {
+      "type": "defend",
+      "area": "objective",
+      "seconds": 330,
+      "breachSeconds": 20,
+      "label": "the compound"
+    },
+    {
+      "type": "reach",
+      "area": "start",
+      "who": "all",
+      "label": "the start line"
     }
   ]
 }

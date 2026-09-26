@@ -109,27 +109,51 @@
       },
       "waves": {
         "count": 3,
-        "everySeconds": 25,
-        "minSeconds": 15,
-        "maxSeconds": 45
+        "everySeconds": 60,
+        "minSeconds": 30,
+        "maxSeconds": 80
       }
     },
     {
-      "id": "late",
+      "id": "counterattack-support",
       "members": [
         {
           "archetype": "rifleman",
           "count": 2
         }
       ],
-      "zone": "overwatch-flank",
+      "zone": "behind-objective",
       "posture": {
         "kind": "hold",
-        "face": "overwatch-mid"
+        "face": "objective"
+      },
+      "trigger": {
+        "kind": "dead",
+        "group": "garrison"
+      },
+      "waves": {
+        "count": 6,
+        "everySeconds": 40,
+        "minSeconds": 25,
+        "maxSeconds": 60
+      }
+    },
+    {
+      "id": "exfil-ambush",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 2
+        }
+      ],
+      "zone": "assault-flank",
+      "posture": {
+        "kind": "hold",
+        "face": "assault-entry"
       },
       "trigger": {
         "kind": "time",
-        "seconds": 300
+        "seconds": 3600
       }
     }
   ]

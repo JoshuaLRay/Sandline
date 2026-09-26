@@ -483,7 +483,7 @@ T-4.34 is passed.
 | Task | Status | Depends |
 |---|---|---|
 | T-5.01 | DONE | — |
-| T-5.02 | OPEN | T-5.01 |
+| T-5.02 | DONE | T-5.01 |
 | T-5.03 | DONE | — |
 | T-5.04 | DONE — fps on target hardware waits on the owner opening `?perf` there | — |
 | 🧍 T-5.05 | OPEN — the owner's decision (T-4.12's fallback or lightmaps) | — |

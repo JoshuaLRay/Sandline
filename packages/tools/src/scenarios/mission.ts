@@ -303,12 +303,16 @@ export function reportMission(summary: MissionSummary, config: MissionConfig = M
   );
   const done = (humans: number) => summary.runs.filter((r) => r.humans === humans && r.outcome === 'complete');
   const mean = (xs: number[]) => (xs.length === 0 ? NaN : xs.reduce((a, b) => a + b, 0) / xs.length);
+  const median = (xs: number[]) => {
+    const sorted = [...xs].sort((a, b) => a - b);
+    return sorted.length === 0 ? NaN : sorted.length % 2 ? sorted[sorted.length >> 1]! : (sorted[sorted.length / 2 - 1]! + sorted[sorted.length / 2]!) / 2;
+  };
   return [
     `scenario=mission world=${summary.runs[0]?.world ?? WORLD_ID} seeds=${summary.runs.length / config.budgets.length} budgets=${config.budgets.join(',')} run=${config.runSeconds}s`,
     ...lines,
     ...config.budgets.map(
       (h) =>
-        `${h}-human budget: completed ${((summary.completion[String(h)] ?? 0) * 100).toFixed(0)}% (floor ${((config.minCompletion as Record<string, number>)[String(h)] ?? 1) * 100}%${summary.runs.filter((r) => r.humans === h).length < config.completionMinSeeds ? `, not asserted under ${config.completionMinSeeds} seeds` : ''}), mean time ${done(h).length === 0 ? '-' : mean(done(h).map((r) => r.seconds)).toFixed(0)} s`,
+        `${h}-human budget: completed ${((summary.completion[String(h)] ?? 0) * 100).toFixed(0)}% (floor ${((config.minCompletion as Record<string, number>)[String(h)] ?? 1) * 100}%${summary.runs.filter((r) => r.humans === h).length < config.completionMinSeeds ? `, not asserted under ${config.completionMinSeeds} seeds` : ''}), mean time ${done(h).length === 0 ? '-' : mean(done(h).map((r) => r.seconds)).toFixed(0)} s, median ${done(h).length === 0 ? '-' : median(done(h).map((r) => r.seconds)).toFixed(0)} s`,
     ),
     `enemies under fire in cover: ${(summary.coverShare * 100).toFixed(0)}% (floor ${config.minCoverShare * 100}%)`,
     `suppression episodes per engagement: ${summary.episodesPerEngagement.toFixed(2)} (floor ${config.minEpisodesPerEngagement})`,

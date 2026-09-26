@@ -30,6 +30,7 @@ describe('the briefing (T-5.03)', () => {
   it('says each kind of objective plainly', () => {
     expect(objectiveText({ type: 'clear-and-hold', label: 'the compound', area: 'objective', holdSeconds: 30 })).toBe('Clear the compound and hold it for 30 s');
     expect(objectiveText({ type: 'defend', label: 'the gate', area: 'objective', seconds: 120, breachSeconds: 5 })).toBe('Defend the gate for 2 min');
+    expect(objectiveText({ type: 'defend', label: 'the gate', area: 'objective', seconds: 330, breachSeconds: 5 })).toBe('Defend the gate for 5 min 30 s');
     expect(objectiveText({ type: 'reach', label: 'extraction', area: 'start', who: 'all' })).toBe('Get everyone to extraction');
     expect(objectiveText({ type: 'destroy', label: 'the patrol', group: 'p' })).toBe('Destroy the patrol');
   });

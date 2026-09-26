@@ -154,6 +154,7 @@ function connect(session: Session) {
     states,
     hits,
     said,
+    send,
     hold(value: number) {
       moveY = value;
     },
@@ -200,13 +201,39 @@ describe('the committed mission script in real play (T-5.01)', () => {
     const session = new Session(undefined, '', world, { encounter });
     const client = connect(session);
     client.run(2);
-    expect(client.said).toContain('message:Take the compound and hold it');
+    expect(client.said).toContain('message:Clear the patrol holding the west lane');
     const garrison = session.spawner!.spawnedBy('garrison');
     expect(garrison.length).toBeGreaterThan(0);
     for (const e of session.enemies) if (garrison.includes(e.netId)) Object.assign(e.health, { current: 0, diedAt: 0 });
     client.run(4);
     expect(client.said).toContain('callout:objective-clear');
-    expect(client.said).toContain('message:Compound clear — counterattack inbound, hold it');
+  });
+
+  it('the slice mission (T-5.02): each objective in turn, its script between them, and a failed attempt retries from the last checkpoint', () => {
+    const world = requireWorld('mission-01');
+    const session = new Session(undefined, '', world, { encounter: encounterFor('mission-01')!, testHumanCount: 1 });
+    const client = connect(session);
+    // The director places the opening groups where no human can see them: step until the patrol is out.
+    for (let i = 0; i < 20 && session.spawner!.spawnedBy('overwatch-patrol').length === 0; i++) client.run(30);
+    expect(session.mission).toMatchObject({ objective: 0, objectives: 5, type: 'destroy', label: 'the west-lane patrol' });
+    console.log(`slice: the patrol placed after ${(session.tick / 30).toFixed(1)} s`);
+    expect(session.spawner!.spawnedBy('overwatch-patrol').length).toBeGreaterThan(0);
+    const kill = (group: string) => {
+      const ids = session.spawner!.spawnedBy(group);
+      for (const e of session.enemies) if (ids.includes(e.netId)) Object.assign(e.health, { current: 0, diedAt: 0 });
+    };
+    kill('overwatch-patrol');
+    client.run(4);
+    expect(client.said).toContain('message:West lane clear — now the position holding the east lane');
+    expect(session.mission).toMatchObject({ objective: 1, type: 'destroy', label: 'the east-lane position', attempt: 1 });
+    // The squad is wiped on the second objective: the attempt fails, and a retry starts from the checkpoint.
+    for (const slot of session.slots) Object.assign(slot.health, { current: 0, diedAt: 0 });
+    client.run(2);
+    expect(session.mission!.state).toBe('failed');
+    client.send({ kind: 'MissionRestart' });
+    client.run(1);
+    expect(session.mission).toMatchObject({ state: 'progress', objective: 1, attempt: 2 });
+    expect(session.spawner!.dead('overwatch-patrol')).toBe(true);
   });
 
   it('a mission other than the committed one under the same world gets no script; greybox-01 has none', () => {

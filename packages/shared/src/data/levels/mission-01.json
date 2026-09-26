@@ -1,7 +1,7 @@
 {
   "id": "mission-01",
   "format": 1,
-  "$comment": "T-4.13: mission-01. The greybox-01 combat design is preserved box-for-box — the same two routes, objective, spawn zones, cover and sight lines — and dressed with the T-4.10 kit. Collision remains the proven grey-box geometry while collision-free dirt, road and paving kit tiles give the lanes, start and qalat compound a readable authored surface; later art passes can replace individual structural boxes with matching kit modules without changing mission semantics.",
+  "$comment": "T-4.13: mission-01. The greybox-01 combat design is preserved box-for-box — the same two routes, objective, spawn zones, cover and sight lines — and dressed with the T-4.10 kit. Collision remains the proven grey-box geometry while collision-free dirt, road and paving kit tiles give the lanes, start and qalat compound a readable authored surface; later art passes can replace individual structural boxes with matching kit modules without changing mission semantics. T-5.02 adds four low-cover boxes inside the compound (two sandbag runs, two crates): its garrison and the counterattack had nothing inside the walls to take cover behind.",
   "floor": {
     "halfExtent": 100
   },
@@ -266,7 +266,11 @@
       "w": 0.4,
       "h": 0.9,
       "d": 1.6
-    }
+    },
+    { "id": "compound-sandbags-w", "x": -4.5, "y": 0, "z": 67.2, "w": 1.6, "h": 0.9, "d": 0.4 },
+    { "id": "compound-sandbags-e", "x": 5.2, "y": 0, "z": 73.6, "w": 1.6, "h": 0.9, "d": 0.4 },
+    { "id": "compound-crate-sw", "x": -5.6, "y": 0, "z": 73.8, "w": 1.2, "h": 1.2, "d": 1.2 },
+    { "id": "compound-crate-se", "x": 4.8, "y": 0, "z": 66.4, "w": 1.2, "h": 1.2, "d": 1.2 }
   ],
   "pieces": [
     {
