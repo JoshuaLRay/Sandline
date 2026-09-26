@@ -35,6 +35,7 @@ export interface PlayerHud {
   readonly root: HTMLElement;
   update(frame: HudFrame): void;
   setVisible(on: boolean): void;
+  notify(message: string): void;
 }
 
 const STANCE_TEXT: Readonly<Record<Stance, string>> = {
@@ -118,6 +119,10 @@ export function createHud(parent: HTMLElement): PlayerHud {
   // -- Under the reticle: what E would do (T-4.29). --
   const prompt = el('div', 'phud-prompt', root);
   const hint = el('div', 'phud-hint', root);
+  const notice = el('div', 'phud-notice', root);
+  notice.setAttribute('role', 'status');
+  notice.setAttribute('aria-live', 'polite');
+  let noticeTimer: ReturnType<typeof setTimeout> | null = null;
 
   let shown = true;
 
@@ -235,6 +240,16 @@ export function createHud(parent: HTMLElement): PlayerHud {
     setVisible(on) {
       shown = on;
       root.classList.toggle('hidden', !on);
+    },
+    notify(message) {
+      setText(notice, message);
+      notice.dataset['shown'] = message ? 'yes' : 'no';
+      if (noticeTimer !== null) clearTimeout(noticeTimer);
+      noticeTimer = message ? setTimeout(() => {
+        setText(notice, '');
+        notice.dataset['shown'] = 'no';
+        noticeTimer = null;
+      }, 2200) : null;
     },
   };
 }

@@ -24,6 +24,7 @@ describe('the briefing (T-5.03)', () => {
     expect(b.routes).toMatch(/^Two ways in: the overwatch route up the west, and the assault route up the east/);
     expect(b.squad).toBe('3 Team Leader, 3 Marksman');
     expect(b.controls.map((c) => c.action)).toContain('Order wheel');
+    expect(b.controls.find((c) => c.action === 'Weapons')?.keys).toContain('1 primary · 2 pistol');
     expect(briefingFor('range')).toBeNull();
   });
 

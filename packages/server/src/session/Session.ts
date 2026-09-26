@@ -2781,6 +2781,9 @@ export class Session {
   private applyEquip(conn: ServerConnection, msg: Extract<Message, { kind: 'Equip' }>): void {
     const slot = this.slots.find((s) => s.connection === conn);
     if (!slot) return;
+    // Hands are unavailable while downed or dead; enforce it here as well as
+    // at the client so a forged Equip cannot change the authoritative weapon.
+    if (!isAlive(slot.health)) return;
     // T-4.29: a gunner's hands are on the gun; what they carry waits.
     if (slot.mounted) return;
     const gun = WEAPON_IDS[msg.item];

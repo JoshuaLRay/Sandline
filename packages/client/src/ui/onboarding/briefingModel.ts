@@ -17,7 +17,7 @@ export interface Briefing {
 }
 
 /** The keys a first mission needs, by the menu's own names. */
-const BRIEF_KEYS = ['Move', 'Fire', 'Aim', 'Reload', 'Crouch', 'Order wheel', 'Mark target', 'Interact / revive', 'Pause menu'];
+const BRIEF_KEYS = ['Move', 'Fire', 'Aim', 'Reload', 'Weapons', 'Crouch', 'Order wheel', 'Mark target', 'Interact / revive', 'Pause menu'];
 
 function seconds(s: number): string {
   if (s < 60) return `${s} s`;

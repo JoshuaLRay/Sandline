@@ -138,7 +138,7 @@ export const KEY_BINDINGS: readonly { action: string; keys: string }[] = [
   { action: 'Fire', keys: 'Left mouse' },
   { action: 'Aim', keys: 'Right mouse' },
   { action: 'Reload', keys: 'R' },
-  { action: 'Weapons', keys: '1 – 4' },
+  { action: 'Weapons', keys: '1 primary · 2 pistol (3–4 range only)' },
   { action: 'Grenade / rocket', keys: '5 – 6  (G quick-throws)' },
   { action: 'Interact / revive', keys: 'E (hold)' },
   { action: 'Order wheel', keys: 'Q (hold)' },

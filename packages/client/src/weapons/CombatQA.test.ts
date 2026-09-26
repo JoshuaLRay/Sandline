@@ -85,8 +85,20 @@ describe('CombatQA', () => {
 
   it('switching weapons does not carry the previous magazine or reload over', () => {
     run(combat, 0, 40, { firing: true });
+    combat.requestReload(40 * TICK_SECONDS);
+    expect(combat.magazine(40 * TICK_SECONDS).reloading).toBe(true);
     combat.selectWeapon(WEAPON_ORDER.indexOf('sidearm'));
     const sidearm = getWeapon('sidearm');
     expect(combat.readout(100, false)).toContain(`${sidearm.magSize}/${sidearm.magSize}`);
+    expect(combat.magazine(100).reloading).toBe(false);
+  });
+
+  it('selecting the current slot again is idempotent and does not cancel its reload', () => {
+    run(combat, 0, 1, { firing: true });
+    combat.requestReload(TICK_SECONDS);
+    expect(combat.magazine(TICK_SECONDS).reloading).toBe(true);
+    combat.selectWeapon(WEAPON_ORDER.indexOf('carbine'));
+    expect(combat.weapon.id).toBe('carbine');
+    expect(combat.magazine(TICK_SECONDS).reloading).toBe(true);
   });
 });

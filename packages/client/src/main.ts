@@ -105,6 +105,7 @@ import { type PlacedEmplacement, clampYawToArc, degToWire, emplacementByIndex, e
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
+import { weaponIndexForKey } from './weapons/weaponKey.ts';
 import { PROJECTILE_ORDER, ThrowQA } from './weapons/ThrowQA.ts';
 import { PouchTrigger } from './weapons/pouchTrigger.ts';
 import { ViewModel } from './weapons/viewModel.ts';
@@ -2682,14 +2683,26 @@ addEventListener('keydown', (e) => {
     for (const id of throws.takeRetired()) dropProjectileMesh(`g${id}`);
     lastBlast = null;
   }
-  // 1-4 pick a weapon, 5-6 the pouch: each one EQUIPS, and the trigger uses
-  // what is in hand. Switching is instant and reloads: a range, not a match.
+  // 1 and 2 select semantic loadout roles. The Q wheel, menus, text fields,
+  // downed state and a mounted gun all take priority over weapon selection.
+  const keyContext = {
+    orderWheelOpen: input.orderWheel !== null,
+    menuOpen: !live || menu.mode !== 'hidden',
+    textFieldFocused: isTextField(e.target),
+    alive: live?.net.vitality === 'alive',
+    mounted: mountedGun !== null,
+    loadoutGuns: localLoadout?.guns ?? null,
+  };
+  const equipmentInputAllowed = !keyContext.orderWheelOpen && !keyContext.menuOpen && !keyContext.textFieldFocused && keyContext.alive && !keyContext.mounted;
+  const weaponIndex = weaponIndexForKey(e.code, keyContext);
+  if (weaponIndex !== null) equipGun(weaponIndex);
+  else if (/^Digit[12]$/.test(e.code) && equipmentInputAllowed) {
+    playerHud.notify(e.code === 'Digit1' ? 'No primary equipped' : 'No pistol equipped');
+  }
+  // 5-6 select the pouch: each one equips it, and the trigger uses what is in hand.
   // While the order wheel is open the number keys pick who hears it (T-3.29).
   const slot = input.orderWheel ? -1 : Number.parseInt(e.code.replace('Digit', ''), 10);
-  if (e.code.startsWith('Digit') && slot >= 1 && slot <= WEAPON_ORDER.length) {
-    equipGun(slot - 1);
-  }
-  if (e.code.startsWith('Digit') && slot > WEAPON_ORDER.length && slot <= WEAPON_ORDER.length + PROJECTILE_ORDER.length) {
+  if (equipmentInputAllowed && e.code.startsWith('Digit') && slot > WEAPON_ORDER.length && slot <= WEAPON_ORDER.length + PROJECTILE_ORDER.length) {
     equipPouch(slot - WEAPON_ORDER.length - 1);
   }
   if (e.code === 'KeyH') toggleHud();
