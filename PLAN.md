@@ -2127,6 +2127,7 @@ the owner listens (T-1.5.07, the T-3.35 follow-up).
   - whether it reads as 2002.
 - **Done when:** the owner has played it and written the verdict. An agent can write the run sheet and must not invent the verdict.
 - **Size:** S (the owner's time)
+- **Run sheet prepared 2026-09-26, not run.** `docs/playtests/e2-7.md`: the sound board (which is also T-2.46's first listen), direction and distance by ear, walls, footsteps and bodies, callouts (heard as chirps until the voice script is recorded), the mission map, two people over the host, and whether it reads as 2002 — with the numbers being judged and where each lives. No verdict.
 
 ### 7.11 M4 leaf tasks — broken out 2026-09-24
 

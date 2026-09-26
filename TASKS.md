@@ -19,8 +19,9 @@ risk spike (failure is an acceptable, written-up outcome — PLAN.md §0.2).
 | 🧍 T-2.34 | E-2.5 sign-off (projectiles) | `docs/playtests/e2-5.md` — **missing** | T-2.30..T-2.33 (all done) | §7.6 |
 | 🧍 T-2.39 | Soldier's-look sign-off | `docs/playtests/soldier-look.md` — exists, prepared, not run | T-2.35..T-2.38 (all done) | §7.7 |
 | 🧍 T-2.43 | E-2.8 sign-off (prone) | `docs/playtests/e2-8.md` — exists, prepared, not run | T-2.40..T-2.42 (all done) | §7.8 |
+| 🧍 T-2.50 | E-2.7 sign-off (combat audio) | `docs/playtests/e2-7.md` — exists, prepared, not run | T-2.46, T-2.47, T-2.49 (all built) | §7.10 |
 
-All five gates' build dependencies are satisfied. All five need the owner in
+All six gates' build dependencies are satisfied. All six need the owner in
 the room with another human — an agent cannot close any of them, and must
 never fabricate a verdict or simulate the playtest to get one.
 
@@ -36,7 +37,7 @@ and the sound board at `?sounds`); the weapon sounds (T-2.46) are built and wait
 the owner's first listen; the world and body sounds (T-2.47) are done; so is the
 voice pipeline (T-2.48, `pnpm gen:voice`), with nothing to process until someone
 records; and callouts (T-2.49), which play the radio chirp until then. E-2.7's
-gate (T-2.50) needs its run sheet, `e2-7.md`. The owner can record the voice lines any
+gate (T-2.50) has its run sheet, `e2-7.md`, prepared and not run. The owner can record the voice lines any
 time, from `docs/audio/voice-script.md`.
 
 **M3 is broken out** (PLAN.md §7.9). E-3.1's navmesh pipeline is done:
@@ -260,7 +261,7 @@ on the deployed site's sound board (`?sounds`, T-2.45).
 | T-2.47 | DONE | T-2.45 |
 | T-2.48 | DONE — the pipeline is built and tested on generated signals; no recordings are uploaded yet (`docs/audio/voice-script.md`), so no lines are committed | T-2.44 |
 | T-2.49 | DONE — heard as the radio chirp until recordings arrive | T-2.45, T-2.48 |
-| 🧍 T-2.50 | BLOCKED — run sheet `e2-7.md` to be written | T-2.46, T-2.47, T-2.49 |
+| 🧍 T-2.50 | OPEN — run sheet `e2-7.md` prepared, not run | T-2.46, T-2.47, T-2.49 |
 
 ### E-2.8 — Prone stance & voluntary crawl (§7.8) — awaiting T-2.43 (run sheet ready)
 
