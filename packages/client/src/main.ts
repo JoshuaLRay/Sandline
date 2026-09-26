@@ -106,7 +106,7 @@ import { RemoteSoldiers } from './character/remoteSoldiers.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
 import { RESTART_KEY, afterActionXp, missionLine } from './ui/missionHud.ts';
-import type { Vitality } from '@sandline/shared';
+import { type ClassDef, type Vitality, classById } from '@sandline/shared';
 import { createHud } from './ui/hud/Hud.ts';
 import {
   type CompassMarkerInput,
@@ -490,7 +490,16 @@ function loadoutItem(): number {
 function heldId(): string {
   return holdingPouch ? throws.def.id : combat.weapon.id;
 }
+/**
+ * T-4.27: on a hosted room the slot plays its class, and the class carries
+ * its own guns — the host refuses any other, so the page does not predict
+ * one either. Null on the in-page range, where every gun is anyone's.
+ */
+let localLoadout: ClassDef | null = null;
+/** The class id last applied to the page's own weapon and pouch. */
+let localClassSeen = '';
 function equipGun(index: number): void {
+  if (localLoadout && !localLoadout.guns.includes(WEAPON_ORDER[index] ?? '')) return;
   combat.selectWeapon(index);
   holdingPouch = false;
   pouchTrigger.cancel();
@@ -1195,6 +1204,7 @@ squadPanel.setVisible(false);
 const roomLobby = createRoomLobby({
   onReady: (ready) => live?.net.setRoomReady(ready),
   onStart: () => live?.net.startRoom(),
+  onClass: (classId) => live?.net.setRoomClass(classId),
   onLeave: () => leaveSession({ text: 'left the room', tone: 'info' }),
   link: currentShareLink,
 });
@@ -1865,6 +1875,19 @@ function frame(): void {
    * soldier to show.
    */
   playerHud.setVisible(live !== null);
+  // T-4.27: the class the host assigned this slot, applied to the page's own
+  // predicted weapon and pouch when it changes — the first gun in hand, the
+  // class's pouch — on a hosted room; the in-page range stays free.
+  const localClass = live?.remote && net ? net.roster[net.slot]?.classId ?? '' : '';
+  if (localClass !== localClassSeen) {
+    localClassSeen = localClass;
+    localLoadout = classById(localClass);
+    if (localLoadout) {
+      throws.setCounts(localLoadout.pouch);
+      const first = WEAPON_ORDER.indexOf(localLoadout.guns[0] as (typeof WEAPON_ORDER)[number]);
+      if (first >= 0) equipGun(first);
+    }
+  }
   if (live) {
     const hudNow = clock.tick * TICK_SECONDS + clock.alpha * TICK_SECONDS;
     const hudYaw = Math.atan2(camSolve.forward.x, camSolve.forward.z);

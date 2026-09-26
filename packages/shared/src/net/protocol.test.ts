@@ -41,6 +41,8 @@ const SAMPLES: Message[] = [
   { kind: 'RoomState', started: false, creator: 0, world: 'mission-01', ready: [true, false, false, false, false, false], classes: ['', '', '', '', '', ''] },
   { kind: 'RoomCommand', command: 'ready', ready: true },
   { kind: 'RoomCommand', command: 'start' },
+  // T-4.27: a class pick in the room, and a roster that carries every slot's class.
+  { kind: 'RoomCommand', command: 'class', classId: 'marksman' },
   { kind: 'Disconnect', code: 'bad key', reason: 'wrong join key' },
   { kind: 'Disconnect', code: 'session limit', reason: 'session limit' },
   { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM', world: 'range', resume: '', resumed: false, identity: '' },
@@ -59,12 +61,12 @@ const SAMPLES: Message[] = [
   {
     kind: 'Roster',
     slots: [
-      { human: true, name: 'ray' },
-      { human: false, name: '' },
-      { human: true, name: 'austin' },
-      { human: false, name: '' },
-      { human: false, name: '' },
-      { human: false, name: '' },
+      { human: true, name: 'ray', classId: 'team-leader' },
+      { human: false, name: '', classId: 'marksman' },
+      { human: true, name: 'austin', classId: 'marksman' },
+      { human: false, name: '', classId: 'marksman' },
+      { human: false, name: '', classId: 'marksman' },
+      { human: false, name: '', classId: 'marksman' },
     ],
   },
   { kind: 'Throw', tick: 900, yaw: 4095, pitch: 3072, projectile: 1 },

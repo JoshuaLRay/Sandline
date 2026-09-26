@@ -70,24 +70,24 @@ describe('stance (T-4.25)', () => {
 
 describe('the squad rows (T-4.25)', () => {
   const roster: RosterEntry[] = [
-    { name: 'kai', human: true },
-    { name: '', human: false },
-    { name: 'rae', human: true },
-    { name: '', human: false },
-    { name: '', human: false },
-    { name: '', human: false },
+    { name: 'kai', human: true, classId: 'team-leader' },
+    { name: '', human: false, classId: 'marksman' },
+    { name: 'rae', human: true, classId: 'marksman' },
+    { name: '', human: false, classId: 'marksman' },
+    { name: '', human: false, classId: 'marksman' },
+    { name: '', human: false, classId: 'marksman' },
   ];
   const orders: BotOrder[] = [{ slot: 1, order: 'move', point: { x: 1, y: 0, z: 2 }, target: null, from: 0 }];
   it('is six rows always: names for people, Bot for bots, the host\'s vitality and the order each bot is under', () => {
     const vitality = (slot: number) => (slot === 0 ? 'alive' : slot === 1 ? 'downed' : slot === 2 ? 'dead' : slot === 3 ? 'alive' : null);
     const rows = squadRows(roster, 2, vitality, orders);
     expect(rows).toHaveLength(6);
-    expect(rows[0]).toEqual({ slot: 0, label: 'kai', human: true, you: false, state: 'alive', order: '' });
-    expect(rows[1]).toEqual({ slot: 1, label: 'Bot', human: false, you: false, state: 'downed', order: 'move' });
-    expect(rows[2]).toEqual({ slot: 2, label: 'rae', human: true, you: true, state: 'dead', order: '' });
+    expect(rows[0]).toEqual({ slot: 0, label: 'kai', human: true, you: false, state: 'alive', order: '', classShort: 'TL' });
+    expect(rows[1]).toEqual({ slot: 1, label: 'Bot', human: false, you: false, state: 'downed', order: 'move', classShort: 'MM' });
+    expect(rows[2]).toEqual({ slot: 2, label: 'rae', human: true, you: true, state: 'dead', order: '', classShort: 'MM' });
     expect(rows[3]?.state).toBe('alive');
     expect(rows[4]?.state).toBe('unknown');
-    expect(rows[5]).toEqual({ slot: 5, label: 'Bot', human: false, you: false, state: 'unknown', order: '' });
+    expect(rows[5]).toEqual({ slot: 5, label: 'Bot', human: false, you: false, state: 'unknown', order: '', classShort: 'MM' });
   });
   it('is six rows of bots before the roster arrives', () => {
     const rows = squadRows([], -1, () => null, []);

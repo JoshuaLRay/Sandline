@@ -13,7 +13,7 @@
  * compass reads that as north = +Z, east = -X, and a heading that grows as
  * the player turns right.
  */
-import { MAX_SLOTS, type BotOrder, type RosterEntry, type Vitality } from '@sandline/shared';
+import { MAX_SLOTS, type BotOrder, type RosterEntry, type Vitality, classById } from '@sandline/shared';
 import type { MarkerKind } from '../OrderMarkers.ts';
 
 // -- Vitals --------------------------------------------------------------
@@ -147,6 +147,8 @@ export interface SquadRow {
   state: SquadState;
   /** The order the bot is under, or '' (a human is under none). */
   order: string;
+  /** The class's two letters (T-4.27), '' before the host has assigned one. */
+  classShort: string;
 }
 
 /**
@@ -172,6 +174,7 @@ export function squadRows(
       you: slot === mySlot,
       state: vitalityOf(slot) ?? 'unknown',
       order: order?.order ?? '',
+      classShort: classById(entry?.classId ?? '')?.short ?? '',
     });
   }
   return rows;

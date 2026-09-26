@@ -16,7 +16,7 @@ import type { ScriptBlockerState } from '../sim/events.ts';
 import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 29;
+export const PROTOCOL_VERSION = 30;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -87,6 +87,8 @@ export interface RosterEntry {
   /** Empty for a bot. */
   name: string;
   human: boolean;
+  /** The class the slot plays (T-4.27, a classes.json id); '' before the host has assigned one. */
+  classId: string;
 }
 
 export const MessageType = {
@@ -122,7 +124,7 @@ const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks
  * Mission, room and progression messages share a three-bit variant (T-4.24).
  */
 const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3, Progression: 4 } as const;
-const ROOM_COMMANDS = ['ready', 'start'] as const;
+const ROOM_COMMANDS = ['ready', 'start', 'class'] as const;
 /** T-4.15: state plus transient message/callout notifications. */
 const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2 } as const;
 const EXT_BITS = 3;
@@ -451,7 +453,7 @@ export type Message =
   /** T-4.19: authoritative pre-mission room state. Class ids are reserved for T-4.27. */
   | { kind: 'RoomState'; started: boolean; creator: number; world: string; ready: readonly boolean[]; classes: readonly string[] }
   /** T-4.19: ready toggle or creator-only force start. */
-  | { kind: 'RoomCommand'; command: (typeof ROOM_COMMANDS)[number]; ready?: boolean }
+  | { kind: 'RoomCommand'; command: (typeof ROOM_COMMANDS)[number]; ready?: boolean; classId?: string }
   /** T-4.15: all dynamic blockers, whole, whenever one changes and on seating. Host to client. */
   | { kind: 'ScriptState'; blockers: readonly ScriptBlockerState[] }
   /** T-4.15: an authored on-screen mission message. Host to client. */
@@ -617,6 +619,7 @@ export function encodeMessage(msg: Message): Uint8Array {
       for (const entry of msg.slots) {
         w.writeBool(entry.human);
         w.writeString(entry.name);
+        w.writeString(entry.classId);
       }
       break;
     case 'AiDebugRequest':
@@ -693,8 +696,10 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Mission, EXT_BITS);
       w.writeBits(MISSION_VARIANT.RoomCommand, 3);
-      w.writeBits(ROOM_COMMANDS.indexOf(msg.command), 1);
+      w.writeBits(ROOM_COMMANDS.indexOf(msg.command), 2);
       w.writeBool(msg.command === 'ready' ? (msg.ready ?? false) : false);
+      // T-4.27: the class a player picks in the room.
+      w.writeString(msg.command === 'class' ? (msg.classId ?? '') : '');
       break;
     case 'Progression': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -1033,7 +1038,8 @@ export function decodeMessage(bytes: Uint8Array): Message {
         const slots: RosterEntry[] = [];
         for (let i = 0; i < count; i += 1) {
           const human = r.readBool();
-          slots.push({ human, name: r.readString() });
+          const name = r.readString();
+          slots.push({ human, name, classId: r.readString() });
         }
         return { kind: 'Roster', slots };
       }
@@ -1092,10 +1098,13 @@ export function decodeMessage(bytes: Uint8Array): Message {
             }
             if (variant === MISSION_VARIANT.Restart) return { kind: 'MissionRestart' };
             if (variant === MISSION_VARIANT.RoomCommand) {
-              const command = ROOM_COMMANDS[r.readBits(1)];
+              const command = ROOM_COMMANDS[r.readBits(2)];
               if (command === undefined) throw new ProtocolError('unknown room command');
               const ready = r.readBool();
-              return command === 'ready' ? { kind: 'RoomCommand', command, ready } : { kind: 'RoomCommand', command };
+              const classId = r.readString();
+              if (command === 'ready') return { kind: 'RoomCommand', command, ready };
+              if (command === 'class') return { kind: 'RoomCommand', command, classId };
+              return { kind: 'RoomCommand', command };
             }
             if (variant === MISSION_VARIANT.RoomState) {
               const started = r.readBool();

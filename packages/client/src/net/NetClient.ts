@@ -752,6 +752,12 @@ export class NetClient {
     this.transport.send(encodeMessage({ kind: 'RoomCommand', command: 'ready', ready }), 'reliable');
   }
 
+  /** T-4.27: pick the class this player wants while the room is waiting; the host assigns and replicates it. */
+  setRoomClass(classId: string): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage({ kind: 'RoomCommand', command: 'class', classId }), 'reliable');
+  }
+
   /** T-4.19: creator-only force start; the host ignores it from anyone else. */
   startRoom(): void {
     if (!this.joinedFlag) return;

@@ -460,6 +460,10 @@ canvas { display: block; touch-action: none; }
 .room-lobby-list li.me { background: rgba(240, 180, 41, 0.12); }
 .room-lobby-state { color: var(--amber); text-transform: uppercase; font-size: 9px; letter-spacing: 0.08em; }
 .room-lobby-class { opacity: 0.6; font-size: 9px; }
+.room-lobby-picker { display: flex; align-items: center; gap: 6px; margin: 0 0 12px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.9; }
+.room-lobby-picker span { margin-right: 4px; }
+.room-lobby-pick { margin-top: 0; padding: 5px 10px; }
+.room-lobby-pick.picked { border-color: var(--amber); color: var(--amber); }
 .room-lobby-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .room-lobby-actions button { margin-top: 0; }
 .room-lobby-copy { grid-column: 1 / -1; }

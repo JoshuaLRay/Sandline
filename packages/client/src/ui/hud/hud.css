@@ -151,6 +151,7 @@
 .phud-squad-row[data-you='yes'] .phud-squad-name { color: var(--amber, #f0b429); font-weight: 700; }
 .phud-squad-row[data-human='no'] .phud-squad-name { opacity: 0.8; }
 .phud-squad-name { min-width: 92px; }
+.phud-squad-class { min-width: 20px; color: var(--amber, #f0b429); opacity: 0.85; font-size: 10px; letter-spacing: 0.1em; }
 .phud-squad-order { opacity: 0.8; text-transform: uppercase; font-size: 10px; letter-spacing: 0.1em; }
 
 /* The centre: a hit marker's four arms and up to six damage arcs around the reticle. */

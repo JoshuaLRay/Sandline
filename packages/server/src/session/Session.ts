@@ -55,6 +55,9 @@ import {
   applyDamage,
   vaultToLevels,
   createHealth,
+  assignClasses,
+  classById,
+  orderReach,
   expireBleedOut,
   isDead,
   isDowned,
@@ -597,6 +600,12 @@ export interface SessionOptions {
   profileAi?: boolean;
   /** T-4.19: hosted rooms wait for ready-up before gameplay; direct/local sessions start immediately. */
   roomLobby?: boolean;
+  /**
+   * T-4.27: 'class' makes each slot carry its class's loadout and health
+   * and refuses an Equip outside it; 'free' leaves every gun to every slot.
+   * Defaults to 'class' with a room lobby and 'free' without one.
+   */
+  loadouts?: 'class' | 'free';
   /** T-4.23: durable campaign state restored before anyone joins this room. */
   campaign?: CampaignState;
   /** T-4.23: called only at a completed checkpoint or mission end. */
@@ -720,7 +729,16 @@ export class Session {
   private roomStarted: boolean;
   private creatorSlot = -1;
   private readonly readySlots: boolean[] = Array.from({ length: MAX_SLOTS }, () => false);
+  /** T-4.27: the class each slot plays, as `assignClasses` last decided it — what the roster and the room carry. */
   private readonly classSlots: string[] = Array.from({ length: MAX_SLOTS }, () => '');
+  /** T-4.27: each human's own pick ('' for none, and for a bot); the assignment starts from these. */
+  private readonly classPicks: string[] = Array.from({ length: MAX_SLOTS }, () => '');
+  /**
+   * T-4.27: whether a slot's class decides what it carries. A hosted room
+   * with a lobby plays by its classes; the in-page session and a plain QA
+   * host stay free, so the tuning panels and the range keep every gun.
+   */
+  private readonly classLoadouts: 'class' | 'free';
   /** T-4.23: the durable campaign metadata this room advances. */
   private readonly campaignCompletedMissions: Set<string>;
   private readonly campaignSoldiers: CampaignState['soldiers'];
@@ -748,6 +766,7 @@ export class Session {
     this.testHumanCount = options.testHumanCount ?? null;
     this.profileAi = options.profileAi ?? false;
     this.roomLobbyEnabled = options.roomLobby ?? false;
+    this.classLoadouts = options.loadouts ?? (this.roomLobbyEnabled ? 'class' : 'free');
     this.roomStarted = !this.roomLobbyEnabled;
     this.directorValue = null;
     this.spawnerValue = null;
@@ -883,6 +902,8 @@ export class Session {
       this.slotSpeed.push(0);
       this.giveBrain(this.slots[i]!);
     }
+    // T-4.27: every slot plays a class from the start; a bot's is the slot's default.
+    this.reassignClasses();
     const saved = options.campaign?.checkpoint;
     if (saved && this.missionRun && saved.mission === this.missionId) {
       this.missionRun.restoreCheckpoint(saved.objective, saved.elapsedTicks);
@@ -1073,6 +1094,7 @@ export class Session {
     this.projectiles.length = 0;
     for (const slot of this.slots) {
       respawn(slot.health);
+      this.applyClassHealth(slot);
       const point = spawns[slot.index] ?? spawnFor(slot.index);
       slot.state = createMoveState(point.x, point.y, point.z);
       slot.queue.length = 0;
@@ -1080,7 +1102,7 @@ export class Session {
       slot.interactHeld = false;
       slot.weaponState = createWeaponState(slot.weapon);
       slot.suppression = createSuppression();
-      slot.pouch = this.fullPouch();
+      slot.pouch = this.pouchFor(slot.index);
       slot.nextThrowAt = 0;
       this.orders[slot.index] = null;
       this.orderRuns[slot.index] = null;
@@ -1233,6 +1255,64 @@ export class Session {
   private readonly projectileDefs: ProjectileDef[] = PROJECTILE_IDS.map((id) => ({ ...getProjectile(id) }));
 
   /** A full load-out of every projectile, as this session's rows say it is carried. */
+  /** T-4.27: the class a slot plays, as the room and the roster carry it. */
+  classOf(slot: number): string {
+    return this.classSlots[slot] ?? '';
+  }
+
+  /** T-4.27: what a slot carries and its health, for a test to read. */
+  loadoutOf(slot: number): { weapon: string; pouch: number[]; health: number; maxHealth: number } {
+    const s = this.slots[slot];
+    if (!s) throw new Error(`no slot ${slot}`);
+    return { weapon: s.weapon.id, pouch: [...s.pouch], health: s.health.current, maxHealth: s.health.max };
+  }
+
+  /**
+   * T-4.27: who plays what, from the humans' picks and the bots filling
+   * behind them (`assignClasses`). A slot whose class changed takes its
+   * loadout, when the session plays by loadouts.
+   */
+  private reassignClasses(): void {
+    const assigned = assignClasses(this.slots.map((s) => s.isBot), this.classPicks);
+    for (const slot of this.slots) {
+      const id = assigned[slot.index] ?? '';
+      if (this.classSlots[slot.index] === id) continue;
+      this.classSlots[slot.index] = id;
+      this.applyLoadout(slot);
+    }
+  }
+
+  /** The class's first gun in hand, its pouch, and its health. */
+  private applyLoadout(slot: Slot): void {
+    if (this.classLoadouts !== 'class') return;
+    const def = classById(this.classSlots[slot.index] ?? '');
+    if (!def) return;
+    const gun = def.guns[0] ?? slot.weapon.id;
+    if (slot.weapon.id !== gun) {
+      slot.weapon = getWeapon(gun);
+      slot.weaponState = createWeaponState(slot.weapon);
+    }
+    slot.pouch = [...def.pouch];
+    slot.heldProjectile = -1;
+    this.applyClassHealth(slot);
+  }
+
+  /** Full to the class's health before the mission and on a respawn; mid-mission a switch only caps what is left. */
+  private applyClassHealth(slot: Slot): void {
+    if (this.classLoadouts !== 'class') return;
+    const def = classById(this.classSlots[slot.index] ?? '');
+    if (!def) return;
+    slot.health.max = def.health;
+    if (!this.roomStarted || slot.health.current > def.health) slot.health.current = def.health;
+  }
+
+  /** A slot's pouch at spawn: its class's, or the data's full pouch on a free session. */
+  private pouchFor(slot: number): number[] {
+    if (this.classLoadouts !== 'class') return this.fullPouch();
+    const def = classById(this.classSlots[slot] ?? '');
+    return def ? [...def.pouch] : this.fullPouch();
+  }
+
   private fullPouch(): number[] {
     return this.projectileDefs.map((def) => def.carried);
   }
@@ -1446,6 +1526,7 @@ export class Session {
     return this.slots.map((s) => ({
       human: !s.isBot,
       name: s.connection?.name ?? '',
+      classId: this.classSlots[s.index] ?? '',
     }));
   }
 
@@ -1516,7 +1597,7 @@ export class Session {
     slot.connection = conn;
     slot.staleTicks = 0;
     this.readySlots[slot.index] = false;
-    this.classSlots[slot.index] = '';
+    this.classPicks[slot.index] = '';
     if (!this.roomStarted && this.creatorSlot < 0) this.creatorSlot = slot.index;
 
     /**
@@ -1558,6 +1639,7 @@ export class Session {
     slot.reservedUntilMs = 0;
     conn.accept(slot.netId, slot.index, this.currentTick, this.room, this.world.id, slot.resumeToken, resumed !== null);
     this.sendProgression(conn);
+    this.reassignClasses();
     this.broadcastRoster();
     this.broadcastRoomState();
     // T-3.27: a human is nobody's to order, so whatever this slot's bot was told
@@ -1690,7 +1772,9 @@ export class Session {
     }
     const a = msg.address;
     const addressed = a.to === 'slot' ? [a.index] : a.to === 'fireteam' ? [...SQUAD_CONFIG.fireteams[a.index]!.slots] : this.slots.map((s) => s.index);
-    const bots = addressed.filter((i) => this.slots[i]?.isBot === true);
+    // T-4.27: a class's orders reach the whole squad or only the giver's own fireteam.
+    const reach = orderReach(this.classSlots[from.index] ?? '', from.index, addressed, SQUAD_CONFIG.fireteams);
+    const bots = reach.filter((i) => this.slots[i]?.isBot === true);
     if (bots.length === 0) return;
     for (const i of bots) {
       // T-3.28: the order it was under, if it had not finished, is replaced; either way it is reported.
@@ -1781,7 +1865,7 @@ export class Session {
     slot.isBot = true;
     slot.connection = null;
     this.readySlots[slot.index] = false;
-    this.classSlots[slot.index] = '';
+    this.classPicks[slot.index] = '';
     if (!this.roomStarted && this.creatorSlot === slot.index) {
       this.creatorSlot = this.slots.find((s) => !s.isBot && s.connection !== null)?.index ?? -1;
     }
@@ -1793,6 +1877,7 @@ export class Session {
     // out the departed player's last few inputs would look briefly possessed.
     slot.queue.length = 0;
     this.giveBrain(slot);
+    this.reassignClasses();
     this.broadcastRoster();
     this.broadcastRoomState();
     if (!this.roomStarted && this.everyHumanReady()) this.startRoom();
@@ -1880,6 +1965,15 @@ export class Session {
       this.readySlots[slot.index] = msg.ready ?? false;
       if (this.everyHumanReady()) this.startRoom();
       else this.broadcastRoomState();
+      return;
+    }
+    if (msg.command === 'class') {
+      // T-4.27: a pick the data knows stands; anything else is no pick, and the slot's default returns.
+      const id = msg.classId ?? '';
+      this.classPicks[slot.index] = classById(id) ? id : '';
+      this.reassignClasses();
+      this.broadcastRoster();
+      this.broadcastRoomState();
       return;
     }
     if (msg.command === 'start' && slot.index === this.creatorSlot) this.startRoom();
@@ -2312,6 +2406,8 @@ export class Session {
     if (!slot) return;
     const gun = WEAPON_IDS[msg.item];
     if (gun !== undefined) {
+      // T-4.27: a class carries its own guns and no others.
+      if (this.classLoadouts === 'class' && !(classById(this.classSlots[slot.index] ?? '')?.guns.includes(gun) ?? true)) return;
       if (gun !== slot.weapon.id) {
         slot.weapon = getWeapon(gun);
         slot.weaponState = createWeaponState(slot.weapon);
@@ -2556,6 +2652,7 @@ export class Session {
         // T-3.34: on a mission that does not respawn, the dead wait for a restart.
         if ((this.missionRun?.respawns ?? true) && readyToRespawn(slot.health, nowSeconds)) {
           respawn(slot.health, DAMAGE, nowSeconds);
+          this.applyClassHealth(slot);
           const point = spawnFor(slot.index);
           slot.state = createMoveState(point.x, point.y, point.z);
           slot.queue.length = 0;
@@ -2563,7 +2660,7 @@ export class Session {
     slot.interactHeld = false;
           slot.weaponState = createWeaponState(slot.weapon);
           slot.suppression = createSuppression();
-          slot.pouch = this.fullPouch();
+          slot.pouch = this.pouchFor(slot.index);
           slot.nextThrowAt = 0;
         }
         // Still recorded into the hitbox history below, so a shot already in

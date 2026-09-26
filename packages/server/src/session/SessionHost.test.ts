@@ -146,8 +146,8 @@ describe('SessionHost — rooms (T-1.5.05)', () => {
 
     // Each sees a roster with exactly one human — itself — and the deltas each
     // receives come from a session whose tick count is its own.
-    expect(a.roster?.slots.filter((s) => s.human)).toEqual([{ human: true, name: 'a' }]);
-    expect(b.roster?.slots.filter((s) => s.human)).toEqual([{ human: true, name: 'b' }]);
+    expect(a.roster?.slots.filter((s) => s.human)).toMatchObject([{ human: true, name: 'a' }]);
+    expect(b.roster?.slots.filter((s) => s.human)).toMatchObject([{ human: true, name: 'b' }]);
     expect(host.registry.get(a.room)?.session.players).toBe(1);
     expect(host.registry.get(b.room)?.session.players).toBe(1);
   });
@@ -275,7 +275,7 @@ describe('SessionHost — the roster (T-1.5.04)', () => {
     b.transport.close('left');
     a.settle();
 
-    expect(a.roster?.slots[bravoSlot]).toEqual({ human: false, name: '' });
+    expect(a.roster?.slots[bravoSlot]).toMatchObject({ human: false, name: '' });
     expect(a.roster?.slots.filter((s) => s.human)).toHaveLength(1);
   });
 
@@ -315,7 +315,8 @@ describe('SessionHost — reconnecting into your own slot (T-4.18)', () => {
       a.send({ kind: 'Input', tick, moveX: 0, moveY: 1, yaw: 0, pitch: 0, buttons: 0 });
       runTalking(host, clock, 1, a, b);
     }
-    a.send({ kind: 'Equip', item: 1 });
+    // The sidearm: in the slot's class loadout (T-4.27), unlike the marksman rifle a Team Leader may not take.
+    a.send({ kind: 'Equip', item: 3 });
     runTalking(host, clock, 2, a, b);
     mine.health.current = 37;
     return { host, clock, a, b, session, mine };

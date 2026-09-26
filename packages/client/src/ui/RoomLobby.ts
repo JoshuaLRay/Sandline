@@ -1,9 +1,11 @@
-import { MAX_SLOTS, type Message, type RosterEntry } from '@sandline/shared';
+import { CLASSES, MAX_SLOTS, type Message, type RosterEntry, classById } from '@sandline/shared';
 
 export interface RoomLobbyOptions {
   onReady: (ready: boolean) => void;
   onStart: () => void;
   onLeave: () => void;
+  /** T-4.27: the class this player wants (a classes.json id). */
+  onClass: (classId: string) => void;
   link: () => string | null;
 }
 
@@ -46,6 +48,26 @@ export function createRoomLobby(options: RoomLobbyOptions): RoomLobby {
     rows.push({ root: li, who, className, state });
   }
 
+  // T-4.27: the class pick, one button per class in the data, for your own slot.
+  const picker = document.createElement('div');
+  picker.className = 'room-lobby-picker';
+  const pickerLabel = document.createElement('span');
+  pickerLabel.textContent = 'Your class';
+  picker.append(pickerLabel);
+  const pickButtons = new Map<string, HTMLButtonElement>();
+  for (const id of CLASSES.ids) {
+    const def = classById(id)!;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'lobby-secondary room-lobby-pick';
+    b.dataset['classId'] = id;
+    b.textContent = def.name;
+    b.title = `${def.guns.map((gun) => gun).join(' + ')} · ${def.health} health · orders the ${def.orders}`;
+    b.addEventListener('click', () => options.onClass(id));
+    picker.append(b);
+    pickButtons.set(id, b);
+  }
+
   const actions = document.createElement('div');
   actions.className = 'room-lobby-actions';
   const ready = document.createElement('button');
@@ -76,7 +98,7 @@ export function createRoomLobby(options: RoomLobbyOptions): RoomLobby {
   leave.textContent = 'Leave room';
   leave.addEventListener('click', options.onLeave);
   actions.append(ready, start, copy, leave);
-  card.append(title, meta, list, actions);
+  card.append(title, meta, list, picker, actions);
   root.append(card);
 
   return {
@@ -91,6 +113,7 @@ export function createRoomLobby(options: RoomLobbyOptions): RoomLobby {
       readyValue = state.ready[mySlot] ?? false;
       ready.textContent = readyValue ? 'Ready — click to unready' : 'Ready up';
       start.hidden = mySlot !== state.creator;
+      for (const [id, b] of pickButtons) b.classList.toggle('picked', (state.classes[mySlot] ?? '') === id);
       for (let i = 0; i < MAX_SLOTS; i += 1) {
         const row = rows[i];
         if (!row) continue;
@@ -98,7 +121,8 @@ export function createRoomLobby(options: RoomLobbyOptions): RoomLobby {
         const human = entry?.human ?? false;
         row.root.classList.toggle('me', i === mySlot);
         row.who.textContent = human ? (entry?.name || 'player') : 'bot';
-        row.className.textContent = human ? (state.classes[i] || 'class: pending T-4.27') : '';
+        // The class the host assigned (T-4.27): a human's pick, or the slot's default a bot fills from.
+        row.className.textContent = classById(state.classes[i] ?? '')?.name ?? '';
         row.state.textContent = human ? (state.ready[i] ? 'ready' : i === state.creator ? 'creator' : 'not ready') : 'bot';
       }
     },

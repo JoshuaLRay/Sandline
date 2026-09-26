@@ -91,12 +91,13 @@ export function createHud(parent: HTMLElement): PlayerHud {
 
   // -- Left: the squad. --
   const squad = el('ol', 'phud-squad', root);
-  const squadRowNodes: { root: HTMLElement; name: HTMLElement; order: HTMLElement }[] = [];
+  const squadRowNodes: { root: HTMLElement; name: HTMLElement; cls: HTMLElement; order: HTMLElement }[] = [];
   for (let i = 0; i < MAX_SLOTS; i += 1) {
     const row = el('li', 'phud-squad-row', squad);
     const name = el('span', 'phud-squad-name', row);
+    const cls = el('span', 'phud-squad-class', row);
     const order = el('span', 'phud-squad-order', row);
-    squadRowNodes.push({ root: row, name, order });
+    squadRowNodes.push({ root: row, name, cls, order });
   }
 
   // -- Centre: the hit marker and the damage arcs around the reticle. --
@@ -189,6 +190,7 @@ export function createHud(parent: HTMLElement): PlayerHud {
         const node = squadRowNodes[i];
         if (!node) return;
         setText(node.name, `${row.slot + 1}  ${row.label}`);
+        setText(node.cls, row.classShort);
         setText(node.order, row.order);
         setData(node.root, 'state', row.state);
         setData(node.root, 'you', row.you ? 'yes' : 'no');

@@ -270,6 +270,13 @@ export class ThrowQA {
     }
   }
 
+  /** The pouch a class spawns with (T-4.27), indexed like the rows; what the server will let this soldier throw. */
+  setCounts(counts: readonly number[]): void {
+    this.working.forEach((_def, i) => {
+      this.counts[i] = Math.max(0, Math.floor(counts[i] ?? 0));
+    });
+  }
+
   /** Give everything back, for the harness reset key. */
   reset(): void {
     for (const ghost of this.live) this.retired.push(ghost.id);
