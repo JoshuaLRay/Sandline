@@ -10,7 +10,7 @@
  */
 import { MAX_SLOTS } from '@sandline/shared';
 import { MARKER_COLOURS } from '../OrderMarkers.ts';
-import type { AmmoView, CompassView, DamageDirectionView, SquadRow, Stance, VitalsView } from './hudModel.ts';
+import type { AmmoView, CompassView, DamageDirectionView, HeatView, SquadRow, Stance, VitalsView } from './hudModel.ts';
 
 export interface HudFrame {
   vitals: VitalsView;
@@ -23,6 +23,10 @@ export interface HudFrame {
   /** 0..1: the hit marker's opacity this frame. */
   hitMarker: number;
   damage: readonly DamageDirectionView[];
+  /** T-4.29: a mounted gun's heat, or null with no gun in hand. */
+  heat: HeatView | null;
+  /** T-4.29: what a press of E would do, '' for nothing. */
+  prompt: string;
 }
 
 export interface PlayerHud {
@@ -86,6 +90,9 @@ export function createHud(parent: HTMLElement): PlayerHud {
   const magazine = el('div', 'phud-magazine', weapon);
   const reload = el('div', 'phud-reload', weapon);
   const reloadFill = el('div', 'phud-reload-fill', reload);
+  const heat = el('div', 'phud-heat', weapon);
+  const heatFill = el('div', 'phud-heat-fill', heat);
+  const heatLabel = el('div', 'phud-heat-label', heat);
   const pouch = el('div', 'phud-pouch', weapon);
   const pouchRows: { root: HTMLElement; name: HTMLElement; count: HTMLElement }[] = [];
 
@@ -106,6 +113,8 @@ export function createHud(parent: HTMLElement): PlayerHud {
   for (const arm of ['tl', 'tr', 'bl', 'br']) el('span', `phud-hit-arm ${arm}`, hit);
   const arcs: HTMLElement[] = [];
   for (let i = 0; i < DAMAGE_ARCS; i += 1) arcs.push(el('div', 'phud-damage', centre));
+  // -- Under the reticle: what E would do (T-4.29). --
+  const prompt = el('div', 'phud-prompt', root);
 
   let shown = true;
 
@@ -182,6 +191,15 @@ export function createHud(parent: HTMLElement): PlayerHud {
       setData(weapon, 'reloading', frame.ammo.reloadFraction > 0 ? 'yes' : 'no');
       reloadFill.style.width = `${(frame.ammo.reloadFraction * 100).toFixed(1)}%`;
       updatePouch(frame.ammo.pouch);
+      // The heat (T-4.29), only with a gun that has any.
+      setData(heat, 'shown', frame.heat ? 'yes' : 'no');
+      if (frame.heat) {
+        heatFill.style.width = `${(frame.heat.fraction * 100).toFixed(1)}%`;
+        setText(heatLabel, frame.heat.label);
+        setData(heat, 'tone', frame.heat.tone);
+      }
+      setText(prompt, frame.prompt);
+      setData(prompt, 'shown', frame.prompt.length > 0 ? 'yes' : 'no');
       // The objective.
       setText(objective, frame.objective);
       setData(objective, 'shown', frame.objective.length > 0 ? 'yes' : 'no');

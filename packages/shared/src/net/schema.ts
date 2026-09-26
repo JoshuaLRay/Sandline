@@ -10,6 +10,7 @@
  */
 import { COMPONENT_IDS, type ComponentName } from '../ecs/components.ts';
 import { ENEMY_ARCHETYPE_BITS, ENEMY_FACTION_BITS } from '../sim/enemies.ts';
+import { EMPLACEMENT_HEAT_BITS, EMPLACEMENT_KIND_BITS } from '../sim/emplacement.ts';
 import { SUPPRESSION_BITS } from '../sim/suppression.ts';
 import { ANGLE_BITS_WIRE, HEALTH, POSITION, VELOCITY, dequantize, quantize, quantizeAngle } from './quantize.ts';
 
@@ -137,6 +138,15 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // T-3.16. The level in 1/63 steps (`suppressionToWire`). A delta resends it
     // only while it changes: nothing at rest, a few bits a tick while it decays.
     fields: [uint('level', SUPPRESSION_BITS)],
+  },
+  {
+    id: COMPONENT_IDS.Emplacement,
+    name: 'Emplacement',
+    // T-4.29. `kind` indexes EMPLACEMENT_IDS and never changes; `gunner` is 0
+    // for nobody, a squad slot + 1, or 7 for an enemy; `heat` is whole percent
+    // and `overheated` the flag the gun will not fire under. The gun's own
+    // yaw and pitch are the entity's Transform.
+    fields: [uint('kind', EMPLACEMENT_KIND_BITS), uint('gunner', 3), uint('heat', EMPLACEMENT_HEAT_BITS), uint('overheated', 1)],
   },
 ];
 

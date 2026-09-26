@@ -112,6 +112,33 @@ export function ammoView(a: AmmoInput): AmmoView {
   };
 }
 
+// -- Heat (T-4.29) ----------------------------------------------------------
+
+export interface HeatInput {
+  /** 0..1, as the host replicates it. */
+  heat: number;
+  overheated: boolean;
+}
+
+export type HeatTone = 'cool' | 'warm' | 'hot' | 'overheated';
+
+export interface HeatView {
+  fraction: number;
+  label: string;
+  tone: HeatTone;
+}
+
+/** Above this the bar reads HOT: a warning before the gun stops. */
+export const HOT_HEAT = 0.7;
+
+/** A mounted gun's heat: the bar, its word and its colour. */
+export function heatView(h: HeatInput): HeatView {
+  const fraction = clamp01(h.heat);
+  if (h.overheated) return { fraction, label: 'OVERHEATED', tone: 'overheated' };
+  if (fraction >= HOT_HEAT) return { fraction, label: 'HOT', tone: 'hot' };
+  return { fraction, label: 'HEAT', tone: fraction > 0.05 ? 'warm' : 'cool' };
+}
+
 // -- Stance ---------------------------------------------------------------
 
 export type Stance = 'standing' | 'crouched' | 'prone' | 'vaulting' | 'airborne' | 'downed';

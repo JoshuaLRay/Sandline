@@ -57,6 +57,13 @@ export const Enemy = defineComponent({ archetype: Types.ui8, faction: Types.ui8 
  */
 export const Suppression = defineComponent({ level: Types.ui8 });
 
+/**
+ * A weapon emplacement (T-4.29): which kind (an EMPLACEMENT_IDS index), who
+ * is on it (0 nobody, 1..6 a squad slot + 1, 7 an enemy), and how hot it is.
+ * Its place and the gun's yaw and pitch ride `Transform`.
+ */
+export const Emplacement = defineComponent({ kind: Types.ui8, gunner: Types.ui8, heat: Types.ui8, overheated: Types.ui8 });
+
 /** Marker: this entity is sent to clients. */
 export const Replicated = defineComponent();
 
@@ -84,6 +91,8 @@ export const COMPONENT_IDS = {
   Enemy: 9,
   /** T-3.16: how suppressed this soldier is. */
   Suppression: 10,
+  /** T-4.29: a weapon emplacement, its gunner and its heat. */
+  Emplacement: 11,
 } as const;
 
 export type ComponentName = keyof typeof COMPONENT_IDS;

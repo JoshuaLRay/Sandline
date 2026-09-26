@@ -120,6 +120,29 @@
 .phud-reload { height: 3px; background: rgba(15, 12, 7, 0.7); margin: 4px 0; display: none; }
 .phud-weapon[data-reloading='yes'] .phud-reload { display: block; }
 .phud-reload-fill { height: 100%; background: var(--amber, #f0b429); }
+/* A mounted gun's heat (T-4.29): a bar under the magazine that fills as it warms. */
+.phud-heat { display: none; margin: 6px 0 2px; }
+.phud-heat[data-shown='yes'] { display: block; }
+.phud-heat-fill { height: 4px; background: #d9c27a; width: 0; margin-left: auto; transition: width 80ms linear; }
+.phud-heat[data-tone='hot'] .phud-heat-fill { background: var(--amber, #f0b429); }
+.phud-heat[data-tone='overheated'] .phud-heat-fill { background: #ff5a3c; }
+.phud-heat-label { font-size: 10px; letter-spacing: 0.14em; opacity: 0.8; margin-top: 2px; }
+.phud-heat[data-tone='overheated'] .phud-heat-label { color: #ff5a3c; opacity: 1; }
+
+/* What E would do (T-4.29), under the reticle. */
+.phud-prompt {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 48px);
+  transform: translateX(-50%);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  padding: 4px 10px;
+  background: rgba(15, 12, 7, 0.55);
+  display: none;
+}
+.phud-prompt[data-shown='yes'] { display: block; }
+
 .phud-pouch { margin-top: 6px; font-size: 11px; }
 .phud-pouch-row { display: flex; justify-content: flex-end; gap: 8px; opacity: 0.75; }
 .phud-pouch-row[data-selected='yes'] { opacity: 1; color: var(--amber, #f0b429); }

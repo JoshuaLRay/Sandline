@@ -62,7 +62,8 @@ import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { type ClientLink, DEFAULT_LINK, type LinkConditions, LocalServer, type LocalServerOptions } from './net/LocalServer.ts';
 import { type NavMesh, initNav } from '@sandline/server/nav';
-import { NetClient, type ServerDetonation, type ServerShot } from './net/NetClient.ts';
+import { NetClient, type RemoteEmplacement, type ServerDetonation, type ServerShot } from './net/NetClient.ts';
+import { type EmplacementModel, createEmplacementModel } from './weapons/emplacementModel.ts';
 import {
   HostUrlError,
   RemoteServer,
@@ -77,6 +78,7 @@ import { forgetIdentity, readIdentity, storeIdentity } from './net/identity.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
 import { QaEnemies, QaSuppressor } from './net/qaEnemies.ts';
 import { DEFAULT_WORLD_ID, buildTree, encounterFor, getWorld, type World, type WorldBox, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
+import { type PlacedEmplacement, clampYawToArc, degToWire, emplacementByIndex, emplacementFacing, gunnerPlace } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
@@ -118,6 +120,7 @@ import {
   bearingDegrees,
   compassView,
   damageDirectionView,
+  heatView,
   hitMarkerOpacity,
   liveHits,
   squadRows,
@@ -483,6 +486,33 @@ const throws = new ThrowQA();
  * switch (`net.equip`) so the rest of the squad sees the right thing held.
  */
 let holdingPouch = false;
+/**
+ * T-4.29: the gun the page's soldier is on, as the host last said, and the
+ * loadout index to go back to. While on a gun the soldier is held where it
+ * is and looks only where the gun can point; the trigger fires the gun.
+ */
+let mountedGun: RemoteEmplacement | null = null;
+let unmountedWeaponIndex = 0;
+/** T-4.29: the emplacements drawn, by netId. */
+const emplacementModels = new Map<number, EmplacementModel>();
+
+/** The placed emplacement the host's entity stands for: the one at its place. */
+function placedFor(gun: RemoteEmplacement, world: World | null): PlacedEmplacement | null {
+  return world?.emplacements.find((p) => Math.abs(p.x - gun.x) < 0.05 && Math.abs(p.z - gun.z) < 0.05) ?? null;
+}
+
+/** T-4.29: whether an empty gun's gunner's place is within its mount range of (x, z), for the prompt. */
+function emptyGunInReach(client: NetClient, x: number, z: number): boolean {
+  for (const gun of client.emplacements()) {
+    if (gun.gunnerSlot >= 0) continue;
+    const def = emplacementByIndex(gun.kind);
+    const placed = placedFor(gun, client.world);
+    if (!def || !placed) continue;
+    const place = gunnerPlace(placed, def);
+    if (Math.hypot(x - place.x, z - place.z) <= def.mountRangeM) return true;
+  }
+  return false;
+}
 const pouchTrigger = new PouchTrigger();
 /** The loadout index sent last, and to which client, so a switch is sent once. */
 let equipSent: { net: NetClient; item: number } | null = null;
@@ -1081,6 +1111,13 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
     gone.networkPanel.root.remove();
   }
   remotes.clear();
+  for (const model of emplacementModels.values()) {
+    scene.remove(model.root);
+    model.dispose();
+  }
+  emplacementModels.clear();
+  mountedGun = null;
+  input.setViewLimits(null);
   combat.reset();
   lastHitAt = null;
   damageHits = [];
@@ -1472,6 +1509,37 @@ function frame(): void {
      * character whose sprint is 6.8. Nothing between these two lines but the
      * step the player's own input caused.
      */
+    /**
+     * T-4.29: on a gun, the soldier stays put and crouched, and looks only
+     * where the gun can point — the same input the host holds a gunner to,
+     * so the prediction and the authority tell one story. The trigger runs
+     * on the gun's own weapon meanwhile, and the loadout comes back on
+     * dismount.
+     */
+    const mount = net.mounted;
+    const mountDef = mount ? emplacementByIndex(mount.kind) : null;
+    if (mount && mountDef) {
+      const placed = placedFor(mount, net.world);
+      const facing = placed ? emplacementFacing(placed) : mount.yaw;
+      input.setViewLimits({
+        yaw: facing,
+        halfYaw: degToWire(mountDef.traverseDeg),
+        minPitch: -degToWire(mountDef.elevationDownDeg),
+        maxPitch: degToWire(mountDef.elevationUpDeg),
+      });
+      Object.assign(tickInput, { moveX: 0, moveY: 0, jump: false, sprint: false, crouch: true, prone: false, yaw: clampYawToArc(facing, tickInput.yaw, mountDef.traverseDeg) });
+      if (!mountedGun) {
+        unmountedWeaponIndex = Math.max(0, combat.weaponIndex);
+        combat.useGun(getWeapon(mountDef.weapon));
+        holdingPouch = false;
+        pouchTrigger.cancel();
+      }
+    } else if (mountedGun) {
+      input.setViewLimits(null);
+      combat.selectWeapon(unmountedWeaponIndex);
+    }
+    mountedGun = mount;
+
     const beforeStep = net.simulated;
     net.tick(tickNumber, tickInput, input.pitchWire);
     sparring?.tick(tickNumber);
@@ -1502,7 +1570,8 @@ function frame(): void {
     const item = loadoutItem();
     if (!net.joined) {
       if (equipSent?.net === net) equipSent = null;
-    } else if (equipSent?.net !== net || equipSent.item !== item) {
+    } else if (item >= 0 && (equipSent?.net !== net || equipSent.item !== item)) {
+      // A mounted gun has no loadout index (T-4.29): nothing to tell the host, which holds the gunner's hands anyway.
       net.equip(item);
       equipSent = { net, item };
     }
@@ -1532,7 +1601,8 @@ function frame(): void {
     if (shot !== null) {
       // Sent at table resolution, so the server traces the exact angles this
       // client computed and the predicted tracer shares them without rounding.
-      net.fire(tickNumber, aimYaw, aimPitch, combat.weaponIndex, input.ads);
+      // On a gun the index is nobody's (T-4.29): the host fires the gun whatever this names.
+      net.fire(tickNumber, aimYaw, aimPitch, Math.max(0, combat.weaponIndex), input.ads);
       // Kick AFTER the shot is sent: this shot goes where the view pointed,
       // the next goes where the kick leaves it.
       recoil = applyKick(recoil, combat.weapon, combat.shotsFired, input.ads);
@@ -1708,6 +1778,31 @@ function frame(): void {
   // it is in no roster and on no HUD. Anything the client no longer returns
   // has despawned, and everything drawn for it goes with it.
   remotes.update(net, dt);
+
+  // T-4.29: the emplacements, each laid the way the host says its gun is laid.
+  const seenGuns = new Set<number>();
+  if (net) {
+    for (const gun of net.emplacements()) {
+      seenGuns.add(gun.netId);
+      let model = emplacementModels.get(gun.netId);
+      if (!model) {
+        const def = emplacementByIndex(gun.kind);
+        if (!def) continue;
+        model = createEmplacementModel(def.id);
+        scene.add(model.root);
+        emplacementModels.set(gun.netId, model);
+      }
+      model.root.position.set(gun.x, gun.y, gun.z);
+      model.gun.rotation.y = (gun.yaw / 1024) * Math.PI * 2;
+      model.gun.rotation.x = -(gun.pitch / 1024) * Math.PI * 2;
+    }
+  }
+  for (const [netId, model] of emplacementModels) {
+    if (seenGuns.has(netId)) continue;
+    scene.remove(model.root);
+    model.dispose();
+    emplacementModels.delete(netId);
+  }
 
   // T-3.29: the squad's orders and marks, where the soldiers they name are drawn.
   if (net) {
@@ -1975,7 +2070,8 @@ function frame(): void {
         downed,
         vaulting: sim?.vault != null,
         prone: input.proning,
-        crouched: input.crouching,
+        // On a gun the host holds the soldier crouched, whatever the key says (T-4.29).
+        crouched: input.crouching || mountedGun !== null,
         grounded: sim?.grounded ?? true,
       }),
       objective: missionLine(net?.mission ?? null),
@@ -1983,6 +2079,8 @@ function frame(): void {
       compass: compassView(hudYaw, { x: rx, z: rz }, compassMarkers),
       hitMarker: hitMarkerOpacity(lastHitAt, hudNow),
       damage: damageDirectionView(damageHits, hudYaw, hudNow),
+      heat: mountedGun ? heatView({ heat: mountedGun.heat, overheated: mountedGun.overheated }) : null,
+      prompt: mountedGun ? 'E  LEAVE THE GUN' : net && !downed && sim && emptyGunInReach(net, sim.x, sim.z) ? 'E  MAN THE GUN' : '',
     });
   }
   // Every value in the camera panel describes where the arm puts the camera

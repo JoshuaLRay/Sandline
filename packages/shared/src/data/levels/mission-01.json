@@ -257,6 +257,15 @@
       "w": 1.2,
       "h": 1.2,
       "d": 1.2
+    },
+    {
+      "id": "nest-sandbags",
+      "x": 1.6,
+      "y": 0,
+      "z": 70.5,
+      "w": 0.4,
+      "h": 0.9,
+      "d": 1.6
     }
   ],
   "pieces": [
@@ -913,5 +922,15 @@
       "sightM": 40
     }
   },
-  "encounter": "mission-01"
+  "encounter": "mission-01",
+  "emplacements": [
+    {
+      "id": "compound-mg",
+      "kind": "mg-nest",
+      "x": 3,
+      "y": 0,
+      "z": 70.5,
+      "yawDeg": 270
+    }
+  ]
 }

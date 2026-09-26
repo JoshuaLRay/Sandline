@@ -89,6 +89,24 @@ export interface RemoteEnemy {
   faction: number;
 }
 
+/** A weapon emplacement as this client sees it (T-4.29): where, whose, how hot, and the way it is laid. */
+export interface RemoteEmplacement {
+  netId: number;
+  /** Index into EMPLACEMENT_IDS. */
+  kind: number;
+  /** −1 for nobody, a squad slot, or 6 for an enemy. */
+  gunnerSlot: number;
+  /** 0..1. */
+  heat: number;
+  overheated: boolean;
+  x: number;
+  y: number;
+  z: number;
+  /** The gun's yaw, wire units, and its pitch, signed wire units (up positive). */
+  yaw: number;
+  pitch: number;
+}
+
 export interface ServerDetonation {
   netId: number;
   kind: number;
@@ -283,6 +301,8 @@ export class NetClient {
    * gets a `remoteSlots` entry: enemies carry no PlayerSlot.
    */
   private readonly remoteEnemies = new Map<number, RemoteEnemy>();
+  /** T-4.29: every emplacement in view, by netId. Static, so the latest snapshot is the truth; nothing to interpolate. */
+  private readonly remoteEmplacements = new Map<number, RemoteEmplacement>();
   /**
    * Every bot's current order and every standing mark, as the host last
    * broadcast them whole (T-3.27). What this client sent is not here until
@@ -633,6 +653,7 @@ export class NetClient {
     this.remoteReviverSlots.clear();
     this.remoteSlots.clear();
     this.remoteEnemies.clear();
+    this.remoteEmplacements.clear();
     this.remoteGoneAt.clear();
     this.ordersValue = [];
     this.marksValue = [];
@@ -783,6 +804,19 @@ export class NetClient {
   mark(msg: Extract<Message, { kind: 'Mark' }>): void {
     if (!this.joinedFlag) return;
     this.transport.send(encodeMessage(msg), 'reliable');
+  }
+
+  /** T-4.29: every emplacement in view, as the newest snapshot has it. */
+  emplacements(): RemoteEmplacement[] {
+    return [...this.remoteEmplacements.values()];
+  }
+
+  /** T-4.29: the gun this client's soldier is on, as the host last said, or null. */
+  get mounted(): RemoteEmplacement | null {
+    const slot = this.slot;
+    if (slot < 0) return null;
+    for (const gun of this.remoteEmplacements.values()) if (gun.gunnerSlot === slot) return gun;
+    return null;
   }
 
   /** Every projectile in flight, sampled at the interpolation delay. */
@@ -1171,6 +1205,7 @@ export class NetClient {
   ): void {
     const projectilesSeen = new Set<number>();
     const remotesSeen = new Set<number>();
+    const emplacementsSeen = new Set<number>();
     for (const entity of entities) {
       const transform = entity.components[T];
       if (!transform) continue;
@@ -1185,6 +1220,27 @@ export class NetClient {
        * that fell into the remote list would be handed a humanoid mesh, a pose
        * driver and a foot solver by the renderer.
        */
+      // An emplacement (T-4.29): a gun, not a soldier and not a projectile. Read whole, never interpolated.
+      const emplacement = entity.components[COMPONENT_IDS.Emplacement];
+      if (emplacement) {
+        emplacementsSeen.add(entity.netId);
+        const gunner = (emplacement[1] as number | undefined) ?? 0;
+        const pitchWire = ((transform[4] as number | undefined) ?? 0) & 0x3ff;
+        this.remoteEmplacements.set(entity.netId, {
+          netId: entity.netId,
+          kind: (emplacement[0] as number | undefined) ?? 0,
+          gunnerSlot: gunner === 0 ? -1 : gunner === 7 ? 6 : gunner - 1,
+          heat: ((emplacement[2] as number | undefined) ?? 0) / 100,
+          overheated: (emplacement[3] as number | undefined) === 1,
+          x,
+          y,
+          z,
+          yaw: (transform[3] as number) & 0x3ff,
+          pitch: pitchWire >= 512 ? pitchWire - 1024 : pitchWire,
+        });
+        continue;
+      }
+
       const projectile = entity.components[COMPONENT_IDS.Projectile];
       if (projectile) {
         projectilesSeen.add(entity.netId);
@@ -1306,6 +1362,8 @@ export class NetClient {
       if (remotesSeen.has(netId) || this.remoteGoneAt.has(netId)) continue;
       this.remoteGoneAt.set(netId, serverMs);
     }
+    // An emplacement out of view is simply not there until it is again (T-4.29).
+    for (const netId of [...this.remoteEmplacements.keys()]) if (!emplacementsSeen.has(netId)) this.remoteEmplacements.delete(netId);
   }
 
   private reconcile(authoritative: MoveState, lastProcessedInputTick: number): void {

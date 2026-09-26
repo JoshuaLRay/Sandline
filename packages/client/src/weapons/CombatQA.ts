@@ -204,6 +204,19 @@ export class CombatQA {
     this.onWeaponChange?.(this.def);
   }
 
+  /**
+   * T-4.29: hold a gun that is not in the loadout — a mounted one — with a
+   * fresh belt, so the trigger, the cone and the HUD run on its numbers.
+   * `selectWeapon` takes the loadout back. The index is −1 meanwhile: there
+   * is no loadout slot for it, and nothing may send one.
+   */
+  useGun(def: WeaponDef): void {
+    this.index = -1;
+    this.def = { ...def };
+    this.state = createWeaponState(this.def);
+    this.onWeaponChange?.(this.def);
+  }
+
   requestReload(now: number): void {
     startReload(this.def, this.state, now);
   }

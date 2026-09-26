@@ -21,6 +21,7 @@ import {
   stripOffset,
   vitalsView,
   wrapDegrees,
+  heatView,
 } from './hudModel.ts';
 
 const alive = { vitality: 'alive' as const, vitalTimer: 0, reviveProgress: 0, reviverName: '' };
@@ -162,5 +163,15 @@ describe('hit markers and the damage direction (T-4.25)', () => {
     expect(later[0]?.opacity).toBeCloseTo(0.5, 9);
     expect(liveHits(hits, 10)).toEqual([hits[0]]);
     expect(liveHits(hits, 10 + DAMAGE_DIRECTION_SECONDS)).toEqual([]);
+  });
+});
+
+describe('heatView (T-4.29)', () => {
+  it('reads cool, warm, hot and overheated from the replicated heat', () => {
+    expect(heatView({ heat: 0, overheated: false })).toEqual({ fraction: 0, label: 'HEAT', tone: 'cool' });
+    expect(heatView({ heat: 0.3, overheated: false })).toEqual({ fraction: 0.3, label: 'HEAT', tone: 'warm' });
+    expect(heatView({ heat: 0.8, overheated: false })).toEqual({ fraction: 0.8, label: 'HOT', tone: 'hot' });
+    expect(heatView({ heat: 0.9, overheated: true })).toEqual({ fraction: 0.9, label: 'OVERHEATED', tone: 'overheated' });
+    expect(heatView({ heat: 1.4, overheated: true }).fraction).toBe(1);
   });
 });

@@ -1,0 +1,16 @@
+{
+  "$comment": "T-4.29: static weapon emplacements. `weapon` is a weapons.json row (the LMG's numbers); `traverseDeg` is the half-arc either side of the facing; the elevation limits are below and above level; `mountRangeM` is how near a soldier's feet must be to the gunner's place to mount; `gunnerBackM` is how far behind the gun the gunner stands (crouched) and `gunHeightM` where the rounds leave. Heat is 0..1: each round adds `perShot`, it cools by `coolPerSecond`, and once it reaches 1 the gun is overheated until it has cooled below `fireBelow`. `ai.takeWithinM` is how near an enemy carrying the same weapon must be to take an empty gun, and `ai.leaveAfterSeconds` how long its target may be outside the arc before it leaves it.",
+  "mg-nest": {
+    "id": "mg-nest",
+    "name": "Machine-gun nest",
+    "weapon": "lmg",
+    "traverseDeg": 60,
+    "elevationDownDeg": 10,
+    "elevationUpDeg": 20,
+    "mountRangeM": 1.6,
+    "gunnerBackM": 0.7,
+    "gunHeightM": 1.2,
+    "heat": { "perShot": 0.02, "coolPerSecond": 0.1, "fireBelow": 0.4 },
+    "ai": { "takeWithinM": 4, "leaveAfterSeconds": 3 }
+  }
+}
