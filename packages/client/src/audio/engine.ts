@@ -96,6 +96,8 @@ export interface PlayOptions {
   own?: boolean;
   /** A fixed variant (the sound board); the engine's pick otherwise. */
   variant?: number;
+  /** A further gain on top of the placement's: a cross-fade's share (T-2.46). */
+  gain?: number;
 }
 
 /** A played sound: its nodes, to stop or to let finish. */
@@ -211,6 +213,16 @@ export class AudioEngine {
     l.upZ.value = 0;
   }
 
+  /** The variant a sound last played, or −1: what the tests read to check variants never repeat. */
+  lastVariantOf(id: string): number {
+    return this.lastVariant.get(id) ?? -1;
+  }
+
+  /** Where the ear is. */
+  get listener(): Vec3 {
+    return { ...this.listenerAt };
+  }
+
   /** Play a sound; false when it is unknown, not loaded, locked out, or lost its voice to louder ones. */
   play(id: string, opts: PlayOptions = {}): boolean {
     const ctx = this.ctx;
@@ -223,6 +235,7 @@ export class AudioEngine {
     this.lastVariant.set(id, variant);
 
     const placement = place(def.class, opts.at ?? null, this.listenerAt, this.boxes, this.mix, opts.own ?? false);
+    placement.gain *= opts.gain ?? 1;
     if (placement.gain <= 0) return false;
     const source = ctx.createBufferSource();
     source.buffer = buffer;

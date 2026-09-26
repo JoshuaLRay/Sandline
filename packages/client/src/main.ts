@@ -57,7 +57,10 @@ import {
   toRadians,
   wireToTable,
   zoneAt,
+  WEAPON_SOUNDS,
+  enemyByIndex,
 } from '@sandline/shared';
+import { ReloadWatcher, ShotDeduper, gunSoundPlan } from './audio/weaponSounds.ts';
 import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { type ClientLink, DEFAULT_LINK, type LinkConditions, LocalServer, type LocalServerOptions } from './net/LocalServer.ts';
@@ -543,6 +546,8 @@ let localLoadout: ClassDef | null = null;
 let localClassSeen = '';
 function equipGun(index: number): void {
   if (localLoadout && !localLoadout.guns.includes(WEAPON_ORDER[index] ?? '')) return;
+  // T-2.46: the equip sound, for a real change of gun (or back from a grenade).
+  if (index !== combat.weaponIndex || holdingPouch) playOwn(WEAPON_SOUNDS.handling.equip);
   combat.selectWeapon(index);
   holdingPouch = false;
   pouchTrigger.cancel();
@@ -739,7 +744,59 @@ const peerLink = { ...DEFAULT_LINK };
  */
 const shotOrigin = new THREE.Vector3();
 const shotEnd = new THREE.Vector3();
+/**
+ * T-2.46: which gun a shooter holds, for its report — an enemy's is its
+ * archetype's, a gunner's the emplacement's, a squadmate's the replicated
+ * Weapon component's.
+ */
+function shooterWeaponId(net: NetClient, netId: number): string {
+  const enemy = net.remoteEnemy(netId);
+  if (enemy) return enemyByIndex(enemy.archetype)?.weapon ?? 'carbine';
+  const slot = net.remoteSlot(netId);
+  const gun = slot >= 0 ? net.emplacements().find((g) => g.gunnerSlot === slot) : undefined;
+  if (gun) return 'lmg';
+  return WEAPON_IDS[net.remoteWeapon(netId).index] ?? 'carbine';
+}
+
+/** T-2.46: one report per trigger pull of someone else's, near, far or both by distance, from where it left the barrel. */
+const shotDeduper = new ShotDeduper();
+function playRemoteShot(net: NetClient, shot: ServerShot): void {
+  if (!shotDeduper.accept(shot.shooterNetId, performance.now())) return;
+  const at = { x: shot.originX, y: shot.originY, z: shot.originZ };
+  const ear = audio.listener;
+  const d = Math.hypot(at.x - ear.x, at.y - ear.y, at.z - ear.z);
+  for (const part of gunSoundPlan(shooterWeaponId(net, shot.shooterNetId), d)) audio.play(part.sound, { at, gain: part.gain });
+}
+
+/** T-2.46: the reload stage's sound. */
+function reloadSound(stage: 'out' | 'in' | 'bolt'): string {
+  const h = WEAPON_SOUNDS.handling;
+  return stage === 'out' ? h.reloadOut : stage === 'in' ? h.reloadIn : h.reloadBolt;
+}
+/** T-2.46: our reload's stages, and each remote soldier's from its replicated progress. */
+const ownReload = new ReloadWatcher();
+const remoteReloads = new Map<number, ReloadWatcher>();
+function playRemoteReloads(net: NetClient): void {
+  const drawn = net.remotes();
+  for (const [netId, at] of drawn) {
+    if (net.remoteEnemy(netId)) continue;
+    let watcher = remoteReloads.get(netId);
+    if (!watcher) {
+      watcher = new ReloadWatcher();
+      remoteReloads.set(netId, watcher);
+    }
+    for (const stage of watcher.update(net.remoteWeapon(netId).reloadProgress)) audio.play(reloadSound(stage), { at: { x: at.x, y: at.y + 1.2, z: at.z } });
+  }
+  for (const netId of [...remoteReloads.keys()]) if (!drawn.has(netId)) remoteReloads.delete(netId);
+}
+
+/** T-2.46: a sound of our own, at the muzzle, never delayed and first for a voice. */
+function playOwn(sound: string): void {
+  audio.play(sound, { at: { x: muzzle.x, y: muzzle.y, z: muzzle.z }, own: true });
+}
+
 function onServerShot(net: NetClient, shot: ServerShot): void {
+  if (shot.shooterNetId !== net.netId) playRemoteShot(net, shot);
   shotEnd.set(shot.x, shot.y, shot.z);
   shotOrigin.set(shot.originX, shot.originY, shot.originZ);
   landImpact(net, shot);
@@ -1571,6 +1628,7 @@ function frame(): void {
       if (!mountedGun) {
         unmountedWeaponIndex = Math.max(0, combat.weaponIndex);
         combat.useGun(getWeapon(mountDef.weapon));
+        playOwn(WEAPON_SOUNDS.handling.equip);
         holdingPouch = false;
         pouchTrigger.cancel();
       }
@@ -1638,7 +1696,19 @@ function frame(): void {
     // The local machine decides WHEN the trigger pulled; the server decides
     // what that shot hit. Both run the same cadence, so a shot the client
     // allows is normally one the server allows too.
+    // T-2.46: a pull on an empty gun clicks.
+    if (shot === null && triggerEdge && !holdingPouch && net.vitality === 'alive') {
+      const mag = combat.magazine(tickNumber * TICK_SECONDS);
+      if (mag.ammo === 0 && !mag.reloading) playOwn(WEAPON_SOUNDS.handling.dryFire);
+    }
+    // T-2.46: our own reload, stage by stage.
+    {
+      const mag = combat.magazine(tickNumber * TICK_SECONDS);
+      for (const stage of ownReload.update(mag.reloading ? Math.max(mag.reloadFraction, 1e-6) : 0)) playOwn(reloadSound(stage));
+    }
     if (shot !== null) {
+      // T-2.46: our own report, the near one, from the muzzle.
+      playOwn(gunSoundPlan(combat.weapon.id, 0)[0]?.sound ?? WEAPON_SOUNDS.guns['carbine']!.near);
       // Sent at table resolution, so the server traces the exact angles this
       // client computed and the predicted tracer shares them without rounding.
       // On a gun the index is nobody's (T-4.29): the host fires the gun whatever this names.
@@ -2154,6 +2224,7 @@ function frame(): void {
   // T-2.45: the ear is the camera, facing where it looks, in the world it hears through.
   audio.setListener(camSolve.position, camSolve.direction);
   audio.setWorld(collisionBoxes());
+  if (net) playRemoteReloads(net);
   // Your own character is the one thing the first-person camera sits inside.
   // Downed forces third person (B-05), so the body stays visible then too.
   player.visible = !input.firstPerson || downed;
