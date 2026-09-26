@@ -4,8 +4,9 @@
  * Encounter spawn triggers are played through the same server event runner as
  * authored mission events. A script may react to an objective starting or
  * completing, an area entry, mission time, a dead encounter group, or a flag.
- * Actions may spawn a group, jump to an objective, toggle a blocker, show a
- * message, request a callout, or set a flag.
+ * Actions may spawn a group, stop one sending more waves (U-001), jump to an
+ * objective, toggle a blocker, show a message, request a callout, or set a
+ * flag.
  *
  * Blockers are authored as ordinary axis-aligned boxes. The server adds their
  * boxes to collision while active and marks the matching nav polygons
@@ -24,9 +25,11 @@ export type EventTrigger =
   | { kind: 'group-dead'; group: string }
   | { kind: 'flag'; flag: string; value: boolean };
 
-export const EVENT_ACTION_KINDS = ['spawn-group', 'set-objective', 'toggle-blocker', 'message', 'callout', 'set-flag'] as const;
+export const EVENT_ACTION_KINDS = ['spawn-group', 'stop-group', 'set-objective', 'toggle-blocker', 'message', 'callout', 'set-flag'] as const;
 export type EventAction =
   | { kind: 'spawn-group'; group: string }
+  /** U-001: no more waves from the group, and none of its queued members placed; the living fight on. */
+  | { kind: 'stop-group'; group: string }
   | { kind: 'set-objective'; objective: number }
   | { kind: 'toggle-blocker'; blocker: string; active: boolean }
   | { kind: 'message'; text: string }
@@ -206,7 +209,8 @@ export function parseEventScript(raw: unknown, encounter: Encounter, world: Worl
       const a = rawAction as Obj | null;
       const ak = typeof a === 'object' && a !== null ? a['kind'] : undefined;
       switch (ak) {
-        case 'spawn-group': {
+        case 'spawn-group':
+        case 'stop-group': {
           const x = obj(aw, a, ['kind', 'group']);
           return { kind: ak, group: group(`${aw}.group`, x['group']) };
         }

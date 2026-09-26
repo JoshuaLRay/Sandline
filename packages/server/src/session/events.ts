@@ -30,6 +30,8 @@ export interface EventHost {
   squadFeet(): readonly { x: number; z: number }[];
   groupDead(id: string): boolean;
   spawnGroup(id: string, seconds: number): boolean;
+  /** U-001: no more waves from the group. */
+  stopGroup(id: string, seconds: number): boolean;
   objective(): { index: number; state: MissionStatus } | null;
   setObjective(index: number): boolean;
   setBlocker(blocker: ScriptBlockerState): void;
@@ -37,8 +39,10 @@ export interface EventHost {
   callout(id: string): void;
 }
 
-function encounterEvent(group: Encounter['groups'][number]): EventDef {
+/** A group's own trigger as an event; none for a group only a script sends (U-001). */
+function encounterEvent(group: Encounter['groups'][number]): EventDef[] {
   const t = group.trigger;
+  if (t.kind === 'script') return [];
   const trigger: EventTrigger =
     t.kind === 'start'
       ? { kind: 'time', seconds: 0 }
@@ -47,7 +51,7 @@ function encounterEvent(group: Encounter['groups'][number]): EventDef {
         : t.kind === 'enter'
           ? { kind: 'enter', area: t.area }
           : { kind: 'group-dead', group: t.group };
-  return { id: `@encounter:${group.id}`, trigger, actions: [{ kind: 'spawn-group', group: group.id }] };
+  return [{ id: `@encounter:${group.id}`, trigger, actions: [{ kind: 'spawn-group', group: group.id }] }];
 }
 
 export class EventRun {
@@ -64,7 +68,7 @@ export class EventRun {
     private readonly host: EventHost,
   ) {
     if (script.world !== world.id || encounter.world !== world.id) throw new Error(`event script for '${script.world}' on world '${world.id}'`);
-    this.defs = [...encounter.groups.map(encounterEvent), ...script.events];
+    this.defs = [...encounter.groups.flatMap(encounterEvent), ...script.events];
     this.reset();
   }
 
@@ -96,6 +100,26 @@ export class EventRun {
       this.blockerState.set(b.id, state);
       this.host.setBlocker(state);
     }
+  }
+
+  /**
+   * U-001: the groups fired events have sent and stopped, in the order the
+   * events are defined. After `restore`, a sent group the checkpoint did not
+   * count beaten is the session's to send again, and a stopped one to stop
+   * again: the fired set says it happened, but the retry cleared the world
+   * and built a fresh spawner that has done neither.
+   */
+  groups(): { sent: string[]; stopped: string[] } {
+    const sent: string[] = [];
+    const stopped: string[] = [];
+    for (const def of this.defs) {
+      if (!this.fired.has(def.id)) continue;
+      for (const action of def.actions) {
+        if (action.kind === 'spawn-group' && !sent.includes(action.group)) sent.push(action.group);
+        if (action.kind === 'stop-group' && !stopped.includes(action.group)) stopped.push(action.group);
+      }
+    }
+    return { sent: sent.filter((g) => !stopped.includes(g)), stopped };
   }
 
   /** Start a new mission attempt. */
@@ -136,6 +160,9 @@ export class EventRun {
     switch (action.kind) {
       case 'spawn-group':
         this.host.spawnGroup(action.group, seconds);
+        break;
+      case 'stop-group':
+        this.host.stopGroup(action.group, seconds);
         break;
       case 'set-objective':
         this.host.setObjective(action.objective);

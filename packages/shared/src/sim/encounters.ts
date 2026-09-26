@@ -12,11 +12,18 @@
  *   fight from inside it.
  *
  * A group spawns on its TRIGGER: the mission's start, a time since it,
- * the squad entering an area, or another group dying. With `waves` it spawns
+ * the squad entering an area, another group dying, or — `script` (U-001) —
+ * only when the mission's event script sends it. With `waves` it spawns
  * again, `everySeconds` after each wave, `count` times in all — the
  * reinforcements. The spawner (`server/src/ai/director/spawner.ts`) never
  * puts an enemy where a human can see it and never lets more than
  * `aliveCap` live at once; what the cap holds back waits its turn.
+ *
+ * STRAGGLERS (U-001): a group down to `stragglers.alive` living members (and
+ * at least one lost) for `stragglers.seconds` counts as beaten for whatever
+ * waits on its death — a `dead` trigger, a script's `group-dead` — so one
+ * survivor hidden somewhere, or unable to reach anyone, cannot hold the rest
+ * of the mission back for ever. A `destroy` objective still wants them all.
  *
  * Validated by hand, unknown keys refused by name, as the other data files
  * are; and against the world, so a zone or place that does not exist is a
@@ -40,8 +47,9 @@ export type Trigger =
   | { kind: 'start' }
   | { kind: 'time'; seconds: number }
   | { kind: 'enter'; area: AreaRef }
-  | { kind: 'dead'; group: string };
-export const TRIGGER_KINDS = ['start', 'time', 'enter', 'dead'] as const;
+  | { kind: 'dead'; group: string }
+  | { kind: 'script' };
+export const TRIGGER_KINDS = ['start', 'time', 'enter', 'dead', 'script'] as const;
 
 export interface EncounterGroup {
   id: string;
@@ -67,7 +75,12 @@ export interface Encounter {
   /** Places triggers and postures may name, beside the mission's `start` and `objective`. */
   areas: Readonly<Record<string, GroundArea>>;
   groups: readonly EncounterGroup[];
+  /** A group this far gone, this long, counts as beaten to what waits on it (U-001). */
+  stragglers: { alive: number; seconds: number };
 }
+
+/** Without a `stragglers` entry: one survivor for a minute. */
+export const DEFAULT_STRAGGLERS = { alive: 1, seconds: 60 } as const;
 
 export class EncounterDataError extends Error {}
 
@@ -101,7 +114,7 @@ function circle(where: string, v: unknown): GroundArea {
 
 /** Parse and check an encounter file against its world. */
 export function parseEncounter(raw: unknown, worldOf: (id: string) => World | undefined = getWorld): Encounter {
-  const top = obj('encounter', raw, ['world', 'aliveCap', 'probes', 'areas', 'groups']);
+  const top = obj('encounter', raw, ['world', 'aliveCap', 'probes', 'areas', 'groups'], ['stragglers']);
   const worldId = top['world'];
   const world = typeof worldId === 'string' ? worldOf(worldId) : undefined;
   if (!world) throw new EncounterDataError(`encounter: no world ${JSON.stringify(worldId)}`);
@@ -111,6 +124,11 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
   const aliveCap = whole(`${at}.aliveCap`, top['aliveCap'], 1, 64);
   if (!Array.isArray(top['probes']) || top['probes'].length === 0) throw new EncounterDataError(`${at}.probes: expected a non-empty list`);
   const probes = top['probes'].map((h, i) => num(`${at}.probes[${i}]`, h, 0, 3));
+  let stragglers: Encounter['stragglers'] = { ...DEFAULT_STRAGGLERS };
+  if (top['stragglers'] !== undefined) {
+    const so = obj(`${at}.stragglers`, top['stragglers'], ['alive', 'seconds']);
+    stragglers = { alive: whole(`${at}.stragglers.alive`, so['alive'], 0, 16), seconds: num(`${at}.stragglers.seconds`, so['seconds'], 0) };
+  }
 
   const areasRaw = top['areas'];
   if (typeof areasRaw !== 'object' || areasRaw === null || Array.isArray(areasRaw)) throw new EncounterDataError(`${at}.areas: expected an object of named circles`);
@@ -185,6 +203,9 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
       const to = obj(`${gw}.trigger`, t, ['kind', 'group']);
       if (typeof to['group'] !== 'string') throw new EncounterDataError(`${gw}.trigger.group must be a group id`);
       trigger = { kind: 'dead', group: to['group'] };
+    } else if (tk === 'script') {
+      obj(`${gw}.trigger`, t, ['kind']);
+      trigger = { kind: 'script' };
     } else {
       throw new EncounterDataError(`${gw}.trigger.kind must be one of ${TRIGGER_KINDS.join(', ')}`);
     }
@@ -210,7 +231,7 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
     if (!ids.has(g.trigger.group)) throw new EncounterDataError(`${at}: group '${g.id}' waits on no group '${g.trigger.group}'`);
     if (g.trigger.group === g.id) throw new EncounterDataError(`${at}: group '${g.id}' waits on itself`);
   }
-  return { world: world.id, aliveCap, probes, areas, groups };
+  return { world: world.id, aliveCap, probes, areas, groups, stragglers };
 }
 
 /** An area reference made a circle, against the encounter's areas and its world's mission. */

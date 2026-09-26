@@ -1,5 +1,5 @@
 {
-  "$comment": "T-4.13: mission-01 keeps greybox-01's encounter pacing and groups on the same named spawn zones.",
+  "$comment": "T-4.13: mission-01 keeps greybox-01's encounter pacing and groups on the same named spawn zones. U-001 (2026-09-26): the defend objective has its own counterattack, `counterattack-push` — a rifleman into the compound every 40–65 s — sent by the script when the defend starts and stopped when it is won (`script` trigger, `stop-group`). Before, the counterattack was sent on the garrison's death, spent during the clear-and-hold, and the defend ran its whole five and a half minutes on an empty map. `counterattack` still answers the garrison's fall, to contest the hold. The old `counterattack-support` pair held its post in a zone no human can see and never met the squad, so it is gone. A group down to one survivor for 45 s counts as beaten to what waits on it.",
   "world": "mission-01",
   "aliveCap": 10,
   "probes": [
@@ -7,6 +7,10 @@
     1,
     1.7
   ],
+  "stragglers": {
+    "alive": 1,
+    "seconds": 45
+  },
   "areas": {
     "overwatch-mid": {
       "x": -20,
@@ -108,34 +112,33 @@
         "group": "garrison"
       },
       "waves": {
-        "count": 3,
-        "everySeconds": 60,
+        "count": 2,
+        "everySeconds": 45,
         "minSeconds": 30,
-        "maxSeconds": 80
+        "maxSeconds": 60
       }
     },
     {
-      "id": "counterattack-support",
+      "id": "counterattack-push",
       "members": [
         {
           "archetype": "rifleman",
-          "count": 2
+          "count": 1
         }
       ],
       "zone": "behind-objective",
       "posture": {
-        "kind": "hold",
-        "face": "objective"
+        "kind": "garrison",
+        "at": "objective"
       },
       "trigger": {
-        "kind": "dead",
-        "group": "garrison"
+        "kind": "script"
       },
       "waves": {
-        "count": 6,
-        "everySeconds": 40,
-        "minSeconds": 25,
-        "maxSeconds": 60
+        "count": 8,
+        "everySeconds": 50,
+        "minSeconds": 40,
+        "maxSeconds": 65
       }
     },
     {
@@ -152,8 +155,7 @@
         "face": "assault-entry"
       },
       "trigger": {
-        "kind": "time",
-        "seconds": 3600
+        "kind": "script"
       }
     }
   ]

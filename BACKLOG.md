@@ -34,7 +34,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
-| [U-001](docs/backlog/U-001.md) | Restore reliable mission enemy pressure | Mission | P1 | READY | — | — |
+| [U-001](docs/backlog/U-001.md) | Restore reliable mission enemy pressure | Mission | P1 | DONE | — | [#132](https://github.com/JoshuaLRay/Sandline/pull/132) |
 | [U-002](docs/backlog/U-002.md) | Correct authoritative firing origins for every stance | Weapon feel | P1 | READY | — | — |
 | [U-003](docs/backlog/U-003.md) | Align AR muzzle flash and tracers with the visible gun | Weapon feel | P1 | BLOCKED | U-002 | — |
 | [U-004](docs/backlog/U-004.md) | Open the AR sight picture | Weapon feel | P1 | READY | — | — |
