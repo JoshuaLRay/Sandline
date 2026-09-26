@@ -15,8 +15,11 @@ describe('the settings (T-4.26)', () => {
     expect(parseSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(parseSettings('nonsense')).toEqual(DEFAULT_SETTINGS);
     const parsed = parseSettings({ sensitivity: 9, invertY: true, fovDeg: 12, volumes: { master: -1, voice: 'loud' }, quality: 'ultra', extra: 1 });
-    expect(parsed).toEqual({ sensitivity: 2, invertY: true, fovDeg: 50, volumes: { master: 0, effects: 1, voice: 1 }, quality: 'medium' });
+    expect(parsed).toEqual({ sensitivity: 2, invertY: true, fovDeg: 50, volumes: { master: 0, effects: 1, voice: 1 }, quality: 'medium', hints: true });
     expect(parseSettings({ quality: 'high', fovDeg: 90 })).toMatchObject({ quality: 'high', fovDeg: 90 });
+    // T-5.03: hints on unless switched off; a stored non-boolean is the default.
+    expect(parseSettings({ hints: false }).hints).toBe(false);
+    expect(parseSettings({ hints: 'no' }).hints).toBe(true);
   });
 
   it('round-trips through a store, and reads the defaults from an empty, corrupt or missing one', () => {

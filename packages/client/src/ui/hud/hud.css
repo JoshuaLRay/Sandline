@@ -143,6 +143,23 @@
 }
 .phud-prompt[data-shown='yes'] { display: block; }
 
+/* T-5.03: a first-run hint, low and centred, out of the aim's way. */
+.phud-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 22%;
+  transform: translateX(-50%);
+  max-width: 60ch;
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  padding: 6px 14px;
+  background: rgba(15, 12, 7, 0.7);
+  border-left: 2px solid var(--amber, #f0b429);
+  display: none;
+}
+.phud-hint[data-shown='yes'] { display: block; }
+
 .phud-pouch { margin-top: 6px; font-size: 11px; }
 .phud-pouch-row { display: flex; justify-content: flex-end; gap: 8px; opacity: 0.75; }
 .phud-pouch-row[data-selected='yes'] { opacity: 1; color: var(--amber, #f0b429); }

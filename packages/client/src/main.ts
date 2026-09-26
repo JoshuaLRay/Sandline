@@ -67,6 +67,9 @@ import { ReloadWatcher, ShotDeduper, gunSoundPlan } from './audio/weaponSounds.t
 import { CalloutDirector, type CalloutPlay, voiceIndex } from './audio/callouts.ts';
 import { type CalloutView, CalloutWatcher, type SquadSoldier } from './audio/calloutEvents.ts';
 import type { VoiceRendersManifest } from './ui/soundBoardModel.ts';
+import { HINTS, type HintCondition, HintTracker } from './ui/onboarding/hints.ts';
+import { briefingFor } from './ui/onboarding/briefingModel.ts';
+import { showBriefing } from './ui/onboarding/Briefing.ts';
 import { FootstepTracker, explosionSound, footstepSound, impactSound, nearMissAt } from './audio/worldSounds.ts';
 import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
@@ -877,6 +880,12 @@ function playWorldEvents(net: NetClient, dt: number): void {
  * lines' manifest says what exists, so nothing is fetched that is not there.
  */
 const calloutWatcher = new CalloutWatcher();
+/** T-5.03: first-run hints, remembered in this browser; the briefing, once a session. */
+const hints = new HintTracker(browserStore(), HINTS);
+let hintsNet: NetClient | null = null;
+let hintsSince = 0;
+let briefedNet: NetClient | null = null;
+const secondsNow = (): number => performance.now() / 1000;
 const callouts = new CalloutDirector();
 let ownReloading = false;
 
@@ -898,6 +907,40 @@ function calloutView(net: NetClient): CalloutView {
   }
   const projectiles = net.projectiles().map((p) => ({ netId: p.netId, grenade: PROJECTILE_IDS[p.kind] !== 'rocket', ownerSlot: p.ownerSlot, at: { x: p.x, y: p.y, z: p.z } }));
   return { soldiers, enemies, projectiles, orders: net.orders, mission: net.mission, boxes: collisionBoxes() };
+}
+
+/**
+ * T-5.03: the briefing at a mission's start, once a session, and this frame's
+ * first-run hint — from what holds now: an enemy near, the magazine low, a
+ * squad to order, a squadmate down, fire coming in, a gun in reach.
+ */
+function onboarding(net: NetClient, sim: { x: number; y: number; z: number } | null, magazine: { ammo: number; magSize: number; reloading: boolean }): string {
+  const now = secondsNow();
+  if (hintsNet !== net) {
+    hintsNet = net;
+    hintsSince = now;
+  }
+  const mission = net.mission;
+  if (briefedNet !== net && mission && mission.attempt === 1 && mission.objective === 0 && mission.state === 'progress' && net.world) {
+    briefedNet = net;
+    const briefing = briefingFor(net.world.id, net.roster.map((r) => r.classId));
+    if (briefing) showBriefing(document.body, briefing);
+  }
+  if (net.vitality !== 'alive' || !sim || menu.mode !== 'hidden' || document.getElementById('briefing')) return '';
+  const conditions = new Set<HintCondition>(['start']);
+  for (const [netId, at] of net.remotes()) {
+    if (net.remoteEnemy(netId)) {
+      if (net.remoteVitality(netId) === 'alive' && Math.hypot(at.x - sim.x, at.z - sim.z) <= 60) conditions.add('enemy-seen');
+    } else if (net.remoteSlot(netId) >= 0 && net.remoteVitality(netId) === 'downed') conditions.add('mate-downed');
+  }
+  if (!magazine.reloading && magazine.magSize > 0 && magazine.ammo <= magazine.magSize / 3) conditions.add('magazine-low');
+  if (net.roster.some((r, i) => i !== net.slot && !r.human) && now - hintsSince >= HINTS.squadAfterSeconds) conditions.add('squad');
+  if (net.suppression > 0.3) conditions.add('under-fire');
+  if (emptyGunInReach(net, sim.x, sim.z)) conditions.add('near-gun');
+  if (input.crouching || input.proning) hints.did('crouch', now);
+  if (mountedGun) hints.did('mount', now);
+  if (net.reviveTargetNetId !== 0) hints.did('revive', now);
+  return hints.update(conditions, now);
 }
 
 /** One callout, heard: its recorded line, or the chirp when there is none (or it will not load). */
@@ -1520,6 +1563,7 @@ if (new URLSearchParams(location.search).has('sounds')) {
 function applySettings(next: Settings): void {
   // T-2.45: the three volumes the settings have held since T-4.26.
   audio.setVolumes(next.volumes);
+  hints.enabled = next.hints;
   input.setSensitivity(next.sensitivity);
   input.setInvertY(next.invertY);
   cam.baseFov = next.fovDeg;
@@ -1538,6 +1582,7 @@ applySettings(settings);
 const menu = createMenu({
   play: lobby.root,
   settings,
+  onResetHints: () => hints.reset(),
   onSettings: (next) => {
     applySettings(next);
     saveSettings(browserStore(), next);
@@ -1794,6 +1839,7 @@ function frame(): void {
 
     const beforeStep = net.simulated;
     net.tick(tickNumber, tickInput, input.pitchWire);
+    if (tickInput.moveX !== 0 || tickInput.moveY !== 0) hints.did('move', secondsNow());
     sparring?.tick(tickNumber);
     const afterStep = net.simulated;
     // Keep both ends of the tick so rendering can interpolate across it.
@@ -1860,8 +1906,10 @@ function frame(): void {
       const mag = combat.magazine(tickNumber * TICK_SECONDS);
       for (const stage of ownReload.update(mag.reloading ? Math.max(mag.reloadFraction, 1e-6) : 0)) playOwn(reloadSound(stage));
       ownReloading = mag.reloading;
+      if (mag.reloading) hints.did('reload', secondsNow());
     }
     if (shot !== null) {
+      hints.did('fire', secondsNow());
       // T-2.46: our own report, the near one, from the muzzle.
       playOwn(gunSoundPlan(combat.weapon.id, 0)[0]?.sound ?? WEAPON_SOUNDS.guns['carbine']!.near);
       // Sent at table resolution, so the server traces the exact angles this
@@ -1921,6 +1969,7 @@ function frame(): void {
       const from = throws.origin(eye, direction, projectileWorld());
       if (throws.throwFrom(from, aimYaw, aimPitch, tickNumber * TICK_SECONDS) !== null) {
         net.throwProjectile(tickNumber, aimYaw, aimPitch, throws.kind);
+        hints.did('throw', secondsNow());
         // The last one gone: back to the gun, as a shooter does.
         if (holdingPouch && throws.count() <= 0) equipGun(combat.weaponIndex);
       }
@@ -1935,9 +1984,15 @@ function frame(): void {
     const release = input.consumeOrderRelease();
     if (release) {
       const order = orderFromRelease(release, aimSubject(net));
-      if (order) net.order(order);
+      if (order) {
+        net.order(order);
+        hints.did('order', secondsNow());
+      }
     }
-    if (input.consumeMarkPress()) net.mark(buildMark(aimSubject(net)));
+    if (input.consumeMarkPress()) {
+      net.mark(buildMark(aimSubject(net)));
+      hints.did('mark', secondsNow());
+    }
   }
 
   server?.pump(now);
@@ -2314,6 +2369,7 @@ function frame(): void {
     damageHits = liveHits(damageHits, hudNow);
     const vitalsStats = net?.stats;
     const magazine = combat.magazine(hudNow);
+    const hint = net ? onboarding(net, sim, magazine) : '';
     const vitalityOfSlot = (slot: number): Vitality | null => {
       if (!net) return null;
       if (slot === net.slot) return net.vitality;
@@ -2352,6 +2408,7 @@ function frame(): void {
       damage: damageDirectionView(damageHits, hudYaw, hudNow),
       heat: mountedGun ? heatView({ heat: mountedGun.heat, overheated: mountedGun.overheated }) : null,
       prompt: mountedGun ? 'E  LEAVE THE GUN' : net && !downed && sim && emptyGunInReach(net, sim.x, sim.z) ? 'E  MAN THE GUN' : '',
+      hint,
     });
   }
   // Every value in the camera panel describes where the arm puts the camera
