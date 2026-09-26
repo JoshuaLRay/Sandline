@@ -369,8 +369,8 @@ once before the first M3 task — it is short and every task leans on it.
 | T-3.33 | DONE | T-3.32, T-3.14 |
 | T-3.34 | DONE | T-3.31, T-3.32 |
 | T-3.35 | DONE | T-3.23, T-3.28, T-3.33, T-3.34 |
-| 🧍 T-3.36 | BLOCKED — run sheet `m3-solo.md` to be written first | T-3.24, T-3.30, T-3.35 |
-| 🧍 T-3.37 | BLOCKED — run sheet `m3-six.md` to be written first; needs six people | T-3.35 |
+| 🧍 T-3.36 | BLOCKED — run sheet `m3-solo.md` prepared, not run; after T-3.24 and T-3.30 | T-3.24, T-3.30, T-3.35 |
+| 🧍 T-3.37 | OPEN — run sheet `m3-six.md` prepared, not run; needs six people | T-3.35 |
 
 ---
 
@@ -470,7 +470,7 @@ the owner may still overrule before T-4.23.
 
 | Task | Status | Depends |
 |---|---|---|
-| 🧍 T-4.34 | BLOCKED — run sheet `m4.md` to be written; after M3's gate | T-4.13, T-4.17, T-4.23, T-4.25, T-4.26, T-4.27, T-4.29 |
+| 🧍 T-4.34 | BLOCKED — run sheet `m4.md` prepared, not run; after M3's gate | T-4.13, T-4.17, T-4.23, T-4.25, T-4.26, T-4.27, T-4.29 |
 
 ---
 

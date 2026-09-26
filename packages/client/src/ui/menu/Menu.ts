@@ -150,7 +150,7 @@ export function createMenu(options: MenuOptions): Menu {
 
   heading('Audio');
   const audioNote = el('p', 'menu-note', settingsPanel);
-  audioNote.textContent = 'Kept for E-2.7, the combat audio, which is not in this build yet.';
+  audioNote.textContent = 'Master, effects (guns, the world, bodies) and voice (callouts).';
   const percent = (v: number): string => `${Math.round(v * 100)}%`;
   range('Master', 'master', 0, 1, SETTINGS_RANGES.volume.step, () => current.volumes.master, (v) => { current.volumes.master = v; }, percent);
   range('Effects', 'effects', 0, 1, SETTINGS_RANGES.volume.step, () => current.volumes.effects, (v) => { current.volumes.effects = v; }, percent);
