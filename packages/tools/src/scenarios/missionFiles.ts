@@ -3,7 +3,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseMission } from '@sandline/shared';
-import { MISSION_SCENARIO, type MissionConfig, type MissionRun, runMission } from './mission.ts';
+import { MISSION_SCENARIO, type MissionConfig, type MissionRun, runMission, stalls } from './mission.ts';
 
 export const MISSION_DIRECTORY = fileURLToPath(new URL('../../../shared/src/data/missions/', import.meta.url));
 
@@ -22,7 +22,8 @@ export interface MissionFileResult {
 
 /** Report why a mission never completed; malformed files/runner errors fail the job. */
 export function judgeMissionFile(file: string, mission: string | null, runs: MissionRun[], errors: string[] = []): MissionFileResult {
-  const failures = [...errors];
+  // U-001: a stall is the encounter's defect, not a lost fight: it fails the job.
+  const failures = [...errors, ...stalls(runs)];
   const warnings: string[] = [];
   if (!runs.some((r) => r.outcome === 'complete')) {
     warnings.push(`no completed run${runs.length === 0 ? ' (no runs finished)' : ': ' + runs.map((r) => `${r.humans}h seed ${r.seed}: ${r.outcome}; ${r.detail}`).join(' | ')}`);

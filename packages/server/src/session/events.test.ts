@@ -59,7 +59,7 @@ describe('event runner triggers and actions (T-4.15)', () => {
             trigger: { kind: 'flag', flag: 'ready' },
             actions: [{ kind: 'spawn-group', group: 'g' }, { kind: 'set-objective', objective: 0 }],
           },
-          { id: 'dead', trigger: { kind: 'group-dead', group: 'g' }, actions: [{ kind: 'message', text: 'group dead' }] },
+          { id: 'dead', trigger: { kind: 'group-dead', group: 'g' }, actions: [{ kind: 'message', text: 'group dead' }, { kind: 'stop-group', group: 'g' }] },
         ],
       },
       ENCOUNTER,
@@ -73,12 +73,14 @@ describe('event runner triggers and actions (T-4.15)', () => {
     const messages: string[] = [];
     const callouts: string[] = [];
     const spawns: string[] = [];
+    const stops: string[] = [];
     const objectiveSets: number[] = [];
     const blockers: { id: string; active: boolean }[] = [];
     const host: EventHost = {
       squadFeet: () => squad,
       groupDead: () => dead,
       spawnGroup: (id) => (spawns.push(id), true),
+      stopGroup: (id) => (stops.push(id), true),
       objective: () => objective,
       setObjective: (index) => {
         objectiveSets.push(index);
@@ -106,10 +108,14 @@ describe('event runner triggers and actions (T-4.15)', () => {
     run.step(2);
     expect(spawns).toEqual(['g']);
     expect(objectiveSets).toEqual([0]);
+    // U-001: what a checkpoint of this moment would have to send again.
+    expect(run.groups()).toEqual({ sent: ['g'], stopped: [] });
 
     dead = true;
     run.step(3);
     expect(messages).toEqual(['started', 'group dead']);
+    expect(stops).toEqual(['g']);
+    expect(run.groups()).toEqual({ sent: [], stopped: ['g'] });
 
     // Once means once even while every condition stays true.
     run.step(10);

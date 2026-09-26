@@ -1,5 +1,5 @@
 {
-  "$comment": "T-5.01: mission-01's event script (T-4.15's format), loaded with the mission wherever it is played — a host's room, the in-page session, the headless scenario. Messages go to the HUD; a callout that names a callout event (T-2.49) is said by the nearest squadmate. T-5.02 grows this with the slice mission's objectives, blockers and checkpoints.",
+  "$comment": "T-5.01: mission-01's event script (T-4.15's format), loaded with the mission wherever it is played — a host's room, the in-page session, the headless scenario. Messages go to the HUD; a callout that names a callout event (T-2.49) is said by the nearest squadmate. T-5.02 grows this with the slice mission's objectives, blockers and checkpoints. U-001: the defend's counterattack is sent here when the defend starts and stopped when it completes, so its waves are the defend's and not the hold's.",
   "world": "mission-01",
   "blockers": [],
   "events": [
@@ -73,6 +73,10 @@
         {
           "kind": "message",
           "text": "Counterattack from the north — hold the compound"
+        },
+        {
+          "kind": "spawn-group",
+          "group": "counterattack-push"
         }
       ]
     },
@@ -83,6 +87,10 @@
         "objective": 4
       },
       "actions": [
+        {
+          "kind": "stop-group",
+          "group": "counterattack-push"
+        },
         {
           "kind": "callout",
           "id": "objective-done"

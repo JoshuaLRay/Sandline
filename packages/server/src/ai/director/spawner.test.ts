@@ -48,8 +48,8 @@ const WORLD: World = loadWorld({
   },
 });
 
-function encounter(groups: unknown[], aliveCap = 10, areas: Record<string, unknown> = {}): Encounter {
-  return parseEncounter({ world: 'spawn-test', aliveCap, probes: [0.3, 1.0, 1.7], areas, groups }, (id) => (id === 'spawn-test' ? WORLD : undefined));
+function encounter(groups: unknown[], aliveCap = 10, areas: Record<string, unknown> = {}, extra: Record<string, unknown> = {}): Encounter {
+  return parseEncounter({ world: 'spawn-test', aliveCap, probes: [0.3, 1.0, 1.7], areas, groups, ...extra }, (id) => (id === 'spawn-test' ? WORLD : undefined));
 }
 
 const group = (id: string, trigger: unknown, extra: Record<string, unknown> = {}) => ({
@@ -158,6 +158,101 @@ describe('groups spawn on their triggers, and not before (T-3.32)', () => {
   });
 });
 
+describe('nothing holds the mission back for ever (U-001)', () => {
+  it('a group down to its stragglers long enough counts as beaten to what waits on it; a destroy still wants them all', () => {
+    const host = fakeHost();
+    const e = encounter(
+      [{ ...group('first', { kind: 'start' }), members: [{ archetype: 'rifleman', count: 3 }] }, group('after', { kind: 'dead', group: 'first' })],
+      10,
+      {},
+      { stragglers: { alive: 1, seconds: 10 } },
+    );
+    const spawner = new Spawner(e, WORLD, host);
+    let t = run(spawner, 0, 1);
+    const [a, b, c] = spawner.spawnedBy('first');
+    host.kill(a!);
+    t = run(spawner, t, 20);
+    // Two of three alive is a fight, not stragglers.
+    expect(spawner.status().find((g) => g.id === 'first')).toMatchObject({ state: 'fighting', alive: 2, placed: 3 });
+    expect(spawner.fired('after')).toBe(false);
+    host.kill(b!);
+    t = run(spawner, t, 9.8);
+    expect(spawner.status().find((g) => g.id === 'first')!.state).toBe('stragglers');
+    expect(spawner.broken('first')).toBe(false);
+    expect(spawner.fired('after')).toBe(false);
+    t = run(spawner, t, 0.4);
+    expect(spawner.broken('first')).toBe(true);
+    expect(spawner.dead('first')).toBe(false);
+    expect(spawner.status().find((g) => g.id === 'first')!.state).toBe('beaten');
+    expect(spawner.fired('after')).toBe(true);
+    host.kill(c!);
+    run(spawner, t, TICK_SECONDS);
+    expect(spawner.status().find((g) => g.id === 'first')!.state).toBe('dead');
+  });
+
+  it('one enemy never lost is not a straggler, and `stragglers.alive` 0 turns the rule off', () => {
+    const host = fakeHost();
+    const spawner = new Spawner(encounter([group('lone', { kind: 'start' }), group('after', { kind: 'dead', group: 'lone' })], 10, {}, { stragglers: { alive: 1, seconds: 1 } }), WORLD, host);
+    run(spawner, 0, 5);
+    expect(spawner.fired('after')).toBe(false);
+    const off = fakeHost();
+    const strict = new Spawner(encounter([{ ...group('pair', { kind: 'start' }), members: [{ archetype: 'rifleman', count: 2 }] }, group('after', { kind: 'dead', group: 'pair' })], 10, {}, { stragglers: { alive: 0, seconds: 1 } }), WORLD, off);
+    const t = run(strict, 0, 1);
+    off.kill(strict.spawnedBy('pair')[0]!);
+    run(strict, t, 10);
+    expect(strict.fired('after')).toBe(false);
+  });
+
+  it('a script group waits for the script; stop ends its waves and drops what it has queued; the living fight on', () => {
+    const host = fakeHost();
+    const e = encounter(
+      [
+        { ...group('push', { kind: 'script' }, { waves: { count: 10, everySeconds: 2, minSeconds: 2, maxSeconds: 2 } }), members: [{ archetype: 'rifleman', count: 3 }] },
+        group('never', { kind: 'script' }),
+        group('after', { kind: 'dead', group: 'push' }),
+      ],
+      4,
+    );
+    const spawner = new Spawner(e, WORLD, host);
+    let t = run(spawner, 0, 30);
+    expect(spawner.fired('push')).toBe(false);
+    expect(spawner.status().find((g) => g.id === 'push')).toMatchObject({ state: 'waiting', trigger: 'script' });
+    spawner.activate('push', t);
+    t = run(spawner, t, 3);
+    // Two waves sent, the cap of 4 placed, the rest queued and held back by the cap.
+    expect(spawner.wavesOf('push')).toHaveLength(2);
+    expect(host.alive).toBe(4);
+    expect(spawner.pending).toBe(2);
+    expect(spawner.heldBack).toEqual({ cap: 2, seen: 0, occupied: 0 });
+    expect(spawner.describe()).toMatch(/push fighting 4\/4 w2\/10 q2.*held back: cap 2/);
+    expect(spawner.stop('push', t)).toBe(true);
+    expect(spawner.stop('push', t)).toBe(false);
+    expect(spawner.pending).toBe(0);
+    t = run(spawner, t, 20);
+    expect(spawner.wavesOf('push')).toHaveLength(2);
+    expect(spawner.spawnedBy('push')).toHaveLength(4);
+    expect(spawner.dead('push')).toBe(false);
+    for (const id of spawner.spawnedBy('push')) host.kill(id);
+    run(spawner, t, TICK_SECONDS * 2);
+    expect(spawner.status().find((g) => g.id === 'push')!.state).toBe('stopped');
+    expect(spawner.fired('after')).toBe(true);
+    // Stopped before it was ever sent: sent-and-empty, dead at once, and it never spawns.
+    spawner.stop('never', t);
+    expect(spawner.dead('never')).toBe(true);
+    expect(spawner.activate('never', t)).toBe(false);
+    expect(spawner.spawnedBy('never')).toHaveLength(0);
+  });
+
+  it('says a member waited because every candidate was in view', () => {
+    const host = fakeHost();
+    host.eyes = [{ x: 0, y: 1.6, z: 0 }, { x: -6, y: 1.6, z: 10 }];
+    const spawner = new Spawner(encounter([{ ...group('g', { kind: 'start' }), zone: 'z', members: [{ archetype: 'rifleman', count: 2 }] }]), WORLD, host);
+    run(spawner, 0, 1);
+    expect(spawner.heldBack).toEqual({ cap: 0, seen: 2, occupied: 0 });
+    expect(spawner.status()[0]).toMatchObject({ state: 'queued', queued: 2, alive: 0 });
+  });
+});
+
 describe('never where a human can see (T-3.32)', () => {
   it('lists a zone’s candidates nearest the centre first', () => {
     const c = zoneCandidates({ x: 0, z: 10, radius: 4 });
@@ -260,6 +355,10 @@ describe('the committed encounter (T-3.32)', () => {
     expect(bad([group('g', { kind: 'start' }, { waves: { count: 2, everySeconds: 10, minSeconds: 20, maxSeconds: 30 } })])).toThrow(/minSeconds ≤ everySeconds ≤ maxSeconds/);
     expect(bad([group('g', { kind: 'start' }, { waves: { count: 2, everySeconds: 10 } })])).toThrow(/missing 'minSeconds'/);
     expect(bad([group('g', { kind: 'start' }, { colour: 'red' })])).toThrow(/unknown key 'colour'/);
+    expect(bad([group('g', { kind: 'script', at: 3 })])).toThrow(/unknown key 'at'/);
+    expect(bad([group('g', { kind: 'start' })], { stragglers: { alive: 1 } })).toThrow(/missing 'seconds'/);
+    expect(bad([group('g', { kind: 'start' })], { stragglers: { alive: -1, seconds: 5 } })).toThrow(/stragglers.alive/);
+    expect(e.stragglers).toEqual({ alive: 1, seconds: 60 });
     expect(() => parseEncounter({ world: 'range', aliveCap: 4, probes: [1], areas: {}, groups: [] })).toThrow(/has no mission/);
   });
 });

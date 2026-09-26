@@ -31,7 +31,7 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
     const group = encounter.groups.find((g) => g.id === id)!;
     const spawner = session.spawner!;
     if (!spawner.fired(id)) {
-      if (group.trigger.kind === 'dead' && !spawner.dead(group.trigger.group)) return groupHint(group.trigger.group, slot, visited);
+      if (group.trigger.kind === 'dead' && !spawner.broken(group.trigger.group)) return groupHint(group.trigger.group, slot, visited);
       if (group.trigger.kind === 'enter') return { point: { ...resolveArea(group.trigger.area, encounter, world), y: 0 }, target: null };
     }
     const ids = spawner.spawnedBy(id);

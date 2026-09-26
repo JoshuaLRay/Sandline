@@ -18,6 +18,8 @@ describe('mission (T-3.35)', () => {
     const summary = judgeMission(runs, null);
     const report = reportMission(summary);
     console.log(report);
+    // U-001: the squad is never left alone past the ceiling while a timed objective runs.
+    expect(summary.failures.filter((f) => f.includes('no enemy in contact'))).toEqual([]);
     for (const r of runs) {
       expect(['complete', 'failed', 'timeout']).toContain(r.outcome);
       expect(r.enemiesSpawned).toBeGreaterThan(0);
@@ -41,6 +43,10 @@ describe('mission (T-3.35)', () => {
     expect(cold.failures.some((f) => f.includes('in cover'))).toBe(true);
     const calm = judgeMission(runs.map((r) => ({ ...r, episodes: 0 })), null);
     expect(calm.failures.some((f) => f.includes('suppression episodes'))).toBe(true);
+    // U-001: one run left quiet past the ceiling is enough, whatever the seed count.
+    const stalled = judgeMission([{ ...runs[0]!, longestQuietTimed: MISSION_SCENARIO.maxQuietSeconds + 1, longestQuietObjective: 4 }], null);
+    expect(stalled.failures.some((f) => f.includes('no enemy in contact') && f.includes('objective 4'))).toBe(true);
+    expect(judgeMission(runs.map((r) => ({ ...r, longestQuietTimed: MISSION_SCENARIO.maxQuietSeconds })), null).failures.some((f) => f.includes('no enemy in contact'))).toBe(false);
     const slow = judgeMission(runs, { enemies: 40, bots: 5, ticks: 1, aiUsPerTick: 9000, stepUsPerTick: 9500, aiShare: 0.27 });
     expect(slow.failures.some((f) => f.includes('AI took 27.0%'))).toBe(true);
   });

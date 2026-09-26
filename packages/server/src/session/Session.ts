@@ -1011,7 +1011,11 @@ export class Session {
         const point = saved.spawns[slot.index] ?? spawnFor(slot.index);
         slot.state = createMoveState(point.x, point.y, point.z);
       }
-      if (saved.event && this.eventRun) this.eventRun.restore(saved.event as EventCheckpoint);
+      // U-001: a started session's spawner was built before the checkpoint was known.
+      if (this.roomStarted) {
+        this.startEncounter(this.missionCheckpointState.completedGroups);
+        this.restoreEvents(this.missionCheckpointState);
+      }
     }
   }
 
@@ -1110,7 +1114,8 @@ export class Session {
   private captureMissionCheckpoint(): void {
     const spawner = this.spawnerValue;
     const completedGroups =
-      spawner && this.encounter ? this.encounter.groups.filter((g) => spawner.dead(g.id)).map((g) => g.id) : [];
+      // U-001: a group beaten down to stragglers is as good as dead to a retry: it is not sent again.
+      spawner && this.encounter ? this.encounter.groups.filter((g) => spawner.broken(g.id)).map((g) => g.id) : [];
     this.missionCheckpointState = {
       spawns: this.slots.map((s) => ({ x: s.state.x, y: s.state.y, z: s.state.z })),
       completedGroups,
@@ -1249,6 +1254,26 @@ export class Session {
     this.startEncounter(completedGroups);
   }
 
+  /**
+   * U-001: the event script back where a checkpoint left it (or from the
+   * start without one), and every group it had sent that the checkpoint did
+   * not count beaten sent again, from its first wave, into the fresh spawner
+   * `startEncounter` just built. Without this a retry left those groups
+   * "sent" to the script and never spawned by the spawner — the garrison
+   * gone, and the counterattack waiting on its death for ever.
+   */
+  private restoreEvents(saved: { completedGroups: readonly string[]; event: EventCheckpoint | null } | null): void {
+    if (!this.eventRun) return;
+    if (!saved?.event) {
+      this.eventRun.reset();
+      return;
+    }
+    this.eventRun.restore(saved.event);
+    const { sent, stopped } = this.eventRun.groups();
+    for (const id of stopped) this.spawnerValue?.stop(id, 0);
+    for (const id of sent) if (!saved.completedGroups.includes(id)) this.spawnerValue?.activate(id, 0);
+  }
+
   /** Retry a failed mission from the latest completed-objective checkpoint. */
   retryMission(): void {
     const run = this.missionRun;
@@ -1260,8 +1285,7 @@ export class Session {
     });
     this.resetMissionWorld(spawns, saved?.completedGroups ?? []);
     run.retry();
-    if (saved?.event && this.eventRun) this.eventRun.restore(saved.event);
-    else this.eventRun?.reset();
+    this.restoreEvents(saved);
     this.broadcastMission();
     this.broadcastScriptState();
   }
@@ -1329,8 +1353,10 @@ export class Session {
   private eventHost(): EventHost {
     return {
       squadFeet: () => this.slots.filter((s) => !isDead(s.health)).map((s) => ({ x: s.state.x, z: s.state.z })),
-      groupDead: (id) => this.spawnerValue?.dead(id) ?? false,
+      // U-001: a group down to stragglers long enough counts, so one hidden survivor holds nothing back.
+      groupDead: (id) => this.spawnerValue?.broken(id) ?? false,
       spawnGroup: (id, seconds) => this.spawnerValue?.activate(id, seconds) ?? false,
+      stopGroup: (id, seconds) => this.spawnerValue?.stop(id, seconds) ?? false,
       objective: () => {
         const m = this.missionRun?.current;
         return m ? { index: m.objective, state: m.state } : null;
@@ -2283,7 +2309,7 @@ export class Session {
       slot.pendingInputTick = -1;
     }
     this.startEncounter(this.missionCheckpointState?.completedGroups ?? []);
-    if (this.missionCheckpointState?.event && this.eventRun) this.eventRun.restore(this.missionCheckpointState.event);
+    if (this.missionCheckpointState?.event) this.restoreEvents(this.missionCheckpointState);
     this.broadcastRoomState();
     this.broadcastMission();
     this.broadcastScriptState();

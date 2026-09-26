@@ -19,6 +19,12 @@
  * skipped for the next; one another enemy stands on is too. When none is
  * left the member waits for a later tick.
  *
+ * WHY NOTHING CAME (U-001). A group can be waiting on its trigger, have
+ * members queued that the cap or the eyes hold back, be down to stragglers,
+ * be beaten, or have been stopped by the script; `status` says which, and how
+ * many queued members the last step could not place and why, so a report of
+ * an empty map can be read off the session rather than guessed.
+ *
  * Pure of the session: it talks to it through `SpawnerHost`, so a test can
  * give it eyes and a squad of its own.
  */
@@ -137,6 +143,35 @@ interface GroupRun {
   lastWaveAt: number;
   waveTimes: number[];
   spawned: number[];
+  /** U-001: stopped by the script — no more waves. */
+  stopped: boolean;
+  /** U-001: when it came down to stragglers (every wave placed, few left), or null. */
+  stragglingSince: number | null;
+}
+
+/** Where a group stands, for `status` (U-001). */
+export type GroupState = 'waiting' | 'queued' | 'fighting' | 'stragglers' | 'beaten' | 'dead' | 'stopped';
+
+export interface GroupStatus {
+  id: string;
+  state: GroupState;
+  /** What starts it, while it waits: its trigger's kind. */
+  trigger: EncounterGroup['trigger']['kind'];
+  wavesSent: number;
+  waves: number;
+  placed: number;
+  alive: number;
+  queued: number;
+}
+
+/** Queued members the last step could not place, by why (U-001). */
+export interface HeldBack {
+  /** The alive cap was reached. */
+  cap: number;
+  /** Every free candidate of the zone was in a human's sight. */
+  seen: number;
+  /** Every candidate of the zone was stood on. */
+  occupied: number;
 }
 
 interface Pending {
@@ -151,6 +186,9 @@ export class Spawner {
   private readonly candidates = new Map<string, Vec3[]>();
   /** Every spawn made, in order. */
   readonly log: SpawnEvent[] = [];
+  /** The seconds of the latest step. */
+  private now = 0;
+  private held: HeldBack = { cap: 0, seen: 0, occupied: 0 };
 
   constructor(
     readonly encounter: Encounter,
@@ -165,7 +203,7 @@ export class Spawner {
     completedGroups: readonly string[] = [],
   ) {
     if (encounter.world !== world.id) throw new Error(`encounter for '${encounter.world}' on world '${world.id}'`);
-    this.runs = encounter.groups.map((def, i) => ({ def, sessionGroup: firstGroupId + i, firedAt: null, wavesSent: 0, lastWaveAt: 0, waveTimes: [], spawned: [] }));
+    this.runs = encounter.groups.map((def, i) => ({ def, sessionGroup: firstGroupId + i, firedAt: null, wavesSent: 0, lastWaveAt: 0, waveTimes: [], spawned: [], stopped: false, stragglingSince: null }));
     for (const id of completedGroups) {
       const run = this.runs.find((r) => r.def.id === id);
       if (!run) throw new Error(`no completed group '${id}'`);
@@ -210,12 +248,67 @@ export class Spawner {
     return this.queue.length;
   }
 
+  /** Queued members the latest step could not place, and why. */
+  get heldBack(): Readonly<HeldBack> {
+    return this.held;
+  }
+
+  /** Every group, where it stands (U-001's diagnostics). */
+  status(): GroupStatus[] {
+    return this.runs.map((run) => {
+      const alive = run.spawned.filter((id) => this.host.isAlive(id)).length;
+      const queued = this.queue.filter((p) => p.run === run).length;
+      const id = run.def.id;
+      const state: GroupState =
+        run.firedAt === null ? 'waiting'
+        : this.dead(id) ? (run.stopped ? 'stopped' : 'dead')
+        : this.broken(id) ? 'beaten'
+        : run.stragglingSince !== null ? 'stragglers'
+        : queued > 0 && alive === 0 ? 'queued'
+        : 'fighting';
+      return { id, state, trigger: run.def.trigger.kind, wavesSent: run.wavesSent, waves: run.def.waves.count, placed: run.spawned.length, alive, queued };
+    });
+  }
+
+  /** `status` in a line: every group that is not waiting or dead, and what the last step held back. */
+  describe(): string {
+    const groups = this.status().map((g) => `${g.id} ${g.state === 'waiting' ? `waiting(${g.trigger})` : g.state} ${g.alive}/${g.placed} w${g.wavesSent}/${g.waves}${g.queued ? ` q${g.queued}` : ''}`);
+    const h = this.held;
+    return `${groups.join(', ')}; held back: cap ${h.cap}, seen ${h.seen}, occupied ${h.occupied}`;
+  }
+
   /** A group is dead once every member it will send has been placed and none of them lives. */
   dead(groupId: string): boolean {
     const run = this.run(groupId);
     if (run.firedAt === null || run.wavesSent < run.def.waves.count) return false;
     if (this.queue.some((p) => p.run === run)) return false;
     return run.spawned.every((id) => !this.host.isAlive(id));
+  }
+
+  /**
+   * U-001: dead, or down to stragglers (the file's `stragglers`) for long
+   * enough — what a `dead` trigger and a script's `group-dead` wait on, so a
+   * survivor nobody can find does not hold the mission.
+   */
+  broken(groupId: string): boolean {
+    if (this.dead(groupId)) return true;
+    const since = this.run(groupId).stragglingSince;
+    return since !== null && this.now - since >= this.encounter.stragglers.seconds;
+  }
+
+  /**
+   * U-001: the script's `stop-group` — no more waves, and its queued members
+   * dropped; the living fight on, and it is dead once they are. A group
+   * never sent is stopped as sent-and-empty. Idempotent.
+   */
+  stop(groupId: string, seconds: number): boolean {
+    const run = this.run(groupId);
+    if (run.stopped) return false;
+    run.stopped = true;
+    if (run.firedAt === null) run.firedAt = seconds;
+    run.wavesSent = Math.max(run.wavesSent, run.def.waves.count);
+    for (let i = this.queue.length - 1; i >= 0; i--) if (this.queue[i]!.run === run) this.queue.splice(i, 1);
+    return true;
   }
 
   private run(groupId: string): GroupRun {
@@ -245,7 +338,9 @@ export class Spawner {
         return this.host.squadFeet().some((p) => Math.sqrt((p.x - area.x) ** 2 + (p.z - area.z) ** 2) <= area.radius);
       }
       case 'dead':
-        return this.dead(t.group);
+        return this.broken(t.group);
+      case 'script':
+        return false;
     }
   }
 
@@ -275,6 +370,15 @@ export class Spawner {
 
   /** Fire triggers, send waves, and place what the cap and the eyes allow. Call once a tick, with seconds since the mission began. */
   step(seconds: number): void {
+    this.now = seconds;
+    this.held = { cap: 0, seen: 0, occupied: 0 };
+    for (const run of this.runs) {
+      // Stragglers: every wave placed, at least one lost, few enough left.
+      if (run.stragglingSince === null && run.firedAt !== null && run.wavesSent >= run.def.waves.count && !this.queue.some((p) => p.run === run)) {
+        const alive = run.spawned.filter((id) => this.host.isAlive(id)).length;
+        if (alive > 0 && alive < run.spawned.length && alive <= this.encounter.stragglers.alive) run.stragglingSince = seconds;
+      }
+    }
     for (const run of this.runs) {
       if (run.firedAt === null) {
         if (this.externalTriggers || !this.triggered(run, seconds)) continue;
@@ -291,10 +395,14 @@ export class Spawner {
     /** Zones with nowhere left this tick: later members for them wait too. */
     const full = new Set<string>();
     const cap = this.pacing.aliveCap(this.encounter.aliveCap);
-    for (let i = 0; i < this.queue.length && alive < cap; ) {
+    /** Zone → why it had nowhere this tick. */
+    const why = new Map<string, 'seen' | 'occupied'>();
+    let i = 0;
+    for (; i < this.queue.length && alive < cap; ) {
       const item = this.queue[i]!;
       const zone = item.run.def.zone;
       if (full.has(zone)) {
+        this.held[why.get(zone)!]++;
         i++;
         continue;
       }
@@ -311,6 +419,8 @@ export class Spawner {
       }
       if (!point) {
         full.add(zone);
+        why.set(zone, skippedVisible > 0 ? 'seen' : 'occupied');
+        this.held[why.get(zone)!]++;
         i++;
         continue;
       }
@@ -318,12 +428,14 @@ export class Spawner {
       const face = posture.kind === 'patrol' ? posture.route[0]! : posture.face;
       const yaw = yawToward(face.x - point.x, face.z - point.z);
       const netId = this.host.spawn(item.archetype, { ...point, yaw, posture, group: item.run.sessionGroup });
-      if (netId === null) return;
+      if (netId === null) break;
       item.run.spawned.push(netId);
       this.log.push({ seconds, group: item.run.def.id, wave: item.wave, archetype: item.archetype, netId, point: { ...point }, skippedVisible });
       taken.push({ x: point.x, z: point.z });
       alive++;
       this.queue.splice(i, 1);
     }
+    // What the cap held back: every member the loop did not reach.
+    this.held.cap += this.queue.length - i;
   }
 }
