@@ -106,6 +106,21 @@ import { RemoteSoldiers } from './character/remoteSoldiers.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
 import { RESTART_KEY, afterActionXp, missionLine } from './ui/missionHud.ts';
+import type { Vitality } from '@sandline/shared';
+import { createHud } from './ui/hud/Hud.ts';
+import {
+  type CompassMarkerInput,
+  type DamageHit,
+  ammoView,
+  bearingDegrees,
+  compassView,
+  damageDirectionView,
+  hitMarkerOpacity,
+  liveHits,
+  squadRows,
+  stanceOf,
+  vitalsView,
+} from './ui/hud/hudModel.ts';
 import { type AimSubject, OrderWheelView, buildMark, orderFromRelease } from './ui/OrderWheel.ts';
 import { type MarkerVec, OrderMarkerOverlay, orderMarkers } from './ui/OrderMarkers.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
@@ -688,6 +703,8 @@ function onServerShot(net: NetClient, shot: ServerShot): void {
     // Our own shot: the tracer is already drawn, so this only lands the hit
     // marker and the damage number.
     combat.drawServerShot(shotOrigin, shotEnd, shot.targetNetId, shot.damage, clock.tick * TICK_SECONDS);
+    // The hit marker is the server's word that the round landed on a soldier (T-4.25).
+    if (shot.targetNetId !== 0) lastHitAt = clock.tick * TICK_SECONDS;
     return;
   }
   /**
@@ -715,6 +732,12 @@ function landImpact(net: NetClient, shot: ServerShot): void {
     return;
   }
   const target = shot.targetNetId === net.netId ? player : remotes.get(shot.targetNetId);
+  // A round that hit US: where it came from, for the HUD's damage direction
+  // (T-4.25), whatever state the body is in.
+  if (shot.targetNetId === net.netId) {
+    const from = remotes.get(shot.shooterNetId);
+    if (from) damageHits.push({ bearingDeg: bearingDegrees(from.position.x - player.position.x, from.position.z - player.position.z), at: now });
+  }
   // A downed soldier is already on the ground; the flinch belongs to the upright.
   const targetDowned = shot.targetNetId === net.netId ? net.vitality !== 'alive' : net.remoteVitality(shot.targetNetId) !== 'alive';
   if (!target || targetDowned) return;
@@ -793,6 +816,11 @@ function onServerDetonation(net: NetClient, event: ServerDetonation): void {
      */
     const from = shooterDirection(centre.x - mesh.position.x, centre.z - mesh.position.z, mesh.rotation.y);
     effects.flinch(mesh, now, hitReactionFrom(target.damage, 'torso', from));
+  }
+
+  // A blast that caught us: its direction on the HUD (T-4.25).
+  if (event.targets.some((t) => t.netId === net.netId)) {
+    damageHits.push({ bearingDeg: bearingDegrees(centre.x - player.position.x, centre.z - player.position.z), at: now });
   }
 
   lastBlast = {
@@ -1041,6 +1069,9 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
   }
   remotes.clear();
   combat.reset();
+  lastHitAt = null;
+  damageHits = [];
+  compassMarkers = [];
   effects.reset();
   playerRig.setPose('standing');
   localPoseDriver.reset();
@@ -1093,6 +1124,10 @@ hudToggle.id = 'hud-toggle';
 hudToggle.textContent = '−';
 hudToggle.title = 'Collapse (H)';
 hudToggle.addEventListener('click', toggleHud);
+// The QA readouts start folded away behind H (T-4.25): the player's HUD is the default.
+hud?.classList.add('collapsed');
+hudToggle.textContent = '+';
+hudToggle.setAttribute('aria-expanded', 'false');
 hud?.querySelector('h1')?.append(hudToggle);
 
 const panels = document.createElement('div');
@@ -1255,6 +1290,18 @@ let rejoinNoticeUntil = 0;
 let rejoinNotice = '';
 /** T-3.34: the mission's one line, from the host's `Mission` message. */
 const missionHud = document.getElementById('mission');
+/**
+ * The player's HUD (T-4.25): drawn every frame from replicated state alone,
+ * by the pure functions in `hudModel.ts`. The QA readouts it replaces stay
+ * behind H and N.
+ */
+const playerHud = createHud(document.body);
+/** When our last round landed on a soldier (the server's word), for the hit marker. */
+let lastHitAt: number | null = null;
+/** Where the rounds and blasts that hit us came from, for the damage direction. */
+let damageHits: DamageHit[] = [];
+/** The order and mark markers drawn this frame, for the compass. */
+let compassMarkers: CompassMarkerInput[] = [];
 let scriptNotice = '';
 let scriptNoticeUntil = 0;
 /** Last gap written to the reticle, so the style is only touched on change. */
@@ -1619,12 +1666,15 @@ function frame(): void {
       if (slot >= 0) bySlot.set(slot, at);
     }
     const self = { x: rx, y: ry, z: rz };
-    orderMarkerOverlay.show(
-      orderMarkers(net.orders, net.marks, {
-        slot: (slot) => (slot === net.slot ? self : bySlot.get(slot) ?? null),
-        netId: (netId) => (netId === net.netId ? self : drawn.get(netId) ?? null),
-      }),
-    );
+    const shownMarkers = orderMarkers(net.orders, net.marks, {
+      slot: (slot) => (slot === net.slot ? self : bySlot.get(slot) ?? null),
+      netId: (netId) => (netId === net.netId ? self : drawn.get(netId) ?? null),
+    });
+    orderMarkerOverlay.show(shownMarkers);
+    // The same markers on the compass (T-4.25), by bearing from where we are drawn.
+    compassMarkers = shownMarkers.map((m) => ({ key: m.key, kind: m.kind, label: m.label, x: m.at.x, z: m.at.z }));
+  } else {
+    compassMarkers = [];
   }
   orderWheel.update(input.orderWheel);
 
@@ -1775,10 +1825,11 @@ function frame(): void {
     crosshair.classList.toggle('sighted', ads && input.firstPerson && !holdingPouch);
   }
   if (missionHud) {
-    const mission = missionLine(net?.mission ?? null);
+    // The objective's own line lives on the player's HUD (T-4.25); this
+    // element keeps the after-action credit and a script's notice.
     const notice = performance.now() < scriptNoticeUntil ? scriptNotice : '';
     const xp = afterActionXp(net?.mission ?? null, net?.progression ?? [], net?.slot ?? -1);
-    const text = [mission, xp, notice].filter((x) => x.length > 0).join(xp ? '\n' : ' — ');
+    const text = [xp, notice].filter((x) => x.length > 0).join('\n');
     if (missionHud.textContent !== text) missionHud.textContent = text;
     missionHud.classList.toggle('shown', text.length > 0);
     missionHud.classList.toggle('after-action', xp.length > 0);
@@ -1806,6 +1857,56 @@ function frame(): void {
     }
     if (downedBanner.textContent !== text) downedBanner.textContent = text;
     downedBanner.classList.toggle('shown', text.length > 0);
+  }
+  /**
+   * The player's HUD (T-4.25), from replicated state and the predicted
+   * weapon alone: nothing here decides anything, it only shows what the host
+   * and the weapon state already say. Off in the lobby, where there is no
+   * soldier to show.
+   */
+  playerHud.setVisible(live !== null);
+  if (live) {
+    const hudNow = clock.tick * TICK_SECONDS + clock.alpha * TICK_SECONDS;
+    const hudYaw = Math.atan2(camSolve.forward.x, camSolve.forward.z);
+    damageHits = liveHits(damageHits, hudNow);
+    const vitalsStats = net?.stats;
+    const magazine = combat.magazine(hudNow);
+    const vitalityOfSlot = (slot: number): Vitality | null => {
+      if (!net) return null;
+      if (slot === net.slot) return net.vitality;
+      for (const netId of net.remotes().keys()) if (net.remoteSlot(netId) === slot) return net.remoteVitality(netId);
+      return null;
+    };
+    playerHud.update({
+      vitals: vitalsView({
+        health: vitalsStats?.health ?? 0,
+        maxHealth: vitalsStats?.maxHealth ?? 0,
+        vitality: localVitality,
+        vitalTimer: vitalsStats?.vitalTimer ?? 0,
+        reviveProgress: vitalsStats?.reviveProgress ?? 0,
+        reviverName: net?.roster[vitalsStats?.reviverSlot ?? -1]?.name ?? '',
+      }),
+      ammo: ammoView({
+        weapon: combat.weapon.name,
+        ammo: magazine.ammo,
+        magSize: magazine.magSize,
+        reloading: magazine.reloading,
+        reloadFraction: magazine.reloadFraction,
+        pouch: throws.rows().map((row, i) => ({ ...row, selected: holdingPouch && throws.kind === i })),
+      }),
+      stance: stanceOf({
+        downed,
+        vaulting: sim?.vault != null,
+        prone: input.proning,
+        crouched: input.crouching,
+        grounded: sim?.grounded ?? true,
+      }),
+      objective: missionLine(net?.mission ?? null),
+      squad: squadRows(net?.roster ?? [], net?.slot ?? -1, vitalityOfSlot, net?.orders ?? []),
+      compass: compassView(hudYaw, { x: rx, z: rz }, compassMarkers),
+      hitMarker: hitMarkerOpacity(lastHitAt, hudNow),
+      damage: damageDirectionView(damageHits, hudYaw, hudNow),
+    });
   }
   // Every value in the camera panel describes where the arm puts the camera
   // relative to a character you cannot see in first person.

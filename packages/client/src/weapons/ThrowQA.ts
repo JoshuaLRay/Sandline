@@ -129,6 +129,11 @@ export class ThrowQA {
     return this.counts[index] ?? 0;
   }
 
+  /** Every row of the pouch, in wire order, with what is left of it (T-4.25). */
+  rows(): { name: string; count: number }[] {
+    return this.working.map((row, i) => ({ name: row.name, count: this.count(i) }));
+  }
+
   select(index: number): void {
     if (index < 0 || index >= PROJECTILE_ORDER.length) return;
     const changed = index !== this.index;
