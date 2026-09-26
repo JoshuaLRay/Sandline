@@ -63,6 +63,21 @@ describe('objective-aware scripted leader (T-4.17)', () => {
     expect(ids).toContain(f.session.orderFor(0)!.target);
   });
 
+  it('clears a clear-and-hold area before holding it: the nearest living enemy near it is attacked, then the area held (B-11)', () => {
+    const area = { x: 10, z: -14, radius: 3 };
+    const f = fixture([{ type: 'clear-and-hold', label: 'hold', area, holdSeconds: 30 }]);
+    const near = f.session.spawnEnemy('rifleman', { x: area.x + 2, y: 0, z: area.z + MISSION_SCENARIO.clearWithinM })!;
+    const far = f.session.spawnEnemy('rifleman', { x: area.x, y: 0, z: area.z + area.radius + MISSION_SCENARIO.clearWithinM + 20 })!;
+    f.lead();
+    expect(f.session.orderFor(0)).toMatchObject({ order: 'attack', target: near });
+    expect(f.session.orderFor(3)!.target).not.toBe(far);
+    const enemy = f.session.enemies.find((e) => e.netId === near)!;
+    enemy.health.current = 0;
+    enemy.health.diedAt = 0;
+    f.lead();
+    expect(f.session.orderFor(0)).toMatchObject({ order: 'hold', point: { x: area.x, y: 0, z: area.z } });
+  });
+
   it('uses an enter trigger and a prerequisite group to find an unspawned destroy target', () => {
     const enter = fixture([{ type: 'destroy', label: 'ambush', group: 'assault-hold' }], encounter);
     expect(enter.session.orderFor(0)).toMatchObject({ order: 'hold', point: { x: 22, y: 0, z: 12 } });
