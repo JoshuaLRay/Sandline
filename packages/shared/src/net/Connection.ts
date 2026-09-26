@@ -47,6 +47,8 @@ export interface ServerConnectionEvents {
   onRoomCommand?: (conn: ServerConnection, msg: Extract<Message, { kind: 'RoomCommand' }>) => void;
   /** U-025: a player putting a bot under a human's command — untrusted; the session checks it. */
   onAssignCommander?: (conn: ServerConnection, msg: Extract<Message, { kind: 'AssignCommander' }>) => void;
+  /** U-026: a player asking to take control of a bot they command — untrusted; the session checks it. */
+  onSwitchCharacter?: (conn: ServerConnection, msg: Extract<Message, { kind: 'SwitchCharacter' }>) => void;
   onClosed?: (conn: ServerConnection, reason: string) => void;
 }
 
@@ -249,6 +251,10 @@ export class ServerConnection {
         this.lastActive = now;
         this.events.onAssignCommander?.(this, msg);
         break;
+      case 'SwitchCharacter':
+        this.lastActive = now;
+        this.events.onSwitchCharacter?.(this, msg);
+        break;
       case 'Ack':
         if (msg.tick > this.lastAckedTick) this.lastAckedTick = msg.tick;
         this.events.onAck?.(this, msg.tick);
@@ -324,6 +330,8 @@ export interface ClientConnectionEvents {
   onRoomState?: (room: Extract<Message, { kind: 'RoomState' }>) => void;
   /** T-2.49: a bot could not carry out its order. */
   onOrderFailed?: (failed: Extract<Message, { kind: 'OrderFailed' }>) => void;
+  /** U-026: the host moved this client into another soldier. */
+  onPossessed?: (possessed: Extract<Message, { kind: 'Possessed' }>) => void;
   onClosed?: (reason: string, code: DisconnectCode | null) => void;
 }
 
@@ -396,6 +404,9 @@ export class ClientConnection {
         break;
       case 'RoomState':
         this.events.onRoomState?.(msg);
+        break;
+      case 'Possessed':
+        this.events.onPossessed?.(msg);
         break;
       case 'OrderFailed':
         this.events.onOrderFailed?.(msg);

@@ -1286,6 +1286,72 @@ export class Session {
     for (const id of sent) if (!saved.completedGroups.includes(id)) this.spawnerValue?.activate(id, 0);
   }
 
+  /**
+   * U-026: a seated human taking control of a bot they command — atomically,
+   * inside one message, so no tick sees two controllers or none. The soldier
+   * they leave is a bot again, under their command; the one they take stops
+   * its brain and loses its order, as a join does. Both keep everything they
+   * are — position, health, weapon and magazine, pouch, class, the campaign
+   * soldier in that slot — because only the controller moves: the connection,
+   * its reconnect claim and its player identity. Every bot the human
+   * commanded follows them to their new slot. Refused (nothing changes, and
+   * nothing is sent) when the session has not started or is paused, when the
+   * target is not a bot this human commands (another's, a human's, their own
+   * soldier, no slot), or when it is a dropped player's seat still held for
+   * their return (T-4.18).
+   */
+  private applySwitchCharacter(conn: ServerConnection, msg: Extract<Message, { kind: 'SwitchCharacter' }>): void {
+    const from = this.slots.find((s) => s.connection === conn && !s.isBot);
+    const to = this.slots[msg.slot];
+    if (!from || !to || !this.roomStarted || this.paused) return;
+    if (to === from || !to.isBot || this.commanders[to.index] !== from.index) return;
+    if (to.reservedUntilMs > 0 && to.reservedUntilMs >= this.nowMs) return;
+
+    // The soldier left behind: a bot again, as on a leave, but claimed by nobody.
+    this.clearReviveStateForSlot(from.index);
+    if (from.mounted) this.dismount(from);
+    from.isBot = true;
+    from.connection = null;
+    from.resumeToken = '';
+    from.reservedUntilMs = 0;
+    from.input = idleInput(from.yaw);
+    from.interactHeld = false;
+    from.heldProjectile = -1;
+    from.queue.length = 0;
+    this.giveBrain(from);
+
+    // The soldier taken: the human's, as on a join, with the client's tick count carried over.
+    this.clearReviveStateForSlot(to.index);
+    this.takeBrain(to);
+    to.isBot = false;
+    to.connection = conn;
+    to.staleTicks = 0;
+    to.newestInputTick = from.newestInputTick;
+    to.lastProcessedInputTick = -1;
+    to.pendingInputTick = -1;
+    to.queue.length = 0;
+    to.input = idleInput(to.yaw);
+    to.interactHeld = false;
+    to.resumeToken = newResumeToken();
+    to.reservedUntilMs = 0;
+    const local = this.localPlayers.get(from.index);
+    this.localPlayers.delete(from.index);
+    if (local !== undefined) this.localPlayers.set(to.index, local);
+    conn.netId = to.netId;
+    conn.slot = to.index;
+
+    // Command follows the human: their bots, and the soldier they left, are theirs where they are now.
+    for (const slot of this.slots) if (this.commanders[slot.index] === from.index) this.commanders[slot.index] = to.index;
+    this.commanders[from.index] = to.index;
+    this.commanders[to.index] = -1;
+
+    const gun = WEAPON_IDS.indexOf(to.weapon.id as (typeof WEAPON_IDS)[number]);
+    conn.send({ kind: 'Possessed', netId: to.netId, slot: to.index, resume: to.resumeToken, weapon: gun < 0 ? 0 : gun, ammo: to.weaponState.ammo, pouch: [...to.pouch] });
+    this.sendProgression(conn);
+    this.broadcastRoster();
+    if (this.orders[to.index]) this.endOrder(to.index, 'replaced', 'a human took the slot');
+  }
+
   /** Retry a failed mission from the latest completed-objective checkpoint. */
   retryMission(): void {
     const run = this.missionRun;
@@ -1813,6 +1879,7 @@ export class Session {
       onMissionRestart: (c) => { if (this.roomStarted) this.requestRestart(c); },
       onRoomCommand: (c, msg) => this.applyRoomCommand(c, msg),
       onAssignCommander: (c, msg) => this.applyAssignCommander(c, msg),
+      onSwitchCharacter: (c, msg) => this.applySwitchCharacter(c, msg),
       onClosed: (c, reason) => this.releaseSlot(c, reason),
     });
     if (conn.state === 'closed') return false;

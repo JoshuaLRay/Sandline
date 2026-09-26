@@ -233,3 +233,58 @@ describe('the in-page session fires and throws from the stance eye the page pred
     }
   });
 });
+
+describe('switching into a commanded bot, as the page sees it (U-026)', () => {
+  beforeAll(() => initNav());
+
+  it('the page predicts the new soldier from where it stands, the old one becomes a remote, and another client sees who is whose', async () => {
+    const { TICK_SECONDS } = await import('@sandline/shared');
+    const server = new LocalServer(LAN);
+    const peer = server.connect(LAN);
+    const net = new NetClient(server.transport, 'me');
+    const other = new NetClient(peer.transport, 'them');
+    net.join();
+    settleThrough(server, 0);
+    other.join();
+    settleThrough(server, 0);
+    expect([net.slot, other.slot]).toEqual([0, 1]);
+    const session = (server as unknown as { session: { slots: { netId: number; isBot: boolean; state: { x: number; z: number } }[] } }).session;
+    const idle = { moveX: 0, moveY: 0, yaw: 0, jump: false, sprint: false, crouch: false, prone: false, interact: false, firing: false } as Parameters<NetClient['tick']>[1];
+    const forward = { ...idle, moveY: 1 };
+    let now = 0;
+    const run = (ticks: number, input = idle) => {
+      for (let i = 0; i < ticks; i++) {
+        now += TICK_SECONDS * 1000;
+        net.tick(server.tick + 1, input, 0);
+        other.tick(server.tick + 1, idle, 0);
+        server.step(now);
+      }
+    };
+    run(20);
+    const oldNetId = net.netId;
+    const target = session.slots[3]!;
+    expect(target.isBot).toBe(true);
+    expect(net.roster[3]?.commander).toBe(0);
+
+    net.switchTo(3);
+    run(10);
+    expect(net.slot).toBe(3);
+    expect(net.netId).toBe(target.netId);
+    expect(session.slots.filter((s) => !s.isBot).length).toBe(2);
+    // Predicted from the new soldier's own position, not the old one's.
+    const here = net.simulated!;
+    expect(Math.hypot(here.x - target.state.x, here.z - target.state.z)).toBeLessThan(0.05);
+    // The soldier left behind is someone else's body on this screen now.
+    expect(net.remotes().has(oldNetId)).toBe(true);
+    expect(net.remotes().has(target.netId)).toBe(false);
+    // Everyone is told: slot 0 is a bot under slot 3, slot 3 a human.
+    expect(other.roster.map((e) => [e.human, e.commander])).toEqual([[false, 3], [true, -1], [false, 3], [true, -1], [false, 3], [false, 3]]);
+
+    // Walking moves the new soldier, on the host and in the page's prediction alike.
+    const start = { x: target.state.x, z: target.state.z };
+    run(30, forward);
+    expect(Math.hypot(target.state.x - start.x, target.state.z - start.z)).toBeGreaterThan(1);
+    const predicted = net.simulated!;
+    expect(Math.hypot(predicted.x - target.state.x, predicted.z - target.state.z)).toBeLessThan(0.5);
+  });
+});

@@ -15,7 +15,7 @@ describe('the squad command rows (U-025)', () => {
   it('six rows: each bot with its commander and every seated human to hand it to, you marked', () => {
     const rows = commandRows(roster, 2);
     expect(rows).toHaveLength(6);
-    expect(rows[0]).toEqual({ slot: 0, label: '1  kai · TL', human: true, commander: -1, options: [] });
+    expect(rows[0]).toEqual({ slot: 0, label: '1  kai · TL', human: true, commander: -1, options: [], switchable: false });
     expect(rows[2]).toMatchObject({ label: '3  rae (you) · MM', human: true, options: [] });
     expect(rows[3]).toEqual({
       slot: 3,
@@ -23,8 +23,12 @@ describe('the squad command rows (U-025)', () => {
       human: false,
       commander: 2,
       options: [{ slot: 0, label: 'kai' }, { slot: 2, label: 'rae (you)' }],
+      switchable: true,
     });
     expect(rows[5]?.label).toBe('6  Bot');
+    // U-026: only the bots you command can be taken over — kai's cannot, from rae's screen.
+    expect(rows.map((r) => r.switchable)).toEqual([false, false, false, true, false, false]);
+    expect(commandRows(roster, 0).map((r) => r.switchable)).toEqual([false, true, false, false, true, true]);
     expect(rows.filter((r) => !r.human).map((r) => r.commander)).toEqual([0, 2, 0, 0]);
   });
 

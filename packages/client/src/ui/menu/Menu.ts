@@ -24,6 +24,8 @@ export interface MenuOptions {
   onResetHints?: () => void;
   /** U-025: hand the bot in slot `bot` to the human in slot `commander`. */
   onAssign?: (bot: number, commander: number) => void;
+  /** U-026: take control of the bot in `slot`, one you command. */
+  onSwitch?: (slot: number) => void;
 }
 
 export type MenuMode = 'hidden' | 'main' | 'pause';
@@ -96,7 +98,7 @@ export function createMenu(options: MenuOptions): Menu {
   const commandHeading = el('h2', 'menu-heading', command);
   commandHeading.textContent = 'Squad command';
   const commandNote = el('p', 'menu-note', command);
-  commandNote.textContent = 'Every bot answers to a player. Anyone may hand any bot to any player, themselves included.';
+  commandNote.textContent = 'Every bot answers to a player. Anyone may hand any bot to any player, themselves included; you may take control of any bot you command.';
   const commandList = el('ol', 'menu-command-list', command);
   let commandDrawn = '';
   const drawCommand = (rows: readonly CommandRow[]): void => {
@@ -132,6 +134,12 @@ export function createMenu(options: MenuOptions): Menu {
         const to = Number(pick.value);
         if (to >= 0) options.onAssign?.(row.slot, to);
       });
+      // U-026: a bot you command, you may play.
+      if (row.switchable && options.onSwitch) {
+        const onSwitch = options.onSwitch;
+        const take = button('Take control', 'menu-button menu-command-take', () => onSwitch(row.slot), li);
+        take.dataset['take'] = String(row.slot);
+      }
     }
   };
   drawCommand([]);

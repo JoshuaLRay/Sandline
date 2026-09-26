@@ -69,3 +69,18 @@ order it. Whether it should also gate orders is an open owner decision, not
 made here. The six slots, possession on join and hand-back on leave stand.
 U-026 (switching into a commanded bot) revisits the consequence above that
 hot-swapping is replaced by orders; that is its decision to record.
+
+## Addendum — 2026-09-26: switching into a commanded bot (U-026)
+
+Owner decision (feedback 2026-09-26, confirmed when U-026 was taken up, with
+this addendum's reversal named): "a player should also be able to switch the
+character they are currently playing as, provided the selected character is a
+bot they command." This **reverses** the consequence above that
+hot-swapping is replaced by issuing orders. A player may take control of any
+bot they command (U-025); the soldier they leave becomes a bot under their
+command, the one they take stops being one. Only the controller moves — the
+connection, its reconnect claim and its player identity. Both soldiers keep
+everything they are (position, health, weapon and magazine, pouch, class,
+campaign soldier), and the six-slot squad, possession on join and hand-back on
+leave all stand. A bot another player commands, a human's soldier, and a
+dropped player's held seat cannot be taken.
