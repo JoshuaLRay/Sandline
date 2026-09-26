@@ -16,7 +16,7 @@ import { requireRig } from './humanoidRig.ts';
 import { type FighterLook, disposeSoldier, setSoldierPalette } from './humanoidSoldier.ts';
 import { fighterVariantFor } from './assetSoldier.ts';
 import { type LocomotionPoseDriver, createLocomotionPoseDriver } from './locomotionPose.ts';
-import { classifyLocomotion } from './locomotionState.ts';
+import { type LocomotionState, classifyLocomotion } from './locomotionState.ts';
 import { type PaletteName, paletteFor } from './soldierTexture.ts';
 import { type KickState, createKick, decayKick } from './weaponKick.ts';
 
@@ -53,6 +53,8 @@ export interface RemoteSoldierOptions {
   world: () => readonly WorldBox[];
   /** Shared with the session by reference, as everywhere. */
   config: MoveConfig;
+  /** T-2.47: each remote's gait, every frame it walks — its phase, its state, where its feet are — for footsteps. */
+  onGait?: (netId: number, phase: number, state: LocomotionState, feet: { x: number; y: number; z: number }) => void;
 }
 
 /** What the caller knows about one remote this frame, beyond where it is. */
@@ -243,6 +245,7 @@ export class RemoteSoldiers {
       );
       rig.setPose(sample.prone ? 'prone' : sample.crouched ? 'crouched' : 'standing');
       entry.pose.update(locomotion, dt);
+      this.options.onGait?.(netId, entry.pose.phase, locomotion.state, { x: sample.x, y: sample.y, z: sample.z });
       // Their replicated aim pitch, the one the server traces their shots
       // along, unsigned on the wire like yaw (T-2.25); their kick from the
       // server's shot events and their reload from the snapshot (T-2.26).

@@ -58,9 +58,12 @@ import {
   wireToTable,
   zoneAt,
   WEAPON_SOUNDS,
+  WORLD_SOUNDS,
+  PROJECTILE_IDS,
   enemyByIndex,
 } from '@sandline/shared';
 import { ReloadWatcher, ShotDeduper, gunSoundPlan } from './audio/weaponSounds.ts';
+import { FootstepTracker, explosionSound, footstepSound, impactSound, nearMissAt } from './audio/worldSounds.ts';
 import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { type ClientLink, DEFAULT_LINK, type LinkConditions, LocalServer, type LocalServerOptions } from './net/LocalServer.ts';
@@ -463,12 +466,23 @@ async function prepareLevelAssets(worldId: string): Promise<void> {
  * Since T-3.11 enemies are drawn by the same path in the enemy palette; see
  * `remoteSoldiers.ts`.
  */
+/** T-2.47: each remote soldier's footsteps, from its own gait. */
+const remoteFeet = new Map<number, FootstepTracker>();
 const remotes = new RemoteSoldiers({
   scene,
   shootable,
   create: createSoldier,
   world: () => collisionBoxes(),
   config,
+  onGait: (netId, phase, state, feet) => {
+    let tracker = remoteFeet.get(netId);
+    if (!tracker) {
+      tracker = new FootstepTracker();
+      remoteFeet.set(netId, tracker);
+    }
+    const sound = footstepSound(state);
+    if (sound) for (const _foot of tracker.update(phase, state)) audio.play(sound, { at: feet });
+  },
 });
 
 /** A signed wire angle (1024 per turn) in radians. */
@@ -766,6 +780,16 @@ function playRemoteShot(net: NetClient, shot: ServerShot): void {
   const ear = audio.listener;
   const d = Math.hypot(at.x - ear.x, at.y - ear.y, at.z - ear.z);
   for (const part of gunSoundPlan(shooterWeaponId(net, shot.shooterNetId), d)) audio.play(part.sound, { at, gain: part.gain });
+  // T-2.47: a round that passed our head cracks on the side it went by.
+  const here = net.simulated;
+  if (here && shot.targetNetId !== net.netId && net.vitality !== 'dead') {
+    const head = eyePosition(here.x, here.y, here.z, DEFAULT_MUZZLE_RIG, here.prone);
+    const past = nearMissAt(at, { x: shot.x, y: shot.y, z: shot.z }, head);
+    if (past) {
+      audio.play(WORLD_SOUNDS.nearMiss.crack, { at: past });
+      audio.play(WORLD_SOUNDS.nearMiss.whiz, { at: past });
+    }
+  }
 }
 
 /** T-2.46: the reload stage's sound. */
@@ -788,6 +812,58 @@ function playRemoteReloads(net: NetClient): void {
     for (const stage of watcher.update(net.remoteWeapon(netId).reloadProgress)) audio.play(reloadSound(stage), { at: { x: at.x, y: at.y + 1.2, z: at.z } });
   }
   for (const netId of [...remoteReloads.keys()]) if (!drawn.has(netId)) remoteReloads.delete(netId);
+}
+
+/** T-2.47: our own footsteps. */
+const localSteps = new FootstepTracker();
+/** T-2.47: what the world did since the last frame, as sounds. */
+const heardProjectiles = new Map<number, { vy: number }>();
+const heardVitality = new Map<number, string>();
+let wasVaulting = false;
+let airSeconds = 0;
+function playWorldEvents(net: NetClient, dt: number): void {
+  // Grenades thrown and bouncing, rockets launched: from the replicated projectiles.
+  const seen = new Set<number>();
+  for (const p of net.projectiles()) {
+    seen.add(p.netId);
+    const at = { x: p.x, y: p.y, z: p.z };
+    const kind = PROJECTILE_IDS[p.kind] ?? 'frag';
+    const prev = heardProjectiles.get(p.netId);
+    if (!prev) {
+      if (kind === 'rocket') {
+        audio.play(WORLD_SOUNDS.rocket.launch, { at });
+        audio.play(WORLD_SOUNDS.rocket.flight, { at });
+      } else audio.play(WORLD_SOUNDS.grenade.throw, { at });
+    } else if (kind !== 'rocket' && prev.vy < -0.5 && p.vy >= 0) {
+      audio.play(WORLD_SOUNDS.grenade.bounce, { at });
+    }
+    heardProjectiles.set(p.netId, { vy: p.vy });
+  }
+  for (const id of [...heardProjectiles.keys()]) if (!seen.has(id)) heardProjectiles.delete(id);
+  // Our own vault and landing.
+  const sim = net.simulated;
+  if (sim) {
+    const vaulting = sim.vault != null;
+    if (vaulting && !wasVaulting) playOwn(WORLD_SOUNDS.movement.vault);
+    if (!sim.grounded && !vaulting) airSeconds += dt;
+    else {
+      if (airSeconds >= WORLD_SOUNDS.landing.minAirSeconds || (wasVaulting && !vaulting)) {
+        audio.play(WORLD_SOUNDS.movement.land, { at: { x: sim.x, y: sim.y, z: sim.z }, own: true });
+      }
+      airSeconds = 0;
+    }
+    wasVaulting = vaulting;
+  }
+  // Bodies: a soldier going down, or dying, where they are.
+  const vitalities: [number, string, { x: number; y: number; z: number } | null][] = [[net.netId, net.vitality, sim ? { x: sim.x, y: sim.y, z: sim.z } : null]];
+  for (const [netId, at] of net.remotes()) vitalities.push([netId, net.remoteVitality(netId), at]);
+  for (const [netId, vitality, at] of vitalities) {
+    const before = heardVitality.get(netId);
+    heardVitality.set(netId, vitality);
+    if (before === undefined || before === vitality || !at) continue;
+    if (vitality === 'downed') audio.play(WORLD_SOUNDS.bodies.downed, { at, own: netId === net.netId });
+    else if (vitality === 'dead') audio.play(WORLD_SOUNDS.bodies.fall, { at, own: netId === net.netId });
+  }
 }
 
 /** T-2.46: a sound of our own, at the muzzle, never delayed and first for a voice. */
@@ -838,8 +914,12 @@ function landImpact(net: NetClient, shot: ServerShot): void {
     const surface = surfaceAt(shot, collisionBoxes());
     // The wire rounds the point to 1/64 m; the mark goes on the face itself.
     if (surface) effects.impact(surface.point, surface.normal, now);
+    // T-2.47: the impact sounds like what it struck; a round into open ground is the ground's.
+    audio.play(impactSound(surface?.box ?? null), { at: { x: shot.x, y: shot.y, z: shot.z } });
     return;
   }
+  // T-2.47: a round into a soldier.
+  audio.play(WORLD_SOUNDS.bodies.hit, { at: { x: shot.x, y: shot.y, z: shot.z }, own: shot.targetNetId === net.netId });
   const target = shot.targetNetId === net.netId ? player : remotes.get(shot.targetNetId);
   // A round that hit US: where it came from, for the HUD's damage direction
   // (T-4.25), whatever state the body is in.
@@ -887,6 +967,11 @@ function onServerDetonation(net: NetClient, event: ServerDetonation): void {
   // The page's row for it: a tuned blast radius draws at the tuned size.
   const def = throws.defOf(event.kind);
   const centre = { x: event.x, y: event.y, z: event.z };
+  // T-2.47: the blast, near or far by how far it was from the ear.
+  {
+    const ear = audio.listener;
+    audio.play(explosionSound(Math.hypot(centre.x - ear.x, centre.y - ear.y, centre.z - ear.z)), { at: centre });
+  }
 
   /**
    * What the scorch goes on: the surface under the blast, if there is one
@@ -1865,6 +1950,12 @@ function frame(): void {
     // Prone beats crouch, as it does in the controller (T-2.40).
     playerRig.setPose(sim?.vault ? 'standing' : input.proning ? 'prone' : input.crouching ? 'crouched' : 'standing');
     localPoseDriver.update(locomotion, dt);
+    // T-2.47: our own feet, on the same gait the body walks.
+    {
+      const sound = footstepSound(locomotion.state);
+      if (sound) for (const _foot of localSteps.update(localPoseDriver.phase, locomotion.state)) audio.play(sound, { at: { x: player.position.x, y: player.position.y, z: player.position.z }, own: true });
+      else localSteps.update(localPoseDriver.phase, locomotion.state);
+    }
     // The weapon layer (T-2.25, T-2.26): the body points its rifle where the
     // view points, recoil included, the rifle kicks with each shot, and a
     // reload is a curve of the weapon's own clock; it fades out through a vault.
@@ -2224,7 +2315,10 @@ function frame(): void {
   // T-2.45: the ear is the camera, facing where it looks, in the world it hears through.
   audio.setListener(camSolve.position, camSolve.direction);
   audio.setWorld(collisionBoxes());
-  if (net) playRemoteReloads(net);
+  if (net) {
+    playRemoteReloads(net);
+    playWorldEvents(net, dt);
+  }
   // Your own character is the one thing the first-person camera sits inside.
   // Downed forces third person (B-05), so the body stays visible then too.
   player.visible = !input.firstPerson || downed;
