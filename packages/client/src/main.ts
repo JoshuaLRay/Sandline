@@ -108,6 +108,8 @@ import { AiDebugOverlay } from './ui/AiDebug.ts';
 import { RESTART_KEY, afterActionXp, missionLine } from './ui/missionHud.ts';
 import { type ClassDef, TICK_SECONDS as MISSION_TICK_SECONDS, type Vitality, afterActionSummary, classById, scoreboardRows } from '@sandline/shared';
 import { createScoreboard } from './ui/scoreboard.ts';
+import { createMenu } from './ui/menu/Menu.ts';
+import { QUALITY, type Settings, browserStore, loadSettings, saveSettings } from './ui/menu/settings.ts';
 import { createHud } from './ui/hud/Hud.ts';
 import {
   type CompassMarkerInput,
@@ -1050,6 +1052,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
 
   live = { server, net, local, remote, sparring, sparringLink, qaEnemies, qaSuppressor, choice, networkPanel };
   lobby.hide();
+  menu.hide();
   squadPanel.setVisible(true);
   player.visible = !input.firstPerson;
   simPrev = null;
@@ -1095,6 +1098,7 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
   roomLobby.hide();
   if (document.pointerLockElement) document.exitPointerLock();
   lobby.show(message ?? undefined);
+  menu.showMain();
 }
 
 /* -- UI -------------------------------------------------------------------- */
@@ -1222,7 +1226,41 @@ const lobby = createLobby({
   buildStamp: `${__BUILD_SHA__} · ${__BUILD_TIME__}`,
   onChoose: chooseSession,
 });
-document.body.appendChild(lobby.root);
+/**
+ * The menus (T-4.26): the lobby is the main menu's Play panel now, Esc
+ * opens the pause menu in a session, and the settings both share are
+ * applied here and kept per browser.
+ */
+function applySettings(next: Settings): void {
+  input.setSensitivity(next.sensitivity);
+  input.setInvertY(next.invertY);
+  cam.baseFov = next.fovDeg;
+  const quality = QUALITY[next.quality];
+  renderer.setPixelRatio(Math.min(devicePixelRatio, quality.pixelRatioMax));
+  renderer.shadowMap.enabled = quality.shadows;
+  if (sun.shadow.mapSize.x !== quality.shadowMapSize) {
+    sun.shadow.mapSize.set(quality.shadowMapSize, quality.shadowMapSize);
+    // A shadow map is allocated at its size on first use; drop the old one so the next frame makes the new.
+    sun.shadow.map?.dispose();
+    sun.shadow.map = null;
+  }
+}
+const settings = loadSettings(browserStore());
+applySettings(settings);
+const menu = createMenu({
+  play: lobby.root,
+  settings,
+  onSettings: (next) => {
+    applySettings(next);
+    saveSettings(browserStore(), next);
+  },
+  onResume: () => {
+    menu.hide();
+    if (live) renderer.domElement.requestPointerLock?.();
+  },
+  onLeave: () => leaveSession({ text: 'left the session', tone: 'info' }),
+});
+document.body.appendChild(menu.root);
 
 panels.append(
   squadPanel.root,
@@ -2137,11 +2175,21 @@ function frame(): void {
 }
 player.visible = false;
 lobby.show();
+menu.showMain();
 requestAnimationFrame(frame);
 
 addEventListener('keydown', (e) => {
   // Typing in the lobby is not a hotkey.
   if (isTextField(e.target)) return;
+  // Esc pauses (T-4.26): the pause menu over the session, which runs on; Esc again resumes.
+  if (e.code === 'Escape' && live) {
+    if (menu.mode === 'pause') {
+      menu.hide();
+      renderer.domElement.requestPointerLock?.();
+    } else {
+      menu.showPause();
+    }
+  }
   // Tab holds the scoreboard up (T-4.28); in a session it never moves focus.
   if (e.code === 'Tab' && live) {
     e.preventDefault();

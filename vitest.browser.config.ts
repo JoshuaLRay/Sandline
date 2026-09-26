@@ -68,7 +68,8 @@ export default defineConfig({
         test: {
           name: 'assets-browsers',
           root: './packages/client',
-          include: ['src/assets/**/*.browser.test.ts'],
+          // T-4.26 adds the page's menus (`src/ui/**`): flows a real DOM and a real localStorage answer.
+          include: ['src/assets/**/*.browser.test.ts', 'src/ui/**/*.browser.test.ts'],
           browser: {
             enabled: true,
             provider: 'playwright',

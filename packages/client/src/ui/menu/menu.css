@@ -1,0 +1,85 @@
+/* The menus (T-4.26): the main menu the lobby lives in, the pause menu, the settings panel. */
+#menu {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 12, 7, 0.82);
+  backdrop-filter: blur(8px);
+  overflow-y: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--dust, #e8dcc8);
+}
+#menu.hidden { display: none; }
+.menu-card {
+  width: min(560px, 100%);
+  background: var(--panel, rgba(15, 12, 7, 0.74));
+  border: 1px solid var(--rule, rgba(232, 220, 200, 0.18));
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.menu-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px 0;
+  border-bottom: 1px solid var(--rule, rgba(232, 220, 200, 0.18));
+}
+.menu-title { margin: 0 auto 0 0; padding-bottom: 12px; font-size: 14px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; }
+.menu-title span { color: var(--amber, #f0b429); }
+.menu-nav { display: flex; gap: 4px; }
+.menu-tab {
+  padding: 8px 14px 10px;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--dust, #e8dcc8);
+  font: inherit;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.menu-tab:hover { opacity: 1; }
+.menu-tab.selected { opacity: 1; color: var(--amber, #f0b429); border-bottom-color: var(--amber, #f0b429); }
+.menu-tab[hidden] { display: none; }
+.menu-leave { color: #ff8a70; }
+.menu-tab:focus-visible { outline: 2px solid var(--amber, #f0b429); outline-offset: -2px; }
+.menu-body { padding: 18px 20px 16px; }
+.menu-panel[hidden] { display: none; }
+
+/* The lobby, restyled as the Play panel: its card is the menu's card now. */
+#menu #lobby { position: static; inset: auto; display: block; padding: 0; background: none; backdrop-filter: none; overflow: visible; }
+#menu #lobby[hidden] { display: none; }
+#menu .lobby-card { width: 100%; padding: 0; background: none; border: 0; }
+#menu .lobby-card h1 { display: none; }
+
+.menu-pause-text { margin: 0 0 14px; opacity: 0.8; }
+.menu-resume { width: 100%; }
+
+.menu-heading { margin: 14px 0 6px; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber, #f0b429); }
+.menu-heading:first-child { margin-top: 0; }
+.menu-row { display: grid; grid-template-columns: 150px 1fr 56px; align-items: center; gap: 10px; padding: 4px 0; }
+.menu-row-label { opacity: 0.9; }
+.menu-row-value { text-align: right; font-variant-numeric: tabular-nums; opacity: 0.8; }
+.menu-range { width: 100%; accent-color: var(--amber, #f0b429); }
+.menu-check { grid-template-columns: auto 1fr; }
+.menu-checkbox { accent-color: var(--amber, #f0b429); cursor: pointer; }
+.menu-select {
+  grid-column: 2 / 4;
+  padding: 6px 8px;
+  background: rgba(15, 12, 7, 0.6);
+  border: 1px solid var(--rule, rgba(232, 220, 200, 0.18));
+  border-radius: 3px;
+  color: var(--dust, #e8dcc8);
+  font: inherit;
+}
+.menu-note { margin: 0 0 6px; font-size: 10px; opacity: 0.6; }
+.menu-keys { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; margin: 0 0 10px; font-size: 11px; }
+.menu-keys dt { opacity: 0.8; }
+.menu-keys dd { margin: 0; color: var(--amber, #f0b429); }
+.menu-reset { width: 100%; margin-top: 8px; }
