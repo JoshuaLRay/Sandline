@@ -290,6 +290,31 @@ describe('SessionHost — the roster (T-1.5.04)', () => {
   });
 });
 
+describe('SessionHost — bot commanders on the roster (U-025)', () => {
+  it('a hosted room starts with every bot under the lowest human, carries reassignment to everyone, and hands a leaver\'s bots on', () => {
+    const { host, clock } = newHost();
+    const a = attachFake(host, 'alpha');
+    const b = attachFake(host, 'bravo', a.room);
+    expect([a.ack?.slot, b.ack?.slot]).toEqual([0, 1]);
+    for (const c of [a, b]) c.send({ kind: 'RoomCommand', command: 'ready', ready: true });
+    run(host, clock, 2, a, b);
+    expect(host.registry.get(a.room)?.session.started).toBe(true);
+    for (const c of [a, b]) expect(c.roster?.slots.map((s) => s.commander)).toEqual([-1, -1, 0, 0, 0, 0]);
+
+    // Bravo takes two bots; alpha gives bravo a third. Both rosters say so.
+    b.send({ kind: 'AssignCommander', bot: 2, commander: 1 });
+    b.send({ kind: 'AssignCommander', bot: 3, commander: 1 });
+    a.send({ kind: 'AssignCommander', bot: 5, commander: 1 });
+    run(host, clock, 2, a, b);
+    for (const c of [a, b]) expect(c.roster?.slots.map((s) => s.commander)).toEqual([-1, -1, 1, 1, 0, 1]);
+
+    // Bravo goes: its bots, and its own soldier, are alpha's.
+    b.send({ kind: 'Disconnect', code: 'left', reason: 'left' });
+    run(host, clock, 2, a, b);
+    expect(a.roster?.slots.map((s) => s.commander)).toEqual([-1, 0, 0, 0, 0, 0]);
+  });
+});
+
 describe('SessionHost — reconnecting into your own slot (T-4.18)', () => {
   /** Run the host with every live client pinging each tick, so nobody times out over a long wait. */
   function runTalking(host: SessionHost, clock: ReturnType<typeof fakeClock>, ticks: number, ...clients: FakeClient[]): void {

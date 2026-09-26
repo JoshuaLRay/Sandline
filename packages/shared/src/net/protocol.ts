@@ -17,7 +17,7 @@ import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 import type { MissionStats } from '../sim/scoreboard.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 33;
+export const PROTOCOL_VERSION = 34;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -90,6 +90,11 @@ export interface RosterEntry {
   human: boolean;
   /** The class the slot plays (T-4.27, a classes.json id); '' before the host has assigned one. */
   classId: string;
+  /**
+   * U-025: for a bot, the slot of the human in command of it; -1 for a human,
+   * and for a bot while no human is seated (the session is paused then).
+   */
+  commander: number;
 }
 
 export const MessageType = {
@@ -124,7 +129,7 @@ const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks
 /**
  * Mission, room and progression messages share a three-bit variant (T-4.24).
  */
-const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3, Progression: 4, Stats: 5 } as const;
+const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3, Progression: 4, Stats: 5, AssignCommander: 6 } as const;
 const ROOM_COMMANDS = ['ready', 'start', 'class'] as const;
 /** T-4.15: state plus transient message/callout notifications. */
 const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2, OrderFailed: 3 } as const;
@@ -450,6 +455,8 @@ export type Message =
   | ({ kind: 'Mission' } & MissionView)
   /** T-3.34: a player asking for the mission to start again. Client to host; honoured once it is over. */
   | { kind: 'MissionRestart' }
+  /** U-025: put the bot in `bot`'s slot under the human in `commander`'s. Client to host; the host checks both. */
+  | { kind: 'AssignCommander'; bot: number; commander: number }
   | { kind: 'Progression'; soldiers: SoldierProgress[] }
   /** T-4.28: the server's scoreboard, six rows whole, the mission clock and the objectives done. Host to client. */
   | ({ kind: 'Stats' } & MissionStats)
@@ -625,6 +632,8 @@ export function encodeMessage(msg: Message): Uint8Array {
         w.writeBool(entry.human);
         w.writeString(entry.name);
         w.writeString(entry.classId);
+        // -1..6 as 0..7: none, or a slot.
+        w.writeBits((entry.commander + 1) & 0x7, 3);
       }
       break;
     case 'AiDebugRequest':
@@ -681,6 +690,13 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Mission, EXT_BITS);
       w.writeBits(MISSION_VARIANT.Restart, 3);
+      break;
+    case 'AssignCommander':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Mission, EXT_BITS);
+      w.writeBits(MISSION_VARIANT.AssignCommander, 3);
+      w.writeBits(msg.bot & 0x7, 3);
+      w.writeBits(msg.commander & 0x7, 3);
       break;
     case 'RoomState': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -1067,7 +1083,8 @@ export function decodeMessage(bytes: Uint8Array): Message {
         for (let i = 0; i < count; i += 1) {
           const human = r.readBool();
           const name = r.readString();
-          slots.push({ human, name, classId: r.readString() });
+          const classId = r.readString();
+          slots.push({ human, name, classId, commander: r.readBits(3) - 1 });
         }
         return { kind: 'Roster', slots };
       }
@@ -1135,6 +1152,11 @@ export function decodeMessage(bytes: Uint8Array): Message {
               return { kind: 'Progression', soldiers };
             }
             if (variant === MISSION_VARIANT.Restart) return { kind: 'MissionRestart' };
+            if (variant === MISSION_VARIANT.AssignCommander) {
+              const bot = r.readBits(3);
+              const commander = r.readBits(3);
+              return { kind: 'AssignCommander', bot, commander };
+            }
             if (variant === MISSION_VARIANT.RoomCommand) {
               const command = ROOM_COMMANDS[r.readBits(2)];
               if (command === undefined) throw new ProtocolError('unknown room command');

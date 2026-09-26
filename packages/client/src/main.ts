@@ -163,6 +163,7 @@ import { type LobbyChoice, createLobby, readStoredKey, readStoredName } from './
 import { LoadScreen } from './ui/LoadScreen.ts';
 import type { Panel } from './ui/Panel.ts';
 import { createSquadPanel } from './ui/SquadPanel.ts';
+import { commandRows } from './ui/menu/commandModel.ts';
 import { createRoomLobby } from './ui/RoomLobby.ts';
 import { isTextField } from './input/LocalInput.ts';
 import { createTuningPanel } from './ui/TuningPanel.ts';
@@ -1607,6 +1608,8 @@ const menu = createMenu({
     if (live) renderer.domElement.requestPointerLock?.();
   },
   onLeave: () => leaveSession({ text: 'left the session', tone: 'info' }),
+  // U-025: the host checks it and answers with the roster; the menu redraws from that.
+  onAssign: (bot, commander) => live?.net.assignCommander(bot, commander),
 });
 document.body.appendChild(menu.root);
 
@@ -2364,6 +2367,8 @@ function frame(): void {
    * soldier to show.
    */
   playerHud.setVisible(live !== null);
+  // U-025: the pause menu's squad command, from the roster the host last sent (redrawn only when it changes).
+  if (menu.mode === 'pause' && live) menu.setCommand(commandRows(live.net.roster, live.net.slot));
   // T-4.28: the scoreboard while Tab is down, and on its own once the mission is over.
   const missionOver = (net?.mission?.state ?? 'progress') !== 'progress';
   scoreboard.setVisible(live !== null && (tabHeld || missionOver));

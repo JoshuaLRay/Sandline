@@ -180,6 +180,8 @@ describe('brains and the slot swap (T-3.08, ADR-001)', () => {
 
     const leftAt = { x: slot.state.x, y: slot.state.y, z: slot.state.z };
     const healthAtLeave = structuredClone(slot.health);
+    // U-025: someone stays seated, or the session pauses with nobody to command the bots.
+    human(session, 'bob');
     h.leave();
     expect(slot.isBot).toBe(true);
     const fresh = slot.brain!;

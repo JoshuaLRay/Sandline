@@ -51,3 +51,21 @@ Encounter difficulty scales on **human count**, not squad size.
 - **Four combat slots plus two asymmetric support roles** (drone operator,
   fire-support controller). Rejected: creates a second-class player experience.
   Whoever gets the support slot is playing a different, lesser game.
+
+## Addendum — 2026-09-26: every bot has a human in command (U-025)
+
+Owner decision (feedback 2026-09-26, [U-025](../backlog/U-025.md)): every bot
+has a human "in command" of it. At the campaign's start every bot is under the
+human in the lowest-numbered occupied slot; any seated human may hand any bot
+to any seated human, themselves included; when a commander leaves, their bots
+(and the slot they hand back) go to the lowest-numbered human left. Bots
+cannot go on without a human in command, so a started session with nobody
+seated **pauses** — its clock stops — until someone returns. A session nobody
+has ever been seated in (the headless scenarios and tests) runs as before.
+
+What this does not change: **any player may still issue orders to any bot**
+(within T-4.27's class rules); command is who a bot answers to, not who may
+order it. Whether it should also gate orders is an open owner decision, not
+made here. The six slots, possession on join and hand-back on leave stand.
+U-026 (switching into a commanded bot) revisits the consequence above that
+hot-swapping is replaced by orders; that is its decision to record.

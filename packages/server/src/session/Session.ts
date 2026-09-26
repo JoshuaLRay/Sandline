@@ -799,6 +799,17 @@ export class Session {
   private readonly readySlots: boolean[] = Array.from({ length: MAX_SLOTS }, () => false);
   /** T-4.27: the class each slot plays, as `assignClasses` last decided it — what the roster and the room carry. */
   private readonly classSlots: string[] = Array.from({ length: MAX_SLOTS }, () => '');
+  /**
+   * U-025: the slot of the human in command of each bot slot; -1 for a human's
+   * slot, and for every slot while no human is seated.
+   */
+  private readonly commanders: number[] = Array.from({ length: MAX_SLOTS }, () => -1);
+  /** U-025: a human has been seated in the started session: from now on, no human seated means paused. */
+  private commandStarted = false;
+  /** U-025: wall time the session has spent paused, taken off every `step`'s clock. */
+  private pausedMs = 0;
+  /** The wall time of the latest `step`, to measure a pause by. */
+  private lastWallMs: number | null = null;
   /** T-4.27: each human's own pick ('' for none, and for a bot); the assignment starts from these. */
   private readonly classPicks: string[] = Array.from({ length: MAX_SLOTS }, () => '');
   /** T-4.28: the scoreboard's rows, counted here as things happen and sent whole on every change. */
@@ -1694,7 +1705,66 @@ export class Session {
       human: !s.isBot,
       name: s.connection?.name ?? '',
       classId: this.classSlots[s.index] ?? '',
+      commander: this.commanders[s.index] ?? -1,
     }));
+  }
+
+  /** U-025: the slot of the human in command of a bot slot, or -1 (a human's slot, or no human seated). */
+  commanderOf(slot: number): number {
+    return this.commanders[slot] ?? -1;
+  }
+
+  /**
+   * U-025: a started session a human has been seated in, with nobody seated
+   * now. Bots cannot go on without a human in command, so the session's
+   * clock stops — no tick, no AI, no mission time — until one returns.
+   */
+  get paused(): boolean {
+    return this.commandStarted && this.roomStarted && !this.slots.some((s) => !s.isBot);
+  }
+
+  /**
+   * U-025: every bot under a seated human. A bot whose commander is still a
+   * seated human keeps them (unless `fresh`, the campaign's start); any
+   * other — its commander gone, the slot just handed back — goes to the
+   * lowest-numbered seated human. A human's slot has none, and with no human
+   * seated neither has anyone. Returns whether anything changed.
+   */
+  private reconcileCommanders(fresh = false): boolean {
+    const humans = this.slots.filter((s) => !s.isBot).map((s) => s.index);
+    if (this.roomStarted && humans.length > 0) this.commandStarted = true;
+    const lowest = humans.length > 0 ? Math.min(...humans) : -1;
+    let changed = false;
+    for (const slot of this.slots) {
+      const was = this.commanders[slot.index] ?? -1;
+      const next = !slot.isBot ? -1 : !fresh && humans.includes(was) ? was : lowest;
+      if (next !== was) {
+        this.commanders[slot.index] = next;
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
+  /**
+   * U-025: a seated human putting a bot under a seated human — any bot, any
+   * human, themselves included. Refused, the state unchanged and the asker
+   * sent the roster as it stands: before the campaign starts, a slot that is
+   * not a bot, a commander who is not a seated, connected human.
+   */
+  private applyAssignCommander(conn: ServerConnection, msg: Extract<Message, { kind: 'AssignCommander' }>): void {
+    const asker = this.slots.find((s) => s.connection === conn && !s.isBot);
+    if (!asker) return;
+    const bot = this.slots[msg.bot];
+    const commander = this.slots[msg.commander];
+    const valid = this.roomStarted && bot !== undefined && bot.isBot && commander !== undefined && !commander.isBot && commander.connection?.state === 'active';
+    if (!valid) {
+      conn.sendRoster(this.roster);
+      return;
+    }
+    if (this.commanders[bot.index] === commander.index) return;
+    this.commanders[bot.index] = commander.index;
+    this.broadcastRoster();
   }
 
   /**
@@ -1742,6 +1812,7 @@ export class Session {
       onMark: (c, msg) => { if (this.roomStarted) this.applyMark(c, msg); },
       onMissionRestart: (c) => { if (this.roomStarted) this.requestRestart(c); },
       onRoomCommand: (c, msg) => this.applyRoomCommand(c, msg),
+      onAssignCommander: (c, msg) => this.applyAssignCommander(c, msg),
       onClosed: (c, reason) => this.releaseSlot(c, reason),
     });
     if (conn.state === 'closed') return false;
@@ -1810,6 +1881,8 @@ export class Session {
     this.sendProgression(conn);
     this.sendStats(conn);
     this.reassignClasses();
+    // U-025: the slot is a human's now; a first human puts every bot under them.
+    this.reconcileCommanders();
     this.broadcastRoster();
     this.broadcastRoomState();
     // T-3.27: a human is nobody's to order, so whatever this slot's bot was told
@@ -2237,6 +2310,8 @@ export class Session {
     slot.queue.length = 0;
     this.giveBrain(slot);
     this.reassignClasses();
+    // U-025: the departed player's bots, and the slot they leave, go to the lowest-numbered human left.
+    this.reconcileCommanders();
     this.broadcastRoster();
     this.broadcastRoomState();
     if (!this.roomStarted && this.everyHumanReady()) this.startRoom();
@@ -2311,6 +2386,9 @@ export class Session {
     }
     this.startEncounter(this.missionCheckpointState?.completedGroups ?? []);
     if (this.missionCheckpointState?.event) this.restoreEvents(this.missionCheckpointState);
+    // U-025: the campaign starts with every bot under the lowest-numbered human.
+    this.reconcileCommanders(true);
+    this.broadcastRoster();
     this.broadcastRoomState();
     this.broadcastMission();
     this.broadcastScriptState();
@@ -2961,7 +3039,13 @@ export class Session {
   }
 
   /** Advance one authoritative tick and broadcast. */
-  step(now: number): void {
+  step(wallNow: number): void {
+    // U-025: while paused the session's clock stands still — the wall time
+    // it spends paused is taken off every later step, so ticks, timers, the
+    // mission clock and the rewind history all resume where they stopped.
+    if (this.lastWallMs !== null && this.paused) this.pausedMs += Math.max(0, wallNow - this.lastWallMs);
+    this.lastWallMs = wallNow;
+    const now = wallNow - this.pausedMs;
     this.nowMs = now;
     for (const conn of [...this.connections]) {
       // Advance each connection's clock BEFORE testing the timeout: messages
@@ -2972,6 +3056,9 @@ export class Session {
       else if (conn.isExpired(now, this.maxSessionMs)) conn.reject('session limit');
       else if (conn.isIdle(now, this.idleTimeoutMs)) conn.reject('idle');
     }
+
+    // U-025: nobody seated to command the bots: nothing moves until someone is.
+    if (this.paused) return;
 
     // T-4.19: while waiting, advance time/ticks and send static snapshots, but run no gameplay.
     // Keeping the tick moving preserves the tick*TICK_MS = room-clock invariant used by rewind.

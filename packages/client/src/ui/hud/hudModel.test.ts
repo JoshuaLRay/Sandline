@@ -71,24 +71,26 @@ describe('stance (T-4.25)', () => {
 
 describe('the squad rows (T-4.25)', () => {
   const roster: RosterEntry[] = [
-    { name: 'kai', human: true, classId: 'team-leader' },
-    { name: '', human: false, classId: 'marksman' },
-    { name: 'rae', human: true, classId: 'marksman' },
-    { name: '', human: false, classId: 'marksman' },
-    { name: '', human: false, classId: 'marksman' },
-    { name: '', human: false, classId: 'marksman' },
+    { name: 'kai', human: true, classId: 'team-leader', commander: -1 },
+    { name: '', human: false, classId: 'marksman', commander: 0 },
+    { name: 'rae', human: true, classId: 'marksman', commander: -1 },
+    { name: '', human: false, classId: 'marksman', commander: 2 },
+    { name: '', human: false, classId: 'marksman', commander: 0 },
+    { name: '', human: false, classId: 'marksman', commander: 0 },
   ];
   const orders: BotOrder[] = [{ slot: 1, order: 'move', point: { x: 1, y: 0, z: 2 }, target: null, from: 0 }];
   it('is six rows always: names for people, Bot for bots, the host\'s vitality and the order each bot is under', () => {
     const vitality = (slot: number) => (slot === 0 ? 'alive' : slot === 1 ? 'downed' : slot === 2 ? 'dead' : slot === 3 ? 'alive' : null);
     const rows = squadRows(roster, 2, vitality, orders);
     expect(rows).toHaveLength(6);
-    expect(rows[0]).toEqual({ slot: 0, label: 'kai', human: true, you: false, state: 'alive', order: '', classShort: 'TL' });
-    expect(rows[1]).toEqual({ slot: 1, label: 'Bot', human: false, you: false, state: 'downed', order: 'move', classShort: 'MM' });
-    expect(rows[2]).toEqual({ slot: 2, label: 'rae', human: true, you: true, state: 'dead', order: '', classShort: 'MM' });
+    expect(rows[0]).toEqual({ slot: 0, label: 'kai', human: true, you: false, state: 'alive', order: '', classShort: 'TL', commander: '', mine: false });
+    expect(rows[1]).toEqual({ slot: 1, label: 'Bot', human: false, you: false, state: 'downed', order: 'move', classShort: 'MM', commander: 'kai', mine: false });
+    expect(rows[2]).toEqual({ slot: 2, label: 'rae', human: true, you: true, state: 'dead', order: '', classShort: 'MM', commander: '', mine: false });
     expect(rows[3]?.state).toBe('alive');
+    // U-025: the bot rae commands reads "you" on rae's screen.
+    expect(rows[3]).toMatchObject({ commander: 'you', mine: true });
     expect(rows[4]?.state).toBe('unknown');
-    expect(rows[5]).toEqual({ slot: 5, label: 'Bot', human: false, you: false, state: 'unknown', order: '', classShort: 'MM' });
+    expect(rows[5]).toEqual({ slot: 5, label: 'Bot', human: false, you: false, state: 'unknown', order: '', classShort: 'MM', commander: 'kai', mine: false });
   });
   it('is six rows of bots before the roster arrives', () => {
     const rows = squadRows([], -1, () => null, []);
