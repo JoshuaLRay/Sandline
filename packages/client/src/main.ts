@@ -153,6 +153,7 @@ import {
 import { type AimSubject, OrderWheelView, buildMark, orderFromRelease } from './ui/OrderWheel.ts';
 import { type MarkerVec, OrderMarkerOverlay, orderMarkers } from './ui/OrderMarkers.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
+import { pressH, qaFromSearch } from './ui/qaMode.ts';
 import { createNetworkPanel } from './ui/NetworkPanel.ts';
 import { type LobbyChoice, createLobby, readStoredKey, readStoredName } from './ui/Lobby.ts';
 import { LoadScreen } from './ui/LoadScreen.ts';
@@ -1413,9 +1414,19 @@ const stats = document.getElementById('stats');
  */
 function toggleHud(): void {
   if (!hud) return;
-  const collapsed = hud.classList.toggle('collapsed');
+  // T-5.07: without ?qa the QA layer starts out of sight; the first H brings it back.
+  const next = pressH({ shown: !hud.hidden, folded: hud.classList.contains('collapsed') });
+  setQaShown(next.shown);
+  const collapsed = next.folded;
+  hud.classList.toggle('collapsed', collapsed);
   hudToggle.textContent = collapsed ? '+' : '−';
   hudToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+}
+
+/** T-5.07: the QA layer — the readout and every panel — in or out of sight. */
+function setQaShown(on: boolean): void {
+  if (hud) hud.hidden = !on;
+  panels.hidden = !on;
 }
 /**
  * Stamp the build into the title bar. Also into document.title, so it is
@@ -1604,6 +1615,8 @@ panels.append(
   cameraPanel.root,
 );
 document.body.appendChild(panels);
+// T-5.07: the demo face — the page is the game unless ?qa (or H) asks for the QA layer.
+setQaShown(qaFromSearch(location.search));
 
 /* -- Loop ------------------------------------------------------------------ */
 

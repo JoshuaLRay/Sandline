@@ -789,3 +789,6 @@ canvas { display: block; touch-action: none; }
 .briefing-keys dt { color: #f0b429; }
 .briefing-keys dd { margin: 0; }
 .briefing-go { width: 100%; }
+
+/* T-5.07: the QA layer, out of sight on the demo face until ?qa or H. */
+#hud[hidden], #panels[hidden] { display: none; }

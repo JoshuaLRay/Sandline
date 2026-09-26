@@ -3247,6 +3247,7 @@ here can supply them.
 - **Do:** Without a `?qa` flag the page is the game: title, lobby, briefing, mission, after-action, play again — no tuning panels, netgraph or range tools unless asked for. With `?qa`, everything is as today.
 - **Done when:** a smoke test finds no QA panel on the default page and every one under `?qa`; the run sheets' flags still work.
 - **Size:** S
+- **Completed 2026-09-26.** Without `?qa` the page is the game: the lobby, the briefing, the player's HUD, the menus and the after-action — and the QA layer (the build readout, the in-page squad panel, the netgraph, the movement, weapon, projectile and camera panels) is out of sight (`ui/qaMode.ts`). H asks for it: the first press shows it folded, as `?qa` opens it, and H folds and unfolds it from there. With `?qa` it is there from the start, as before. Every other flag works either way. The prepared run sheets that use a panel or the netgraph now say to add `?qa` (the sheets already run are left as they were played), and CLAUDE.md lists it. **Tests:** `ui/qaMode.test.ts` (only `?qa` opens it, whatever else the URL says; H from hidden, then fold and unfold). Smoke-tested in Chromium: on `?squad` the readout and panels are hidden and the player's HUD shows; on `?squad&qa` both show; H brings them back. **Not done here:** a mid-mission invite link — it lived in the in-page squad panel, now QA; the room lobby before a mission still shows it.
 
 #### T-5.08 — 🧍 M5 exit gate: the vertical slice
 - **Depends:** T-5.01..T-5.07, T-4.34

@@ -29,6 +29,7 @@ ADRs that section names → implement. That's the whole loop. See
 | `pnpm bot --url ws://localhost:8080 --count 2 --ticks 600` | same bots over real sockets; numbers should match the line above |
 | `pnpm bot --url ws://localhost:8080 --room K7PM --count 1` | a bot into a room people are in |
 | `?host=ws://…&room=K7PM` | pre-fills the lobby |
+| `?qa` | the QA layer — the readout, tuning panels and netgraph — shown from the start; without it the page is the game (the demo face, T-5.07) and H brings the layer back |
 | `?enemies` | three riflemen on the in-page range (one standing, two patrolling), respawned after each despawn |
 | `?squad` | the in-page bots run the `friendly` tree with the range's cover: they follow in formation, fight, and take orders — hold Q for the wheel (the mouse picks, 1–6 a slot, 7–8 a fireteam, 0 everyone; release to order), tap F to mark; add `&suppress` or `&enemies` for someone to attack |
 | `?suppress` | a rifleman on the in-page range firing past your camera at the squadmate beside you — the suppression vignette, desaturation, jolt and crosshair |

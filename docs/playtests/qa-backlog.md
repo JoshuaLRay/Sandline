@@ -13,6 +13,7 @@ URL flags you used and roughly where you were standing.
 
 ## Before you start
 
+- **Add `?qa` to every URL in this sheet** (T-5.07): since the demo face, the QA layer — the readout, the tuning panels and the netgraph — is out of sight without it (H also brings it back).
 **Everything here runs on the deployed QA site: no terminal, nothing
 local.** The site is **https://joshualray.github.io/Sandline/**. It rebuilds a few minutes after anything merges
 to `main`. The lobby's corner shows the build's commit, so check it matches
