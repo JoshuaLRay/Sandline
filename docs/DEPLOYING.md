@@ -305,6 +305,17 @@ join its code through the other; if the join lands as `no such room`, the
 proxy did not replay, and the addendum's portable fallback (a `redirect`
 disconnect code carrying the peer's address) is the next task.
 
+**A deploy drains (T-4.32).** When Fly stops the old machine it sends
+SIGTERM, and the host drains rather than dying: it takes no new rooms
+(`/healthz` answers 503, so the proxy sends new connections to the new
+machine), keeps every room it holds, still admits a reconnect or a friend's
+code into one, and stops the moment nobody is seated - or at `DRAIN_MAX_MS`
+(default 270 s), telling the players first. `kill_timeout = "300s"` in
+`fly.toml` is what gives it that long, and it is Fly's ceiling: **a mission
+longer than five minutes is cut short by a deploy**, with the players told.
+Deploy between playtests, not during one; the Host workflow runs on demand
+for exactly this reason.
+
 ### Watching it
 
 ```bash

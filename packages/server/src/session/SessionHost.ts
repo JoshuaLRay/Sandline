@@ -301,6 +301,10 @@ export class SessionHost {
   private lastReal = 0;
   private reportedDrops = 0;
   private draining = false;
+  /** T-4.32: when the drain began (host wall time), its cap, and who is waiting for it to end. */
+  private drainStartedAt: number | null = null;
+  private drainCapMs = 0;
+  private drainWaiters: (() => void)[] = [];
   /** T-4.33: what this host exports at `/metrics`. */
   readonly metrics = new HostMetrics();
   /** T-4.31: where a connection should go, asked before its upgrade; null for a host alone. */
@@ -353,7 +357,11 @@ export class SessionHost {
       onConnection: (transport) => this.accept(transport),
       onRequest: (req, res) => this.serveHttp(req.url ?? '/', res, req.socket.remoteAddress),
       shouldAccept: async (req) => {
-        if (this.draining) return 'host draining';
+        // T-4.32: a draining host takes no new rooms, but a reconnect into a room it holds is still its.
+        if (this.draining) {
+          const code = roomFromUpgradeUrl(req.url);
+          if (code === null || !this.holds(code)) return 'host draining';
+        }
         if (this.connections >= this.maxConnections) return 'host full';
         // T-4.31: a code a peer holds, or a new room a peer has more room for, is replayed there before the upgrade.
         if (this.allocator) {
@@ -516,7 +524,8 @@ export class SessionHost {
    */
   private route(conn: ServerConnection): void {
     this.pending.delete(conn);
-    if (this.draining) {
+    // T-4.32: while draining, only a code for a room this host holds is admitted — a reconnect, a friend's late join.
+    if (this.draining && (conn.room === '' || !this.holds(conn.room))) {
       conn.reject('host draining');
       return;
     }
@@ -642,6 +651,8 @@ export class SessionHost {
 
     if (steps > 0) for (const c of this.conditioned) c.pump(real);
 
+    this.checkDrain();
+
     if (this.clock.dropped > this.reportedDrops) {
       this.log.warn('tick backlog dropped', {
         dropped: this.clock.dropped - this.reportedDrops,
@@ -650,6 +661,45 @@ export class SessionHost {
       this.reportedDrops = this.clock.dropped;
     }
   }
+
+  /** T-4.32: whether this host is draining or stopped. */
+  get isDraining(): boolean {
+    return this.draining;
+  }
+
+  /**
+   * T-4.32: a deploy never kills a running mission. Draining, the host takes
+   * no new rooms (`/healthz` says so, and the platform stops sending it new
+   * connections) but keeps every room it holds and still admits a reconnect
+   * into one. It stops the moment nobody is seated, or at `capMs`, telling
+   * the players first. Resolves once stopped. On Fly the cap must fit the
+   * app's `kill_timeout`, which is at most five minutes: a mission longer
+   * than that is cut short with the players told, and that is the accepted
+   * limit until the platform allows more.
+   */
+  drain(capMs: number): Promise<void> {
+    if (this.drainStartedAt === null) {
+      this.draining = true;
+      this.drainStartedAt = this.now();
+      this.drainCapMs = capMs;
+      this.log.info('draining', { capMs, players: this.registry.stats.players, rooms: this.registry.size });
+    }
+    const done = new Promise<void>((resolve) => this.drainWaiters.push(resolve));
+    this.checkDrain();
+    return done;
+  }
+
+  /** Stop when the drain has nothing left to wait for, or has waited its cap. */
+  private checkDrain(): void {
+    if (this.drainStartedAt === null || this.handleStopping) return;
+    const nobody = this.registry.stats.players === 0;
+    const overCap = this.now() - this.drainStartedAt >= this.drainCapMs;
+    if (!nobody && !overCap) return;
+    this.handleStopping = true;
+    void this.stop(nobody ? 'host restarting' : 'host restarting - the deploy could not wait for the mission to end');
+  }
+
+  private handleStopping = false;
 
   /** Host simulation time, in ms: ticks since boot. Rooms keep their own. */
   get serverTimeMs(): number {
@@ -684,6 +734,7 @@ export class SessionHost {
     this.registry.close(reason);
     await this.handle?.close();
     this.handle = null;
+    for (const resolve of this.drainWaiters.splice(0)) resolve();
   }
 }
 

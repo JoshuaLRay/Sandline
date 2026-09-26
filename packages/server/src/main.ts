@@ -75,6 +75,7 @@ log.info('host ready', {
   identitySecret: config.identitySecrets.length === 0 ? 'random - identities do not survive a restart' : `${config.identitySecrets.length} configured`,
   idleTimeoutMs: config.idleTimeoutMs,
   maxSessionMs: config.maxSessionMs,
+  drainMaxMs: config.drainMaxMs,
   health: `http://localhost:${port}/healthz`,
   metrics: `http://localhost:${port}/metrics`,
   allocator: fly ? `machine ${fly.instance} in ${fly.region} (${fly.app})` : 'alone - no peers',
@@ -86,7 +87,8 @@ async function shutdown(signal: string): Promise<void> {
   stopping = true;
   // `stats` already carries the tick, plus what the session actually did.
   log.info('shutting down', { signal, ...host.registry.stats });
-  await host.stop(`host ${signal}`);
+  // T-4.32: drain first — the rooms in progress play on until nobody is seated, or the cap.
+  await host.drain(config.drainMaxMs);
   campaigns.close();
   process.exit(0);
 }

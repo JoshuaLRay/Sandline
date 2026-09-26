@@ -10,6 +10,9 @@
 
 app = "sandline-host"
 primary_region = "iad"
+# T-4.32: a stopping machine drains — its rooms play on until nobody is seated,
+# or this long, telling players first. Five minutes is Fly's ceiling.
+kill_timeout = "300s"
 
 [build]
   dockerfile = "packages/server/Dockerfile"
