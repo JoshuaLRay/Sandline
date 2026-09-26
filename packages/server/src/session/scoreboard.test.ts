@@ -153,6 +153,6 @@ describe('the scoreboard on the session (T-4.28)', () => {
     const board = session.scoreboard;
     expect(board).toMatchObject({ kind: 'Stats', elapsedTicks: 0, objectivesDone: 0, objectives: 0 });
     expect(decodeMessage(encodeMessage(board))).toEqual(board);
-    expect(PROTOCOL_VERSION).toBe(32);
+    expect(PROTOCOL_VERSION).toBe(33);
   });
 });

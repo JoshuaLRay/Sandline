@@ -12,6 +12,7 @@
  */
 import {
   type BotOrder,
+  type OrderKind,
   type MissionView,
   type TargetMark,
   COMPONENT_IDS,
@@ -369,6 +370,8 @@ export class NetClient {
   /** T-4.15: authored mission UI/radio cues. */
   onScriptMessage: ((text: string) => void) | null = null;
   onScriptCallout: ((id: string) => void) | null = null;
+  /** T-2.49: a bot could not carry out its order. */
+  onOrderFailed: ((slot: number, order: OrderKind) => void) | null = null;
   private aiDebugWanted = false;
 
   constructor(
@@ -518,6 +521,11 @@ export class NetClient {
 
   remoteReviveProgress(netId: number): number {
     return this.remoteReviveProgressValues.get(netId) ?? 0;
+  }
+
+  /** T-2.49: the slot reviving a remote soldier, or −1. */
+  remoteReviverSlot(netId: number): number {
+    return this.remoteReviverSlots.get(netId) ?? -1;
   }
 
   /** The weapon a remote holds and how far through a reload it is (T-2.26). */
@@ -1133,6 +1141,10 @@ export class NetClient {
 
       case 'ScriptCallout':
         this.onScriptCallout?.(msg.id);
+        break;
+
+      case 'OrderFailed':
+        this.onOrderFailed?.(msg.slot, msg.order);
         break;
 
       case 'HitEvent':

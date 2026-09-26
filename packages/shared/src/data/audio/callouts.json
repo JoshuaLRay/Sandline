@@ -1,0 +1,33 @@
+{
+  "$comment": "T-2.49: which line each event is said with, as data (ADR-017). An event's `lines` are voice-script lines (voices.json), said in turn; `cooldown` seconds must pass before the event is said again — by anyone in the squad, or by the same soldier when `scope` is `speaker`; `priority` decides which of two waiting radio lines goes first; `self` is whether your own soldier says it. A squadmate within `radioBeyondM` of you is heard where they stand, dry; beyond it, over the radio treatment — and only one voice is on the radio at a time: another waits up to `radioQueueSeconds` for it, `radioGapSeconds` apart, or is dropped. A soldier never starts a line within `speakerGapSeconds` of their last one ending. A line nobody has recorded yet plays `chirp`. `sight` is when an enemy is a new contact: seen within `rangeM` by a squadmate's eye, with no one having seen it for `forgetSeconds`, checked every `everySeconds`. A grenade not the squad's within `grenadeWarningM` of a squadmate is warned of; an enemy dying within `killCreditSeconds` of a squadmate's round or blast is theirs to call.",
+  "chirp": "radio-chirp",
+  "radioBeyondM": 25,
+  "radioQueueSeconds": 1.5,
+  "radioGapSeconds": 0.25,
+  "speakerGapSeconds": 0.6,
+  "sight": { "rangeM": 70, "forgetSeconds": 25, "everySeconds": 0.25 },
+  "grenadeWarningM": 8,
+  "killCreditSeconds": 1.5,
+  "events": {
+    "contact": { "lines": ["contact", "contact-front", "enemy-spotted"], "cooldown": 12, "scope": "squad", "priority": 70, "self": false },
+    "contact-mg": { "lines": ["machine-gun"], "cooldown": 20, "scope": "squad", "priority": 72, "self": false },
+    "reloading": { "lines": ["reloading", "changing-mag", "cover-me-reloading"], "cooldown": 6, "scope": "speaker", "priority": 20, "self": true },
+    "frag-out": { "lines": ["frag-out"], "cooldown": 2, "scope": "speaker", "priority": 60, "self": true },
+    "grenade": { "lines": ["grenade", "grenade-get-back"], "cooldown": 3, "scope": "squad", "priority": 95, "self": true },
+    "hit": { "lines": ["im-hit", "pain-grunt", "pain-breath"], "cooldown": 6, "scope": "speaker", "priority": 50, "self": true },
+    "down": { "lines": ["im-down", "need-help", "pain-groan"], "cooldown": 8, "scope": "speaker", "priority": 85, "self": true },
+    "man-down": { "lines": ["man-down"], "cooldown": 4, "scope": "squad", "priority": 90, "self": false },
+    "reviving": { "lines": ["got-you", "hang-on"], "cooldown": 4, "scope": "speaker", "priority": 40, "self": true },
+    "revived": { "lines": ["youre-up"], "cooldown": 4, "scope": "speaker", "priority": 40, "self": true },
+    "enemy-down": { "lines": ["enemy-down", "got-him", "target-down"], "cooldown": 5, "scope": "squad", "priority": 30, "self": false },
+    "order-move": { "lines": ["moving-to-position", "moving", "roger"], "cooldown": 1, "scope": "speaker", "priority": 65, "self": false },
+    "order-attack": { "lines": ["copy", "on-it"], "cooldown": 1, "scope": "speaker", "priority": 65, "self": false },
+    "order-hold": { "lines": ["holding-here", "copy"], "cooldown": 1, "scope": "speaker", "priority": 65, "self": false },
+    "order-regroup": { "lines": ["regrouping", "roger"], "cooldown": 1, "scope": "speaker", "priority": 65, "self": false },
+    "order-revive": { "lines": ["on-it", "copy"], "cooldown": 1, "scope": "speaker", "priority": 65, "self": false },
+    "order-failed": { "lines": ["cant-get-there"], "cooldown": 1, "scope": "speaker", "priority": 75, "self": false },
+    "objective-clear": { "lines": ["compound-clear"], "cooldown": 10, "scope": "squad", "priority": 80, "self": false },
+    "objective-hold": { "lines": ["holding-objective"], "cooldown": 10, "scope": "squad", "priority": 60, "self": false },
+    "objective-done": { "lines": ["objective-secure"], "cooldown": 10, "scope": "squad", "priority": 80, "self": false }
+  }
+}

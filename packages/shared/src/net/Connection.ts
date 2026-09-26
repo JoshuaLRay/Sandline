@@ -316,6 +316,8 @@ export interface ClientConnectionEvents {
   onStats?: (stats: Extract<Message, { kind: 'Stats' }>) => void;
   /** T-4.19: authoritative ready-up state. */
   onRoomState?: (room: Extract<Message, { kind: 'RoomState' }>) => void;
+  /** T-2.49: a bot could not carry out its order. */
+  onOrderFailed?: (failed: Extract<Message, { kind: 'OrderFailed' }>) => void;
   onClosed?: (reason: string, code: DisconnectCode | null) => void;
 }
 
@@ -388,6 +390,9 @@ export class ClientConnection {
         break;
       case 'RoomState':
         this.events.onRoomState?.(msg);
+        break;
+      case 'OrderFailed':
+        this.events.onOrderFailed?.(msg);
         break;
       case 'Disconnect':
         this.rejectionReason = msg.reason;

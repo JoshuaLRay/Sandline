@@ -15,7 +15,7 @@
  * Written against the few Web Audio calls it makes (`AudioContextLike`), so
  * a test drives it with a fake context and no audio device.
  */
-import { MIX, type MixConfig, SOUNDS, type SoundDef, type SoundsConfig, type WorldBox, soundFile } from '@sandline/shared';
+import { MIX, type MixConfig, SOUNDS, type SoundClass, type SoundDef, type SoundsConfig, type WorldBox, soundFile } from '@sandline/shared';
 import { type Vec3, VoicePool, place } from './spatial.ts';
 
 /** The parts of an AudioParam the engine sets. */
@@ -123,6 +123,8 @@ export class AudioEngine {
   private effectsBus: GainLike | null = null;
   private voiceBus: GainLike | null = null;
   private readonly buffers = new Map<string, unknown[]>();
+  /** T-2.49: files played by name (voice lines), loaded on first use. */
+  private readonly files = new Map<string, Promise<unknown>>();
   private readonly lastVariant = new Map<string, number>();
   private readonly pool: VoicePool<Voice>;
   private readonly sounds: SoundsConfig;
@@ -233,8 +235,31 @@ export class AudioEngine {
     const buffer = buffers[variant];
     if (!buffer) return false;
     this.lastVariant.set(id, variant);
+    return this.start(ctx, buffer, def.class, opts);
+  }
 
-    const placement = place(def.class, opts.at ?? null, this.listenerAt, this.boxes, this.mix, opts.own ?? false);
+  /**
+   * T-2.49: play a committed file that is not a recipe's render — a voice
+   * line — in `cls`, fetched and decoded the first time it is asked for and
+   * kept. Resolves false when it cannot be had or placed, never throws.
+   */
+  async playFile(file: string, cls: SoundClass, opts: PlayOptions = {}): Promise<boolean> {
+    const ctx = this.ctx;
+    if (!ctx) return false;
+    let loading = this.files.get(file);
+    if (!loading) {
+      loading = this.options
+        .fetchBytes(file)
+        .then((bytes) => ctx.decodeAudioData(bytes))
+        .catch(() => null);
+      this.files.set(file, loading);
+    }
+    const buffer = await loading;
+    return buffer ? this.start(ctx, buffer, cls, opts) : false;
+  }
+
+  private start(ctx: AudioContextLike, buffer: unknown, cls: SoundClass, opts: PlayOptions): boolean {
+    const placement = place(cls, opts.at ?? null, this.listenerAt, this.boxes, this.mix, opts.own ?? false);
     placement.gain *= opts.gain ?? 1;
     if (placement.gain <= 0) return false;
     const source = ctx.createBufferSource();
@@ -258,7 +283,7 @@ export class AudioEngine {
     tail.connect(gain);
     tail = gain;
     voice.nodes.push(gain);
-    if (opts.at && this.mix.classes[def.class].falloff !== null) {
+    if (opts.at && this.mix.classes[cls].falloff !== null) {
       const panner = ctx.createPanner();
       panner.panningModel = 'HRTF';
       // The falloff is ours (the gain above); the panner only places.
@@ -271,7 +296,7 @@ export class AudioEngine {
       tail = panner;
       voice.nodes.push(panner);
     }
-    const bus = def.class === 'voice' ? this.voiceBus : this.effectsBus;
+    const bus = cls === 'voice' ? this.voiceBus : this.effectsBus;
     if (bus) tail.connect(bus);
     source.onended = () => {
       this.pool.release(voice);

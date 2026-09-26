@@ -1,5 +1,5 @@
 {
-  "$comment": "T-2.44: sound recipes, rendered offline by `pnpm gen:audio` into client/public/audio/ (ADR-017). Each sound is layers of a source (noise, osc, impulse) through an envelope, filters, drive, a delay and a reverb, mixed and peak-normalised; `variants` seeded takes differ by `jitter`. `bounds` are what a render must measure — a test holds every committed render to them. The click is the UI's. T-2.46 adds the weapons: each gun near (mechanism, report, crack, thump and a room tail) and far (low-passed report, long reverberant tail), three variants each, and the handling sounds (reload out, in and bolt, dry fire, equip); T-2.47 adds the world and the body: rounds going past (crack, whiz), impacts by surface (wall, crate, post, ground), the grenade (throw, bounce) and the rocket (launch, flight), explosions near and far, footsteps by stance (walk, run, crouch, prone), the vault and the landing, and bodies (hit, downed, fall). T-2.48 adds the radio’s squelch, in and out, which the voice pipeline puts round a radio line.",
+  "$comment": "T-2.44: sound recipes, rendered offline by `pnpm gen:audio` into client/public/audio/ (ADR-017). Each sound is layers of a source (noise, osc, impulse) through an envelope, filters, drive, a delay and a reverb, mixed and peak-normalised; `variants` seeded takes differ by `jitter`. `bounds` are what a render must measure — a test holds every committed render to them. The click is the UI's. T-2.46 adds the weapons: each gun near (mechanism, report, crack, thump and a room tail) and far (low-passed report, long reverberant tail), three variants each, and the handling sounds (reload out, in and bolt, dry fire, equip); T-2.47 adds the world and the body: rounds going past (crack, whiz), impacts by surface (wall, crate, post, ground), the grenade (throw, bounce) and the rocket (launch, flight), explosions near and far, footsteps by stance (walk, run, crouch, prone), the vault and the landing, and bodies (hit, downed, fall). T-2.48 adds the radio’s squelch, in and out, which the voice pipeline puts round a radio line, and T-2.49 the radio chirp a callout plays until its line is recorded.",
   "sampleRate": 48000,
   "sounds": {
     "click": {
@@ -3653,6 +3653,150 @@
             "gain": 0.1,
             "seconds": 0.2
           }
+        }
+      ]
+    },
+    "radio-chirp": {
+      "class": "voice",
+      "seconds": 0.5,
+      "variants": 3,
+      "normalizePeakDb": -6,
+      "bounds": {
+        "peakDb": [
+          -6.5,
+          -5.5
+        ],
+        "rmsDb": [
+          -30,
+          -10
+        ],
+        "seconds": [
+          0.25,
+          0.5
+        ]
+      },
+      "layers": [
+        {
+          "source": {
+            "kind": "impulse"
+          },
+          "envelope": {
+            "attack": 0,
+            "decay": 0.01,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 1500,
+              "q": 3
+            }
+          ],
+          "gain": 0.6
+        },
+        {
+          "source": {
+            "kind": "osc",
+            "wave": "square",
+            "hz": 1250
+          },
+          "envelope": {
+            "attack": 0.004,
+            "hold": 0.06,
+            "decay": 0.02,
+            "curve": "linear"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 1600,
+              "q": 1.2
+            },
+            {
+              "kind": "lowpass",
+              "hz": 3000
+            }
+          ],
+          "gain": 0.5,
+          "start": 0.03,
+          "jitter": {
+            "hz": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "osc",
+            "wave": "square",
+            "hz": 950
+          },
+          "envelope": {
+            "attack": 0.004,
+            "hold": 0.08,
+            "decay": 0.03,
+            "curve": "linear"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 1400,
+              "q": 1.2
+            },
+            {
+              "kind": "lowpass",
+              "hz": 3000
+            }
+          ],
+          "gain": 0.5,
+          "start": 0.13,
+          "jitter": {
+            "hz": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.003,
+            "hold": 0.2,
+            "decay": 0.12,
+            "curve": "linear"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 2400,
+              "q": 1
+            },
+            {
+              "kind": "highpass",
+              "hz": 600
+            }
+          ],
+          "gain": 0.12,
+          "start": 0.02,
+          "jitter": {
+            "gain": 0.2
+          }
+        },
+        {
+          "source": {
+            "kind": "impulse"
+          },
+          "envelope": {
+            "attack": 0,
+            "decay": 0.01,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 1100,
+              "q": 3
+            }
+          ],
+          "gain": 0.5,
+          "start": 0.3
         }
       ]
     }

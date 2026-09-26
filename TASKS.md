@@ -35,7 +35,8 @@ pipeline, `pnpm gen:audio`), is done, and so is T-2.45 (positional playback,
 and the sound board at `?sounds`); the weapon sounds (T-2.46) are built and wait on
 the owner's first listen; the world and body sounds (T-2.47) are done; so is the
 voice pipeline (T-2.48, `pnpm gen:voice`), with nothing to process until someone
-records; callouts (T-2.49) are open. The owner can record the voice lines any
+records; and callouts (T-2.49), which play the radio chirp until then. E-2.7's
+gate (T-2.50) needs its run sheet, `e2-7.md`. The owner can record the voice lines any
 time, from `docs/audio/voice-script.md`.
 
 **M3 is broken out** (PLAN.md §7.9). E-3.1's navmesh pipeline is done:
@@ -258,7 +259,7 @@ on the deployed site's sound board (`?sounds`, T-2.45).
 | T-2.46 | BLOCKED — built and tested; the owner's first listen on `?sounds` (its done-when) is outstanding | T-2.45 |
 | T-2.47 | DONE | T-2.45 |
 | T-2.48 | DONE — the pipeline is built and tested on generated signals; no recordings are uploaded yet (`docs/audio/voice-script.md`), so no lines are committed | T-2.44 |
-| T-2.49 | OPEN — ships with the synthesised radio chirp until recordings arrive | T-2.45, T-2.48 |
+| T-2.49 | DONE — heard as the radio chirp until recordings arrive | T-2.45, T-2.48 |
 | 🧍 T-2.50 | BLOCKED — run sheet `e2-7.md` to be written | T-2.46, T-2.47, T-2.49 |
 
 ### E-2.8 — Prone stance & voluntary crawl (§7.8) — awaiting T-2.43 (run sheet ready)

@@ -42,6 +42,8 @@ interface Squad {
   /** Step `ticks`, the lead standing (so it is not timed out), `each` after every step. */
   run(ticks: number, each?: (t: number) => void): void;
   reports(slot: number): OrderReport[];
+  /** T-2.49: every OrderFailed the lead was sent. */
+  failed: Extract<Message, { kind: 'OrderFailed' }>[];
 }
 
 /** A session with the lead in slot 0 and the bots where `at` puts them (slot index → x, z). */
@@ -54,7 +56,8 @@ function squad(at: Record<number, { x: number; z: number }>): Squad {
   const pair = createLoopbackPair();
   session.addConnection(pair.a, 0);
   let tick = 0;
-  const client = new ClientConnection(pair.b, {});
+  const failed: Extract<Message, { kind: 'OrderFailed' }>[] = [];
+  const client = new ClientConnection(pair.b, { onOrderFailed: (m) => failed.push(m) });
   client.join('lead');
   pair.settle();
   session.slots.forEach((s, i) => {
@@ -77,6 +80,7 @@ function squad(at: Record<number, { x: number; z: number }>): Squad {
       }
     },
     reports: (slot) => session.orderReports.filter((r) => r.slot === slot),
+    failed,
   };
 }
 
@@ -133,6 +137,7 @@ describe('a move order (T-3.28)', () => {
     expect(session.orderFor(1)?.order).toBe('move');
     expect(Math.hypot(bot.state.x - where.x, bot.state.z - where.z)).toBeLessThan(0.5);
     expect(sq.reports(1).map((r) => r.outcome)).toEqual(['done']);
+    expect(sq.failed).toEqual([]);
   });
 
   it('to somewhere it cannot reach reports failure at once, rather than standing there saying nothing', () => {
@@ -142,6 +147,8 @@ describe('a move order (T-3.28)', () => {
     sq.run(15);
     expect(sq.reports(1)).toEqual([expect.objectContaining({ order: 'move', outcome: 'failed', reason: 'unreachable' })]);
     expect(session.orderFor(1)).toBeNull();
+    // T-2.49: and the lead is told, so the bot can say it cannot get there.
+    expect(sq.failed).toEqual([{ kind: 'OrderFailed', slot: 1, order: 'move' }]);
   });
 });
 

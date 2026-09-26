@@ -17,7 +17,7 @@ import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 import type { MissionStats } from '../sim/scoreboard.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 32;
+export const PROTOCOL_VERSION = 33;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -127,7 +127,7 @@ const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks
 const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3, Progression: 4, Stats: 5 } as const;
 const ROOM_COMMANDS = ['ready', 'start', 'class'] as const;
 /** T-4.15: state plus transient message/callout notifications. */
-const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2 } as const;
+const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2, OrderFailed: 3 } as const;
 const EXT_BITS = 3;
 const ORDER_KIND_BITS = 3;
 const ADDRESS_TO = ['slot', 'fireteam', 'all'] as const;
@@ -462,7 +462,9 @@ export type Message =
   /** T-4.15: an authored on-screen mission message. Host to client. */
   | { kind: 'ScriptMessage'; text: string }
   /** T-4.15: an authored E-2.7 callout id. Host to client. */
-  | { kind: 'ScriptCallout'; id: string };
+  | { kind: 'ScriptCallout'; id: string }
+  /** T-2.49: a bot could not carry out its order (it could not get there, or its target went); the callout's "can't get there". Host to client. */
+  | { kind: 'OrderFailed'; slot: number; order: OrderKind };
 
 export class ProtocolError extends Error {}
 
@@ -769,6 +771,13 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(EXT.Events, EXT_BITS);
       w.writeBits(EVENT_VARIANT.Callout, 2);
       w.writeString(msg.id);
+      break;
+    case 'OrderFailed':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Events, EXT_BITS);
+      w.writeBits(EVENT_VARIANT.OrderFailed, 2);
+      w.writeBits(msg.slot & 0x7, 3);
+      w.writeBits(ORDER_KINDS.indexOf(msg.order), ORDER_KIND_BITS);
       break;
     case 'Marks': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -1169,6 +1178,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
             const variant = r.readBits(2);
             if (variant === EVENT_VARIANT.Message) return { kind: 'ScriptMessage', text: r.readString() };
             if (variant === EVENT_VARIANT.Callout) return { kind: 'ScriptCallout', id: r.readString() };
+            if (variant === EVENT_VARIANT.OrderFailed) return { kind: 'OrderFailed', slot: r.readBits(3), order: readOrderKind(r) };
             if (variant !== EVENT_VARIANT.State) throw new ProtocolError(`unknown event message ${variant}`);
             const blockers: ScriptBlockerState[] = [];
             for (let i = readCount(r, 32, 'blocker'); i > 0; i -= 1) {
