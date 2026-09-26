@@ -29,7 +29,7 @@ different choice.
 | [008](008-websocket-behind-interface.md) | WebSocket behind a transport interface | Accepted · 1 addendum |
 | [009](009-bitpacked-wire-format.md) | Hand-rolled bit-packed wire format | Accepted |
 | [010](010-vite-pnpm.md) | Vite + pnpm workspaces | Accepted |
-| [011](011-regional-session-hosting.md) | Regional session-based hosting | Accepted |
+| [011](011-regional-session-hosting.md) | Regional session-based hosting | Accepted · 2 addenda |
 | [012](012-netcode-shape.md) | Authoritative server netcode shape | Accepted · 3 addenda |
 | [013](013-performance-budget.md) | Performance budget | Accepted · 1 addendum |
 | [014](014-determinism-policy.md) | Determinism policy | Accepted |
