@@ -160,6 +160,22 @@
 }
 .phud-hint[data-shown='yes'] { display: block; }
 
+.phud-notice {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  border: 1px solid var(--rule, rgba(232, 220, 200, 0.3));
+  background: rgba(15, 12, 7, 0.86);
+  color: var(--dust, #e8dcc8);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  display: none;
+}
+.phud-notice[data-shown='yes'] { display: block; }
+
 .phud-pouch { margin-top: 6px; font-size: 11px; }
 .phud-pouch-row { display: flex; justify-content: flex-end; gap: 8px; opacity: 0.75; }
 .phud-pouch-row[data-selected='yes'] { opacity: 1; color: var(--amber, #f0b429); }

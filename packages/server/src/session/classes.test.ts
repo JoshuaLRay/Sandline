@@ -114,9 +114,18 @@ describe('classes on the session (T-4.27)', () => {
     // The carbine is not the Marksman's; the sidearm is.
     a.send({ kind: 'Equip', item: gun('carbine') });
     expect(session.loadoutOf(0).weapon).toBe('marksman');
+    // A valid loadout switch is still rejected by the host while downed.
+    session.slots[0]!.health.downedAt = 0;
+    a.send({ kind: 'Equip', item: gun('sidearm') });
+    expect(session.loadoutOf(0).weapon).toBe('marksman');
+    session.slots[0]!.health.downedAt = null;
     a.send({ kind: 'Equip', item: gun('sidearm') });
     expect(session.loadoutOf(0).weapon).toBe('sidearm');
     a.send({ kind: 'Equip', item: gun('breacher') });
+    expect(session.loadoutOf(0).weapon).toBe('sidearm');
+    // Nor can a dead soldier switch on the authoritative replica.
+    session.slots[0]!.health.diedAt = 1;
+    a.send({ kind: 'Equip', item: gun('marksman') });
     expect(session.loadoutOf(0).weapon).toBe('sidearm');
   });
 
