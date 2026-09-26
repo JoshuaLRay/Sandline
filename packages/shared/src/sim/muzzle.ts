@@ -59,6 +59,13 @@ export interface MuzzleRig {
    * hidden behind.
    */
   proneEyeHeight: number;
+  /**
+   * Eye height while crouched (U-002, B-09): the trace and throw origin of a
+   * crouched soldier — the first-person camera's crouched pivot, inside the
+   * crouched head (its capsule reaches about 1.29 m), so a crouched body can
+   * only fire over cover its head shows above.
+   */
+  crouchEyeHeight: number;
 }
 
 /** Scaled against the 1.8 m reference figure the movement harness uses. */
@@ -69,7 +76,21 @@ export const DEFAULT_MUZZLE_RIG: MuzzleRig = {
   hipHeight: 1.05,
   eyeHeight: 1.55,
   proneEyeHeight: 0.4,
+  crouchEyeHeight: 1.15,
 };
+
+/** The body stance an eye follows (U-002): server-authoritative state both sides already agree on. */
+export type EyeStance = 'standing' | 'crouched' | 'prone';
+
+/** Prone beats crouched, as it does in the movement and the hitboxes. */
+export function eyeStance(crouched: boolean, prone: boolean): EyeStance {
+  return prone ? 'prone' : crouched ? 'crouched' : 'standing';
+}
+
+/** The rig's eye height above the feet for a body stance. */
+export function eyeHeightFor(stance: EyeStance, rig: MuzzleRig = DEFAULT_MUZZLE_RIG): number {
+  return stance === 'prone' ? rig.proneEyeHeight : stance === 'crouched' ? rig.crouchEyeHeight : rig.eyeHeight;
+}
 
 /**
  * The authoritative trace origin: centre line, eye height.
@@ -80,18 +101,23 @@ export const DEFAULT_MUZZLE_RIG: MuzzleRig = {
  * bullets come from.
  *
  * The BODY's stance is different: it is server-authoritative state both sides
- * already agree on, so `prone` (T-2.42) lowers the origin to the rig's
- * `proneEyeHeight`. Crouch is not an input here yet — it traces from standing
- * eye height as it always has.
+ * already agree on, so a prone body (T-2.42) traces from `proneEyeHeight` and a
+ * crouched one (U-002, B-09) from `crouchEyeHeight` — each inside its own hit
+ * volume, so no stance fires over cover from an eye it does not have.
  */
 export function eyePosition(
   feetX: number,
   feetY: number,
   feetZ: number,
   rig: MuzzleRig = DEFAULT_MUZZLE_RIG,
-  prone = false,
+  stance: EyeStance = 'standing',
 ): Vec3 {
-  return { x: feetX, y: feetY + (prone ? rig.proneEyeHeight : rig.eyeHeight), z: feetZ };
+  return { x: feetX, y: feetY + eyeHeightFor(stance, rig), z: feetZ };
+}
+
+/** `eyePosition` for a body as it stands: its feet and its stance flags. */
+export function stanceEye(body: { x: number; y: number; z: number; crouched?: boolean; prone?: boolean }, rig: MuzzleRig = DEFAULT_MUZZLE_RIG): Vec3 {
+  return eyePosition(body.x, body.y, body.z, rig, eyeStance(body.crouched ?? false, body.prone ?? false));
 }
 
 /**

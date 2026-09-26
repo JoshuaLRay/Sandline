@@ -182,3 +182,54 @@ describe('a dead player stays where they fell (QA: dead players could run around
     expect(Math.hypot(after.x - fell.x, after.z - fell.z)).toBeLessThan(1e-6);
   });
 });
+
+describe('the in-page session fires and throws from the stance eye the page predicts (U-002, B-09)', () => {
+  beforeAll(() => initNav());
+
+  it('crouched and prone: the shot on the wire and the frag in the air leave from the eye the page aims and throws from', async () => {
+    const { TICK_SECONDS, PROJECTILE_IDS, DEFAULT_MUZZLE_RIG, stanceEye, getProjectile, createProjectileState, launchOrigin, launchVelocity, stepProjectile } = await import('@sandline/shared');
+    const { LAUNCH_AHEAD_M } = await import('../weapons/ThrowQA.ts');
+    for (const stance of ['crouched', 'prone'] as const) {
+      const server = new LocalServer(LAN);
+      const net = new NetClient(server.transport, 'me');
+      net.join();
+      settleThrough(server, 0);
+      expect(net.joined).toBe(true);
+      const shots: { originY: number }[] = [];
+      net.onShot = (shot) => shots.push(shot);
+      const session = (server as unknown as { session: { projectilesNow(): { y: number }[] } }).session;
+      const hold = { moveX: 0, moveY: 0, yaw: 0, jump: false, sprint: false, crouch: stance === 'crouched', prone: stance === 'prone', interact: false, firing: false } as Parameters<NetClient['tick']>[1];
+      let now = 0;
+      const run = (ticks: number) => {
+        for (let i = 0; i < ticks; i++) {
+          now += TICK_SECONDS * 1000;
+          net.tick(server.tick + 1, hold, 0);
+          server.step(now);
+        }
+      };
+      run(45);
+      const here = net.simulated!;
+      expect(stance === 'prone' ? here.prone : here.crouched).toBe(true);
+      const eye = stanceEye(here);
+      const expected = stance === 'prone' ? DEFAULT_MUZZLE_RIG.proneEyeHeight : DEFAULT_MUZZLE_RIG.crouchEyeHeight;
+      expect(eye.y - here.y).toBeCloseTo(expected, 6);
+
+      net.fire(server.tick, 0, 0, 0, true);
+      net.throwProjectile(server.tick, 0, 0, PROJECTILE_IDS.indexOf('frag'));
+      run(1);
+      expect(shots.length).toBeGreaterThan(0);
+      // The wire quantises the origin to a couple of centimetres.
+      expect(Math.abs(shots.at(-1)!.originY - eye.y)).toBeLessThan(0.03);
+      // The page's own prediction of the throw — ThrowQA's launch from the stance eye — one tick into its flight,
+      // against the server's frag after the same tick.
+      const def = getProjectile('frag');
+      const direction = { x: 0, y: 0, z: 1 };
+      const predicted = createProjectileState(launchOrigin(def, eye, direction, LAUNCH_AHEAD_M), launchVelocity(def, 0, 0));
+      const flown = stepProjectile(def, predicted, TICK_SECONDS).state;
+      const frag = session.projectilesNow().at(-1)!;
+      expect(Math.abs(frag.y - flown.y)).toBeLessThan(0.01);
+      // And well below a standing eye, which is where every throw used to leave from.
+      expect(frag.y - here.y).toBeLessThan(DEFAULT_MUZZLE_RIG.eyeHeight - 0.2);
+    }
+  });
+});

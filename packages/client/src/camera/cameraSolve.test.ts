@@ -340,6 +340,13 @@ describe('crouch camera', () => {
     expect(cfg.crouchEyeHeight).toBeLessThan(cfg.eyeHeight);
     expect(cfg.crouchEyeHeight).toBeGreaterThan(cfg.proneEyeHeight);
   });
+
+  it('puts the first-person eye where each stance traces from (U-002): the crosshair and the round leave from one point', () => {
+    const cfg = DEFAULT_CAMERA_CONFIG;
+    expect(cfg.eyeHeight).toBe(DEFAULT_MUZZLE_RIG.eyeHeight);
+    expect(cfg.crouchEyeHeight).toBe(DEFAULT_MUZZLE_RIG.crouchEyeHeight);
+    expect(cfg.proneEyeHeight).toBe(DEFAULT_MUZZLE_RIG.proneEyeHeight);
+  });
 });
 
 describe('view angle resolution', () => {

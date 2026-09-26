@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ANGLE_UNITS } from '../math/angles.ts';
 import { cos, sin } from '../math/trig.ts';
-import { DEFAULT_MUZZLE_RIG, type MuzzleRig, eyePosition, muzzlePosition } from './muzzle.ts';
+import { DEFAULT_MUZZLE_RIG, type MuzzleRig, eyeHeightFor, eyePosition, eyeStance, muzzlePosition, stanceEye } from './muzzle.ts';
 
 const RIG: MuzzleRig = {
   shoulderRight: 0.3,
@@ -10,6 +10,7 @@ const RIG: MuzzleRig = {
   hipHeight: 1,
   eyeHeight: 1.6,
   proneEyeHeight: 0.35,
+  crouchEyeHeight: 1.1,
 };
 
 /** right = cross(forward, up), the definition the whole project agrees on. */
@@ -40,8 +41,8 @@ describe('trace origin', () => {
 
 describe('trace origin while prone (T-2.42)', () => {
   it('drops to the rig\'s prone eye height, and only when prone', () => {
-    expect(eyePosition(4, 2, -7, RIG, true)).toEqual({ x: 4, y: 2 + RIG.proneEyeHeight, z: -7 });
-    expect(eyePosition(4, 2, -7, RIG, false)).toEqual(eyePosition(4, 2, -7, RIG));
+    expect(eyePosition(4, 2, -7, RIG, 'prone')).toEqual({ x: 4, y: 2 + RIG.proneEyeHeight, z: -7 });
+    expect(eyePosition(4, 2, -7, RIG, 'standing')).toEqual(eyePosition(4, 2, -7, RIG));
   });
 
   it('ships a prone eye inside the prone hit volume, well below standing eye height', () => {
@@ -50,6 +51,30 @@ describe('trace origin while prone (T-2.42)', () => {
     expect(DEFAULT_MUZZLE_RIG.proneEyeHeight).toBeGreaterThan(0);
     expect(DEFAULT_MUZZLE_RIG.proneEyeHeight).toBeLessThan(0.8);
     expect(DEFAULT_MUZZLE_RIG.proneEyeHeight).toBeLessThan(DEFAULT_MUZZLE_RIG.hipHeight);
+  });
+});
+
+describe('trace origin while crouched (U-002, B-09)', () => {
+  it('drops to the rig\'s crouched eye height, and only when crouched; prone beats crouched', () => {
+    expect(eyePosition(4, 2, -7, RIG, 'crouched')).toEqual({ x: 4, y: 2 + RIG.crouchEyeHeight, z: -7 });
+    expect(eyeStance(false, false)).toBe('standing');
+    expect(eyeStance(true, false)).toBe('crouched');
+    expect(eyeStance(false, true)).toBe('prone');
+    expect(eyeStance(true, true)).toBe('prone');
+    expect(eyeHeightFor('crouched', RIG)).toBe(RIG.crouchEyeHeight);
+  });
+
+  it('stanceEye reads a body\'s own flags, and a bare point is a standing eye', () => {
+    expect(stanceEye({ x: 1, y: 0.5, z: 3, crouched: true, prone: false }, RIG)).toEqual({ x: 1, y: 0.5 + RIG.crouchEyeHeight, z: 3 });
+    expect(stanceEye({ x: 1, y: 0.5, z: 3, crouched: true, prone: true }, RIG)).toEqual({ x: 1, y: 0.5 + RIG.proneEyeHeight, z: 3 });
+    expect(stanceEye({ x: 1, y: 0.5, z: 3 }, RIG)).toEqual(eyePosition(1, 0.5, 3, RIG));
+  });
+
+  it('ships a crouched eye inside the 1.2 m crouched hit volume, between prone and standing', () => {
+    // Above the crouch volume a hidden body could fire over cover it is behind (B-09).
+    expect(DEFAULT_MUZZLE_RIG.crouchEyeHeight).toBeLessThan(1.2);
+    expect(DEFAULT_MUZZLE_RIG.crouchEyeHeight).toBeGreaterThan(DEFAULT_MUZZLE_RIG.proneEyeHeight);
+    expect(DEFAULT_MUZZLE_RIG.crouchEyeHeight).toBeLessThan(DEFAULT_MUZZLE_RIG.eyeHeight);
   });
 });
 
