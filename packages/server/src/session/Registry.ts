@@ -88,6 +88,8 @@ export interface RegistryOptions {
    * default: bots stand, as T-1.5 built them. `initNav()` must have resolved.
    */
   ai?: boolean;
+  /** T-4.33: time the AI's share of every tick (`Session.aiMs`), for the metrics. Off by default. */
+  profileAi?: boolean;
   /** Per-player limits every room enforces. See `SessionOptions`. */
   idleTimeoutMs?: number;
   maxSessionMs?: number;
@@ -115,6 +117,7 @@ export class Registry {
   private readonly meshes = new Map<string, NavMesh>();
   private readonly idleTimeoutMs: number;
   private readonly maxSessionMs: number;
+  private readonly profileAi: boolean;
   private readonly onReclaim: ((room: Room, reason: string) => void) | undefined;
 
   constructor(options: RegistryOptions = {}) {
@@ -127,6 +130,7 @@ export class Registry {
     this.ai = options.ai ?? false;
     this.idleTimeoutMs = options.idleTimeoutMs ?? 0;
     this.maxSessionMs = options.maxSessionMs ?? 0;
+    this.profileAi = options.profileAi ?? false;
     this.onReclaim = options.onReclaim;
   }
 
@@ -208,6 +212,7 @@ export class Registry {
         aiDebug: this.aiDebug,
         idleTimeoutMs: this.idleTimeoutMs,
         maxSessionMs: this.maxSessionMs,
+        profileAi: this.profileAi,
         roomLobby: true,
         ...(campaign ? { campaign: campaign.state, onCampaignSave: campaign.onSave } : {}),
       }),

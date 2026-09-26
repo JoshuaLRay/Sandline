@@ -78,7 +78,7 @@ in CI (T-4.03, `pnpm check:assets`) and the loader (T-4.05, `?assets` for
 eyes); streaming/load-screen gating (T-4.06, `pnpm check:packs`) and LOD/instancing (T-4.07) are done, beside
 the level format (T-4.09), the mission's objective types (T-4.14), scripted
 events (T-4.15), checkpoints/retry (T-4.16) and every-mission CI (T-4.17)
-all done; the room before the mission T-4.19 and the player HUD T-4.25, menus T-4.26, classes T-4.27 and the scoreboard T-4.28 are done; the mounted MG (T-4.29) is done, observability (T-4.33) is open, the
+all done; the room before the mission T-4.19 and the player HUD T-4.25, menus T-4.26, classes T-4.27 and the scoreboard T-4.28 are done; the mounted MG (T-4.29) and observability (T-4.33) are done, the
 regions addendum (T-4.30) is written and waits on the owner agreeing its
 cost — and two owner decisions gate the rest. Art sourcing is decided (🧍 T-4.01, ADR-018: authored as code,
 with procedural animation): the generator library and its first kit piece
@@ -456,7 +456,7 @@ the owner may still overrule before T-4.23.
 | T-4.30 | BLOCKED — addendum written (ADR-011); the owner's agreement of its cost is what is left | — |
 | T-4.31 | BLOCKED | T-4.30 |
 | T-4.32 | BLOCKED | T-4.31 |
-| T-4.33 | OPEN | — |
+| T-4.33 | DONE | — |
 
 ### M4 exit gate
 

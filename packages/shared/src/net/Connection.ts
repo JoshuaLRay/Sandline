@@ -49,6 +49,8 @@ export interface ServerConnectionEvents {
 }
 
 export class ServerConnection {
+  /** T-4.33: the typed code this connection was refused or dropped with, or null while open or left by the peer. */
+  rejectedWith: DisconnectCode | null = null;
   state: ConnectionState = 'handshaking';
   netId = 0;
   slot = -1;
@@ -276,6 +278,7 @@ export class ServerConnection {
    */
   reject(code: DisconnectCode, detail?: string): void {
     if (this.state === 'closed') return;
+    this.rejectedWith = code;
     const reason = detail ?? code;
     this.send({ kind: 'Disconnect', code, reason });
     this.markClosed(reason);

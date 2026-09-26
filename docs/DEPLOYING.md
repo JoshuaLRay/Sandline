@@ -291,7 +291,16 @@ is to let Pages finish deploying.
 fly logs                       # JSON lines from the host: seats, rooms reclaimed, drops
 fly status                     # machine state - `stopped` between playtests is correct
 curl https://sandline-host.fly.dev/healthz
+curl https://sandline-host.fly.dev/metrics   # T-4.33: the Prometheus exposition
 ```
+
+**Metrics (T-4.33).** The host exports tick time and the AI's share of it,
+players, rooms, connections, bytes, reconnects and refusals by code at
+`/metrics`; `fly.toml`'s `[metrics]` block has Fly scrape it into the
+organisation's managed Prometheus, and the managed Grafana at
+https://fly-metrics.net reads that. `docs/observability/` has the dashboard
+to import, the alert rules to create (ticks overrunning, ticks dropped, a
+run of refusals), and what every metric means.
 
 Link conditioning works on the deployed host exactly as locally -
 `fly secrets set LINK_LATENCY_MS=100` and a redeploy - but T-1.5.08 is run

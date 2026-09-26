@@ -47,6 +47,7 @@
  * rule `Session` and `ServerConnection` already follow.
  */
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { HostMetrics } from '../metrics.ts';
 import {
   BaseTransport,
   type Channel,
@@ -284,6 +285,8 @@ export class SessionHost {
   private lastReal = 0;
   private reportedDrops = 0;
   private draining = false;
+  /** T-4.33: what this host exports at `/metrics`. */
+  readonly metrics = new HostMetrics();
   /** Distinct per connection, so one client's loss pattern is its own. */
   private nextSeed = 0x5eed;
 
@@ -295,6 +298,8 @@ export class SessionHost {
     this.registry = new Registry({
       ...options.registry,
       onReclaim: (room, why) => {
+        // T-4.33: what the room counted stays in the host's totals.
+        this.metrics.retire(room.session.stats);
         this.log.info('room reclaimed', { room: room.code, why, tick: room.session.tick });
         options.registry?.onReclaim?.(room, why);
       },
@@ -349,8 +354,35 @@ export class SessionHost {
       res.end(JSON.stringify(this.health()));
       return;
     }
+    // T-4.33: the Prometheus exposition, for Fly's scraper and a curious curl. No codes in it either.
+    if (url === '/metrics') {
+      res.statusCode = 200;
+      res.setHeader('content-type', 'text/plain; version=0.0.4; charset=utf-8');
+      res.setHeader('cache-control', 'no-store');
+      res.end(this.renderMetrics());
+      return;
+    }
     res.statusCode = 404;
     res.end();
+  }
+
+  /** T-4.33: the metrics as a scraper reads them, from the registry's gauges and every live room's counters. */
+  renderMetrics(): string {
+    const stats = this.registry.stats;
+    return this.metrics.render(
+      {
+        rooms: stats.rooms,
+        maxRooms: stats.maxRooms,
+        idleRooms: stats.idle,
+        players: stats.players,
+        connections: this.connections,
+        maxConnections: this.maxConnections,
+        droppedTicks: this.clock.dropped,
+        rssBytes: process.memoryUsage().rss,
+        draining: this.draining,
+      },
+      this.registry.list().map((room) => room.session.stats),
+    );
   }
 
   health(): Record<string, unknown> {
@@ -404,6 +436,8 @@ export class SessionHost {
     this.pending.add(conn);
     attached.onClose((reason) => {
       this.connections -= 1;
+      // T-4.33: a typed refusal or drop is counted by its code; a peer that left is not a refusal.
+      if (conn.rejectedWith !== null) this.metrics.countRefusal(conn.rejectedWith);
       this.log.info('connection closed', {
         reason,
         room: conn.room,
@@ -543,7 +577,10 @@ export class SessionHost {
         conn.setNow(this.simTimeMs);
         if (conn.isTimedOut(this.simTimeMs)) conn.reject('heartbeat timeout', 'no Join received');
       }
+      // T-4.33: the wall time of the step — every room and every snapshot — is the tick-time histogram.
+      const stepFrom = performance.now();
       this.registry.step(real);
+      this.metrics.observeTick(performance.now() - stepFrom);
     }
 
     if (steps > 0) for (const c of this.conditioned) c.pump(real);

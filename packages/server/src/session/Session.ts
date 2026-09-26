@@ -677,6 +677,11 @@ export interface SessionStats {
   /** T-3.09: AI debug reports sent, and their bytes — counted apart from snapshots. */
   aiDebugSent: number;
   aiDebugBytesSent: number;
+  /** T-4.33: players seated fresh, and resumed into their own slot (T-4.18). */
+  joins: number;
+  resumes: number;
+  /** T-4.33: milliseconds the AI took over every tick, when profiled (`profileAi`); 0 otherwise. */
+  aiMs: number;
 }
 
 export class Session {
@@ -729,6 +734,9 @@ export class Session {
   private readonly emplacementList: EmplacementEntity[] = [];
   private snapshotsSent = 0;
   private bytesSent = 0;
+  /** T-4.33: seatings, fresh and resumed, for the host's metrics. */
+  private joinCount = 0;
+  private resumeCount = 0;
   private readonly navMesh: NavMesh | null;
   /** T-3.19's cover over this world's baked points, or null without any. */
   readonly cover: CoverSystem | null;
@@ -1032,6 +1040,9 @@ export class Session {
       bytesSent: this.bytesSent,
       aiDebugSent: this.aiDebugSent,
       aiDebugBytesSent: this.aiDebugBytesSent,
+      joins: this.joinCount,
+      resumes: this.resumeCount,
+      aiMs: this.aiMs,
     };
   }
 
@@ -1765,6 +1776,8 @@ export class Session {
     slot.resumeToken = newResumeToken();
     if (!resumed) this.localPlayers.set(slot.index, slot.resumeToken);
     slot.reservedUntilMs = 0;
+    if (resumed) this.resumeCount += 1;
+    else this.joinCount += 1;
     conn.accept(slot.netId, slot.index, this.currentTick, this.room, this.world.id, slot.resumeToken, resumed !== null);
     this.sendProgression(conn);
     this.sendStats(conn);

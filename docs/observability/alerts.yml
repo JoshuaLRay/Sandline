@@ -1,0 +1,84 @@
+# Grafana alerting rules for a Sandline host (T-4.33).
+#
+# Grafana's provisioning format (apiVersion 1). Fly's managed Grafana takes no
+# provisioning files, so these are the rules to create by hand from: the
+# query, the threshold, and how long it must hold. docs/observability/README.md.
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: sandline-host
+    folder: Sandline
+    interval: 1m
+    rules:
+      - uid: sandline-ticks-overrunning
+        title: Ticks overrunning
+        condition: C
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: The host's p99 tick time is over the 33.3 ms period.
+          description: Every room on this host runs late. Check the AI share panel first; then rooms and players against the caps.
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.99, sum(rate(sandline_tick_seconds_bucket[1m])) by (le))
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0.0333] }
+              refId: C
+      - uid: sandline-ticks-dropped
+        title: Ticks dropped
+        condition: C
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: The host clock dropped ticks in the last five minutes.
+          description: A stall long enough to skip simulation, not merely run late. Look at the host's log around the time for GC, a slow disk, or the machine being starved.
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: increase(sandline_ticks_dropped_total[5m])
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+              refId: C
+      - uid: sandline-refusals
+        title: Refusals
+        condition: C
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Players are being turned away for want of a seat or a room.
+          description: A burst of `host full` or `room full`. T-4.30's addendum names this as the signal for a second machine in the region.
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: sum(increase(sandline_refusals_total{code=~"host full|room full"}[10m]))
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [5] }
+              refId: C

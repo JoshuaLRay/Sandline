@@ -49,6 +49,8 @@ const host = new SessionHost({
     world: config.world,
     aiDebug: config.aiDebug,
     ai: config.hostAi,
+    // T-4.33: the AI's share of every tick is a metric wherever there is an AI to measure.
+    profileAi: config.hostAi,
     idleTimeoutMs: config.idleTimeoutMs,
     maxSessionMs: config.maxSessionMs,
   },
@@ -70,6 +72,7 @@ log.info('host ready', {
   idleTimeoutMs: config.idleTimeoutMs,
   maxSessionMs: config.maxSessionMs,
   health: `http://localhost:${port}/healthz`,
+  metrics: `http://localhost:${port}/metrics`,
 });
 
 let stopping = false;

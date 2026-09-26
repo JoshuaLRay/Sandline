@@ -69,6 +69,12 @@ primary_region = "iad"
     method = "GET"
     path = "/healthz"
 
+# T-4.33: Fly's managed Prometheus scrapes this into the org's metrics; the
+# dashboard and the alert rules for it are in docs/observability/.
+[metrics]
+  port = 8080
+  path = "/metrics"
+
 [[vm]]
   size = "shared-cpu-1x"
   memory = "512mb"
