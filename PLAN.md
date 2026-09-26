@@ -3256,6 +3256,7 @@ here can supply them.
 - **Do:** The owner plays the slice mission on the deployed site alone with bots and with others, and shows it to someone who has not seen it.
 - **Done when:** the owner has written the verdict. An agent can write the run sheet and must not invent the verdict.
 - **Size:** S (the owner's time)
+- **Run sheet prepared 2026-09-26, not run.** `docs/playtests/m5.md`: from the link to the first shot, the mission alone as each class, the squad, people dropping in and out, frame rate on target hardware through `?perf`, and showing it to someone new — with what the build cannot show yet (the voices, lightmaps, and the mission's length if T-5.02 has not landed) named so the verdict can say what it judged. No verdict.
 
 ## 8. Risk register
 
