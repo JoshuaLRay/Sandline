@@ -163,8 +163,9 @@ export async function runMission(seed: number, humans: number, config: MissionCo
       const underFire = suppressionLevel(e.suppression, seconds) >= config.underFireLevel || seconds - e.lastDamagedAt <= config.hurtSeconds;
       if (!underFire) continue;
       underFireTicks++;
+      // T-4.29: a gunner on an emplacement is behind its sandbag — in cover by the level's design, at no cover point.
       const held = session.cover?.heldPoint(e.netId) ?? null;
-      if (held && flat(held, e.state) <= IN_COVER_M) inCoverUnderFireTicks++;
+      if (e.mounted !== null || (held && flat(held, e.state) <= IN_COVER_M)) inCoverUnderFireTicks++;
     }
     if (contact && !inContact) engagements++;
     inContact = contact;
