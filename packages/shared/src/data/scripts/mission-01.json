@@ -1,0 +1,10 @@
+{
+  "$comment": "T-5.01: mission-01's event script (T-4.15's format), loaded with the mission wherever it is played — a host's room, the in-page session, the headless scenario. Messages go to the HUD; a callout that names a callout event (T-2.49) is said by the nearest squadmate. T-5.02 grows this with the slice mission's objectives, blockers and checkpoints.",
+  "world": "mission-01",
+  "blockers": [],
+  "events": [
+    { "id": "brief", "trigger": { "kind": "objective-start", "objective": 0 }, "actions": [{ "kind": "message", "text": "Take the compound and hold it" }] },
+    { "id": "garrison-down", "trigger": { "kind": "group-dead", "group": "garrison" }, "actions": [{ "kind": "callout", "id": "objective-clear" }, { "kind": "message", "text": "Compound clear — counterattack inbound, hold it" }] },
+    { "id": "secured", "trigger": { "kind": "objective-complete", "objective": 0 }, "actions": [{ "kind": "callout", "id": "objective-done" }] }
+  ]
+}

@@ -11,7 +11,9 @@ import {
   createLoopbackPair,
   decodeMessage,
   encodeMessage,
+  encounterFor,
   missionFor,
+  scriptFor,
   parseEncounter,
   parseEventScript,
   requireWorld,
@@ -134,10 +136,13 @@ function connect(session: Session) {
   let moveY = 0;
   const states: Extract<Message, { kind: 'ScriptState' }>[] = [];
   const hits: Extract<Message, { kind: 'HitEvent' }>[] = [];
+  const said: string[] = [];
   pair.b.onMessage((bytes) => {
     const msg = decodeMessage(bytes);
     if (msg.kind === 'ScriptState') states.push(msg);
     if (msg.kind === 'HitEvent') hits.push(msg);
+    if (msg.kind === 'ScriptMessage') said.push(`message:${msg.text}`);
+    if (msg.kind === 'ScriptCallout') said.push(`callout:${msg.id}`);
   });
   pair.b.send(encodeMessage({ kind: 'Join', version: PROTOCOL_VERSION, name: 'events', room: '' }));
   pair.settle();
@@ -148,6 +153,7 @@ function connect(session: Session) {
   return {
     states,
     hits,
+    said,
     hold(value: number) {
       moveY = value;
     },
@@ -185,6 +191,33 @@ describe('blockers in a real Session (T-4.15)', () => {
   });
 });
 
+
+describe('the committed mission script in real play (T-5.01)', () => {
+  it('a session on mission-01 runs its committed script: the brief on start, the callout and message when the garrison dies', () => {
+    const world = requireWorld('mission-01');
+    const encounter = encounterFor('mission-01')!;
+    expect(scriptFor('mission-01')!.events.length).toBeGreaterThan(0);
+    const session = new Session(undefined, '', world, { encounter });
+    const client = connect(session);
+    client.run(2);
+    expect(client.said).toContain('message:Take the compound and hold it');
+    const garrison = session.spawner!.spawnedBy('garrison');
+    expect(garrison.length).toBeGreaterThan(0);
+    for (const e of session.enemies) if (garrison.includes(e.netId)) Object.assign(e.health, { current: 0, diedAt: 0 });
+    client.run(4);
+    expect(client.said).toContain('callout:objective-clear');
+    expect(client.said).toContain('message:Compound clear — counterattack inbound, hold it');
+  });
+
+  it('a mission other than the committed one under the same world gets no script; greybox-01 has none', () => {
+    const world = requireWorld('mission-01');
+    const own = { ...missionFor('mission-01')!, objectives: [{ type: 'survive' as const, label: 'wait', seconds: 600 }] };
+    const client = connect(new Session(undefined, '', world, { encounter: encounterFor('mission-01')!, mission: own }));
+    client.run(2);
+    expect(client.said).toEqual([]);
+    expect(scriptFor('greybox-01')).toBeUndefined();
+  });
+});
 
 describe('blocker navigation on the real two-route mission (T-4.15)', () => {
   it('flags the chosen lane closed and Detour routes round it on the other lane', async () => {

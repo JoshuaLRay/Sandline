@@ -118,6 +118,7 @@ import {
   type GroundArea,
   checkMission,
   missionFor,
+  scriptFor,
   resolveArea,
   ENEMY_NET_ID_LIMIT,
   FIRST_ENEMY_NET_ID,
@@ -856,7 +857,7 @@ export class Session {
     }
     if (this.roomStarted) this.startEncounter();
     this.eventRun = this.encounter
-      ? new EventRun(options.events ?? { world: this.world.id, blockers: [], events: [] }, this.encounter, this.world, this.eventHost())
+      ? new EventRun(options.events ?? this.committedScript(missionDef) ?? { world: this.world.id, blockers: [], events: [] }, this.encounter, this.world, this.eventHost())
       : null;
     const mesh = this.navMesh;
     this.cover =
@@ -1853,6 +1854,17 @@ export class Session {
   }
   private marks: TargetMark[] = [];
   private nextMarkId = 1;
+
+  /**
+   * T-5.01: the mission's committed event script, when it has one and it is
+   * the mission as committed — a test's own mission under the same id is not
+   * handed a script written for other objectives.
+   */
+  private committedScript(mission: MissionDef | undefined): EventScript | undefined {
+    if (!mission || mission !== missionFor(this.world.id)) return undefined;
+    const script = scriptFor(mission.id);
+    return script && script.world === this.world.id ? script : undefined;
+  }
 
   /** The order a slot's bot is under, or null (T-3.27). */
   orderFor(slotIndex: number): BotOrder | null {

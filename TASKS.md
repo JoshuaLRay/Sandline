@@ -482,7 +482,7 @@ T-4.34 is passed.
 
 | Task | Status | Depends |
 |---|---|---|
-| T-5.01 | OPEN | — |
+| T-5.01 | DONE | — |
 | T-5.02 | OPEN | T-5.01 |
 | T-5.03 | OPEN | — |
 | T-5.04 | OPEN | — |
