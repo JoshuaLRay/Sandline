@@ -423,7 +423,7 @@ the owner may still overrule before T-4.23.
 |---|---|---|
 | T-4.18 | DONE | — |
 | T-4.19 | DONE | T-4.14 |
-| T-4.20 | BLOCKED | T-4.30, T-4.31 |
+| T-4.20 | DONE | T-4.30, T-4.31 |
 
 ### E-4.6 — Persistence
 

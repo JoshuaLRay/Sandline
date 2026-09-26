@@ -21,6 +21,7 @@ export * from './sim/range.ts';
 export * from './sim/damage.ts';
 export * from './sim/enemies.ts';
 export * from './sim/emplacement.ts';
+export * from './sim/regions.ts';
 export * from './sim/squad.ts';
 export * from './sim/classes.ts';
 export * from './sim/scoreboard.ts';

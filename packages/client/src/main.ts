@@ -78,6 +78,13 @@ import { forgetIdentity, readIdentity, storeIdentity } from './net/identity.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
 import { QaEnemies, QaSuppressor } from './net/qaEnemies.ts';
 import { DEFAULT_WORLD_ID, buildTree, encounterFor, getWorld, type World, type WorldBox, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
+import { regionForHost, tagCode } from '@sandline/shared';
+
+/** T-4.20: a code on a region's host carries the region's tag on the link, so the invite lands there. */
+function taggedRoom(host: string, room: string): string {
+  const region = room === '' ? null : regionForHost(host);
+  return region ? tagCode(region.tag, room) : room;
+}
 import { type PlacedEmplacement, clampYawToArc, degToWire, emplacementByIndex, emplacementFacing, gunnerPlace } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
@@ -1028,7 +1035,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
       roomJoined = room;
       remote.setRoom(room);
       remote.markJoined();
-      history.replaceState(null, '', shareLink(location.href, choice.host, room, __DEFAULT_HOST__));
+      history.replaceState(null, '', shareLink(location.href, choice.host, taggedRoom(choice.host, room), __DEFAULT_HOST__));
     };
     net.onDisconnect = (reason, code) => {
       remote.noteRefusal(code, reason);
@@ -1236,7 +1243,7 @@ const netgraph = createNetgraph(() => {
  */
 function currentShareLink(): string | null {
   if (!live || live.choice.kind !== 'remote' || live.net.room === '') return null;
-  return shareLink(location.href, live.choice.host, live.net.room, __DEFAULT_HOST__);
+  return shareLink(location.href, live.choice.host, taggedRoom(live.choice.host, live.net.room), __DEFAULT_HOST__);
 }
 
 const squadPanel = createSquadPanel({

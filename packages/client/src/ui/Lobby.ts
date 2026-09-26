@@ -23,6 +23,8 @@
  * wrong model of the game (ADR-001).
  */
 import { checkRoomInput, HostUrlError, parseHostUrl } from '../net/RemoteServer.ts';
+import { REGIONS, type Region, regionByTag, regionForHost, splitTaggedCode, tagCode } from '@sandline/shared';
+import { type Rtt, describeRtt, measureRtt, pickRegion, readStoredRegion, storeRegion } from '../net/regions.ts';
 
 export type LobbyChoice =
   | { kind: 'local' }
@@ -50,6 +52,8 @@ export interface LobbyOptions {
   presetHostError: string | null;
   /** `?room=` from the URL. */
   presetRoom: string;
+  /** T-4.20: the regions to choose from; the committed file by default. */
+  regions?: readonly Region[];
   /** Last name used, from storage. */
   name: string;
   /** Last join key used, from storage. */
@@ -184,7 +188,7 @@ export function createLobby(options: LobbyOptions): Lobby {
   roomInput.spellcheck = false;
   roomInput.autocomplete = 'off';
   roomInput.autocapitalize = 'characters';
-  roomInput.maxLength = 8;
+  roomInput.maxLength = 10;
   roomInput.placeholder = 'room (4) or campaign (8) code';
   roomInput.value = options.presetRoom;
   roomInput.className = 'lobby-code';
@@ -194,6 +198,55 @@ export function createLobby(options: LobbyOptions): Lobby {
     message.textContent = text;
     message.dataset['tone'] = tone;
   };
+
+  /**
+   * T-4.20: the region. Every region's host is pinged once the lobby is
+   * made and its round trip shown beside its name; the lowest is chosen
+   * unless the player chose one, which is remembered. Choosing puts the
+   * region's address in the host field; a typed host stands on its own.
+   */
+  const regions = options.regions ?? REGIONS;
+  const rtts = new Map<string, Rtt>();
+  const regionSelect = document.createElement('select');
+  regionSelect.className = 'lobby-region';
+  const regionOptions = new Map<string, HTMLOptionElement>();
+  for (const r of regions) {
+    const option = document.createElement('option');
+    option.value = r.id;
+    option.textContent = `${r.name} · ${describeRtt(undefined)}`;
+    regionSelect.append(option);
+    regionOptions.set(r.id, option);
+  }
+  const showRegion = (region: Region | null): void => {
+    if (!region) return;
+    regionSelect.value = region.id;
+  };
+  const remembered = readStoredRegion();
+  const initial = options.presetHost !== null ? regionForHost(options.presetHost, regions) : pickRegion(regions, rtts, remembered);
+  showRegion(initial);
+  if (options.presetHost === null && initial && options.defaultHost === '') hostInput.value = initial.host;
+  regionSelect.addEventListener('change', () => {
+    const region = regions.find((r) => r.id === regionSelect.value) ?? null;
+    if (!region) return;
+    storeRegion(region.id);
+    hostInput.value = region.host;
+  });
+  const chosen = () => regions.find((r) => r.id === regionSelect.value) ?? null;
+  for (const region of regions) {
+    void measureRtt(region).then((rtt) => {
+      rtts.set(region.id, rtt);
+      const option = regionOptions.get(region.id);
+      if (option) option.textContent = `${region.name} · ${describeRtt(rtt)}`;
+      // Nobody has chosen and nothing was typed: follow the round trips as they come in.
+      if (remembered === null && options.presetHost === null && (hostInput.value === options.defaultHost || regionForHost(hostInput.value, regions) !== null)) {
+        const best = pickRegion(regions, rtts, null);
+        if (best && best !== chosen()) {
+          showRegion(best);
+          hostInput.value = best.host;
+        }
+      }
+    });
+  }
 
   const readName = (): string | null => {
     const name = nameInput.value.trim().slice(0, 32);
@@ -220,18 +273,28 @@ export function createLobby(options: LobbyOptions): Lobby {
   const remote = (wantRoom: boolean, quick = false): void => {
     const name = readName();
     if (name === null) return;
-    const host = readHost();
+    let host = readHost();
     if (host === null) return;
     let room = '';
     if (wantRoom) {
-      const checked = checkRoomInput(roomInput.value);
-      if (checked.error !== null || checked.room === '') {
-        say(checked.error ?? 'type the code the other player gave you', 'error');
+      // T-4.20: a code may carry its region (`A-KM7X`): the join goes there, whatever this player's region.
+      const split = splitTaggedCode(roomInput.value, regions);
+      const checked = checkRoomInput(split === null ? roomInput.value : split.code);
+      if (split === null || checked.error !== null || checked.room === '') {
+        say(split === null && roomInput.value.trim() !== '' ? `'${roomInput.value.trim()}' is not a code — a region's letter, a hyphen and the code, like A-KM7X, or the code alone` : checked.error ?? 'type the code the other player gave you', 'error');
         roomInput.focus();
         return;
       }
       room = checked.room;
-      roomInput.value = room;
+      const tagged = split.tag === null ? null : regionByTag(split.tag, regions);
+      if (tagged) {
+        host = tagged.host;
+        hostInput.value = tagged.host;
+        showRegion(tagged);
+        roomInput.value = tagCode(tagged.tag, room);
+      } else {
+        roomInput.value = room;
+      }
     }
     const key = keyInput.value.trim();
     storeKey(key);
@@ -279,6 +342,7 @@ export function createLobby(options: LobbyOptions): Lobby {
     title,
     message,
     field('Name', nameInput),
+    field('Region', regionSelect),
     field('Host', hostInput),
     field('Key', keyInput),
     field('Mission', mapInput),
