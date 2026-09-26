@@ -309,6 +309,8 @@ export interface ClientConnectionEvents {
   /** T-3.34: where the mission stands. */
   onMission?: (mission: Extract<Message, { kind: 'Mission' }>) => void;
   onProgression?: (progression: Extract<Message, { kind: 'Progression' }>) => void;
+  /** T-4.28: the server's scoreboard, whenever a row changes. */
+  onStats?: (stats: Extract<Message, { kind: 'Stats' }>) => void;
   /** T-4.19: authoritative ready-up state. */
   onRoomState?: (room: Extract<Message, { kind: 'RoomState' }>) => void;
   onClosed?: (reason: string, code: DisconnectCode | null) => void;
@@ -374,6 +376,9 @@ export class ClientConnection {
         break;
       case 'Progression':
         this.events.onProgression?.(msg);
+        break;
+      case 'Stats':
+        this.events.onStats?.(msg);
         break;
       case 'Mission':
         this.events.onMission?.(msg);

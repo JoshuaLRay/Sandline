@@ -22,6 +22,7 @@ export * from './sim/damage.ts';
 export * from './sim/enemies.ts';
 export * from './sim/squad.ts';
 export * from './sim/classes.ts';
+export * from './sim/scoreboard.ts';
 export * from './sim/progression.ts';
 export * from './sim/orders.ts';
 export * from './sim/suppression.ts';

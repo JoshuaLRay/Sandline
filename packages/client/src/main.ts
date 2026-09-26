@@ -106,7 +106,8 @@ import { RemoteSoldiers } from './character/remoteSoldiers.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
 import { RESTART_KEY, afterActionXp, missionLine } from './ui/missionHud.ts';
-import { type ClassDef, type Vitality, classById } from '@sandline/shared';
+import { type ClassDef, TICK_SECONDS as MISSION_TICK_SECONDS, type Vitality, afterActionSummary, classById, scoreboardRows } from '@sandline/shared';
+import { createScoreboard } from './ui/scoreboard.ts';
 import { createHud } from './ui/hud/Hud.ts';
 import {
   type CompassMarkerInput,
@@ -1306,6 +1307,9 @@ const missionHud = document.getElementById('mission');
  * behind H and N.
  */
 const playerHud = createHud(document.body);
+/** T-4.28: the six slots' numbers, the server's, shown while Tab is held and once the mission is over. */
+const scoreboard = createScoreboard(document.body);
+let tabHeld = false;
 /** When our last round landed on a soldier (the server's word), for the hit marker. */
 let lastHitAt: number | null = null;
 /** Where the rounds and blasts that hit us came from, for the damage direction. */
@@ -1838,8 +1842,10 @@ function frame(): void {
     // The objective's own line lives on the player's HUD (T-4.25); this
     // element keeps the after-action credit and a script's notice.
     const notice = performance.now() < scriptNoticeUntil ? scriptNotice : '';
+    // T-4.28: how the mission ended, its clock and its objectives, over the credit.
+    const summary = afterActionSummary(net?.mission ?? null, net?.scoreboard ?? null);
     const xp = afterActionXp(net?.mission ?? null, net?.progression ?? [], net?.slot ?? -1);
-    const text = [xp, notice].filter((x) => x.length > 0).join('\n');
+    const text = [summary, xp, notice].filter((x) => x.length > 0).join('\n');
     if (missionHud.textContent !== text) missionHud.textContent = text;
     missionHud.classList.toggle('shown', text.length > 0);
     missionHud.classList.toggle('after-action', xp.length > 0);
@@ -1875,6 +1881,16 @@ function frame(): void {
    * soldier to show.
    */
   playerHud.setVisible(live !== null);
+  // T-4.28: the scoreboard while Tab is down, and on its own once the mission is over.
+  const missionOver = (net?.mission?.state ?? 'progress') !== 'progress';
+  scoreboard.setVisible(live !== null && (tabHeld || missionOver));
+  if (scoreboard.visible && net) {
+    scoreboard.update(
+      scoreboardRows(net.scoreboard, net.roster, net.slot),
+      (net.scoreboard?.elapsedTicks ?? 0) * MISSION_TICK_SECONDS,
+      afterActionSummary(net.mission, net.scoreboard),
+    );
+  }
   // T-4.27: the class the host assigned this slot, applied to the page's own
   // predicted weapon and pouch when it changes — the first gun in hand, the
   // class's pouch — on a hosted room; the in-page range stays free.
@@ -2126,6 +2142,11 @@ requestAnimationFrame(frame);
 addEventListener('keydown', (e) => {
   // Typing in the lobby is not a hotkey.
   if (isTextField(e.target)) return;
+  // Tab holds the scoreboard up (T-4.28); in a session it never moves focus.
+  if (e.code === 'Tab' && live) {
+    e.preventDefault();
+    tabHeld = true;
+  }
   // R is reload, not reset: this is a shooter now and R is muscle memory.
   // Reset moved to T.
   // Nothing to reload with a grenade or a launcher in hand.
@@ -2174,4 +2195,8 @@ addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+});
+
+addEventListener('keyup', (e) => {
+  if (e.code === 'Tab') tabHeld = false;
 });

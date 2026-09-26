@@ -191,3 +191,32 @@
   .phud-squad { display: none; }
   .phud-compass { width: 70vw; }
 }
+
+/* The Tab scoreboard (T-4.28): centred, over everything, only while Tab is down or the mission is over. */
+#scoreboard {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 460px;
+  padding: 14px 18px;
+  background: var(--panel, rgba(15, 12, 7, 0.74));
+  border: 1px solid var(--rule, rgba(232, 220, 200, 0.18));
+  border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--dust, #e8dcc8);
+  z-index: 7;
+  pointer-events: none;
+}
+#scoreboard.hidden { display: none; }
+.scoreboard-head { display: flex; justify-content: space-between; font-size: 12px; letter-spacing: 0.12em; color: var(--amber, #f0b429); margin-bottom: 8px; }
+#scoreboard table { border-collapse: collapse; width: 100%; font-size: 12px; }
+#scoreboard th { text-align: right; font-weight: 600; font-size: 9px; letter-spacing: 0.12em; opacity: 0.7; padding: 2px 8px; }
+#scoreboard th:nth-child(2) { text-align: left; }
+#scoreboard td { padding: 4px 8px; border-top: 1px solid var(--rule, rgba(232, 220, 200, 0.18)); }
+.scoreboard-count { text-align: right; }
+#scoreboard tr.you .scoreboard-name { color: var(--amber, #f0b429); font-weight: 700; }
+#scoreboard tr.bot .scoreboard-name { opacity: 0.7; }
+.scoreboard-summary { margin-top: 10px; font-size: 12px; letter-spacing: 0.06em; text-align: center; }
+.scoreboard-summary.hidden { display: none; }

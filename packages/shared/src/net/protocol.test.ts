@@ -43,6 +43,8 @@ const SAMPLES: Message[] = [
   { kind: 'RoomCommand', command: 'start' },
   // T-4.27: a class pick in the room, and a roster that carries every slot's class.
   { kind: 'RoomCommand', command: 'class', classId: 'marksman' },
+  // T-4.28: the scoreboard, six rows whole with the mission's clock and objectives.
+  { kind: 'Stats', slots: Array.from({ length: 6 }, (_, slot) => ({ slot, kills: slot * 3, deaths: slot === 2 ? 1 : 0, revives: slot, ordersGiven: slot === 0 ? 7 : 0, ordersCarried: slot > 0 ? 2 : 0 })), elapsedTicks: 12345, objectivesDone: 2, objectives: 3 },
   { kind: 'Disconnect', code: 'bad key', reason: 'wrong join key' },
   { kind: 'Disconnect', code: 'session limit', reason: 'session limit' },
   { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM', world: 'range', resume: '', resumed: false, identity: '' },

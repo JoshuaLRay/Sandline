@@ -56,6 +56,8 @@ import {
   vaultToLevels,
   createHealth,
   assignClasses,
+  createSlotStats,
+  type SlotStats,
   classById,
   orderReach,
   expireBleedOut,
@@ -733,6 +735,10 @@ export class Session {
   private readonly classSlots: string[] = Array.from({ length: MAX_SLOTS }, () => '');
   /** T-4.27: each human's own pick ('' for none, and for a bot); the assignment starts from these. */
   private readonly classPicks: string[] = Array.from({ length: MAX_SLOTS }, () => '');
+  /** T-4.28: the scoreboard's rows, counted here as things happen and sent whole on every change. */
+  private readonly slotStats: SlotStats[] = Array.from({ length: MAX_SLOTS }, (_, slot) => createSlotStats(slot));
+  /** The mission state and objective the scoreboard was last sent for, so its clock is resent when either moves. */
+  private lastStatsKey = '';
   /**
    * T-4.27: whether a slot's class decides what it carries. A hosted room
    * with a lobby plays by its classes; the in-page session and a plain QA
@@ -1053,6 +1059,40 @@ export class Session {
     if (!this.missionRun) return;
     const msg = { kind: 'Mission', ...this.missionRun.current } as const;
     for (const c of this.connections) if (c.state === 'active') c.send(msg);
+    // T-4.28: the scoreboard's clock and objectives move with the state and the objective, not with every tick of progress.
+    const key = `${msg.state}:${msg.objective}`;
+    if (key !== this.lastStatsKey) {
+      this.lastStatsKey = key;
+      this.broadcastStats();
+    }
+  }
+
+  /** T-4.28: the scoreboard as data — six rows whole, the mission clock, the objectives done. */
+  get scoreboard(): Extract<Message, { kind: 'Stats' }> {
+    const view = this.missionRun?.current ?? null;
+    return {
+      kind: 'Stats',
+      slots: this.slotStats.map((row) => ({ ...row })),
+      elapsedTicks: this.missionRun?.elapsed ?? 0,
+      objectivesDone: view ? (view.state === 'complete' ? view.objectives : view.objective) : 0,
+      objectives: view?.objectives ?? 0,
+    };
+  }
+
+  private bumpStat(slot: number, key: Exclude<keyof SlotStats, 'slot'>): void {
+    const row = this.slotStats[slot];
+    if (!row) return;
+    row[key] += 1;
+    this.broadcastStats();
+  }
+
+  private sendStats(conn: ServerConnection): void {
+    conn.send(this.scoreboard);
+  }
+
+  private broadcastStats(): void {
+    const msg = this.scoreboard;
+    for (const c of this.connections) if (c.state === 'active') c.send(msg);
   }
 
   private xpPlayer(slotIndex: number): string | null {
@@ -1137,6 +1177,8 @@ export class Session {
   restartMission(): void {
     this.xp.restart();
     this.broadcastProgression();
+    for (const row of this.slotStats) Object.assign(row, createSlotStats(row.slot));
+    this.broadcastStats();
     const spawns = this.slots.map((slot) => {
       const point = spawnFor(slot.index);
       return { x: point.x, y: point.y, z: point.z };
@@ -1639,6 +1681,7 @@ export class Session {
     slot.reservedUntilMs = 0;
     conn.accept(slot.netId, slot.index, this.currentTick, this.room, this.world.id, slot.resumeToken, resumed !== null);
     this.sendProgression(conn);
+    this.sendStats(conn);
     this.reassignClasses();
     this.broadcastRoster();
     this.broadcastRoomState();
@@ -1696,7 +1739,10 @@ export class Session {
     const order = this.orders[slot];
     const run = this.orderRuns[slot];
     if (!order || !run || run.status === 'done') return;
-    if (outcome === 'done') this.awardXp(order.from, 'order', run.xpPlayerId);
+    if (outcome === 'done') {
+      this.awardXp(order.from, 'order', run.xpPlayerId);
+      this.bumpStat(slot, 'ordersCarried');
+    }
     if (outcome === 'done' && (order.order === 'move' || order.order === 'hold')) {
       this.reportOrder(slot, 'done', reason);
       run.status = 'done';
@@ -1776,6 +1822,7 @@ export class Session {
     const reach = orderReach(this.classSlots[from.index] ?? '', from.index, addressed, SQUAD_CONFIG.fireteams);
     const bots = reach.filter((i) => this.slots[i]?.isBot === true);
     if (bots.length === 0) return;
+    this.bumpStat(from.index, 'ordersGiven');
     for (const i of bots) {
       // T-3.28: the order it was under, if it had not finished, is replaced; either way it is reported.
       if (this.orders[i]) this.reportOrder(i, this.orderRuns[i]?.status === 'done' ? 'done' : 'replaced', `${msg.order} from slot ${from.index}`);
@@ -2192,6 +2239,7 @@ export class Session {
         if (target) {
           const result = applyDamage(target.health, dealt, this.nowMs / 1000);
           dealt = result.applied;
+          if (result.killed) this.bumpStat(target.index, 'deaths');
           if (dealt > 0) {
             target.lastDamagedAt = this.nowMs / 1000;
             if (this.slots.some((sl) => sl.netId === shooterNetId)) this.friendlyHitCount++;
@@ -2214,7 +2262,9 @@ export class Session {
           if (dealt > 0) enemy.lastDamagedAt = this.nowMs / 1000;
           if (result.killed) {
             this.killEnemy(enemy);
-            this.awardXp(this.slots.findIndex((s) => s.netId === shooterNetId), 'kill');
+            const shooterSlot = this.slots.findIndex((s) => s.netId === shooterNetId);
+            this.awardXp(shooterSlot, 'kill');
+            this.bumpStat(shooterSlot, 'kills');
           }
         }
         // Range targets take no damage: they are the range's fixtures, not
@@ -2522,7 +2572,10 @@ export class Session {
       const result = applyDamage(slot.health, damage, nowSeconds);
       if (result.applied > 0) slot.lastDamagedAt = nowSeconds;
       // A killed player stops moving immediately, as under fire (see applyFire).
-      if (result.killed) slot.queue.length = 0;
+      if (result.killed) {
+        slot.queue.length = 0;
+        this.bumpStat(slot.index, 'deaths');
+      }
       targets.push({ netId: slot.netId, damage: result.applied });
     }
     // Enemies take the blast on the same terms (T-3.10), dying at zero.
@@ -2541,7 +2594,9 @@ export class Session {
       if (result.applied > 0) enemy.lastDamagedAt = nowSeconds;
       if (result.killed) {
         this.killEnemy(enemy);
-        this.awardXp(this.slots.findIndex((s) => s.netId === projectile.ownerNetId), 'kill', projectile.xpPlayerId);
+        const ownerSlot = this.slots.findIndex((s) => s.netId === projectile.ownerNetId);
+        this.awardXp(ownerSlot, 'kill', projectile.xpPlayerId);
+        this.bumpStat(ownerSlot, 'kills');
       }
       targets.push({ netId: enemy.netId, damage: result.applied });
     }
@@ -2638,6 +2693,7 @@ export class Session {
        * stops where they lie, exactly as a finishing shot would stop them.
        */
       if (isDowned(slot.health) && expireBleedOut(slot.health, nowSeconds)) {
+        this.bumpStat(slot.index, 'deaths');
         slot.queue.length = 0;
         slot.input = idleInput(slot.yaw);
     slot.interactHeld = false;
@@ -2796,6 +2852,8 @@ export class Session {
     if (this.profileAi) this.aiMs += performance.now() - fireFrom;
 
     this.currentTick++;
+    // T-4.28: the scoreboard's clock keeps up while a mission runs, five seconds at a time.
+    if (this.missionRun && this.missionRun.current.state === 'progress' && this.currentTick % 150 === 0) this.broadcastStats();
     /**
      * Projectiles fly LAST, after the bodies have moved and been recorded and
      * after the tick has advanced. Both halves matter: a rocket meets the
@@ -3291,6 +3349,7 @@ export class Session {
       target.reviveProgressSeconds += TICK_SECONDS;
       if (target.reviveProgressSeconds >= DAMAGE.downed.reviveSeconds) {
         this.awardXp(target.reviveBySlot, 'revive');
+        this.bumpStat(target.reviveBySlot, 'revives');
         revive(target.health);
         target.reviveBySlot = -1;
         target.reviveProgressSeconds = 0;

@@ -14,9 +14,10 @@ import { MAX_MARKS, ORDER_KINDS, type BotOrder, type OrderAddress, type OrderKin
 import { MISSION_STATES, OBJECTIVE_TYPES, type MissionView } from '../sim/mission.ts';
 import type { ScriptBlockerState } from '../sim/events.ts';
 import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
+import type { MissionStats } from '../sim/scoreboard.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 30;
+export const PROTOCOL_VERSION = 31;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -123,7 +124,7 @@ const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks
 /**
  * Mission, room and progression messages share a three-bit variant (T-4.24).
  */
-const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3, Progression: 4 } as const;
+const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3, Progression: 4, Stats: 5 } as const;
 const ROOM_COMMANDS = ['ready', 'start', 'class'] as const;
 /** T-4.15: state plus transient message/callout notifications. */
 const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2 } as const;
@@ -450,6 +451,8 @@ export type Message =
   /** T-3.34: a player asking for the mission to start again. Client to host; honoured once it is over. */
   | { kind: 'MissionRestart' }
   | { kind: 'Progression'; soldiers: SoldierProgress[] }
+  /** T-4.28: the server's scoreboard, six rows whole, the mission clock and the objectives done. Host to client. */
+  | ({ kind: 'Stats' } & MissionStats)
   /** T-4.19: authoritative pre-mission room state. Class ids are reserved for T-4.27. */
   | { kind: 'RoomState'; started: boolean; creator: number; world: string; ready: readonly boolean[]; classes: readonly string[] }
   /** T-4.19: ready toggle or creator-only force start. */
@@ -701,6 +704,22 @@ export function encodeMessage(msg: Message): Uint8Array {
       // T-4.27: the class a player picks in the room.
       w.writeString(msg.command === 'class' ? (msg.classId ?? '') : '');
       break;
+    case 'Stats': {
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Mission, EXT_BITS);
+      w.writeBits(MISSION_VARIANT.Stats, 3);
+      if (msg.slots.length !== 6) throw new ProtocolError('stats need six slots');
+      for (const [slot, row] of msg.slots.entries()) {
+        const counts = [row.kills, row.deaths, row.revives, row.ordersGiven, row.ordersCarried];
+        if (row.slot !== slot || counts.some((n) => !Number.isInteger(n) || n < 0 || n > 0xffffffff)) throw new ProtocolError('invalid slot stats');
+        for (const n of counts) w.writeVarUint(n);
+      }
+      for (const n of [msg.elapsedTicks, msg.objectivesDone, msg.objectives]) {
+        if (!Number.isInteger(n) || n < 0 || n > 0xffffffff) throw new ProtocolError('invalid mission stats');
+        w.writeVarUint(n);
+      }
+      break;
+    }
     case 'Progression': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Mission, EXT_BITS);
@@ -1085,6 +1104,16 @@ export function decodeMessage(bytes: Uint8Array): Message {
           }
           case EXT.Mission: {
             const variant = r.readBits(3);
+            if (variant === MISSION_VARIANT.Stats) {
+              const slots: MissionStats['slots'] = [];
+              for (let slot = 0; slot < 6; slot++) {
+                slots.push({ slot, kills: r.readVarUint(), deaths: r.readVarUint(), revives: r.readVarUint(), ordersGiven: r.readVarUint(), ordersCarried: r.readVarUint() });
+              }
+              const elapsedTicks = r.readVarUint();
+              const objectivesDone = r.readVarUint();
+              const objectives = r.readVarUint();
+              return { kind: 'Stats', slots, elapsedTicks, objectivesDone, objectives };
+            }
             if (variant === MISSION_VARIANT.Progression) {
               const soldiers: SoldierProgress[] = [];
               for (let slot = 0; slot < 6; slot++) {
