@@ -36,6 +36,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 |---|---|---|---|---|---|---|
 | [U-001](docs/backlog/U-001.md) | Restore reliable mission enemy pressure | Mission | P1 | DONE | — | [#132](https://github.com/JoshuaLRay/Sandline/pull/132) |
 | [U-002](docs/backlog/U-002.md) | Correct authoritative firing origins for every stance | Weapon feel | P1 | DONE | — | [#133](https://github.com/JoshuaLRay/Sandline/pull/133) |
+| [U-025](docs/backlog/U-025.md) | Assign every bot to a human commander and allow reassignment | Squad command | P1 | READY | — | — |
+| [U-026](docs/backlog/U-026.md) | Switch control to a bot the player commands | Squad command | P1 | READY | U-025 | — |
 | [U-003](docs/backlog/U-003.md) | Align AR muzzle flash and tracers with the visible gun | Weapon feel | P1 | READY | U-002 | — |
 | [U-004](docs/backlog/U-004.md) | Open the AR sight picture | Weapon feel | P1 | READY | — | — |
 | [U-005](docs/backlog/U-005.md) | Bind 1 to primary and 2 to pistol | Weapon feel | P1 | DONE | — | [#134](https://github.com/JoshuaLRay/Sandline/pull/134) |
