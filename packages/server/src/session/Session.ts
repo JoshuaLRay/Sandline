@@ -101,6 +101,7 @@ import {
   finishReload,
   DEFAULT_MUZZLE_RIG,
   eyePosition,
+  eyeStance,
   getWeapon,
   shotDirections,
   startReload,
@@ -1328,7 +1329,7 @@ export class Session {
       humanEyes: () =>
         this.slots
           .filter((s) => !s.isBot && living(s.health))
-          .map((s) => eyePosition(s.state.x, s.state.y, s.state.z, DEFAULT_MUZZLE_RIG, s.state.prone)),
+          .map((s) => eyePosition(s.state.x, s.state.y, s.state.z, DEFAULT_MUZZLE_RIG, eyeStance(false, s.state.prone))),
       squadFeet: () => this.slots.filter((s) => living(s.health)).map((s) => ({ x: s.state.x, z: s.state.z })),
       enemyFeet: () => this.enemyList.filter((e) => living(e.health)).map((e) => ({ x: e.state.x, z: e.state.z })),
       isAlive: (netId) => {
@@ -2459,6 +2460,8 @@ export class Session {
     const rewoundTo = this.nowMs - clampRewindMs(this.nowMs, msg.renderTimeMs);
     const shooterThen = this.hitboxes.stateAt(slot.netId, rewoundTo);
     const proneThen = shooterThen?.prone ?? slot.state.prone;
+    // U-002 (B-09): and a crouched one from a crouched eye, in the stance it fired in.
+    const crouchedThen = shooterThen?.crouched ?? slot.state.crouched;
     // T-3.16: suppression widens the cone by its data's amount, at the level the page is told.
     const shot = tryFire(slot.weapon, slot.weaponState, nowSeconds, msg.ads, proneThen, suppressionConeUnits(suppressionLevel(slot.suppression, nowSeconds)));
     if (shot === null) {
@@ -2511,7 +2514,7 @@ export class Session {
     const at = shooterThen?.position ?? slot.state;
     // A prone shooter's shot leaves from a prone eye (T-2.42), not 0.75 m above
     // the body — otherwise lying behind cover would still shoot over it.
-    const origin = eyePosition(at.x, at.y, at.z, DEFAULT_MUZZLE_RIG, proneThen);
+    const origin = eyePosition(at.x, at.y, at.z, DEFAULT_MUZZLE_RIG, eyeStance(crouchedThen, proneThen));
     this.lastFiredTick[slot.index] = this.currentTick;
     this.traceShot(slot.netId, slot.weapon, shot, msg.tick, origin, yaw, pitch, msg.renderTimeMs);
   }
@@ -3222,7 +3225,7 @@ export class Session {
     const dt = BRAIN_PERIOD_TICKS * TICK_SECONDS;
     for (const enemy of this.enemyList) {
       if (isDead(enemy.health)) continue;
-      const eye = eyePosition(enemy.state.x, enemy.state.y, enemy.state.z, DEFAULT_MUZZLE_RIG, enemy.state.prone);
+      const eye = eyePosition(enemy.state.x, enemy.state.y, enemy.state.z, DEFAULT_MUZZLE_RIG, eyeStance(false, enemy.state.prone));
       for (const stimulus of squad) if (hears(eye, stimulus)) rememberHeard(enemy.memory, stimulus, nowSeconds);
       if (!enemy.brain?.due(this.currentTick)) continue;
 
@@ -3265,7 +3268,7 @@ export class Session {
     const perception = BOT_ARCHETYPE.perception;
     for (const slot of this.slots) {
       if (!slot.isBot || !slot.brain || !isAlive(slot.health)) continue;
-      const eye = eyePosition(slot.state.x, slot.state.y, slot.state.z, DEFAULT_MUZZLE_RIG, slot.state.prone);
+      const eye = eyePosition(slot.state.x, slot.state.y, slot.state.z, DEFAULT_MUZZLE_RIG, eyeStance(false, slot.state.prone));
       for (const stimulus of hostile) if (hears(eye, stimulus)) rememberHeard(slot.memory, stimulus, nowSeconds);
       if (!slot.brain.due(this.currentTick)) continue;
       beginThink(slot.memory, nowSeconds);

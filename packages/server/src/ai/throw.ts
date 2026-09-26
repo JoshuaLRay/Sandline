@@ -29,7 +29,7 @@ import {
   type WorldBox,
   degToAngle,
   dirFromYawPitch,
-  eyePosition,
+  stanceEye,
   launchOrigin,
   launchVelocity,
   projectileArc,
@@ -105,9 +105,14 @@ export const THROW: ThrowConfig = parseThrowConfig(RAW_THROW);
  */
 export const LAUNCH_AHEAD_M = 0.55;
 
-/** The eye a throw leaves from: a soldier's standing eye, as a human's Throw has always used. */
-export function throwEye(feet: Vec3): Vec3 {
-  return eyePosition(feet.x, feet.y, feet.z);
+/**
+ * The eye a throw leaves from: the eye of the stance the thrower is in
+ * (U-002, B-09) — a crouched or prone soldier behind cover throws from behind
+ * it, not from a standing eye above it. A point without stance flags is a
+ * standing eye.
+ */
+export function throwEye(body: Vec3 & { crouched?: boolean; prone?: boolean }): Vec3 {
+  return stanceEye(body);
 }
 
 /**

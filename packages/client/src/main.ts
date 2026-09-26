@@ -53,6 +53,8 @@ import {
   dirFromYawPitch,
   getProjectile,
   eyePosition,
+  eyeStance,
+  stanceEye,
   muzzlePosition,
   toRadians,
   wireToTable,
@@ -792,7 +794,7 @@ function playRemoteShot(net: NetClient, shot: ServerShot): void {
   // T-2.47: a round that passed our head cracks on the side it went by.
   const here = net.simulated;
   if (here && shot.targetNetId !== net.netId && net.vitality !== 'dead') {
-    const head = eyePosition(here.x, here.y, here.z, DEFAULT_MUZZLE_RIG, here.prone);
+    const head = stanceEye(here);
     const past = nearMissAt(at, { x: shot.x, y: shot.y, z: shot.z }, head);
     if (past) {
       audio.play(WORLD_SOUNDS.nearMiss.crack, { at: past });
@@ -1985,7 +1987,8 @@ function frame(): void {
     });
     if (pouch.launch && canThrow && here) {
       const direction = dirFromYawPitch(aimYaw, aimPitch);
-      const eye = eyePosition(here.x, here.y, here.z);
+      // U-002: from the eye of the stance the body is in, as the server launches it.
+      const eye = stanceEye(here);
       const from = throws.origin(eye, direction, projectileWorld());
       if (throws.throwFrom(from, aimYaw, aimPitch, tickNumber * TICK_SECONDS) !== null) {
         net.throwProjectile(tickNumber, aimYaw, aimPitch, throws.kind);
@@ -2235,7 +2238,7 @@ function frame(): void {
   if (aiming) {
     const world = projectileWorld();
     const direction = dirFromYawPitch(aimYaw, aimPitch);
-    const eye = eyePosition(rx, ry, rz);
+    const eye = eyePosition(rx, ry, rz, DEFAULT_MUZZLE_RIG, eyeStance(sim?.crouched ?? false, sim?.prone ?? false));
     const from = throws.origin(eye, direction, world);
     throwOrigin.set(from.x, from.y, from.z);
     const arc = throws.arc(from, aimYaw, aimPitch, world);
@@ -2498,8 +2501,8 @@ function frame(): void {
   } else {
     aimPoint.copy(aimOrigin).addScaledVector(aimDirection, AIM_RANGE);
   }
-  // Prone traces from a prone eye (T-2.42), so converge from there too.
-  const eye = eyePosition(rx, ry, rz, DEFAULT_MUZZLE_RIG, sim?.prone ?? false);
+  // Each stance traces from its own eye (T-2.42 prone, U-002 crouched), so converge from there too.
+  const eye = eyePosition(rx, ry, rz, DEFAULT_MUZZLE_RIG, eyeStance(sim?.crouched ?? false, sim?.prone ?? false));
   aimDirection.set(aimPoint.x - eye.x, aimPoint.y - eye.y, aimPoint.z - eye.z).normalize();
 
   /**
