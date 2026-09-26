@@ -32,6 +32,14 @@ export interface SquadBotConfig {
   readonly reviveSeekM: number;
   /** Share of the revive range a bot closes to before it holds interact. */
   readonly reviveReachFraction: number;
+  /**
+   * T-5.06: when a bot under an order is under fire — suppression at or over
+   * `suppression`, or hurt within `hurtSeconds` — and the cover it takes: an
+   * attacking bot within `coverWithinM` of where it is, a holding one within
+   * `holdCoverM` of its anchor, hidden from whoever shot at it within
+   * `threatSeconds` and from its target.
+   */
+  readonly underFire: { readonly suppression: number; readonly hurtSeconds: number; readonly threatSeconds: number; readonly coverWithinM: number; readonly holdCoverM: number };
 }
 
 export interface SquadConfig {
@@ -106,11 +114,23 @@ export function parseSquadConfig(raw: unknown): SquadConfig {
   if (typeof rawBot !== 'object' || rawBot === null || Array.isArray(rawBot)) throw new SquadDataError('squad.bot: expected an object');
   const bot = rawBot as Record<string, unknown>;
   for (const k of Object.keys(bot)) {
-    if (!['archetype', 'friendlyMarginM', 'reviveSeekM', 'reviveReachFraction'].includes(k)) throw new SquadDataError(`squad.bot: unknown key "${k}"`);
+    if (!['archetype', 'friendlyMarginM', 'reviveSeekM', 'reviveReachFraction', 'underFire'].includes(k)) throw new SquadDataError(`squad.bot: unknown key "${k}"`);
   }
   const archetype = bot['archetype'];
   if (typeof archetype !== 'string' || !ENEMIES[archetype]) throw new SquadDataError(`squad.bot.archetype: no enemies.json row "${String(archetype)}"`);
   const botNum = (key: string, min: number, max: number) => num(bot, key, min, max);
+  const rawUnder = bot['underFire'];
+  if (typeof rawUnder !== 'object' || rawUnder === null || Array.isArray(rawUnder)) throw new SquadDataError('squad.bot.underFire: expected an object');
+  const under = rawUnder as Record<string, unknown>;
+  const UNDER_KEYS = ['suppression', 'hurtSeconds', 'threatSeconds', 'coverWithinM', 'holdCoverM'];
+  for (const k of Object.keys(under)) if (!UNDER_KEYS.includes(k)) throw new SquadDataError(`squad.bot.underFire: unknown key "${k}"`);
+  const underFire = {
+    suppression: num(under, 'suppression', 0, 1),
+    hurtSeconds: num(under, 'hurtSeconds', 0, 30),
+    threatSeconds: num(under, 'threatSeconds', 0, 60),
+    coverWithinM: num(under, 'coverWithinM', 0, 50),
+    holdCoverM: num(under, 'holdCoverM', 0, 50),
+  };
 
   return {
     fireteams,
@@ -130,6 +150,7 @@ export function parseSquadConfig(raw: unknown): SquadConfig {
       reviveSeekM: botNum('reviveSeekM', 0, 500),
       // Above zero and at most the whole range: it must be in reach to revive at all.
       reviveReachFraction: botNum('reviveReachFraction', 0.05, 1),
+      underFire,
     },
   };
 }

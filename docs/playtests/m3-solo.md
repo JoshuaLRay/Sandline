@@ -34,6 +34,7 @@ each route**, and answer:
 
 ## Before you start
 
+- **Add `?qa` to every URL in this sheet** (T-5.07): since the demo face, the QA layer — the readout, the tuning panels and the netgraph — is out of sight without it (H also brings it back).
 - **Getting in.** Deployed: open https://joshualray.github.io/Sandline/, go to
   the lobby (the menu's **Play** tab), set **Map** to **Grey box — mission
   layout fixture** (the default is Mission 01, which is M4's level and not this

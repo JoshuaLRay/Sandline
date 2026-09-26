@@ -27,6 +27,8 @@ export interface HudFrame {
   heat: HeatView | null;
   /** T-4.29: what a press of E would do, '' for nothing. */
   prompt: string;
+  /** T-5.03: a first-run hint, '' for none. */
+  hint?: string;
 }
 
 export interface PlayerHud {
@@ -115,6 +117,7 @@ export function createHud(parent: HTMLElement): PlayerHud {
   for (let i = 0; i < DAMAGE_ARCS; i += 1) arcs.push(el('div', 'phud-damage', centre));
   // -- Under the reticle: what E would do (T-4.29). --
   const prompt = el('div', 'phud-prompt', root);
+  const hint = el('div', 'phud-hint', root);
 
   let shown = true;
 
@@ -200,6 +203,8 @@ export function createHud(parent: HTMLElement): PlayerHud {
       }
       setText(prompt, frame.prompt);
       setData(prompt, 'shown', frame.prompt.length > 0 ? 'yes' : 'no');
+      setText(hint, frame.hint ?? '');
+      setData(hint, 'shown', (frame.hint ?? '').length > 0 ? 'yes' : 'no');
       // The objective.
       setText(objective, frame.objective);
       setData(objective, 'shown', frame.objective.length > 0 ? 'yes' : 'no');

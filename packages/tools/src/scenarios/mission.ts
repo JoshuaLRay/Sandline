@@ -58,6 +58,8 @@ const TICKS_PER_SECOND = Math.round(1 / TICK_SECONDS);
 const TICK_MS = 1000 / TICKS_PER_SECOND;
 /** Within this of a cover point it holds, a soldier is in it, metres: the fighting leaves' "there" and a little over. */
 const IN_COVER_M = 0.6;
+/** What the director placed at the start, before any wave: counted over the mission's first seconds. */
+const OPENING_SECONDS = 5;
 /** The leader looks again this often, ticks. */
 const LEADER_EVERY = 15;
 
@@ -73,6 +75,8 @@ export interface MissionRun {
   /** Mission seconds at the outcome, or the run's length on a timeout. */
   seconds: number;
   enemiesSpawned: number;
+  /** Enemies placed in the first seconds: the director's opening budget, before any wave. */
+  openingEnemies: number;
   enemiesKilled: number;
   botsDead: number;
   /** Enemy-ticks under fire, and of those in a held cover point. */
@@ -144,6 +148,7 @@ export async function runMission(seed: number, humans: number, config: MissionCo
   const suppressedBefore = session.slots.map(() => false);
   const killed = new Set<number>();
   const spawned = new Set<number>();
+  let openingEnemies = 0;
   let now = 0;
   const total = config.runSeconds * TICKS_PER_SECOND;
   let outcome: MissionRun['outcome'] = 'timeout';
@@ -153,6 +158,7 @@ export async function runMission(seed: number, humans: number, config: MissionCo
     session.step(now);
     const seconds = now / 1000;
     let contact = false;
+    if (seconds <= OPENING_SECONDS) openingEnemies = session.enemies.length;
     for (const e of session.enemies) {
       spawned.add(e.netId);
       if (isDead(e.health)) {
@@ -190,6 +196,7 @@ export async function runMission(seed: number, humans: number, config: MissionCo
     outcome,
     seconds: (session.tick - 0) / TICKS_PER_SECOND,
     enemiesSpawned: spawned.size,
+    openingEnemies,
     enemiesKilled: killed.size,
     botsDead: session.slots.filter((s) => isDead(s.health)).length,
     underFireTicks,
@@ -296,12 +303,16 @@ export function reportMission(summary: MissionSummary, config: MissionConfig = M
   );
   const done = (humans: number) => summary.runs.filter((r) => r.humans === humans && r.outcome === 'complete');
   const mean = (xs: number[]) => (xs.length === 0 ? NaN : xs.reduce((a, b) => a + b, 0) / xs.length);
+  const median = (xs: number[]) => {
+    const sorted = [...xs].sort((a, b) => a - b);
+    return sorted.length === 0 ? NaN : sorted.length % 2 ? sorted[sorted.length >> 1]! : (sorted[sorted.length / 2 - 1]! + sorted[sorted.length / 2]!) / 2;
+  };
   return [
     `scenario=mission world=${summary.runs[0]?.world ?? WORLD_ID} seeds=${summary.runs.length / config.budgets.length} budgets=${config.budgets.join(',')} run=${config.runSeconds}s`,
     ...lines,
     ...config.budgets.map(
       (h) =>
-        `${h}-human budget: completed ${((summary.completion[String(h)] ?? 0) * 100).toFixed(0)}% (floor ${((config.minCompletion as Record<string, number>)[String(h)] ?? 1) * 100}%${summary.runs.filter((r) => r.humans === h).length < config.completionMinSeeds ? `, not asserted under ${config.completionMinSeeds} seeds` : ''}), mean time ${done(h).length === 0 ? '-' : mean(done(h).map((r) => r.seconds)).toFixed(0)} s`,
+        `${h}-human budget: completed ${((summary.completion[String(h)] ?? 0) * 100).toFixed(0)}% (floor ${((config.minCompletion as Record<string, number>)[String(h)] ?? 1) * 100}%${summary.runs.filter((r) => r.humans === h).length < config.completionMinSeeds ? `, not asserted under ${config.completionMinSeeds} seeds` : ''}), mean time ${done(h).length === 0 ? '-' : mean(done(h).map((r) => r.seconds)).toFixed(0)} s, median ${done(h).length === 0 ? '-' : median(done(h).map((r) => r.seconds)).toFixed(0)} s`,
     ),
     `enemies under fire in cover: ${(summary.coverShare * 100).toFixed(0)}% (floor ${config.minCoverShare * 100}%)`,
     `suppression episodes per engagement: ${summary.episodesPerEngagement.toFixed(2)} (floor ${config.minEpisodesPerEngagement})`,

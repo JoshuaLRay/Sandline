@@ -19,6 +19,8 @@ export interface MenuOptions {
   onSettings: (next: Settings) => void;
   onResume: () => void;
   onLeave: () => void;
+  /** T-5.03: forget every first-run hint seen, so each shows again. */
+  onResetHints?: () => void;
 }
 
 export type MenuMode = 'hidden' | 'main' | 'pause';
@@ -173,6 +175,15 @@ export function createMenu(options: MenuOptions): Menu {
     emit();
   });
   controls.push({ refresh: () => { qualitySelect.value = current.quality; } });
+
+  // T-5.03: the first-run hints, off or back from the start.
+  heading('Help');
+  check('Show hints', 'hints', () => current.hints, (v) => { current.hints = v; });
+  if (options.onResetHints) {
+    const reset = options.onResetHints;
+    const again = button('Show every hint again', 'menu-button menu-hints-reset', () => reset(), settingsPanel);
+    again.dataset['setting'] = 'hints-reset';
+  }
 
   heading('Keys');
   const keys = el('dl', 'menu-keys', settingsPanel);

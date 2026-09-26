@@ -11,6 +11,7 @@ export * from './sim/encounters.ts';
 export * from './sim/director.ts';
 export * from './sim/mission.ts';
 export * from './sim/events.ts';
+export * from './sim/scripts.ts';
 export * from './sim/assets.ts';
 export * from './sim/packs.ts';
 export * from './sim/budgets.ts';

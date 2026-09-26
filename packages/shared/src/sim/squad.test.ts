@@ -27,5 +27,9 @@ describe('the squad (T-3.25)', () => {
     expect(() => parseSquadConfig({ ...RAW_SQUAD, bot: { ...RAW_SQUAD.bot, archetype: 'sniper' } })).toThrow(/sniper/);
     expect(() => parseSquadConfig({ ...RAW_SQUAD, bot: { ...RAW_SQUAD.bot, reviveReachFraction: 0 } })).toThrow(/reviveReachFraction/);
     expect(() => parseSquadConfig({ ...RAW_SQUAD, bot: { ...RAW_SQUAD.bot, courage: 1 } })).toThrow(/courage/);
+    // T-5.06: when a bot under an order is under fire, and how far it goes for cover.
+    expect(SQUAD.bot.underFire).toMatchObject({ coverWithinM: 10, holdCoverM: 3 });
+    expect(() => parseSquadConfig({ ...RAW_SQUAD, bot: { ...RAW_SQUAD.bot, underFire: { ...RAW_SQUAD.bot.underFire, nerve: 1 } } })).toThrow(/nerve/);
+    expect(() => parseSquadConfig({ ...RAW_SQUAD, bot: { ...RAW_SQUAD.bot, underFire: { ...RAW_SQUAD.bot.underFire, suppression: 2 } } })).toThrow(/suppression/);
   });
 });

@@ -6,3 +6,4 @@ coverage/
 __screenshots__/
 sandline.sqlite
 sandline.sqlite-*
+perf-frame.json

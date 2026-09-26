@@ -474,8 +474,19 @@ the owner may still overrule before T-4.23.
 
 ---
 
-## M5
+## M5 — Vertical slice (PLAN.md §7.12, broken out 2026-09-26)
 
-Epics only, not broken out — see PLAN.md §7 (epic tables) and §4 (milestone
-table). Nothing here is a task an agent can pick up; it gets leaf tasks at
-its own planning gate (§0.5).
+Broken out at the owner's request, ahead of the M3 and M4 gates. It does not
+jump the queue: those gates come first, and T-5.08 is not reached before
+T-4.34 is passed.
+
+| Task | Status | Depends |
+|---|---|---|
+| T-5.01 | DONE | — |
+| T-5.02 | DONE | T-5.01 |
+| T-5.03 | DONE | — |
+| T-5.04 | DONE — fps on target hardware waits on the owner opening `?perf` there | — |
+| 🧍 T-5.05 | OPEN — the owner's decision (T-4.12's fallback or lightmaps) | — |
+| T-5.06 | OPEN — cover under fire landed (60% / 20% with the clearing leader); bounding and the walk-in floors remain | B-11 |
+| T-5.07 | DONE | T-5.03 |
+| 🧍 T-5.08 | BLOCKED — after T-4.34; run sheet `m5.md` prepared, not run | T-5.01..T-5.07, T-4.34 |

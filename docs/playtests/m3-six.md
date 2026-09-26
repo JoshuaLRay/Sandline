@@ -40,6 +40,7 @@ And, because the gate's sentence is the same for both halves: do the six
 
 ## Before you start
 
+- **Add `?qa` to every URL in this sheet** (T-5.07): since the demo face, the QA layer — the readout, the tuning panels and the netgraph — is out of sight without it (H also brings it back).
 - **Getting in.** Everyone opens https://joshualray.github.io/Sandline/ and
   goes to the lobby (the menu's **Play** tab). **One** person sets **Map** to
   **Grey box — mission layout fixture** (the default is Mission 01, M4's

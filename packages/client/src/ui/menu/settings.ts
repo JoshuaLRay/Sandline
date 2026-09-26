@@ -46,6 +46,8 @@ export interface Settings {
   /** 0..1 each; E-2.7's audio reads them when it lands. */
   volumes: Volumes;
   quality: QualityLevel;
+  /** T-5.03: first-run hints on the HUD. */
+  hints: boolean;
 }
 
 export const SETTINGS_RANGES = {
@@ -60,6 +62,7 @@ export const DEFAULT_SETTINGS: Settings = Object.freeze({
   fovDeg: 60,
   volumes: Object.freeze({ master: 0.8, effects: 1, voice: 1 }),
   quality: 'medium',
+  hints: true,
 }) as Settings;
 
 /** Where one browser keeps them. */
@@ -85,6 +88,7 @@ export function parseSettings(raw: unknown): Settings {
       voice: clampNumber(volumesRaw['voice'], 0, 1, DEFAULT_SETTINGS.volumes.voice),
     },
     quality: typeof quality === 'string' && (QUALITY_LEVELS as readonly string[]).includes(quality) ? (quality as QualityLevel) : DEFAULT_SETTINGS.quality,
+    hints: typeof o['hints'] === 'boolean' ? o['hints'] : DEFAULT_SETTINGS.hints,
   };
 }
 

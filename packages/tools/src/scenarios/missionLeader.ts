@@ -10,10 +10,11 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
   const mission = world.mission!;
   // The approach routes describe the world's main objective, not arbitrary areas.
   // Keep T-3.35's opening approach when that is the first objective.
-  const first = def.objectives[0]!;
-  const approach = first.type === 'clear-and-hold' && first.area === 'objective';
+  // T-5.02: the routes are walked into whichever objective clears and holds the world's main objective — the first
+  // one or a later one — joined at the stop nearest each fireteam when it starts, so a squad already up a lane goes on.
+  const approachIndex = def.objectives.findIndex((o) => o.type === 'clear-and-hold' && o.area === 'objective');
   const roles = ['overwatch', 'assault'] as const;
-  const stops = SQUAD.fireteams.map((_, i) => approach
+  const stops = SQUAD.fireteams.map((_, i) => approachIndex >= 0
     ? (mission.routes.find((r) => r.role === roles[i % roles.length])?.via ?? []).map((p) => ({ ...p, y: 0 }))
     : []);
   const at = SQUAD.fireteams.map(() => 0);
@@ -48,7 +49,7 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
     let point: Point;
     let target: number | null = null;
     let order: 'hold' | 'move' | 'attack' = 'hold';
-    if (objectiveIndex === 0 && at[team]! < stops[team]!.length) {
+    if (objectiveIndex === approachIndex && at[team]! < stops[team]!.length) {
       point = stops[team]![at[team]!]!;
       order = 'move';
     } else if ('area' in objective) {
@@ -78,6 +79,21 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
     if (old?.order === order && old.target === target && (target !== null || (old.point && flat(old.point, point) < 0.01 && old.point.y === point.y))) return;
     session.orderFrom(0, { order, address: { to: 'slot', index: slot }, point: target === null ? { x: point.x, y: point.y, z: point.z } : null, target });
   };
+  /** Each fireteam joins its route at the stop nearest its first soldier on its feet. */
+  const joinRoutes = () => {
+    SQUAD.fireteams.forEach((f, t) => {
+      const who = f.slots.find((i) => standing(i));
+      const route = stops[t]!;
+      if (who === undefined || route.length === 0) return;
+      const from = session.slots[who]!.state;
+      let nearest = 0;
+      route.forEach((p, i) => {
+        if (flat(from, p) < flat(from, route[nearest]!)) nearest = i;
+      });
+      at[t] = nearest;
+      since[t] = session.tick;
+    });
+  };
   const orderTeam = (team: number) => {
     for (const slot of SQUAD.fireteams[team]!.slots) if (!reviving.has(slot)) orderTeamMember(slot);
   };
@@ -88,10 +104,11 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
     if (objectiveIndex !== session.mission!.objective) {
       objectiveIndex = session.mission!.objective;
       anchors = session.slots.map((s) => ({ ...s.state }));
+      if (objectiveIndex === approachIndex) joinRoutes();
       SQUAD.fireteams.forEach((_, t) => orderTeam(t));
     }
     const tick = session.tick;
-    if (objectiveIndex === 0) SQUAD.fireteams.forEach((f, t) => {
+    if (objectiveIndex === approachIndex) SQUAD.fireteams.forEach((f, t) => {
       if (at[t]! >= stops[t]!.length) return;
       const goal = stops[t]![at[t]!]!;
       const up = f.slots.filter((i) => standing(i) && !reviving.has(i));
@@ -104,7 +121,7 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
     });
     // A destroy target — or, once the approach is walked, an enemy left near a clear-and-hold area — can die or spawn between leader updates.
     const current = def.objectives[objectiveIndex]!;
-    const approached = objectiveIndex !== 0 || at.every((a, t) => a >= stops[t]!.length);
+    const approached = objectiveIndex !== approachIndex || at.every((a, t) => a >= stops[t]!.length);
     if (current.type === 'destroy' || (current.type === 'clear-and-hold' && approached)) SQUAD.fireteams.forEach((_, t) => orderTeam(t));
     for (const [reviver, downed] of [...reviving]) {
       if (!isDowned(session.slots[downed]!.health) || !standing(reviver)) {

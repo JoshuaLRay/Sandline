@@ -1,0 +1,17 @@
+{
+  "$comment": "T-5.03: first-run hints, in the order they are offered. Each shows once a device, the first time its `when` holds (and every hint named in `after` is behind it), for up to `showSeconds`; it is done — never shown again — once the player does `doneBy`, dismisses it, or it has been shown. Done before it ever shows (a player who already knows) counts too. Hints are `gapSeconds` apart. Conditions: start, enemy-seen, magazine-low, squad (squadmates who take orders, `squadAfterSeconds` in), mate-downed, under-fire, near-gun. Actions: move, fire, reload, order, mark, throw, revive, crouch, mount.",
+  "showSeconds": 9,
+  "gapSeconds": 4,
+  "squadAfterSeconds": 20,
+  "hints": [
+    { "id": "move", "text": "W A S D to move · Shift to sprint · Space to vault a low wall", "when": "start", "doneBy": "move" },
+    { "id": "fire", "text": "Left mouse fires · hold right mouse to aim down the sights", "when": "enemy-seen", "doneBy": "fire" },
+    { "id": "crouch", "text": "C crouches behind cover · Z goes prone", "when": "under-fire", "doneBy": "crouch" },
+    { "id": "reload", "text": "R reloads — the magazine is low", "when": "magazine-low", "doneBy": "reload" },
+    { "id": "orders", "text": "Hold Q for the order wheel — move, attack, hold, regroup, revive — and release to give it", "when": "squad", "doneBy": "order" },
+    { "id": "mark", "text": "F marks the enemy under your crosshair for the whole squad", "when": "enemy-seen", "after": ["orders"], "doneBy": "mark" },
+    { "id": "throw", "text": "G throws a grenade · 5 readies it to aim the arc", "when": "enemy-seen", "after": ["fire"], "doneBy": "throw" },
+    { "id": "revive", "text": "A squadmate is down — hold E beside them to get them up", "when": "mate-downed", "doneBy": "revive" },
+    { "id": "mount", "text": "E mans the machine gun", "when": "near-gun", "doneBy": "mount" }
+  ]
+}

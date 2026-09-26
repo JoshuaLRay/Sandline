@@ -1,0 +1,101 @@
+{
+  "$comment": "T-5.01: mission-01's event script (T-4.15's format), loaded with the mission wherever it is played — a host's room, the in-page session, the headless scenario. Messages go to the HUD; a callout that names a callout event (T-2.49) is said by the nearest squadmate. T-5.02 grows this with the slice mission's objectives, blockers and checkpoints.",
+  "world": "mission-01",
+  "blockers": [],
+  "events": [
+    {
+      "id": "brief",
+      "trigger": {
+        "kind": "objective-start",
+        "objective": 0
+      },
+      "actions": [
+        {
+          "kind": "message",
+          "text": "Clear the patrol holding the west lane"
+        }
+      ]
+    },
+    {
+      "id": "west-clear",
+      "trigger": {
+        "kind": "objective-complete",
+        "objective": 0
+      },
+      "actions": [
+        {
+          "kind": "callout",
+          "id": "enemy-down"
+        },
+        {
+          "kind": "message",
+          "text": "West lane clear — now the position holding the east lane"
+        }
+      ]
+    },
+    {
+      "id": "east-clear",
+      "trigger": {
+        "kind": "objective-complete",
+        "objective": 1
+      },
+      "actions": [
+        {
+          "kind": "message",
+          "text": "Both lanes open — take the compound and hold it"
+        }
+      ]
+    },
+    {
+      "id": "garrison-down",
+      "trigger": {
+        "kind": "group-dead",
+        "group": "garrison"
+      },
+      "actions": [
+        {
+          "kind": "callout",
+          "id": "objective-clear"
+        }
+      ]
+    },
+    {
+      "id": "counterattack",
+      "trigger": {
+        "kind": "objective-start",
+        "objective": 3
+      },
+      "actions": [
+        {
+          "kind": "callout",
+          "id": "objective-hold"
+        },
+        {
+          "kind": "message",
+          "text": "Counterattack from the north — hold the compound"
+        }
+      ]
+    },
+    {
+      "id": "fall-back",
+      "trigger": {
+        "kind": "objective-start",
+        "objective": 4
+      },
+      "actions": [
+        {
+          "kind": "callout",
+          "id": "objective-done"
+        },
+        {
+          "kind": "message",
+          "text": "Compound secure — fall back to the start line"
+        },
+        {
+          "kind": "spawn-group",
+          "group": "exfil-ambush"
+        }
+      ]
+    }
+  ]
+}
