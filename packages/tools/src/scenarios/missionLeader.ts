@@ -53,7 +53,21 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
       order = 'move';
     } else if ('area' in objective) {
       // Hold walks to the exact anchor; move may choose cover outside a small reach area.
-      point = { ...resolveArea(objective.area, encounter, world), y: 0 };
+      const area = resolveArea(objective.area, encounter, world);
+      point = { ...area, y: 0 };
+      // B-11: clear it before walking in, as a human lead would — attack the nearest living enemy
+      // within `clearWithinM` of the area; hold it once none is left. Walking the squad into the
+      // middle of a garrison is how it lost every fight at seven metres.
+      if (objective.type === 'clear-and-hold') {
+        const from = session.slots[slot]!.state;
+        const nearest = session.enemies
+          .filter((e) => !isDead(e.health) && flat(e.state, point) <= area.radius + config.clearWithinM)
+          .reduce<Session['enemies'][number] | null>((b, e) => (b === null || flat(from, e.state) < flat(from, b.state) ? e : b), null);
+        if (nearest) {
+          order = 'attack';
+          target = nearest.netId;
+        }
+      }
     } else if (objective.type === 'destroy') {
       ({ point, target } = groupHint(objective.group, slot));
       if (target !== null) order = 'attack';
@@ -88,8 +102,10 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
         orderTeam(t);
       }
     });
-    // A destroy target can die or spawn between leader updates.
-    if (def.objectives[objectiveIndex]!.type === 'destroy') SQUAD.fireteams.forEach((_, t) => orderTeam(t));
+    // A destroy target — or, once the approach is walked, an enemy left near a clear-and-hold area — can die or spawn between leader updates.
+    const current = def.objectives[objectiveIndex]!;
+    const approached = objectiveIndex !== 0 || at.every((a, t) => a >= stops[t]!.length);
+    if (current.type === 'destroy' || (current.type === 'clear-and-hold' && approached)) SQUAD.fireteams.forEach((_, t) => orderTeam(t));
     for (const [reviver, downed] of [...reviving]) {
       if (!isDowned(session.slots[downed]!.health) || !standing(reviver)) {
         reviving.delete(reviver);
