@@ -195,6 +195,21 @@ export class CombatQA {
     return fresh;
   }
 
+  /**
+   * U-026: take up another soldier's gun as it is — that loadout slot and the
+   * rounds in its magazine — when the player switches into a bot. The host's
+   * magazine is the authority; this copy only has to start where it does.
+   */
+  adopt(index: number, ammo: number): void {
+    if (index >= 0 && index < WEAPON_ORDER.length && index !== this.index) {
+      this.index = index;
+      this.def = this.workingDef(index);
+      this.onWeaponChange?.(this.def);
+    }
+    this.state = createWeaponState(this.def);
+    this.state.ammo = Math.max(0, Math.min(ammo, this.def.magSize));
+  }
+
   /** Switch weapons. Each keeps a fresh magazine; this is a range, not a match. */
   selectWeapon(index: number): void {
     if (index === this.index || index < 0 || index >= WEAPON_ORDER.length) return;

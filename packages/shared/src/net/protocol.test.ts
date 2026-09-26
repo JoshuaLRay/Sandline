@@ -74,6 +74,11 @@ const SAMPLES: Message[] = [
   // U-025: every bot and commander slot there is, the edges of three bits included.
   { kind: 'AssignCommander', bot: 5, commander: 0 },
   { kind: 'AssignCommander', bot: 0, commander: 5 },
+  // U-026: the switch request and the host's answer, sharing a variant.
+  { kind: 'SwitchCharacter', slot: 5 },
+  { kind: 'SwitchCharacter', slot: 0 },
+  { kind: 'Possessed', netId: 5, slot: 4, resume: 'a1b2c3', weapon: 3, ammo: 30, pouch: [2, 1] },
+  { kind: 'Possessed', netId: 300, slot: 0, resume: '', weapon: 0, ammo: 0, pouch: [] },
   { kind: 'Throw', tick: 900, yaw: 4095, pitch: 3072, projectile: 1 },
   { kind: 'Equip', item: 5 },
   {

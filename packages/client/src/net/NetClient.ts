@@ -363,6 +363,8 @@ export class NetClient {
   onDisconnect: ((reason: string, code: DisconnectCode) => void) | null = null;
   /** The squad changed. */
   onRoster: ((slots: RosterEntry[]) => void) | null = null;
+  /** U-026: the host moved this client into another soldier; the page adopts what it carries. */
+  onPossessed: ((possessed: Extract<Message, { kind: 'Possessed' }>) => void) | null = null;
   /** T-4.19: ready-up room state changed. */
   onRoomState: ((room: Extract<Message, { kind: 'RoomState' }>) => void) | null = null;
   /** T-3.09: an AI debug report, from a host that allows them, after `requestAiDebug(true)`. */
@@ -802,6 +804,12 @@ export class NetClient {
     this.transport.send(encodeMessage({ kind: 'RoomCommand', command: 'start' }), 'reliable');
   }
 
+  /** U-026: ask the host to put this client in control of the bot in `slot`, one it commands. The host checks it. */
+  switchTo(slot: number): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage({ kind: 'SwitchCharacter', slot }), 'reliable');
+  }
+
   /** U-025: ask the host to put the bot in `bot`'s slot under `commander`'s human. The host checks both. */
   assignCommander(bot: number, commander: number): void {
     if (!this.joinedFlag) return;
@@ -1039,6 +1047,25 @@ export class NetClient {
         // The predictor is NOT created here, for the reason BotClient gives:
         // JoinAck does not say where we spawned, and assuming the origin
         // guarantees a large bogus correction on the first snapshot.
+        break;
+      }
+
+      case 'Possessed': {
+        /**
+         * U-026: the same session, another soldier. Like a rejoin for the one
+         * thing that belongs to the soldier — the predictor, which would
+         * otherwise reconcile the new body against the old one's history —
+         * and nothing else: the snapshot store, the clock and the link stay.
+         * The new soldier was a remote until now, so its interpolation buffer
+         * goes; the old one becomes a remote on the next snapshot.
+         */
+        this.netIdValue = msg.netId;
+        this.slotValue = msg.slot;
+        this.resumeTokenValue = msg.resume;
+        this.predictor = null;
+        this.buffers.delete(msg.netId);
+        this.remoteGoneAt.delete(msg.netId);
+        this.onPossessed?.(msg);
         break;
       }
 

@@ -17,7 +17,7 @@ import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 import type { MissionStats } from '../sim/scoreboard.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 34;
+export const PROTOCOL_VERSION = 35;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -129,7 +129,7 @@ const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks
 /**
  * Mission, room and progression messages share a three-bit variant (T-4.24).
  */
-const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3, Progression: 4, Stats: 5, AssignCommander: 6 } as const;
+const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3, Progression: 4, Stats: 5, AssignCommander: 6, Possess: 7 } as const;
 const ROOM_COMMANDS = ['ready', 'start', 'class'] as const;
 /** T-4.15: state plus transient message/callout notifications. */
 const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2, OrderFailed: 3 } as const;
@@ -457,6 +457,15 @@ export type Message =
   | { kind: 'MissionRestart' }
   /** U-025: put the bot in `bot`'s slot under the human in `commander`'s. Client to host; the host checks both. */
   | { kind: 'AssignCommander'; bot: number; commander: number }
+  /** U-026: take control of the bot in `slot`, one you command. Client to host; the host checks it. */
+  | { kind: 'SwitchCharacter'; slot: number }
+  /**
+   * U-026: you now control the soldier `netId` in `slot` — a switch the host
+   * made. `resume` is the seat's new reconnect token; `weapon` (a loadout
+   * index), `ammo` and `pouch` are what that soldier carries, for the page's
+   * own copies. Host to client.
+   */
+  | { kind: 'Possessed'; netId: number; slot: number; resume: string; weapon: number; ammo: number; pouch: readonly number[] }
   | { kind: 'Progression'; soldiers: SoldierProgress[] }
   /** T-4.28: the server's scoreboard, six rows whole, the mission clock and the objectives done. Host to client. */
   | ({ kind: 'Stats' } & MissionStats)
@@ -697,6 +706,27 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(MISSION_VARIANT.AssignCommander, 3);
       w.writeBits(msg.bot & 0x7, 3);
       w.writeBits(msg.commander & 0x7, 3);
+      break;
+    // U-026: the request and the host's answer share variant 7, told apart by a bit.
+    case 'SwitchCharacter':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Mission, EXT_BITS);
+      w.writeBits(MISSION_VARIANT.Possess, 3);
+      w.writeBool(false);
+      w.writeBits(msg.slot & 0x7, 3);
+      break;
+    case 'Possessed':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Mission, EXT_BITS);
+      w.writeBits(MISSION_VARIANT.Possess, 3);
+      w.writeBool(true);
+      w.writeVarUint(msg.netId);
+      w.writeBits(msg.slot & 0x7, 3);
+      w.writeString(msg.resume);
+      w.writeVarUint(msg.weapon);
+      w.writeVarUint(msg.ammo);
+      w.writeBits(Math.min(msg.pouch.length, 7), 3);
+      for (const count of msg.pouch.slice(0, 7)) w.writeVarUint(count);
       break;
     case 'RoomState': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -1152,6 +1182,17 @@ export function decodeMessage(bytes: Uint8Array): Message {
               return { kind: 'Progression', soldiers };
             }
             if (variant === MISSION_VARIANT.Restart) return { kind: 'MissionRestart' };
+            if (variant === MISSION_VARIANT.Possess) {
+              if (!r.readBool()) return { kind: 'SwitchCharacter', slot: r.readBits(3) };
+              const netId = r.readVarUint();
+              const slot = r.readBits(3);
+              const resume = r.readString();
+              const weapon = r.readVarUint();
+              const ammo = r.readVarUint();
+              const pouch: number[] = [];
+              for (let i = r.readBits(3); i > 0; i -= 1) pouch.push(r.readVarUint());
+              return { kind: 'Possessed', netId, slot, resume, weapon, ammo, pouch };
+            }
             if (variant === MISSION_VARIANT.AssignCommander) {
               const bot = r.readBits(3);
               const commander = r.readBits(3);

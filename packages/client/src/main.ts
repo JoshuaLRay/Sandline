@@ -1229,6 +1229,16 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
     scriptNoticeUntil = performance.now() + 3000;
   };
   net.onOrderFailed = (slot) => calloutWatcher.onOrderFailed(slot);
+  // U-026: another soldier's hands — its gun as it is, its pouch — and nothing to tell the host it already knows.
+  net.onPossessed = (possessed) => {
+    holdingPouch = false;
+    combat.adopt(possessed.weapon, possessed.ammo);
+    throws.setCounts(possessed.pouch);
+    equipSent = { net, item: possessed.weapon };
+    // Its class is already in hand, as carried: the class-change reset below must not re-equip over it.
+    localClassSeen = choice.kind === 'remote' ? net.roster[possessed.slot]?.classId ?? '' : '';
+    localLoadout = classById(localClassSeen);
+  };
   net.onShot = (shot) => onServerShot(net, shot);
   net.onDetonation = (event) => onServerDetonation(net, event);
   // T-3.09: B's overlay, carried across sessions; the wish is resent on JoinAck.
@@ -1610,6 +1620,12 @@ const menu = createMenu({
   onLeave: () => leaveSession({ text: 'left the session', tone: 'info' }),
   // U-025: the host checks it and answers with the roster; the menu redraws from that.
   onAssign: (bot, commander) => live?.net.assignCommander(bot, commander),
+  // U-026: the host checks it and answers with Possessed; back to the game meanwhile.
+  onSwitch: (slot) => {
+    live?.net.switchTo(slot);
+    menu.hide();
+    if (live) renderer.domElement.requestPointerLock?.();
+  },
 });
 document.body.appendChild(menu.root);
 

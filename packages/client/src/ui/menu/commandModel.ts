@@ -21,6 +21,8 @@ export interface CommandRow {
   commander: number;
   /** Every seated human, you marked: who this bot can be handed to. Empty for a human's row. */
   options: CommandOption[];
+  /** U-026: a bot you command: you may take control of it. */
+  switchable: boolean;
 }
 
 /** A seated human as the squad names them: their name, "(you)" for you. */
@@ -46,6 +48,7 @@ export function commandRows(roster: readonly RosterEntry[], mySlot: number): Com
       human,
       commander: human ? -1 : (entry?.commander ?? -1),
       options: human ? [] : humans,
+      switchable: !human && mySlot >= 0 && entry?.commander === mySlot,
     });
   }
   return rows;
@@ -53,5 +56,5 @@ export function commandRows(roster: readonly RosterEntry[], mySlot: number): Com
 
 /** A key that changes exactly when the rows would draw differently: the menu redraws on it, not every frame. */
 export function commandKey(rows: readonly CommandRow[]): string {
-  return rows.map((r) => `${r.label}|${r.commander}|${r.options.map((o) => `${o.slot}:${o.label}`).join(',')}`).join(';');
+  return rows.map((r) => `${r.label}|${r.commander}|${r.switchable}|${r.options.map((o) => `${o.slot}:${o.label}`).join(',')}`).join(';');
 }
