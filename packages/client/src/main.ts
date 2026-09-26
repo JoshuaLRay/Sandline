@@ -77,6 +77,7 @@ import {
 import { forgetIdentity, readIdentity, storeIdentity } from './net/identity.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
 import { QaEnemies, QaSuppressor } from './net/qaEnemies.ts';
+import { SOUNDS } from '@sandline/shared';
 import { DEFAULT_WORLD_ID, buildTree, encounterFor, getWorld, type World, type WorldBox, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
 import { regionForHost, tagCode } from '@sandline/shared';
 
@@ -118,6 +119,8 @@ import { RESTART_KEY, afterActionXp, missionLine } from './ui/missionHud.ts';
 import { type ClassDef, TICK_SECONDS as MISSION_TICK_SECONDS, type Vitality, afterActionSummary, classById, scoreboardRows } from '@sandline/shared';
 import { createScoreboard } from './ui/scoreboard.ts';
 import { createMenu } from './ui/menu/Menu.ts';
+import { type AudioContextLike, AudioEngine } from './audio/engine.ts';
+import { createSoundBoard } from './ui/SoundBoard.ts';
 import { QUALITY, type Settings, browserStore, loadSettings, saveSettings } from './ui/menu/settings.ts';
 import { createHud } from './ui/hud/Hud.ts';
 import {
@@ -1277,7 +1280,35 @@ const lobby = createLobby({
  * opens the pause menu in a session, and the settings both share are
  * applied here and kept per browser.
  */
+/**
+ * T-2.45: the audio engine. The context is made on the first click or key
+ * (browsers refuse to start one before), and every committed render is
+ * fetched then. `?sounds` puts the sound board up.
+ */
+const fetchAudio = (file: string): Promise<ArrayBuffer> => fetch(`./audio/${file}`).then((r) => {
+  if (!r.ok) throw new Error(`audio/${file}: ${r.status}`);
+  return r.arrayBuffer();
+});
+// The real context has more (and stricter-typed) members than the engine uses; it is the engine's shape at runtime.
+const audio = new AudioEngine({ createContext: () => new AudioContext({ latencyHint: 'interactive' }) as unknown as AudioContextLike, fetchBytes: fetchAudio });
+const unlockAudio = (): void => {
+  void audio.unlock();
+  removeEventListener('pointerdown', unlockAudio, true);
+  removeEventListener('keydown', unlockAudio, true);
+};
+addEventListener('pointerdown', unlockAudio, true);
+addEventListener('keydown', unlockAudio, true);
+if (new URLSearchParams(location.search).has('sounds')) {
+  createSoundBoard(document.body, {
+    sounds: SOUNDS,
+    fetchBytes: fetchAudio,
+    play: (id, variant) => void audio.unlock().then(() => audio.play(id, { variant })),
+  });
+}
+
 function applySettings(next: Settings): void {
+  // T-2.45: the three volumes the settings have held since T-4.26.
+  audio.setVolumes(next.volumes);
   input.setSensitivity(next.sensitivity);
   input.setInvertY(next.invertY);
   cam.baseFov = next.fovDeg;
@@ -2120,6 +2151,9 @@ function frame(): void {
     camSolve.position.y + camSolve.shake.y,
     camSolve.position.z + camSolve.shake.z,
   );
+  // T-2.45: the ear is the camera, facing where it looks, in the world it hears through.
+  audio.setListener(camSolve.position, camSolve.direction);
+  audio.setWorld(collisionBoxes());
   // Your own character is the one thing the first-person camera sits inside.
   // Downed forces third person (B-05), so the body stays visible then too.
   player.visible = !input.firstPerson || downed;
