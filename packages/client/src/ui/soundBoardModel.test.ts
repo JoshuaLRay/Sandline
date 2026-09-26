@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { SOUNDS, parseSounds } from '@sandline/shared';
-import { type RendersManifest, soundBoardRows, waveformColumns, wavSamples } from './soundBoardModel.ts';
+import { type RendersManifest, type VoiceRendersManifest, soundBoardRows, voiceBoard, waveformColumns, wavSamples } from './soundBoardModel.ts';
 
 const manifest = JSON.parse(readFileSync(new URL('../../public/audio/renders.json', import.meta.url), 'utf8')) as RendersManifest;
 
@@ -21,6 +21,24 @@ describe('the sound board (T-2.45)', () => {
         expect(v.numbers).toMatch(/^peak -?\d+\.\d dB · rms -?\d+\.\d dB · \d+\.\d{3} s · \d+\.\d KB$/);
       }
     }
+  });
+
+  it('lists the committed voice lines, or says nobody has recorded yet (T-2.48)', () => {
+    const committed = JSON.parse(readFileSync(new URL('../../public/audio/voice/renders.json', import.meta.url), 'utf8')) as VoiceRendersManifest;
+    const board = voiceBoard(committed);
+    expect(board.rows).toHaveLength(Object.keys(committed.lines).length);
+    if (board.rows.length === 0) expect(board.summary).toMatch(/nobody has recorded docs\/audio\/voice-script\.md/);
+    const one: VoiceRendersManifest = {
+      ...committed,
+      speakers: [{ name: 'pat', passes: { 'orders-normal': 21 } }],
+      lines: { 's0/copy.normal.radio': [{ file: 's0/copy.normal.radio.0.wav', bytes: 40960, lufs: -16.02, peakDb: -3.14, seconds: 0.82 }] },
+      missing: ['s0/pain-grunt.hurt'],
+    };
+    expect(voiceBoard(one)).toEqual({
+      summary: '1 lines from 1 speaker(s) (pat); 1 not recorded.',
+      rows: [{ key: 's0/copy.normal.radio', variants: [{ variant: 0, file: 'voice/s0/copy.normal.radio.0.wav', numbers: '-16.0 LUFS · peak -3.1 dB · 0.82 s · 40.0 KB' }] }],
+    });
+    expect(voiceBoard(null).summary).toMatch(/run pnpm gen:voice/);
   });
 
   it('notes a sound with no render rather than hiding it', () => {

@@ -1,11 +1,12 @@
 /**
  * The sound board (T-2.45, `?sounds`): every committed sound and each of its
  * variants, played in place, beside a picture of its waveform and the
- * numbers `gen:audio` measured. It is how the owner listens and reports
- * (ADR-017: Claude cannot hear what it makes).
+ * numbers `gen:audio` measured, and below them every processed voice line
+ * (T-2.48). It is how the owner listens and reports (ADR-017: Claude cannot
+ * hear what it makes).
  */
 import type { SoundsConfig } from '@sandline/shared';
-import { type RendersManifest, soundBoardRows, waveformColumns, wavSamples } from './soundBoardModel.ts';
+import { type RendersManifest, type VoiceRendersManifest, soundBoardRows, voiceBoard, waveformColumns, wavSamples } from './soundBoardModel.ts';
 
 export interface SoundBoardOptions {
   sounds: SoundsConfig;
@@ -13,6 +14,8 @@ export interface SoundBoardOptions {
   fetchBytes: (file: string) => Promise<ArrayBuffer>;
   /** Plays a sound's variant; the engine unlocks on the click that calls this. */
   play: (id: string, variant: number) => void;
+  /** Plays a committed file under `audio/` as it is: a voice line (T-2.48). */
+  playFile: (file: string) => void;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, parent?: HTMLElement): HTMLElementTagNameMap[K] {
@@ -72,6 +75,35 @@ export function createSoundBoard(parent: HTMLElement, options: SoundBoardOptions
           const numbers = el('span', 'sound-board-numbers', line);
           numbers.textContent = v.numbers;
           if (v.rendered) void options.fetchBytes(v.file).then((bytes) => drawWaveform(canvas, wavSamples(bytes))).catch(() => undefined);
+        }
+      }
+    });
+  // T-2.48: the voice lines, or why there are none yet.
+  const voiceHead = el('h3', 'sound-board-title', root);
+  voiceHead.textContent = 'Voice lines';
+  const voiceNote = el('p', 'sound-board-note', root);
+  const voiceList = el('div', 'sound-board-list', root);
+  void options
+    .fetchBytes('voice/renders.json')
+    .then((bytes) => JSON.parse(new TextDecoder().decode(bytes)) as VoiceRendersManifest)
+    .catch(() => null)
+    .then((manifest) => {
+      const board = voiceBoard(manifest);
+      voiceNote.textContent = board.summary;
+      for (const row of board.rows) {
+        const block = el('div', 'sound-board-row', voiceList);
+        el('div', 'sound-board-id', block).textContent = row.key;
+        for (const v of row.variants) {
+          const line = el('div', 'sound-board-variant', block);
+          const play = el('button', 'sound-board-play', line);
+          play.type = 'button';
+          play.textContent = `▶ ${v.variant + 1}`;
+          play.addEventListener('click', () => options.playFile(v.file));
+          const canvas = el('canvas', 'sound-board-wave', line);
+          canvas.width = 240;
+          canvas.height = 36;
+          el('span', 'sound-board-numbers', line).textContent = v.numbers;
+          void options.fetchBytes(v.file).then((bytes) => drawWaveform(canvas, wavSamples(bytes))).catch(() => undefined);
         }
       }
     });

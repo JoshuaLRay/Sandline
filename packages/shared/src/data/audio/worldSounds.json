@@ -1,0 +1,12 @@
+{
+  "$comment": "T-2.47: which world and body sounds play when. A round passing within `nearMiss.distanceM` of your head plays `crack` at the point it passed nearest (so it is heard on that side) and `whiz` there too. An impact plays by what it struck. An explosion within `explosion.farM` plays its near version and beyond it the far one. A footstep plays by stance on each foot's contact in the gait; a landing after `landing.minAirSeconds` in the air plays `land`.",
+  "nearMiss": { "distanceM": 3, "crack": "crack", "whiz": "whiz" },
+  "impacts": { "wall": "impact-wall", "crate": "impact-crate", "post": "impact-post", "ground": "impact-ground" },
+  "grenade": { "throw": "grenade-throw", "bounce": "grenade-bounce" },
+  "rocket": { "launch": "rocket-launch", "flight": "rocket-flight" },
+  "explosion": { "near": "explosion-near", "far": "explosion-far", "farM": 60 },
+  "footsteps": { "walk": "step-walk", "sprint": "step-run", "crouch-walk": "step-crouch", "prone": "step-prone" },
+  "movement": { "vault": "vault", "land": "land" },
+  "landing": { "minAirSeconds": 0.35 },
+  "bodies": { "hit": "body-hit", "downed": "downed", "fall": "body-fall" }
+}

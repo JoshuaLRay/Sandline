@@ -1,0 +1,13 @@
+{
+  "$comment": "T-2.46: which sounds a gun makes. Every gun (the loadout's four and the LMG) has a near and a far report; between `crossfade.nearM` and `crossfade.farM` the two are blended at equal power. The handling sounds are shared by every gun; a reload plays `reloadOut` when it starts, `reloadIn` at `stages.in` of the way through and `reloadBolt` at `stages.bolt`.",
+  "crossfade": { "nearM": 25, "farM": 90 },
+  "guns": {
+    "carbine": { "near": "carbine-near", "far": "carbine-far" },
+    "marksman": { "near": "marksman-near", "far": "marksman-far" },
+    "breacher": { "near": "breacher-near", "far": "breacher-far" },
+    "sidearm": { "near": "sidearm-near", "far": "sidearm-far" },
+    "lmg": { "near": "lmg-near", "far": "lmg-far" }
+  },
+  "handling": { "reloadOut": "reload-out", "reloadIn": "reload-in", "reloadBolt": "reload-bolt", "dryFire": "dry-fire", "equip": "equip" },
+  "stages": { "in": 0.55, "bolt": 0.85 }
+}

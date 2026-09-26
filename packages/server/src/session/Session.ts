@@ -1847,6 +1847,8 @@ export class Session {
       run.status = 'done';
       return;
     }
+    // T-2.49: a failure is told, so the bot can say it could not get there.
+    if (outcome === 'failed') for (const c of this.connections) if (c.state === 'active') c.send({ kind: 'OrderFailed', slot, order: order.order });
     this.endOrder(slot, outcome, reason);
   }
   private marks: TargetMark[] = [];

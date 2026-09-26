@@ -85,6 +85,7 @@ const SAMPLES: Message[] = [
   },
   { kind: 'ScriptMessage', text: 'Gate is shut' },
   { kind: 'ScriptCallout', id: 'contact-front' },
+  { kind: 'OrderFailed', slot: 4, order: 'move' },
   {
     kind: 'HitEvent',
     shooterNetId: 3,

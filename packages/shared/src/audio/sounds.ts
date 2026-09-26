@@ -175,7 +175,7 @@ function parseEnvelope(where: string, raw: unknown): EnvelopeDef {
   };
 }
 
-function parseFilter(where: string, raw: unknown): FilterDef {
+export function parseFilter(where: string, raw: unknown): FilterDef {
   const o = obj(where, raw, ['kind', 'hz'], ['q', 'gainDb', 'toHz', 'sweepSeconds']);
   const kind = oneOf(`${where}.kind`, o['kind'], FILTER_KINDS);
   const gainDb = o['gainDb'] === undefined ? 0 : num(`${where}.gainDb`, o['gainDb'], -40, 40);

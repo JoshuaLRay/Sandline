@@ -1,7 +1,8 @@
 /**
  * What the sound board shows (T-2.45), as pure functions: one row per
  * committed sound — its class, and each variant's file with the numbers
- * `gen:audio` measured — and a waveform's columns from a WAV's samples.
+ * `gen:audio` measured — every processed voice line (T-2.48), and a
+ * waveform's columns from a WAV's samples.
  * `SoundBoard.ts` puts these on the page; the tests check them without one.
  */
 import type { SoundsConfig } from '@sandline/shared';
@@ -41,6 +42,40 @@ export function soundBoardRows(sounds: SoundsConfig, manifest: RendersManifest |
           : { variant: v, file: `${def.id}.${v}.wav`, rendered: false, numbers: 'not rendered — run pnpm gen:audio' };
       }),
     }));
+}
+
+/** What `client/public/audio/voice/renders.json` holds (T-2.48), as far as the board reads it. */
+export interface VoiceRendersManifest {
+  inputsHash: string;
+  sampleRate: number;
+  speakers: { name: string; passes: Record<string, number> }[];
+  lines: Record<string, { file: string; bytes: number; lufs: number; peakDb: number; seconds: number }[]>;
+  missing: string[];
+}
+
+export interface VoiceBoard {
+  /** One line of what there is, or why there is nothing. */
+  summary: string;
+  rows: { key: string; variants: { variant: number; file: string; numbers: string }[] }[];
+}
+
+/**
+ * The voice lines on the board (T-2.48): every processed line, in key
+ * order, each variant with its measured loudness — or, before anyone has
+ * recorded, a note saying so and where the script is.
+ */
+export function voiceBoard(manifest: VoiceRendersManifest | null): VoiceBoard {
+  if (!manifest) return { summary: 'No voice manifest — run pnpm gen:voice.', rows: [] };
+  const keys = Object.keys(manifest.lines).sort();
+  if (keys.length === 0) return { summary: 'No voice lines yet: nobody has recorded docs/audio/voice-script.md. Callouts play the radio chirp until then.', rows: [] };
+  const speakers = manifest.speakers.map((s) => s.name).join(', ');
+  return {
+    summary: `${keys.length} lines from ${manifest.speakers.length} speaker(s) (${speakers})${manifest.missing.length ? `; ${manifest.missing.length} not recorded` : ''}.`,
+    rows: keys.map((key) => ({
+      key,
+      variants: manifest.lines[key]!.map((m, variant) => ({ variant, file: `voice/${m.file}`, numbers: `${m.lufs.toFixed(1)} LUFS · peak ${m.peakDb.toFixed(1)} dB · ${m.seconds.toFixed(2)} s · ${(m.bytes / 1024).toFixed(1)} KB` })),
+    })),
+  };
 }
 
 /** The samples of a canonical mono 16-bit WAV (what `gen:audio` writes), scaled to −1..1; empty for anything else. */

@@ -57,7 +57,17 @@ import {
   toRadians,
   wireToTable,
   zoneAt,
+  WEAPON_SOUNDS,
+  WORLD_SOUNDS,
+  PROJECTILE_IDS,
+  enemyByIndex,
+  CALLOUTS,
 } from '@sandline/shared';
+import { ReloadWatcher, ShotDeduper, gunSoundPlan } from './audio/weaponSounds.ts';
+import { CalloutDirector, type CalloutPlay, voiceIndex } from './audio/callouts.ts';
+import { type CalloutView, CalloutWatcher, type SquadSoldier } from './audio/calloutEvents.ts';
+import type { VoiceRendersManifest } from './ui/soundBoardModel.ts';
+import { FootstepTracker, explosionSound, footstepSound, impactSound, nearMissAt } from './audio/worldSounds.ts';
 import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { type ClientLink, DEFAULT_LINK, type LinkConditions, LocalServer, type LocalServerOptions } from './net/LocalServer.ts';
@@ -460,12 +470,23 @@ async function prepareLevelAssets(worldId: string): Promise<void> {
  * Since T-3.11 enemies are drawn by the same path in the enemy palette; see
  * `remoteSoldiers.ts`.
  */
+/** T-2.47: each remote soldier's footsteps, from its own gait. */
+const remoteFeet = new Map<number, FootstepTracker>();
 const remotes = new RemoteSoldiers({
   scene,
   shootable,
   create: createSoldier,
   world: () => collisionBoxes(),
   config,
+  onGait: (netId, phase, state, feet) => {
+    let tracker = remoteFeet.get(netId);
+    if (!tracker) {
+      tracker = new FootstepTracker();
+      remoteFeet.set(netId, tracker);
+    }
+    const sound = footstepSound(state);
+    if (sound) for (const _foot of tracker.update(phase, state)) audio.play(sound, { at: feet });
+  },
 });
 
 /** A signed wire angle (1024 per turn) in radians. */
@@ -543,6 +564,8 @@ let localLoadout: ClassDef | null = null;
 let localClassSeen = '';
 function equipGun(index: number): void {
   if (localLoadout && !localLoadout.guns.includes(WEAPON_ORDER[index] ?? '')) return;
+  // T-2.46: the equip sound, for a real change of gun (or back from a grenade).
+  if (index !== combat.weaponIndex || holdingPouch) playOwn(WEAPON_SOUNDS.handling.equip);
   combat.selectWeapon(index);
   holdingPouch = false;
   pouchTrigger.cancel();
@@ -739,7 +762,172 @@ const peerLink = { ...DEFAULT_LINK };
  */
 const shotOrigin = new THREE.Vector3();
 const shotEnd = new THREE.Vector3();
+/**
+ * T-2.46: which gun a shooter holds, for its report — an enemy's is its
+ * archetype's, a gunner's the emplacement's, a squadmate's the replicated
+ * Weapon component's.
+ */
+function shooterWeaponId(net: NetClient, netId: number): string {
+  const enemy = net.remoteEnemy(netId);
+  if (enemy) return enemyByIndex(enemy.archetype)?.weapon ?? 'carbine';
+  const slot = net.remoteSlot(netId);
+  const gun = slot >= 0 ? net.emplacements().find((g) => g.gunnerSlot === slot) : undefined;
+  if (gun) return 'lmg';
+  return WEAPON_IDS[net.remoteWeapon(netId).index] ?? 'carbine';
+}
+
+/** T-2.46: one report per trigger pull of someone else's, near, far or both by distance, from where it left the barrel. */
+const shotDeduper = new ShotDeduper();
+function playRemoteShot(net: NetClient, shot: ServerShot): void {
+  if (!shotDeduper.accept(shot.shooterNetId, performance.now())) return;
+  const at = { x: shot.originX, y: shot.originY, z: shot.originZ };
+  const ear = audio.listener;
+  const d = Math.hypot(at.x - ear.x, at.y - ear.y, at.z - ear.z);
+  for (const part of gunSoundPlan(shooterWeaponId(net, shot.shooterNetId), d)) audio.play(part.sound, { at, gain: part.gain });
+  // T-2.47: a round that passed our head cracks on the side it went by.
+  const here = net.simulated;
+  if (here && shot.targetNetId !== net.netId && net.vitality !== 'dead') {
+    const head = eyePosition(here.x, here.y, here.z, DEFAULT_MUZZLE_RIG, here.prone);
+    const past = nearMissAt(at, { x: shot.x, y: shot.y, z: shot.z }, head);
+    if (past) {
+      audio.play(WORLD_SOUNDS.nearMiss.crack, { at: past });
+      audio.play(WORLD_SOUNDS.nearMiss.whiz, { at: past });
+    }
+  }
+}
+
+/** T-2.46: the reload stage's sound. */
+function reloadSound(stage: 'out' | 'in' | 'bolt'): string {
+  const h = WEAPON_SOUNDS.handling;
+  return stage === 'out' ? h.reloadOut : stage === 'in' ? h.reloadIn : h.reloadBolt;
+}
+/** T-2.46: our reload's stages, and each remote soldier's from its replicated progress. */
+const ownReload = new ReloadWatcher();
+const remoteReloads = new Map<number, ReloadWatcher>();
+function playRemoteReloads(net: NetClient): void {
+  const drawn = net.remotes();
+  for (const [netId, at] of drawn) {
+    if (net.remoteEnemy(netId)) continue;
+    let watcher = remoteReloads.get(netId);
+    if (!watcher) {
+      watcher = new ReloadWatcher();
+      remoteReloads.set(netId, watcher);
+    }
+    for (const stage of watcher.update(net.remoteWeapon(netId).reloadProgress)) audio.play(reloadSound(stage), { at: { x: at.x, y: at.y + 1.2, z: at.z } });
+  }
+  for (const netId of [...remoteReloads.keys()]) if (!drawn.has(netId)) remoteReloads.delete(netId);
+}
+
+/** T-2.47: our own footsteps. */
+const localSteps = new FootstepTracker();
+/** T-2.47: what the world did since the last frame, as sounds. */
+const heardProjectiles = new Map<number, { vy: number }>();
+const heardVitality = new Map<number, string>();
+let wasVaulting = false;
+let airSeconds = 0;
+function playWorldEvents(net: NetClient, dt: number): void {
+  // Grenades thrown and bouncing, rockets launched: from the replicated projectiles.
+  const seen = new Set<number>();
+  for (const p of net.projectiles()) {
+    seen.add(p.netId);
+    const at = { x: p.x, y: p.y, z: p.z };
+    const kind = PROJECTILE_IDS[p.kind] ?? 'frag';
+    const prev = heardProjectiles.get(p.netId);
+    if (!prev) {
+      if (kind === 'rocket') {
+        audio.play(WORLD_SOUNDS.rocket.launch, { at });
+        audio.play(WORLD_SOUNDS.rocket.flight, { at });
+      } else audio.play(WORLD_SOUNDS.grenade.throw, { at });
+    } else if (kind !== 'rocket' && prev.vy < -0.5 && p.vy >= 0) {
+      audio.play(WORLD_SOUNDS.grenade.bounce, { at });
+    }
+    heardProjectiles.set(p.netId, { vy: p.vy });
+  }
+  for (const id of [...heardProjectiles.keys()]) if (!seen.has(id)) heardProjectiles.delete(id);
+  // Our own vault and landing.
+  const sim = net.simulated;
+  if (sim) {
+    const vaulting = sim.vault != null;
+    if (vaulting && !wasVaulting) playOwn(WORLD_SOUNDS.movement.vault);
+    if (!sim.grounded && !vaulting) airSeconds += dt;
+    else {
+      if (airSeconds >= WORLD_SOUNDS.landing.minAirSeconds || (wasVaulting && !vaulting)) {
+        audio.play(WORLD_SOUNDS.movement.land, { at: { x: sim.x, y: sim.y, z: sim.z }, own: true });
+      }
+      airSeconds = 0;
+    }
+    wasVaulting = vaulting;
+  }
+  // Bodies: a soldier going down, or dying, where they are.
+  const vitalities: [number, string, { x: number; y: number; z: number } | null][] = [[net.netId, net.vitality, sim ? { x: sim.x, y: sim.y, z: sim.z } : null]];
+  for (const [netId, at] of net.remotes()) vitalities.push([netId, net.remoteVitality(netId), at]);
+  for (const [netId, vitality, at] of vitalities) {
+    const before = heardVitality.get(netId);
+    heardVitality.set(netId, vitality);
+    if (before === undefined || before === vitality || !at) continue;
+    if (vitality === 'downed') audio.play(WORLD_SOUNDS.bodies.downed, { at, own: netId === net.netId });
+    else if (vitality === 'dead') audio.play(WORLD_SOUNDS.bodies.fall, { at, own: netId === net.netId });
+  }
+}
+
+/**
+ * T-2.49: callouts. The watcher finds what the squad would say in what this
+ * client already has; the director decides who is heard, how and when; a
+ * line nobody has recorded yet is the radio chirp. The committed voice
+ * lines' manifest says what exists, so nothing is fetched that is not there.
+ */
+const calloutWatcher = new CalloutWatcher();
+const callouts = new CalloutDirector();
+let ownReloading = false;
+
+function calloutView(net: NetClient): CalloutView {
+  const soldiers: SquadSoldier[] = [];
+  const sim = net.simulated;
+  if (sim && net.slot >= 0) soldiers.push({ netId: net.netId, slot: net.slot, at: { x: sim.x, y: sim.y, z: sim.z }, vitality: net.vitality, reloading: ownReloading, reviverSlot: net.reviverSlot, self: true });
+  const enemies: CalloutView['enemies'][number][] = [];
+  for (const [netId, at] of net.remotes()) {
+    const enemy = net.remoteEnemy(netId);
+    const place = { x: at.x, y: at.y, z: at.z };
+    if (enemy) {
+      enemies.push({ netId, at: place, vitality: net.remoteVitality(netId), mg: enemyByIndex(enemy.archetype)?.weapon === 'lmg' });
+      continue;
+    }
+    const slot = net.remoteSlot(netId);
+    if (slot < 0) continue;
+    soldiers.push({ netId, slot, at: place, vitality: net.remoteVitality(netId), reloading: net.remoteWeapon(netId).reloadProgress > 0, reviverSlot: net.remoteReviverSlot(netId), self: false });
+  }
+  const projectiles = net.projectiles().map((p) => ({ netId: p.netId, grenade: PROJECTILE_IDS[p.kind] !== 'rocket', ownerSlot: p.ownerSlot, at: { x: p.x, y: p.y, z: p.z } }));
+  return { soldiers, enemies, projectiles, orders: net.orders, mission: net.mission, boxes: collisionBoxes() };
+}
+
+/** One callout, heard: its recorded line, or the chirp when there is none (or it will not load). */
+function playCallout(play: CalloutPlay): void {
+  const opts = { ...(play.at ? { at: { x: play.at.x, y: play.at.y + 1.6, z: play.at.z } } : {}), own: play.own };
+  if (play.file) void audio.playFile(play.file, 'voice', opts).then((ok) => ok || audio.play(CALLOUTS.chirp, opts));
+  else audio.play(CALLOUTS.chirp, opts);
+}
+
+function playCallouts(net: NetClient): void {
+  const now = performance.now() / 1000;
+  const view = calloutView(net);
+  const ear = audio.listener;
+  for (const cue of calloutWatcher.update(view, now)) {
+    const who = view.soldiers.find((s) => s.slot === cue.slot);
+    if (!who) continue;
+    const play = callouts.say(cue.event, { slot: who.slot, at: who.self ? null : who.at, self: who.self }, ear, now);
+    if (play) playCallout(play);
+  }
+  for (const play of callouts.update(now)) playCallout(play);
+}
+
+/** T-2.46: a sound of our own, at the muzzle, never delayed and first for a voice. */
+function playOwn(sound: string): void {
+  audio.play(sound, { at: { x: muzzle.x, y: muzzle.y, z: muzzle.z }, own: true });
+}
+
 function onServerShot(net: NetClient, shot: ServerShot): void {
+  if (shot.shooterNetId !== net.netId) playRemoteShot(net, shot);
+  calloutWatcher.onShot(shot.shooterNetId, shot.targetNetId, shot.damage, calloutView(net), performance.now() / 1000);
   shotEnd.set(shot.x, shot.y, shot.z);
   shotOrigin.set(shot.originX, shot.originY, shot.originZ);
   landImpact(net, shot);
@@ -781,8 +969,12 @@ function landImpact(net: NetClient, shot: ServerShot): void {
     const surface = surfaceAt(shot, collisionBoxes());
     // The wire rounds the point to 1/64 m; the mark goes on the face itself.
     if (surface) effects.impact(surface.point, surface.normal, now);
+    // T-2.47: the impact sounds like what it struck; a round into open ground is the ground's.
+    audio.play(impactSound(surface?.box ?? null), { at: { x: shot.x, y: shot.y, z: shot.z } });
     return;
   }
+  // T-2.47: a round into a soldier.
+  audio.play(WORLD_SOUNDS.bodies.hit, { at: { x: shot.x, y: shot.y, z: shot.z }, own: shot.targetNetId === net.netId });
   const target = shot.targetNetId === net.netId ? player : remotes.get(shot.targetNetId);
   // A round that hit US: where it came from, for the HUD's damage direction
   // (T-4.25), whatever state the body is in.
@@ -830,6 +1022,17 @@ function onServerDetonation(net: NetClient, event: ServerDetonation): void {
   // The page's row for it: a tuned blast radius draws at the tuned size.
   const def = throws.defOf(event.kind);
   const centre = { x: event.x, y: event.y, z: event.z };
+  // T-2.49: who threw it, for "enemy down".
+  calloutWatcher.onDetonation(
+    event.netId,
+    event.targets.map((t) => t.netId),
+    performance.now() / 1000,
+  );
+  // T-2.47: the blast, near or far by how far it was from the ear.
+  {
+    const ear = audio.listener;
+    audio.play(explosionSound(Math.hypot(centre.x - ear.x, centre.y - ear.y, centre.z - ear.z)), { at: centre });
+  }
 
   /**
    * What the scorch goes on: the surface under the blast, if there is one
@@ -971,11 +1174,12 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
     scriptNoticeUntil = performance.now() + 5000;
   };
   net.onScriptCallout = (id) => {
-    // E-2.7's recorded-callout player is still a later task; surface the cue
-    // now so scripted missions are observable rather than silently dropping it.
+    // T-2.49: said by the nearest squadmate when it names a callout event; the text stays, so a scripted cue is seen as well as heard.
+    calloutWatcher.onScriptCallout(id, calloutView(net));
     scriptNotice = `Radio: ${id}`;
     scriptNoticeUntil = performance.now() + 3000;
   };
+  net.onOrderFailed = (slot) => calloutWatcher.onOrderFailed(slot);
   net.onShot = (shot) => onServerShot(net, shot);
   net.onDetonation = (event) => onServerDetonation(net, event);
   // T-3.09: B's overlay, carried across sessions; the wish is resent on JoinAck.
@@ -1291,6 +1495,12 @@ const fetchAudio = (file: string): Promise<ArrayBuffer> => fetch(`./audio/${file
 });
 // The real context has more (and stricter-typed) members than the engine uses; it is the engine's shape at runtime.
 const audio = new AudioEngine({ createContext: () => new AudioContext({ latencyHint: 'interactive' }) as unknown as AudioContextLike, fetchBytes: fetchAudio });
+// T-2.49: which voice lines are committed, so a callout knows whether to play one or the chirp.
+void fetchAudio('voice/renders.json')
+  .then((bytes) => {
+    callouts.index = voiceIndex(JSON.parse(new TextDecoder().decode(bytes)) as VoiceRendersManifest);
+  })
+  .catch(() => undefined);
 const unlockAudio = (): void => {
   void audio.unlock();
   removeEventListener('pointerdown', unlockAudio, true);
@@ -1303,6 +1513,7 @@ if (new URLSearchParams(location.search).has('sounds')) {
     sounds: SOUNDS,
     fetchBytes: fetchAudio,
     play: (id, variant) => void audio.unlock().then(() => audio.play(id, { variant })),
+    playFile: (file) => void new Audio(`./audio/${file}`).play().catch(() => undefined),
   });
 }
 
@@ -1571,6 +1782,7 @@ function frame(): void {
       if (!mountedGun) {
         unmountedWeaponIndex = Math.max(0, combat.weaponIndex);
         combat.useGun(getWeapon(mountDef.weapon));
+        playOwn(WEAPON_SOUNDS.handling.equip);
         holdingPouch = false;
         pouchTrigger.cancel();
       }
@@ -1638,7 +1850,20 @@ function frame(): void {
     // The local machine decides WHEN the trigger pulled; the server decides
     // what that shot hit. Both run the same cadence, so a shot the client
     // allows is normally one the server allows too.
+    // T-2.46: a pull on an empty gun clicks.
+    if (shot === null && triggerEdge && !holdingPouch && net.vitality === 'alive') {
+      const mag = combat.magazine(tickNumber * TICK_SECONDS);
+      if (mag.ammo === 0 && !mag.reloading) playOwn(WEAPON_SOUNDS.handling.dryFire);
+    }
+    // T-2.46: our own reload, stage by stage.
+    {
+      const mag = combat.magazine(tickNumber * TICK_SECONDS);
+      for (const stage of ownReload.update(mag.reloading ? Math.max(mag.reloadFraction, 1e-6) : 0)) playOwn(reloadSound(stage));
+      ownReloading = mag.reloading;
+    }
     if (shot !== null) {
+      // T-2.46: our own report, the near one, from the muzzle.
+      playOwn(gunSoundPlan(combat.weapon.id, 0)[0]?.sound ?? WEAPON_SOUNDS.guns['carbine']!.near);
       // Sent at table resolution, so the server traces the exact angles this
       // client computed and the predicted tracer shares them without rounding.
       // On a gun the index is nobody's (T-4.29): the host fires the gun whatever this names.
@@ -1795,6 +2020,12 @@ function frame(): void {
     // Prone beats crouch, as it does in the controller (T-2.40).
     playerRig.setPose(sim?.vault ? 'standing' : input.proning ? 'prone' : input.crouching ? 'crouched' : 'standing');
     localPoseDriver.update(locomotion, dt);
+    // T-2.47: our own feet, on the same gait the body walks.
+    {
+      const sound = footstepSound(locomotion.state);
+      if (sound) for (const _foot of localSteps.update(localPoseDriver.phase, locomotion.state)) audio.play(sound, { at: { x: player.position.x, y: player.position.y, z: player.position.z }, own: true });
+      else localSteps.update(localPoseDriver.phase, locomotion.state);
+    }
     // The weapon layer (T-2.25, T-2.26): the body points its rifle where the
     // view points, recoil included, the rifle kicks with each shot, and a
     // reload is a curve of the weapon's own clock; it fades out through a vault.
@@ -2154,6 +2385,11 @@ function frame(): void {
   // T-2.45: the ear is the camera, facing where it looks, in the world it hears through.
   audio.setListener(camSolve.position, camSolve.direction);
   audio.setWorld(collisionBoxes());
+  if (net) {
+    playRemoteReloads(net);
+    playWorldEvents(net, dt);
+    playCallouts(net);
+  }
   // Your own character is the one thing the first-person camera sits inside.
   // Downed forces third person (B-05), so the body stays visible then too.
   player.visible = !input.firstPerson || downed;
