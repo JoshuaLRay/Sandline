@@ -18,17 +18,25 @@ export interface WsClientOptions {
 
 export class WsClientTransport extends BaseTransport {
   private socket: WebSocket | null = null;
+  /** T-4.31: the URL the next connect uses; the room joined rides it so a reconnect lands on the machine that holds it. */
+  private url: string;
   private attempt = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly options: WsClientOptions) {
     super();
+    this.url = options.url;
     this.connect();
+  }
+
+  /** Change where the NEXT connect goes. The open socket is untouched. */
+  setUrl(url: string): void {
+    this.url = url;
   }
 
   private connect(): void {
     const factory = this.options.factory ?? ((url: string) => new WebSocket(url));
-    const socket = factory(this.options.url);
+    const socket = factory(this.url);
     socket.binaryType = 'arraybuffer';
     this.socket = socket;
 

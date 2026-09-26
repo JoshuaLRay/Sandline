@@ -285,6 +285,26 @@ The protocol version is in `/healthz`: if the published client is older than the
 host, the lobby says "this build is older than the host - reload", and the fix
 is to let Pages finish deploying.
 
+### A second machine in a region (T-4.31)
+
+`fly scale count 2 --region iad` is the whole of adding one: nothing else is
+configured. Each machine learns the others from Fly's private DNS
+(`vms.<app>.internal`, so a machine that has stopped simply stops being a
+peer), and a connection that arrives at the wrong one is sent on before its
+handshake: the room code rides the socket URL (`?room=`), the machine asks
+its peers `/internal/room/<code>` over the private network, and answers the
+upgrade with `fly-replay: instance=<id>` for the machine that holds it - or,
+for a new room, for the emptiest machine by `/healthz`. A peer that does not
+answer within half a second is skipped for that decision. `/healthz` says
+which machine and region answered (`instance`, `region`). Off Fly there are
+no peers: `pnpm host` on a laptop takes every connection as before.
+
+**Not yet proven on Fly:** that the proxy honours `fly-replay` on a WebSocket
+upgrade. The first two-machine deploy should open a room on one machine and
+join its code through the other; if the join lands as `no such room`, the
+proxy did not replay, and the addendum's portable fallback (a `redirect`
+disconnect code carrying the peer's address) is the next task.
+
 ### Watching it
 
 ```bash

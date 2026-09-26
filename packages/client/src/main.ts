@@ -952,7 +952,8 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
   const qaEnemies = local && qaNav && qaEnemiesWanted ? new QaEnemies(local) : null;
   // Slot netIds are 1..6 in slot order, so slot 1's soldier is netId 2.
   const qaSuppressor = local && qaSuppressWanted ? new QaSuppressor(local, 2) : null;
-  const remote = choice.kind === 'remote' ? new RemoteServer(choice.host) : null;
+  // T-4.31: the code rides the socket URL too, so the host's allocator can send the upgrade to the machine that holds it.
+  const remote = choice.kind === 'remote' ? new RemoteServer(choice.host, {}, choice.room) : null;
   const server: SessionSource = local ?? (remote as RemoteServer);
   const net = new NetClient(server.transport, choice.kind === 'remote' ? choice.name : 'qa', config);
   net.onScriptMessage = (text) => {
@@ -1025,6 +1026,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
         });
       }
       roomJoined = room;
+      remote.setRoom(room);
       remote.markJoined();
       history.replaceState(null, '', shareLink(location.href, choice.host, room, __DEFAULT_HOST__));
     };

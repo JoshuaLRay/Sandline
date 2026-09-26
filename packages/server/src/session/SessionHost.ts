@@ -48,6 +48,7 @@
  */
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { HostMetrics } from '../metrics.ts';
+import { Allocator, type PeerInfo, isPrivateAddress, roomFromUpgradeUrl } from '../allocator/Allocator.ts';
 import {
   BaseTransport,
   type Channel,
@@ -252,6 +253,21 @@ export interface SessionHostOptions {
   identity?: Identity;
   /** T-4.23: durable campaigns. Absent keeps the old ephemeral-room behavior for tests/local embeddings. */
   campaigns?: CampaignDatabase;
+  /**
+   * T-4.31: this host among its region's machines. `instance` is what a
+   * replay names (Fly's machine id); `peers` discovers the others; `region`
+   * is reported in `/healthz`. Absent, the host is alone: every connection
+   * is its own and `/internal/room` answers nobody.
+   */
+  allocator?: {
+    instance: string;
+    region: string;
+    peers: () => Promise<readonly PeerInfo[]>;
+    fetch?: typeof fetch;
+    timeoutMs?: number;
+    /** Which callers `/internal/room` answers: the private network and loopback by default. */
+    isPrivate?: (address: string | undefined) => boolean;
+  };
 }
 
 /**
@@ -287,6 +303,8 @@ export class SessionHost {
   private draining = false;
   /** T-4.33: what this host exports at `/metrics`. */
   readonly metrics = new HostMetrics();
+  /** T-4.31: where a connection should go, asked before its upgrade; null for a host alone. */
+  readonly allocator: Allocator | null;
   /** Distinct per connection, so one client's loss pattern is its own. */
   private nextSeed = 0x5eed;
 
@@ -307,6 +325,22 @@ export class SessionHost {
     this.maxConnections = options.maxConnections ?? this.registry.maxRooms * MAX_SLOTS + 8;
     this.joinKey = options.joinKey ?? '';
     this.identity = options.identity ?? new Identity();
+    const a = options.allocator;
+    this.allocator = a
+      ? new Allocator({
+          host: { instance: a.instance, holds: (code) => this.holds(code), load: () => ({ rooms: this.registry.size, maxRooms: this.registry.maxRooms, draining: this.draining }) },
+          peers: a.peers,
+          ...(a.fetch ? { fetch: a.fetch } : {}),
+          ...(a.timeoutMs !== undefined ? { timeoutMs: a.timeoutMs } : {}),
+          onPeerDown: (peer, why) => this.log.warn('peer did not answer', { peer: peer.instance, why }),
+        })
+      : null;
+  }
+
+  /** T-4.31: whether a live room or a saved campaign with this code is on this host. */
+  holds(code: string): boolean {
+    if (this.registry.get(code) || this.registry.getByJoinCode(normalizeCampaignCode(code))) return true;
+    return this.options.campaigns?.loadCampaign(code) !== undefined;
   }
 
   /** Open the socket and start ticking. Resolves with the bound port. */
@@ -317,10 +351,18 @@ export class SessionHost {
     this.handle = await startWsServer({
       port: this.options.port,
       onConnection: (transport) => this.accept(transport),
-      onRequest: (req, res) => this.serveHttp(req.url ?? '/', res),
-      shouldAccept: () => {
+      onRequest: (req, res) => this.serveHttp(req.url ?? '/', res, req.socket.remoteAddress),
+      shouldAccept: async (req) => {
         if (this.draining) return 'host draining';
         if (this.connections >= this.maxConnections) return 'host full';
+        // T-4.31: a code a peer holds, or a new room a peer has more room for, is replayed there before the upgrade.
+        if (this.allocator) {
+          const placement = await this.allocator.decide(roomFromUpgradeUrl(req.url));
+          if (placement.kind === 'replay') {
+            this.log.info('upgrade replayed', { to: placement.instance, room: roomFromUpgradeUrl(req.url) ?? '' });
+            return { replay: placement.instance };
+          }
+        }
         return null;
       },
     });
@@ -346,12 +388,23 @@ export class SessionHost {
    * host's log. Room CODES are deliberately absent — listing them would make
    * every room joinable by anyone who found the URL.
    */
-  private serveHttp(url: string, res: { statusCode: number; setHeader(k: string, v: string): void; end(b?: string): void }): void {
+  private serveHttp(url: string, res: { statusCode: number; setHeader(k: string, v: string): void; end(b?: string): void }, from?: string): void {
     if (url === '/healthz' || url === '/health' || url === '/') {
       res.statusCode = this.draining ? 503 : 200;
       res.setHeader('content-type', 'application/json');
       res.setHeader('cache-control', 'no-store');
       res.end(JSON.stringify(this.health()));
+      return;
+    }
+    // T-4.31: a peer asking whether a code is here. Answered only from the
+    // private network, and only yes or no — from anywhere else it is a 404
+    // like any other path, so the public address still lists no codes.
+    const lookup = /^\/internal\/room\/([^/?]+)$/.exec(url);
+    if (lookup) {
+      const isPrivate = this.options.allocator?.isPrivate ?? isPrivateAddress;
+      res.statusCode = this.options.allocator && isPrivate(from) && this.holds(decodeURIComponent(lookup[1]!)) ? 200 : 404;
+      res.setHeader('cache-control', 'no-store');
+      res.end();
       return;
     }
     // T-4.33: the Prometheus exposition, for Fly's scraper and a curious curl. No codes in it either.
@@ -395,6 +448,10 @@ export class SessionHost {
       maxConnections: this.maxConnections,
       keyRequired: this.joinKey !== '',
       link: this.link ? hostBanner(0, this.link).link : 'raw socket',
+      // T-4.31: which machine this is, and where; the allocator's placement reads `rooms`, `maxRooms` and `ok`.
+      instance: this.options.allocator?.instance ?? '',
+      region: this.options.allocator?.region ?? '',
+      draining: this.draining,
     };
   }
 

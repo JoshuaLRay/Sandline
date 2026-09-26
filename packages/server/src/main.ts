@@ -24,6 +24,7 @@
 import { Identity } from './identity/Identity.ts';
 import { CampaignDatabase, SqlitePlayerDirectory } from './persistence/index.ts';
 import { SessionHost, hostBanner, linkFromEnv } from './session/SessionHost.ts';
+import { flyEnvironment, flyPeers } from './allocator/flyPeers.ts';
 import { loadConfig } from './config.ts';
 import { createLogger } from './log.ts';
 
@@ -36,7 +37,10 @@ const identity = new Identity({
 });
 
 const link = linkFromEnv();
+// T-4.31: on Fly, this machine is one of its region's; its peers come from the platform's DNS.
+const fly = flyEnvironment();
 const host = new SessionHost({
+  ...(fly ? { allocator: { instance: fly.instance, region: fly.region, peers: flyPeers({ app: fly.app, region: fly.region, self: fly.instance, port: config.port }) } } : {}),
   port: config.port,
   log,
   link,
@@ -73,6 +77,7 @@ log.info('host ready', {
   maxSessionMs: config.maxSessionMs,
   health: `http://localhost:${port}/healthz`,
   metrics: `http://localhost:${port}/metrics`,
+  allocator: fly ? `machine ${fly.instance} in ${fly.region} (${fly.app})` : 'alone - no peers',
 });
 
 let stopping = false;

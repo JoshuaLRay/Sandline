@@ -454,7 +454,7 @@ the owner may still overrule before T-4.23.
 | Task | Status | Depends |
 |---|---|---|
 | T-4.30 | BLOCKED — addendum written (ADR-011); the owner's agreement of its cost is what is left | — |
-| T-4.31 | BLOCKED | T-4.30 |
+| T-4.31 | BLOCKED — built and tested with fake peers and two real hosts; the two-region deploy is the owner's | T-4.30 |
 | T-4.32 | BLOCKED | T-4.31 |
 | T-4.33 | DONE | — |
 

@@ -52,9 +52,19 @@ export interface WsServerOptions {
    * Refuse a socket before it is upgraded. Returns a reason to refuse with,
    * or null to accept. This is where a connection cap lives: a refused socket
    * costs one HTTP response, an accepted one costs a heartbeat timeout.
+   *
+   * T-4.31: may also answer with a REPLAY — the machine that should take this
+   * connection — and may take its time (the allocator asks its peers). The
+   * upgrade is answered `409` with a `fly-replay` header, which Fly's proxy
+   * reads to re-send the whole upgrade there; the client sees one
+   * connection. Off Fly the 409 is what a client gets, which is the
+   * portable half the addendum names as still owed.
    */
-  shouldAccept?: () => string | null;
+  shouldAccept?: (req: IncomingMessage) => AcceptDecision | Promise<AcceptDecision>;
 }
+
+/** Accept (null), refuse with a reason, or replay to a named machine (T-4.31). */
+export type AcceptDecision = string | { replay: string } | null;
 
 export interface WsServerHandle {
   readonly port: number;
@@ -73,13 +83,25 @@ export function startWsServer(options: WsServerOptions): Promise<WsServerHandle>
     });
     const wss = new WebSocketServer({ noServer: true });
     http.on('upgrade', (req, socket, head) => {
-      const refusal = options.shouldAccept?.() ?? null;
-      if (refusal !== null) {
-        socket.write(`HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n${refusal}`);
+      void (async () => {
+        let decision: AcceptDecision = null;
+        try {
+          decision = (await options.shouldAccept?.(req)) ?? null;
+        } catch (e) {
+          decision = `accept failed: ${e instanceof Error ? e.message : String(e)}`;
+        }
+        if (socket.destroyed) return;
+        if (decision === null) {
+          wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
+          return;
+        }
+        if (typeof decision === 'string') {
+          socket.write(`HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n${decision}`);
+        } else {
+          socket.write(`HTTP/1.1 409 Conflict\r\nfly-replay: instance=${decision.replay}\r\nConnection: close\r\n\r\nreplay to ${decision.replay}`);
+        }
         socket.destroy();
-        return;
-      }
-      wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
+      })();
     });
     wss.on('connection', (socket: WebSocket) => options.onConnection(new WsConnectionTransport(socket)));
     http.on('error', reject);
