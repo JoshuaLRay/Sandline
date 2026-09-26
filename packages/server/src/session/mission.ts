@@ -71,6 +71,11 @@ export class MissionRun {
     return this.view;
   }
 
+  /** T-4.28: the mission's clock, ticks, across the attempt. */
+  get elapsed(): number {
+    return this.elapsedTicks;
+  }
+
   /** Whether the respawn rule applies (the mission's `respawn`). */
   get respawns(): boolean {
     return this.def.respawn;

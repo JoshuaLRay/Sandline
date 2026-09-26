@@ -285,13 +285,53 @@ The protocol version is in `/healthz`: if the published client is older than the
 host, the lobby says "this build is older than the host - reload", and the fix
 is to let Pages finish deploying.
 
+### A second machine in a region (T-4.31)
+
+`fly scale count 2 --region iad` is the whole of adding one: nothing else is
+configured. Each machine learns the others from Fly's private DNS
+(`vms.<app>.internal`, so a machine that has stopped simply stops being a
+peer), and a connection that arrives at the wrong one is sent on before its
+handshake: the room code rides the socket URL (`?room=`), the machine asks
+its peers `/internal/room/<code>` over the private network, and answers the
+upgrade with `fly-replay: instance=<id>` for the machine that holds it - or,
+for a new room, for the emptiest machine by `/healthz`. A peer that does not
+answer within half a second is skipped for that decision. `/healthz` says
+which machine and region answered (`instance`, `region`). Off Fly there are
+no peers: `pnpm host` on a laptop takes every connection as before.
+
+**Not yet proven on Fly:** that the proxy honours `fly-replay` on a WebSocket
+upgrade. The first two-machine deploy should open a room on one machine and
+join its code through the other; if the join lands as `no such room`, the
+proxy did not replay, and the addendum's portable fallback (a `redirect`
+disconnect code carrying the peer's address) is the next task.
+
+**A deploy drains (T-4.32).** When Fly stops the old machine it sends
+SIGTERM, and the host drains rather than dying: it takes no new rooms
+(`/healthz` answers 503, so the proxy sends new connections to the new
+machine), keeps every room it holds, still admits a reconnect or a friend's
+code into one, and stops the moment nobody is seated - or at `DRAIN_MAX_MS`
+(default 270 s), telling the players first. `kill_timeout = "300s"` in
+`fly.toml` is what gives it that long, and it is Fly's ceiling: **a mission
+longer than five minutes is cut short by a deploy**, with the players told.
+Deploy between playtests, not during one; the Host workflow runs on demand
+for exactly this reason.
+
 ### Watching it
 
 ```bash
 fly logs                       # JSON lines from the host: seats, rooms reclaimed, drops
 fly status                     # machine state - `stopped` between playtests is correct
 curl https://sandline-host.fly.dev/healthz
+curl https://sandline-host.fly.dev/metrics   # T-4.33: the Prometheus exposition
 ```
+
+**Metrics (T-4.33).** The host exports tick time and the AI's share of it,
+players, rooms, connections, bytes, reconnects and refusals by code at
+`/metrics`; `fly.toml`'s `[metrics]` block has Fly scrape it into the
+organisation's managed Prometheus, and the managed Grafana at
+https://fly-metrics.net reads that. `docs/observability/` has the dashboard
+to import, the alert rules to create (ticks overrunning, ticks dropped, a
+run of refusals), and what every metric means.
 
 Link conditioning works on the deployed host exactly as locally -
 `fly secrets set LINK_LATENCY_MS=100` and a redeploy - but T-1.5.08 is run

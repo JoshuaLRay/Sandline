@@ -41,12 +41,16 @@ export interface ServerConfig {
   idleTimeoutMs: number;
   /** `MAX_SESSION_MS`: drop any player connected this long. 0 = never. */
   maxSessionMs: number;
+  /** T-4.32: `DRAIN_MAX_MS`, how long a stopping host waits for its players before cutting the mission short. */
+  drainMaxMs: number;
 }
 
 /** Ten minutes: long enough for a break between rounds, short enough for a forgotten tab. */
 export const DEFAULT_IDLE_TIMEOUT_MS = 10 * 60_000;
 /** Four hours: longer than any playtest, shorter than a weekend of a bot holding the machine up. */
 export const DEFAULT_MAX_SESSION_MS = 4 * 60 * 60_000;
+/** T-4.32: four and a half minutes — inside Fly's five-minute `kill_timeout`, the most a stopping machine is given. */
+export const DEFAULT_DRAIN_MAX_MS = 270_000;
 
 function intFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -114,5 +118,6 @@ export function loadConfig(): ServerConfig {
     campaignDbPath: process.env['CAMPAIGN_DB_PATH'] ?? 'sandline.sqlite',
     idleTimeoutMs: nonNegative('IDLE_TIMEOUT_MS', DEFAULT_IDLE_TIMEOUT_MS),
     maxSessionMs: nonNegative('MAX_SESSION_MS', DEFAULT_MAX_SESSION_MS),
+    drainMaxMs: nonNegative('DRAIN_MAX_MS', DEFAULT_DRAIN_MAX_MS),
   };
 }

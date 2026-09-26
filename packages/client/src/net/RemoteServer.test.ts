@@ -16,6 +16,7 @@ import {
   hostFromQuery,
   roomFromQuery,
   shareLink,
+  socketUrlFor,
 } from './RemoteServer.ts';
 
 /** The surface `WsClientTransport` uses, and nothing more. */
@@ -222,6 +223,13 @@ describe('room codes and share links in the lobby (T-1.5.06)', () => {
     expect(shareLink(page, 'ws://192.168.1.5:8080', 'K7PM', 'wss://host.example')).toBe(
       'https://joshualray.github.io/Sandline/?room=K7PM&host=ws%3A%2F%2F192.168.1.5%3A8080',
     );
+  });
+
+  it('puts the room on the socket URL for the host allocator, and takes it off for a new room (T-4.31)', () => {
+    expect(socketUrlFor('wss://host.example', 'K7PM')).toBe('wss://host.example/?room=K7PM');
+    expect(socketUrlFor('ws://192.168.1.5:8080', 'ACDEFGHJ')).toBe('ws://192.168.1.5:8080/?room=ACDEFGHJ');
+    expect(socketUrlFor('wss://host.example/?room=OLD1', 'K7PM')).toBe('wss://host.example/?room=K7PM');
+    expect(socketUrlFor('wss://host.example/?room=OLD1', '')).toBe('wss://host.example/');
   });
 
   it('round-trips a shared link back through the query parsers', () => {

@@ -24,6 +24,7 @@
 import { Identity } from './identity/Identity.ts';
 import { CampaignDatabase, SqlitePlayerDirectory } from './persistence/index.ts';
 import { SessionHost, hostBanner, linkFromEnv } from './session/SessionHost.ts';
+import { flyEnvironment, flyPeers } from './allocator/flyPeers.ts';
 import { loadConfig } from './config.ts';
 import { createLogger } from './log.ts';
 
@@ -36,7 +37,10 @@ const identity = new Identity({
 });
 
 const link = linkFromEnv();
+// T-4.31: on Fly, this machine is one of its region's; its peers come from the platform's DNS.
+const fly = flyEnvironment();
 const host = new SessionHost({
+  ...(fly ? { allocator: { instance: fly.instance, region: fly.region, peers: flyPeers({ app: fly.app, region: fly.region, self: fly.instance, port: config.port }) } } : {}),
   port: config.port,
   log,
   link,
@@ -49,6 +53,8 @@ const host = new SessionHost({
     world: config.world,
     aiDebug: config.aiDebug,
     ai: config.hostAi,
+    // T-4.33: the AI's share of every tick is a metric wherever there is an AI to measure.
+    profileAi: config.hostAi,
     idleTimeoutMs: config.idleTimeoutMs,
     maxSessionMs: config.maxSessionMs,
   },
@@ -69,7 +75,10 @@ log.info('host ready', {
   identitySecret: config.identitySecrets.length === 0 ? 'random - identities do not survive a restart' : `${config.identitySecrets.length} configured`,
   idleTimeoutMs: config.idleTimeoutMs,
   maxSessionMs: config.maxSessionMs,
+  drainMaxMs: config.drainMaxMs,
   health: `http://localhost:${port}/healthz`,
+  metrics: `http://localhost:${port}/metrics`,
+  allocator: fly ? `machine ${fly.instance} in ${fly.region} (${fly.app})` : 'alone - no peers',
 });
 
 let stopping = false;
@@ -78,7 +87,8 @@ async function shutdown(signal: string): Promise<void> {
   stopping = true;
   // `stats` already carries the tick, plus what the session actually did.
   log.info('shutting down', { signal, ...host.registry.stats });
-  await host.stop(`host ${signal}`);
+  // T-4.32: drain first — the rooms in progress play on until nobody is seated, or the cap.
+  await host.drain(config.drainMaxMs);
   campaigns.close();
   process.exit(0);
 }

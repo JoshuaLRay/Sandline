@@ -140,6 +140,8 @@ export class LocalServer {
     // goes only to a client that asks for one.
     this.session = new Session(moveConfig, '', options.world, {
       aiDebug: true,
+      // The page is a range: every gun to every slot (T-4.27's classes still decide who may order whom).
+      loadouts: 'free',
       ...(options.navMesh ? { navMesh: options.navMesh } : {}),
       ...(options.brainTree ? { brainTree: options.brainTree } : {}),
       ...(options.cover ? { cover: options.cover } : {}),

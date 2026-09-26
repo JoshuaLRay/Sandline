@@ -31,7 +31,9 @@ run sheet `e2-8.md` is prepared. Writing the two missing run sheets
 — it does not require a human, only requires not inventing a verdict inside
 it. **E-2.7** (combat audio) is broken out (PLAN.md §7.10, ADR-017: made
 in-house by AI). Its first task, **T-2.44** (the synthesiser and render
-pipeline), is open. The owner can record the voice lines any time, from
+pipeline, `pnpm gen:audio`), is done, and so is T-2.45 (positional playback,
+and the sound board at `?sounds`); the weapon (T-2.46) and world (T-2.47)
+sounds and the voice pipeline (T-2.48) are open. The owner can record the voice lines any time, from
 `docs/audio/voice-script.md`.
 
 **M3 is broken out** (PLAN.md §7.9). E-3.1's navmesh pipeline is done:
@@ -78,9 +80,11 @@ in CI (T-4.03, `pnpm check:assets`) and the loader (T-4.05, `?assets` for
 eyes); streaming/load-screen gating (T-4.06, `pnpm check:packs`) and LOD/instancing (T-4.07) are done, beside
 the level format (T-4.09), the mission's objective types (T-4.14), scripted
 events (T-4.15), checkpoints/retry (T-4.16) and every-mission CI (T-4.17)
-all done; the room before the mission T-4.19 is done, HUD (T-4.25), classes (T-4.27), mounted MG (T-4.29), regions ADR
-addendum (T-4.30) and observability (T-4.33) — and two owner decisions gate
-the rest. Art sourcing is decided (🧍 T-4.01, ADR-018: authored as code,
+all done; the room before the mission T-4.19 and the player HUD T-4.25, menus T-4.26, classes T-4.27 and the scoreboard T-4.28 are done; the mounted MG (T-4.29) and observability (T-4.33) are done; the
+regions addendum (T-4.30) is written and its build tasks are in — region
+selection (T-4.20) done, the allocator (T-4.31) and drain (T-4.32) built
+and tested, their deploys and the cost agreement the owner's — and two
+owner decisions gate the rest. Art sourcing is decided (🧍 T-4.01, ADR-018: authored as code,
 with procedural animation): the generator library and its first kit piece
 are done (T-4.04, `pnpm gen:art`, the wall on `?assets`), and the characters
 from assets (T-4.08) are open, and with the level format done (T-4.09,
@@ -247,11 +251,11 @@ on the deployed site's sound board (`?sounds`, T-2.45).
 
 | Task | Status | Depends |
 |---|---|---|
-| T-2.44 | OPEN | — |
-| T-2.45 | BLOCKED | T-2.44 |
-| T-2.46 | BLOCKED | T-2.45 |
-| T-2.47 | BLOCKED | T-2.45 |
-| T-2.48 | BLOCKED — also needs the owner's recordings (`docs/audio/voice-script.md`) to process real lines; the pipeline itself is tested on generated signals | T-2.44 |
+| T-2.44 | DONE | — |
+| T-2.45 | DONE | T-2.44 |
+| T-2.46 | OPEN | T-2.45 |
+| T-2.47 | OPEN | T-2.45 |
+| T-2.48 | OPEN — also needs the owner's recordings (`docs/audio/voice-script.md`) to process real lines; the pipeline itself is tested on generated signals | T-2.44 |
 | T-2.49 | BLOCKED — ships with synthesised chirps until recordings arrive | T-2.45, T-2.48 |
 | 🧍 T-2.50 | BLOCKED — run sheet `e2-7.md` to be written | T-2.46, T-2.47, T-2.49 |
 
@@ -423,7 +427,7 @@ the owner may still overrule before T-4.23.
 |---|---|---|
 | T-4.18 | DONE | — |
 | T-4.19 | DONE | T-4.14 |
-| T-4.20 | BLOCKED | T-4.30, T-4.31 |
+| T-4.20 | DONE | T-4.30, T-4.31 |
 
 ### E-4.6 — Persistence
 
@@ -438,25 +442,25 @@ the owner may still overrule before T-4.23.
 
 | Task | Status | Depends |
 |---|---|---|
-| T-4.25 | OPEN | — |
-| T-4.26 | BLOCKED | T-4.25 |
-| T-4.27 | OPEN | — |
-| T-4.28 | BLOCKED | T-4.25 |
+| T-4.25 | DONE | — |
+| T-4.26 | DONE | T-4.25 |
+| T-4.27 | DONE | — |
+| T-4.28 | DONE | T-4.25 |
 
 ### E-4.8 — Vehicles (the mounted MG only, §4.1)
 
 | Task | Status | Depends |
 |---|---|---|
-| T-4.29 | OPEN | — |
+| T-4.29 | DONE | — |
 
 ### E-4.9 — Deployment, multi-region
 
 | Task | Status | Depends |
 |---|---|---|
-| T-4.30 | OPEN | — |
-| T-4.31 | BLOCKED | T-4.30 |
-| T-4.32 | BLOCKED | T-4.31 |
-| T-4.33 | OPEN | — |
+| T-4.30 | BLOCKED — addendum written (ADR-011); the owner's agreement of its cost is what is left | — |
+| T-4.31 | BLOCKED — built and tested with fake peers and two real hosts; the two-region deploy is the owner's | T-4.30 |
+| T-4.32 | BLOCKED — built and tested on a fake clock; the staging run is the owner's | T-4.31 |
+| T-4.33 | DONE | — |
 
 ### M4 exit gate
 

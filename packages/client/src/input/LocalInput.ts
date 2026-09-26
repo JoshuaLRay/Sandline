@@ -155,6 +155,12 @@ export class LocalInput {
    * recoil added, never by what the player moved. See weapons/recoil.ts.
    */
   private offsetYaw = 0;
+  /**
+   * T-4.29: the arc and elevation the view is held within while on a gun,
+   * wire units — the arc's centre and half-width, the pitch limits — or null
+   * for a free view. The mouse still moves the view; it stops at the edges.
+   */
+  private viewLimits: { yaw: number; halfYaw: number; minPitch: number; maxPitch: number } | null = null;
   private offsetPitch = 0;
   private sensitivity: number;
   private lookScale = 1;
@@ -273,6 +279,7 @@ export class LocalInput {
       const dy = this.invertY ? -e.movementY : e.movementY;
       this.pitchAccum -= dy * turn;
       this.pitchAccum = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitchAccum));
+      this.constrainView();
     });
   }
 
@@ -373,12 +380,31 @@ export class LocalInput {
 
   get maxPitch(): number {
     const deg = this.firstPerson ? PITCH_LIMIT_FIRST_PERSON_DEG : PITCH_LIMIT_UP_DEG;
-    return deg * UNITS_PER_DEGREE;
+    const own = deg * UNITS_PER_DEGREE;
+    return this.viewLimits ? Math.min(own, this.viewLimits.maxPitch) : own;
   }
 
   get minPitch(): number {
     const deg = this.firstPerson ? PITCH_LIMIT_FIRST_PERSON_DEG : PITCH_LIMIT_DOWN_DEG;
-    return -deg * UNITS_PER_DEGREE;
+    const own = -deg * UNITS_PER_DEGREE;
+    return this.viewLimits ? Math.max(own, this.viewLimits.minPitch) : own;
+  }
+
+  /** T-4.29: hold the view within a gun's arc and elevation, or free it with null. Takes effect at once. */
+  setViewLimits(limits: { yaw: number; halfYaw: number; minPitch: number; maxPitch: number } | null): void {
+    this.viewLimits = limits;
+    this.constrainView();
+  }
+
+  /** Bring the accumulated view inside the limits, the short way round for yaw. */
+  private constrainView(): void {
+    const limits = this.viewLimits;
+    if (!limits) return;
+    const half = WIRE_ANGLE_UNITS / 2;
+    const off = ((((this.yawAccum - limits.yaw + half) % WIRE_ANGLE_UNITS) + WIRE_ANGLE_UNITS) % WIRE_ANGLE_UNITS) - half;
+    if (off > limits.halfYaw) this.yawAccum = limits.yaw + limits.halfYaw;
+    else if (off < -limits.halfYaw) this.yawAccum = limits.yaw - limits.halfYaw;
+    this.pitchAccum = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitchAccum));
   }
 
   /** Lay a view offset over the mouse's own: recoil, in wire units. */

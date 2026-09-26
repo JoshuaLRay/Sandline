@@ -49,12 +49,35 @@ import {
   projectileByIndex,
   stepProjectile,
   tableToWire,
+  WIRE_TO_TABLE_SHIFT,
+  type EmplacementDef,
+  type HeatState,
+  type PlacedEmplacement,
+  canFireHot,
+  clampPitch,
+  clampYawToArc,
+  coolHeat,
+  createHeat,
+  emplacementFacing,
+  emplacementIndex,
+  getEmplacement,
+  gunMuzzle,
+  gunnerPlace,
+  heatShot,
+  heatToWire,
+  signedWire,
+  withinArc,
   sin,
   cos,
   type HealthState,
   applyDamage,
   vaultToLevels,
   createHealth,
+  assignClasses,
+  createSlotStats,
+  type SlotStats,
+  classById,
+  orderReach,
   expireBleedOut,
   isDead,
   isDowned,
@@ -194,6 +217,36 @@ interface AiBody {
   suppression: SuppressionState;
   aim: { netId: number; since: number } | null;
   burst: { rounds: number; pauseUntil: number };
+}
+
+/**
+ * T-4.29: a placed emplacement on the session — the gun, its gunner and its
+ * heat. Static: its place, facing, gunner's place and muzzle are fixed when
+ * the session is built. The gun's own `yaw` and `pitch` follow whoever is on
+ * it, within the arc; `weaponState` is the belt (the LMG's, through the same
+ * `tryFire`), and `heat` what this gun adds to it.
+ */
+export interface EmplacementEntity {
+  readonly netId: number;
+  readonly placed: PlacedEmplacement;
+  readonly def: EmplacementDef;
+  /** Index into EMPLACEMENT_IDS: what goes on the wire. */
+  readonly kind: number;
+  /** The facing, wire units: the centre of the traverse arc. */
+  readonly facing: number;
+  /** Where the gunner's feet are held, and where the rounds leave. */
+  readonly place: { x: number; y: number; z: number };
+  readonly muzzle: { x: number; y: number; z: number };
+  readonly weapon: WeaponDef;
+  weaponState: WeaponState;
+  heat: HeatState;
+  /** The gun's own aim, wire units (pitch signed), as the gunner last laid it. */
+  yaw: number;
+  pitch: number;
+  /** Who is on it: a slot's or an enemy's netId, or 0 for nobody. */
+  gunnerNetId: number;
+  /** An AI gunner's target has been outside the arc since this many seconds, or null. */
+  outOfArcSince: number | null;
 }
 
 /** T-3.28: how an order ended — finished, failed, or replaced by another (or by a human taking the slot). */
@@ -360,6 +413,10 @@ export interface Slot {
    * release, on silence past the repeat window, or when the seat changes.
    */
   interactHeld: boolean;
+  /** T-4.29: whether the previous tick's interact was held — the press edge is what mounts and dismounts. */
+  interactWasHeld: boolean;
+  /** T-4.29: the emplacement this soldier is on, or null. */
+  mounted: EmplacementEntity | null;
   /**
    * The bot's brain (T-3.08), or null while a human drives. Owned by the
    * occupant, not the entity: a join stops it, a leave builds a new one.
@@ -508,6 +565,8 @@ export interface EnemyEntity {
    * its `deploy.seconds` old. Null for one that does not.
    */
   deployedAt: number | null;
+  /** T-4.29: the emplacement it is on, or null. */
+  mounted: EmplacementEntity | null;
   /** T-3.23: rounds into the current burst, and when a pause after the last one ends (seconds). */
   burst: { rounds: number; pauseUntil: number };
   /** T-3.32: what it does with nothing to fight (`actions/posture.ts`), or null to stand down. */
@@ -597,6 +656,12 @@ export interface SessionOptions {
   profileAi?: boolean;
   /** T-4.19: hosted rooms wait for ready-up before gameplay; direct/local sessions start immediately. */
   roomLobby?: boolean;
+  /**
+   * T-4.27: 'class' makes each slot carry its class's loadout and health
+   * and refuses an Equip outside it; 'free' leaves every gun to every slot.
+   * Defaults to 'class' with a room lobby and 'free' without one.
+   */
+  loadouts?: 'class' | 'free';
   /** T-4.23: durable campaign state restored before anyone joins this room. */
   campaign?: CampaignState;
   /** T-4.23: called only at a completed checkpoint or mission end. */
@@ -612,6 +677,11 @@ export interface SessionStats {
   /** T-3.09: AI debug reports sent, and their bytes — counted apart from snapshots. */
   aiDebugSent: number;
   aiDebugBytesSent: number;
+  /** T-4.33: players seated fresh, and resumed into their own slot (T-4.18). */
+  joins: number;
+  resumes: number;
+  /** T-4.33: milliseconds the AI took over every tick, when profiled (`profileAi`); 0 otherwise. */
+  aiMs: number;
 }
 
 export class Session {
@@ -660,8 +730,13 @@ export class Session {
    */
   private nowMs = 0;
   private nextNetId = 1;
+  /** T-4.29: the world's emplacements, as entities. */
+  private readonly emplacementList: EmplacementEntity[] = [];
   private snapshotsSent = 0;
   private bytesSent = 0;
+  /** T-4.33: seatings, fresh and resumed, for the host's metrics. */
+  private joinCount = 0;
+  private resumeCount = 0;
   private readonly navMesh: NavMesh | null;
   /** T-3.19's cover over this world's baked points, or null without any. */
   readonly cover: CoverSystem | null;
@@ -720,7 +795,20 @@ export class Session {
   private roomStarted: boolean;
   private creatorSlot = -1;
   private readonly readySlots: boolean[] = Array.from({ length: MAX_SLOTS }, () => false);
+  /** T-4.27: the class each slot plays, as `assignClasses` last decided it — what the roster and the room carry. */
   private readonly classSlots: string[] = Array.from({ length: MAX_SLOTS }, () => '');
+  /** T-4.27: each human's own pick ('' for none, and for a bot); the assignment starts from these. */
+  private readonly classPicks: string[] = Array.from({ length: MAX_SLOTS }, () => '');
+  /** T-4.28: the scoreboard's rows, counted here as things happen and sent whole on every change. */
+  private readonly slotStats: SlotStats[] = Array.from({ length: MAX_SLOTS }, (_, slot) => createSlotStats(slot));
+  /** The mission state and objective the scoreboard was last sent for, so its clock is resent when either moves. */
+  private lastStatsKey = '';
+  /**
+   * T-4.27: whether a slot's class decides what it carries. A hosted room
+   * with a lobby plays by its classes; the in-page session and a plain QA
+   * host stay free, so the tuning panels and the range keep every gun.
+   */
+  private readonly classLoadouts: 'class' | 'free';
   /** T-4.23: the durable campaign metadata this room advances. */
   private readonly campaignCompletedMissions: Set<string>;
   private readonly campaignSoldiers: CampaignState['soldiers'];
@@ -748,6 +836,7 @@ export class Session {
     this.testHumanCount = options.testHumanCount ?? null;
     this.profileAi = options.profileAi ?? false;
     this.roomLobbyEnabled = options.roomLobby ?? false;
+    this.classLoadouts = options.loadouts ?? (this.roomLobbyEnabled ? 'class' : 'free');
     this.roomStarted = !this.roomLobbyEnabled;
     this.directorValue = null;
     this.spawnerValue = null;
@@ -875,6 +964,8 @@ export class Session {
         reviveBySlot: -1,
         reviveProgressSeconds: 0,
         interactHeld: false,
+        interactWasHeld: false,
+        mounted: null,
         brain: null,
         brainGeneration: 0,
       });
@@ -883,6 +974,30 @@ export class Session {
       this.slotSpeed.push(0);
       this.giveBrain(this.slots[i]!);
     }
+    // T-4.29: the level's emplacements, each an entity with a netId after the slots'.
+    for (const placed of this.world.emplacements) {
+      const def = getEmplacement(placed.kind);
+      const weapon = getWeapon(def.weapon);
+      const facing = emplacementFacing(placed);
+      this.emplacementList.push({
+        netId: this.nextNetId++,
+        placed,
+        def,
+        kind: emplacementIndex(placed.kind),
+        facing,
+        place: gunnerPlace(placed, def),
+        muzzle: gunMuzzle(placed, def),
+        weapon,
+        weaponState: createWeaponState(weapon),
+        heat: createHeat(),
+        yaw: facing,
+        pitch: 0,
+        gunnerNetId: 0,
+        outOfArcSince: null,
+      });
+    }
+    // T-4.27: every slot plays a class from the start; a bot's is the slot's default.
+    this.reassignClasses();
     const saved = options.campaign?.checkpoint;
     if (saved && this.missionRun && saved.mission === this.missionId) {
       this.missionRun.restoreCheckpoint(saved.objective, saved.elapsedTicks);
@@ -925,6 +1040,9 @@ export class Session {
       bytesSent: this.bytesSent,
       aiDebugSent: this.aiDebugSent,
       aiDebugBytesSent: this.aiDebugBytesSent,
+      joins: this.joinCount,
+      resumes: this.resumeCount,
+      aiMs: this.aiMs,
     };
   }
 
@@ -1032,6 +1150,40 @@ export class Session {
     if (!this.missionRun) return;
     const msg = { kind: 'Mission', ...this.missionRun.current } as const;
     for (const c of this.connections) if (c.state === 'active') c.send(msg);
+    // T-4.28: the scoreboard's clock and objectives move with the state and the objective, not with every tick of progress.
+    const key = `${msg.state}:${msg.objective}`;
+    if (key !== this.lastStatsKey) {
+      this.lastStatsKey = key;
+      this.broadcastStats();
+    }
+  }
+
+  /** T-4.28: the scoreboard as data — six rows whole, the mission clock, the objectives done. */
+  get scoreboard(): Extract<Message, { kind: 'Stats' }> {
+    const view = this.missionRun?.current ?? null;
+    return {
+      kind: 'Stats',
+      slots: this.slotStats.map((row) => ({ ...row })),
+      elapsedTicks: this.missionRun?.elapsed ?? 0,
+      objectivesDone: view ? (view.state === 'complete' ? view.objectives : view.objective) : 0,
+      objectives: view?.objectives ?? 0,
+    };
+  }
+
+  private bumpStat(slot: number, key: Exclude<keyof SlotStats, 'slot'>): void {
+    const row = this.slotStats[slot];
+    if (!row) return;
+    row[key] += 1;
+    this.broadcastStats();
+  }
+
+  private sendStats(conn: ServerConnection): void {
+    conn.send(this.scoreboard);
+  }
+
+  private broadcastStats(): void {
+    const msg = this.scoreboard;
+    for (const c of this.connections) if (c.state === 'active') c.send(msg);
   }
 
   private xpPlayer(slotIndex: number): string | null {
@@ -1071,16 +1223,21 @@ export class Session {
     this.enemyList.length = 0;
     this.groups.clear();
     this.projectiles.length = 0;
+    // T-4.29: every gun free, cold and belted again.
+    for (const gun of this.emplacementList) this.resetEmplacement(gun);
     for (const slot of this.slots) {
       respawn(slot.health);
+      this.applyClassHealth(slot);
       const point = spawns[slot.index] ?? spawnFor(slot.index);
       slot.state = createMoveState(point.x, point.y, point.z);
       slot.queue.length = 0;
       slot.input = idleInput(slot.yaw);
       slot.interactHeld = false;
+      slot.interactWasHeld = false;
+      slot.mounted = null;
       slot.weaponState = createWeaponState(slot.weapon);
       slot.suppression = createSuppression();
-      slot.pouch = this.fullPouch();
+      slot.pouch = this.pouchFor(slot.index);
       slot.nextThrowAt = 0;
       this.orders[slot.index] = null;
       this.orderRuns[slot.index] = null;
@@ -1115,6 +1272,8 @@ export class Session {
   restartMission(): void {
     this.xp.restart();
     this.broadcastProgression();
+    for (const row of this.slotStats) Object.assign(row, createSlotStats(row.slot));
+    this.broadcastStats();
     const spawns = this.slots.map((slot) => {
       const point = spawnFor(slot.index);
       return { x: point.x, y: point.y, z: point.z };
@@ -1233,6 +1392,64 @@ export class Session {
   private readonly projectileDefs: ProjectileDef[] = PROJECTILE_IDS.map((id) => ({ ...getProjectile(id) }));
 
   /** A full load-out of every projectile, as this session's rows say it is carried. */
+  /** T-4.27: the class a slot plays, as the room and the roster carry it. */
+  classOf(slot: number): string {
+    return this.classSlots[slot] ?? '';
+  }
+
+  /** T-4.27: what a slot carries and its health, for a test to read. */
+  loadoutOf(slot: number): { weapon: string; pouch: number[]; health: number; maxHealth: number } {
+    const s = this.slots[slot];
+    if (!s) throw new Error(`no slot ${slot}`);
+    return { weapon: s.weapon.id, pouch: [...s.pouch], health: s.health.current, maxHealth: s.health.max };
+  }
+
+  /**
+   * T-4.27: who plays what, from the humans' picks and the bots filling
+   * behind them (`assignClasses`). A slot whose class changed takes its
+   * loadout, when the session plays by loadouts.
+   */
+  private reassignClasses(): void {
+    const assigned = assignClasses(this.slots.map((s) => s.isBot), this.classPicks);
+    for (const slot of this.slots) {
+      const id = assigned[slot.index] ?? '';
+      if (this.classSlots[slot.index] === id) continue;
+      this.classSlots[slot.index] = id;
+      this.applyLoadout(slot);
+    }
+  }
+
+  /** The class's first gun in hand, its pouch, and its health. */
+  private applyLoadout(slot: Slot): void {
+    if (this.classLoadouts !== 'class') return;
+    const def = classById(this.classSlots[slot.index] ?? '');
+    if (!def) return;
+    const gun = def.guns[0] ?? slot.weapon.id;
+    if (slot.weapon.id !== gun) {
+      slot.weapon = getWeapon(gun);
+      slot.weaponState = createWeaponState(slot.weapon);
+    }
+    slot.pouch = [...def.pouch];
+    slot.heldProjectile = -1;
+    this.applyClassHealth(slot);
+  }
+
+  /** Full to the class's health before the mission and on a respawn; mid-mission a switch only caps what is left. */
+  private applyClassHealth(slot: Slot): void {
+    if (this.classLoadouts !== 'class') return;
+    const def = classById(this.classSlots[slot.index] ?? '');
+    if (!def) return;
+    slot.health.max = def.health;
+    if (!this.roomStarted || slot.health.current > def.health) slot.health.current = def.health;
+  }
+
+  /** A slot's pouch at spawn: its class's, or the data's full pouch on a free session. */
+  private pouchFor(slot: number): number[] {
+    if (this.classLoadouts !== 'class') return this.fullPouch();
+    const def = classById(this.classSlots[slot] ?? '');
+    return def ? [...def.pouch] : this.fullPouch();
+  }
+
   private fullPouch(): number[] {
     return this.projectileDefs.map((def) => def.carried);
   }
@@ -1283,6 +1500,7 @@ export class Session {
       nextThrowAt: 0,
       still: createStillWatch(),
       deployedAt: null,
+      mounted: null,
       burst: { rounds: 0, pauseUntil: 0 },
       posture: at.posture ?? null,
       coverNear: () => {
@@ -1415,6 +1633,7 @@ export class Session {
    * ticks or a blast inside one — so no later step can move it.
    */
   private killEnemy(enemy: EnemyEntity): void {
+    if (enemy.mounted) this.dismountEnemy(enemy);
     this.cover?.release(enemy.netId);
     enemy.brain?.stop();
     enemy.follower = null;
@@ -1446,6 +1665,7 @@ export class Session {
     return this.slots.map((s) => ({
       human: !s.isBot,
       name: s.connection?.name ?? '',
+      classId: this.classSlots[s.index] ?? '',
     }));
   }
 
@@ -1516,7 +1736,7 @@ export class Session {
     slot.connection = conn;
     slot.staleTicks = 0;
     this.readySlots[slot.index] = false;
-    this.classSlots[slot.index] = '';
+    this.classPicks[slot.index] = '';
     if (!this.roomStarted && this.creatorSlot < 0) this.creatorSlot = slot.index;
 
     /**
@@ -1556,8 +1776,12 @@ export class Session {
     slot.resumeToken = newResumeToken();
     if (!resumed) this.localPlayers.set(slot.index, slot.resumeToken);
     slot.reservedUntilMs = 0;
+    if (resumed) this.resumeCount += 1;
+    else this.joinCount += 1;
     conn.accept(slot.netId, slot.index, this.currentTick, this.room, this.world.id, slot.resumeToken, resumed !== null);
     this.sendProgression(conn);
+    this.sendStats(conn);
+    this.reassignClasses();
     this.broadcastRoster();
     this.broadcastRoomState();
     // T-3.27: a human is nobody's to order, so whatever this slot's bot was told
@@ -1614,7 +1838,10 @@ export class Session {
     const order = this.orders[slot];
     const run = this.orderRuns[slot];
     if (!order || !run || run.status === 'done') return;
-    if (outcome === 'done') this.awardXp(order.from, 'order', run.xpPlayerId);
+    if (outcome === 'done') {
+      this.awardXp(order.from, 'order', run.xpPlayerId);
+      this.bumpStat(slot, 'ordersCarried');
+    }
     if (outcome === 'done' && (order.order === 'move' || order.order === 'hold')) {
       this.reportOrder(slot, 'done', reason);
       run.status = 'done';
@@ -1690,8 +1917,11 @@ export class Session {
     }
     const a = msg.address;
     const addressed = a.to === 'slot' ? [a.index] : a.to === 'fireteam' ? [...SQUAD_CONFIG.fireteams[a.index]!.slots] : this.slots.map((s) => s.index);
-    const bots = addressed.filter((i) => this.slots[i]?.isBot === true);
+    // T-4.27: a class's orders reach the whole squad or only the giver's own fireteam.
+    const reach = orderReach(this.classSlots[from.index] ?? '', from.index, addressed, SQUAD_CONFIG.fireteams);
+    const bots = reach.filter((i) => this.slots[i]?.isBot === true);
     if (bots.length === 0) return;
+    this.bumpStat(from.index, 'ordersGiven');
     for (const i of bots) {
       // T-3.28: the order it was under, if it had not finished, is replaced; either way it is reported.
       if (this.orders[i]) this.reportOrder(i, this.orderRuns[i]?.status === 'done' ? 'done' : 'replaced', `${msg.order} from slot ${from.index}`);
@@ -1766,6 +1996,176 @@ export class Session {
     return bots.sort((a, b) => a.reservedUntilMs - b.reservedUntilMs)[0] ?? null;
   }
 
+  /** T-4.29: the world's emplacements — their guns, gunners and heat. */
+  get emplacements(): readonly EmplacementEntity[] {
+    return this.emplacementList;
+  }
+
+  /** T-4.29: the emplacement a slot is on, or null. */
+  mountOf(slotIndex: number): EmplacementEntity | null {
+    return this.slots[slotIndex]?.mounted ?? null;
+  }
+
+  /**
+   * T-4.29: the nearest empty gun whose gunner's place is within its
+   * `withinM` of `at` (horizontally), firing `weapon` when one is named, or
+   * null. Distance is to where the gunner stands, not to the gun.
+   */
+  private emptyGunNear(at: { x: number; z: number }, withinM: (def: EmplacementDef) => number, weapon?: string): EmplacementEntity | null {
+    let best: EmplacementEntity | null = null;
+    let bestSq = Number.POSITIVE_INFINITY;
+    for (const gun of this.emplacementList) {
+      if (gun.gunnerNetId !== 0) continue;
+      if (weapon !== undefined && gun.def.weapon !== weapon) continue;
+      const range = withinM(gun.def);
+      const dx = at.x - gun.place.x;
+      const dz = at.z - gun.place.z;
+      const sq = dx * dx + dz * dz;
+      if (sq <= range * range && sq < bestSq) {
+        best = gun;
+        bestSq = sq;
+      }
+    }
+    return best;
+  }
+
+  /** Put a human on a gun: at the gunner's place, crouched, looking within the arc, hands off whatever they carried. */
+  private mount(slot: Slot, gun: EmplacementEntity): void {
+    gun.gunnerNetId = slot.netId;
+    gun.outOfArcSince = null;
+    slot.mounted = gun;
+    slot.state = createMoveState(gun.place.x, gun.place.y, gun.place.z);
+    slot.queue.length = 0;
+    slot.yaw = clampYawToArc(gun.facing, slot.yaw, gun.def.traverseDeg);
+    slot.pitch = clampPitch(slot.pitch, gun.def) & 0x3ff;
+    slot.input = { ...idleInput(slot.yaw), crouch: true };
+    slot.heldProjectile = -1;
+    gun.yaw = slot.yaw;
+    gun.pitch = slot.pitch;
+  }
+
+  /** Take a human off a gun. They stay where they stood, crouched until their next input says otherwise. */
+  private dismount(slot: Slot): void {
+    const gun = slot.mounted;
+    if (!gun) return;
+    gun.gunnerNetId = 0;
+    gun.outOfArcSince = null;
+    slot.mounted = null;
+  }
+
+  /** Put an enemy on a gun: as a human, and deployed at once — the gun is already on its mount. */
+  private mountEnemy(enemy: EnemyEntity, gun: EmplacementEntity, nowSeconds: number): void {
+    gun.gunnerNetId = enemy.netId;
+    gun.outOfArcSince = null;
+    enemy.mounted = gun;
+    enemy.state = createMoveState(gun.place.x, gun.place.y, gun.place.z);
+    enemy.follower = null;
+    enemy.yaw = clampYawToArc(gun.facing, enemy.yaw, gun.def.traverseDeg);
+    enemy.input = { ...idleInput(enemy.yaw), crouch: true };
+    if (enemy.def.deploy) enemy.deployedAt = nowSeconds - enemy.def.deploy.seconds;
+    gun.yaw = enemy.yaw;
+    gun.pitch = 0;
+  }
+
+  private dismountEnemy(enemy: EnemyEntity): void {
+    const gun = enemy.mounted;
+    if (!gun) return;
+    gun.gunnerNetId = 0;
+    gun.outOfArcSince = null;
+    enemy.mounted = null;
+  }
+
+  /** A gun as the session was built with it: nobody on it, cold, a full belt, laid on its facing. */
+  private resetEmplacement(gun: EmplacementEntity): void {
+    gun.gunnerNetId = 0;
+    gun.outOfArcSince = null;
+    gun.weaponState = createWeaponState(gun.weapon);
+    gun.heat = createHeat();
+    gun.yaw = gun.facing;
+    gun.pitch = 0;
+  }
+
+  /** A gunner's input this tick: no movement, crouched, and a yaw the gun can traverse to. The gun follows. */
+  private pinGunner(slot: Slot, gun: EmplacementEntity): void {
+    const yaw = clampYawToArc(gun.facing, slot.input.yaw, gun.def.traverseDeg);
+    slot.input = { ...slot.input, moveX: 0, moveY: 0, jump: false, sprint: false, crouch: true, prone: false, yaw };
+    gun.yaw = yaw;
+  }
+
+  /**
+   * T-4.29: the guns cool and settle, and mounting is resolved. A human's
+   * interact PRESS (not hold) mounts the nearest empty gun within its mount
+   * range, or dismounts; the revive (`updateRevives`, before this) has first
+   * claim on the same press, so a medic's E next to a downed mate and a gun
+   * revives. A downed, dead or departed gunner is off the gun. An enemy that
+   * carries a gun's weapon takes an empty gun within `ai.takeWithinM` when
+   * the gun can bear on what it is fighting, and holds it until its target
+   * stays outside the arc (`aiShoot`) or it dies (`killEnemy`).
+   */
+  private updateMounts(nowSeconds: number): void {
+    for (const gun of this.emplacementList) {
+      decayBloom(gun.weapon, gun.weaponState, TICK_SECONDS);
+      coolHeat(gun.def, gun.heat, TICK_SECONDS);
+    }
+    for (const slot of this.slots) {
+      if (slot.mounted && (slot.isBot || !isAlive(slot.health))) this.dismount(slot);
+      if (slot.isBot) {
+        slot.interactWasHeld = false;
+        continue;
+      }
+      const held = this.holdingInteract(slot);
+      const pressed = held && !slot.interactWasHeld;
+      slot.interactWasHeld = held;
+      if (!pressed) continue;
+      if (slot.mounted) {
+        this.dismount(slot);
+        continue;
+      }
+      if (!isAlive(slot.health) || slot.state.vault) continue;
+      if (this.slots.some((t) => t.reviveBySlot === slot.index)) continue;
+      const gun = this.emptyGunNear(slot.state, (def) => def.mountRangeM);
+      if (gun) this.mount(slot, gun);
+    }
+    for (const enemy of this.enemyList) {
+      if (enemy.mounted || isDead(enemy.health) || enemy.state.vault) continue;
+      const gun = this.emptyGunNear(enemy.state, (def) => def.ai.takeWithinM, enemy.def.weapon);
+      if (!gun) continue;
+      const targetId = enemy.brain?.fireAt ?? null;
+      const target = targetId === null ? null : this.soldier(targetId);
+      if (target && !withinArc(gun.facing, tableToWire(aimAngles(gun.muzzle, target.state).yaw), gun.def.traverseDeg)) continue;
+      this.mountEnemy(enemy, gun, nowSeconds);
+    }
+  }
+
+  /**
+   * T-4.29: a mounted gunner's trigger pull. The gun's weapon, belt, cadence
+   * and heat, whatever the message names; the aim held within the arc; the
+   * round from the gun's muzzle, through the same `traceShot` as every shot.
+   * Aimed always: a gun on a mount is a gun on a mount.
+   */
+  private fireMounted(slot: Slot, gun: EmplacementEntity, msg: Extract<Message, { kind: 'Fire' }>): void {
+    const nowSeconds = this.nowMs / 1000;
+    finishReload(gun.weapon, gun.weaponState, nowSeconds);
+    const yawWire = clampYawToArc(gun.facing, tableToWire(msg.yaw), gun.def.traverseDeg);
+    const pitchWire = clampPitch(tableToWire(msg.pitch), gun.def) & 0x3ff;
+    slot.yaw = yawWire;
+    slot.pitch = pitchWire;
+    gun.yaw = yawWire;
+    gun.pitch = pitchWire;
+    if (!canFireHot(gun.heat)) return;
+    const shot = tryFire(gun.weapon, gun.weaponState, nowSeconds, true, false);
+    if (shot === null) {
+      if (gun.weaponState.ammo === 0) startReload(gun.weapon, gun.weaponState, nowSeconds);
+      return;
+    }
+    heatShot(gun.def, gun.heat);
+    this.lastFiredTick[slot.index] = this.currentTick;
+    // Table units for the trace, from the clamped wire aim: the round goes where the gun points, not where the message did.
+    const yaw = (yawWire << WIRE_TO_TABLE_SHIFT) & 0xfff;
+    const pitch = (pitchWire << WIRE_TO_TABLE_SHIFT) & 0xfff;
+    this.traceShot(slot.netId, gun.weapon, shot, msg.tick, gun.muzzle, yaw, pitch, msg.renderTimeMs);
+  }
+
   private releaseSlot(conn: ServerConnection, reason = ''): void {
     this.connections.delete(conn);
     this.aiDebugClients.delete(conn);
@@ -1778,10 +2178,12 @@ export class Session {
     // Hand the entity back to a bot; it keeps its position and its netId.
     // A departing reviver must not leave an interaction attached to a persistent entity.
     this.clearReviveStateForSlot(slot.index);
+    // T-4.29: a bot does not use the gun; the seat leaves it.
+    if (slot.mounted) this.dismount(slot);
     slot.isBot = true;
     slot.connection = null;
     this.readySlots[slot.index] = false;
-    this.classSlots[slot.index] = '';
+    this.classPicks[slot.index] = '';
     if (!this.roomStarted && this.creatorSlot === slot.index) {
       this.creatorSlot = this.slots.find((s) => !s.isBot && s.connection !== null)?.index ?? -1;
     }
@@ -1793,6 +2195,7 @@ export class Session {
     // out the departed player's last few inputs would look briefly possessed.
     slot.queue.length = 0;
     this.giveBrain(slot);
+    this.reassignClasses();
     this.broadcastRoster();
     this.broadcastRoomState();
     if (!this.roomStarted && this.everyHumanReady()) this.startRoom();
@@ -1882,6 +2285,15 @@ export class Session {
       else this.broadcastRoomState();
       return;
     }
+    if (msg.command === 'class') {
+      // T-4.27: a pick the data knows stands; anything else is no pick, and the slot's default returns.
+      const id = msg.classId ?? '';
+      this.classPicks[slot.index] = classById(id) ? id : '';
+      this.reassignClasses();
+      this.broadcastRoster();
+      this.broadcastRoomState();
+      return;
+    }
     if (msg.command === 'start' && slot.index === this.creatorSlot) this.startRoom();
   }
 
@@ -1942,8 +2354,16 @@ export class Session {
 
     // Aim is not queued: it is a view direction, not a movement step, and the
     // freshest one is always the right one.
-    slot.yaw = msg.yaw;
-    slot.pitch = msg.pitch;
+    if (slot.mounted) {
+      // T-4.29: the gun goes where the gunner looks, as far as it traverses and elevates.
+      slot.yaw = clampYawToArc(slot.mounted.facing, msg.yaw, slot.mounted.def.traverseDeg);
+      slot.pitch = clampPitch(msg.pitch, slot.mounted.def) & 0x3ff;
+      slot.mounted.yaw = slot.yaw;
+      slot.mounted.pitch = slot.pitch;
+    } else {
+      slot.yaw = msg.yaw;
+      slot.pitch = msg.pitch;
+    }
   }
 
   /**
@@ -1963,6 +2383,11 @@ export class Session {
     // Mid-vault both hands are on the wall (T-2.21). The client stops pulling
     // the trigger too; refusing here keeps a lying client from firing.
     if (slot.state.vault) return;
+    // T-4.29: on a gun, the gun fires — with its own numbers, arc and heat.
+    if (slot.mounted) {
+      this.fireMounted(slot, slot.mounted, msg);
+      return;
+    }
 
     const id = WEAPON_IDS[msg.weapon];
     if (id === undefined) return; // Out-of-range index: drop it, do not throw.
@@ -2098,6 +2523,7 @@ export class Session {
         if (target) {
           const result = applyDamage(target.health, dealt, this.nowMs / 1000);
           dealt = result.applied;
+          if (result.killed) this.bumpStat(target.index, 'deaths');
           if (dealt > 0) {
             target.lastDamagedAt = this.nowMs / 1000;
             if (this.slots.some((sl) => sl.netId === shooterNetId)) this.friendlyHitCount++;
@@ -2120,7 +2546,9 @@ export class Session {
           if (dealt > 0) enemy.lastDamagedAt = this.nowMs / 1000;
           if (result.killed) {
             this.killEnemy(enemy);
-            this.awardXp(this.slots.findIndex((s) => s.netId === shooterNetId), 'kill');
+            const shooterSlot = this.slots.findIndex((s) => s.netId === shooterNetId);
+            this.awardXp(shooterSlot, 'kill');
+            this.bumpStat(shooterSlot, 'kills');
           }
         }
         // Range targets take no damage: they are the range's fixtures, not
@@ -2310,8 +2738,12 @@ export class Session {
   private applyEquip(conn: ServerConnection, msg: Extract<Message, { kind: 'Equip' }>): void {
     const slot = this.slots.find((s) => s.connection === conn);
     if (!slot) return;
+    // T-4.29: a gunner's hands are on the gun; what they carry waits.
+    if (slot.mounted) return;
     const gun = WEAPON_IDS[msg.item];
     if (gun !== undefined) {
+      // T-4.27: a class carries its own guns and no others.
+      if (this.classLoadouts === 'class' && !(classById(this.classSlots[slot.index] ?? '')?.guns.includes(gun) ?? true)) return;
       if (gun !== slot.weapon.id) {
         slot.weapon = getWeapon(gun);
         slot.weaponState = createWeaponState(slot.weapon);
@@ -2426,7 +2858,10 @@ export class Session {
       const result = applyDamage(slot.health, damage, nowSeconds);
       if (result.applied > 0) slot.lastDamagedAt = nowSeconds;
       // A killed player stops moving immediately, as under fire (see applyFire).
-      if (result.killed) slot.queue.length = 0;
+      if (result.killed) {
+        slot.queue.length = 0;
+        this.bumpStat(slot.index, 'deaths');
+      }
       targets.push({ netId: slot.netId, damage: result.applied });
     }
     // Enemies take the blast on the same terms (T-3.10), dying at zero.
@@ -2445,7 +2880,9 @@ export class Session {
       if (result.applied > 0) enemy.lastDamagedAt = nowSeconds;
       if (result.killed) {
         this.killEnemy(enemy);
-        this.awardXp(this.slots.findIndex((s) => s.netId === projectile.ownerNetId), 'kill', projectile.xpPlayerId);
+        const ownerSlot = this.slots.findIndex((s) => s.netId === projectile.ownerNetId);
+        this.awardXp(ownerSlot, 'kill', projectile.xpPlayerId);
+        this.bumpStat(ownerSlot, 'kills');
       }
       targets.push({ netId: enemy.netId, damage: result.applied });
     }
@@ -2542,6 +2979,7 @@ export class Session {
        * stops where they lie, exactly as a finishing shot would stop them.
        */
       if (isDowned(slot.health) && expireBleedOut(slot.health, nowSeconds)) {
+        this.bumpStat(slot.index, 'deaths');
         slot.queue.length = 0;
         slot.input = idleInput(slot.yaw);
     slot.interactHeld = false;
@@ -2556,6 +2994,7 @@ export class Session {
         // T-3.34: on a mission that does not respawn, the dead wait for a restart.
         if ((this.missionRun?.respawns ?? true) && readyToRespawn(slot.health, nowSeconds)) {
           respawn(slot.health, DAMAGE, nowSeconds);
+          this.applyClassHealth(slot);
           const point = spawnFor(slot.index);
           slot.state = createMoveState(point.x, point.y, point.z);
           slot.queue.length = 0;
@@ -2563,7 +3002,7 @@ export class Session {
     slot.interactHeld = false;
           slot.weaponState = createWeaponState(slot.weapon);
           slot.suppression = createSuppression();
-          slot.pouch = this.fullPouch();
+          slot.pouch = this.pouchFor(slot.index);
           slot.nextThrowAt = 0;
         }
         // Still recorded into the hitbox history below, so a shot already in
@@ -2636,7 +3075,13 @@ export class Session {
       slot.input.downed = isDowned(slot.health);
       const fromX = slot.state.x;
       const fromZ = slot.state.z;
+      // T-4.29: a gunner is held at the gun, crouched, looking within its arc.
+      if (slot.mounted) this.pinGunner(slot, slot.mounted);
       slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig, this.collisionBoxes);
+      if (slot.mounted) {
+        slot.state.x = slot.mounted.place.x;
+        slot.state.z = slot.mounted.place.z;
+      }
       const moved = Math.sqrt((slot.state.x - fromX) ** 2 + (slot.state.z - fromZ) ** 2) / TICK_SECONDS;
       this.slotSpeed[slot.index] = moved;
       // T-3.14: a soldier running faster than a walk is heard where they are
@@ -2663,6 +3108,8 @@ export class Session {
 
     // Resolve revive interaction after consuming this tick's input, so a newly pressed E starts immediately.
     this.updateRevives();
+    // T-4.29: mounting and dismounting, after the revive has had first claim on the same press.
+    this.updateMounts(nowSeconds);
 
     const walkFrom = this.profileAi ? performance.now() : 0;
     this.stepEnemies(nowSeconds);
@@ -2699,6 +3146,8 @@ export class Session {
     if (this.profileAi) this.aiMs += performance.now() - fireFrom;
 
     this.currentTick++;
+    // T-4.28: the scoreboard's clock keeps up while a mission runs, five seconds at a time.
+    if (this.missionRun && this.missionRun.current.state === 'progress' && this.currentTick % 150 === 0) this.broadcastStats();
     /**
      * Projectiles fly LAST, after the bodies have moved and been recorded and
      * after the tick has advanced. Both halves matter: a rocket meets the
@@ -2878,7 +3327,8 @@ export class Session {
   private fireEnemies(nowSeconds: number): void {
     for (const enemy of this.enemyList) {
       if (isDead(enemy.health)) continue;
-      if (this.aiShoot(enemy, enemy.def.accuracy, this.deployed(enemy, nowSeconds), false, nowSeconds)) this.enemyFiredTick.set(enemy.netId, this.currentTick);
+      // T-4.29: a mounted gun is deployed by nature, and fires with the gun's numbers from the gun's muzzle.
+      if (this.aiShoot(enemy, enemy.def.accuracy, enemy.mounted !== null || this.deployed(enemy, nowSeconds), false, nowSeconds, enemy.mounted)) this.enemyFiredTick.set(enemy.netId, this.currentTick);
     }
     // T-3.26: friendly bots fire by the same path, holding fire while a squadmate is on the line.
     if (!this.botsDriven) return;
@@ -2894,9 +3344,10 @@ export class Session {
    * `spareFriends` holds fire while a squadmate's capsule, grown by
    * `bot.friendlyMarginM`, is on the line to the aim point (T-3.26).
    */
-  private aiShoot(shooter: AiBody, accuracy: EnemyAccuracy, mayFire: boolean, spareFriends: boolean, nowSeconds: number): boolean {
-    const weapon = shooter.weapon;
-    const ws = shooter.weaponState;
+  private aiShoot(shooter: AiBody, accuracy: EnemyAccuracy, mayFire: boolean, spareFriends: boolean, nowSeconds: number, gun: EmplacementEntity | null = null): boolean {
+    // T-4.29: on a gun, the gun's weapon, belt and muzzle; the shooter's own otherwise.
+    const weapon = gun ? gun.weapon : shooter.weapon;
+    const ws = gun ? gun.weaponState : shooter.weaponState;
     finishReload(weapon, ws, nowSeconds);
     if (ws.ammo === 0) startReload(weapon, ws, nowSeconds);
 
@@ -2904,7 +3355,7 @@ export class Session {
     if (shooter.state.vault) return false;
     // Its own eye in its own stance: crouched behind low cover it sees (and
     // shoots) over nothing a crouched head would not (T-3.20).
-    const eye = soldierEye(shooter.state);
+    const eye = gun ? gun.muzzle : soldierEye(shooter.state);
     const targetId = shooter.brain?.fireAt ?? null;
     const target = targetId === null ? null : this.soldier(targetId);
     const shootable = target && target.netId !== shooter.netId && !isDead(target.health) ? target : null;
@@ -2924,6 +3375,31 @@ export class Session {
     if (!shooter.aim || shooter.aim.netId !== aimAt) shooter.aim = { netId: aimAt, since: nowSeconds };
 
     const line = aimAngles(eye, point);
+    /**
+     * T-4.29: a mounted gun traverses and elevates only so far. A target
+     * outside the arc is not shot at: the gun is laid on the nearer stop, and
+     * an AI gunner whose target stays outside the arc for the data's seconds
+     * gets off the gun and fights on foot.
+     */
+    if (gun) {
+      const yawWire = tableToWire(line.yaw);
+      const pitchWire = tableToWire(line.pitch);
+      const inArc = withinArc(gun.facing, yawWire, gun.def.traverseDeg) && clampPitch(pitchWire, gun.def) === signedWire(pitchWire);
+      if (inArc) gun.outOfArcSince = null;
+      else {
+        gun.outOfArcSince ??= nowSeconds;
+        gun.yaw = clampYawToArc(gun.facing, yawWire, gun.def.traverseDeg);
+        gun.pitch = clampPitch(pitchWire, gun.def) & 0x3ff;
+        shooter.yaw = gun.yaw;
+        shooter.input.yaw = gun.yaw;
+        shooter.pitch = gun.pitch;
+        if (nowSeconds - gun.outOfArcSince >= gun.def.ai.leaveAfterSeconds) {
+          const gunner = this.enemyList.find((e) => e.mounted === gun);
+          if (gunner) this.dismountEnemy(gunner);
+        }
+        return false;
+      }
+    }
     // It faces what it shoots at, and the snapshot says so.
     shooter.yaw = tableToWire(line.yaw);
     shooter.input.yaw = shooter.yaw;
@@ -2952,8 +3428,15 @@ export class Session {
     // Nor a round the aim error would throw into one: that round is held, and
     // the next tick draws another.
     if (spareFriends && this.friendOnLine(shooter.netId, eye, along(eye, aimed, range))) return false;
-    const shot = tryFire(weapon, ws, nowSeconds, true, shooter.state.prone);
+    // T-4.29: an overheated gun does not fire, whoever is on it.
+    if (gun && !canFireHot(gun.heat)) return false;
+    const shot = tryFire(weapon, ws, nowSeconds, true, gun ? false : shooter.state.prone);
     if (shot === null) return false;
+    if (gun) {
+      heatShot(gun.def, gun.heat);
+      gun.yaw = clampYawToArc(gun.facing, tableToWire(aimed.yaw), gun.def.traverseDeg);
+      gun.pitch = clampPitch(tableToWire(aimed.pitch), gun.def) & 0x3ff;
+    }
     if (++shooter.burst.rounds >= accuracy.burstRounds) {
       shooter.burst.rounds = 0;
       shooter.burst.pauseUntil = nowSeconds + accuracy.burstPauseSeconds;
@@ -3035,7 +3518,13 @@ export class Session {
       enemy.input.downed = false;
       const fromX = enemy.state.x;
       const fromZ = enemy.state.z;
+      // T-4.29: a gunner stays on its gun, crouched behind it, whatever its brain's feet want.
+      if (enemy.mounted) enemy.input = { ...enemy.input, moveX: 0, moveY: 0, jump: false, sprint: false, crouch: true, prone: false, yaw: enemy.yaw };
       enemy.state = stepCharacter(enemy.state, enemy.input, TICK_SECONDS, this.moveConfig, this.collisionBoxes);
+      if (enemy.mounted) {
+        enemy.state.x = enemy.mounted.place.x;
+        enemy.state.z = enemy.mounted.place.z;
+      }
       enemy.speed = Math.sqrt((enemy.state.x - fromX) ** 2 + (enemy.state.z - fromZ) ** 2) / TICK_SECONDS;
       // T-3.23: a gun that deploys packs up the moment it moves, and settles again only standing still.
       const deploy = enemy.def.deploy;
@@ -3082,7 +3571,8 @@ export class Session {
     // corpse is out of the crowd altogether: nobody steers round the dead.
     const living = this.enemyList.filter((e) => !isDead(e.health));
     const enemyInputs: (MoveInput | null)[] = living.map((enemy) => {
-      const intent = enemy.brain?.intent ?? null;
+      // T-4.29: a gunner's brain may want to go somewhere; its feet stay on the gun.
+      const intent = enemy.mounted ? null : (enemy.brain?.intent ?? null);
       if (!enemy.follower) {
         if (!intent) return null;
         enemy.follower = new PathFollower(mesh, this.collisionBoxes, undefined, this.moveConfig);
@@ -3194,6 +3684,7 @@ export class Session {
       target.reviveProgressSeconds += TICK_SECONDS;
       if (target.reviveProgressSeconds >= DAMAGE.downed.reviveSeconds) {
         this.awardXp(target.reviveBySlot, 'revive');
+        this.bumpStat(target.reviveBySlot, 'revives');
         revive(target.health);
         target.reviveBySlot = -1;
         target.reviveProgressSeconds = 0;
@@ -3326,6 +3817,22 @@ export class Session {
             quantize(p.state.vz, VELOCITY),
           ],
           [COMPONENT_IDS.Projectile]: [p.kind, p.ownerSlot],
+        },
+      });
+    }
+
+    /**
+     * Emplacements (T-4.29): a Transform — the gun's place and the way it is
+     * laid — and an Emplacement saying which kind, who is on it and how hot it
+     * is. Static and few; a delta carries nothing for one nobody has touched.
+     */
+    for (const g of this.emplacementList) {
+      const gunnerSlot = g.gunnerNetId === 0 ? -1 : this.slots.findIndex((s) => s.netId === g.gunnerNetId);
+      entities.push({
+        netId: g.netId,
+        components: {
+          [T]: [quantize(g.placed.x, POSITION), quantize(g.placed.y, POSITION), quantize(g.placed.z, POSITION), g.yaw & 0x3ff, g.pitch & 0x3ff],
+          [COMPONENT_IDS.Emplacement]: [g.kind, g.gunnerNetId === 0 ? 0 : gunnerSlot >= 0 ? gunnerSlot + 1 : 7, heatToWire(g.heat), g.heat.overheated ? 1 : 0],
         },
       });
     }

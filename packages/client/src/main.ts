@@ -62,7 +62,8 @@ import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { type ClientLink, DEFAULT_LINK, type LinkConditions, LocalServer, type LocalServerOptions } from './net/LocalServer.ts';
 import { type NavMesh, initNav } from '@sandline/server/nav';
-import { NetClient, type ServerDetonation, type ServerShot } from './net/NetClient.ts';
+import { NetClient, type RemoteEmplacement, type ServerDetonation, type ServerShot } from './net/NetClient.ts';
+import { type EmplacementModel, createEmplacementModel } from './weapons/emplacementModel.ts';
 import {
   HostUrlError,
   RemoteServer,
@@ -76,7 +77,16 @@ import {
 import { forgetIdentity, readIdentity, storeIdentity } from './net/identity.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
 import { QaEnemies, QaSuppressor } from './net/qaEnemies.ts';
+import { SOUNDS } from '@sandline/shared';
 import { DEFAULT_WORLD_ID, buildTree, encounterFor, getWorld, type World, type WorldBox, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
+import { regionForHost, tagCode } from '@sandline/shared';
+
+/** T-4.20: a code on a region's host carries the region's tag on the link, so the invite lands there. */
+function taggedRoom(host: string, room: string): string {
+  const region = room === '' ? null : regionForHost(host);
+  return region ? tagCode(region.tag, room) : room;
+}
+import { type PlacedEmplacement, clampYawToArc, degToWire, emplacementByIndex, emplacementFacing, gunnerPlace } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
@@ -106,6 +116,27 @@ import { RemoteSoldiers } from './character/remoteSoldiers.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
 import { RESTART_KEY, afterActionXp, missionLine } from './ui/missionHud.ts';
+import { type ClassDef, TICK_SECONDS as MISSION_TICK_SECONDS, type Vitality, afterActionSummary, classById, scoreboardRows } from '@sandline/shared';
+import { createScoreboard } from './ui/scoreboard.ts';
+import { createMenu } from './ui/menu/Menu.ts';
+import { type AudioContextLike, AudioEngine } from './audio/engine.ts';
+import { createSoundBoard } from './ui/SoundBoard.ts';
+import { QUALITY, type Settings, browserStore, loadSettings, saveSettings } from './ui/menu/settings.ts';
+import { createHud } from './ui/hud/Hud.ts';
+import {
+  type CompassMarkerInput,
+  type DamageHit,
+  ammoView,
+  bearingDegrees,
+  compassView,
+  damageDirectionView,
+  heatView,
+  hitMarkerOpacity,
+  liveHits,
+  squadRows,
+  stanceOf,
+  vitalsView,
+} from './ui/hud/hudModel.ts';
 import { type AimSubject, OrderWheelView, buildMark, orderFromRelease } from './ui/OrderWheel.ts';
 import { type MarkerVec, OrderMarkerOverlay, orderMarkers } from './ui/OrderMarkers.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
@@ -465,6 +496,33 @@ const throws = new ThrowQA();
  * switch (`net.equip`) so the rest of the squad sees the right thing held.
  */
 let holdingPouch = false;
+/**
+ * T-4.29: the gun the page's soldier is on, as the host last said, and the
+ * loadout index to go back to. While on a gun the soldier is held where it
+ * is and looks only where the gun can point; the trigger fires the gun.
+ */
+let mountedGun: RemoteEmplacement | null = null;
+let unmountedWeaponIndex = 0;
+/** T-4.29: the emplacements drawn, by netId. */
+const emplacementModels = new Map<number, EmplacementModel>();
+
+/** The placed emplacement the host's entity stands for: the one at its place. */
+function placedFor(gun: RemoteEmplacement, world: World | null): PlacedEmplacement | null {
+  return world?.emplacements.find((p) => Math.abs(p.x - gun.x) < 0.05 && Math.abs(p.z - gun.z) < 0.05) ?? null;
+}
+
+/** T-4.29: whether an empty gun's gunner's place is within its mount range of (x, z), for the prompt. */
+function emptyGunInReach(client: NetClient, x: number, z: number): boolean {
+  for (const gun of client.emplacements()) {
+    if (gun.gunnerSlot >= 0) continue;
+    const def = emplacementByIndex(gun.kind);
+    const placed = placedFor(gun, client.world);
+    if (!def || !placed) continue;
+    const place = gunnerPlace(placed, def);
+    if (Math.hypot(x - place.x, z - place.z) <= def.mountRangeM) return true;
+  }
+  return false;
+}
 const pouchTrigger = new PouchTrigger();
 /** The loadout index sent last, and to which client, so a switch is sent once. */
 let equipSent: { net: NetClient; item: number } | null = null;
@@ -475,7 +533,16 @@ function loadoutItem(): number {
 function heldId(): string {
   return holdingPouch ? throws.def.id : combat.weapon.id;
 }
+/**
+ * T-4.27: on a hosted room the slot plays its class, and the class carries
+ * its own guns — the host refuses any other, so the page does not predict
+ * one either. Null on the in-page range, where every gun is anyone's.
+ */
+let localLoadout: ClassDef | null = null;
+/** The class id last applied to the page's own weapon and pouch. */
+let localClassSeen = '';
 function equipGun(index: number): void {
+  if (localLoadout && !localLoadout.guns.includes(WEAPON_ORDER[index] ?? '')) return;
   combat.selectWeapon(index);
   holdingPouch = false;
   pouchTrigger.cancel();
@@ -688,6 +755,8 @@ function onServerShot(net: NetClient, shot: ServerShot): void {
     // Our own shot: the tracer is already drawn, so this only lands the hit
     // marker and the damage number.
     combat.drawServerShot(shotOrigin, shotEnd, shot.targetNetId, shot.damage, clock.tick * TICK_SECONDS);
+    // The hit marker is the server's word that the round landed on a soldier (T-4.25).
+    if (shot.targetNetId !== 0) lastHitAt = clock.tick * TICK_SECONDS;
     return;
   }
   /**
@@ -715,6 +784,12 @@ function landImpact(net: NetClient, shot: ServerShot): void {
     return;
   }
   const target = shot.targetNetId === net.netId ? player : remotes.get(shot.targetNetId);
+  // A round that hit US: where it came from, for the HUD's damage direction
+  // (T-4.25), whatever state the body is in.
+  if (shot.targetNetId === net.netId) {
+    const from = remotes.get(shot.shooterNetId);
+    if (from) damageHits.push({ bearingDeg: bearingDegrees(from.position.x - player.position.x, from.position.z - player.position.z), at: now });
+  }
   // A downed soldier is already on the ground; the flinch belongs to the upright.
   const targetDowned = shot.targetNetId === net.netId ? net.vitality !== 'alive' : net.remoteVitality(shot.targetNetId) !== 'alive';
   if (!target || targetDowned) return;
@@ -793,6 +868,11 @@ function onServerDetonation(net: NetClient, event: ServerDetonation): void {
      */
     const from = shooterDirection(centre.x - mesh.position.x, centre.z - mesh.position.z, mesh.rotation.y);
     effects.flinch(mesh, now, hitReactionFrom(target.damage, 'torso', from));
+  }
+
+  // A blast that caught us: its direction on the HUD (T-4.25).
+  if (event.targets.some((t) => t.netId === net.netId)) {
+    damageHits.push({ bearingDeg: bearingDegrees(centre.x - player.position.x, centre.z - player.position.z), at: now });
   }
 
   lastBlast = {
@@ -882,7 +962,8 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
   const qaEnemies = local && qaNav && qaEnemiesWanted ? new QaEnemies(local) : null;
   // Slot netIds are 1..6 in slot order, so slot 1's soldier is netId 2.
   const qaSuppressor = local && qaSuppressWanted ? new QaSuppressor(local, 2) : null;
-  const remote = choice.kind === 'remote' ? new RemoteServer(choice.host) : null;
+  // T-4.31: the code rides the socket URL too, so the host's allocator can send the upgrade to the machine that holds it.
+  const remote = choice.kind === 'remote' ? new RemoteServer(choice.host, {}, choice.room) : null;
   const server: SessionSource = local ?? (remote as RemoteServer);
   const net = new NetClient(server.transport, choice.kind === 'remote' ? choice.name : 'qa', config);
   net.onScriptMessage = (text) => {
@@ -955,8 +1036,9 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
         });
       }
       roomJoined = room;
+      remote.setRoom(room);
       remote.markJoined();
-      history.replaceState(null, '', shareLink(location.href, choice.host, room, __DEFAULT_HOST__));
+      history.replaceState(null, '', shareLink(location.href, choice.host, taggedRoom(choice.host, room), __DEFAULT_HOST__));
     };
     net.onDisconnect = (reason, code) => {
       remote.noteRefusal(code, reason);
@@ -1012,6 +1094,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
 
   live = { server, net, local, remote, sparring, sparringLink, qaEnemies, qaSuppressor, choice, networkPanel };
   lobby.hide();
+  menu.hide();
   squadPanel.setVisible(true);
   player.visible = !input.firstPerson;
   simPrev = null;
@@ -1040,7 +1123,17 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
     gone.networkPanel.root.remove();
   }
   remotes.clear();
+  for (const model of emplacementModels.values()) {
+    scene.remove(model.root);
+    model.dispose();
+  }
+  emplacementModels.clear();
+  mountedGun = null;
+  input.setViewLimits(null);
   combat.reset();
+  lastHitAt = null;
+  damageHits = [];
+  compassMarkers = [];
   effects.reset();
   playerRig.setPose('standing');
   localPoseDriver.reset();
@@ -1054,6 +1147,7 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
   roomLobby.hide();
   if (document.pointerLockElement) document.exitPointerLock();
   lobby.show(message ?? undefined);
+  menu.showMain();
 }
 
 /* -- UI -------------------------------------------------------------------- */
@@ -1093,6 +1187,10 @@ hudToggle.id = 'hud-toggle';
 hudToggle.textContent = '−';
 hudToggle.title = 'Collapse (H)';
 hudToggle.addEventListener('click', toggleHud);
+// The QA readouts start folded away behind H (T-4.25): the player's HUD is the default.
+hud?.classList.add('collapsed');
+hudToggle.textContent = '+';
+hudToggle.setAttribute('aria-expanded', 'false');
 hud?.querySelector('h1')?.append(hudToggle);
 
 const panels = document.createElement('div');
@@ -1148,7 +1246,7 @@ const netgraph = createNetgraph(() => {
  */
 function currentShareLink(): string | null {
   if (!live || live.choice.kind !== 'remote' || live.net.room === '') return null;
-  return shareLink(location.href, live.choice.host, live.net.room, __DEFAULT_HOST__);
+  return shareLink(location.href, live.choice.host, taggedRoom(live.choice.host, live.net.room), __DEFAULT_HOST__);
 }
 
 const squadPanel = createSquadPanel({
@@ -1160,6 +1258,7 @@ squadPanel.setVisible(false);
 const roomLobby = createRoomLobby({
   onReady: (ready) => live?.net.setRoomReady(ready),
   onStart: () => live?.net.startRoom(),
+  onClass: (classId) => live?.net.setRoomClass(classId),
   onLeave: () => leaveSession({ text: 'left the room', tone: 'info' }),
   link: currentShareLink,
 });
@@ -1176,7 +1275,69 @@ const lobby = createLobby({
   buildStamp: `${__BUILD_SHA__} · ${__BUILD_TIME__}`,
   onChoose: chooseSession,
 });
-document.body.appendChild(lobby.root);
+/**
+ * The menus (T-4.26): the lobby is the main menu's Play panel now, Esc
+ * opens the pause menu in a session, and the settings both share are
+ * applied here and kept per browser.
+ */
+/**
+ * T-2.45: the audio engine. The context is made on the first click or key
+ * (browsers refuse to start one before), and every committed render is
+ * fetched then. `?sounds` puts the sound board up.
+ */
+const fetchAudio = (file: string): Promise<ArrayBuffer> => fetch(`./audio/${file}`).then((r) => {
+  if (!r.ok) throw new Error(`audio/${file}: ${r.status}`);
+  return r.arrayBuffer();
+});
+// The real context has more (and stricter-typed) members than the engine uses; it is the engine's shape at runtime.
+const audio = new AudioEngine({ createContext: () => new AudioContext({ latencyHint: 'interactive' }) as unknown as AudioContextLike, fetchBytes: fetchAudio });
+const unlockAudio = (): void => {
+  void audio.unlock();
+  removeEventListener('pointerdown', unlockAudio, true);
+  removeEventListener('keydown', unlockAudio, true);
+};
+addEventListener('pointerdown', unlockAudio, true);
+addEventListener('keydown', unlockAudio, true);
+if (new URLSearchParams(location.search).has('sounds')) {
+  createSoundBoard(document.body, {
+    sounds: SOUNDS,
+    fetchBytes: fetchAudio,
+    play: (id, variant) => void audio.unlock().then(() => audio.play(id, { variant })),
+  });
+}
+
+function applySettings(next: Settings): void {
+  // T-2.45: the three volumes the settings have held since T-4.26.
+  audio.setVolumes(next.volumes);
+  input.setSensitivity(next.sensitivity);
+  input.setInvertY(next.invertY);
+  cam.baseFov = next.fovDeg;
+  const quality = QUALITY[next.quality];
+  renderer.setPixelRatio(Math.min(devicePixelRatio, quality.pixelRatioMax));
+  renderer.shadowMap.enabled = quality.shadows;
+  if (sun.shadow.mapSize.x !== quality.shadowMapSize) {
+    sun.shadow.mapSize.set(quality.shadowMapSize, quality.shadowMapSize);
+    // A shadow map is allocated at its size on first use; drop the old one so the next frame makes the new.
+    sun.shadow.map?.dispose();
+    sun.shadow.map = null;
+  }
+}
+const settings = loadSettings(browserStore());
+applySettings(settings);
+const menu = createMenu({
+  play: lobby.root,
+  settings,
+  onSettings: (next) => {
+    applySettings(next);
+    saveSettings(browserStore(), next);
+  },
+  onResume: () => {
+    menu.hide();
+    if (live) renderer.domElement.requestPointerLock?.();
+  },
+  onLeave: () => leaveSession({ text: 'left the session', tone: 'info' }),
+});
+document.body.appendChild(menu.root);
 
 panels.append(
   squadPanel.root,
@@ -1255,6 +1416,21 @@ let rejoinNoticeUntil = 0;
 let rejoinNotice = '';
 /** T-3.34: the mission's one line, from the host's `Mission` message. */
 const missionHud = document.getElementById('mission');
+/**
+ * The player's HUD (T-4.25): drawn every frame from replicated state alone,
+ * by the pure functions in `hudModel.ts`. The QA readouts it replaces stay
+ * behind H and N.
+ */
+const playerHud = createHud(document.body);
+/** T-4.28: the six slots' numbers, the server's, shown while Tab is held and once the mission is over. */
+const scoreboard = createScoreboard(document.body);
+let tabHeld = false;
+/** When our last round landed on a soldier (the server's word), for the hit marker. */
+let lastHitAt: number | null = null;
+/** Where the rounds and blasts that hit us came from, for the damage direction. */
+let damageHits: DamageHit[] = [];
+/** The order and mark markers drawn this frame, for the compass. */
+let compassMarkers: CompassMarkerInput[] = [];
 let scriptNotice = '';
 let scriptNoticeUntil = 0;
 /** Last gap written to the reticle, so the style is only touched on change. */
@@ -1373,6 +1549,37 @@ function frame(): void {
      * character whose sprint is 6.8. Nothing between these two lines but the
      * step the player's own input caused.
      */
+    /**
+     * T-4.29: on a gun, the soldier stays put and crouched, and looks only
+     * where the gun can point — the same input the host holds a gunner to,
+     * so the prediction and the authority tell one story. The trigger runs
+     * on the gun's own weapon meanwhile, and the loadout comes back on
+     * dismount.
+     */
+    const mount = net.mounted;
+    const mountDef = mount ? emplacementByIndex(mount.kind) : null;
+    if (mount && mountDef) {
+      const placed = placedFor(mount, net.world);
+      const facing = placed ? emplacementFacing(placed) : mount.yaw;
+      input.setViewLimits({
+        yaw: facing,
+        halfYaw: degToWire(mountDef.traverseDeg),
+        minPitch: -degToWire(mountDef.elevationDownDeg),
+        maxPitch: degToWire(mountDef.elevationUpDeg),
+      });
+      Object.assign(tickInput, { moveX: 0, moveY: 0, jump: false, sprint: false, crouch: true, prone: false, yaw: clampYawToArc(facing, tickInput.yaw, mountDef.traverseDeg) });
+      if (!mountedGun) {
+        unmountedWeaponIndex = Math.max(0, combat.weaponIndex);
+        combat.useGun(getWeapon(mountDef.weapon));
+        holdingPouch = false;
+        pouchTrigger.cancel();
+      }
+    } else if (mountedGun) {
+      input.setViewLimits(null);
+      combat.selectWeapon(unmountedWeaponIndex);
+    }
+    mountedGun = mount;
+
     const beforeStep = net.simulated;
     net.tick(tickNumber, tickInput, input.pitchWire);
     sparring?.tick(tickNumber);
@@ -1403,7 +1610,8 @@ function frame(): void {
     const item = loadoutItem();
     if (!net.joined) {
       if (equipSent?.net === net) equipSent = null;
-    } else if (equipSent?.net !== net || equipSent.item !== item) {
+    } else if (item >= 0 && (equipSent?.net !== net || equipSent.item !== item)) {
+      // A mounted gun has no loadout index (T-4.29): nothing to tell the host, which holds the gunner's hands anyway.
       net.equip(item);
       equipSent = { net, item };
     }
@@ -1433,7 +1641,8 @@ function frame(): void {
     if (shot !== null) {
       // Sent at table resolution, so the server traces the exact angles this
       // client computed and the predicted tracer shares them without rounding.
-      net.fire(tickNumber, aimYaw, aimPitch, combat.weaponIndex, input.ads);
+      // On a gun the index is nobody's (T-4.29): the host fires the gun whatever this names.
+      net.fire(tickNumber, aimYaw, aimPitch, Math.max(0, combat.weaponIndex), input.ads);
       // Kick AFTER the shot is sent: this shot goes where the view pointed,
       // the next goes where the kick leaves it.
       recoil = applyKick(recoil, combat.weapon, combat.shotsFired, input.ads);
@@ -1610,6 +1819,31 @@ function frame(): void {
   // has despawned, and everything drawn for it goes with it.
   remotes.update(net, dt);
 
+  // T-4.29: the emplacements, each laid the way the host says its gun is laid.
+  const seenGuns = new Set<number>();
+  if (net) {
+    for (const gun of net.emplacements()) {
+      seenGuns.add(gun.netId);
+      let model = emplacementModels.get(gun.netId);
+      if (!model) {
+        const def = emplacementByIndex(gun.kind);
+        if (!def) continue;
+        model = createEmplacementModel(def.id);
+        scene.add(model.root);
+        emplacementModels.set(gun.netId, model);
+      }
+      model.root.position.set(gun.x, gun.y, gun.z);
+      model.gun.rotation.y = (gun.yaw / 1024) * Math.PI * 2;
+      model.gun.rotation.x = -(gun.pitch / 1024) * Math.PI * 2;
+    }
+  }
+  for (const [netId, model] of emplacementModels) {
+    if (seenGuns.has(netId)) continue;
+    scene.remove(model.root);
+    model.dispose();
+    emplacementModels.delete(netId);
+  }
+
   // T-3.29: the squad's orders and marks, where the soldiers they name are drawn.
   if (net) {
     const drawn = net.remotes();
@@ -1619,12 +1853,15 @@ function frame(): void {
       if (slot >= 0) bySlot.set(slot, at);
     }
     const self = { x: rx, y: ry, z: rz };
-    orderMarkerOverlay.show(
-      orderMarkers(net.orders, net.marks, {
-        slot: (slot) => (slot === net.slot ? self : bySlot.get(slot) ?? null),
-        netId: (netId) => (netId === net.netId ? self : drawn.get(netId) ?? null),
-      }),
-    );
+    const shownMarkers = orderMarkers(net.orders, net.marks, {
+      slot: (slot) => (slot === net.slot ? self : bySlot.get(slot) ?? null),
+      netId: (netId) => (netId === net.netId ? self : drawn.get(netId) ?? null),
+    });
+    orderMarkerOverlay.show(shownMarkers);
+    // The same markers on the compass (T-4.25), by bearing from where we are drawn.
+    compassMarkers = shownMarkers.map((m) => ({ key: m.key, kind: m.kind, label: m.label, x: m.at.x, z: m.at.z }));
+  } else {
+    compassMarkers = [];
   }
   orderWheel.update(input.orderWheel);
 
@@ -1775,10 +2012,13 @@ function frame(): void {
     crosshair.classList.toggle('sighted', ads && input.firstPerson && !holdingPouch);
   }
   if (missionHud) {
-    const mission = missionLine(net?.mission ?? null);
+    // The objective's own line lives on the player's HUD (T-4.25); this
+    // element keeps the after-action credit and a script's notice.
     const notice = performance.now() < scriptNoticeUntil ? scriptNotice : '';
+    // T-4.28: how the mission ended, its clock and its objectives, over the credit.
+    const summary = afterActionSummary(net?.mission ?? null, net?.scoreboard ?? null);
     const xp = afterActionXp(net?.mission ?? null, net?.progression ?? [], net?.slot ?? -1);
-    const text = [mission, xp, notice].filter((x) => x.length > 0).join(xp ? '\n' : ' — ');
+    const text = [summary, xp, notice].filter((x) => x.length > 0).join('\n');
     if (missionHud.textContent !== text) missionHud.textContent = text;
     missionHud.classList.toggle('shown', text.length > 0);
     missionHud.classList.toggle('after-action', xp.length > 0);
@@ -1806,6 +2046,82 @@ function frame(): void {
     }
     if (downedBanner.textContent !== text) downedBanner.textContent = text;
     downedBanner.classList.toggle('shown', text.length > 0);
+  }
+  /**
+   * The player's HUD (T-4.25), from replicated state and the predicted
+   * weapon alone: nothing here decides anything, it only shows what the host
+   * and the weapon state already say. Off in the lobby, where there is no
+   * soldier to show.
+   */
+  playerHud.setVisible(live !== null);
+  // T-4.28: the scoreboard while Tab is down, and on its own once the mission is over.
+  const missionOver = (net?.mission?.state ?? 'progress') !== 'progress';
+  scoreboard.setVisible(live !== null && (tabHeld || missionOver));
+  if (scoreboard.visible && net) {
+    scoreboard.update(
+      scoreboardRows(net.scoreboard, net.roster, net.slot),
+      (net.scoreboard?.elapsedTicks ?? 0) * MISSION_TICK_SECONDS,
+      afterActionSummary(net.mission, net.scoreboard),
+    );
+  }
+  // T-4.27: the class the host assigned this slot, applied to the page's own
+  // predicted weapon and pouch when it changes — the first gun in hand, the
+  // class's pouch — on a hosted room; the in-page range stays free.
+  const localClass = live?.remote && net ? net.roster[net.slot]?.classId ?? '' : '';
+  if (localClass !== localClassSeen) {
+    localClassSeen = localClass;
+    localLoadout = classById(localClass);
+    if (localLoadout) {
+      throws.setCounts(localLoadout.pouch);
+      const first = WEAPON_ORDER.indexOf(localLoadout.guns[0] as (typeof WEAPON_ORDER)[number]);
+      if (first >= 0) equipGun(first);
+    }
+  }
+  if (live) {
+    const hudNow = clock.tick * TICK_SECONDS + clock.alpha * TICK_SECONDS;
+    const hudYaw = Math.atan2(camSolve.forward.x, camSolve.forward.z);
+    damageHits = liveHits(damageHits, hudNow);
+    const vitalsStats = net?.stats;
+    const magazine = combat.magazine(hudNow);
+    const vitalityOfSlot = (slot: number): Vitality | null => {
+      if (!net) return null;
+      if (slot === net.slot) return net.vitality;
+      for (const netId of net.remotes().keys()) if (net.remoteSlot(netId) === slot) return net.remoteVitality(netId);
+      return null;
+    };
+    playerHud.update({
+      vitals: vitalsView({
+        health: vitalsStats?.health ?? 0,
+        maxHealth: vitalsStats?.maxHealth ?? 0,
+        vitality: localVitality,
+        vitalTimer: vitalsStats?.vitalTimer ?? 0,
+        reviveProgress: vitalsStats?.reviveProgress ?? 0,
+        reviverName: net?.roster[vitalsStats?.reviverSlot ?? -1]?.name ?? '',
+      }),
+      ammo: ammoView({
+        weapon: combat.weapon.name,
+        ammo: magazine.ammo,
+        magSize: magazine.magSize,
+        reloading: magazine.reloading,
+        reloadFraction: magazine.reloadFraction,
+        pouch: throws.rows().map((row, i) => ({ ...row, selected: holdingPouch && throws.kind === i })),
+      }),
+      stance: stanceOf({
+        downed,
+        vaulting: sim?.vault != null,
+        prone: input.proning,
+        // On a gun the host holds the soldier crouched, whatever the key says (T-4.29).
+        crouched: input.crouching || mountedGun !== null,
+        grounded: sim?.grounded ?? true,
+      }),
+      objective: missionLine(net?.mission ?? null),
+      squad: squadRows(net?.roster ?? [], net?.slot ?? -1, vitalityOfSlot, net?.orders ?? []),
+      compass: compassView(hudYaw, { x: rx, z: rz }, compassMarkers),
+      hitMarker: hitMarkerOpacity(lastHitAt, hudNow),
+      damage: damageDirectionView(damageHits, hudYaw, hudNow),
+      heat: mountedGun ? heatView({ heat: mountedGun.heat, overheated: mountedGun.overheated }) : null,
+      prompt: mountedGun ? 'E  LEAVE THE GUN' : net && !downed && sim && emptyGunInReach(net, sim.x, sim.z) ? 'E  MAN THE GUN' : '',
+    });
   }
   // Every value in the camera panel describes where the arm puts the camera
   // relative to a character you cannot see in first person.
@@ -1835,6 +2151,9 @@ function frame(): void {
     camSolve.position.y + camSolve.shake.y,
     camSolve.position.z + camSolve.shake.z,
   );
+  // T-2.45: the ear is the camera, facing where it looks, in the world it hears through.
+  audio.setListener(camSolve.position, camSolve.direction);
+  audio.setWorld(collisionBoxes());
   // Your own character is the one thing the first-person camera sits inside.
   // Downed forces third person (B-05), so the body stays visible then too.
   player.visible = !input.firstPerson || downed;
@@ -1997,11 +2316,26 @@ function frame(): void {
 }
 player.visible = false;
 lobby.show();
+menu.showMain();
 requestAnimationFrame(frame);
 
 addEventListener('keydown', (e) => {
   // Typing in the lobby is not a hotkey.
   if (isTextField(e.target)) return;
+  // Esc pauses (T-4.26): the pause menu over the session, which runs on; Esc again resumes.
+  if (e.code === 'Escape' && live) {
+    if (menu.mode === 'pause') {
+      menu.hide();
+      renderer.domElement.requestPointerLock?.();
+    } else {
+      menu.showPause();
+    }
+  }
+  // Tab holds the scoreboard up (T-4.28); in a session it never moves focus.
+  if (e.code === 'Tab' && live) {
+    e.preventDefault();
+    tabHeld = true;
+  }
   // R is reload, not reset: this is a shooter now and R is muscle memory.
   // Reset moved to T.
   // Nothing to reload with a grenade or a launcher in hand.
@@ -2050,4 +2384,8 @@ addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+});
+
+addEventListener('keyup', (e) => {
+  if (e.code === 'Tab') tabHeld = false;
 });

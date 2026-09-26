@@ -1,0 +1,14 @@
+{
+  "$comment": "T-2.45: how sounds are placed in the world (ADR-017). `falloff` is a gain curve by distance in metres, linear between points and held past the last; null plays unplaced (the UI). A class's `priority` decides who keeps a voice when more than `voiceLimit` play at once: your own sounds get `ownBonus`, and every metre away costs `perMetre`. `occlusion` is what a box between the ear and the source does: a low-pass at `lowpassHz` and a cut of `gainDb`. Sound travels at `speedOfSound` m/s, so a distant blast is seen before it is heard.",
+  "speedOfSound": 343,
+  "voiceLimit": 24,
+  "priority": { "ownBonus": 40, "perMetre": 0.1 },
+  "occlusion": { "lowpassHz": 900, "gainDb": -9 },
+  "classes": {
+    "ui": { "priority": 100, "falloff": null },
+    "weapon": { "priority": 60, "falloff": [[0, 1], [8, 1], [40, 0.4], [150, 0.12], [400, 0.03], [800, 0]] },
+    "world": { "priority": 40, "falloff": [[0, 1], [5, 1], [30, 0.35], [120, 0.08], [300, 0]] },
+    "body": { "priority": 30, "falloff": [[0, 1], [3, 1], [15, 0.3], [40, 0]] },
+    "voice": { "priority": 80, "falloff": [[0, 1], [4, 1], [25, 0.3], [60, 0]] }
+  }
+}

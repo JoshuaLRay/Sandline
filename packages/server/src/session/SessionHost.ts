@@ -47,6 +47,8 @@
  * rule `Session` and `ServerConnection` already follow.
  */
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { HostMetrics } from '../metrics.ts';
+import { Allocator, type PeerInfo, isPrivateAddress, roomFromUpgradeUrl } from '../allocator/Allocator.ts';
 import {
   BaseTransport,
   type Channel,
@@ -251,6 +253,21 @@ export interface SessionHostOptions {
   identity?: Identity;
   /** T-4.23: durable campaigns. Absent keeps the old ephemeral-room behavior for tests/local embeddings. */
   campaigns?: CampaignDatabase;
+  /**
+   * T-4.31: this host among its region's machines. `instance` is what a
+   * replay names (Fly's machine id); `peers` discovers the others; `region`
+   * is reported in `/healthz`. Absent, the host is alone: every connection
+   * is its own and `/internal/room` answers nobody.
+   */
+  allocator?: {
+    instance: string;
+    region: string;
+    peers: () => Promise<readonly PeerInfo[]>;
+    fetch?: typeof fetch;
+    timeoutMs?: number;
+    /** Which callers `/internal/room` answers: the private network and loopback by default. */
+    isPrivate?: (address: string | undefined) => boolean;
+  };
 }
 
 /**
@@ -284,6 +301,14 @@ export class SessionHost {
   private lastReal = 0;
   private reportedDrops = 0;
   private draining = false;
+  /** T-4.32: when the drain began (host wall time), its cap, and who is waiting for it to end. */
+  private drainStartedAt: number | null = null;
+  private drainCapMs = 0;
+  private drainWaiters: (() => void)[] = [];
+  /** T-4.33: what this host exports at `/metrics`. */
+  readonly metrics = new HostMetrics();
+  /** T-4.31: where a connection should go, asked before its upgrade; null for a host alone. */
+  readonly allocator: Allocator | null;
   /** Distinct per connection, so one client's loss pattern is its own. */
   private nextSeed = 0x5eed;
 
@@ -295,6 +320,8 @@ export class SessionHost {
     this.registry = new Registry({
       ...options.registry,
       onReclaim: (room, why) => {
+        // T-4.33: what the room counted stays in the host's totals.
+        this.metrics.retire(room.session.stats);
         this.log.info('room reclaimed', { room: room.code, why, tick: room.session.tick });
         options.registry?.onReclaim?.(room, why);
       },
@@ -302,6 +329,22 @@ export class SessionHost {
     this.maxConnections = options.maxConnections ?? this.registry.maxRooms * MAX_SLOTS + 8;
     this.joinKey = options.joinKey ?? '';
     this.identity = options.identity ?? new Identity();
+    const a = options.allocator;
+    this.allocator = a
+      ? new Allocator({
+          host: { instance: a.instance, holds: (code) => this.holds(code), load: () => ({ rooms: this.registry.size, maxRooms: this.registry.maxRooms, draining: this.draining }) },
+          peers: a.peers,
+          ...(a.fetch ? { fetch: a.fetch } : {}),
+          ...(a.timeoutMs !== undefined ? { timeoutMs: a.timeoutMs } : {}),
+          onPeerDown: (peer, why) => this.log.warn('peer did not answer', { peer: peer.instance, why }),
+        })
+      : null;
+  }
+
+  /** T-4.31: whether a live room or a saved campaign with this code is on this host. */
+  holds(code: string): boolean {
+    if (this.registry.get(code) || this.registry.getByJoinCode(normalizeCampaignCode(code))) return true;
+    return this.options.campaigns?.loadCampaign(code) !== undefined;
   }
 
   /** Open the socket and start ticking. Resolves with the bound port. */
@@ -312,10 +355,22 @@ export class SessionHost {
     this.handle = await startWsServer({
       port: this.options.port,
       onConnection: (transport) => this.accept(transport),
-      onRequest: (req, res) => this.serveHttp(req.url ?? '/', res),
-      shouldAccept: () => {
-        if (this.draining) return 'host draining';
+      onRequest: (req, res) => this.serveHttp(req.url ?? '/', res, req.socket.remoteAddress),
+      shouldAccept: async (req) => {
+        // T-4.32: a draining host takes no new rooms, but a reconnect into a room it holds is still its.
+        if (this.draining) {
+          const code = roomFromUpgradeUrl(req.url);
+          if (code === null || !this.holds(code)) return 'host draining';
+        }
         if (this.connections >= this.maxConnections) return 'host full';
+        // T-4.31: a code a peer holds, or a new room a peer has more room for, is replayed there before the upgrade.
+        if (this.allocator) {
+          const placement = await this.allocator.decide(roomFromUpgradeUrl(req.url));
+          if (placement.kind === 'replay') {
+            this.log.info('upgrade replayed', { to: placement.instance, room: roomFromUpgradeUrl(req.url) ?? '' });
+            return { replay: placement.instance };
+          }
+        }
         return null;
       },
     });
@@ -341,7 +396,7 @@ export class SessionHost {
    * host's log. Room CODES are deliberately absent — listing them would make
    * every room joinable by anyone who found the URL.
    */
-  private serveHttp(url: string, res: { statusCode: number; setHeader(k: string, v: string): void; end(b?: string): void }): void {
+  private serveHttp(url: string, res: { statusCode: number; setHeader(k: string, v: string): void; end(b?: string): void }, from?: string): void {
     if (url === '/healthz' || url === '/health' || url === '/') {
       res.statusCode = this.draining ? 503 : 200;
       res.setHeader('content-type', 'application/json');
@@ -349,8 +404,46 @@ export class SessionHost {
       res.end(JSON.stringify(this.health()));
       return;
     }
+    // T-4.31: a peer asking whether a code is here. Answered only from the
+    // private network, and only yes or no — from anywhere else it is a 404
+    // like any other path, so the public address still lists no codes.
+    const lookup = /^\/internal\/room\/([^/?]+)$/.exec(url);
+    if (lookup) {
+      const isPrivate = this.options.allocator?.isPrivate ?? isPrivateAddress;
+      res.statusCode = this.options.allocator && isPrivate(from) && this.holds(decodeURIComponent(lookup[1]!)) ? 200 : 404;
+      res.setHeader('cache-control', 'no-store');
+      res.end();
+      return;
+    }
+    // T-4.33: the Prometheus exposition, for Fly's scraper and a curious curl. No codes in it either.
+    if (url === '/metrics') {
+      res.statusCode = 200;
+      res.setHeader('content-type', 'text/plain; version=0.0.4; charset=utf-8');
+      res.setHeader('cache-control', 'no-store');
+      res.end(this.renderMetrics());
+      return;
+    }
     res.statusCode = 404;
     res.end();
+  }
+
+  /** T-4.33: the metrics as a scraper reads them, from the registry's gauges and every live room's counters. */
+  renderMetrics(): string {
+    const stats = this.registry.stats;
+    return this.metrics.render(
+      {
+        rooms: stats.rooms,
+        maxRooms: stats.maxRooms,
+        idleRooms: stats.idle,
+        players: stats.players,
+        connections: this.connections,
+        maxConnections: this.maxConnections,
+        droppedTicks: this.clock.dropped,
+        rssBytes: process.memoryUsage().rss,
+        draining: this.draining,
+      },
+      this.registry.list().map((room) => room.session.stats),
+    );
   }
 
   health(): Record<string, unknown> {
@@ -363,6 +456,10 @@ export class SessionHost {
       maxConnections: this.maxConnections,
       keyRequired: this.joinKey !== '',
       link: this.link ? hostBanner(0, this.link).link : 'raw socket',
+      // T-4.31: which machine this is, and where; the allocator's placement reads `rooms`, `maxRooms` and `ok`.
+      instance: this.options.allocator?.instance ?? '',
+      region: this.options.allocator?.region ?? '',
+      draining: this.draining,
     };
   }
 
@@ -404,6 +501,8 @@ export class SessionHost {
     this.pending.add(conn);
     attached.onClose((reason) => {
       this.connections -= 1;
+      // T-4.33: a typed refusal or drop is counted by its code; a peer that left is not a refusal.
+      if (conn.rejectedWith !== null) this.metrics.countRefusal(conn.rejectedWith);
       this.log.info('connection closed', {
         reason,
         room: conn.room,
@@ -425,7 +524,8 @@ export class SessionHost {
    */
   private route(conn: ServerConnection): void {
     this.pending.delete(conn);
-    if (this.draining) {
+    // T-4.32: while draining, only a code for a room this host holds is admitted — a reconnect, a friend's late join.
+    if (this.draining && (conn.room === '' || !this.holds(conn.room))) {
       conn.reject('host draining');
       return;
     }
@@ -543,10 +643,15 @@ export class SessionHost {
         conn.setNow(this.simTimeMs);
         if (conn.isTimedOut(this.simTimeMs)) conn.reject('heartbeat timeout', 'no Join received');
       }
+      // T-4.33: the wall time of the step — every room and every snapshot — is the tick-time histogram.
+      const stepFrom = performance.now();
       this.registry.step(real);
+      this.metrics.observeTick(performance.now() - stepFrom);
     }
 
     if (steps > 0) for (const c of this.conditioned) c.pump(real);
+
+    this.checkDrain();
 
     if (this.clock.dropped > this.reportedDrops) {
       this.log.warn('tick backlog dropped', {
@@ -556,6 +661,45 @@ export class SessionHost {
       this.reportedDrops = this.clock.dropped;
     }
   }
+
+  /** T-4.32: whether this host is draining or stopped. */
+  get isDraining(): boolean {
+    return this.draining;
+  }
+
+  /**
+   * T-4.32: a deploy never kills a running mission. Draining, the host takes
+   * no new rooms (`/healthz` says so, and the platform stops sending it new
+   * connections) but keeps every room it holds and still admits a reconnect
+   * into one. It stops the moment nobody is seated, or at `capMs`, telling
+   * the players first. Resolves once stopped. On Fly the cap must fit the
+   * app's `kill_timeout`, which is at most five minutes: a mission longer
+   * than that is cut short with the players told, and that is the accepted
+   * limit until the platform allows more.
+   */
+  drain(capMs: number): Promise<void> {
+    if (this.drainStartedAt === null) {
+      this.draining = true;
+      this.drainStartedAt = this.now();
+      this.drainCapMs = capMs;
+      this.log.info('draining', { capMs, players: this.registry.stats.players, rooms: this.registry.size });
+    }
+    const done = new Promise<void>((resolve) => this.drainWaiters.push(resolve));
+    this.checkDrain();
+    return done;
+  }
+
+  /** Stop when the drain has nothing left to wait for, or has waited its cap. */
+  private checkDrain(): void {
+    if (this.drainStartedAt === null || this.handleStopping) return;
+    const nobody = this.registry.stats.players === 0;
+    const overCap = this.now() - this.drainStartedAt >= this.drainCapMs;
+    if (!nobody && !overCap) return;
+    this.handleStopping = true;
+    void this.stop(nobody ? 'host restarting' : 'host restarting - the deploy could not wait for the mission to end');
+  }
+
+  private handleStopping = false;
 
   /** Host simulation time, in ms: ticks since boot. Rooms keep their own. */
   get serverTimeMs(): number {
@@ -590,6 +734,7 @@ export class SessionHost {
     this.registry.close(reason);
     await this.handle?.close();
     this.handle = null;
+    for (const resolve of this.drainWaiters.splice(0)) resolve();
   }
 }
 

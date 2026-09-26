@@ -10,6 +10,9 @@
 
 app = "sandline-host"
 primary_region = "iad"
+# T-4.32: a stopping machine drains — its rooms play on until nobody is seated,
+# or this long, telling players first. Five minutes is Fly's ceiling.
+kill_timeout = "300s"
 
 [build]
   dockerfile = "packages/server/Dockerfile"
@@ -68,6 +71,12 @@ primary_region = "iad"
     grace_period = "10s"
     method = "GET"
     path = "/healthz"
+
+# T-4.33: Fly's managed Prometheus scrapes this into the org's metrics; the
+# dashboard and the alert rules for it are in docs/observability/.
+[metrics]
+  port = 8080
+  path = "/metrics"
 
 [[vm]]
   size = "shared-cpu-1x"

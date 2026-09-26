@@ -151,6 +151,16 @@ export class CombatQA {
   }
 
   /** How far through a reload the weapon in hand is, 0..1 (T-2.26). */
+  /** The magazine as the HUD shows it (T-4.25): what is in it, its size, and the reload if one runs. */
+  magazine(now: number): { ammo: number; magSize: number; reloading: boolean; reloadFraction: number } {
+    return {
+      ammo: this.state.ammo,
+      magSize: this.def.magSize,
+      reloading: isReloading(this.state, now),
+      reloadFraction: this.reloadProgress(now),
+    };
+  }
+
   reloadProgress(now: number): number {
     return reloadProgress(this.def, this.state, now);
   }
@@ -190,6 +200,19 @@ export class CombatQA {
     if (index === this.index || index < 0 || index >= WEAPON_ORDER.length) return;
     this.index = index;
     this.def = this.workingDef(index);
+    this.state = createWeaponState(this.def);
+    this.onWeaponChange?.(this.def);
+  }
+
+  /**
+   * T-4.29: hold a gun that is not in the loadout — a mounted one — with a
+   * fresh belt, so the trigger, the cone and the HUD run on its numbers.
+   * `selectWeapon` takes the loadout back. The index is −1 meanwhile: there
+   * is no loadout slot for it, and nothing may send one.
+   */
+  useGun(def: WeaponDef): void {
+    this.index = -1;
+    this.def = { ...def };
     this.state = createWeaponState(this.def);
     this.onWeaponChange?.(this.def);
   }

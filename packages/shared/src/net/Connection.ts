@@ -49,6 +49,8 @@ export interface ServerConnectionEvents {
 }
 
 export class ServerConnection {
+  /** T-4.33: the typed code this connection was refused or dropped with, or null while open or left by the peer. */
+  rejectedWith: DisconnectCode | null = null;
   state: ConnectionState = 'handshaking';
   netId = 0;
   slot = -1;
@@ -276,6 +278,7 @@ export class ServerConnection {
    */
   reject(code: DisconnectCode, detail?: string): void {
     if (this.state === 'closed') return;
+    this.rejectedWith = code;
     const reason = detail ?? code;
     this.send({ kind: 'Disconnect', code, reason });
     this.markClosed(reason);
@@ -309,6 +312,8 @@ export interface ClientConnectionEvents {
   /** T-3.34: where the mission stands. */
   onMission?: (mission: Extract<Message, { kind: 'Mission' }>) => void;
   onProgression?: (progression: Extract<Message, { kind: 'Progression' }>) => void;
+  /** T-4.28: the server's scoreboard, whenever a row changes. */
+  onStats?: (stats: Extract<Message, { kind: 'Stats' }>) => void;
   /** T-4.19: authoritative ready-up state. */
   onRoomState?: (room: Extract<Message, { kind: 'RoomState' }>) => void;
   onClosed?: (reason: string, code: DisconnectCode | null) => void;
@@ -374,6 +379,9 @@ export class ClientConnection {
         break;
       case 'Progression':
         this.events.onProgression?.(msg);
+        break;
+      case 'Stats':
+        this.events.onStats?.(msg);
         break;
       case 'Mission':
         this.events.onMission?.(msg);

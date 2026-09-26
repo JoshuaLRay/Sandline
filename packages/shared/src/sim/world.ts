@@ -38,6 +38,7 @@ import GREYBOX_01_LEVEL from '../data/levels/greybox-01.json' with { type: 'json
 import KIT_GALLERY_LEVEL from '../data/levels/kit-gallery.json' with { type: 'json' };
 import MISSION_01_LEVEL from '../data/levels/mission-01.json' with { type: 'json' };
 import { POSITION } from '../net/quantize.ts';
+import { type PlacedEmplacement, parsePlacedEmplacements } from './emplacement.ts';
 import { type PlacedPiece, expandLevel } from './level.ts';
 
 export type WorldBoxKind = 'post-minor' | 'post-major' | 'rail' | 'figure' | 'cover' | 'blocker';
@@ -194,6 +195,8 @@ export interface World {
   pieces: readonly PlacedPiece[];
   /** T-4.09: the encounter file a level's mission plays; null for a world file, which has none of its own. */
   encounter: string | null;
+  /** T-4.29: the weapon emplacements the level places; empty for a world with none. */
+  emplacements: readonly PlacedEmplacement[];
 }
 
 /* -- Missions (T-3.31) --------------------------------------------------------- */
@@ -371,6 +374,7 @@ export function loadWorld(raw: unknown, level: { pieces: readonly PlacedPiece[];
     mission: mission === undefined ? null : loadMission(file.id, mission),
     pieces: level.pieces,
     encounter: level.encounter,
+    emplacements: parsePlacedEmplacements(`world '${file.id}'`, (raw as { emplacements?: unknown }).emplacements),
   };
 }
 

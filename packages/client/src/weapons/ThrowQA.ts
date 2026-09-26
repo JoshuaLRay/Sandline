@@ -129,6 +129,11 @@ export class ThrowQA {
     return this.counts[index] ?? 0;
   }
 
+  /** Every row of the pouch, in wire order, with what is left of it (T-4.25). */
+  rows(): { name: string; count: number }[] {
+    return this.working.map((row, i) => ({ name: row.name, count: this.count(i) }));
+  }
+
   select(index: number): void {
     if (index < 0 || index >= PROJECTILE_ORDER.length) return;
     const changed = index !== this.index;
@@ -263,6 +268,13 @@ export class ThrowQA {
         this.live.splice(i, 1);
       }
     }
+  }
+
+  /** The pouch a class spawns with (T-4.27), indexed like the rows; what the server will let this soldier throw. */
+  setCounts(counts: readonly number[]): void {
+    this.working.forEach((_def, i) => {
+      this.counts[i] = Math.max(0, Math.floor(counts[i] ?? 0));
+    });
   }
 
   /** Give everything back, for the harness reset key. */

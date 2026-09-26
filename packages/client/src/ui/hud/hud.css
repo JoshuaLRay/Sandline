@@ -1,0 +1,245 @@
+/* The player's HUD (T-4.25). Same palette as the QA panels; nothing here takes the mouse. */
+#player-hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--dust, #e8dcc8);
+  font-variant-numeric: tabular-nums;
+  z-index: 5;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+#player-hud.hidden { display: none; }
+
+/* Compass: a strip across the top, the heading under its centre line. */
+.phud-compass {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, 60vw);
+  height: 34px;
+}
+.phud-compass-strip {
+  position: relative;
+  height: 22px;
+  border-bottom: 1px solid var(--rule, rgba(232, 220, 200, 0.18));
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, #000 15%, #000 85%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 15%, #000 85%, transparent);
+}
+.phud-compass-strip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 1px;
+  height: 8px;
+  background: var(--amber, #f0b429);
+}
+.phud-tick {
+  position: absolute;
+  bottom: 2px;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
+.phud-tick.major { font-size: 12px; font-weight: 700; opacity: 1; }
+.phud-marker {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: var(--marker, var(--amber, #f0b429));
+}
+.phud-marker::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 3px;
+  background: var(--marker, var(--amber, #f0b429));
+  transform: rotate(45deg);
+}
+.phud-compass-heading {
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--amber, #f0b429);
+}
+.phud-objective {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  display: none;
+}
+.phud-objective[data-shown='yes'] { display: block; }
+
+/* Vitals, bottom left. */
+.phud-vitals {
+  position: absolute;
+  left: 24px;
+  bottom: 24px;
+  width: 220px;
+}
+.phud-bar {
+  height: 8px;
+  background: rgba(15, 12, 7, 0.7);
+  border: 1px solid var(--rule, rgba(232, 220, 200, 0.18));
+}
+.phud-bar-fill { height: 100%; width: 100%; background: #9ad46a; transition: width 120ms linear; }
+.phud-vitals[data-tone='hurt'] .phud-bar-fill { background: var(--amber, #f0b429); }
+.phud-vitals[data-tone='critical'] .phud-bar-fill { background: #ff5a3c; }
+.phud-vitals[data-tone='downed'] .phud-bar-fill { background: #ff8ce0; }
+.phud-vitals[data-tone='dead'] .phud-bar-fill { background: #777; }
+.phud-vitals-label { margin-top: 4px; font-size: 18px; font-weight: 700; letter-spacing: 0.06em; }
+.phud-vitals[data-tone='critical'] .phud-vitals-label { color: #ff8a70; }
+.phud-vitals[data-tone='downed'] .phud-vitals-label { color: #ffb7ec; }
+.phud-stance { font-size: 10px; letter-spacing: 0.14em; opacity: 0.8; margin-top: 2px; }
+
+/* The weapon, bottom right. */
+.phud-weapon {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  text-align: right;
+  min-width: 180px;
+}
+.phud-weapon-name { font-size: 11px; letter-spacing: 0.12em; opacity: 0.85; }
+.phud-magazine { font-size: 26px; font-weight: 700; letter-spacing: 0.04em; line-height: 1.1; }
+.phud-weapon[data-ammo='low'] .phud-magazine { color: var(--amber, #f0b429); }
+.phud-weapon[data-ammo='empty'] .phud-magazine { color: #ff5a3c; }
+.phud-weapon[data-reloading='yes'] .phud-magazine { font-size: 16px; letter-spacing: 0.16em; line-height: 1.8; }
+.phud-reload { height: 3px; background: rgba(15, 12, 7, 0.7); margin: 4px 0; display: none; }
+.phud-weapon[data-reloading='yes'] .phud-reload { display: block; }
+.phud-reload-fill { height: 100%; background: var(--amber, #f0b429); }
+/* A mounted gun's heat (T-4.29): a bar under the magazine that fills as it warms. */
+.phud-heat { display: none; margin: 6px 0 2px; }
+.phud-heat[data-shown='yes'] { display: block; }
+.phud-heat-fill { height: 4px; background: #d9c27a; width: 0; margin-left: auto; transition: width 80ms linear; }
+.phud-heat[data-tone='hot'] .phud-heat-fill { background: var(--amber, #f0b429); }
+.phud-heat[data-tone='overheated'] .phud-heat-fill { background: #ff5a3c; }
+.phud-heat-label { font-size: 10px; letter-spacing: 0.14em; opacity: 0.8; margin-top: 2px; }
+.phud-heat[data-tone='overheated'] .phud-heat-label { color: #ff5a3c; opacity: 1; }
+
+/* What E would do (T-4.29), under the reticle. */
+.phud-prompt {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 48px);
+  transform: translateX(-50%);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  padding: 4px 10px;
+  background: rgba(15, 12, 7, 0.55);
+  display: none;
+}
+.phud-prompt[data-shown='yes'] { display: block; }
+
+.phud-pouch { margin-top: 6px; font-size: 11px; }
+.phud-pouch-row { display: flex; justify-content: flex-end; gap: 8px; opacity: 0.75; }
+.phud-pouch-row[data-selected='yes'] { opacity: 1; color: var(--amber, #f0b429); }
+.phud-pouch-row[data-empty='yes'] { opacity: 0.4; }
+
+/* The squad, left edge. */
+.phud-squad {
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.phud-squad-row {
+  display: flex;
+  gap: 10px;
+  padding: 2px 6px 2px 8px;
+  border-left: 2px solid #9ad46a;
+  margin: 3px 0;
+  background: rgba(15, 12, 7, 0.35);
+}
+.phud-squad-row[data-state='downed'] { border-left-color: #ff8ce0; }
+.phud-squad-row[data-state='dead'] { border-left-color: #777; color: rgba(232, 220, 200, 0.55); }
+.phud-squad-row[data-state='unknown'] { border-left-color: rgba(232, 220, 200, 0.25); }
+.phud-squad-row[data-you='yes'] .phud-squad-name { color: var(--amber, #f0b429); font-weight: 700; }
+.phud-squad-row[data-human='no'] .phud-squad-name { opacity: 0.8; }
+.phud-squad-name { min-width: 92px; }
+.phud-squad-class { min-width: 20px; color: var(--amber, #f0b429); opacity: 0.85; font-size: 10px; letter-spacing: 0.1em; }
+.phud-squad-order { opacity: 0.8; text-transform: uppercase; font-size: 10px; letter-spacing: 0.1em; }
+
+/* The centre: a hit marker's four arms and up to six damage arcs around the reticle. */
+.phud-centre {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+}
+.phud-hit { position: absolute; left: 0; top: 0; opacity: 0; }
+.phud-hit-arm {
+  position: absolute;
+  width: 9px;
+  height: 2px;
+  background: #fff;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
+}
+.phud-hit-arm.tl { transform: translate(-13px, -9px) rotate(45deg); }
+.phud-hit-arm.tr { transform: translate(4px, -9px) rotate(-45deg); }
+.phud-hit-arm.bl { transform: translate(-13px, 7px) rotate(-45deg); }
+.phud-hit-arm.br { transform: translate(4px, 7px) rotate(45deg); }
+.phud-damage {
+  position: absolute;
+  left: -80px;
+  top: -80px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  border: 5px solid transparent;
+  border-top-color: #ff5a3c;
+  opacity: 0;
+  filter: drop-shadow(0 0 3px rgba(255, 90, 60, 0.7));
+}
+
+@media (max-width: 720px) {
+  .phud-squad { display: none; }
+  .phud-compass { width: 70vw; }
+}
+
+/* The Tab scoreboard (T-4.28): centred, over everything, only while Tab is down or the mission is over. */
+#scoreboard {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 460px;
+  padding: 14px 18px;
+  background: var(--panel, rgba(15, 12, 7, 0.74));
+  border: 1px solid var(--rule, rgba(232, 220, 200, 0.18));
+  border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--dust, #e8dcc8);
+  z-index: 7;
+  pointer-events: none;
+}
+#scoreboard.hidden { display: none; }
+.scoreboard-head { display: flex; justify-content: space-between; font-size: 12px; letter-spacing: 0.12em; color: var(--amber, #f0b429); margin-bottom: 8px; }
+#scoreboard table { border-collapse: collapse; width: 100%; font-size: 12px; }
+#scoreboard th { text-align: right; font-weight: 600; font-size: 9px; letter-spacing: 0.12em; opacity: 0.7; padding: 2px 8px; }
+#scoreboard th:nth-child(2) { text-align: left; }
+#scoreboard td { padding: 4px 8px; border-top: 1px solid var(--rule, rgba(232, 220, 200, 0.18)); }
+.scoreboard-count { text-align: right; }
+#scoreboard tr.you .scoreboard-name { color: var(--amber, #f0b429); font-weight: 700; }
+#scoreboard tr.bot .scoreboard-name { opacity: 0.7; }
+.scoreboard-summary { margin-top: 10px; font-size: 12px; letter-spacing: 0.06em; text-align: center; }
+.scoreboard-summary.hidden { display: none; }

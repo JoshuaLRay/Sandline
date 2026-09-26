@@ -1,0 +1,6 @@
+{
+  "$comment": "T-4.20 / ADR-011 addendum: the regions a client may play in. `id` is what code and settings name; `fly` is Fly's region; `name` is what the lobby shows; `tag` is the one voice-safe letter room and campaign codes carry (A-KM7X is room KM7X in region A); `host` is the region's public address. Add a region when a regular player measures over 80 ms to every one here.",
+  "regions": [
+    { "id": "na-east", "fly": "iad", "name": "North America (East)", "tag": "A", "host": "wss://sandline-host.fly.dev" }
+  ]
+}

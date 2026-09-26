@@ -43,6 +43,7 @@ const fixtureWorld = (): World => ({
   mission: fixtureMission,
   pieces: [],
   encounter: null,
+  emplacements: [],
 });
 
 describe('T-4.11 level validation', () => {

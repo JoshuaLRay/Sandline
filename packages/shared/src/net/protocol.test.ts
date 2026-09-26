@@ -41,6 +41,10 @@ const SAMPLES: Message[] = [
   { kind: 'RoomState', started: false, creator: 0, world: 'mission-01', ready: [true, false, false, false, false, false], classes: ['', '', '', '', '', ''] },
   { kind: 'RoomCommand', command: 'ready', ready: true },
   { kind: 'RoomCommand', command: 'start' },
+  // T-4.27: a class pick in the room, and a roster that carries every slot's class.
+  { kind: 'RoomCommand', command: 'class', classId: 'marksman' },
+  // T-4.28: the scoreboard, six rows whole with the mission's clock and objectives.
+  { kind: 'Stats', slots: Array.from({ length: 6 }, (_, slot) => ({ slot, kills: slot * 3, deaths: slot === 2 ? 1 : 0, revives: slot, ordersGiven: slot === 0 ? 7 : 0, ordersCarried: slot > 0 ? 2 : 0 })), elapsedTicks: 12345, objectivesDone: 2, objectives: 3 },
   { kind: 'Disconnect', code: 'bad key', reason: 'wrong join key' },
   { kind: 'Disconnect', code: 'session limit', reason: 'session limit' },
   { kind: 'JoinAck', netId: 1234, slot: 5, serverTick: 98765, room: 'K7PM', world: 'range', resume: '', resumed: false, identity: '' },
@@ -59,12 +63,12 @@ const SAMPLES: Message[] = [
   {
     kind: 'Roster',
     slots: [
-      { human: true, name: 'ray' },
-      { human: false, name: '' },
-      { human: true, name: 'austin' },
-      { human: false, name: '' },
-      { human: false, name: '' },
-      { human: false, name: '' },
+      { human: true, name: 'ray', classId: 'team-leader' },
+      { human: false, name: '', classId: 'marksman' },
+      { human: true, name: 'austin', classId: 'marksman' },
+      { human: false, name: '', classId: 'marksman' },
+      { human: false, name: '', classId: 'marksman' },
+      { human: false, name: '', classId: 'marksman' },
     ],
   },
   { kind: 'Throw', tick: 900, yaw: 4095, pitch: 3072, projectile: 1 },

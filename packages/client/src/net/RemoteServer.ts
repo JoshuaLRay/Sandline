@@ -99,6 +99,19 @@ export function parseHostUrl(raw: string, pageProtocol = 'http:'): string {
 }
 
 /**
+ * The socket URL for a host and a room (T-4.31): `?room=<code>` on the
+ * host's address, and the address alone for a new room. The code is what
+ * the host's allocator decides on before the upgrade; the handshake still
+ * carries it too, and the two must agree, so this is the one place it is put.
+ */
+export function socketUrlFor(host: string, room: string): string {
+  const url = new URL(host);
+  if (room === '') url.searchParams.delete('room');
+  else url.searchParams.set('room', room);
+  return url.toString();
+}
+
+/**
  * Read `?host=` out of a query string.
  *
  * Returns null when absent. Since T-1.5.06 this PRE-FILLS the lobby rather
@@ -199,7 +212,7 @@ export interface RemoteServerOptions {
 }
 
 export class RemoteServer implements SessionSource {
-  readonly transport: Transport;
+  readonly transport: WsClientTransport;
   readonly status: ConnectionStatus = {
     phase: 'connecting',
     attempt: 0,
@@ -210,12 +223,23 @@ export class RemoteServer implements SessionSource {
   private opened = false;
   private ready: (() => void) | null = null;
 
+  /**
+   * T-4.31: carry the room in the socket URL, so the host's allocator can
+   * replay the upgrade to the machine that holds it before any handshake.
+   * Called with the code once seated, so a reconnect goes to the same room.
+   */
+  setRoom(room: string): void {
+    this.transport.setUrl(socketUrlFor(this.url, room));
+  }
+
   constructor(
     readonly url: string,
     options: RemoteServerOptions = {},
+    /** T-4.31: the code the first connect asks for, '' for a new room. */
+    room = '',
   ) {
     this.transport = new WsClientTransport({
-      url,
+      url: socketUrlFor(url, room),
       ...options,
       onOpen: () => {
         this.opened = true;
