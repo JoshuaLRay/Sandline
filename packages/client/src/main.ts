@@ -154,6 +154,7 @@ import { type AimSubject, OrderWheelView, buildMark, orderFromRelease } from './
 import { type MarkerVec, OrderMarkerOverlay, orderMarkers } from './ui/OrderMarkers.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
 import { pressH, qaFromSearch } from './ui/qaMode.ts';
+import { FrameStats, createPerfOverlay } from './ui/perf.ts';
 import { createNetworkPanel } from './ui/NetworkPanel.ts';
 import { type LobbyChoice, createLobby, readStoredKey, readStoredName } from './ui/Lobby.ts';
 import { LoadScreen } from './ui/LoadScreen.ts';
@@ -1620,6 +1621,12 @@ setQaShown(qaFromSearch(location.search));
 
 /* -- Loop ------------------------------------------------------------------ */
 
+/** T-5.04: `?perf`, frame time and the draw budget in a corner, and on `window.__sandlinePerf` for `pnpm perf:frame`. */
+const perf = new URLSearchParams(location.search).has('perf') ? { stats: new FrameStats(), overlay: createPerfOverlay(document.body) } : null;
+let perfLastAt = 0;
+let perfShownAt = 0;
+if (perf) (window as unknown as { __sandlinePerfClear?: () => void }).__sandlinePerfClear = () => perf.stats.clear();
+
 const clock = new Clock();
 /** Reused so a held trigger does not allocate a vector per tick. */
 const muzzle = new THREE.Vector3();
@@ -2591,6 +2598,18 @@ function frame(): void {
   // T-4.07: choose each static placement's LOD from this frame's camera before drawing.
   levelPieces.update(camera);
   renderer.render(scene, camera);
+  if (perf) {
+    // T-5.04: this frame's time since the last, and the world's draw calls and triangles.
+    const at = performance.now();
+    if (perfLastAt > 0) perf.stats.push(at - perfLastAt, renderer.info.render.calls, renderer.info.render.triangles);
+    perfLastAt = at;
+    if (at - perfShownAt >= 500) {
+      perfShownAt = at;
+      const summary = perf.stats.summary();
+      perf.overlay.update(summary);
+      (window as unknown as { __sandlinePerf?: unknown }).__sandlinePerf = summary;
+    }
+  }
   // T-4.06 CI times this exact transition: assets ready, session joined, one world frame rendered.
   if (playablePending && live?.net === playablePending) {
     document.body.dataset['playable'] = 'true';

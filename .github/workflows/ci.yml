@@ -42,6 +42,8 @@ jobs:
       - run: pnpm check:packs
       - run: pnpm --filter @sandline/client build
       - run: pnpm check:load-time
+      # T-5.04: the slice mission with the squad, walked and fought; asserts the draw budget, records frame time.
+      - run: pnpm perf:frame
 
   # ADR-014: the transcendental-drift bug is invisible on a V8-to-V8 pairing.
   # Node and Chrome are both V8, so parity MUST also run on a non-V8 engine or

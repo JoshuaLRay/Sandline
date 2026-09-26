@@ -792,3 +792,17 @@ canvas { display: block; touch-action: none; }
 
 /* T-5.07: the QA layer, out of sight on the demo face until ?qa or H. */
 #hud[hidden], #panels[hidden] { display: none; }
+
+/* T-5.04: ?perf, the frame-time overlay. */
+.perf-overlay {
+  position: fixed;
+  left: 12px;
+  bottom: 70px;
+  margin: 0;
+  padding: 6px 10px;
+  background: rgba(15, 12, 7, 0.75);
+  color: #9fe870;
+  font: 11px/1.4 ui-monospace, Menlo, monospace;
+  z-index: 40;
+  pointer-events: none;
+}
