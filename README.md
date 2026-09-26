@@ -1,17 +1,13 @@
 # SANDLINE
 
-Browser-based 6-player co-op squad shooter. See [`PLAN.md`](./PLAN.md) for the
-full plan and task backlog, and [`docs/adr/`](./docs/adr/) for locked decisions.
+Browser-based 6-player co-op squad shooter. The playable vertical slice is built;
+ongoing upgrades and bugs live in [BACKLOG.md](BACKLOG.md). Legacy milestone
+history and outstanding human acceptance gates remain in [TASKS.md](TASKS.md)
+and [PLAN.md](PLAN.md); architecture decisions are in [docs/adr/](docs/adr/).
 
-**If you're an agent working a task, start at [`CLAUDE.md`](./CLAUDE.md) and
-[`TASKS.md`](./TASKS.md), not here.** This file is the human-facing overview.
-
-**Current milestone: M2 — Shooter feel.** M1.5 is closed: T-1.5.03 and T-1.5.08
-both passed, R2 is closed, and the authoritative host is deployed at
-`wss://sandline-host.fly.dev`. See [`PLAN.md` §7](./PLAN.md) for the current M2
-work. The PS2-era pass on the soldier is agreed and built as T-2.35 through
-T-2.38 (`PLAN.md` §7.7); its human gate T-2.39 is open, with the run sheet at
-[`docs/playtests/soldier-look.md`](./docs/playtests/soldier-look.md).
+**Working with Claude Code:** start with [the workflow guide](docs/WORKFLOW.md).
+Agents read [CLAUDE.md](CLAUDE.md), then the ongoing queue and one task card.
+The hosted QA endpoint is `wss://sandline-host.fly.dev`.
 
 ## Quick start
 

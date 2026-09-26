@@ -1,7 +1,13 @@
 # TASKS
 
+> **Ongoing work after the slice:** [BACKLOG.md](BACKLOG.md) is now the default
+> queue for “complete the next task”. This file retains legacy T-ID status and
+> outstanding human gates; request an explicit T-ID to use its old workflow.
+> The ordering below applies to legacy milestone work only. No gate is closed by
+> this routing change.
+
 Status tracker for every leaf task in `PLAN.md`. One line each. This file is
-the answer to "what's next" — read it first, and read only the one `PLAN.md`
+the answer to legacy milestone status — read it for T-IDs, then only the one `PLAN.md`
 section a task names. See `/CLAUDE.md` for the full routing rules.
 
 Legend: **DONE** · **OPEN** (deps satisfied, not started) · **BLOCKED** (deps
