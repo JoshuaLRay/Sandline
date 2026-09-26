@@ -474,8 +474,19 @@ the owner may still overrule before T-4.23.
 
 ---
 
-## M5
+## M5 — Vertical slice (PLAN.md §7.12, broken out 2026-09-26)
 
-Epics only, not broken out — see PLAN.md §7 (epic tables) and §4 (milestone
-table). Nothing here is a task an agent can pick up; it gets leaf tasks at
-its own planning gate (§0.5).
+Broken out at the owner's request, ahead of the M3 and M4 gates. It does not
+jump the queue: those gates come first, and T-5.08 is not reached before
+T-4.34 is passed.
+
+| Task | Status | Depends |
+|---|---|---|
+| T-5.01 | OPEN | — |
+| T-5.02 | OPEN | T-5.01 |
+| T-5.03 | OPEN | — |
+| T-5.04 | OPEN | — |
+| 🧍 T-5.05 | OPEN — the owner's decision (T-4.12's fallback or lightmaps) | — |
+| T-5.06 | OPEN | B-11 |
+| T-5.07 | OPEN | T-5.03 |
+| 🧍 T-5.08 | BLOCKED — after T-4.34; run sheet `m5.md` to be written | T-5.01..T-5.07, T-4.34 |

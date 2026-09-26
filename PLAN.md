@@ -3155,6 +3155,103 @@ free to go whenever.
 - **Done when:** the owner has played it and written the verdict.
 - **Size:** S (the owner's time)
 
+### 7.12 M5 leaf tasks — broken out 2026-09-26
+
+Broken out at the owner's request ("work until the vertical slice is
+complete"), **ahead of the M3 and M4 exit gates**, as M3 and M4 were broken
+out ahead of theirs. It does not jump the queue: the open 🧍 gates (M2's,
+M3's, then T-4.34) come first in scan order, and M5's own gate (T-5.08) is not
+reached before M4's is passed.
+
+**Where the slice stands against §4.1 and the M5 epic (audited 2026-09-26).**
+Present: two classes (T-4.27), two enemy types with their trees (T-3.17,
+T-3.23), a 25-piece kit (T-4.10), the mounted MG in the mission (T-4.29), six
+slots with bot backfill, combat audio (E-2.7; the voices wait on
+recordings), streaming under the download budget (T-4.06) and the draw-call
+probe (T-4.07). Missing, and what each task below is for:
+
+- **No mission is ten minutes long.** Both committed missions have one
+  objective — clear and hold the compound, a two-to-three-minute fight — so
+  no checkpoint is ever reached before the end (T-5.02).
+- **Mission event scripts never reach play.** T-4.15's scripts parse and are
+  tested, but no script file exists and neither the host's rooms nor the
+  in-page session is given one (T-5.01).
+- **No onboarding.** A new player gets the lobby, a key list in the menu and
+  the HUD's objective line (T-5.03).
+- **No frame-time measurement.** Draw calls, triangles and download are
+  measured; frames per second never have been, on any machine (T-5.04).
+- **The lighting is T-4.12's fallback**, not lightmaps: the kit shares a UV0
+  atlas and has no UV2, and instancing batches by asset. Whether the slice
+  ships the fallback is the owner's call (T-5.05).
+- **The bots still lose close fights** (B-11): a lead who walks them into a
+  garrison loses them (T-5.06).
+- **Nothing hides the QA tooling.** The panels, netgraph and range tools are
+  the page's default face; a demo needs a player's face (T-5.07).
+
+**Two things §4.1 names that the build answers differently, recorded rather
+than re-opened:** the "~35 animation clips" assumed clip-based animation; the
+soldier has been procedural since E-2.2/E-2.3 (a gait, aim, fire, reload,
+hit and foot-placement layer over one rig), so there is no clip task — if the
+owner wants clips, that is a new decision, not a gap. And "full audio pass"
+includes the voices, which need the owner's recordings (T-2.48) — no task
+here can supply them.
+
+#### T-5.01 — Event scripts reach play
+- **Depends:** — (T-4.15)
+- **Files:** `packages/shared/src/data/scripts/*.json` (or a `script` in the mission file), `packages/server/src/session/Registry.ts`, `packages/client/src/net/LocalServer.ts`, tests
+- **Do:** A mission names its event script; the host's rooms and the in-page session load it with the mission, as they load the encounter. Scripted blockers, messages, callouts, objective changes and flags then run in real play.
+- **Done when:** a hosted room and the in-page session each run a committed script's message, callout and blocker toggle (tested headlessly); a mission with no script behaves as today.
+- **Size:** S
+
+#### T-5.02 — The slice mission: ten minutes, several objectives, checkpoints
+- **Depends:** T-5.01, B-11 (the leader, 2026-09-26)
+- **Files:** `data/missions/mission-01.json`, `data/encounters/mission-01.json`, its script, `data/levels/mission-01.json` if the ground needs it, tests
+- **Do:** mission-01 becomes the slice's mission, at §4.1 scope: a sequence of objectives across the level (for example: reach the rally point; clear the checkpoint; take and hold the compound; defend it against the counterattack; reach the extraction), using both approach routes and the mounted MG, paced by the director, with scripted messages and callouts between objectives, blockers that open as it advances, and a checkpoint at each objective.
+- **Done when:** `pnpm sim-run --scenario mission --all-missions` plays it at both budgets with a median completed length of 8–12 minutes and completion at or above the T-3.35 floors over 20 seeds; a failed attempt retries from its last checkpoint (tested); the level's checks (T-4.11) pass.
+- **Size:** M
+
+#### T-5.03 — Onboarding: briefing and first-run hints
+- **Depends:** —
+- **Files:** `packages/client/src/ui/`, data for the hint list, tests
+- **Do:** A briefing before a mission starts — its objectives in order, the two routes, the squad's classes and a short controls summary — dismissed to play. First-run hints, each shown once a device (move, fire, aim, reload, throw, the order wheel, marking, revive, mounting the MG), at the moment they first apply, skippable and re-enabled from Settings.
+- **Done when:** the briefing lists the mission's objectives from its data; each hint shows once and never again after it is done or dismissed (tested on the model); a smoke test in Chromium sees the briefing and one hint.
+- **Size:** S
+
+#### T-5.04 — Frame-time harness
+- **Depends:** —
+- **Files:** `packages/tools/src/perf-frame.ts` (`pnpm perf:frame`), a `?perf` overlay in the client, tests
+- **Do:** A scripted run of the slice mission in the page — a fly-through and a firefight with the squad and a full enemy group — recording frame time (median and 95th percentile), draw calls and triangles; the same numbers live in a `?perf` overlay the owner reads on target hardware. Headless Chromium is not target hardware: the harness asserts draw calls and triangles against ADR-013 and records frame time without asserting it.
+- **Done when:** `pnpm perf:frame` prints and writes the numbers; draw calls and triangles are asserted; the overlay shows them live.
+- **Size:** S
+
+#### T-5.05 — 🧍 Lighting for the slice: the fallback or lightmaps
+- **Depends:** — (T-4.12)
+- **Files:** `docs/adr/` (the decision)
+- **Do:** The owner decides whether the slice ships T-4.12's fallback (hemisphere, one shadowed sun, per-piece baked vertex occlusion) or real lightmaps — which needs a second UV set on the kit, a baker, and instancing that keeps per-placement lightmap offsets.
+- **Done when:** the decision is written down. An agent can prepare the comparison; it must not make the call.
+- **Size:** S (the owner's time)
+
+#### T-5.06 — Bots in close quarters
+- **Depends:** B-11
+- **Files:** `packages/server/src/ai/friendly/`, `data/trees/friendly.json`, `data/squad.json`, tests, `scenarios/mission.json`
+- **Do:** A bot ordered to hold or move into an area with enemies in it does not walk in upright: it takes the nearest cover facing them and fights from it, and a fireteam bounds — one moving while the others fire — rather than all walking at once.
+- **Done when:** the mission scenario with the old walk-in leader (a flag) completes at or above T-3.35's floors; with the clearing leader, completion does not fall; the bots' hit rate in the compound fight is reported.
+- **Size:** M
+
+#### T-5.07 — The demo face
+- **Depends:** T-5.03
+- **Files:** `packages/client/src/main.ts`, `ui/`, tests
+- **Do:** Without a `?qa` flag the page is the game: title, lobby, briefing, mission, after-action, play again — no tuning panels, netgraph or range tools unless asked for. With `?qa`, everything is as today.
+- **Done when:** a smoke test finds no QA panel on the default page and every one under `?qa`; the run sheets' flags still work.
+- **Size:** S
+
+#### T-5.08 — 🧍 M5 exit gate: the vertical slice
+- **Depends:** T-5.01..T-5.07, T-4.34
+- **Files:** `docs/playtests/m5.md` (run sheet — not a verdict)
+- **Do:** The owner plays the slice mission on the deployed site alone with bots and with others, and shows it to someone who has not seen it.
+- **Done when:** the owner has written the verdict. An agent can write the run sheet and must not invent the verdict.
+- **Size:** S (the owner's time)
+
 ## 8. Risk register
 
 | # | Risk | Severity | Mitigation | Owner milestone |
