@@ -1,0 +1,27 @@
+{
+  "$comment": "T-2.44: sound recipes, rendered offline by `pnpm gen:audio` into client/public/audio/ (ADR-017). Each sound is layers of a source (noise, osc, impulse) through an envelope, filters, drive, a delay and a reverb, mixed and peak-normalised; `variants` seeded takes differ by `jitter`. `bounds` are what a render must measure — a test holds every committed render to them. One placeholder, the click, proves the path; the weapons (T-2.46) and the world (T-2.47) add theirs.",
+  "sampleRate": 48000,
+  "sounds": {
+    "click": {
+      "class": "ui",
+      "seconds": 0.08,
+      "variants": 2,
+      "normalizePeakDb": -3,
+      "bounds": { "peakDb": [-3.5, -2.5], "rmsDb": [-40, -12], "seconds": [0.01, 0.08] },
+      "layers": [
+        {
+          "source": { "kind": "noise" },
+          "envelope": { "attack": 0.0005, "decay": 0.02, "curve": "exp" },
+          "filters": [{ "kind": "bandpass", "hz": 2500, "q": 1.5 }],
+          "gain": 1,
+          "jitter": { "hz": 0.1, "gain": 0.05, "seconds": 0.1 }
+        },
+        {
+          "source": { "kind": "osc", "wave": "sine", "hz": 1200, "toHz": 600, "sweepSeconds": 0.02 },
+          "envelope": { "attack": 0.0005, "decay": 0.015, "curve": "exp" },
+          "gain": 0.5
+        }
+      ]
+    }
+  }
+}

@@ -31,7 +31,8 @@ run sheet `e2-8.md` is prepared. Writing the two missing run sheets
 — it does not require a human, only requires not inventing a verdict inside
 it. **E-2.7** (combat audio) is broken out (PLAN.md §7.10, ADR-017: made
 in-house by AI). Its first task, **T-2.44** (the synthesiser and render
-pipeline), is open. The owner can record the voice lines any time, from
+pipeline, `pnpm gen:audio`), is done; T-2.45 (playback and the sound board) and
+T-2.48 (the voice pipeline) are open. The owner can record the voice lines any time, from
 `docs/audio/voice-script.md`.
 
 **M3 is broken out** (PLAN.md §7.9). E-3.1's navmesh pipeline is done:
@@ -249,11 +250,11 @@ on the deployed site's sound board (`?sounds`, T-2.45).
 
 | Task | Status | Depends |
 |---|---|---|
-| T-2.44 | OPEN | — |
-| T-2.45 | BLOCKED | T-2.44 |
+| T-2.44 | DONE | — |
+| T-2.45 | OPEN | T-2.44 |
 | T-2.46 | BLOCKED | T-2.45 |
 | T-2.47 | BLOCKED | T-2.45 |
-| T-2.48 | BLOCKED — also needs the owner's recordings (`docs/audio/voice-script.md`) to process real lines; the pipeline itself is tested on generated signals | T-2.44 |
+| T-2.48 | OPEN — also needs the owner's recordings (`docs/audio/voice-script.md`) to process real lines; the pipeline itself is tested on generated signals | T-2.44 |
 | T-2.49 | BLOCKED — ships with synthesised chirps until recordings arrive | T-2.45, T-2.48 |
 | 🧍 T-2.50 | BLOCKED — run sheet `e2-7.md` to be written | T-2.46, T-2.47, T-2.49 |
 
