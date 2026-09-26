@@ -21,7 +21,7 @@
  * - **revive** — to the named squadmate and hold interact, through the
  *   human's revive path. Up: done. Dead, or nobody: failed.
  */
-import { type BtFrame, DAMAGE, DEFAULT_MUZZLE_RIG, type OrderPoint, SQUAD, type WorldBox, formationBand, rayWorld } from '@sandline/shared';
+import { type BtFrame, DAMAGE, DEFAULT_MUZZLE_RIG, type OrderPoint, SQUAD, type WorldBox, formationBand, rayWorld, suppressionLevel } from '@sandline/shared';
 import type { BrainBody, BrainMemory, BrainRegistry } from '../Brain.ts';
 import { type CombatBody, isCombatBody, threatEye } from '../actions/combat.ts';
 import { type ActiveOrder, type SquadBody, isSquadBody } from '../actions/friendly.ts';
@@ -93,6 +93,48 @@ function point(p: OrderPoint): Vec3 {
   return { x: p.x, y: p.y, z: p.z };
 }
 
+/**
+ * T-5.06: under fire — suppressed, or hurt in the last moment — by the
+ * rifleman's measure (`actions/rifleman.ts` `pressured`), from the squad's
+ * `bot.underFire` data.
+ */
+function underFire(ctx: Body): boolean {
+  const now = ctx.combat.now();
+  const u = SQUAD.bot.underFire;
+  return suppressionLevel(ctx.suppression, now) >= u.suppression || now - ctx.lastDamagedAt < u.hurtSeconds;
+}
+
+/**
+ * T-5.06: every eye it has reason to hide from — whoever has shot at it
+ * lately, and its target — so cover taken under fire faces the gun that is
+ * firing, not only the enemy it was sent at.
+ */
+function threatEyes(ctx: Body): Vec3[] {
+  const now = ctx.combat.now();
+  const eyes: Vec3[] = [];
+  for (const entry of ctx.memory.entries.values()) {
+    if (entry.threatAt === null || now - entry.threatAt > SQUAD.bot.underFire.threatSeconds) continue;
+    const live = entry.visible ? ctx.combat.eyeOf(entry.netId) : null;
+    eyes.push(live ?? { x: entry.x, y: entry.y + DEFAULT_MUZZLE_RIG.eyeHeight, z: entry.z });
+  }
+  const eye = threatEye(ctx);
+  if (eye) eyes.push(eye);
+  return eyes;
+}
+
+/**
+ * T-5.06: cover within `withinM` of `near` that hides it from every threat,
+ * the one it holds kept while it still does; null when there is none.
+ */
+function coverFrom(ctx: Body, near: Vec3, withinM: number, threats: Vec3[]): (Vec3 & { height: 'low' | 'high' }) | null {
+  const cover = ctx.combat.cover;
+  if (!cover || threats.length === 0) return null;
+  const inReach = (p: Vec3) => flat(p, near) <= withinM;
+  const held = cover.heldPoint(ctx.netId);
+  if (held && inReach(held) && cover.stillProtects(ctx.netId, threats)) return held;
+  return cover.choose(ctx.netId, { from: ctx.state, threats, friends: ctx.combat.friendsOf(ctx.netId, ctx.faction), combat: true, accept: inReach })?.point ?? null;
+}
+
 export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
   return (
     registry
@@ -127,6 +169,16 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
           }
         }
         if (flat(ctx.state, goal) > THERE_M) {
+          // T-5.06: shot at on the way, it goes to ground near where it is and fights, moving on when the fire lets up.
+          if (underFire(ctx) && flat(ctx.state, goal) > MOVE_COVER_M) {
+            const refuge = coverFrom(ctx, ctx.state, SQUAD.bot.underFire.coverWithinM, threatEyes(ctx));
+            if (refuge) {
+              const target = seenTarget(ctx);
+              if (flat(ctx.state, refuge) > THERE_M) hands(frame, { intent: walk(refuge, ctx.state), fireAt: target, lookAt: eye });
+              else hands(frame, { crouch: refuge.height === 'low' && target === null, fireAt: target, lookAt: eye });
+              return 'running';
+            }
+          }
           hands(frame, { intent: walk(goal, ctx.state), fireAt: seenTarget(ctx), lookAt: flat(ctx.state, goal) > SPRINT_BEYOND_M ? null : eye });
           return 'running';
         }
@@ -155,6 +207,17 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
           return 'failure';
         }
         const eye = ctx.combat.eyeOf(order.target) ?? { x: at.x, y: at.y + 1.6, z: at.z };
+        // T-5.06: shot at on the way, it goes to ground first — cover near where it is, against whoever is firing
+        // and its target — and fights from there; it advances again when the fire lets up.
+        if (underFire(ctx)) {
+          const refuge = coverFrom(ctx, ctx.state, SQUAD.bot.underFire.coverWithinM, threatEyes(ctx));
+          if (refuge) {
+            const target = seenTarget(ctx);
+            if (flat(ctx.state, refuge) > THERE_M) hands(frame, { intent: walk(refuge, ctx.state), fireAt: order.target, lookAt: eye });
+            else hands(frame, { crouch: refuge.height === 'low' && target === null, fireAt: order.target, lookAt: eye });
+            return 'running';
+          }
+        }
         // A line to it from its own eye: stand and fire (the session pulls the trigger on sight).
         if (clearLine(eyeOf(ctx.state), eye, ctx.combat.boxes)) {
           hands(frame, { fireAt: order.target, lookAt: eye });
@@ -179,9 +242,21 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
         const anchor = point(order.anchor);
         const target = seenTarget(ctx);
         const eye = threatEye(ctx);
-        if (flat(ctx.state, anchor) > THERE_M * 1.5) {
+        const held = ctx.combat.cover?.heldPoint(ctx.netId) ?? null;
+        const inRefuge = held !== null && flat(held, anchor) <= SQUAD.bot.underFire.holdCoverM && flat(ctx.state, held) <= THERE_M * 1.5;
+        if (flat(ctx.state, anchor) > THERE_M * 1.5 && !(inRefuge && underFire(ctx))) {
           hands(frame, { intent: walk(anchor, ctx.state), fireAt: target, lookAt: eye });
           return 'running';
+        }
+        // T-5.06: holding under fire, it takes cover close enough to still be holding — within `holdCoverM`
+        // of the anchor — against whoever is firing, down behind it when it has nothing to shoot at.
+        if (underFire(ctx)) {
+          const refuge = coverFrom(ctx, anchor, SQUAD.bot.underFire.holdCoverM, threatEyes(ctx));
+          if (refuge) {
+            if (flat(ctx.state, refuge) > THERE_M) hands(frame, { intent: walk(refuge, ctx.state), fireAt: target, lookAt: eye });
+            else hands(frame, { crouch: refuge.height === 'low' && target === null, fireAt: target, lookAt: eye });
+            return 'running';
+          }
         }
         // Holding: standing to fire at what it sees, facing the threat; contact does not move it.
         hands(frame, { fireAt: target, lookAt: eye });

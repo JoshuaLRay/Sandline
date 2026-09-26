@@ -24,6 +24,9 @@ import { type NavMesh, initNav } from '../nav/NavMesh.ts';
 import { bakedCoverFor, loadWorldNavMesh } from '../nav/bakedNav.ts';
 import { type EnemyEntity, type OrderReport, Session } from '../../session/Session.ts';
 import { MOVE_COVER_M } from './orders.ts';
+import { SQUAD } from '@sandline/shared';
+
+const SQUAD_UNDER_FIRE_M = SQUAD.bot.underFire.coverWithinM;
 
 const TICK_MS = 1000 / 30;
 /** Where the human lead stands: far off in a corner, so the bots it leads are out of every test's way. */
@@ -174,6 +177,32 @@ describe('an attack order (T-3.28)', () => {
     expect(sq.reports(1)).toEqual([expect.objectContaining({ order: 'attack', outcome: 'done', reason: 'target down' })]);
     expect(session.orderFor(1)).toBeNull();
     expect(bot.weaponState.shotIndex).toBeGreaterThan(0);
+  });
+});
+
+describe('an attack order under fire (T-5.06)', () => {
+  it('shot at by another enemy on the way, it goes to cover hidden from the shooter near where it was, and does not walk on in the open', () => {
+    const sq = squad({ 1: { x: -11.5, z: 0 } });
+    const { session } = sq;
+    const bot = session.slots[1]!;
+    const foe = session.spawnEnemy('rifleman', { x: -11.5, y: 0, z: 8, tree: idle() }) as number;
+    const shooter = session.spawnEnemy('rifleman', { x: 14, y: 0, z: -2, yaw: 0, tree: firingAt(bot.netId) }) as number;
+    sq.say({ kind: 'Order', order: 'attack', address: { to: 'slot', index: 1 }, point: null, target: foe });
+    let inCoverTicks = 0;
+    let furthest = 0;
+    sq.run(30 * 8, () => {
+      heal(session, [1]);
+      Object.assign(enemy(session, shooter).health, { current: 100, downedAt: null, diedAt: null });
+      Object.assign(enemy(session, foe).health, { current: 100, downedAt: null, diedAt: null });
+      furthest = Math.max(furthest, Math.hypot(bot.state.x + 11.5, bot.state.z));
+      const held = session.cover?.heldPoint(bot.netId) ?? null;
+      if (held && Math.hypot(bot.state.x - held.x, bot.state.z - held.z) <= 0.5) inCoverTicks++;
+    });
+    console.log(`attack under fire: in cover ${(inCoverTicks / 30).toFixed(1)} s of 8, furthest ${furthest.toFixed(1)} m from its start; shooter fired ${enemy(session, shooter).weaponState.shotIndex}`);
+    expect(enemy(session, shooter).weaponState.shotIndex).toBeGreaterThan(0);
+    expect(inCoverTicks).toBeGreaterThan(30 * 2);
+    expect(furthest).toBeLessThanOrEqual(SQUAD_UNDER_FIRE_M + 1);
+    expect(session.orderFor(1)?.order).toBe('attack');
   });
 });
 

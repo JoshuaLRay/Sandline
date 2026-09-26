@@ -58,6 +58,8 @@ const TICKS_PER_SECOND = Math.round(1 / TICK_SECONDS);
 const TICK_MS = 1000 / TICKS_PER_SECOND;
 /** Within this of a cover point it holds, a soldier is in it, metres: the fighting leaves' "there" and a little over. */
 const IN_COVER_M = 0.6;
+/** What the director placed at the start, before any wave: counted over the mission's first seconds. */
+const OPENING_SECONDS = 5;
 /** The leader looks again this often, ticks. */
 const LEADER_EVERY = 15;
 
@@ -73,6 +75,8 @@ export interface MissionRun {
   /** Mission seconds at the outcome, or the run's length on a timeout. */
   seconds: number;
   enemiesSpawned: number;
+  /** Enemies placed in the first seconds: the director's opening budget, before any wave. */
+  openingEnemies: number;
   enemiesKilled: number;
   botsDead: number;
   /** Enemy-ticks under fire, and of those in a held cover point. */
@@ -144,6 +148,7 @@ export async function runMission(seed: number, humans: number, config: MissionCo
   const suppressedBefore = session.slots.map(() => false);
   const killed = new Set<number>();
   const spawned = new Set<number>();
+  let openingEnemies = 0;
   let now = 0;
   const total = config.runSeconds * TICKS_PER_SECOND;
   let outcome: MissionRun['outcome'] = 'timeout';
@@ -153,6 +158,7 @@ export async function runMission(seed: number, humans: number, config: MissionCo
     session.step(now);
     const seconds = now / 1000;
     let contact = false;
+    if (seconds <= OPENING_SECONDS) openingEnemies = session.enemies.length;
     for (const e of session.enemies) {
       spawned.add(e.netId);
       if (isDead(e.health)) {
@@ -190,6 +196,7 @@ export async function runMission(seed: number, humans: number, config: MissionCo
     outcome,
     seconds: (session.tick - 0) / TICKS_PER_SECOND,
     enemiesSpawned: spawned.size,
+    openingEnemies,
     enemiesKilled: killed.size,
     botsDead: session.slots.filter((s) => isDead(s.health)).length,
     underFireTicks,

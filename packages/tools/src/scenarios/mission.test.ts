@@ -24,8 +24,9 @@ describe('mission (T-3.35)', () => {
       expect(r.underFireTicks).toBeGreaterThan(0);
       expect(r.engagements).toBeGreaterThan(0);
     }
-    // More humans, more enemies: the director's budget reached the mission.
-    expect(runs[1]!.enemiesSpawned).toBeGreaterThan(runs[0]!.enemiesSpawned);
+    // More humans, more enemies: the director's budget reached the mission — its opening placement,
+    // which a whole run's total is not (a long run at one human sees every wave a short one at six does not).
+    expect(runs[1]!.openingEnemies).toBeGreaterThan(runs[0]!.openingEnemies);
     expect(report).toMatch(/under fire in cover/);
     expect(report).toMatch(/suppression episodes per engagement/);
   }, 60_000);

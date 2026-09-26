@@ -487,6 +487,6 @@ T-4.34 is passed.
 | T-5.03 | OPEN | — |
 | T-5.04 | OPEN | — |
 | 🧍 T-5.05 | OPEN — the owner's decision (T-4.12's fallback or lightmaps) | — |
-| T-5.06 | OPEN | B-11 |
+| T-5.06 | OPEN — cover under fire landed (60% / 20% with the clearing leader); bounding and the walk-in floors remain | B-11 |
 | T-5.07 | OPEN | T-5.03 |
 | 🧍 T-5.08 | BLOCKED — after T-4.34; run sheet `m5.md` to be written | T-5.01..T-5.07, T-4.34 |
