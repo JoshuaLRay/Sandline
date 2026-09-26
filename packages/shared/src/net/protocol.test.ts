@@ -63,14 +63,17 @@ const SAMPLES: Message[] = [
   {
     kind: 'Roster',
     slots: [
-      { human: true, name: 'ray', classId: 'team-leader' },
-      { human: false, name: '', classId: 'marksman' },
-      { human: true, name: 'austin', classId: 'marksman' },
-      { human: false, name: '', classId: 'marksman' },
-      { human: false, name: '', classId: 'marksman' },
-      { human: false, name: '', classId: 'marksman' },
+      { human: true, name: 'ray', classId: 'team-leader', commander: -1 },
+      { human: false, name: '', classId: 'marksman', commander: 0 },
+      { human: true, name: 'austin', classId: 'marksman', commander: -1 },
+      { human: false, name: '', classId: 'marksman', commander: 2 },
+      { human: false, name: '', classId: 'marksman', commander: 0 },
+      { human: false, name: '', classId: 'marksman', commander: 5 },
     ],
   },
+  // U-025: every bot and commander slot there is, the edges of three bits included.
+  { kind: 'AssignCommander', bot: 5, commander: 0 },
+  { kind: 'AssignCommander', bot: 0, commander: 5 },
   { kind: 'Throw', tick: 900, yaw: 4095, pitch: 3072, projectile: 1 },
   { kind: 'Equip', item: 5 },
   {

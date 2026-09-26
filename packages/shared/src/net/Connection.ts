@@ -45,6 +45,8 @@ export interface ServerConnectionEvents {
   onMissionRestart?: (conn: ServerConnection) => void;
   /** T-4.19: pre-mission ready/start controls. */
   onRoomCommand?: (conn: ServerConnection, msg: Extract<Message, { kind: 'RoomCommand' }>) => void;
+  /** U-025: a player putting a bot under a human's command — untrusted; the session checks it. */
+  onAssignCommander?: (conn: ServerConnection, msg: Extract<Message, { kind: 'AssignCommander' }>) => void;
   onClosed?: (conn: ServerConnection, reason: string) => void;
 }
 
@@ -242,6 +244,10 @@ export class ServerConnection {
       case 'RoomCommand':
         this.lastActive = now;
         this.events.onRoomCommand?.(this, msg);
+        break;
+      case 'AssignCommander':
+        this.lastActive = now;
+        this.events.onAssignCommander?.(this, msg);
         break;
       case 'Ack':
         if (msg.tick > this.lastAckedTick) this.lastAckedTick = msg.tick;

@@ -10,6 +10,7 @@
  * is not built yet, and say so.
  */
 import { DEFAULT_SETTINGS, KEY_BINDINGS, QUALITY_LEVELS, SETTINGS_RANGES, type QualityLevel, type Settings } from './settings.ts';
+import { type CommandRow, commandKey } from './commandModel.ts';
 import './menu.css';
 
 export interface MenuOptions {
@@ -21,6 +22,8 @@ export interface MenuOptions {
   onLeave: () => void;
   /** T-5.03: forget every first-run hint seen, so each shows again. */
   onResetHints?: () => void;
+  /** U-025: hand the bot in slot `bot` to the human in slot `commander`. */
+  onAssign?: (bot: number, commander: number) => void;
 }
 
 export type MenuMode = 'hidden' | 'main' | 'pause';
@@ -38,6 +41,8 @@ export interface Menu {
   select(tab: MenuTab): void;
   /** Put a settings value into the controls (a reset, or one loaded after the fact). */
   setSettings(next: Settings): void;
+  /** U-025: the squad's command as the host last said it; redrawn only when it changes. */
+  setCommand(rows: readonly CommandRow[]): void;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, parent?: HTMLElement): HTMLElementTagNameMap[K] {
@@ -85,6 +90,51 @@ export function createMenu(options: MenuOptions): Menu {
   const pauseText = el('p', 'menu-pause-text', pausePanel);
   pauseText.textContent = 'Paused for you only: the session runs on. Esc or Resume to go back.';
   button('Resume', 'lobby-primary menu-resume', () => options.onResume(), pausePanel);
+
+  // -- U-025: squad command — every bot answers to a player; anyone may hand any bot to any player. --
+  const command = el('div', 'menu-command', pausePanel);
+  const commandHeading = el('h2', 'menu-heading', command);
+  commandHeading.textContent = 'Squad command';
+  const commandNote = el('p', 'menu-note', command);
+  commandNote.textContent = 'Every bot answers to a player. Anyone may hand any bot to any player, themselves included.';
+  const commandList = el('ol', 'menu-command-list', command);
+  let commandDrawn = '';
+  const drawCommand = (rows: readonly CommandRow[]): void => {
+    const key = commandKey(rows);
+    if (key === commandDrawn) return;
+    commandDrawn = key;
+    commandList.replaceChildren();
+    for (const row of rows) {
+      const li = el('li', 'menu-command-row', commandList);
+      li.dataset['slot'] = String(row.slot);
+      li.dataset['human'] = row.human ? 'yes' : 'no';
+      const name = el('span', 'menu-row-label', li);
+      name.textContent = row.label;
+      if (row.human) continue;
+      const pick = el('select', 'menu-select menu-command-select', li);
+      pick.dataset['bot'] = String(row.slot);
+      pick.setAttribute('aria-label', `Commander of slot ${row.slot + 1}`);
+      if (row.commander < 0) {
+        const none = document.createElement('option');
+        none.value = '-1';
+        none.textContent = 'nobody';
+        pick.append(none);
+      }
+      for (const option of row.options) {
+        const o = document.createElement('option');
+        o.value = String(option.slot);
+        o.textContent = option.label;
+        pick.append(o);
+      }
+      pick.value = String(row.commander);
+      pick.disabled = row.options.length === 0;
+      pick.addEventListener('change', () => {
+        const to = Number(pick.value);
+        if (to >= 0) options.onAssign?.(row.slot, to);
+      });
+    }
+  };
+  drawCommand([]);
 
   // -- Settings --
   const settingsPanel = el('section', 'menu-panel menu-settings', body);
@@ -256,6 +306,9 @@ export function createMenu(options: MenuOptions): Menu {
     setSettings(next) {
       current = { ...next, volumes: { ...next.volumes } };
       for (const c of controls) c.refresh();
+    },
+    setCommand(rows) {
+      drawCommand(rows);
     },
   };
 }

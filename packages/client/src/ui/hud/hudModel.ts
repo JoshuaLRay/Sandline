@@ -176,6 +176,10 @@ export interface SquadRow {
   order: string;
   /** The class's two letters (T-4.27), '' before the host has assigned one. */
   classShort: string;
+  /** U-025: for a bot, who commands it — "you", or their name; '' for a human, or a bot nobody commands. */
+  commander: string;
+  /** U-025: a bot you command. */
+  mine: boolean;
 }
 
 /**
@@ -194,6 +198,7 @@ export function squadRows(
     const entry = roster[slot];
     const human = entry?.human ?? false;
     const order = orders.find((o) => o.slot === slot);
+    const by = human ? -1 : (entry?.commander ?? -1);
     rows.push({
       slot,
       label: human && entry?.name ? entry.name : 'Bot',
@@ -202,6 +207,8 @@ export function squadRows(
       state: vitalityOf(slot) ?? 'unknown',
       order: order?.order ?? '',
       classShort: classById(entry?.classId ?? '')?.short ?? '',
+      commander: by < 0 ? '' : by === mySlot ? 'you' : roster[by]?.name || `Player ${by + 1}`,
+      mine: by >= 0 && by === mySlot,
     });
   }
   return rows;

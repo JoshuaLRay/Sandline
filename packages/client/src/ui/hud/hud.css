@@ -209,6 +209,9 @@
 .phud-squad-name { min-width: 92px; }
 .phud-squad-class { min-width: 20px; color: var(--amber, #f0b429); opacity: 0.85; font-size: 10px; letter-spacing: 0.1em; }
 .phud-squad-order { opacity: 0.8; text-transform: uppercase; font-size: 10px; letter-spacing: 0.1em; }
+/* U-025: who commands a bot; brighter for the bots you command. */
+.phud-squad-cmd { opacity: 0.6; font-size: 10px; }
+.phud-squad-row[data-mine='yes'] .phud-squad-cmd { opacity: 1; }
 
 /* The centre: a hit marker's four arms and up to six damage arcs around the reticle. */
 .phud-centre {

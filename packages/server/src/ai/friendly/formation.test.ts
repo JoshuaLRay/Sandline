@@ -109,7 +109,9 @@ describe('the lead (T-3.25)', () => {
     b.leave();
     c.leave();
     session.step(5 * TICK_MS);
-    expect(leads()).toEqual([0, 0]);
+    // U-025: nobody seated to command the bots — the session pauses, and nothing is recomputed until someone returns.
+    expect(session.paused).toBe(true);
+    expect(leads()).toEqual([1, 1]);
     // A human is nobody's follower, and a lead follows nobody.
     const e = human(session, 'e');
     session.step(6 * TICK_MS);

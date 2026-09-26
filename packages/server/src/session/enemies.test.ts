@@ -404,7 +404,12 @@ describe('enemy netIds (T-3.10)', () => {
 
     // Kill them all, let the corpses go, and the next enemy is a new number.
     for (const e of session.enemies) e.health.diedAt = 0;
-    for (let i = 1; i <= Math.ceil((RIFLEMAN.corpseSeconds * 1000) / TICK_MS) + 2; i++) session.step((i + 1) * TICK_MS);
+    // The thrower stays connected (U-025: with nobody seated the session would pause).
+    for (let i = 1; i <= Math.ceil((RIFLEMAN.corpseSeconds * 1000) / TICK_MS) + 2; i++) {
+      pair.b.send(encodeMessage({ kind: 'Ping', id: i, clientTime: 0 }));
+      pair.settle();
+      session.step((i + 1) * TICK_MS);
+    }
     expect(session.enemies).toHaveLength(0);
     const next = session.spawnEnemy('rifleman', { x: 0, y: 0, z: 30 });
     expect(next).not.toBeNull();

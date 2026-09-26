@@ -802,6 +802,12 @@ export class NetClient {
     this.transport.send(encodeMessage({ kind: 'RoomCommand', command: 'start' }), 'reliable');
   }
 
+  /** U-025: ask the host to put the bot in `bot`'s slot under `commander`'s human. The host checks both. */
+  assignCommander(bot: number, commander: number): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage({ kind: 'AssignCommander', bot, commander }), 'reliable');
+  }
+
   /** T-3.34: ask the host to start the mission again. It does so once the mission is over. */
   restartMission(): void {
     if (!this.joinedFlag) return;

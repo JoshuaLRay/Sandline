@@ -801,10 +801,21 @@ describe('Session revive edge cases (T-2.15)', () => {
     s.step(500);
     expect(targetSlot.health.downedAt).not.toBeNull();
 
-    reviver.input(2, 0, 0, 0, 0b1000);
-    target.input(2, 0, 0);
+    // Both keep playing — a second at a time, inside the heartbeat, so neither is dropped (and, U-025,
+    // the session does not pause for want of a human) — while the reviver stands by and does nothing.
+    let tick = 2;
+    for (let t = 1; t <= DAMAGE.downed.bleedOutSeconds; t++) {
+      reviver.input(tick, 0, 0);
+      target.input(tick, 0, 0);
+      tick += 1;
+      s.step(t * 1000);
+    }
+    expect(targetSlot.health.diedAt).toBe(DAMAGE.downed.bleedOutSeconds);
+    // The revive starts a second too late: nothing to pick up.
+    reviver.input(tick, 0, 0, 0, 0b1000);
+    target.input(tick, 0, 0);
     s.step((DAMAGE.downed.bleedOutSeconds + 1) * 1000);
-    expect(targetSlot.health.diedAt).toBe((DAMAGE.downed.bleedOutSeconds + 1));
+    expect(targetSlot.health.diedAt).toBe(DAMAGE.downed.bleedOutSeconds);
     expect(targetSlot.reviveProgressSeconds).toBe(0);
   });
 });
