@@ -1,5 +1,5 @@
 {
-  "$comment": "T-5.02: the slice mission (PLAN.md §7.12). Five objectives across mission-01: clear the patrol holding the west lane, then the position holding the east lane, take the compound and hold it, hold it against the counterattack, and fall back to the start line past an ambush. The dead respawn: ten minutes is too long to play a man down. Each objective completing is a checkpoint (T-4.16); the messages, callouts and the ambush are the script's (data/scripts/mission-01.json).",
+  "$comment": "T-5.02: the slice mission (PLAN.md §7.12), made active by U-011. Five objectives across mission-01: clear the patrol holding the west lane, then the position holding the east lane, take the compound by putting its garrison down, start the upload at the terminal on the compound's crate and see it through while the counterattack goes for the lever in the compound's north-east corner, and fall back to the start line past an ambush. No stage is standing in a box for a timer: each is something to do (U-011, owner feedback 2026-09-26). The dead respawn: ten minutes is too long to play a man down. Each objective completing is a checkpoint (T-4.16); the messages, callouts, the counterattack and the ambush are the script's (data/scripts/mission-01.json).",
   "id": "mission-01",
   "world": "mission-01",
   "respawn": true,
@@ -15,17 +15,31 @@
       "label": "the east-lane position"
     },
     {
-      "type": "clear-and-hold",
-      "area": "objective",
-      "holdSeconds": 60,
-      "label": "the compound"
+      "type": "destroy",
+      "group": "garrison",
+      "label": "the compound's garrison"
     },
     {
-      "type": "defend",
-      "area": "objective",
-      "seconds": 330,
-      "breachSeconds": 20,
-      "label": "the compound"
+      "type": "upload",
+      "label": "the relay",
+      "terminal": {
+        "x": 0,
+        "y": 1.0,
+        "z": 72.3
+      },
+      "reachM": 2,
+      "seconds": 240,
+      "onInterrupt": "keep-progress",
+      "lever": {
+        "at": {
+          "x": 6.5,
+          "y": 1.0,
+          "z": 75.0
+        },
+        "reachM": 1.8,
+        "useSeconds": 4,
+        "group": "counterattack-push"
+      }
     },
     {
       "type": "reach",

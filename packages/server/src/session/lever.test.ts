@@ -22,11 +22,13 @@ import {
   type ObjectiveDef,
   SnapshotStore,
   TICK_SECONDS,
+  buildTree,
   createLoopbackPair,
   decodeMessage,
   parseEncounter,
   requireWorld,
 } from '@sandline/shared';
+import { createBrainRegistry } from '../ai/Brain.ts';
 import { type NavMesh, initNav } from '../ai/nav/NavMesh.ts';
 import { bakedCoverFor, loadWorldNavMesh } from '../ai/nav/bakedNav.ts';
 import { LEVER_BAR_SECONDS, Session } from './Session.ts';
@@ -258,5 +260,58 @@ describe('the enemy at the lever (U-010)', () => {
     const cuts = r.missions().filter((m) => m.phase === 'interrupted');
     expect(cuts).toHaveLength(1);
     expect(r.said('The upload was cut at the lever')).toBe(1);
+  });
+});
+
+describe('a friendly bot at the terminal (U-011)', () => {
+  const QUIET = parseEncounter({
+    world: 'greybox-01',
+    aliveCap: 6,
+    probes: [0.3, 1, 1.7],
+    areas: {},
+    groups: [{ id: 'cutters', members: [{ archetype: 'rifleman', count: 1 }], zone: 'behind-objective', posture: { kind: 'hold' }, trigger: { kind: 'script' } }],
+  });
+
+  function squad() {
+    const mission: MissionDef = { id: 'bot-upload', world: 'greybox-01', respawn: false, objectives: [upload(LEVER, 60)] };
+    const session = new Session(undefined, '', WORLD, { encounter: QUIET, mission, navMesh: mesh, cover: bakedCoverFor('greybox-01'), brainTree: buildTree('friendly', createBrainRegistry()) });
+    const pair = createLoopbackPair();
+    session.addConnection(pair.a, 0);
+    const client = new ClientConnection(pair.b, {});
+    client.join('lead');
+    pair.settle();
+    let now = 0;
+    let tick = 0;
+    const step = (n: number) => {
+      for (let i = 0; i < n; i++) {
+        tick += 1;
+        now += TICK_MS;
+        client.send({ kind: 'Input', tick, moveX: 0, moveY: 0, yaw: 0, pitch: 0, buttons: 0 });
+        pair.settle();
+        session.step(now);
+        pair.settle();
+      }
+    };
+    return { session, step };
+  }
+
+  it('held at a waiting upload\'s terminal, it starts it (the same checks as a press); held anywhere else, it does not', () => {
+    const { session, step } = squad();
+    const bot = session.slots.findIndex((s) => s.isBot);
+    step(ticks(2));
+    // Held a few metres off the terminal: nothing.
+    session.orderFrom(0, { order: 'hold', address: { to: 'slot', index: bot }, point: { x: 10, y: 0, z: 8 }, target: null });
+    step(ticks(15));
+    expect(session.mission!.phase).toBe('idle');
+    // Held at the terminal: it walks there and starts the upload.
+    session.orderFrom(0, { order: 'hold', address: { to: 'slot', index: bot }, point: { x: TERMINAL.x, y: 0, z: FRONT.z }, target: null });
+    let started = false;
+    for (let i = 0; i < ticks(20) && !started; i++) {
+      step(1);
+      started = session.mission!.phase === 'active';
+    }
+    expect(started).toBe(true);
+    const s = session.slots[bot]!.state;
+    expect(Math.hypot(s.x - TERMINAL.x, s.z - TERMINAL.z)).toBeLessThan(2);
   });
 });

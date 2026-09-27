@@ -930,6 +930,12 @@ export class Session {
         return order && run ? { ...order, status: run.status, anchor: run.anchor } : null;
       },
       report: (index, outcome, reason) => this.orderOutcome(index, outcome, reason),
+      terminal: () => {
+        const run = this.missionRun;
+        if (!run || !this.roomStarted || run.current.state !== 'progress' || run.current.phase === 'active') return null;
+        const { def } = run.objective;
+        return def.type === 'upload' ? { ...def.terminal, reachM: def.reachM } : null;
+      },
       reachable: (from, to) => {
         const m = this.navMesh;
         if (!m) return false;
@@ -2355,6 +2361,9 @@ export class Session {
       if (slot.mounted && (slot.isBot || !isAlive(slot.health))) this.dismount(slot);
       if (slot.isBot) {
         slot.interactWasHeld = false;
+        // U-011: a bot holding at a waiting upload's terminal starts it, through the same checks as a player's press —
+        // unless the hands it holds out are a revive's.
+        if (this.holdingInteract(slot) && !this.slots.some((t) => t.reviveBySlot === slot.index)) this.startUploadAt(slot);
         continue;
       }
       const held = this.holdingInteract(slot);
@@ -2482,7 +2491,7 @@ export class Session {
   }
 
   /**
-   * U-009: a human's interact press, not already a revive or a gun, at the
+   * U-009: a human's interact press (since U-011, or a bot's held hands at the terminal), not already a revive or a gun, at the
    * current upload's terminal. The press is the host's to judge, and it
    * starts the upload only when every check holds: the mission running and
    * its objective an upload that is not already running (`startUpload`); the

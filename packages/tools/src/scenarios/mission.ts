@@ -89,7 +89,7 @@ export interface MissionRun {
   engagements: number;
   /**
    * U-001: the longest stretch, seconds, no living enemy knew of a squad
-   * soldier while a timed objective (clear-and-hold, defend, survive) ran —
+   * soldier while a timed objective (clear-and-hold, defend, survive, a running upload) ran —
    * the owner's "empty map while the timer goes down". Contact, not mere
    * presence: an enemy standing out of sight in its spawn zone is no pressure.
    */
@@ -207,7 +207,8 @@ export async function runMission(seed: number, humans: number, config: MissionCo
       suppressedBefore[i] = on;
     });
     const view = session.mission!;
-    const timed = view.type === 'clear-and-hold' || view.type === 'defend' || view.type === 'survive';
+    // U-011: an upload running is a timed objective too — the counterattack's to press.
+    const timed = view.type === 'clear-and-hold' || view.type === 'defend' || view.type === 'survive' || (view.type === 'upload' && view.phase === 'active');
     const quiet = timed && view.state === 'progress' && !contact;
     quietTicks = quiet ? quietTicks + 1 : 0;
     if (quietTicks > longestQuiet) {

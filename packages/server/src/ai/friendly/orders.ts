@@ -259,7 +259,11 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
           }
         }
         // Holding: standing to fire at what it sees, facing the threat; contact does not move it.
-        hands(frame, { fireAt: target, lookAt: eye });
+        // U-011: held at an upload's terminal while it waits, it starts it — hands on the panel, as a player's E.
+        const terminal = ctx.squad.terminal?.() ?? null;
+        const e = eyeOf(ctx.state);
+        const press = terminal !== null && Math.hypot(e.x - terminal.x, e.y - terminal.y, e.z - terminal.z) <= terminal.reachM;
+        hands(frame, { fireAt: press ? null : target, lookAt: press ? terminal : eye, interact: press });
         return 'running';
       })
 

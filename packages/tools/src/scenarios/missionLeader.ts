@@ -12,7 +12,13 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
   // Keep T-3.35's opening approach when that is the first objective.
   // T-5.02: the routes are walked into whichever objective clears and holds the world's main objective — the first
   // one or a later one — joined at the stop nearest each fireteam when it starts, so a squad already up a lane goes on.
-  const approachIndex = def.objectives.findIndex((o) => o.type === 'clear-and-hold' && o.area === 'objective');
+  // U-011: or whichever takes it by destroying the group that holds it from the start (a later garrison — a
+  // counterattack sent into it — is fought where it is, not walked up to).
+  const garrisons = (id: string) => {
+    const group = encounter.groups.find((g) => g.id === id);
+    return group?.posture.kind === 'garrison' && group.posture.at === 'objective' && group.trigger.kind === 'start';
+  };
+  const approachIndex = def.objectives.findIndex((o) => (o.type === 'clear-and-hold' && o.area === 'objective') || (o.type === 'destroy' && garrisons(o.group)));
   const roles = ['overwatch', 'assault'] as const;
   const stops = SQUAD.fireteams.map((_, i) => approachIndex >= 0
     ? (mission.routes.find((r) => r.role === roles[i % roles.length])?.via ?? []).map((p) => ({ ...p, y: 0 }))
@@ -24,6 +30,23 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
   const standing = (i: number) => !isDead(session.slots[i]!.health) && !isDowned(session.slots[i]!.health);
   let objectiveIndex = session.mission!.objective;
   let anchors = session.slots.map((s) => ({ ...s.state }));
+  /**
+   * U-011: an upload — the slot on its feet nearest the terminal holds at it (a bot held there starts the upload
+   * while it waits, and again after every cut); the rest hold spread between the terminal and the lever, where
+   * they cover both and the way the enemy comes to cut it.
+   */
+  let presser = -1;
+  const LEVER_GUARD = [
+    { x: 0, z: 0 },
+    { x: -1.5, z: -1.5 },
+    { x: 1.5, z: 1.5 },
+    { x: -1.5, z: 1.5 },
+    { x: 1.5, z: -1.5 },
+  ];
+  const pickPresser = (terminal: Point) => {
+    const up = session.slots.filter((s) => standing(s.index) && !reviving.has(s.index));
+    presser = up.length === 0 ? -1 : up.reduce((a, b) => (flat(a.state, terminal) <= flat(b.state, terminal) ? a : b)).index;
+  };
 
   const groupHint = (id: string, slot: number, visited = new Set<string>()): { point: Point; target: number | null } => {
     if (visited.has(id)) throw new Error(`destroy group '${id}': cyclic spawn prerequisites`);
@@ -72,6 +95,16 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
     } else if (objective.type === 'destroy') {
       ({ point, target } = groupHint(objective.group, slot));
       if (target !== null) order = 'attack';
+    } else if (objective.type === 'upload') {
+      if (presser < 0 || !standing(presser)) pickPresser(objective.terminal);
+      if (slot === presser || !objective.lever) {
+        point = { x: objective.terminal.x, y: 0, z: objective.terminal.z };
+      } else {
+        const guards = session.slots.filter((s) => s.index !== presser).map((s) => s.index);
+        const spot = LEVER_GUARD[Math.max(0, guards.indexOf(slot)) % LEVER_GUARD.length]!;
+        const mid = { x: (objective.lever.at.x + objective.terminal.x) / 2, z: (objective.lever.at.z + objective.terminal.z) / 2 };
+        point = { x: mid.x + spot.x, y: 0, z: mid.z + spot.z };
+      }
     } else {
       point = anchors[slot]!;
     }
@@ -122,7 +155,9 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
     // A destroy target — or, once the approach is walked, an enemy left near a clear-and-hold area — can die or spawn between leader updates.
     const current = def.objectives[objectiveIndex]!;
     const approached = objectiveIndex !== approachIndex || at.every((a, t) => a >= stops[t]!.length);
-    if (current.type === 'destroy' || (current.type === 'clear-and-hold' && approached)) SQUAD.fireteams.forEach((_, t) => orderTeam(t));
+    // U-011: an upload's presser can fall; the next nearest takes the terminal.
+    const presserLost = current.type === 'upload' && (presser < 0 || !standing(presser));
+    if (current.type === 'destroy' || (current.type === 'clear-and-hold' && approached) || presserLost) SQUAD.fireteams.forEach((_, t) => orderTeam(t));
     for (const [reviver, downed] of [...reviving]) {
       if (!isDowned(session.slots[downed]!.health) || !standing(reviver)) {
         reviving.delete(reviver);

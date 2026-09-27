@@ -74,6 +74,15 @@ describe('mission files (T-4.14)', () => {
     for (const mission of missions()) checkMission(mission, encounterFor(mission.world)!, requireWorld(mission.world));
   });
 
+  it('ships mission-01 with no stage that is standing in a box for a timer (U-011)', () => {
+    const m = missionFor('mission-01')!;
+    expect(m.objectives.map((o) => o.type)).toEqual(['destroy', 'destroy', 'destroy', 'upload', 'reach']);
+    for (const o of m.objectives) expect(['clear-and-hold', 'defend', 'survive']).not.toContain(o.type);
+    const upload = m.objectives[3]!;
+    expect(upload.type === 'upload' && upload.lever?.group).toBe('counterattack-push');
+    checkMission(m, encounterFor('mission-01')!, requireWorld('mission-01'));
+  });
+
   it('parses every type with its own parameters, and refuses what cannot mean anything, by name', () => {
     const base = RAW_GREYBOX as Record<string, unknown>;
     const all = parseMission({

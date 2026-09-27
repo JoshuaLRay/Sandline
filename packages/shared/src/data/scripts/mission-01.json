@@ -1,5 +1,5 @@
 {
-  "$comment": "T-5.01: mission-01's event script (T-4.15's format), loaded with the mission wherever it is played — a host's room, the in-page session, the headless scenario. Messages go to the HUD; a callout that names a callout event (T-2.49) is said by the nearest squadmate. T-5.02 grows this with the slice mission's objectives, blockers and checkpoints. U-001: the defend's counterattack is sent here when the defend starts and stopped when it completes, so its waves are the defend's and not the hold's.",
+  "$comment": "T-5.01: mission-01's event script (T-4.15's format), loaded with the mission wherever it is played — a host's room, the in-page session, the headless scenario. Messages go to the HUD; a callout that names a callout event (T-2.49) is said by the nearest squadmate. T-5.02 grows this with the slice mission's objectives, blockers and checkpoints. U-001: the defend's counterattack is sent here when the defend starts and stopped when it completes, so its waves are the defend's and not the hold's. U-011: the compound is taken by putting its garrison down, and the defend is an upload: the counterattack is sent when the upload objective starts and goes for the lever in its north-east corner.",
   "world": "mission-01",
   "blockers": [],
   "events": [
@@ -42,7 +42,7 @@
       "actions": [
         {
           "kind": "message",
-          "text": "Both lanes open — take the compound and hold it"
+          "text": "Both lanes open — take the compound: put its garrison down"
         }
       ]
     },
@@ -72,7 +72,7 @@
         },
         {
           "kind": "message",
-          "text": "Counterattack from the north — hold the compound"
+          "text": "Compound taken — start the upload at the terminal on the crate, then keep them off the lever in the north-east corner"
         },
         {
           "kind": "spawn-group",
@@ -97,7 +97,7 @@
         },
         {
           "kind": "message",
-          "text": "Compound secure — fall back to the start line"
+          "text": "Upload complete — fall back to the start line"
         },
         {
           "kind": "spawn-group",
