@@ -42,7 +42,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-003](docs/backlog/U-003.md) | Align AR muzzle flash and tracers with the visible gun | Weapon feel | P1 | DONE | U-002 | [#140](https://github.com/JoshuaLRay/Sandline/pull/140) |
 | [U-004](docs/backlog/U-004.md) | Open the AR sight picture | Weapon feel | P1 | DONE | — | [#141](https://github.com/JoshuaLRay/Sandline/pull/141) |
 | [U-005](docs/backlog/U-005.md) | Bind 1 to primary and 2 to pistol | Weapon feel | P1 | DONE | — | [#134](https://github.com/JoshuaLRay/Sandline/pull/134) |
-| [U-006](docs/backlog/U-006.md) | Keep the gun visible during a readable reload animation | Weapon feel | P1 | REVIEW | — | — |
+| [U-006](docs/backlog/U-006.md) | Keep the gun visible during a readable reload animation | Weapon feel | P1 | DONE | — | [#142](https://github.com/JoshuaLRay/Sandline/pull/142) |
 | [U-007](docs/backlog/U-007.md) | Make reload sounds audible and synchronized | Audio | P1 | READY | — | — |
 | [U-008](docs/backlog/U-008.md) | Correct excessive right panning of the local gun | Audio | P1 | READY | — | — |
 | [U-024](docs/backlog/U-024.md) | Keep grenade and rocket counts synchronized | Maintenance | P1 | READY | — | — |
