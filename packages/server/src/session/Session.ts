@@ -40,6 +40,7 @@ import {
   requireWorld,
   FIRST_PROJECTILE_NET_ID,
   PROJECTILE_IDS,
+  POUCH_COUNT_MAX,
   type ProjectileDef,
   type ProjectileState,
   type ProjectileWorld,
@@ -1515,13 +1516,31 @@ export class Session {
    * loadout, when the session plays by loadouts.
    */
   private reassignClasses(): void {
-    const assigned = assignClasses(this.slots.map((s) => s.isBot), this.classPicks);
+    const assigned = assignClasses(this.slots.map((s) => s.isBot && !this.heldSeat(s)), this.classPicks);
     for (const slot of this.slots) {
       const id = assigned[slot.index] ?? '';
       if (this.classSlots[slot.index] === id) continue;
       this.classSlots[slot.index] = id;
       this.applyLoadout(slot);
     }
+  }
+
+  /** U-024: a bot's seat held for a dropped player within the grace (T-4.18), who keeps its class meanwhile. */
+  private heldSeat(slot: Slot): boolean {
+    return slot.isBot && slot.reservedUntilMs > 0 && slot.reservedUntilMs >= this.nowMs;
+  }
+
+  /** U-024: a held seat whose grace has run out is a bot's like any other: its kept pick goes, and the classes settle. */
+  private releaseLapsedSeats(): void {
+    let lapsed = false;
+    for (const slot of this.slots) {
+      if (!slot.isBot || slot.reservedUntilMs === 0 || slot.reservedUntilMs >= this.nowMs || this.classPicks[slot.index] === '') continue;
+      this.classPicks[slot.index] = '';
+      lapsed = true;
+    }
+    if (!lapsed) return;
+    this.reassignClasses();
+    this.broadcastRoster();
   }
 
   /** The class's first gun in hand, its pouch, and its health. */
@@ -1546,6 +1565,18 @@ export class Session {
     if (!def) return;
     slot.health.max = def.health;
     if (!this.roomStarted || slot.health.current > def.health) slot.health.current = def.health;
+  }
+
+  /**
+   * Put a slot's pouch back to what it spawns with (U-024): the in-page
+   * range's reset key, which is explicitly the range's and not a hosted
+   * room's. The count reaches the page on the next snapshot.
+   */
+  refillPouch(slot: number): void {
+    const s = this.slots[slot];
+    if (!s) return;
+    s.pouch = this.pouchFor(slot);
+    s.nextThrowAt = 0;
   }
 
   /** A slot's pouch at spawn: its class's, or the data's full pouch on a free session. */
@@ -1902,7 +1933,8 @@ export class Session {
     slot.connection = conn;
     slot.staleTicks = 0;
     this.readySlots[slot.index] = false;
-    this.classPicks[slot.index] = '';
+    // U-024: a resumed player comes back to the class they held the seat with.
+    if (!resumed) this.classPicks[slot.index] = '';
     if (!this.roomStarted && this.creatorSlot < 0) this.creatorSlot = slot.index;
 
     /**
@@ -2364,7 +2396,9 @@ export class Session {
     slot.isBot = true;
     slot.connection = null;
     this.readySlots[slot.index] = false;
-    this.classPicks[slot.index] = '';
+    // U-024: a seat held for a dropped player keeps its class, and so its loadout, until
+    // the grace is out — a drop and a resume would otherwise hand back a fresh pouch.
+    if (slot.reservedUntilMs === 0) this.classPicks[slot.index] = '';
     if (!this.roomStarted && this.creatorSlot === slot.index) {
       this.creatorSlot = this.slots.find((s) => !s.isBot && s.connection !== null)?.index ?? -1;
     }
@@ -3114,6 +3148,7 @@ export class Session {
     this.lastWallMs = wallNow;
     const now = wallNow - this.pausedMs;
     this.nowMs = now;
+    this.releaseLapsedSeats();
     for (const conn of [...this.connections]) {
       // Advance each connection's clock BEFORE testing the timeout: messages
       // arriving between ticks are stamped with the latest tick time.
@@ -3949,6 +3984,8 @@ export class Session {
             Math.max(0, (WEAPON_IDS as readonly string[]).indexOf(s.weapon.id)),
             Math.min(100, Math.round(reloadProgress(s.weapon, s.weaponState, this.nowMs / 1000) * 100)),
             s.heldProjectile + 1,
+            // U-024: what is left in the pouch, for the page's own count to follow.
+            ...PROJECTILE_IDS.map((_, i) => Math.min(POUCH_COUNT_MAX, s.pouch[i] ?? 0)),
           ],
           // T-3.16: how suppressed, so the page can show it and widen its cone to match.
           [COMPONENT_IDS.Suppression]: [suppressionToWire(suppressionLevel(s.suppression, this.nowMs / 1000))],

@@ -561,8 +561,9 @@ describe('Session replicates the weapon and its reload (T-2.26)', () => {
       s.step(now);
     };
     for (let i = 0; i < 5; i += 1) tick();
-    // Carbine, no reload, a gun (not the pouch) in hand.
-    expect(seen()).toEqual([0, 0, 0]);
+    // Carbine, no reload, a gun (not the pouch) in hand; and (U-024) a full pouch left, in PROJECTILE_IDS order.
+    expect(seen()).toEqual([0, 0, 0, ...slot.pouch]);
+    expect(slot.pouch.length).toBe(2);
     // The server's own reload: the one it starts on an empty magazine.
     slot.weaponState.ammo = 0;
     slot.weaponState.reloadEndsAt = now / 1000 + slot.weapon.reloadSeconds;

@@ -11,6 +11,7 @@
 import { COMPONENT_IDS, type ComponentName } from '../ecs/components.ts';
 import { ENEMY_ARCHETYPE_BITS, ENEMY_FACTION_BITS } from '../sim/enemies.ts';
 import { EMPLACEMENT_HEAT_BITS, EMPLACEMENT_KIND_BITS } from '../sim/emplacement.ts';
+import { PROJECTILE_IDS } from '../sim/ballistics.ts';
 import { SUPPRESSION_BITS } from '../sim/suppression.ts';
 import { ANGLE_BITS_WIRE, HEALTH, POSITION, VELOCITY, dequantize, quantize, quantizeAngle } from './quantize.ts';
 
@@ -60,6 +61,11 @@ export interface ComponentSchema {
   readonly name: ComponentName;
   readonly fields: readonly FieldSpec[];
 }
+
+/** Bits for a pouch count on the wire (U-024): up to 7 of an item. The data is held to it by test. */
+export const POUCH_COUNT_BITS = 3;
+/** The most of one pouch item the wire carries. */
+export const POUCH_COUNT_MAX = (1 << POUCH_COUNT_BITS) - 1;
 
 export const SCHEMAS: readonly ComponentSchema[] = [
   {
@@ -113,7 +119,11 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // as a curve of the server's clock, the way the vault is. `pouch` is 0
     // while a gun is in hand and 1 + a PROJECTILE_IDS index while a grenade
     // or a rocket is (an Equip), so the body can hold the right thing.
-    fields: [uint('index', 2), uint('reloadProgress', 7), uint('pouch', 2)],
+    // U-024: then how many of each pouch item the soldier has left, in
+    // PROJECTILE_IDS order, so the page's pouch follows the server's through
+    // resets, respawns, class changes and reconnects. Appended, never
+    // renumbered (ADR-009).
+    fields: [uint('index', 2), uint('reloadProgress', 7), uint('pouch', 2), ...PROJECTILE_IDS.map((id) => uint(`left_${id}`, POUCH_COUNT_BITS))],
   },
   {
     id: COMPONENT_IDS.Projectile,

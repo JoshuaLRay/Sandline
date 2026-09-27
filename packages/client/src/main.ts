@@ -2040,6 +2040,8 @@ function frame(): void {
      * same two refusals the server applies are applied here so the picture
      * cannot promise a grenade the server will refuse.
      */
+    // U-024: the pouch is the server's; our own throws in flight to it are held off its count.
+    if (net.pouch) throws.reconcile(net.pouch, tickNumber * TICK_SECONDS);
     throws.tick(projectileWorld());
     const canThrow = net.vitality === 'alive' && !net.simulated?.vault;
     const pouch = pouchTrigger.update({
@@ -2754,8 +2756,10 @@ addEventListener('keydown', (e) => {
     localFeet.resetPeak();
     combat.reset();
   effects.reset();
-    // The pouch is a range's, not a match's: T gives the grenades back too.
+    // The pouch is the server's (U-024). On the in-page range T asks that server to
+    // give the grenades back; a hosted room's pouch is never the page's to refill.
     for (const id of throws.takeRetired()) dropProjectileMesh(`g${id}`);
+    if (live?.local && live.net.slot >= 0) live.local.refillPouch(live.net.slot);
     throws.reset();
     for (const id of throws.takeRetired()) dropProjectileMesh(`g${id}`);
     lastBlast = null;

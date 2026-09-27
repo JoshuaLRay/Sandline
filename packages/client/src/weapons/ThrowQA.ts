@@ -88,6 +88,9 @@ export interface LiveProjectile {
   ownerSlot: number;
 }
 
+/** How long a predicted throw may wait for the server to take it before it lapses (U-024). */
+export const PENDING_HOLD_SECONDS = 1.5;
+
 export class ThrowQA {
   private index = 0;
   /**
@@ -98,6 +101,9 @@ export class ThrowQA {
    */
   private readonly working: ProjectileDef[] = PROJECTILE_ORDER.map((id) => ({ ...getProjectile(id) }));
   private readonly counts: number[] = this.working.map((def) => def.carried);
+  /** U-024: our own throws the server has not yet taken off its count, and the count it last gave. */
+  private pending: { index: number; at: number }[] = [];
+  private readonly lastServer: number[] = [];
   /** Called with (index, row) after every edit and reset. */
   onTune: ((index: number, def: Readonly<ProjectileDef>) => void) | null = null;
   /** Called when the selected projectile changes, so a panel can rebind. */
@@ -200,6 +206,7 @@ export class ThrowQA {
     if (!this.canThrow(now)) return null;
     const def = this.def;
     this.counts[this.index] = this.count() - 1;
+    this.pending.push({ index: this.index, at: now });
     this.nextThrowAt = now + def.cooldownSeconds;
     const ghost: Ghost = {
       id: this.nextGhostId++,
@@ -270,6 +277,41 @@ export class ThrowQA {
     }
   }
 
+  /**
+   * U-024: follow the server's count of the pouch, indexed like the rows.
+   *
+   * A throw of our own is spent here at once (the HUD cannot wait a round
+   * trip) and reaches the server a moment later, so for that moment the
+   * server's count is one high. Each predicted throw is held as pending
+   * until the server's count for it drops, and taken off what the server
+   * says until then; one the server never takes (it refused it) lapses after
+   * `holdSeconds`, and the count is the server's again. A rise (a respawn, a
+   * refill) is the server's to give, and clears what was pending.
+   */
+  reconcile(server: readonly number[], now: number, holdSeconds = PENDING_HOLD_SECONDS): void {
+    this.working.forEach((_def, i) => {
+      const count = Math.max(0, Math.floor(server[i] ?? 0));
+      const last = this.lastServer[i];
+      if (last !== undefined && count > last) this.pending = this.pending.filter((p) => p.index !== i);
+      else if (last !== undefined && count < last) {
+        // The server has taken this many of ours: they are no longer pending.
+        let taken = last - count;
+        this.pending = this.pending.filter((p) => !(p.index === i && taken-- > 0));
+      }
+      this.lastServer[i] = count;
+    });
+    this.pending = this.pending.filter((p) => now - p.at < holdSeconds);
+    this.working.forEach((_def, i) => {
+      const waiting = this.pending.filter((p) => p.index === i).length;
+      this.counts[i] = Math.max(0, (this.lastServer[i] ?? 0) - waiting);
+    });
+  }
+
+  /** Predicted throws the server has not yet taken (U-024). */
+  get pendingThrows(): number {
+    return this.pending.length;
+  }
+
   /** The pouch a class spawns with (T-4.27), indexed like the rows; what the server will let this soldier throw. */
   setCounts(counts: readonly number[]): void {
     this.working.forEach((_def, i) => {
@@ -277,13 +319,22 @@ export class ThrowQA {
     });
   }
 
-  /** Give everything back, for the harness reset key. */
+  /**
+   * Clear what is in flight and the cooldown, for the harness reset key. The
+   * pouch is the server's (U-024): the range asks its in-page server to
+   * refill it, and a hosted room's is never the page's to give back — so the
+   * counts are left to `reconcile`, until a server has said something, when
+   * the data's full pouch stands in.
+   */
   reset(): void {
     for (const ghost of this.live) this.retired.push(ghost.id);
     this.live.length = 0;
-    this.working.forEach((def, i) => {
-      this.counts[i] = def.carried;
-    });
+    this.pending = [];
+    if (this.lastServer.length === 0) {
+      this.working.forEach((def, i) => {
+        this.counts[i] = def.carried;
+      });
+    }
     this.nextThrowAt = 0;
   }
 

@@ -205,6 +205,11 @@ export class LocalServer {
    * Put an enemy into the in-page session (T-3.10), for the QA page
    * (T-3.11). Nothing else spawns them until E-3.9's spawner.
    */
+  /** The range's reset key (U-024): a slot's pouch back to what it spawns with, on the in-page session itself. */
+  refillPouch(slot: number): void {
+    this.session.refillPouch(slot);
+  }
+
   spawnEnemy(archetype: string, at: EnemySpawn): number | null {
     return this.session.spawnEnemy(archetype, at);
   }

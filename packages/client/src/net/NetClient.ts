@@ -48,6 +48,7 @@ import {
   type WorldBox,
   type ScriptBlockerState,
   getWorld,
+  PROJECTILE_IDS,
 } from '@sandline/shared';
 
 const T = COMPONENT_IDS.Transform;
@@ -253,6 +254,8 @@ export class NetClient {
   private maxHealthValue = 0;
   /** T-3.16: the server's word on how suppressed this player is, 0..1. */
   private suppressionValue = 0;
+  /** U-024: the server's count of each pouch item we carry, PROJECTILE_IDS order; null until a snapshot says. */
+  private pouchValue: number[] | null = null;
   /**
    * Replicated with the health (T-2.13). Vitality is gameplay, not cosmetic:
    * the predictor needs it to hold still when the server does (B-05), and the
@@ -504,6 +507,11 @@ export class NetClient {
     return this.suppressionValue;
   }
 
+  /** U-024: what the server says is left in our pouch, PROJECTILE_IDS order; null before the first snapshot of us. */
+  get pouch(): readonly number[] | null {
+    return this.pouchValue;
+  }
+
   get reviveProgress(): number {
     return this.reviveProgressValue;
   }
@@ -649,6 +657,7 @@ export class NetClient {
     this.healthValue = 0;
     this.maxHealthValue = 0;
     this.suppressionValue = 0;
+    this.pouchValue = null;
     this.vitalityValue = 'alive';
     this.vitalTimerValue = 0;
     this.reviveProgressValue = 0;
@@ -1065,6 +1074,8 @@ export class NetClient {
         this.predictor = null;
         this.buffers.delete(msg.netId);
         this.remoteGoneAt.delete(msg.netId);
+        // U-024: the new soldier's pouch, until its own snapshot says.
+        this.pouchValue = [...msg.pouch];
         this.onPossessed?.(msg);
         break;
       }
@@ -1324,6 +1335,9 @@ export class NetClient {
         }
         const suppression = entity.components[COMPONENT_IDS.Suppression];
         if (suppression) this.suppressionValue = suppressionFromWire((suppression[0] as number | undefined) ?? 0);
+        // U-024: what the server says is left in our pouch.
+        const weapon = entity.components[COMPONENT_IDS.Weapon];
+        if (weapon && weapon.length > 3) this.pouchValue = PROJECTILE_IDS.map((_, i) => (weapon[3 + i] as number | undefined) ?? 0);
         const velocity = entity.components[V];
         this.reconcile(
           {
