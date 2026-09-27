@@ -1672,6 +1672,8 @@ export class Session {
       burst: { rounds: 0, pauseUntil: 0 },
       posture: at.posture ?? null,
       coverNear: () => {
+        // U-011: the lever's user, fired on, takes cover where it is — not back inside its garrison's area, through the fire.
+        if (this.leverUse?.enemy === enemy) return null;
         const area = at.posture?.kind === 'garrison' ? at.posture.area : null;
         return area ? { x: area.x, z: area.z, withinM: area.radius } : null;
       },

@@ -17,6 +17,9 @@
  * 2. The counterattack was sent on the garrison's death, so it was spent
  *    during the clear-and-hold (whose hold cannot finish while it comes), and
  *    the defend ran its 330 s on an empty map.
+ *
+ * U-011: the hold is now the garrison's destruction and the defend an
+ * upload; the defend's tests run the upload's clock (started by hand) instead.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -37,8 +40,14 @@ const WORLD = requireWorld('mission-01');
 const START = WORLD.mission!.start;
 const OBJECTIVE = WORLD.mission!.objective;
 const ASSAULT_ENTRY = ENCOUNTER.areas['assault-entry']!;
-const DEFEND = MISSION.objectives.findIndex((o) => o.type === 'defend');
+// U-011: the defend is an upload now — the counterattack's stage, its clock run once a soldier starts it.
+const DEFEND = MISSION.objectives.findIndex((o) => o.type === 'upload');
 const DEFEND_SECONDS = (MISSION.objectives[DEFEND] as { seconds: number }).seconds;
+
+/** A soldier's press at the terminal (the session's own test is `upload.test.ts`): here only the clock matters. */
+function startUpload(session: Session): void {
+  (session as unknown as { missionRun: { startUpload(): boolean } }).missionRun.startUpload();
+}
 
 function play(options: SessionOptions = {}) {
   const session = new Session(undefined, '', 'mission-01', { encounter: ENCOUNTER, testHumanCount: 1, ...options });
@@ -120,6 +129,7 @@ function compound(m: Play) {
   m.until(() => m.objective() === DEFEND, 300);
   // The script hears of the new objective on the next tick.
   m.step(2);
+  startUpload(m.session);
 }
 
 describe('mission-01 enemy pressure (U-001)', () => {
@@ -199,6 +209,7 @@ describe('mission-01 enemy pressure (U-001)', () => {
     m.session.retryMission();
     expect(m.session.mission).toMatchObject({ state: 'progress', objective: DEFEND });
     m.step(2);
+    startUpload(m.session);
     const retried = m.session.spawner!.log.filter((l) => l.group === 'counterattack-push');
     console.log(`[U-001] retry in the defend: ${m.session.spawner!.describe()}`);
     expect(retried.filter((l) => l.wave === 1)).toHaveLength(firstWave);
