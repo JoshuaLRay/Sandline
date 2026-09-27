@@ -114,6 +114,14 @@ describe('mission files (T-4.14)', () => {
     expect(() => parseMission(up({ terminal: 'objective' }))).toThrow(/terminal: expected an object/);
     expect(() => parseMission(up({ seconds: 0 }))).toThrow(/seconds/);
     expect(() => parseMission(up({ area: 'objective' }))).toThrow(/unknown key 'area'/);
+    // U-010: a lever, optional, is a point, a reach by hand, a hold and the encounter group that may pull it.
+    const lever = { at: { x: 12, y: 1, z: 75 }, reachM: 1.8, useSeconds: 3, group: 'garrison' };
+    expect(parseMission(up({ lever })).objectives[0]).toMatchObject({ lever });
+    expect(parseMission(up({})).objectives[0]).not.toHaveProperty('lever');
+    expect(() => parseMission(up({ lever: { ...lever, reachM: 5 } }))).toThrow(/lever.reachM must be a number in \(0, 3\]/);
+    expect(() => parseMission(up({ lever: { ...lever, useSeconds: 0 } }))).toThrow(/lever.useSeconds/);
+    expect(() => parseMission(up({ lever: { ...lever, group: '' } }))).toThrow(/lever.group must name an encounter group/);
+    expect(() => parseMission(up({ lever: { ...lever, pull: 'hard' } }))).toThrow(/lever: unknown key 'pull'/);
   });
 
   it('holds a mission to its world and encounter', () => {
@@ -130,5 +138,11 @@ describe('mission files (T-4.14)', () => {
     const terminal = (t: object) => bad({ type: 'upload', label: 'x', terminal: t, reachM: 2, seconds: 30, onInterrupt: 'keep-progress' });
     expect(() => checkMission(terminal({ x: 10, y: 1.2, z: 12.5 }), encounter, world)).not.toThrow();
     expect(() => checkMission(terminal({ x: 10, y: 1.2, z: 13 }), encounter, world)).toThrow(/terminal is inside 'as-wall-1'/);
+    // U-010: the lever is held to the world and the encounter the same way.
+    const withLever = (lever: object) => bad({ type: 'upload', label: 'x', terminal: { x: 10, y: 1.2, z: 12.5 }, reachM: 2, seconds: 30, onInterrupt: 'keep-progress', lever });
+    const lever = { at: { x: 12, y: 1, z: 75 }, reachM: 1.8, useSeconds: 3, group: 'garrison' };
+    expect(() => checkMission(withLever(lever), encounter, world)).not.toThrow();
+    expect(() => checkMission(withLever({ ...lever, at: { x: 10, y: 1.2, z: 13 } }), encounter, world)).toThrow(/lever.at is inside 'as-wall-1'/);
+    expect(() => checkMission(withLever({ ...lever, group: 'nobody' }), encounter, world)).toThrow(/lever.group: no encounter group 'nobody'/);
   });
 });

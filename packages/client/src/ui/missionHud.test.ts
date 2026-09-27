@@ -42,6 +42,10 @@ describe('the mission HUD line (T-3.34, T-4.14)', () => {
     expect(missionLine(upload({ phase: 'active', satisfied: true, progress: T(15) }))).toBe('Objective: uploading from the relay  ·  25%  ·  45 s left  ·  no need to stay');
     expect(missionLine(upload({ phase: 'interrupted', progress: T(30) }))).toBe('Objective: upload interrupted at 50%  ·  E at the relay to restart it');
     expect(missionLine(upload({ phase: 'interrupted', progress: 0 }))).toBe('Objective: upload interrupted at 0%  ·  E at the relay to restart it');
+    // U-010: an enemy pulling the lever, from the host's snapshot — only while the upload runs.
+    expect(missionLine(upload({ phase: 'active', satisfied: true, progress: T(15) }), 40)).toBe('Objective: uploading from the relay  ·  25%  ·  45 s left  ·  no need to stay  ·  ENEMY AT THE LEVER 40% — stop them');
+    expect(missionLine(upload({ phase: 'interrupted', progress: T(30) }), 40)).not.toContain('LEVER');
+    expect(missionLine(view({}), 40)).not.toContain('LEVER');
     // Complete, it is the mission's (or the next objective's) line.
     expect(missionLine(upload({ state: 'complete', phase: 'active', progress: T(60) }))).toMatch(/^Mission complete/);
   });

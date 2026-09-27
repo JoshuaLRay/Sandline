@@ -2527,7 +2527,7 @@ function frame(): void {
         crouched: input.crouching || mountedGun !== null,
         grounded: sim?.grounded ?? true,
       }),
-      objective: missionLine(net?.mission ?? null),
+      objective: missionLine(net?.mission ?? null, net?.leverPull() ?? 0),
       squad: squadRows(net?.roster ?? [], net?.slot ?? -1, vitalityOfSlot, net?.orders ?? []),
       compass: compassView(hudYaw, { x: rx, z: rz }, compassMarkers),
       hitMarker: hitMarkerOpacity(lastHitAt, hudNow),

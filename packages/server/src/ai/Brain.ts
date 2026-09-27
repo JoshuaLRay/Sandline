@@ -21,6 +21,7 @@ import { registerGrenadeLeaves } from './actions/grenade.ts';
 import { registerFriendlyLeaves } from './actions/friendly.ts';
 import { registerOrderLeaves } from './friendly/orders.ts';
 import { registerPostureLeaves } from './actions/posture.ts';
+import { registerLeverLeaves } from './actions/lever.ts';
 
 /** Ticks between a brain's thoughts: 30 Hz sim, 10 Hz brains. */
 export const BRAIN_PERIOD_TICKS = 3;
@@ -98,14 +99,14 @@ export function brainPhase(netId: number): number {
  * the rifleman's fight (T-3.20, `actions/rifleman.ts`) and its grenades
  * (T-3.22, `actions/grenade.ts`), which fail on a body that is not a fighter;
  * the friendly bot's `follow` and revive (T-3.25/26, `actions/friendly.ts`)
- * and its orders (T-3.28, `friendly/orders.ts`).
+ * and its orders (T-3.28, `friendly/orders.ts`); an enemy's lever (U-010, `actions/lever.ts`).
  */
 export function createBrainRegistry(): BrainRegistry {
   const registry = new BtRegistry<BrainBody, BrainMemory>().action('idle', ({ blackboard }) => {
     blackboard.set('intent', null);
     return 'running';
   });
-  return registerPostureLeaves(registerOrderLeaves(registerFriendlyLeaves(registerGrenadeLeaves(registerRiflemanLeaves(registry)))));
+  return registerLeverLeaves(registerPostureLeaves(registerOrderLeaves(registerFriendlyLeaves(registerGrenadeLeaves(registerRiflemanLeaves(registry))))));
 }
 
 let idleTree: BrainTree | null = null;

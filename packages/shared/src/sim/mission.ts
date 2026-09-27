@@ -39,6 +39,21 @@ export interface MissionPoint {
   z: number;
 }
 
+/**
+ * U-010: a lever beside an upload that the enemy can pull to cut it. One
+ * member of the encounter `group` at a time is sent to it while the upload
+ * runs; it must be alive, within `reachM` of the lever from the eye with a
+ * clear line to it — the rules a soldier's press at the terminal meets — and
+ * hold it for `useSeconds`. Shot, moved off or out of reach first, it has
+ * cut nothing.
+ */
+export interface UploadLever {
+  at: MissionPoint;
+  reachM: number;
+  useSeconds: number;
+  group: string;
+}
+
 export type ObjectiveDef = { label: string } & (
   /** No living enemy inside `area` and a living squad soldier in it, for `holdSeconds` in all; an enemy inside resets it. */
   | { type: 'clear-and-hold'; area: AreaRef; holdSeconds: number }
@@ -58,7 +73,7 @@ export type ObjectiveDef = { label: string } & (
    * lever); `onInterrupt` says whether the upload keeps what it had sent or
    * starts over, and either way a soldier restarts it at the terminal.
    */
-  | { type: 'upload'; terminal: MissionPoint; reachM: number; seconds: number; onInterrupt: UploadOnInterrupt }
+  | { type: 'upload'; terminal: MissionPoint; reachM: number; seconds: number; onInterrupt: UploadOnInterrupt; lever?: UploadLever }
 );
 
 /** Mission-wide failure rules beyond the always-on squad wipe. */
@@ -161,7 +176,7 @@ function point(where: string, v: unknown): MissionPoint {
 }
 
 function parseObjective(where: string, raw: unknown): ObjectiveDef {
-  const head = obj(where, raw, ['type', 'label'], ['area', 'holdSeconds', 'who', 'group', 'seconds', 'breachSeconds', 'terminal', 'reachM', 'onInterrupt']);
+  const head = obj(where, raw, ['type', 'label'], ['area', 'holdSeconds', 'who', 'group', 'seconds', 'breachSeconds', 'terminal', 'reachM', 'onInterrupt', 'lever']);
   const type = head['type'];
   if (typeof type !== 'string' || !(OBJECTIVE_TYPES as readonly string[]).includes(type)) {
     throw new MissionDataError(`${where}.type must be one of ${OBJECTIVE_TYPES.join(', ')}, got ${JSON.stringify(type)}`);
@@ -198,10 +213,19 @@ function parseObjective(where: string, raw: unknown): ObjectiveDef {
       return { type: 'survive', label, seconds: seconds(`${where}.seconds`, o['seconds']) };
     }
     case 'upload': {
-      const o = obj(where, raw, ['type', 'label', 'terminal', 'reachM', 'seconds', 'onInterrupt']);
-      const reachM = o['reachM'];
-      if (typeof reachM !== 'number' || !Number.isFinite(reachM) || reachM <= 0 || reachM > UPLOAD_REACH_MAX_M) {
-        throw new MissionDataError(`${where}.reachM must be a number in (0, ${UPLOAD_REACH_MAX_M}], got ${JSON.stringify(reachM)}`);
+      const o = obj(where, raw, ['type', 'label', 'terminal', 'reachM', 'seconds', 'onInterrupt'], ['lever']);
+      const reach = (at: string, v: unknown): number => {
+        if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0 || v > UPLOAD_REACH_MAX_M) {
+          throw new MissionDataError(`${at} must be a number in (0, ${UPLOAD_REACH_MAX_M}], got ${JSON.stringify(v)}`);
+        }
+        return v;
+      };
+      const reachM = reach(`${where}.reachM`, o['reachM']);
+      let lever: UploadLever | undefined;
+      if (o['lever'] !== undefined) {
+        const l = obj(`${where}.lever`, o['lever'], ['at', 'reachM', 'useSeconds', 'group']);
+        if (typeof l['group'] !== 'string' || l['group'].length === 0) throw new MissionDataError(`${where}.lever.group must name an encounter group`);
+        lever = { at: point(`${where}.lever.at`, l['at']), reachM: reach(`${where}.lever.reachM`, l['reachM']), useSeconds: seconds(`${where}.lever.useSeconds`, l['useSeconds']), group: l['group'] };
       }
       const onInterrupt = o['onInterrupt'];
       if (typeof onInterrupt !== 'string' || !(UPLOAD_ON_INTERRUPT as readonly string[]).includes(onInterrupt)) {
@@ -214,6 +238,7 @@ function parseObjective(where: string, raw: unknown): ObjectiveDef {
         reachM,
         seconds: seconds(`${where}.seconds`, o['seconds']),
         onInterrupt: onInterrupt as UploadOnInterrupt,
+        ...(lever ? { lever } : {}),
       };
     }
   }
@@ -269,9 +294,15 @@ export function checkMission(mission: MissionDef, encounter: Encounter, world: W
     if (o.type === 'destroy' && !encounter.groups.some((g) => g.id === o.group)) throw new MissionDataError(`${at}.group: no encounter group '${o.group}'`);
     if (o.type === 'upload') {
       // A panel inside a wall could never be seen, and so never started.
-      const t = o.terminal;
-      const inside = world.boxes.find((b) => t.x > b.minX && t.x < b.maxX && t.y > b.minY && t.y < b.maxY && t.z > b.minZ && t.z < b.maxZ);
+      const insideOf = (t: MissionPoint) => world.boxes.find((b) => t.x > b.minX && t.x < b.maxX && t.y > b.minY && t.y < b.maxY && t.z > b.minZ && t.z < b.maxZ);
+      const inside = insideOf(o.terminal);
       if (inside) throw new MissionDataError(`${at}.terminal is inside '${inside.id}'`);
+      // U-010: the lever too; and its users are an encounter group's.
+      if (o.lever) {
+        const walled = insideOf(o.lever.at);
+        if (walled) throw new MissionDataError(`${at}.lever.at is inside '${walled.id}'`);
+        if (!encounter.groups.some((g) => g.id === o.lever!.group)) throw new MissionDataError(`${at}.lever.group: no encounter group '${o.lever.group}'`);
+      }
     }
   });
   const protectedGroup = mission.failure?.protectedGroup;

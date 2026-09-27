@@ -63,8 +63,12 @@ export function uploadPrompt(view: MissionView | null, mission: MissionDef | und
   return view.phase === 'idle' ? 'E  START THE UPLOAD' : 'E  RESTART THE UPLOAD';
 }
 
-/** What the HUD shows for this state; empty with no mission. */
-export function missionLine(view: MissionView | null): string {
+/**
+ * What the HUD shows for this state; empty with no mission. `leverPercent`
+ * (U-010) is how far an enemy is through pulling a running upload's lever,
+ * from the host's snapshot: while it is pulling, the line says so.
+ */
+export function missionLine(view: MissionView | null, leverPercent = 0): string {
   if (!view) return '';
   const attempt = view.attempt > 1 ? `  ·  attempt ${view.attempt}` : '';
   if (view.state === 'complete') return `Mission complete${attempt}  ·  P to play again`;
@@ -73,7 +77,8 @@ export function missionLine(view: MissionView | null): string {
     return `${why[0]!.toUpperCase()}${why.slice(1)} — mission failed${attempt}  ·  P to try again`;
   }
   const step = view.objectives > 1 ? ` ${view.objective + 1}/${view.objectives}` : '';
-  return `Objective${step}: ${objectiveText(view)}${attempt}`;
+  const lever = view.type === 'upload' && view.phase === 'active' && leverPercent > 0 ? `  ·  ENEMY AT THE LEVER ${Math.min(100, Math.floor(leverPercent))}% — stop them` : '';
+  return `Objective${step}: ${objectiveText(view)}${lever}${attempt}`;
 }
 
 /** Mission-end credit comes only from the host, including any other slots you played. */
