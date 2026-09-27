@@ -897,6 +897,14 @@ let briefedNet: NetClient | null = null;
 const secondsNow = (): number => performance.now() / 1000;
 const callouts = new CalloutDirector();
 let ownReloading = false;
+/** U-012: the session and mission attempt the callouts are following; another starts them afresh. */
+let calloutsFor: { net: NetClient; attempt: number } | null = null;
+
+/** U-012: forget what the squad has seen and said: a rejoin or a retry says nothing of what came before. */
+function resetCallouts(): void {
+  calloutWatcher.reset();
+  callouts.reset();
+}
 
 function calloutView(net: NetClient): CalloutView {
   const soldiers: SquadSoldier[] = [];
@@ -952,18 +960,35 @@ function onboarding(net: NetClient, sim: { x: number; y: number; z: number } | n
   return hints.update(conditions, now);
 }
 
-/** One callout, heard: its recorded line, or the chirp when there is none (or it will not load). */
+/**
+ * One callout, heard: its recorded line, at its route's level; or, when there
+ * is none (or it will not load), its route's placeholder — the chirp for
+ * squad dialogue, nothing for a body's sound or an enemy's shout (U-012).
+ */
 function playCallout(play: CalloutPlay): void {
-  const opts = { ...(play.at ? { at: { x: play.at.x, y: play.at.y + 1.6, z: play.at.z } } : {}), own: play.own };
-  if (play.file) void audio.playFile(play.file, 'voice', opts).then((ok) => ok || audio.play(CALLOUTS.chirp, opts));
-  else audio.play(CALLOUTS.chirp, opts);
+  const opts = { ...(play.at ? { at: { x: play.at.x, y: play.at.y + 1.6, z: play.at.z } } : {}), own: play.own, gain: play.gain };
+  const stand = CALLOUTS.routes[play.route].placeholder;
+  if (play.file) void audio.playFile(play.file, 'voice', opts).then((ok) => ok || (stand !== null && audio.play(stand, opts)));
+  else if (play.placeholder !== null) audio.play(play.placeholder, opts);
 }
 
 function playCallouts(net: NetClient): void {
   const now = performance.now() / 1000;
+  const attempt = net.mission?.attempt ?? 0;
+  if (calloutsFor?.net !== net || calloutsFor.attempt !== attempt) {
+    if (calloutsFor) resetCallouts();
+    calloutsFor = { net, attempt };
+  }
   const view = calloutView(net);
   const ear = audio.listener;
   for (const cue of calloutWatcher.update(view, now)) {
+    if (cue.enemy !== undefined) {
+      // U-012: an enemy's shout, from where it stands.
+      const enemy = view.enemies.find((e) => e.netId === cue.enemy);
+      const play = enemy ? callouts.say(cue.event, { slot: -1, enemy: enemy.netId, at: enemy.at, self: false }, ear, now) : null;
+      if (play) playCallout(play);
+      continue;
+    }
     const who = view.soldiers.find((s) => s.slot === cue.slot);
     if (!who) continue;
     const play = callouts.say(cue.event, { slot: who.slot, at: who.self ? null : who.at, self: who.self }, ear, now);
@@ -1278,6 +1303,8 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
       // slot and soldier again within the host's grace time.
       const resume = net.resumeToken;
       net.resetForRejoin();
+      // U-012: nothing heard before the drop is called out again, or late.
+      resetCallouts();
       // The map only means something to a room being made (T-3.35 follow-up); a rejoin takes the room's.
       // T-4.22: who we are to this host, if it has told us before.
       net.join(roomJoined, choice.key, roomJoined === '' ? choice.world : '', joinedOnce ? resume : '', readIdentity(choice.host), !joinedOnce && roomJoined === '' && choice.quick);

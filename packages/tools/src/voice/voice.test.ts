@@ -22,6 +22,7 @@ import { toPcm16, wavBytes } from '../audio/render.ts';
 import { formants, integratedLoudness, medianPitch, normaliseLoudness, peakOf, resample, splitTakes, trackPitch } from './analysis.ts';
 import { findSpeakers, nameTakes, renderVoices } from './process.ts';
 import { pitchMarks, semitones, shiftVoice } from './psola.ts';
+import { VOICE_CUES_FILE, voiceCuesMarkdown } from './cues.ts';
 import { RAW_DIR, VOICE_DIR, VOICE_RENDERS_FILE, type VoiceRendersManifest, sha256, voiceInputsHash } from './renders.ts';
 import { recording, voicedTone } from './testSignals.ts';
 import { decodeWav } from './wavIn.ts';
@@ -265,6 +266,28 @@ describe('a whole run (T-2.48)', () => {
     const again = renderVoices(root, SMALL);
     expect(again.lines.map((l) => sha256(l.wav))).toEqual(run.lines.map((l) => sha256(l.wav)));
   }, 60_000);
+
+  it('renders the enemy\'s section in the enemy\'s voices only, and the squad\'s in the squad\'s (U-012)', () => {
+    const config = {
+      ...parseVoices({
+        ...RAW_VOICES,
+        script: { takesPerLine: 2, sections: { orders: { lines: ['copy'], render: ['normal'] }, enemy: { speakers: 'enemy', lines: ['open-fire'], render: ['shout'] } } },
+        treatments: ['dry'],
+      }),
+      profiles: VOICES.profiles.slice(0, 1),
+      enemyProfiles: VOICES.enemyProfiles.slice(0, 1),
+    };
+    const root = temp();
+    const dir = join(root, 'pat');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'CONSENT.md'), 'I agree to my voice being used in Sandline — pat, 2026-09-27\n');
+    const say = (f0: number) => voicedTone({ f0, seconds: 0.45, toF0: f0 * 0.85 });
+    writeFileSync(join(dir, 'orders-normal.wav'), wavBytes(toPcm16(recording([say(110), say(112)]).samples)));
+    writeFileSync(join(dir, 'enemy-shout.wav'), wavBytes(toPcm16(recording([say(150), say(155)]).samples)));
+    const run = renderVoices(root, config);
+    expect(run.lines.map((l) => l.file).sort()).toEqual(['e0/open-fire.shout.dry.0.wav', 'e0/open-fire.shout.dry.1.wav', 's0/copy.normal.dry.0.wav', 's0/copy.normal.dry.1.wav']);
+    expect(run.missing).toEqual([]);
+  }, 60_000);
 });
 
 describe('what is committed (T-2.48)', () => {
@@ -273,6 +296,23 @@ describe('what is committed (T-2.48)', () => {
   it('was processed from what is uploaded now — run `pnpm gen:voice` if this fails', () => {
     expect(manifest.inputsHash).toBe(voiceInputsHash());
     expect(() => findSpeakers(RAW_DIR, VOICES)).not.toThrow();
+  });
+
+  it('the cue manifest is what the data and the renders say now — run `pnpm gen:voice` if this fails (U-012)', () => {
+    const doc = readFileSync(VOICE_CUES_FILE, 'utf8');
+    expect(doc).toBe(voiceCuesMarkdown(manifest));
+    // It names every missing clip the new cues need: the enemy's shouts and the last breath among them.
+    expect(doc).toMatch(/\| `dying-sigh` \| `hit-hurt` \| `dying` \| \*\*all missing\*\*/);
+    expect(doc).toMatch(/\| `open-fire` \| `enemy-shout` \| `enemy-engage` \| \*\*all missing\*\* \(e0, e1, e2 × dry\)/);
+    expect(doc).toContain('`radio-chirp` — a PLACEHOLDER, not a voice');
+  });
+
+  it('the recording script names every line by its id, and every section\'s pass files', () => {
+    const script = readFileSync(new URL('../../../../docs/audio/voice-script.md', import.meta.url), 'utf8');
+    for (const section of VOICES.sections) {
+      for (const line of [...section.lines, ...section.hurt]) expect(script, line).toContain(`\`${line}\``);
+      expect(script, section.id).toContain(`(\`${section.id}-…\``);
+    }
   });
 
   it('every line the manifest lists is committed as written, and nothing else is', () => {

@@ -67,7 +67,7 @@ export interface VoiceBoard {
 export function voiceBoard(manifest: VoiceRendersManifest | null): VoiceBoard {
   if (!manifest) return { summary: 'No voice manifest — run pnpm gen:voice.', rows: [] };
   const keys = Object.keys(manifest.lines).sort();
-  if (keys.length === 0) return { summary: 'No voice lines yet: nobody has recorded docs/audio/voice-script.md. Callouts play the radio chirp until then.', rows: [] };
+  if (keys.length === 0) return { summary: 'No voice lines yet: nobody has recorded docs/audio/voice-script.md. Until then squad dialogue plays the radio chirp as a PLACEHOLDER, and bodies\' sounds and enemy shouts are silent; docs/audio/voice-cues.md lists every clip still missing (U-012).', rows: [] };
   const speakers = manifest.speakers.map((s) => s.name).join(', ');
   return {
     summary: `${keys.length} lines from ${manifest.speakers.length} speaker(s) (${speakers})${manifest.missing.length ? `; ${manifest.missing.length} not recorded` : ''}.`,

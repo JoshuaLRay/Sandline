@@ -17,8 +17,14 @@ export type VoiceStyle = (typeof VOICE_STYLES)[number];
 export const VOICE_TREATMENTS = ['dry', 'radio', 'distant'] as const;
 export type VoiceTreatment = (typeof VOICE_TREATMENTS)[number];
 
+/** U-012: who says a section's lines — the squad's six voices, or the enemy's. */
+export const VOICE_SPEAKERS = ['squad', 'enemy'] as const;
+export type VoiceSpeakers = (typeof VOICE_SPEAKERS)[number];
+
 export interface VoiceSection {
   id: string;
+  /** Whose voices say it (U-012): rendered for `profiles` (squad) or `enemyProfiles` (enemy). */
+  speakers: VoiceSpeakers;
   /** Said in the normal and shouted passes, in order. */
   lines: readonly string[];
   /** Said in the hurt pass, in order; empty when the section has none. */
@@ -48,6 +54,8 @@ export interface VoicesConfig {
   pitchRangeHz: readonly [number, number];
   loudness: { targetLufs: number; toleranceLu: number; ceilingDb: number };
   profiles: readonly VoiceProfile[];
+  /** U-012: the enemy's voices, an enemy speaking with `enemyProfiles[netId % length]`; they say only enemy sections. */
+  enemyProfiles: readonly VoiceProfile[];
   radio: { highpassHz: number; lowpassHz: number; drive: number; noiseDb: number; squelchIn: string; squelchOut: string };
   distant: { lowpassHz: number; reverb: ReverbDef };
   treatments: readonly VoiceTreatment[];
@@ -111,7 +119,7 @@ function parseFilters(where: string, v: unknown): FilterDef[] {
 
 /** Validate the voice file; every squelch must be a recipe in `sounds`. */
 export function parseVoices(raw: unknown, sounds: SoundsConfig = SOUNDS): VoicesConfig {
-  const o = obj('voices', raw, ['sampleRate', 'script', 'split', 'pitchRangeHz', 'loudness', 'profiles', 'radio', 'distant', 'treatments', 'variants', 'variantSemitones']);
+  const o = obj('voices', raw, ['sampleRate', 'script', 'split', 'pitchRangeHz', 'loudness', 'profiles', 'enemyProfiles', 'radio', 'distant', 'treatments', 'variants', 'variantSemitones']);
   const script = obj('voices.script', o['script'], ['takesPerLine', 'sections']);
   const rawSections = script['sections'];
   if (typeof rawSections !== 'object' || rawSections === null || Array.isArray(rawSections)) throw new VoicesDataError('voices.script.sections must be an object of sections by id');
@@ -121,7 +129,11 @@ export function parseVoices(raw: unknown, sounds: SoundsConfig = SOUNDS): Voices
     if (id === '$comment') continue;
     const where = `voices.script.sections.${id}`;
     if (!ID.test(id)) throw new VoicesDataError(`${where}: id must match ${ID}`);
-    const s = obj(where, def, ['lines', 'render'], ['hurt']);
+    const s = obj(where, def, ['lines', 'render'], ['hurt', 'speakers']);
+    const speakers = s['speakers'] === undefined ? 'squad' : s['speakers'];
+    if (typeof speakers !== 'string' || !(VOICE_SPEAKERS as readonly string[]).includes(speakers)) {
+      throw new VoicesDataError(`${where}.speakers must be one of ${VOICE_SPEAKERS.join(', ')}, got ${JSON.stringify(speakers)}`);
+    }
     const lines = ids(`${where}.lines`, s['lines'], false);
     const hurt = s['hurt'] === undefined ? [] : ids(`${where}.hurt`, s['hurt'], true);
     for (const line of [...lines, ...hurt]) {
@@ -130,7 +142,7 @@ export function parseVoices(raw: unknown, sounds: SoundsConfig = SOUNDS): Voices
     }
     const render = oneOfList(`${where}.render`, s['render'], VOICE_STYLES);
     if (render.includes('hurt') && hurt.length === 0) throw new VoicesDataError(`${where}.render: 'hurt' needs hurt lines`);
-    sections.push({ id, lines, hurt, render });
+    sections.push({ id, speakers: speakers as VoiceSpeakers, lines, hurt, render });
   }
   if (sections.length === 0) throw new VoicesDataError('voices.script.sections must name at least one section');
 
@@ -141,10 +153,8 @@ export function parseVoices(raw: unknown, sounds: SoundsConfig = SOUNDS): Voices
   if (pitchRangeHz[0] >= pitchRangeHz[1]) throw new VoicesDataError('voices.pitchRangeHz: min must be below max');
   const ld = obj('voices.loudness', o['loudness'], ['targetLufs', 'toleranceLu', 'ceilingDb']);
 
-  const rawProfiles = o['profiles'];
-  if (!Array.isArray(rawProfiles) || rawProfiles.length === 0) throw new VoicesDataError('voices.profiles must list the slots’ voices');
-  const profiles = rawProfiles.map((p, i): VoiceProfile => {
-    const where = `voices.profiles[${i}]`;
+  const profileOf = (list: string) => (p: unknown, i: number): VoiceProfile => {
+    const where = `voices.${list}[${i}]`;
     const q = obj(where, p, ['id', 'pitch', 'formant', 'eq', 'shoutDrive'], ['speaker']);
     if (typeof q['id'] !== 'string' || !ID.test(q['id'])) throw new VoicesDataError(`${where}.id must match ${ID}`);
     return {
@@ -155,8 +165,15 @@ export function parseVoices(raw: unknown, sounds: SoundsConfig = SOUNDS): Voices
       shoutDrive: num(`${where}.shoutDrive`, q['shoutDrive'], 0, 20),
       speaker: q['speaker'] === undefined || q['speaker'] === null ? null : int(`${where}.speaker`, q['speaker'], 0, 64),
     };
-  });
-  if (new Set(profiles.map((p) => p.id)).size !== profiles.length) throw new VoicesDataError('voices.profiles: two profiles share an id');
+  };
+  const rawProfiles = o['profiles'];
+  if (!Array.isArray(rawProfiles) || rawProfiles.length === 0) throw new VoicesDataError('voices.profiles must list the slots’ voices');
+  const profiles = rawProfiles.map(profileOf('profiles'));
+  const rawEnemy = o['enemyProfiles'];
+  if (!Array.isArray(rawEnemy) || rawEnemy.length === 0 || rawEnemy.length > 16) throw new VoicesDataError('voices.enemyProfiles must list 1–16 enemy voices');
+  const enemyProfiles = rawEnemy.map(profileOf('enemyProfiles'));
+  const allIds = [...profiles, ...enemyProfiles].map((p) => p.id);
+  if (new Set(allIds).size !== allIds.length) throw new VoicesDataError('voices.profiles: two profiles share an id');
   if (profiles.length !== MAX_SLOTS) throw new VoicesDataError(`voices.profiles must list ${MAX_SLOTS} voices, one a slot, got ${profiles.length}`);
 
   const rd = obj('voices.radio', o['radio'], ['highpassHz', 'lowpassHz', 'drive', 'noiseDb', 'squelchIn', 'squelchOut']);
@@ -187,6 +204,7 @@ export function parseVoices(raw: unknown, sounds: SoundsConfig = SOUNDS): Voices
       ceilingDb: num('voices.loudness.ceilingDb', ld['ceilingDb'], -12, 0),
     },
     profiles,
+    enemyProfiles,
     radio: {
       highpassHz: num('voices.radio.highpassHz', rd['highpassHz'], 20, 2000),
       lowpassHz: num('voices.radio.lowpassHz', rd['lowpassHz'], 1000, 10_000),
@@ -206,6 +224,16 @@ export function parseVoices(raw: unknown, sounds: SoundsConfig = SOUNDS): Voices
 }
 
 export const VOICES: VoicesConfig = parseVoices(RAW);
+
+/** U-012: the voices that say a section's lines. */
+export function sectionProfiles(section: VoiceSection, config: VoicesConfig = VOICES): readonly VoiceProfile[] {
+  return section.speakers === 'enemy' ? config.enemyProfiles : config.profiles;
+}
+
+/** U-012: the section a line is in, or undefined. */
+export function sectionOfLine(line: string, config: VoicesConfig = VOICES): VoiceSection | undefined {
+  return config.sections.find((s) => s.lines.includes(line) || s.hurt.includes(line));
+}
 
 /** The lines a section's pass is recorded with, in the order they are said. */
 export function passLines(section: VoiceSection, style: VoiceStyle): readonly string[] {

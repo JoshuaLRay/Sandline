@@ -158,9 +158,13 @@ describe('the callout watcher (T-2.49)', () => {
     const w = new CalloutWatcher();
     w.update(view(), 0);
     w.onShot(99, 3, 20, view(), 1);
-    expect(w.update(view(), 1)).toEqual([{ event: 'hit', slot: 2 }]);
+    expect(w.update(view(), 1)).toEqual([
+      { event: 'hit', slot: 2 },
+      { event: 'hit-grunt', slot: 2 },
+    ]);
     const down = view({ soldiers: [soldier(0, 0, 0), soldier(1, 3, 0), soldier(2, -3, 0, { vitality: 'downed' })] });
     expect(w.update(down, 2)).toEqual([
+      { event: 'downed-cry', slot: 2 },
       { event: 'down', slot: 2 },
       { event: 'man-down', slot: 1 },
     ]);
