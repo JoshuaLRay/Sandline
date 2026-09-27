@@ -60,7 +60,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-019](docs/backlog/U-019.md) | Specify the six named characters and their skills | Squad | P2 | REVIEW | — | [#153](https://github.com/JoshuaLRay/Sandline/pull/153) (proposal; owner decisions D-1–D-9 open) |
 | [U-020](docs/backlog/U-020.md) | Add the roster’s missing weapon archetypes | Squad | P2 | BLOCKED | U-019 | — |
 | [U-021](docs/backlog/U-021.md) | Bind six persistent characters to the squad slots | Squad | P2 | BLOCKED | U-019, U-020 | — |
-| [U-022](docs/backlog/U-022.md) | Implement the faster dual-primary support role | Squad | P2 | BLOCKED | U-018, U-021 | — |
+| [U-022](docs/backlog/U-022.md) | Implement dual-primary rules for Preach and Support | Squad | P2 | BLOCKED | U-018, U-020, U-021 | — |
+| [U-029](docs/backlog/U-029.md) | Enforce squad weapon exchanges and left-handed loot access | Squad | P2 | BLOCKED | U-018, U-020, U-021 | — |
 | [U-023](docs/backlog/U-023.md) | Break approved character skills into implementation tasks | Squad | P2 | BLOCKED | U-019 | — |
 
 ## Existing work retained
