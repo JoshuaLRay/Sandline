@@ -34,11 +34,23 @@ export const PISTOL_SIGHT_Y = 0.03;
 export const AT4_SIGHT: readonly [number, number] = [0.07, 0.12];
 /** A rear aperture's open radius: a ghost ring wide enough to frame the post. */
 const APERTURE = 0.0055;
+/**
+ * The AR's rear ring (U-004): its opening and its outer radius. The eye sits
+ * 0.17 m behind it at ADS, so the opening is 3.6° round the aim point and
+ * the rim a thin circle outside that, where the old 5.5 mm porthole in a
+ * 12 mm ring hid everything within 4° of the target.
+ */
+const AR_RING_OPEN = 0.0105;
+const AR_RING_OUTER = 0.0125;
 
-/** A front sight post from `base` up to its tip on the sight line, two ears either side. */
-function frontPost(b: WeaponBuilder, z0: number, z1: number, base: number, tip: number): void {
+/**
+ * A front sight post from `base` up to its tip on the sight line, two ears
+ * either side ending `earDrop` below the tip. The AR's ears stop well short
+ * (U-004), so the post alone stands up to the line and marks the aim point.
+ */
+function frontPost(b: WeaponBuilder, z0: number, z1: number, base: number, tip: number, earDrop = 0.004): void {
   b.box([-0.0022, base, z0], [0.0022, tip, z1], 'steel');
-  for (const x of [-0.009, 0.006]) b.box([x, base, z0 - 0.004], [x + 0.003, tip - 0.004, z1 + 0.004], 'steel');
+  for (const x of [-0.009, 0.006]) b.box([x, base, z0 - 0.004], [x + 0.003, tip - earDrop, z1 + 0.004], 'steel');
 }
 
 /** The M4's lower half and stock, shared with the DMR: buffer tube, stock, lower, grip, magazine, well. */
@@ -100,7 +112,9 @@ const M4: Build = (b) => {
   arLower(b);
   arUpper(b);
   // The carry handle, kept under the sight line, and its rear sight: an
-  // open aperture the eye looks through, centred on the line (SIGHT_Y).
+  // open aperture the eye looks through, centred on the line (SIGHT_Y) — a
+  // ghost ring (U-004), a thin rim round a wide opening, so at the eye it
+  // frames the front post instead of hiding the target round it.
   b.extrude([
     [0.2, 0.034],
     [0.232, 0.034],
@@ -114,8 +128,8 @@ const M4: Build = (b) => {
     [0.336, 0.056],
   ], 0.012, 'steel');
   b.box([-0.012, 0.054, 0.2], [0.012, 0.062, 0.36], 'steel');
-  b.box([-0.012, 0.062, 0.248], [0.012, 0.066, 0.266], 'steel');
-  b.ring(0.251, 0.263, APERTURE, 0.012, 12, 'steel', RIFLE_SIGHT_Y);
+  b.box([-0.012, 0.062, 0.248], [0.012, RIFLE_SIGHT_Y - AR_RING_OUTER + 0.001, 0.266], 'steel');
+  b.ring(0.251, 0.263, AR_RING_OPEN, AR_RING_OUTER, 20, 'steel', RIFLE_SIGHT_Y);
   // Handguard, its cap and the delta ring; the front sight's base and post; the barrel and flash hider.
   b.lathe([
     [0.398, 0.036],
@@ -138,7 +152,7 @@ const M4: Build = (b) => {
     [0.582, 0.05],
     [0.57, 0.05],
   ], 0.007, 'steel');
-  frontPost(b, 0.573, 0.578, 0.05, RIFLE_SIGHT_Y);
+  frontPost(b, 0.573, 0.578, 0.05, RIFLE_SIGHT_Y, 0.011);
   b.lathe([
     [0.59, 0.0095],
     [0.78, 0.0085],
