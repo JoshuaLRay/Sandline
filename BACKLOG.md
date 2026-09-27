@@ -50,7 +50,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-009](docs/backlog/U-009.md) | Add an interaction-driven upload objective | Mission | P1 | DONE | — | [#147](https://github.com/JoshuaLRay/Sandline/pull/147) |
 | [U-010](docs/backlog/U-010.md) | Let enemies interrupt uploads by using the lever | Mission | P1 | READY | U-009 | — |
 | [U-011](docs/backlog/U-011.md) | Replace mission-01 hold timers with active objectives | Mission | P1 | BLOCKED | U-001, U-009, U-010 | — |
-| [U-012](docs/backlog/U-012.md) | Define voice cues and extend event routing | Audio | P2 | REVIEW | — | — |
+| [U-012](docs/backlog/U-012.md) | Define voice cues and extend event routing | Audio | P2 | DONE | — | [#148](https://github.com/JoshuaLRay/Sandline/pull/148) |
 | [U-013](docs/backlog/U-013.md) | Supply and process the real voice recordings | Audio | P2 | BLOCKED | U-012; owner recordings or explicit ADR-017 change | — |
 | [U-014](docs/backlog/U-014.md) | Play intelligible radio-treated squad dialogue | Audio | P2 | BLOCKED | U-012, U-013 | — |
 | [U-015](docs/backlog/U-015.md) | Add friendly hit, downed and death vocal reactions | Audio | P2 | BLOCKED | U-012, U-013 | — |
