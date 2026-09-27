@@ -57,6 +57,8 @@ import {
 } from '@sandline/shared';
 
 const TRACER_SECONDS = 0.11;
+/** How long a shot or a reload of ours may wait for the host to catch up before its word stands (U-028). */
+export const MAGAZINE_HOLD_SECONDS = 1.5;
 const IMPACT_SECONDS = 0.8;
 /** Hard cap on live debug objects, so a held trigger cannot leak the scene. */
 const MAX_EFFECTS = 400;
@@ -139,6 +141,13 @@ export class CombatQA {
   lastHit: LastHit | null = null;
 
   private readonly raycaster = new THREE.Raycaster();
+  /** U-028: when each of our shots fired that the host has not taken yet, oldest first. */
+  private pendingShots: number[] = [];
+  /** The host's magazine count last seen, for the gun in hand; null when unknown. */
+  private lastHostAmmo: number | null = null;
+  /** When our own last reload finished, and whether the host's has landed since. */
+  private reloadDoneAt = Number.NEGATIVE_INFINITY;
+  private hostCaughtUp = true;
   /** Predicted rounds whose streaks the next frame draws, from its barrel (U-003). Reused. */
   private readonly queued: QueuedTracer[] = [];
   private queuedCount = 0;
@@ -219,6 +228,10 @@ export class CombatQA {
     }
     this.state = createWeaponState(this.def);
     this.state.ammo = Math.max(0, Math.min(ammo, this.def.magSize));
+    // Another soldier's magazine: nothing of ours is in flight to it.
+    this.pendingShots = [];
+    this.lastHostAmmo = null;
+    this.hostCaughtUp = true;
   }
 
   /** Switch weapons. Each keeps a fresh magazine; this is a range, not a match. */
@@ -248,6 +261,47 @@ export class CombatQA {
   }
 
   /**
+   * U-028: follow the host's magazine for the gun in hand (`host.weapon` a
+   * WEAPON_ORDER index). The page spends a round the tick its trigger
+   * resolves and reloads on its own clock — a counter that waited a round
+   * trip would feel broken — and the host does both a moment later. So:
+   *
+   * - each shot of ours is pending until the host's count drops for it, and
+   *   is taken off what the host says until then; one the host never takes
+   *   (it refused it) lapses after `holdSeconds`;
+   * - while our own reload runs, and after it until the host's lands (its
+   *   count rises) or `holdSeconds` pass, our full magazine stands;
+   * - otherwise the count is the host's, less what is pending — never more
+   *   than the host has.
+   *
+   * Nothing while the host is on another gun (a switch in flight) or ours is
+   * a mounted gun (no loadout index).
+   */
+  reconcileMagazine(host: { weapon: number; ammo: number }, now: number, holdSeconds = MAGAZINE_HOLD_SECONDS): void {
+    if (this.index < 0 || host.weapon !== this.index) {
+      this.lastHostAmmo = null;
+      return;
+    }
+    const last = this.lastHostAmmo;
+    if (last !== null && host.ammo < last) this.pendingShots.splice(0, last - host.ammo);
+    if (last !== null && host.ammo > last) {
+      // The host's reload has landed: shots from before ours finished are history.
+      this.hostCaughtUp = true;
+      this.pendingShots = this.pendingShots.filter((at) => at >= this.reloadDoneAt);
+    }
+    this.lastHostAmmo = host.ammo;
+    this.pendingShots = this.pendingShots.filter((at) => now - at < holdSeconds);
+    if (isReloading(this.state, now)) return;
+    if (!this.hostCaughtUp && now - this.reloadDoneAt < holdSeconds) return;
+    this.state.ammo = Math.max(0, Math.min(this.def.magSize, host.ammo - this.pendingShots.length));
+  }
+
+  /** Shots of ours the host has not yet taken off its magazine (U-028). */
+  get pendingShotCount(): number {
+    return this.pendingShots.length;
+  }
+
+  /**
    * One simulation tick. `tick` and `now` are passed in rather than read here:
    * the spread seed is (tick, entityId, shotIndex, pelletIndex), so the tick
    * number is part of the result, not bookkeeping.
@@ -262,12 +316,21 @@ export class CombatQA {
      * auto-reload below restarted it on the very next tick. The countdown
      * looked like it was resetting itself because it was.
      */
+    const wasReloading = this.state.reloadEndsAt !== 0;
     finishReload(this.def, this.state, now);
+    if (wasReloading && this.state.reloadEndsAt === 0) {
+      // U-028: ours is done; the host's, started a moment later, is not quite yet.
+      this.reloadDoneAt = now;
+      this.hostCaughtUp = false;
+    }
 
     let fired: Shot | null = null;
     if (allowsFire(this.def, ctx.firing, ctx.triggerEdge)) {
       fired = tryFire(this.def, this.state, now, ctx.ads, ctx.prone ?? false, suppressionConeUnits(ctx.suppression ?? 0));
-      if (fired !== null) this.shotsFired += 1;
+      if (fired !== null) {
+        this.shotsFired += 1;
+        this.pendingShots.push(now);
+      }
     }
 
     // Convenience for a range: an empty magazine reloads itself rather than
@@ -447,6 +510,9 @@ export class CombatQA {
     for (const effect of this.effects) this.dispose(effect);
     this.effects.length = 0;
     this.queuedCount = 0;
+    this.pendingShots = [];
+    this.lastHostAmmo = null;
+    this.hostCaughtUp = true;
     this.state = createWeaponState(this.def);
     this.shotsFired = 0;
     this.pelletsFired = 0;

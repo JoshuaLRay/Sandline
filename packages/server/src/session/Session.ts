@@ -41,6 +41,7 @@ import {
   FIRST_PROJECTILE_NET_ID,
   PROJECTILE_IDS,
   POUCH_COUNT_MAX,
+  AMMO_MAX,
   type ProjectileDef,
   type ProjectileState,
   type ProjectileWorld,
@@ -1904,6 +1905,7 @@ export class Session {
       onFire: (c, msg) => { if (this.roomStarted) this.applyFire(c, msg); },
       onThrow: (c, msg) => { if (this.roomStarted) this.applyThrow(c, msg); },
       onEquip: (c, msg) => { if (this.roomStarted) this.applyEquip(c, msg); },
+      onReload: (c) => { if (this.roomStarted) this.applyReload(c); },
       onAiDebugRequest: (c, on) => this.applyAiDebugRequest(c, on),
       onOrder: (c, msg) => { if (this.roomStarted) this.applyOrder(c, msg); },
       onMark: (c, msg) => { if (this.roomStarted) this.applyMark(c, msg); },
@@ -2981,6 +2983,22 @@ export class Session {
     slot.heldProjectile = pouchIndex;
   }
 
+  /**
+   * U-028: a reload the player started on the page — the reload key, or an
+   * empty magazine reloading itself — run on the host's own weapon state and
+   * clock, so the magazine the host fires from is the one the page shows.
+   * Refused, as a forged one must be, while down or dead, on a mounted gun,
+   * or with a grenade or a rocket in hand; `startReload` itself refuses a
+   * full magazine or one already reloading.
+   */
+  private applyReload(conn: ServerConnection): void {
+    const slot = this.slots.find((s) => s.connection === conn);
+    if (!slot || !isAlive(slot.health) || slot.mounted || slot.heldProjectile >= 0) return;
+    const nowSeconds = this.nowMs / 1000;
+    finishReload(slot.weapon, slot.weaponState, nowSeconds);
+    startReload(slot.weapon, slot.weaponState, nowSeconds);
+  }
+
   /** The boxes and the floor a projectile collides with: this session's world. */
   private projectileWorld(): ProjectileWorld {
     return { boxes: this.collisionBoxes, groundY: this.moveConfig.groundY };
@@ -3169,6 +3187,10 @@ export class Session {
       this.broadcast(this.buildSnapshot());
       return;
     }
+
+    // U-028: a player's reload is done when its clock says, not when they next fire —
+    // the magazine the snapshot carries, and the next shot, are the full one.
+    for (const slot of this.slots) if (!slot.isBot) finishReload(slot.weapon, slot.weaponState, now / 1000);
 
     // T-3.32: the encounter's spawns, on mission time (ticks since the session began), before anyone perceives.
     const aiFrom = this.profileAi ? performance.now() : 0;
@@ -3977,15 +3999,17 @@ export class Session {
           // A vault in progress, whole (T-2.21): a predictor reconciling
           // mid-vault continues the same traversal instead of falling out of it.
           [COMPONENT_IDS.Vault]: vaultToLevels(s.state.vault),
-          // The weapon in hand and its reload, for the body (T-2.26). The
-          // server only knows the reloads it started itself (an empty
-          // magazine on a Fire); a client's manual reload is its own picture.
+          // The weapon in hand and its reload, for the body (T-2.26): the
+          // host's own reload, which since U-028 includes a player's manual
+          // one (a Reload from the page).
           [COMPONENT_IDS.Weapon]: [
             Math.max(0, (WEAPON_IDS as readonly string[]).indexOf(s.weapon.id)),
             Math.min(100, Math.round(reloadProgress(s.weapon, s.weaponState, this.nowMs / 1000) * 100)),
             s.heldProjectile + 1,
             // U-024: what is left in the pouch, for the page's own count to follow.
             ...PROJECTILE_IDS.map((_, i) => Math.min(POUCH_COUNT_MAX, s.pouch[i] ?? 0)),
+            // U-028: and the rounds in the magazine.
+            Math.min(AMMO_MAX, s.weaponState.ammo),
           ],
           // T-3.16: how suppressed, so the page can show it and widen its cone to match.
           [COMPONENT_IDS.Suppression]: [suppressionToWire(suppressionLevel(s.suppression, this.nowMs / 1000))],

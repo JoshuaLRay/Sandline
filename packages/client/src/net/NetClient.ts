@@ -256,6 +256,8 @@ export class NetClient {
   private suppressionValue = 0;
   /** U-024: the server's count of each pouch item we carry, PROJECTILE_IDS order; null until a snapshot says. */
   private pouchValue: number[] | null = null;
+  /** U-028: the host's magazine for our soldier: the gun (a WEAPON_IDS index) and the rounds in it; null until a snapshot says. */
+  private magazineValue: { weapon: number; ammo: number } | null = null;
   /**
    * Replicated with the health (T-2.13). Vitality is gameplay, not cosmetic:
    * the predictor needs it to hold still when the server does (B-05), and the
@@ -507,6 +509,11 @@ export class NetClient {
     return this.suppressionValue;
   }
 
+  /** U-028: what the host says is in our magazine, and which gun it is; null before the first snapshot of us. */
+  get magazine(): { readonly weapon: number; readonly ammo: number } | null {
+    return this.magazineValue;
+  }
+
   /** U-024: what the server says is left in our pouch, PROJECTILE_IDS order; null before the first snapshot of us. */
   get pouch(): readonly number[] | null {
     return this.pouchValue;
@@ -658,6 +665,7 @@ export class NetClient {
     this.maxHealthValue = 0;
     this.suppressionValue = 0;
     this.pouchValue = null;
+    this.magazineValue = null;
     this.vitalityValue = 'alive';
     this.vitalTimerValue = 0;
     this.reviveProgressValue = 0;
@@ -768,6 +776,12 @@ export class NetClient {
   equip(item: number): void {
     if (!this.joinedFlag) return;
     this.transport.send(encodeMessage({ kind: 'Equip', item }), 'reliable');
+  }
+
+  /** U-028: a reload started on the page, for the host to run on its own clock. Reliable, like an Equip. */
+  reload(): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage({ kind: 'Reload' }), 'reliable');
   }
 
   /**
@@ -1074,8 +1088,9 @@ export class NetClient {
         this.predictor = null;
         this.buffers.delete(msg.netId);
         this.remoteGoneAt.delete(msg.netId);
-        // U-024: the new soldier's pouch, until its own snapshot says.
+        // U-024: the new soldier's pouch, until its own snapshot says; U-028, its magazine too.
         this.pouchValue = [...msg.pouch];
+        this.magazineValue = { weapon: msg.weapon, ammo: msg.ammo };
         this.onPossessed?.(msg);
         break;
       }
@@ -1338,6 +1353,10 @@ export class NetClient {
         // U-024: what the server says is left in our pouch.
         const weapon = entity.components[COMPONENT_IDS.Weapon];
         if (weapon && weapon.length > 3) this.pouchValue = PROJECTILE_IDS.map((_, i) => (weapon[3 + i] as number | undefined) ?? 0);
+        // U-028: the host's magazine, and the gun it is in.
+        if (weapon && weapon.length > 3 + PROJECTILE_IDS.length) {
+          this.magazineValue = { weapon: (weapon[0] as number | undefined) ?? 0, ammo: (weapon[3 + PROJECTILE_IDS.length] as number | undefined) ?? 0 };
+        }
         const velocity = entity.components[V];
         this.reconcile(
           {

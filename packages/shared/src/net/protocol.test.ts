@@ -81,6 +81,7 @@ const SAMPLES: Message[] = [
   { kind: 'Possessed', netId: 300, slot: 0, resume: '', weapon: 0, ammo: 0, pouch: [] },
   { kind: 'Throw', tick: 900, yaw: 4095, pitch: 3072, projectile: 1 },
   { kind: 'Equip', item: 5 },
+  { kind: 'Reload' },
   {
     kind: 'ScriptState',
     blockers: [

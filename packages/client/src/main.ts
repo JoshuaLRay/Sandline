@@ -1959,6 +1959,8 @@ function frame(): void {
       equipSent = { net, item };
     }
 
+    // U-028: the magazine is the host's; our own shots and reload in flight to it are held off its count.
+    if (net.magazine) combat.reconcileMagazine(net.magazine, tickNumber * TICK_SECONDS);
     const triggerEdge = input.consumeTriggerEdge();
     const triggerReleased = input.consumeTriggerRelease();
     const shot = combat.tick(tickNumber, tickNumber * TICK_SECONDS, {
@@ -1989,6 +1991,8 @@ function frame(): void {
     // T-2.46: our own reload, stage by stage.
     {
       const mag = combat.magazine(tickNumber * TICK_SECONDS);
+      // U-028: a reload that has just begun here — the key or an empty magazine — is the host's to run too.
+      if (mag.reloading && !ownReloading && combat.weaponIndex >= 0) net.reload();
       for (const stage of ownReload.update(mag.reloading ? Math.max(mag.reloadFraction, 1e-6) : 0)) playOwn(reloadSound(stage));
       ownReloading = mag.reloading;
       if (mag.reloading) hints.did('reload', secondsNow());
