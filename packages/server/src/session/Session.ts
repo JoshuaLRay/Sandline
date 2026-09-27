@@ -39,6 +39,10 @@ import {
   type World,
   requireWorld,
   FIRST_PROJECTILE_NET_ID,
+  FIRST_PICKUP_NET_ID,
+  PICKUPS,
+  PICKUP_AMMO_BITS,
+  PICKUP_NET_ID_LIMIT,
   PROJECTILE_IDS,
   POUCH_COUNT_MAX,
   AMMO_MAX,
@@ -576,6 +580,8 @@ export interface EnemyEntity {
    * its `deploy.seconds` old. Null for one that does not.
    */
   deployedAt: number | null;
+  /** U-017: whether its death has left its weapon on the ground — once, however often the death is seen. */
+  dropped: boolean;
   /** T-4.29: the emplacement it is on, or null. */
   mounted: EmplacementEntity | null;
   /** T-3.23: rounds into the current burst, and when a pause after the last one ends (seconds). */
@@ -586,6 +592,22 @@ export interface EnemyEntity {
   coverNear(): { x: number; z: number; withinM: number } | null;
   /** U-010: the lever the session has sent it to, or null. */
   leverJob(): { x: number; y: number; z: number; reachM: number } | null;
+}
+
+/** U-017: a dead enemy's firearm on the ground. */
+export interface PickupEntity {
+  readonly netId: number;
+  /** A WEAPON_IDS index. */
+  readonly weapon: number;
+  /** Rounds left in its magazine. */
+  readonly ammo: number;
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  /** Which way it lies, wire units: the body's facing. */
+  readonly yaw: number;
+  /** When it fell, session seconds. */
+  readonly droppedAt: number;
 }
 
 /** Where and how to spawn an enemy. */
@@ -718,6 +740,9 @@ export class Session {
    */
   private readonly projectiles: ActiveProjectile[] = [];
   private nextProjectileNetId = FIRST_PROJECTILE_NET_ID;
+  /** U-017: the weapons on the ground, oldest first, and the next pickup netId (never reused). */
+  private readonly pickupList: PickupEntity[] = [];
+  private nextPickupNetId = FIRST_PICKUP_NET_ID;
   /**
    * Enemies (T-3.10): the second class of entity that comes and goes. Spawned
    * by `spawnEnemy`, despawned by the session when a corpse's time is up.
@@ -1267,6 +1292,8 @@ export class Session {
     // U-010: nobody at the lever, nobody barred from it.
     this.leverUse = null;
     this.leverBarred.clear();
+    // U-017: the retried world starts with nothing on the ground (its ids are not handed out again).
+    this.pickupList.length = 0;
     this.projectiles.length = 0;
     // T-4.29: every gun free, cold and belted again.
     for (const gun of this.emplacementList) this.resetEmplacement(gun);
@@ -1668,6 +1695,7 @@ export class Session {
       nextThrowAt: 0,
       still: createStillWatch(),
       deployedAt: null,
+      dropped: false,
       mounted: null,
       burst: { rounds: 0, pauseUntil: 0 },
       posture: at.posture ?? null,
@@ -1807,11 +1835,51 @@ export class Session {
    * ticks or a blast inside one — so no later step can move it.
    */
   private killEnemy(enemy: EnemyEntity): void {
+    // U-017: a death — not a retry clearing the living — leaves its firearm, once.
+    if (isDead(enemy.health) && !enemy.dropped) {
+      enemy.dropped = true;
+      this.dropWeapon(enemy);
+    }
     if (enemy.mounted) this.dismountEnemy(enemy);
     this.cover?.release(enemy.netId);
     enemy.brain?.stop();
     enemy.follower = null;
     enemy.input = idleInput(enemy.yaw);
+  }
+
+  /**
+   * U-017: a dead enemy's firearm, on the ground where it fell (`PICKUPS`):
+   * only a weapon the rules list — its own, never an emplacement's gun it
+   * was on — with the rounds left in its magazine, under a netId never used
+   * before. Past the cap the oldest goes; with the band spent, nothing more
+   * drops.
+   */
+  private dropWeapon(enemy: EnemyEntity): void {
+    const weapon = (WEAPON_IDS as readonly string[]).indexOf(enemy.def.weapon);
+    if (weapon < 0 || !PICKUPS.weapons.includes(enemy.def.weapon) || this.nextPickupNetId >= PICKUP_NET_ID_LIMIT) return;
+    while (this.pickupList.length >= PICKUPS.max) this.pickupList.shift();
+    this.pickupList.push({
+      netId: this.nextPickupNetId++,
+      weapon,
+      ammo: Math.max(0, Math.min(enemy.weaponState.ammo, (1 << PICKUP_AMMO_BITS) - 1)),
+      x: enemy.state.x,
+      y: enemy.state.y,
+      z: enemy.state.z,
+      yaw: enemy.yaw,
+      droppedAt: this.nowMs / 1000,
+    });
+  }
+
+  /** U-017: pickups past their time go. */
+  private expirePickups(nowSeconds: number): void {
+    for (let i = this.pickupList.length - 1; i >= 0; i--) {
+      if (nowSeconds - this.pickupList[i]!.droppedAt >= PICKUPS.despawnSeconds) this.pickupList.splice(i, 1);
+    }
+  }
+
+  /** U-017: the pickups on the ground, oldest first — for tests and U-018's taking of one. */
+  get pickups(): readonly Readonly<PickupEntity>[] {
+    return this.pickupList;
   }
 
   /** Projectiles in the air right now. The harness HUD reads it (T-2.32). */
@@ -3533,6 +3601,8 @@ export class Session {
     this.updateMounts(nowSeconds);
     // U-010: the enemy at the upload's lever.
     this.updateLever(nowSeconds);
+    // U-017: weapons on the ground past their time.
+    this.expirePickups(nowSeconds);
 
     const walkFrom = this.profileAi ? performance.now() : 0;
     this.stepEnemies(nowSeconds);
@@ -4256,6 +4326,17 @@ export class Session {
      * laid — and an Emplacement saying which kind, who is on it and how hot it
      * is. Static and few; a delta carries nothing for one nobody has touched.
      */
+    /** U-017: pickups — where each lies, which way, and what it is. They come and go as projectiles do. */
+    for (const p of this.pickupList) {
+      entities.push({
+        netId: p.netId,
+        components: {
+          [T]: [quantize(p.x, POSITION), quantize(p.y, POSITION), quantize(p.z, POSITION), p.yaw & 0x3ff, 0],
+          [COMPONENT_IDS.Pickup]: [p.weapon, p.ammo],
+        },
+      });
+    }
+
     for (const g of this.emplacementList) {
       const gunnerSlot = g.gunnerNetId === 0 ? -1 : this.slots.findIndex((s) => s.netId === g.gunnerNetId);
       entities.push({

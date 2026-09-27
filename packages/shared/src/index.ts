@@ -22,6 +22,7 @@ export * from './sim/range.ts';
 export * from './sim/damage.ts';
 export * from './sim/enemies.ts';
 export * from './sim/emplacement.ts';
+export * from './sim/pickups.ts';
 export * from './sim/regions.ts';
 export * from './audio/sounds.ts';
 export * from './audio/mix.ts';

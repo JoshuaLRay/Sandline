@@ -188,11 +188,12 @@ export const ENEMY_FACTION_BITS = 2;
  * bytes, and enemies are the many, long-lived entities — forty of them in a
  * snapshot — where projectiles are a handful of short-lived ones that can
  * afford a third byte. An id is never reused within a session (NetId's rule),
- * so a session that has spawned all 14,384 spawns no more: a rail, like
- * `MAX_PROJECTILES`, that no mission comes near.
+ * so a session that has spawned all 10,288 spawns no more: a rail, like
+ * `MAX_PROJECTILES`, that no mission comes near. (U-017 gave the band's top
+ * 4,096 ids, from 12288, to world pickups — `FIRST_PICKUP_NET_ID`.)
  */
 export const FIRST_ENEMY_NET_ID = 2000;
-export const ENEMY_NET_ID_LIMIT = 16384;
+export const ENEMY_NET_ID_LIMIT = 12288;
 
 /** True for a netId in the enemy band. Bounded on both sides, as `isRangeTarget` is. */
 export function isEnemyNetId(netId: number): boolean {

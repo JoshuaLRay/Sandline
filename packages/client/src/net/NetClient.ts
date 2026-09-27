@@ -92,6 +92,20 @@ export interface RemoteEnemy {
 }
 
 /** A weapon emplacement as this client sees it (T-4.29): where, whose, how hot, and the way it is laid. */
+/** U-017: a dead enemy's firearm on the ground, as the host replicates it. */
+export interface RemotePickup {
+  netId: number;
+  /** A WEAPON_IDS index. */
+  weapon: number;
+  /** Rounds left in its magazine. */
+  ammo: number;
+  x: number;
+  y: number;
+  z: number;
+  /** Which way it lies, wire units. */
+  yaw: number;
+}
+
 export interface RemoteEmplacement {
   netId: number;
   /** Index into EMPLACEMENT_IDS. */
@@ -309,6 +323,8 @@ export class NetClient {
   private readonly remoteEnemies = new Map<number, RemoteEnemy>();
   /** T-4.29: every emplacement in view, by netId. Static, so the latest snapshot is the truth; nothing to interpolate. */
   private readonly remoteEmplacements = new Map<number, RemoteEmplacement>();
+  /** U-017: the weapons on the ground, by netId. */
+  private readonly remotePickups = new Map<number, RemotePickup>();
   /**
    * Every bot's current order and every standing mark, as the host last
    * broadcast them whole (T-3.27). What this client sent is not here until
@@ -688,6 +704,7 @@ export class NetClient {
     this.remoteSlots.clear();
     this.remoteEnemies.clear();
     this.remoteEmplacements.clear();
+    this.remotePickups.clear();
     this.remoteGoneAt.clear();
     this.ordersValue = [];
     this.marksValue = [];
@@ -859,6 +876,11 @@ export class NetClient {
   }
 
   /** T-4.29: every emplacement in view, as the newest snapshot has it. */
+  /** U-017: the weapons lying on the ground, as the host last said. */
+  pickups(): RemotePickup[] {
+    return [...this.remotePickups.values()];
+  }
+
   emplacements(): RemoteEmplacement[] {
     return [...this.remoteEmplacements.values()];
   }
@@ -1284,6 +1306,7 @@ export class NetClient {
     const projectilesSeen = new Set<number>();
     const remotesSeen = new Set<number>();
     const emplacementsSeen = new Set<number>();
+    const pickupsSeen = new Set<number>();
     for (const entity of entities) {
       const transform = entity.components[T];
       if (!transform) continue;
@@ -1298,6 +1321,22 @@ export class NetClient {
        * that fell into the remote list would be handed a humanoid mesh, a pose
        * driver and a foot solver by the renderer.
        */
+      // U-017: a weapon on the ground — not a soldier, never interpolated; it lies where the host says until it is gone.
+      const pickup = entity.components[COMPONENT_IDS.Pickup];
+      if (pickup) {
+        pickupsSeen.add(entity.netId);
+        this.remotePickups.set(entity.netId, {
+          netId: entity.netId,
+          weapon: (pickup[0] as number | undefined) ?? 0,
+          ammo: (pickup[1] as number | undefined) ?? 0,
+          x,
+          y,
+          z,
+          yaw: (transform[3] as number) & 0x3ff,
+        });
+        continue;
+      }
+
       // An emplacement (T-4.29): a gun, not a soldier and not a projectile. Read whole, never interpolated.
       const emplacement = entity.components[COMPONENT_IDS.Emplacement];
       if (emplacement) {
@@ -1449,6 +1488,8 @@ export class NetClient {
     }
     // An emplacement out of view is simply not there until it is again (T-4.29).
     for (const netId of [...this.remoteEmplacements.keys()]) if (!emplacementsSeen.has(netId)) this.remoteEmplacements.delete(netId);
+    // U-017: a pickup the snapshot no longer carries is gone (taken, expired, or cleared by a retry).
+    for (const netId of [...this.remotePickups.keys()]) if (!pickupsSeen.has(netId)) this.remotePickups.delete(netId);
   }
 
   private reconcile(authoritative: MoveState, lastProcessedInputTick: number): void {

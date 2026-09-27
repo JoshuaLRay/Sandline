@@ -1,0 +1,6 @@
+{
+  "$comment": "U-017: what a dead enemy leaves on the ground. An enemy that dies drops the firearm it carried, as a world pickup, when that weapon is in `weapons`: the squad's primaries (the carbine, the marksman rifle, the breacher). Everything else is a documented NO — the LMG an MG enemy carries is not a loadout weapon yet (U-020 adds the archetypes; U-018 equips), a sidearm is never a primary, a launcher is the pouch's, and an emplacement's gun stays on its mount (an enemy killed on a gun drops its own weapon, not the gun). A pickup keeps the rounds left in the magazine at death. It lies where the body fell for `despawnSeconds`, and at most `max` lie in a session: the oldest goes when another would pass the cap. A checkpoint retry or a restart clears them all, with the enemies; a session's end is the end of its pickups.",
+  "despawnSeconds": 120,
+  "max": 24,
+  "weapons": ["carbine", "marksman", "breacher"]
+}

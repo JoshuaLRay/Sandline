@@ -81,6 +81,7 @@ import { type ClientLink, DEFAULT_LINK, type LinkConditions, LocalServer, type L
 import { type NavMesh, initNav } from '@sandline/server/nav';
 import { NetClient, type RemoteEmplacement, type ServerDetonation, type ServerShot } from './net/NetClient.ts';
 import { type EmplacementModel, createEmplacementModel } from './weapons/emplacementModel.ts';
+import { PickupModels } from './weapons/pickupModels.ts';
 import {
   HostUrlError,
   RemoteServer,
@@ -542,6 +543,8 @@ let mountedGun: RemoteEmplacement | null = null;
 let unmountedWeaponIndex = 0;
 /** T-4.29: the emplacements drawn, by netId. */
 const emplacementModels = new Map<number, EmplacementModel>();
+/** U-017: dead enemies' weapons, where they fell. */
+const pickupModels = new PickupModels(scene);
 
 /** The placed emplacement the host's entity stands for: the one at its place. */
 function placedFor(gun: RemoteEmplacement, world: World | null): PlacedEmplacement | null {
@@ -1425,6 +1428,7 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
     model.dispose();
   }
   emplacementModels.clear();
+  pickupModels.clear();
   mountedGun = null;
   input.setViewLimits(null);
   combat.reset();
@@ -2257,6 +2261,8 @@ function frame(): void {
     model.dispose();
     emplacementModels.delete(netId);
   }
+  // U-017: the weapons on the ground.
+  pickupModels.update(net ? net.pickups() : []);
 
   // T-3.29: the squad's orders and marks, where the soldiers they name are drawn.
   if (net) {
