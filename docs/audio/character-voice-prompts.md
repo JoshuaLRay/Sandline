@@ -43,7 +43,7 @@ For a prompt-capable generator, use this same wrapper with one character identit
 ```text
 Create one clean spoken clip in an ongoing series for the same fictional Sandline squad. The character voice identity below is locked. Reuse the exact same synthetic speaker identity used for every other clip for this roster ID; do not create a new speaker who merely sounds similar. Do not imitate or clone a real person.
 
-Keep the voice's perceived age range, gender presentation, pitch center, pitch range, timbre, resonance, accent, articulation, and habitual cadence fixed. Only the delivery tag may change the energy and projection. A shout remains the same voice, just louder and more urgent; it does not become a different person.
+Keep the voice's perceived age range, gender presentation, pitch center, pitch range, timbre, resonance, accent, articulation, and habitual cadence fixed. Respect the differences in this character block; do not flatten the squad into six nearly identical synthetic voices. Keep the timing natural rather than robotic, monotone, mechanical, or metronomic. Only the delivery tag may change energy and projection. A shout remains the same voice, just louder and more urgent; it does not become a different person.
 
 Use clear, neutral, rhotic U.S. English. Speak the supplied line exactly as written. Do not invent dialogue, say the character's name unless it appears in the line, add ad-libs, or add another speaker. Output one dry voice with no music, ambience, weapon sounds, radio static, reverb, or other effects; the game adds its own treatment.
 
