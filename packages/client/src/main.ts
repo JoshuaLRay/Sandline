@@ -30,6 +30,7 @@
  */
 import { showAssetShelf } from './assets/shelf.ts';
 import { LevelPieces } from './assets/levelPieces.ts';
+import { MissionProps } from './assets/missionProps.ts';
 import { AssetLoader, gltfParser } from './assets/loader.ts';
 import { PackLoader, type PackProgress } from './assets/packs.ts';
 import { loadDetailedSkin, loadFighterSkin } from './character/assetSoldier.ts';
@@ -319,6 +320,7 @@ function buildScenery(world: World): void {
     }
   }
   void levelPieces.show(world, kitWanted);
+  missionProps.show(world.id);
 }
 
 /** T-4.15 blocker meshes are separate from static scenery because their state changes at runtime. */
@@ -367,6 +369,8 @@ const showPackProgress = (progress: PackProgress): void => loadScreen.update(pro
 loadScreen.show('Loading initial assets');
 const initialPackReady = packLoader.loadInitial(showPackProgress);
 const levelPieces = new LevelPieces(scene, assetLoader);
+/** U-011: the terminal and lever of the world's mission, drawn where they are. */
+const missionProps = new MissionProps(scene);
 buildScenery(activeWorld);
 // T-4.05: `?assets` stands every asset the pipeline made in a row behind the spawn line.
 if (new URLSearchParams(location.search).has('assets')) void showAssetShelf(scene, renderer);

@@ -60,6 +60,8 @@ export interface SquadView {
   reachable(from: OrderPoint, to: OrderPoint): boolean;
   /** T-3.28: a soldier an order names, by netId, or null for nobody. */
   soldier(netId: number): NamedSoldier | null;
+  /** U-011: the terminal of an upload waiting to be started (or restarted), and its reach; null when none waits. */
+  terminal?(): { x: number; y: number; z: number; reachM: number } | null;
 }
 
 /** A slot the session gave a squad view: a bot that can follow. */

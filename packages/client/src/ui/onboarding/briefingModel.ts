@@ -40,7 +40,7 @@ export function objectiveText(o: ObjectiveDef): string {
     case 'survive':
       return `Survive for ${seconds(o.seconds)}`;
     case 'upload':
-      return `Start the upload at ${o.label} and see it through ${seconds(o.seconds)}`;
+      return `Start the upload at ${o.label} and see it through ${seconds(o.seconds)}${o.lever ? ' — keep the enemy off its lever' : ''}`;
   }
 }
 
