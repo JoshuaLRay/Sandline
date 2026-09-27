@@ -64,6 +64,13 @@ export const Suppression = defineComponent({ level: Types.ui8 });
  */
 export const Emplacement = defineComponent({ kind: Types.ui8, gunner: Types.ui8, heat: Types.ui8, overheated: Types.ui8 });
 
+/**
+ * U-017: a world pickup — a dead enemy's firearm on the ground: which weapon
+ * (a WEAPON_IDS index) and the rounds left in its magazine. Its place rides
+ * `Transform`.
+ */
+export const Pickup = defineComponent({ weapon: Types.ui8, ammo: Types.ui8 });
+
 /** Marker: this entity is sent to clients. */
 export const Replicated = defineComponent();
 
@@ -93,6 +100,8 @@ export const COMPONENT_IDS = {
   Suppression: 10,
   /** T-4.29: a weapon emplacement, its gunner and its heat. */
   Emplacement: 11,
+  /** U-017: a world pickup, and what it is. */
+  Pickup: 12,
 } as const;
 
 export type ComponentName = keyof typeof COMPONENT_IDS;

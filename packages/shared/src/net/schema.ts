@@ -11,6 +11,7 @@
 import { COMPONENT_IDS, type ComponentName } from '../ecs/components.ts';
 import { ENEMY_ARCHETYPE_BITS, ENEMY_FACTION_BITS } from '../sim/enemies.ts';
 import { EMPLACEMENT_HEAT_BITS, EMPLACEMENT_KIND_BITS } from '../sim/emplacement.ts';
+import { PICKUP_AMMO_BITS, PICKUP_WEAPON_BITS } from '../sim/pickups.ts';
 import { PROJECTILE_IDS } from '../sim/ballistics.ts';
 import { SUPPRESSION_BITS } from '../sim/suppression.ts';
 import { ANGLE_BITS_WIRE, HEALTH, POSITION, VELOCITY, dequantize, quantize, quantizeAngle } from './quantize.ts';
@@ -161,6 +162,12 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // and `overheated` the flag the gun will not fire under. The gun's own
     // yaw and pitch are the entity's Transform.
     fields: [uint('kind', EMPLACEMENT_KIND_BITS), uint('gunner', 3), uint('heat', EMPLACEMENT_HEAT_BITS), uint('overheated', 1)],
+  },
+  {
+    id: COMPONENT_IDS.Pickup,
+    name: 'Pickup',
+    // U-017. `weapon` indexes WEAPON_IDS; `ammo` is the rounds left in its magazine. Its place is the Transform.
+    fields: [uint('weapon', PICKUP_WEAPON_BITS), uint('ammo', PICKUP_AMMO_BITS)],
   },
 ];
 
