@@ -84,12 +84,13 @@ function arLower(b: WeaponBuilder): void {
   b.box([-0.004, -0.078, 0.19], [0.004, -0.072, 0.25], 'steel');
   b.box([-0.004, -0.078, 0.244], [0.004, -0.046, 0.25], 'steel');
   b.box([-0.02, -0.074, 0.25], [0.02, -0.046, 0.318], 'steel');
-  b.extrude([
+  // The magazine, its own part: a reload takes it out of the well (U-006).
+  b.part('magazine', () => b.extrude([
     [0.254, -0.074],
     [0.312, -0.074],
     [0.33, -0.205],
     [0.272, -0.21],
-  ], 0.014, 'steel');
+  ], 0.014, 'steel'));
 }
 
 /** The M4's upper: receiver, charging handle, ejection port and forward assist. */

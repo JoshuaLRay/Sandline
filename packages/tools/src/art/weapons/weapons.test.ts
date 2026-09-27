@@ -10,7 +10,7 @@ import { ASSET_MANIFEST, checkBudgets } from '@sandline/shared';
 import { createWeaponModel, weaponAssetId, weaponMuzzle } from '../../../../client/src/weapons/weaponModels.ts';
 import { createIO, sha256 } from '../../assets/pipeline.ts';
 import { weaponRegion } from './atlas.ts';
-import { weaponDocuments } from './index.ts';
+import { weaponDocument, weaponDocuments } from './index.ts';
 import { WEAPONS, buildWeapon } from './weapons.ts';
 
 const REPO = new URL('../../../../../', import.meta.url);
@@ -195,6 +195,36 @@ describe('the AR sight picture is open (U-004)', () => {
     }
     // The post itself is there at that height.
     expect(rayMesh(mesh, [0, sight[1] - 0.008, 0.52], [0, 0, 1], 0.1)).not.toBeNull();
+  });
+});
+
+describe('the magazine is a part of its own (U-006)', () => {
+  for (const key of ['m4', 'dmr']) {
+    it(`'weapon-${key}' writes its magazine as a child node the reload can move, and nothing is lost or doubled`, () => {
+      const mesh = buildWeapon(key);
+      const parts = mesh.parts ?? [];
+      expect(parts.map((p) => p.name)).toEqual(['magazine']);
+      const magazine = parts[0]!;
+      expect(magazine.count).toBeGreaterThan(0);
+      // The magazine's vertices hang under the well: below the receiver, round the well's run along the bore.
+      const ys: number[] = [];
+      const zs: number[] = [];
+      for (const i of mesh.indices.slice(magazine.start, magazine.start + magazine.count)) {
+        ys.push(mesh.positions[i * 3 + 1]!);
+        zs.push(mesh.positions[i * 3 + 2]!);
+      }
+      expect(Math.max(...ys)).toBeLessThanOrEqual(-0.07);
+      expect(Math.min(...zs)).toBeGreaterThan(0.24);
+      expect(Math.max(...zs)).toBeLessThan(0.34);
+      const doc = weaponDocument(key, mesh, new Uint8Array());
+      const [weapon] = doc.getRoot().getDefaultScene()!.listChildren();
+      expect(weapon!.listChildren().map((n) => n.getName())).toEqual(['magazine']);
+      const triangles = doc.getRoot().listMeshes().flatMap((m) => m.listPrimitives()).reduce((n, p) => n + p.getIndices()!.getCount() / 3, 0);
+      expect(triangles).toBe(mesh.indices.length / 3);
+    });
+  }
+  it('the other weapons are one piece', () => {
+    for (const key of ['shotgun', 'pistol', 'm249', 'ak']) expect(buildWeapon(key).parts ?? []).toEqual([]);
   });
 });
 

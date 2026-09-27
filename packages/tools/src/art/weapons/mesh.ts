@@ -29,6 +29,13 @@ export interface BuiltMesh {
   normals: number[];
   uvs: number[];
   indices: number[];
+  /**
+   * Named pieces that move on their own (U-006: the magazine a reload takes
+   * out), as runs of `indices`. The file writes each as its own node under
+   * the weapon's, so the page can find it by name; everything else is the
+   * weapon itself.
+   */
+  parts?: { name: string; start: number; count: number }[];
 }
 
 const r5 = (n: number): number => Math.round(n * 1e5) / 1e5;
@@ -219,6 +226,14 @@ export class WeaponBuilder {
       region,
       (x0 + x1) / 2,
     );
+  }
+
+  /** Everything `draw` adds is the named part (U-006). Parts do not nest. */
+  part(name: string, draw: (b: this) => void): this {
+    const start = this.out.indices.length;
+    draw(this);
+    (this.out.parts ??= []).push({ name, start, count: this.out.indices.length - start });
+    return this;
   }
 
   build(): BuiltMesh {
