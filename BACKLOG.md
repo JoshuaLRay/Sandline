@@ -45,7 +45,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-006](docs/backlog/U-006.md) | Keep the gun visible during a readable reload animation | Weapon feel | P1 | DONE | — | [#142](https://github.com/JoshuaLRay/Sandline/pull/142) |
 | [U-007](docs/backlog/U-007.md) | Make reload sounds audible and synchronized | Audio | P1 | DONE | — | [#143](https://github.com/JoshuaLRay/Sandline/pull/143) |
 | [U-008](docs/backlog/U-008.md) | Correct excessive right panning of the local gun | Audio | P1 | DONE | — | [#144](https://github.com/JoshuaLRay/Sandline/pull/144) |
-| [U-024](docs/backlog/U-024.md) | Keep grenade and rocket counts synchronized | Maintenance | P1 | REVIEW | — | — |
+| [U-024](docs/backlog/U-024.md) | Keep grenade and rocket counts synchronized | Maintenance | P1 | DONE | — | [#145](https://github.com/JoshuaLRay/Sandline/pull/145) |
 | [U-028](docs/backlog/U-028.md) | Make manual reloads server-authoritative | Maintenance | P1 | READY | — | — |
 | [U-009](docs/backlog/U-009.md) | Add an interaction-driven upload objective | Mission | P1 | READY | — | — |
 | [U-010](docs/backlog/U-010.md) | Let enemies interrupt uploads by using the lever | Mission | P1 | BLOCKED | U-009 | — |
