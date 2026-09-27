@@ -29,7 +29,7 @@ Keep a row for each character before generating a batch. Fill in values from the
 
 | Roster ID | Prompt revision | Generator/model version | Persistent speaker ID | Fixed settings / seed | Reference clip | Continuity check |
 |---|---|---|---|---|---|---|
-| `kessler` | `v1` | TBD | TBD | TBD | TBD | Pending |
+| `preach` | `v1` | TBD | TBD | TBD | TBD | Pending |
 | `brennan` | `v1` | TBD | TBD | TBD | TBD | Pending |
 | `holloway` | `v1` | TBD | TBD | TBD | TBD | Pending |
 | `ortiz` | `v1` | TBD | TBD | TBD | TBD | Pending |
@@ -63,14 +63,14 @@ Exact line: {{PASTE ONE EXACT LINE FROM voice-script.md}}
 
 The roster supplies roles and stable IDs. Preach's name is approved. Brennan, Holloway, Ortiz, Marsh, and Vance remain proposed display names. The gender presentation, pitch, accent, and delivery details below are creative proposals and can be revised; they do not establish a character's ethnicity, region, age, biography, or personality beyond the voice direction.
 
-### Slot 0 — Preach (`kessler`), squad leader, AR
+### Slot 0 — Preach (`preach`), squad leader, AR
 
 **Identity anchor:** The squad's compact, steady command voice. Masculine presentation; adult baritone centered in the medium-low range, never a bass growl. Use a dry-warm tone with focused chest resonance and a small, natural grain at the edges of consonants. Keep the resonance centered and contained rather than broad or booming. Pitch movement is narrow to moderate: start level, emphasize key tactical words cleanly, and let the ends of statements settle downward. Use deliberate, even phrasing with short purposeful pauses between thought groups. Consonants are firm and exact; vowels stay natural and unforced. His neutral General American accent is rhotic and has no strong regional markers. The baseline is controlled authority and contained urgency, not anger or theatrical command.
 
 **Keep distinct:** Preach is firmer and more compact than Brennan, warmer and heavier than Ortiz, and lower and less buoyant than Holloway or Vance. He has more chest presence than Marsh without Brennan's depth or grain.
 
 ```text
-LOCKED IDENTITY — PREACH / kessler. Use one fixed synthetic speaker identity for every clip. Adult masculine baritone centered in the medium-low range, firm but never bass-deep. The timbre is dry-warm with compact, centered chest resonance and a faint grain at consonant edges; no rumble, fry, or rasp. Keep pitch movement narrow to moderate, with level starts, deliberate stress on tactical words, and settled falling statement endings. Use even, deliberate phrasing with short purposeful pauses. Consonants are firm and exact; vowels remain natural and unforced. Accent: neutral, rhotic General American with no strong regional markers. Baseline: calm authority and contained urgency, never anger or theatrical command. Relative anchor: firmer and more compact than Brennan, warmer and heavier than Ortiz, lower and less buoyant than Holloway or Vance, and more chest-present than Marsh. Preserve all of these traits unchanged across every line and performance. Do not make Preach booming, growling, theatrical, or constantly loud.
+LOCKED IDENTITY — PREACH / preach. Use one fixed synthetic speaker identity for every clip. Adult masculine baritone centered in the medium-low range, firm but never bass-deep. The timbre is dry-warm with compact, centered chest resonance and a faint grain at consonant edges; no rumble, fry, or rasp. Keep pitch movement narrow to moderate, with level starts, deliberate stress on tactical words, and settled falling statement endings. Use even, deliberate phrasing with short purposeful pauses. Consonants are firm and exact; vowels remain natural and unforced. Accent: neutral, rhotic General American with no strong regional markers. Baseline: calm authority and contained urgency, never anger or theatrical command. Relative anchor: firmer and more compact than Brennan, warmer and heavier than Ortiz, lower and less buoyant than Holloway or Vance, and more chest-present than Marsh. Preserve all of these traits unchanged across every line and performance. Do not make Preach booming, growling, theatrical, or constantly loud.
 ```
 
 ### Slot 1 — Brennan (`brennan`), LMG
