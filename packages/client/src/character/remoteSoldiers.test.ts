@@ -51,7 +51,7 @@ function slotEntity(netId: number, slot: number, x = 1): Entity {
       [H]: [100, 100, 0, 0, 0, 0],
       [COMPONENT_IDS.PlayerSlot]: [slot, 1],
       [COMPONENT_IDS.Crouch]: [0, 0],
-      [COMPONENT_IDS.Weapon]: [0, 0, 0, 0, 0, 30],
+      [COMPONENT_IDS.Weapon]: [0, 0, 0, 0, 0, 30, 0],
     },
   };
 }

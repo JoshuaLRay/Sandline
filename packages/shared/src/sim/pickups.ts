@@ -18,6 +18,8 @@ export interface PickupRules {
   despawnSeconds: number;
   /** The most that lie in a session at once; the oldest goes first. */
   max: number;
+  /** U-018: how near a soldier's eye must be to take one, metres. */
+  reachM: number;
   /** The weapons a dead enemy drops (WEAPON_IDS entries); anything else drops nothing. */
   weapons: readonly string[];
 }
@@ -27,19 +29,21 @@ export class PickupDataError extends Error {}
 export function parsePickups(raw: unknown): PickupRules {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new PickupDataError('pickups: expected an object');
   const o = raw as Record<string, unknown>;
-  for (const k of Object.keys(o)) if (!['despawnSeconds', 'max', 'weapons', '$comment'].includes(k)) throw new PickupDataError(`pickups: unknown key '${k}'`);
+  for (const k of Object.keys(o)) if (!['despawnSeconds', 'max', 'reachM', 'weapons', '$comment'].includes(k)) throw new PickupDataError(`pickups: unknown key '${k}'`);
   const despawnSeconds = o['despawnSeconds'];
   if (typeof despawnSeconds !== 'number' || !Number.isFinite(despawnSeconds) || despawnSeconds <= 0 || despawnSeconds > 3600) {
     throw new PickupDataError(`pickups.despawnSeconds must be in (0, 3600], got ${JSON.stringify(despawnSeconds)}`);
   }
   const max = o['max'];
   if (typeof max !== 'number' || !Number.isInteger(max) || max < 1 || max > 64) throw new PickupDataError(`pickups.max must be a whole number in [1, 64], got ${JSON.stringify(max)}`);
+  const reachM = o['reachM'];
+  if (typeof reachM !== 'number' || !Number.isFinite(reachM) || reachM <= 0 || reachM > 3) throw new PickupDataError(`pickups.reachM must be in (0, 3], got ${JSON.stringify(reachM)}`);
   const weapons = o['weapons'];
   if (!Array.isArray(weapons)) throw new PickupDataError('pickups.weapons must be a list of weapon ids');
   for (const [i, w] of weapons.entries()) {
     if (typeof w !== 'string' || !(WEAPON_IDS as readonly string[]).includes(w)) throw new PickupDataError(`pickups.weapons[${i}]: '${String(w)}' is not a loadout weapon (${WEAPON_IDS.join(', ')})`);
   }
-  return { despawnSeconds, max, weapons: weapons as string[] };
+  return { despawnSeconds, max, reachM, weapons: weapons as string[] };
 }
 
 export const PICKUPS: PickupRules = parsePickups(RAW);

@@ -17,6 +17,23 @@ import { createWeaponModel } from './weaponModels.ts';
 const LIE_ROLL = Math.PI / 2;
 const LIE_HEIGHT = 0.04;
 
+/**
+ * U-018: the pickup nearest `eye` within `reachM` of it, for the interact
+ * prompt — a hint: the host judges the press, the line to the gun included.
+ */
+export function pickupInReach(pickups: readonly RemotePickup[], eye: { x: number; y: number; z: number }, reachM: number): RemotePickup | null {
+  let best: RemotePickup | null = null;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const p of pickups) {
+    const d = Math.hypot(eye.x - p.x, eye.y - p.y, eye.z - p.z);
+    if (d <= reachM && d < bestD) {
+      best = p;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
 export class PickupModels {
   private readonly models = new Map<number, THREE.Group>();
 

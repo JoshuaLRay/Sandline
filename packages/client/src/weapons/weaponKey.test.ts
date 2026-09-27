@@ -36,6 +36,14 @@ describe('weapon slot keys (U-005)', () => {
     expect(weaponIndexForKey('Digit3', ready({ loadoutGuns: ['carbine', 'sidearm'] }))).toBeNull();
   });
 
+  it('key 1 draws the primary the host says — a gun taken off the ground — and 2 keeps the pistol (U-018)', () => {
+    expect(weaponIndexForKey('Digit1', ready({ loadoutGuns: ['marksman', 'sidearm'], primary: 'marksman' }))).toBe(WEAPON_IDS.indexOf('marksman'));
+    expect(weaponIndexForKey('Digit2', ready({ loadoutGuns: ['marksman', 'sidearm'], primary: 'marksman' }))).toBe(WEAPON_IDS.indexOf('sidearm'));
+    // On the range too: the picked-up gun is key 1, and 3–4 still reach the extras.
+    expect(weaponIndexForKey('Digit1', ready({ primary: 'breacher' }))).toBe(WEAPON_IDS.indexOf('breacher'));
+    expect(weaponIndexForKey('Digit3', ready({ primary: 'breacher' }))).toBe(WEAPON_IDS.indexOf('marksman'));
+  });
+
   it('gives number keys to Q, menus and text fields, and refuses switches while downed or mounted', () => {
     for (const overrides of [
       { orderWheelOpen: true },
