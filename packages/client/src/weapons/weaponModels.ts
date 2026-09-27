@@ -234,6 +234,36 @@ export function hasWeaponModel(id: string): boolean {
 }
 
 /**
+ * The barrel's tip in aim space, per side (U-003): where the drawn shot
+ * leaves the drawn weapon, its flash and its tracer. Measured on the
+ * generated models, which are what is held once they load
+ * (`weapons.test.ts` in tools checks each against its mesh). A grenade has
+ * no barrel: its point is the grenade.
+ */
+const MUZZLES: Record<WeaponSide, Readonly<Record<string, Vec3Tuple>>> = {
+  squad: {
+    carbine: [0, 0, 0.82],
+    marksman: [0, 0, 1.03],
+    breacher: [0, 0.018, 0.9],
+    sidearm: [0, 0.002, 0.505],
+    lmg: [0, 0.012, 0.94],
+    rocket: [0, 0.08, 0.67],
+    frag: [0, -0.04, 0.2],
+  },
+  enemy: {
+    carbine: [0, 0, 0.83],
+    lmg: [0, 0.01, 1.0],
+    rocket: [0, 0.08, 0.5],
+  },
+};
+
+/** The barrel's tip in aim space for a loadout id as a side holds it (U-003). */
+export function weaponMuzzle(id: string, side: WeaponSide = 'squad'): Vec3Tuple {
+  const key = hasWeaponModel(id) ? id : 'carbine';
+  return (MUZZLES[side][key] ?? MUZZLES.squad[key]) as Vec3Tuple;
+}
+
+/**
  * Build the model for a loadout id. Every call is a fresh group. The grips,
  * sight and hip are always the code builder's, so the hold is the same
  * either way; what is drawn is the generated model for the side once it has

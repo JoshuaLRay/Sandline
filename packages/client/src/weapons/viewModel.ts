@@ -23,7 +23,7 @@
 import * as THREE from 'three';
 import { plateau } from '../character/locomotionPose.ts';
 import { SCOPE_IN } from '../ui/scopeOverlay.ts';
-import { type WeaponModel, type Vec3Tuple, createWeaponModel, weaponAssetsVersion } from './weaponModels.ts';
+import { type WeaponModel, type Vec3Tuple, createWeaponModel, weaponAssetsVersion, weaponMuzzle } from './weaponModels.ts';
 
 export interface ViewModelState {
   /** Draw it at all: first person, alive, not mid-vault. */
@@ -219,6 +219,19 @@ export class ViewModel {
     this.current = model;
     this.right.place(model.spec.gripRight, -1);
     this.left.place(model.spec.gripLeft, 1);
+  }
+
+  /**
+   * The drawn barrel's tip in the viewmodel camera's view space (U-003), as
+   * placed by the last `update`: hip or ADS, bob, kick, a reload's dip. Null
+   * before anything is held. The camera sits at this scene's origin looking
+   * down -Z and never moves, so the scene's space is its view space.
+   */
+  muzzle(out: THREE.Vector3): THREE.Vector3 | null {
+    if (!this.current) return null;
+    const tip = weaponMuzzle(this.current.id);
+    this.holder.updateWorldMatrix(true, false);
+    return this.holder.localToWorld(out.set(tip[0], tip[1], tip[2]));
   }
 
   /** Draw over the world: call after the world's own render. */

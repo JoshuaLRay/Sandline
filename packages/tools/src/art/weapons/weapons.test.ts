@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ASSET_MANIFEST, checkBudgets } from '@sandline/shared';
-import { createWeaponModel, weaponAssetId } from '../../../../client/src/weapons/weaponModels.ts';
+import { createWeaponModel, weaponAssetId, weaponMuzzle } from '../../../../client/src/weapons/weaponModels.ts';
 import { createIO, sha256 } from '../../assets/pipeline.ts';
 import { weaponRegion } from './atlas.ts';
 import { weaponDocuments } from './index.ts';
@@ -136,6 +136,28 @@ describe('the sight line (QA: ADS art obstructs aim)', () => {
       expect(under, `${id}: no post under the line`).not.toBeNull();
       expect(eye[2] + under!).toBeGreaterThan(post - 0.012);
       expect(eye[2] + under!).toBeLessThan(post + 0.012);
+    });
+  }
+});
+
+/** The guns, as each side holds them: every one a tracer can leave. */
+const GUNS = HOLDS.filter(([id]) => id !== 'frag' && id !== 'rocket');
+
+describe('the barrel\'s tip (U-003: the shot leaves the gun you see)', () => {
+  for (const [id, side] of GUNS) {
+    const asset = weaponAssetId(id, side);
+    it(`'${asset}' (${side} ${id}) ends at its muzzle point: the bore's front, on the mesh`, () => {
+      const mesh = buildWeapon(asset.replace('weapon-', ''));
+      const m = weaponMuzzle(id, side);
+      // On the barrel's front face, not in the air ahead of it or down inside it.
+      expect(nearest(mesh, m)).toBeLessThan(0.015);
+      // Nothing round the bore line reaches further forward: this is the front.
+      let front = -Infinity;
+      for (let i = 0; i < mesh.positions.length; i += 3) {
+        if (Math.hypot(mesh.positions[i]! - m[0], mesh.positions[i + 1]! - m[1]) < 0.03) front = Math.max(front, mesh.positions[i + 2]!);
+      }
+      expect(front).toBeGreaterThan(m[2] - 0.01);
+      expect(front).toBeLessThan(m[2] + 0.005);
     });
   }
 });

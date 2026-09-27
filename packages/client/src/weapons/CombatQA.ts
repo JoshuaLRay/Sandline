@@ -69,6 +69,14 @@ interface Fading {
   material: THREE.Material & { opacity: number };
   born: number;
   life: number;
+  /** A streak of our own shot (U-003): its start rides the drawn barrel until it fades. */
+  own?: boolean;
+}
+
+/** A predicted round waiting for the frame to say where the barrel is drawn (U-003). */
+interface QueuedTracer {
+  end: THREE.Vector3;
+  born: number;
 }
 
 export interface LastHit {
@@ -131,6 +139,9 @@ export class CombatQA {
   lastHit: LastHit | null = null;
 
   private readonly raycaster = new THREE.Raycaster();
+  /** Predicted rounds whose streaks the next frame draws, from its barrel (U-003). Reused. */
+  private readonly queued: QueuedTracer[] = [];
+  private queuedCount = 0;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -270,23 +281,82 @@ export class CombatQA {
   }
 
   /**
-   * Draw the tracers for a shot immediately, before the server has seen it.
+   * Predict a shot's tracers the tick its trigger resolves, before the server
+   * has seen it: one per pellet, from the same seeded directions the server
+   * will trace.
    *
-   * The endpoint comes from a local raycast because a streak has to stop
-   * somewhere to look right; it carries no authority. Whether that pellet hit
-   * anything is decided by `drawServerShot` when the real answer arrives.
+   * TWO POINTS, as in `muzzle.ts` (U-003). Each streak ENDS where the round
+   * would stop, found from `eye` — the stance eye the server traces from —
+   * along its direction, so the streak stops where the real round does. It
+   * STARTS at the barrel as drawn, which only the frame knows: the queued
+   * streaks wait for `drawPredicted`. Starting it at the barrel and
+   * running it parallel to the aim, as before, put a hipfire streak beside
+   * the crosshair and never on it.
+   *
+   * The end comes from a local raycast because a streak has to stop somewhere
+   * to look right; it carries no authority. Whether that pellet hit anything
+   * is decided by `drawServerShot` when the real answer arrives.
    */
-  predictShot(origin: THREE.Vector3, directions: readonly { x: number; y: number; z: number }[], now: number): void {
+  predictShot(eye: THREE.Vector3, directions: readonly { x: number; y: number; z: number }[], now: number): void {
     for (const dir of directions) {
       const direction = new THREE.Vector3(dir.x, dir.y, dir.z).normalize();
-      this.raycaster.set(origin, direction);
+      this.raycaster.set(eye, direction);
       this.raycaster.far = this.def.maxRangeM;
       const [hit] = this.raycaster.intersectObjects(this.scenery, false);
-      const end = hit
-        ? hit.point.clone()
-        : origin.clone().addScaledVector(direction, this.def.maxRangeM);
-      this.spawnTracer(origin, end, false, now);
+      const slot = this.queued[this.queuedCount] ?? { end: new THREE.Vector3(), born: 0 };
+      this.queued[this.queuedCount] = slot;
+      this.queuedCount += 1;
+      if (hit) slot.end.copy(hit.point);
+      else slot.end.copy(eye).addScaledVector(direction, this.def.maxRangeM);
+      slot.born = now;
     }
+  }
+
+  /** Predicted streaks not yet drawn: the frame has not come round since their tick. */
+  get queuedTracers(): number {
+    return this.queuedCount;
+  }
+
+  /** Whether any streak of ours is queued or alive: the frame has a barrel to find. */
+  get tracing(): boolean {
+    return this.queuedCount > 0 || this.effects.some((e) => e.own);
+  }
+
+  /**
+   * Once per frame (U-003): draw every queued streak from `muzzle`, the
+   * barrel's tip as drawn this frame, and move the start of each of our own
+   * live streaks onto it. The tracer and the flash then leave the one point
+   * on screen where the gun is — in either view, every stance, moving or
+   * still — and stay on it for their short lives rather than hanging where
+   * the barrel was a few frames ago.
+   */
+  drawPredicted(muzzle: THREE.Vector3): void {
+    for (let i = 0; i < this.queuedCount; i += 1) {
+      const slot = this.queued[i]!;
+      this.spawnTracer(muzzle, slot.end, false, slot.born, true);
+    }
+    this.queuedCount = 0;
+    for (const effect of this.effects) {
+      if (!effect.own) continue;
+      const line = effect.object as THREE.Line;
+      const position = line.geometry.getAttribute('position') as THREE.BufferAttribute;
+      position.setXYZ(0, muzzle.x, muzzle.y, muzzle.z);
+      position.needsUpdate = true;
+      line.geometry.computeBoundingSphere();
+    }
+  }
+
+  /** Where each of our own live streaks starts and ends, oldest first: for tests and the QA readout. */
+  ownTracers(): { from: THREE.Vector3; to: THREE.Vector3 }[] {
+    return this.effects
+      .filter((e) => e.own)
+      .map((e) => {
+        const position = (e.object as THREE.Line).geometry.getAttribute('position') as THREE.BufferAttribute;
+        return {
+          from: new THREE.Vector3().fromBufferAttribute(position, 0),
+          to: new THREE.Vector3().fromBufferAttribute(position, 1),
+        };
+      });
   }
 
   /**
@@ -316,7 +386,7 @@ export class CombatQA {
     this.spawnImpact(end, damage, now);
   }
 
-  private spawnTracer(from: THREE.Vector3, to: THREE.Vector3, hit: boolean, now: number): void {
+  private spawnTracer(from: THREE.Vector3, to: THREE.Vector3, hit: boolean, now: number, own = false): void {
     const geometry = this.tracerGeometry.clone();
     geometry.setFromPoints([from.clone(), to]);
     const material = new THREE.LineBasicMaterial({
@@ -326,7 +396,7 @@ export class CombatQA {
     });
     const line = new THREE.Line(geometry, material);
     this.scene.add(line);
-    this.push({ object: line, material, born: now, life: TRACER_SECONDS });
+    this.push({ object: line, material, born: now, life: TRACER_SECONDS, own });
   }
 
   private spawnImpact(at: THREE.Vector3, damage: number, now: number): void {
@@ -376,6 +446,7 @@ export class CombatQA {
   reset(): void {
     for (const effect of this.effects) this.dispose(effect);
     this.effects.length = 0;
+    this.queuedCount = 0;
     this.state = createWeaponState(this.def);
     this.shotsFired = 0;
     this.pelletsFired = 0;
