@@ -8,13 +8,17 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+  RESUME,
   type BotOrder,
   ClientConnection,
   type Message,
   PROJECTILE_IDS,
   type RosterEntry,
   WEAPON_IDS,
+  PROTOCOL_VERSION,
   createLoopbackPair,
+  decodeMessage,
+  encodeMessage,
 } from '@sandline/shared';
 import { Session } from './Session.ts';
 
@@ -71,6 +75,52 @@ function human(session: Session, name: string) {
 const gun = (id: string) => (WEAPON_IDS as readonly string[]).indexOf(id);
 const FRAG = PROJECTILE_IDS.indexOf('frag');
 const ROCKET = PROJECTILE_IDS.indexOf('rocket');
+
+describe('a seat held for a dropped player keeps its class and what it carries (U-024)', () => {
+  /** A human over loopback, by raw messages: what the switch tests do (U-026). */
+  function seat(session: Session, name: string, now: number, resume = '') {
+    const pair = createLoopbackPair();
+    const messages: Message[] = [];
+    pair.b.onMessage((bytes) => messages.push(decodeMessage(bytes)));
+    session.addConnection(pair.a, now);
+    const send = (msg: Message) => {
+      pair.b.send(encodeMessage(msg));
+      pair.settle();
+    };
+    send({ kind: 'Join', version: PROTOCOL_VERSION, name, room: '', ...(resume ? { resume } : {}) });
+    const ack = messages.find((m): m is Extract<Message, { kind: 'JoinAck' }> => m.kind === 'JoinAck')!;
+    return { ack, send, drop: () => { pair.b.close('network lost'); pair.settle(); } };
+  }
+
+  it('a drop and a resume hand back no fresh pouch; a lapsed hold makes the seat a bot\'s like any other', () => {
+    const session = new Session(undefined, '', 'range', { roomLobby: true });
+    const a = seat(session, 'a', 0);
+    // A second player stays, so the room is not paused (U-025) and its clock runs out the grace.
+    seat(session, 'b', 0);
+    const slot = a.ack.slot;
+    a.send({ kind: 'RoomCommand', command: 'class', classId: 'marksman' });
+    a.send({ kind: 'RoomCommand', command: 'start' });
+    expect(session.classOf(slot)).toBe('marksman');
+    // The one frag spent.
+    session.slots[slot]!.pouch[FRAG] = 0;
+    a.drop();
+    // Held: still the Marksman's, with nothing handed back.
+    expect(session.classOf(slot)).toBe('marksman');
+    expect(session.loadoutOf(slot).pouch[FRAG]).toBe(0);
+    session.step(1000);
+    expect(session.classOf(slot)).toBe('marksman');
+    // Back within the grace: the same seat, class and spent pouch.
+    const back = seat(session, 'a', 1000, a.ack.resume);
+    expect(back.ack).toMatchObject({ resumed: true, slot });
+    expect(session.classOf(slot)).toBe('marksman');
+    expect(session.loadoutOf(slot).pouch[FRAG]).toBe(0);
+    // Dropped again and never back: when the grace runs out the seat is a bot's, and takes the bot's class.
+    // (With nobody seated at all the room is paused, and a hold never runs out: U-025.)
+    back.drop();
+    session.step(1000 + RESUME.graceSeconds * 1000 + 100);
+    expect(session.classOf(slot)).not.toBe('marksman');
+  });
+});
 
 describe('classes on the session (T-4.27)', () => {
   it('a pick stands and is replicated, a bot fills the leader the humans left out, and the defaults return', () => {
