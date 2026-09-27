@@ -53,12 +53,13 @@ const MATERIALS = {
 } as const;
 type MaterialName = keyof typeof MATERIALS;
 
-function box(group: THREE.Group, material: MaterialName, size: Vec3Tuple, at: Vec3Tuple, rotX = 0): void {
+function box(group: THREE.Group, material: MaterialName, size: Vec3Tuple, at: Vec3Tuple, rotX = 0): THREE.Mesh {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), MATERIALS[material]);
   mesh.position.set(at[0], at[1], at[2]);
   mesh.rotation.x = rotX;
   mesh.castShadow = true;
   group.add(mesh);
+  return mesh;
 }
 
 /** A cylinder lying along +Z. */
@@ -79,7 +80,7 @@ const BUILDERS: Record<string, Builder> = {
     box(g, 'polymer', [0.045, 0.1, 0.2], [0, -0.01, 0.1]);
     box(g, 'metal', [0.06, 0.09, 0.3], [0, 0, 0.35]);
     box(g, 'polymer', [0.035, 0.1, 0.045], [0, -0.09, 0.2], -0.35);
-    box(g, 'metal', [0.04, 0.16, 0.07], [0, -0.12, 0.33], 0.2);
+    box(g, 'metal', [0.04, 0.16, 0.07], [0, -0.12, 0.33], 0.2).name = MAGAZINE;
     box(g, 'polymer', [0.066, 0.075, 0.22], [0, 0, 0.6]);
     tube(g, 'metal', 0.012, 0.22, [0, 0.005, 0.8]);
     box(g, 'metal', [0.022, 0.03, 0.2], [0, 0.058, 0.36]);
@@ -101,7 +102,7 @@ const BUILDERS: Record<string, Builder> = {
     box(g, 'tan', [0.05, 0.11, 0.24], [0, -0.01, 0.1]);
     box(g, 'metal', [0.06, 0.09, 0.34], [0, 0, 0.38]);
     box(g, 'tan', [0.035, 0.1, 0.045], [0, -0.09, 0.2], -0.35);
-    box(g, 'metal', [0.04, 0.11, 0.07], [0, -0.1, 0.36], 0.1);
+    box(g, 'metal', [0.04, 0.11, 0.07], [0, -0.1, 0.36], 0.1).name = MAGAZINE;
     box(g, 'tan', [0.066, 0.075, 0.26], [0, 0, 0.66]);
     tube(g, 'metal', 0.013, 0.36, [0, 0.005, 0.96]);
     // The scope: the one silhouette that says "marksman" at forty metres.
@@ -226,6 +227,38 @@ export function weaponAssetsVersion(): number {
 /** Whether a generated model is ready for this id and side. */
 export function hasWeaponAsset(id: string, side: WeaponSide): boolean {
   return templates.has(weaponAssetId(id, side));
+}
+
+/**
+ * The magazine a reload takes out (U-006): a child of the weapon's object
+ * named `magazine`, on the generated AR-family models (a part of their
+ * source, `tools/src/art/weapons`) and on the code-built carbine and
+ * marksman rifle. Other weapons have none, and their reload moves the hands
+ * alone.
+ */
+export const MAGAZINE = 'magazine';
+/** Down the AR well, aim space: the direction a magazine leaves in (the well leans forward, as the magazine does). */
+export const MAGAZINE_AXIS: Vec3Tuple = [0, -0.991, 0.131];
+/** Where the left hand holds a seated AR magazine, aim space: its base, on the holder's left side. */
+export const MAGAZINE_HOLD: Vec3Tuple = [0.02, -0.19, 0.3];
+
+export interface Magazine {
+  readonly object: THREE.Object3D;
+  /** Its placement at rest, which the file may have given it: a reload moves it from here. */
+  readonly restPosition: THREE.Vector3;
+  readonly restRotationX: number;
+}
+
+const magazines = new WeakMap<WeaponModel, Magazine | null>();
+
+/** A model's magazine, found once and remembered, or null when it has none. */
+export function weaponMagazine(model: WeaponModel): Magazine | null {
+  const cached = magazines.get(model);
+  if (cached !== undefined) return cached;
+  const object = model.object.getObjectByName(MAGAZINE) ?? null;
+  const found = object ? { object, restPosition: object.position.clone(), restRotationX: object.rotation.x } : null;
+  magazines.set(model, found);
+  return found;
 }
 
 /** Whether this id has a model of its own (every other id is held as a carbine). */

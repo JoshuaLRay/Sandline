@@ -21,9 +21,18 @@
  * still the truth; nothing here moves an aim.
  */
 import * as THREE from 'three';
-import { plateau } from '../character/locomotionPose.ts';
 import { SCOPE_IN } from '../ui/scopeOverlay.ts';
-import { type WeaponModel, type Vec3Tuple, createWeaponModel, weaponAssetsVersion, weaponMuzzle } from './weaponModels.ts';
+import { type ReloadPose, REST_POSE, reloadPose, settle } from './reloadPose.ts';
+import {
+  MAGAZINE_AXIS,
+  MAGAZINE_HOLD,
+  type WeaponModel,
+  type Vec3Tuple,
+  createWeaponModel,
+  weaponAssetsVersion,
+  weaponMagazine,
+  weaponMuzzle,
+} from './weaponModels.ts';
 
 export interface ViewModelState {
   /** Draw it at all: first person, alive, not mid-vault. */
@@ -37,7 +46,7 @@ export interface ViewModelState {
   /** The fire layer's kick: metres back, and radians of muzzle rise (weaponKick.ts). */
   kickBack: number;
   kickUp: number;
-  /** 0..1 through a reload. */
+  /** 0..1 through a reload, on the weapon's own reload clock; 0 when none (U-006: `reloadPose.ts`). */
   reload: number;
   /** Horizontal speed, m/s, for the walk bob. */
   speed: number;
@@ -120,6 +129,9 @@ export class ViewModel {
   private bobPhase = 0;
   private windBlend = 0;
   private scopeUp = false;
+  /** The reload's pose as drawn (U-006): the curve while reloading, easing out after one is cut short. */
+  private readonly pose: ReloadPose = { ...REST_POSE };
+  private readonly hand = new THREE.Vector3();
 
   /** Whether the eye is at a scope this frame: the rifle is hidden and the scope's view is the picture. */
   get scoped(): boolean {
@@ -129,6 +141,11 @@ export class ViewModel {
   /** 0 at the hip, 1 fully aimed. */
   get adsAmount(): number {
     return this.adsBlend;
+  }
+
+  /** The reload pose as last drawn (U-006), for tests and the QA readout. */
+  get reloadPose(): Readonly<ReloadPose> {
+    return this.pose;
   }
 
   constructor() {
@@ -168,6 +185,9 @@ export class ViewModel {
       this.raise = 0;
       this.adsBlend = 0;
       this.scopeUp = false;
+      // Down, dead, vaulting or in third person: no reload is left half-drawn for the way back.
+      Object.assign(this.pose, REST_POSE);
+      if (this.current) this.placeMagazine(this.current, 0, 0);
       return;
     }
     const dt = Math.max(0, Math.min(0.1, state.dt));
@@ -187,7 +207,12 @@ export class ViewModel {
     const model = this.current as WeaponModel;
     const spec = model.spec;
 
-    const adsTarget = state.ads ? 1 : 0;
+    // A reload takes the gun off the eye to work on it (U-006); the sight comes back after.
+    const reloading = state.reload > 0 && state.reload < 1;
+    const adsTarget = state.ads && !reloading ? 1 : 0;
+    if (reloading) Object.assign(this.pose, reloadPose(state.reload));
+    else settle(this.pose, dt);
+    const pose = this.pose;
     this.adsBlend += (adsTarget - this.adsBlend) * Math.min(1, ADS_RATE * dt);
     this.windBlend += ((state.winding ? 1 : 0) - this.windBlend) * Math.min(1, ADS_RATE * dt);
     if (state.speed > 0.2) this.bobPhase += state.speed * BOB_PER_M * dt;
@@ -198,14 +223,24 @@ export class ViewModel {
     const bobScale = Math.min(1, state.speed / 6) * (1 - 0.8 * a);
     const bobX = Math.sin(this.bobPhase) * BOB_M * bobScale;
     const bobY = -Math.abs(Math.cos(this.bobPhase)) * BOB_M * bobScale;
-    const reloadDip = plateau(state.reload, 0, 0.25, 0.75, 1);
     const eased = 1 - (1 - this.raise) * (1 - this.raise);
     this.sway.position.set(
-      hip[0] * (1 - a) + bobX,
-      hip[1] * (1 - a) - ADS_DROP_M * a + bobY - LOWERED_M * (1 - eased) - reloadDip * 0.06 + this.windBlend * 0.05,
-      hip[2] * (1 - a) + state.kickBack + this.windBlend * 0.08,
+      hip[0] * (1 - a) + bobX + pose.x,
+      hip[1] * (1 - a) - ADS_DROP_M * a + bobY - LOWERED_M * (1 - eased) + pose.y + this.windBlend * 0.05,
+      hip[2] * (1 - a) + state.kickBack + pose.z + this.windBlend * 0.08,
     );
-    this.sway.rotation.set(state.kickUp - reloadDip * 0.5 - (1 - eased) * 0.5 + this.windBlend * 0.35, 0, reloadDip * 0.4);
+    this.sway.rotation.set(state.kickUp + pose.pitch - (1 - eased) * 0.5 + this.windBlend * 0.35, 0, pose.roll);
+    // The magazine out of its well, and the left hand with it (U-006).
+    this.placeMagazine(model, pose.magOut, pose.magTilt);
+    const out = pose.magOut;
+    this.hand.set(
+      MAGAZINE_HOLD[0] + MAGAZINE_AXIS[0] * out,
+      MAGAZINE_HOLD[1] + MAGAZINE_AXIS[1] * out,
+      MAGAZINE_HOLD[2] + MAGAZINE_AXIS[2] * out,
+    );
+    const grip = spec.gripLeft;
+    const h = pose.handOnMag;
+    this.left.place([grip[0] + (this.hand.x - grip[0]) * h, grip[1] + (this.hand.y - grip[1]) * h, grip[2] + (this.hand.z - grip[2]) * h], 1);
     // The holder places the sight itself at the origin of `sway`: aim space
     // turned half a turn, so its (x, y, z) lands at (-x, y, -z).
     this.holder.position.set(spec.sight[0], -spec.sight[1], spec.sight[2] - spec.eyeRelief);
@@ -214,8 +249,22 @@ export class ViewModel {
     if (this.scopeUp) this.sway.visible = false;
   }
 
+  /** A model's magazine `out` metres down its well and tipped by `tilt`, or seated at 0 (U-006). */
+  private placeMagazine(model: WeaponModel, out: number, tilt: number): void {
+    const magazine = weaponMagazine(model);
+    if (!magazine) return;
+    magazine.object.position.set(
+      magazine.restPosition.x + MAGAZINE_AXIS[0] * out,
+      magazine.restPosition.y + MAGAZINE_AXIS[1] * out,
+      magazine.restPosition.z + MAGAZINE_AXIS[2] * out,
+    );
+    magazine.object.rotation.x = magazine.restRotationX + tilt;
+  }
+
   private show(model: WeaponModel): void {
     for (const other of this.models.values()) other.object.visible = other === model;
+    // Whatever was mid-reload is put back together as it goes away.
+    if (this.current) this.placeMagazine(this.current, 0, 0);
     this.current = model;
     this.right.place(model.spec.gripRight, -1);
     this.left.place(model.spec.gripLeft, 1);
