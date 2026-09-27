@@ -7,7 +7,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import { MIX, boxFrom, dbToGain, falloffGain } from '@sandline/shared';
-import { VoicePool, occlusion, place } from './spatial.ts';
+import * as THREE from 'three';
+import { VoicePool, listenerSide, occlusion, place } from './spatial.ts';
 
 const wall = boxFrom({ id: 'wall', x: 0, y: 0, z: 10, w: 6, h: 3, d: 0.3 }, 'cover');
 const ear = { x: 0, y: 1.6, z: 0 };
@@ -56,5 +57,46 @@ describe('VoicePool (T-2.45)', () => {
     pool.release('c');
     expect(pool.acquire('e', 1)).toEqual({ ok: true, stolen: null });
     expect(pool.size).toBe(3);
+  });
+});
+
+describe('your own sounds are yours, not a place in the world (U-008)', () => {
+  // The eye, and the hip-fire muzzle the page plays your own report from: 0.26 m right, half a metre down.
+  const eye = { x: 0, y: 1.55, z: 0 };
+  const hip = { x: -0.26, y: 1.05, z: 0 };
+
+  it('your own report at the hip: the mix\'s fixed pan, full gain, no delay, no occlusion — never one ear', () => {
+    const box = boxFrom({ id: 'crate', x: -0.13, y: 1.1, z: 0, w: 0.1, h: 0.2, d: 0.2 }, 'cover');
+    const own = place('weapon', hip, eye, [box], MIX, true);
+    expect(own).toMatchObject({ gain: 1, lowpassHz: null, delaySeconds: 0, pan: MIX.own.pan, distanceM: 0 });
+    expect(Math.abs(own.pan!)).toBeLessThan(0.5);
+    // In every stance and view, the same: it does not depend on where the point is.
+    for (const at of [{ x: 0, y: 0.4, z: 0 }, { x: 0.3, y: 1.42, z: -0.2 }, { x: 5, y: 0, z: 5 }]) expect(place('weapon', at, eye, [], MIX, true).pan).toBe(MIX.own.pan);
+    // Your own footsteps and landing (the world class) too.
+    expect(place('world', { x: 0, y: 0, z: 0 }, eye, [], MIX, true).pan).toBe(MIX.own.pan);
+  });
+
+  it('everyone else\'s stay in the world: head-related placement, falloff and delay by distance', () => {
+    const near = place('weapon', hip, eye, [], MIX);
+    expect(near.pan).toBeNull();
+    const far = place('weapon', { x: 60, y: 1.5, z: 0 }, eye, [], MIX);
+    expect(far.pan).toBeNull();
+    expect(far.gain).toBeLessThan(near.gain);
+    expect(far.delaySeconds).toBeGreaterThan(0.1);
+    // The UI is unplaced as before, with no pan node.
+    expect(place('ui', null, eye, [], MIX).pan).toBeNull();
+  });
+
+  it('turning the camera never swaps the ears: a source on screen-right is on the listener\'s right at every heading', () => {
+    for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2, 2.3]) {
+      const camera = new THREE.PerspectiveCamera();
+      camera.rotation.set(0, yaw, 0, 'YXZ');
+      camera.updateMatrixWorld();
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+      const screenRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion).multiplyScalar(10);
+      const screenLeft = screenRight.clone().negate();
+      expect(listenerSide({ x: 0, y: 0, z: 0 }, forward, screenRight), `yaw ${yaw}`).toBeGreaterThan(9.99);
+      expect(listenerSide({ x: 0, y: 0, z: 0 }, forward, screenLeft), `yaw ${yaw}`).toBeLessThan(-9.99);
+    }
   });
 });

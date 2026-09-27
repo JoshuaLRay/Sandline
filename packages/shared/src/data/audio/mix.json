@@ -1,9 +1,10 @@
 {
-  "$comment": "T-2.45: how sounds are placed in the world (ADR-017). `falloff` is a gain curve by distance in metres, linear between points and held past the last; null plays unplaced (the UI). A class's `priority` decides who keeps a voice when more than `voiceLimit` play at once: your own sounds get `ownBonus`, and every metre away costs `perMetre`. `occlusion` is what a box between the ear and the source does: a low-pass at `lowpassHz` and a cut of `gainDb`. Sound travels at `speedOfSound` m/s, so a distant blast is seen before it is heard.",
+  "$comment": "T-2.45: how sounds are placed in the world (ADR-017). `falloff` is a gain curve by distance in metres, linear between points and held past the last; null plays unplaced (the UI). A class's `priority` decides who keeps a voice when more than `voiceLimit` play at once: your own sounds get `ownBonus`, and every metre away costs `perMetre`. `occlusion` is what a box between the ear and the source does: a low-pass at `lowpassHz` and a cut of `gainDb`. Sound travels at `speedOfSound` m/s, so a distant blast is seen before it is heard. Your own sounds (U-008) are not placed in the world: no head-related panning, falloff, occlusion or delay, only a fixed stereo `own.pan` (−1 left … 1 right) whichever way you face — a point at your own hip, through a head-related panner, came out of your right ear.",
   "speedOfSound": 343,
   "voiceLimit": 24,
   "priority": { "ownBonus": 40, "perMetre": 0.1 },
   "occlusion": { "lowpassHz": 900, "gainDb": -9 },
+  "own": { "pan": 0.1 },
   "classes": {
     "ui": { "priority": 100, "falloff": null },
     "weapon": { "priority": 60, "falloff": [[0, 1], [8, 1], [40, 0.4], [150, 0.12], [400, 0.03], [800, 0]] },

@@ -20,6 +20,13 @@ export interface MixConfig {
   voiceLimit: number;
   priority: { ownBonus: number; perMetre: number };
   occlusion: { lowpassHz: number; gainDb: number };
+  /**
+   * Your own sounds (U-008): not placed in the world at all — no HRTF, no
+   * falloff, no occlusion, no delay — but panned a fixed `pan` (−1 left … 1
+   * right) whichever way you face. A point at your own hip or feet, run
+   * through a head-related panner, comes out of one ear.
+   */
+  own: { pan: number };
   classes: Readonly<Record<SoundClass, MixClass>>;
 }
 
@@ -54,7 +61,8 @@ function parseFalloff(where: string, v: unknown): MixClass['falloff'] {
 }
 
 export function parseMix(raw: unknown): MixConfig {
-  const o = obj('mix', raw, ['speedOfSound', 'voiceLimit', 'priority', 'occlusion', 'classes']);
+  const o = obj('mix', raw, ['speedOfSound', 'voiceLimit', 'priority', 'occlusion', 'own', 'classes']);
+  const own = obj('mix.own', o['own'], ['pan']);
   const p = obj('mix.priority', o['priority'], ['ownBonus', 'perMetre']);
   const oc = obj('mix.occlusion', o['occlusion'], ['lowpassHz', 'gainDb']);
   const c = obj('mix.classes', o['classes'], SOUND_CLASSES);
@@ -70,6 +78,7 @@ export function parseMix(raw: unknown): MixConfig {
     voiceLimit,
     priority: { ownBonus: num('mix.priority.ownBonus', p['ownBonus'], 0, 1000), perMetre: num('mix.priority.perMetre', p['perMetre'], 0, 100) },
     occlusion: { lowpassHz: num('mix.occlusion.lowpassHz', oc['lowpassHz'], 20, 20_000), gainDb: num('mix.occlusion.gainDb', oc['gainDb'], -60, 0) },
+    own: { pan: num('mix.own.pan', own['pan'], -1, 1) },
     classes,
   };
 }
