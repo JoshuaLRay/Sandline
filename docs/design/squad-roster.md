@@ -41,7 +41,7 @@ Already settled by other decisions, and kept:
 
 ## The proposed roster
 
-| Slot | ID | Name *(proposal)* | Role | Primary *(proposal)* | Second primary | Sidearm | Fireteam |
+| Slot | ID | Name / decision status | Role | Primary *(proposal)* | Second primary | Sidearm | Fireteam |
 |---|---|---|---|---|---|---|---|
 | 0 | `kessler` | **Preach** *(approved leader name)* | AR, the squad lead | MK4 Carbine (`carbine`) | Eligible for a second AR, shotgun or SMG primary | P7 *(policy open)* | 1 (lead) |
 | 1 | `brennan` | Spc. Walt Brennan | LMG | the squad LMG (`lmg`, a loadout version of the enemy's) | — | P7 | 1 |
@@ -76,9 +76,9 @@ Each skill is **bounded**: one effect, a duration, a cooldown, and a range where
 ## Identity through possession, reconnect and saves
 
 - **A character is a slot's**, not a player's. `kessler` is always slot 0, whoever or whatever is playing him. That is ADR-001's model (a slot keeps its soldier), so:
-  - a human joining slot 0 possesses Kessler, and a bot leaving hands Kessler back;
-  - a player who drops and resumes within the grace (T-4.18) is Kessler again: the held seat keeps its character, as it now keeps its class and pouch (U-024);
-  - a U-026 switch into slot 4 makes that player Marsh, and hands Kessler to his bot.
+  - a human joining slot 0 possesses Preach, and a bot leaving hands Preach back;
+  - a player who drops and resumes within the grace (T-4.18) is Preach again: the held seat keeps its character, as it now keeps its class and pouch (U-024);
+  - a U-026 switch into slot 4 makes that player Marsh, and hands Preach to his bot.
 - **Saved campaigns** (T-4.23, ADR-019). A campaign soldier today is `{slot, classId, rank, xp}`. The proposal is to add `characterId` beside it. Because characters are fixed to slots, an old save migrates by slot, and rank and XP stay with the slot's soldier. `classId` becomes derived and is kept for old saves.
 - **Replacing free class selection** (T-4.27). The room's class picker goes, since a character's loadout is fixed. What a player picks is **which character (slot)** they take, from those free when they join, and U-026's switch changes it mid-mission. `required: team-leader` becomes "slot 0 is always the squad lead", which the fixed roster guarantees.
 
@@ -108,7 +108,7 @@ ADR-001 carries the original six-character direction. Its 2026-09-27 decision ad
 
 One independently executable task per agreed skill, each with its data row, its server rule (authoritative, like every interaction), its bot use, its HUD and its tests. Until the owner agrees a skill's effect, its task does not exist, and **no ability here is treated as approved.**
 
-- U-023a: Rally (Kessler)
+- U-023a: Rally (Preach)
 - U-023b: Hose (Brennan)
 - U-023c: Resupply (Holloway)
 - U-023d: Spot (Ortiz)
