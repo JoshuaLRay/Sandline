@@ -19,7 +19,7 @@ From [the owner's feedback](../backlog/2026-09-26-feedback.md), verbatim in subs
 
 ## Approved owner decisions (2026-09-27)
 
-1. Slot 0's leader is named **Preach**.
+1. Slot 0's leader is named **Preach**; the documented roster ID is `preach`.
 2. Using the proposed slot mapping below, slot 4 (`marsh`) is the left-handed
    sniper and starts with a left-handed bolt-action sniper rifle. Slot 5
    (`vance`) starts with a semi-automatic sniper rifle. U-020 supplies valid
@@ -43,7 +43,7 @@ Already settled by other decisions, and kept:
 
 | Slot | ID | Name / decision status | Role | Primary *(proposal)* | Second primary | Sidearm | Fireteam |
 |---|---|---|---|---|---|---|---|
-| 0 | `kessler` | **Preach** *(approved leader name)* | AR, the squad lead | MK4 Carbine (`carbine`) | Eligible for a second AR, shotgun or SMG primary | P7 *(policy open)* | 1 (lead) |
+| 0 | `preach` | **Preach** *(approved leader name)* | AR, the squad lead | MK4 Carbine (`carbine`) | Eligible for a second AR, shotgun or SMG primary | P7 *(policy open)* | 1 (lead) |
 | 1 | `brennan` | Spc. Walt Brennan | LMG | the squad LMG (`lmg`, a loadout version of the enemy's) | — | P7 | 1 |
 | 2 | `holloway` | PFC Nate Holloway | Support | an SMG *(new, U-020)* | a shotgun (`breacher`) | *open: see D-5* | 1 |
 | 3 | `ortiz` | Cpl. Dana Ortiz | Scoped AR, the second team's lead | MK4 with an optic *(new variant, U-020)* | — | P7 | 2 (lead) |
@@ -62,7 +62,7 @@ Each skill is **bounded**: one effect, a duration, a cooldown, and a range where
 
 | ID | Skill *(proposal)* | Effect | Duration | Cooldown | Bot use |
 |---|---|---|---|---|---|
-| `kessler` | **Rally** | squadmates within 15 m of him have their suppression cleared, and gain suppression 30% slower | 8 s | 90 s | when two or more squadmates are suppressed |
+| `preach` | **Rally** | squadmates within 15 m of him have their suppression cleared, and gain suppression 30% slower | 8 s | 90 s | when two or more squadmates are suppressed |
 | `brennan` | **Hose** | his rounds add 50% more suppression | 10 s | 60 s | when firing on a target in cover |
 | `holloway` | **Resupply** | hold interact 2 s beside a squadmate: +1 frag, magazine refilled | instant | 45 s | a squadmate with an empty pouch nearby |
 | `ortiz` | **Spot** | the next target she marks is shown to the whole squad through walls | 10 s | 30 s | marks what she fires at |
@@ -75,7 +75,7 @@ Each skill is **bounded**: one effect, a duration, a cooldown, and a range where
 
 ## Identity through possession, reconnect and saves
 
-- **A character is a slot's**, not a player's. `kessler` is always slot 0, whoever or whatever is playing him. That is ADR-001's model (a slot keeps its soldier), so:
+- **A character is a slot's**, not a player's. `preach` is always slot 0, whoever or whatever is playing him. That is ADR-001's model (a slot keeps its soldier), so:
   - a human joining slot 0 possesses Preach, and a bot leaving hands Preach back;
   - a player who drops and resumes within the grace (T-4.18) is Preach again: the held seat keeps its character, as it now keeps its class and pouch (U-024);
   - a U-026 switch into slot 4 makes that player Marsh, and hands Preach to his bot.
