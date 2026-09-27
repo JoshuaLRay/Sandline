@@ -45,6 +45,32 @@ function chain(from: FakeNode): string[] {
   return out;
 }
 
+describe('a render that will not load is shown, not swallowed (U-007)', () => {
+  it('lists every variant that failed to fetch or decode, and says so in its readout; the rest still play', async () => {
+    const fake = fakeContext();
+    const e = new AudioEngine({
+      createContext: () => fake.ctx,
+      fetchBytes: (file) => (file.startsWith('shot.1') ? Promise.reject(new Error('404')) : Promise.resolve(new ArrayBuffer(16))),
+      sounds: TEST_SOUNDS,
+    });
+    expect(e.readout()).toContain('locked');
+    await e.unlock();
+    expect(e.missing).toEqual(['shot.1.wav']);
+    expect(e.readout()).toContain('1 render(s) FAILED');
+    expect(e.readout()).toContain('shot.1.wav');
+    // The variants that did load still play; the missing one is refused rather than silently "played".
+    expect(e.play('click')).toBe(true);
+    expect(e.play('shot', { variant: 0 })).toBe(true);
+    expect(e.play('shot', { variant: 1 })).toBe(false);
+  });
+
+  it('everything loaded reads as such', async () => {
+    const { e } = await engine();
+    expect(e.missing).toEqual([]);
+    expect(e.readout()).toMatch(/2 sounds loaded/);
+  });
+});
+
 describe('the audio engine, headless (T-2.45)', () => {
   it('plays nothing before unlock, and loads every variant of every sound on it', async () => {
     const cold = new AudioEngine({ createContext: () => fakeContext().ctx, fetchBytes: () => Promise.resolve(new ArrayBuffer(1)), sounds: TEST_SOUNDS });

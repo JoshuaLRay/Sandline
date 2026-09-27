@@ -51,6 +51,12 @@ export interface CalloutDef {
 
 export interface CalloutsConfig {
   chirp: string;
+  /**
+   * Whether your own soldier's unrecorded lines play the chirp (U-007). Off:
+   * the chirp says a squadmate spoke, and your own "reloading" chirp landed on
+   * your own magazine-out, a dozen decibels over it. A recorded line plays either way.
+   */
+  selfChirp: boolean;
   radioBeyondM: number;
   radioQueueSeconds: number;
   radioGapSeconds: number;
@@ -88,8 +94,9 @@ export function parseCallouts(raw: unknown, voices: VoicesConfig = VOICES, sound
     if (typeof v !== 'number' || !Number.isFinite(v) || v < min || v > max) throw new CalloutsDataError(`${where} must be in [${min}, ${max}], got ${JSON.stringify(v)}`);
     return v;
   };
-  const o = obj('callouts', raw, ['chirp', 'radioBeyondM', 'radioQueueSeconds', 'radioGapSeconds', 'speakerGapSeconds', 'sight', 'grenadeWarningM', 'killCreditSeconds', 'events']);
+  const o = obj('callouts', raw, ['chirp', 'selfChirp', 'radioBeyondM', 'radioQueueSeconds', 'radioGapSeconds', 'speakerGapSeconds', 'sight', 'grenadeWarningM', 'killCreditSeconds', 'events']);
   if (typeof o['chirp'] !== 'string' || !sounds.sounds.has(o['chirp'])) throw new CalloutsDataError(`callouts.chirp: no sound '${String(o['chirp'])}' in sounds.json`);
+  if (typeof o['selfChirp'] !== 'boolean') throw new CalloutsDataError('callouts.selfChirp must be true or false');
   const sight = obj('callouts.sight', o['sight'], ['rangeM', 'forgetSeconds', 'everySeconds']);
   const rendered = renderedLines(voices);
   const rawEvents = obj('callouts.events', o['events'], CALLOUT_EVENTS);
@@ -116,6 +123,7 @@ export function parseCallouts(raw: unknown, voices: VoicesConfig = VOICES, sound
   }
   return {
     chirp: o['chirp'],
+    selfChirp: o['selfChirp'],
     radioBeyondM: num('callouts.radioBeyondM', o['radioBeyondM'], 0, 1000),
     radioQueueSeconds: num('callouts.radioQueueSeconds', o['radioQueueSeconds'], 0, 30),
     radioGapSeconds: num('callouts.radioGapSeconds', o['radioGapSeconds'], 0, 10),

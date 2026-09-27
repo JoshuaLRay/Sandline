@@ -5,7 +5,7 @@
  * waveform's columns from a WAV's samples.
  * `SoundBoard.ts` puts these on the page; the tests check them without one.
  */
-import type { SoundsConfig } from '@sandline/shared';
+import { type SoundsConfig, WEAPON_SOUNDS, type WeaponSoundsConfig, getWeapon, shotIntervalSeconds } from '@sandline/shared';
 
 /** What `client/public/audio/renders.json` holds, as far as the board reads it. */
 export interface RendersManifest {
@@ -105,4 +105,43 @@ export function waveformColumns(samples: Float32Array, columns: number): { min: 
     out.push({ min, max });
   }
   return out;
+}
+
+/** One sound of a mix sample: when it starts, seconds from the button, and which render. */
+export interface MixCue {
+  at: number;
+  id: string;
+  variant: number;
+}
+
+export interface MixSample {
+  title: string;
+  cues: MixCue[];
+}
+
+/**
+ * U-007: the reload in the mix, to listen to rather than read about. Each
+ * sample is a scripted run of committed renders on the game's own clocks:
+ * the carbine's cadence and reload time, and the reload's stages from
+ * `weaponSounds.json`, so what the board plays is when the game plays it.
+ * Played unplaced, as your own sounds are.
+ */
+export function mixSamples(cfg: WeaponSoundsConfig = WEAPON_SOUNDS, gun = 'carbine'): MixSample[] {
+  const def = getWeapon(gun);
+  const h = cfg.handling;
+  const reload = (from: number): MixCue[] => [
+    { at: from, id: h.reloadOut, variant: 0 },
+    { at: from + cfg.stages.in * def.reloadSeconds, id: h.reloadIn, variant: 0 },
+    { at: from + cfg.stages.bolt * def.reloadSeconds, id: h.reloadBolt, variant: 0 },
+  ];
+  const near = cfg.guns[gun]!.near;
+  const far = cfg.guns[gun]!.far;
+  const interval = shotIntervalSeconds(def);
+  const burst = (from: number, rounds: number, id: string): MixCue[] => Array.from({ length: rounds }, (_, i) => ({ at: from + i * interval, id, variant: i % 3 }));
+  const lastShot = 7 * interval;
+  return [
+    { title: 'Reload, alone', cues: reload(0) },
+    { title: 'Burst, then reload', cues: [...burst(0, 8, near), ...reload(lastShot + 0.35)] },
+    { title: 'Reload while a squadmate fires', cues: [...reload(0.2), ...burst(0, Math.ceil((def.reloadSeconds + 0.4) / interval), far)] },
+  ].map((s) => ({ ...s, cues: s.cues.sort((a, b) => a.at - b.at) }));
 }

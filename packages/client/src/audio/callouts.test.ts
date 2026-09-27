@@ -48,9 +48,26 @@ describe('the callout director (T-2.49)', () => {
     expect(close).toMatchObject({ radio: false, own: false, at: { x: CALLOUTS.radioBeyondM - 1, y: 0, z: 0 } });
     const distant = d.say('reloading', far(2, CALLOUTS.radioBeyondM + 1), EAR, 0)!;
     expect(distant).toMatchObject({ radio: true, at: null });
-    expect(d.say('reloading', me, EAR, 0)).toMatchObject({ radio: false, own: true });
+    // Your own soldier, unrecorded: silent, not a chirp over your own reload (U-007).
+    expect(d.say('reloading', me, EAR, 0)).toBeNull();
     // Your own soldier does not call contacts: you see them.
     expect(d.say('contact', me, EAR, 50)).toBeNull();
+  });
+
+  it('your own soldier: a recorded line plays as your own, dry; an unrecorded one chirps only when `selfChirp` says so (U-007)', () => {
+    const { line, style } = CALLOUTS.events.reloading.lines[0]!;
+    const profile = VOICES.profiles[0]!.id;
+    const key = `${profile}/${line}.${style}.dry`;
+    const recorded = voiceIndex({ inputsHash: '', sampleRate: 24000, speakers: [], missing: [], lines: { [key]: [{ file: `${key}.0.wav`, bytes: 1, lufs: -16, peakDb: -3, seconds: 0.6 }] } });
+    const withVoice = new CalloutDirector({ chirpSeconds: CHIRP, index: recorded });
+    expect(withVoice.say('reloading', me, EAR, 0)).toMatchObject({ radio: false, own: true, file: expect.stringContaining(line) as unknown as string });
+    const chirping = new CalloutDirector({ chirpSeconds: CHIRP, config: { ...CALLOUTS, selfChirp: true } });
+    expect(chirping.say('reloading', me, EAR, 0)).toMatchObject({ radio: false, own: true, file: null });
+    // Silenced, it costs nothing: no cooldown taken, not speaking.
+    const quiet = new CalloutDirector({ chirpSeconds: CHIRP });
+    expect(quiet.say('reloading', me, EAR, 0)).toBeNull();
+    expect(quiet.speaking(me.slot, 0.1)).toBe(false);
+    expect(CALLOUTS.selfChirp).toBe(false);
   });
 
   it('keeps one voice on the radio: the next waits its turn, the most urgent first, or is dropped when stale', () => {

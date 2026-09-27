@@ -5,8 +5,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { SOUNDS, parseSounds } from '@sandline/shared';
-import { type RendersManifest, type VoiceRendersManifest, soundBoardRows, voiceBoard, waveformColumns, wavSamples } from './soundBoardModel.ts';
+import { SOUNDS, WEAPON_SOUNDS, getWeapon, parseSounds, shotIntervalSeconds } from '@sandline/shared';
+import { type RendersManifest, type VoiceRendersManifest, mixSamples, soundBoardRows, voiceBoard, waveformColumns, wavSamples } from './soundBoardModel.ts';
 
 const manifest = JSON.parse(readFileSync(new URL('../../public/audio/renders.json', import.meta.url), 'utf8')) as RendersManifest;
 
@@ -58,5 +58,28 @@ describe('the sound board (T-2.45)', () => {
     expect(20 * Math.log10(peak)).toBeCloseTo(manifest.sounds['click']![0]!.peakDb, 0);
     expect(wavSamples(new ArrayBuffer(10))).toHaveLength(0);
     expect(waveformColumns(new Float32Array(0), 10)).toEqual([]);
+  });
+});
+
+describe('mix samples (U-007)', () => {
+  it('play the reload on the game\'s clocks: out, then in and bolt at their stages of the carbine\'s reload, after a burst at its cadence', () => {
+    const samples = mixSamples();
+    expect(samples.map((s) => s.title)).toEqual(['Reload, alone', 'Burst, then reload', 'Reload while a squadmate fires']);
+    const reload = getWeapon('carbine').reloadSeconds;
+    const alone = samples[0]!.cues;
+    expect(alone.map((c) => c.id)).toEqual([WEAPON_SOUNDS.handling.reloadOut, WEAPON_SOUNDS.handling.reloadIn, WEAPON_SOUNDS.handling.reloadBolt]);
+    expect(alone[1]!.at).toBeCloseTo(WEAPON_SOUNDS.stages.in * reload, 9);
+    expect(alone[2]!.at).toBeCloseTo(WEAPON_SOUNDS.stages.bolt * reload, 9);
+    const burst = samples[1]!.cues;
+    const shots = burst.filter((c) => c.id === WEAPON_SOUNDS.guns['carbine']!.near);
+    expect(shots).toHaveLength(8);
+    expect(shots[1]!.at - shots[0]!.at).toBeCloseTo(shotIntervalSeconds(getWeapon('carbine')), 9);
+    // The reload starts after the last round.
+    expect(burst.find((c) => c.id === WEAPON_SOUNDS.handling.reloadOut)!.at).toBeGreaterThan(shots.at(-1)!.at);
+    // Every cue names a committed sound, in time order.
+    for (const s of samples) {
+      for (const c of s.cues) expect(SOUNDS.sounds.has(c.id), c.id).toBe(true);
+      expect(s.cues.map((c) => c.at)).toEqual([...s.cues.map((c) => c.at)].sort((a, b) => a - b));
+    }
   });
 });
