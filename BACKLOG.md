@@ -50,6 +50,9 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-009](docs/backlog/U-009.md) | Add an interaction-driven upload objective | Mission | P1 | DONE | — | [#147](https://github.com/JoshuaLRay/Sandline/pull/147) |
 | [U-010](docs/backlog/U-010.md) | Let enemies interrupt uploads by using the lever | Mission | P1 | DONE | U-009 | [#149](https://github.com/JoshuaLRay/Sandline/pull/149) |
 | [U-011](docs/backlog/U-011.md) | Replace mission-01 hold timers with active objectives | Mission | P1 | DONE | U-001, U-009, U-010 | [#150](https://github.com/JoshuaLRay/Sandline/pull/150) |
+| [U-030](docs/backlog/U-030.md) | Keep downed and dead characters facing the same direction | Character state | P1 | READY | — | — |
+| [U-031](docs/backlog/U-031.md) | Exclude downed characters from enemy gunfire targets | Enemy AI | P1 | READY | — | — |
+| [U-033](docs/backlog/U-033.md) | End the mission when a squad character dies | Mission | P1 | READY | — | — |
 | [U-012](docs/backlog/U-012.md) | Define voice cues and extend event routing | Audio | P2 | DONE | — | [#148](https://github.com/JoshuaLRay/Sandline/pull/148) |
 | [U-013](docs/backlog/U-013.md) | Supply and process the real voice recordings | Audio | P2 | BLOCKED | U-012; owner recordings or explicit ADR-017 change | — |
 | [U-014](docs/backlog/U-014.md) | Play intelligible radio-treated squad dialogue | Audio | P2 | BLOCKED | U-012, U-013 | — |
@@ -63,6 +66,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-022](docs/backlog/U-022.md) | Implement dual-primary rules for Preach and Support | Squad | P2 | BLOCKED | U-018, U-020, U-021 | — |
 | [U-029](docs/backlog/U-029.md) | Enforce squad weapon exchanges and left-handed loot access | Squad | P2 | BLOCKED | U-018, U-020, U-021 | — |
 | [U-023](docs/backlog/U-023.md) | Break approved character skills into implementation tasks | Squad | P2 | BLOCKED | U-019 | — |
+| [U-032](docs/backlog/U-032.md) | Capture downed characters as prisoners for next-mission rescue | Campaign | P2 | INBOX | U-031; design decomposition needed | — |
 
 ## Existing work retained
 
