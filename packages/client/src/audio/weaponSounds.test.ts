@@ -6,7 +6,7 @@
  * the same variant twice in a row.
  */
 import { describe, expect, it } from 'vitest';
-import { SOUNDS, WEAPONS, WEAPON_SOUNDS, shotIntervalSeconds } from '@sandline/shared';
+import { SOUNDS, WEAPONS, WEAPON_SOUNDS, getWeapon, shotIntervalSeconds } from '@sandline/shared';
 import { AudioEngine } from './engine.ts';
 import { fakeContext } from './fakeAudio.ts';
 import { ReloadWatcher, ShotDeduper, gunSoundPlan } from './weaponSounds.ts';
@@ -47,8 +47,57 @@ describe('ReloadWatcher (T-2.46)', () => {
     expect(w.update(0.95)).toEqual(['bolt']);
     expect(w.update(1)).toEqual([]);
     expect(w.update(0)).toEqual([]);
-    // A reload seen late (a remote soldier's, first snapshot mid-way) plays what it has passed, in order.
-    expect(w.update(0.9)).toEqual(['out', 'in', 'bolt']);
+    // U-007: a reload seen late (a remote soldier's, first snapshot mid-way) plays only the stage it has
+    // just reached — not every cue it has passed, all at once.
+    expect(w.update(0.9)).toEqual(['bolt']);
+    expect(w.update(0)).toEqual([]);
+    expect(w.update(0.6)).toEqual(['in']);
+    expect(w.update(0.95)).toEqual(['bolt']);
+    expect(w.update(0)).toEqual([]);
+    // The first snapshot of a reload that has just begun still plays its start.
+    expect(w.update(0.04)).toEqual(['out']);
+  });
+
+  it('a cancelled reload plays none of its later stages; a repeated snapshot replays nothing (U-007)', () => {
+    const w = new ReloadWatcher({ in: 0.55, bolt: 0.85 });
+    expect(w.update(0.02)).toEqual(['out']);
+    expect(w.update(0.3)).toEqual([]);
+    // Cancelled (a swap, death, a reset): the progress is gone, and so are its cues.
+    expect(w.update(0)).toEqual([]);
+    expect(w.update(0)).toEqual([]);
+    // The same progress arriving again and again (snapshots repeating) is silent.
+    const v = new ReloadWatcher({ in: 0.55, bolt: 0.85 });
+    const heard: string[] = [];
+    for (const p of [0.01, 0.01, 0.2, 0.2, 0.2, 0.56, 0.56, 0.7, 0.86, 0.86, 1, 1]) heard.push(...v.update(p));
+    expect(heard).toEqual(['out', 'in', 'bolt']);
+  });
+
+  it('a new reload begun between two looks starts its cues again (U-007)', () => {
+    const w = new ReloadWatcher({ in: 0.55, bolt: 0.85 });
+    const heard: string[] = [];
+    for (const p of [0.02, 0.6, 0.9, 0.97]) heard.push(...w.update(p));
+    // Done and straight into the next before a look saw 0.
+    for (const p of [0.03, 0.6, 0.9]) heard.push(...w.update(p));
+    expect(heard).toEqual(['out', 'in', 'bolt', 'out', 'in', 'bolt']);
+  });
+
+  it('the local reload on the weapon clock: each cue once, at its stage, for every gun (U-007)', () => {
+    for (const id of Object.keys(WEAPON_SOUNDS.guns)) {
+      const reload = getWeapon(id).reloadSeconds;
+      const w = new ReloadWatcher();
+      const at: Record<string, number> = {};
+      // The page feeds it every tick: progress through the reload, 0 when none.
+      for (let t = 0; t <= reload + 0.2; t += 1 / 30) {
+        const p = t < reload ? Math.max(t / reload, 1e-6) : 0;
+        for (const stage of w.update(p)) {
+          expect(at[stage], `${id} ${stage} twice`).toBeUndefined();
+          at[stage] = t;
+        }
+      }
+      expect(at['out']).toBe(0);
+      expect(Math.abs(at['in']! - WEAPON_SOUNDS.stages.in * reload)).toBeLessThanOrEqual(1 / 30 + 1e-9);
+      expect(Math.abs(at['bolt']! - WEAPON_SOUNDS.stages.bolt * reload)).toBeLessThanOrEqual(1 / 30 + 1e-9);
+    }
   });
 });
 

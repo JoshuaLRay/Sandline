@@ -1413,11 +1413,11 @@
       "class": "weapon",
       "seconds": 0.25,
       "variants": 2,
-      "normalizePeakDb": -6,
+      "normalizePeakDb": -2,
       "bounds": {
         "peakDb": [
-          -6.5,
-          -5.5
+          -2.5,
+          -1.5
         ],
         "rmsDb": [
           -50,
@@ -1504,11 +1504,11 @@
       "class": "weapon",
       "seconds": 0.25,
       "variants": 2,
-      "normalizePeakDb": -5,
+      "normalizePeakDb": -1.5,
       "bounds": {
         "peakDb": [
-          -5.5,
-          -4.5
+          -2,
+          -1
         ],
         "rmsDb": [
           -50,
@@ -1593,11 +1593,11 @@
       "class": "weapon",
       "seconds": 0.3,
       "variants": 2,
-      "normalizePeakDb": -4,
+      "normalizePeakDb": -1.5,
       "bounds": {
         "peakDb": [
-          -4.5,
-          -3.5
+          -2,
+          -1
         ],
         "rmsDb": [
           -50,

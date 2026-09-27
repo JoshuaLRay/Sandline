@@ -6,7 +6,7 @@
  * hear what it makes).
  */
 import type { SoundsConfig } from '@sandline/shared';
-import { type RendersManifest, type VoiceRendersManifest, soundBoardRows, voiceBoard, waveformColumns, wavSamples } from './soundBoardModel.ts';
+import { type RendersManifest, type VoiceRendersManifest, mixSamples, soundBoardRows, voiceBoard, waveformColumns, wavSamples } from './soundBoardModel.ts';
 
 export interface SoundBoardOptions {
   sounds: SoundsConfig;
@@ -51,6 +51,20 @@ export function createSoundBoard(parent: HTMLElement, options: SoundBoardOptions
   head.textContent = 'Sound board';
   const note = el('p', 'sound-board-note', root);
   note.textContent = 'Every committed sound. Click a variant to hear it; the numbers are what gen:audio measured.';
+  // U-007: the reload in the mix, on the game's own clocks.
+  const mixHead = el('h3', 'sound-board-title', root);
+  mixHead.textContent = 'Mix samples';
+  const mixList = el('div', 'sound-board-list', root);
+  for (const sample of mixSamples()) {
+    const line = el('div', 'sound-board-variant', mixList);
+    const play = el('button', 'sound-board-play', line);
+    play.type = 'button';
+    play.textContent = `▶ ${sample.title}`;
+    play.addEventListener('click', () => {
+      for (const cue of sample.cues) setTimeout(() => options.play(cue.id, cue.variant), cue.at * 1000);
+    });
+    el('span', 'sound-board-numbers', line).textContent = `${sample.cues.length} sounds · ${sample.cues.at(-1)!.at.toFixed(2)} s`;
+  }
   const list = el('div', 'sound-board-list', root);
 
   void options

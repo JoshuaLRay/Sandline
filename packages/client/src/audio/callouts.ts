@@ -15,7 +15,8 @@
  *   waits up to `radioQueueSeconds` (the most urgent first) or is dropped.
  * - **Missing recordings.** Each soldier speaks with its slot's profile; a
  *   line nobody has recorded yet is the chirp, placed or on the radio the
- *   same way, and nothing errors.
+ *   same way, and nothing errors — except your own soldier's, which is
+ *   silent unless `selfChirp` (U-007).
  *
  * Pure: time comes in as `now`, seconds, and what is heard goes out as a
  * `CalloutPlay` for the engine.
@@ -134,6 +135,8 @@ export class CalloutDirector {
     const key = this.cooldownKey(event, speaker.slot);
     if ((this.cooldowns.get(key) ?? Number.NEGATIVE_INFINITY) > now) return null;
     if (this.speaking(speaker.slot, now)) return null;
+    // Your own unrecorded line: nothing to say but the chirp, and you know what you did (U-007).
+    if (speaker.self && !this.config.selfChirp && !this.recorded(event, speaker)) return null;
     this.cooldowns.set(key, now + def.cooldown);
     const radio = this.overRadio(speaker, listener);
     if (radio && this.onAir(now)) {
@@ -164,6 +167,12 @@ export class CalloutDirector {
     const dy = speaker.at.y - listener.y;
     const dz = speaker.at.z - listener.z;
     return Math.sqrt(dx * dx + dy * dy + dz * dz) > this.config.radioBeyondM;
+  }
+
+  /** Whether any line of this event is recorded for this speaker's voice, dry. */
+  private recorded(event: CalloutEvent, speaker: CalloutSpeaker): boolean {
+    const profile = this.voices.profiles[speaker.slot]!.id;
+    return this.config.events[event].lines.some(({ line, style }) => this.index.variants(`${profile}/${line}.${style}.dry`) > 0);
   }
 
   private pickLine(event: CalloutEvent): CalloutLine {

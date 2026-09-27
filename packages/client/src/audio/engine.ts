@@ -133,6 +133,8 @@ export class AudioEngine {
   private boxes: readonly WorldBox[] = [];
   private volumes: Volumes = { master: 0.8, effects: 1, voice: 1 };
   private loading: Promise<void> | null = null;
+  /** Renders that would not fetch or decode, by file (U-007): shown, not swallowed. */
+  private readonly failed: string[] = [];
 
   constructor(private readonly options: EngineOptions) {
     this.sounds = options.sounds ?? SOUNDS;
@@ -143,6 +145,20 @@ export class AudioEngine {
   /** Whether the context exists and every render has loaded. */
   get ready(): boolean {
     return this.ctx !== null && this.buffers.size === this.sounds.sounds.size;
+  }
+
+  /** The renders that failed to load (U-007): each one a sound that will never play. Empty before loading. */
+  get missing(): readonly string[] {
+    return this.failed;
+  }
+
+  /** One line for the QA readout: whether the sounds are there (U-007). */
+  readout(): string {
+    if (!this.ctx) return 'audio  locked until the first click or key';
+    if (!this.ready) return 'audio  loading';
+    if (this.failed.length === 0) return `audio  ${this.sounds.sounds.size} sounds loaded  voices ${this.pool.size}/${this.mix.voiceLimit}`;
+    const shown = this.failed.slice(0, 4).join(', ');
+    return `audio  ${this.failed.length} render(s) FAILED to load: ${shown}${this.failed.length > 4 ? ', …' : ''}`;
   }
 
   /** Voices playing right now. */
@@ -178,6 +194,7 @@ export class AudioEngine {
             try {
               return await ctx.decodeAudioData(await this.options.fetchBytes(soundFile(def.id, v)));
             } catch {
+              this.failed.push(soundFile(def.id, v));
               return null;
             }
           }),

@@ -1573,7 +1573,10 @@ void fetchAudio('voice/renders.json')
   })
   .catch(() => undefined);
 const unlockAudio = (): void => {
-  void audio.unlock();
+  // U-007: a render that will not load is a sound that never plays — say so, once, where it can be seen.
+  void audio.unlock().then(() => {
+    if (audio.missing.length > 0) console.warn(`[audio] ${audio.missing.length} render(s) failed to load and will not play: ${audio.missing.join(', ')}`);
+  });
   removeEventListener('pointerdown', unlockAudio, true);
   removeEventListener('keydown', unlockAudio, true);
 };
@@ -2620,6 +2623,7 @@ function frame(): void {
         `${throws.readout(clock.tick * TICK_SECONDS)}` +
         `${lastBlast ? `\nlast blast ${lastBlast.name}  ${lastBlast.damage.toFixed(0)} dmg on ${lastBlast.targets}` : ''}\n` +
         `${effects.readout()}\n` +
+        `${audio.readout()}\n` +
         `\n${netReadout()}`;
     }
   }

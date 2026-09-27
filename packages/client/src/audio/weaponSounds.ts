@@ -45,8 +45,14 @@ export type ReloadStage = 'out' | 'in' | 'bolt';
 /**
  * A reload's stages as its progress (0..1, 0 when none) crosses them: `out`
  * as it starts, `in` and `bolt` at the data's fractions. Each stage plays
- * once per reload; progress falling back to 0 ends it.
+ * once per reload; progress falling back to 0 ends it (a cancelled reload
+ * plays nothing more), and a repeated progress plays nothing. A reload first
+ * seen part-way plays only a stage it has just reached, not every one it
+ * passed at once (U-007).
  */
+/** How far past a stage a reload first seen may be and still play it, as a share of the reload (U-007). */
+export const LATE = 0.1;
+
 export class ReloadWatcher {
   private last = 0;
   private played = new Set<ReloadStage>();
@@ -55,10 +61,19 @@ export class ReloadWatcher {
 
   update(progress: number): ReloadStage[] {
     const out: ReloadStage[] = [];
-    if (progress <= 0) {
+    // Nothing, or a new reload begun between two looks (the last one done, the next already under way).
+    if (progress <= 0 || progress < this.last - 0.5) {
       this.last = 0;
       this.played.clear();
-      return out;
+      if (progress <= 0) return out;
+    }
+    if (this.last === 0) {
+      // First sight of a reload already under way (a remote soldier's, U-007): the
+      // stages it passed a while ago are history, not sounds to play now all at once.
+      const behind = (at: number): boolean => progress - at > LATE;
+      if (behind(0)) this.played.add('out');
+      if (behind(this.stages.in)) this.played.add('in');
+      if (behind(this.stages.bolt)) this.played.add('bolt');
     }
     if (!this.played.has('out')) {
       this.played.add('out');
