@@ -4,6 +4,10 @@
 
 > **Production direction:** A 2026-09-27 [ADR-017 addendum](../adr/017-in-house-audio.md) authorizes a ChatGPT text-to-speech trial for offline squad-voice candidates. Human-recorded voices remain in the eventual plan. Generated clips still need owner listening and a reviewed, reproducible path into the game before they count as production assets; the current `pnpm gen:voice` workflow expects consented human recordings.
 
+## Source and naming
+
+The slots, roles, and stable IDs follow the [squad roster](../design/squad-roster.md). Preach's name is approved; Brennan, Holloway, Ortiz, Marsh, and Vance remain proposed display names. The gender presentation, accent, pitch, and timbre proposed here are voice-design choices, not approved biography, ethnicity, region, or personality.
+
 ## What makes a voice stay the same
 
 A detailed prompt is a voice specification; it cannot by itself force every text-to-speech system to reuse one exact speaker. For continuity, keep both the prompt and the generator's speaker identity fixed:
@@ -47,6 +51,7 @@ Character identity block:
 {{PASTE THIS CHARACTER'S LOCKED IDENTITY BLOCK UNCHANGED}}
 
 Delivery: {{NORMAL or SHOUTED}}
+Cue ID: {{CUE ID — metadata only; do not speak it}}
 Exact line: {{PASTE ONE EXACT LINE FROM voice-script.md}}
 ```
 
@@ -65,7 +70,7 @@ The roster supplies roles and stable IDs. Preach's name is approved. Brennan, Ho
 **Keep distinct:** Preach is firmer and more compact than Brennan, warmer and heavier than Ortiz, and lower and less buoyant than Holloway or Vance. He has more chest presence than Marsh without Brennan's depth or grain.
 
 ```text
-Preach identity block — masculine adult baritone, medium-low center; dry-warm, compact chest resonance; faint consonant-edge grain; narrow-to-moderate pitch movement; deliberate tactical phrasing with short purposeful pauses and falling statement endings; firm, exact consonants; neutral rhotic General American accent; calm, contained authority. Preserve these traits unchanged across every clip. Do not make him booming, growling, angry, theatrical, or constantly loud.
+LOCKED IDENTITY — PREACH / kessler. Use one fixed synthetic speaker identity for every clip. Adult masculine baritone centered in the medium-low range, firm but never bass-deep. The timbre is dry-warm with compact, centered chest resonance and a faint grain at consonant edges; no rumble, fry, or rasp. Keep pitch movement narrow to moderate, with level starts, deliberate stress on tactical words, and settled falling statement endings. Use even, deliberate phrasing with short purposeful pauses. Consonants are firm and exact; vowels remain natural and unforced. Accent: neutral, rhotic General American with no strong regional markers. Baseline: calm authority and contained urgency, never anger or theatrical command. Relative anchor: firmer and more compact than Brennan, warmer and heavier than Ortiz, lower and less buoyant than Holloway or Vance, and more chest-present than Marsh. Preserve all of these traits unchanged across every line and performance. Do not make Preach booming, growling, theatrical, or constantly loud.
 ```
 
 ### Slot 1 — Brennan (`brennan`), LMG
@@ -77,7 +82,7 @@ Preach identity block — masculine adult baritone, medium-low center; dry-warm,
 **Keep distinct:** Brennan is deeper, rounder, and more textured than Preach. Preach is tighter and crisper. Brennan is not a whispered sniper voice like Marsh and not an angry, gravelly “tough guy.”
 
 ```text
-Brennan identity block — masculine adult low baritone, the lowest and fullest voice in the squad; broad warm chest resonance; mild even grain, rounded vowels; steady, unhurried connected phrases and deliberate consonants; soft downward phrase endings; neutral rhotic General American accent; patient, dependable baseline. Preserve these traits unchanged across every clip. Do not add a growl, heavy rasp, anger, breathiness, or constant shouting.
+LOCKED IDENTITY — BRENNAN / brennan. Use one fixed synthetic speaker identity for every clip. Adult masculine low baritone: the squad's lowest and fullest voice, lower and rounder than Preach but never sub-bass. Timbre is broad, warm, dark, and gently textured through the middle of the voice; keep the texture even, not a growl or heavy rasp. Use rounded vowels, connected short phrases, a steady unhurried pace, and deliberate but natural consonants. Phrase endings settle softly downward. Accent: neutral, rhotic General American with no strong regional markers. Baseline: patient, grounded, dependable. Carry weight through resonance and pacing, not volume; the LMG role does not mean constant shouting. Relative anchor: deeper, broader, and slightly more textured than Preach, with softer edges; fuller than Marsh and less bright than Holloway. Preserve these traits unchanged on every line and in every delivery mode. Do not make Brennan angry, menacing, breathy, or cartoon-gruff.
 ```
 
 ### Slot 2 — Holloway (`holloway`), support
@@ -89,7 +94,7 @@ Brennan identity block — masculine adult low baritone, the lowest and fullest 
 **Keep distinct:** Holloway is brighter, quicker, and more buoyant than Vance. Vance stays centered and measured. Holloway has more forward sparkle than Ortiz, but does not become high-pitched or nasal.
 
 ```text
-Holloway identity block — masculine adult upper-middle tenor; brightest and lightest masculine voice in the squad; forward clear resonance with only a mild natural edge, not nasal or pinched; brisk rhythm, quick pickups, crisp consonants, moderate pitch flexibility with short rises that resolve; neutral rhotic General American accent; alert, responsive, helpful baseline. Preserve these traits unchanged across every clip. Do not make him juvenile, squeaky, breathless, comic, or nervous.
+LOCKED IDENTITY — HOLLOWAY / holloway. Use one fixed synthetic speaker identity for every clip. Adult masculine upper-middle tenor: the squad's brightest and lightest masculine voice, higher than Preach, Brennan, and Vance. Place the sound forward with clean brightness and a slight natural edge, never pinched or strongly nasal. Keep pitch flexible within a moderate range; brief acknowledgments may lift a little, then resolve rather than becoming singsong. Use brisk phrasing, quick pickups, crisp word boundaries, and clear consonants without swallowing syllables. Accent: neutral, rhotic General American with no strong regional markers. Baseline: alert, responsive, and helpful; energetic but grounded. Relative anchor: quicker, higher, and more buoyant than Vance; more forward and lively than Ortiz, but not squeaky or juvenile. Preserve these traits unchanged on every line and in every delivery mode. Do not make Holloway comic, nervous, breathless, or overly high-pitched.
 ```
 
 ### Slot 3 — Ortiz (`ortiz`), scoped-AR fireteam lead
@@ -101,7 +106,7 @@ Holloway identity block — masculine adult upper-middle tenor; brightest and li
 **Keep distinct:** Ortiz shares Preach's controlled authority but has a cleaner, smoother, less chest-heavy voice and more even pacing. She is lower and less buoyant than Holloway; she is not a second Preach with a different pitch.
 
 ```text
-Ortiz identity block — feminine adult medium-to-low mezzo; smooth, centered-forward resonance with moderate weight and minimal grain; even middle pace, precise consonants, balanced vowels, slight emphasis on the actionable word, composed level or falling endings; neutral rhotic General American accent; focused, quietly decisive baseline. Preserve these traits unchanged across every clip. Do not make her unusually low, sharp, cold, angry, theatrical, or sing-song.
+LOCKED IDENTITY — ORTIZ / ortiz. Use one fixed synthetic speaker identity for every clip. Adult feminine presentation in a medium-to-low mezzo range, with smooth, centered-forward resonance, moderate weight, and minimal grain. Do not push the voice unusually low. Use a steady middle pace, precise and evenly spaced consonants, balanced vowels, and a small emphasis on the actionable word in a line. Finish level or gently downward; avoid a habitual question lilt. Accent: neutral, rhotic General American with no strong regional markers. Baseline: focused confidence and quiet decisiveness. Urgent lines gain firmness and projection, not coldness or anger. Relative anchor: shares Preach's controlled authority but has a cleaner, smoother, less chest-heavy voice and more even pacing; lower and less buoyant than Holloway. Preserve these traits unchanged on every line and in every delivery mode. Do not make Ortiz sharp, icy, theatrical, or sing-song.
 ```
 
 ### Slot 4 — Marsh (`marsh`), left-handed bolt-action sniper
@@ -113,7 +118,7 @@ Ortiz identity block — feminine adult medium-to-low mezzo; smooth, centered-fo
 **Keep distinct:** Marsh is quieter, airier, and lighter than Brennan despite a similar low range. He is lower and slower than Vance, with less centered brightness. Do not use breathiness to imply injury.
 
 ```text
-Marsh identity block — masculine adult low-to-middle register; lower than Vance but lighter and less chest-heavy than Brennan; soft dry tone with a trace of airy onset, clear fully voiced words, light resonance; most spacious cadence in the squad, controlled pauses, little pitch travel, restrained falling endings; neutral rhotic General American accent; reserved, focused baseline. Preserve these traits unchanged across every clip. Do not whisper, sigh, pant, growl, or make him mysterious or menacing.
+LOCKED IDENTITY — MARSH / marsh. Use one fixed synthetic speaker identity for every clip. Adult masculine low-to-middle register, lower than Vance but not as deep or rounded as Brennan. Timbre is soft, dry, and lightly airy at phrase onsets, with light resonance rather than chest-heavy weight. Keep every word fully voiced and intelligible; do not whisper. Use the squad's most spacious phrasing: measured pace, brief quiet gaps between thought groups, little pitch travel, and restrained falling endings. Breathing stays controlled and should not become sighs or audible panting. Accent: neutral, rhotic General American with no strong regional markers. Baseline: reserved focus, not mystery or menace. Relative anchor: quieter, airier, and lighter than Brennan despite the low range; lower, slower, and less bright than Vance. Preserve these traits unchanged on every line and in every delivery mode. Do not add injury, whispering, growling, or theatrical secrecy.
 ```
 
 ### Slot 5 — Vance (`vance`), semi-automatic sniper
@@ -125,10 +130,6 @@ Marsh identity block — masculine adult low-to-middle register; lower than Vanc
 **Keep distinct:** Vance is more centered and restrained than Holloway, brighter and quicker than Marsh, and lighter and cleaner than Preach or Brennan. Keep a small but reliable gap between these voices.
 
 ```text
-Vance identity block — masculine adult middle register; clean, dry, lightly textured; forward clarity with less sparkle than Holloway and less chest weight than Preach; medium even pace, slightly quicker than Marsh; connected short phrases, precise consonants, factual stress, level or gently falling endings; neutral rhotic General American accent; practical, attentive restraint. Preserve these traits unchanged across every clip. Do not make him detached, swaggering, gravelly, or as buoyant as Holloway.
+LOCKED IDENTITY — VANCE / vance. Use one fixed synthetic speaker identity for every clip. Adult masculine middle register, above Marsh and Brennan but below Holloway's brightest range. Timbre is clean, dry, and lightly textured, with forward clarity, less sparkle than Holloway, and less chest weight than Preach. Use a medium, even pace, slightly quicker than Marsh; connect short phrases naturally, articulate consonants precisely, and stress factual words without overemphasis. Statement endings settle level or gently downward, never with a repeated upward lilt. Accent: neutral, rhotic General American with no strong regional markers. Baseline: practical, attentive restraint. Relative anchor: more centered and restrained than Holloway, brighter and quicker than Marsh, lighter and cleaner than Preach or Brennan. Preserve these traits unchanged on every line and in every delivery mode. Do not make Vance detached, swaggering, gravelly, or buoyant.
 ```
-
-## Source and naming
-
-The slots, roles, and stable IDs follow the [squad roster](../design/squad-roster.md). The prompts use role only to guide vocal contrast; they do not treat the proposed skills as final or assign unapproved history, relationships, ethnicity, or regional background.
 
