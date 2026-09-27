@@ -108,10 +108,12 @@ import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { weaponIndexForKey } from './weapons/weaponKey.ts';
 import { PROJECTILE_ORDER, ThrowQA } from './weapons/ThrowQA.ts';
 import { PouchTrigger } from './weapons/pouchTrigger.ts';
-import { ViewModel } from './weapons/viewModel.ts';
+import { VIEWMODEL_FOV, ViewModel } from './weapons/viewModel.ts';
+import { keepInFront, viewToWorld } from './weapons/drawnMuzzle.ts';
+import { weaponMuzzle } from './weapons/weaponModels.ts';
 import { ScopeOverlay, scopedFov, scopedLookScale } from './ui/scopeOverlay.ts';
 import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
-import { SCORCH_REACH_M, WeaponEffects } from './weapons/effects.ts';
+import { FIRST_PERSON_FLASH_SCALE, SCORCH_REACH_M, WeaponEffects } from './weapons/effects.ts';
 import { addImpulse, addShake, applyShake, blastShake, createShake, decayShake, suppressionJolt } from './camera/cameraShake.ts';
 import { SuppressionOverlay } from './ui/suppressionLook.ts';
 import { crosshairGapPx } from './ui/crosshair.ts';
@@ -1652,6 +1654,8 @@ if (perf) (window as unknown as { __sandlinePerfClear?: () => void }).__sandline
 const clock = new Clock();
 /** Reused so a held trigger does not allocate a vector per tick. */
 const muzzle = new THREE.Vector3();
+/** The stance eye a shot is traced from, reused like `muzzle` (U-003). */
+const tickEye = new THREE.Vector3();
 /**
  * The visual rig. `eyeHeight` tracks the camera's pivot so that first-person
  * ADS puts the muzzle exactly at the middle of the screen even after the camera
@@ -1764,6 +1768,42 @@ const pendingShots: { shotIndex: number; carrierX: number; carrierZ: number }[] 
 let pendingShotCount = 0;
 /** The drawn muzzle's rig: the tick's, with the eye at the camera's pivot. */
 const drawnRig = { ...DEFAULT_MUZZLE_RIG };
+/** U-003: the barrel's tip as drawn this frame, and its working vectors. Reused. */
+const barrel = new THREE.Vector3();
+const barrelView = new THREE.Vector3();
+const barrelEye = new THREE.Vector3();
+const barrelDirection = new THREE.Vector3();
+const barrelRay = new THREE.Raycaster();
+/**
+ * The barrel's tip where the gun in hand is drawn this frame, world space
+ * (U-003): the viewmodel's in first person, carried across to the world
+ * camera at the same spot on screen (`drawnMuzzle.ts`), and the body's rifle
+ * in third. Anything else — hands on a wall or a mounted gun, or nothing
+ * held — keeps the rig's point, `fallback`. Then it is kept short of any
+ * scenery between the eye and it, so a flash against a wall is still seen.
+ */
+function drawnBarrel(fallback: { x: number; y: number; z: number }, downed: boolean, sim: { readonly vault?: unknown } | null): THREE.Vector3 {
+  camera.updateMatrixWorld();
+  const handsFree = !downed && !sim?.vault && !live?.net.mounted;
+  if (handsFree && input.firstPerson && viewModel.muzzle(barrelView)) {
+    viewToWorld(barrelView, VIEWMODEL_FOV, camera, barrel);
+  } else if (handsFree && !input.firstPerson) {
+    const tip = weaponMuzzle(playerRig.held);
+    playerRig.aim.updateWorldMatrix(true, false);
+    playerRig.aim.localToWorld(barrel.set(tip[0], tip[1], tip[2]));
+  } else {
+    barrel.set(fallback.x, fallback.y, fallback.z);
+  }
+  barrelEye.setFromMatrixPosition(camera.matrixWorld);
+  const distance = barrelEye.distanceTo(barrel);
+  if (distance > 1e-6) {
+    barrelRay.set(barrelEye, barrelDirection.subVectors(barrel, barrelEye).divideScalar(distance));
+    barrelRay.far = distance;
+    const [wall] = barrelRay.intersectObjects(shootable, false);
+    keepInFront(barrelEye, barrel, wall ? wall.distance : null);
+  }
+  return barrel;
+}
 let locomotion: LocomotionResult = classifyLocomotion(
   { velocityX: 0, velocityZ: 0, grounded: true, crouched: false, downed: false, facingYaw: 0 },
   config,
@@ -1979,8 +2019,12 @@ function frame(): void {
        * here — so the predicted streak and the authoritative one share an axis
        * without anything being sent to agree on it.
        */
+      // U-003: each streak ends where the round from the stance eye stops —
+      // the point the server traces from — and starts at the drawn barrel,
+      // which only the frame knows (`drawPredicted`).
+      const eye = here ? stanceEye(here) : m;
       combat.predictShot(
-        muzzle,
+        tickEye.set(eye.x, eye.y, eye.z),
         shotDirections(combat.weapon, shot, net.netId, tickNumber, aimYaw, aimPitch),
         tickNumber * TICK_SECONDS,
       );
@@ -2583,6 +2627,24 @@ function frame(): void {
   const effectsNow = clock.tick * TICK_SECONDS + clock.alpha * TICK_SECONDS;
   combat.fade(effectsNow);
   /**
+   * The weapon in hand in first person, over the world. Hidden whenever the
+   * body is shown instead (third person, downed) and through a vault, when
+   * both hands are on the wall.
+   */
+  viewModel.update({
+    visible: input.firstPerson && !downed && !!net && !sim?.vault,
+    held: heldId(),
+    ads: input.ads && !holdingPouch,
+    winding: aiming && holdingPouch && throws.def.kind === 'thrown',
+    kickBack: kick.back,
+    kickUp: kick.up,
+    reload: holdingPouch ? 0 : combat.reloadProgress((clock.tick + clock.alpha) * TICK_SECONDS),
+    speed,
+    dt,
+    aspect: camera.aspect,
+    scoped: !holdingPouch && combat.weapon.scopeFovDeg !== undefined,
+  });
+  /**
    * The flash and shell come from the muzzle as DRAWN this frame (B-02) — the
    * rendered position, interpolated between ticks, and the camera's own pivot
    * height — not the tick-end muzzle the shot was taken from. In first person
@@ -2593,23 +2655,31 @@ function frame(): void {
    * so every round blinked a screen-filling sprite on or off. That was the
    * run-and-fire strobe. The hit is still traced from the tick's eye; this is
    * only where the picture of the shot is drawn.
+   *
+   * U-003: the flash and every predicted streak leave the barrel you can see
+   * — the viewmodel's in first person, the body's in third (`drawnBarrel`).
+   * The shell still leaves the rig's muzzle point, beside the eye or the
+   * shoulder, where a first-person view does not fill with brass.
    */
-  if (live) {
+  // Only while something is to be drawn from the barrel: finding it casts a ray through the scenery.
+  if (live && (pendingShotCount > 0 || effects.liveFlashes > 0 || combat.tracing)) {
     drawnRig.shoulderRight = rig.shoulderRight;
     drawnRig.eyeHeight = input.firstPerson && !downed ? camSolve.position.y - ry : cam.eyeHeight;
     const fwdX = camSolve.forward.x;
     const fwdZ = camSolve.forward.z;
     const drawn = muzzlePosition(rx, ry, rz, fwdX, fwdZ, stance(), drawnRig);
+    const at = drawnBarrel(drawn, downed, sim);
     for (let i = 0; i < pendingShotCount; i += 1) {
       const pending = pendingShots[i]!;
       // The shell comes to rest at the feet: whatever the character stands on.
-      effects.fire(drawn, fwdX, fwdZ, ry, pending.shotIndex, effectsNow, {
+      effects.fire(at, fwdX, fwdZ, ry, pending.shotIndex, effectsNow, {
         x: pending.carrierX,
         y: 0,
         z: pending.carrierZ,
-      });
+      }, { ejectFrom: drawn, flashScale: input.firstPerson ? FIRST_PERSON_FLASH_SCALE : 1 });
     }
-    effects.followMuzzle(drawn, fwdX, fwdZ);
+    effects.followMuzzle(at, fwdX, fwdZ);
+    combat.drawPredicted(at);
   }
   pendingShotCount = 0;
   effects.update(effectsNow);
@@ -2642,24 +2712,6 @@ function frame(): void {
   }
   aiDebug.render(camera, innerWidth, innerHeight);
   orderMarkerOverlay.render(camera, innerWidth, innerHeight);
-  /**
-   * The weapon in hand in first person, over the world. Hidden whenever the
-   * body is shown instead (third person, downed) and through a vault, when
-   * both hands are on the wall.
-   */
-  viewModel.update({
-    visible: input.firstPerson && !downed && !!net && !sim?.vault,
-    held: heldId(),
-    ads: input.ads && !holdingPouch,
-    winding: aiming && holdingPouch && throws.def.kind === 'thrown',
-    kickBack: kick.back,
-    kickUp: kick.up,
-    reload: holdingPouch ? 0 : combat.reloadProgress((clock.tick + clock.alpha) * TICK_SECONDS),
-    speed,
-    dt,
-    aspect: camera.aspect,
-    scoped: !holdingPouch && combat.weapon.scopeFovDeg !== undefined,
-  });
   viewModel.render(renderer);
   scopeOverlay.set(viewModel.scoped);
   requestAnimationFrame(frame);

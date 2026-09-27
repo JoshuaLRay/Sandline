@@ -9,6 +9,7 @@ import {
   DECAL_FADE_SECONDS,
   DECAL_OFFSET_M,
   DECAL_SECONDS,
+  FIRST_PERSON_FLASH_SCALE,
   FLASH_FORWARD_M,
   FLINCH_PARTS,
   FLINCH_SECONDS,
@@ -198,6 +199,35 @@ describe('muzzle flash (T-2.10)', () => {
     fx.followMuzzle({ x: 50, y: 1, z: 50 }, FWD_X, FWD_Z);
     expect(sprite.position.equals(before)).toBe(true);
     expect(sprite.visible).toBe(false);
+  });
+});
+
+describe('the flash at the drawn barrel (U-003)', () => {
+  it('is a soft picture, not a flat square: a lit core fading to clear corners', () => {
+    const { scene } = setup();
+    const sprite = scene.children.find((o): o is THREE.Sprite => o instanceof THREE.Sprite)!;
+    const map = sprite.material.map as THREE.DataTexture;
+    expect(map).toBeTruthy();
+    const { data, width, height } = map.image as { data: Uint8Array; width: number; height: number };
+    const alpha = (x: number, y: number) => data[(y * width + x) * 4 + 3]!;
+    expect(alpha(width / 2, height / 2)).toBeGreaterThan(200);
+    expect(alpha(0, 0)).toBe(0);
+    expect(alpha(width - 1, height - 1)).toBe(0);
+  });
+
+  it('sizes the flash for first person, and throws the shell from its own point, not the barrel', () => {
+    const third = setup();
+    const first = setup();
+    const port = new THREE.Vector3(2.2, 1.5, 2.6);
+    third.fx.fire(MUZZLE, FWD_X, FWD_Z, FLOOR_Y, 5, 1);
+    first.fx.fire(MUZZLE, FWD_X, FWD_Z, FLOOR_Y, 5, 1, undefined, { ejectFrom: port, flashScale: FIRST_PERSON_FLASH_SCALE });
+    const sprite = (scene: THREE.Scene) => scene.children.find((o): o is THREE.Sprite => o instanceof THREE.Sprite && o.visible)!;
+    expect(sprite(first.scene).scale.x).toBeCloseTo(sprite(third.scene).scale.x * FIRST_PERSON_FLASH_SCALE, 9);
+    // The flash stays at the barrel either way.
+    expect(sprite(first.scene).position).toEqual(sprite(third.scene).position);
+    const shell = (scene: THREE.Scene) => scene.children.find((o): o is THREE.Mesh => o instanceof THREE.Mesh && o.visible && o.geometry instanceof THREE.BoxGeometry)!;
+    expect(shell(third.scene).position.distanceTo(MUZZLE)).toBeLessThan(1e-9);
+    expect(shell(first.scene).position.distanceTo(port)).toBeLessThan(1e-9);
   });
 });
 

@@ -46,6 +46,13 @@ export const FLASH_POOL = 4;
 /** How far ahead of the visual muzzle the flash sits, metres. */
 export const FLASH_FORWARD_M = 0.08;
 export const FLASH_LIGHT_INTENSITY = 6;
+/**
+ * The flash's size in first person, as a share of its third-person size
+ * (U-003). Third person sees it metres away and needs it big to read; in
+ * first person it sits at the drawn barrel under a metre from the eye, where
+ * the full size would bury the sight picture.
+ */
+export const FIRST_PERSON_FLASH_SCALE = 0.4;
 export const FLASH_LIGHT_RANGE_M = 5;
 
 export const SHELL_POOL = 32;
@@ -267,6 +274,39 @@ export function debrisVelocities(blastIndex: number, out: Float32Array, count = 
 
 const PLANE_FACING = new THREE.Vector3(0, 0, 1);
 
+/**
+ * The flash's picture (U-003): a hot core fading to nothing, with four soft
+ * spikes, white so the sprite's colour tints it. Without it the sprite is a
+ * flat square — unnoticed metres away in third person, and a lit tile over
+ * the sights in first. Built once, in code, 64 texels square.
+ */
+function flashTexture(): THREE.DataTexture {
+  const size = 64;
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const dx = (x + 0.5) / size * 2 - 1;
+      const dy = (y + 0.5) / size * 2 - 1;
+      const r = Math.hypot(dx, dy);
+      const core = Math.max(0, 1 - r / 0.45) ** 2;
+      // Four spikes: brightest along the axes, narrowing as they reach out.
+      const across = Math.min(Math.abs(dx), Math.abs(dy));
+      const spike = Math.max(0, 1 - across / (0.09 * (1 - Math.min(1, r)) + 0.01)) * Math.max(0, 1 - r) ** 1.5;
+      const a = Math.min(1, core + 0.7 * spike);
+      const i = (y * size + x) * 4;
+      data[i] = 255;
+      data[i + 1] = 255;
+      data[i + 2] = 255;
+      data[i + 3] = Math.round(a * 255);
+    }
+  }
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export class WeaponEffects {
   private readonly flashes: FlashSlot[] = [];
   private readonly shells: ShellSlot[] = [];
@@ -288,8 +328,10 @@ export class WeaponEffects {
   private blastsSpawned = 0;
 
   constructor(private readonly scene: THREE.Scene) {
+    const flashMap = flashTexture();
     for (let i = 0; i < FLASH_POOL; i += 1) {
       const material = new THREE.SpriteMaterial({
+        map: flashMap,
         color: 0xffc978,
         transparent: true,
         opacity: 1,
@@ -455,6 +497,11 @@ export class WeaponEffects {
    * `forwardX`/`forwardZ` are the character's facing, the pair `muzzlePosition`
    * takes; `floorY` is where the shell will come to rest — the feet, since
    * the character is standing on whatever it lands on.
+   *
+   * U-003: the shell leaves `ejectFrom`, the muzzle unless given — the flash
+   * is at the barrel's tip, and brass thrown from there would fly across a
+   * first-person view — and `flashScale` sizes the flash for the view it is
+   * seen from (`FIRST_PERSON_FLASH_SCALE`).
    */
   fire(
     muzzle: Vec3Like,
@@ -464,11 +511,12 @@ export class WeaponEffects {
     shotIndex: number,
     now: number,
     carrier: Vec3Like = STILL,
+    { ejectFrom = muzzle, flashScale = 1 }: { ejectFrom?: Vec3Like; flashScale?: number } = {},
   ): void {
     const flash = this.claim(this.flashes);
     flash.live = true;
     flash.born = now;
-    const size = 0.22 + 0.12 * unitFromSeed(seedFrom(shotIndex, 11));
+    const size = (0.22 + 0.12 * unitFromSeed(seedFrom(shotIndex, 11))) * flashScale;
     flash.sprite.scale.set(size, size, 1);
     flash.material.rotation = 2 * Math.PI * unitFromSeed(seedFrom(shotIndex, 12));
     this.placeFlash(flash, muzzle, forwardX, forwardZ);
@@ -480,7 +528,7 @@ export class WeaponEffects {
     const shell = this.claim(this.shells);
     shell.live = true;
     shell.born = now;
-    shell.origin.set(muzzle.x, muzzle.y, muzzle.z);
+    shell.origin.set(ejectFrom.x, ejectFrom.y, ejectFrom.z);
     // The shell leaves a moving rifle already moving with it (B-02). Without
     // the carrier's velocity a shooter running backward overtakes their own
     // brass, and it tumbles back into the middle of a first-person view.
@@ -489,7 +537,7 @@ export class WeaponEffects {
     shell.spinX = 8 + 10 * unitFromSeed(seedFrom(shotIndex, 21));
     shell.spinY = 4 + 8 * unitFromSeed(seedFrom(shotIndex, 22));
     shell.restY = floorY + SHELL_SIZE_M.y / 2;
-    shell.flight = flightSeconds(v.y, muzzle.y - shell.restY);
+    shell.flight = flightSeconds(v.y, ejectFrom.y - shell.restY);
     shell.material.opacity = 1;
     shell.mesh.visible = true;
     this.placeShell(shell, 0);
