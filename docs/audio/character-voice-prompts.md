@@ -2,7 +2,7 @@
 
 **Scope:** six reusable prompts for exploring the squad's spoken voices. They are creative direction, not new dialogue, backstory, or approved character canon.
 
-> **Production gate:** [ADR-017](../adr/017-in-house-audio.md) currently requires consented human recordings processed by code and rejects text-to-speech. These prompts are for voice concepts only under the current decision. Do not treat generated audio as a shippable game asset until ADR-017 is amended and the asset pipeline is defined for it.
+> **Production direction:** A 2026-09-27 [ADR-017 addendum](../adr/017-in-house-audio.md) authorizes a ChatGPT text-to-speech trial for offline squad-voice candidates. Human-recorded voices remain in the eventual plan. Generated clips still need owner listening and a reviewed, reproducible path into the game before they count as production assets; the current `pnpm gen:voice` workflow expects consented human recordings.
 
 ## Source and naming
 
@@ -104,4 +104,4 @@ Speak only those exact words. Do not announce the character's name or add words,
 
 ## Before generated audio ships
 
-ADR-017 and U-013 still govern Sandline's voice assets. If the owner wants these synthetic voices in the game, record that change in an ADR-017 addendum first, including the approved generation source and how its output will enter the reproducible asset pipeline. The existing `pnpm gen:voice` workflow expects consented human recordings; this prompt file does not change that workflow or claim any audio has been generated, reviewed, or approved.
+The ADR-017 addendum allows a limited ChatGPT text-to-speech trial alongside the eventual human-recording plan. The current `pnpm gen:voice` workflow still expects consented human recordings, so do not place generated clips in `assets/voice/raw/` or bypass its checks. Before generated clips become production assets, confirm the owner accepts their sound, the output can be used and exported, the six speaker identities remain intelligible and distinct enough, and the project has a reproducible import/validation path. No audio has been generated, reviewed, or approved by this prompt document.
