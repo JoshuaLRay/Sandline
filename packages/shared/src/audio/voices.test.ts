@@ -4,7 +4,7 @@
  * and what is wrong is refused by name.
  */
 import { describe, expect, it } from 'vitest';
-import { MAX_SLOTS, VOICES, parseVoices, passFile, passLines, voiceFile } from '../index.ts';
+import { MAX_SLOTS, VOICES, parseVoices, passFile, passLines, sectionOfLine, sectionProfiles, voiceFile } from '../index.ts';
 import RAW from '../data/audio/voices.json' with { type: 'json' };
 
 const edit = (patch: Record<string, unknown>) => parseVoices({ ...RAW, ...patch });
@@ -12,15 +12,29 @@ const edit = (patch: Record<string, unknown>) => parseVoices({ ...RAW, ...patch 
 describe('voice data (T-2.48)', () => {
   it('parses the committed file: a profile a slot, the script the voice script names, lines once each', () => {
     expect(VOICES.profiles).toHaveLength(MAX_SLOTS);
-    expect(VOICES.sections.map((s) => s.id)).toEqual(['contact', 'firing', 'moving', 'reload', 'grenade', 'hit', 'revive', 'kills', 'orders', 'objective']);
+    expect(VOICES.sections.map((s) => s.id)).toEqual(['contact', 'firing', 'moving', 'reload', 'grenade', 'hit', 'revive', 'kills', 'orders', 'objective', 'enemy']);
     const lines = VOICES.sections.flatMap((s) => [...s.lines, ...s.hurt]);
     expect(new Set(lines).size).toBe(lines.length);
     const hit = VOICES.sections.find((s) => s.id === 'hit')!;
-    expect(passLines(hit, 'hurt')).toEqual(['pain-grunt', 'pain-breath', 'pain-groan']);
+    expect(passLines(hit, 'hurt')).toEqual(['pain-grunt', 'pain-breath', 'pain-groan', 'downed-cry', 'dying-sigh']);
     expect(passLines(hit, 'shout')).toEqual(hit.lines);
     expect(passFile('hit', 'hurt')).toBe('hit-hurt');
     expect(voiceFile('s2', 'frag-out', 'shout', 'radio', 1)).toBe('s2/frag-out.shout.radio.1.wav');
     expect(VOICES.profiles[1]!.speaker).toBeNull();
+  });
+
+  it('the enemy has voices of its own, and says only its own section (U-012)', () => {
+    expect(VOICES.enemyProfiles.map((p) => p.id)).toEqual(['e0', 'e1', 'e2']);
+    const enemy = VOICES.sections.find((s) => s.id === 'enemy')!;
+    expect(enemy).toMatchObject({ speakers: 'enemy', render: ['shout'] });
+    expect(sectionProfiles(enemy)).toBe(VOICES.enemyProfiles);
+    expect(VOICES.sections.filter((s) => s.speakers === 'enemy')).toEqual([enemy]);
+    expect(sectionProfiles(VOICES.sections[0]!)).toBe(VOICES.profiles);
+    expect(sectionOfLine('dying-sigh')?.id).toBe('hit');
+    expect(sectionOfLine('open-fire')?.id).toBe('enemy');
+    expect(() => edit({ enemyProfiles: [] })).toThrow('voices.enemyProfiles must list 1–16 enemy voices');
+    expect(() => edit({ enemyProfiles: [{ ...RAW.enemyProfiles[0], id: 's0' }] })).toThrow('two profiles share an id');
+    expect(() => edit({ script: { takesPerLine: 3, sections: { a: { lines: ['copy'], render: ['normal'], speakers: 'civilians' } } } })).toThrow('voices.script.sections.a.speakers must be one of squad, enemy');
   });
 
   it('refuses what is wrong, each by name', () => {

@@ -5,7 +5,8 @@
  * `docs/audio/voice-script.md` for what they recorded and how), and writes
  * `packages/client/public/audio/voice/<profile>/<line>.<style>.<treatment>.<variant>.wav`
  * for every slot's profile, plus `renders.json`: the inputs hash, what was
- * found in each upload, and each line's size, digest and measured loudness.
+ * found in each upload, and each line's size, digest and measured loudness;
+ * and `docs/audio/voice-cues.md`, every cue and the clips it still lacks (U-012).
  * Lines no longer made are removed. Seeded and offline: run it twice and
  * nothing changes.
  *
@@ -19,6 +20,7 @@
 import { mkdirSync, readdirSync, rmSync, rmdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { VOICES } from '@sandline/shared';
+import { VOICE_CUES_FILE, voiceCuesMarkdown } from './voice/cues.ts';
 import { renderVoices } from './voice/process.ts';
 import { RAW_DIR, VOICE_DIR, VOICE_RENDERS_FILE, type VoiceRendersManifest, round2, sha256, voiceInputsHash } from './voice/renders.ts';
 
@@ -67,6 +69,8 @@ function sweep(dir: string, prefix = ''): void {
 }
 sweep(VOICE_DIR);
 writeFileSync(VOICE_RENDERS_FILE, `${JSON.stringify(manifest, null, 2)}\n`);
+// U-012: every cue, how it is heard, and each clip it needs that nobody has recorded yet.
+writeFileSync(VOICE_CUES_FILE, voiceCuesMarkdown(manifest));
 console.log(`${run.speakers.length} speaker(s), ${run.lines.length} line file(s)${run.missing.length ? `, ${run.missing.length} line(s) not recorded` : ''}`);
 if (failures > 0) {
   console.error(`${failures} line(s) off their loudness target`);

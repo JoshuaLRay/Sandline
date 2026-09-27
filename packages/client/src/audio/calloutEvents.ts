@@ -10,12 +10,22 @@
  *   air. **grenade**: someone else's grenade near a squadmate, once each.
  * - **hit**, **down**, **man-down**: a round into a squadmate; one going
  *   down, who says so, and the nearest other who says "man down".
+ * - U-012, a body's own sounds beside those words: **hit-grunt** with
+ *   every round into a squadmate who is up; **downed-cry** as one goes
+ *   down; **dying**, a last breath, as one DIES — from down or from up, and
+ *   never as one only goes down, nor again on a respawn.
+ * - U-012, **enemy-engage**: an enemy firing after `engageQuietSeconds`
+ *   without a shot, said by that enemy.
  * - **reviving**, **revived**: a reviver starting, and the one they picked
  *   up standing again.
  * - **enemy-down**: an enemy dying soon after a squadmate's round or blast.
  * - **order-…**: a bot given an order acknowledges it; **order-failed** is
  *   the host saying it could not get there.
  * - **objective-…**: the objective clear, held halfway, and secured.
+ *
+ * Every one is a TRANSITION, remembered per soldier, so a snapshot that
+ * says the same thing again says nothing new; `reset` forgets it all for a
+ * rejoin or a retry, and the next update only learns what is already so.
  *
  * Nothing here plays anything: `update` returns events and who they
  * happened to; the director (callouts.ts) decides what is heard.
@@ -66,7 +76,10 @@ export interface CalloutView {
 
 export interface CalloutCue {
   event: CalloutEvent;
+  /** The squad slot that says it; −1 for an enemy's. */
   slot: number;
+  /** U-012: the enemy that says it (its netId), for an enemy's shout. */
+  enemy?: number;
 }
 
 /** Eye and chest heights over the feet, metres: a standing soldier. */
@@ -110,16 +123,52 @@ export class CalloutWatcher {
   private orders = new Map<number, string>();
   private mission: MissionView | null = null;
   private readonly pending: CalloutCue[] = [];
+  /** U-012: enemy netId → when it last fired. */
+  private readonly enemyFiredAt = new Map<number, number>();
 
   constructor(config: CalloutsConfig = CALLOUTS) {
     this.config = config;
   }
 
-  /** A server shot event (T-2.11): a squadmate hit, or an enemy hurt by one. */
+  /**
+   * U-012: forget everything seen, for a rejoin or a mission retry: the next
+   * update learns what is so without calling any of it out, and nothing
+   * waiting from before is said into the new session.
+   */
+  reset(): void {
+    this.primed = false;
+    this.vitality.clear();
+    this.reloading.clear();
+    this.reviver.clear();
+    this.revivedBy.clear();
+    this.enemyVitality.clear();
+    this.lastSeen.clear();
+    this.nextSight = 0;
+    this.projectiles.clear();
+    this.warned.clear();
+    this.owners.clear();
+    this.credit.clear();
+    this.orders = new Map();
+    this.mission = null;
+    this.pending.length = 0;
+    this.enemyFiredAt.clear();
+  }
+
+  /** A server shot event (T-2.11): a squadmate hit, an enemy hurt by one, or an enemy opening fire. */
   onShot(shooterNetId: number, targetNetId: number, damage: number, view: CalloutView, now: number): void {
+    // U-012: an enemy's first shot after a quiet spell opens an engagement — hit or miss.
+    const enemy = view.enemies.find((e) => e.netId === shooterNetId);
+    if (enemy && enemy.vitality === 'alive') {
+      const last = this.enemyFiredAt.get(shooterNetId);
+      this.enemyFiredAt.set(shooterNetId, now);
+      if (last === undefined || now - last > this.config.engageQuietSeconds) this.pending.push({ event: 'enemy-engage', slot: -1, enemy: shooterNetId });
+    }
     if (targetNetId === 0 || damage <= 0) return;
     const target = view.soldiers.find((s) => s.netId === targetNetId);
-    if (target && target.vitality === 'alive') this.pending.push({ event: 'hit', slot: target.slot });
+    if (target && target.vitality === 'alive') {
+      this.pending.push({ event: 'hit', slot: target.slot });
+      this.pending.push({ event: 'hit-grunt', slot: target.slot });
+    }
     const shooter = view.soldiers.find((s) => s.netId === shooterNetId);
     if (shooter && view.enemies.some((e) => e.netId === targetNetId)) this.credit.set(targetNetId, { slot: shooter.slot, at: now });
   }
@@ -169,10 +218,13 @@ export class CalloutWatcher {
       const was = this.vitality.get(s.netId);
       if (was !== undefined && was !== s.vitality) {
         if (was === 'alive' && s.vitality === 'downed') {
+          say('downed-cry', s.slot);
           say('down', s.slot);
           const other = this.nearestOther(view, s.netId, s.at);
           if (other && !other.self) say('man-down', other.slot);
         }
+        // U-012: dying is its own moment — bled out or finished while down, or killed outright.
+        if (was !== 'dead' && s.vitality === 'dead') say('dying', s.slot);
         if (was === 'downed' && s.vitality === 'alive') {
           const by = this.revivedBy.get(s.netId);
           if (by !== undefined) say('revived', by);
@@ -189,6 +241,7 @@ export class CalloutWatcher {
     }
 
     for (const e of view.enemies) {
+      if (e.vitality !== 'alive') this.enemyFiredAt.delete(e.netId);
       const was = this.enemyVitality.get(e.netId);
       if (was === 'alive' && e.vitality === 'dead') {
         const c = this.credit.get(e.netId);

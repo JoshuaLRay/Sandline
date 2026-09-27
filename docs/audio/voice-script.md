@@ -25,8 +25,9 @@ Uploading).
 - **Two passes of each section, and a third for the pain sounds:**
   - **Normal:** clear, firm, a radio voice. File name ends `-normal`.
   - **Shouted:** as if over gunfire; loud, but don't strain. File name ends `-shout`.
-  - **Hurt** (only the "Hit and down" section, and only its pain sounds,
+  - **Hurt** (only the "Hit and down" section, and only its body sounds,
     line 5): File name `hit-hurt`.
+  - The enemy section is **shouted only**: `enemy-shout`.
 - Don't worry about mistakes. Leave a pause and say it again; the extra
   takes get trimmed.
 
@@ -36,70 +37,89 @@ Total time: about fifteen minutes a speaker.
 
 ## The lines
 
+Each line's ID is in `code`: it is the name the game and
+[voice-cues.md](voice-cues.md) (which lists every clip still missing) use.
+
 ### Contact (`contact-…`)
-1. Contact!
-2. Contact front!
-3. Contact left!
-4. Contact right!
-5. Enemy spotted!
-6. Machine gun!
+1. Contact! `contact`
+2. Contact front! `contact-front`
+3. Contact left! `contact-left`
+4. Contact right! `contact-right`
+5. Enemy spotted! `enemy-spotted`
+6. Machine gun! `machine-gun`
 
 ### Firing (`firing-…`)
-1. Covering fire!
-2. Suppressing!
-3. Keep their heads down!
+1. Covering fire! `covering-fire`
+2. Suppressing! `suppressing`
+3. Keep their heads down! `heads-down`
 
 ### Moving (`moving-…`)
-1. Moving!
-2. Moving up!
-3. On me!
-4. Go, go, go!
-5. Taking cover!
-6. Get down!
+1. Moving! `moving`
+2. Moving up! `moving-up`
+3. On me! `on-me`
+4. Go, go, go! `go-go-go`
+5. Taking cover! `taking-cover`
+6. Get down! `get-down`
 
 ### Reloading (`reload-…`)
-1. Reloading!
-2. Changing mag!
-3. Cover me, reloading!
+1. Reloading! `reloading`
+2. Changing mag! `changing-mag`
+3. Cover me, reloading! `cover-me-reloading`
 
 ### Grenades (`grenade-…`)
-1. Frag out!
-2. Grenade!
-3. Grenade — get back!
+1. Frag out! `frag-out`
+2. Grenade! `grenade`
+3. Grenade — get back! `grenade-get-back`
 
 ### Hit and down (`hit-…`)
-1. I'm hit!
-2. Man down!
-3. I'm down!
-4. I need help here!
-5. Three short pain sounds: a grunt, a sharp breath in, and a groan. Do these in the **hurt** pass,
-   and only these: `hit-hurt` is the grunt three times, the breath three times, the groan three
-   times. The normal and shouted passes of this section are lines 1–4.
+1. I'm hit! `im-hit`
+2. Man down! `man-down`
+3. I'm down! `im-down`
+4. I need help here! `need-help`
+5. The body's sounds, in the **hurt** pass and only there (`hit-hurt`), each
+   three times like any line:
+   1. a grunt, as a round hits: `pain-grunt`
+   2. a sharp breath in: `pain-breath`
+   3. a groan: `pain-groan`
+   4. a cry, going down hurt: `downed-cry`
+   5. a last, long, fading breath out — dying, not hurt: `dying-sigh`
+
+   The normal and shouted passes of this section are lines 1–4.
 
 ### Reviving (`revive-…`)
-1. I've got you!
-2. Hang on!
-3. You're up!
+1. I've got you! `got-you`
+2. Hang on! `hang-on`
+3. You're up! `youre-up`
 
 ### Kills (`kills-…`)
-1. Enemy down!
-2. Got him!
-3. Target down!
+1. Enemy down! `enemy-down`
+2. Got him! `got-him`
+3. Target down! `target-down`
 
 ### Orders (`orders-…`)
 These are a bot answering your order wheel.
-1. Copy!
-2. Roger!
-3. On it!
-4. Moving to position!
-5. Holding here!
-6. Regrouping!
-7. Negative, can't get there!
+1. Copy! `copy`
+2. Roger! `roger`
+3. On it! `on-it`
+4. Moving to position! `moving-to-position`
+5. Holding here! `holding-here`
+6. Regrouping! `regrouping`
+7. Negative, can't get there! `cant-get-there`
 
 ### Objective (`objective-…`)
-1. Compound clear!
-2. Holding the objective!
-3. Objective secure!
+1. Compound clear! `compound-clear`
+2. Holding the objective! `holding-objective`
+3. Objective secure! `objective-secure`
+
+### The enemy (`enemy-…`, shouted only)
+These are the other side shouting as it opens fire. They are heard in the
+enemy's voices (three profiles of their own), where the enemy stands. A
+different speaker from the squad's is best, if you have one. Record only the
+**shouted** pass: `enemy-shout`.
+1. Open fire! `open-fire`
+2. There they are! `there-they-are`
+3. Flank them! `flank-them`
+4. Push forward! `push-forward`
 
 ---
 

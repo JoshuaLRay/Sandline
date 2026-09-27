@@ -264,9 +264,12 @@ export function renderVoices(rawDir: string, config: VoicesConfig, sounds: Sound
     return byPass;
   });
   if (problems.length) throw new VoiceInputError(problems.join('\n'));
-  for (const [slot, profile] of config.profiles.entries()) {
-    const who = (profile.speaker ?? slot) % speakers.length;
+  // U-012: the six slots' voices say the squad's sections; the enemy's voices, after them, say the enemy's.
+  const voices = [...config.profiles.map((profile) => ({ profile, speakers: 'squad' })), ...config.enemyProfiles.map((profile) => ({ profile, speakers: 'enemy' }))];
+  for (const [index, { profile, speakers: who_ }] of voices.entries()) {
+    const who = (profile.speaker ?? index) % speakers.length;
     for (const section of config.sections) {
+      if (section.speakers !== who_) continue;
       for (const style of section.render) {
         const pass = passFile(section.id, style);
         const named = takes[who]!.get(pass);
