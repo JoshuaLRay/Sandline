@@ -1,0 +1,106 @@
+# The squad roster: six named characters (U-019)
+
+**Status: PROPOSAL, awaiting the owner.** Nothing below is approved except
+what the owner wrote on 2026-09-26, quoted in "Approved". Every name, skill,
+number and weapon choice is a **proposal**, labelled as one. No gameplay is
+implemented by this document. U-020 (weapons), U-021 (binding characters to
+slots) and U-023 (skills) implement it once the owner has decided.
+
+## Approved: the owner's requirements (2026-09-26)
+
+From [the owner's feedback](../backlog/2026-09-26-feedback.md), verbatim in substance:
+
+1. The squad is **six unique, named characters**, each with their own weapons and skills.
+2. Roles: **two snipers, one LMG, one AR, one scoped AR, one support.**
+3. The support **can't ADS "(or fps)"**, holds **two primaries, an SMG and a shotgun**, and **runs a bit faster**.
+4. Names and individual skills were **not** supplied: they are open (below).
+
+Already settled by other decisions, and kept:
+- **ADR-001:** six slots, always; bots fill the empty ones; a player possesses a slot's soldier, and a slot keeps its soldier's state between occupants.
+- **U-025 and U-026:** every bot has a human commander, and a player may switch into a bot they command.
+- **ADR-020:** US infantry, Afghanistan, 2001–02; original IP. No real people, units or trademarked weapon names.
+
+## The proposed roster
+
+| Slot | ID | Name *(proposal)* | Role | Primary *(proposal)* | Second primary | Sidearm | Fireteam |
+|---|---|---|---|---|---|---|---|
+| 0 | `kessler` | Sgt. Ray Kessler | AR, the squad lead | MK4 Carbine (`carbine`) | — | P7 | 1 (lead) |
+| 1 | `brennan` | Spc. Walt Brennan | LMG | the squad LMG (`lmg`, a loadout version of the enemy's) | — | P7 | 1 |
+| 2 | `holloway` | PFC Nate Holloway | Support | an SMG *(new, U-020)* | a shotgun (`breacher`) | *open: see D-5* | 1 |
+| 3 | `ortiz` | Cpl. Dana Ortiz | Scoped AR, the second team's lead | MK4 with an optic *(new variant, U-020)* | — | P7 | 2 (lead) |
+| 4 | `marsh` | Spc. Eli Marsh | Sniper | a bolt-action sniper rifle *(new, U-020)* | — | P7 | 2 |
+| 5 | `vance` | Spc. Theo Vance | Sniper | the LR-9 Marksman (`marksman`), or a second sniper rifle *(open: see D-1)* | — | P7 | 2 |
+
+The role counts are two snipers (4, 5), one LMG (1), one AR (0), one scoped AR (3) and one support (2): the 2/1/1/1/1 the owner set.
+
+The six IDs are unique, lowercase and stable. They are what saves, the wire and the data refer to; the names are display only and can change freely.
+
+**Why these slots.** Fireteam 1 (slots 0–2, a wedge) is the assault team: the AR lead, the LMG's base of fire, and the fast close-range support. Fireteam 2 (slots 3–5, a file) is the overwatch team: the scoped AR lead and the two snipers. That matches the existing fireteam data (`squad.json`) and today's default split: team leaders in 0–2, marksmen in 3–5.
+
+## One skill each *(all proposals)*
+
+Each skill is **bounded**: one effect, a duration, a cooldown, and a range where it has one. It is data-driven, as weapons and classes are (CLAUDE.md rule 3), and usable by a bot through the same path as a human (ADR-001: the squad plays the same with any number of humans). The numbers are starting points for a playtest, not tuning.
+
+| ID | Skill *(proposal)* | Effect | Duration | Cooldown | Bot use |
+|---|---|---|---|---|---|
+| `kessler` | **Rally** | squadmates within 15 m of him have their suppression cleared, and gain suppression 30% slower | 8 s | 90 s | when two or more squadmates are suppressed |
+| `brennan` | **Hose** | his rounds add 50% more suppression | 10 s | 60 s | when firing on a target in cover |
+| `holloway` | **Resupply** | hold interact 2 s beside a squadmate: +1 frag, magazine refilled | instant | 45 s | a squadmate with an empty pouch nearby |
+| `ortiz` | **Spot** | the next target she marks is shown to the whole squad through walls | 10 s | 30 s | marks what she fires at |
+| `marsh` | **Steady** | while aimed, no sway or bloom | 4 s | 20 s | before a long shot |
+| `vance` | **Hide** | prone and still for 3 s: enemies see him at half their range until he moves or fires | while it holds | none (it is a stance) | holding prone on overwatch |
+
+**Distinctness.** Rally is a squad buff, Hose is fire support, Resupply is logistics, Spot is information, Steady is precision, and Hide is concealment. No two overlap.
+
+**The support's movement bonus** *(proposal):* +10% walk and sprint speed, as one configurable number in the character's data, not a constant.
+
+## Identity through possession, reconnect and saves
+
+- **A character is a slot's**, not a player's. `kessler` is always slot 0, whoever or whatever is playing him. That is ADR-001's model (a slot keeps its soldier), so:
+  - a human joining slot 0 possesses Kessler, and a bot leaving hands Kessler back;
+  - a player who drops and resumes within the grace (T-4.18) is Kessler again: the held seat keeps its character, as it now keeps its class and pouch (U-024);
+  - a U-026 switch into slot 4 makes that player Marsh, and hands Kessler to his bot.
+- **Saved campaigns** (T-4.23, ADR-019). A campaign soldier today is `{slot, classId, rank, xp}`. The proposal is to add `characterId` beside it. Because characters are fixed to slots, an old save migrates by slot, and rank and XP stay with the slot's soldier. `classId` becomes derived and is kept for old saves.
+- **Replacing free class selection** (T-4.27). The room's class picker goes, since a character's loadout is fixed. What a player picks is **which character (slot)** they take, from those free when they join, and U-026's switch changes it mid-mission. `required: team-leader` becomes "slot 0 is always the squad lead", which the fixed roster guarantees.
+
+## Open decisions for the owner
+
+| # | Decision | Proposal |
+|---|---|---|
+| D-1 | The two snipers' rifles: two different rifles, or the same rifle with different skills? | Marsh: a new bolt-action rifle. Vance: the existing LR-9, a semi-automatic marksman rifle, so the pair differ. |
+| D-2 | The names | The six above, all invented. |
+| D-3 | Each skill's effect, duration and cooldown | The table above. |
+| D-4 | The support's speed bonus | +10%. |
+| D-5 | Does the support keep a pistol? Two primaries and a sidearm is three guns. | No pistol: key 1 is the SMG and key 2 the shotgun. The support is the one character whose 2 is not a pistol. |
+| D-6 | Two-primary controls for the support: which key is which, and what a dropped gun replaces (U-022) | 1 is the SMG and 2 the shotgun. A picked-up gun replaces the one in hand. |
+| D-7 | What "(or fps)" means for the support | Read as: no aiming down sights, and so no first-person sight picture. The support fires from the hip, in either camera. *Needs the owner's confirmation: it could also mean no first-person view at all.* |
+| D-8 | Whether a player may take any free slot, or only the lowest one | Any free slot, at join. |
+| D-9 | Does the enemy's LMG pickup (U-017) become equippable once the LMG is a loadout gun? | Yes, for anyone, as a primary. |
+
+## Proposed ADR addendum
+
+The owner's direction is already authorised, and ADR-001 now carries it as an addendum ("2026-09-27: six named characters"). The rest of this document is proposal until the owner decides the D-items. When they do, a second addendum records:
+- the roster (IDs, slots, roles);
+- that T-4.27's two classes (Team Leader, Marksman) are replaced by the six characters' loadouts;
+- that the slot picker replaces the class picker;
+- ADR-020's weapon list (M4, M249, M203) extended by the rifles and the SMG U-020 adds, under original names.
+
+## How U-023 splits, once the skills are agreed
+
+One independently executable task per agreed skill, each with its data row, its server rule (authoritative, like every interaction), its bot use, its HUD and its tests. Until the owner agrees a skill's effect, its task does not exist, and **no ability here is treated as approved.**
+
+- U-023a: Rally (Kessler)
+- U-023b: Hose (Brennan)
+- U-023c: Resupply (Holloway)
+- U-023d: Spot (Ortiz)
+- U-023e: Steady (Marsh)
+- U-023f: Hide (Vance)
+- plus, from U-020 and U-021: the new weapons, the character data and slot binding, the save migration, and the support's two-primary controls (U-022).
+
+## Checked against today's contracts
+
+- **`classes.json`:** a class is `{name, short, health, guns, pouch, orders}`. A character row can be the same shape plus `slot`, `skill`, `speedScale` and `ads: false`. `guns` already lists the order keys draw, and U-018's rule that a picked-up gun replaces the first non-sidearm gun still holds, except for the support (D-6).
+- **`squad.json`:** fireteam slots 0–2 and 3–5, unchanged.
+- **Persistence (`CampaignDatabase`):** `{slot, classId, rank, xp}`, extended by `characterId` as above.
+- **`weapons.json`:** the carbine, marksman, breacher, sidearm and LMG exist. A sniper rifle, a scoped carbine and an SMG do not (U-020).
+- **ADR-001 and U-025/U-026:** unchanged. A character rides a slot, and command and possession are about slots.
