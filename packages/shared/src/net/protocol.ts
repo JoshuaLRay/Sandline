@@ -17,7 +17,7 @@ import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 import type { MissionStats } from '../sim/scoreboard.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 36;
+export const PROTOCOL_VERSION = 37;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -123,6 +123,12 @@ export const MessageType = {
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
 
 const TYPE_BITS = 4;
+
+/**
+ * U-028: the Equip item code that is a Reload. Loadout items are the guns
+ * then the pouch — six today — so the top of the three bits is free.
+ */
+export const RELOAD_ITEM = 7;
 
 /** Sub-kinds under `MessageType.Ext`, three bits: the wire order. */
 const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks: 5, Mission: 6, Events: 7 } as const;
@@ -396,6 +402,14 @@ export type Message =
    */
   | { kind: 'Equip'; item: number }
   /**
+   * U-028: reload the gun in hand. Sent when a reload starts on the page — the
+   * reload key, or an empty magazine reloading itself — so the host runs the
+   * same reload on its own clock. On the wire it is an Equip with the item
+   * code `RELOAD_ITEM`, which no loadout uses; a host that does not know it
+   * ignores it as an out-of-range item.
+   */
+  | { kind: 'Reload' }
+  /**
    * A projectile going off (T-2.31): where, which kind, the tick it happened
    * on, and what each soldier in reach took.
    *
@@ -579,6 +593,10 @@ export function encodeMessage(msg: Message): Uint8Array {
     case 'Equip':
       w.writeBits(MessageType.Equip, TYPE_BITS);
       w.writeBits(msg.item & 0x7, 3);
+      break;
+    case 'Reload':
+      w.writeBits(MessageType.Equip, TYPE_BITS);
+      w.writeBits(RELOAD_ITEM, 3);
       break;
     case 'Detonation': {
       w.writeBits(MessageType.Detonation, TYPE_BITS);
@@ -1081,8 +1099,10 @@ export function decodeMessage(bytes: Uint8Array): Message {
           pitch: r.readBits(12),
           projectile: r.readBits(2),
         };
-      case MessageType.Equip:
-        return { kind: 'Equip', item: r.readBits(3) };
+      case MessageType.Equip: {
+        const item = r.readBits(3);
+        return item === RELOAD_ITEM ? { kind: 'Reload' } : { kind: 'Equip', item };
+      }
       case MessageType.Detonation: {
         const netId = r.readVarUint();
         const projectile = r.readBits(2);

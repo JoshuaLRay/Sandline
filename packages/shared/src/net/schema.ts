@@ -66,6 +66,9 @@ export interface ComponentSchema {
 export const POUCH_COUNT_BITS = 3;
 /** The most of one pouch item the wire carries. */
 export const POUCH_COUNT_MAX = (1 << POUCH_COUNT_BITS) - 1;
+/** Bits for the rounds in a magazine on the wire (U-028): up to 127. The data is held to it by test. */
+export const AMMO_BITS = 7;
+export const AMMO_MAX = (1 << AMMO_BITS) - 1;
 
 export const SCHEMAS: readonly ComponentSchema[] = [
   {
@@ -123,7 +126,8 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // PROJECTILE_IDS order, so the page's pouch follows the server's through
     // resets, respawns, class changes and reconnects. Appended, never
     // renumbered (ADR-009).
-    fields: [uint('index', 2), uint('reloadProgress', 7), uint('pouch', 2), ...PROJECTILE_IDS.map((id) => uint(`left_${id}`, POUCH_COUNT_BITS))],
+    // U-028: then the rounds in the magazine, so the page's count follows the host's.
+    fields: [uint('index', 2), uint('reloadProgress', 7), uint('pouch', 2), ...PROJECTILE_IDS.map((id) => uint(`left_${id}`, POUCH_COUNT_BITS)), uint('ammo', AMMO_BITS)],
   },
   {
     id: COMPONENT_IDS.Projectile,

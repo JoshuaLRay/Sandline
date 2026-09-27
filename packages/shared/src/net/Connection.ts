@@ -35,6 +35,8 @@ export interface ServerConnectionEvents {
   onFire?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Fire' }>) => void;
   onThrow?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Throw' }>) => void;
   onEquip?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Equip' }>) => void;
+  /** U-028: the player started a reload on the page. */
+  onReload?: (conn: ServerConnection) => void;
   onAck?: (conn: ServerConnection, tick: number) => void;
   /** T-3.09: the client wants AI debug reports, or no longer does. */
   onAiDebugRequest?: (conn: ServerConnection, on: boolean) => void;
@@ -223,6 +225,10 @@ export class ServerConnection {
       case 'Throw':
         this.lastActive = now;
         this.events.onThrow?.(this, msg);
+        break;
+      case 'Reload':
+        this.lastActive = now;
+        this.events.onReload?.(this);
         break;
       case 'Equip':
         this.lastActive = now;
