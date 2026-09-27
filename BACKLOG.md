@@ -56,7 +56,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-015](docs/backlog/U-015.md) | Add friendly hit, downed and death vocal reactions | Audio | P2 | BLOCKED | U-012, U-013 | — |
 | [U-016](docs/backlog/U-016.md) | Add positional enemy engagement shouts | Audio | P2 | BLOCKED | U-012, U-013 | — |
 | [U-017](docs/backlog/U-017.md) | Drop enemy weapons as replicated world pickups | Loot | P2 | DONE | — | [#151](https://github.com/JoshuaLRay/Sandline/pull/151) |
-| [U-018](docs/backlog/U-018.md) | Equip dropped guns into the primary slot | Loot | P2 | READY | U-017 | — |
+| [U-018](docs/backlog/U-018.md) | Equip dropped guns into the primary slot | Loot | P2 | DONE | U-017 | [#152](https://github.com/JoshuaLRay/Sandline/pull/152) |
 | [U-019](docs/backlog/U-019.md) | Specify the six named characters and their skills | Squad | P2 | READY | — | — |
 | [U-020](docs/backlog/U-020.md) | Add the roster’s missing weapon archetypes | Squad | P2 | BLOCKED | U-019 | — |
 | [U-021](docs/backlog/U-021.md) | Bind six persistent characters to the squad slots | Squad | P2 | BLOCKED | U-019, U-020 | — |

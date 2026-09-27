@@ -128,7 +128,8 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // resets, respawns, class changes and reconnects. Appended, never
     // renumbered (ADR-009).
     // U-028: then the rounds in the magazine, so the page's count follows the host's.
-    fields: [uint('index', 2), uint('reloadProgress', 7), uint('pouch', 2), ...PROJECTILE_IDS.map((id) => uint(`left_${id}`, POUCH_COUNT_BITS)), uint('ammo', AMMO_BITS)],
+    // U-018: then the primary (a WEAPON_IDS index) — what key 1 draws, a picked-up gun once one is taken.
+    fields: [uint('index', 2), uint('reloadProgress', 7), uint('pouch', 2), ...PROJECTILE_IDS.map((id) => uint(`left_${id}`, POUCH_COUNT_BITS)), uint('ammo', AMMO_BITS), uint('primary', 2)],
   },
   {
     id: COMPONENT_IDS.Projectile,

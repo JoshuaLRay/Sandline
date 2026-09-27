@@ -271,6 +271,8 @@ export interface OrderReport {
 
 /** A move's point is reachable when a path ends this near it, metres (T-3.28). */
 const ORDER_REACH_M = 1;
+/** U-018: what the eye must see of a gun on the ground: a point this far over where it lies, metres. */
+const PICKUP_AIM_M = 0.1;
 /** U-010: a lever user that cannot get there is not sent again for this long, seconds. */
 export const LEVER_BAR_SECONDS = 15;
 /** U-010: a way to the lever must end this near its foot, metres. */
@@ -391,6 +393,13 @@ export interface Slot {
    */
   weapon: WeaponDef;
   weaponState: WeaponState;
+  /**
+   * U-018: the gun key 1 draws — the class's first, or the carbine on a free
+   * loadout — until the soldier takes another off the ground; `pickedUp` says
+   * it came from there, so a respawn or a retry gives the class's back.
+   */
+  primary: string;
+  pickedUp: boolean;
   /**
    * T-3.16: how suppressed this soldier is. Rounds past it raise it; it
    * widens the weapon cone by `SUPPRESSION.coneDeg` at full, and replicates.
@@ -1014,6 +1023,8 @@ export class Session {
         reservedUntilMs: 0,
         weapon: getWeapon(WEAPON_IDS[0]),
         weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
+        primary: WEAPON_IDS[0],
+        pickedUp: false,
         suppression: createSuppression(),
         pitch: 0,
         pouch: this.fullPouch(),
@@ -1307,6 +1318,8 @@ export class Session {
       slot.interactHeld = false;
       slot.interactWasHeld = false;
       slot.mounted = null;
+      // U-018: nor through a retry: the class's primary again.
+      this.restorePrimary(slot);
       slot.weaponState = createWeaponState(slot.weapon);
       slot.suppression = createSuppression();
       slot.pouch = this.pouchFor(slot.index);
@@ -1562,10 +1575,10 @@ export class Session {
   }
 
   /** T-4.27: what a slot carries and its health, for a test to read. */
-  loadoutOf(slot: number): { weapon: string; pouch: number[]; health: number; maxHealth: number } {
+  loadoutOf(slot: number): { weapon: string; primary: string; ammo: number; pouch: number[]; health: number; maxHealth: number } {
     const s = this.slots[slot];
     if (!s) throw new Error(`no slot ${slot}`);
-    return { weapon: s.weapon.id, pouch: [...s.pouch], health: s.health.current, maxHealth: s.health.max };
+    return { weapon: s.weapon.id, primary: s.primary, ammo: s.weaponState.ammo, pouch: [...s.pouch], health: s.health.current, maxHealth: s.health.max };
   }
 
   /**
@@ -1611,6 +1624,9 @@ export class Session {
       slot.weapon = getWeapon(gun);
       slot.weaponState = createWeaponState(slot.weapon);
     }
+    // U-018: a new class is its own primary again.
+    slot.primary = def.guns.find((g) => g !== 'sidearm') ?? gun;
+    slot.pickedUp = false;
     slot.pouch = [...def.pouch];
     slot.heldProjectile = -1;
     this.applyClassHealth(slot);
@@ -1848,6 +1864,85 @@ export class Session {
   }
 
   /**
+   * U-018: whether a soldier carries `gun`: on a class loadout, the class's
+   * guns with its primary the one in hand now (a picked-up gun replaces the
+   * class's first); on a free loadout (the range), anything, and a picked-up
+   * gun too.
+   */
+  private carries(slot: Slot, gun: string): boolean {
+    if (gun === slot.primary) return true;
+    if (this.classLoadouts !== 'class') return true;
+    const def = classById(this.classSlots[slot.index] ?? '');
+    if (!def) return true;
+    return def.guns.includes(gun) && (gun === 'sidearm' || !slot.pickedUp);
+  }
+
+  /** U-018: the class's own primary, or the carbine on a free loadout. */
+  private classPrimary(slot: Slot): string {
+    const def = this.classLoadouts === 'class' ? classById(this.classSlots[slot.index] ?? '') : undefined;
+    return def?.guns.find((g) => g !== 'sidearm') ?? WEAPON_IDS[0];
+  }
+
+  /**
+   * U-018: a respawn or a retry — a picked-up gun does not come back with the
+   * soldier: the class's primary does, in hand if the primary was.
+   */
+  private restorePrimary(slot: Slot): void {
+    if (!slot.pickedUp) return;
+    const held = slot.weapon.id === slot.primary;
+    slot.primary = this.classPrimary(slot);
+    slot.pickedUp = false;
+    if (held) {
+      slot.weapon = getWeapon(slot.primary);
+      slot.weaponState = createWeaponState(slot.weapon);
+    }
+  }
+
+  /**
+   * U-018: a soldier's interact press at a weapon on the ground (not already
+   * a revive or a gun). The host judges it, as it does the terminal: alive,
+   * not vaulting or mounted, the nearest pickup within `PICKUPS.reachM` of
+   * the eye with a clear line to it. Nothing the page sends names a pickup
+   * or its rounds — the press is all — so a stale id or a forged magazine
+   * has nothing to ride on. Taken whole on one tick: the pickup leaves the
+   * ground, its gun becomes the primary, in hand with its rounds, and the
+   * primary it replaces goes down in its place as a pickup of its own (with
+   * its rounds when it was in hand; a full magazine when it was stowed, as
+   * every stowed gun is drawn). Two soldiers pressing on the same tick: the
+   * first in slot order takes it and the second finds nothing there.
+   * Returns whether it took one.
+   */
+  private takePickupAt(slot: Slot): boolean {
+    if (!isAlive(slot.health) || slot.state.vault || slot.mounted) return false;
+    const eye = soldierEye(slot.state);
+    let best = -1;
+    let bestD = Number.POSITIVE_INFINITY;
+    for (const [i, p] of this.pickupList.entries()) {
+      const at = { x: p.x, y: p.y + PICKUP_AIM_M, z: p.z };
+      const d = Math.hypot(eye.x - at.x, eye.y - at.y, eye.z - at.z);
+      if (d <= PICKUPS.reachM && d < bestD && lineOfSight(eye, at, this.collisionBoxes)) {
+        best = i;
+        bestD = d;
+      }
+    }
+    if (best < 0) return false;
+    const [taken] = this.pickupList.splice(best, 1);
+    const gun = WEAPON_IDS[taken!.weapon]!;
+    const old = slot.primary;
+    const oldHeld = slot.weapon.id === old;
+    const oldAmmo = oldHeld ? slot.weaponState.ammo : getWeapon(old).magSize;
+    slot.primary = gun;
+    slot.pickedUp = true;
+    slot.weapon = getWeapon(gun);
+    slot.weaponState = createWeaponState(slot.weapon);
+    slot.weaponState.ammo = Math.min(taken!.ammo, slot.weapon.magSize);
+    slot.heldProjectile = -1;
+    // The one it replaces, where the soldier stands — if it is one that lies on the ground.
+    if (PICKUPS.weapons.includes(old)) this.placePickup(old, oldAmmo, slot.state, slot.yaw);
+    return true;
+  }
+
+  /**
    * U-017: a dead enemy's firearm, on the ground where it fell (`PICKUPS`):
    * only a weapon the rules list — its own, never an emplacement's gun it
    * was on — with the rounds left in its magazine, under a netId never used
@@ -1855,17 +1950,23 @@ export class Session {
    * drops.
    */
   private dropWeapon(enemy: EnemyEntity): void {
-    const weapon = (WEAPON_IDS as readonly string[]).indexOf(enemy.def.weapon);
-    if (weapon < 0 || !PICKUPS.weapons.includes(enemy.def.weapon) || this.nextPickupNetId >= PICKUP_NET_ID_LIMIT) return;
+    if (!PICKUPS.weapons.includes(enemy.def.weapon)) return;
+    this.placePickup(enemy.def.weapon, enemy.weaponState.ammo, enemy.state, enemy.yaw);
+  }
+
+  /** U-017/U-018: a gun on the ground, under a netId never used before; past the cap the oldest goes. */
+  private placePickup(id: string, ammo: number, at: { x: number; y: number; z: number }, yaw: number): void {
+    const weapon = (WEAPON_IDS as readonly string[]).indexOf(id);
+    if (weapon < 0 || this.nextPickupNetId >= PICKUP_NET_ID_LIMIT) return;
     while (this.pickupList.length >= PICKUPS.max) this.pickupList.shift();
     this.pickupList.push({
       netId: this.nextPickupNetId++,
       weapon,
-      ammo: Math.max(0, Math.min(enemy.weaponState.ammo, (1 << PICKUP_AMMO_BITS) - 1)),
-      x: enemy.state.x,
-      y: enemy.state.y,
-      z: enemy.state.z,
-      yaw: enemy.yaw,
+      ammo: Math.max(0, Math.min(ammo, (1 << PICKUP_AMMO_BITS) - 1)),
+      x: at.x,
+      y: at.y,
+      z: at.z,
+      yaw,
       droppedAt: this.nowMs / 1000,
     });
   }
@@ -2448,8 +2549,8 @@ export class Session {
       if (this.slots.some((t) => t.reviveBySlot === slot.index)) continue;
       const gun = this.emptyGunNear(slot.state, (def) => def.mountRangeM);
       if (gun) this.mount(slot, gun);
-      // U-009: no gun to man — the press may be for an upload terminal.
-      else this.startUploadAt(slot);
+      // U-018: a weapon on the ground within reach; U-009: else the press may be for an upload terminal.
+      else if (!this.takePickupAt(slot)) this.startUploadAt(slot);
     }
     for (const enemy of this.enemyList) {
       if (enemy.mounted || isDead(enemy.health) || enemy.state.vault) continue;
@@ -2845,6 +2946,8 @@ export class Session {
 
     const id = WEAPON_IDS[msg.weapon];
     if (id === undefined) return; // Out-of-range index: drop it, do not throw.
+    // U-018: a Fire names a gun the soldier carries, or it is refused — as a forged Equip is. (It used to swap to any.)
+    if (!this.carries(slot, id)) return;
     if (id !== slot.weapon.id) {
       slot.weapon = getWeapon(id);
       slot.weaponState = createWeaponState(slot.weapon);
@@ -3201,8 +3304,8 @@ export class Session {
     if (slot.mounted) return;
     const gun = WEAPON_IDS[msg.item];
     if (gun !== undefined) {
-      // T-4.27: a class carries its own guns and no others.
-      if (this.classLoadouts === 'class' && !(classById(this.classSlots[slot.index] ?? '')?.guns.includes(gun) ?? true)) return;
+      // T-4.27: a class carries its own guns and no others — its primary a picked-up one, since U-018.
+      if (!this.carries(slot, gun)) return;
       if (gun !== slot.weapon.id) {
         slot.weapon = getWeapon(gun);
         slot.weaponState = createWeaponState(slot.weapon);
@@ -3489,6 +3592,8 @@ export class Session {
           slot.queue.length = 0;
           slot.input = idleInput(slot.yaw);
     slot.interactHeld = false;
+          // U-018: a picked-up gun does not come back with the soldier.
+          this.restorePrimary(slot);
           slot.weaponState = createWeaponState(slot.weapon);
           slot.suppression = createSuppression();
           slot.pouch = this.pouchFor(slot.index);
@@ -4248,6 +4353,8 @@ export class Session {
             ...PROJECTILE_IDS.map((_, i) => Math.min(POUCH_COUNT_MAX, s.pouch[i] ?? 0)),
             // U-028: and the rounds in the magazine.
             Math.min(AMMO_MAX, s.weaponState.ammo),
+            // U-018: and what key 1 draws.
+            Math.max(0, (WEAPON_IDS as readonly string[]).indexOf(s.primary)),
           ],
           // T-3.16: how suppressed, so the page can show it and widen its cone to match.
           [COMPONENT_IDS.Suppression]: [suppressionToWire(suppressionLevel(s.suppression, this.nowMs / 1000))],

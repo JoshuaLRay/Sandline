@@ -9,6 +9,8 @@ export interface WeaponKeyContext {
   mounted: boolean;
   /** Null for the free range; otherwise the equipped class loadout. */
   loadoutGuns: readonly string[] | null;
+  /** U-018: the primary the host says this soldier carries (a picked-up gun once one is taken); key 1 draws it. */
+  primary?: string | null;
 }
 
 const FREE_RANGE_GUNS = ['carbine', 'sidearm'] as const;
@@ -21,7 +23,7 @@ export function weaponIndexForKey(code: string, context: WeaponKeyContext): numb
   if (digit === 1 || digit === 2) {
     const guns = context.loadoutGuns ?? FREE_RANGE_GUNS;
     const weaponId = digit === 1
-      ? guns.find((id) => id !== 'sidearm')
+      ? (context.primary ?? guns.find((id) => id !== 'sidearm'))
       : guns.find((id) => id === 'sidearm');
     if (weaponId === undefined) return null;
     const index = WEAPON_IDS.indexOf(weaponId as (typeof WEAPON_IDS)[number]);

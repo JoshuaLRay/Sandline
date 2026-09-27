@@ -272,6 +272,8 @@ export class NetClient {
   private pouchValue: number[] | null = null;
   /** U-028: the host's magazine for our soldier: the gun (a WEAPON_IDS index) and the rounds in it; null until a snapshot says. */
   private magazineValue: { weapon: number; ammo: number } | null = null;
+  /** U-018: our own soldier's primary (a WEAPON_IDS index) as the host last said; null before it has. */
+  private primaryValue: number | null = null;
   /**
    * Replicated with the health (T-2.13). Vitality is gameplay, not cosmetic:
    * the predictor needs it to hold still when the server does (B-05), and the
@@ -530,6 +532,11 @@ export class NetClient {
     return this.magazineValue;
   }
 
+  /** U-018: our own soldier's primary, a WEAPON_IDS index — what key 1 draws, a picked-up gun once one is taken; null before the host has said. */
+  get primary(): number | null {
+    return this.primaryValue;
+  }
+
   /** U-024: what the server says is left in our pouch, PROJECTILE_IDS order; null before the first snapshot of us. */
   get pouch(): readonly number[] | null {
     return this.pouchValue;
@@ -689,6 +696,7 @@ export class NetClient {
     this.suppressionValue = 0;
     this.pouchValue = null;
     this.magazineValue = null;
+    this.primaryValue = null;
     this.vitalityValue = 'alive';
     this.vitalTimerValue = 0;
     this.reviveProgressValue = 0;
@@ -1402,6 +1410,7 @@ export class NetClient {
         // U-028: the host's magazine, and the gun it is in.
         if (weapon && weapon.length > 3 + PROJECTILE_IDS.length) {
           this.magazineValue = { weapon: (weapon[0] as number | undefined) ?? 0, ammo: (weapon[3 + PROJECTILE_IDS.length] as number | undefined) ?? 0 };
+          this.primaryValue = (weapon[4 + PROJECTILE_IDS.length] as number | undefined) ?? null;
         }
         const velocity = entity.components[V];
         this.reconcile(
