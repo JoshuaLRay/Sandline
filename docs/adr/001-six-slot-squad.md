@@ -84,3 +84,19 @@ everything they are (position, health, weapon and magazine, pouch, class,
 campaign soldier), and the six-slot squad, possession on join and hand-back on
 leave all stand. A bot another player commands, a human's soldier, and a
 dropped player's held seat cannot be taken.
+
+## Addendum — 2026-09-27: six named characters (U-019)
+
+Owner direction (feedback 2026-09-26): "the squad will be 6 unique, named
+characters, that each have their own set of weapons/skills. 2 of the
+characters will have snipers, 1 an LMG, 1 an AR, 1 a scoped AR, and the final
+will be a support role that can't ads (or fps) that will be able to hold 2
+primaries — smg and shotgun, run a bit faster." This direction is accepted.
+It supersedes, when implemented, T-4.27's two-class slice (Team Leader,
+Marksman) as the squad's loadouts. A character belongs to a slot, so
+everything above about slots — six always, possession on join, hand-back on
+leave, a slot keeping its soldier, command (U-025) and switching (U-026) — is
+unchanged and carries the character with it. The names, skills, exact weapons,
+the support's speed and pistol, and its two-primary controls are **not
+decided**: they are proposals in `docs/design/squad-roster.md` awaiting the
+owner, and a further addendum records them when decided.
