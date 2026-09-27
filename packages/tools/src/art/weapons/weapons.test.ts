@@ -162,6 +162,42 @@ describe('the barrel\'s tip (U-003: the shot leaves the gun you see)', () => {
   }
 });
 
+/**
+ * U-004: the AR's rear sight is a ghost ring, not a porthole. The sight
+ * picture round the aim point is open: every ray from the eye within
+ * OPEN_DEG of the sight line reaches the front sight unobstructed, so the
+ * rear ring frames the post instead of hiding the target round it.
+ */
+const OPEN_DEG = 2.5;
+describe('the AR sight picture is open (U-004)', () => {
+  it(`'${weaponAssetId('carbine', 'squad')}': nothing within ${OPEN_DEG}° of the sight line between the eye and the front sight`, () => {
+    const mesh = buildWeapon(weaponAssetId('carbine', 'squad').replace('weapon-', ''));
+    const { sight, eyeRelief } = createWeaponModel('carbine').spec;
+    const eye: V = [sight[0], sight[1], sight[2] - eyeRelief];
+    // Up to just short of the front sight's ears, 0.569 m along the bore.
+    const reach = 0.565 - eye[2];
+    const t = Math.tan((OPEN_DEG * Math.PI) / 180);
+    for (let k = 0; k < 24; k++) {
+      const a = (k / 24) * Math.PI * 2;
+      const d: V = [Math.cos(a) * t, Math.sin(a) * t, 1];
+      const n = Math.hypot(d[0], d[1], d[2]);
+      const dir: V = [d[0] / n, d[1] / n, d[2] / n];
+      expect(rayMesh(mesh, eye, dir, reach / dir[2]), `something across the sight picture at ${k * 15}°`).toBeNull();
+    }
+  });
+
+  it(`'${weaponAssetId('carbine', 'squad')}': the post alone stands up to the line — its ears end well below it`, () => {
+    const mesh = buildWeapon(weaponAssetId('carbine', 'squad').replace('weapon-', ''));
+    const { sight } = createWeaponModel('carbine').spec;
+    // Across the front sight, 8 mm under the line, beside the post: nothing (the ears are lower still).
+    for (const x of [-0.0075, 0.0075]) {
+      expect(rayMesh(mesh, [x, sight[1] - 0.008, 0.52], [0, 0, 1], 0.1), `an ear at x ${x}`).toBeNull();
+    }
+    // The post itself is there at that height.
+    expect(rayMesh(mesh, [0, sight[1] - 0.008, 0.52], [0, 0, 1], 0.1)).not.toBeNull();
+  });
+});
+
 describe('the period weapons (T-4.36)', () => {
   it('draws every loadout id for both sides with a generated model, ten in all', () => {
     const ids = new Set(HOLDS.map(([id, side]) => weaponAssetId(id, side)));

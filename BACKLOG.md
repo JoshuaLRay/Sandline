@@ -40,7 +40,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-026](docs/backlog/U-026.md) | Switch control to a bot the player commands | Squad command | P1 | DONE | U-025 | [#138](https://github.com/JoshuaLRay/Sandline/pull/138) |
 | [U-027](docs/backlog/U-027.md) | Keep bots responsive after traversing large rubble | Bot navigation | P1 | DONE | — | [#139](https://github.com/JoshuaLRay/Sandline/pull/139) |
 | [U-003](docs/backlog/U-003.md) | Align AR muzzle flash and tracers with the visible gun | Weapon feel | P1 | DONE | U-002 | [#140](https://github.com/JoshuaLRay/Sandline/pull/140) |
-| [U-004](docs/backlog/U-004.md) | Open the AR sight picture | Weapon feel | P1 | READY | — | — |
+| [U-004](docs/backlog/U-004.md) | Open the AR sight picture | Weapon feel | P1 | DONE | — | [#141](https://github.com/JoshuaLRay/Sandline/pull/141) |
 | [U-005](docs/backlog/U-005.md) | Bind 1 to primary and 2 to pistol | Weapon feel | P1 | DONE | — | [#134](https://github.com/JoshuaLRay/Sandline/pull/134) |
 | [U-006](docs/backlog/U-006.md) | Keep the gun visible during a readable reload animation | Weapon feel | P1 | READY | — | — |
 | [U-007](docs/backlog/U-007.md) | Make reload sounds audible and synchronized | Audio | P1 | READY | — | — |
