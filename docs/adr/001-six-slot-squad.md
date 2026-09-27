@@ -100,3 +100,26 @@ unchanged and carries the character with it. The names, skills, exact weapons,
 the support's speed and pistol, and its two-primary controls are **not
 decided**: they are proposals in `docs/design/squad-roster.md` awaiting the
 owner, and a further addendum records them when decided.
+
+
+## Addendum — 2026-09-27: roster and weapon handling decisions
+
+Owner decisions for the six-character roster:
+
+- The squad leader in slot 0 is named **Preach**.
+- Under the current roster mapping, slot 4 (`marsh`) is left-handed and starts
+  with a left-handed bolt-action sniper rifle. Slot 5 (`vance`) starts with
+  a semi-automatic sniper rifle. U-020 supplies/validates the concrete weapon
+  definitions.
+- Characters other than the left-handed sniper may swap or pick up weapons
+  from squadmates and enemy weapon drops. The left-handed sniper cannot acquire
+  through those exchanges and may use only left-handed firearms; his left-handed
+  firearms are made available through authored loot, including mission rewards.
+- Only Preach and Support may carry two primaries, and only ARs, shotguns and
+  SMGs qualify. Neither can carry a second primary while holding an LMG or
+  sniper rifle. All other characters are limited to one primary.
+
+U-022 owns the dual-primary inventory rules; U-029 owns character/enemy weapon
+exchange and left-handed loot acquisition. This records only the decisions made
+on 2026-09-27. The other character names, skills, support pistol/speed details,
+and remaining controls stay open in `docs/design/squad-roster.md`.
