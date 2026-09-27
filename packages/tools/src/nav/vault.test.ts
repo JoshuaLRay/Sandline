@@ -21,6 +21,7 @@ import { DEFAULT_HITBOX } from '../../../server/src/net/lagComp.ts';
 import {
   DEFAULT_NAV_AGENT,
   bakeNavMesh,
+  dropLinks,
   navAgentFrom,
   navBakeHash,
   navConfigFor,
@@ -126,5 +127,41 @@ describe('the staleness hash covers the vault (T-3.04)', () => {
       const agent = navAgentFrom({ ...DEFAULT_MOVE_CONFIG, ...change }, DEFAULT_HITBOX);
       expect(navBakeHash(range, agent), JSON.stringify(change)).not.toBe(committed);
     }
+  });
+});
+
+describe('drop links off raised tops (U-027)', () => {
+  /** A block `w` × `d` and `h` high on open floor. */
+  const blockOf = (h: number, w = 2.2, d = 1.6) =>
+    loadWorld({ id: 'b', floor: { halfExtent: 10 }, cover: [{ id: 'block', x: 0, y: 0, z: 0, w, h, d }] });
+
+  it('walks off every side of a top a soldier can vault onto, from inside the edge to the ground outside it', () => {
+    const links = dropLinks(blockOf(1));
+    expect(new Set(links.map((l) => l.yaw))).toEqual(new Set([0, 256, 512, 768]));
+    for (const l of links) {
+      expect(l.from.y).toBeCloseTo(1, 6);
+      expect(l.to.y).toBeCloseTo(0, 6);
+      // Starts on the top (inside the block's footprint), ends off it.
+      expect(Math.abs(l.from.x) <= 1.1 && Math.abs(l.from.z) <= 0.8).toBe(true);
+      expect(Math.abs(l.to.x) > 1.1 || Math.abs(l.to.z) > 0.8).toBe(true);
+    }
+  });
+
+  it('none off a top low enough to step down from, and none off one higher than a vault', () => {
+    expect(dropLinks(blockOf(DEFAULT_MOVE_CONFIG.stepHeight))).toEqual([]);
+    expect(dropLinks(blockOf(DEFAULT_MOVE_CONFIG.vaultMaxHeight + 0.05))).toEqual([]);
+    expect(dropLinks(blockOf(DEFAULT_MOVE_CONFIG.vaultMaxHeight)).length).toBeGreaterThan(0);
+  });
+
+  it('gives the kit gallery\'s large rubble a way down on every side, and every other world none', async () => {
+    await initNav();
+    const gallery = loadWorldNavMesh('kit-gallery').links();
+    const drops = gallery.filter((l) => !l.vault);
+    expect(drops).toHaveLength(4);
+    for (const l of drops) {
+      expect(Math.abs(l.from.x + 18) < 1.2 && Math.abs(l.from.z - 24) < 1).toBe(true);
+      expect(l.from.y - l.to.y).toBeCloseTo(1, 1);
+    }
+    for (const w of ['range', 'greybox-01', 'mission-01']) expect(loadWorldNavMesh(w).links().every((l) => l.vault), w).toBe(true);
   });
 });

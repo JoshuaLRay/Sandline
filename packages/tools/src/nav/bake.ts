@@ -231,7 +231,8 @@ export function navBakeHash(world: World, agent: NavAgent = DEFAULT_NAV_AGENT, e
     config: navConfigFor(agent),
     // How vault links are searched for and kept (T-3.04). The vault rule's
     // own numbers are in `agent`; the rule itself is the controller's code.
-    links: { spacing: LINK_SPACING_M, approachMargin: APPROACH_MARGIN_M, endOnMesh: LINK_END_ON_MESH_M },
+    // U-027 added drop links off raised tops: a rule change the hash must see.
+    links: { spacing: LINK_SPACING_M, approachMargin: APPROACH_MARGIN_M, endOnMesh: LINK_END_ON_MESH_M, drops: 1 },
     // How cover points are sampled and classed (T-3.18): stored beside the
     // mesh, so under the same hash.
     cover: coverHashInputs(eyes),
@@ -306,6 +307,50 @@ export function vaultLinks(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): V
   return links;
 }
 
+/**
+ * Every way down off a raised top a soldier can walk off (U-027): for each
+ * box whose top stands above a step, at points along each face, from just
+ * inside the edge on the top to just outside it on whatever is below —
+ * where the drop is more than a step and no more than a vault's height, so
+ * any top a soldier could vault up onto, he can walk off again. Nothing new
+ * about movement: the controller already walks off an edge and falls. What
+ * was missing was the mesh knowing it — the kit gallery's large rubble pile
+ * (1.6 m deep, a vault carries 1.5 m) had vault links onto its top and none
+ * off, and a bot that went up never found a route again.
+ */
+export function dropLinks(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): VaultLink[] {
+  const config = moveConfigFor(agent);
+  const half = agent.radius;
+  const stand = half + APPROACH_MARGIN_M;
+  const links: VaultLink[] = [];
+  for (const box of world.boxes) {
+    if (box.maxY - agent.groundY <= agent.climb) continue;
+    for (const f of FACINGS) {
+      // Walking out through the face on the `f` side.
+      const alongX = f.dirX === 0;
+      const lo = (alongX ? box.minX : box.minZ) + half;
+      const hi = (alongX ? box.maxX : box.maxZ) - half;
+      const face = f.dirX > 0 ? box.maxX : f.dirX < 0 ? box.minX : f.dirZ > 0 ? box.maxZ : box.minZ;
+      const count = hi <= lo ? 1 : Math.max(1, Math.ceil((hi - lo) / LINK_SPACING_M) + 1);
+      for (let i = 0; i < count; i++) {
+        const t = count === 1 ? (lo + hi) / 2 : lo + ((hi - lo) * i) / (count - 1);
+        const x = alongX ? t : face - f.dirX * stand;
+        const z = alongX ? face - f.dirZ * stand : t;
+        // Standing on this box's top, and nothing higher over the footprint.
+        const y = supportUnder(x, z, half, box.maxY + agent.climb, world.boxes, agent.groundY);
+        if (Math.abs(y - box.maxY) > 1e-6) continue;
+        const toX = alongX ? t : face + f.dirX * stand;
+        const toZ = alongX ? face + f.dirZ * stand : t;
+        const toY = supportUnder(toX, toZ, half, y - agent.climb, world.boxes, agent.groundY);
+        const drop = y - toY;
+        if (drop <= agent.climb || drop > config.vaultMaxHeight) continue;
+        links.push({ box: box.id, from: { x, y, z }, to: { x: toX, y: toY, z: toZ }, yaw: f.yaw });
+      }
+    }
+  }
+  return links;
+}
+
 /** How close a link end must be, across the ground, to the mesh to count as on it. */
 export const LINK_END_ON_MESH_M = NAV_CELL.cs;
 
@@ -325,22 +370,41 @@ export function onMesh(mesh: NavMesh, p: { x: number; y: number; z: number }, cl
  * out which ends it has.
  */
 export async function meshVaultLinks(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): Promise<VaultLink[]> {
+  return (await meshLinks(world, agent)).vaults;
+}
+
+/** Vault links and drop links (U-027) with both ends on the mesh, from one bare bake. */
+export async function meshLinks(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): Promise<{ vaults: VaultLink[]; drops: VaultLink[] }> {
   await initNav();
   const bare = NavMesh.load(await bakeNavMesh(worldSoup(world, agent.groundY), navConfigFor(agent)));
-  const kept = vaultLinks(world, agent).filter((l) => onMesh(bare, l.from, agent.climb) && onMesh(bare, l.to, agent.climb));
+  const keep = (l: VaultLink) => onMesh(bare, l.from, agent.climb) && onMesh(bare, l.to, agent.climb);
+  const vaults = vaultLinks(world, agent).filter(keep);
+  const drops = dropLinks(world, agent).filter(keep);
   bare.destroy();
-  return kept;
+  return { vaults, drops };
 }
 
 /** Bake a named world for an agent: the mesh, and a vault link for every vault the controller would make onto it. */
 export async function bakeWorld(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): Promise<Uint8Array> {
-  const offMeshConnections: OffMeshConnectionParams[] = (await meshVaultLinks(world, agent)).map((link) => ({
-    startPosition: link.from,
-    endPosition: link.to,
-    radius: agent.radius,
-    bidirectional: false,
-    area: NAV_AREA_VAULT,
-    flags: NAV_FLAG_WALK | NAV_FLAG_VAULT,
-  }));
+  const { vaults, drops } = await meshLinks(world, agent);
+  const offMeshConnections: OffMeshConnectionParams[] = [
+    ...vaults.map((link) => ({
+      startPosition: link.from,
+      endPosition: link.to,
+      radius: agent.radius,
+      bidirectional: false,
+      area: NAV_AREA_VAULT,
+      flags: NAV_FLAG_WALK | NAV_FLAG_VAULT,
+    })),
+    // U-027: a drop is walked, not vaulted (no vault flag, so the follower walks it), and priced as a vault is.
+    ...drops.map((link) => ({
+      startPosition: link.from,
+      endPosition: link.to,
+      radius: agent.radius,
+      bidirectional: false,
+      area: NAV_AREA_VAULT,
+      flags: NAV_FLAG_WALK,
+    })),
+  ];
   return bakeNavMesh(worldSoup(world, agent.groundY), { ...navConfigFor(agent), offMeshConnections });
 }
