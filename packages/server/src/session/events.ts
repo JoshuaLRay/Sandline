@@ -34,6 +34,8 @@ export interface EventHost {
   stopGroup(id: string, seconds: number): boolean;
   objective(): { index: number; state: MissionStatus } | null;
   setObjective(index: number): boolean;
+  /** U-009: stop the running upload, if one is. */
+  interruptUpload(): boolean;
   setBlocker(blocker: ScriptBlockerState): void;
   message(text: string): void;
   callout(id: string): void;
@@ -166,6 +168,9 @@ export class EventRun {
         break;
       case 'set-objective':
         this.host.setObjective(action.objective);
+        break;
+      case 'interrupt-upload':
+        this.host.interruptUpload();
         break;
       case 'toggle-blocker': {
         const current = this.blockerState.get(action.blocker);

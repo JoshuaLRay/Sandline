@@ -2,7 +2,7 @@
  * Missions (T-3.34, grown into a sequence by T-4.14): data and the wire.
  *
  * A mission is `data/missions/<world>.json`: whether the dead respawn, and a
- * list of OBJECTIVES played in order. Each objective is one of five types,
+ * list of OBJECTIVES played in order. Each objective is one of six types,
  * each with its own parameters (see `ObjectiveDef`). The next objective
  * starts the moment one completes; the mission is complete when the last
  * does, and fails on a squad wipe whatever the objective, or when an
@@ -23,8 +23,21 @@ import MISSION_01 from '../data/missions/mission-01.json' with { type: 'json' };
 import type { AreaRef, Encounter } from './encounters.ts';
 import type { World } from './world.ts';
 
-export const OBJECTIVE_TYPES = ['clear-and-hold', 'reach', 'destroy', 'defend', 'survive'] as const;
+export const OBJECTIVE_TYPES = ['clear-and-hold', 'reach', 'destroy', 'defend', 'survive', 'upload'] as const;
 export type ObjectiveType = (typeof OBJECTIVE_TYPES)[number];
+
+/** U-009: what an interrupted upload keeps. The order is not on the wire. */
+export const UPLOAD_ON_INTERRUPT = ['keep-progress', 'reset-progress'] as const;
+export type UploadOnInterrupt = (typeof UPLOAD_ON_INTERRUPT)[number];
+/** U-009: the farthest an upload terminal's reach may be authored, metres — an arm and a step, not a zone. */
+export const UPLOAD_REACH_MAX_M = 3;
+
+/** A point in the world, metres: an upload terminal's panel. */
+export interface MissionPoint {
+  x: number;
+  y: number;
+  z: number;
+}
 
 export type ObjectiveDef = { label: string } & (
   /** No living enemy inside `area` and a living squad soldier in it, for `holdSeconds` in all; an enemy inside resets it. */
@@ -37,6 +50,15 @@ export type ObjectiveDef = { label: string } & (
   | { type: 'defend'; area: AreaRef; seconds: number; breachSeconds: number }
   /** `seconds` pass. */
   | { type: 'survive'; seconds: number }
+  /**
+   * U-009: a living squad soldier within `reachM` of the `terminal`, with a
+   * clear line from the eye to it, presses interact to start an upload;
+   * it then runs on its own for `seconds` with nobody standing anywhere.
+   * Something may interrupt it (an event script's `interrupt-upload`; U-010's
+   * lever); `onInterrupt` says whether the upload keeps what it had sent or
+   * starts over, and either way a soldier restarts it at the terminal.
+   */
+  | { type: 'upload'; terminal: MissionPoint; reachM: number; seconds: number; onInterrupt: UploadOnInterrupt }
 );
 
 /** Mission-wide failure rules beyond the always-on squad wipe. */
@@ -63,6 +85,16 @@ export const MISSION_STATES = ['progress', 'complete', 'failed'] as const;
 export type MissionStatus = (typeof MISSION_STATES)[number];
 
 /**
+ * U-009: where an objective that must be started stands. An upload is
+ * `idle` until a soldier starts it, `active` while it runs, `interrupted`
+ * once something has stopped it (and until a soldier starts it again).
+ * Every other type is `active` from its first tick. The order is the wire
+ * encoding.
+ */
+export const OBJECTIVE_PHASES = ['idle', 'active', 'interrupted'] as const;
+export type ObjectivePhase = (typeof OBJECTIVE_PHASES)[number];
+
+/**
  * The mission as the host broadcasts it: the whole mission's state, and the
  * current objective's. Ticks and counts, not seconds: integers round-trip
  * exactly. Once the mission is complete the objective is the last one.
@@ -77,16 +109,18 @@ export interface MissionView {
   type: ObjectiveType;
   /** What the HUD names it by. */
   label: string;
+  /** U-009: whether it is waiting to be started, running, or stopped (`OBJECTIVE_PHASES`). */
+  phase: ObjectivePhase;
   /**
-   * How far along, of `goal`: ticks held, passed or defended for the timed
-   * types; soldiers inside for `reach`; members down for `destroy`.
+   * How far along, of `goal`: ticks held, passed, defended or uploaded for
+   * the timed types; soldiers inside for `reach`; members down for `destroy`.
    */
   progress: number;
   goal: number;
   /**
    * Whether its condition holds right now: the area clear (clear-and-hold),
-   * enough of the squad inside (reach), the area not overrun (defend).
-   * Always true for the others.
+   * enough of the squad inside (reach), the area not overrun (defend), the
+   * upload running (upload). Always true for the others.
    */
   satisfied: boolean;
 }
@@ -118,8 +152,16 @@ function area(where: string, v: unknown): AreaRef {
   return { x: o['x'] as number, z: o['z'] as number, radius: o['radius'] as number };
 }
 
+function point(where: string, v: unknown): MissionPoint {
+  const o = obj(where, v, ['x', 'y', 'z']);
+  for (const k of ['x', 'y', 'z'] as const) {
+    if (typeof o[k] !== 'number' || !Number.isFinite(o[k] as number)) throw new MissionDataError(`${where}.${k} must be a finite number`);
+  }
+  return { x: o['x'] as number, y: o['y'] as number, z: o['z'] as number };
+}
+
 function parseObjective(where: string, raw: unknown): ObjectiveDef {
-  const head = obj(where, raw, ['type', 'label'], ['area', 'holdSeconds', 'who', 'group', 'seconds', 'breachSeconds']);
+  const head = obj(where, raw, ['type', 'label'], ['area', 'holdSeconds', 'who', 'group', 'seconds', 'breachSeconds', 'terminal', 'reachM', 'onInterrupt']);
   const type = head['type'];
   if (typeof type !== 'string' || !(OBJECTIVE_TYPES as readonly string[]).includes(type)) {
     throw new MissionDataError(`${where}.type must be one of ${OBJECTIVE_TYPES.join(', ')}, got ${JSON.stringify(type)}`);
@@ -154,6 +196,25 @@ function parseObjective(where: string, raw: unknown): ObjectiveDef {
     case 'survive': {
       const o = obj(where, raw, ['type', 'label', 'seconds']);
       return { type: 'survive', label, seconds: seconds(`${where}.seconds`, o['seconds']) };
+    }
+    case 'upload': {
+      const o = obj(where, raw, ['type', 'label', 'terminal', 'reachM', 'seconds', 'onInterrupt']);
+      const reachM = o['reachM'];
+      if (typeof reachM !== 'number' || !Number.isFinite(reachM) || reachM <= 0 || reachM > UPLOAD_REACH_MAX_M) {
+        throw new MissionDataError(`${where}.reachM must be a number in (0, ${UPLOAD_REACH_MAX_M}], got ${JSON.stringify(reachM)}`);
+      }
+      const onInterrupt = o['onInterrupt'];
+      if (typeof onInterrupt !== 'string' || !(UPLOAD_ON_INTERRUPT as readonly string[]).includes(onInterrupt)) {
+        throw new MissionDataError(`${where}.onInterrupt must be one of ${UPLOAD_ON_INTERRUPT.join(', ')}, got ${JSON.stringify(onInterrupt)}`);
+      }
+      return {
+        type: 'upload',
+        label,
+        terminal: point(`${where}.terminal`, o['terminal']),
+        reachM,
+        seconds: seconds(`${where}.seconds`, o['seconds']),
+        onInterrupt: onInterrupt as UploadOnInterrupt,
+      };
     }
   }
 }
@@ -206,6 +267,12 @@ export function checkMission(mission: MissionDef, encounter: Encounter, world: W
       throw new MissionDataError(`${at}.area: no place '${o.area}' (start, objective or one of the encounter's areas)`);
     }
     if (o.type === 'destroy' && !encounter.groups.some((g) => g.id === o.group)) throw new MissionDataError(`${at}.group: no encounter group '${o.group}'`);
+    if (o.type === 'upload') {
+      // A panel inside a wall could never be seen, and so never started.
+      const t = o.terminal;
+      const inside = world.boxes.find((b) => t.x > b.minX && t.x < b.maxX && t.y > b.minY && t.y < b.maxY && t.z > b.minZ && t.z < b.maxZ);
+      if (inside) throw new MissionDataError(`${at}.terminal is inside '${inside.id}'`);
+    }
   });
   const protectedGroup = mission.failure?.protectedGroup;
   if (protectedGroup) {

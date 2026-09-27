@@ -8,7 +8,7 @@ import type { MissionView } from './mission.ts';
 import { afterActionSummary, clockText, createMissionStats, createSlotStats, scoreboardRows } from './scoreboard.ts';
 
 const view = (v: Partial<MissionView>): MissionView => ({
-  state: 'progress', attempt: 1, objective: 0, objectives: 3, type: 'reach', label: 'the ford', satisfied: false, progress: 0, goal: 1, ...v,
+  state: 'progress', attempt: 1, objective: 0, objectives: 3, type: 'reach', phase: 'active', label: 'the ford', satisfied: false, progress: 0, goal: 1, ...v,
 });
 
 describe('the scoreboard (T-4.28)', () => {

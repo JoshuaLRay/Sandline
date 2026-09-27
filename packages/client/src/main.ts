@@ -54,6 +54,7 @@ import {
   getProjectile,
   eyePosition,
   eyeStance,
+  missionFor,
   stanceEye,
   muzzlePosition,
   toRadians,
@@ -133,7 +134,7 @@ import { createFootPlacementDriver } from './character/footPlacement.ts';
 import { RemoteSoldiers } from './character/remoteSoldiers.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
-import { RESTART_KEY, afterActionXp, missionLine } from './ui/missionHud.ts';
+import { RESTART_KEY, afterActionXp, missionLine, uploadPrompt } from './ui/missionHud.ts';
 import { type ClassDef, TICK_SECONDS as MISSION_TICK_SECONDS, type Vitality, afterActionSummary, classById, scoreboardRows } from '@sandline/shared';
 import { createScoreboard } from './ui/scoreboard.ts';
 import { createMenu } from './ui/menu/Menu.ts';
@@ -2505,7 +2506,13 @@ function frame(): void {
       hitMarker: hitMarkerOpacity(lastHitAt, hudNow),
       damage: damageDirectionView(damageHits, hudYaw, hudNow),
       heat: mountedGun ? heatView({ heat: mountedGun.heat, overheated: mountedGun.overheated }) : null,
-      prompt: mountedGun ? 'E  LEAVE THE GUN' : net && !downed && sim && emptyGunInReach(net, sim.x, sim.z) ? 'E  MAN THE GUN' : '',
+      prompt: mountedGun
+        ? 'E  LEAVE THE GUN'
+        : net && !downed && sim && emptyGunInReach(net, sim.x, sim.z)
+          ? 'E  MAN THE GUN'
+          : net && !downed && sim
+            ? uploadPrompt(net.mission, net.world ? missionFor(net.world.id) : undefined, eyePosition(sim.x, sim.y, sim.z, DEFAULT_MUZZLE_RIG, eyeStance(sim.crouched, sim.prone)))
+            : '',
       hint,
     });
   }

@@ -9,7 +9,7 @@ import { BitWriter } from '../net/BitStream.ts';
 import { MessageType, decodeMessage, encodeMessage, type Message } from '../net/protocol.ts';
 import RAW_GREYBOX from '../data/missions/greybox-01.json' with { type: 'json' };
 import { encounterFor } from './encounters.ts';
-import { MISSION_STATES, OBJECTIVE_TYPES, checkMission, missionFor, missions, parseMission } from './mission.ts';
+import { MISSION_STATES, OBJECTIVE_PHASES, OBJECTIVE_TYPES, checkMission, missionFor, missions, parseMission } from './mission.ts';
 import { requireWorld } from './world.ts';
 
 describe('mission messages (T-3.34, T-4.14)', () => {
@@ -17,8 +17,10 @@ describe('mission messages (T-3.34, T-4.14)', () => {
     for (const state of MISSION_STATES) {
       for (const type of OBJECTIVE_TYPES) {
         for (const satisfied of [false, true]) {
-          const msg: Message = { kind: 'Mission', state, attempt: 3, objective: 1, objectives: 3, type, label: 'the compound', satisfied, progress: 450, goal: 900 };
-          expect(decodeMessage(encodeMessage(msg))).toEqual(msg);
+          for (const phase of OBJECTIVE_PHASES) {
+            const msg: Message = { kind: 'Mission', state, attempt: 3, objective: 1, objectives: 3, type, phase, label: 'the compound', satisfied, progress: 450, goal: 900 };
+            expect(decodeMessage(encodeMessage(msg))).toEqual(msg);
+          }
         }
       }
     }
@@ -33,7 +35,7 @@ describe('mission messages (T-3.34, T-4.14)', () => {
       fill(w);
       return w.toUint8Array();
     };
-    const state = (o: { state?: number; type?: number; objective?: number; objectives?: number; progress?: number; goal?: number }) =>
+    const state = (o: { state?: number; type?: number; phase?: number; objective?: number; objectives?: number; progress?: number; goal?: number }) =>
       mission((w) => {
         w.writeBits(0, 3);
         w.writeBits(o.state ?? 0, 2);
@@ -41,6 +43,7 @@ describe('mission messages (T-3.34, T-4.14)', () => {
         w.writeVarUint(o.objective ?? 0);
         w.writeVarUint(o.objectives ?? 1);
         w.writeBits(o.type ?? 0, 3);
+        w.writeBits(o.phase ?? 1, 2);
         w.writeString('x');
         w.writeBool(true);
         w.writeVarUint(o.progress ?? 0);
@@ -55,9 +58,11 @@ describe('mission messages (T-3.34, T-4.14)', () => {
     }))).toThrow(/more than six slots/);
     expect(() => decodeMessage(state({ state: 3 }))).toThrow(/unknown mission state/);
     expect(() => decodeMessage(state({ type: 7 }))).toThrow(/unknown objective type/);
+    expect(() => decodeMessage(state({ type: 5, phase: 3 }))).toThrow(/unknown objective phase/);
     expect(() => decodeMessage(state({ objective: 3, objectives: 3 }))).toThrow(/out of the mission/);
     expect(() => decodeMessage(state({ progress: 11, goal: 10 }))).toThrow(/past its goal/);
-    expect(decodeMessage(state({}))).toMatchObject({ kind: 'Mission', type: 'clear-and-hold' });
+    expect(decodeMessage(state({}))).toMatchObject({ kind: 'Mission', type: 'clear-and-hold', phase: 'active' });
+    expect(decodeMessage(state({ type: 5, phase: 2 }))).toMatchObject({ kind: 'Mission', type: 'upload', phase: 'interrupted' });
   });
 });
 
@@ -78,9 +83,11 @@ describe('mission files (T-4.14)', () => {
         { type: 'destroy', label: 'the garrison', group: 'garrison' },
         { type: 'defend', label: 'the compound', area: 'objective', seconds: 60, breachSeconds: 5 },
         { type: 'survive', label: 'the night', seconds: 90 },
+        { type: 'upload', label: 'the relay', terminal: { x: 10, y: 1.2, z: 12.5 }, reachM: 2, seconds: 45, onInterrupt: 'keep-progress' },
       ],
     });
-    expect(all.objectives.map((o) => o.type)).toEqual(['reach', 'destroy', 'defend', 'survive']);
+    expect(all.objectives.map((o) => o.type)).toEqual(['reach', 'destroy', 'defend', 'survive', 'upload']);
+    expect(all.objectives[4]).toEqual({ type: 'upload', label: 'the relay', terminal: { x: 10, y: 1.2, z: 12.5 }, reachM: 2, seconds: 45, onInterrupt: 'keep-progress' });
     const one = (o: unknown) => ({ ...base, objectives: [o] });
     expect(parseMission({ ...base, failure: { timeLimitSeconds: 120 } }).failure).toEqual({ timeLimitSeconds: 120 });
     expect(parseMission({ ...base, failure: { protectedGroup: 'garrison' } }).failure).toEqual({ protectedGroup: 'garrison' });
@@ -97,6 +104,16 @@ describe('mission files (T-4.14)', () => {
     expect(() => parseMission(one({ type: 'defend', label: 'x', area: 'objective', seconds: 5 }))).toThrow(/missing 'breachSeconds'/);
     expect(() => parseMission(one({ type: 'survive', label: '', seconds: 5 }))).toThrow(/label/);
     expect(() => parseMission({ ...base, respawn: 'no' })).toThrow(/respawn/);
+    // U-009: an upload's terminal is a point, reached by hand, and says what an interruption keeps.
+    const up = (o: object) => one({ type: 'upload', label: 'x', terminal: { x: 0, y: 1, z: 0 }, reachM: 2, seconds: 30, onInterrupt: 'reset-progress', ...o });
+    expect(parseMission(up({})).objectives[0]).toMatchObject({ onInterrupt: 'reset-progress' });
+    expect(() => parseMission(up({ reachM: 0 }))).toThrow(/reachM must be a number in \(0, 3\]/);
+    expect(() => parseMission(up({ reachM: 8 }))).toThrow(/reachM/);
+    expect(() => parseMission(up({ onInterrupt: 'pause' }))).toThrow(/onInterrupt must be one of keep-progress, reset-progress/);
+    expect(() => parseMission(up({ terminal: { x: 0, z: 0 } }))).toThrow(/terminal: missing 'y'/);
+    expect(() => parseMission(up({ terminal: 'objective' }))).toThrow(/terminal: expected an object/);
+    expect(() => parseMission(up({ seconds: 0 }))).toThrow(/seconds/);
+    expect(() => parseMission(up({ area: 'objective' }))).toThrow(/unknown key 'area'/);
   });
 
   it('holds a mission to its world and encounter', () => {
@@ -109,5 +126,9 @@ describe('mission files (T-4.14)', () => {
     expect(() => checkMission(parseMission({ ...(RAW_GREYBOX as object), failure: { protectedGroup: 'nobody' } }), encounter, world)).toThrow(/no encounter group 'nobody'/);
     expect(() => checkMission(parseMission({ ...(RAW_GREYBOX as object), failure: { protectedGroup: 'garrison' } }), encounter, world)).toThrow(/must contain exactly one entity/);
     expect(() => checkMission(missionFor('greybox-01')!, encounter, requireWorld('range'))).toThrow(/is for world 'greybox-01'/);
+    // U-009: a terminal inside a wall could never be seen, so never started.
+    const terminal = (t: object) => bad({ type: 'upload', label: 'x', terminal: t, reachM: 2, seconds: 30, onInterrupt: 'keep-progress' });
+    expect(() => checkMission(terminal({ x: 10, y: 1.2, z: 12.5 }), encounter, world)).not.toThrow();
+    expect(() => checkMission(terminal({ x: 10, y: 1.2, z: 13 }), encounter, world)).toThrow(/terminal is inside 'as-wall-1'/);
   });
 });

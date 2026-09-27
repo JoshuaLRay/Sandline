@@ -166,7 +166,7 @@ import {
 import { DEFAULT_HITBOX, HitboxHistory, bodyParts, bodyStance, capsuleFor, clampRewindMs, rayBody, rayCapsule, resolveShot } from '../net/lagComp.ts';
 import { BRAIN_PERIOD_TICKS, Brain, type BrainTree, createBrainRegistry, defaultBrainTree } from '../ai/Brain.ts';
 import { type AiDebugSource, buildAiDebug } from '../ai/debug.ts';
-import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, visibleAimPoint } from '../ai/aim.ts';
+import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, lineOfSight, visibleAimPoint } from '../ai/aim.ts';
 import { CoverSystem, DEFAULT_COVER_BODY } from '../ai/cover.ts';
 import { EnemyGroup } from '../ai/group.ts';
 import type { CombatWorld } from '../ai/actions/combat.ts';
@@ -1089,6 +1089,7 @@ export class Session {
     if (!run) return;
     const beforeObjective = run.current.objective;
     const beforeState = run.current.state;
+    const before = { type: run.current.type, label: run.current.label };
     const inside = (a: GroundArea) => (p: { x: number; z: number }) => Math.sqrt((p.x - a.x) ** 2 + (p.z - a.z) ** 2) <= a.radius;
     const living = this.slots.filter((s) => !isDead(s.health));
     const standing = this.slots.filter((s) => isAlive(s.health));
@@ -1113,6 +1114,8 @@ export class Session {
     });
     if (beforeState === 'progress' && (run.current.objective > beforeObjective || run.current.state === 'complete')) {
       for (const slot of this.slots) this.awardXp(slot.index, 'objective');
+      // U-009: say so — the HUD's line moves straight on to what comes next.
+      if (before.type === 'upload') this.eventHost().message(`Upload complete: ${before.label}`);
     }
     if (run.current.state === 'progress' && run.current.objective > beforeObjective) this.captureMissionCheckpoint();
     if (beforeState === 'progress' && run.current.state === 'complete') {
@@ -1443,6 +1446,11 @@ export class Session {
       },
       setObjective: (index) => {
         const changed = this.missionRun?.setObjective(index) ?? false;
+        if (changed) this.broadcastMission();
+        return changed;
+      },
+      interruptUpload: () => {
+        const changed = this.missionRun?.interruptUpload() ?? false;
         if (changed) this.broadcastMission();
         return changed;
       },
@@ -2340,6 +2348,8 @@ export class Session {
       if (this.slots.some((t) => t.reviveBySlot === slot.index)) continue;
       const gun = this.emptyGunNear(slot.state, (def) => def.mountRangeM);
       if (gun) this.mount(slot, gun);
+      // U-009: no gun to man — the press may be for an upload terminal.
+      else this.startUploadAt(slot);
     }
     for (const enemy of this.enemyList) {
       if (enemy.mounted || isDead(enemy.health) || enemy.state.vault) continue;
@@ -2350,6 +2360,30 @@ export class Session {
       if (target && !withinArc(gun.facing, tableToWire(aimAngles(gun.muzzle, target.state).yaw), gun.def.traverseDeg)) continue;
       this.mountEnemy(enemy, gun, nowSeconds);
     }
+  }
+
+  /**
+   * U-009: a human's interact press, not already a revive or a gun, at the
+   * current upload's terminal. The press is the host's to judge, and it
+   * starts the upload only when every check holds: the mission running and
+   * its objective an upload that is not already running (`startUpload`); the
+   * soldier alive and standing (not downed), not vaulting or on a gun; the
+   * terminal within the objective's `reachM` of the soldier's eye; and
+   * nothing in the world between the eye and the panel. A press is an edge
+   * of the newest real input (`updateMounts`), so a held key, a repeat of an
+   * old input or a press after the upload finished starts nothing.
+   */
+  private startUploadAt(slot: Slot): void {
+    const run = this.missionRun;
+    if (!run || !this.roomStarted || run.current.state !== 'progress' || run.current.phase === 'active') return;
+    const { def } = run.objective;
+    if (def.type !== 'upload') return;
+    if (!isAlive(slot.health) || slot.state.vault || slot.mounted) return;
+    const eye = soldierEye(slot.state);
+    const t = def.terminal;
+    if ((eye.x - t.x) ** 2 + (eye.y - t.y) ** 2 + (eye.z - t.z) ** 2 > def.reachM * def.reachM) return;
+    if (!lineOfSight(eye, t, this.collisionBoxes)) return;
+    if (run.startUpload()) this.broadcastMission();
   }
 
   /**

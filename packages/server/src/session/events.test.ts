@@ -57,7 +57,7 @@ describe('event runner triggers and actions (T-4.15)', () => {
           {
             id: 'ready',
             trigger: { kind: 'flag', flag: 'ready' },
-            actions: [{ kind: 'spawn-group', group: 'g' }, { kind: 'set-objective', objective: 0 }],
+            actions: [{ kind: 'spawn-group', group: 'g' }, { kind: 'set-objective', objective: 0 }, { kind: 'interrupt-upload' }],
           },
           { id: 'dead', trigger: { kind: 'group-dead', group: 'g' }, actions: [{ kind: 'message', text: 'group dead' }, { kind: 'stop-group', group: 'g' }] },
         ],
@@ -75,6 +75,7 @@ describe('event runner triggers and actions (T-4.15)', () => {
     const spawns: string[] = [];
     const stops: string[] = [];
     const objectiveSets: number[] = [];
+    let interrupts = 0;
     const blockers: { id: string; active: boolean }[] = [];
     const host: EventHost = {
       squadFeet: () => squad,
@@ -85,6 +86,10 @@ describe('event runner triggers and actions (T-4.15)', () => {
       setObjective: (index) => {
         objectiveSets.push(index);
         objective = { index, state: 'progress' };
+        return true;
+      },
+      interruptUpload: () => {
+        interrupts += 1;
         return true;
       },
       setBlocker: (b) => blockers.push({ id: b.id, active: b.active }),
@@ -108,6 +113,8 @@ describe('event runner triggers and actions (T-4.15)', () => {
     run.step(2);
     expect(spawns).toEqual(['g']);
     expect(objectiveSets).toEqual([0]);
+    // U-009: the script asks the host to stop the running upload (the host decides whether one is).
+    expect(interrupts).toBe(1);
     // U-001: what a checkpoint of this moment would have to send again.
     expect(run.groups()).toEqual({ sent: ['g'], stopped: [] });
 

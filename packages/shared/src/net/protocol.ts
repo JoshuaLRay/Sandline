@@ -11,13 +11,13 @@ import { HEALTH, POSITION, dequantize, quantize } from './quantize.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isJoinCode } from './roomCode.ts';
 import { MAX_MARKS, ORDER_KINDS, type BotOrder, type OrderAddress, type OrderKind, type OrderPoint, type TargetMark } from '../sim/orders.ts';
-import { MISSION_STATES, OBJECTIVE_TYPES, type MissionView } from '../sim/mission.ts';
+import { MISSION_STATES, OBJECTIVE_PHASES, OBJECTIVE_TYPES, type MissionView } from '../sim/mission.ts';
 import type { ScriptBlockerState } from '../sim/events.ts';
 import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 import type { MissionStats } from '../sim/scoreboard.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 37;
+export const PROTOCOL_VERSION = 38;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -708,6 +708,8 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeVarUint(msg.objective);
       w.writeVarUint(msg.objectives);
       w.writeBits(OBJECTIVE_TYPES.indexOf(msg.type), 3);
+      // U-009: waiting to be started, running, or stopped.
+      w.writeBits(OBJECTIVE_PHASES.indexOf(msg.phase), 2);
       w.writeString(msg.label);
       w.writeBool(msg.satisfied);
       w.writeVarUint(msg.progress);
@@ -1249,13 +1251,15 @@ export function decodeMessage(bytes: Uint8Array): Message {
             const objectives = r.readVarUint();
             const type = OBJECTIVE_TYPES[r.readBits(3)];
             if (type === undefined) throw new ProtocolError('unknown objective type');
+            const phase = OBJECTIVE_PHASES[r.readBits(2)];
+            if (phase === undefined) throw new ProtocolError('unknown objective phase');
             const label = r.readString();
             const satisfied = r.readBool();
             const progress = r.readVarUint();
             const goal = r.readVarUint();
             if (objectives === 0 || objective >= objectives) throw new ProtocolError('objective out of the mission');
             if (progress > goal) throw new ProtocolError('objective past its goal');
-            return { kind: 'Mission', state, attempt, objective, objectives, type, label, satisfied, progress, goal };
+            return { kind: 'Mission', state, attempt, objective, objectives, type, phase, label, satisfied, progress, goal };
           }
           case EXT.Events: {
             const variant = r.readBits(2);

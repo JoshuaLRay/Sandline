@@ -39,6 +39,8 @@ export function objectiveText(o: ObjectiveDef): string {
       return `Defend ${o.label} for ${seconds(o.seconds)}`;
     case 'survive':
       return `Survive for ${seconds(o.seconds)}`;
+    case 'upload':
+      return `Start the upload at ${o.label} and see it through ${seconds(o.seconds)}`;
   }
 }
 

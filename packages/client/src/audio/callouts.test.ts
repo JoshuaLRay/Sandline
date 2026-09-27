@@ -117,7 +117,7 @@ describe('the callout director (T-2.49)', () => {
 
 const soldier = (slot: number, x: number, z: number, extra: Partial<SquadSoldier> = {}): SquadSoldier => ({ netId: slot + 1, slot, at: { x, y: 0, z }, vitality: 'alive', reloading: false, reviverSlot: -1, self: slot === 0, ...extra });
 const view = (patch: Partial<CalloutView> = {}): CalloutView => ({ soldiers: [soldier(0, 0, 0), soldier(1, 3, 0), soldier(2, -3, 0)], enemies: [], projectiles: [], orders: [], mission: null, boxes: [], ...patch });
-const mission = (patch: Partial<MissionView> = {}): MissionView => ({ state: 'progress', attempt: 1, objective: 0, objectives: 1, type: 'clear-and-hold', label: 'Clear the compound', progress: 0, goal: 900, satisfied: false, ...patch });
+const mission = (patch: Partial<MissionView> = {}): MissionView => ({ state: 'progress', attempt: 1, objective: 0, objectives: 1, type: 'clear-and-hold', phase: 'active', label: 'Clear the compound', progress: 0, goal: 900, satisfied: false, ...patch });
 
 describe('the callout watcher (T-2.49)', () => {
   it('calls a new contact by a squadmate who can see it — not a wall between, not twice while it stays seen, the MG by name', () => {

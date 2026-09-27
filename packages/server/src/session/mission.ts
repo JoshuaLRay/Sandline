@@ -19,6 +19,15 @@
  *     row fails the objective, and the mission with it. Complete when the
  *     clock reaches `seconds`.
  *   - survive: complete when the clock reaches `seconds`.
+ *   - upload (U-009): `idle` until a soldier starts it at its terminal
+ *     (`startUpload`, which the session calls only for a press it has
+ *     validated); then `active`, a tick of progress a tick with nobody
+ *     standing anywhere, complete at `seconds`. `interruptUpload` stops a
+ *     running one: `interrupted`, keeping its progress or starting over as
+ *     the objective's `onInterrupt` says, until a soldier starts it again.
+ *     Neither call does anything in any other phase, objective or state, so
+ *     a repeated or late request cannot advance it, and progress only ever
+ *     comes from ticks while it runs, up to the goal.
  *
  * Whatever the objective, a squad wipe — every slot dead at once — fails the
  * mission. The next objective starts the tick one completes; the mission is
@@ -116,7 +125,7 @@ export class MissionRun {
   /** Objective `index`'s opening view. */
   private start(index: number, attempt: number): MissionView {
     const o = this.def.objectives[index]!;
-    const goal = o.type === 'clear-and-hold' ? ticksOf(o.holdSeconds) : o.type === 'defend' || o.type === 'survive' ? ticksOf(o.seconds) : 1;
+    const goal = o.type === 'clear-and-hold' ? ticksOf(o.holdSeconds) : o.type === 'defend' || o.type === 'survive' || o.type === 'upload' ? ticksOf(o.seconds) : 1;
     this.breach = 0;
     return {
       state: 'progress',
@@ -124,11 +133,44 @@ export class MissionRun {
       objective: index,
       objectives: this.def.objectives.length,
       type: o.type,
+      phase: o.type === 'upload' ? 'idle' : 'active',
       label: o.label,
       progress: 0,
       goal,
-      satisfied: o.type !== 'clear-and-hold' && o.type !== 'reach',
+      satisfied: o.type !== 'clear-and-hold' && o.type !== 'reach' && o.type !== 'upload',
     };
+  }
+
+  /** U-009: the upload being played, if the current objective is one still to finish. */
+  private get upload(): Extract<ObjectiveDef, { type: 'upload' }> | null {
+    const def = this.def.objectives[this.view.objective];
+    return this.view.state === 'progress' && def?.type === 'upload' ? def : null;
+  }
+
+  /**
+   * U-009: start (or restart) the current upload. The session calls this
+   * only for an interaction it has validated — who, where, the line to the
+   * terminal. Refused, returning false, unless the objective is an upload
+   * that is not already running: a second press, or one that arrives after
+   * it completed or the mission moved on, changes nothing.
+   */
+  startUpload(): boolean {
+    if (!this.upload || this.view.phase === 'active') return false;
+    this.view = { ...this.view, phase: 'active', satisfied: true };
+    return true;
+  }
+
+  /**
+   * U-009: stop a running upload (an event script's `interrupt-upload`; the
+   * enemy's lever in U-010). It keeps what it had sent or starts over, as the
+   * objective's `onInterrupt` says. False, changing nothing, unless an
+   * upload is running.
+   */
+  interruptUpload(): boolean {
+    const upload = this.upload;
+    if (!upload || this.view.phase !== 'active') return false;
+    this.view = { ...this.view, phase: 'interrupted', satisfied: false, progress: upload.onInterrupt === 'reset-progress' ? 0 : this.view.progress };
+    return true;
   }
 
   /**
@@ -177,6 +219,9 @@ export class MissionRun {
         case 'survive':
           next = { ...next, progress: Math.min(next.goal, next.progress + 1) };
           break;
+        case 'upload':
+          if (next.phase === 'active') next = { ...next, progress: Math.min(next.goal, next.progress + 1) };
+          break;
       }
       const done = def.type === 'reach' ? next.satisfied : def.type === 'destroy' ? w.group(def.group).dead : next.progress >= next.goal;
       if (next.state === 'progress' && done) {
@@ -194,6 +239,7 @@ export class MissionRun {
     return (
       next.state !== before.state ||
       next.objective !== before.objective ||
+      next.phase !== before.phase ||
       next.satisfied !== before.satisfied ||
       next.goal !== before.goal ||
       second(next) !== second(before)

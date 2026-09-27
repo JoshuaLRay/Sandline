@@ -25,12 +25,14 @@ export type EventTrigger =
   | { kind: 'group-dead'; group: string }
   | { kind: 'flag'; flag: string; value: boolean };
 
-export const EVENT_ACTION_KINDS = ['spawn-group', 'stop-group', 'set-objective', 'toggle-blocker', 'message', 'callout', 'set-flag'] as const;
+export const EVENT_ACTION_KINDS = ['spawn-group', 'stop-group', 'set-objective', 'interrupt-upload', 'toggle-blocker', 'message', 'callout', 'set-flag'] as const;
 export type EventAction =
   | { kind: 'spawn-group'; group: string }
   /** U-001: no more waves from the group, and none of its queued members placed; the living fight on. */
   | { kind: 'stop-group'; group: string }
   | { kind: 'set-objective'; objective: number }
+  /** U-009: stop the running upload objective, if one is running; its `onInterrupt` says what it keeps. */
+  | { kind: 'interrupt-upload' }
   | { kind: 'toggle-blocker'; blocker: string; active: boolean }
   | { kind: 'message'; text: string }
   | { kind: 'callout'; id: string }
@@ -218,6 +220,9 @@ export function parseEventScript(raw: unknown, encounter: Encounter, world: Worl
           const x = obj(aw, a, ['kind', 'objective']);
           return { kind: ak, objective: objective(`${aw}.objective`, x['objective']) };
         }
+        case 'interrupt-upload':
+          obj(aw, a, ['kind']);
+          return { kind: ak };
         case 'toggle-blocker': {
           const x = obj(aw, a, ['kind', 'blocker', 'active']);
           const blocker = id(`${aw}.blocker`, x['blocker']);
