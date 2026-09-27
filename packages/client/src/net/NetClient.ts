@@ -540,6 +540,13 @@ export class NetClient {
     return this.remoteReviveProgressValues.get(netId) ?? 0;
   }
 
+  /** U-010: how far the enemy pulling the upload's lever is through it, percent; 0 when none is (an enemy's Health carries it where a squadmate's carries a revive). */
+  leverPull(): number {
+    let most = 0;
+    for (const netId of this.remoteEnemies.keys()) most = Math.max(most, this.remoteReviveProgressValues.get(netId) ?? 0);
+    return most;
+  }
+
   /** T-2.49: the slot reviving a remote soldier, or −1. */
   remoteReviverSlot(netId: number): number {
     return this.remoteReviverSlots.get(netId) ?? -1;

@@ -115,6 +115,7 @@ import {
   type Encounter,
   type MissionView,
   type MissionDef,
+  type UploadLever,
   type EventScript,
   type ScriptBlockerState,
   type WorldBox,
@@ -182,7 +183,7 @@ import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
 import type { CoverPoint } from '../ai/nav/baked/types.ts';
 import { pathLength } from '../ai/nav/NavMesh.ts';
-import { PathFollower } from '../ai/locomotion/followPath.ts';
+import { type FollowerStatus, PathFollower } from '../ai/locomotion/followPath.ts';
 import { Avoidance, type AvoidanceEntry } from '../ai/locomotion/avoidance.ts';
 import type { NavMesh } from '../ai/nav/NavMesh.ts';
 import { ClientView } from './relevance.ts';
@@ -266,6 +267,10 @@ export interface OrderReport {
 
 /** A move's point is reachable when a path ends this near it, metres (T-3.28). */
 const ORDER_REACH_M = 1;
+/** U-010: a lever user that cannot get there is not sent again for this long, seconds. */
+export const LEVER_BAR_SECONDS = 15;
+/** U-010: a way to the lever must end this near its foot, metres. */
+const LEVER_PATH_END_M = 1;
 
 /** T-3.26: the archetype a friendly bot sees, aims and fires by (`squad.json`'s bot.archetype), with its slot's own gun. */
 const BOT_ARCHETYPE = getEnemy(SQUAD_CONFIG.bot.archetype);
@@ -528,6 +533,8 @@ export interface EnemyEntity {
   brain: Brain | null;
   /** Path following for the brain's intent, made on the first one, as a bot's. */
   follower: PathFollower | null;
+  /** U-010: what its path following last said — `unreachable` when there is no way to its goal. */
+  pathStatus: FollowerStatus;
   /**
    * T-3.14: what it knows about the squad — last known positions, confidence,
    * threats — fed by sight on its think ticks and by every stimulus it hears.
@@ -577,6 +584,8 @@ export interface EnemyEntity {
   readonly posture: EnemyPosture | null;
   /** T-3.32: a garrison fights from inside its area; anyone else may take cover anywhere. */
   coverNear(): { x: number; z: number; withinM: number } | null;
+  /** U-010: the lever the session has sent it to, or null. */
+  leverJob(): { x: number; y: number; z: number; reachM: number } | null;
 }
 
 /** Where and how to spawn an enemy. */
@@ -742,6 +751,10 @@ export class Session {
   private joinCount = 0;
   private resumeCount = 0;
   private readonly navMesh: NavMesh | null;
+  /** U-010: the enemy sent to the running upload's lever, and how long it has held it. */
+  private leverUse: { enemy: EnemyEntity; seconds: number } | null = null;
+  /** U-010: enemies that could not get to the lever, and until when they are not sent again (seconds). */
+  private readonly leverBarred = new Map<number, number>();
   /** T-3.19's cover over this world's baked points, or null without any. */
   readonly cover: CoverSystem | null;
   /** T-3.20: what fighting leaves see of the session; every enemy is handed this one. */
@@ -1245,6 +1258,9 @@ export class Session {
     }
     this.enemyList.length = 0;
     this.groups.clear();
+    // U-010: nobody at the lever, nobody barred from it.
+    this.leverUse = null;
+    this.leverBarred.clear();
     this.projectiles.length = 0;
     // T-4.29: every gun free, cold and belted again.
     for (const gun of this.emplacementList) this.resetEmplacement(gun);
@@ -1630,6 +1646,7 @@ export class Session {
       health: { current: def.health, max: def.health, downedAt: null, diedAt: null },
       brain: null,
       follower: null,
+      pathStatus: 'idle',
       memory: createTargetMemory(),
       awareness: new Map(),
       target: null,
@@ -1651,6 +1668,10 @@ export class Session {
       coverNear: () => {
         const area = at.posture?.kind === 'garrison' ? at.posture.area : null;
         return area ? { x: area.x, z: area.z, withinM: area.radius } : null;
+      },
+      leverJob: () => {
+        const lever = this.leverUse?.enemy === enemy ? this.activeLever() : null;
+        return lever ? { ...lever.at, reachM: lever.reachM } : null;
       },
     };
     enemy.group?.add(enemy.netId);
@@ -2360,6 +2381,104 @@ export class Session {
       if (target && !withinArc(gun.facing, tableToWire(aimAngles(gun.muzzle, target.state).yaw), gun.def.traverseDeg)) continue;
       this.mountEnemy(enemy, gun, nowSeconds);
     }
+  }
+
+  /** U-010: who is at (or on the way to) the lever, and how long they have held it — for tests and the QA readout. */
+  get lever(): { netId: number; seconds: number } | null {
+    return this.leverUse ? { netId: this.leverUse.enemy.netId, seconds: this.leverUse.seconds } : null;
+  }
+
+  /** U-010: the running upload's lever, or null — no upload running, or one with no lever. */
+  private activeLever(): UploadLever | null {
+    const run = this.missionRun;
+    if (!run || !this.roomStarted || run.current.state !== 'progress' || run.current.phase !== 'active') return null;
+    const { def } = run.objective;
+    return def.type === 'upload' ? (def.lever ?? null) : null;
+  }
+
+  /** U-010: how far the lever's user is through its pull, percent. */
+  private leverPercent(): number {
+    const lever = this.activeLever();
+    if (!this.leverUse || !lever) return 0;
+    return Math.min(100, Math.floor((100 * this.leverUse.seconds) / lever.useSeconds));
+  }
+
+  /**
+   * U-010: the lever, a tick at a time. While an upload with a lever runs,
+   * one enemy of its group is sent to it — the nearest living one the nav
+   * mesh can take there, not on a gun and not barred — and the session, not
+   * the brain, times the pull: it counts while that enemy is alive, holds
+   * the lever (its brain's `interact`) within `reachM` of its eye with a
+   * clear line to it, the same checks a soldier's press at the terminal
+   * meets. Anything else — shot, pushed off, out of reach, blocked — sets
+   * the pull back to nothing. The user is released when it dies, when its
+   * way there turns out not to exist (barred for `LEVER_BAR_SECONDS`, so the
+   * next nearest is tried and nobody waits on it forever), or when the
+   * upload stops running. A pull that lands cuts the upload once
+   * (`interruptUpload`, which does nothing to one already stopped), tells
+   * everyone, and frees the lever until the upload runs again.
+   */
+  private updateLever(nowSeconds: number): void {
+    const lever = this.activeLever();
+    if (!lever) {
+      this.leverUse = null;
+      return;
+    }
+    for (const [netId, until] of this.leverBarred) if (until <= nowSeconds) this.leverBarred.delete(netId);
+    const use = this.leverUse;
+    if (use) {
+      const e = use.enemy;
+      const gone = isDead(e.health) || !this.enemyList.includes(e) || e.mounted !== null || !e.brain || e.brain.isStopped;
+      if (gone || (e.pathStatus === 'unreachable' && !this.atLever(e, lever))) {
+        if (!gone) this.leverBarred.set(e.netId, nowSeconds + LEVER_BAR_SECONDS);
+        this.leverUse = null;
+      }
+    }
+    if (!this.leverUse) {
+      const members = new Set(this.spawnerValue?.spawnedBy(lever.group) ?? []);
+      const candidates = this.enemyList
+        .filter((e) => members.has(e.netId) && !isDead(e.health) && !e.mounted && e.brain && !e.brain.isStopped && !this.leverBarred.has(e.netId))
+        .sort((a, b) => Math.hypot(a.state.x - lever.at.x, a.state.z - lever.at.z) - Math.hypot(b.state.x - lever.at.x, b.state.z - lever.at.z));
+      for (const e of candidates) {
+        if (this.canWalkTo(e.state, lever.at)) {
+          this.leverUse = { enemy: e, seconds: 0 };
+          break;
+        }
+        // No way there from where it stands: not this one, for a while.
+        this.leverBarred.set(e.netId, nowSeconds + LEVER_BAR_SECONDS);
+      }
+      if (!this.leverUse) return;
+    }
+    const current = this.leverUse!;
+    if (!this.atLever(current.enemy, lever) || !current.enemy.brain!.read('interact')) {
+      current.seconds = 0;
+      return;
+    }
+    current.seconds += TICK_SECONDS;
+    if (current.seconds < lever.useSeconds) return;
+    this.leverUse = null;
+    if (this.missionRun!.interruptUpload()) {
+      this.broadcastMission();
+      this.eventHost().message('The upload was cut at the lever');
+    }
+  }
+
+  /** U-010: whether an enemy stands at the lever by the terminal's rules: in reach of its eye, and a clear line to it. */
+  private atLever(e: EnemyEntity, lever: UploadLever): boolean {
+    if (isDead(e.health) || e.state.vault) return false;
+    const eye = soldierEye(e.state);
+    const t = lever.at;
+    if ((eye.x - t.x) ** 2 + (eye.y - t.y) ** 2 + (eye.z - t.z) ** 2 > lever.reachM * lever.reachM) return false;
+    return lineOfSight(eye, t, this.collisionBoxes);
+  }
+
+  /** U-010: a path from `from` that ends within reach of `to`'s foot. */
+  private canWalkTo(from: Readonly<MoveState>, to: { x: number; y: number; z: number }): boolean {
+    const mesh = this.navMesh;
+    if (!mesh) return false;
+    const path = mesh.path(from, to);
+    const end = path?.points.at(-1);
+    return end !== undefined && Math.hypot(end.x - to.x, end.z - to.z) <= LEVER_PATH_END_M;
   }
 
   /**
@@ -3401,6 +3520,8 @@ export class Session {
     this.updateRevives();
     // T-4.29: mounting and dismounting, after the revive has had first claim on the same press.
     this.updateMounts(nowSeconds);
+    // U-010: the enemy at the upload's lever.
+    this.updateLever(nowSeconds);
 
     const walkFrom = this.profileAi ? performance.now() : 0;
     this.stepEnemies(nowSeconds);
@@ -3868,7 +3989,9 @@ export class Session {
         if (!intent) return null;
         enemy.follower = new PathFollower(mesh, this.collisionBoxes, undefined, this.moveConfig);
       }
-      const input = enemy.follower.step(enemy.state, intent, enemy.yaw).input;
+      const stepped = enemy.follower.step(enemy.state, intent, enemy.yaw);
+      enemy.pathStatus = stepped.status;
+      const input = stepped.input;
       if (!intent) enemy.follower = null;
       return input;
     });
@@ -4076,7 +4199,8 @@ export class Session {
             Math.round(e.health.max),
             vitalityCode(vitality(e.health)),
             Math.min(63, Math.ceil(corpseLeft)),
-            0,
+            // U-010: how far through pulling the lever it is, percent — the slot a squadmate's revive uses.
+            this.leverUse?.enemy === e ? this.leverPercent() : 0,
             0,
           ],
           [C]: [e.state.crouched ? 1 : 0, e.state.prone ? 1 : 0],
