@@ -20,8 +20,8 @@ describe('orders on the wire (T-3.27)', () => {
     // 21 brought orders; mission/map/resume/objective changes made 22–25, T-4.15's scripted-event replication is 26, T-4.22's identity token 27, and T-4.19's room ready-up/quick-join wire is 28.
     // T-4.24 added private soldier progression as 29; T-4.27's class pick and the roster's class are 30; T-4.28's scoreboard is 31.
     // U-025's bot commanders on the roster and the AssignCommander request are 34; U-026's switch is 35;
-    // U-024's pouch counts on the Weapon component are 36; U-028's Reload and magazine count are 37.
-    expect(PROTOCOL_VERSION).toBe(37);
+    // U-024's pouch counts on the Weapon component are 36; U-028's Reload and magazine count are 37; U-009's upload objective and its phase are 38.
+    expect(PROTOCOL_VERSION).toBe(38);
   });
 
   it('round-trips every order kind to every kind of addressee', () => {

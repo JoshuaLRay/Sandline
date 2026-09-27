@@ -238,6 +238,104 @@ describe('each objective type, on its own (T-4.14)', () => {
   });
 });
 
+const UPLOAD = (onInterrupt: 'keep-progress' | 'reset-progress' = 'keep-progress', seconds = 10): ObjectiveDef =>
+  ({ type: 'upload', label: 'the relay', terminal: { x: 0, y: 1.2, z: 0 }, reachM: 2, seconds, onInterrupt });
+
+describe('the upload objective, on its own (U-009)', () => {
+  it('waits to be started, then runs with nobody anywhere, and completes once at its goal', () => {
+    const run = runOf([UPLOAD()]);
+    const { w, world } = fake();
+    w.standingAll = 0;
+    expect(run.current).toMatchObject({ type: 'upload', phase: 'idle', satisfied: false, progress: 0, goal: ticks(10) });
+    // Not started: nothing moves, however long, whoever stands where.
+    w.squad.set(AREA, 6);
+    for (let i = 0; i < ticks(20); i++) run.step(world);
+    expect(run.current).toMatchObject({ phase: 'idle', progress: 0 });
+    w.squad.clear();
+    expect(run.startUpload()).toBe(true);
+    expect(run.current).toMatchObject({ phase: 'active', satisfied: true });
+    // A second press while it runs is refused and changes nothing.
+    expect(run.startUpload()).toBe(false);
+    for (let i = 0; i < ticks(5); i++) run.step(world);
+    expect(run.current.progress).toBe(ticks(5));
+    for (let i = 0; i < ticks(5); i++) run.step(world);
+    expect(run.current).toMatchObject({ state: 'complete', progress: ticks(10) });
+    // Complete is final: nothing starts, stops or advances it.
+    expect(run.startUpload()).toBe(false);
+    expect(run.interruptUpload()).toBe(false);
+    run.step(world);
+    expect(run.current).toMatchObject({ state: 'complete', progress: ticks(10) });
+  });
+
+  it('an interruption stops it: keep-progress keeps what it sent, reset-progress starts over; a soldier restarts it either way', () => {
+    for (const mode of ['keep-progress', 'reset-progress'] as const) {
+      const run = runOf([UPLOAD(mode)]);
+      const { world } = fake();
+      expect(run.interruptUpload()).toBe(false);
+      run.startUpload();
+      for (let i = 0; i < ticks(4); i++) run.step(world);
+      expect(run.interruptUpload()).toBe(true);
+      const kept = mode === 'keep-progress' ? ticks(4) : 0;
+      expect(run.current, mode).toMatchObject({ phase: 'interrupted', satisfied: false, progress: kept });
+      // A second interruption of a stopped upload does nothing; nor does time.
+      expect(run.interruptUpload()).toBe(false);
+      for (let i = 0; i < ticks(3); i++) run.step(world);
+      expect(run.current.progress).toBe(kept);
+      expect(run.startUpload()).toBe(true);
+      expect(run.current.phase).toBe('active');
+      for (let i = 0; i < ticks(10) - kept; i++) run.step(world);
+      expect(run.current.state, mode).toBe('complete');
+    }
+  });
+
+  it('only ever acts on an upload being played: another objective, a failed mission and a sequence\'s next step refuse it', () => {
+    const run = runOf([{ type: 'survive', label: 'the wait', seconds: 1 }, UPLOAD('keep-progress', 2), { type: 'survive', label: 'the exfil', seconds: 5 }]);
+    const { w, world } = fake();
+    expect(run.startUpload()).toBe(false);
+    expect(run.current.phase).toBe('active');
+    for (let i = 0; i < ticks(1); i++) run.step(world);
+    expect(run.current).toMatchObject({ objective: 1, type: 'upload', phase: 'idle' });
+    run.startUpload();
+    for (let i = 0; i < ticks(2); i++) run.step(world);
+    // Done: the mission has moved on, and a late press cannot touch the next objective.
+    expect(run.current).toMatchObject({ objective: 2, type: 'survive', phase: 'active', progress: 0 });
+    expect(run.startUpload()).toBe(false);
+    expect(run.interruptUpload()).toBe(false);
+    w.wipe = true;
+    run.step(world);
+    expect(run.current.state).toBe('failed');
+    expect(run.startUpload()).toBe(false);
+  });
+
+  it('a retry, a restart or a restored checkpoint puts the upload back to waiting at its terminal, from nothing', () => {
+    const run = runOf([{ type: 'survive', label: 'the wait', seconds: 1 }, UPLOAD()]);
+    const { w, world } = fake();
+    for (let i = 0; i < ticks(1); i++) run.step(world);
+    expect(run.checkpoint).toBe(1);
+    run.startUpload();
+    for (let i = 0; i < ticks(3); i++) run.step(world);
+    w.wipe = true;
+    run.step(world);
+    expect(run.current.state).toBe('failed');
+    run.retry();
+    expect(run.current).toMatchObject({ state: 'progress', objective: 1, phase: 'idle', progress: 0, attempt: 2 });
+    run.startUpload();
+    run.reset();
+    expect(run.current).toMatchObject({ objective: 0, phase: 'active', type: 'survive' });
+    const restored = runOf([{ type: 'survive', label: 'the wait', seconds: 1 }, UPLOAD()]);
+    restored.restoreCheckpoint(1, ticks(1));
+    expect(restored.current).toMatchObject({ objective: 1, type: 'upload', phase: 'idle', progress: 0 });
+  });
+
+  it('tells clients of a start and a stop, and of each whole second while it runs', () => {
+    const run = runOf([UPLOAD()]);
+    const { world } = fake();
+    expect(Array.from({ length: 60 }, () => run.step(world)).filter(Boolean)).toHaveLength(0);
+    run.startUpload();
+    expect(Array.from({ length: 60 }, () => run.step(world)).filter(Boolean)).toHaveLength(2);
+  });
+});
+
 /* -- On a real session ------------------------------------------------------------ */
 
 const world = requireWorld('greybox-01');

@@ -3,13 +3,13 @@
  * the host's message, round-tripped through the wire as a client receives it.
  */
 import { describe, expect, it } from 'vitest';
-import { type Message, type MissionView, TICK_SECONDS, decodeMessage, encodeMessage } from '@sandline/shared';
-import { afterActionXp, missionLine } from './missionHud.ts';
+import { type Message, type MissionDef, type MissionView, TICK_SECONDS, decodeMessage, encodeMessage } from '@sandline/shared';
+import { afterActionXp, missionLine, uploadPrompt } from './missionHud.ts';
 
 const T = (s: number) => Math.round(s / TICK_SECONDS);
 const view = (v: Partial<MissionView>): MissionView => {
   const msg = decodeMessage(
-    encodeMessage({ kind: 'Mission', state: 'progress', attempt: 1, objective: 0, objectives: 1, type: 'clear-and-hold', label: 'the compound', satisfied: false, progress: 0, goal: T(30), ...v }),
+    encodeMessage({ kind: 'Mission', state: 'progress', attempt: 1, objective: 0, objectives: 1, type: 'clear-and-hold', phase: 'active', label: 'the compound', satisfied: false, progress: 0, goal: T(30), ...v }),
   ) as Extract<Message, { kind: 'Mission' }>;
   const { kind: _kind, ...rest } = msg;
   return rest;
@@ -34,6 +34,33 @@ describe('the mission HUD line (T-3.34, T-4.14)', () => {
     expect(missionLine(view({ type: 'defend', label: 'the compound', goal: T(60), progress: T(20), satisfied: true }))).toBe('Objective: defend the compound  ·  20/60 s');
     expect(missionLine(view({ type: 'defend', label: 'the compound', goal: T(60), progress: T(21), satisfied: false }))).toBe('Objective: defend the compound  ·  21/60 s  ·  overrun!');
     expect(missionLine(view({ type: 'survive', label: 'the night', goal: T(90), progress: T(45), satisfied: true }))).toBe('Objective: survive the night  ·  45/90 s');
+  });
+
+  it('says what an upload wants in each of its phases: start it, it runs without you, restart it (U-009)', () => {
+    const upload = (v: Partial<MissionView>) => view({ type: 'upload', label: 'the relay', goal: T(60), ...v });
+    expect(missionLine(upload({ phase: 'idle' }))).toBe('Objective: start the upload at the relay  ·  E at the terminal');
+    expect(missionLine(upload({ phase: 'active', satisfied: true, progress: T(15) }))).toBe('Objective: uploading from the relay  ·  25%  ·  45 s left  ·  no need to stay');
+    expect(missionLine(upload({ phase: 'interrupted', progress: T(30) }))).toBe('Objective: upload interrupted at 50%  ·  E at the relay to restart it');
+    expect(missionLine(upload({ phase: 'interrupted', progress: 0 }))).toBe('Objective: upload interrupted at 0%  ·  E at the relay to restart it');
+    // Complete, it is the mission's (or the next objective's) line.
+    expect(missionLine(upload({ state: 'complete', phase: 'active', progress: T(60) }))).toMatch(/^Mission complete/);
+  });
+
+  it('prompts E at the terminal only within its reach, and only while the upload waits for a hand (U-009)', () => {
+    const def: MissionDef = {
+      id: 'x', world: 'greybox-01', respawn: false,
+      objectives: [{ type: 'upload', label: 'the relay', terminal: { x: 10, y: 1.2, z: 12.5 }, reachM: 2, seconds: 60, onInterrupt: 'keep-progress' }],
+    };
+    const at = { x: 10, y: 1.6, z: 11.6 };
+    const idle = view({ type: 'upload', label: 'the relay', phase: 'idle', goal: T(60) });
+    expect(uploadPrompt(idle, def, at)).toBe('E  START THE UPLOAD');
+    expect(uploadPrompt({ ...idle, phase: 'interrupted' }, def, at)).toBe('E  RESTART THE UPLOAD');
+    expect(uploadPrompt({ ...idle, phase: 'active' }, def, at)).toBe('');
+    expect(uploadPrompt(idle, def, { x: 10, y: 1.6, z: 8 })).toBe('');
+    expect(uploadPrompt({ ...idle, state: 'failed' }, def, at)).toBe('');
+    expect(uploadPrompt(idle, undefined, at)).toBe('');
+    expect(uploadPrompt({ ...idle, label: 'another' }, def, at)).toBe('');
+    expect(uploadPrompt(null, def, at)).toBe('');
   });
 
   it('numbers the objective in a sequence, and says how the mission ended', () => {
