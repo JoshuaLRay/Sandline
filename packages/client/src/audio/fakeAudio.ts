@@ -46,6 +46,7 @@ export function fakeContext() {
     createGain: () => node('gain', { gain: param(1) }),
     createBiquadFilter: () => node('filter', { type: 'lowpass', frequency: param(350) }),
     createPanner: () => node('panner', { panningModel: 'equalpower', distanceModel: 'inverse', positionX: param(), positionY: param(), positionZ: param() }),
+    createStereoPanner: () => node('stereoPanner', { pan: param() }),
     createBufferSource: () => {
       const s = node('source', { buffer: null, onended: null });
       s['start'] = (when = 0) => started.push({ node: s, when });

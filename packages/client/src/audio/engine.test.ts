@@ -71,6 +71,35 @@ describe('a render that will not load is shown, not swallowed (U-007)', () => {
   });
 });
 
+describe('your own sounds through a fixed pan, everyone else\'s through the head-related panner (U-008)', () => {
+  it('routes your own shot source → gain → stereo pan at the mix\'s value → effects bus, and another soldier\'s through an HRTF panner', async () => {
+    const { e, fake } = await engine();
+    e.setListener({ x: 0, y: 1.55, z: 0 }, { x: 0, y: 0, z: -1 });
+    expect(e.play('shot', { at: { x: 0.26, y: 1.05, z: 0 }, own: true })).toBe(true);
+    const mine = fake.started.at(-1)!.node;
+    expect(chain(mine)).toEqual(['source', 'gain', 'stereoPanner', 'gain', 'gain', 'destination']);
+    const stereo = fake.made.filter((n) => n.kind === 'stereoPanner').at(-1)!;
+    expect((stereo['pan'] as { value: number }).value).toBe(MIX.own.pan);
+    expect(fake.made.filter((n) => n.kind === 'panner')).toHaveLength(0);
+    expect(e.play('shot', { at: { x: 20, y: 1.5, z: 0 } })).toBe(true);
+    const theirs = fake.started.at(-1)!.node;
+    expect(chain(theirs)).toEqual(['source', 'gain', 'panner', 'gain', 'gain', 'destination']);
+    const panner = fake.made.filter((n) => n.kind === 'panner').at(-1)!;
+    expect(panner['panningModel']).toBe('HRTF');
+  });
+
+  it('the volume sliders still set the buses your own sounds go through', async () => {
+    const { e, fake } = await engine();
+    e.setVolumes({ master: 0.5, effects: 0.25, voice: 1 });
+    e.play('shot', { at: { x: 0.26, y: 1.05, z: 0 }, own: true });
+    const path = [fake.started.at(-1)!.node];
+    while (path.at(-1)!.connections[0]) path.push(path.at(-1)!.connections[0]!);
+    const [effects, master] = path.slice(-3, -1);
+    expect((effects!['gain'] as { value: number }).value).toBe(0.25);
+    expect((master!['gain'] as { value: number }).value).toBe(0.5);
+  });
+});
+
 describe('the audio engine, headless (T-2.45)', () => {
   it('plays nothing before unlock, and loads every variant of every sound on it', async () => {
     const cold = new AudioEngine({ createContext: () => fakeContext().ctx, fetchBytes: () => Promise.resolve(new ArrayBuffer(1)), sounds: TEST_SOUNDS });

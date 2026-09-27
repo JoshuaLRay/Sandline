@@ -33,12 +33,26 @@ export interface Placement {
   delaySeconds: number;
   priority: number;
   distanceM: number;
+  /**
+   * A fixed stereo pan, −1 left … 1 right, in place of the head-related
+   * panner: your own sounds (U-008, `mix.own.pan`). Null for everything else,
+   * which the world places.
+   */
+  pan: number | null;
 }
 
-/** Place a sound of a class at `source` (or unplaced with null) for an ear at `listener`. */
+/**
+ * Place a sound of a class at `source` (or unplaced with null) for an ear at `listener`.
+ *
+ * Your own sound (U-008) is not placed at all: it is yours, at your own
+ * body, so it has no distance to fall off over, nothing between you and it,
+ * and no direction a head-related panner should turn into one ear — only
+ * the mix's fixed `own.pan`, the same whichever way you face.
+ */
 export function place(cls: SoundClass, source: Vec3 | null, listener: Vec3, boxes: readonly WorldBox[], mix: MixConfig, own = false): Placement {
   const curve = mix.classes[cls].falloff;
-  if (source === null || curve === null) return { gain: 1, lowpassHz: null, delaySeconds: 0, priority: voicePriority(mix, cls, own, 0), distanceM: 0 };
+  if (own && curve !== null) return { gain: 1, lowpassHz: null, delaySeconds: 0, priority: voicePriority(mix, cls, own, 0), distanceM: 0, pan: mix.own.pan };
+  if (source === null || curve === null) return { gain: 1, lowpassHz: null, delaySeconds: 0, priority: voicePriority(mix, cls, own, 0), distanceM: 0, pan: null };
   const d = distance(listener, source);
   const occ = occlusion(listener, source, boxes, mix);
   return {
@@ -47,7 +61,23 @@ export function place(cls: SoundClass, source: Vec3 | null, listener: Vec3, boxe
     delaySeconds: own ? 0 : soundDelaySeconds(mix, d),
     priority: voicePriority(mix, cls, own, d),
     distanceM: d,
+    pan: null,
   };
+}
+
+/**
+ * Which side of the ear a source is on, as Web Audio's panner hears it
+ * (U-008): its listener's right is forward × up, with up +Y — which is what
+ * `AudioEngine.setListener` sets, from the camera's view direction. Positive
+ * right, negative left, 0 dead ahead or behind. What the tests hold the
+ * convention to, so turning the camera never swaps the ears.
+ */
+export function listenerSide(at: Vec3, forward: Vec3, source: Vec3): number {
+  // right = forward × (0, 1, 0) = (−forward.z, 0, forward.x)
+  const rx = -forward.z;
+  const rz = forward.x;
+  const len = Math.hypot(rx, rz) || 1;
+  return ((source.x - at.x) * rx + (source.z - at.z) * rz) / len;
 }
 
 /**

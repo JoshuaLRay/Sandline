@@ -40,5 +40,10 @@ describe('the mix (T-2.45)', () => {
     expect(() => parseMix({ ...good, classes: { ...classes, weapon: { priority: 1, falloff: [[0, 2], [10, 0]] } } })).toThrow('[0, 1]');
     const { ui: _ui, ...missing } = classes;
     expect(() => parseMix({ ...good, classes: missing })).toThrow("missing 'ui'");
+    // U-008: your own sounds' pan is −1 … 1, and must be given.
+    expect(parseMix(good).own.pan).toBe(MIX.own.pan);
+    expect(() => parseMix({ ...good, own: { pan: 1.5 } })).toThrow('mix.own.pan');
+    const { own: _own, ...noOwn } = good;
+    expect(() => parseMix(noOwn)).toThrow("missing 'own'");
   });
 });

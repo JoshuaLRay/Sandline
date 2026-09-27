@@ -5,7 +5,7 @@
  * - The context is made on the first user gesture (browsers refuse to start
  *   one before), and every render is fetched and decoded then.
  * - The listener follows the camera; each placed sound gets its own panner
- *   (HRTF), a low-pass when a box stands between it and the ear, its class's
+ *   (HRTF) — except your own, which get a fixed stereo pan (U-008) — a low-pass when a box stands between it and the ear, its class's
  *   falloff as a gain, and a start delayed by the distance over the speed of
  *   sound. Unplaced sounds (the UI) go straight to the bus.
  * - A voice limit with priority: your own sounds and near ones before
@@ -46,6 +46,10 @@ export interface PannerLike extends NodeLike {
   positionZ: ParamLike;
 }
 
+export interface StereoPannerLike extends NodeLike {
+  pan: ParamLike;
+}
+
 export interface SourceLike extends NodeLike {
   buffer: unknown;
   onended: (() => void) | null;
@@ -73,6 +77,7 @@ export interface AudioContextLike {
   createGain(): GainLike;
   createBiquadFilter(): FilterLike;
   createPanner(): PannerLike;
+  createStereoPanner(): StereoPannerLike;
   createBufferSource(): SourceLike;
   decodeAudioData(data: ArrayBuffer): Promise<unknown>;
   resume(): Promise<void>;
@@ -300,7 +305,14 @@ export class AudioEngine {
     tail.connect(gain);
     tail = gain;
     voice.nodes.push(gain);
-    if (opts.at && this.mix.classes[cls].falloff !== null) {
+    if (placement.pan !== null) {
+      // Your own sound (U-008): a fixed pan, not a place in the world.
+      const stereo = ctx.createStereoPanner();
+      stereo.pan.value = placement.pan;
+      tail.connect(stereo);
+      tail = stereo;
+      voice.nodes.push(stereo);
+    } else if (opts.at && this.mix.classes[cls].falloff !== null) {
       const panner = ctx.createPanner();
       panner.panningModel = 'HRTF';
       // The falloff is ours (the gain above); the panner only places.
