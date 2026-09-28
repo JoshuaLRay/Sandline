@@ -1254,7 +1254,7 @@ const qaNavMesh: Promise<NavMesh | null> = qaEnemiesWanted || qaSquadWanted || q
   ? navReady.then(() => import('@sandline/server/nav/baked')).then((baked) => baked.loadWorldNavMesh(qaWorld.id))
   : Promise.resolve(null);
 
-function chooseSession(choice: LobbyChoice): void {
+function chooseSession(choice: LobbyChoice, freshIdentity = false): void {
   delete document.body.dataset['playable'];
   playablePending = null;
   if (choice.kind === 'local') {
@@ -1263,11 +1263,11 @@ function chooseSession(choice: LobbyChoice): void {
     return;
   }
   // Hosting names the level before Join; joining an existing room learns it from JoinAck.
-  if (choice.world !== '') void prepareLevelAssets(choice.world).then(() => startSession(choice));
-  else void initialPresentationReady.then(() => startSession(choice));
+  if (choice.world !== '') void prepareLevelAssets(choice.world).then(() => startSession(choice, null, {}, freshIdentity));
+  else void initialPresentationReady.then(() => startSession(choice, null, {}, freshIdentity));
 }
 
-function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: LocalServerOptions = {}): void {
+function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: LocalServerOptions = {}, freshIdentity = false): void {
   if (live) leaveSession(null);
 
   // One config object, shared by reference with both the session and the
@@ -1353,7 +1353,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
       resetCallouts();
       // The map only means something to a room being made (T-3.35 follow-up); a rejoin takes the room's.
       // T-4.22: who we are to this host, if it has told us before.
-      net.join(roomJoined, choice.key, roomJoined === '' ? choice.world : '', joinedOnce ? resume : '', readIdentity(choice.host), !joinedOnce && roomJoined === '' && choice.quick);
+      net.join(roomJoined, choice.key, roomJoined === '' ? choice.world : '', joinedOnce ? resume : '', freshIdentity ? '' : readIdentity(choice.host), !joinedOnce && roomJoined === '' && choice.quick);
     };
     net.onJoined = (_slot, room) => {
       // Back in our own slot the soldier is where we left it; any other slot
@@ -1381,8 +1381,17 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
     };
     net.onDisconnect = (reason, code) => {
       remote.noteRefusal(code, reason);
-      // A token the host will not accept is useless to keep: the next Join goes without and is issued a new one.
-      if (code === 'bad identity') forgetIdentity(choice.host);
+      if (code === 'bad identity') {
+        // A host may have restarted with a new signing secret. Clear the stale
+        // token and open one new socket without an identity, even if storage
+        // refuses removal. Bound this to one retry so a persistent refusal is visible.
+        forgetIdentity(choice.host);
+        if (!freshIdentity && live?.net === net) {
+          leaveSession(null);
+          chooseSession({ ...choice, room: roomJoined }, true);
+          return;
+        }
+      }
       // Back to the lobby with the reason on screen. A refusal is the one
       // thing a player must never have to infer from a frozen scene.
       leaveSession({ text: explainRejection(code, reason), tone: 'error' });
