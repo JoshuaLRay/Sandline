@@ -112,6 +112,18 @@ enabled"* 404 even though Pages is, technically, enabled.
 
 Published at: **https://joshualray.github.io/Sandline/**
 
+### Voice contributions from friends (U-036)
+
+The published site's **Contribute a voice recording** link opens `?record-voice`. The browser needs HTTPS for microphone permission. The intake API is off until all three variables are set on the primary Fly host (the `/data` volume is persistent):
+
+```bash
+fly secrets set VOICE_INTAKE_DIR=/data/voice-submissions VOICE_SITE_ORIGIN=https://joshualray.github.io VOICE_INVITE_KEY="$(openssl rand -hex 32)"
+```
+
+Share the invitation key privately with friends; it is separate from `JOIN_KEY` and never belongs in the game's URL or repository. The intake only accepts requests from the exact site origin, verifies consent and an invitation, and keeps uploaded source audio private. Avoid enabling it on several machines with separate volumes: the owner must know which host holds the submissions. The current single host is the intended intake endpoint.
+
+After a friend clicks **Finish**, inspect their `submission.json` and listen to every clip on the host volume. Copy that one completed submission securely into a local private directory and run `pnpm import:voice <private-intake-directory> <submission-id>`. Review the imported audio, run `pnpm gen:voice`, then use the sound board to decide whether to release the rendered files. Remove unprocessed submissions on request. To stop accepting new recordings, unset any one of the three intake variables and redeploy.
+
 ### One caveat that will matter later
 
 **GitHub Pages cannot set custom HTTP headers**, so it cannot send the

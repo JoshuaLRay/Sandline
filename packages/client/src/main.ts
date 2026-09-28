@@ -144,6 +144,7 @@ import { createScoreboard } from './ui/scoreboard.ts';
 import { createMenu } from './ui/menu/Menu.ts';
 import { type AudioContextLike, AudioEngine } from './audio/engine.ts';
 import { createSoundBoard } from './ui/SoundBoard.ts';
+import { showVoiceSubmission } from './ui/VoiceSubmission.ts';
 import { QUALITY, type Settings, browserStore, loadSettings, saveSettings } from './ui/menu/settings.ts';
 import { createHud } from './ui/hud/Hud.ts';
 import {
@@ -1692,6 +1693,7 @@ const menu = createMenu({
   },
 });
 document.body.appendChild(menu.root);
+if (new URLSearchParams(location.search).has('record-voice')) showVoiceSubmission(document.body, __DEFAULT_HOST__);
 
 panels.append(
   squadPanel.root,

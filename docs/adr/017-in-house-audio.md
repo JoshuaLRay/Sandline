@@ -4,6 +4,7 @@
 - **Date:** 2026-09-23
 - **Plan reference:** §7 (M2 epic table, E-2.7), §7.10, §9 Q2, R1
 - **Current voice-source direction (2026-09-27):** trial ChatGPT text-to-speech for offline squad clips, while keeping human-recorded voices in the eventual plan; see the owner addendum below.
+- **Voice intake (2026-09-28):** owner chose in-game recording and click-through consent for friends; see addendum below.
 
 ## Context
 
@@ -121,3 +122,12 @@ The owner notes that ChatGPT can generate speech from text and directs the proje
 4. **Do not bypass the current pipeline.** `pnpm gen:voice` still expects consented human recordings. Do not put generated output in `assets/voice/raw/` or call it a processed production asset until a reviewed pipeline change defines its source metadata, validation, and regeneration path.
 5. **Keep voices original.** Do not imitate or clone a real person or an unconsenting speaker. This addendum authorizes a ChatGPT trial only; it does not authorize other TTS providers.
 
+## Owner addendum — in-game human voice contributions (2026-09-28)
+
+The owner wants to share the game with friends, let them record there, and capture consent with a click. The prior GitHub-upload instructions are no longer the preferred collection path.
+
+The game offers a `?record-voice` page with the exact voice script, microphone capture, playback, a name or nickname, an invitation code, and an unchecked consent box. The intake host stores the consent text and timestamp with the raw section recordings on a private persistent volume. Audio is never served by the public API. This is a contribution to the game's authored voice assets, **not** a personal voice chat feature or a replacement for the game's fixed squad characters.
+
+The owner reviews a submission and explicitly imports it with `pnpm import:voice`, then runs the existing offline `pnpm gen:voice`. Only reviewed outputs become game assets in a later commit/deployment. A submitted recording is not played in a live game automatically. The consent text explicitly discloses that accepted source recordings and the chosen name can enter the public source repository, and that prior copies may persist after a future removal. Keep a way to delete unprocessed submissions on request; remove already published audio in a subsequent asset release when appropriate.
+
+The intake is disabled without `VOICE_INTAKE_DIR`, `VOICE_INVITE_KEY` and `VOICE_SITE_ORIGIN`. Use the primary host's persistent volume for `VOICE_INTAKE_DIR`, a separate long invitation secret for `VOICE_INVITE_KEY`, and the exact deployed game origin for CORS. This is a bounded friends-only intake; do not turn it into an unrestricted anonymous upload endpoint. The game's invite code is distinct from its multiplayer join key.

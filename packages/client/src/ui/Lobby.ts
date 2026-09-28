@@ -309,6 +309,9 @@ export function createLobby(options: LobbyOptions): Lobby {
     say('', 'info');
     options.onChoose({ kind: 'local' });
   });
+  const voiceLink = document.createElement('a');
+  voiceLink.href = '?record-voice';
+  voiceLink.textContent = 'Contribute a voice recording';
 
   // Enter in the code field joins; Enter anywhere else hosts. Nobody should
   // have to reach for the mouse after pasting a code.
@@ -351,6 +354,7 @@ export function createLobby(options: LobbyOptions): Lobby {
     joinRow,
     help,
     localButton,
+    voiceLink,
     gap,
   );
   root.append(card);

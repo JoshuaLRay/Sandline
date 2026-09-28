@@ -12,6 +12,8 @@ import { MAX_SLOTS } from '../net/Connection.ts';
 import { type FilterDef, type ReverbDef, SOUNDS, type SoundsConfig, parseFilter } from './sounds.ts';
 
 export const VOICE_STYLES = ['normal', 'shout', 'hurt'] as const;
+/** The exact terms accepted with every private voice submission. */
+export const VOICE_CONSENT_TEXT = 'I am recording my own voice and give Sandline permission to store and edit it for the game. If accepted, my recordings and chosen name may be published in Sandline\'s public source repository, and the resulting audio distributed to players. I can ask the owner to delete unpublished recordings and stop using my voice in future releases; copies already published may persist.';
 export type VoiceStyle = (typeof VOICE_STYLES)[number];
 
 export const VOICE_TREATMENTS = ['dry', 'radio', 'distant'] as const;
