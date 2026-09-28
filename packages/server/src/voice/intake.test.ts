@@ -17,9 +17,9 @@ afterEach(async () => {
   dir = '';
 });
 
-async function setup(): Promise<string> {
+async function setup(key = KEY): Promise<string> {
   dir = mkdtempSync(join(tmpdir(), 'sandline-voice-'));
-  const intake = new VoiceIntake({ dir, inviteKey: KEY, origin: ORIGIN });
+  const intake = new VoiceIntake({ dir, inviteKey: key, origin: ORIGIN });
   server = createServer((req, res) => void intake.handle(req, res));
   await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -28,6 +28,15 @@ async function setup(): Promise<string> {
 }
 
 describe('private voice intake', () => {
+  it('accepts JRay in any capitalization and still rejects a different code', async () => {
+    const url = await setup('JRay');
+    const send = (invite: string) => fetch(`${url}/voice-submissions`, {
+      method: 'POST', headers: { origin: ORIGIN, 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Mia', invite, agree: true, consent: VOICE_CONSENT_TEXT }),
+    });
+    for (const invite of ['JRay', 'jray', 'JRAY', 'jRaY']) expect((await send(invite)).status).toBe(201);
+    expect((await send('JRay2')).status).toBe(400);
+  });
   it('stores exact consent and script recordings, but requires invitation and bearer token', async () => {
     const url = await setup();
     const send = (body: object, origin = ORIGIN) => fetch(`${url}/voice-submissions`, {

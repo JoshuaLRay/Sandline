@@ -125,9 +125,9 @@ different speaker from the squad's is best, if you have one. Record only the
 
 ## Recording directly in the game (preferred)
 
-Open the game's **Contribute a voice recording** link (or `?record-voice`). Enter a name or nickname and the voice invitation code from the owner. Read and check the consent terms. Choose a section, record its displayed lines three times each with a second of silence between takes, listen to the result, upload it, and click **Finish and send to owner**. Repeat for as many sections as you want. The page sends the recordings privately for owner review; submitting them does not put your voice into a live game.
+Open the game's **Contribute a voice recording** link (or `?record-voice`). Enter a name or nickname and the invitation code `JRay` (capitalization does not matter). Read and check the consent terms. Choose a section, record its displayed lines three times each with a second of silence between takes, listen to the result, upload it, and click **Finish and send to owner**. Repeat for as many sections as you want. The page sends the recordings privately for owner review; submitting them does not put your voice into a live game.
 
-The owner's host needs a persistent `VOICE_INTAKE_DIR`, a long `VOICE_INVITE_KEY`, and `VOICE_SITE_ORIGIN` set to the deployed site's exact origin. On the host, inspect the completed submission under that private directory and import an approved ID with `pnpm import:voice <intake-dir> <submission-id>`. Then run `pnpm gen:voice`, check its report and listen on `?sounds` before committing any rendered audio. Raw submissions remain private until explicitly imported. The owner can delete an unprocessed submission directory on request.
+The owner's host needs a persistent `VOICE_INTAKE_DIR` and `VOICE_SITE_ORIGIN` set to the deployed site's exact origin. The Fly deployment config supplies both. On the host, inspect the completed submission under that private directory and import an approved ID with `pnpm import:voice <intake-dir> <submission-id>`. Then run `pnpm gen:voice`, check its report and listen on `?sounds` before committing any rendered audio. Raw submissions remain private until explicitly imported. The owner can delete an unprocessed submission directory on request.
 
 ## Uploading manually, with nothing local (fallback)
 
