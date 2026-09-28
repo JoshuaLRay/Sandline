@@ -48,7 +48,7 @@ the latest merge before a session.
 | C / Z / Space | crouch / prone (toggles) / jump or stand |
 | V | shoulder swap, or out of first person |
 | RMB / LMB | aim down sights / fire |
-| 1–4 / 5–6 | guns / grenade and rocket |
+| 1–4 / 5–6 | primary, pistol, knife, range extra / grenade and rocket |
 | G | quick throw |
 | R | reload |
 | E | interact (revive) |

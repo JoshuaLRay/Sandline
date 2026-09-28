@@ -529,7 +529,8 @@ let kick = createKick();
 const throws = new ThrowQA();
 
 /**
- * What is in the hands. The guns are 1-4 and the pouch 5-6, and a grenade or
+ * What is in the hands. Keys 1-2 draw guns, 3 draws the knife, 4 is a range
+ * extra and the pouch is 5-6. A grenade or
  * a rocket is EQUIPPED like a gun and used with the trigger (`PouchTrigger`);
  * G stays a quick throw of the selected pouch item. The server hears every
  * switch (`net.equip`) so the rest of the squad sees the right thing held.
@@ -601,7 +602,7 @@ function carriedGuns(): readonly string[] | null {
 let primarySeen: { net: NetClient; primary: number } | null = null;
 function equipGun(index: number): void {
   const guns = carriedGuns();
-  if (guns && !guns.includes(WEAPON_ORDER[index] ?? '')) return;
+  if (guns && WEAPON_ORDER[index] !== 'knife' && !guns.includes(WEAPON_ORDER[index] ?? '')) return;
   // T-2.46: the equip sound, for a real change of gun (or back from a grenade).
   if (index !== combat.weaponIndex || holdingPouch) playOwn(WEAPON_SOUNDS.handling.equip);
   combat.selectWeapon(index);
@@ -818,6 +819,7 @@ function shooterWeaponId(net: NetClient, netId: number): string {
 const shotDeduper = new ShotDeduper();
 function playRemoteShot(net: NetClient, shot: ServerShot): void {
   if (!shotDeduper.accept(shot.shooterNetId, performance.now())) return;
+  if (shooterWeaponId(net, shot.shooterNetId) === 'knife') return;
   const at = { x: shot.originX, y: shot.originY, z: shot.originZ };
   const ear = audio.listener;
   const d = Math.hypot(at.x - ear.x, at.y - ear.y, at.z - ear.z);
@@ -1029,11 +1031,12 @@ function playOwn(sound: string): void {
 }
 
 function onServerShot(net: NetClient, shot: ServerShot): void {
+  const melee = shooterWeaponId(net, shot.shooterNetId) === 'knife';
   if (shot.shooterNetId !== net.netId) playRemoteShot(net, shot);
   calloutWatcher.onShot(shot.shooterNetId, shot.targetNetId, shot.damage, calloutView(net), performance.now() / 1000);
   shotEnd.set(shot.x, shot.y, shot.z);
   shotOrigin.set(shot.originX, shot.originY, shot.originZ);
-  landImpact(net, shot);
+  if (!melee) landImpact(net, shot);
   if (shot.shooterNetId !== net.netId) {
     // Their rifle kicks on their body (T-2.26): the server's event is the
     // first this client hears of the shot, and the weapon they hold is
@@ -1055,7 +1058,7 @@ function onServerShot(net: NetClient, shot: ServerShot): void {
    * trigger — so this is the one case where a tracer legitimately arrives on
    * the server's schedule, drawn from the point the server says it left.
    */
-  combat.drawTracer(shotOrigin, shotEnd, clock.tick * TICK_SECONDS);
+  if (!melee) combat.drawTracer(shotOrigin, shotEnd, clock.tick * TICK_SECONDS);
   combat.drawServerShot(shotOrigin, shotEnd, shot.targetNetId, shot.damage, clock.tick * TICK_SECONDS);
 }
 
@@ -2071,7 +2074,7 @@ function frame(): void {
     if (shot !== null) {
       hints.did('fire', secondsNow());
       // T-2.46: our own report, the near one, from the muzzle.
-      playOwn(gunSoundPlan(combat.weapon.id, 0)[0]?.sound ?? WEAPON_SOUNDS.guns['carbine']!.near);
+      if (combat.weapon.id !== 'knife') playOwn(gunSoundPlan(combat.weapon.id, 0)[0]?.sound ?? WEAPON_SOUNDS.guns['carbine']!.near);
       // Sent at table resolution, so the server traces the exact angles this
       // client computed and the predicted tracer shares them without rounding.
       // On a gun the index is nobody's (T-4.29): the host fires the gun whatever this names.
@@ -2086,7 +2089,7 @@ function frame(): void {
       // tick's (B-02): see where `pendingShots` is drained.
       const pending = pendingShots[pendingShotCount] ?? { shotIndex: 0, carrierX: 0, carrierZ: 0 };
       pendingShots[pendingShotCount] = pending;
-      pendingShotCount += 1;
+      if (combat.weapon.id !== 'knife') pendingShotCount += 1;
       pending.shotIndex = combat.shotsFired;
       pending.carrierX = beforeStep && afterStep ? (afterStep.x - beforeStep.x) / TICK_SECONDS : 0;
       pending.carrierZ = beforeStep && afterStep ? (afterStep.z - beforeStep.z) / TICK_SECONDS : 0;
@@ -2101,7 +2104,7 @@ function frame(): void {
       // the point the server traces from — and starts at the drawn barrel,
       // which only the frame knows (`drawPredicted`).
       const eye = here ? stanceEye(here) : m;
-      combat.predictShot(
+      if (combat.weapon.id !== 'knife') combat.predictShot(
         tickEye.set(eye.x, eye.y, eye.z),
         shotDirections(combat.weapon, shot, net.netId, tickNumber, aimYaw, aimPitch),
         tickNumber * TICK_SECONDS,
@@ -2851,7 +2854,7 @@ addEventListener('keydown', (e) => {
     for (const id of throws.takeRetired()) dropProjectileMesh(`g${id}`);
     lastBlast = null;
   }
-  // 1 and 2 select semantic loadout roles. The Q wheel, menus, text fields,
+  // 1-3 select primary, sidearm and knife. The Q wheel, menus, text fields,
   // downed state and a mounted gun all take priority over weapon selection.
   const keyContext = {
     orderWheelOpen: input.orderWheel !== null,
@@ -2871,8 +2874,8 @@ addEventListener('keydown', (e) => {
   // 5-6 select the pouch: each one equips it, and the trigger uses what is in hand.
   // While the order wheel is open the number keys pick who hears it (T-3.29).
   const slot = input.orderWheel ? -1 : Number.parseInt(e.code.replace('Digit', ''), 10);
-  if (equipmentInputAllowed && e.code.startsWith('Digit') && slot > WEAPON_ORDER.length && slot <= WEAPON_ORDER.length + PROJECTILE_ORDER.length) {
-    equipPouch(slot - WEAPON_ORDER.length - 1);
+  if (equipmentInputAllowed && e.code.startsWith('Digit') && slot >= 5 && slot < 5 + PROJECTILE_ORDER.length) {
+    equipPouch(slot - 5);
   }
   if (e.code === 'KeyH') toggleHud();
   // P asks the host to start the mission again; it only does once the mission is over (T-3.34).

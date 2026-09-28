@@ -1870,6 +1870,7 @@ export class Session {
    * gun too.
    */
   private carries(slot: Slot, gun: string): boolean {
+    if (gun === 'knife') return true;
     if (gun === slot.primary) return true;
     if (this.classLoadouts !== 'class') return true;
     const def = classById(this.classSlots[slot.index] ?? '');
@@ -3054,7 +3055,7 @@ export class Session {
     renderTimeMs: number,
   ): void {
     // T-3.14: the shot is heard where it was fired from, once per trigger pull.
-    this.stimuli.push({ kind: 'shot', at: origin, sourceNetId: shooterNetId });
+    if (weapon.id !== 'knife') this.stimuli.push({ kind: 'shot', at: origin, sourceNetId: shooterNetId });
 
     for (const dir of shotDirections(weapon, shot, shooterNetId, tick, yaw, pitch)) {
       const hit = resolveShot(

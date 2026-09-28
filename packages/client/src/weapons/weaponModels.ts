@@ -76,6 +76,12 @@ const RIFLE_GRIPS = { gripRight: [0, -0.08, 0.17] as Vec3Tuple, gripLeft: [0.02,
 type Builder = (group: THREE.Group) => WeaponModelSpec;
 
 const BUILDERS: Record<string, Builder> = {
+  knife(g) {
+    box(g, 'polymer', [0.035, 0.045, 0.13], [0, -0.04, 0.12]);
+    box(g, 'metal', [0.08, 0.015, 0.025], [0, -0.025, 0.19]);
+    box(g, 'metal', [0.036, 0.009, 0.26], [0, -0.025, 0.33]);
+    return { gripRight: [0, -0.04, 0.12], gripLeft: [0, -0.04, 0.12], sight: [0, 0, 0.25], eyeRelief: 0.3, hip: [0.16, -0.17, -0.12] };
+  },
   carbine(g) {
     box(g, 'polymer', [0.045, 0.1, 0.2], [0, -0.01, 0.1]);
     box(g, 'metal', [0.06, 0.09, 0.3], [0, 0, 0.35]);
@@ -275,6 +281,7 @@ export function hasWeaponModel(id: string): boolean {
  */
 const MUZZLES: Record<WeaponSide, Readonly<Record<string, Vec3Tuple>>> = {
   squad: {
+    knife: [0, -0.025, 0.46],
     carbine: [0, 0, 0.82],
     marksman: [0, 0, 1.03],
     breacher: [0, 0.018, 0.9],

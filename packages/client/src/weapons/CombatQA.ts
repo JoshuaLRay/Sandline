@@ -278,6 +278,7 @@ export class CombatQA {
    * a mounted gun (no loadout index).
    */
   reconcileMagazine(host: { weapon: number; ammo: number }, now: number, holdSeconds = MAGAZINE_HOLD_SECONDS): void {
+    if (this.def.id === 'knife') return;
     if (this.index < 0 || host.weapon !== this.index) {
       this.lastHostAmmo = null;
       return;
@@ -329,7 +330,7 @@ export class CombatQA {
       fired = tryFire(this.def, this.state, now, ctx.ads, ctx.prone ?? false, suppressionConeUnits(ctx.suppression ?? 0));
       if (fired !== null) {
         this.shotsFired += 1;
-        this.pendingShots.push(now);
+        if (this.def.id !== 'knife') this.pendingShots.push(now);
       }
     }
 

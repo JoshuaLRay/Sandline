@@ -236,7 +236,7 @@ export function parseWeaponTable(raw: unknown): Record<string, WeaponDef> {
  * so this order is part of the protocol: reordering it silently reassigns every
  * client's weapons and is a PROTOCOL_VERSION bump.
  */
-export const WEAPON_IDS = ['carbine', 'marksman', 'breacher', 'sidearm'] as const;
+export const WEAPON_IDS = ['carbine', 'marksman', 'breacher', 'sidearm', 'knife'] as const;
 
 /** The shipped table, validated at import so bad data fails loudly at boot. */
 export const WEAPONS: Readonly<Record<string, WeaponDef>> = Object.freeze(parseWeaponTable(RAW_WEAPONS));
@@ -416,11 +416,11 @@ export function tryFire(
   finishReload(def, state, now);
   if (isReloading(state, now)) return null;
   if (now < state.nextShotAt) return null;
-  if (state.ammo <= 0) return null;
+  if (state.ammo <= 0 && def.id !== 'knife') return null;
 
   const coneUnits = currentConeUnits(def, state, ads, prone, extraConeUnits);
   const shotIndex = state.shotIndex;
-  state.ammo -= 1;
+  if (def.id !== 'knife') state.ammo -= 1;
   state.shotIndex += 1;
   state.nextShotAt = now + shotIntervalSeconds(def);
   state.bloomUnits += degToAngle(def.bloomPerShotDeg);

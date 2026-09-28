@@ -20,6 +20,7 @@ import {
   decodeMessage,
   encodeMessage,
   getWeapon,
+  WEAPON_IDS,
   isRangeTarget,
 } from '@sandline/shared';
 import { Session } from './Session.ts';
@@ -75,6 +76,10 @@ function connect(session: Session, now = 0) {
           ...overrides,
         }),
       );
+      pair.settle();
+    },
+    equip(item: number) {
+      pair.b.send(encodeMessage({ kind: 'Equip', item }));
       pair.settle();
     },
     /**
@@ -152,6 +157,26 @@ function aimAt(tx: number, ty: number, tz: number, eyeHeight = 1.55): { yaw: num
 }
 
 describe('shooting the range', () => {
+  it('equips the knife and resolves repeat strikes at close range without consuming ammo', () => {
+    const session = new Session();
+    const client = connect(session);
+    const victim = session.slots[1]!;
+    const spawn = SPAWN_POINTS[0]!;
+    victim.state.x = spawn.x + 1;
+    victim.state.y = spawn.y;
+    victim.state.z = spawn.z;
+    let now = run(session, 0, 5, client);
+    const knife = WEAPON_IDS.indexOf('knife');
+    client.equip(knife);
+    expect(session.slots[0]?.weapon.id).toBe('knife');
+    client.fire({ weapon: knife, ...aimAt(victim.state.x, victim.state.y + 0.9, victim.state.z), renderTimeMs: now });
+    expect(client.hits.at(-1)?.targetNetId).toBe(victim.netId);
+    expect(client.hits.at(-1)?.damage).toBeGreaterThan(0);
+    now = run(session, now, Math.ceil((60 / getWeapon('knife').rpm) * 30) + 1, client);
+    client.fire({ weapon: knife, ...aimAt(victim.state.x, victim.state.y + 0.9, victim.state.z), renderTimeMs: now });
+    expect(client.hits.at(-1)?.targetNetId).toBe(victim.netId);
+    expect(session.slots[0]?.weaponState.ammo).toBe(1);
+  });
   it('registers hits on the range targets, not only on player slots', () => {
     /**
      * The reported bug: hit markers appeared on the grey squad capsules and
