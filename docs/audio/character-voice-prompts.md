@@ -29,12 +29,12 @@ Keep a row for each character before generating a batch. Fill in values from the
 
 | Roster ID | Prompt revision | Generator/model version | Persistent speaker ID | Fixed settings / seed | Reference clip | Continuity check |
 |---|---|---|---|---|---|---|
-| `preach` | `v1` | TBD | TBD | TBD | TBD | Pending |
-| `brennan` | `v1` | TBD | TBD | TBD | TBD | Pending |
-| `holloway` | `v1` | TBD | TBD | TBD | TBD | Pending |
-| `ortiz` | `v1` | TBD | TBD | TBD | TBD | Pending |
-| `marsh` | `v1` | TBD | TBD | TBD | TBD | Pending |
-| `vance` | `v1` | TBD | TBD | TBD | TBD | Pending |
+| `preach` | `v2` | TBD | TBD | TBD | TBD | Pending |
+| `brennan` | `v2` | TBD | TBD | TBD | TBD | Pending |
+| `holloway` | `v2` | TBD | TBD | TBD | TBD | Pending |
+| `ortiz` | `v2` | TBD | TBD | TBD | TBD | Pending |
+| `marsh` | `v2` | TBD | TBD | TBD | TBD | Pending |
+| `vance` | `v2` | TBD | TBD | TBD | TBD | Pending |
 
 ## Shared prompt wrapper
 
@@ -47,6 +47,9 @@ Keep the voice's perceived age range, gender presentation, pitch center, pitch r
 
 Use clear, neutral, rhotic U.S. English. Speak the supplied line exactly as written. Do not invent dialogue, say the character's name unless it appears in the line, add ad-libs, or add another speaker. Output one dry voice with no music, ambience, weapon sounds, radio static, reverb, or other effects; the game adds its own treatment.
 
+Character numeric identity (revision v2):
+{{PASTE THIS CHARACTER'S COMPLETE NUMERIC PROFILE AND FIELD DEFINITIONS UNCHANGED}}
+
 Character identity block:
 {{PASTE THIS CHARACTER'S LOCKED IDENTITY BLOCK UNCHANGED}}
 
@@ -58,6 +61,65 @@ Exact line: {{PASTE ONE EXACT LINE FROM voice-script.md}}
 **Normal:** conversational but concise, radio intelligible, and not whispered.  
 **Shouted:** project clearly over imagined combat without straining; preserve the normal voice's pitch center, timbre, accent, and identity.  
 **Nonverbal cues:** grunts, breaths, downed cries, and the dying sigh are not spoken lines. Use a tool capable of producing nonverbal vocalizations or the human recording plan; do not put a cue label into the transcript.
+
+## Numeric voice identity profiles (revision v2)
+
+These 0–100 integers are **proposed creative targets**, not acoustic measurements or controls exposed by every voice generator. For every field, 0 means the first end of its definition and 100 the second; 50 is moderate, never “unspecified.” Compare scores within this squad on the same scale. Correlated fields intentionally overlap. Accent choices describe delivery, not ethnicity or biography. The numeric targets complement the locked prose blocks below.
+
+**Identity lock:** Copy all 44 fields for the selected roster ID, with definitions, unchanged into every generation prompt. Keep the same provider, model version, persistent speaker ID, seed and authorized reference clip where supported. Translate a field to a provider slider only when that slider actually exists, document its mapping, and mark unsupported fields as prompt-only. Numeric targets alone cannot guarantee an identical voice across clips. A stable speaker identity and listening comparisons are still required.
+
+**Delivery:** NORMAL follows these baseline values. SHOUTED may temporarily increase projection, loudness, urgency and tension while retaining the baseline identity, accent, timbre, pitch center and articulation. Grunts, injury cries and dying breaths use the same speaker, although performance differs. Add radio filtering and other game effects after clean voice generation.
+
+| Field | Scale (0 → 100) | Preach | Brennan | Holloway | Ortiz | Marsh | Vance |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `pitch_center` | low to high | 39 | 25 | 67 | 49 | 34 | 53 |
+| `pitch_range` | narrow to wide | 33 | 25 | 57 | 31 | 21 | 30 |
+| `pitch_variation` | level to animated | 37 | 29 | 65 | 35 | 23 | 34 |
+| `final_fall` | flat to falling | 76 | 68 | 46 | 61 | 62 | 50 |
+| `upward_inflection` | rare to frequent | 12 | 9 | 30 | 12 | 8 | 13 |
+| `brightness` | dark to bright | 43 | 28 | 78 | 57 | 38 | 60 |
+| `warmth` | cool to warm | 67 | 83 | 48 | 53 | 40 | 39 |
+| `grain` | smooth to textured | 20 | 39 | 17 | 10 | 12 | 16 |
+| `rasp` | clean to coarse | 7 | 14 | 6 | 4 | 5 | 6 |
+| `breathiness` | voiced to airy | 11 | 8 | 12 | 7 | 31 | 13 |
+| `vocal_fry` | none to frequent | 7 | 12 | 6 | 5 | 9 | 6 |
+| `nasality` | oral to nasal | 12 | 9 | 25 | 13 | 8 | 14 |
+| `clarity` | muffled to clear | 83 | 72 | 83 | 93 | 72 | 88 |
+| `sibilance` | soft to sharp | 24 | 16 | 40 | 27 | 14 | 25 |
+| `chest_resonance` | light to full | 70 | 89 | 33 | 43 | 27 | 39 |
+| `head_resonance` | low to high | 30 | 18 | 69 | 49 | 35 | 53 |
+| `forward_placement` | back to forward | 47 | 27 | 83 | 77 | 31 | 67 |
+| `roundness` | lean to rounded | 47 | 86 | 31 | 47 | 33 | 39 |
+| `compression` | open to compact | 68 | 28 | 33 | 51 | 18 | 43 |
+| `speaking_rate` | slow to fast | 43 | 34 | 75 | 48 | 32 | 54 |
+| `rhythm_regularness` | loose to regular | 71 | 74 | 48 | 88 | 58 | 83 |
+| `pause_frequency` | few to many | 48 | 34 | 28 | 38 | 86 | 47 |
+| `pause_length` | short to long | 43 | 47 | 24 | 36 | 78 | 42 |
+| `pickup_speed` | delayed to immediate | 50 | 31 | 89 | 57 | 26 | 58 |
+| `consonant_precision` | soft to crisp | 86 | 62 | 85 | 94 | 72 | 90 |
+| `consonant_force` | gentle to firm | 72 | 42 | 56 | 62 | 27 | 42 |
+| `vowel_length` | short to prolonged | 49 | 75 | 33 | 47 | 43 | 43 |
+| `vowel_rounding` | flat to rounded | 46 | 82 | 29 | 48 | 42 | 36 |
+| `word_linking` | separated to connected | 55 | 77 | 50 | 43 | 42 | 55 |
+| `enunciation` | slurred to complete | 87 | 70 | 82 | 96 | 78 | 90 |
+| `rhoticity` | nonrhotic to rhotic | 96 | 96 | 96 | 96 | 96 | 96 |
+| `regional_marking` | neutral to marked | 5 | 5 | 6 | 5 | 5 | 5 |
+| `vowel_reduction` | full to reduced | 54 | 59 | 69 | 56 | 62 | 61 |
+| `dialect_stability` | variable to fixed | 96 | 96 | 96 | 97 | 95 | 96 |
+| `projection` | intimate to projected | 65 | 58 | 72 | 62 | 40 | 55 |
+| `loudness` | quiet to loud | 59 | 53 | 64 | 59 | 35 | 52 |
+| `urgency` | relaxed to urgent | 57 | 24 | 58 | 42 | 18 | 38 |
+| `restraint` | expressive to restrained | 77 | 65 | 31 | 72 | 82 | 68 |
+| `authority` | deferential to commanding | 78 | 61 | 39 | 79 | 25 | 37 |
+| `affability` | reserved to approachable | 43 | 68 | 73 | 42 | 25 | 35 |
+| `energy` | still to active | 56 | 42 | 81 | 52 | 27 | 47 |
+| `tension` | relaxed to tight | 29 | 18 | 42 | 24 | 17 | 22 |
+| `emotional_variability` | contained to variable | 39 | 28 | 67 | 34 | 21 | 32 |
+| `radio_intelligibility` | low to high | 91 | 81 | 90 | 95 | 80 | 91 |
+
+### Generation and continuity record
+
+For every candidate clip, record the roster ID, profile revision `v2`, cue ID, exact words and delivery; provider, model version, persistent speaker ID (or “unsupported”), seed (or “unsupported”), authorized reference clip, exact prompt and engine settings, documented numeric-to-engine mappings and unsupported fields, export format, post-processing chain, file checksum, and A/B listening result against a normal anchor and the other five speakers. Reject identity drift. Treat these values as design targets until reference audio and a stable speaker are auditioned and approved.
 
 ## Voice identity blocks
 
