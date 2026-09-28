@@ -17,7 +17,7 @@ import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 import type { MissionStats } from '../sim/scoreboard.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 42;
+export const PROTOCOL_VERSION = 43;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -472,7 +472,7 @@ export type Message =
   /** U-025: put the bot in `bot`'s slot under the human in `commander`'s. Client to host; the host checks both. */
   | { kind: 'AssignCommander'; bot: number; commander: number }
   /** U-026: take control of the bot in `slot`, one you command. Client to host; the host checks it. */
-  | { kind: 'SwitchCharacter'; slot: number }
+  | { kind: 'SwitchCharacter'; slot: number; spectate?: boolean }
   /**
    * U-026: you now control the soldier `netId` in `slot` — a switch the host
    * made. `resume` is the seat's new reconnect token; `weapon` (a loadout
@@ -480,6 +480,7 @@ export type Message =
    * own copies. Host to client.
    */
   | { kind: 'Possessed'; netId: number; slot: number; resume: string; weapon: number; ammo: number; pouch: readonly number[] }
+  | { kind: 'Spectating'; slot: number }
   | { kind: 'Progression'; soldiers: SoldierProgress[] }
   /** T-4.28: the server's scoreboard, six rows whole, the mission clock and the objectives done. Host to client. */
   | ({ kind: 'Stats' } & MissionStats)
@@ -734,12 +735,22 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(MISSION_VARIANT.Possess, 3);
       w.writeBool(false);
       w.writeBits(msg.slot & 0x7, 3);
+      w.writeBool(msg.spectate === true);
+      break;
+    case 'Spectating':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Mission, EXT_BITS);
+      w.writeBits(MISSION_VARIANT.Possess, 3);
+      w.writeBool(true);
+      w.writeBool(true);
+      w.writeBits(msg.slot & 0x7, 3);
       break;
     case 'Possessed':
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Mission, EXT_BITS);
       w.writeBits(MISSION_VARIANT.Possess, 3);
       w.writeBool(true);
+      w.writeBool(false);
       w.writeVarUint(msg.netId);
       w.writeBits(msg.slot & 0x7, 3);
       w.writeString(msg.resume);
@@ -1205,7 +1216,11 @@ export function decodeMessage(bytes: Uint8Array): Message {
             }
             if (variant === MISSION_VARIANT.Restart) return { kind: 'MissionRestart' };
             if (variant === MISSION_VARIANT.Possess) {
-              if (!r.readBool()) return { kind: 'SwitchCharacter', slot: r.readBits(3) };
+              if (!r.readBool()) {
+                const slot = r.readBits(3);
+                return { kind: 'SwitchCharacter', slot, ...(r.readBool() ? { spectate: true } : {}) };
+              }
+              if (r.readBool()) return { kind: 'Spectating', slot: r.readBits(3) };
               const netId = r.readVarUint();
               const slot = r.readBits(3);
               const resume = r.readString();

@@ -763,6 +763,9 @@ interface LiveSession {
   networkPanel: Panel;
 }
 let live: LiveSession | null = null;
+let spectatorYaw = 0;
+let spectatorPitch = 0;
+let spectatorTakeoverPending = false;
 /** Set after a joined session has every required pack; cleared on the first rendered frame. */
 let playablePending: NetClient | null = null;
 
@@ -1290,6 +1293,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
   net.onOrderFailed = (slot) => calloutWatcher.onOrderFailed(slot);
   // U-026: another soldier's hands — its gun as it is, its pouch — and nothing to tell the host it already knows.
   net.onPossessed = (possessed) => {
+    spectatorTakeoverPending = false;
     holdingPouch = false;
     combat.adopt(possessed.weapon, possessed.ammo);
     throws.setCounts(possessed.pouch);
@@ -1297,6 +1301,11 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
     // Its class is already in hand, as carried: the class-change reset below must not re-equip over it.
     localClassSeen = choice.kind === 'remote' ? net.roster[possessed.slot]?.classId ?? '' : '';
     localLoadout = classById(localClassSeen);
+  };
+  net.onSpectating = () => {
+    spectatorYaw = input.yaw;
+    spectatorPitch = input.pitchWire;
+    spectatorTakeoverPending = false;
   };
   net.onShot = (shot) => onServerShot(net, shot);
   net.onDetonation = (event) => onServerDetonation(net, event);
@@ -1691,6 +1700,11 @@ const menu = createMenu({
     menu.hide();
     if (live) renderer.domElement.requestPointerLock?.();
   },
+  onSpectate: (slot) => {
+    live?.net.spectate(slot);
+    menu.hide();
+    if (live) renderer.domElement.requestPointerLock?.();
+  },
 });
 document.body.appendChild(menu.root);
 if (new URLSearchParams(location.search).has('record-voice')) showVoiceSubmission(document.body, __DEFAULT_HOST__);
@@ -1932,6 +1946,26 @@ function frame(): void {
   for (let i = 0; i < steps; i++) {
     const tickInput = input.sample();
     if (!net || !server) continue;
+    if (net.spectatedSlot >= 0) {
+      // The host owns the decision. A human target never accepts takeover;
+      // the spectator remains an observer until Possessed arrives.
+      if (tickInput.moveX !== 0 || tickInput.moveY !== 0 || tickInput.jump ||
+          tickInput.sprint || tickInput.crouch || tickInput.prone || tickInput.interact ||
+          tickInput.firing || input.ads || tickInput.yaw !== spectatorYaw ||
+          input.pitchWire !== spectatorPitch) {
+        if (!net.roster[net.spectatedSlot]?.human && !spectatorTakeoverPending) {
+          spectatorTakeoverPending = true;
+          net.switchTo(net.spectatedSlot);
+        }
+      }
+      spectatorYaw = tickInput.yaw;
+      spectatorPitch = input.pitchWire;
+      input.consumeTriggerEdge();
+      input.consumeTriggerRelease();
+      input.consumeThrowRelease();
+      server.step(now);
+      continue;
+    }
 
     /**
      * Weapons run on the tick, not the frame. RPM, reload and the spread seed
@@ -2481,7 +2515,11 @@ function frame(): void {
     const stats = net?.stats;
     const timer = stats?.vitalTimer ?? 0;
     let text = '';
-    if (localVitality === 'dead') {
+    if (net && net.spectatedSlot >= 0) {
+      const watched = net.spectatedSlot;
+      const name = net.roster[watched]?.name || `Bot ${watched + 1}`;
+      text = `SPECTATING ${name} — choose another soldier in Squad command${net.roster[watched]?.human ? '' : ' · move, aim, fire or E to take control'}`;
+    } else if (localVitality === 'dead') {
       // Dead is not downed: nobody can revive a body, and the timer is the respawn's.
       text = timer > 0 ? `KILLED — back in ${timer}s` : 'KILLED';
     } else if (downed) {
@@ -2619,6 +2657,19 @@ function frame(): void {
     camSolve.position.y + camSolve.shake.y,
     camSolve.position.z + camSolve.shake.z,
   );
+  if (net && net.spectatedSlot >= 0) {
+    const watched = [...net.remotes()].find(([id]) => net.remoteSlot(id) === net.spectatedSlot)?.[1];
+    const own = net.spectatedSlot === net.slot ? net.simulated : null;
+    if (watched || own) {
+      const yaw = wireToRadians(watched?.yaw ?? input.viewYaw);
+      const at = watched ?? own!;
+      camera.position.set(at.x - Math.sin(yaw) * 3, at.y + 2.2, at.z - Math.cos(yaw) * 3);
+      camera.rotation.set(0, yaw + Math.PI, 0, 'YXZ');
+      camSolve.position.x = camera.position.x;
+      camSolve.position.y = camera.position.y;
+      camSolve.position.z = camera.position.z;
+    }
+  }
   // T-2.45: the ear is the camera, facing where it looks, in the world it hears through.
   audio.setListener(camSolve.position, camSolve.direction);
   audio.setWorld(collisionBoxes());
