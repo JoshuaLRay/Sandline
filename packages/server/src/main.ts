@@ -30,10 +30,10 @@ import { createLogger } from './log.ts';
 import { VoiceIntake } from './voice/intake.ts';
 
 const config = loadConfig();
-const intakeSettings = [process.env['VOICE_INTAKE_DIR'], process.env['VOICE_INVITE_KEY'], process.env['VOICE_SITE_ORIGIN']];
-if (intakeSettings.some(Boolean) && !intakeSettings.every(Boolean)) throw new Error('Set VOICE_INTAKE_DIR, VOICE_INVITE_KEY and VOICE_SITE_ORIGIN together');
-const voiceIntake = process.env['VOICE_INTAKE_DIR'] && process.env['VOICE_INVITE_KEY'] && process.env['VOICE_SITE_ORIGIN']
-  ? new VoiceIntake({ dir: process.env['VOICE_INTAKE_DIR'], inviteKey: process.env['VOICE_INVITE_KEY'], origin: process.env['VOICE_SITE_ORIGIN'] }) : undefined;
+const intakeSettings = [process.env['VOICE_INTAKE_DIR'], process.env['VOICE_SITE_ORIGIN']];
+if (intakeSettings.some(Boolean) && !intakeSettings.every(Boolean)) throw new Error('Set VOICE_INTAKE_DIR and VOICE_SITE_ORIGIN together');
+const voiceIntake = process.env['VOICE_INTAKE_DIR'] && process.env['VOICE_SITE_ORIGIN']
+  ? new VoiceIntake({ dir: process.env['VOICE_INTAKE_DIR'], inviteKey: 'JRay', origin: process.env['VOICE_SITE_ORIGIN'] }) : undefined;
 const log = createLogger(config.logLevel);
 const campaigns = new CampaignDatabase(config.campaignDbPath);
 const identity = new Identity({
