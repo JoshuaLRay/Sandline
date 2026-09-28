@@ -133,6 +133,15 @@ function compound(m: Play) {
 }
 
 describe('mission-01 enemy pressure (U-001)', () => {
+  it('the mission garrison MG claims the placed nest when it spawns', () => {
+    const m = play();
+    m.step(5);
+    const gun = m.session.emplacements.find((e) => e.placed.id === 'compound-mg')!;
+    const mg = m.session.enemies.find((e) => e.def.id === 'mg' && m.session.spawner!.spawnedBy('garrison').includes(e.netId))!;
+    expect(mg).toBeDefined();
+    expect(mg.mounted).toBe(gun);
+    expect(gun.gunnerNetId).toBe(mg.netId);
+  });
   it('a fresh start sends the garrison and the west-lane patrol at once, and the east-lane position when the squad reaches it', () => {
     const m = play();
     m.step(2);

@@ -22,12 +22,15 @@ import {
   degToWire,
   encodeMessage,
   eyePosition,
+  encounterFor,
   getEmplacement,
   getWeapon,
   isDowned,
   loadWorld,
   parseTreeDef,
+  requireWorld,
   tableToWire,
+  withinArc,
 } from '@sandline/shared';
 import { type BrainTree, createBrainRegistry } from '../ai/Brain.ts';
 import { aimAngles, aimPoints } from '../ai/aim.ts';
@@ -156,6 +159,17 @@ function mounted() {
 const table = (deg: number) => degToWire(deg) << 2;
 
 describe('the mounted MG on the session (T-4.29)', () => {
+  it('mission-01 puts its MG spawn within claim range and points the nest toward the squad approach', () => {
+    const world = requireWorld('mission-01');
+    const encounter = encounterFor('mission-01')!;
+    const gun = world.emplacements.find((e) => e.id === 'compound-mg')!;
+    const group = encounter.groups.find((g) => g.id === 'garrison')!;
+    expect(group.members.some((m) => m.archetype === 'mg')).toBe(true);
+    const zone = world.mission!.spawnZones.find((z) => z.id === group.zone)!;
+    const place = { x: gun.x - Math.sin(gun.yawDeg * Math.PI / 180) * NEST.gunnerBackM, z: gun.z - Math.cos(gun.yawDeg * Math.PI / 180) * NEST.gunnerBackM };
+    expect(Math.hypot(zone.x - place.x, zone.z - place.z) + zone.radius).toBeLessThan(NEST.ai.takeWithinM);
+    expect(withinArc(degToWire(gun.yawDeg), degToWire(180), NEST.traverseDeg)).toBe(true);
+  });
   it('a press of E within reach mounts, a hold does not re-press, a second press dismounts, and a press from afar does nothing', () => {
     const session = new Session(undefined, '', nestWorld());
     const gun = session.emplacements[0]!;

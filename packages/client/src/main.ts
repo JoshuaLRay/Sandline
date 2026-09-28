@@ -2020,7 +2020,10 @@ function frame(): void {
     if (primary !== null && (primarySeen?.net !== net || primarySeen.primary !== primary)) {
       const changed = primarySeen?.net === net;
       primarySeen = { net, primary };
-      if (changed && net.magazine?.weapon === primary && combat.weaponIndex !== primary) {
+      // A mounted gun has no loadout index. The carried primary can change in a
+      // snapshot while mounted (for example after a pickup or seat transfer),
+      // but must not replace the emplacement in the local firing path.
+      if (changed && !mount && net.magazine?.weapon === primary && combat.weaponIndex !== primary) {
         playOwn(WEAPON_SOUNDS.handling.equip);
         combat.adopt(primary, net.magazine.ammo);
         holdingPouch = false;
