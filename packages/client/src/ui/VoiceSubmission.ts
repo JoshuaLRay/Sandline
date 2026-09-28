@@ -139,14 +139,18 @@ export function showVoiceSubmission(parent: HTMLElement, host: string): void {
   upload.onclick = async () => {
     if (!blob) return;
     upload.disabled = true;
+    record.disabled = true;
+    finish.disabled = true;
     try {
       await request(`/voice-submissions/${id}/${recordedPass}`, { method: 'PUT', headers: { 'content-type': blob.type, 'x-submission-token': token }, body: blob });
       finish.disabled = false;
       status.textContent = `${recordedPass} saved privately. Record another section, or finish.`;
       blob = null;
-    } catch (e) { upload.disabled = false; status.textContent = (e as Error).message; }
+    } catch (e) { upload.disabled = false; finish.disabled = false; status.textContent = (e as Error).message; }
+    finally { record.disabled = false; }
   };
   finish.onclick = async () => {
+    if (recorder) { status.textContent = 'Stop the current recording before finishing.'; return; }
     finish.disabled = true;
     try {
       await request(`/voice-submissions/${id}/finish`, { method: 'POST', headers: { 'x-submission-token': token } });
