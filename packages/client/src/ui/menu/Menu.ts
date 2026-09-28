@@ -26,6 +26,7 @@ export interface MenuOptions {
   onAssign?: (bot: number, commander: number) => void;
   /** U-026: take control of the bot in `slot`, one you command. */
   onSwitch?: (slot: number) => void;
+  onSpectate?: (slot: number) => void;
 }
 
 export type MenuMode = 'hidden' | 'main' | 'pause';
@@ -112,6 +113,10 @@ export function createMenu(options: MenuOptions): Menu {
       li.dataset['human'] = row.human ? 'yes' : 'no';
       const name = el('span', 'menu-row-label', li);
       name.textContent = row.label;
+      if (options.onSpectate) {
+        const watch = button('Spectate', 'menu-button menu-command-watch', () => options.onSpectate?.(row.slot), li);
+        watch.dataset['spectate'] = String(row.slot);
+      }
       if (row.human) continue;
       const pick = el('select', 'menu-select menu-command-select', li);
       pick.dataset['bot'] = String(row.slot);

@@ -51,6 +51,13 @@ function room(options: SessionOptions = {}) {
       switchTo(slot: number) {
         send({ kind: 'SwitchCharacter', slot });
       },
+      spectate(slot: number) {
+        send({ kind: 'SwitchCharacter', slot, spectate: true });
+      },
+      get spectating() {
+        pair.settle();
+        return messages.filter((m): m is Extract<Message, { kind: 'Spectating' }> => m.kind === 'Spectating');
+      },
       assign(bot: number, commander: number) {
         send({ kind: 'AssignCommander', bot, commander });
       },
@@ -100,6 +107,41 @@ function soldier(session: Session, index: number) {
 }
 
 describe('taking control of a bot you command (U-026)', () => {
+  it('spectates a human without controlling them; inputs cannot take over a human', () => {
+    const r = room();
+    const a = r.join('a');
+    const b = r.join('b');
+    a.spectate(b.slot);
+    expect(a.spectating.at(-1)).toEqual({ kind: 'Spectating', slot: b.slot });
+    expect(r.session.slots[a.slot]!.brain).not.toBeNull();
+    r.step(15, () => a.input(1));
+    expect(r.session.slots[a.slot]!.lastProcessedInputTick).toBe(-1);
+    a.switchTo(b.slot);
+    expect(a.possessed).toHaveLength(0);
+    expect(r.controllers()).toEqual([0, 1]);
+  });
+
+  it('keeps command authority while watching and transfers a foreign bot on takeover', () => {
+    const r = room();
+    const a = r.join('a');
+    const b = r.join('b');
+    a.assign(3, b.slot);
+    expect(r.commanders()[3]).toBe(b.slot);
+    a.spectate(3);
+    a.assign(4, b.slot);
+    expect(r.commanders()[4]).toBe(b.slot);
+    a.switchTo(4); // the spectator may only take the watched bot
+    expect(a.possessed).toHaveLength(0);
+    a.switchTo(3);
+    expect(a.slot).toBe(3);
+    expect(r.controllers()).toEqual([1, 3]);
+    expect(r.commanders()[3]).toBe(-1);
+    expect(r.commanders()[0]).toBe(3);
+    a.input(1);
+    r.step();
+    expect(r.session.slots[3]!.lastProcessedInputTick).toBeGreaterThan(0);
+  });
+
   it('solo with bots: one message swaps the controller and nothing else, and inputs drive the new soldier', () => {
     const r = room();
     const a = r.join('a');

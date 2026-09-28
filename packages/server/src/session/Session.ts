@@ -807,6 +807,12 @@ export class Session {
   private readonly maxSessionMs: number;
   /** Connections that asked for AI debug reports (T-3.09), while the host allows it. */
   private readonly aiDebugClients = new Set<ServerConnection>();
+  private readonly spectators = new Map<ServerConnection, number>();
+
+  /** A spectator retains their command seat while its soldier runs on AI. */
+  private autonomous(slot: Slot): boolean {
+    return slot.isBot || (slot.connection !== null && this.spectators.has(slot.connection));
+  }
   private aiDebugSent = 0;
   private aiDebugBytesSent = 0;
 
@@ -1090,6 +1096,7 @@ export class Session {
 
   /** A fresh brain for a bot slot, starting from the entity as it stands. */
   private giveBrain(slot: Slot): void {
+    slot.brain?.stop();
     slot.brain = new Brain(slot, this.brainTree, slot.brainGeneration++);
     this.followers[slot.index] = null;
   }
@@ -1371,7 +1378,17 @@ export class Session {
     const from = this.slots.find((s) => s.connection === conn && !s.isBot);
     const to = this.slots[msg.slot];
     if (!from || !to || !this.roomStarted || this.paused) return;
-    if (to === from || !to.isBot || this.commanders[to.index] !== from.index) return;
+    if (msg.spectate) {
+      this.spectators.set(conn, to.index);
+      if (from.mounted) this.dismount(from);
+      from.input = idleInput(from.yaw);
+      from.queue.length = 0;
+      from.interactHeld = false;
+      if (!from.brain) this.giveBrain(from);
+      conn.send({ kind: 'Spectating', slot: to.index });
+      return;
+    }
+    if (to === from || !to.isBot || (this.spectators.has(conn) ? this.spectators.get(conn) !== to.index : this.commanders[to.index] !== from.index)) return;
     if (to.reservedUntilMs > 0 && to.reservedUntilMs >= this.nowMs) return;
 
     // The soldier left behind: a bot again, as on a leave, but claimed by nobody.
@@ -1385,7 +1402,7 @@ export class Session {
     from.interactHeld = false;
     from.heldProjectile = -1;
     from.queue.length = 0;
-    this.giveBrain(from);
+    if (!from.brain) this.giveBrain(from);
 
     // The soldier taken: the human's, as on a join, with the client's tick count carried over.
     this.clearReviveStateForSlot(to.index);
@@ -1407,10 +1424,11 @@ export class Session {
     conn.netId = to.netId;
     conn.slot = to.index;
 
-    // Command follows the human: their bots, and the soldier they left, are theirs where they are now.
+    // Command follows the human; a spectated bot under another commander changes hands on takeover.
     for (const slot of this.slots) if (this.commanders[slot.index] === from.index) this.commanders[slot.index] = to.index;
     this.commanders[from.index] = to.index;
     this.commanders[to.index] = -1;
+    this.spectators.delete(conn);
 
     const gun = WEAPON_IDS.indexOf(to.weapon.id as (typeof WEAPON_IDS)[number]);
     conn.send({ kind: 'Possessed', netId: to.netId, slot: to.index, resume: to.resumeToken, weapon: gun < 0 ? 0 : gun, ammo: to.weaponState.ammo, pouch: [...to.pouch] });
@@ -2106,13 +2124,13 @@ export class Session {
    */
   admit(conn: ServerConnection): boolean {
     conn.rebind({
-      onInput: (c, msg) => { if (this.roomStarted) this.applyInput(c, msg); },
+      onInput: (c, msg) => { if (this.roomStarted && !this.spectators.has(c)) this.applyInput(c, msg); },
       // NOT the `now` this connection was opened at: that value is frozen
       // forever. Fire resolves against the session's current time.
-      onFire: (c, msg) => { if (this.roomStarted) this.applyFire(c, msg); },
-      onThrow: (c, msg) => { if (this.roomStarted) this.applyThrow(c, msg); },
-      onEquip: (c, msg) => { if (this.roomStarted) this.applyEquip(c, msg); },
-      onReload: (c) => { if (this.roomStarted) this.applyReload(c); },
+      onFire: (c, msg) => { if (this.roomStarted && !this.spectators.has(c)) this.applyFire(c, msg); },
+      onThrow: (c, msg) => { if (this.roomStarted && !this.spectators.has(c)) this.applyThrow(c, msg); },
+      onEquip: (c, msg) => { if (this.roomStarted && !this.spectators.has(c)) this.applyEquip(c, msg); },
+      onReload: (c) => { if (this.roomStarted && !this.spectators.has(c)) this.applyReload(c); },
       onAiDebugRequest: (c, on) => this.applyAiDebugRequest(c, on),
       onOrder: (c, msg) => { if (this.roomStarted) this.applyOrder(c, msg); },
       onMark: (c, msg) => { if (this.roomStarted) this.applyMark(c, msg); },
@@ -2530,8 +2548,8 @@ export class Session {
       coolHeat(gun.def, gun.heat, TICK_SECONDS);
     }
     for (const slot of this.slots) {
-      if (slot.mounted && (slot.isBot || !isAlive(slot.health))) this.dismount(slot);
-      if (slot.isBot) {
+      if (slot.mounted && (this.autonomous(slot) || !isAlive(slot.health))) this.dismount(slot);
+      if (this.autonomous(slot)) {
         slot.interactWasHeld = false;
         // U-011: a bot holding at a waiting upload's terminal starts it, through the same checks as a player's press —
         // unless the hands it holds out are a revive's.
@@ -2718,6 +2736,7 @@ export class Session {
   private releaseSlot(conn: ServerConnection, reason = ''): void {
     this.connections.delete(conn);
     this.aiDebugClients.delete(conn);
+    this.spectators.delete(conn);
     const slot = this.slots.find((s) => s.connection === conn);
     if (!slot) return;
     // T-4.18: a dropped socket keeps a claim on the seat for the grace; a
@@ -3605,7 +3624,7 @@ export class Session {
         continue;
       }
 
-      if (!slot.isBot) {
+      if (!this.autonomous(slot)) {
         /**
          * Drain a backlog by stepping the extra inputs, not by throwing them
          * away. A burst arrives when the link stutters and then delivers
@@ -3823,7 +3842,7 @@ export class Session {
     const dt = BRAIN_PERIOD_TICKS * TICK_SECONDS;
     const perception = BOT_ARCHETYPE.perception;
     for (const slot of this.slots) {
-      if (!slot.isBot || !slot.brain || !isAlive(slot.health)) continue;
+      if (!this.autonomous(slot) || !slot.brain || !isAlive(slot.health)) continue;
       const eye = eyePosition(slot.state.x, slot.state.y, slot.state.z, DEFAULT_MUZZLE_RIG, eyeStance(false, slot.state.prone));
       for (const stimulus of hostile) if (hears(eye, stimulus)) rememberHeard(slot.memory, stimulus, nowSeconds);
       if (!slot.brain.due(this.currentTick)) continue;
@@ -3868,7 +3887,7 @@ export class Session {
     // T-3.26: friendly bots' hands the same way, when they run a tree that uses them.
     if (!this.botsDriven) return;
     for (const slot of this.slots) {
-      if (!slot.isBot) continue;
+      if (!this.autonomous(slot)) continue;
       const able = isAlive(slot.health);
       this.cover?.track(slot.netId, slot.state, able);
       if (able && slot.brain) this.aiHands(slot, slot.index, this.followers[slot.index]?.onVault ?? false, nowSeconds);
@@ -3932,7 +3951,7 @@ export class Session {
     // T-3.26: friendly bots fire by the same path, holding fire while a squadmate is on the line.
     if (!this.botsDriven) return;
     for (const slot of this.slots) {
-      if (!slot.isBot || !slot.brain || !isAlive(slot.health)) continue;
+      if (!this.autonomous(slot) || !slot.brain || !isAlive(slot.health)) continue;
       if (this.aiShoot(slot, BOT_ARCHETYPE.accuracy, true, true, nowSeconds)) this.lastFiredTick[slot.index] = this.currentTick;
     }
   }
@@ -4155,7 +4174,7 @@ export class Session {
     const inputs: (MoveInput | null)[] = this.slots.map(() => null);
     for (const slot of this.slots) {
       const brain = slot.brain;
-      if (!slot.isBot || !brain) continue;
+      if (!this.autonomous(slot) || !brain) continue;
       const intent = brain.intent;
       let follower = this.followers[slot.index] ?? null;
       if (!follower) {
@@ -4300,7 +4319,7 @@ export class Session {
    * and timer a human's held E gets.
    */
   private holdingInteract(slot: Slot): boolean {
-    if (slot.isBot) return slot.brain?.read('interact') ?? false;
+    if (this.autonomous(slot)) return slot.brain?.read('interact') ?? false;
     return slot.interactHeld && slot.staleTicks <= MAX_INPUT_REPEAT;
   }
 
@@ -4474,7 +4493,8 @@ export class Session {
       // now is a spawn, the reverse a despawn. If it has aged out of the ring
       // they get a full view, which is self-healing.
       const baseline = conn.lastAckedTick >= 0 ? view.history.get(conn.lastAckedTick) : null;
-      const current = view.next(snapshot, slot ? slot.netId : null);
+      const watched = this.spectators.get(conn);
+      const current = view.next(snapshot, watched === undefined ? (slot ? slot.netId : null) : (this.slots[watched]?.netId ?? null));
       const w = new BitWriter();
       writeDelta(w, current, baseline);
       const payload = w.toUint8Array();

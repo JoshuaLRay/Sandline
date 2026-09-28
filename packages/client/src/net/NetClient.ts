@@ -388,6 +388,8 @@ export class NetClient {
   onRoster: ((slots: RosterEntry[]) => void) | null = null;
   /** U-026: the host moved this client into another soldier; the page adopts what it carries. */
   onPossessed: ((possessed: Extract<Message, { kind: 'Possessed' }>) => void) | null = null;
+  onSpectating: ((slot: number) => void) | null = null;
+  private spectatedSlotValue = -1;
   /** T-4.19: ready-up room state changed. */
   onRoomState: ((room: Extract<Message, { kind: 'RoomState' }>) => void) | null = null;
   /** T-3.09: an AI debug report, from a host that allows them, after `requestAiDebug(true)`. */
@@ -419,6 +421,10 @@ export class NetClient {
   /** Squad slot the host seated us in, or -1. ADR-001: always 0..5. */
   get slot(): number {
     return this.slotValue;
+  }
+
+  get spectatedSlot(): number {
+    return this.spectatedSlotValue;
   }
 
   get disconnectReason(): string | null {
@@ -865,6 +871,11 @@ export class NetClient {
     this.transport.send(encodeMessage({ kind: 'SwitchCharacter', slot }), 'reliable');
   }
 
+  spectate(slot: number): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage({ kind: 'SwitchCharacter', slot, spectate: true }), 'reliable');
+  }
+
   /** U-025: ask the host to put the bot in `bot`'s slot under `commander`'s human. The host checks both. */
   assignCommander(bot: number, commander: number): void {
     if (!this.joinedFlag) return;
@@ -1120,6 +1131,7 @@ export class NetClient {
          * goes; the old one becomes a remote on the next snapshot.
          */
         this.netIdValue = msg.netId;
+        this.spectatedSlotValue = -1;
         this.slotValue = msg.slot;
         this.resumeTokenValue = msg.resume;
         this.predictor = null;
@@ -1131,6 +1143,11 @@ export class NetClient {
         this.onPossessed?.(msg);
         break;
       }
+
+      case 'Spectating':
+        this.spectatedSlotValue = msg.slot;
+        this.onSpectating?.(msg.slot);
+        break;
 
       case 'Delta': {
         const result = this.store.applyDelta(msg.tick, msg.baselineTick, msg.payload);
