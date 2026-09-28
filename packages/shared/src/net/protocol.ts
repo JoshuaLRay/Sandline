@@ -17,7 +17,7 @@ import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 import type { MissionStats } from '../sim/scoreboard.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 41;
+export const PROTOCOL_VERSION = 42;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -126,9 +126,9 @@ const TYPE_BITS = 4;
 
 /**
  * U-028: the Equip item code that is a Reload. Loadout items are the guns
- * then the pouch — six today — so the top of the three bits is free.
+ * then the pouch. Four bits leave room for the knife and both pouch items.
  */
-export const RELOAD_ITEM = 7;
+export const RELOAD_ITEM = 15;
 
 /** Sub-kinds under `MessageType.Ext`, three bits: the wire order. */
 const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks: 5, Mission: 6, Events: 7 } as const;
@@ -592,11 +592,11 @@ export function encodeMessage(msg: Message): Uint8Array {
       break;
     case 'Equip':
       w.writeBits(MessageType.Equip, TYPE_BITS);
-      w.writeBits(msg.item & 0x7, 3);
+      w.writeBits(msg.item & 0xf, 4);
       break;
     case 'Reload':
       w.writeBits(MessageType.Equip, TYPE_BITS);
-      w.writeBits(RELOAD_ITEM, 3);
+      w.writeBits(RELOAD_ITEM, 4);
       break;
     case 'Detonation': {
       w.writeBits(MessageType.Detonation, TYPE_BITS);
@@ -1102,7 +1102,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
           projectile: r.readBits(2),
         };
       case MessageType.Equip: {
-        const item = r.readBits(3);
+        const item = r.readBits(4);
         return item === RELOAD_ITEM ? { kind: 'Reload' } : { kind: 'Equip', item };
       }
       case MessageType.Detonation: {

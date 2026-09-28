@@ -26,6 +26,7 @@ import {
   PROTOCOL_VERSION,
   POSITION,
   SnapshotStore,
+  WEAPON_IDS,
   dequantize,
   createLoopbackPair,
   decodeMessage,
@@ -350,8 +351,8 @@ describe('equipping (grenade and rocket in hand)', () => {
     client.run(2);
     expect(heldBy(client.store, client.netId)?.[2]).toBe(0);
 
-    // Loadout index: four guns first, then the pouch — 5 is the rocket.
-    client.send({ kind: 'Equip', item: 4 + ROCKET });
+    // The pouch follows the weapons on the wire.
+    client.send({ kind: 'Equip', item: WEAPON_IDS.length + ROCKET });
     client.run(2);
     expect(session.slots[0]?.heldProjectile).toBe(ROCKET);
     expect(heldBy(client.store, client.netId)?.[2]).toBe(1 + ROCKET);
@@ -367,8 +368,8 @@ describe('equipping (grenade and rocket in hand)', () => {
   it('drops an out-of-range item without changing what is held', () => {
     const session = new Session();
     const client = connect(session);
-    client.send({ kind: 'Equip', item: 4 + FRAG });
-    client.send({ kind: 'Equip', item: 7 });
+    client.send({ kind: 'Equip', item: WEAPON_IDS.length + FRAG });
+    client.send({ kind: 'Equip', item: WEAPON_IDS.length + 3 });
     client.run(1);
     expect(session.slots[0]?.heldProjectile).toBe(FRAG);
   });
@@ -376,7 +377,7 @@ describe('equipping (grenade and rocket in hand)', () => {
   it('throws from the pouch whatever is in hand, and a Fire puts a gun back', () => {
     const session = new Session();
     const client = connect(session);
-    client.send({ kind: 'Equip', item: 4 + FRAG });
+    client.send({ kind: 'Equip', item: WEAPON_IDS.length + FRAG });
     client.throwOne({ pitch: 0, yaw: 0 });
     client.run(1);
     expect(session.slots[0]?.pouch[FRAG]).toBe(getProjectile('frag').carried - 1);

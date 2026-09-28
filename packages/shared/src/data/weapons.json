@@ -134,5 +134,32 @@
     "recoilAdsScale": 0.7,
     "shakePosM": 0.016,
     "shakeRollDeg": 0.35
+  },
+  "knife": {
+    "id": "knife",
+    "name": "Combat Knife",
+    "rpm": 90,
+    "damage": 40,
+    "pellets": 1,
+    "hipSpreadDeg": 0,
+    "adsSpreadDeg": 0,
+    "proneSpreadScale": 1,
+    "bloomPerShotDeg": 0,
+    "maxSpreadDeg": 0,
+    "bloomDecayDegPerSec": 0,
+    "falloffStartM": 0,
+    "falloffEndM": 2,
+    "falloffMinFraction": 1,
+    "maxRangeM": 2,
+    "magSize": 1,
+    "reloadSeconds": 0,
+    "auto": false,
+    "recoilKickDeg": 0,
+    "recoilDriftDeg": 0,
+    "recoilMaxDeg": 0,
+    "recoilRecoveryPerSec": 10,
+    "recoilAdsScale": 0.7,
+    "shakePosM": 0,
+    "shakeRollDeg": 0
   }
 }

@@ -20,6 +20,7 @@ export function weaponIndexForKey(code: string, context: WeaponKeyContext): numb
   if (context.orderWheelOpen || context.menuOpen || context.textFieldFocused || !context.alive || context.mounted) return null;
 
   const digit = Number(code.slice(-1));
+  if (digit === 3) return WEAPON_IDS.indexOf('knife');
   if (digit === 1 || digit === 2) {
     const guns = context.loadoutGuns ?? FREE_RANGE_GUNS;
     const weaponId = digit === 1
@@ -30,10 +31,10 @@ export function weaponIndexForKey(code: string, context: WeaponKeyContext): numb
     return index >= 0 ? index : null;
   }
 
-  // 3–4 retain the free range's extra QA weapons. A class may add its own
+  // 4 retains a free range QA weapon. A class may add its own
   // additional weapon roles in a later task without inheriting array order.
   if (context.loadoutGuns !== null) return null;
   const rangeOnly = WEAPON_IDS.filter((id) => id !== 'carbine' && id !== 'sidearm');
-  const extraId = rangeOnly[digit - 3];
+  const extraId = rangeOnly.filter((id) => id !== 'knife')[digit - 4];
   return extraId === undefined ? null : WEAPON_IDS.indexOf(extraId);
 }

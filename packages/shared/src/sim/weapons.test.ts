@@ -22,6 +22,20 @@ import {
   tryFire,
 } from './weapons.ts';
 
+describe('combat knife', () => {
+  it('strikes only within two metres, respects cadence, and never runs out', () => {
+    const knife = getWeapon('knife');
+    const state = createWeaponState(knife);
+    expect(knife.maxRangeM).toBe(2);
+    expect(knife.auto).toBe(false);
+    expect(tryFire(knife, state, 0, false)).not.toBeNull();
+    expect(tryFire(knife, state, 0.1, false)).toBeNull();
+    for (let i = 1; i <= 10; i += 1) expect(tryFire(knife, state, i, false)).not.toBeNull();
+    expect(state.ammo).toBe(knife.magSize);
+    expect(startReload(knife, state, 11)).toBe(false);
+  });
+});
+
 /**
  * Parity fixture. §2.3 requires parity tests to own their constants so that
  * tuning `data/weapons.json` can never break them. Nothing in this block reads

@@ -32,16 +32,17 @@ describe('weapon slot keys (U-005)', () => {
     expect(weaponIndexForKey('Digit2', ready({ loadoutGuns: ['carbine'] }))).toBeNull();
     expect(weaponIndexForKey('Digit1', ready())).toBe(WEAPON_IDS.indexOf('carbine'));
     expect(weaponIndexForKey('Digit2', ready())).toBe(WEAPON_IDS.indexOf('sidearm'));
-    expect(weaponIndexForKey('Digit3', ready())).toBe(WEAPON_IDS.indexOf('marksman'));
-    expect(weaponIndexForKey('Digit3', ready({ loadoutGuns: ['carbine', 'sidearm'] }))).toBeNull();
+    expect(weaponIndexForKey('Digit3', ready())).toBe(WEAPON_IDS.indexOf('knife'));
+    expect(weaponIndexForKey('Digit3', ready({ loadoutGuns: ['carbine', 'sidearm'] }))).toBe(WEAPON_IDS.indexOf('knife'));
+    expect(weaponIndexForKey('Digit4', ready())).toBe(WEAPON_IDS.indexOf('marksman'));
   });
 
   it('key 1 draws the primary the host says — a gun taken off the ground — and 2 keeps the pistol (U-018)', () => {
     expect(weaponIndexForKey('Digit1', ready({ loadoutGuns: ['marksman', 'sidearm'], primary: 'marksman' }))).toBe(WEAPON_IDS.indexOf('marksman'));
     expect(weaponIndexForKey('Digit2', ready({ loadoutGuns: ['marksman', 'sidearm'], primary: 'marksman' }))).toBe(WEAPON_IDS.indexOf('sidearm'));
-    // On the range too: the picked-up gun is key 1, and 3–4 still reach the extras.
+    // On the range too: the picked-up gun is key 1, and 3 remains the knife.
     expect(weaponIndexForKey('Digit1', ready({ primary: 'breacher' }))).toBe(WEAPON_IDS.indexOf('breacher'));
-    expect(weaponIndexForKey('Digit3', ready({ primary: 'breacher' }))).toBe(WEAPON_IDS.indexOf('marksman'));
+    expect(weaponIndexForKey('Digit3', ready({ primary: 'breacher' }))).toBe(WEAPON_IDS.indexOf('knife'));
   });
 
   it('gives number keys to Q, menus and text fields, and refuses switches while downed or mounted', () => {
@@ -54,6 +55,7 @@ describe('weapon slot keys (U-005)', () => {
     ]) {
       expect(weaponIndexForKey('Digit1', ready(overrides))).toBeNull();
       expect(weaponIndexForKey('Digit2', ready(overrides))).toBeNull();
+      expect(weaponIndexForKey('Digit3', ready(overrides))).toBeNull();
     }
     expect(weaponIndexForKey('KeyQ', ready())).toBeNull();
   });

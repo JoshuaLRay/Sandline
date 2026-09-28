@@ -6,6 +6,7 @@
     "marksman": { "near": "marksman-near", "far": "marksman-far" },
     "breacher": { "near": "breacher-near", "far": "breacher-far" },
     "sidearm": { "near": "sidearm-near", "far": "sidearm-far" },
+    "knife": { "near": "equip", "far": "equip" },
     "lmg": { "near": "lmg-near", "far": "lmg-far" }
   },
   "handling": { "reloadOut": "reload-out", "reloadIn": "reload-in", "reloadBolt": "reload-bolt", "dryFire": "dry-fire", "equip": "equip" },

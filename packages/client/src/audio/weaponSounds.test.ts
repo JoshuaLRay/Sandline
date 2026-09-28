@@ -83,6 +83,7 @@ describe('ReloadWatcher (T-2.46)', () => {
 
   it('the local reload on the weapon clock: each cue once, at its stage, for every gun (U-007)', () => {
     for (const id of Object.keys(WEAPON_SOUNDS.guns)) {
+      if (id === 'knife') continue; // A blade has no magazine to reload.
       const reload = getWeapon(id).reloadSeconds;
       const w = new ReloadWatcher();
       const at: Record<string, number> = {};
