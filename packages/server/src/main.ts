@@ -27,8 +27,13 @@ import { SessionHost, hostBanner, linkFromEnv } from './session/SessionHost.ts';
 import { flyEnvironment, flyPeers } from './allocator/flyPeers.ts';
 import { loadConfig } from './config.ts';
 import { createLogger } from './log.ts';
+import { VoiceIntake } from './voice/intake.ts';
 
 const config = loadConfig();
+const intakeSettings = [process.env['VOICE_INTAKE_DIR'], process.env['VOICE_INVITE_KEY'], process.env['VOICE_SITE_ORIGIN']];
+if (intakeSettings.some(Boolean) && !intakeSettings.every(Boolean)) throw new Error('Set VOICE_INTAKE_DIR, VOICE_INVITE_KEY and VOICE_SITE_ORIGIN together');
+const voiceIntake = process.env['VOICE_INTAKE_DIR'] && process.env['VOICE_INVITE_KEY'] && process.env['VOICE_SITE_ORIGIN']
+  ? new VoiceIntake({ dir: process.env['VOICE_INTAKE_DIR'], inviteKey: process.env['VOICE_INVITE_KEY'], origin: process.env['VOICE_SITE_ORIGIN'] }) : undefined;
 const log = createLogger(config.logLevel);
 const campaigns = new CampaignDatabase(config.campaignDbPath);
 const identity = new Identity({
@@ -40,6 +45,7 @@ const link = linkFromEnv();
 // T-4.31: on Fly, this machine is one of its region's; its peers come from the platform's DNS.
 const fly = flyEnvironment();
 const host = new SessionHost({
+  ...(voiceIntake ? { voiceIntake } : {}),
   ...(fly ? { allocator: { instance: fly.instance, region: fly.region, peers: flyPeers({ app: fly.app, region: fly.region, self: fly.instance, port: config.port }) } } : {}),
   port: config.port,
   log,

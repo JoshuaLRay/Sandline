@@ -68,6 +68,7 @@ import type { Logger } from '../log.ts';
 import { initNav } from '../ai/nav/NavMesh.ts';
 import { Identity } from '../identity/Identity.ts';
 import { CampaignDatabase, normalizeCampaignCode } from '../persistence/CampaignDatabase.ts';
+import type { VoiceIntake } from '../voice/intake.ts';
 
 const TICK_MS = TICK_SECONDS * 1000;
 
@@ -224,6 +225,7 @@ class ConditionedTransport extends BaseTransport {
 
 export interface SessionHostOptions {
   port: number;
+  voiceIntake?: VoiceIntake;
   log: Logger;
   /** Link conditioning for every connection. `null` (default) is a raw socket. */
   link?: LinkConditions | null;
@@ -355,7 +357,11 @@ export class SessionHost {
     this.handle = await startWsServer({
       port: this.options.port,
       onConnection: (transport) => this.accept(transport),
-      onRequest: (req, res) => this.serveHttp(req.url ?? '/', res, req.socket.remoteAddress),
+      onRequest: (req, res) => {
+        if (req.url?.startsWith('/voice-submissions') && this.options.voiceIntake) {
+          void this.options.voiceIntake.handle(req, res);
+        } else this.serveHttp(req.url ?? '/', res, req.socket.remoteAddress);
+      },
       shouldAccept: async (req) => {
         // T-4.32: a draining host takes no new rooms, but a reconnect into a room it holds is still its.
         if (this.draining) {

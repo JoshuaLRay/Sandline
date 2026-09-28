@@ -18,6 +18,7 @@
     "gen:nav": "tsx packages/tools/src/gen-nav.ts",
     "gen:audio": "tsx packages/tools/src/gen-audio.ts",
     "gen:voice": "tsx packages/tools/src/gen-voice.ts",
+    "import:voice": "tsx packages/tools/src/import-voice-submission.ts",
     "bench:rapier": "tsx packages/tools/src/bench-rapier.ts",
     "bench:nav": "tsx packages/tools/src/bench-nav.ts",
     "test:parity-browsers": "vitest run --config vitest.browser.config.ts",
