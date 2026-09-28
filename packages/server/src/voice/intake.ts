@@ -1,6 +1,6 @@
 /** Private, invite-only intake for consented source recordings. Never serves recordings. */
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { VOICES, VOICE_CONSENT_TEXT, passFile, passLines } from '@sandline/shared';
@@ -12,6 +12,7 @@ const TYPES: Record<string, string> = {
 };
 const MAX_CLIP = 8 * 1024 * 1024;
 const MAX_TOTAL = 100 * 1024 * 1024;
+const MAX_STORED = 256 * 1024 * 1024;
 const CONSENT = VOICE_CONSENT_TEXT;
 
 export interface VoiceIntakeOptions { dir: string; inviteKey: string; origin: string }
@@ -59,6 +60,12 @@ export class VoiceIntake {
     writeFileSync(temp, JSON.stringify(s, null, 2), { mode: 0o600 });
     renameSync(temp, file);
   }
+  private storedBytes(): number {
+    return readdirSync(this.options.dir).reduce((sum, id) => {
+      if (!/^[a-f0-9]{32}$/.test(id)) return sum;
+      return sum + readdirSync(this.path(id)).reduce((clips, file) => clips + statSync(join(this.path(id), file)).size, 0);
+    }, 0);
+  }
   /** Handles OPTIONS/POST/PUT only. No public reads of private source audio. */
   async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     res.setHeader('cache-control', 'no-store');
@@ -74,7 +81,8 @@ export class VoiceIntake {
         const source = req.socket.remoteAddress ?? 'unknown';
         const now = Date.now();
         const window = this.starts.get(source);
-        if (window && now - window.since < 3_600_000 && window.count >= 5) { json(res, 429, { error: 'Too many submissions; try again later' }); return; }
+        // A hosting proxy may give several friends the same remote address.
+        if (window && now - window.since < 3_600_000 && window.count >= 60) { json(res, 429, { error: 'Too many submissions; try again later' }); return; }
         const data = JSON.parse((await body(req, 4096)).toString('utf8')) as Record<string, unknown>;
         const name = typeof data['name'] === 'string' ? data['name'].trim() : '';
         if (name.length < 1 || name.length > 40 || !/^[\p{L}\p{N} _.-]+$/u.test(name) || data['consent'] !== CONSENT || data['agree'] !== true || typeof data['invite'] !== 'string' || !equal(data['invite'], this.options.inviteKey)) {
@@ -104,6 +112,7 @@ export class VoiceIntake {
         const total = Object.entries(s.clips).reduce((sum, [key, clip]) => sum + (key === pass ? 0 : clip.bytes), bytes.length);
         if (total > MAX_TOTAL) { json(res, 413, { error: 'Submission exceeds size limit' }); return; }
         const file = `${pass}${ext}`;
+        if (this.storedBytes() - (s.clips[pass]?.bytes ?? 0) + bytes.length > MAX_STORED) { json(res, 507, { error: 'Voice intake is full; contact the owner' }); return; }
         // New uploads replace only their own pass. Files are never named from untrusted input.
         const temp = join(this.path(s.id), `${file}.tmp`);
         writeFileSync(temp, bytes, { mode: 0o600 });
