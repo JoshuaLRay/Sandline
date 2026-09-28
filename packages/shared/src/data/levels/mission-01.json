@@ -260,12 +260,12 @@
     },
     {
       "id": "nest-sandbags",
-      "x": 1.6,
+      "x": 3,
       "y": 0,
-      "z": 70.5,
-      "w": 0.4,
+      "z": 69.1,
+      "w": 1.6,
       "h": 0.9,
-      "d": 1.6
+      "d": 0.4
     },
     { "id": "compound-sandbags-w", "x": -4.5, "y": 0, "z": 67.2, "w": 1.6, "h": 0.9, "d": 0.4 },
     { "id": "compound-sandbags-e", "x": 5.2, "y": 0, "z": 73.6, "w": 1.6, "h": 0.9, "d": 0.4 },
@@ -896,9 +896,9 @@
       {
         "id": "behind-objective",
         "on": "objective",
-        "x": 0,
-        "z": 86,
-        "radius": 4
+        "x": 3,
+        "z": 71.2,
+        "radius": 3.5
       },
       {
         "id": "overwatch-flank",
@@ -934,7 +934,7 @@
       "x": 3,
       "y": 0,
       "z": 70.5,
-      "yawDeg": 270
+      "yawDeg": 180
     }
   ]
 }
