@@ -162,6 +162,8 @@ import {
   vitalsView,
 } from './ui/hud/hudModel.ts';
 import { type AimSubject, OrderWheelView, buildMark, orderFromRelease } from './ui/OrderWheel.ts';
+import { buildOrder } from './ui/OrderWheel.ts';
+import { createMobileCommand } from './ui/MobileCommand.ts';
 import { type MarkerVec, OrderMarkerOverlay, orderMarkers } from './ui/OrderMarkers.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
 import { pressH, qaFromSearch } from './ui/qaMode.ts';
@@ -766,6 +768,9 @@ let live: LiveSession | null = null;
 let spectatorYaw = 0;
 let spectatorPitch = 0;
 let spectatorTakeoverPending = false;
+const mobileMode = new URLSearchParams(location.search).has('mobile') || matchMedia('(pointer: coarse)').matches;
+let mobileSpectateRequested = false;
+let mobileSpectateAttemptAt = 0;
 /** Set after a joined session has every required pack; cleared on the first rendered frame. */
 let playablePending: NetClient | null = null;
 
@@ -1303,6 +1308,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
     localLoadout = classById(localClassSeen);
   };
   net.onSpectating = () => {
+    mobileSpectateRequested = false;
     spectatorYaw = input.yaw;
     spectatorPitch = input.pitchWire;
     spectatorTakeoverPending = false;
@@ -1426,6 +1432,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
   panels.insertBefore(networkPanel.root, netgraph.root);
 
   live = { server, net, local, remote, sparring, sparringLink, qaEnemies, qaSuppressor, choice, networkPanel };
+  mobileSpectateRequested = false;
   lobby.hide();
   menu.hide();
   squadPanel.setVisible(true);
@@ -1445,6 +1452,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
 function leaveSession(message: { text: string; tone: 'info' | 'error' } | null): void {
   const gone = live;
   live = null;
+  mobileSpectateRequested = false;
   scriptNotice = '';
   scriptNoticeUntil = 0;
   syncBlockers(null);
@@ -1689,24 +1697,34 @@ const menu = createMenu({
   },
   onResume: () => {
     menu.hide();
-    if (live) renderer.domElement.requestPointerLock?.();
+    if (live && !mobileMode) renderer.domElement.requestPointerLock?.();
   },
   onLeave: () => leaveSession({ text: 'left the session', tone: 'info' }),
   // U-025: the host checks it and answers with the roster; the menu redraws from that.
   onAssign: (bot, commander) => live?.net.assignCommander(bot, commander),
   // U-026: the host checks it and answers with Possessed; back to the game meanwhile.
-  onSwitch: (slot) => {
+  ...(!mobileMode ? { onSwitch: (slot: number) => {
     live?.net.switchTo(slot);
     menu.hide();
-    if (live) renderer.domElement.requestPointerLock?.();
-  },
+    if (live && !mobileMode) renderer.domElement.requestPointerLock?.();
+  } } : {}),
   onSpectate: (slot) => {
     live?.net.spectate(slot);
     menu.hide();
-    if (live) renderer.domElement.requestPointerLock?.();
+    if (live && !mobileMode) renderer.domElement.requestPointerLock?.();
   },
 });
 document.body.appendChild(menu.root);
+const mobileCommand = createMobileCommand(document.body, {
+  watch: (slot) => live?.net.spectate(slot),
+  assign: (bot, commander) => live?.net.assignCommander(bot, commander),
+  order: (kind, address) => {
+    if (!live) return;
+    const order = buildOrder(kind, address, aimSubject(live.net));
+    if (order) live.net.order(order);
+  },
+  leave: () => leaveSession({ text: 'left the session', tone: 'info' }),
+});
 if (new URLSearchParams(location.search).has('record-voice')) showVoiceSubmission(document.body, __DEFAULT_HOST__);
 
 panels.append(
@@ -1940,12 +1958,32 @@ function frame(): void {
   last = now;
 
   const net = live?.net ?? null;
+  if (mobileMode) {
+    mobileCommand.root.hidden = !net || menu.mode !== 'hidden';
+    if (net && net.slot >= 0) {
+      mobileCommand.update(commandRows(net.roster, net.slot), net.spectatedSlot);
+      if (net.spectatedSlot < 0 && (!mobileSpectateRequested || now - mobileSpectateAttemptAt > 1000)) {
+        mobileSpectateRequested = true;
+        mobileSpectateAttemptAt = now;
+        net.spectate(net.slot);
+      }
+    }
+  }
   const server = live?.server ?? null;
   const sparring = live?.sparring ?? null;
 
   for (let i = 0; i < steps; i++) {
     const tickInput = input.sample();
     if (!net || !server) continue;
+    if (mobileMode) {
+      input.consumeTriggerEdge();
+      input.consumeTriggerRelease();
+      input.consumeThrowRelease();
+      input.consumeOrderRelease();
+      input.consumeMarkPress();
+      server.step(now);
+      continue;
+    }
     if (net.spectatedSlot >= 0) {
       // The host owns the decision. A human target never accepts takeover;
       // the spectator remains an observer until Possessed arrives.
@@ -2865,6 +2903,7 @@ menu.showMain();
 requestAnimationFrame(frame);
 
 addEventListener('keydown', (e) => {
+  if (mobileMode && live) return;
   // Typing in the lobby is not a hotkey.
   if (isTextField(e.target)) return;
   // Esc pauses (T-4.26): the pause menu over the session, which runs on; Esc again resumes.

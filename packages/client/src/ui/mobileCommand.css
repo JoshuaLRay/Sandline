@@ -1,0 +1,14 @@
+.mobile-command[hidden] { display: none; }
+.mobile-command {
+  position: fixed; z-index: 25; bottom: max(12px, env(safe-area-inset-bottom));
+  left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right));
+  max-height: min(48vh, 340px); overflow: auto; padding: 12px;
+  background: rgba(15, 12, 7, .9); color: #e8dcc8; border: 1px solid #a68745;
+  font: 13px ui-monospace, monospace; display: grid; gap: 8px;
+}
+.mobile-command select, .mobile-command button { min-height: 44px; font: inherit; color: inherit; background: #292820; border: 1px solid #a68745; border-radius: 4px; }
+.mobile-command select { max-width: 100%; }
+.mobile-command label { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.mobile-command label select { max-width: 50%; }
+.mobile-orders { display: flex; gap: 6px; overflow-x: auto; }
+.mobile-orders button { min-width: 82px; text-transform: capitalize; }
