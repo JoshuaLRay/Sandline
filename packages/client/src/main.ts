@@ -82,6 +82,7 @@ import { type ClientLink, DEFAULT_LINK, type LinkConditions, LocalServer, type L
 import { type NavMesh, initNav } from '@sandline/server/nav';
 import { NetClient, type RemoteEmplacement, type ServerDetonation, type ServerShot } from './net/NetClient.ts';
 import { type EmplacementModel, createEmplacementModel } from './weapons/emplacementModel.ts';
+import { syncHostPrimary, type PrimarySeen } from './weapons/hostPrimary.ts';
 import { PickupModels, pickupInReach } from './weapons/pickupModels.ts';
 import {
   HostUrlError,
@@ -599,7 +600,7 @@ function carriedGuns(): readonly string[] | null {
   return primary ? [primary, ...localLoadout.guns.filter((g) => g === 'sidearm')] : localLoadout.guns;
 }
 /** U-018: the host's primary last seen, to notice a new one (taken off the ground, or given back on a respawn). */
-let primarySeen: { net: NetClient; primary: number } | null = null;
+let primarySeen: PrimarySeen | null = null;
 function equipGun(index: number): void {
   const guns = carriedGuns();
   if (guns && WEAPON_ORDER[index] !== 'knife' && !guns.includes(WEAPON_ORDER[index] ?? '')) return;
@@ -2019,19 +2020,12 @@ function frame(): void {
 
     // U-018: a new primary from the host — a gun taken off the ground, or the class's given back on a respawn or a retry —
     // is in hand now if the host has it in hand: take it, with the host's rounds, as a swap would.
-    const primary = net.primary;
-    if (primary !== null && (primarySeen?.net !== net || primarySeen.primary !== primary)) {
-      const changed = primarySeen?.net === net;
-      primarySeen = { net, primary };
-      // A mounted gun has no loadout index. The carried primary can change in a
-      // snapshot while mounted (for example after a pickup or seat transfer),
-      // but must not replace the emplacement in the local firing path.
-      if (changed && !mount && net.magazine?.weapon === primary && combat.weaponIndex !== primary) {
-        playOwn(WEAPON_SOUNDS.handling.equip);
-        combat.adopt(primary, net.magazine.ammo);
-        holdingPouch = false;
-        pouchTrigger.cancel();
-      }
+    const primarySync = syncHostPrimary(net, mount !== null, primarySeen, combat);
+    primarySeen = primarySync.seen;
+    if (primarySync.adopted) {
+      playOwn(WEAPON_SOUNDS.handling.equip);
+      holdingPouch = false;
+      pouchTrigger.cancel();
     }
     // U-028: the magazine is the host's; our own shots and reload in flight to it are held off its count.
     if (net.magazine) combat.reconcileMagazine(net.magazine, tickNumber * TICK_SECONDS);
