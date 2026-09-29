@@ -91,7 +91,7 @@ Each skill is **bounded**: one effect, a duration, a cooldown, and a range where
 | D-3 | Each skill's effect, duration and cooldown | The table above remains a proposal. |
 | D-4 | The support's speed bonus | +10% remains a proposal. |
 | D-5 | Whether Support keeps a pistol | Open. |
-| D-6 | Two-primary controls: key mapping and pickup replacement behavior (U-022) | **Partially decided:** only Preach and Support qualify; only ARs, shotguns and SMGs; no second primary while holding an LMG or sniper. Keys and exact replacement behavior remain open. |
+| D-6 | Two-primary controls: key mapping and pickup replacement behavior (U-022) *(2026-09-29: for picking up and dropping, **E picks up or swaps and G drops**, see U-029; the two-primary selection keys are still open)* | **Partially decided:** only Preach and Support qualify; only ARs, shotguns and SMGs; no second primary while holding an LMG or sniper. Keys and exact replacement behavior remain open. |
 | D-7 | What "(or fps)" means for Support | The existing proposal reads it as no ADS and no first-person sight picture; whether Support has no first-person view at all remains open. |
 | D-8 | Whether a player may take any free slot, or only the lowest one | Any free slot remains a proposal. |
 | D-9 | Which enemy weapons are available as pickups | **Partially decided:** other characters may pick up enemy weapon drops; U-017's drop table and the left-handed sniper exception still apply. |
