@@ -68,7 +68,7 @@ import {
   enemyByIndex,
   CALLOUTS,
 } from '@sandline/shared';
-import { ReloadWatcher, ShotDeduper, gunSoundPlan } from './audio/weaponSounds.ts';
+import { ReloadWatcher, ShotDeduper, cycleSoundPlan, gunSoundPlan } from './audio/weaponSounds.ts';
 import { CalloutDirector, type CalloutPlay, voiceIndex } from './audio/callouts.ts';
 import { type CalloutView, CalloutWatcher, type SquadSoldier } from './audio/calloutEvents.ts';
 import type { VoiceRendersManifest } from './ui/soundBoardModel.ts';
@@ -839,7 +839,11 @@ function playRemoteShot(net: NetClient, shot: ServerShot): void {
   const at = { x: shot.originX, y: shot.originY, z: shot.originZ };
   const ear = audio.listener;
   const d = Math.hypot(at.x - ear.x, at.y - ear.y, at.z - ear.z);
-  for (const part of gunSoundPlan(shooterWeaponId(net, shot.shooterNetId), d)) audio.play(part.sound, { at, gain: part.gain });
+  const weaponId = shooterWeaponId(net, shot.shooterNetId);
+  for (const part of gunSoundPlan(weaponId, d)) audio.play(part.sound, { at, gain: part.gain });
+  // U-043: a bolt-action gun works its bolt after the shot.
+  const cycle = cycleSoundPlan(weaponId);
+  if (cycle) setTimeout(() => audio.play(cycle.sound, { at }), cycle.delaySeconds * 1000);
   // T-2.47: a round that passed our head cracks on the side it went by.
   const here = net.simulated;
   if (here && shot.targetNetId !== net.netId && net.vitality !== 'dead') {
@@ -2266,6 +2270,9 @@ function frame(): void {
       hints.did('fire', secondsNow());
       // T-2.46: our own report, the near one, from the muzzle.
       if (combat.weapon.id !== 'knife') playOwn(gunSoundPlan(combat.weapon.id, 0)[0]?.sound ?? WEAPON_SOUNDS.guns['carbine']!.near);
+      // U-043: and the bolt of a bolt-action gun, once the shot has left.
+      const cycle = cycleSoundPlan(combat.weapon.id);
+      if (cycle) setTimeout(() => playOwn(cycle.sound), cycle.delaySeconds * 1000);
       // Sent at table resolution, so the server traces the exact angles this
       // client computed and the predicted tracer shares them without rounding.
       // On a gun the index is nobody's (T-4.29): the host fires the gun whatever this names.

@@ -1409,6 +1409,1323 @@
         }
       ]
     },
+    "smg-near": {
+      "class": "weapon",
+      "seconds": 0.8,
+      "variants": 3,
+      "normalizePeakDb": -1,
+      "bounds": {
+        "peakDb": [
+          -1.5,
+          -0.5
+        ],
+        "rmsDb": [
+          -40,
+          -8
+        ],
+        "seconds": [
+          0.15,
+          0.8
+        ]
+      },
+      "layers": [
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0003,
+            "decay": 0.0675,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 8050
+            },
+            {
+              "kind": "highpass",
+              "hz": 120
+            }
+          ],
+          "drive": 4,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "osc",
+            "wave": "sine",
+            "hz": 182.0,
+            "toHz": 71.5,
+            "sweepSeconds": 0.06
+          },
+          "envelope": {
+            "attack": 0.0003,
+            "decay": 0.081,
+            "curve": "exp"
+          },
+          "gain": 0.9,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0002,
+            "decay": 0.0135,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 3200,
+              "q": 3
+            }
+          ],
+          "gain": 0.35,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0005,
+            "decay": 0.0225,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 2240,
+              "q": 4
+            }
+          ],
+          "gain": 0.2,
+          "start": 0.055,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.006,
+            "decay": 0.2625,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 2070
+            },
+            {
+              "kind": "highpass",
+              "hz": 150
+            }
+          ],
+          "gain": 0.3,
+          "start": 0.01,
+          "reverb": {
+            "seconds": 0.9,
+            "mix": 0.55,
+            "damp": 0.6
+          },
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0001,
+            "decay": 0.0045,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "highpass",
+              "hz": 3500
+            }
+          ],
+          "gain": 0.5,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        }
+      ]
+    },
+    "smg-far": {
+      "class": "weapon",
+      "seconds": 1.3,
+      "variants": 3,
+      "normalizePeakDb": -3,
+      "bounds": {
+        "peakDb": [
+          -3.5,
+          -2.5
+        ],
+        "rmsDb": [
+          -45,
+          -10
+        ],
+        "seconds": [
+          0.3,
+          1.3
+        ]
+      },
+      "layers": [
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0001,
+            "decay": 0.0032,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "highpass",
+              "hz": 2500
+            }
+          ],
+          "gain": 0.55,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.004,
+            "decay": 0.1584,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 1386
+            },
+            {
+              "kind": "highpass",
+              "hz": 60
+            }
+          ],
+          "drive": 2,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "osc",
+            "wave": "sine",
+            "hz": 109.2,
+            "toHz": 57.2,
+            "sweepSeconds": 0.1
+          },
+          "envelope": {
+            "attack": 0.004,
+            "decay": 0.18,
+            "curve": "exp"
+          },
+          "gain": 0.7,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.03,
+            "decay": 0.7,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 770
+            }
+          ],
+          "gain": 0.45,
+          "start": 0.02,
+          "reverb": {
+            "seconds": 1.62,
+            "mix": 0.75,
+            "damp": 0.8
+          },
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        }
+      ]
+    },
+    "carbine-scoped-near": {
+      "class": "weapon",
+      "seconds": 0.8,
+      "variants": 3,
+      "normalizePeakDb": -1,
+      "bounds": {
+        "peakDb": [
+          -1.5,
+          -0.5
+        ],
+        "rmsDb": [
+          -40,
+          -8
+        ],
+        "seconds": [
+          0.15,
+          0.8
+        ]
+      },
+      "layers": [
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0003,
+            "decay": 0.1035,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 5950
+            },
+            {
+              "kind": "highpass",
+              "hz": 120
+            }
+          ],
+          "drive": 4,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "osc",
+            "wave": "sine",
+            "hz": 119.0,
+            "toHz": 46.75,
+            "sweepSeconds": 0.06
+          },
+          "envelope": {
+            "attack": 0.0003,
+            "decay": 0.1242,
+            "curve": "exp"
+          },
+          "gain": 0.9,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0002,
+            "decay": 0.0207,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 3200,
+              "q": 3
+            }
+          ],
+          "gain": 0.35,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0005,
+            "decay": 0.0345,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 2240,
+              "q": 4
+            }
+          ],
+          "gain": 0.2,
+          "start": 0.055,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.006,
+            "decay": 0.4025,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 1530
+            },
+            {
+              "kind": "highpass",
+              "hz": 150
+            }
+          ],
+          "gain": 0.3,
+          "start": 0.01,
+          "reverb": {
+            "seconds": 0.9,
+            "mix": 0.55,
+            "damp": 0.6
+          },
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0001,
+            "decay": 0.0069,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "highpass",
+              "hz": 3500
+            }
+          ],
+          "gain": 0.5,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        }
+      ]
+    },
+    "carbine-scoped-far": {
+      "class": "weapon",
+      "seconds": 1.3,
+      "variants": 3,
+      "normalizePeakDb": -3,
+      "bounds": {
+        "peakDb": [
+          -3.5,
+          -2.5
+        ],
+        "rmsDb": [
+          -45,
+          -10
+        ],
+        "seconds": [
+          0.3,
+          1.3
+        ]
+      },
+      "layers": [
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0001,
+            "decay": 0.0046,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "highpass",
+              "hz": 2500
+            }
+          ],
+          "gain": 0.55,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.004,
+            "decay": 0.2277,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 1134
+            },
+            {
+              "kind": "highpass",
+              "hz": 60
+            }
+          ],
+          "drive": 2,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "osc",
+            "wave": "sine",
+            "hz": 71.4,
+            "toHz": 37.4,
+            "sweepSeconds": 0.1
+          },
+          "envelope": {
+            "attack": 0.004,
+            "decay": 0.25875,
+            "curve": "exp"
+          },
+          "gain": 0.7,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.03,
+            "decay": 1.00625,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 630
+            }
+          ],
+          "gain": 0.45,
+          "start": 0.02,
+          "reverb": {
+            "seconds": 1.62,
+            "mix": 0.75,
+            "damp": 0.8
+          },
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        }
+      ]
+    },
+    "sniper-semi-near": {
+      "class": "weapon",
+      "seconds": 0.8,
+      "variants": 3,
+      "normalizePeakDb": -1,
+      "bounds": {
+        "peakDb": [
+          -1.5,
+          -0.5
+        ],
+        "rmsDb": [
+          -40,
+          -8
+        ],
+        "seconds": [
+          0.15,
+          0.8
+        ]
+      },
+      "layers": [
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0003,
+            "decay": 0.156,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 5400
+            },
+            {
+              "kind": "highpass",
+              "hz": 120
+            }
+          ],
+          "drive": 5,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "osc",
+            "wave": "sine",
+            "hz": 99.0,
+            "toHz": 40.5,
+            "sweepSeconds": 0.06
+          },
+          "envelope": {
+            "attack": 0.0003,
+            "decay": 0.1872,
+            "curve": "exp"
+          },
+          "gain": 0.9,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0002,
+            "decay": 0.0216,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 2600,
+              "q": 3
+            }
+          ],
+          "gain": 0.35,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0005,
+            "decay": 0.036,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 1819.9999999999998,
+              "q": 4
+            }
+          ],
+          "gain": 0.2,
+          "start": 0.055,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.006,
+            "decay": 0.6,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 1620
+            },
+            {
+              "kind": "highpass",
+              "hz": 150
+            }
+          ],
+          "gain": 0.3,
+          "start": 0.01,
+          "reverb": {
+            "seconds": 1.2,
+            "mix": 0.55,
+            "damp": 0.6
+          },
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0001,
+            "decay": 0.0072,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "highpass",
+              "hz": 3500
+            }
+          ],
+          "gain": 0.5,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        }
+      ]
+    },
+    "sniper-semi-far": {
+      "class": "weapon",
+      "seconds": 1.3,
+      "variants": 3,
+      "normalizePeakDb": -3,
+      "bounds": {
+        "peakDb": [
+          -3.5,
+          -2.5
+        ],
+        "rmsDb": [
+          -45,
+          -10
+        ],
+        "seconds": [
+          0.3,
+          1.3
+        ]
+      },
+      "layers": [
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0001,
+            "decay": 0.0048,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "highpass",
+              "hz": 2500
+            }
+          ],
+          "gain": 0.55,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.004,
+            "decay": 0.3432,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 972
+            },
+            {
+              "kind": "highpass",
+              "hz": 60
+            }
+          ],
+          "drive": 2.5,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "osc",
+            "wave": "sine",
+            "hz": 59.4,
+            "toHz": 32.4,
+            "sweepSeconds": 0.1
+          },
+          "envelope": {
+            "attack": 0.004,
+            "decay": 0.39,
+            "curve": "exp"
+          },
+          "gain": 0.7,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.03,
+            "decay": 1.5,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 630
+            }
+          ],
+          "gain": 0.45,
+          "start": 0.02,
+          "reverb": {
+            "seconds": 2.16,
+            "mix": 0.75,
+            "damp": 0.8
+          },
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        }
+      ]
+    },
+    "sniper-bolt-near": {
+      "class": "weapon",
+      "seconds": 0.8,
+      "variants": 3,
+      "normalizePeakDb": -1,
+      "bounds": {
+        "peakDb": [
+          -1.5,
+          -0.5
+        ],
+        "rmsDb": [
+          -40,
+          -8
+        ],
+        "seconds": [
+          0.15,
+          0.8
+        ]
+      },
+      "layers": [
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0003,
+            "decay": 0.208,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 4800
+            },
+            {
+              "kind": "highpass",
+              "hz": 120
+            }
+          ],
+          "drive": 5,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "osc",
+            "wave": "sine",
+            "hz": 82.5,
+            "toHz": 33.75,
+            "sweepSeconds": 0.06
+          },
+          "envelope": {
+            "attack": 0.0003,
+            "decay": 0.2496,
+            "curve": "exp"
+          },
+          "gain": 0.9,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0002,
+            "decay": 0.0288,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 2600,
+              "q": 3
+            }
+          ],
+          "gain": 0.35,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0005,
+            "decay": 0.048,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 1819.9999999999998,
+              "q": 4
+            }
+          ],
+          "gain": 0.2,
+          "start": 0.055,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.006,
+            "decay": 0.8,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 1440
+            },
+            {
+              "kind": "highpass",
+              "hz": 150
+            }
+          ],
+          "gain": 0.3,
+          "start": 0.01,
+          "reverb": {
+            "seconds": 1.2,
+            "mix": 0.55,
+            "damp": 0.6
+          },
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0001,
+            "decay": 0.0096,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "highpass",
+              "hz": 3500
+            }
+          ],
+          "gain": 0.5,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        }
+      ]
+    },
+    "sniper-bolt-far": {
+      "class": "weapon",
+      "seconds": 1.3,
+      "variants": 3,
+      "normalizePeakDb": -3,
+      "bounds": {
+        "peakDb": [
+          -3.5,
+          -2.5
+        ],
+        "rmsDb": [
+          -45,
+          -10
+        ],
+        "seconds": [
+          0.3,
+          1.3
+        ]
+      },
+      "layers": [
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0001,
+            "decay": 0.0064,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "highpass",
+              "hz": 2500
+            }
+          ],
+          "gain": 0.55,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.004,
+            "decay": 0.4576,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 918
+            },
+            {
+              "kind": "highpass",
+              "hz": 60
+            }
+          ],
+          "drive": 2.5,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "osc",
+            "wave": "sine",
+            "hz": 49.5,
+            "toHz": 27.0,
+            "sweepSeconds": 0.1
+          },
+          "envelope": {
+            "attack": 0.004,
+            "decay": 0.52,
+            "curve": "exp"
+          },
+          "gain": 0.7,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.03,
+            "decay": 2.0,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 595
+            }
+          ],
+          "gain": 0.45,
+          "start": 0.02,
+          "reverb": {
+            "seconds": 2.16,
+            "mix": 0.75,
+            "damp": 0.8
+          },
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        }
+      ]
+    },
+    "bolt-cycle": {
+      "class": "weapon",
+      "seconds": 0.6,
+      "variants": 2,
+      "normalizePeakDb": -1.5,
+      "bounds": {
+        "peakDb": [
+          -2,
+          -1
+        ],
+        "rmsDb": [
+          -50,
+          -12
+        ],
+        "seconds": [
+          0.05,
+          0.6
+        ]
+      },
+      "layers": [
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0005,
+            "decay": 0.02,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 3000,
+              "q": 3
+            }
+          ],
+          "gain": 0.8,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0005,
+            "decay": 0.03,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 2400,
+              "q": 3
+            }
+          ],
+          "start": 0.09,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "osc",
+            "wave": "square",
+            "hz": 900,
+            "toHz": 500,
+            "sweepSeconds": 0.01
+          },
+          "envelope": {
+            "attack": 0.0003,
+            "decay": 0.012,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 4000
+            }
+          ],
+          "gain": 0.2,
+          "start": 0.09,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0005,
+            "decay": 0.02,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 2400,
+              "q": 3
+            }
+          ],
+          "gain": 0.8,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          },
+          "start": 0.2
+        },
+        {
+          "source": {
+            "kind": "noise"
+          },
+          "envelope": {
+            "attack": 0.0005,
+            "decay": 0.03,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "bandpass",
+              "hz": 1920,
+              "q": 3
+            }
+          ],
+          "start": 0.29,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        },
+        {
+          "source": {
+            "kind": "osc",
+            "wave": "square",
+            "hz": 900,
+            "toHz": 500,
+            "sweepSeconds": 0.01
+          },
+          "envelope": {
+            "attack": 0.0003,
+            "decay": 0.012,
+            "curve": "exp"
+          },
+          "filters": [
+            {
+              "kind": "lowpass",
+              "hz": 4000
+            }
+          ],
+          "gain": 0.2,
+          "start": 0.29,
+          "jitter": {
+            "hz": 0.06,
+            "gain": 0.08,
+            "seconds": 0.08
+          }
+        }
+      ]
+    },
     "reload-out": {
       "class": "weapon",
       "seconds": 0.25,

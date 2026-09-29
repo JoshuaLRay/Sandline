@@ -66,8 +66,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-020](docs/backlog/U-020.md) | Add the roster’s missing weapon archetypes (umbrella: acceptance walk once its leaves are DONE) | Squad | P2 | BLOCKED | U-040, U-041, U-042, U-043 | — |
 | [U-040](docs/backlog/U-040.md) | Weapon data contract and the roster's firearm definitions | Squad | P2 | DONE | U-019 | [#193](https://github.com/JoshuaLRay/Sandline/pull/193) |
 | [U-041](docs/backlog/U-041.md) | Carry the roster weapons on the wire | Squad | P2 | DONE | U-040 | [#198](https://github.com/JoshuaLRay/Sandline/pull/198) |
-| [U-042](docs/backlog/U-042.md) | Distinct models for the roster weapons, and the left-handed rifle | Squad | P2 | REVIEW | U-040 | task/U-042-roster-models |
-| [U-043](docs/backlog/U-043.md) | Distinct report and handling sounds for the roster weapons | Audio | P2 | READY | U-040 | — |
+| [U-042](docs/backlog/U-042.md) | Distinct models for the roster weapons, and the left-handed rifle | Squad | P2 | DONE | U-040 | [#199](https://github.com/JoshuaLRay/Sandline/pull/199) |
+| [U-043](docs/backlog/U-043.md) | Distinct report and handling sounds for the roster weapons | Audio | P2 | REVIEW | U-040 | task/U-043-roster-sounds |
 | [U-021](docs/backlog/U-021.md) | Bind six persistent characters to the squad slots | Squad | P2 | BLOCKED | U-019, U-020 | — |
 | [U-022](docs/backlog/U-022.md) | Implement dual-primary rules for Preach and Support | Squad | P2 | BLOCKED | U-018, U-020, U-021 | — |
 | [U-029](docs/backlog/U-029.md) | Enforce squad weapon exchanges and left-handed loot access | Squad | P2 | BLOCKED | U-018, U-020, U-021 | — |

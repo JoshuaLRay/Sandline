@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { SOUNDS, WEAPONS, WEAPON_SOUNDS, getWeapon, shotIntervalSeconds } from '@sandline/shared';
 import { AudioEngine } from './engine.ts';
 import { fakeContext } from './fakeAudio.ts';
-import { ReloadWatcher, ShotDeduper, gunSoundPlan } from './weaponSounds.ts';
+import { cycleSoundPlan, ReloadWatcher, ShotDeduper, gunSoundPlan } from './weaponSounds.ts';
 
 describe('gunSoundPlan (T-2.46)', () => {
   it('plays the near report close, the far one far, and both at equal power between', () => {
@@ -122,5 +122,14 @@ describe('automatic fire through the engine (T-2.46)', () => {
       for (let i = 1; i < played.length; i += 1) expect(played[i], `${id} shot ${i}`).not.toBe(played[i - 1]);
       expect(new Set(played).size).toBe(SOUNDS.sounds.get(near)!.variants);
     }
+  });
+});
+
+describe('the bolt-action cycle (U-043)', () => {
+  it('a bolt-action gun plans a bolt sound after its shot; no other gun does', () => {
+    const plan = cycleSoundPlan('sniper-bolt-left');
+    expect(plan).toEqual({ sound: 'bolt-cycle', delaySeconds: WEAPON_SOUNDS.guns['sniper-bolt-left']!.cycle!.delaySeconds });
+    for (const id of Object.keys(WEAPONS)) if (id !== 'sniper-bolt-left') expect(cycleSoundPlan(id), id).toBeNull();
+    expect(cycleSoundPlan('no-such-gun')).toBeNull();
   });
 });

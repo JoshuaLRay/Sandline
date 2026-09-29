@@ -1,5 +1,5 @@
 {
-  "$comment": "T-2.46: which sounds a gun makes. U-020: the roster guns (smg, carbine-scoped, sniper-semi, sniper-bolt-left) borrow an existing gun's report until U-043 gives them their own. Every gun (the loadout's four and the LMG) has a near and a far report; between `crossfade.nearM` and `crossfade.farM` the two are blended at equal power. The handling sounds are shared by every gun; a reload plays `reloadOut` when it starts, `reloadIn` at `stages.in` of the way through and `reloadBolt` at `stages.bolt`.",
+  "$comment": "T-2.46: which sounds a gun makes. U-043: the roster guns (smg, carbine-scoped, sniper-semi, sniper-bolt-left) have their own reports, and a bolt-action gun has a `cycle` sound played `delaySeconds` after each shot. Every gun (the loadout's four and the LMG) has a near and a far report; between `crossfade.nearM` and `crossfade.farM` the two are blended at equal power. The handling sounds are shared by every gun; a reload plays `reloadOut` when it starts, `reloadIn` at `stages.in` of the way through and `reloadBolt` at `stages.bolt`.",
   "crossfade": { "nearM": 25, "farM": 90 },
   "guns": {
     "carbine": { "near": "carbine-near", "far": "carbine-far" },
@@ -8,10 +8,10 @@
     "sidearm": { "near": "sidearm-near", "far": "sidearm-far" },
     "knife": { "near": "equip", "far": "equip" },
     "lmg": { "near": "lmg-near", "far": "lmg-far" },
-    "smg": { "near": "carbine-near", "far": "carbine-far" },
-    "carbine-scoped": { "near": "carbine-near", "far": "carbine-far" },
-    "sniper-semi": { "near": "marksman-near", "far": "marksman-far" },
-    "sniper-bolt-left": { "near": "marksman-near", "far": "marksman-far" }
+    "smg": { "near": "smg-near", "far": "smg-far" },
+    "carbine-scoped": { "near": "carbine-scoped-near", "far": "carbine-scoped-far" },
+    "sniper-semi": { "near": "sniper-semi-near", "far": "sniper-semi-far" },
+    "sniper-bolt-left": { "near": "sniper-bolt-near", "far": "sniper-bolt-far", "cycle": { "sound": "bolt-cycle", "delaySeconds": 0.55 } }
   },
   "handling": { "reloadOut": "reload-out", "reloadIn": "reload-in", "reloadBolt": "reload-bolt", "dryFire": "dry-fire", "equip": "equip" },
   "stages": { "in": 0.55, "bolt": 0.85 }
