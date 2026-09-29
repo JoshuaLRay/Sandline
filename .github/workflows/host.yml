@@ -84,6 +84,14 @@ jobs:
           fi
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Configure voice notification token
+        if: steps.token.outputs.present == 'true'
+        run: |
+          app="$(sed -nE 's/^app *= *"([^"]+)".*/\1/p' fly.toml)"
+          flyctl secrets set --app "$app" --stage VOICE_GITHUB_DISPATCH_TOKEN="$VOICE_GITHUB_DISPATCH_TOKEN"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          VOICE_GITHUB_DISPATCH_TOKEN: ${{ secrets.GH_PAT }}
       - name: Deploy
         if: steps.token.outputs.present == 'true'
         run: flyctl deploy --remote-only --ha=false

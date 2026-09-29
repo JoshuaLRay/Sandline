@@ -28,12 +28,15 @@ import { flyEnvironment, flyPeers } from './allocator/flyPeers.ts';
 import { loadConfig } from './config.ts';
 import { createLogger } from './log.ts';
 import { VoiceIntake } from './voice/intake.ts';
+import { githubVoiceNotification } from './voice/githubNotification.ts';
 
 const config = loadConfig();
 const intakeSettings = [process.env['VOICE_INTAKE_DIR'], process.env['VOICE_SITE_ORIGIN']];
 if (intakeSettings.some(Boolean) && !intakeSettings.every(Boolean)) throw new Error('Set VOICE_INTAKE_DIR and VOICE_SITE_ORIGIN together');
 const voiceIntake = process.env['VOICE_INTAKE_DIR'] && process.env['VOICE_SITE_ORIGIN']
-  ? new VoiceIntake({ dir: process.env['VOICE_INTAKE_DIR'], inviteKey: 'JRay', origin: process.env['VOICE_SITE_ORIGIN'] }) : undefined;
+  ? new VoiceIntake({ dir: process.env['VOICE_INTAKE_DIR'], inviteKey: 'JRay', origin: process.env['VOICE_SITE_ORIGIN'],
+    ...(process.env['VOICE_GITHUB_DISPATCH_TOKEN'] ? { onFinished: githubVoiceNotification(process.env['VOICE_GITHUB_DISPATCH_TOKEN']) } : {}),
+  }) : undefined;
 const log = createLogger(config.logLevel);
 const campaigns = new CampaignDatabase(config.campaignDbPath);
 const identity = new Identity({

@@ -3,6 +3,7 @@ import { createServer, type Server } from 'node:http';
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { vi } from 'vitest';
 import { VOICE_CONSENT_TEXT } from '@sandline/shared';
 import { VoiceIntake } from './intake.ts';
 
@@ -17,9 +18,9 @@ afterEach(async () => {
   dir = '';
 });
 
-async function setup(key = KEY): Promise<string> {
+async function setup(key = KEY, onFinished?: (submission: { id: string; name: string; clips: number }) => Promise<void>): Promise<string> {
   dir = mkdtempSync(join(tmpdir(), 'sandline-voice-'));
-  const intake = new VoiceIntake({ dir, inviteKey: key, origin: ORIGIN });
+  const intake = new VoiceIntake({ dir, inviteKey: key, origin: ORIGIN, ...(onFinished ? { onFinished } : {}) });
   server = createServer((req, res) => void intake.handle(req, res));
   await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -28,6 +29,22 @@ async function setup(key = KEY): Promise<string> {
 }
 
 describe('private voice intake', () => {
+  it('notifies once when finished, persists completion and retries a failed delivery', async () => {
+    const notify = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue(undefined);
+    const url = await setup(KEY, notify);
+    const created = await fetch(`${url}/voice-submissions`, { method: 'POST', headers: { origin: ORIGIN, 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Mia', invite: KEY, agree: true, consent: VOICE_CONSENT_TEXT }) });
+    const { id, token } = await created.json() as { id: string; token: string };
+    const headers = { origin: ORIGIN, 'x-submission-token': token };
+    expect((await fetch(`${url}/voice-submissions/${id}/hit-hurt`, { method: 'PUT', headers: { ...headers, 'content-type': 'audio/webm' }, body: Buffer.alloc(1400) })).status).toBe(200);
+    const finish = () => fetch(`${url}/voice-submissions/${id}/finish`, { method: 'POST', headers });
+    expect((await finish()).status).toBe(503);
+    expect(JSON.parse(readFileSync(join(dir, id, 'submission.json'), 'utf8')).complete).toBe(true);
+    expect((await finish()).status).toBe(200);
+    expect((await finish()).status).toBe(200);
+    expect(notify).toHaveBeenCalledTimes(2);
+    expect(notify).toHaveBeenCalledWith({ id, name: 'Mia', clips: 1 });
+  });
   it('accepts JRay in any capitalization and still rejects a different code', async () => {
     const url = await setup('JRay');
     const send = (invite: string) => fetch(`${url}/voice-submissions`, {
