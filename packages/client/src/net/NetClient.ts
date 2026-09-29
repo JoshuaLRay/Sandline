@@ -1430,6 +1430,31 @@ export class NetClient {
           this.primaryValue = (weapon[4 + PROJECTILE_IDS.length] as number | undefined) ?? null;
         }
         const velocity = entity.components[V];
+        if (this.spectatedSlotValue >= 0) {
+          // Our seat is AI-driven while we spectate. Draw and follow the host's
+          // position like the other soldiers instead of a frozen predictor.
+          remotesSeen.add(entity.netId);
+          this.remoteGoneAt.delete(entity.netId);
+          let buffer = this.buffers.get(entity.netId);
+          if (!buffer) {
+            buffer = new InterpolationBuffer();
+            this.buffers.set(entity.netId, buffer);
+          }
+          buffer.push({ tick, serverTimeMs: serverMs, x, y, z,
+            yaw: (transform[3] as number) & 0x3ff,
+            pitch: ((transform[4] as number | undefined) ?? 0) & 0x3ff,
+            crouched: (crouch?.[0] as number | undefined) === 1,
+            prone: (crouch?.[1] as number | undefined) === 1,
+            vaultElapsed: vaultFromLevels(entity.components[COMPONENT_IDS.Vault])?.elapsed ?? null,
+          });
+          if (weapon) this.remoteWeapons.set(entity.netId, {
+            index: (weapon[0] as number | undefined) ?? 0,
+            reloadProgress: ((weapon[1] as number | undefined) ?? 0) / 100,
+            pouch: ((weapon[2] as number | undefined) ?? 0) - 1,
+          });
+          if (health) this.remoteVitalities.set(entity.netId, vitalityFromCode((health[2] as number | undefined) ?? 0));
+          continue;
+        }
         this.reconcile(
           {
             x,

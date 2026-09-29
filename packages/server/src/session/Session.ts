@@ -2358,9 +2358,14 @@ export class Session {
     const addressed = a.to === 'slot' ? [a.index] : a.to === 'fireteam' ? [...SQUAD_CONFIG.fireteams[a.index]!.slots] : this.slots.map((s) => s.index);
     // T-4.27: a class's orders reach the whole squad or only the giver's own fireteam.
     const reach = orderReach(this.classSlots[from.index] ?? '', from.index, addressed, SQUAD_CONFIG.fireteams);
-    // Spectating leaves the player's seat human-controlled, but their watched
-    // soldier is an ordinary bot: include it when the player commands it.
-    const bots = reach.filter((i) => this.slots[i]?.isBot === true && (!commanderOnly || this.commanders[i] === from.index));
+    // A spectator's own seat retains its human connection for command authority,
+    // but its brain drives it. It can receive that player's orders like any bot.
+    const bots = reach.filter((i) => {
+      const slot = this.slots[i];
+      if (!slot || !this.autonomous(slot)) return false;
+      return !commanderOnly || this.commanders[i] === from.index ||
+        (i === from.index && from.connection !== null && this.spectators.has(from.connection));
+    });
     if (bots.length === 0) return;
     this.bumpStat(from.index, 'ordersGiven');
     for (const i of bots) {

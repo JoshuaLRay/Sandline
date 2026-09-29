@@ -6,16 +6,20 @@
  * stale or repeated request are refused; and a reconnect after a switch
  * comes back to the soldier the player was controlling.
  */
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import {
   type Message,
   PROTOCOL_VERSION,
   TICK_SECONDS,
+  buildTree,
   createLoopbackPair,
   decodeMessage,
   encodeMessage,
 } from '@sandline/shared';
 import { Session, type SessionOptions } from './Session.ts';
+import { initNav } from '../ai/nav/NavMesh.ts';
+import { bakedCoverFor, loadWorldNavMesh } from '../ai/nav/bakedNav.ts';
+import { createBrainRegistry } from '../ai/Brain.ts';
 
 const TICK_MS = TICK_SECONDS * 1000;
 
@@ -107,6 +111,7 @@ function soldier(session: Session, index: number) {
 }
 
 describe('taking control of a bot you command (U-026)', () => {
+  beforeAll(() => initNav());
   it('spectates a human without controlling them; inputs cannot take over a human', () => {
     const r = room();
     const a = r.join('a');
@@ -158,7 +163,25 @@ describe('taking control of a bot you command (U-026)', () => {
     a.assign(3, a.slot);
     a.send({ kind: 'Order', order: 'hold', address: { to: 'all' }, point: null, target: null });
     expect(r.session.orderFor(3)?.from).toBe(a.slot);
-    expect(r.session.orderFor(1)).toBeNull();
+    expect(r.session.orderFor(b.slot)?.from).toBe(b.slot); // b's own seat is AI-driven while spectating
+  });
+
+  it('lets a mobile-style spectator order their own AI-driven seat and the other five bots', () => {
+    const r = room({ navMesh: loadWorldNavMesh('range'), cover: bakedCoverFor('range'), brainTree: buildTree('friendly', createBrainRegistry()) });
+    const a = r.join('mobile');
+    const hold = { kind: 'Order' as const, order: 'hold' as const, address: { to: 'all' as const }, point: null, target: null };
+    a.send(hold);
+    expect(r.session.orderFor(a.slot)).toBeNull(); // still controlled before spectating
+    a.spectate(a.slot);
+    expect(r.session.slots[a.slot]!.brain).not.toBeNull();
+    a.send(hold);
+    expect(r.session.slots.map((_, slot) => r.session.orderFor(slot)?.from)).toEqual([a.slot, a.slot, a.slot, a.slot, a.slot, a.slot]);
+    a.send({ ...hold, address: { to: 'slot', index: a.slot } });
+    expect(r.session.orderFor(a.slot)?.order).toBe('hold');
+    const at = { ...r.session.slots[a.slot]!.state };
+    a.send({ kind: 'Order', order: 'move', address: { to: 'slot', index: a.slot }, point: { x: at.x + 3, y: at.y, z: at.z }, target: null });
+    r.step(90);
+    expect(Math.hypot(r.session.slots[a.slot]!.state.x - at.x, r.session.slots[a.slot]!.state.z - at.z)).toBeGreaterThan(0.5);
   });
 
   it('solo with bots: one message swaps the controller and nothing else, and inputs drive the new soldier', () => {
