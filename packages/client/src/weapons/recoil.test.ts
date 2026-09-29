@@ -33,6 +33,8 @@ const RIFLE: WeaponDef = {
   magSize: 30,
   reloadSeconds: 2,
   auto: true,
+  action: 'auto',
+  handedness: 'right',
   recoilKickDeg: 0.5,
   recoilDriftDeg: 0.25,
   recoilMaxDeg: 4,

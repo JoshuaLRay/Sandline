@@ -62,7 +62,7 @@ export const JSON_ORDER: (keyof WeaponDef)[] = [
   'id', 'name', 'rpm', 'damage', 'pellets', 'hipSpreadDeg', 'adsSpreadDeg',
   'proneSpreadScale', 'bloomPerShotDeg', 'maxSpreadDeg', 'bloomDecayDegPerSec', 'falloffStartM',
   'falloffEndM', 'falloffMinFraction', 'maxRangeM', 'magSize', 'reloadSeconds',
-  'auto',
+  'auto', 'action', 'handedness',
   'recoilKickDeg', 'recoilDriftDeg', 'recoilMaxDeg', 'recoilRecoveryPerSec', 'recoilAdsScale',
   'shakePosM', 'shakeRollDeg',
   'scopeFovDeg',
@@ -124,6 +124,8 @@ export function createWeaponPanel(combat: CombatQA): Panel {
       () => def.auto,
       (value) => {
         def.auto = value;
+        // Keep the cycle in step with the flag, so a pasted-back row still loads (U-020).
+        def.action = value ? 'auto' : def.action === 'auto' ? 'semi' : def.action;
         refreshReadout();
       },
     );

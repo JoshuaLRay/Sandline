@@ -5,6 +5,7 @@ import {
   WEAPONS,
   WEAPON_IDS,
   allowsFire,
+  canWield,
   type WeaponDef,
   createWeaponState,
   currentConeUnits,
@@ -60,6 +61,8 @@ const FIXTURE: WeaponDef = {
   magSize: 5,
   reloadSeconds: 2,
   auto: true,
+  action: 'auto',
+  handedness: 'right',
   recoilKickDeg: 1,
   recoilDriftDeg: 0.5,
   recoilMaxDeg: 5,
@@ -308,8 +311,8 @@ describe('prone cone (T-2.42)', () => {
 });
 
 describe('weapon data', () => {
-  it('scopes the marksman only, and refuses a scope wider than the view', () => {
-    expect(Object.values(WEAPONS).filter((w) => w.scopeFovDeg !== undefined).map((w) => w.id)).toEqual(['marksman']);
+  it('scopes the marksman and the roster optics only, and refuses a scope wider than the view', () => {
+    expect(Object.values(WEAPONS).filter((w) => w.scopeFovDeg !== undefined).map((w) => w.id)).toEqual(['marksman', 'carbine-scoped', 'sniper-semi', 'sniper-bolt-left']);
     const row = { ...WEAPONS['carbine'], scopeFovDeg: 90 };
     expect(() => parseWeaponTable({ carbine: row })).toThrow(/scopeFovDeg/);
     expect(parseWeaponTable({ carbine: { ...row, scopeFovDeg: 20 } })['carbine']!.scopeFovDeg).toBe(20);
@@ -371,5 +374,61 @@ describe('reload progress (T-2.26)', () => {
     finishReload(def, state, 10 + def.reloadSeconds);
     expect(reloadProgress(def, state, 10 + def.reloadSeconds + 1)).toBe(0);
     expect(state.ammo).toBe(def.magSize);
+  });
+});
+
+describe('the roster weapons (U-020)', () => {
+  it('every weapon says how it cycles and which hand it is built for, and the two agree with `auto`', () => {
+    for (const def of Object.values(WEAPONS)) {
+      expect(['auto', 'semi', 'bolt']).toContain(def.action);
+      expect(['right', 'left']).toContain(def.handedness);
+      expect(def.auto).toBe(def.action === 'auto');
+    }
+    expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', action: 'pump' } })).toThrow(/"a": action/);
+    expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', handedness: 'both' } })).toThrow(/"a": handedness/);
+    expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', action: 'semi' } })).toThrow(/contradicts auto/);
+    expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', auto: false } })).toThrow(/contradicts auto/);
+  });
+
+  it('slot 4 starts with a left-handed bolt-action sniper and slot 5 with a semi-automatic one', () => {
+    const bolt = getWeapon('sniper-bolt-left');
+    expect(bolt).toMatchObject({ action: 'bolt', handedness: 'left', auto: false });
+    expect(getWeapon('sniper-semi')).toMatchObject({ action: 'semi', handedness: 'right', auto: false });
+    // Bolt-action is the slowest cycle of the rifles, the semi-automatic sniper faster than it.
+    expect(bolt.rpm).toBeLessThan(getWeapon('sniper-semi').rpm);
+    expect(bolt.rpm).toBeLessThan(getWeapon('marksman').rpm);
+    // Both are scoped and out-range the marksman.
+    for (const id of ['sniper-bolt-left', 'sniper-semi']) {
+      expect(getWeapon(id).scopeFovDeg).toBeDefined();
+      expect(getWeapon(id).maxRangeM).toBeGreaterThan(getWeapon('marksman').maxRangeM);
+    }
+  });
+
+  it('the support has a full-auto SMG, the scoped AR a scoped full-auto rifle, and the rest of the roster exists', () => {
+    expect(getWeapon('smg')).toMatchObject({ action: 'auto', auto: true, pellets: 1 });
+    expect(getWeapon('smg').magSize).toBeGreaterThan(getWeapon('carbine').magSize);
+    expect(getWeapon('carbine-scoped')).toMatchObject({ action: 'auto', auto: true });
+    expect(getWeapon('carbine-scoped').scopeFovDeg).toBeDefined();
+    expect(getWeapon('carbine-scoped').adsSpreadDeg).toBeLessThan(getWeapon('carbine').adsSpreadDeg);
+    for (const id of ['carbine', 'lmg', 'breacher']) expect(getWeapon(id).handedness).toBe('right');
+  });
+
+  it('a left-handed-only soldier may wield only left-handed guns; everyone else, any', () => {
+    for (const def of Object.values(WEAPONS)) {
+      expect(canWield(def, false)).toBe(true);
+      expect(canWield(def, true)).toBe(def.handedness === 'left');
+    }
+    expect(Object.values(WEAPONS).filter((w) => w.handedness === 'left').map((w) => w.id)).toEqual(['sniper-bolt-left']);
+  });
+
+  it('a bolt-action rifle shoots at its own slow cadence and needs a fresh pull each time', () => {
+    const bolt = getWeapon('sniper-bolt-left');
+    const state = createWeaponState(bolt);
+    expect(allowsFire(bolt, true, false)).toBe(false);
+    expect(allowsFire(bolt, false, true)).toBe(true);
+    expect(tryFire(bolt, state, 0, false)).not.toBeNull();
+    // Not again until the bolt has cycled: 60 / rpm seconds.
+    expect(tryFire(bolt, state, 0.5, false)).toBeNull();
+    expect(tryFire(bolt, state, 60 / bolt.rpm + 0.001, false)).not.toBeNull();
   });
 });
