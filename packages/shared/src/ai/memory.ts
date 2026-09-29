@@ -11,8 +11,8 @@
  *
  * Target choice scores every remembered target — the visible above the
  * remembered, the close above the far, the one shooting at it above the rest
- * — and deprioritises the downed by `downedFactor`. At 0 (committed) a downed
- * target is chosen only when nothing else is known.
+ * — and never chooses a downed one (U-031): a downed target is not a firearm
+ * target, however little else is known.
  *
  * Plain data and pure functions: time is the `now` (seconds) handed in, and
  * entries are kept in a `Map`, whose insertion order makes ties deterministic.
@@ -33,8 +33,6 @@ export interface MemoryConfig {
   proximityM: number;
   /** Score multiplier for a target shooting at the brain. */
   threatFactor: number;
-  /** Score multiplier for a downed target. 0: only when nothing else is known. */
-  downedFactor: number;
 }
 
 export interface MemoryEntry {
@@ -66,7 +64,7 @@ export interface TargetMemory {
 /** Hand-written for the reason `weapons.ts` gives: zod would be a new runtime dep. */
 class MemoryDataError extends Error {}
 
-const KEYS = ['forgetSeconds', 'threatSeconds', 'visibleWeight', 'proximityM', 'threatFactor', 'downedFactor'] as const;
+const KEYS = ['forgetSeconds', 'threatSeconds', 'visibleWeight', 'proximityM', 'threatFactor'] as const;
 
 export function parseMemoryConfig(raw: unknown): MemoryConfig {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new MemoryDataError('memory: expected an object');
@@ -85,9 +83,8 @@ export function parseMemoryConfig(raw: unknown): MemoryConfig {
     // At least 1: seeing a target is never worth less than being sure of it unseen.
     visibleWeight: num('visibleWeight', 1, 100),
     proximityM: num('proximityM', 0.1, 1000),
-    // "Prefers the one shooting at it" and "deprioritises the downed" are the rule.
+    // "Prefers the one shooting at it" is the rule.
     threatFactor: num('threatFactor', 1, 100),
-    downedFactor: num('downedFactor', 0, 1),
   });
 }
 
@@ -185,7 +182,7 @@ export function forgetTarget(memory: TargetMemory, netId: number): void {
 // Target choice
 // ---------------------------------------------------------------------------
 
-/** A target's score from `from` at `now`, before the downed discount. 0 once forgotten. */
+/** A target's score from `from` at `now`, 0 once forgotten. Downed targets are excluded by `chooseTarget`, not scored down. */
 export function targetScore(entry: MemoryEntry, from: Vec3, now: number, config: MemoryConfig = MEMORY): number {
   if (isForgotten(entry, now, config)) return 0;
   const base = entry.visible ? config.visibleWeight : confidenceAt(entry, now, config);
@@ -198,28 +195,20 @@ export function targetScore(entry: MemoryEntry, from: Vec3, now: number, config:
 }
 
 /**
- * The target to engage, or null when nothing is remembered. Highest score
- * wins, downed targets scaled by `downedFactor`; when that leaves nothing
- * above zero, the best downed target is still better than none. Ties go to
- * the one remembered first.
+ * The target to engage, or null when no living target is remembered. Highest
+ * score wins; a downed target is never chosen (U-031), and is still kept in
+ * memory for any later capture behaviour. Ties go to the one remembered first.
  */
 export function chooseTarget(memory: TargetMemory, from: Vec3, now: number, config: MemoryConfig = MEMORY): number | null {
   let best: number | null = null;
   let bestScore = 0;
-  let fallback: number | null = null;
-  let fallbackScore = 0;
   for (const entry of memory.entries.values()) {
-    const raw = targetScore(entry, from, now, config);
-    if (raw <= 0) continue;
-    const score = entry.downed ? raw * config.downedFactor : raw;
+    if (entry.downed) continue;
+    const score = targetScore(entry, from, now, config);
     if (score > bestScore) {
       best = entry.netId;
       bestScore = score;
     }
-    if (entry.downed && raw > fallbackScore) {
-      fallback = entry.netId;
-      fallbackScore = raw;
-    }
   }
-  return best ?? fallback;
+  return best;
 }
