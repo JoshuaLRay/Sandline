@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { WEAPON_IDS } from '@sandline/shared';
-import { weaponIndexForKey, type WeaponKeyContext } from './weaponKey.ts';
+import { deviceSlotForKey, weaponIndexForKey, type WeaponKeyContext } from './weaponKey.ts';
 
 const ready = (overrides: Partial<WeaponKeyContext> = {}): WeaponKeyContext => ({
   orderWheelOpen: false,
@@ -34,7 +34,10 @@ describe('weapon slot keys (U-005)', () => {
     expect(weaponIndexForKey('Digit2', ready())).toBe(WEAPON_IDS.indexOf('sidearm'));
     expect(weaponIndexForKey('Digit3', ready())).toBe(WEAPON_IDS.indexOf('knife'));
     expect(weaponIndexForKey('Digit3', ready({ loadoutGuns: ['carbine', 'sidearm'] }))).toBe(WEAPON_IDS.indexOf('knife'));
-    expect(weaponIndexForKey('Digit4', ready())).toBe(WEAPON_IDS.indexOf('marksman'));
+    // 4 is the grenade now (U-045); the range's extra QA guns moved to 7 and 8.
+    expect(weaponIndexForKey('Digit4', ready())).toBeNull();
+    expect(weaponIndexForKey('Digit7', ready())).toBe(WEAPON_IDS.indexOf('marksman'));
+    expect(weaponIndexForKey('Digit7', ready({ loadoutGuns: ['carbine', 'sidearm'] }))).toBeNull();
   });
 
   it('key 1 draws the primary the host says — a gun taken off the ground — and 2 keeps the pistol (U-018)', () => {
@@ -58,5 +61,20 @@ describe('weapon slot keys (U-005)', () => {
       expect(weaponIndexForKey('Digit3', ready(overrides))).toBeNull();
     }
     expect(weaponIndexForKey('KeyQ', ready())).toBeNull();
+  });
+});
+
+describe('device slot keys (U-045)', () => {
+  it('4 is the grenade, 5 the equipment and 6 the health kits', () => {
+    expect(deviceSlotForKey('Digit4', ready())).toBe('grenade');
+    expect(deviceSlotForKey('Digit5', ready())).toBe('equipment');
+    expect(deviceSlotForKey('Digit6', ready())).toBe('health');
+    for (const code of ['Digit1', 'Digit2', 'Digit3', 'Digit7', 'KeyG']) expect(deviceSlotForKey(code, ready())).toBeNull();
+  });
+
+  it('takes nothing while the wheel, a menu or a text field has the keys, or when downed or mounted', () => {
+    for (const overrides of [{ orderWheelOpen: true }, { menuOpen: true }, { textFieldFocused: true }, { alive: false }, { mounted: true }]) {
+      for (const code of ['Digit4', 'Digit5', 'Digit6']) expect(deviceSlotForKey(code, ready(overrides))).toBeNull();
+    }
   });
 });

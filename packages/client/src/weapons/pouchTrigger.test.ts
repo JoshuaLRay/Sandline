@@ -8,8 +8,6 @@ const idle: PouchTriggerSample = {
   triggerHeld: false,
   triggerReleased: false,
   ads: false,
-  throwHeld: false,
-  throwReleased: false,
 };
 
 describe('the trigger with a grenade in hand', () => {
@@ -60,16 +58,10 @@ describe('the trigger with a rocket in hand', () => {
   });
 });
 
-describe('the quick-throw key', () => {
-  it('aims and throws the selected item whatever is in hand', () => {
-    const t = new PouchTrigger();
-    expect(t.update({ ...idle, holding: false, throwHeld: true })).toEqual({ aiming: true, launch: false });
-    expect(t.update({ ...idle, holding: false, throwReleased: true })).toEqual({ aiming: false, launch: true });
-  });
-
-  it('ignores the trigger while a gun is in hand', () => {
+describe('no quick-throw key (U-045)', () => {
+  it('does nothing while a gun is in hand: a grenade must be drawn first', () => {
     const t = new PouchTrigger();
     expect(t.update({ ...idle, holding: false, triggerEdge: true, triggerHeld: true })).toEqual({ aiming: false, launch: false });
-    expect(t.update({ ...idle, holding: false, triggerReleased: true }).launch).toBe(false);
+    expect(t.update({ ...idle, holding: false, triggerReleased: true })).toEqual({ aiming: false, launch: false });
   });
 });
