@@ -63,6 +63,7 @@ export function commandKey(rows: readonly CommandRow[]): string {
 export function watchedStatus(rows: readonly CommandRow[], watched: number, mySlot: number): string {
   const row = rows.find((entry) => entry.slot === watched);
   if (!row) return '';
+  if (watched === mySlot && !row.human) return 'Your bot · AI-controlled while spectating';
   if (row.human) return watched === mySlot ? 'Human-controlled seat · AI while spectating' : 'Human controlled · watch only';
   if (row.commander === mySlot) return 'Under your command · orders and takeover available';
   return 'Under another player’s command · takeover on PC transfers command';

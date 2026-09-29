@@ -140,7 +140,7 @@ export function createMobileCommand(parent: HTMLElement, actions: {
     });
     heading('Commander assignments');
     for (const row of rows) {
-      if (row.human) continue;
+      if (row.human || row.slot === mySlot) continue;
       const assignment = document.createElement('label');
       assignment.className = 'mobile-assignment';
       assignment.textContent = row.label;

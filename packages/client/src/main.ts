@@ -1734,10 +1734,14 @@ const mobileCommand = createMobileCommand(document.body, {
     const rect = renderer.domElement.getBoundingClientRect();
     const pointer = new THREE.Vector2((x - rect.left) / rect.width * 2 - 1, -((y - rect.top) / rect.height * 2 - 1));
     const ray = new THREE.Raycaster();
+    camera.updateMatrixWorld();
     ray.setFromCamera(pointer, camera);
     ray.far = AIM_RANGE;
-    const hit = ray.intersectObjects(shootable, false)[0];
-    const point = hit?.point ?? ray.ray.at(AIM_RANGE, new THREE.Vector3());
+    const ownBody = remotes.get(live.net.netId);
+    const hit = ray.intersectObjects(shootable, false).find(candidate => candidate.object !== ownBody);
+    // An upward/horizon tap can miss the finite ground mesh. Keep its fallback
+    // on the ground at a nearby world coordinate, never at the camera's far plane.
+    const point = hit?.point ?? ray.ray.at(30, new THREE.Vector3()).setY(config.groundY);
     const id = hit ? remotes.netIdOf(hit.object) : null;
     const enemy = id !== null && live.net.remoteEnemy(id) !== null;
     const vitality = id === null ? 'alive' : live.net.remoteVitality(id);
@@ -1755,18 +1759,34 @@ const mobileCommand = createMobileCommand(document.body, {
 });
 let mobileLookYaw = 0;
 let mobileLookPitch = 0;
+let mobileCameraDistance = 3;
 let mobileDrag: { id: number; x: number; y: number; startX: number; startY: number; moved: boolean } | null = null;
 let lastMobileTap: { x: number; y: number; at: number } | null = null;
 if (mobileMode) {
   renderer.domElement.style.touchAction = 'none';
+  const touches = new Map<number, { x: number; y: number }>();
+  let pinch: { span: number; distance: number } | null = null;
   renderer.domElement.addEventListener('pointerdown', event => {
     if (event.pointerType !== 'touch' || !live || menu.mode !== 'hidden') return;
-    if (mobileDrag) { mobileDrag = null; lastMobileTap = null; return; }
+    touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    renderer.domElement.setPointerCapture(event.pointerId);
+    if (touches.size > 1) {
+      mobileDrag = null;
+      lastMobileTap = null;
+      const [a, b] = [...touches.values()];
+      if (a && b) pinch = { span: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), distance: mobileCameraDistance };
+      return;
+    }
     mobileDrag = { id: event.pointerId, x: event.clientX, y: event.clientY,
       startX: event.clientX, startY: event.clientY, moved: false };
-    renderer.domElement.setPointerCapture(event.pointerId);
   });
   renderer.domElement.addEventListener('pointermove', event => {
+    if (touches.has(event.pointerId)) touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pinch && touches.size >= 2) {
+      const [a, b] = [...touches.values()];
+      if (a && b) mobileCameraDistance = Math.max(3, Math.min(9, pinch.distance * pinch.span / Math.max(1, Math.hypot(a.x - b.x, a.y - b.y))));
+      return;
+    }
     if (!mobileDrag || event.pointerId !== mobileDrag.id) return;
     const dx = event.clientX - mobileDrag.x;
     const dy = event.clientY - mobileDrag.y;
@@ -1780,6 +1800,13 @@ if (mobileMode) {
     mobileDrag.y = event.clientY;
   });
   renderer.domElement.addEventListener('pointerup', event => {
+    touches.delete(event.pointerId);
+    if (pinch) {
+      if (touches.size < 2) pinch = null;
+      mobileDrag = null;
+      lastMobileTap = null;
+      return;
+    }
     if (!mobileDrag || event.pointerId !== mobileDrag.id) return;
     const moved = mobileDrag.moved;
     mobileDrag = null;
@@ -1793,7 +1820,12 @@ if (mobileMode) {
       lastMobileTap = { x: event.clientX, y: event.clientY, at: now };
     }
   });
-  renderer.domElement.addEventListener('pointercancel', () => { mobileDrag = null; lastMobileTap = null; });
+  renderer.domElement.addEventListener('pointercancel', event => {
+    touches.delete(event.pointerId);
+    pinch = null;
+    mobileDrag = null;
+    lastMobileTap = null;
+  });
 }
 if (new URLSearchParams(location.search).has('record-voice')) showVoiceSubmission(document.body, __DEFAULT_HOST__);
 
@@ -2031,7 +2063,10 @@ function frame(): void {
   if (mobileMode) {
     mobileCommand.root.hidden = !net || menu.mode !== 'hidden';
     if (net && net.slot >= 0) {
-      mobileCommand.update(commandRows(net.roster, net.slot), net.spectatedSlot, net.slot);
+      const rows = commandRows(net.roster, net.slot).map(row => row.slot === net.slot
+        ? { ...row, label: row.label.replace('(you)', '(your bot)'), human: false, commander: net.slot }
+        : row);
+      mobileCommand.update(rows, net.spectatedSlot, net.slot);
       if (net.spectatedSlot < 0 && (!mobileSpectateRequested || now - mobileSpectateAttemptAt > 1000)) {
         const target = initialMobileSpectateSlot(net.roster, net.slot);
         if (target !== null) {
@@ -2354,6 +2389,12 @@ function frame(): void {
     rx = smoothed.x;
     ry = smoothed.y;
     rz = smoothed.z;
+  }
+  const spectatorSelf = net?.spectatedSlot !== undefined && net.spectatedSlot >= 0 ? net.remotes().get(net.netId) : null;
+  if (spectatorSelf) {
+    rx = spectatorSelf.x;
+    ry = spectatorSelf.y;
+    rz = spectatorSelf.z;
   }
 
   // Classify the rendered result, not the input. This keeps presentation tied to
@@ -2781,7 +2822,8 @@ function frame(): void {
     if (watched || own) {
       const yaw = wireToRadians(watched?.yaw ?? input.viewYaw) + (mobileMode ? mobileLookYaw : 0);
       const at = watched ?? own!;
-      camera.position.set(at.x - Math.sin(yaw) * 3, at.y + 2.2, at.z - Math.cos(yaw) * 3);
+      const distance = mobileMode ? mobileCameraDistance : 3;
+      camera.position.set(at.x - Math.sin(yaw) * distance, at.y + 2.2 * distance / 3, at.z - Math.cos(yaw) * distance);
       camera.rotation.set(mobileMode ? mobileLookPitch : 0, yaw + Math.PI, 0, 'YXZ');
       camSolve.position.x = camera.position.x;
       camSolve.position.y = camera.position.y;
@@ -2798,7 +2840,7 @@ function frame(): void {
   }
   // Your own character is the one thing the first-person camera sits inside.
   // Downed forces third person (B-05), so the body stays visible then too.
-  player.visible = !input.firstPerson || downed;
+  player.visible = (net?.spectatedSlot ?? -1) < 0 && (!input.firstPerson || downed);
 
   /**
    * Converge the shot on what the reticle covers.

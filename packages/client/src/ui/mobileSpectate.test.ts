@@ -7,14 +7,13 @@ const roster = (commanders: number[]): RosterEntry[] => commanders.map((commande
 }));
 
 describe('mobile first spectate target', () => {
-  it('waits for a roster and watches a bot commanded by the local player', () => {
+  it('waits for a roster then watches the local AI-driven seat', () => {
     expect(initialMobileSpectateSlot([], 0)).toBeNull();
-    expect(initialMobileSpectateSlot(roster([-1, -1, 1, 0, 1, 0]), 0)).toBe(3);
-    expect(initialMobileSpectateSlot(roster([-1, -1, 1, 0, 1, 0]), 1)).toBe(2);
+    expect(initialMobileSpectateSlot(roster([-1, -1, 1, 0, 1, 0]), 0)).toBe(0);
+    expect(initialMobileSpectateSlot(roster([-1, -1, 1, 0, 1, 0]), 1)).toBe(1);
   });
 
-  it('falls back to a bot belonging to another commander, then the own seat', () => {
-    expect(initialMobileSpectateSlot(roster([-1, -1, 1, 1, 1, 1]), 0)).toBe(2);
-    expect(initialMobileSpectateSlot(roster([-1, -1]), 0)).toBe(0);
+  it('does not start spectating before the local seat appears', () => {
+    expect(initialMobileSpectateSlot(roster([-1, -1]), 2)).toBeNull();
   });
 });

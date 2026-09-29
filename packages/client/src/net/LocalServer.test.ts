@@ -237,6 +237,35 @@ describe('the in-page session fires and throws from the stance eye the page pred
 describe('switching into a commanded bot, as the page sees it (U-026)', () => {
   beforeAll(() => initNav());
 
+  it('draws the spectating player’s own AI seat from host snapshots and accepts its orders', async () => {
+    const { TICK_SECONDS } = await import('@sandline/shared');
+    const server = new LocalServer(LAN);
+    const net = new NetClient(server.transport, 'mobile');
+    net.join();
+    settleThrough(server, 0);
+    const session = (server as unknown as { session: { slots: { state: { x: number; y: number; z: number }; brain: unknown }[]; orderFor(slot: number): unknown } }).session;
+    const ownId = net.netId;
+    let now = 0;
+    const run = (ticks: number) => {
+      for (let i = 0; i < ticks; i++) {
+        now += TICK_SECONDS * 1000;
+        server.step(now);
+        net.advanceClock(TICK_SECONDS * 1000);
+      }
+    };
+    run(20);
+    net.spectate(net.slot);
+    run(4);
+    expect(session.slots[net.slot]!.brain).not.toBeNull();
+    const start = { ...session.slots[net.slot]!.state };
+    net.order({ kind: 'Order', order: 'move', address: { to: 'slot', index: net.slot }, point: { x: start.x + 3, y: start.y, z: start.z }, target: null });
+    run(60);
+    expect(session.orderFor(net.slot)).not.toBeNull();
+    const drawn = net.remotes().get(ownId);
+    expect(drawn).toBeDefined();
+    expect(Math.hypot(drawn!.x - session.slots[net.slot]!.state.x, drawn!.z - session.slots[net.slot]!.state.z)).toBeLessThan(1);
+  });
+
   it('the page predicts the new soldier from where it stands, the old one becomes a remote, and another client sees who is whose', async () => {
     const { TICK_SECONDS } = await import('@sandline/shared');
     const server = new LocalServer(LAN);
