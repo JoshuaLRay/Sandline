@@ -1,7 +1,7 @@
 /**
  * The trigger, while a grenade or a rocket is in hand.
  *
- * The pouch items are equipped like the guns (5 and 6) and used with the same
+ * The pouch items are equipped like the guns (4 grenade, 5 equipment) and used with the same
  * button, each the way its kind is used in every shooter the player arrives
  * from:
  *
@@ -10,8 +10,8 @@
  * - a ROCKET goes on the press, like a semi-automatic, and its arc is drawn
  *   while aiming down the sight instead.
  *
- * G keeps working as a quick throw of the selected pouch item whatever is in
- * hand: hold to aim, release to throw (T-2.32).
+ * There is no quick-throw key (U-045): a grenade is drawn with its slot key
+ * (4) before it is used, like every other weapon and device. G is free.
  *
  * Only a press made WHILE the item is in hand can throw it. Switching to the
  * grenade with the trigger already down (mid-burst on the carbine, say) must
@@ -35,10 +35,6 @@ export interface PouchTriggerSample {
   triggerReleased: boolean;
   /** Aiming down the sight. */
   ads: boolean;
-  /** The quick-throw key is down now. */
-  throwHeld: boolean;
-  /** The quick-throw key came up since the last tick. */
-  throwReleased: boolean;
 }
 
 export interface PouchTriggerResult {
@@ -59,8 +55,8 @@ export class PouchTrigger {
   }
 
   update(s: PouchTriggerSample): PouchTriggerResult {
-    let aiming = s.throwHeld;
-    let launch = s.throwReleased;
+    let aiming = false;
+    let launch = false;
     if (!s.holding) {
       this.armed = false;
     } else if (s.kind === 'rocket') {

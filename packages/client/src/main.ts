@@ -110,7 +110,7 @@ import { type PlacedEmplacement, clampYawToArc, degToWire, emplacementByIndex, e
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
 import type { CameraCollider } from './camera/cameraColliders.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
-import { weaponIndexForKey } from './weapons/weaponKey.ts';
+import { deviceSlotForKey, weaponIndexForKey } from './weapons/weaponKey.ts';
 import { PROJECTILE_ORDER, ThrowQA } from './weapons/ThrowQA.ts';
 import { PouchTrigger } from './weapons/pouchTrigger.ts';
 import { VIEWMODEL_FOV, ViewModel } from './weapons/viewModel.ts';
@@ -1329,9 +1329,6 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
   // T-3.09: B's overlay, carried across sessions; the wish is resent on JoinAck.
   net.onAiDebug = (report) => aiDebug.show(report);
   net.requestAiDebug(aiDebug.isEnabled);
-  // A throw key released while there was no session to throw into is not a
-  // throw waiting to happen: drain the latch rather than open with a grenade.
-  input.consumeThrowRelease();
   // Nor is an order or a mark.
   input.consumeOrderRelease();
   input.consumeMarkPress();
@@ -2098,7 +2095,6 @@ function frame(): void {
     if (mobileMode) {
       input.consumeTriggerEdge();
       input.consumeTriggerRelease();
-      input.consumeThrowRelease();
       input.consumeOrderRelease();
       input.consumeMarkPress();
       server.step(now);
@@ -2128,7 +2124,6 @@ function frame(): void {
       spectatorPitch = input.pitchWire;
       input.consumeTriggerEdge();
       input.consumeTriggerRelease();
-      input.consumeThrowRelease();
       server.step(now);
       continue;
     }
@@ -2325,8 +2320,6 @@ function frame(): void {
       triggerHeld: input.firing,
       triggerReleased,
       ads: input.ads,
-      throwHeld: input.throwHeld,
-      throwReleased: input.consumeThrowRelease(),
     });
     if (pouch.launch && canThrow && here) {
       const direction = dirFromYawPitch(aimYaw, aimPitch);
@@ -3084,7 +3077,7 @@ addEventListener('keydown', (e) => {
     for (const id of throws.takeRetired()) dropProjectileMesh(`g${id}`);
     lastBlast = null;
   }
-  // 1-3 select primary, sidearm and knife. The Q wheel, menus, text fields,
+  // 1-3 select primary, secondary and knife. The Q wheel, menus, text fields,
   // downed state and a mounted gun all take priority over weapon selection.
   const keyContext = {
     orderWheelOpen: input.orderWheel !== null,
@@ -3101,11 +3094,15 @@ addEventListener('keydown', (e) => {
   else if (/^Digit[12]$/.test(e.code) && equipmentInputAllowed) {
     playerHud.notify(e.code === 'Digit1' ? 'No primary equipped' : 'No pistol equipped');
   }
-  // 5-6 select the pouch: each one equips it, and the trigger uses what is in hand.
-  // While the order wheel is open the number keys pick who hears it (T-3.29).
-  const slot = input.orderWheel ? -1 : Number.parseInt(e.code.replace('Digit', ''), 10);
-  if (equipmentInputAllowed && e.code.startsWith('Digit') && slot >= 5 && slot < 5 + PROJECTILE_ORDER.length) {
-    equipPouch(slot - 5);
+  // 4 grenades, 5 equipment, 6 health kits (U-045): each is drawn before it is used,
+  // and the trigger uses what is in hand. While the order wheel is open the number
+  // keys pick who hears it (T-3.29); deviceSlotForKey returns null then.
+  const device = deviceSlotForKey(e.code, keyContext);
+  if (device === 'grenade' || device === 'equipment') {
+    const index = PROJECTILE_ORDER.findIndex((id) => getProjectile(id).kind === (device === 'grenade' ? 'thrown' : 'rocket'));
+    if (index >= 0) equipPouch(index);
+  } else if (device === 'health') {
+    playerHud.notify('No health kits');
   }
   if (e.code === 'KeyH') toggleHud();
   // P asks the host to start the mission again; it only does once the mission is over (T-3.34).
