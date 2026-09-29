@@ -883,9 +883,9 @@ export class NetClient {
   }
 
   /** T-3.34: ask the host to start the mission again. It does so once the mission is over. */
-  restartMission(): void {
+  restartMission(full = false): void {
     if (!this.joinedFlag) return;
-    this.transport.send(encodeMessage({ kind: 'MissionRestart' }), 'reliable');
+    this.transport.send(encodeMessage({ kind: 'MissionRestart', full }), 'reliable');
   }
 
   /** Mark a point or an enemy (T-3.29). Reliable, like an order. */

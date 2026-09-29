@@ -44,7 +44,7 @@ export interface ServerConnectionEvents {
   onOrder?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Order' }>) => void;
   onMark?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Mark' }>) => void;
   /** T-3.34: a seated player asking for the mission to start again. */
-  onMissionRestart?: (conn: ServerConnection) => void;
+  onMissionRestart?: (conn: ServerConnection, full: boolean) => void;
   /** T-4.19: pre-mission ready/start controls. */
   onRoomCommand?: (conn: ServerConnection, msg: Extract<Message, { kind: 'RoomCommand' }>) => void;
   /** U-025: a player putting a bot under a human's command — untrusted; the session checks it. */
@@ -247,7 +247,7 @@ export class ServerConnection {
         break;
       case 'MissionRestart':
         this.lastActive = now;
-        this.events.onMissionRestart?.(this);
+        this.events.onMissionRestart?.(this, msg.full === true);
         break;
       case 'RoomCommand':
         this.lastActive = now;

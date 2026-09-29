@@ -1162,7 +1162,7 @@ export class Session {
       squadIn: (a) => living.filter((s) => inside(a)(s.state)).length,
       standing: () => standing.length,
       standingIn: (a) => standing.filter((s) => inside(a)(s.state)).length,
-      wiped: () => this.slots.every((s) => isDead(s.health)),
+      soldierDead: () => this.slots.some((s) => isDead(s.health)),
       protectedLost: (id) => {
         if (!spawner || !spawner.fired(id)) return false;
         const placed = spawner.spawnedBy(id);
@@ -1293,9 +1293,9 @@ export class Session {
   }
 
   /** A seated human asked to start again: failed missions retry their checkpoint; completed missions start over. */
-  private requestRestart(conn: ServerConnection): void {
+  private requestRestart(conn: ServerConnection, full = false): void {
     if (!this.humanFor(conn) || !this.missionRun || this.missionRun.current.state === 'progress') return;
-    if (this.missionRun.current.state === 'failed') this.retryMission();
+    if (this.missionRun.current.state === 'failed' && !full) this.retryMission();
     else this.restartMission();
   }
 
@@ -2134,7 +2134,7 @@ export class Session {
       onAiDebugRequest: (c, on) => this.applyAiDebugRequest(c, on),
       onOrder: (c, msg) => { if (this.roomStarted) this.applyOrder(c, msg); },
       onMark: (c, msg) => { if (this.roomStarted) this.applyMark(c, msg); },
-      onMissionRestart: (c) => { if (this.roomStarted) this.requestRestart(c); },
+      onMissionRestart: (c, full) => { if (this.roomStarted) this.requestRestart(c, full); },
       onRoomCommand: (c, msg) => this.applyRoomCommand(c, msg),
       onAssignCommander: (c, msg) => this.applyAssignCommander(c, msg),
       onSwitchCharacter: (c, msg) => this.applySwitchCharacter(c, msg),
@@ -3610,7 +3610,7 @@ export class Session {
        */
       if (isDead(slot.health)) {
         // T-3.34: on a mission that does not respawn, the dead wait for a restart.
-        if ((this.missionRun?.respawns ?? true) && readyToRespawn(slot.health, nowSeconds)) {
+        if (!this.missionRun && readyToRespawn(slot.health, nowSeconds)) {
           respawn(slot.health, DAMAGE, nowSeconds);
           this.applyClassHealth(slot);
           const point = spawnFor(slot.index);

@@ -4,11 +4,13 @@
  * Built once; `update` writes the rows `scoreboardRows` computed from the
  * host's `Stats` message and the roster, touching the DOM only on change.
  */
-import { MAX_SLOTS, type ScoreboardRow, clockText } from '@sandline/shared';
+import { MAX_SLOTS, type MissionView, type ScoreboardRow, clockText } from '@sandline/shared';
+import { missionLine } from './missionHud.ts';
 
 export interface Scoreboard {
   readonly root: HTMLElement;
   update(rows: readonly ScoreboardRow[], clockSeconds: number, summary: string): void;
+  setOutcome(mission: MissionView | null, restart: (full: boolean) => void): void;
   setVisible(on: boolean): void;
   readonly visible: boolean;
 }
@@ -71,13 +73,34 @@ export function createScoreboard(parent: HTMLElement): Scoreboard {
   table.append(thead, tbody);
   const summary = document.createElement('div');
   summary.className = 'scoreboard-summary';
-  root.append(head, table, summary);
+  const failure = document.createElement('div');
+  failure.className = 'scoreboard-failure hidden';
+  const actions = document.createElement('div');
+  actions.className = 'scoreboard-actions hidden';
+  const checkpoint = document.createElement('button');
+  checkpoint.type = 'button';
+  checkpoint.textContent = 'Restart from last checkpoint';
+  const full = document.createElement('button');
+  full.type = 'button';
+  full.textContent = 'Restart mission';
+  actions.append(checkpoint, full);
+  root.append(head, failure, table, summary, actions);
   parent.append(root);
   let shown = false;
+  let onRestart: (full: boolean) => void = () => {};
+  checkpoint.addEventListener('click', () => onRestart(false));
+  full.addEventListener('click', () => onRestart(true));
   return {
     root,
     get visible() {
       return shown;
+    },
+    setOutcome(mission, restart) {
+      onRestart = restart;
+      const failed = mission?.state === 'failed';
+      setText(failure, failed ? missionLine(mission).split('  ·  ')[0]! : '');
+      failure.classList.toggle('hidden', !failed);
+      actions.classList.toggle('hidden', !failed);
     },
     update(next, clockSeconds, summaryText) {
       if (!shown) return;

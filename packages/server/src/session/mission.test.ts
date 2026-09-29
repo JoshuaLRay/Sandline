@@ -46,6 +46,7 @@ function fake() {
     standingAll: 6,
     standing: new Map<GroundArea, number>(),
     wipe: false,
+    dead: false,
     protected: new Set<string>(),
     groups: new Map<string, { dead: boolean; spawned: number; down: number }>(),
   };
@@ -54,7 +55,7 @@ function fake() {
     squadIn: (a) => w.squad.get(a) ?? 0,
     standing: () => w.standingAll,
     standingIn: (a) => w.standing.get(a) ?? 0,
-    wiped: () => w.wipe,
+    soldierDead: () => w.dead || w.wipe,
     protectedLost: (id) => w.protected.has(id),
     group: (id) => w.groups.get(id) ?? { dead: false, spawned: 0, down: 0 },
   };
@@ -62,6 +63,16 @@ function fake() {
 }
 
 describe('each objective type, on its own (T-4.14)', () => {
+  it('fails when all six are down even though none has died', () => {
+    const run = runOf([{ type: 'survive', label: 'hold out', seconds: 30 }]);
+    const { w, world } = fake();
+    w.standingAll = 1;
+    run.step(world);
+    expect(run.current.state).toBe('progress');
+    w.standingAll = 0;
+    run.step(world);
+    expect(run.current).toMatchObject({ state: 'failed', failureReason: 'all-downed' });
+  });
   it('clear-and-hold: holds while clear with the squad inside, pauses when it steps out, resets when an enemy is inside', () => {
     const run = runOf([{ type: 'clear-and-hold', label: 'x', area: 'a', holdSeconds: 10 }]);
     const { w, world } = fake();
@@ -245,7 +256,6 @@ describe('the upload objective, on its own (U-009)', () => {
   it('waits to be started, then runs with nobody anywhere, and completes once at its goal', () => {
     const run = runOf([UPLOAD()]);
     const { w, world } = fake();
-    w.standingAll = 0;
     expect(run.current).toMatchObject({ type: 'upload', phase: 'idle', satisfied: false, progress: 0, goal: ticks(10) });
     // Not started: nothing moves, however long, whoever stands where.
     w.squad.set(AREA, 6);
@@ -425,20 +435,31 @@ describe('the mission on a session (T-3.34, T-4.14)', () => {
     expect(m.seen.length).toBeLessThan(HOLD_TICKS * TICK_SECONDS + 10);
   });
 
-  it('fails when every slot is dead, and nobody respawns into a failed mission', () => {
+  it('fails on the first death, and nobody respawns into a failed mission', () => {
     const m = mission();
     m.step(1);
-    for (const s of m.session.slots.slice(1)) m.kill(s.health);
-    m.step(5);
-    expect(m.session.mission!.state).toBe('progress');
     m.kill(m.session.slots[0]!.health);
     m.step(1);
     expect(m.session.mission!.state).toBe('failed');
+    expect(m.session.mission!.failureReason).toBe('soldier-dead');
     expect(m.seen.at(-1)!.state).toBe('failed');
     // Long past the respawn timer: still dead, still failed (the mission's respawn is false).
     m.step(30 * 20);
-    expect(m.session.slots.every((s) => s.health.diedAt !== null)).toBe(true);
+    expect(m.session.slots[0]!.health.diedAt).not.toBeNull();
     expect(m.session.mission!.state).toBe('failed');
+  });
+
+  it('fails when every soldier is downed, with no deaths', () => {
+    const m = mission();
+    m.step(1);
+    for (const slot of m.session.slots) {
+      slot.health.current = 0;
+      slot.health.downedAt = 0;
+      slot.health.diedAt = null;
+    }
+    m.step(1);
+    expect(m.session.mission).toMatchObject({ state: 'failed', failureReason: 'all-downed' });
+    expect(m.seen.at(-1)).toMatchObject({ state: 'failed', failureReason: 'all-downed' });
   });
 
   it('fails on the mission time limit and when its protected entity is lost', () => {
@@ -510,7 +531,10 @@ describe('the mission on a session (T-3.34, T-4.14)', () => {
     expect(m.session.enemies).toHaveLength(0);
     expect(m.session.mission!.objective).toBe(1);
 
-    m.session.restartMission();
+    m.kill(m.session.slots[0]!.health);
+    m.step(1);
+    expect(m.session.mission).toMatchObject({ state: 'failed', failureReason: 'soldier-dead' });
+    m.send({ kind: 'MissionRestart', full: true });
     expect(m.session.mission).toMatchObject({ state: 'progress', objective: 0, attempt: 3, progress: 0 });
     m.session.slots.forEach((slot, i) => {
       expect([slot.state.x, slot.state.z]).toEqual([SPAWN_POINTS[i]!.x, SPAWN_POINTS[i]!.z]);

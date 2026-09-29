@@ -70,7 +70,8 @@ describe('the mission HUD line (T-3.34, T-4.14)', () => {
   it('numbers the objective in a sequence, and says how the mission ended', () => {
     expect(missionLine(view({ objective: 1, objectives: 3, type: 'survive', label: 'the night', goal: T(90) }))).toBe('Objective 2/3: survive the night  ·  0/90 s');
     expect(missionLine(view({ state: 'complete', objective: 2, objectives: 3 }))).toMatch(/^Mission complete .*P to play again/);
-    expect(missionLine(view({ state: 'failed', attempt: 3 }))).toMatch(/^Squad wiped — mission failed .*attempt 3 .*P to try again/);
-    expect(missionLine(view({ state: 'failed', type: 'defend', label: 'the compound', satisfied: false }))).toMatch(/^The compound overrun — mission failed/);
+    expect(missionLine(view({ state: 'failed', attempt: 3, failureReason: 'soldier-dead' }))).toMatch(/^Mission failed: A soldier died .*attempt 3 .*P: last checkpoint .*O: restart mission/);
+    expect(missionLine(view({ state: 'failed', failureReason: 'all-downed' }))).toContain('All six soldiers are down');
+    expect(missionLine(view({ state: 'failed', type: 'defend', label: 'the compound', failureReason: 'area-overrun' }))).toContain('the compound overrun');
   });
 });

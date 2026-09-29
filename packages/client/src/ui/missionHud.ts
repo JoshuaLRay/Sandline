@@ -7,6 +7,7 @@ import { PROGRESSION, TICK_SECONDS, type MissionDef, type MissionView, type Sold
 
 /** The key that asks the host to start the mission again once it is over. */
 export const RESTART_KEY = 'KeyP';
+export const FULL_RESTART_KEY = 'KeyO';
 
 const secs = (ticks: number, round: (n: number) => number = Math.floor) => round(ticks * TICK_SECONDS);
 
@@ -73,8 +74,13 @@ export function missionLine(view: MissionView | null, leverPercent = 0): string 
   const attempt = view.attempt > 1 ? `  ·  attempt ${view.attempt}` : '';
   if (view.state === 'complete') return `Mission complete${attempt}  ·  P to play again`;
   if (view.state === 'failed') {
-    const why = view.type === 'defend' && !view.satisfied ? `${view.label} overrun` : 'Squad wiped';
-    return `${why[0]!.toUpperCase()}${why.slice(1)} — mission failed${attempt}  ·  P to try again`;
+    const why = view.failureReason === 'soldier-dead' ? 'A soldier died'
+      : view.failureReason === 'all-downed' ? 'All six soldiers are down'
+      : view.failureReason === 'area-overrun' ? `${view.label} overrun`
+      : view.failureReason === 'time-limit' ? 'Time ran out'
+      : view.failureReason === 'protected-lost' ? 'Protected target lost'
+      : 'Squad lost';
+    return `Mission failed: ${why}${attempt}  ·  P: last checkpoint  ·  O: restart mission`;
   }
   const step = view.objectives > 1 ? ` ${view.objective + 1}/${view.objectives}` : '';
   const lever = view.type === 'upload' && view.phase === 'active' && leverPercent > 0 ? `  ·  ENEMY AT THE LEVER ${Math.min(100, Math.floor(leverPercent))}% — stop them` : '';
