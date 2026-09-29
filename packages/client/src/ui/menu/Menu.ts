@@ -310,7 +310,7 @@ export function createMenu(options: MenuOptions): Menu {
     root.hidden = mode === 'hidden';
     root.classList.toggle('hidden', mode === 'hidden');
     root.dataset['mode'] = mode;
-    playTab.textContent = mode === 'pause' ? 'Resume' : 'Play';
+    playTab.textContent = mode === 'pause' ? 'Back to game' : 'Play';
     leaveButton.hidden = mode !== 'pause';
     playTab.classList.toggle('selected', tab === 'play');
     settingsTab.classList.toggle('selected', tab === 'settings');
@@ -319,8 +319,8 @@ export function createMenu(options: MenuOptions): Menu {
     settingsPanel.hidden = tab !== 'settings';
   };
   const select = (next: MenuTab): void => {
-    // In the pause menu the first tab is Resume itself.
-    if (mode === 'pause' && next === 'play' && tab === 'play') {
+    // The pause menu's first tab always returns to play, including from Settings.
+    if (mode === 'pause' && next === 'play') {
       options.onResume();
       return;
     }

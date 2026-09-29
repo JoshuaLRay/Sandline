@@ -1726,6 +1726,7 @@ const menu = createMenu({
 });
 document.body.appendChild(menu.root);
 const mobileCommand = createMobileCommand(document.body, {
+  settings: () => { menu.showPause(); menu.select('settings'); },
   watch: (slot) => live?.net.spectate(slot),
   assign: (bot, commander) => live?.net.assignCommander(bot, commander),
   order: (kind, address, x, y) => {

@@ -7,6 +7,7 @@ export function createMobileCommand(parent: HTMLElement, actions: {
   watch: (slot: number) => void;
   assign: (bot: number, commander: number) => void;
   order: (kind: OrderKind, address: OrderAddress, x: number, y: number) => boolean;
+  settings: () => void;
   leave: () => void;
 }) {
   const root = document.createElement('aside');
@@ -60,6 +61,12 @@ export function createMobileCommand(parent: HTMLElement, actions: {
   });
   document.addEventListener('fullscreenchange', syncFullscreen);
   syncFullscreen();
+  const settings = document.createElement('button');
+  settings.type = 'button';
+  settings.className = 'mobile-settings';
+  settings.setAttribute('aria-label', 'Settings');
+  settings.textContent = '⚙';
+  settings.addEventListener('click', actions.settings);
   const status = document.createElement('p');
   status.className = 'mobile-watch-status';
   const who = document.createElement('button');
@@ -76,7 +83,7 @@ export function createMobileCommand(parent: HTMLElement, actions: {
   const menu = document.createElement('div');
   menu.className = 'mobile-command-menu';
   menu.hidden = true;
-  root.append(overview, status, fullscreen, fullscreenHelp, controls, menu);
+  root.append(overview, status, fullscreen, settings, fullscreenHelp, controls, menu);
   parent.append(root);
   let rows: readonly CommandRow[] = [];
   let watched = -1;

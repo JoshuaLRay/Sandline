@@ -2,6 +2,7 @@
 #menu {
   position: fixed;
   inset: 0;
+  box-sizing: border-box;
   z-index: 40;
   display: flex;
   align-items: center;
@@ -9,13 +10,17 @@
   padding: 16px;
   background: rgba(15, 12, 7, 0.82);
   backdrop-filter: blur(8px);
-  overflow-y: auto;
+  overflow: hidden;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: var(--dust, #e8dcc8);
 }
 #menu.hidden { display: none; }
 .menu-card {
   width: min(560px, 100%);
+  max-height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--panel, rgba(15, 12, 7, 0.74));
   border: 1px solid var(--rule, rgba(232, 220, 200, 0.18));
   border-radius: 4px;
@@ -49,7 +54,7 @@
 .menu-tab[hidden] { display: none; }
 .menu-leave { color: #ff8a70; }
 .menu-tab:focus-visible { outline: 2px solid var(--amber, #f0b429); outline-offset: -2px; }
-.menu-body { padding: 18px 20px 16px; }
+.menu-body { min-height: 0; padding: 18px 20px 16px; overflow-y: auto; overscroll-behavior: contain; }
 .menu-panel[hidden] { display: none; }
 
 /* The lobby, restyled as the Play panel: its card is the menu's card now. */
@@ -96,3 +101,18 @@
 .menu-command-row[data-human='yes'] { opacity: 0.7; }
 .menu-command-select { max-width: 55%; }
 .menu-command-take { margin-left: 8px; }
+
+@media (max-width: 600px), (pointer: coarse) {
+  #menu { padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); align-items: stretch; }
+  .menu-card { width: 100%; max-height: 100%; margin: 0; font: 14px/1.4 system-ui, sans-serif; }
+  .menu-header { flex-wrap: wrap; gap: 0; padding: 10px 12px 0; flex: none; background: #201c16; }
+  .menu-title { width: 100%; margin: 0; padding-bottom: 4px; }
+  .menu-nav { display: flex; width: 100%; }
+  .menu-tab { flex: 1; min-height: 48px; padding: 8px; letter-spacing: 0; font-size: 13px; }
+  .menu-body { padding: 12px; -webkit-overflow-scrolling: touch; }
+  .menu-row { grid-template-columns: minmax(92px, 35%) minmax(0, 1fr) 42px; gap: 6px; min-height: 42px; }
+  .menu-select { min-width: 0; }
+  .menu-command-row { flex-wrap: wrap; }
+  .menu-command-select { max-width: 100%; }
+  .menu-reset, .menu-button, .menu-resume { min-height: 44px; }
+}
