@@ -1727,13 +1727,72 @@ document.body.appendChild(menu.root);
 const mobileCommand = createMobileCommand(document.body, {
   watch: (slot) => live?.net.spectate(slot),
   assign: (bot, commander) => live?.net.assignCommander(bot, commander),
-  order: (kind, address) => {
-    if (!live) return;
-    const order = buildOrder(kind, address, aimSubject(live.net));
-    if (order) live.net.order(order);
+  order: (kind, address, x, y) => {
+    if (!live || live.net.spectatedSlot < 0) return false;
+    const rect = renderer.domElement.getBoundingClientRect();
+    const pointer = new THREE.Vector2((x - rect.left) / rect.width * 2 - 1, -((y - rect.top) / rect.height * 2 - 1));
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(pointer, camera);
+    ray.far = AIM_RANGE;
+    const hit = ray.intersectObjects(shootable, false)[0];
+    const point = hit?.point ?? ray.ray.at(AIM_RANGE, new THREE.Vector3());
+    const id = hit ? remotes.netIdOf(hit.object) : null;
+    const enemy = id !== null && live.net.remoteEnemy(id) !== null;
+    const vitality = id === null ? 'alive' : live.net.remoteVitality(id);
+    const order = buildOrder(kind, address, {
+      point: { x: point.x, y: point.y, z: point.z },
+      netId: id,
+      enemy: enemy && vitality !== 'dead',
+      downedMate: id !== null && !enemy && vitality === 'downed',
+    });
+    if (!order) return false;
+    live.net.order(order);
+    return true;
   },
   leave: () => leaveSession({ text: 'left the session', tone: 'info' }),
 });
+let mobileLookYaw = 0;
+let mobileLookPitch = 0;
+let mobileDrag: { id: number; x: number; y: number; startX: number; startY: number; moved: boolean } | null = null;
+let lastMobileTap: { x: number; y: number; at: number } | null = null;
+if (mobileMode) {
+  renderer.domElement.style.touchAction = 'none';
+  renderer.domElement.addEventListener('pointerdown', event => {
+    if (event.pointerType !== 'touch' || !live || menu.mode !== 'hidden') return;
+    if (mobileDrag) { mobileDrag = null; lastMobileTap = null; return; }
+    mobileDrag = { id: event.pointerId, x: event.clientX, y: event.clientY,
+      startX: event.clientX, startY: event.clientY, moved: false };
+    renderer.domElement.setPointerCapture(event.pointerId);
+  });
+  renderer.domElement.addEventListener('pointermove', event => {
+    if (!mobileDrag || event.pointerId !== mobileDrag.id) return;
+    const dx = event.clientX - mobileDrag.x;
+    const dy = event.clientY - mobileDrag.y;
+    if (Math.hypot(event.clientX - mobileDrag.startX, event.clientY - mobileDrag.startY) > 8) mobileDrag.moved = true;
+    if (mobileDrag.moved) {
+      mobileLookYaw -= dx * 0.005;
+      mobileLookPitch = Math.max(-1.2, Math.min(1.2, mobileLookPitch - dy * 0.005));
+      lastMobileTap = null;
+    }
+    mobileDrag.x = event.clientX;
+    mobileDrag.y = event.clientY;
+  });
+  renderer.domElement.addEventListener('pointerup', event => {
+    if (!mobileDrag || event.pointerId !== mobileDrag.id) return;
+    const moved = mobileDrag.moved;
+    mobileDrag = null;
+    if (moved || !live || menu.mode !== 'hidden') return;
+    const now = performance.now();
+    if (lastMobileTap && now - lastMobileTap.at < 350 &&
+        Math.hypot(lastMobileTap.x - event.clientX, lastMobileTap.y - event.clientY) < 32) {
+      mobileCommand.issueAt(event.clientX, event.clientY);
+      lastMobileTap = null;
+    } else {
+      lastMobileTap = { x: event.clientX, y: event.clientY, at: now };
+    }
+  });
+  renderer.domElement.addEventListener('pointercancel', () => { mobileDrag = null; lastMobileTap = null; });
+}
 if (new URLSearchParams(location.search).has('record-voice')) showVoiceSubmission(document.body, __DEFAULT_HOST__);
 
 panels.append(
@@ -2708,10 +2767,10 @@ function frame(): void {
     const watched = [...net.remotes()].find(([id]) => net.remoteSlot(id) === net.spectatedSlot)?.[1];
     const own = net.spectatedSlot === net.slot ? net.simulated : null;
     if (watched || own) {
-      const yaw = wireToRadians(watched?.yaw ?? input.viewYaw);
+      const yaw = wireToRadians(watched?.yaw ?? input.viewYaw) + (mobileMode ? mobileLookYaw : 0);
       const at = watched ?? own!;
       camera.position.set(at.x - Math.sin(yaw) * 3, at.y + 2.2, at.z - Math.cos(yaw) * 3);
-      camera.rotation.set(0, yaw + Math.PI, 0, 'YXZ');
+      camera.rotation.set(mobileMode ? mobileLookPitch : 0, yaw + Math.PI, 0, 'YXZ');
       camSolve.position.x = camera.position.x;
       camSolve.position.y = camera.position.y;
       camSolve.position.z = camera.position.z;
