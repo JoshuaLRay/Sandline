@@ -122,6 +122,7 @@ import { FIRST_PERSON_FLASH_SCALE, SCORCH_REACH_M, WeaponEffects } from './weapo
 import { addImpulse, addShake, applyShake, blastShake, createShake, decayShake, suppressionJolt } from './camera/cameraShake.ts';
 import { SuppressionOverlay } from './ui/suppressionLook.ts';
 import { crosshairGapPx } from './ui/crosshair.ts';
+import { applyMobileClass, detectMobile } from './ui/mobileDevice.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
 import {
   HUMANOID_CROUCH_HIT_HEIGHT_M,
@@ -772,7 +773,8 @@ let spectatorCameraYaw: number | null = null;
 let spectatorLookYaw = 0;
 let spectatorLookPitch = 0;
 let spectatorTakeoverPending = false;
-const mobileMode = new URLSearchParams(location.search).has('mobile') || matchMedia('(pointer: coarse)').matches;
+const mobileMode = detectMobile(location.search, matchMedia('(pointer: coarse)').matches);
+applyMobileClass(document.documentElement, mobileMode);
 let mobileSpectateRequested = false;
 let mobileSpectateAttemptAt = 0;
 /** Set after a joined session has every required pack; cleared on the first rendered frame. */

@@ -274,6 +274,10 @@ canvas { display: block; touch-action: none; }
   #hud { position: static; margin: 12px 12px 0; max-width: none; }
   body { overflow-y: auto; }
 }
+/* Same layout for a phone in landscape (U-037). */
+html.mobile #panels { position: static; margin: 12px; width: auto; max-height: none; }
+html.mobile #hud { position: static; margin: 12px 12px 0; max-width: none; }
+html.mobile body { overflow-y: auto; }
 
 /* Subsection heading inside a panel, for the per-client link groups. */
 .panel-sub {
