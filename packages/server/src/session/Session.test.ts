@@ -821,3 +821,49 @@ describe('Session revive edge cases (T-2.15)', () => {
     expect(targetSlot.reviveProgressSeconds).toBe(0);
   });
 });
+
+describe('Session body facing when down (U-030)', () => {
+  function run(c: ReturnType<typeof connectClient>, s: Session, from: number, to: number, yaw: number, now: { t: number }) {
+    for (let tick = from; tick <= to; tick++) {
+      c.input(tick, 0, 0, yaw);
+      now.t += 33;
+      s.step(now.t);
+    }
+  }
+
+  it('turns while alive, holds its heading when downed, and turns again once revived', () => {
+    const s = new Session();
+    const c = connectClient(s, 'p');
+    const slot = s.slots[c.joined!.slot]!;
+    const now = { t: 0 };
+
+    run(c, s, 1, 5, 200, now);
+    expect(slot.yaw).toBe(200);
+
+    slot.health.current = 0;
+    slot.health.downedAt = 0;
+    run(c, s, 6, 12, 600, now);
+    expect(slot.yaw).toBe(200);
+    const shown = c.snapshots.at(-1)?.entities.find((e) => e.netId === slot.netId);
+    expect((shown?.components[0]?.[3] ?? 0) & 0x3ff).toBe(200);
+
+    slot.health.downedAt = null;
+    slot.health.current = 50;
+    run(c, s, 13, 18, 600, now);
+    expect(slot.yaw).toBe(600);
+  });
+
+  it('a dead body does not turn either', () => {
+    const s = new Session();
+    const c = connectClient(s, 'p');
+    const slot = s.slots[c.joined!.slot]!;
+    const now = { t: 0 };
+
+    run(c, s, 1, 5, 300, now);
+    slot.health.current = 0;
+    slot.health.downedAt = 0;
+    slot.health.diedAt = 0;
+    run(c, s, 6, 10, 700, now);
+    expect(slot.yaw).toBe(300);
+  });
+});

@@ -2941,7 +2941,8 @@ export class Session {
       slot.pitch = clampPitch(msg.pitch, slot.mounted.def) & 0x3ff;
       slot.mounted.yaw = slot.yaw;
       slot.mounted.pitch = slot.pitch;
-    } else {
+    } else if (isAlive(slot.health)) {
+      // U-030: a downed or dead body cannot turn (the player's camera still can).
       slot.yaw = msg.yaw;
       slot.pitch = msg.pitch;
     }
@@ -3721,7 +3722,8 @@ export class Session {
        * up only as "the guns got worse".
        */
       decayBloom(slot.weapon, slot.weaponState, TICK_SECONDS);
-      slot.yaw = slot.input.yaw;
+      // U-030: a downed body keeps the heading it fell with.
+      if (!isDowned(slot.health)) slot.yaw = slot.input.yaw;
       // Consumed now, so this is what the client may stop replaying.
       slot.lastProcessedInputTick = slot.pendingInputTick;
     }
