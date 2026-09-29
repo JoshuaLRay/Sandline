@@ -272,3 +272,4 @@ Format: `T-<id> — <what changed>`
 - U-038 — Mobile pinch zoom-out reaches 6x in portrait and stays 3x in landscape (`mobileCameraMax`), re-clamped on rotation.
 - U-039 — Mobile players never see the crosshair: `html.mobile #crosshair` is force-hidden, including in landscape.
 - U-030 — Downed and dead bodies no longer turn: the server stops updating `slot.yaw` and the local body holds its last alive heading; the camera still rotates.
+- U-033 — A squad death ending the mission was already implemented by #180 (any of the six slots, `soldier-dead`, restart from the checkpoint by choice); added tests for downed-then-revived, downed-then-dead on a bot slot, single failure, and death before any checkpoint.
