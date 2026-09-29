@@ -1767,6 +1767,8 @@ const mobileCommand = createMobileCommand(document.body, {
   },
   leave: () => leaveSession({ text: 'left the session', tone: 'info' }),
 });
+/** The last heading the local body had while alive; a downed or dead body holds it (U-030). */
+let localBodyYaw = 0;
 let mobileLookYaw = 0;
 let mobileLookPitch = 0;
 let mobileCameraDistance = 3;
@@ -2642,7 +2644,9 @@ function frame(): void {
     dt,
     cameraCollider,
   );
-  player.rotation.y = Math.atan2(camSolve.forward.x, camSolve.forward.z);
+  // U-030: the camera keeps turning when downed or dead, the body does not.
+  if (!localDowned) localBodyYaw = Math.atan2(camSolve.forward.x, camSolve.forward.z);
+  player.rotation.y = localBodyYaw;
   updateMuzzleRig();
   // After the arm and its collision, before the camera is placed: the aim
   // below reads `camSolve.position`, which this leaves alone.
