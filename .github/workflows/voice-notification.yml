@@ -1,0 +1,30 @@
+name: Voice submission notification
+
+on:
+  repository_dispatch:
+    types: [voice-submission-finished]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create owner notification issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SUBMISSION_ID: ${{ github.event.client_payload.id }}
+          CLIPS: ${{ github.event.client_payload.clips }}
+        run: |
+          if [[ ! "$SUBMISSION_ID" =~ ^[a-f0-9]{32}$ ]]; then
+            echo 'Invalid submission ID' >&2
+            exit 1
+          fi
+          # Retried dispatches must not create a second issue for the same recording.
+          if gh issue list --state all --search "Voice submission $SUBMISSION_ID in:title" --json number --jq 'length' | grep -qx 0; then
+            body="$(printf '@JoshuaLRay A contributor finished a voice recording.\n\nSections: %s\nSubmission ID: %s\n\nReview the private audio and contributor details on the Fly host volume. No recording is attached to this issue.' "$CLIPS" "$SUBMISSION_ID")"
+            gh issue create --title "Voice submission $SUBMISSION_ID" --body "$body"
+          fi

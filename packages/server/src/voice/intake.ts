@@ -15,8 +15,11 @@ const MAX_TOTAL = 100 * 1024 * 1024;
 const MAX_STORED = 256 * 1024 * 1024;
 const CONSENT = VOICE_CONSENT_TEXT;
 
-export interface VoiceIntakeOptions { dir: string; inviteKey: string; origin: string }
-interface Submission { id: string; tokenHash: string; name: string; agreedAt: string; consent: string; clips: Record<string, { bytes: number; file: string }>; complete: boolean }
+export interface VoiceIntakeOptions {
+  dir: string; inviteKey: string; origin: string;
+  onFinished?: (submission: { id: string; name: string; clips: number }) => Promise<void>;
+}
+interface Submission { id: string; tokenHash: string; name: string; agreedAt: string; consent: string; clips: Record<string, { bytes: number; file: string }>; complete: boolean; notifiedAt?: string }
 
 function equal(a: string, b: string): boolean {
   const aa = createHash('sha256').update(a).digest();
@@ -127,10 +130,25 @@ export class VoiceIntake {
         const s = this.read(finish[1]!);
         const token = req.headers['x-submission-token'];
         if (!s || typeof token !== 'string' || !equal(createHash('sha256').update(token).digest('hex'), s.tokenHash)) { json(res, 404, { error: 'Submission not found' }); return; }
-        if (!Object.keys(s.clips).length) { json(res, 400, { error: 'Record at least one section' }); return; }
-        s.complete = true;
-        this.save(s);
-        json(res, 200, { received: Object.keys(s.clips).length });
+        const count = Object.keys(s.clips).length;
+        if (!count) { json(res, 400, { error: 'Record at least one section' }); return; }
+        if (!s.complete) {
+          s.complete = true;
+          this.save(s);
+        }
+        // The completed recording is durable before delivery. A failed dispatch
+        // can be retried by Finish without uploading the audio again.
+        if (this.options.onFinished && !s.notifiedAt) {
+          try {
+            await this.options.onFinished({ id: s.id, name: s.name, clips: count });
+            s.notifiedAt = new Date().toISOString();
+            this.save(s);
+          } catch {
+            json(res, 503, { error: 'Recording saved, but notification failed. Tap Finish again to retry.' });
+            return;
+          }
+        }
+        json(res, 200, { received: count });
         return;
       }
       json(res, 404, { error: 'Not found' });
