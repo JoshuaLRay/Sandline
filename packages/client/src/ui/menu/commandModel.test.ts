@@ -48,7 +48,7 @@ describe('the squad command rows (U-025)', () => {
   it('describes the watched soldier’s control and command relationship', () => {
     const rows = commandRows(roster, 2);
     expect(watchedStatus(rows, 0, 2)).toContain('Human controlled');
-    expect(watchedStatus(rows, 2, 2)).toContain('Your soldier');
+    expect(watchedStatus(rows, 2, 2)).toContain('Human-controlled seat');
     expect(watchedStatus(rows, 3, 2)).toContain('Under your command');
     expect(watchedStatus(rows, 4, 2)).toContain('another player’s command');
   });
