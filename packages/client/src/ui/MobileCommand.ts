@@ -16,6 +16,50 @@ export function createMobileCommand(parent: HTMLElement, actions: {
   const overview = document.createElement('p');
   overview.className = 'mobile-overview';
   overview.textContent = 'Spectator · Commander | Drag to look · Double tap to order';
+  const fullscreen = document.createElement('button');
+  fullscreen.type = 'button';
+  fullscreen.className = 'mobile-fullscreen';
+  const iphone = /iPhone|iPod/.test(navigator.userAgent);
+  const fullscreenHelp = document.createElement('p');
+  fullscreenHelp.className = 'mobile-fullscreen-help';
+  fullscreenHelp.id = 'mobile-fullscreen-help';
+  fullscreenHelp.hidden = true;
+  fullscreenHelp.textContent = iphone
+    ? 'To hide Chrome or Safari bars: tap Share → Add to Home Screen, then open Sandline from its Home Screen icon. iPhone browsers cannot toggle tab fullscreen.'
+    : 'Fullscreen is unavailable here. Use your browser menu to add Sandline to your Home screen, then launch it from there.';
+  fullscreen.setAttribute('aria-controls', fullscreenHelp.id);
+  fullscreen.setAttribute('aria-expanded', 'false');
+  const installed = matchMedia('(display-mode: standalone)').matches ||
+    matchMedia('(display-mode: fullscreen)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  fullscreen.hidden = installed;
+  const syncFullscreen = (): void => {
+    const active = Boolean(document.fullscreenElement);
+    fullscreen.setAttribute('aria-label', active ? 'Exit fullscreen' : iphone ? 'Fullscreen setup' : 'Enter fullscreen');
+    fullscreen.setAttribute('aria-pressed', String(active));
+    fullscreen.textContent = active ? '⤢' : '⛶';
+    if (active) {
+      fullscreenHelp.hidden = true;
+      fullscreen.setAttribute('aria-expanded', 'false');
+    }
+  };
+  const showFullscreenHelp = (): void => {
+    fullscreenHelp.hidden = false;
+    fullscreen.setAttribute('aria-expanded', 'true');
+  };
+  fullscreen.addEventListener('click', () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(showFullscreenHelp);
+    } else if (document.documentElement.requestFullscreen) {
+      // A browser fullscreen request must run directly from this tap.
+      void document.documentElement.requestFullscreen().catch(showFullscreenHelp);
+    } else {
+      fullscreenHelp.hidden = !fullscreenHelp.hidden;
+      fullscreen.setAttribute('aria-expanded', String(!fullscreenHelp.hidden));
+    }
+  });
+  document.addEventListener('fullscreenchange', syncFullscreen);
+  syncFullscreen();
   const status = document.createElement('p');
   status.className = 'mobile-watch-status';
   const who = document.createElement('button');
@@ -32,7 +76,7 @@ export function createMobileCommand(parent: HTMLElement, actions: {
   const menu = document.createElement('div');
   menu.className = 'mobile-command-menu';
   menu.hidden = true;
-  root.append(overview, status, controls, menu);
+  root.append(overview, status, fullscreen, fullscreenHelp, controls, menu);
   parent.append(root);
   let rows: readonly CommandRow[] = [];
   let watched = -1;
