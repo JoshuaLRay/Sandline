@@ -273,7 +273,7 @@ describe('a world may carry a mission (T-3.31)', () => {
             const dx = spawn.x - enemy.x;
             const dy = 0.9 - enemy.y;
             const dz = spawn.z - enemy.z;
-            const length = Math.hypot(dx, dy, dz);
+            const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
             const hit = rayWorld({ origin: enemy, direction: { x: dx / length, y: dy / length, z: dz / length }, maxDistance: length - 0.001 }, world.boxes);
             expect(hit, `${id}: patrol leg ${leg} step ${step} sees spawn ${spawn.x}`).not.toBeNull();
           }
