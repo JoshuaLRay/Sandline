@@ -121,5 +121,20 @@ Owner decisions for the six-character roster:
 
 U-022 owns the dual-primary inventory rules; U-029 owns character/enemy weapon
 exchange and left-handed loot acquisition. This records only the decisions made
-on 2026-09-27. The other character names, skills, support pistol/speed details,
-and remaining controls stay open in `docs/design/squad-roster.md`.
+on 2026-09-27.
+
+## Addendum — 2026-09-29: roster names, support, skills deferred (U-019)
+
+Owner decisions closing U-019:
+
+- The six display names are accepted: Preach, Brennan, Holloway, Ortiz, Marsh, Vance.
+- The support (slot 2) has +10% speed (configurable data), an SMG and a shotgun,
+  **no pistol**, cannot ADS, and is **third-person only**: no first-person view.
+- A joining player may take **any free slot**.
+- **Character skills are deferred to a later version of the game**; none are part
+  of the six-character roster for now, and `docs/design/squad-roster.md` keeps
+  its skill table only as a possible future design.
+- Two-primary keys and pickup replacement remain for U-022.
+
+This supersedes, for the support only, the 2026-09-27 wording that left its pistol
+and speed open. Slots, possession and command (above) are unchanged.
