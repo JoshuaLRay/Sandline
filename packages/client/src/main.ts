@@ -768,6 +768,9 @@ interface LiveSession {
 let live: LiveSession | null = null;
 let spectatorYaw = 0;
 let spectatorPitch = 0;
+let spectatorCameraYaw: number | null = null;
+let spectatorLookYaw = 0;
+let spectatorLookPitch = 0;
 let spectatorTakeoverPending = false;
 const mobileMode = new URLSearchParams(location.search).has('mobile') || matchMedia('(pointer: coarse)').matches;
 let mobileSpectateRequested = false;
@@ -1312,6 +1315,11 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
     mobileSpectateRequested = false;
     spectatorYaw = input.yaw;
     spectatorPitch = input.pitchWire;
+    spectatorCameraYaw = null;
+    spectatorLookYaw = 0;
+    spectatorLookPitch = 0;
+    mobileLookYaw = 0;
+    mobileLookPitch = 0;
     spectatorTakeoverPending = false;
   };
   net.onShot = (shot) => onServerShot(net, shot);
@@ -2103,13 +2111,15 @@ function frame(): void {
       // the spectator remains an observer until Possessed arrives.
       if (tickInput.moveX !== 0 || tickInput.moveY !== 0 || tickInput.jump ||
           tickInput.sprint || tickInput.crouch || tickInput.prone || tickInput.interact ||
-          tickInput.firing || input.ads || tickInput.yaw !== spectatorYaw ||
-          input.pitchWire !== spectatorPitch) {
+          tickInput.firing || input.ads) {
         if (!net.roster[net.spectatedSlot]?.human && !spectatorTakeoverPending) {
           spectatorTakeoverPending = true;
           net.switchTo(net.spectatedSlot);
         }
       }
+      spectatorLookYaw += wireToRadians(tickInput.yaw - spectatorYaw);
+      spectatorLookPitch = Math.max(-1.2, Math.min(1.2,
+        spectatorLookPitch + wireToRadians(input.pitchWire - spectatorPitch)));
       spectatorYaw = tickInput.yaw;
       spectatorPitch = input.pitchWire;
       input.consumeTriggerEdge();
@@ -2820,11 +2830,15 @@ function frame(): void {
     const watched = [...net.remotes()].find(([id]) => net.remoteSlot(id) === net.spectatedSlot)?.[1];
     const own = net.spectatedSlot === net.slot ? net.simulated : null;
     if (watched || own) {
-      const yaw = wireToRadians(watched?.yaw ?? input.viewYaw) + (mobileMode ? mobileLookYaw : 0);
       const at = watched ?? own!;
+      if (spectatorCameraYaw === null) {
+        const goal = net.world ? getWorld(net.world.id)?.mission?.objective : null;
+        spectatorCameraYaw = goal ? Math.atan2(goal.x - at.x, goal.z - at.z) : 0;
+      }
+      const yaw = spectatorCameraYaw + (mobileMode ? mobileLookYaw : spectatorLookYaw);
       const distance = mobileMode ? mobileCameraDistance : 3;
       camera.position.set(at.x - Math.sin(yaw) * distance, at.y + 2.2 * distance / 3, at.z - Math.cos(yaw) * distance);
-      camera.rotation.set(mobileMode ? mobileLookPitch : 0, yaw + Math.PI, 0, 'YXZ');
+      camera.rotation.set(mobileMode ? mobileLookPitch : spectatorLookPitch, yaw + Math.PI, 0, 'YXZ');
       camSolve.position.x = camera.position.x;
       camSolve.position.y = camera.position.y;
       camSolve.position.z = camera.position.z;
