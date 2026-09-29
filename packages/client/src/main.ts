@@ -164,6 +164,7 @@ import {
 import { type AimSubject, OrderWheelView, buildMark, orderFromRelease } from './ui/OrderWheel.ts';
 import { buildOrder } from './ui/OrderWheel.ts';
 import { createMobileCommand } from './ui/MobileCommand.ts';
+import { initialMobileSpectateSlot } from './ui/mobileSpectate.ts';
 import { type MarkerVec, OrderMarkerOverlay, orderMarkers } from './ui/OrderMarkers.ts';
 import { createNetgraph } from './ui/Netgraph.ts';
 import { pressH, qaFromSearch } from './ui/qaMode.ts';
@@ -2031,9 +2032,12 @@ function frame(): void {
     if (net && net.slot >= 0) {
       mobileCommand.update(commandRows(net.roster, net.slot), net.spectatedSlot, net.slot);
       if (net.spectatedSlot < 0 && (!mobileSpectateRequested || now - mobileSpectateAttemptAt > 1000)) {
-        mobileSpectateRequested = true;
-        mobileSpectateAttemptAt = now;
-        net.spectate(net.slot);
+        const target = initialMobileSpectateSlot(net.roster, net.slot);
+        if (target !== null) {
+          mobileSpectateRequested = true;
+          mobileSpectateAttemptAt = now;
+          net.spectate(target);
+        }
       }
     }
   }

@@ -109,6 +109,18 @@ const heal = (session: Session, slots: number[]) => {
 };
 
 describe('a move order (T-3.28)', () => {
+  it('keeps a watched bot autonomous and moving on an all order', () => {
+    const s = squad({ 1: { x: 25, z: -20 } });
+    const bot = s.session.slots[1]!;
+    const start = { x: bot.state.x, z: bot.state.z };
+    s.say({ kind: 'SwitchCharacter', slot: 1, spectate: true });
+    expect(bot.isBot).toBe(true);
+    expect(bot.brain).not.toBeNull();
+    s.say({ kind: 'Order', order: 'move', address: { to: 'all' }, point: { x: 17, y: 0, z: -20 }, target: null });
+    expect(s.session.orderFor(1)?.from).toBe(0);
+    s.run(150);
+    expect(Math.hypot(bot.state.x - start.x, bot.state.z - start.z)).toBeGreaterThan(2);
+  });
   it('goes to the point, into cover there facing the threat, reports done, and stays', () => {
     const sq = squad({ 1: { x: -3, z: -8 } });
     const { session } = sq;
