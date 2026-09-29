@@ -9,7 +9,7 @@ import { HUMANOID_BONES, type HumanoidRig, requireRig } from './humanoidRig.ts';
 import { createHumanoidPlaceholder } from './humanoidPlaceholder.ts';
 import { createHumanoidSoldier } from './humanoidSoldier.ts';
 import { createWeaponModel, hasWeaponModel } from '../weapons/weaponModels.ts';
-import { PROJECTILE_IDS, WEAPON_IDS } from '@sandline/shared';
+import { PROJECTILE_IDS, WEAPON_IDS, getWeapon } from '@sandline/shared';
 
 const IDS = [...WEAPON_IDS, ...PROJECTILE_IDS];
 
@@ -54,7 +54,7 @@ describe('setHeld on the skinned soldier', () => {
     expect(rig.aim.children.length).toBe(1);
   });
 
-  it('shows exactly the held model and puts the right hand on its grip', () => {
+  it('shows exactly the held model and puts the trigger hand on its grip', () => {
     const rig = requireRig(createHumanoidSoldier('remote'));
     for (const id of IDS) {
       rig.setHeld(id);
@@ -63,11 +63,13 @@ describe('setHeld on the skinned soldier', () => {
       const shown = rig.aim.children.filter((c) => c.visible);
       expect(shown.length).toBe(1);
       expect(shown[0]!.name).toBe(id === 'carbine' ? 'rifle' : `weapon ${id}`);
-      const grip = createWeaponModel(id).spec.gripRight;
+      const spec = createWeaponModel(id).spec;
       rig.root.updateMatrixWorld(true);
-      const gripWorld = new THREE.Vector3(...grip).applyMatrix4(rig.aim.matrixWorld);
+      const gripWorld = new THREE.Vector3(...spec.gripRight).applyMatrix4(rig.aim.matrixWorld);
+      // The trigger hand: the right, or the left on a left-handed gun (U-042).
+      const trigger = spec.handed === 'left' ? 'hand-left' : 'hand-right';
       // The hand bone is the wrist; the glove box hangs a hand's length off it.
-      expect(worldOf(rig, rig.bone('hand-right')!).distanceTo(gripWorld)).toBeLessThan(0.05);
+      expect(worldOf(rig, rig.bone(trigger)!).distanceTo(gripWorld)).toBeLessThan(0.05);
     }
   });
 
@@ -83,6 +85,32 @@ describe('setHeld on the skinned soldier', () => {
     expect(arms(rig)).toEqual(before);
     expect(visibleMeshes(rig.root).length).toBe(2);
     for (const name of HUMANOID_BONES) expect(rig.bone(name)).not.toBeNull();
+  });
+
+  it('a left-handed rifle takes the left hand to the pistol grip and the right to the fore-end (U-042)', () => {
+    const rig = requireRig(createHumanoidSoldier('remote'));
+    rig.setHeld('sniper-bolt-left');
+    rig.hold({ pitch: 0, weight: 1 });
+    rig.root.updateMatrixWorld(true);
+    const spec = createWeaponModel('sniper-bolt-left').spec;
+    expect(spec.handed).toBe('left');
+    const at = (g: [number, number, number]) => new THREE.Vector3(...g).applyMatrix4(rig.aim.matrixWorld);
+    const dist = (hand: 'hand-left' | 'hand-right', g: [number, number, number]) => worldOf(rig, rig.bone(hand)!).distanceTo(at(g));
+    // Each hand is nearer its own grip than the other hand's: left on the trigger grip, right on the fore-end.
+    expect(dist('hand-left', spec.gripRight)).toBeLessThan(dist('hand-right', spec.gripRight));
+    expect(dist('hand-right', spec.gripLeft)).toBeLessThan(dist('hand-left', spec.gripLeft));
+    // And a right-handed rifle does the opposite.
+    rig.setHeld('marksman');
+    rig.hold({ pitch: 0, weight: 1 });
+    rig.root.updateMatrixWorld(true);
+    const rifle = createWeaponModel('marksman').spec;
+    expect(dist('hand-right', rifle.gripRight)).toBeLessThan(dist('hand-left', rifle.gripRight));
+  });
+
+  it('only the bolt-action sniper is left-handed, and the data agrees with the model (U-042)', () => {
+    for (const id of WEAPON_IDS) {
+      expect(createWeaponModel(id).spec.handed === 'left', id).toBe(getWeapon(id).handedness === 'left');
+    }
   });
 
   it('is ignored by the grey box, which only ever holds its box rifle', () => {

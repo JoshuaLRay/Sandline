@@ -240,7 +240,10 @@ export class ViewModel {
     );
     const grip = spec.gripLeft;
     const h = pose.handOnMag;
-    this.left.place([grip[0] + (this.hand.x - grip[0]) * h, grip[1] + (this.hand.y - grip[1]) * h, grip[2] + (this.hand.z - grip[2]) * h], 1);
+    // U-042: the support hand goes for the magazine; on a left-handed gun that is the right hand, on the mirrored side.
+    const lefty = spec.handed === 'left';
+    const handX = lefty ? -this.hand.x : this.hand.x;
+    (lefty ? this.right : this.left).place([grip[0] + (handX - grip[0]) * h, grip[1] + (this.hand.y - grip[1]) * h, grip[2] + (this.hand.z - grip[2]) * h], lefty ? -1 : 1);
     // The holder places the sight itself at the origin of `sway`: aim space
     // turned half a turn, so its (x, y, z) lands at (-x, y, -z).
     this.holder.position.set(spec.sight[0], -spec.sight[1], spec.sight[2] - spec.eyeRelief);
@@ -266,8 +269,14 @@ export class ViewModel {
     // Whatever was mid-reload is put back together as it goes away.
     if (this.current) this.placeMagazine(this.current, 0, 0);
     this.current = model;
-    this.right.place(model.spec.gripRight, -1);
-    this.left.place(model.spec.gripLeft, 1);
+    // U-042: a left-handed gun has the left hand on the trigger grip and the right on the fore-end.
+    if (model.spec.handed === 'left') {
+      this.left.place(model.spec.gripRight, 1);
+      this.right.place(model.spec.gripLeft, -1);
+    } else {
+      this.right.place(model.spec.gripRight, -1);
+      this.left.place(model.spec.gripLeft, 1);
+    }
   }
 
   /**

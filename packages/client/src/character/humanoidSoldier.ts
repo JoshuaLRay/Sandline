@@ -494,6 +494,8 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
   // which is what every build-time pose is solved on.
   let gripRight = GRIP_RIGHT;
   let gripLeft = GRIP_LEFT;
+  // U-042: which hand works the trigger. A left-handed gun puts the left hand on the pistol grip and the right on the fore-end.
+  let strongSide: 'left' | 'right' = 'right';
   const holdRifle = (
     side: 'left' | 'right',
     aimTurn: THREE.Quaternion,
@@ -501,10 +503,10 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     aimRest: AimRest,
     reach = 0,
   ): { upper: THREE.Quaternion; lower: THREE.Quaternion } => {
-    const grip = new THREE.Vector3().fromArray(side === 'left' ? gripLeft : gripRight);
+    const grip = new THREE.Vector3().fromArray(side === strongSide ? gripRight : gripLeft);
     // The left hand on its way to the magazine well, in the rifle's frame.
     // Branching rather than scaling by zero keeps a reach of 0 bit-exact.
-    if (side === 'left' && reach > 0) grip.addScaledVector(toWell, reach);
+    if (side !== strongSide && reach > 0) grip.addScaledVector(toWell, reach);
     grip.applyQuaternion(aimTurn).add(origin);
     // The same solver the legs plant a foot with (T-2.28), in the chest's frame.
     return solveTwoBone(
@@ -632,7 +634,7 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     if (kickBack > 0) aim.position.add(scratchOffset.set(0, 0, -kickBack).applyQuaternion(aimTurn));
     const reach = plateau(reload, 0, 0.3, 0.7, 1);
     for (const side of ['left', 'right'] as const) {
-      const solved = holdRifle(side, aimTurn, aim.position, aimRest, side === 'left' ? reach : 0);
+      const solved = holdRifle(side, aimTurn, aim.position, aimRest, side !== strongSide ? reach : 0);
       // Composed on the rest exactly as the pose is, so a level aim lands on
       // the pose's own bits (a bare copy can differ by the sign of a zero).
       bones.get(`upper-arm-${side}`)!.quaternion.fromArray(rest.get(`upper-arm-${side}`)!.quaternion).multiply(solved.upper);
@@ -699,6 +701,7 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     if (key === DEFAULT_HELD) {
       gripRight = GRIP_RIGHT;
       gripLeft = GRIP_LEFT;
+      strongSide = 'right';
       return;
     }
     let model = models.get(key);
@@ -709,6 +712,7 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     }
     gripRight = model.spec.gripRight;
     gripLeft = model.spec.gripLeft;
+    strongSide = model.spec.handed === 'left' ? 'left' : 'right';
   };
 
   const rig: HumanoidRig = {

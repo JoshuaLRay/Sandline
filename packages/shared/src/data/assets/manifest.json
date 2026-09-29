@@ -1579,6 +1579,27 @@
       "collision": []
     },
     {
+      "id": "weapon-bolt",
+      "source": "assets/src/weapon-bolt.glb",
+      "file": "assets/weapon-bolt.glb",
+      "inputHash": "909eeedba5640b4092557ed17533a2b8247fb5a325e0716e6381dd0e142ba130",
+      "hash": "0a1a43011e818de073e0073a1943744bbb734bf3069113748b6256118ea1b24e",
+      "bytes": 205060,
+      "class": "weapon",
+      "triangles": 532,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
       "id": "weapon-dmr",
       "source": "assets/src/weapon-dmr.glb",
       "file": "assets/weapon-dmr.glb",
@@ -1629,6 +1650,27 @@
       "bytes": 211548,
       "class": "weapon",
       "triangles": 752,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "weapon-m4s",
+      "source": "assets/src/weapon-m4s.glb",
+      "file": "assets/weapon-m4s.glb",
+      "inputHash": "df444e433c6bd8405f7ac845cecacdceb907220b35822feaf2ed07d8a1ac3afa",
+      "hash": "c864c1910631defd9ecbe4a0bf2e2322a3682456eeb70953f6fbf27c199a9c58",
+      "bytes": 214328,
+      "class": "weapon",
+      "triangles": 1016,
       "bones": 0,
       "materials": 1,
       "textures": [
@@ -1734,6 +1776,48 @@
       "bytes": 202132,
       "class": "weapon",
       "triangles": 276,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "weapon-smg",
+      "source": "assets/src/weapon-smg.glb",
+      "file": "assets/weapon-smg.glb",
+      "inputHash": "fff2c3975e01aaea39690344f1fb70456ec45fa47db3817a694d481ed3d70114",
+      "hash": "9e44ead7697f10110dd9d722900d1bec9c863164ea796fd6d6d5dd462e168254",
+      "bytes": 212272,
+      "class": "weapon",
+      "triangles": 788,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 512,
+          "height": 512,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "weapon-sniper",
+      "source": "assets/src/weapon-sniper.glb",
+      "file": "assets/weapon-sniper.glb",
+      "inputHash": "4fa9456c145c1243e73e84b14921603d8e965315642168c18dfd6293508488b2",
+      "hash": "82857d6c649feacfb57dcfcdf17e0165afbf5e6bb7db6261dc82a45de1a34f7f",
+      "bytes": 210260,
+      "class": "weapon",
+      "triangles": 784,
       "bones": 0,
       "materials": 1,
       "textures": [
