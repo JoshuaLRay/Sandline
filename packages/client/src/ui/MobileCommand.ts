@@ -2,76 +2,121 @@ import { ORDER_KINDS, type OrderAddress, type OrderKind } from '@sandline/shared
 import { commandKey, type CommandRow } from './menu/commandModel.ts';
 import './mobileCommand.css';
 
-/** Touch controls deliberately expose squad decisions, never soldier controls. */
+/** Squad decisions for touch spectators, without soldier controls. */
 export function createMobileCommand(parent: HTMLElement, actions: {
   watch: (slot: number) => void;
   assign: (bot: number, commander: number) => void;
-  order: (kind: OrderKind, address: OrderAddress) => void;
+  order: (kind: OrderKind, address: OrderAddress, x: number, y: number) => boolean;
   leave: () => void;
 }) {
   const root = document.createElement('aside');
   root.className = 'mobile-command';
   root.hidden = true;
   root.setAttribute('aria-label', 'Spectator and squad command');
-  const title = document.createElement('strong');
-  title.textContent = 'SPECTATOR · COMMAND';
-  root.append(title);
-  const watch = document.createElement('select');
-  watch.setAttribute('aria-label', 'Watch squad member');
-  watch.addEventListener('change', () => actions.watch(Number(watch.value)));
-  root.append(watch);
-  const address = document.createElement('select');
-  address.setAttribute('aria-label', 'Order recipients');
-  root.append(address);
-  const orders = document.createElement('div');
-  orders.className = 'mobile-orders';
-  for (const kind of ORDER_KINDS) {
+  const overview = document.createElement('p');
+  overview.className = 'mobile-overview';
+  overview.textContent = 'Spectator · Commander | Drag to look · Double tap to order';
+  const who = document.createElement('button');
+  const what = document.createElement('button');
+  for (const button of [who, what]) {
+    button.type = 'button';
+    button.className = 'mobile-trigger';
+  }
+  who.setAttribute('aria-label', 'Choose who receives orders');
+  what.setAttribute('aria-label', 'Choose order');
+  const controls = document.createElement('div');
+  controls.className = 'mobile-controls';
+  controls.append(who, what);
+  const menu = document.createElement('div');
+  menu.className = 'mobile-command-menu';
+  menu.hidden = true;
+  root.append(overview, controls, menu);
+  parent.append(root);
+  let rows: readonly CommandRow[] = [];
+  let watched = -1;
+  let address: OrderAddress = { to: 'all' };
+  let kind: OrderKind = 'move';
+  let open: 'who' | 'order' | null = null;
+  let drawn = '';
+
+  function choice(text: string, selected: boolean, action: () => void): void {
     const button = document.createElement('button');
     button.type = 'button';
-    button.textContent = kind;
-    button.addEventListener('click', () => {
-      const [to, index] = address.value.split(':');
-      actions.order(kind, to === 'all' ? { to: 'all' } : { to: 'slot', index: Number(index) });
-    });
-    orders.append(button);
+    button.className = 'mobile-choice';
+    button.textContent = text;
+    button.setAttribute('aria-pressed', String(selected));
+    button.addEventListener('click', action);
+    menu.append(button);
   }
-  root.append(orders);
-  const assignments = document.createElement('div');
-  root.append(assignments);
-  const leave = document.createElement('button');
-  leave.type = 'button';
-  leave.textContent = 'Leave session';
-  leave.addEventListener('click', actions.leave);
-  root.append(leave);
-  parent.append(root);
-  let drawn = '';
+  function heading(text: string): void {
+    const label = document.createElement('div');
+    label.className = 'mobile-heading';
+    label.textContent = text;
+    menu.append(label);
+  }
+  function render(): void {
+    const selectedSlot = address.to === 'slot' ? address.index : -1;
+    const recipient = selectedSlot < 0 ? 'All bots' : rows.find(row => row.slot === selectedSlot)?.label ?? 'Bot';
+    who.textContent = `Who · ${recipient}`;
+    what.textContent = `Order · ${kind[0]!.toUpperCase()}${kind.slice(1)}`;
+    who.setAttribute('aria-expanded', String(open === 'who'));
+    what.setAttribute('aria-expanded', String(open === 'order'));
+    menu.replaceChildren();
+    menu.hidden = open === null;
+    if (open === 'order') {
+      heading('Choose order, then double tap the scene');
+      for (const option of ORDER_KINDS) choice(option[0]!.toUpperCase() + option.slice(1), kind === option, () => {
+        kind = option; open = null; render();
+      });
+    }
+    if (open !== 'who') return;
+    heading('Order recipients');
+    choice('All commanded bots', address.to === 'all', () => { address = { to: 'all' }; open = null; render(); });
+    for (const row of rows) {
+      if (row.human) continue;
+      choice(row.label, selectedSlot === row.slot, () => {
+        address = { to: 'slot', index: row.slot }; open = null; render();
+      });
+    }
+    heading('Watch');
+    for (const row of rows) choice(row.label, watched === row.slot, () => {
+      actions.watch(row.slot); watched = row.slot; open = null; render();
+    });
+    heading('Commander assignments');
+    for (const row of rows) {
+      if (row.human) continue;
+      const assignment = document.createElement('label');
+      assignment.className = 'mobile-assignment';
+      assignment.textContent = row.label;
+      const select = document.createElement('select');
+      select.setAttribute('aria-label', `Commander of slot ${row.slot + 1}`);
+      for (const option of row.options) select.add(new Option(option.label, String(option.slot)));
+      select.value = String(row.commander);
+      select.addEventListener('change', () => actions.assign(row.slot, Number(select.value)));
+      assignment.append(select);
+      menu.append(assignment);
+    }
+    choice('Leave session', false, actions.leave);
+  }
+  who.addEventListener('click', () => { open = open === 'who' ? null : 'who'; render(); });
+  what.addEventListener('click', () => { open = open === 'order' ? null : 'order'; render(); });
+  render();
   return {
     root,
-    update(rows: readonly CommandRow[], watched: number) {
-      const key = commandKey(rows);
+    issueAt(x: number, y: number): boolean { return actions.order(kind, address, x, y); },
+    update(next: readonly CommandRow[], slot: number) {
+      const key = commandKey(next);
       if (key !== drawn) {
         drawn = key;
-        watch.replaceChildren();
-        address.replaceChildren();
-        address.add(new Option('All commanded bots', 'all'));
-        assignments.replaceChildren();
-        for (const row of rows) {
-          watch.add(new Option(row.label, String(row.slot)));
-          if (row.human) continue;
-          address.add(new Option(row.label, `slot:${row.slot}`));
-          const label = document.createElement('label');
-          label.textContent = `${row.label} · commander `;
-          const pick = document.createElement('select');
-          pick.setAttribute('aria-label', `Commander of slot ${row.slot + 1}`);
-          if (row.commander < 0) pick.add(new Option('Nobody', '-1'));
-          for (const option of row.options) pick.add(new Option(option.label, String(option.slot)));
-          pick.value = String(row.commander);
-          pick.addEventListener('change', () => actions.assign(row.slot, Number(pick.value)));
-          label.append(pick);
-          assignments.append(label);
-        }
+        rows = next;
+        const selectedSlot = address.to === 'slot' ? address.index : -1;
+        if (selectedSlot >= 0 && !rows.some(row => row.slot === selectedSlot && !row.human)) address = { to: 'all' };
+        render();
       }
-      if (watched >= 0) watch.value = String(watched);
+      if (watched !== slot) {
+        watched = slot;
+        if (open === 'who') render();
+      }
     },
   };
 }
