@@ -57,6 +57,11 @@
 #menu #lobby[hidden] { display: none; }
 #menu .lobby-card { width: 100%; padding: 0; background: none; border: 0; }
 #menu .lobby-card h1 { display: none; }
+.menu-fullscreen { margin-top: 14px; }
+.menu-fullscreen-button { width: 100%; min-height: 48px; touch-action: manipulation; }
+.menu-fullscreen-steps[hidden] { display: none; }
+.menu-fullscreen-steps { margin-top: 8px; padding: 10px 12px; border: 1px solid var(--rule, rgba(232, 220, 200, 0.18)); border-radius: 8px; background: rgba(255, 255, 255, 0.07); }
+.menu-fullscreen-help { margin: 0; font: 14px/1.45 system-ui, sans-serif; }
 
 .menu-pause-text { margin: 0 0 14px; opacity: 0.8; }
 .menu-resume { width: 100%; }

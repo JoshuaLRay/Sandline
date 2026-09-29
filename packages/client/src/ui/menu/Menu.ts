@@ -89,6 +89,43 @@ export function createMenu(options: MenuOptions): Menu {
   const body = el('div', 'menu-body', card);
   const playPanel = el('section', 'menu-panel menu-play', body);
   playPanel.append(options.play);
+  // iPhone browsers use Home Screen launch; Android Chrome can enter fullscreen
+  // from the button tap. An installed launch already hides the browser UI.
+  const ios = /iPhone|iPod/.test(navigator.userAgent);
+  const mobile = ios || /Android/.test(navigator.userAgent);
+  const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: fullscreen)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  if (mobile && !standalone) {
+    const fullscreen = el('div', 'menu-fullscreen', playPanel);
+    const instructions = el('div', 'menu-fullscreen-steps', fullscreen);
+    instructions.id = 'mobile-fullscreen-steps';
+    instructions.hidden = true;
+    const launch = button('Play fullscreen', 'menu-button menu-fullscreen-button', () => {
+      if (ios) {
+        instructions.hidden = !instructions.hidden;
+        launch.setAttribute('aria-expanded', String(!instructions.hidden));
+      } else if (document.fullscreenElement) {
+        void document.exitFullscreen().then(() => { launch.textContent = 'Play fullscreen'; });
+      } else if (document.documentElement.requestFullscreen) {
+        void document.documentElement.requestFullscreen().then(() => {
+          launch.textContent = 'Exit fullscreen';
+        }).catch(() => {
+          instructions.hidden = false;
+          launch.setAttribute('aria-expanded', 'true');
+        });
+      } else {
+        instructions.hidden = false;
+        launch.setAttribute('aria-expanded', 'true');
+      }
+    }, fullscreen);
+    launch.setAttribute('aria-controls', instructions.id);
+    launch.setAttribute('aria-expanded', 'false');
+    const help = el('p', 'menu-fullscreen-help', instructions);
+    help.textContent = ios
+      ? 'In Safari or Chrome, tap Share, then Add to Home Screen. Open Sandline from its new Home Screen icon to play without the browser bars.'
+      : 'Fullscreen is unavailable in this browser. Open the browser menu, choose Add to Home screen, then launch Sandline from its icon.';
+  }
   const pausePanel = el('section', 'menu-panel menu-pause', body);
   const pauseText = el('p', 'menu-pause-text', pausePanel);
   pauseText.textContent = 'Paused for you only: the session runs on. Esc or Resume to go back.';
