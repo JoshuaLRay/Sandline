@@ -1,0 +1,10 @@
+{
+  "name": "Sandline",
+  "short_name": "Sandline",
+  "id": "./",
+  "start_url": "./?mobile",
+  "scope": "./",
+  "display": "fullscreen",
+  "background_color": "#0f0c07",
+  "theme_color": "#0f0c07"
+}
