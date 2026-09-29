@@ -122,7 +122,7 @@ import { FIRST_PERSON_FLASH_SCALE, SCORCH_REACH_M, WeaponEffects } from './weapo
 import { addImpulse, addShake, applyShake, blastShake, createShake, decayShake, suppressionJolt } from './camera/cameraShake.ts';
 import { SuppressionOverlay } from './ui/suppressionLook.ts';
 import { crosshairGapPx } from './ui/crosshair.ts';
-import { applyMobileClass, detectMobile } from './ui/mobileDevice.ts';
+import { applyMobileClass, clampMobileCameraDistance, detectMobile } from './ui/mobileDevice.ts';
 import { createCameraPanel } from './ui/CameraPanel.ts';
 import {
   HUMANOID_CROUCH_HIT_HEIGHT_M,
@@ -1794,7 +1794,7 @@ if (mobileMode) {
     if (touches.has(event.pointerId)) touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pinch && touches.size >= 2) {
       const [a, b] = [...touches.values()];
-      if (a && b) mobileCameraDistance = Math.max(3, Math.min(9, pinch.distance * pinch.span / Math.max(1, Math.hypot(a.x - b.x, a.y - b.y))));
+      if (a && b) mobileCameraDistance = clampMobileCameraDistance(pinch.distance * pinch.span / Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), innerHeight > innerWidth);
       return;
     }
     if (!mobileDrag || event.pointerId !== mobileDrag.id) return;
@@ -2839,6 +2839,7 @@ function frame(): void {
         spectatorCameraYaw = goal ? Math.atan2(goal.x - at.x, goal.z - at.z) : 0;
       }
       const yaw = spectatorCameraYaw + (mobileMode ? mobileLookYaw : spectatorLookYaw);
+      if (mobileMode) mobileCameraDistance = clampMobileCameraDistance(mobileCameraDistance, innerHeight > innerWidth);
       const distance = mobileMode ? mobileCameraDistance : 3;
       camera.position.set(at.x - Math.sin(yaw) * distance, at.y + 2.2 * distance / 3, at.z - Math.cos(yaw) * distance);
       camera.rotation.set(mobileMode ? mobileLookPitch : spectatorLookPitch, yaw + Math.PI, 0, 'YXZ');
