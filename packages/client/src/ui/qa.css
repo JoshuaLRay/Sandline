@@ -572,6 +572,8 @@ html.mobile body { overflow-y: auto; }
 #crosshair.hidden { display: none; }
 /* First-person ADS: the weapon's sights are the aim, their post on the screen's centre. */
 #crosshair.sighted { display: none; }
+/* Touch players aim by camera and never see a crosshair, in any orientation or state (U-039). */
+html.mobile #crosshair { display: none !important; }
 
 /**
  * The marksman's scope (scopeOverlay.ts): black outside a round lens, a fine
