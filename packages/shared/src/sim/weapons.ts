@@ -267,7 +267,10 @@ export function parseWeaponTable(raw: unknown): Record<string, WeaponDef> {
  * so this order is part of the protocol: reordering it silently reassigns every
  * client's weapons and is a PROTOCOL_VERSION bump.
  */
-export const WEAPON_IDS = ['carbine', 'marksman', 'breacher', 'sidearm', 'knife'] as const;
+export const WEAPON_IDS = ['carbine', 'marksman', 'breacher', 'sidearm', 'knife', 'lmg', 'smg', 'carbine-scoped', 'sniper-semi', 'sniper-bolt-left'] as const;
+
+/** Bits a `WEAPON_IDS` index takes on the wire (U-041): room for sixteen, so appending needs no more bumps until then. */
+export const WEAPON_INDEX_BITS = 4;
 
 /** The shipped table, validated at import so bad data fails loudly at boot. */
 export const WEAPONS: Readonly<Record<string, WeaponDef>> = Object.freeze(parseWeaponTable(RAW_WEAPONS));

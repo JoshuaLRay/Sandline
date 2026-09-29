@@ -18,6 +18,10 @@ import {
   type MoveInput,
   TICK_SECONDS,
   stepCharacter,
+  WEAPON_IDS,
+  createWeaponState,
+  encodeMessage,
+  getWeapon,
 } from '@sandline/shared';
 import { MAX_INPUT_REPEAT, Session } from './Session.ts';
 
@@ -865,5 +869,62 @@ describe('Session body facing when down (U-030)', () => {
     slot.health.diedAt = 0;
     run(c, s, 6, 10, 700, now);
     expect(slot.yaw).toBe(300);
+  });
+});
+
+describe('the roster weapons on the wire (U-041)', () => {
+  const ROSTER = ['lmg', 'smg', 'carbine-scoped', 'sniper-semi', 'sniper-bolt-left'] as const;
+
+  it('a soldier holding each one replicates it, as the gun in hand and as the primary', () => {
+    const s = new Session();
+    const c = connectClient(s, 'p');
+    const slot = s.slots[c.joined!.slot]!;
+    let now = 0;
+    for (const id of ROSTER) {
+      slot.weapon = getWeapon(id);
+      slot.weaponState = createWeaponState(slot.weapon);
+      slot.primary = id;
+      now += 33;
+      s.step(now);
+      c.pair.settle();
+      const weapon = c.snapshots.at(-1)?.entities.find((e) => e.netId === slot.netId)?.components[COMPONENT_IDS.Weapon];
+      const index = (WEAPON_IDS as readonly string[]).indexOf(id);
+      expect(index, id).toBeGreaterThanOrEqual(5);
+      expect(weapon?.[0], `${id} in hand`).toBe(index);
+      expect(weapon?.[weapon.length - 1], `${id} as primary`).toBe(index);
+    }
+  });
+
+  it('the knife, which sits past the 2-bit field the wire used to have, now replicates as the knife', () => {
+    const s = new Session();
+    const c = connectClient(s, 'p');
+    const slot = s.slots[c.joined!.slot]!;
+    slot.weapon = getWeapon('knife');
+    slot.weaponState = createWeaponState(slot.weapon);
+    s.step(33);
+    c.pair.settle();
+    const weapon = c.snapshots.at(-1)?.entities.find((e) => e.netId === slot.netId)?.components[COMPONENT_IDS.Weapon];
+    expect(weapon?.[0]).toBe(WEAPON_IDS.indexOf('knife'));
+  });
+
+  it('a gun dropped on the ground is a pickup that names it, ammo and all', () => {
+    const s = new Session();
+    const c = connectClient(s, 'p');
+    const slot = s.slots[c.joined!.slot]!;
+    const place = (s as unknown as { placePickup(id: string, ammo: number, at: { x: number; y: number; z: number }, yaw: number): void }).placePickup.bind(s);
+    ROSTER.forEach((id, i) => place(id, 3 + i, { x: slot.state.x + 4 + i, y: 0, z: slot.state.z }, 0));
+    s.step(33);
+    c.pair.settle();
+    const pickups = (c.snapshots.at(-1)?.entities ?? []).map((e) => e.components[COMPONENT_IDS.Pickup]).filter((p): p is number[] => p !== undefined);
+    expect(pickups.map((p) => p[0])).toEqual(ROSTER.map((id) => (WEAPON_IDS as readonly string[]).indexOf(id)));
+    expect(pickups.map((p) => p[1])).toEqual(ROSTER.map((_, i) => 3 + i));
+  });
+
+  it('a Fire naming each roster weapon crosses the wire at full width', () => {
+    for (const id of WEAPON_IDS) {
+      const weapon = (WEAPON_IDS as readonly string[]).indexOf(id);
+      const msg = { kind: 'Fire' as const, tick: 9, yaw: 100, pitch: 200, renderTimeMs: 512, weapon, ads: true };
+      expect(decodeMessage(encodeMessage(msg)), id).toEqual(msg);
+    }
   });
 });

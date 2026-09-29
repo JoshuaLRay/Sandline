@@ -15,9 +15,10 @@ import { MISSION_FAILURE_REASONS, MISSION_STATES, OBJECTIVE_PHASES, OBJECTIVE_TY
 import type { ScriptBlockerState } from '../sim/events.ts';
 import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 import type { MissionStats } from '../sim/scoreboard.ts';
+import { WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 44;
+export const PROTOCOL_VERSION = 45;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -567,7 +568,7 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(msg.yaw & 0xfff, 12);
       w.writeBits(msg.pitch & 0xfff, 12);
       w.writeVarUint(msTime(msg.renderTimeMs));
-      w.writeBits(msg.weapon & 0x7, 3);
+      w.writeBits(msg.weapon & ((1 << WEAPON_INDEX_BITS) - 1), WEAPON_INDEX_BITS);
       w.writeBool(msg.ads);
       break;
     case 'HitEvent':
@@ -1090,7 +1091,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
           yaw: r.readBits(12),
           pitch: r.readBits(12),
           renderTimeMs: r.readVarUint(),
-          weapon: r.readBits(3),
+          weapon: r.readBits(WEAPON_INDEX_BITS),
           ads: r.readBool(),
         };
       case MessageType.HitEvent:

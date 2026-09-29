@@ -331,7 +331,7 @@ describe('firing over the wire', () => {
     const session = new Session();
     const client = connect(session);
     const now = run(session, 0, 5, client);
-    expect(() => client.fire({ weapon: 7, renderTimeMs: now })).not.toThrow();
+    expect(() => client.fire({ weapon: 15, renderTimeMs: now })).not.toThrow();
     expect(client.hits.length).toBe(0);
   });
 
