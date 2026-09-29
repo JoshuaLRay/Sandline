@@ -1,5 +1,5 @@
 import { ORDER_KINDS, type OrderAddress, type OrderKind } from '@sandline/shared';
-import { commandKey, type CommandRow } from './menu/commandModel.ts';
+import { commandKey, watchedStatus, type CommandRow } from './menu/commandModel.ts';
 import './mobileCommand.css';
 
 /** Squad decisions for touch spectators, without soldier controls. */
@@ -16,6 +16,8 @@ export function createMobileCommand(parent: HTMLElement, actions: {
   const overview = document.createElement('p');
   overview.className = 'mobile-overview';
   overview.textContent = 'Spectator · Commander | Drag to look · Double tap to order';
+  const status = document.createElement('p');
+  status.className = 'mobile-watch-status';
   const who = document.createElement('button');
   const what = document.createElement('button');
   for (const button of [who, what]) {
@@ -30,10 +32,11 @@ export function createMobileCommand(parent: HTMLElement, actions: {
   const menu = document.createElement('div');
   menu.className = 'mobile-command-menu';
   menu.hidden = true;
-  root.append(overview, controls, menu);
+  root.append(overview, status, controls, menu);
   parent.append(root);
   let rows: readonly CommandRow[] = [];
   let watched = -1;
+  let mySlot = -1;
   let address: OrderAddress = { to: 'all' };
   let kind: OrderKind = 'move';
   let open: 'who' | 'order' | null = null;
@@ -55,8 +58,9 @@ export function createMobileCommand(parent: HTMLElement, actions: {
     menu.append(label);
   }
   function render(): void {
+    status.textContent = watchedStatus(rows, watched, mySlot);
     const selectedSlot = address.to === 'slot' ? address.index : -1;
-    const recipient = selectedSlot < 0 ? 'All bots' : rows.find(row => row.slot === selectedSlot)?.label ?? 'Bot';
+    const recipient = selectedSlot < 0 ? 'All my bots' : rows.find(row => row.slot === selectedSlot)?.label ?? 'Bot';
     who.textContent = `Who · ${recipient}`;
     what.textContent = `Order · ${kind[0]!.toUpperCase()}${kind.slice(1)}`;
     who.setAttribute('aria-expanded', String(open === 'who'));
@@ -73,13 +77,13 @@ export function createMobileCommand(parent: HTMLElement, actions: {
     heading('Order recipients');
     choice('All commanded bots', address.to === 'all', () => { address = { to: 'all' }; open = null; render(); });
     for (const row of rows) {
-      if (row.human) continue;
+      if (row.human || row.commander !== mySlot) continue;
       choice(row.label, selectedSlot === row.slot, () => {
         address = { to: 'slot', index: row.slot }; open = null; render();
       });
     }
     heading('Watch');
-    for (const row of rows) choice(row.label, watched === row.slot, () => {
+    for (const row of rows) choice(`${row.label} · ${row.human ? 'Human' : row.commander === mySlot ? 'Your bot' : 'Other player’s bot'}`, watched === row.slot, () => {
       actions.watch(row.slot); watched = row.slot; open = null; render();
     });
     heading('Commander assignments');
@@ -104,18 +108,19 @@ export function createMobileCommand(parent: HTMLElement, actions: {
   return {
     root,
     issueAt(x: number, y: number): boolean { return actions.order(kind, address, x, y); },
-    update(next: readonly CommandRow[], slot: number) {
+    update(next: readonly CommandRow[], slot: number, commanderSlot: number) {
+      mySlot = commanderSlot;
       const key = commandKey(next);
       if (key !== drawn) {
         drawn = key;
         rows = next;
         const selectedSlot = address.to === 'slot' ? address.index : -1;
-        if (selectedSlot >= 0 && !rows.some(row => row.slot === selectedSlot && !row.human)) address = { to: 'all' };
+        if (selectedSlot >= 0 && !rows.some(row => row.slot === selectedSlot && !row.human && row.commander === mySlot)) address = { to: 'all' };
         render();
       }
       if (watched !== slot) {
         watched = slot;
-        if (open === 'who') render();
+        render();
       }
     },
   };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RosterEntry } from '@sandline/shared';
-import { commandKey, commandRows } from './commandModel.ts';
+import { commandKey, commandRows, watchedStatus } from './commandModel.ts';
 
 const roster: RosterEntry[] = [
   { name: 'kai', human: true, classId: 'team-leader', commander: -1 },
@@ -43,5 +43,13 @@ describe('the squad command rows (U-025)', () => {
     const moved = roster.map((e, i) => (i === 3 ? { ...e, commander: 0 } : e));
     expect(commandKey(commandRows(moved, 2))).not.toBe(a);
     expect(commandKey(commandRows(roster, 0))).not.toBe(a);
+  });
+
+  it('describes the watched soldier’s control and command relationship', () => {
+    const rows = commandRows(roster, 2);
+    expect(watchedStatus(rows, 0, 2)).toContain('Human controlled');
+    expect(watchedStatus(rows, 2, 2)).toContain('Your soldier');
+    expect(watchedStatus(rows, 3, 2)).toContain('Under your command');
+    expect(watchedStatus(rows, 4, 2)).toContain('another player’s command');
   });
 });

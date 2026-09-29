@@ -142,6 +142,25 @@ describe('taking control of a bot you command (U-026)', () => {
     expect(r.session.slots[3]!.lastProcessedInputTick).toBeGreaterThan(0);
   });
 
+  it('all commands include the watched bot only when the spectator commands it', () => {
+    const r = room();
+    const a = r.join('a');
+    const b = r.join('b');
+    a.assign(3, b.slot);
+    a.spectate(3);
+    a.send({ kind: 'Order', order: 'hold', address: { to: 'all' }, point: null, target: null });
+    expect(r.session.orderFor(3)).toBeNull();
+    expect(r.session.orderFor(4)?.from).toBe(a.slot);
+    b.spectate(4);
+    b.send({ kind: 'Order', order: 'regroup', address: { to: 'all' }, point: null, target: null });
+    expect(r.session.orderFor(3)?.from).toBe(b.slot);
+    expect(r.session.orderFor(4)?.from).toBe(a.slot);
+    a.assign(3, a.slot);
+    a.send({ kind: 'Order', order: 'hold', address: { to: 'all' }, point: null, target: null });
+    expect(r.session.orderFor(3)?.from).toBe(a.slot);
+    expect(r.session.orderFor(1)).toBeNull();
+  });
+
   it('solo with bots: one message swaps the controller and nothing else, and inputs drive the new soldier', () => {
     const r = room();
     const a = r.join('a');

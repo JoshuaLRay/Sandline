@@ -173,7 +173,7 @@ import { type LobbyChoice, createLobby, readStoredKey, readStoredName } from './
 import { LoadScreen } from './ui/LoadScreen.ts';
 import type { Panel } from './ui/Panel.ts';
 import { createSquadPanel } from './ui/SquadPanel.ts';
-import { commandRows } from './ui/menu/commandModel.ts';
+import { commandRows, watchedStatus } from './ui/menu/commandModel.ts';
 import { createRoomLobby } from './ui/RoomLobby.ts';
 import { isTextField } from './input/LocalInput.ts';
 import { createTuningPanel } from './ui/TuningPanel.ts';
@@ -2029,7 +2029,7 @@ function frame(): void {
   if (mobileMode) {
     mobileCommand.root.hidden = !net || menu.mode !== 'hidden';
     if (net && net.slot >= 0) {
-      mobileCommand.update(commandRows(net.roster, net.slot), net.spectatedSlot);
+      mobileCommand.update(commandRows(net.roster, net.slot), net.spectatedSlot, net.slot);
       if (net.spectatedSlot < 0 && (!mobileSpectateRequested || now - mobileSpectateAttemptAt > 1000)) {
         mobileSpectateRequested = true;
         mobileSpectateAttemptAt = now;
@@ -2053,6 +2053,12 @@ function frame(): void {
       continue;
     }
     if (net.spectatedSlot >= 0) {
+      const release = input.consumeOrderRelease();
+      if (release) {
+        const order = orderFromRelease(release, aimSubject(net));
+        if (order) net.order(order);
+      }
+      if (input.consumeMarkPress()) net.mark(buildMark(aimSubject(net)));
       // The host owns the decision. A human target never accepts takeover;
       // the spectator remains an observer until Possessed arrives.
       if (tickInput.moveX !== 0 || tickInput.moveY !== 0 || tickInput.jump ||
@@ -2624,7 +2630,8 @@ function frame(): void {
     if (net && net.spectatedSlot >= 0) {
       const watched = net.spectatedSlot;
       const name = net.roster[watched]?.name || `Bot ${watched + 1}`;
-      text = `SPECTATING ${name} — choose another soldier in Squad command${net.roster[watched]?.human ? '' : ' · move, aim, fire or E to take control'}`;
+      const status = watchedStatus(commandRows(net.roster, net.slot), watched, net.slot);
+      text = `SPECTATING ${name} — ${status}${!net.roster[watched]?.human && !mobileMode ? ' · move, aim, fire or E to take control' : ''}`;
     } else if (localVitality === 'dead') {
       // Dead is not downed: nobody can revive a body, and the timer is the respawn's.
       text = timer > 0 ? `KILLED — back in ${timer}s` : 'KILLED';
