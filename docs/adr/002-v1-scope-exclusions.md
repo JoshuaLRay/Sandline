@@ -17,7 +17,7 @@ The following are out of scope for v1:
 
 | Excluded | Reason |
 |---|---|
-| Mobile and tablet | Touch controls for a TPS are a separate design problem; mobile GPU budget is a fraction of the desktop target |
+| Full mobile TPS controls | Mobile spectator and commander access is now supported; touch movement, aiming and firing remain excluded. See [mobile spectator controls](../design/mobile-spectator-commander.md). |
 | PvP | See consequences — this is the highest-value exclusion on the list |
 | ~~Prone stance~~ | Superseded by [ADR-016](./016-prone-stance.md) 2026-09-22 — back in scope as E-2.8. Original reasoning: ~15 animation clips and an additional locomotion state for marginal tactical depth. |
 | Destructible environments | Incompatible with baked lighting (ADR-013) |
@@ -32,8 +32,9 @@ The following are out of scope for v1:
   unprotectable; in co-op PvE a cheater harms only their own session. Had PvP
   been in scope, the authoritative server would need to defend against a hostile
   client rather than merely arbitrate between cooperating ones.
-- Desktop-only lets us assume keyboard and mouse, a real GPU, and a viewport
-  large enough for the HUD design.
+- Desktop soldier control still assumes keyboard and mouse, a real GPU, and a
+  viewport large enough for the full HUD. The mobile spectator and commander
+  interface uses a separate touch layout.
 - No destructibles means level geometry is static, which is what makes baked
   lightmaps viable (ADR-013). These two decisions are load-bearing for each
   other — reopening either means reopening both.
@@ -50,5 +51,5 @@ The following are out of scope for v1:
 - **Ship PvP as a stretch mode.** Rejected: "stretch" is not a real category. It
   would drag anti-cheat, balance, and matchmaking complexity into v1 on the
   chance it gets cut later.
-- **Mobile as a later port.** Not rejected — deferred. The engine choices here do
-  not preclude it, but nothing in v1 will be compromised to keep it possible.
+- **Full mobile TPS controls as a later port.** Deferred; mobile spectator and
+  commander mode is a narrower addition, documented in the linked design.
