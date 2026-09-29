@@ -52,7 +52,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-011](docs/backlog/U-011.md) | Replace mission-01 hold timers with active objectives | Mission | P1 | DONE | U-001, U-009, U-010 | [#150](https://github.com/JoshuaLRay/Sandline/pull/150) |
 | [U-030](docs/backlog/U-030.md) | Keep downed and dead characters facing the same direction | Character state | P1 | DONE | — | [#186](https://github.com/JoshuaLRay/Sandline/pull/186) |
 | [U-031](docs/backlog/U-031.md) | Exclude downed characters from enemy gunfire targets | Enemy AI | P1 | DONE | — | [#188](https://github.com/JoshuaLRay/Sandline/pull/188) |
-| [U-033](docs/backlog/U-033.md) | End the mission when a squad character dies | Mission | P1 | REVIEW | — | [#189](https://github.com/JoshuaLRay/Sandline/pull/189) |
+| [U-033](docs/backlog/U-033.md) | End the mission when a squad character dies | Mission | P1 | DONE | — | [#189](https://github.com/JoshuaLRay/Sandline/pull/189) |
 | [U-034](docs/backlog/U-034.md) | Restore player and enemy use of mounted MGs | Emplacements | P1 | DONE | — | [#159](https://github.com/JoshuaLRay/Sandline/pull/159) |
 | [U-012](docs/backlog/U-012.md) | Define voice cues and extend event routing | Audio | P2 | DONE | — | [#148](https://github.com/JoshuaLRay/Sandline/pull/148) |
 | [U-013](docs/backlog/U-013.md) | Supply and process the real voice recordings | Audio | P2 | BLOCKED | U-012; owner recordings or explicit ADR-017 change | — |
