@@ -74,8 +74,23 @@ describe('the menus (T-4.26)', () => {
     expect(t.resumed).toBe(2);
     document.querySelector<HTMLButtonElement>('.menu-tab[data-tab="settings"]')!.click();
     expect(t.visible(document.querySelector('.menu-settings'))).toBe(true);
+    document.querySelector<HTMLButtonElement>('.menu-tab[data-tab="play"]')!.click();
+    expect(t.resumed).toBe(3);
     document.querySelector<HTMLButtonElement>('.menu-leave')!.click();
     expect(t.left).toBe(1);
+  });
+
+  it('keeps navigation reachable while the long settings list scrolls', () => {
+    const t = mount();
+    t.menu.showMain();
+    t.menu.select('settings');
+    const header = t.menu.root.querySelector<HTMLElement>('.menu-header')!;
+    const body = t.menu.root.querySelector<HTMLElement>('.menu-body')!;
+    body.scrollTop = body.scrollHeight;
+    expect(header.getBoundingClientRect().top).toBeGreaterThanOrEqual(0);
+    expect(header.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
+    document.querySelector<HTMLButtonElement>('.menu-tab[data-tab="play"]')!.click();
+    expect(t.visible(t.play)).toBe(true);
   });
 
   it('a setting changed in the menu is applied, stored, and back after a reload', () => {
