@@ -28,7 +28,7 @@ describe('pickup rules (U-017)', () => {
     expect(() => parsePickups({ ...RAW, despawnSeconds: 0 })).toThrow('pickups.despawnSeconds');
     expect(() => parsePickups({ ...RAW, max: 0 })).toThrow('pickups.max');
     expect(() => parsePickups({ ...RAW, reachM: 5 })).toThrow('pickups.reachM must be in (0, 3]');
-    expect(() => parsePickups({ ...RAW, weapons: ['lmg'] })).toThrow("pickups.weapons[0]: 'lmg' is not a loadout weapon");
+    expect(() => parsePickups({ ...RAW, weapons: ['ghost-gun'] })).toThrow("pickups.weapons[0]: 'ghost-gun' is not a loadout weapon");
   });
 
   it('keeps the netId bands apart: enemies, then pickups, then projectiles', () => {

@@ -196,6 +196,30 @@ const BUILDERS: Record<string, Builder> = {
   },
 };
 
+/**
+ * U-020/U-041: the roster guns until U-042 gives them their own art. The
+ * snipers are the marksman's silhouette; the scoped carbine is the carbine
+ * with a scope on it; the SMG is a short carbine. Held like the rifles they
+ * borrow, so the hold and the muzzle stay right.
+ */
+BUILDERS['sniper-semi'] = BUILDERS['marksman'] as Builder;
+BUILDERS['sniper-bolt-left'] = BUILDERS['marksman'] as Builder;
+BUILDERS['carbine-scoped'] = (g) => {
+  const spec = (BUILDERS['carbine'] as Builder)(g);
+  tube(g, 'metal', 0.022, 0.22, [0, 0.1, 0.36]);
+  tube(g, 'lens', 0.024, 0.004, [0, 0.1, 0.25]);
+  return { ...spec, sight: [0, 0.1, 0.25], eyeRelief: 0.1 };
+};
+BUILDERS['smg'] = (g) => {
+  box(g, 'polymer', [0.045, 0.1, 0.2], [0, -0.01, 0.1]);
+  box(g, 'metal', [0.06, 0.09, 0.26], [0, 0, 0.3]);
+  box(g, 'polymer', [0.035, 0.1, 0.045], [0, -0.09, 0.2], -0.35);
+  box(g, 'metal', [0.036, 0.17, 0.05], [0, -0.13, 0.3]).name = MAGAZINE;
+  tube(g, 'metal', 0.012, 0.2, [0, 0.005, 0.6]);
+  box(g, 'metal', [0.022, 0.03, 0.16], [0, 0.058, 0.3]);
+  return { ...RIFLE_GRIPS, sight: [0, 0.075, 0.24], eyeRelief: 0.17, hip: [0.16, -0.15, -0.12] };
+};
+
 /* -- The generated models (T-4.36) ------------------------------------------- */
 
 /** Which side holds a weapon: the squad's models are the US period's, the enemy's the fighters' (ADR-020). */
