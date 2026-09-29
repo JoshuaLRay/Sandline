@@ -73,6 +73,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-037](docs/backlog/U-037.md) | Keep mobile controls and layout when the phone is rotated | Mobile | P1 | DONE | — | [#182](https://github.com/JoshuaLRay/Sandline/pull/182) |
 | [U-038](docs/backlog/U-038.md) | Mobile zoom-out limit: 6x portrait, 3x landscape | Mobile | P1 | DONE | U-037 | [#183](https://github.com/JoshuaLRay/Sandline/pull/183) |
 | [U-039](docs/backlog/U-039.md) | Never show the crosshair on mobile | Mobile | P1 | DONE | — | [#184](https://github.com/JoshuaLRay/Sandline/pull/184) |
+| [U-044](docs/backlog/U-044.md) | Long-term control scheme: slots 1–6, swap to use, right-click aim, left-click use | Controls | P2 | INBOX | Owner answers to the open questions; decomposition needed | — |
 
 ## Existing work retained
 
