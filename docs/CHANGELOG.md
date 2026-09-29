@@ -274,4 +274,5 @@ Format: `T-<id> — <what changed>`
 - U-030 — Downed and dead bodies no longer turn: the server stops updating `slot.yaw` and the local body holds its last alive heading; the camera still rotates.
 - U-031 — Enemies never target or fire at a downed soldier: `chooseTarget` skips downed memory entries (the `downedFactor` fallback is removed), the downed flag is refreshed every think, and `aiShoot` only fires at an alive soldier.
 - U-033 — A squad death ending the mission was already implemented by #180 (any of the six slots, `soldier-dead`, restart from the checkpoint by choice); added tests for downed-then-revived, downed-then-dead on a bot slot, single failure, and death before any checkpoint.
+- U-019 — Roster decisions recorded (2026-09-29): names accepted, support +10% speed / SMG + shotgun / no pistol / third-person only, any free slot, skills deferred to a later version (U-023 parked). Docs only.
 - U-029 — Docs: owner controls recorded (E picks up or swaps, G drops), and the G/grenade key conflict flagged for a decision.

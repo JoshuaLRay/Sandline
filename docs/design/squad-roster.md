@@ -1,11 +1,12 @@
 # The squad roster: six named characters (U-019)
 
-**Status: PARTIALLY DECIDED, awaiting remaining owner choices.** The approved
-requirements are separated from proposals below. On 2026-09-27, the owner
-confirmed Preach as squad leader, the snipers' handedness and starting weapon
-types, weapon acquisition rules, and the two-primary eligibility limits. The
-remaining names, skills and other choices stay proposals. No gameplay is
-implemented by this document.
+**Status: DECIDED for this version (2026-09-29).** On 2026-09-27 the owner
+confirmed Preach, the snipers' handedness and starting weapons, weapon
+acquisition rules and the two-primary limits. On 2026-09-29 the owner accepted
+the remaining proposals (names, the support's speed and no-pistol loadout, free
+slot choice), ruled that the support is third-person only, and **deferred
+character skills to a later version of the game**. Two-primary keys and pickup
+replacement stay for U-022. No gameplay is implemented by this document.
 
 ## Approved: the owner's requirements (2026-09-26)
 
@@ -16,6 +17,14 @@ From [the owner's feedback](../backlog/2026-09-26-feedback.md), verbatim in subs
 3. The support **can't ADS "(or fps)"**, holds **two primaries, an SMG and a shotgun**, and **runs a bit faster**.
 4. The squad leader's name is **Preach**. The remaining names and individual
    skills are still open unless noted below.
+
+## Approved owner decisions (2026-09-29)
+
+1. **Names accepted as written:** Preach, Brennan, Holloway, Ortiz, Marsh, Vance (IDs `preach`, `brennan`, `holloway`, `ortiz`, `marsh`, `vance`).
+2. **Skills are out of this version.** The skill table below is kept as a *possible future design only*; nothing in it is approved or scheduled. The characters differ by role, loadout, speed and handedness for now.
+3. **Support:** +10% speed (configurable), an SMG and a shotgun, **no pistol**, no ADS, and **third-person only**: no first-person view at all, by any path.
+4. **Any free slot** may be taken by a joining player.
+5. Two-primary keys and pickup replacement stay open in U-022.
 
 ## Approved owner decisions (2026-09-27)
 
@@ -45,10 +54,10 @@ Already settled by other decisions, and kept:
 |---|---|---|---|---|---|---|---|
 | 0 | `preach` | **Preach** *(approved leader name)* | AR, the squad lead | MK4 Carbine (`carbine`) | Eligible for a second AR, shotgun or SMG primary | P7 *(policy open)* | 1 (lead) |
 | 1 | `brennan` | Spc. Walt Brennan | LMG | the squad LMG (`lmg`, a loadout version of the enemy's) | — | P7 | 1 |
-| 2 | `holloway` | PFC Nate Holloway | Support | an SMG *(new, U-020)* | a shotgun (`breacher`) | *open: see D-5* | 1 |
+| 2 | `holloway` | PFC Nate Holloway | Support | an SMG *(new, U-020)* | a shotgun (`breacher`) | none *(decided 2026-09-29)* | 1 |
 | 3 | `ortiz` | Cpl. Dana Ortiz | Scoped AR, the second team's lead | MK4 with an optic *(new variant, U-020)* | — | P7 | 2 (lead) |
-| 4 | `marsh` | Spc. Eli Marsh *(name proposal)* | Left-handed sniper | a left-handed bolt-action sniper rifle *(U-020)* | — | P7 | 2 |
-| 5 | `vance` | Spc. Theo Vance *(name proposal)* | Sniper | a semi-automatic sniper rifle *(U-020; exact firearm/model remains open)* | — | P7 | 2 |
+| 4 | `marsh` | Spc. Eli Marsh | Left-handed sniper | a left-handed bolt-action sniper rifle *(U-020)* | — | P7 | 2 |
+| 5 | `vance` | Spc. Theo Vance | Sniper | a semi-automatic sniper rifle *(U-020; exact firearm/model remains open)* | — | P7 | 2 |
 
 The role counts are two snipers (4, 5), one LMG (1), one AR (0), one scoped AR (3) and one support (2): the 2/1/1/1/1 the owner set.
 
@@ -56,7 +65,9 @@ The six IDs are unique, lowercase and stable. They are what saves, the wire and 
 
 **Why these slots.** Fireteam 1 (slots 0–2, a wedge) is the assault team: the AR lead, the LMG's base of fire, and the fast close-range support. Fireteam 2 (slots 3–5, a file) is the overwatch team: the scoped AR lead and the two snipers. That matches the existing fireteam data (`squad.json`) and today's default split: team leaders in 0–2, marksmen in 3–5.
 
-## One skill each *(all proposals)*
+## One skill each *(DEFERRED: a possible future design, not part of this version)*
+
+The owner deferred skills on 2026-09-29 ("they can come in a later version of the game, maybe"). Nothing below is approved or scheduled, and no task builds it.
 
 Each skill is **bounded**: one effect, a duration, a cooldown, and a range where it has one. It is data-driven, as weapons and classes are (CLAUDE.md rule 3), and usable by a bot through the same path as a human (ADR-001: the squad plays the same with any number of humans). The numbers are starting points for a playtest, not tuning.
 
@@ -71,7 +82,7 @@ Each skill is **bounded**: one effect, a duration, a cooldown, and a range where
 
 **Distinctness.** Rally is a squad buff, Hose is fire support, Resupply is logistics, Spot is information, Steady is precision, and Hide is concealment. No two overlap.
 
-**The support's movement bonus** *(proposal):* +10% walk and sprint speed, as one configurable number in the character's data, not a constant.
+**The support's movement bonus** *(accepted 2026-09-29):* +10% walk and sprint speed, as one configurable number in the character's data, not a constant.
 
 ## Identity through possession, reconnect and saves
 
@@ -87,13 +98,13 @@ Each skill is **bounded**: one effect, a duration, a cooldown, and a range where
 | # | Decision | Current state |
 |---|---|---|
 | D-1 | Sniper weapon details | **Decided:** slot 4 starts with a left-handed bolt-action sniper; slot 5 starts with a semi-automatic sniper. Exact models and weapon IDs remain for U-020. |
-| D-2 | Character names | **Partially decided:** the leader is Preach. The other five display names remain proposals. |
-| D-3 | Each skill's effect, duration and cooldown | The table above remains a proposal. |
-| D-4 | The support's speed bonus | +10% remains a proposal. |
-| D-5 | Whether Support keeps a pistol | Open. |
-| D-6 | Two-primary controls: key mapping and pickup replacement behavior (U-022) *(2026-09-29: for picking up and dropping, **E picks up or swaps and G drops**, see U-029; the two-primary selection keys are still open)* | **Partially decided:** only Preach and Support qualify; only ARs, shotguns and SMGs; no second primary while holding an LMG or sniper. Keys and exact replacement behavior remain open. |
-| D-7 | What "(or fps)" means for Support | The existing proposal reads it as no ADS and no first-person sight picture; whether Support has no first-person view at all remains open. |
-| D-8 | Whether a player may take any free slot, or only the lowest one | Any free slot remains a proposal. |
+| D-2 | Character names | **Decided (2026-09-29):** Preach, Brennan, Holloway, Ortiz, Marsh, Vance. |
+| D-3 | Each skill's effect, duration and cooldown | **Deferred (2026-09-29):** skills are left for a later version, maybe. The table is not approved. |
+| D-4 | The support's speed bonus | **Decided (2026-09-29):** +10%, configurable. |
+| D-5 | Whether Support keeps a pistol | **Decided (2026-09-29):** no pistol. |
+| D-6 | Two-primary controls: key mapping and pickup replacement behavior (U-022) *(2026-09-29: for picking up and dropping, **E picks up or swaps and G drops**, see U-029; the two-primary selection keys are still open)* | **Partially decided:** only Preach and Support qualify; only ARs, shotguns and SMGs; no second primary while holding an LMG or sniper. Keys and exact replacement behavior remain open for U-022 (2026-09-29: left there). |
+| D-7 | What "(or fps)" means for Support | **Decided (2026-09-29):** no first-person view whatsoever. Support is third-person only, and cannot ADS. |
+| D-8 | Whether a player may take any free slot, or only the lowest one | **Decided (2026-09-29):** any free slot. |
 | D-9 | Which enemy weapons are available as pickups | **Partially decided:** other characters may pick up enemy weapon drops; U-017's drop table and the left-handed sniper exception still apply. |
 
 ## Proposed ADR addendum
@@ -104,9 +115,9 @@ ADR-001 carries the original six-character direction. Its 2026-09-27 decision ad
 - that the slot picker replaces the class picker;
 - ADR-020's weapon list (M4, M249, M203) extended by the rifles and the SMG U-020 adds, under original names.
 
-## How U-023 splits, once the skills are agreed
+## How U-023 would split, if skills are ever agreed
 
-One independently executable task per agreed skill, each with its data row, its server rule (authoritative, like every interaction), its bot use, its HUD and its tests. Until the owner agrees a skill's effect, its task does not exist, and **no ability here is treated as approved.**
+*Deferred (2026-09-29): not in this version.* One independently executable task per agreed skill, each with its data row, its server rule (authoritative, like every interaction), its bot use, its HUD and its tests. Until the owner agrees a skill's effect, its task does not exist, and **no ability here is treated as approved.**
 
 - U-023a: Rally (Preach)
 - U-023b: Hose (Brennan)
