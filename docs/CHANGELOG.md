@@ -277,3 +277,5 @@ Format: `T-<id> — <what changed>`
 - U-019 — Roster decisions recorded (2026-09-29): names accepted, support +10% speed / SMG + shotgun / no pistol / third-person only, any free slot, skills deferred to a later version (U-023 parked). Docs only.
 - U-029 — Docs: owner controls recorded (E picks up or swaps, G drops), and the G/grenade key conflict flagged for a decision.
 - U-040 — `weapons.json` rows declare `action` (auto/semi/bolt) and `handedness`, validated; new `smg`, `carbine-scoped`, `sniper-semi`, `sniper-bolt-left`; `canWield` for left-handed-only soldiers; models and sounds borrowed until U-042/U-043. U-020 split into U-040–U-043.
+- U-044 — Feedback recorded: the long-term slot scheme (1 primary, 2 secondary, 3 knife, 4 grenades, 5 equipment, 6 health kits; swap to use; RMB aim, LMB use). Intake only, with open questions.
+- U-044 — Owner answers recorded (per-character equipment: Support C4, Brennan rocket launcher; health kits 10 s, half health if downed, no self-use when downed; Support second primary in slot 2; desktop only; G = drop). Split into U-045–U-048.

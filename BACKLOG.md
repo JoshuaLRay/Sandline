@@ -64,7 +64,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-018](docs/backlog/U-018.md) | Equip dropped guns into the primary slot | Loot | P2 | DONE | U-017 | [#152](https://github.com/JoshuaLRay/Sandline/pull/152) |
 | [U-019](docs/backlog/U-019.md) | Specify the six named characters and their skills | Squad | P2 | DONE | — | [#153](https://github.com/JoshuaLRay/Sandline/pull/153) (initial proposal); [#154](https://github.com/JoshuaLRay/Sandline/pull/154) (owner decisions; remainder open); [#156](https://github.com/JoshuaLRay/Sandline/pull/156) (U-019 name correction) |
 | [U-020](docs/backlog/U-020.md) | Add the roster’s missing weapon archetypes (umbrella: acceptance walk once its leaves are DONE) | Squad | P2 | BLOCKED | U-040, U-041, U-042, U-043 | — |
-| [U-040](docs/backlog/U-040.md) | Weapon data contract and the roster's firearm definitions | Squad | P2 | REVIEW | U-019 | task/U-040-weapon-roster-data |
+| [U-040](docs/backlog/U-040.md) | Weapon data contract and the roster's firearm definitions | Squad | P2 | DONE | U-019 | [#193](https://github.com/JoshuaLRay/Sandline/pull/193) |
 | [U-041](docs/backlog/U-041.md) | Carry the roster weapons on the wire | Squad | P2 | READY | U-040 | — |
 | [U-042](docs/backlog/U-042.md) | Distinct models for the roster weapons, and the left-handed rifle | Squad | P2 | READY | U-040 | — |
 | [U-043](docs/backlog/U-043.md) | Distinct report and handling sounds for the roster weapons | Audio | P2 | READY | U-040 | — |
@@ -77,6 +77,11 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-037](docs/backlog/U-037.md) | Keep mobile controls and layout when the phone is rotated | Mobile | P1 | DONE | — | [#182](https://github.com/JoshuaLRay/Sandline/pull/182) |
 | [U-038](docs/backlog/U-038.md) | Mobile zoom-out limit: 6x portrait, 3x landscape | Mobile | P1 | DONE | U-037 | [#183](https://github.com/JoshuaLRay/Sandline/pull/183) |
 | [U-039](docs/backlog/U-039.md) | Never show the crosshair on mobile | Mobile | P1 | DONE | — | [#184](https://github.com/JoshuaLRay/Sandline/pull/184) |
+| [U-044](docs/backlog/U-044.md) | Long-term control scheme: slots 1–6, swap to use, right-click aim, left-click use (umbrella) | Controls | P2 | BLOCKED | U-045, U-046, U-047, U-048 | — |
+| [U-045](docs/backlog/U-045.md) | Weapon and device slots 1–6 with swap-to-use | Controls | P2 | READY | — | — |
+| [U-046](docs/backlog/U-046.md) | Right click aims, left click uses | Controls | P2 | BLOCKED | U-045 | — |
+| [U-047](docs/backlog/U-047.md) | Health kits | Controls | P2 | BLOCKED | U-045; owner's kit counts per character | — |
+| [U-048](docs/backlog/U-048.md) | Per-character equipment: the Support's C4 and Brennan's rocket launcher | Controls | P2 | BLOCKED | U-021, U-045; C4 design and the other four characters' equipment | — |
 
 ## Existing work retained
 
