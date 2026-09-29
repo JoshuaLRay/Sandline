@@ -15,7 +15,7 @@ describe('level format v1 (T-4.09)', () => {
     const fromLevel = requireWorld('greybox-01');
     const fromWorld = loadWorld(asWorldFile);
     expect({ ...fromLevel, encounter: null }).toEqual(fromWorld);
-    expect(fromLevel.boxes.length).toBe(28);
+    expect(fromLevel.boxes.length).toBe(29);
     expect(fromLevel.pieces).toEqual([]);
     expect(fromLevel.encounter).toBe('greybox-01');
   });
