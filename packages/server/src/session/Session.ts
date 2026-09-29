@@ -2331,14 +2331,13 @@ export class Session {
    * An order from a player (T-3.27), untrusted: a well-formed order
    * (`orderProblem`), from a human seated here, at a target that exists — an
    * attack at a living enemy, a revive at a squadmate — to addressees of whom
-   * only the bots take it (ADR-001: any player may order any bot, and nobody
-   * a human). The last order to a bot stands, whoever gave it; every client
-   * is sent the squad's orders whole.
+   * only bots commanded by the issuing player take it. Every client is sent
+   * the squad's orders whole.
    */
   private applyOrder(conn: ServerConnection, msg: Extract<Message, { kind: 'Order' }>): void {
     const from = this.humanFor(conn);
     if (!from) return;
-    this.orderFrom(from.index, msg);
+    this.orderFrom(from.index, msg, true);
   }
 
   /**
@@ -2347,7 +2346,7 @@ export class Session {
    * lets only a seated human give one; T-3.35's headless mission tool plays
    * the squad leader with six bots, and gives its orders here.
    */
-  orderFrom(fromIndex: number, msg: Omit<Extract<Message, { kind: 'Order' }>, 'kind'>): void {
+  orderFrom(fromIndex: number, msg: Omit<Extract<Message, { kind: 'Order' }>, 'kind'>, commanderOnly = false): void {
     const from = this.slots[fromIndex];
     if (!from) return;
     if (orderProblem(msg, SQUAD_CONFIG.fireteams.length) !== null) return;
@@ -2359,7 +2358,9 @@ export class Session {
     const addressed = a.to === 'slot' ? [a.index] : a.to === 'fireteam' ? [...SQUAD_CONFIG.fireteams[a.index]!.slots] : this.slots.map((s) => s.index);
     // T-4.27: a class's orders reach the whole squad or only the giver's own fireteam.
     const reach = orderReach(this.classSlots[from.index] ?? '', from.index, addressed, SQUAD_CONFIG.fireteams);
-    const bots = reach.filter((i) => this.slots[i]?.isBot === true);
+    // Spectating leaves the player's seat human-controlled, but their watched
+    // soldier is an ordinary bot: include it when the player commands it.
+    const bots = reach.filter((i) => this.slots[i]?.isBot === true && (!commanderOnly || this.commanders[i] === from.index));
     if (bots.length === 0) return;
     this.bumpStat(from.index, 'ordersGiven');
     for (const i of bots) {

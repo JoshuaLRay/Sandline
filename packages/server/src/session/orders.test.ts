@@ -128,11 +128,17 @@ describe('orders (T-3.27)', () => {
     expect(a.orders).toBe(before);
   });
 
-  it('from two humans to the same bot: the later stands, and both clients see it', () => {
+  it('a player can only order bots they command, even with an all address', () => {
     const session = new Session();
     const a = human(session, 'a');
     const b = human(session, 'b');
+    expect(session.commanderOf(4)).toBe(0);
+    b.send({ kind: 'Order', order: 'hold', address: { to: 'slot', index: 4 }, point: null, target: null });
+    expect(session.orderFor(4)).toBeNull();
     a.send({ kind: 'Order', order: 'move', address: { to: 'slot', index: 4 }, point: { x: 10, y: 0, z: 0 }, target: null });
+    b.send({ kind: 'Order', order: 'hold', address: { to: 'all' }, point: null, target: null });
+    expect(session.orderFor(4)?.from).toBe(0);
+    a.send({ kind: 'AssignCommander', bot: 4, commander: b.slot });
     b.send({ kind: 'Order', order: 'hold', address: { to: 'slot', index: 4 }, point: { x: -3, y: 0, z: 2 }, target: null });
     const standing = { slot: 4, order: 'hold', point: { x: -3, y: 0, z: 2 }, target: null, from: 1 };
     expect(session.orderFor(4)).toEqual(standing);

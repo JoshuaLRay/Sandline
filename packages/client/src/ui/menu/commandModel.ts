@@ -58,3 +58,12 @@ export function commandRows(roster: readonly RosterEntry[], mySlot: number): Com
 export function commandKey(rows: readonly CommandRow[]): string {
   return rows.map((r) => `${r.label}|${r.commander}|${r.switchable}|${r.options.map((o) => `${o.slot}:${o.label}`).join(',')}`).join(';');
 }
+
+/** The spectator's relationship to the watched soldier, from the host roster. */
+export function watchedStatus(rows: readonly CommandRow[], watched: number, mySlot: number): string {
+  const row = rows.find((entry) => entry.slot === watched);
+  if (!row) return '';
+  if (row.human) return watched === mySlot ? 'Human-controlled seat · AI while spectating' : 'Human controlled · watch only';
+  if (row.commander === mySlot) return 'Under your command · orders and takeover available';
+  return 'Under another player’s command · takeover on PC transfers command';
+}
