@@ -272,3 +272,4 @@ Format: `T-<id> — <what changed>`
 - U-038 — Mobile pinch zoom-out reaches 6x in portrait and stays 3x in landscape (`mobileCameraMax`), re-clamped on rotation.
 - U-039 — Mobile players never see the crosshair: `html.mobile #crosshair` is force-hidden, including in landscape.
 - U-030 — Downed and dead bodies no longer turn: the server stops updating `slot.yaw` and the local body holds its last alive heading; the camera still rotates.
+- U-031 — Enemies never target or fire at a downed soldier: `chooseTarget` skips downed memory entries (the `downedFactor` fallback is removed), the downed flag is refreshed every think, and `aiShoot` only fires at an alive soldier.
