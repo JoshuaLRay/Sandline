@@ -3833,6 +3833,9 @@ export class Session {
         if (sighting.visible && isDetected(awareness, perception)) {
           rememberSeen(enemy.memory, slot.netId, target.feet, nowSeconds, isDowned(slot.health));
         }
+        // U-031: a soldier who is down is down whether or not it is in sight this think, and stops being a target.
+        const known = enemy.memory.entries.get(slot.netId);
+        if (known) known.downed = isDowned(slot.health);
       }
       enemy.target = chooseTarget(enemy.memory, enemy.state, nowSeconds);
       watchStill(enemy.still, enemy.target, enemy.memory, enemy.state.y, nowSeconds);
@@ -3984,7 +3987,8 @@ export class Session {
     const eye = gun ? gun.muzzle : soldierEye(shooter.state);
     const targetId = shooter.brain?.fireAt ?? null;
     const target = targetId === null ? null : this.soldier(targetId);
-    const shootable = target && target.netId !== shooter.netId && !isDead(target.health) ? target : null;
+    // U-031: nor at a soldier who is down, even if the brain still names it before its next think.
+    const shootable = target && target.netId !== shooter.netId && isAlive(target.health) ? target : null;
     let point = shootable ? visibleAimPoint(eye, aimPoints(shootable.state, shootable.state.crouched, shootable.state.prone, DEFAULT_HITBOX, lyingPose(shootable)), this.collisionBoxes) : null;
     let aimAt = shootable?.netId ?? SUPPRESSIVE_AIM;
     // No line of sight, no shot — except suppressive fire (T-3.21): a brain

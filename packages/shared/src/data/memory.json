@@ -3,6 +3,5 @@
   "threatSeconds": 4,
   "visibleWeight": 4,
   "proximityM": 20,
-  "threatFactor": 2,
-  "downedFactor": 0
+  "threatFactor": 2
 }

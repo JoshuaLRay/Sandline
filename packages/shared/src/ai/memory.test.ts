@@ -11,12 +11,11 @@ import {
   parseMemoryConfig,
   rememberHeard,
   rememberSeen,
-  targetScore,
 } from './memory.ts';
 import { type StimulusConfig, parseStimulusConfig } from './stimuli.ts';
 
 /** Our own numbers, so retuning memory.json never changes what these prove. */
-const RAW = { forgetSeconds: 10, threatSeconds: 3, visibleWeight: 4, proximityM: 20, threatFactor: 2, downedFactor: 0 };
+const RAW = { forgetSeconds: 10, threatSeconds: 3, visibleWeight: 4, proximityM: 20, threatFactor: 2 };
 const M: MemoryConfig = parseMemoryConfig(RAW);
 const S: StimulusConfig = parseStimulusConfig({
   kinds: {
@@ -42,7 +41,7 @@ describe('target memory (T-3.14)', () => {
       { ...RAW, forgetSeconds: 0 },
       { ...RAW, visibleWeight: 0.5 },
       { ...RAW, threatFactor: 0.5 },
-      { ...RAW, downedFactor: 2 },
+      { ...RAW, downedFactor: 0 },
       { ...RAW, proximityM: 'near' },
     ]) {
       expect(() => parseMemoryConfig(raw)).toThrow();
@@ -144,26 +143,29 @@ describe('target memory (T-3.14)', () => {
     expect(chooseTarget(memory, HERE, 3.5, M)).toBe(3);
   });
 
-  it('a downed target is chosen only when nothing else is known', () => {
+  it('a downed target is never chosen, even when it is all that is known (U-031)', () => {
     for (const config of [M, MEMORY]) {
       const memory = createTargetMemory();
       rememberSeen(memory, 2, at(2, 0), 0, true);
-      expect(chooseTarget(memory, HERE, 0, config)).toBe(2);
-      // Anything else known at all — far, unseen, nearly forgotten — comes first.
-      rememberHeard(memory, { kind: 'impact', at: at(1, 0), sourceNetId: 2 }, 0, config, S);
+      expect(chooseTarget(memory, HERE, 0, config)).toBeNull();
+      // Living targets, however far or faint, are chosen instead.
       rememberHeard(memory, { kind: 'sprint', at: at(0, 90), sourceNetId: 5 }, 0, config, S);
       expect(chooseTarget(memory, HERE, config.forgetSeconds - 0.01, config)).toBe(5);
       forgetTarget(memory, 5);
-      expect(chooseTarget(memory, HERE, 0, config)).toBe(2);
+      expect(chooseTarget(memory, HERE, 0, config)).toBeNull();
     }
   });
 
-  it('a soft downed factor is a discount, not a veto', () => {
-    const soft = parseMemoryConfig({ ...RAW, downedFactor: 0.5 });
+  it('a target that goes from alive to downed is dropped, and returns if it is up again', () => {
     const memory = createTargetMemory();
-    rememberSeen(memory, 2, at(2, 0), 0, true);
-    rememberHeard(memory, { kind: 'shot', at: at(60, 0), sourceNetId: 5 }, 0, soft, S);
-    expect(targetScore(memory.entries.get(2)!, HERE, 0, soft)).toBeGreaterThan(2 * targetScore(memory.entries.get(5)!, HERE, 0, soft));
-    expect(chooseTarget(memory, HERE, 0, soft)).toBe(2);
+    rememberSeen(memory, 2, at(2, 0), 0, false);
+    rememberSeen(memory, 3, at(8, 0), 0, false);
+    expect(chooseTarget(memory, HERE, 0, M)).toBe(2);
+    rememberSeen(memory, 2, at(2, 0), 1, true);
+    expect(chooseTarget(memory, HERE, 1, M)).toBe(3);
+    rememberSeen(memory, 3, at(8, 0), 1, true);
+    expect(chooseTarget(memory, HERE, 1, M)).toBeNull();
+    rememberSeen(memory, 2, at(2, 0), 2, false);
+    expect(chooseTarget(memory, HERE, 2, M)).toBe(2);
   });
 });
