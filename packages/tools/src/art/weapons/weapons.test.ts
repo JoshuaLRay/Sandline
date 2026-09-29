@@ -24,6 +24,10 @@ const HOLDS: [string, 'squad' | 'enemy'][] = [
   ['frag', 'squad'],
   ['rocket', 'squad'],
   ['lmg', 'squad'],
+  ['smg', 'squad'],
+  ['carbine-scoped', 'squad'],
+  ['sniper-semi', 'squad'],
+  ['sniper-bolt-left', 'squad'],
   ['carbine', 'enemy'],
   ['lmg', 'enemy'],
   ['rocket', 'enemy'],
@@ -113,6 +117,7 @@ const SIGHTED: [string, number][] = [
   ['sidearm', 0.482],
   ['rocket', 0.492],
   ['lmg', 0.857],
+  ['smg', 0.521],
 ];
 
 describe('the sight line (QA: ADS art obstructs aim)', () => {
@@ -199,7 +204,7 @@ describe('the AR sight picture is open (U-004)', () => {
 });
 
 describe('the magazine is a part of its own (U-006)', () => {
-  for (const key of ['m4', 'dmr']) {
+  for (const key of ['m4', 'dmr', 'smg', 'm4s', 'sniper']) {
     it(`'weapon-${key}' writes its magazine as a child node the reload can move, and nothing is lost or doubled`, () => {
       const mesh = buildWeapon(key);
       const parts = mesh.parts ?? [];
@@ -224,12 +229,12 @@ describe('the magazine is a part of its own (U-006)', () => {
     });
   }
   it('the other weapons are one piece', () => {
-    for (const key of ['shotgun', 'pistol', 'm249', 'ak']) expect(buildWeapon(key).parts ?? []).toEqual([]);
+    for (const key of ['shotgun', 'pistol', 'm249', 'ak', 'bolt']) expect(buildWeapon(key).parts ?? []).toEqual([]);
   });
 });
 
 describe('the period weapons (T-4.36)', () => {
-  it('draws every loadout id for both sides with a generated model, ten in all', () => {
+  it('draws every loadout id for both sides with a generated model, fourteen in all', () => {
     const ids = new Set(HOLDS.map(([id, side]) => weaponAssetId(id, side)));
     expect(ids.size).toBe(Object.keys(WEAPONS).length);
     for (const id of ids) expect(Object.keys(WEAPONS).map((k) => `weapon-${k}`)).toContain(id);

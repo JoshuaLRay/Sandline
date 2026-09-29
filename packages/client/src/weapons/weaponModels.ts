@@ -20,10 +20,18 @@ import * as THREE from 'three';
 export type Vec3Tuple = [number, number, number];
 
 export interface WeaponModelSpec {
-  /** Where the right hand holds it, in aim space. */
+  /**
+   * Where the right hand holds it, in aim space: the trigger hand's grip. For
+   * a model marked `handed: 'left'` this is where the LEFT hand goes instead.
+   */
   gripRight: Vec3Tuple;
-  /** Where the left hand holds it (or rests, for a grenade), in aim space. */
+  /**
+   * Where the left hand holds it (or rests, for a grenade), in aim space: the
+   * support hand's. For a `handed: 'left'` model, the RIGHT hand's.
+   */
   gripLeft: Vec3Tuple;
+  /** U-042: built for a left-handed shooter, who works the trigger with the left hand (absent: right-handed). */
+  handed?: 'left';
   /**
    * The point the eye looks along when aimed, in aim space: the rear sight,
    * the scope's eyepiece, the launcher's sight. The viewmodel puts this on
@@ -197,13 +205,17 @@ const BUILDERS: Record<string, Builder> = {
 };
 
 /**
- * U-020/U-041: the roster guns until U-042 gives them their own art. The
+ * U-020/U-041: the roster guns' code-built stand-ins, drawn until the generated models load (U-042 made those). The
  * snipers are the marksman's silhouette; the scoped carbine is the carbine
  * with a scope on it; the SMG is a short carbine. Held like the rifles they
  * borrow, so the hold and the muzzle stay right.
  */
 BUILDERS['sniper-semi'] = BUILDERS['marksman'] as Builder;
-BUILDERS['sniper-bolt-left'] = BUILDERS['marksman'] as Builder;
+BUILDERS['sniper-bolt-left'] = (g) => {
+  const spec = (BUILDERS['marksman'] as Builder)(g);
+  // Left-handed (U-042): the left hand takes the trigger grip, the rifle rides mirrored at the hip.
+  return { ...spec, handed: 'left', gripLeft: [-spec.gripLeft[0], spec.gripLeft[1], spec.gripLeft[2]], hip: [-spec.hip[0], spec.hip[1], spec.hip[2]] };
+};
 BUILDERS['carbine-scoped'] = (g) => {
   const spec = (BUILDERS['carbine'] as Builder)(g);
   tube(g, 'metal', 0.022, 0.22, [0, 0.1, 0.36]);
@@ -230,7 +242,7 @@ export type WeaponSide = 'squad' | 'enemy';
  * own for the ids it carries; anything else it holds is drawn as the squad's.
  */
 const MODEL_FOR: Record<WeaponSide, Readonly<Record<string, string>>> = {
-  squad: { carbine: 'm4', marksman: 'dmr', breacher: 'shotgun', sidearm: 'pistol', frag: 'm67', rocket: 'at4', lmg: 'm249', smg: 'm4', 'carbine-scoped': 'm4', 'sniper-semi': 'dmr', 'sniper-bolt-left': 'dmr' },
+  squad: { carbine: 'm4', marksman: 'dmr', breacher: 'shotgun', sidearm: 'pistol', frag: 'm67', rocket: 'at4', lmg: 'm249', smg: 'smg', 'carbine-scoped': 'm4s', 'sniper-semi': 'sniper', 'sniper-bolt-left': 'bolt' },
   enemy: { carbine: 'ak', lmg: 'pkm', rocket: 'rpg7' },
 };
 

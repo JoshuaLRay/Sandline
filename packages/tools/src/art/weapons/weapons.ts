@@ -537,6 +537,165 @@ const RPG7: Build = (b) => {
   ], 16, 'warhead', 0.08);
 };
 
+/**
+ * U-042: the roster's four guns, in the same builder and atlas as the rest.
+ * Each keeps the hold and muzzle `weaponModels.ts` gives its loadout id.
+ */
+
+/** The support's SMG: an M4's lower and upper with a short handguard and barrel, a straight magazine. */
+const SMG: Build = (b) => {
+  arLower(b);
+  arUpper(b);
+  b.extrude([
+    [0.2, 0.034],
+    [0.232, 0.034],
+    [0.226, 0.056],
+    [0.2, 0.056],
+  ], 0.012, 'steel');
+  b.extrude([
+    [0.33, 0.034],
+    [0.36, 0.034],
+    [0.36, 0.056],
+    [0.336, 0.056],
+  ], 0.012, 'steel');
+  b.box([-0.012, 0.054, 0.2], [0.012, 0.062, 0.36], 'steel');
+  b.box([-0.012, 0.062, 0.248], [0.012, RIFLE_SIGHT_Y - AR_RING_OUTER + 0.001, 0.266], 'steel');
+  b.ring(0.251, 0.263, AR_RING_OPEN, AR_RING_OUTER, 20, 'steel', RIFLE_SIGHT_Y);
+  // A short polymer handguard with vent slots, no delta ring, and a short barrel with a compact hider.
+  b.lathe([
+    [0.398, 0.036],
+    [0.412, 0.036],
+  ], 14, 'steel', 0);
+  b.lathe([
+    [0.41, 0.028],
+    [0.416, 0.032],
+    [0.5, 0.032],
+    [0.506, 0.027],
+  ], 14, 'polymer', 0);
+  for (const z of [0.43, 0.46, 0.49]) b.box([-0.034, -0.006, z], [0.034, 0.006, z + 0.014], 'rubber');
+  b.lathe([
+    [0.505, 0.016],
+    [0.53, 0.016],
+  ], 10, 'steel', 0);
+  b.extrude([
+    [0.51, 0.012],
+    [0.532, 0.012],
+    [0.526, 0.05],
+    [0.518, 0.05],
+  ], 0.007, 'steel');
+  frontPost(b, 0.519, 0.524, 0.05, RIFLE_SIGHT_Y, 0.011);
+  b.lathe([
+    [0.53, 0.0095],
+    [0.66, 0.0088],
+  ], 10, 'steel', 0);
+  b.lathe([
+    [0.655, 0.013],
+    [0.7, 0.013],
+  ], 8, 'steel', 0);
+};
+
+/** The scoped AR: the M4 with a compact optic on the carry handle, the ring and post left as they are. */
+const M4_SCOPED: Build = (b) => {
+  M4(b);
+  b.lathe([
+    [0.205, 0.024],
+    [0.222, 0.03],
+    [0.25, 0.022],
+    [0.4, 0.022],
+    [0.42, 0.03],
+    [0.47, 0.03],
+  ], 16, 'steel', 0.1);
+  b.lathe([
+    [0.203, 0.02],
+    [0.207, 0.02],
+  ], 12, 'glass', 0.1);
+  for (const z of [0.27, 0.36]) b.box([-0.014, 0.056, z], [0.014, 0.078, z + 0.028], 'steel');
+};
+
+/** The slot-5 sniper: the DMR's action with a long fluted barrel and a muzzle brake, and a cheek riser on the stock. */
+const SNIPER_SEMI: Build = (b) => {
+  DMR(b);
+  b.box([-0.02, 0.03, 0.04], [0.02, 0.058, 0.17], 'polymer');
+  b.lathe([
+    [0.72, 0.0135],
+    [0.95, 0.0125],
+  ], 10, 'steel', 0);
+  b.lathe([
+    [0.99, 0.02],
+    [1.03, 0.02],
+  ], 10, 'steel', 0);
+  b.box([-0.03, -0.004, 0.996], [0.03, 0.004, 1.02], 'steel');
+};
+
+/**
+ * The slot-4 sniper: a LEFT-HANDED bolt-action rifle (U-019). A wooden stock
+ * with a thumbhole-free grip, a long heavy barrel, a fixed five-round box, and
+ * the bolt and its knob on the LEFT side of the receiver, where the left hand
+ * works them. Its strong-hand grip (the field the code calls `gripRight`) is
+ * the pistol grip, which the LEFT hand takes.
+ */
+const BOLT_LEFT: Build = (b) => {
+  b.extrude([
+    [0, -0.08],
+    [0.03, -0.086],
+    [0.2, -0.05],
+    [0.215, 0.028],
+    [0.16, 0.036],
+    [0, -0.02],
+  ], 0.021, 'walnut');
+  b.box([-0.022, -0.082, -0.004], [0.022, -0.02, 0.012], 'rubber');
+  b.extrude([
+    [0.19, -0.05],
+    [0.23, -0.05],
+    [0.216, -0.13],
+    [0.18, -0.126],
+  ], 0.015, 'walnut');
+  // The receiver, the fixed magazine box under it, the trigger guard.
+  b.box([-0.026, -0.03, 0.2], [0.026, 0.04, 0.46], 'steel');
+  b.box([-0.022, -0.09, 0.28], [0.022, -0.03, 0.36], 'steel');
+  b.box([-0.004, -0.075, 0.21], [0.004, -0.069, 0.27], 'steel');
+  // The bolt: a body along the top, and its handle out to the LEFT with a knob.
+  b.lathe([
+    [0.2, 0.011],
+    [0.36, 0.011],
+  ], 8, 'steel', 0.03);
+  b.box([-0.07, 0.024, 0.32], [-0.026, 0.034, 0.336], 'steel');
+  b.lathe([
+    [0.316, 0.014],
+    [0.34, 0.014],
+  ], 8, 'steel', 0.029, -0.078);
+  // The fore-end, the heavy barrel and a muzzle brake.
+  b.extrude([
+    [0.44, -0.03],
+    [0.72, -0.03],
+    [0.72, 0.02],
+    [0.44, 0.03],
+  ], 0.02, 'walnut');
+  b.lathe([
+    [0.46, 0.014],
+    [0.99, 0.0125],
+  ], 12, 'steel', 0.008);
+  b.lathe([
+    [0.99, 0.02],
+    [1.03, 0.02],
+  ], 10, 'steel', 0.008);
+  b.box([-0.03, 0.004, 0.996], [0.03, 0.012, 1.02], 'steel');
+  // The scope, as the marksman's: its eyepiece is the sight point.
+  b.lathe([
+    [0.215, 0.026],
+    [0.232, 0.032],
+    [0.27, 0.021],
+    [0.47, 0.021],
+    [0.505, 0.033],
+    [0.56, 0.033],
+  ], 16, 'steel', 0.085);
+  b.lathe([
+    [0.212, 0.022],
+    [0.216, 0.022],
+  ], 12, 'glass', 0.085);
+  for (const z of [0.29, 0.44]) b.box([-0.014, 0.04, z], [0.014, 0.064, z + 0.03], 'steel');
+};
+
 export const WEAPONS: Readonly<Record<string, Build>> = {
   m4: M4,
   dmr: DMR,
@@ -545,6 +704,10 @@ export const WEAPONS: Readonly<Record<string, Build>> = {
   m67: GRENADE,
   at4: AT4,
   m249: M249,
+  smg: SMG,
+  m4s: M4_SCOPED,
+  sniper: SNIPER_SEMI,
+  bolt: BOLT_LEFT,
   ak: AK,
   pkm: PKM,
   rpg7: RPG7,

@@ -169,6 +169,14 @@ describe('the drawn barrel in first person (U-003)', () => {
     }
   });
 
+  it('a left-handed rifle rides the left of the screen at the hip and is centred at ADS (U-042)', () => {
+    const hip = settled('sniper-bolt-left', false).muzzle(new THREE.Vector3())!;
+    const ads = settled('sniper-bolt-left', true).muzzle(new THREE.Vector3())!;
+    expect(hip.x).toBeLessThan(-0.05);
+    expect(hip.y).toBeLessThan(-0.05);
+    expect(Math.abs(ads.x)).toBeLessThan(0.01);
+  });
+
   it('carried into the world, the barrel lands on the screen exactly where the viewmodel draws it — every stance, at the hip and zoomed at ADS', () => {
     const vmCamera = new THREE.PerspectiveCamera(VIEWMODEL_FOV, 16 / 9, 0.01, 5);
     vmCamera.updateMatrixWorld();
