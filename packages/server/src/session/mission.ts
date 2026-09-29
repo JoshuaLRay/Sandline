@@ -29,7 +29,7 @@
  *     a repeated or late request cannot advance it, and progress only ever
  *     comes from ticks while it runs, up to the goal.
  *
- * Whatever the objective, a squad wipe — every slot dead at once — fails the
+ * Whatever the objective, any soldier's death or all six soldiers unable to stand fails the
  * mission. The next objective starts the tick one completes; the mission is
  * complete when the last does. Complete and failed are final until a
  * restart (`reset`).
@@ -45,8 +45,8 @@ export interface MissionWorld {
   /** Standing squad soldiers — alive, not downed — in all, and inside an area. */
   standing(): number;
   standingIn(area: GroundArea): number;
-  /** Every slot is dead. */
-  wiped(): boolean;
+  /** Whether any squad soldier is dead. */
+  soldierDead(): boolean;
   /** A protected encounter entity has spawned and been lost. */
   protectedLost(id: string): boolean;
   /** An encounter group: whether it is dead, and how many it has placed and lost so far. */
@@ -186,8 +186,10 @@ export class MissionRun {
     const failure = this.def.failure;
     const timedOut = failure?.timeLimitSeconds !== undefined && this.elapsedTicks >= ticksOf(failure.timeLimitSeconds);
     const protectedLost = failure?.protectedGroup !== undefined && w.protectedLost(failure.protectedGroup);
-    if (w.wiped() || timedOut || protectedLost) {
+    const reason = w.soldierDead() ? 'soldier-dead' : w.standing() === 0 ? 'all-downed' : timedOut ? 'time-limit' : protectedLost ? 'protected-lost' : null;
+    if (reason) {
       next.state = 'failed';
+      next.failureReason = reason;
     } else {
       const { def, area } = this.objective;
       switch (def.type) {
@@ -213,7 +215,10 @@ export class MissionRun {
           const overrun = w.enemiesIn(area!) > 0 && w.squadIn(area!) === 0;
           this.breach = overrun ? this.breach + 1 : 0;
           next = { ...next, satisfied: !overrun, progress: Math.min(next.goal, next.progress + 1) };
-          if (this.breach >= ticksOf(def.breachSeconds)) next.state = 'failed';
+          if (this.breach >= ticksOf(def.breachSeconds)) {
+            next.state = 'failed';
+            next.failureReason = 'area-overrun';
+          }
           break;
         }
         case 'survive':

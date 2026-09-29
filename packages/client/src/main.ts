@@ -138,7 +138,7 @@ import { createFootPlacementDriver } from './character/footPlacement.ts';
 import { RemoteSoldiers } from './character/remoteSoldiers.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
-import { RESTART_KEY, afterActionXp, missionLine, uploadPrompt } from './ui/missionHud.ts';
+import { FULL_RESTART_KEY, RESTART_KEY, afterActionXp, missionLine, uploadPrompt } from './ui/missionHud.ts';
 import { type ClassDef, TICK_SECONDS as MISSION_TICK_SECONDS, type Vitality, afterActionSummary, classById, scoreboardRows } from '@sandline/shared';
 import { createScoreboard } from './ui/scoreboard.ts';
 import { createMenu } from './ui/menu/Menu.ts';
@@ -2720,6 +2720,7 @@ function frame(): void {
   // T-4.28: the scoreboard while Tab is down, and on its own once the mission is over.
   const missionOver = (net?.mission?.state ?? 'progress') !== 'progress';
   scoreboard.setVisible(live !== null && (tabHeld || missionOver));
+  scoreboard.setOutcome(net?.mission ?? null, (full) => live?.net.restartMission(full));
   if (scoreboard.visible && net) {
     scoreboard.update(
       scoreboardRows(net.scoreboard, net.roster, net.slot),
@@ -3102,6 +3103,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyH') toggleHud();
   // P asks the host to start the mission again; it only does once the mission is over (T-3.34).
   if (e.code === RESTART_KEY && !e.repeat) live?.net.restartMission();
+  if (e.code === FULL_RESTART_KEY && !e.repeat) live?.net.restartMission(true);
   // N for netgraph. It was G until T-2.32 needed G for the grenade, which is
   // the more valuable piece of muscle memory; H still hides the whole HUD.
   if (e.code === 'KeyN') netgraph.root.classList.toggle('collapsed');

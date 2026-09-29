@@ -5,7 +5,7 @@
  * list of OBJECTIVES played in order. Each objective is one of six types,
  * each with its own parameters (see `ObjectiveDef`). The next objective
  * starts the moment one completes; the mission is complete when the last
- * does, and fails on a squad wipe whatever the objective, or when an
+ * does, and fails when a soldier dies or all six are down whatever the objective, or when an
  * objective of its own fails (a defended area overrun).
  *
  * Validated by hand, unknown keys refused by name, as every data file is. An
@@ -76,7 +76,7 @@ export type ObjectiveDef = { label: string } & (
   | { type: 'upload'; terminal: MissionPoint; reachM: number; seconds: number; onInterrupt: UploadOnInterrupt; lever?: UploadLever }
 );
 
-/** Mission-wide failure rules beyond the always-on squad wipe. */
+/** Mission-wide failure rules beyond the always-on squad loss rule. */
 export interface MissionFailureDef {
   /** Fail once this many seconds have elapsed in the mission attempt. */
   timeLimitSeconds?: number;
@@ -90,7 +90,7 @@ export interface MissionDef {
   world: string;
   /** Whether a dead slot respawns during the mission. */
   respawn: boolean;
-  /** Optional mission-wide failure rules; a squad wipe always fails. */
+  /** Optional mission-wide failure rules; a death or all six down always fails. */
   failure?: MissionFailureDef;
   objectives: readonly ObjectiveDef[];
 }
@@ -98,6 +98,8 @@ export interface MissionDef {
 /** Where a mission stands. The order is the wire encoding. */
 export const MISSION_STATES = ['progress', 'complete', 'failed'] as const;
 export type MissionStatus = (typeof MISSION_STATES)[number];
+export const MISSION_FAILURE_REASONS = ['none', 'soldier-dead', 'all-downed', 'area-overrun', 'time-limit', 'protected-lost'] as const;
+export type MissionFailureReason = (typeof MISSION_FAILURE_REASONS)[number];
 
 /**
  * U-009: where an objective that must be started stands. An upload is
@@ -116,6 +118,8 @@ export type ObjectivePhase = (typeof OBJECTIVE_PHASES)[number];
  */
 export interface MissionView {
   state: MissionStatus;
+  /** The host's reason for failure, preserved for clients joining after it happened. */
+  failureReason?: MissionFailureReason;
   /** Which attempt this is: 1, then one more each restart. */
   attempt: number;
   /** The current objective, 0-based, and how many there are. */

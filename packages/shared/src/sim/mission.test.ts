@@ -25,6 +25,7 @@ describe('mission messages (T-3.34, T-4.14)', () => {
       }
     }
     expect(decodeMessage(encodeMessage({ kind: 'MissionRestart' }))).toEqual({ kind: 'MissionRestart' });
+    expect(decodeMessage(encodeMessage({ kind: 'MissionRestart', full: true }))).toEqual({ kind: 'MissionRestart', full: true });
   });
 
   it('refuses malformed room state, a state or a type past the last, an objective outside the mission, and progress past its goal', () => {

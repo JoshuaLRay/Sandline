@@ -11,13 +11,13 @@ import { HEALTH, POSITION, dequantize, quantize } from './quantize.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isJoinCode } from './roomCode.ts';
 import { MAX_MARKS, ORDER_KINDS, type BotOrder, type OrderAddress, type OrderKind, type OrderPoint, type TargetMark } from '../sim/orders.ts';
-import { MISSION_STATES, OBJECTIVE_PHASES, OBJECTIVE_TYPES, type MissionView } from '../sim/mission.ts';
+import { MISSION_FAILURE_REASONS, MISSION_STATES, OBJECTIVE_PHASES, OBJECTIVE_TYPES, type MissionView } from '../sim/mission.ts';
 import type { ScriptBlockerState } from '../sim/events.ts';
 import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 import type { MissionStats } from '../sim/scoreboard.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 43;
+export const PROTOCOL_VERSION = 44;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -468,7 +468,7 @@ export type Message =
   /** T-3.34: where the mission stands, on every change, each second of a hold, and on seating. Host to client. */
   | ({ kind: 'Mission' } & MissionView)
   /** T-3.34: a player asking for the mission to start again. Client to host; honoured once it is over. */
-  | { kind: 'MissionRestart' }
+  | { kind: 'MissionRestart'; full?: boolean }
   /** U-025: put the bot in `bot`'s slot under the human in `commander`'s. Client to host; the host checks both. */
   | { kind: 'AssignCommander'; bot: number; commander: number }
   /** U-026: take control of the bot in `slot`, one you command. Client to host; the host checks it. */
@@ -715,11 +715,13 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBool(msg.satisfied);
       w.writeVarUint(msg.progress);
       w.writeVarUint(msg.goal);
+      w.writeBits(MISSION_FAILURE_REASONS.indexOf(msg.failureReason ?? 'none'), 3);
       break;
     case 'MissionRestart':
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Mission, EXT_BITS);
       w.writeBits(MISSION_VARIANT.Restart, 3);
+      w.writeBool(msg.full === true);
       break;
     case 'AssignCommander':
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -1214,7 +1216,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
               }
               return { kind: 'Progression', soldiers };
             }
-            if (variant === MISSION_VARIANT.Restart) return { kind: 'MissionRestart' };
+            if (variant === MISSION_VARIANT.Restart) return { kind: 'MissionRestart', ...(r.readBool() ? { full: true } : {}) };
             if (variant === MISSION_VARIANT.Possess) {
               if (!r.readBool()) {
                 const slot = r.readBits(3);
@@ -1272,9 +1274,11 @@ export function decodeMessage(bytes: Uint8Array): Message {
             const satisfied = r.readBool();
             const progress = r.readVarUint();
             const goal = r.readVarUint();
+            const failureReason = MISSION_FAILURE_REASONS[r.readBits(3)];
+            if (failureReason === undefined) throw new ProtocolError('unknown mission failure reason');
             if (objectives === 0 || objective >= objectives) throw new ProtocolError('objective out of the mission');
             if (progress > goal) throw new ProtocolError('objective past its goal');
-            return { kind: 'Mission', state, attempt, objective, objectives, type, phase, label, satisfied, progress, goal };
+            return { kind: 'Mission', state, attempt, objective, objectives, type, phase, label, satisfied, progress, goal, ...(failureReason !== 'none' ? { failureReason } : {}) };
           }
           case EXT.Events: {
             const variant = r.readBits(2);

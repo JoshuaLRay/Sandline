@@ -269,6 +269,12 @@
   pointer-events: none;
 }
 #scoreboard.hidden { display: none; }
+#scoreboard:has(.scoreboard-actions:not(.hidden)) { pointer-events: auto; }
+.scoreboard-failure { text-align: center; color: #ffbda8; font-size: 14px; margin: 8px 0 12px; }
+.scoreboard-failure.hidden, .scoreboard-actions.hidden { display: none; }
+.scoreboard-actions { display: flex; gap: 10px; margin-top: 14px; justify-content: center; }
+.scoreboard-actions button { padding: 10px 12px; min-height: 44px; color: var(--dust, #e8dcc8); background: rgba(255,255,255,.1); border: 1px solid var(--rule, rgba(232,220,200,.4)); border-radius: 4px; cursor: pointer; }
+@media (max-width: 600px) { #scoreboard { min-width: 0; width: min(92vw, 460px); box-sizing: border-box; padding: 12px 8px; } #scoreboard th, #scoreboard td { padding: 4px 2px; } .scoreboard-actions { flex-wrap: wrap; } }
 .scoreboard-head { display: flex; justify-content: space-between; font-size: 12px; letter-spacing: 0.12em; color: var(--amber, #f0b429); margin-bottom: 8px; }
 #scoreboard table { border-collapse: collapse; width: 100%; font-size: 12px; }
 #scoreboard th { text-align: right; font-weight: 600; font-size: 9px; letter-spacing: 0.12em; opacity: 0.7; padding: 2px 8px; }
