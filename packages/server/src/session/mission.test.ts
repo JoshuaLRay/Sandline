@@ -449,6 +449,53 @@ describe('the mission on a session (T-3.34, T-4.14)', () => {
     expect(m.session.mission!.state).toBe('failed');
   });
 
+  it('a downed soldier is not a death: revived, the mission carries on (U-033)', () => {
+    const m = mission();
+    m.step(1);
+    const slot = m.session.slots[2]!;
+    Object.assign(slot.health, { current: 0, downedAt: 0, diedAt: null });
+    m.step(30);
+    expect(m.session.mission!.state).toBe('progress');
+    Object.assign(slot.health, { current: 40, downedAt: null });
+    m.step(30);
+    expect(m.session.mission!.state).toBe('progress');
+    expect(m.seen.filter((x) => x.state === 'failed')).toHaveLength(0);
+  });
+
+  it('any of the six dying fails it, a bot-held slot as much as the human one, and once (U-033)', () => {
+    const m = mission();
+    m.step(1);
+    const bot = m.session.slots[4]!;
+    // Down first, then dead: only the death fails it.
+    Object.assign(bot.health, { current: 0, downedAt: 0, diedAt: null });
+    m.step(5);
+    expect(m.session.mission!.state).toBe('progress');
+    m.kill(bot.health);
+    m.step(60);
+    expect(m.session.mission).toMatchObject({ state: 'failed', failureReason: 'soldier-dead' });
+    // A second death, and time passing, add no second failure.
+    m.kill(m.session.slots[0]!.health);
+    m.step(60);
+    expect(m.seen.filter((x) => x.state === 'failed')).toHaveLength(1);
+  });
+
+  it('a death before any checkpoint restarts the first objective from the spawn points (U-033)', () => {
+    const m = mission();
+    m.step(1);
+    m.kill(m.session.slots[3]!.health);
+    m.step(1);
+    expect(m.session.mission!.state).toBe('failed');
+    m.send({ kind: 'MissionRestart' });
+    expect(m.session.mission).toMatchObject({ state: 'progress', objective: 0, attempt: 2, progress: 0 });
+    m.session.slots.forEach((slot, i) => {
+      expect(slot.health.diedAt).toBeNull();
+      expect(slot.health.current).toBe(slot.health.max);
+      expect([slot.state.x, slot.state.z]).toEqual([SPAWN_POINTS[i]!.x, SPAWN_POINTS[i]!.z]);
+    });
+    m.step(30);
+    expect(m.session.mission!.state).toBe('progress');
+  });
+
   it('fails when every soldier is downed, with no deaths', () => {
     const m = mission();
     m.step(1);
