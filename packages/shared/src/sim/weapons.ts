@@ -31,6 +31,11 @@ import { seedFrom, unitFromSeed } from '../math/prng.ts';
 import { cos, sin } from '../math/trig.ts';
 import RAW_WEAPONS from '../data/weapons.json' with { type: 'json' };
 
+export type WeaponAction = 'auto' | 'semi' | 'bolt';
+export type Handedness = 'right' | 'left';
+const ACTIONS: readonly WeaponAction[] = ['auto', 'semi', 'bolt'];
+const HANDS: readonly Handedness[] = ['right', 'left'];
+
 export interface WeaponDef {
   id: string;
   name: string;
@@ -69,6 +74,19 @@ export interface WeaponDef {
    * down), not a presentation detail — so it lives in data with the rest.
    */
   auto: boolean;
+  /**
+   * How the gun cycles (U-020): `auto` holds the trigger, `semi` needs a pull
+   * per shot, `bolt` is a manual action whose long cycle is the slow `rpm`.
+   * `auto` above is this, kept as the flag the fire path reads; a row that
+   * says otherwise fails to load.
+   */
+  action: WeaponAction;
+  /**
+   * Which hand the gun is built for (U-020). Machine-readable so the pickup
+   * and equip rules (U-029) can keep a left-handed-only soldier to left-handed
+   * guns; it changes the model's side, never the ballistics.
+   */
+  handedness: Handedness;
   /**
    * Recoil (T-2.08): what one shot does to the VIEW, in degrees. Never to the
    * server's ray — the next shot fires wherever the kicked view then points,
@@ -164,6 +182,14 @@ function str(row: Record<string, unknown>, key: string, id: string): string {
   return v;
 }
 
+function oneOf<T extends string>(row: Record<string, unknown>, key: string, id: string, allowed: readonly T[]): T {
+  const v = row[key];
+  if (typeof v !== 'string' || !(allowed as readonly string[]).includes(v)) {
+    throw new WeaponDataError(`weapon "${id}": ${key} must be one of ${allowed.join(', ')}, got ${String(v)}`);
+  }
+  return v as T;
+}
+
 function parseWeaponDef(key: string, raw: unknown): WeaponDef {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     throw new WeaponDataError(`weapon "${key}": expected an object`);
@@ -191,6 +217,8 @@ function parseWeaponDef(key: string, raw: unknown): WeaponDef {
     magSize: num(row, 'magSize', key, 1, 500),
     reloadSeconds: num(row, 'reloadSeconds', key, 0, 60),
     auto: bool(row, 'auto', key),
+    action: oneOf(row, 'action', key, ACTIONS),
+    handedness: oneOf(row, 'handedness', key, HANDS),
     recoilKickDeg: num(row, 'recoilKickDeg', key, 0, 30),
     recoilDriftDeg: num(row, 'recoilDriftDeg', key, 0, 30),
     recoilMaxDeg: num(row, 'recoilMaxDeg', key, 0, 60),
@@ -201,6 +229,9 @@ function parseWeaponDef(key: string, raw: unknown): WeaponDef {
   };
   if (row['scopeFovDeg'] !== undefined) def.scopeFovDeg = num(row, 'scopeFovDeg', key, 2, 60);
 
+  if (def.auto !== (def.action === 'auto')) {
+    throw new WeaponDataError(`weapon "${key}": action "${def.action}" contradicts auto ${String(def.auto)}`);
+  }
   if (!Number.isInteger(def.pellets)) throw new WeaponDataError(`weapon "${key}": pellets must be an integer`);
   if (!Number.isInteger(def.magSize)) throw new WeaponDataError(`weapon "${key}": magSize must be an integer`);
   if (def.falloffEndM < def.falloffStartM) {
@@ -240,6 +271,15 @@ export const WEAPON_IDS = ['carbine', 'marksman', 'breacher', 'sidearm', 'knife'
 
 /** The shipped table, validated at import so bad data fails loudly at boot. */
 export const WEAPONS: Readonly<Record<string, WeaponDef>> = Object.freeze(parseWeaponTable(RAW_WEAPONS));
+
+/**
+ * Whether a soldier may use the gun. A soldier limited to left-handed guns (the
+ * roster's left-handed sniper, U-019) may use only those; everyone else may
+ * use any. Acquisition rules (U-029) sit on top of this.
+ */
+export function canWield(def: WeaponDef, leftHandedOnly: boolean): boolean {
+  return !leftHandedOnly || def.handedness === 'left';
+}
 
 export function getWeapon(id: string): WeaponDef {
   const def = WEAPONS[id];

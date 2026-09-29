@@ -276,3 +276,4 @@ Format: `T-<id> — <what changed>`
 - U-033 — A squad death ending the mission was already implemented by #180 (any of the six slots, `soldier-dead`, restart from the checkpoint by choice); added tests for downed-then-revived, downed-then-dead on a bot slot, single failure, and death before any checkpoint.
 - U-019 — Roster decisions recorded (2026-09-29): names accepted, support +10% speed / SMG + shotgun / no pistol / third-person only, any free slot, skills deferred to a later version (U-023 parked). Docs only.
 - U-029 — Docs: owner controls recorded (E picks up or swaps, G drops), and the G/grenade key conflict flagged for a decision.
+- U-040 — `weapons.json` rows declare `action` (auto/semi/bolt) and `handedness`, validated; new `smg`, `carbine-scoped`, `sniper-semi`, `sniper-bolt-left`; `canWield` for left-handed-only soldiers; models and sounds borrowed until U-042/U-043. U-020 split into U-040–U-043.

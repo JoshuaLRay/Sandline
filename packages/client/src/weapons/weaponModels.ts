@@ -206,7 +206,7 @@ export type WeaponSide = 'squad' | 'enemy';
  * own for the ids it carries; anything else it holds is drawn as the squad's.
  */
 const MODEL_FOR: Record<WeaponSide, Readonly<Record<string, string>>> = {
-  squad: { carbine: 'm4', marksman: 'dmr', breacher: 'shotgun', sidearm: 'pistol', frag: 'm67', rocket: 'at4', lmg: 'm249' },
+  squad: { carbine: 'm4', marksman: 'dmr', breacher: 'shotgun', sidearm: 'pistol', frag: 'm67', rocket: 'at4', lmg: 'm249', smg: 'm4', 'carbine-scoped': 'm4', 'sniper-semi': 'dmr', 'sniper-bolt-left': 'dmr' },
   enemy: { carbine: 'ak', lmg: 'pkm', rocket: 'rpg7' },
 };
 
@@ -284,6 +284,10 @@ const MUZZLES: Record<WeaponSide, Readonly<Record<string, Vec3Tuple>>> = {
     knife: [0, -0.025, 0.46],
     carbine: [0, 0, 0.82],
     marksman: [0, 0, 1.03],
+    smg: [0, 0, 0.7],
+    'carbine-scoped': [0, 0, 0.82],
+    'sniper-semi': [0, 0, 1.03],
+    'sniper-bolt-left': [0, 0, 1.03],
     breacher: [0, 0.018, 0.9],
     sidearm: [0, 0.002, 0.505],
     lmg: [0, 0.012, 0.94],
