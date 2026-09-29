@@ -11,3 +11,14 @@ export function detectMobile(search: string, coarsePointer: boolean): boolean {
 export function applyMobileClass(root: HTMLElement, mobile: boolean): void {
   root.classList.toggle('mobile', mobile);
 }
+
+export const MOBILE_CAMERA_MIN = 3;
+
+/** Farthest the mobile camera may pull back: 6x the minimum in portrait, 3x in landscape (U-038). */
+export function mobileCameraMax(portrait: boolean): number {
+  return MOBILE_CAMERA_MIN * (portrait ? 6 : 3);
+}
+
+export function clampMobileCameraDistance(distance: number, portrait: boolean): number {
+  return Math.max(MOBILE_CAMERA_MIN, Math.min(mobileCameraMax(portrait), distance));
+}
