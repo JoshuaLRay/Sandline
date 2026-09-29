@@ -70,6 +70,9 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-023](docs/backlog/U-023.md) | Break approved character skills into implementation tasks | Squad | P2 | BLOCKED | U-019 | — |
 | [U-032](docs/backlog/U-032.md) | Capture downed characters as prisoners for next-mission rescue | Campaign | P2 | INBOX | U-031; design decomposition needed | — |
 | [U-035](docs/backlog/U-035.md) | Add an enemy tank that attacks during mission-01's upload | Mission / vehicle combat | P2 | INBOX | Vehicle simulation and damage design; route geometry and asset decisions | — |
+| [U-037](docs/backlog/U-037.md) | Keep mobile controls and layout when the phone is rotated | Mobile | P1 | REVIEW | — | task/U-037-mobile-orientation (PR stacked on #181) |
+| [U-038](docs/backlog/U-038.md) | Mobile zoom-out limit: 6x portrait, 3x landscape | Mobile | P1 | READY | U-037 | — |
+| [U-039](docs/backlog/U-039.md) | Never show the crosshair on mobile | Mobile | P1 | READY | — | — |
 
 ## Existing work retained
 
