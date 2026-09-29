@@ -259,6 +259,29 @@ describe('a world names its floor (T-3.03)', () => {
 });
 
 describe('a world may carry a mission (T-3.31)', () => {
+  it('screens every squad spawn from the starting enemy patrol, including its whole route', () => {
+    for (const id of ['greybox-01', 'mission-01']) {
+      const world = requireWorld(id);
+      const patrol = [{ x: -6, z: 68 }, { x: -24, z: 22 }, { x: -26, z: 50 }];
+      for (let leg = 0; leg < patrol.length - 1; leg++) {
+        const a = patrol[leg]!;
+        const b = patrol[leg + 1]!;
+        for (let step = 0; step <= 20; step++) {
+          const t = step / 20;
+          const enemy = { x: a.x + (b.x - a.x) * t, y: 1.55, z: a.z + (b.z - a.z) * t };
+          for (const spawn of SPAWN_POINTS) {
+            const dx = spawn.x - enemy.x;
+            const dy = 0.9 - enemy.y;
+            const dz = spawn.z - enemy.z;
+            const length = Math.hypot(dx, dy, dz);
+            const hit = rayWorld({ origin: enemy, direction: { x: dx / length, y: dy / length, z: dz / length }, maxDistance: length - 0.001 }, world.boxes);
+            expect(hit, `${id}: patrol leg ${leg} step ${step} sees spawn ${spawn.x}`).not.toBeNull();
+          }
+        }
+      }
+    }
+  });
+
   const RAW = GREYBOX_01 as unknown as { mission: Record<string, unknown> };
   const withMission = (edit: (m: Record<string, unknown>) => void) => {
     const mission = structuredClone(RAW.mission);
