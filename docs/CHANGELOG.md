@@ -270,3 +270,4 @@ Format: `T-<id> — <what changed>`
 - U-034 — Guard the client mounted gun from a carried-primary snapshot, move the mission-01 garrison into MG claim range, turn the nest toward the squad's approach, and regenerate its navigation bake; merged in #159. Follow-up: exercise the client snapshot and firing path directly, and defer a carried-primary change until dismount. In-game playtest pending.
 - U-037 — Mobile is decided by the device (`html.mobile` from `ui/mobileDevice.ts`), not window width, so a phone in landscape keeps the mobile HUD, scoreboard and panel layout.
 - U-038 — Mobile pinch zoom-out reaches 6x in portrait and stays 3x in landscape (`mobileCameraMax`), re-clamped on rotation.
+- U-039 — Mobile players never see the crosshair: `html.mobile #crosshair` is force-hidden, including in landscape.
