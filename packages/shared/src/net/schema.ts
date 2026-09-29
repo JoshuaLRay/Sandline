@@ -12,6 +12,7 @@ import { COMPONENT_IDS, type ComponentName } from '../ecs/components.ts';
 import { ENEMY_ARCHETYPE_BITS, ENEMY_FACTION_BITS } from '../sim/enemies.ts';
 import { EMPLACEMENT_HEAT_BITS, EMPLACEMENT_KIND_BITS } from '../sim/emplacement.ts';
 import { PICKUP_AMMO_BITS, PICKUP_WEAPON_BITS } from '../sim/pickups.ts';
+import { WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 import { PROJECTILE_IDS } from '../sim/ballistics.ts';
 import { SUPPRESSION_BITS } from '../sim/suppression.ts';
 import { ANGLE_BITS_WIRE, HEALTH, POSITION, VELOCITY, dequantize, quantize, quantizeAngle } from './quantize.ts';
@@ -129,7 +130,7 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // renumbered (ADR-009).
     // U-028: then the rounds in the magazine, so the page's count follows the host's.
     // U-018: then the primary (a WEAPON_IDS index) — what key 1 draws, a picked-up gun once one is taken.
-    fields: [uint('index', 2), uint('reloadProgress', 7), uint('pouch', 2), ...PROJECTILE_IDS.map((id) => uint(`left_${id}`, POUCH_COUNT_BITS)), uint('ammo', AMMO_BITS), uint('primary', 2)],
+    fields: [uint('index', WEAPON_INDEX_BITS), uint('reloadProgress', 7), uint('pouch', 2), ...PROJECTILE_IDS.map((id) => uint(`left_${id}`, POUCH_COUNT_BITS)), uint('ammo', AMMO_BITS), uint('primary', WEAPON_INDEX_BITS)],
   },
   {
     id: COMPONENT_IDS.Projectile,

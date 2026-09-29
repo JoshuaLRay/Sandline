@@ -4,6 +4,7 @@ import { cos } from '../math/trig.ts';
 import {
   WEAPONS,
   WEAPON_IDS,
+  WEAPON_INDEX_BITS,
   allowsFire,
   canWield,
   type WeaponDef,
@@ -231,12 +232,17 @@ describe('auto vs semi', () => {
     expect(allowsFire(SEMI, false, false)).toBe(false);
   });
 
-  it('ships exactly one automatic weapon in the players\' loadout, and the MG\'s LMG outside it', () => {
+  it('the automatic weapons on the wire are the carbine and the roster\'s LMG, SMG and scoped carbine', () => {
     const autos = Object.values(WEAPONS).filter((w) => w.auto).map((w) => w.id);
-    expect(autos.filter((id) => (WEAPON_IDS as readonly string[]).includes(id))).toEqual(['carbine']);
-    // T-3.23: a row for an enemy's gun, not in the wire order a player selects from.
-    expect(autos).toContain('lmg');
-    expect(WEAPON_IDS as readonly string[]).not.toContain('lmg');
+    expect(autos.filter((id) => (WEAPON_IDS as readonly string[]).includes(id))).toEqual(['carbine', 'lmg', 'smg', 'carbine-scoped']);
+    // T-3.23 kept the MG's LMG as a row; U-041 put it on the wire so a squad LMG can carry it.
+    expect(WEAPON_IDS as readonly string[]).toContain('lmg');
+  });
+
+  it('every wire index fits its fields and the order only ever grows at the end (U-041)', () => {
+    expect(WEAPON_IDS.length).toBeLessThanOrEqual(1 << WEAPON_INDEX_BITS);
+    expect(WEAPON_IDS.slice(0, 5)).toEqual(['carbine', 'marksman', 'breacher', 'sidearm', 'knife']);
+    for (const id of WEAPON_IDS) expect(WEAPONS[id], id).toBeDefined();
   });
 });
 

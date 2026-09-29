@@ -65,5 +65,5 @@ export function isPickupNetId(netId: number): boolean {
 }
 
 /** Bits a pickup's weapon (a WEAPON_IDS index) and its rounds take on the wire. */
-export const PICKUP_WEAPON_BITS = 3;
+export const PICKUP_WEAPON_BITS = 4;
 export const PICKUP_AMMO_BITS = 7;
