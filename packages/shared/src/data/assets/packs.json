@@ -4,14 +4,18 @@
     "soldier-dcu",
     "weapon-ak",
     "weapon-at4",
+    "weapon-bolt",
     "weapon-dmr",
     "weapon-m249",
     "weapon-m4",
+    "weapon-m4s",
     "weapon-m67",
     "weapon-pistol",
     "weapon-pkm",
     "weapon-rpg7",
-    "weapon-shotgun"
+    "weapon-shotgun",
+    "weapon-smg",
+    "weapon-sniper"
   ],
   "levels": {
     "range": ["fighter"],
