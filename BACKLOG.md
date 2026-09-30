@@ -68,9 +68,9 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-041](docs/backlog/U-041.md) | Carry the roster weapons on the wire | Squad | P2 | DONE | U-040 | [#198](https://github.com/JoshuaLRay/Sandline/pull/198) |
 | [U-042](docs/backlog/U-042.md) | Distinct models for the roster weapons, and the left-handed rifle | Squad | P2 | DONE | U-040 | [#199](https://github.com/JoshuaLRay/Sandline/pull/199) |
 | [U-043](docs/backlog/U-043.md) | Distinct report and handling sounds for the roster weapons | Audio | P2 | DONE | U-040 | [#200](https://github.com/JoshuaLRay/Sandline/pull/200) |
-| [U-021](docs/backlog/U-021.md) | Bind six persistent characters to the squad slots | Squad | P2 | REVIEW | U-019, U-020 | task/U-021-bind-characters |
-| [U-022](docs/backlog/U-022.md) | Implement dual-primary rules for Preach and Support | Squad | P2 | BLOCKED | U-018, U-020, U-021 | — |
-| [U-029](docs/backlog/U-029.md) | Enforce squad weapon exchanges and left-handed loot access | Squad | P2 | BLOCKED | U-018, U-020, U-021 | — |
+| [U-021](docs/backlog/U-021.md) | Bind six persistent characters to the squad slots | Squad | P2 | DONE | U-019, U-020 | [#202](https://github.com/JoshuaLRay/Sandline/pull/202) |
+| [U-022](docs/backlog/U-022.md) | Implement dual-primary rules for Preach and Support | Squad | P2 | READY | U-018, U-020, U-021 | — |
+| [U-029](docs/backlog/U-029.md) | Enforce squad weapon exchanges and left-handed loot access | Squad | P2 | READY | U-018, U-020, U-021 | — |
 | [U-023](docs/backlog/U-023.md) | Break approved character skills into implementation tasks | Squad | P2 | BLOCKED | Owner deferred skills to a later version (2026-09-29); needs a new go-ahead | — |
 | [U-032](docs/backlog/U-032.md) | Capture downed characters as prisoners for next-mission rescue | Campaign | P2 | INBOX | U-031; design decomposition needed | — |
 | [U-035](docs/backlog/U-035.md) | Add an enemy tank that attacks during mission-01's upload | Mission / vehicle combat | P2 | INBOX | Vehicle simulation and damage design; route geometry and asset decisions | — |
@@ -82,7 +82,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-046](docs/backlog/U-046.md) | Right click aims, left click uses | Controls | P2 | READY | U-045 | — |
 | [U-047](docs/backlog/U-047.md) | Health kits | Controls | P2 | READY | U-045 (the Support's 8 s waits on U-049) | — |
 | [U-048](docs/backlog/U-048.md) | Per-character equipment: the Support's C4 and Brennan's rocket launcher | Controls | P2 | BLOCKED | U-021, U-045; C4 design and the other four characters' equipment | — |
-| [U-049](docs/backlog/U-049.md) | Per-character interaction-speed multiplier (the Support's 20% discount) | Squad | P2 | BLOCKED | U-021 | — |
+| [U-049](docs/backlog/U-049.md) | Per-character interaction-speed multiplier (the Support's 20% discount) | Squad | P2 | READY | U-021 | — |
 | [U-050](docs/backlog/U-050.md) | The support runs 10% faster | Squad | P2 | READY | U-021 | — |
 | [U-051](docs/backlog/U-051.md) | A joining player may take any free slot | Squad | P2 | READY | U-021 | — |
 
