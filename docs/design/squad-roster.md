@@ -107,6 +107,24 @@ Each skill is **bounded**: one effect, a duration, a cooldown, and a range where
 | D-8 | Whether a player may take any free slot, or only the lowest one | **Decided (2026-09-29):** any free slot. |
 | D-9 | Which enemy weapons are available as pickups | **Partially decided:** other characters may pick up enemy weapon drops; U-017's drop table and the left-handed sniper exception still apply. |
 
+## Slot 5: each character's equipment *(decided 2026-09-30)*
+
+Equipment is the sixth device slot (key 5), drawn before it is used, droppable with G and picked up with E. Cards: U-048 (foundation), U-054 to U-058.
+
+| Character | Equipment | Card | Status |
+|---|---|---|---|
+| Holloway (Support) | C4 x2: thrown by the Support only, placed by anyone else, right click detonates all | U-054 | Owner-decided; numbers accepted (4 m, 250 damage, friendly fire as the frag, E picks up your own) |
+| Brennan (LMG) | Rocket launcher x2 | U-048 | Owner-decided; Preach loses his rocket |
+| Preach (lead) | Concussion grenade x4: no damage, heavy suppression | U-056 | Owner-decided |
+| Ortiz (scoped AR) | Smoke grenade x2 | U-058 | Proposal, not objected to |
+| Marsh (left-handed sniper) | Claymore x1 | U-055 | Owner-decided; mechanics proposed |
+| Vance (sniper) | Motion sensor x1 | U-057 | Owner-decided item; mechanics proposed |
+
+| # | Decision | State |
+|---|---|---|
+| D-10 | Slot 5 per character | **Decided (2026-09-30)** as above |
+| D-11 | C4: 2 charges, 250 damage, 4 m radius, detonate all at once, friendly fire as the frag, E picks up your own | **Decided (2026-09-30)** |
+
 ## Proposed ADR addendum
 
 ADR-001 carries the original six-character direction. Its 2026-09-27 decision addendum records the newly approved details above. Remaining proposals and decisions stay open. A later addendum may record further choices, including:
