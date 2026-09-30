@@ -420,6 +420,10 @@ export interface Slot {
    */
   primary: string | null;
   pickedUp: boolean;
+  /** U-061: held prisoner by the enemy: out of play (as if dead, but no respawn and no mission failure) until freed. */
+  captured: boolean;
+  /** U-061: where the prisoner is held while `captured`. */
+  prisoner: { x: number; y: number; z: number } | null;
   /** U-029: G was pressed on an input the host has just taken; the next mount pass drops the held gun. */
   dropPending: boolean;
   /** U-029: the pistol the class lists has been put down (until a respawn, a retry, or taking one up). */
@@ -937,7 +941,11 @@ export class Session {
     enemies?: EnemyCheckpoint[];
     spawner?: SpawnerCheckpoint;
     placed?: PlacedCheckpoint[];
+    /** U-061: the slots held prisoner when it was saved (those carried in, and those taken since). */
+    captured?: { slot: number; at: { x: number; y: number; z: number } }[];
   } | null = null;
+  /** U-061: the slots that were prisoners when this mission began: a restart goes back to exactly these. */
+  private capturedAtStart: { slot: number; at: { x: number; y: number; z: number } }[] = [];
   /**
    * U-059: an objective was completed while a soldier was downed, so its checkpoint is not saved yet (a restored world
    * never holds a downed soldier). It is taken once the squad is up; until then a retry goes back to `previous`.
@@ -1129,6 +1137,8 @@ export class Session {
         weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
         primary: WEAPON_IDS[0],
         pickedUp: false,
+        captured: false,
+        prisoner: null,
         dropPending: false,
         noPistol: false,
         kits: 3,
@@ -1184,6 +1194,11 @@ export class Session {
     }
     // T-4.27: every slot plays a class from the start; a bot's is the slot's default.
     this.reassignClasses();
+    // U-061: the prisoners the campaign carries in are out of play from the start.
+    this.capturedAtStart = this.campaignSoldiers.flatMap((soldier, slot) =>
+      soldier.captured === true && soldier.prisoner ? [{ slot, at: { ...soldier.prisoner } }] : [],
+    );
+    this.applyCaptured(this.capturedAtStart);
     const saved = options.campaign?.checkpoint;
     if (saved && this.missionRun && saved.mission === this.missionId) {
       this.missionRun.restoreCheckpoint(saved.objective, saved.elapsedTicks);
@@ -1194,6 +1209,7 @@ export class Session {
         spawns: saved.spawns.map((point) => ({ ...point })),
         completedGroups: [...saved.completedGroups],
         event: saved.event as EventCheckpoint | null,
+        captured: this.capturedAtStart.map((c) => ({ slot: c.slot, at: { ...c.at } })),
         ...(world
           ? {
               seconds: world.seconds,
@@ -1286,7 +1302,8 @@ export class Session {
       squadIn: (a) => living.filter((s) => inside(a)(s.state)).length,
       standing: () => standing.length,
       standingIn: (a) => standing.filter((s) => inside(a)(s.state)).length,
-      soldierDead: () => this.slots.some((s) => isDead(s.health)),
+      // U-061: a prisoner is not a death: the mission goes on without them.
+      soldierDead: () => this.slots.some((s) => isDead(s.health) && !s.captured),
       protectedLost: (id) => {
         if (!spawner || !spawner.fired(id)) return false;
         const placed = spawner.spawnedBy(id);
@@ -1313,6 +1330,81 @@ export class Session {
     }
     if (beforeState === 'progress' && run.current.state === 'failed') this.persistCampaign();
     if (changed) this.broadcastMission();
+  }
+
+  /** U-061: the prisoners held right now. */
+  private capturedList(): { slot: number; at: { x: number; y: number; z: number } }[] {
+    return this.slots.flatMap((s) => (s.captured && s.prisoner ? [{ slot: s.index, at: { ...s.prisoner } }] : []));
+  }
+
+  /** U-061: a slot's character taken out of play, held at `at`: as if dead, but with no respawn and no mission failure. */
+  private holdPrisoner(slot: Slot, at: { x: number; y: number; z: number }): void {
+    if (slot.mounted) this.dismount(slot);
+    this.clearReviveStateForSlot(slot.index);
+    slot.captured = true;
+    slot.prisoner = { x: at.x, y: at.y, z: at.z };
+    slot.state = createMoveState(at.x, at.y, at.z);
+    slot.health.current = 0;
+    slot.health.downedAt = null;
+    slot.health.diedAt = this.nowMs / 1000;
+    slot.queue.length = 0;
+    slot.input = idleInput(slot.yaw);
+    slot.interactHeld = false;
+    slot.heldProjectile = -1;
+    slot.cook = null;
+  }
+
+  /** U-061: exactly these slots are prisoners; any other is free (and, when this follows a world reset, already alive). */
+  private applyCaptured(list: readonly { slot: number; at: { x: number; y: number; z: number } }[]): void {
+    for (const slot of this.slots) {
+      const held = list.find((c) => c.slot === slot.index);
+      if (held) this.holdPrisoner(slot, held.at);
+      else if (slot.captured) {
+        slot.captured = false;
+        slot.prisoner = null;
+      }
+    }
+    this.broadcastRoster();
+  }
+
+  /**
+   * U-061: the enemy takes a character prisoner, held at `at`. The eligibility (downed long enough, alone) is the
+   * capture behaviour's (U-062) to decide; this only refuses what cannot be taken: no such slot, already a prisoner,
+   * or dead. Returns whether it was taken.
+   */
+  captureCharacter(index: number, at: { x: number; y: number; z: number }): boolean {
+    const slot = this.slots[index];
+    if (!slot || slot.captured || isDead(slot.health)) return false;
+    this.holdPrisoner(slot, at);
+    this.broadcastRoster();
+    return true;
+  }
+
+  /**
+   * U-061: a prisoner is freed at the place they were held, back at full class health with their class's kit; rank and
+   * XP were never touched. Returns whether anyone was freed.
+   */
+  freeCharacter(index: number): boolean {
+    const slot = this.slots[index];
+    if (!slot || !slot.captured || !slot.prisoner) return false;
+    const at = slot.prisoner;
+    slot.captured = false;
+    slot.prisoner = null;
+    respawn(slot.health, DAMAGE, this.nowMs / 1000);
+    this.applyClassHealth(slot);
+    slot.state = createMoveState(at.x, at.y, at.z);
+    slot.queue.length = 0;
+    slot.input = idleInput(slot.yaw);
+    slot.interactHeld = false;
+    this.restorePrimary(slot);
+    slot.weaponState = createWeaponState(slot.weapon);
+    slot.suppression = createSuppression();
+    slot.pouch = this.pouchFor(slot.index);
+    slot.kits = this.kitsFor(slot.index);
+    slot.equipment = this.equipmentFor(slot.index);
+    slot.nextThrowAt = 0;
+    this.broadcastRoster();
+    return true;
   }
 
   /** U-059: whether any soldier is downed: no checkpoint is saved while one is (owner, 2026-09-30). */
@@ -1354,6 +1446,7 @@ export class Session {
       spawns: this.slots.map((s) => ({ x: s.state.x, y: s.state.y, z: s.state.z })),
       completedGroups,
       event: this.eventRun?.checkpoint() ?? null,
+      captured: this.capturedList(),
       seconds: (this.currentTick - this.missionStartTick) * TICK_SECONDS,
       ...(spawner ? { spawner: spawner.checkpoint() } : {}),
       enemies: this.enemyList
@@ -1516,10 +1609,17 @@ export class Session {
           world: this.checkpointWorldOf(saved),
         }
       : null;
-    const soldiers = this.campaignSoldiers.map((soldier, slot) => ({
-      ...soldier,
-      classId: this.classSlots[slot] || soldier.classId,
-    }));
+    // U-061: prisoners are saved as they stood at the checkpoint, or as they stand when the mission is won; a failed attempt's captures are undone by the retry and so are not kept.
+    const held = this.missionRun?.current.state === 'complete' ? this.capturedList() : (saved?.captured ?? this.capturedAtStart);
+    const soldiers = this.campaignSoldiers.map((soldier, slot) => {
+      const { captured: _captured, prisoner: _prisoner, ...rest } = soldier;
+      const prisoner = held.find((c) => c.slot === slot);
+      return {
+        ...rest,
+        classId: this.classSlots[slot] || soldier.classId,
+        ...(prisoner ? { captured: true, prisoner: { ...prisoner.at } } : {}),
+      };
+    });
     this.campaignSave({
       formatVersion: 1,
       world: this.world.id,
@@ -1692,7 +1792,7 @@ export class Session {
       conn.send({ kind: 'Spectating', slot: to.index });
       return;
     }
-    if (to === from || !to.isBot || (this.spectators.has(conn) ? this.spectators.get(conn) !== to.index : this.commanders[to.index] !== from.index)) return;
+    if (to === from || !to.isBot || to.captured || (this.spectators.has(conn) ? this.spectators.get(conn) !== to.index : this.commanders[to.index] !== from.index)) return;
     if (to.reservedUntilMs > 0 && to.reservedUntilMs >= this.nowMs) return;
 
     // The soldier left behind: a bot again, as on a leave, but claimed by nobody.
@@ -1754,6 +1854,8 @@ export class Session {
     // U-059: a checkpoint still queued was never saved: the retry point was put back to the last one that was.
     this.queuedCheckpoint = null;
     const worldRestored = this.restoreCheckpointWorld(saved);
+    // U-061: captures made since the checkpoint are undone; those it had stand.
+    this.applyCaptured(saved?.captured ?? this.capturedAtStart);
     run.retry();
     this.restoreEvents(saved, worldRestored);
     this.broadcastMission();
@@ -1776,6 +1878,8 @@ export class Session {
     this.missionCheckpointState = null;
     this.queuedCheckpoint = null;
     this.resetMissionWorld(spawns, []);
+    // U-061: back to the prisoners the mission began with.
+    this.applyCaptured(this.capturedAtStart);
     this.missionRun?.reset();
     this.eventRun?.reset();
     this.broadcastMission();
@@ -2540,6 +2644,7 @@ export class Session {
       name: s.connection?.name ?? '',
       classId: this.classSlots[s.index] ?? '',
       commander: this.commanders[s.index] ?? -1,
+      captured: s.captured,
     }));
   }
 
@@ -2952,7 +3057,7 @@ export class Session {
     const want = conn.wantedSlot;
     if (want < 0) return null;
     const slot = this.slots[want];
-    return slot && slot.isBot && slot.reservedUntilMs <= this.nowMs ? slot : null;
+    return slot && slot.isBot && !slot.captured && slot.reservedUntilMs <= this.nowMs ? slot : null;
   }
 
   /**
@@ -2960,7 +3065,8 @@ export class Session {
    * that, rather than refuse a player, the claim that ends soonest is given up.
    */
   private freeSlot(): Slot | null {
-    const bots = this.slots.filter((s) => s.isBot);
+    // U-061: a prisoner's slot is nobody's to take.
+    const bots = this.slots.filter((s) => s.isBot && !s.captured);
     const unclaimed = bots.find((s) => s.reservedUntilMs < this.nowMs);
     if (unclaimed) return unclaimed;
     return bots.sort((a, b) => a.reservedUntilMs - b.reservedUntilMs)[0] ?? null;
@@ -4510,7 +4616,7 @@ export class Session {
        */
       if (isDead(slot.health)) {
         // T-3.34: on a mission that does not respawn, the dead wait for a restart.
-        if (!this.missionRun && readyToRespawn(slot.health, nowSeconds)) {
+        if (!this.missionRun && !slot.captured && readyToRespawn(slot.health, nowSeconds)) {
           respawn(slot.health, DAMAGE, nowSeconds);
           this.applyClassHealth(slot);
           const point = spawnFor(slot.index);

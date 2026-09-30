@@ -3,12 +3,12 @@ import type { RosterEntry } from '@sandline/shared';
 import { commandKey, commandRows, watchedStatus } from './commandModel.ts';
 
 const roster: RosterEntry[] = [
-  { name: 'kai', human: true, classId: 'preach', commander: -1 },
-  { name: '', human: false, classId: 'brennan', commander: 0 },
-  { name: 'rae', human: true, classId: 'holloway', commander: -1 },
-  { name: '', human: false, classId: 'ortiz', commander: 2 },
-  { name: '', human: false, classId: 'marsh', commander: 0 },
-  { name: '', human: false, classId: '', commander: 0 },
+  { name: 'kai', human: true, classId: 'preach', commander: -1, captured: false },
+  { name: '', human: false, classId: 'brennan', commander: 0, captured: false },
+  { name: 'rae', human: true, classId: 'holloway', commander: -1, captured: false },
+  { name: '', human: false, classId: 'ortiz', commander: 2, captured: false },
+  { name: '', human: false, classId: 'marsh', commander: 0, captured: false },
+  { name: '', human: false, classId: '', commander: 0, captured: false },
 ];
 
 describe('the squad command rows (U-025)', () => {

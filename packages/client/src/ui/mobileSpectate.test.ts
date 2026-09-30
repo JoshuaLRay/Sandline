@@ -3,7 +3,7 @@ import type { RosterEntry } from '@sandline/shared';
 import { initialMobileSpectateSlot } from './mobileSpectate.ts';
 
 const roster = (commanders: number[]): RosterEntry[] => commanders.map((commander, slot) => ({
-  name: `Soldier ${slot + 1}`, classId: 'team-leader', human: commander === -1, commander,
+  name: `Soldier ${slot + 1}`, classId: 'team-leader', human: commander === -1, commander, captured: false,
 }));
 
 describe('mobile first spectate target', () => {
