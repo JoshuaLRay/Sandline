@@ -200,4 +200,29 @@ describe('health kits (U-047)', () => {
     hold(r, a, DAMAGE.kit.seconds + 0.5);
     expect(sa.kits).toBe(3);
   });
+
+  it('the support (slot 2) applies one in 8 s, a 20% discount, and everyone else in 10 s (U-049)', () => {
+    const r = room();
+    const [a, , c] = [r.join('a'), r.join('b'), r.join('c')];
+    r.send(a, { kind: 'RoomCommand', command: 'start' });
+    r.step(5);
+    const sc = r.session.slots[c.net.slot]!;
+    const sa = r.session.slots[a.net.slot]!;
+    expect(r.session.roster[c.net.slot]?.classId).toBe('holloway');
+    r.place(c, { x: 4, z: 11 });
+    r.place(a, { x: 20, z: 11 }); // apart, so each is only its own patient
+    for (const [p, s] of [[c, sc], [a, sa]] as const) {
+      r.send(p, { kind: 'Equip', item: KIT_EQUIP_ITEM });
+      s.health.current = 40;
+    }
+    c.buttons = FIRE;
+    a.buttons = FIRE;
+    r.step(ticks(7.5));
+    expect(sc.health.current).toBe(40);
+    r.step(ticks(0.8));
+    expect(sc.health.current).toBe(sc.health.max); // 8 s
+    expect(sa.health.current).toBe(40); // Preach, 10 s, is not there yet
+    r.step(ticks(2));
+    expect(sa.health.current).toBe(sa.health.max);
+  });
 });

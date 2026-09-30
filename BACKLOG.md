@@ -82,7 +82,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-046](docs/backlog/U-046.md) | Right click aims, left click uses | Controls | P2 | DONE | U-045 | [#209](https://github.com/JoshuaLRay/Sandline/pull/209) |
 | [U-047](docs/backlog/U-047.md) | Health kits | Controls | P2 | DONE | U-045 (the Support's 8 s waits on U-049) | [#211](https://github.com/JoshuaLRay/Sandline/pull/211) |
 | [U-048](docs/backlog/U-048.md) | Per-character equipment: the Support's C4 and Brennan's rocket launcher | Controls | P2 | BLOCKED | U-021, U-045; C4 design and the other four characters' equipment | — |
-| [U-049](docs/backlog/U-049.md) | Per-character interaction-speed multiplier (the Support's 20% discount) | Squad | P2 | READY | U-021 | — |
+| [U-049](docs/backlog/U-049.md) | Per-character interaction-speed multiplier (the Support's 20% discount) | Squad | P2 | REVIEW | U-021 | — |
 | [U-050](docs/backlog/U-050.md) | The support runs 10% faster | Squad | P2 | READY | U-021 | — |
 | [U-051](docs/backlog/U-051.md) | A joining player may take any free slot | Squad | P2 | READY | U-021 | — |
 | [U-052](docs/backlog/U-052.md) | Authored loot: a mission places a left-handed gun for the sniper | Squad | P3 | INBOX | U-029 | — |

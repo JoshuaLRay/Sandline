@@ -3520,9 +3520,20 @@ export class Session {
     }
   }
 
-  /** U-047: seconds this soldier takes to apply a kit. (U-049 will scale it per character.) */
-  private kitSeconds(_slot: Slot): number {
-    return DAMAGE.kit.seconds;
+  /** U-049: this soldier's multiple on the time of a timed interaction (the support's discount); 1 without a class. */
+  private interactionScale(slot: number): number {
+    if (this.classLoadouts !== 'class') return 1;
+    return classById(this.classSlots[slot] ?? '')?.interactionTimeScale ?? 1;
+  }
+
+  /** U-049: seconds `reviver` (a slot index) must hold E to revive; 3 for most, less for the support. */
+  private reviveSeconds(reviver: number): number {
+    return DAMAGE.downed.reviveSeconds * this.interactionScale(reviver < 0 ? -1 : reviver);
+  }
+
+  /** U-047, U-049: seconds this soldier takes to apply a kit. */
+  private kitSeconds(slot: Slot): number {
+    return DAMAGE.kit.seconds * this.interactionScale(slot.index);
   }
 
   /**
@@ -4607,7 +4618,7 @@ export class Session {
     for (const target of this.slots) {
       if (!isDowned(target.health) || target.reviveBySlot < 0) continue;
       target.reviveProgressSeconds += TICK_SECONDS;
-      if (target.reviveProgressSeconds >= DAMAGE.downed.reviveSeconds) {
+      if (target.reviveProgressSeconds >= this.reviveSeconds(target.reviveBySlot)) {
         this.awardXp(target.reviveBySlot, 'revive');
         this.bumpStat(target.reviveBySlot, 'revives');
         revive(target.health);
@@ -4658,7 +4669,7 @@ export class Session {
             Math.round(s.health.max),
             vitalityCode(vitality(s.health)),
             Math.min(63, Math.ceil(vitalTimer(s.health, this.nowMs / 1000))),
-            Math.min(100, Math.round((s.reviveProgressSeconds / DAMAGE.downed.reviveSeconds) * 100)),
+            Math.min(100, Math.round((s.reviveProgressSeconds / this.reviveSeconds(s.reviveBySlot)) * 100)),
             s.reviveBySlot < 0 ? 0 : s.reviveBySlot + 1,
           ],
           [COMPONENT_IDS.PlayerSlot]: [s.index, s.isBot ? 1 : 0],
