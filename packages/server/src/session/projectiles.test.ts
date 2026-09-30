@@ -256,7 +256,7 @@ describe('the pouch (T-2.31)', () => {
     client.throwOne({ projectile: 3 });
     client.run(2);
     expect(projectilesIn(client.store)).toHaveLength(0);
-    expect(session.slots[0]?.pouch).toEqual([getProjectile('frag').carried, getProjectile('rocket').carried]);
+    expect(session.slots[0]?.pouch).toEqual([getProjectile('frag').carried, getProjectile('rocket').carried, getProjectile('c4').carried]);
   });
 
   it('refuses a downed thrower and a vaulting one', () => {
@@ -369,7 +369,7 @@ describe('equipping (grenade and rocket in hand)', () => {
     const session = new Session();
     const client = connect(session);
     client.send({ kind: 'Equip', item: WEAPON_IDS.length + FRAG });
-    client.send({ kind: 'Equip', item: WEAPON_IDS.length + 3 });
+    client.send({ kind: 'Equip', item: WEAPON_IDS.length + 4 });
     client.run(1);
     expect(session.slots[0]?.heldProjectile).toBe(FRAG);
   });

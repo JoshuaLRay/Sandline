@@ -18,7 +18,7 @@ import { PENDING_HOLD_SECONDS, ThrowQA } from './ThrowQA.ts';
 const FRAG = PROJECTILE_IDS.indexOf('frag');
 const ROCKET = PROJECTILE_IDS.indexOf('rocket');
 const EYE = { x: 0, y: 1.55, z: 0 };
-const FULL = PROJECTILE_IDS.map((id) => getProjectile(id).carried);
+const FULL = (['frag', 'rocket'] as const).map((id) => getProjectile(id).carried);
 
 describe('the page follows the server\'s pouch (U-024)', () => {
   it('a throw of ours stays spent while the server has not seen it, and is not counted twice once it has', () => {
@@ -118,12 +118,12 @@ describe('a hosted room with class loadouts, end to end (U-024, B-18)', () => {
     const throws = new ThrowQA();
     const t = () => r.now / 1000;
     throws.reconcile(a.net.pouch!, t());
-    expect([throws.count(FRAG), throws.count(ROCKET)]).toEqual(marksman);
+    expect([throws.count(FRAG), throws.count(ROCKET)]).toEqual(marksman.slice(0, 2));
 
     // B-18: T used to put back the data's pouch (3 frags, 2 rockets) here.
     throws.reset();
     throws.reconcile(a.net.pouch!, t());
-    expect([throws.count(FRAG), throws.count(ROCKET)]).toEqual(marksman);
+    expect([throws.count(FRAG), throws.count(ROCKET)]).toEqual(marksman.slice(0, 2));
 
     // Our one frag: spent on the page at once, taken by the server, never offered again.
     expect(throws.throwFrom(EYE, 0, 0, t())).not.toBeNull();
@@ -144,7 +144,7 @@ describe('a hosted room with class loadouts, end to end (U-024, B-18)', () => {
     r.step(Math.ceil((DAMAGE.respawnSeconds + 1) / TICK_SECONDS));
     expect(a.net.pouch).toEqual(marksman);
     throws.reconcile(a.net.pouch!, t());
-    expect([throws.count(FRAG), throws.count(ROCKET)]).toEqual(marksman);
+    expect([throws.count(FRAG), throws.count(ROCKET)]).toEqual(marksman.slice(0, 2));
 
     // Spend it again, then the page drops and comes back: a fresh page shows the server's count, not a full pouch.
     a.net.throwProjectile(r.session.tick, 0, 0, FRAG);

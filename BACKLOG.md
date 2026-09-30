@@ -81,17 +81,17 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-045](docs/backlog/U-045.md) | Weapon and device slots 1–6 with swap-to-use | Controls | P2 | DONE | — | [#195](https://github.com/JoshuaLRay/Sandline/pull/195) |
 | [U-046](docs/backlog/U-046.md) | Right click aims, left click uses | Controls | P2 | DONE | U-045 | [#209](https://github.com/JoshuaLRay/Sandline/pull/209) |
 | [U-047](docs/backlog/U-047.md) | Health kits | Controls | P2 | DONE | U-045 (the Support's 8 s waits on U-049) | [#211](https://github.com/JoshuaLRay/Sandline/pull/211) |
-| [U-048](docs/backlog/U-048.md) | Equipment foundation: per-character slot 5, Brennan's launcher, droppable equipment | Controls | P2 | REVIEW | U-021, U-045, U-029 | — |
+| [U-048](docs/backlog/U-048.md) | Equipment foundation: per-character slot 5, Brennan's launcher, droppable equipment | Controls | P2 | DONE | U-021, U-045, U-029 | [#218](https://github.com/JoshuaLRay/Sandline/pull/218) |
 | [U-049](docs/backlog/U-049.md) | Per-character interaction-speed multiplier (the Support's 20% discount) | Squad | P2 | DONE | U-021 | [#212](https://github.com/JoshuaLRay/Sandline/pull/212) |
 | [U-050](docs/backlog/U-050.md) | The support runs 10% faster | Squad | P2 | DONE | U-021 | [#213](https://github.com/JoshuaLRay/Sandline/pull/213) |
 | [U-051](docs/backlog/U-051.md) | A joining player may take any free slot | Squad | P2 | DONE | U-021 | [#214](https://github.com/JoshuaLRay/Sandline/pull/214) |
 | [U-052](docs/backlog/U-052.md) | Authored loot: a mission places a left-handed gun for the sniper | Squad | P3 | INBOX | U-029 | — |
 | [U-053](docs/backlog/U-053.md) | Bots use health kits on downed or hurt mates | Controls | P3 | DONE | U-047 | [#215](https://github.com/JoshuaLRay/Sandline/pull/215) |
-| [U-054](docs/backlog/U-054.md) | C4 for the Support: throw it, place it, detonate it | Controls | P2 | BLOCKED | U-048 | — |
+| [U-054](docs/backlog/U-054.md) | C4 for the Support: throw it, place it, detonate it | Controls | P2 | REVIEW | U-048 | — |
 | [U-055](docs/backlog/U-055.md) | Claymore for the left-handed sniper | Controls | P3 | BLOCKED | U-054 | — |
-| [U-056](docs/backlog/U-056.md) | Concussion grenades for Preach | Controls | P2 | BLOCKED | U-048 | — |
+| [U-056](docs/backlog/U-056.md) | Concussion grenades for Preach | Controls | P2 | READY | U-048 | — |
 | [U-057](docs/backlog/U-057.md) | Motion sensor for the right-handed sniper | Controls | P3 | BLOCKED | U-054 | — |
-| [U-058](docs/backlog/U-058.md) | Smoke grenades for Ortiz | Controls | P3 | BLOCKED | U-048 | — |
+| [U-058](docs/backlog/U-058.md) | Smoke grenades for Ortiz | Controls | P3 | READY | U-048 | — |
 
 ## Existing work retained
 
