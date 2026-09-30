@@ -18,6 +18,7 @@ import {
   type MoveInput,
   TICK_SECONDS,
   stepCharacter,
+  NO_SECONDARY,
   WEAPON_IDS,
   createWeaponState,
   encodeMessage,
@@ -567,7 +568,7 @@ describe('Session replicates the weapon and its reload (T-2.26)', () => {
     for (let i = 0; i < 5; i += 1) tick();
     // Carbine, no reload, a gun (not the pouch) in hand; and (U-024) a full pouch left, in PROJECTILE_IDS order;
     // (U-028) the magazine; (U-018) the carbine its primary.
-    expect(seen()).toEqual([0, 0, 0, ...slot.pouch, slot.weaponState.ammo, 0]);
+    expect(seen()).toEqual([0, 0, 0, ...slot.pouch, slot.weaponState.ammo, 0, NO_SECONDARY]);
     expect(slot.pouch.length).toBe(2);
     // The server's own reload: the one it starts on an empty magazine.
     slot.weaponState.ammo = 0;
@@ -891,7 +892,7 @@ describe('the roster weapons on the wire (U-041)', () => {
       const index = (WEAPON_IDS as readonly string[]).indexOf(id);
       expect(index, id).toBeGreaterThanOrEqual(5);
       expect(weapon?.[0], `${id} in hand`).toBe(index);
-      expect(weapon?.[weapon.length - 1], `${id} as primary`).toBe(index);
+      expect(weapon?.[weapon.length - 2], `${id} as primary`).toBe(index);
     }
   });
 

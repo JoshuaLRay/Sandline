@@ -142,6 +142,8 @@ export class CombatQA {
 
   private readonly raycaster = new THREE.Raycaster();
   /** U-028: when each of our shots fired that the host has not taken yet, oldest first. */
+  /** U-022: the magazine and clocks of each gun not in hand, by loadout index. */
+  private readonly stowed = new Map<number, WeaponState>();
   private pendingShots: number[] = [];
   /** The host's magazine count last seen, for the gun in hand; null when unknown. */
   private lastHostAmmo: number | null = null;
@@ -222,6 +224,11 @@ export class CombatQA {
    */
   adopt(index: number, ammo: number): void {
     if (index >= 0 && index < WEAPON_ORDER.length && index !== this.index) {
+      if (this.index >= 0) {
+        this.state.reloadEndsAt = 0;
+        this.stowed.set(this.index, this.state);
+      }
+      this.stowed.delete(index);
       this.index = index;
       this.def = this.workingDef(index);
       this.onWeaponChange?.(this.def);
@@ -234,12 +241,21 @@ export class CombatQA {
     this.hostCaughtUp = true;
   }
 
-  /** Switch weapons. Each keeps a fresh magazine; this is a range, not a match. */
+  /**
+   * Switch weapons. A gun put away keeps its magazine and clocks (a reload in
+   * progress is cancelled — the hands left it) and comes back as it was left,
+   * as the host holds it (U-022); one not yet drawn starts full.
+   */
   selectWeapon(index: number): void {
     if (index === this.index || index < 0 || index >= WEAPON_ORDER.length) return;
+    if (this.index >= 0) {
+      this.state.reloadEndsAt = 0;
+      this.stowed.set(this.index, this.state);
+    }
     this.index = index;
     this.def = this.workingDef(index);
-    this.state = createWeaponState(this.def);
+    this.state = this.stowed.get(index) ?? createWeaponState(this.def);
+    this.stowed.delete(index);
     this.onWeaponChange?.(this.def);
   }
 
@@ -508,6 +524,7 @@ export class CombatQA {
   }
 
   reset(): void {
+    this.stowed.clear();
     for (const effect of this.effects) this.dispose(effect);
     this.effects.length = 0;
     this.queuedCount = 0;

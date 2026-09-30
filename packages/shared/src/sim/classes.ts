@@ -34,6 +34,12 @@ export interface ClassDef {
   /** The pouch at spawn, indexed like PROJECTILE_IDS. */
   readonly pouch: readonly number[];
   readonly orders: OrderScope;
+  /**
+   * May carry two primaries at once (U-022): only Preach and the support. The
+   * second is another AR, SMG or shotgun; never with an LMG, marksman rifle
+   * or sniper rifle in hand as the first.
+   */
+  readonly dualPrimary: boolean;
   /** May aim down the sight (default true); the support may not (U-021). */
   readonly ads: boolean;
   /** May play in first person (default true); the support may not (U-021). */
@@ -102,6 +108,7 @@ export function parseClassConfig(raw: unknown): ClassConfig {
       guns: guns as string[],
       pouch,
       orders,
+      dualPrimary: bool(row, 'dualPrimary', where, false),
       ads: bool(row, 'ads', where, true),
       firstPerson: bool(row, 'firstPerson', where, true),
     };
@@ -119,6 +126,12 @@ export function parseClassConfig(raw: unknown): ClassConfig {
 }
 
 export const CLASSES: ClassConfig = Object.freeze(parseClassConfig(RAW_CLASSES));
+
+/** A class's non-sidearm guns in order: the first is its primary; a dual-primary class's second is its other primary (U-022). */
+export function classPrimaries(def: ClassDef): readonly string[] {
+  const own = def.guns.filter((gun) => gun !== 'sidearm');
+  return def.dualPrimary ? own.slice(0, 2) : own.slice(0, 1);
+}
 
 /** The class for an id, or null for one the data does not know (an empty pick included). */
 export function classById(id: string, config: ClassConfig = CLASSES): ClassDef | null {
