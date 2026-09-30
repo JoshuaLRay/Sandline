@@ -67,6 +67,7 @@ import {
   PROJECTILE_IDS,
   enemyByIndex,
   CALLOUTS,
+  KIT_EQUIP_ITEM,
 } from '@sandline/shared';
 import { ReloadWatcher, ShotDeduper, cycleSoundPlan, gunSoundPlan } from './audio/weaponSounds.ts';
 import { CalloutDirector, type CalloutPlay, voiceIndex } from './audio/callouts.ts';
@@ -542,6 +543,8 @@ const throws = new ThrowQA();
  * switch (`net.equip`) so the rest of the squad sees the right thing held.
  */
 let holdingPouch = false;
+/** U-047: the health kits (slot 6) are in hand. Never with a pouch item or a gun. */
+let holdingKit = false;
 /**
  * T-4.29: the gun the page's soldier is on, as the host last said, and the
  * loadout index to go back to. While on a gun the soldier is held where it
@@ -578,10 +581,13 @@ let cookWasHeld = false;
 /** The loadout index sent last, and to which client, so a switch is sent once. */
 let equipSent: { net: NetClient; item: number } | null = null;
 function loadoutItem(): number {
+  if (holdingKit) return KIT_EQUIP_ITEM;
   return holdingPouch ? WEAPON_ORDER.length + throws.kind : combat.weaponIndex;
 }
 /** The loadout id in hand, for the models. */
 function heldId(): string {
+  // The health kits have no model yet: bare hands.
+  if (holdingKit) return 'knife';
   return holdingPouch ? throws.def.id : combat.weapon.id;
 }
 /**
@@ -628,6 +634,18 @@ function equipGun(index: number): void {
   if (index !== combat.weaponIndex || holdingPouch) playOwn(WEAPON_SOUNDS.handling.equip);
   combat.selectWeapon(index);
   holdingPouch = false;
+  holdingKit = false;
+  pouchTrigger.cancel();
+}
+/** U-047: slot 6. Drawn like a grenade; the trigger then applies one (the host does it, this only holds them). */
+function equipKit(): void {
+  if ((live?.net.kits ?? 0) <= 0) {
+    playerHud.notify('No health kits');
+    return;
+  }
+  playOwn(WEAPON_SOUNDS.handling.equip);
+  holdingPouch = false;
+  holdingKit = true;
   pouchTrigger.cancel();
 }
 function equipPouch(index: number): void {
@@ -636,6 +654,7 @@ function equipPouch(index: number): void {
   throws.select(index);
   if (throws.count(index) <= 0) return;
   holdingPouch = true;
+  holdingKit = false;
   pouchTrigger.cancel();
 }
 
@@ -1325,6 +1344,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
   net.onPossessed = (possessed) => {
     spectatorTakeoverPending = false;
     holdingPouch = false;
+    holdingKit = false;
     combat.adopt(possessed.weapon, possessed.ammo);
     throws.setCounts(possessed.pouch);
     equipSent = { net, item: possessed.weapon };
@@ -2193,6 +2213,7 @@ function frame(): void {
         combat.useGun(getWeapon(mountDef.weapon));
         playOwn(WEAPON_SOUNDS.handling.equip);
         holdingPouch = false;
+        holdingKit = false;
         pouchTrigger.cancel();
       }
     } else if (mountedGun) {
@@ -2255,6 +2276,7 @@ function frame(): void {
     if (primarySync.adopted) {
       playOwn(WEAPON_SOUNDS.handling.equip);
       holdingPouch = false;
+      holdingKit = false;
       pouchTrigger.cancel();
     }
     // U-028: the magazine is the host's; our own shots and reload in flight to it are held off its count.
@@ -2269,8 +2291,8 @@ function frame(): void {
       // anyway; refusing here too keeps the predicted tracer honest.
       // Both hands on the wall during a vault (T-2.21); the server refuses too.
       // A grenade or a rocket in hand: the trigger is theirs, not the gun's.
-      firing: !holdingPouch && input.firing && net.vitality === 'alive' && !net.simulated?.vault,
-      triggerEdge: !holdingPouch && triggerEdge,
+      firing: !holdingPouch && !holdingKit && input.firing && net.vitality === 'alive' && !net.simulated?.vault,
+      triggerEdge: !holdingPouch && !holdingKit && triggerEdge,
       ads: input.ads,
       // Prone fires (T-2.42), with the predicted stance as a cone input — the
       // replayed one, not the key, so it matches what the server resolves.
@@ -2282,7 +2304,7 @@ function frame(): void {
     // what that shot hit. Both run the same cadence, so a shot the client
     // allows is normally one the server allows too.
     // T-2.46: a pull on an empty gun clicks.
-    if (shot === null && triggerEdge && !holdingPouch && net.vitality === 'alive') {
+    if (shot === null && triggerEdge && !holdingPouch && !holdingKit && net.vitality === 'alive') {
       const mag = combat.magazine(tickNumber * TICK_SECONDS);
       if (mag.ammo === 0 && !mag.reloading) playOwn(WEAPON_SOUNDS.handling.dryFire);
     }
@@ -2498,7 +2520,7 @@ function frame(): void {
       weight: 1 - localPoseDriver.vaultWeight,
       kickBack: kick.back,
       kickUp: kick.up,
-      reload: holdingPouch ? 0 : combat.reloadProgress((clock.tick + clock.alpha) * TICK_SECONDS),
+      reload: holdingKit ? (net?.kitProgress ?? 0) / 100 : holdingPouch ? 0 : combat.reloadProgress((clock.tick + clock.alpha) * TICK_SECONDS),
     });
   }
 
@@ -2812,7 +2834,7 @@ function frame(): void {
         magSize: magazine.magSize,
         reloading: magazine.reloading,
         reloadFraction: magazine.reloadFraction,
-        pouch: throws.rows().map((row, i) => ({ ...row, selected: holdingPouch && throws.kind === i })),
+        pouch: [...throws.rows().map((row, i) => ({ ...row, selected: holdingPouch && throws.kind === i })), { name: 'Health kit', count: net?.kits ?? 0, selected: holdingKit }],
       }),
       stance: stanceOf({
         downed,
@@ -3148,7 +3170,7 @@ addEventListener('keydown', (e) => {
     const index = PROJECTILE_ORDER.findIndex((id) => getProjectile(id).kind === (device === 'grenade' ? 'thrown' : 'rocket'));
     if (index >= 0) equipPouch(index);
   } else if (device === 'health') {
-    playerHud.notify('No health kits');
+    equipKit();
   }
   if (e.code === 'KeyH') toggleHud();
   // P asks the host to start the mission again; it only does once the mission is over (T-3.34).

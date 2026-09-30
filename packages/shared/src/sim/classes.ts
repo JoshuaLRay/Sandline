@@ -34,6 +34,8 @@ export interface ClassDef {
   /** The pouch at spawn, indexed like PROJECTILE_IDS. */
   readonly pouch: readonly number[];
   readonly orders: OrderScope;
+  /** Health kits carried at spawn (U-047; default 3, the owner's number). */
+  readonly healthKits: number;
   /**
    * May carry two primaries at once (U-022): only Preach and the support. The
    * second is another AR, SMG or shotgun; never with an LMG, marksman rifle
@@ -108,6 +110,7 @@ export function parseClassConfig(raw: unknown): ClassConfig {
       guns: guns as string[],
       pouch,
       orders,
+      healthKits: row['healthKits'] === undefined ? 3 : num(row, 'healthKits', where, 0, 7),
       dualPrimary: bool(row, 'dualPrimary', where, false),
       ads: bool(row, 'ads', where, true),
       firstPerson: bool(row, 'firstPerson', where, true),

@@ -23,6 +23,7 @@ import {
   vitalityFromCode,
   zoneAt,
   zoneDamage,
+  applyKit,
 } from './damage.ts';
 
 /**
@@ -34,12 +35,37 @@ const CONFIG: DamageConfig = {
   respawnSeconds: 5,
   respawnImmunitySeconds: 2,
   downed: { bleedOutSeconds: 20, reviveSeconds: 3, reviveRangeM: 1.5, reviveHealthFraction: 0.4 },
+  kit: { seconds: 10, reachM: 1.5, downedHealthFraction: 0.5 },
   zones: {
     head: { multiplier: 2, minFraction: 0.8 },
     torso: { multiplier: 1, minFraction: 0.4 },
     limb: { multiplier: 0.5, minFraction: 0 },
   },
 };
+
+describe('health kit (U-047)', () => {
+  it('brings a downed soldier to half health and anyone else to full, never past max', () => {
+    const downed = createHealth(CONFIG);
+    downed.current = 0;
+    downed.downedAt = 1;
+    expect(isDowned(downed)).toBe(true);
+    expect(applyKit(downed, CONFIG)).toBe(true);
+    expect(downed).toMatchObject({ current: 50, downedAt: null });
+    const hurt = createHealth(CONFIG);
+    hurt.current = 12;
+    expect(applyKit(hurt, CONFIG)).toBe(true);
+    expect(hurt.current).toBe(100);
+    expect(applyKit(hurt, CONFIG)).toBe(false); // already full: nothing to spend a kit on
+  });
+
+  it('does nothing for the dead', () => {
+    const dead = createHealth(CONFIG);
+    dead.current = 0;
+    dead.diedAt = 1;
+    expect(applyKit(dead, CONFIG)).toBe(false);
+    expect(dead.current).toBe(0);
+  });
+});
 
 /** A 1.8 m figure standing on the ground. */
 const FEET = 0;
