@@ -79,7 +79,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-039](docs/backlog/U-039.md) | Never show the crosshair on mobile | Mobile | P1 | DONE | — | [#184](https://github.com/JoshuaLRay/Sandline/pull/184) |
 | [U-044](docs/backlog/U-044.md) | Long-term control scheme: slots 1–6, swap to use, right-click aim, left-click use (umbrella) | Controls | P2 | BLOCKED | U-046, U-047, U-048, U-049 | — |
 | [U-045](docs/backlog/U-045.md) | Weapon and device slots 1–6 with swap-to-use | Controls | P2 | DONE | — | [#195](https://github.com/JoshuaLRay/Sandline/pull/195) |
-| [U-046](docs/backlog/U-046.md) | Right click aims, left click uses | Controls | P2 | REVIEW | U-045 | — |
+| [U-046](docs/backlog/U-046.md) | Right click aims, left click uses | Controls | P2 | DONE | U-045 | [#209](https://github.com/JoshuaLRay/Sandline/pull/209) |
 | [U-047](docs/backlog/U-047.md) | Health kits | Controls | P2 | READY | U-045 (the Support's 8 s waits on U-049) | — |
 | [U-048](docs/backlog/U-048.md) | Per-character equipment: the Support's C4 and Brennan's rocket launcher | Controls | P2 | BLOCKED | U-021, U-045; C4 design and the other four characters' equipment | — |
 | [U-049](docs/backlog/U-049.md) | Per-character interaction-speed multiplier (the Support's 20% discount) | Squad | P2 | READY | U-021 | — |
