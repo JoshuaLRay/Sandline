@@ -184,6 +184,19 @@ const BUILDERS: Record<string, Builder> = {
       hip: [0.14, -0.1, -0.08],
     };
   },
+  c4(g) {
+    // A block of charge with a detonator wire, carried low in the right hand (a placeholder until the model is drawn).
+    box(g, 'olive', [0.16, 0.05, 0.09], [0, -0.04, 0.2]);
+    box(g, 'metal', [0.03, 0.03, 0.03], [0.05, -0.005, 0.2]);
+    box(g, 'metal', [0.004, 0.004, 0.09], [0.05, 0.015, 0.24]);
+    return {
+      gripRight: [0, -0.08, 0.2],
+      gripLeft: [0.2, -0.16, 0.26],
+      sight: [0, -0.04, 0.2],
+      eyeRelief: 0.3,
+      hip: [0.14, -0.1, -0.08],
+    };
+  },
   rocket(g) {
     // On the shoulder: the tube runs back past the ear and out in front.
     tube(g, 'olive', 0.052, 1.0, [0, 0.08, 0.15], 10);
@@ -329,6 +342,7 @@ const MUZZLES: Record<WeaponSide, Readonly<Record<string, Vec3Tuple>>> = {
     lmg: [0, 0.012, 0.94],
     rocket: [0, 0.08, 0.67],
     frag: [0, -0.04, 0.2],
+    c4: [0, -0.04, 0.2],
   },
   enemy: {
     carbine: [0, 0, 0.83],

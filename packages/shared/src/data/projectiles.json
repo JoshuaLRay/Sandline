@@ -42,5 +42,27 @@
     "blastCoverFraction": 0.2,
     "carried": 2,
     "cooldownSeconds": 1.8
+  },
+  "c4": {
+    "id": "c4",
+    "name": "C4 Charge",
+    "kind": "placed",
+    "speedMPerSec": 12,
+    "loftDeg": 12,
+    "gravity": 9.81,
+    "dragPerSec": 0.1,
+    "radiusM": 0.09,
+    "restitution": 0,
+    "friction": 1,
+    "rollDragPerSec": 20,
+    "fuseSeconds": 0,
+    "detonateOnImpact": false,
+    "maxLifeSeconds": 300,
+    "blastRadiusM": 4,
+    "blastDamage": 250,
+    "blastMinFraction": 0.3,
+    "blastCoverFraction": 0.25,
+    "carried": 2,
+    "cooldownSeconds": 1
   }
 }

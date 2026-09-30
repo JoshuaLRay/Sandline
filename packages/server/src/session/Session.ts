@@ -53,6 +53,8 @@ import {
   blastDamageOn,
   createProjectileState,
   getProjectile,
+  dirFromYawPitch,
+  rayWorld,
   projectileByIndex,
   stepProjectile,
   tableToWire,
@@ -490,6 +492,8 @@ export const MAX_INPUT_REPEAT = 5;
 const KIT_HELD = PROJECTILE_IDS.length;
 
 /** U-048: the frag is slot 4's grenade; slot 5's equipment is any other pouch item. */
+/** U-054: how far from the eye a soldier can put a charge on a surface, metres. */
+const PLACE_REACH_M = 2.5;
 const FRAG_INDEX = (PROJECTILE_IDS as readonly string[]).indexOf('frag');
 /** The equipment a slot on a free-loadout session (the range) carries: the first pouch item that is not the frag. */
 const FIRST_EQUIPMENT = PROJECTILE_IDS.findIndex((id) => id !== 'frag');
@@ -551,6 +555,8 @@ interface ActiveProjectile {
   ownerSlot: number;
   ownerNetId: number;
   state: ProjectileState;
+  /** U-054: a placed charge that has come to rest or been put on a surface: it no longer flies, and waits for its owner. */
+  stuck?: boolean;
 }
 
 /**
@@ -2836,7 +2842,7 @@ export class Session {
       const gun = this.emptyGunNear(slot.state, (def) => def.mountRangeM);
       if (gun) this.mount(slot, gun);
       // U-018: a weapon on the ground within reach; U-009: else the press may be for an upload terminal.
-      else if (!this.takePickupAt(slot)) this.startUploadAt(slot);
+      else if (!this.takeOwnCharge(slot) && !this.takePickupAt(slot)) this.startUploadAt(slot);
     }
     for (const enemy of this.enemyList) {
       if (enemy.mounted || isDead(enemy.health) || enemy.state.vault) continue;
@@ -3526,6 +3532,11 @@ export class Session {
     if (!isAlive(slot.health)) return;
     if (slot.state.vault) return;
 
+    // U-054: C4 is thrown by the character that may (the support) and put on a surface within reach by everyone else.
+    if (this.projectileDefs[msg.projectile]?.kind === 'placed' && !this.throwsPlaced(slot.index)) {
+      this.placeCharge(slot, msg.projectile, msg.yaw, msg.pitch);
+      return;
+    }
     // U-046: a grenade with its pin pulled flies with the fuse it has left; the host's own clock says how long it was cooked.
     const cooked = slot.cook?.kind === msg.projectile ? this.nowMs / 1000 - slot.cook.since : 0;
     const fuse = this.projectileDefs[msg.projectile]?.fuseSeconds ?? 0;
@@ -3642,7 +3653,10 @@ export class Session {
       const held = slot.cookHeld && !this.autonomous(slot);
       const pressed = held && !slot.cookWasHeld;
       slot.cookWasHeld = held;
-      if (pressed && slot.cook === null && isAlive(slot.health) && !slot.mounted && !slot.state.vault && slot.heldProjectile >= 0) {
+      if (pressed && isAlive(slot.health) && !slot.mounted && !slot.state.vault && this.projectileDefs[slot.heldProjectile]?.kind === 'placed') {
+        // U-054: right click with the charges in hand is the detonator.
+        this.detonateCharges(slot, slot.heldProjectile);
+      } else if (pressed && slot.cook === null && isAlive(slot.health) && !slot.mounted && !slot.state.vault && slot.heldProjectile >= 0) {
         const def = this.projectileDefs[slot.heldProjectile];
         if (def && def.kind === 'thrown' && def.fuseSeconds > 0 && (slot.pouch[slot.heldProjectile] ?? 0) > 0) {
           slot.cook = { kind: slot.heldProjectile, since: nowSeconds };
@@ -3668,6 +3682,87 @@ export class Session {
         slot.cook = null;
       }
     }
+  }
+
+  /** U-054: whether this slot's character throws placed equipment; everyone does on a free session. */
+  private throwsPlaced(slot: number): boolean {
+    if (this.classLoadouts !== 'class') return true;
+    return classById(this.classSlots[slot] ?? '')?.throwsPlaced ?? false;
+  }
+
+  /**
+   * U-054: put a charge on the surface the soldier is looking at, within `PLACE_REACH_M` of the eye: a wall, or the
+   * ground. Spends one; nothing happens (and nothing is spent) if there is no surface in reach.
+   */
+  private placeCharge(slot: Slot, projectile: number, yaw: number, pitch: number): boolean {
+    const def = this.projectileDefs[projectile] ?? null;
+    if (def === null || def.kind !== 'placed') return false;
+    const nowSeconds = this.nowMs / 1000;
+    if (nowSeconds < slot.nextThrowAt || (slot.pouch[projectile] ?? 0) <= 0 || this.projectiles.length >= MAX_PROJECTILES) return false;
+    const eye = throwEye(slot.state);
+    const dir = dirFromYawPitch(yaw, pitch);
+    let reach = PLACE_REACH_M;
+    let normal = { x: 0, y: 1, z: 0 };
+    const hit = rayWorld({ origin: eye, direction: dir, maxDistance: PLACE_REACH_M }, this.collisionBoxes);
+    if (hit) {
+      reach = hit.distance;
+      normal = hit.normal;
+    }
+    const groundY = this.moveConfig.groundY;
+    if (dir.y < -1e-6) {
+      const t = (groundY - eye.y) / dir.y;
+      if (t >= 0 && t <= reach) {
+        reach = t;
+        normal = { x: 0, y: 1, z: 0 };
+      } else if (!hit) return false;
+    } else if (!hit) return false;
+    slot.pouch[projectile] = (slot.pouch[projectile] ?? 0) - 1;
+    slot.nextThrowAt = nowSeconds + def.cooldownSeconds;
+    const lift = def.radiusM + 0.01;
+    this.projectiles.push({
+      netId: this.nextProjectileNetId++,
+      def,
+      kind: projectile,
+      ownerSlot: slot.index,
+      ownerNetId: slot.netId,
+      xpPlayerId: this.xpPlayer(slot.index),
+      state: createProjectileState(
+        { x: eye.x + dir.x * reach + normal.x * lift, y: eye.y + dir.y * reach + normal.y * lift, z: eye.z + dir.z * reach + normal.z * lift },
+        { x: 0, y: 0, z: 0 },
+      ),
+      stuck: true,
+    });
+    return true;
+  }
+
+  /** U-054: every armed charge of this kind that `slot` has out goes off at once. */
+  private detonateCharges(slot: Slot, kind: number): void {
+    const mine = this.projectiles.filter((p) => p.kind === kind && p.stuck === true && p.ownerNetId === slot.netId);
+    if (mine.length === 0) return;
+    const rest = this.projectiles.filter((p) => !mine.includes(p));
+    this.projectiles.length = 0;
+    this.projectiles.push(...rest);
+    for (const p of mine) this.detonate(p, { x: p.state.x, y: p.state.y, z: p.state.z });
+  }
+
+  /** U-054: E on the soldier's own charge, within reach and in sight, takes it back into the pouch. */
+  private takeOwnCharge(slot: Slot): boolean {
+    if (!isAlive(slot.health) || slot.state.vault || slot.mounted) return false;
+    const eye = soldierEye(slot.state);
+    let best = -1;
+    let bestD = Number.POSITIVE_INFINITY;
+    this.projectiles.forEach((p, i) => {
+      if (p.def.kind !== 'placed' || p.stuck !== true || p.ownerNetId !== slot.netId) return;
+      const d = Math.hypot(eye.x - p.state.x, eye.y - p.state.y, eye.z - p.state.z);
+      if (d <= PICKUPS.reachM && d < bestD && lineOfSight(eye, { x: p.state.x, y: p.state.y, z: p.state.z }, this.collisionBoxes)) {
+        best = i;
+        bestD = d;
+      }
+    });
+    if (best < 0) return false;
+    const [taken] = this.projectiles.splice(best, 1);
+    slot.pouch[taken!.kind] = Math.min(POUCH_COUNT_MAX, (slot.pouch[taken!.kind] ?? 0) + 1);
+    return true;
   }
 
   /**
@@ -3774,6 +3869,23 @@ export class Session {
     const world = this.projectileWorld();
     const survivors: ActiveProjectile[] = [];
     for (const projectile of this.projectiles) {
+      // U-054: a placed charge goes off only on its owner's word; a stuck one just waits, and a very old one goes quietly.
+      if (projectile.def.kind === 'placed') {
+        if (!projectile.stuck) {
+          const flight = stepProjectile(projectile.def, projectile.state, TICK_SECONDS, world);
+          projectile.state = flight.state;
+          if (flight.impact !== null || flight.state.resting) {
+            projectile.state.vx = 0;
+            projectile.state.vy = 0;
+            projectile.state.vz = 0;
+            projectile.stuck = true;
+          }
+        } else {
+          projectile.state.age += TICK_SECONDS;
+        }
+        if (projectile.state.age < projectile.def.maxLifeSeconds) survivors.push(projectile);
+        continue;
+      }
       const step = stepProjectile(projectile.def, projectile.state, TICK_SECONDS, world);
       projectile.state = step.state;
 

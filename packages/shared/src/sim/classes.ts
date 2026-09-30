@@ -38,6 +38,8 @@ export interface ClassDef {
    * (U-048). Its count is the pouch's. Brennan's launcher today; C4, the claymore and the rest arrive with their cards.
    */
   readonly equipment: string | null;
+  /** May THROW placed equipment (C4, U-054); everyone else places it on a surface within reach. The support only. */
+  readonly throwsPlaced: boolean;
   readonly orders: OrderScope;
   /** Health kits carried at spawn (U-047; default 3, the owner's number). */
   readonly healthKits: number;
@@ -134,6 +136,7 @@ export function parseClassConfig(raw: unknown): ClassConfig {
       guns: guns as string[],
       pouch,
       equipment,
+      throwsPlaced: bool(row, 'throwsPlaced', where, false),
       orders,
       speedScale: row['speedScale'] === undefined ? 1 : num(row, 'speedScale', where, 0.5, 2),
       interactionTimeScale: row['interactionTimeScale'] === undefined ? 1 : num(row, 'interactionTimeScale', where, 0.1, 2),

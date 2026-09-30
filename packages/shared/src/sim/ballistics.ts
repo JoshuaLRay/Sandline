@@ -47,9 +47,11 @@ import { DEFAULT_WORLD, type WorldBox, rayWorld } from './world.ts';
 
 /**
  * How a projectile behaves when it arrives. `thrown` bounces and goes off on a
- * fuse; `rocket` flies flat and goes off on the first thing it touches.
+ * fuse; `rocket` flies flat and goes off on the first thing it touches;
+ * `placed` (U-054) sticks where it first lands, or is put on a surface, and
+ * goes off only when its owner says.
  */
-export type ProjectileKind = 'thrown' | 'rocket';
+export type ProjectileKind = 'thrown' | 'rocket' | 'placed';
 
 export interface ProjectileDef {
   id: string;
@@ -101,7 +103,7 @@ export interface ProjectileDef {
  * index is what travels in a Throw message and in the `Projectile` component,
  * so reordering this is a PROTOCOL_VERSION bump.
  */
-export const PROJECTILE_IDS = ['frag', 'rocket'] as const;
+export const PROJECTILE_IDS = ['frag', 'rocket', 'c4'] as const;
 
 /**
  * Bits a projectile index takes on the wire (U-048): the Projectile component's kind, a Throw, a Detonation and the
@@ -169,8 +171,8 @@ function parseProjectileDef(key: string, raw: unknown): ProjectileDef {
   const id = str(row, 'id', key);
   if (id !== key) throw new ProjectileDataError(`projectile "${key}": id field says "${id}"`);
   const kind = str(row, 'kind', key);
-  if (kind !== 'thrown' && kind !== 'rocket') {
-    throw new ProjectileDataError(`projectile "${key}": kind must be "thrown" or "rocket", got "${kind}"`);
+  if (kind !== 'thrown' && kind !== 'rocket' && kind !== 'placed') {
+    throw new ProjectileDataError(`projectile "${key}": kind must be "thrown", "rocket" or "placed", got "${kind}"`);
   }
 
   const def: ProjectileDef = {
@@ -187,7 +189,7 @@ function parseProjectileDef(key: string, raw: unknown): ProjectileDef {
     rollDragPerSec: num(row, 'rollDragPerSec', key, 0, 20),
     fuseSeconds: num(row, 'fuseSeconds', key, 0, 30),
     detonateOnImpact: bool(row, 'detonateOnImpact', key),
-    maxLifeSeconds: num(row, 'maxLifeSeconds', key, 0.1, 60),
+    maxLifeSeconds: num(row, 'maxLifeSeconds', key, 0.1, 600),
     blastRadiusM: num(row, 'blastRadiusM', key, 0.1, 50),
     blastDamage: num(row, 'blastDamage', key, 0, 1000),
     blastMinFraction: num(row, 'blastMinFraction', key, 0, 1),
@@ -197,7 +199,7 @@ function parseProjectileDef(key: string, raw: unknown): ProjectileDef {
   };
 
   if (!Number.isInteger(def.carried)) throw new ProjectileDataError(`projectile "${key}": carried must be an integer`);
-  if (def.fuseSeconds === 0 && !def.detonateOnImpact) {
+  if (def.fuseSeconds === 0 && !def.detonateOnImpact && def.kind !== 'placed') {
     throw new ProjectileDataError(
       `projectile "${key}": with no fuse and no impact detonation it can only die of old age`,
     );

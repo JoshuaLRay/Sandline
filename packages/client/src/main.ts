@@ -2232,7 +2232,9 @@ function frame(): void {
     const beforeStep = net.simulated;
     // U-046: right click with a grenade (a thrown item) in hand pulls the pin; the host starts the fuse on the press.
     const cooking = holdingPouch && throws.def.kind === 'thrown' && throws.def.fuseSeconds > 0 && input.rightHeld && net.vitality === 'alive';
-    tickInput.cook = cooking;
+    // U-054: right click with C4 in hand is the detonator, the same press on the same input.
+    const detonating = holdingPouch && throws.def.kind === 'placed' && input.rightHeld && net.vitality === 'alive';
+    tickInput.cook = cooking || detonating;
     // U-050: the same multiple the host applies to this character (predicted, replayed, reconciled with it).
     tickInput.speedScale = localLoadout?.speedScale ?? 1;
     if (cooking && !cookWasHeld && cookStartedAt === null && throws.count() > 0) {
@@ -2380,15 +2382,20 @@ function frame(): void {
     if (net.pouch) throws.reconcile(net.pouch, tickNumber * TICK_SECONDS);
     throws.tick(projectileWorld());
     const canThrow = net.vitality === 'alive' && !net.simulated?.vault;
+    // U-054: C4 is thrown (hold, aim, release) by the character that may, and put on a surface with one click by the rest.
+    const placing = throws.def.kind === 'placed' && !(localLoadout?.throwsPlaced ?? true);
     const pouch = pouchTrigger.update({
       holding: holdingPouch,
-      kind: throws.def.kind,
+      kind: throws.def.kind === 'placed' ? (placing ? 'rocket' : 'thrown') : throws.def.kind,
       triggerEdge,
       triggerHeld: input.firing,
       triggerReleased,
-      ads: input.ads,
+      ads: placing ? false : input.ads,
     });
-    if (pouch.launch && canThrow && here) {
+    if (pouch.launch && canThrow && here && placing) {
+      // The host judges the surface and the reach; the page only says where it looks. Nothing is predicted or spent here.
+      net.throwProjectile(tickNumber, aimYaw, aimPitch, throws.kind);
+    } else if (pouch.launch && canThrow && here) {
       const direction = dirFromYawPitch(aimYaw, aimPitch);
       // U-002: from the eye of the stance the body is in, as the server launches it.
       const eye = stanceEye(here);
@@ -2498,7 +2505,7 @@ function frame(): void {
   const localVitality = net?.vitality ?? 'alive';
   const localDowned = localVitality !== 'alive';
   // U-021: the character in hand decides whether the sight and first person exist for this player.
-  input.rightClickIsNotAim = holdingPouch && throws.def.kind === 'thrown';
+  input.rightClickIsNotAim = holdingPouch && (throws.def.kind === 'thrown' || throws.def.kind === 'placed');
   input.restrictView({ ads: localLoadout?.ads ?? true, firstPerson: localLoadout?.firstPerson ?? true });
   // The pose first, then the gait on top of it (T-2.22): the driver composes
   // on the pose's base transforms, so the order is what makes a crouch-walk
