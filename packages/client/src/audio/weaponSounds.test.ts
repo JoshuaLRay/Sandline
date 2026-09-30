@@ -107,6 +107,8 @@ describe('automatic fire through the engine (T-2.46)', () => {
     const fake = fakeContext();
     const engine = new AudioEngine({ createContext: () => fake.ctx, fetchBytes: (file) => Promise.resolve(new TextEncoder().encode(file).buffer as ArrayBuffer), sounds: SOUNDS });
     await engine.unlock();
+    // The roster guns' reports are lazy (U-043): bring them in as a seated soldier would.
+    await engine.preload(Object.values(WEAPON_SOUNDS.guns).flatMap((g) => [g.near, g.far]));
     engine.setListener({ x: 0, y: 1.6, z: 0 }, { x: 0, y: 0, z: 1 });
     for (const id of Object.keys(WEAPONS)) {
       const near = WEAPON_SOUNDS.guns[id]!.near;

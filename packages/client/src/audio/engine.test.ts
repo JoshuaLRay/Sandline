@@ -171,3 +171,49 @@ describe('the audio engine, headless (T-2.45)', () => {
     expect(SOUNDS.sounds.size).toBeGreaterThan(0);
   });
 });
+
+describe('lazy sounds (U-043)', () => {
+  const LAZY = parseSounds({
+    sounds: {
+      click: { class: 'ui', seconds: 0.05, bounds: { peakDb: [-6, 0], rmsDb: [-60, 0], seconds: [0, 0.05] }, layers: [{ source: { kind: 'impulse' }, envelope: { attack: 0, decay: 0.01 } }] },
+      rare: { class: 'weapon', seconds: 0.3, variants: 2, lazy: true, bounds: { peakDb: [-6, 0], rmsDb: [-60, 0], seconds: [0, 0.3] }, layers: [{ source: { kind: 'noise' }, envelope: { attack: 0, decay: 0.1 } }] },
+    },
+  });
+
+  async function lazyEngine() {
+    const fake = fakeContext();
+    const fetched: string[] = [];
+    const e = new AudioEngine({
+      createContext: () => fake.ctx,
+      fetchBytes: (file) => {
+        fetched.push(file);
+        return Promise.resolve(new ArrayBuffer(16));
+      },
+      sounds: LAZY,
+    });
+    await e.unlock();
+    return { e, fetched };
+  }
+
+  it('does not fetch a lazy sound at start, and is ready without it', async () => {
+    const { e, fetched } = await lazyEngine();
+    expect(fetched.some((f) => f.includes('rare'))).toBe(false);
+    expect(e.ready).toBe(true);
+  });
+
+  it('the first play misses and starts one fetch, and later plays sound', async () => {
+    const { e, fetched } = await lazyEngine();
+    expect(e.play('rare')).toBe(false);
+    expect(e.play('rare')).toBe(false);
+    await e.preload(['rare']);
+    expect(fetched.filter((f) => f.includes('rare')).length).toBe(2);
+    expect(e.play('rare')).toBe(true);
+  });
+
+  it('a preload brings it in before it is needed', async () => {
+    const { e } = await lazyEngine();
+    await e.preload(['rare', 'not-a-sound']);
+    expect(e.play('rare')).toBe(true);
+  });
+});
+

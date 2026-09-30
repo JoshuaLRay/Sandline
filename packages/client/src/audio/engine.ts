@@ -138,6 +138,8 @@ export class AudioEngine {
   private boxes: readonly WorldBox[] = [];
   private volumes: Volumes = { master: 0.8, effects: 1, voice: 1 };
   private loading: Promise<void> | null = null;
+  /** Lazy sounds being fetched (U-043), so a burst of plays starts one fetch. */
+  private readonly lazyLoading = new Map<string, Promise<void>>();
   /** Renders that would not fetch or decode, by file (U-007): shown, not swallowed. */
   private readonly failed: string[] = [];
 
@@ -149,7 +151,7 @@ export class AudioEngine {
 
   /** Whether the context exists and every render has loaded. */
   get ready(): boolean {
-    return this.ctx !== null && this.buffers.size === this.sounds.sounds.size;
+    return this.ctx !== null && [...this.sounds.sounds.values()].every((def) => def.lazy === true || this.buffers.has(def.id));
   }
 
   /** The renders that failed to load (U-007): each one a sound that will never play. Empty before loading. */
@@ -161,7 +163,7 @@ export class AudioEngine {
   readout(): string {
     if (!this.ctx) return 'audio  locked until the first click or key';
     if (!this.ready) return 'audio  loading';
-    if (this.failed.length === 0) return `audio  ${this.sounds.sounds.size} sounds loaded  voices ${this.pool.size}/${this.mix.voiceLimit}`;
+    if (this.failed.length === 0) return `audio  ${this.buffers.size} sounds loaded  voices ${this.pool.size}/${this.mix.voiceLimit}`;
     const shown = this.failed.slice(0, 4).join(', ');
     return `audio  ${this.failed.length} render(s) FAILED to load: ${shown}${this.failed.length > 4 ? ', …' : ''}`;
   }
@@ -190,23 +192,40 @@ export class AudioEngine {
   }
 
   private async loadAll(): Promise<void> {
+    // A lazy sound (U-043) is not part of the first load: it comes on first use or a `preload`.
+    await Promise.all([...this.sounds.sounds.values()].filter((def) => def.lazy !== true).map((def) => this.loadOne(def)));
+  }
+
+  private async loadOne(def: SoundDef): Promise<void> {
     const ctx = this.ctx;
     if (!ctx) return;
-    await Promise.all(
-      [...this.sounds.sounds.values()].map(async (def) => {
-        const decoded = await Promise.all(
-          Array.from({ length: def.variants }, async (_, v) => {
-            try {
-              return await ctx.decodeAudioData(await this.options.fetchBytes(soundFile(def.id, v)));
-            } catch {
-              this.failed.push(soundFile(def.id, v));
-              return null;
-            }
-          }),
-        );
-        this.buffers.set(def.id, decoded);
+    const decoded = await Promise.all(
+      Array.from({ length: def.variants }, async (_, v) => {
+        try {
+          return await ctx.decodeAudioData(await this.options.fetchBytes(soundFile(def.id, v)));
+        } catch {
+          this.failed.push(soundFile(def.id, v));
+          return null;
+        }
       }),
     );
+    this.buffers.set(def.id, decoded);
+  }
+
+  /** Fetch these lazy sounds now (U-043), e.g. when a soldier who owns them is seated; resolves when they are ready. */
+  preload(ids: readonly string[]): Promise<void> {
+    const wanted = ids.map((id) => this.sounds.sounds.get(id)).filter((def): def is SoundDef => def !== undefined);
+    return Promise.all(wanted.map((def) => this.loadLazy(def))).then(() => undefined);
+  }
+
+  private loadLazy(def: SoundDef): Promise<void> {
+    if (this.buffers.has(def.id)) return Promise.resolve();
+    let pending = this.lazyLoading.get(def.id);
+    if (!pending) {
+      pending = this.loadOne(def);
+      this.lazyLoading.set(def.id, pending);
+    }
+    return pending;
   }
 
   setVolumes(v: Volumes): void {
@@ -252,6 +271,8 @@ export class AudioEngine {
     const ctx = this.ctx;
     const def = this.sounds.sounds.get(id);
     const buffers = this.buffers.get(id);
+    // A lazy sound not yet loaded starts loading and is missed this once (U-043).
+    if (ctx && def?.lazy === true && !buffers) void this.loadLazy(def);
     if (!ctx || !def || !buffers) return false;
     const variant = opts.variant ?? (this.options.pickVariant ?? nextVariant)(def, this.lastVariant.get(id) ?? -1);
     const buffer = buffers[variant];

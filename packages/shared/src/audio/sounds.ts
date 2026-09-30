@@ -107,6 +107,12 @@ export interface SoundDef {
   variants: number;
   /** The render is normalised so its peak is this, dBFS. */
   normalizePeakDb: number;
+  /**
+   * Not fetched at start (U-043): loaded the first time it is asked for or
+   * preloaded, so sounds nobody can make yet do not cost the first load.
+   * Present only when true, so a recipe that is not lazy hashes as it always did.
+   */
+  lazy?: true;
   bounds: SoundBounds;
   layers: readonly LayerDef[];
 }
@@ -126,6 +132,11 @@ function obj(where: string, v: unknown, keys: readonly string[], optional: reado
   for (const k of Object.keys(o)) if (!keys.includes(k) && !optional.includes(k) && k !== '$comment') throw new SoundsDataError(`${where}: unknown key '${k}'`);
   for (const k of keys) if (!(k in o)) throw new SoundsDataError(`${where}: missing '${k}'`);
   return o;
+}
+
+function bool(where: string, v: unknown): boolean {
+  if (typeof v !== 'boolean') throw new SoundsDataError(`${where} must be true or false, got ${JSON.stringify(v)}`);
+  return v;
 }
 
 function num(where: string, v: unknown, min: number, max: number): number {
@@ -235,7 +246,7 @@ const SOUND_ID = /^[a-z][a-z0-9-]{0,39}$/;
 function parseSound(id: string, raw: unknown): SoundDef {
   const where = `sounds.${id}`;
   if (!SOUND_ID.test(id)) throw new SoundsDataError(`${where}: id must match ${SOUND_ID}`);
-  const o = obj(where, raw, ['class', 'seconds', 'layers', 'bounds'], ['variants', 'normalizePeakDb']);
+  const o = obj(where, raw, ['class', 'seconds', 'layers', 'bounds'], ['variants', 'normalizePeakDb', 'lazy']);
   const layers = o['layers'];
   if (!Array.isArray(layers) || layers.length === 0 || layers.length > 16) throw new SoundsDataError(`${where}.layers must list 1–16 layers`);
   const b = obj(`${where}.bounds`, o['bounds'], ['peakDb', 'rmsDb', 'seconds']);
@@ -253,6 +264,7 @@ function parseSound(id: string, raw: unknown): SoundDef {
     },
     layers: layers.map((l, i) => parseLayer(`${where}.layers[${i}]`, l)),
   };
+  if (o['lazy'] !== undefined && bool(`${where}.lazy`, o['lazy'])) def.lazy = true;
   if (!Number.isInteger(def.variants)) throw new SoundsDataError(`${where}.variants must be a whole number`);
   for (const [i, layer] of def.layers.entries()) {
     if (layer.start >= seconds) throw new SoundsDataError(`${where}.layers[${i}].start is at or past the sound's end`);
