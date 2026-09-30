@@ -492,6 +492,18 @@ export const MAX_INPUT_REPEAT = 5;
 const KIT_HELD = PROJECTILE_IDS.length;
 
 /** U-048: the frag is slot 4's grenade; slot 5's equipment is any other pouch item. */
+/** U-055: the flat unit direction a wire yaw looks along. */
+function flatFacing(yaw: number): { x: number; z: number } {
+  const d = dirFromYawPitch(yaw, 0);
+  const n = Math.sqrt(d.x * d.x + d.z * d.z) || 1;
+  return { x: d.x / n, z: d.z / n };
+}
+
+/** U-055: cosine of half a cone's full width, degrees. */
+function coneHalfCos(coneDeg: number): number {
+  return Math.cos((coneDeg / 2) * (Math.PI / 180));
+}
+
 /** U-054: how far from the eye a soldier can put a charge on a surface, metres. */
 const PLACE_REACH_M = 2.5;
 const FRAG_INDEX = (PROJECTILE_IDS as readonly string[]).indexOf('frag');
@@ -557,6 +569,8 @@ interface ActiveProjectile {
   state: ProjectileState;
   /** U-054: a placed charge that has come to rest or been put on a surface: it no longer flies, and waits for its owner. */
   stuck?: boolean;
+  /** U-055: the flat direction a directional device (a claymore) faces, a unit vector on x/z. */
+  facing?: { x: number; z: number };
 }
 
 /**
@@ -3731,8 +3745,33 @@ export class Session {
         { x: 0, y: 0, z: 0 },
       ),
       stuck: true,
+      ...(def.coneDeg > 0 ? { facing: flatFacing(yaw) } : {}),
     });
     return true;
+  }
+
+  /** U-055: whether a body is inside a directional device's cone (always, for an ordinary blast). */
+  private inBlastCone(p: ActiveProjectile, body: { x: number; z: number }): boolean {
+    if (p.def.coneDeg <= 0 || !p.facing) return true;
+    const dx = body.x - p.state.x;
+    const dz = body.z - p.state.z;
+    const d = Math.sqrt(dx * dx + dz * dz);
+    if (d < 0.05) return true;
+    return dx * p.facing.x + dz * p.facing.z >= d * coneHalfCos(p.def.coneDeg);
+  }
+
+  /** U-055: a stuck mine is tripped when a soldier of the other side is within `triggerM` in front of it, in sight. */
+  private mineTripped(p: ActiveProjectile): boolean {
+    const owner = this.side(p.ownerNetId);
+    const from = { x: p.state.x, y: p.state.y + 0.3, z: p.state.z };
+    for (const soldier of this.livingSoldiers()) {
+      if (!this.hostile(owner, soldier.side)) continue;
+      const centre = soldierCapsule(soldier.state).centre;
+      const d = Math.sqrt((centre.x - from.x) ** 2 + (centre.y - from.y) ** 2 + (centre.z - from.z) ** 2);
+      if (d > p.def.triggerM || !this.inBlastCone(p, soldier.state)) continue;
+      if (lineOfSight(from, centre, this.collisionBoxes)) return true;
+    }
+    return false;
   }
 
   /** U-054: every armed charge of this kind that `slot` has out goes off at once. */
@@ -3799,6 +3838,7 @@ export class Session {
       ownerNetId: thrower.netId,
       xpPlayerId: this.xpPlayer(this.slots.findIndex((s) => s.netId === thrower.netId)),
       state: { ...createProjectileState(origin, velocity), age: cookedSeconds },
+      ...(def.coneDeg > 0 ? { facing: flatFacing(yawIn) } : {}),
     });
     return true;
   }
@@ -3882,6 +3922,11 @@ export class Session {
           }
         } else {
           projectile.state.age += TICK_SECONDS;
+          // U-055: a mine with a trip goes off by itself when the other side comes into its cone.
+          if (projectile.def.triggerM > 0 && this.mineTripped(projectile)) {
+            this.detonate(projectile, { x: projectile.state.x, y: projectile.state.y, z: projectile.state.z });
+            continue;
+          }
         }
         if (projectile.state.age < projectile.def.maxLifeSeconds) survivors.push(projectile);
         continue;
@@ -3960,6 +4005,7 @@ export class Session {
     const targets: { netId: number; damage: number }[] = [];
     for (const slot of this.slots) {
       if (isDead(slot.health)) continue;
+      if (!this.inBlastCone(projectile, slot.state)) continue;
       const height = slot.state.prone ? PRONE_HITBOX_HEIGHT : slot.state.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT;
       const damage = blastDamageOn(
         projectile.def,
@@ -3981,6 +4027,7 @@ export class Session {
     // Enemies take the blast on the same terms (T-3.10), dying at zero.
     for (const enemy of this.enemyList) {
       if (isDead(enemy.health)) continue;
+      if (!this.inBlastCone(projectile, enemy.state)) continue;
       const height = enemy.state.prone ? PRONE_HITBOX_HEIGHT : enemy.state.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT;
       const damage = blastDamageOn(
         projectile.def,

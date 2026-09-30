@@ -19,6 +19,8 @@
     "blastMinFraction": 0.12,
     "blastCoverFraction": 0.25,
     "suppression": 0,
+    "coneDeg": 0,
+    "triggerM": 0,
     "carried": 3,
     "cooldownSeconds": 1
   },
@@ -42,6 +44,8 @@
     "blastMinFraction": 0.15,
     "blastCoverFraction": 0.2,
     "suppression": 0,
+    "coneDeg": 0,
+    "triggerM": 0,
     "carried": 2,
     "cooldownSeconds": 1.8
   },
@@ -65,6 +69,8 @@
     "blastMinFraction": 0.3,
     "blastCoverFraction": 0.25,
     "suppression": 0,
+    "coneDeg": 0,
+    "triggerM": 0,
     "carried": 2,
     "cooldownSeconds": 1
   },
@@ -88,7 +94,34 @@
     "blastMinFraction": 0,
     "blastCoverFraction": 0,
     "suppression": 1,
+    "coneDeg": 0,
+    "triggerM": 0,
     "carried": 4,
+    "cooldownSeconds": 1
+  },
+  "claymore": {
+    "id": "claymore",
+    "name": "M18 Claymore",
+    "kind": "placed",
+    "speedMPerSec": 12,
+    "loftDeg": 12,
+    "gravity": 9.81,
+    "dragPerSec": 0.1,
+    "radiusM": 0.09,
+    "restitution": 0,
+    "friction": 1,
+    "rollDragPerSec": 20,
+    "fuseSeconds": 0,
+    "detonateOnImpact": false,
+    "maxLifeSeconds": 300,
+    "blastRadiusM": 3,
+    "blastDamage": 150,
+    "blastMinFraction": 1,
+    "blastCoverFraction": 1,
+    "suppression": 0,
+    "coneDeg": 60,
+    "triggerM": 3,
+    "carried": 1,
     "cooldownSeconds": 1
   }
 }
