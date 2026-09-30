@@ -306,3 +306,4 @@ Format: `T-<id> — <what changed>`
 - U-052 — Authored loot: `sniper-semi-left` (left-handed) is placed by a mission `pickup` action (mission-01: the compound's south-east corner after the east lane), only the left-handed sniper can take a left-handed gun, and a retry restores each soldier's loadout and the ground pickups; the rest of the checkpoint world is U-059.
 - U-036 — Status: in-game voice recording intake merged in #163 (2026-09-28); live microphone submission and listening review still owed.
 - U-059 — Checkpoints restore the whole world in a running session: living enemies (place, health, group), the spawner's progress and queue, soldier health, placed devices and the mission clock; an objective completed while a soldier is downed queues its checkpoint until the squad is up. Saving it in the campaign file is U-060.
+- U-059 — Decision recorded: no checkpoint is saved while a soldier is downed; the save is queued until the revive. U-052 status DONE (#225).
