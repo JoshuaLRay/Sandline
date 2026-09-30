@@ -9,7 +9,7 @@
  * so going away is leaving the scene, not disposing anything.
  */
 import * as THREE from 'three';
-import { WEAPON_IDS } from '@sandline/shared';
+import { PROJECTILE_IDS, WEAPON_IDS, pickupProjectile } from '@sandline/shared';
 import type { RemotePickup } from '../net/NetClient.ts';
 import { createWeaponModel } from './weaponModels.ts';
 
@@ -46,12 +46,21 @@ export class PickupModels {
       seen.add(p.netId);
       let root = this.models.get(p.netId);
       if (!root) {
-        const id = WEAPON_IDS[p.weapon] ?? WEAPON_IDS[0];
+        const item = pickupProjectile(p.weapon);
         root = new THREE.Group();
-        root.name = `pickup ${id} ${p.netId}`;
-        const model = createWeaponModel(id, 'enemy');
-        model.object.rotation.z = LIE_ROLL;
-        root.add(model.object);
+        if (item >= 0) {
+          // A piece of equipment (U-048): no model yet, so a plain crate the size of a launcher tube's end.
+          root.name = `pickup ${PROJECTILE_IDS[item] ?? 'item'} ${p.netId}`;
+          const crate = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.25), new THREE.MeshLambertMaterial({ color: 0x556b2f }));
+          crate.position.y = 0.1;
+          root.add(crate);
+        } else {
+          const id = WEAPON_IDS[p.weapon] ?? WEAPON_IDS[0];
+          root.name = `pickup ${id} ${p.netId}`;
+          const model = createWeaponModel(id, 'enemy');
+          model.object.rotation.z = LIE_ROLL;
+          root.add(model.object);
+        }
         this.scene.add(root);
         this.models.set(p.netId, root);
       }

@@ -159,9 +159,10 @@ describe('characters on the session (T-4.27, U-021)', () => {
     expect(session.started).toBe(true);
     expect(session.loadoutOf(0)).toMatchObject({ weapon: 'carbine', health: 100, maxHealth: 100 });
     expect(session.loadoutOf(0).pouch[FRAG]).toBe(2);
-    expect(session.loadoutOf(0).pouch[ROCKET]).toBe(1);
+    // The launcher is Brennan's alone (U-048, owner 2026-09-29): Preach carries none.
+    expect(session.loadoutOf(0).pouch[ROCKET]).toBe(0);
     expect(session.loadoutOf(1)).toMatchObject({ weapon: 'lmg', maxHealth: 100 });
-    expect(session.loadoutOf(1).pouch[ROCKET]).toBe(1);
+    expect(session.loadoutOf(1).pouch[ROCKET]).toBe(2);
     expect(session.loadoutOf(2)).toMatchObject({ weapon: 'smg', maxHealth: 90 });
     expect(session.loadoutOf(3)).toMatchObject({ weapon: 'carbine-scoped' });
     expect(session.loadoutOf(4)).toMatchObject({ weapon: 'sniper-bolt-left', maxHealth: 90 });

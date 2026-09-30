@@ -84,6 +84,9 @@ const SAMPLES: Message[] = [
   { kind: 'Possessed', netId: 5, slot: 4, resume: 'a1b2c3', weapon: 3, ammo: 30, pouch: [2, 1] },
   { kind: 'Possessed', netId: 300, slot: 0, resume: '', weapon: 0, ammo: 0, pouch: [] },
   { kind: 'Throw', tick: 900, yaw: 4095, pitch: 3072, projectile: 1 },
+  // U-048: a projectile index is four bits now, room for the equipment of U-054 to U-058.
+  { kind: 'Throw', tick: 901, yaw: 10, pitch: 20, projectile: 13 },
+  { kind: 'Equip', item: 30 },
   { kind: 'Equip', item: 5 },
   { kind: 'Reload' },
   {

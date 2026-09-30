@@ -42,6 +42,7 @@ import {
   FIRST_PICKUP_NET_ID,
   PICKUPS,
   PICKUP_AMMO_BITS,
+  pickupProjectile,
   PICKUP_NET_ID_LIMIT,
   PROJECTILE_IDS,
   POUCH_COUNT_MAX,
@@ -412,6 +413,8 @@ export interface Slot {
   noPistol: boolean;
   /** U-047: health kits left. */
   kits: number;
+  /** U-048: the pouch item in slot 5 (a PROJECTILE_IDS index), or -1 for an empty slot. Starts as the character's; a pickup can change it. */
+  equipment: number;
   /** U-047: seconds into applying one, on `kitTarget` (a slot index; -1 for none). */
   kitProgress: number;
   kitTarget: number;
@@ -485,6 +488,11 @@ export const MAX_INPUT_REPEAT = 5;
 
 /** U-047: `heldProjectile` when the health kits are in hand (one past the last pouch item). */
 const KIT_HELD = PROJECTILE_IDS.length;
+
+/** U-048: the frag is slot 4's grenade; slot 5's equipment is any other pouch item. */
+const FRAG_INDEX = (PROJECTILE_IDS as readonly string[]).indexOf('frag');
+/** The equipment a slot on a free-loadout session (the range) carries: the first pouch item that is not the frag. */
+const FIRST_EQUIPMENT = PROJECTILE_IDS.findIndex((id) => id !== 'frag');
 
 /**
  * Deepest the per-slot input buffer may get. Four ticks is ~133 ms of slack —
@@ -1068,6 +1076,7 @@ export class Session {
         dropPending: false,
         noPistol: false,
         kits: 3,
+        equipment: FIRST_EQUIPMENT,
         kitProgress: 0,
         kitTarget: -1,
         kitHealth: 0,
@@ -1376,6 +1385,7 @@ export class Session {
       slot.suppression = createSuppression();
       slot.pouch = this.pouchFor(slot.index);
       slot.kits = this.kitsFor(slot.index);
+      slot.equipment = this.equipmentFor(slot.index);
       slot.nextThrowAt = 0;
       this.orders[slot.index] = null;
       this.orderRuns[slot.index] = null;
@@ -1685,6 +1695,7 @@ export class Session {
     slot.pickedUp = false;
     slot.pouch = [...def.pouch];
     slot.kits = def.healthKits;
+    slot.equipment = def.equipment === null ? -1 : (PROJECTILE_IDS as readonly string[]).indexOf(def.equipment);
     slot.heldProjectile = -1;
     this.applyClassHealth(slot);
   }
@@ -1708,6 +1719,7 @@ export class Session {
     if (!s) return;
     s.pouch = this.pouchFor(slot);
     s.kits = this.kitsFor(slot);
+    s.equipment = this.equipmentFor(slot);
     s.nextThrowAt = 0;
   }
 
@@ -1716,6 +1728,13 @@ export class Session {
     if (this.classLoadouts !== 'class') return this.fullPouch();
     const def = classById(this.classSlots[slot] ?? '');
     return def ? [...def.pouch] : this.fullPouch();
+  }
+
+  /** U-048: a slot's slot-5 equipment at spawn: its character's, or the first non-frag pouch item on a free session. */
+  private equipmentFor(slot: number): number {
+    if (this.classLoadouts !== 'class') return FIRST_EQUIPMENT;
+    const def = classById(this.classSlots[slot] ?? '');
+    return def && def.equipment !== null ? (PROJECTILE_IDS as readonly string[]).indexOf(def.equipment) : -1;
   }
 
   /** U-047: a slot's health kits at spawn: its character's, or 3 on a free session. */
@@ -2021,6 +2040,18 @@ export class Session {
     return !!def?.guns.includes('sidearm') && slot.noPistol && slot.secondary === null;
   }
 
+  /** U-048: the slot-5 equipment, all of it, on the ground where the soldier stands; the slot is left empty. */
+  private putDownEquipment(slot: Slot): void {
+    const item = slot.equipment;
+    if (item < 0) return;
+    const count = slot.pouch[item] ?? 0;
+    slot.pouch[item] = 0;
+    slot.equipment = -1;
+    if (slot.heldProjectile === item) slot.heldProjectile = -1;
+    slot.cook = null;
+    if (count > 0) this.placePickupItem(WEAPON_IDS.length + item, count, slot.state, slot.yaw);
+  }
+
   /** U-029: a character whose own gun is left-handed (the slot-4 sniper) — he takes only left-handed guns. */
   private leftHandedShooter(slot: Slot): boolean {
     if (this.classLoadouts !== 'class') return false;
@@ -2037,6 +2068,11 @@ export class Session {
    */
   private dropHeld(slot: Slot): boolean {
     if (!isAlive(slot.health) || isDowned(slot.health) || slot.state.vault || slot.mounted) return false;
+    // U-048: the equipment in hand goes down whole, its count with it.
+    if (slot.equipment >= 0 && slot.heldProjectile === slot.equipment) {
+      this.putDownEquipment(slot);
+      return true;
+    }
     const gun = slot.weapon.id;
     const isPistol = gun === 'sidearm' && this.classLoadouts === 'class' && this.carries(slot, 'sidearm');
     if (gun !== slot.primary && gun !== slot.secondary && !isPistol) return false;
@@ -2085,8 +2121,9 @@ export class Session {
     for (const [i, p] of this.pickupList.entries()) {
       const at = { x: p.x, y: p.y + PICKUP_AIM_M, z: p.z };
       const d = Math.hypot(eye.x - at.x, eye.y - at.y, eye.z - at.z);
-      if (WEAPON_IDS[p.weapon] === 'sidearm' && !this.canTakePistol(slot)) continue;
-      if (lefty && !canWield(getWeapon(WEAPON_IDS[p.weapon]!), true)) continue;
+      const isGun = pickupProjectile(p.weapon) < 0;
+      if (isGun && WEAPON_IDS[p.weapon] === 'sidearm' && !this.canTakePistol(slot)) continue;
+      if (isGun && lefty && !canWield(getWeapon(WEAPON_IDS[p.weapon]!), true)) continue;
       if (d <= PICKUPS.reachM && d < bestD && lineOfSight(eye, at, this.collisionBoxes)) {
         best = i;
         bestD = d;
@@ -2094,6 +2131,17 @@ export class Session {
     }
     if (best < 0) return false;
     const target = this.pickupList[best]!;
+    // U-048: a piece of equipment on the ground. A soldier carries one kind in slot 5: taking another puts the first down.
+    const item = pickupProjectile(target.weapon);
+    if (item >= 0) {
+      // Slot 4's frag is never on the ground as equipment; a malformed item is left where it lies.
+      if (item === FRAG_INDEX || item >= PROJECTILE_IDS.length) return false;
+      this.pickupList.splice(best, 1);
+      if (slot.equipment >= 0 && slot.equipment !== item) this.putDownEquipment(slot);
+      slot.equipment = item;
+      slot.pouch[item] = Math.min(POUCH_COUNT_MAX, (slot.pouch[item] ?? 0) + target.ammo);
+      return true;
+    }
     const gun = WEAPON_IDS[target.weapon]!;
     if (gun === 'sidearm') {
       // U-029: a pistol put down comes back as the pistol, never as a primary; the gun in hand is put away with its rounds.
@@ -2170,7 +2218,11 @@ export class Session {
 
   /** U-017/U-018: a gun on the ground, under a netId never used before; past the cap the oldest goes. */
   private placePickup(id: string, ammo: number, at: { x: number; y: number; z: number }, yaw: number): void {
-    const weapon = (WEAPON_IDS as readonly string[]).indexOf(id);
+    this.placePickupItem((WEAPON_IDS as readonly string[]).indexOf(id), ammo, at, yaw);
+  }
+
+  /** U-048: as `placePickup`, by wire item: a WEAPON_IDS index, or WEAPON_IDS.length plus a PROJECTILE_IDS index for equipment (its amount a count). */
+  private placePickupItem(weapon: number, ammo: number, at: { x: number; y: number; z: number }, yaw: number): void {
     if (weapon < 0 || this.nextPickupNetId >= PICKUP_NET_ID_LIMIT) return;
     while (this.pickupList.length >= PICKUPS.max) this.pickupList.shift();
     this.pickupList.push({
@@ -3685,6 +3737,8 @@ export class Session {
     }
     const pouchIndex = msg.item - WEAPON_IDS.length;
     if (projectileByIndex(pouchIndex) === null) return;
+    // U-048: the frag, and the one piece of equipment this soldier carries; nothing else in the pouch has a slot.
+    if (pouchIndex !== FRAG_INDEX && pouchIndex !== slot.equipment) return;
     slot.heldProjectile = pouchIndex;
   }
 
@@ -3967,6 +4021,7 @@ export class Session {
           slot.suppression = createSuppression();
           slot.pouch = this.pouchFor(slot.index);
           slot.kits = this.kitsFor(slot.index);
+          slot.equipment = this.equipmentFor(slot.index);
           slot.nextThrowAt = 0;
         }
         // Still recorded into the hitbox history below, so a shot already in
@@ -4749,6 +4804,8 @@ export class Session {
             // U-047: and the kits left, and how far through applying one.
             Math.min(7, s.kits),
             s.kitProgress > 0 ? Math.min(100, Math.floor((100 * s.kitProgress) / this.kitSeconds(s))) : 0,
+            // U-048: and the equipment in slot 5, an index plus one.
+            s.equipment + 1,
           ],
           // T-3.16: how suppressed, so the page can show it and widen its cone to match.
           [COMPONENT_IDS.Suppression]: [suppressionToWire(suppressionLevel(s.suppression, this.nowMs / 1000))],

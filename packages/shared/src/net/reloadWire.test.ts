@@ -12,7 +12,7 @@ import { AMMO_MAX } from './schema.ts';
 describe('the Reload message (U-028)', () => {
   it('is its own message on the wire, and never mistaken for an Equip of a loadout item', () => {
     expect(RELOAD_ITEM).toBeGreaterThanOrEqual(WEAPON_IDS.length + PROJECTILE_IDS.length);
-    expect(RELOAD_ITEM).toBeLessThan(16);
+    expect(RELOAD_ITEM).toBeLessThan(32);
     expect(decodeMessage(encodeMessage({ kind: 'Reload' }))).toEqual({ kind: 'Reload' });
     for (let item = 0; item < WEAPON_IDS.length + PROJECTILE_IDS.length; item += 1) {
       expect(decodeMessage(encodeMessage({ kind: 'Equip', item }))).toEqual({ kind: 'Equip', item });

@@ -33,6 +33,11 @@ export interface ClassDef {
   readonly guns: readonly string[];
   /** The pouch at spawn, indexed like PROJECTILE_IDS. */
   readonly pouch: readonly number[];
+  /**
+   * The pouch item in slot 5 (a projectiles.json id other than the frag, which is slot 4's), or null for an empty slot
+   * (U-048). Its count is the pouch's. Brennan's launcher today; C4, the claymore and the rest arrive with their cards.
+   */
+  readonly equipment: string | null;
   readonly orders: OrderScope;
   /** Health kits carried at spawn (U-047; default 3, the owner's number). */
   readonly healthKits: number;
@@ -107,6 +112,18 @@ export function parseClassConfig(raw: unknown): ClassConfig {
       if (!(PROJECTILE_IDS as readonly string[]).includes(key)) throw new ClassDataError(`${where}.pouch: unknown projectile ${key}`);
     }
     const pouch = PROJECTILE_IDS.map((pid) => (pouchRaw[pid] === undefined ? 0 : num(pouchRaw, pid, `${where}.pouch`, 0, 99)));
+    const equipmentRaw = row['equipment'];
+    if (equipmentRaw !== undefined && (typeof equipmentRaw !== 'string' || equipmentRaw === 'frag' || !(PROJECTILE_IDS as readonly string[]).includes(equipmentRaw))) {
+      throw new ClassDataError(`${where}.equipment: must be a projectile id other than the frag, got ${String(equipmentRaw)}`);
+    }
+    const equipment = typeof equipmentRaw === 'string' ? equipmentRaw : null;
+    if (equipment !== null && (pouch[(PROJECTILE_IDS as readonly string[]).indexOf(equipment)] ?? 0) <= 0) {
+      throw new ClassDataError(`${where}.equipment: ${equipment} needs a count in the pouch`);
+    }
+    // Anything but the frag and the chosen equipment has no slot to be drawn from.
+    PROJECTILE_IDS.forEach((pid, i) => {
+      if (pid !== 'frag' && pid !== equipment && (pouch[i] ?? 0) > 0) throw new ClassDataError(`${where}.pouch: ${pid} is carried but is neither the frag nor the equipment`);
+    });
     const orders = str(row, 'orders', where);
     if (orders !== 'squad' && orders !== 'fireteam') throw new ClassDataError(`${where}.orders must be "squad" or "fireteam"`);
     classes[id] = {
@@ -116,6 +133,7 @@ export function parseClassConfig(raw: unknown): ClassConfig {
       health: num(row, 'health', where, 1, 1000),
       guns: guns as string[],
       pouch,
+      equipment,
       orders,
       speedScale: row['speedScale'] === undefined ? 1 : num(row, 'speedScale', where, 0.5, 2),
       interactionTimeScale: row['interactionTimeScale'] === undefined ? 1 : num(row, 'interactionTimeScale', where, 0.1, 2),

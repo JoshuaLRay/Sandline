@@ -104,6 +104,14 @@ export interface ProjectileDef {
 export const PROJECTILE_IDS = ['frag', 'rocket'] as const;
 
 /**
+ * Bits a projectile index takes on the wire (U-048): the Projectile component's kind, a Throw, a Detonation and the
+ * Weapon component's item in hand, which adds none, the kit and the equipment on top. Sixteen kinds, up from four,
+ * so the equipment of U-054 to U-058 has room.
+ */
+export const PROJECTILE_INDEX_BITS = 4;
+if (PROJECTILE_IDS.length + 1 >= 1 << PROJECTILE_INDEX_BITS) throw new Error('PROJECTILE_IDS no longer fits PROJECTILE_INDEX_BITS with the kit');
+
+/**
  * Where projectile netIds start (T-2.31).
  *
  * Clear of the six player slots, which are handed out from 1, and clear of the
