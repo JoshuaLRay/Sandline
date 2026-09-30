@@ -3520,6 +3520,12 @@ export class Session {
     }
   }
 
+  /** U-050: this soldier's multiple on walking and sprinting speed (the support's +10%); 1 without a class. */
+  private speedScaleOf(slot: number): number {
+    if (this.classLoadouts !== 'class') return 1;
+    return classById(this.classSlots[slot] ?? '')?.speedScale ?? 1;
+  }
+
   /** U-049: this soldier's multiple on the time of a timed interaction (the support's discount); 1 without a class. */
   private interactionScale(slot: number): number {
     if (this.classLoadouts !== 'class') return 1;
@@ -3949,6 +3955,7 @@ export class Session {
           slot.pendingInputTick = ahead.tick;
           slot.staleTicks = 0;
           slot.input.downed = isDowned(slot.health);
+          slot.input.speedScale = this.speedScaleOf(slot.index);
           slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig, this.collisionBoxes);
           extra -= 1;
         }
@@ -3996,6 +4003,7 @@ export class Session {
       // still whatever buttons arrive (B-05), and the predictor applies the
       // same rule.
       slot.input.downed = isDowned(slot.health);
+      slot.input.speedScale = this.speedScaleOf(slot.index);
       const fromX = slot.state.x;
       const fromZ = slot.state.z;
       // T-4.29: a gunner is held at the gun, crouched, looking within its arc.

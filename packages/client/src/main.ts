@@ -2226,6 +2226,8 @@ function frame(): void {
     // U-046: right click with a grenade (a thrown item) in hand pulls the pin; the host starts the fuse on the press.
     const cooking = holdingPouch && throws.def.kind === 'thrown' && throws.def.fuseSeconds > 0 && input.rightHeld && net.vitality === 'alive';
     tickInput.cook = cooking;
+    // U-050: the same multiple the host applies to this character (predicted, replayed, reconciled with it).
+    tickInput.speedScale = localLoadout?.speedScale ?? 1;
     if (cooking && !cookWasHeld && cookStartedAt === null && throws.count() > 0) {
       cookStartedAt = tickNumber * TICK_SECONDS;
       playerHud.notify('Pin pulled');

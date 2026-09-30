@@ -353,3 +353,18 @@ describe('reconciling mid-vault (T-2.21)', () => {
   });
 });
 
+
+describe('a scaled speed (U-050)', () => {
+  it('predicts and replays with the same multiple the server steps, so it never reads as a correction', () => {
+    const support: MoveInput = { ...forward(), sprint: true, speedScale: 1.1 };
+    const p = new Predictor(createMoveState(0, 0, 0));
+    for (let tick = 1; tick <= 60; tick++) p.predict(tick, support);
+    // The server has run the first 40 inputs with the same multiple; the last 20 are replayed on its state.
+    const server = serverRun(40, support);
+    const result = p.reconcile(40, server);
+    expect(result.error).toBeLessThan(1e-9);
+    expect(distance(p.simulated, serverRun(60, support))).toBeLessThan(1e-9);
+    // Without the multiple the same walk covers less ground: the multiple is what made the difference.
+    expect(serverRun(60, support).z).toBeGreaterThan(serverRun(60, { ...support, speedScale: 1 }).z * 1.09);
+  });
+});
