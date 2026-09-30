@@ -113,6 +113,8 @@ import {
   canWield,
   getWeapon,
   NO_SECONDARY,
+  KIT_EQUIP_ITEM,
+  applyKit,
   shotDirections,
   startReload,
   tryFire,
@@ -408,6 +410,13 @@ export interface Slot {
   dropPending: boolean;
   /** U-029: the pistol the class lists has been put down (until a respawn, a retry, or taking one up). */
   noPistol: boolean;
+  /** U-047: health kits left. */
+  kits: number;
+  /** U-047: seconds into applying one, on `kitTarget` (a slot index; -1 for none). */
+  kitProgress: number;
+  kitTarget: number;
+  /** U-047: this soldier's health as of the last tick, to see damage that interrupts an application. */
+  kitHealth: number;
   /** U-046: a grenade with its pin pulled: which projectile, and when (seconds) the fuse started. Goes off in hand if not thrown. */
   cook: { kind: number; since: number } | null;
   /** U-046: right click was held on the newest input, and on the one before (to see a press). */
@@ -473,6 +482,9 @@ export interface Slot {
 
 /** ADR-012: repeat a missing input this many ticks, then treat it as idle. */
 export const MAX_INPUT_REPEAT = 5;
+
+/** U-047: `heldProjectile` when the health kits are in hand (one past the last pouch item). */
+const KIT_HELD = PROJECTILE_IDS.length;
 
 /**
  * Deepest the per-slot input buffer may get. Four ticks is ~133 ms of slack —
@@ -1054,6 +1066,10 @@ export class Session {
         pickedUp: false,
         dropPending: false,
         noPistol: false,
+        kits: 3,
+        kitProgress: 0,
+        kitTarget: -1,
+        kitHealth: 0,
         cook: null,
         cookHeld: false,
         cookWasHeld: false,
@@ -1358,6 +1374,7 @@ export class Session {
       slot.weaponState = createWeaponState(slot.weapon);
       slot.suppression = createSuppression();
       slot.pouch = this.pouchFor(slot.index);
+      slot.kits = this.kitsFor(slot.index);
       slot.nextThrowAt = 0;
       this.orders[slot.index] = null;
       this.orderRuns[slot.index] = null;
@@ -1666,6 +1683,7 @@ export class Session {
     slot.stowed.clear();
     slot.pickedUp = false;
     slot.pouch = [...def.pouch];
+    slot.kits = def.healthKits;
     slot.heldProjectile = -1;
     this.applyClassHealth(slot);
   }
@@ -1688,6 +1706,7 @@ export class Session {
     const s = this.slots[slot];
     if (!s) return;
     s.pouch = this.pouchFor(slot);
+    s.kits = this.kitsFor(slot);
     s.nextThrowAt = 0;
   }
 
@@ -1696,6 +1715,12 @@ export class Session {
     if (this.classLoadouts !== 'class') return this.fullPouch();
     const def = classById(this.classSlots[slot] ?? '');
     return def ? [...def.pouch] : this.fullPouch();
+  }
+
+  /** U-047: a slot's health kits at spawn: its character's, or 3 on a free session. */
+  private kitsFor(slot: number): number {
+    if (this.classLoadouts !== 'class') return 3;
+    return classById(this.classSlots[slot] ?? '')?.healthKits ?? 3;
   }
 
   private fullPouch(): number[] {
@@ -3423,6 +3448,84 @@ export class Session {
   }
 
   /**
+   * U-047: a soldier with the health kits in hand and the trigger held applies
+   * one, to the nearest downed mate in reach, else the nearest hurt mate, else
+   * themselves. The application runs `DAMAGE.kit.seconds` and is interrupted by
+   * letting go, by putting the kits away, by damage, or by the target moving out
+   * of reach or changing state; a downed soldier cannot apply one, even to
+   * themselves. Spent on completion. Bots do not use them yet.
+   */
+  private updateKits(): void {
+    const reachSq = DAMAGE.kit.reachM * DAMAGE.kit.reachM;
+    for (const slot of this.slots) {
+      const damaged = slot.health.current < slot.kitHealth;
+      slot.kitHealth = slot.health.current;
+      const using =
+        !this.autonomous(slot) && slot.heldProjectile === KIT_HELD && slot.kits > 0 && isAlive(slot.health) && !slot.mounted && !slot.state.vault &&
+        slot.input.firing === true && slot.staleTicks <= MAX_INPUT_REPEAT && !damaged;
+      if (!using) {
+        slot.kitProgress = 0;
+        slot.kitTarget = -1;
+        continue;
+      }
+      let target = slot.kitTarget >= 0 ? this.slots[slot.kitTarget] : undefined;
+      // The one being helped must still be in reach and still need it in the same way.
+      if (target && (target !== slot && this.distanceSq(slot, target) > reachSq || isDead(target.health) || (!isDowned(target.health) && target.health.current >= target.health.max))) {
+        target = undefined;
+        slot.kitProgress = 0;
+      }
+      if (!target) {
+        let best: Slot | null = null;
+        let bestRank = 3;
+        let bestD = Number.POSITIVE_INFINITY;
+        for (const other of this.slots) {
+          if (other === slot || other.mounted) continue;
+          const downed = isDowned(other.health);
+          if (!downed && !(isAlive(other.health) && other.health.current < other.health.max)) continue;
+          const d = this.distanceSq(slot, other);
+          if (d > reachSq) continue;
+          const rank = downed ? 0 : 1;
+          if (rank < bestRank || (rank === bestRank && d < bestD)) {
+            best = other;
+            bestRank = rank;
+            bestD = d;
+          }
+        }
+        if (best === null && slot.health.current < slot.health.max) best = slot;
+        if (best === null) {
+          slot.kitProgress = 0;
+          slot.kitTarget = -1;
+          continue;
+        }
+        target = best;
+        slot.kitTarget = best.index;
+        slot.kitProgress = 0;
+      }
+      slot.kitProgress += TICK_SECONDS;
+      if (slot.kitProgress >= this.kitSeconds(slot)) {
+        const wasDowned = isDowned(target.health);
+        if (applyKit(target.health)) {
+          slot.kits -= 1;
+          if (target !== slot && wasDowned) {
+            this.awardXp(slot.index, 'revive');
+            this.bumpStat(slot.index, 'revives');
+            target.queue.length = 0;
+          }
+          target.reviveBySlot = -1;
+          target.reviveProgressSeconds = 0;
+        }
+        slot.kitProgress = 0;
+        slot.kitTarget = -1;
+      }
+    }
+  }
+
+  /** U-047: seconds this soldier takes to apply a kit. (U-049 will scale it per character.) */
+  private kitSeconds(_slot: Slot): number {
+    return DAMAGE.kit.seconds;
+  }
+
+  /**
    * U-046: right click with a thrown item in hand pulls the pin (a press, not a hold); the fuse runs from then. A
    * grenade not thrown in time goes off in the hand, where its soldier stands (dead or alive), and is spent.
    */
@@ -3517,6 +3620,11 @@ export class Session {
       if (!this.carries(slot, gun)) return;
       this.drawGun(slot, gun);
       slot.heldProjectile = -1;
+      return;
+    }
+    // U-047: slot 6, the health kits, drawn like a grenade: shown to others as one more pouch item in hand.
+    if (msg.item === KIT_EQUIP_ITEM) {
+      slot.heldProjectile = KIT_HELD;
       return;
     }
     const pouchIndex = msg.item - WEAPON_IDS.length;
@@ -3802,6 +3910,7 @@ export class Session {
           slot.weaponState = createWeaponState(slot.weapon);
           slot.suppression = createSuppression();
           slot.pouch = this.pouchFor(slot.index);
+          slot.kits = this.kitsFor(slot.index);
           slot.nextThrowAt = 0;
         }
         // Still recorded into the hitbox history below, so a shot already in
@@ -3914,6 +4023,7 @@ export class Session {
     this.updateRevives();
     // T-4.29: mounting and dismounting, after the revive has had first claim on the same press.
     this.updateCooking(nowSeconds);
+    this.updateKits();
     this.updateMounts(nowSeconds);
     // U-010: the enemy at the upload's lever.
     this.updateLever(nowSeconds);
@@ -4574,6 +4684,9 @@ export class Session {
             s.secondary === null ? NO_SECONDARY : Math.max(0, (WEAPON_IDS as readonly string[]).indexOf(s.secondary)),
             // U-029: and whether the pistol has been put down.
             s.noPistol ? 1 : 0,
+            // U-047: and the kits left, and how far through applying one.
+            Math.min(7, s.kits),
+            s.kitProgress > 0 ? Math.min(100, Math.floor((100 * s.kitProgress) / this.kitSeconds(s))) : 0,
           ],
           // T-3.16: how suppressed, so the page can show it and widen its cone to match.
           [COMPONENT_IDS.Suppression]: [suppressionToWire(suppressionLevel(s.suppression, this.nowMs / 1000))],

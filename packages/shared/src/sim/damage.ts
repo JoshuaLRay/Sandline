@@ -54,6 +54,16 @@ export interface DownedConfig {
   reviveHealthFraction: number;
 }
 
+/** The health kit (U-047, slot 6): applied by holding the trigger with it in hand. */
+export interface KitConfig {
+  /** Seconds to apply one, before any character's interaction discount (U-049). */
+  seconds: number;
+  /** How close the target must be, metres; moving out of it cancels. */
+  reachM: number;
+  /** Health a downed target gets, as a fraction of max; anyone else goes to full. */
+  downedHealthFraction: number;
+}
+
 export interface DamageConfig {
   maxHealth: number;
   respawnSeconds: number;
@@ -64,6 +74,7 @@ export interface DamageConfig {
    */
   respawnImmunitySeconds: number;
   downed: DownedConfig;
+  kit: KitConfig;
   zones: Record<HitZone, ZoneRule>;
 }
 
@@ -116,11 +127,21 @@ export function parseDamageConfig(raw: unknown): DamageConfig {
     reviveHealthFraction: num(d, 'reviveHealthFraction', 'damage.downed', 0.01, 1),
   };
 
+  const rawKit = row['kit'];
+  if (typeof rawKit !== 'object' || rawKit === null) throw new DamageDataError('damage.kit: expected an object');
+  const k = rawKit as Record<string, unknown>;
+  const kit: KitConfig = {
+    seconds: num(k, 'seconds', 'damage.kit', 0.1, 120),
+    reachM: num(k, 'reachM', 'damage.kit', 0.1, 10),
+    downedHealthFraction: num(k, 'downedHealthFraction', 'damage.kit', 0.01, 1),
+  };
+
   return {
     maxHealth: num(row, 'maxHealth', 'damage', 1, 1000),
     respawnSeconds: num(row, 'respawnSeconds', 'damage', 0, 60),
     respawnImmunitySeconds: num(row, 'respawnImmunitySeconds', 'damage', 0, 30),
     downed,
+    kit,
     zones,
   };
 }
@@ -303,6 +324,22 @@ export function revive(health: HealthState, config: DamageConfig = DAMAGE): bool
   if (!isDowned(health)) return false;
   health.current = Math.max(1, Math.round(health.max * config.downed.reviveHealthFraction));
   health.downedAt = null;
+  return true;
+}
+
+/**
+ * A health kit applied (U-047): a downed soldier is back on their feet at a
+ * fraction of their health (at least what they had), anyone else alive goes
+ * to full. Returns whether anything changed; a dead soldier is not healed.
+ */
+export function applyKit(health: HealthState, config: DamageConfig = DAMAGE): boolean {
+  if (isDowned(health)) {
+    health.current = Math.max(1, Math.round(health.max * config.kit.downedHealthFraction));
+    health.downedAt = null;
+    return true;
+  }
+  if (!isAlive(health) || health.current >= health.max) return false;
+  health.current = health.max;
   return true;
 }
 

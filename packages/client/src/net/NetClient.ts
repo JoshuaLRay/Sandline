@@ -281,6 +281,9 @@ export class NetClient {
   /** U-022: our own soldier's second primary as the host last said (a WEAPON_IDS index); null for none, and before it has said. */
   /** U-029: the host says our soldier has put its pistol down. */
   private noPistolValue = false;
+  /** U-047: our health kits left, and the percent through applying one, as the host last said. */
+  private kitsValue = 0;
+  private kitProgressValue = 0;
   private secondaryValue: number | null = null;
   /**
    * Replicated with the health (T-2.13). Vitality is gameplay, not cosmetic:
@@ -552,6 +555,14 @@ export class NetClient {
   }
 
   /** U-022: our own soldier's second primary, a WEAPON_IDS index; null when it carries only one (or the host has not said). */
+  get kits(): number {
+    return this.kitsValue;
+  }
+
+  get kitProgress(): number {
+    return this.kitProgressValue;
+  }
+
   get noPistol(): boolean {
     return this.noPistolValue;
   }
@@ -722,6 +733,8 @@ export class NetClient {
     this.primaryValue = null;
     this.secondaryValue = null;
     this.noPistolValue = false;
+    this.kitsValue = 0;
+    this.kitProgressValue = 0;
     this.vitalityValue = 'alive';
     this.vitalTimerValue = 0;
     this.reviveProgressValue = 0;
@@ -1448,6 +1461,8 @@ export class NetClient {
           const second = weapon[5 + PROJECTILE_IDS.length] as number | undefined;
           this.secondaryValue = second === undefined || second === NO_SECONDARY ? null : second;
           this.noPistolValue = (weapon[6 + PROJECTILE_IDS.length] as number | undefined) === 1;
+          this.kitsValue = (weapon[7 + PROJECTILE_IDS.length] as number | undefined) ?? 0;
+          this.kitProgressValue = (weapon[8 + PROJECTILE_IDS.length] as number | undefined) ?? 0;
         }
         const velocity = entity.components[V];
         if (this.spectatedSlotValue >= 0) {

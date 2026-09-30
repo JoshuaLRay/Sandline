@@ -20,7 +20,7 @@ it('keeps firing the mounted MG through a carried-primary snapshot and adopts th
       { netId: 7, components: {
         [COMPONENT_IDS.Transform]: transform,
         [COMPONENT_IDS.PlayerSlot]: [2, 0],
-        [COMPONENT_IDS.Weapon]: [primary, 0, 0, ...PROJECTILE_IDS.map(() => 0), ammo, primary, NO_SECONDARY, 0],
+        [COMPONENT_IDS.Weapon]: [primary, 0, 0, ...PROJECTILE_IDS.map(() => 0), ammo, primary, NO_SECONDARY, 0, 0, 0],
       } },
       { netId: 50, components: {
         [COMPONENT_IDS.Transform]: transform,

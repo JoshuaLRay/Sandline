@@ -131,8 +131,9 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // U-028: then the rounds in the magazine, so the page's count follows the host's.
     // U-018: then the primary (a WEAPON_IDS index) — what key 1 draws, a picked-up gun once one is taken.
     // U-022: then the second primary of a character who carries two (a WEAPON_IDS index), or `NO_SECONDARY` for none.
+    // U-047: then the health kits left (0-7) and the percent through applying one (0 when none is being applied).
     // U-029: then 1 when the soldier has put its pistol down (a class that lists one), so the page does not offer it.
-    fields: [uint('index', WEAPON_INDEX_BITS), uint('reloadProgress', 7), uint('pouch', 2), ...PROJECTILE_IDS.map((id) => uint(`left_${id}`, POUCH_COUNT_BITS)), uint('ammo', AMMO_BITS), uint('primary', WEAPON_INDEX_BITS), uint('secondary', WEAPON_INDEX_BITS), uint('noPistol', 1)],
+    fields: [uint('index', WEAPON_INDEX_BITS), uint('reloadProgress', 7), uint('pouch', 2), ...PROJECTILE_IDS.map((id) => uint(`left_${id}`, POUCH_COUNT_BITS)), uint('ammo', AMMO_BITS), uint('primary', WEAPON_INDEX_BITS), uint('secondary', WEAPON_INDEX_BITS), uint('noPistol', 1), uint('kits', 3), uint('kitProgress', 7)],
   },
   {
     id: COMPONENT_IDS.Projectile,

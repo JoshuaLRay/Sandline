@@ -8,6 +8,11 @@
     "reviveRangeM": 1.5,
     "reviveHealthFraction": 0.4
   },
+  "kit": {
+    "seconds": 10,
+    "reachM": 1.5,
+    "downedHealthFraction": 0.5
+  },
   "zones": {
     "head": {
       "multiplier": 2.5,
