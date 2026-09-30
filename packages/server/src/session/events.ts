@@ -39,6 +39,8 @@ export interface EventHost {
   setBlocker(blocker: ScriptBlockerState): void;
   message(text: string): void;
   callout(id: string): void;
+  /** U-052: authored loot on the ground. */
+  placeLoot(weapon: string, ammo: number, at: { x: number; y: number; z: number }, yawDeg: number): void;
 }
 
 /** A group's own trigger as an event; none for a group only a script sends (U-001). */
@@ -188,6 +190,9 @@ export class EventRun {
         break;
       case 'set-flag':
         this.flags.set(action.flag, action.value);
+        break;
+      case 'pickup':
+        this.host.placeLoot(action.weapon, action.ammo, { x: action.x, y: action.y, z: action.z }, action.yawDeg);
         break;
     }
   }

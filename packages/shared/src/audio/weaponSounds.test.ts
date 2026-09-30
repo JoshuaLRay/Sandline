@@ -33,7 +33,9 @@ describe('weapon sounds as data (T-2.46)', () => {
 describe('the roster guns sound like themselves (U-043)', () => {
   it('each has reports of its own, none borrowed from another gun', () => {
     const roster = ['smg', 'carbine-scoped', 'sniper-semi', 'sniper-bolt-left'];
-    const names = Object.entries(WEAPON_SOUNDS.guns).flatMap(([id, g]) => (id === 'knife' ? [] : [g.near, g.far]));
+    const names = Object.entries(WEAPON_SOUNDS.guns).flatMap(([id, g]) => (id === 'knife' || id === 'sniper-semi-left' ? [] : [g.near, g.far]));
+    // U-052: the left-handed semi-auto is the semi-auto mirrored, and sounds as it does.
+    expect(WEAPON_SOUNDS.guns['sniper-semi-left']).toEqual(WEAPON_SOUNDS.guns['sniper-semi']);
     expect(new Set(names).size).toBe(names.length);
     for (const id of roster) {
       const gun = WEAPON_SOUNDS.guns[id]!;

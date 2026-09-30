@@ -11,7 +11,8 @@
     "smg": { "near": "smg-near", "far": "smg-far" },
     "carbine-scoped": { "near": "carbine-scoped-near", "far": "carbine-scoped-far" },
     "sniper-semi": { "near": "sniper-semi-near", "far": "sniper-semi-far" },
-    "sniper-bolt-left": { "near": "sniper-bolt-near", "far": "sniper-bolt-far", "cycle": { "sound": "bolt-cycle", "delaySeconds": 0.55 } }
+    "sniper-bolt-left": { "near": "sniper-bolt-near", "far": "sniper-bolt-far", "cycle": { "sound": "bolt-cycle", "delaySeconds": 0.55 } },
+    "sniper-semi-left": { "near": "sniper-semi-near", "far": "sniper-semi-far" }
   },
   "handling": { "reloadOut": "reload-out", "reloadIn": "reload-in", "reloadBolt": "reload-bolt", "dryFire": "dry-fire", "equip": "equip" },
   "stages": { "in": 0.55, "bolt": 0.85 }

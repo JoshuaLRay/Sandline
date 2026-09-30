@@ -47,6 +47,28 @@
       ]
     },
     {
+      "$comment": "U-052: the left-handed sniper's reward — a left-handed semi-auto in the compound's south-east corner, where the east lane comes in. Only he can take it; it stays until taken, and a checkpoint keeps it (or the sniper's hands) as they were.",
+      "id": "sniper-loot",
+      "trigger": {
+        "kind": "objective-complete",
+        "objective": 1
+      },
+      "actions": [
+        {
+          "kind": "pickup",
+          "weapon": "sniper-semi-left",
+          "x": 7,
+          "y": 0,
+          "z": 65.3,
+          "yawDeg": 90
+        },
+        {
+          "kind": "message",
+          "text": "A left-handed rifle lies in the compound's south-east corner"
+        }
+      ]
+    },
+    {
       "id": "garrison-down",
       "trigger": {
         "kind": "group-dead",

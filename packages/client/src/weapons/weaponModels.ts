@@ -291,6 +291,8 @@ BUILDERS['sniper-bolt-left'] = (g) => {
   // Left-handed (U-042): the left hand takes the trigger grip, the rifle rides mirrored at the hip.
   return { ...spec, handed: 'left', gripLeft: [-spec.gripLeft[0], spec.gripLeft[1], spec.gripLeft[2]], hip: [-spec.hip[0], spec.hip[1], spec.hip[2]] };
 };
+// U-052: the authored-loot left-handed semi-auto: the semi-auto's stand-in, mirrored like the bolt-action.
+BUILDERS['sniper-semi-left'] = BUILDERS['sniper-bolt-left'] as Builder;
 BUILDERS['carbine-scoped'] = (g) => {
   const spec = (BUILDERS['carbine'] as Builder)(g);
   tube(g, 'metal', 0.022, 0.22, [0, 0.1, 0.36]);
@@ -399,6 +401,7 @@ const MUZZLES: Record<WeaponSide, Readonly<Record<string, Vec3Tuple>>> = {
     'carbine-scoped': [0, 0, 0.82],
     'sniper-semi': [0, 0, 1.03],
     'sniper-bolt-left': [0, 0, 1.03],
+    'sniper-semi-left': [0, 0, 1.03],
     breacher: [0, 0.018, 0.9],
     sidearm: [0, 0.002, 0.505],
     lmg: [0, 0.012, 0.94],

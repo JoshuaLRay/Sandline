@@ -43,6 +43,49 @@ const ENCOUNTER = parseEncounter({
   ],
 });
 
+describe('authored loot action (U-052)', () => {
+  const script = (action: unknown) =>
+    parseEventScript(
+      { world: 'greybox-01', blockers: [], events: [{ id: 'loot', trigger: { kind: 'time', seconds: 0 }, actions: [action] }] },
+      ENCOUNTER,
+      WORLD,
+      MISSION,
+    );
+
+  it('parses a gun at a place, filling the magazine, height and facing', () => {
+    const parsed = script({ kind: 'pickup', weapon: 'sniper-semi-left', x: 7, z: 65.3 });
+    expect(parsed.events[0]!.actions[0]).toEqual({ kind: 'pickup', weapon: 'sniper-semi-left', ammo: 10, x: 7, y: 0, z: 65.3, yawDeg: 0 });
+  });
+
+  it('refuses a knife, an unknown gun, too many rounds and a stray key', () => {
+    expect(() => script({ kind: 'pickup', weapon: 'knife', x: 0, z: 0 })).toThrow(/expected a gun/);
+    expect(() => script({ kind: 'pickup', weapon: 'railgun', x: 0, z: 0 })).toThrow(/expected a gun/);
+    expect(() => script({ kind: 'pickup', weapon: 'carbine', ammo: 999, x: 0, z: 0 })).toThrow(/ammo/);
+    expect(() => script({ kind: 'pickup', weapon: 'carbine', x: 0, z: 0, extra: 1 })).toThrow(/unknown key/);
+  });
+
+  it('places it once through the host when its trigger fires', () => {
+    const placed: unknown[] = [];
+    const host: EventHost = {
+      squadFeet: () => [],
+      groupDead: () => false,
+      spawnGroup: () => true,
+      stopGroup: () => true,
+      objective: () => ({ index: 0, state: 'progress' }),
+      setObjective: () => true,
+      interruptUpload: () => true,
+      setBlocker: () => {},
+      message: () => {},
+      callout: () => {},
+      placeLoot: (...args) => placed.push(args),
+    };
+    const run = new EventRun(script({ kind: 'pickup', weapon: 'sniper-semi-left', ammo: 4, x: 7, y: 0, z: 65.3, yawDeg: 90 }), ENCOUNTER, WORLD, host);
+    run.step(TICK_SECONDS);
+    run.step(TICK_SECONDS);
+    expect(placed).toEqual([['sniper-semi-left', 4, { x: 7, y: 0, z: 65.3 }, 90]]);
+  });
+});
+
 describe('event runner triggers and actions (T-4.15)', () => {
   it('fires objective start/completion, area, time, group-dead and flag triggers and every action deterministically', () => {
     const script = parseEventScript(
@@ -95,6 +138,7 @@ describe('event runner triggers and actions (T-4.15)', () => {
       setBlocker: (b) => blockers.push({ id: b.id, active: b.active }),
       message: (text) => messages.push(text),
       callout: (id) => callouts.push(id),
+      placeLoot: () => {},
     };
     const run = new EventRun(script, ENCOUNTER, WORLD, host);
 

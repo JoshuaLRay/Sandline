@@ -14,6 +14,7 @@
  */
 import type { Encounter, AreaRef } from './encounters.ts';
 import type { MissionDef } from './mission.ts';
+import { WEAPON_IDS, getWeapon } from './weapons.ts';
 import { boxFrom, type BoxSpec, type World, type WorldBox } from './world.ts';
 
 export const EVENT_TRIGGER_KINDS = ['objective-start', 'objective-complete', 'enter', 'time', 'group-dead', 'flag'] as const;
@@ -25,7 +26,7 @@ export type EventTrigger =
   | { kind: 'group-dead'; group: string }
   | { kind: 'flag'; flag: string; value: boolean };
 
-export const EVENT_ACTION_KINDS = ['spawn-group', 'stop-group', 'set-objective', 'interrupt-upload', 'toggle-blocker', 'message', 'callout', 'set-flag'] as const;
+export const EVENT_ACTION_KINDS = ['spawn-group', 'stop-group', 'set-objective', 'interrupt-upload', 'toggle-blocker', 'message', 'callout', 'set-flag', 'pickup'] as const;
 export type EventAction =
   | { kind: 'spawn-group'; group: string }
   /** U-001: no more waves from the group, and none of its queued members placed; the living fight on. */
@@ -36,7 +37,12 @@ export type EventAction =
   | { kind: 'toggle-blocker'; blocker: string; active: boolean }
   | { kind: 'message'; text: string }
   | { kind: 'callout'; id: string }
-  | { kind: 'set-flag'; flag: string; value: boolean };
+  | { kind: 'set-flag'; flag: string; value: boolean }
+  /**
+   * U-052: authored loot — a gun lying at a place, for whoever may take it (`handedness`: only the left-handed
+   * sniper takes a left-handed gun). It stays until taken: the enemy-drop despawn and cap do not touch it.
+   */
+  | { kind: 'pickup'; weapon: string; ammo: number; x: number; y: number; z: number; yawDeg: number };
 
 export interface EventDef {
   id: string;
@@ -240,6 +246,23 @@ export function parseEventScript(raw: unknown, encounter: Encounter, world: Worl
         case 'set-flag': {
           const x = obj(aw, a, ['kind', 'flag', 'value']);
           return { kind: ak, flag: flag(`${aw}.flag`, x['flag']), value: bool(`${aw}.value`, x['value']) };
+        }
+        case 'pickup': {
+          const x = obj(aw, a, ['kind', 'weapon', 'x', 'z'], ['ammo', 'y', 'yawDeg']);
+          const weapon = x['weapon'];
+          if (typeof weapon !== 'string' || !(WEAPON_IDS as readonly string[]).includes(weapon) || weapon === 'knife') {
+            throw new EventDataError(`${aw}.weapon: expected a gun (${WEAPON_IDS.filter((g) => g !== 'knife').join(', ')})`);
+          }
+          const mag = getWeapon(weapon).magSize;
+          return {
+            kind: ak,
+            weapon,
+            ammo: x['ammo'] === undefined ? mag : whole(`${aw}.ammo`, x['ammo'], 0, mag),
+            x: finite(`${aw}.x`, x['x']),
+            y: x['y'] === undefined ? 0 : finite(`${aw}.y`, x['y'], -10, 50),
+            z: finite(`${aw}.z`, x['z']),
+            yawDeg: x['yawDeg'] === undefined ? 0 : finite(`${aw}.yawDeg`, x['yawDeg'], -360, 360),
+          };
         }
         default:
           throw new EventDataError(`${aw}.kind must be one of ${EVENT_ACTION_KINDS.join(', ')}`);
