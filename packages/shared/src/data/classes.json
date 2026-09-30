@@ -62,8 +62,10 @@
         "sidearm"
       ],
       "pouch": {
-        "frag": 2
+        "frag": 2,
+        "smoke": 2
       },
+      "equipment": "smoke",
       "orders": "fireteam"
     },
     "marsh": {

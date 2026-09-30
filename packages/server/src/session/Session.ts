@@ -165,6 +165,7 @@ import {
   stepAwareness,
   wireToTable,
   degToAngle,
+  type SmokeCloud,
   type SuppressionState,
   SUPPRESSION,
   blastSuppression,
@@ -510,6 +511,8 @@ const SENSOR_LINGER_TICKS = 30;
 
 /** U-054: how far from the eye a soldier can put a charge on a surface, metres. */
 const PLACE_REACH_M = 2.5;
+/** U-058: a smoke cloud thins to nothing over its last seconds. */
+const SMOKE_FADE_SECONDS = 4;
 const FRAG_INDEX = (PROJECTILE_IDS as readonly string[]).indexOf('frag');
 /** The equipment a slot on a free-loadout session (the range) carries: the first pouch item that is not the frag. */
 const FIRST_EQUIPMENT = PROJECTILE_IDS.findIndex((id) => id !== 'frag');
@@ -817,6 +820,8 @@ export class Session {
    * them the first real exercise of the delta format's spawns and despawns.
    */
   private readonly projectiles: ActiveProjectile[] = [];
+  /** U-058: projectiles a detonation released this tick, added once the projectile pass is done. */
+  private readonly released: ActiveProjectile[] = [];
   private nextProjectileNetId = FIRST_PROJECTILE_NET_ID;
   /** U-017: the weapons on the ground, oldest first, and the next pickup netId (never reused). */
   private readonly pickupList: PickupEntity[] = [];
@@ -3849,7 +3854,7 @@ export class Session {
     let best = -1;
     let bestD = Number.POSITIVE_INFINITY;
     this.projectiles.forEach((p, i) => {
-      if (p.def.kind !== 'placed' || p.stuck !== true || p.ownerNetId !== slot.netId) return;
+      if (p.def.kind !== 'placed' || p.stuck !== true || p.ownerNetId !== slot.netId || p.def.smokeM > 0) return;
       const d = Math.hypot(eye.x - p.state.x, eye.y - p.state.y, eye.z - p.state.z);
       if (d <= PICKUPS.reachM && d < bestD && lineOfSight(eye, { x: p.state.x, y: p.state.y, z: p.state.z }, this.collisionBoxes)) {
         best = i;
@@ -3963,7 +3968,7 @@ export class Session {
    * tick left them rather than where the last one did.
    */
   private stepProjectiles(): void {
-    if (this.projectiles.length === 0) return;
+    if (this.projectiles.length === 0 && this.released.length === 0) return;
     const world = this.projectileWorld();
     const survivors: ActiveProjectile[] = [];
     for (const projectile of this.projectiles) {
@@ -4015,6 +4020,24 @@ export class Session {
     }
     this.projectiles.length = 0;
     for (const projectile of survivors) if (projectile.destroyed !== true) this.projectiles.push(projectile);
+    // U-058: what a detonation released this tick (a smoke cloud) joins the world after the pass.
+    for (const released of this.released) this.projectiles.push(released);
+    this.released.length = 0;
+  }
+
+  /**
+   * U-058: the clouds of smoke there are, each as a sphere, thinning over its last seconds so that
+   * a cloud about to end conceals less than a fresh one.
+   */
+  private smokeClouds(): SmokeCloud[] {
+    const out: SmokeCloud[] = [];
+    for (const p of this.projectiles) {
+      if (p.def.smokeM <= 0) continue;
+      const remaining = p.def.maxLifeSeconds - p.state.age;
+      const fade = Math.max(0, Math.min(1, remaining / SMOKE_FADE_SECONDS));
+      out.push({ x: p.state.x, y: p.state.y, z: p.state.z, radiusM: p.def.smokeM * fade });
+    }
+    return out;
   }
 
   /**
@@ -4109,12 +4132,31 @@ export class Session {
 
     // U-057: a blast within `SENSOR_BLAST_KILL_M` destroys any sensor standing there.
     for (const other of this.projectiles) {
+      if (projectile.def.blastDamage <= 0) break;
       if (other === projectile || other.def.senseM <= 0 || other.stuck !== true) continue;
       if (Math.hypot(other.state.x - at.x, other.state.y - at.y, other.state.z - at.z) <= SENSOR_BLAST_KILL_M) other.destroyed = true;
     }
 
+    // U-058: a smoke grenade's pop releases its cloud where it stands, and is too quiet to be heard as a blast.
+    if (projectile.def.releases !== '') {
+      const index = (PROJECTILE_IDS as readonly string[]).indexOf(projectile.def.releases);
+      const def = this.projectileDefs[index];
+      if (def) {
+        this.released.push({
+          netId: this.nextProjectileNetId++,
+          def,
+          kind: index,
+          ownerSlot: projectile.ownerSlot,
+          ownerNetId: projectile.ownerNetId,
+          xpPlayerId: projectile.xpPlayerId,
+          state: createProjectileState(at, { x: 0, y: 0, z: 0 }),
+          stuck: true,
+        });
+      }
+    }
+
     // T-3.14: heard at the blast, and a threat from whoever threw it.
-    this.stimuli.push({ kind: 'detonation', at: { x: at.x, y: at.y, z: at.z }, sourceNetId: projectile.ownerNetId });
+    if (projectile.def.releases === '') this.stimuli.push({ kind: 'detonation', at: { x: at.x, y: at.y, z: at.z }, sourceNetId: projectile.ownerNetId });
 
     // T-3.16: a blast suppresses the other side inside its radius, less with distance.
     const thrower = this.side(projectile.ownerNetId);
@@ -4461,7 +4503,7 @@ export class Session {
           speed: this.slotSpeed[slot.index] ?? 0,
           firing: this.currentTick - (this.lastFiredTick[slot.index] ?? -Infinity) <= BRAIN_PERIOD_TICKS,
         };
-        const sighting = sight(observer, target, this.collisionBoxes, perception, this.moveConfig);
+        const sighting = sight(observer, target, this.collisionBoxes, perception, this.moveConfig, undefined, this.smokeClouds());
         const awareness = stepAwareness(enemy.awareness.get(slot.netId) ?? 0, sighting, target, perception, dt);
         enemy.awareness.set(slot.netId, awareness);
         if (sighting.visible && isDetected(awareness, perception)) {

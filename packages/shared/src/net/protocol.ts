@@ -19,7 +19,7 @@ import { WEAPON_IDS, WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 import { PROJECTILE_IDS, PROJECTILE_INDEX_BITS } from '../sim/ballistics.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 54;
+export const PROTOCOL_VERSION = 55;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -784,8 +784,9 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeString(msg.resume);
       w.writeVarUint(msg.weapon);
       w.writeVarUint(msg.ammo);
-      w.writeBits(Math.min(msg.pouch.length, 7), 3);
-      for (const count of msg.pouch.slice(0, 7)) w.writeVarUint(count);
+      // Four bits (U-058): one count per projectile kind, and there are more than seven now.
+      w.writeBits(Math.min(msg.pouch.length, 15), 4);
+      for (const count of msg.pouch.slice(0, 15)) w.writeVarUint(count);
       break;
     case 'RoomState': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -1257,7 +1258,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
               const weapon = r.readVarUint();
               const ammo = r.readVarUint();
               const pouch: number[] = [];
-              for (let i = r.readBits(3); i > 0; i -= 1) pouch.push(r.readVarUint());
+              for (let i = r.readBits(4); i > 0; i -= 1) pouch.push(r.readVarUint());
               return { kind: 'Possessed', netId, slot, resume, weapon, ammo, pouch };
             }
             if (variant === MISSION_VARIANT.AssignCommander) {

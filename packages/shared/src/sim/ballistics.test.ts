@@ -56,6 +56,8 @@ const GRENADE: ProjectileDef = {
   triggerM: 0,
   senseM: 0,
   senseSpeedMps: 0,
+  releases: '',
+  smokeM: 0,
   carried: 3,
   cooldownSeconds: 1,
 };

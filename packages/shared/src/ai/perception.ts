@@ -71,6 +71,38 @@ export interface Sighting {
   visible: boolean;
 }
 
+/** A cloud of smoke (U-058): a sphere sight cannot cross. */
+export interface SmokeCloud {
+  x: number;
+  y: number;
+  z: number;
+  radiusM: number;
+}
+
+/**
+ * Whether the segment from `from` to `to` passes through, starts in or ends in a cloud: smoke conceals a soldier
+ * standing in it and one seen through it alike. Bullets are not asked; smoke is not cover.
+ */
+export function segmentThroughSmoke(from: Vec3, to: Vec3, clouds: readonly SmokeCloud[]): boolean {
+  for (const c of clouds) {
+    if (c.radiusM <= 0) continue;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const dz = to.z - from.z;
+    const len2 = dx * dx + dy * dy + dz * dz;
+    const fx = c.x - from.x;
+    const fy = c.y - from.y;
+    const fz = c.z - from.z;
+    // The nearest point of the segment to the centre.
+    const t = len2 <= 1e-12 ? 0 : Math.max(0, Math.min(1, (fx * dx + fy * dy + fz * dz) / len2));
+    const nx = from.x + dx * t - c.x;
+    const ny = from.y + dy * t - c.y;
+    const nz = from.z + dz * t - c.z;
+    if (nx * nx + ny * ny + nz * nz <= c.radiusM * c.radiusM) return true;
+  }
+  return false;
+}
+
 /** A stance's height, from the controller's own numbers. */
 export function stanceHeight(stance: Stance, config: MoveConfig = DEFAULT_MOVE_CONFIG): number {
   return stance === 'prone' ? config.proneHeight : stance === 'crouched' ? config.crouchHeight : config.height;
@@ -114,6 +146,7 @@ export function sight(
   perception: EnemyPerception,
   config: MoveConfig = DEFAULT_MOVE_CONFIG,
   probes: readonly number[] = BLAST_PROBE_FRACTIONS,
+  smoke: readonly SmokeCloud[] = [],
 ): Sighting {
   const eye = observer.eye;
   const height = stanceHeight(target.stance, config);
@@ -142,7 +175,7 @@ export function sight(
       { origin: eye, direction: { x: cx / d, y: dy / d, z: cz / d }, maxDistance: d - 1e-3 },
       world,
     );
-    if (hit === null) clear += 1;
+    if (hit === null && (smoke.length === 0 || !segmentThroughSmoke(eye, { x: target.feet.x, y: target.feet.y + height * fraction, z: target.feet.z }, smoke))) clear += 1;
   }
   const exposure = clear / probes.length;
   return { distance, inRange, inCone, centrality, exposure, visible: clear > 0 };

@@ -679,9 +679,23 @@ function projectileWorld(): ProjectileWorld {
  * a stub of a cylinder for a rocket. No art (§7.5 rule 4) — the shapes are the
  * radius the collision actually uses, so what you see is what bounces.
  */
-const PROJECTILE_SHAPES = PROJECTILE_ORDER.map((id, index) => {
+const PROJECTILE_SHAPES = PROJECTILE_ORDER.map((id) => {
   const def = getProjectile(id);
-  return index === 0
+  // A cloud of smoke (U-058): the sphere sight cannot cross, drawn as a soft grey ball of its own radius.
+  if (def.smokeM > 0) {
+    return {
+      geometry: new THREE.SphereGeometry(def.smokeM, 20, 14) as THREE.BufferGeometry,
+      material: new THREE.MeshBasicMaterial({ color: 0xb8bcc0, transparent: true, opacity: 0.55, depthWrite: false }) as THREE.Material,
+    };
+  }
+  // A small box for a placed device (C4, the claymore, the sensor: no art yet).
+  if (def.kind === 'placed') {
+    return {
+      geometry: new THREE.BoxGeometry(0.22, 0.1, 0.12) as THREE.BufferGeometry,
+      material: new THREE.MeshStandardMaterial({ color: 0x4a5a3a, roughness: 0.8 }) as THREE.Material,
+    };
+  }
+  return def.kind === 'thrown'
     ? {
         geometry: new THREE.SphereGeometry(def.radiusM, 10, 8) as THREE.BufferGeometry,
         material: new THREE.MeshStandardMaterial({ color: 0x3e4b32, roughness: 0.7 }) as THREE.Material,
@@ -700,7 +714,7 @@ function projectileMesh(key: string, kind: number): THREE.Mesh {
   if (!mesh) {
     const shape = PROJECTILE_SHAPES[kind] ?? PROJECTILE_SHAPES[0];
     mesh = new THREE.Mesh(shape?.geometry, shape?.material);
-    mesh.castShadow = true;
+    mesh.castShadow = (getProjectile(PROJECTILE_ORDER[kind] ?? 'frag').smokeM ?? 0) <= 0;
     mesh.name = `projectile ${key}`;
     scene.add(mesh);
     projectileMeshes.set(key, mesh);
@@ -1189,6 +1203,8 @@ function onServerDetonation(net: NetClient, event: ServerDetonation): void {
   // The page's row for it: a tuned blast radius draws at the tuned size.
   const def = throws.defOf(event.kind);
   const centre = { x: event.x, y: event.y, z: event.z };
+  // A smoke grenade's pop (U-058) is a puff, not a blast: no flash, boom or shake, and no callout.
+  if (def.releases !== '') return;
   // T-2.49: who threw it, for "enemy down".
   calloutWatcher.onDetonation(
     event.netId,
