@@ -86,7 +86,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-050](docs/backlog/U-050.md) | The support runs 10% faster | Squad | P2 | DONE | U-021 | [#213](https://github.com/JoshuaLRay/Sandline/pull/213) |
 | [U-051](docs/backlog/U-051.md) | A joining player may take any free slot | Squad | P2 | DONE | U-021 | [#214](https://github.com/JoshuaLRay/Sandline/pull/214) |
 | [U-052](docs/backlog/U-052.md) | Authored loot: a mission places a left-handed gun for the sniper | Squad | P3 | INBOX | U-029 | — |
-| [U-053](docs/backlog/U-053.md) | Bots use health kits on downed or hurt mates | Controls | P3 | REVIEW | U-047 | — |
+| [U-053](docs/backlog/U-053.md) | Bots use health kits on downed or hurt mates | Controls | P3 | DONE | U-047 | [#215](https://github.com/JoshuaLRay/Sandline/pull/215) |
 
 ## Existing work retained
 
