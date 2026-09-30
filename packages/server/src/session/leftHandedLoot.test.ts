@@ -1,7 +1,7 @@
 /**
  * U-029: the left-handed sniper (slot 4) takes no gun a squadmate or an enemy
  * left — every one is right-handed — but does take a left-handed gun, his own
- * put down included. Everyone else takes whatever lies there.
+ * put down included. Everyone else takes any right-handed gun, and no left-handed one.
  */
 import { describe, expect, it } from 'vitest';
 import { WEAPON_IDS } from '@sandline/shared';
@@ -58,11 +58,13 @@ describe('the left-handed sniper and the ground (U-029)', () => {
     expect(session.loadoutOf(4).primary).toBeNull();
   });
 
-  it('another character can pick up the left-handed gun he put down', () => {
+  it('nobody else can pick up a left-handed gun, his own put down included (owner, 2026-09-30)', () => {
     const { session, x } = room();
     x.dropHeld(session.slots[4]);
     session.slots[1]!.state = { ...session.slots[4]!.state };
-    expect(x.takePickupAt(session.slots[1])).toBe(true);
-    expect(session.loadoutOf(1).primary).toBe('sniper-bolt-left');
+    const before = session.loadoutOf(1).primary;
+    expect(x.takePickupAt(session.slots[1])).toBe(false);
+    expect(session.loadoutOf(1).primary).toBe(before);
+    expect(session.pickups).toHaveLength(1);
   });
 });

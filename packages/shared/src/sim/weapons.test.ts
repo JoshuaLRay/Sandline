@@ -320,7 +320,7 @@ describe('prone cone (T-2.42)', () => {
 
 describe('weapon data', () => {
   it('scopes the marksman and the roster optics only, and refuses a scope wider than the view', () => {
-    expect(Object.values(WEAPONS).filter((w) => w.scopeFovDeg !== undefined).map((w) => w.id)).toEqual(['marksman', 'carbine-scoped', 'sniper-semi', 'sniper-bolt-left']);
+    expect(Object.values(WEAPONS).filter((w) => w.scopeFovDeg !== undefined).map((w) => w.id)).toEqual(['marksman', 'carbine-scoped', 'sniper-semi', 'sniper-bolt-left', 'sniper-semi-left']);
     const row = { ...WEAPONS['carbine'], scopeFovDeg: 90 };
     expect(() => parseWeaponTable({ carbine: row })).toThrow(/scopeFovDeg/);
     expect(parseWeaponTable({ carbine: { ...row, scopeFovDeg: 20 } })['carbine']!.scopeFovDeg).toBe(20);
@@ -426,7 +426,7 @@ describe('the roster weapons (U-020)', () => {
       expect(canWield(def, false)).toBe(true);
       expect(canWield(def, true)).toBe(def.handedness === 'left');
     }
-    expect(Object.values(WEAPONS).filter((w) => w.handedness === 'left').map((w) => w.id)).toEqual(['sniper-bolt-left']);
+    expect(Object.values(WEAPONS).filter((w) => w.handedness === 'left').map((w) => w.id)).toEqual(['sniper-bolt-left', 'sniper-semi-left']);
   });
 
   it('a bolt-action rifle shoots at its own slow cadence and needs a fresh pull each time', () => {

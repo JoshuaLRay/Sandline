@@ -85,13 +85,14 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-049](docs/backlog/U-049.md) | Per-character interaction-speed multiplier (the Support's 20% discount) | Squad | P2 | DONE | U-021 | [#212](https://github.com/JoshuaLRay/Sandline/pull/212) |
 | [U-050](docs/backlog/U-050.md) | The support runs 10% faster | Squad | P2 | DONE | U-021 | [#213](https://github.com/JoshuaLRay/Sandline/pull/213) |
 | [U-051](docs/backlog/U-051.md) | A joining player may take any free slot | Squad | P2 | DONE | U-021 | [#214](https://github.com/JoshuaLRay/Sandline/pull/214) |
-| [U-052](docs/backlog/U-052.md) | Authored loot: a mission places a left-handed gun for the sniper | Squad | P3 | INBOX | U-029 | — |
+| [U-052](docs/backlog/U-052.md) | Authored loot: a mission places a left-handed gun for the sniper | Squad | P3 | REVIEW | U-029 | `task/U-052-authored-loot` |
 | [U-053](docs/backlog/U-053.md) | Bots use health kits on downed or hurt mates | Controls | P3 | DONE | U-047 | [#215](https://github.com/JoshuaLRay/Sandline/pull/215) |
 | [U-054](docs/backlog/U-054.md) | C4 for the Support: throw it, place it, detonate it | Controls | P2 | DONE | U-048 | [#219](https://github.com/JoshuaLRay/Sandline/pull/219) |
 | [U-055](docs/backlog/U-055.md) | Claymore for the left-handed sniper | Controls | P3 | DONE | U-054 | [#221](https://github.com/JoshuaLRay/Sandline/pull/221) |
 | [U-056](docs/backlog/U-056.md) | Concussion grenades for Preach | Controls | P2 | DONE | U-048 | [#220](https://github.com/JoshuaLRay/Sandline/pull/220) |
 | [U-057](docs/backlog/U-057.md) | Motion sensor for the right-handed sniper | Controls | P3 | DONE | U-054 | [#222](https://github.com/JoshuaLRay/Sandline/pull/222) |
-| [U-058](docs/backlog/U-058.md) | Smoke grenades for Ortiz | Controls | P3 | REVIEW | U-048 | — |
+| [U-058](docs/backlog/U-058.md) | Smoke grenades for Ortiz | Controls | P3 | DONE | U-048 | [#223](https://github.com/JoshuaLRay/Sandline/pull/223) |
+| [U-059](docs/backlog/U-059.md) | Checkpoints restore the whole world: living enemies, positions, health | Campaign | P2 | INBOX | U-052; design decomposition needed | — |
 
 ## Existing work retained
 

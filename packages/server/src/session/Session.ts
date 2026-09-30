@@ -98,6 +98,7 @@ import {
   vitalityCode,
   createMoveState,
   createWeaponState,
+  degToWire,
   damageAtDistance,
   decayBloom,
   isAlive,
@@ -676,6 +677,31 @@ export interface EnemyEntity {
 }
 
 /** U-017: a dead enemy's firearm on the ground. */
+/** U-052: one soldier's carried loadout at a checkpoint, restored by a retry. */
+interface SlotCheckpoint {
+  weapon: string;
+  primary: string | null;
+  secondary: string | null;
+  noPistol: boolean;
+  pickedUp: boolean;
+  /** Rounds in each gun carried, the one in hand included. */
+  ammo: [string, number][];
+  pouch: number[];
+  kits: number;
+  equipment: number;
+}
+
+/** U-052: a pickup on the ground at a checkpoint. */
+interface GroundCheckpoint {
+  weapon: number;
+  ammo: number;
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  authored: boolean;
+}
+
 export interface PickupEntity {
   readonly netId: number;
   /** A WEAPON_IDS index. */
@@ -825,6 +851,8 @@ export class Session {
   private nextProjectileNetId = FIRST_PROJECTILE_NET_ID;
   /** U-017: the weapons on the ground, oldest first, and the next pickup netId (never reused). */
   private readonly pickupList: PickupEntity[] = [];
+  /** U-052: the netIds of authored loot: it does not despawn and does not count toward the enemy-drop cap. */
+  private readonly authoredPickups = new Set<number>();
   private nextPickupNetId = FIRST_PICKUP_NET_ID;
   /**
    * Enemies (T-3.10): the second class of entity that comes and goes. Spawned
@@ -917,6 +945,9 @@ export class Session {
     spawns: { x: number; y: number; z: number }[];
     completedGroups: string[];
     event: EventCheckpoint | null;
+    /** U-052: what each soldier carried, and what lay on the ground, when the objective was completed. */
+    slots?: SlotCheckpoint[];
+    ground?: GroundCheckpoint[];
   } | null = null;
   private readonly encounter: Encounter | null;
   private readonly testHumanCount: number | null;
@@ -1284,8 +1315,55 @@ export class Session {
       spawns: this.slots.map((s) => ({ x: s.state.x, y: s.state.y, z: s.state.z })),
       completedGroups,
       event: this.eventRun?.checkpoint() ?? null,
+      slots: this.slots.map((slot) => this.checkpointSlot(slot)),
+      ground: this.pickupList.map((p) => ({ weapon: p.weapon, ammo: p.ammo, x: p.x, y: p.y, z: p.z, yaw: p.yaw, authored: this.authoredPickups.has(p.netId) })),
     };
     this.persistCampaign();
+  }
+
+  /** U-052: what a soldier carries right now, for a retry to give back. */
+  private checkpointSlot(slot: Slot): SlotCheckpoint {
+    const ammo: [string, number][] = [[slot.weapon.id, slot.weaponState.ammo]];
+    for (const [id, state] of slot.stowed) if (id !== slot.weapon.id) ammo.push([id, state.ammo]);
+    return {
+      weapon: slot.weapon.id,
+      primary: slot.primary,
+      secondary: slot.secondary,
+      noPistol: slot.noPistol,
+      pickedUp: slot.pickedUp,
+      ammo,
+      pouch: [...slot.pouch],
+      kits: slot.kits,
+      equipment: slot.equipment,
+    };
+  }
+
+  /** U-052: a retry puts the world back as the checkpoint saw it: what each soldier carried, and what lay on the ground. */
+  private restoreCheckpointWorld(saved: { slots?: SlotCheckpoint[]; ground?: GroundCheckpoint[] } | null): void {
+    if (!saved) return;
+    for (const [i, snap] of (saved.slots ?? []).entries()) {
+      const slot = this.slots[i];
+      if (!slot) continue;
+      slot.primary = snap.primary;
+      slot.secondary = snap.secondary;
+      slot.noPistol = snap.noPistol;
+      slot.pickedUp = snap.pickedUp;
+      slot.stowed.clear();
+      for (const [id, rounds] of snap.ammo) {
+        if (id === snap.weapon) continue;
+        const state = createWeaponState(getWeapon(id));
+        state.ammo = rounds;
+        slot.stowed.set(id, state);
+      }
+      slot.weapon = getWeapon(snap.weapon);
+      slot.weaponState = createWeaponState(slot.weapon);
+      slot.weaponState.ammo = snap.ammo.find(([id]) => id === snap.weapon)?.[1] ?? slot.weaponState.ammo;
+      slot.pouch = [...snap.pouch];
+      slot.kits = snap.kits;
+      slot.equipment = snap.equipment;
+      slot.heldProjectile = -1;
+    }
+    for (const g of saved.ground ?? []) this.placePickupItem(g.weapon, g.ammo, g, g.yaw, g.authored);
   }
 
   /** T-4.23: checkpoint/mission-end persistence; never called from the tick hot path otherwise. */
@@ -1397,6 +1475,7 @@ export class Session {
     this.leverBarred.clear();
     // U-017: the retried world starts with nothing on the ground (its ids are not handed out again).
     this.pickupList.length = 0;
+    this.authoredPickups.clear();
     this.projectiles.length = 0;
     // T-4.29: every gun free, cold and belted again.
     for (const gun of this.emplacementList) this.resetEmplacement(gun);
@@ -1535,6 +1614,7 @@ export class Session {
       return { x: point.x, y: point.y, z: point.z };
     });
     this.resetMissionWorld(spawns, saved?.completedGroups ?? []);
+    this.restoreCheckpointWorld(saved);
     run.retry();
     this.restoreEvents(saved);
     this.broadcastMission();
@@ -1630,6 +1710,9 @@ export class Session {
       callout: (id) => {
         const msg: Message = { kind: 'ScriptCallout', id };
         for (const conn of this.connections) if (conn.state === 'active') conn.send(msg);
+      },
+      placeLoot: (weapon, ammo, at, yawDeg) => {
+        this.placePickupItem((WEAPON_IDS as readonly string[]).indexOf(weapon), ammo, at, degToWire(yawDeg), true);
       },
     };
   }
@@ -2156,6 +2239,8 @@ export class Session {
       const isGun = pickupProjectile(p.weapon) < 0;
       if (isGun && WEAPON_IDS[p.weapon] === 'sidearm' && !this.canTakePistol(slot)) continue;
       if (isGun && lefty && !canWield(getWeapon(WEAPON_IDS[p.weapon]!), true)) continue;
+      // U-052, owner 2026-09-30: a left-handed gun is the left-handed sniper's alone; nobody else takes one.
+      if (isGun && !lefty && getWeapon(WEAPON_IDS[p.weapon]!).handedness === 'left') continue;
       if (d <= PICKUPS.reachM && d < bestD && lineOfSight(eye, at, this.collisionBoxes)) {
         best = i;
         bestD = d;
@@ -2254,9 +2339,15 @@ export class Session {
   }
 
   /** U-048: as `placePickup`, by wire item: a WEAPON_IDS index, or WEAPON_IDS.length plus a PROJECTILE_IDS index for equipment (its amount a count). */
-  private placePickupItem(weapon: number, ammo: number, at: { x: number; y: number; z: number }, yaw: number): void {
+  private placePickupItem(weapon: number, ammo: number, at: { x: number; y: number; z: number }, yaw: number, authored = false): void {
     if (weapon < 0 || this.nextPickupNetId >= PICKUP_NET_ID_LIMIT) return;
-    while (this.pickupList.length >= PICKUPS.max) this.pickupList.shift();
+    // U-052: authored loot is outside the cap: only the enemy drops and put-down guns count, and the oldest of those goes.
+    if (!authored) {
+      while (this.pickupList.filter((p) => !this.authoredPickups.has(p.netId)).length >= PICKUPS.max) {
+        this.pickupList.splice(this.pickupList.findIndex((p) => !this.authoredPickups.has(p.netId)), 1);
+      }
+    }
+    if (authored) this.authoredPickups.add(this.nextPickupNetId);
     this.pickupList.push({
       netId: this.nextPickupNetId++,
       weapon,
@@ -2272,7 +2363,8 @@ export class Session {
   /** U-017: pickups past their time go. */
   private expirePickups(nowSeconds: number): void {
     for (let i = this.pickupList.length - 1; i >= 0; i--) {
-      if (nowSeconds - this.pickupList[i]!.droppedAt >= PICKUPS.despawnSeconds) this.pickupList.splice(i, 1);
+      const p = this.pickupList[i]!;
+      if (!this.authoredPickups.has(p.netId) && nowSeconds - p.droppedAt >= PICKUPS.despawnSeconds) this.pickupList.splice(i, 1);
     }
   }
 
