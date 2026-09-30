@@ -72,7 +72,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-022](docs/backlog/U-022.md) | Implement dual-primary rules for Preach and Support | Squad | P2 | DONE | U-018, U-020, U-021 | [#204](https://github.com/JoshuaLRay/Sandline/pull/204) |
 | [U-029](docs/backlog/U-029.md) | Enforce squad weapon exchanges and left-handed loot access | Squad | P2 | DONE | U-018, U-020, U-021 | [#207](https://github.com/JoshuaLRay/Sandline/pull/207) |
 | [U-023](docs/backlog/U-023.md) | Break approved character skills into implementation tasks | Squad | P2 | BLOCKED | Owner deferred skills to a later version (2026-09-29); needs a new go-ahead | — |
-| [U-032](docs/backlog/U-032.md) | Capture downed characters as prisoners for next-mission rescue | Campaign | P2 | INBOX | U-031; design decomposition needed | — |
+| [U-032](docs/backlog/U-032.md) | Capture downed characters as prisoners for next-mission rescue | Campaign | P2 | BLOCKED | U-061, U-062, U-063, U-064, U-065 (umbrella) | — |
 | [U-035](docs/backlog/U-035.md) | Add an enemy tank that attacks during mission-01's upload | Mission / vehicle combat | P2 | INBOX | Vehicle simulation and damage design; route geometry and asset decisions | — |
 | [U-037](docs/backlog/U-037.md) | Keep mobile controls and layout when the phone is rotated | Mobile | P1 | DONE | — | [#182](https://github.com/JoshuaLRay/Sandline/pull/182) |
 | [U-038](docs/backlog/U-038.md) | Mobile zoom-out limit: 6x portrait, 3x landscape | Mobile | P1 | DONE | U-037 | [#183](https://github.com/JoshuaLRay/Sandline/pull/183) |
@@ -94,6 +94,11 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-058](docs/backlog/U-058.md) | Smoke grenades for Ortiz | Controls | P3 | DONE | U-048 | [#223](https://github.com/JoshuaLRay/Sandline/pull/223) |
 | [U-059](docs/backlog/U-059.md) | Checkpoints restore the whole world: living enemies, positions, health | Campaign | P2 | DONE | U-052 | [#227](https://github.com/JoshuaLRay/Sandline/pull/227) |
 | [U-060](docs/backlog/U-060.md) | Save the checkpoint's world in the campaign file | Campaign | P2 | REVIEW | U-059 | `task/U-060-campaign-world` |
+| [U-061](docs/backlog/U-061.md) | Captured state: persistence, slot rules, retry behaviour | Campaign | P2 | READY | U-060 | — |
+| [U-062](docs/backlog/U-062.md) | Enemy capture behaviour: 2 s rule, 5 s channel, interruption | Campaign | P2 | BLOCKED | U-061 | — |
+| [U-063](docs/backlog/U-063.md) | The `rescue` objective type | Campaign | P2 | BLOCKED | U-061 | — |
+| [U-064](docs/backlog/U-064.md) | Captured characters in the slot picker, HUD and messages | Campaign | P2 | BLOCKED | U-061 | — |
+| [U-065](docs/backlog/U-065.md) | Author a mission that holds a rescue | Campaign | P2 | INBOX | U-063; mission content decision | — |
 
 ## Existing work retained
 
