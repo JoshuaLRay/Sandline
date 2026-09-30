@@ -136,6 +136,10 @@ export interface VehiclePart {
 export interface EnemyVehicle {
   /** How far out from its centre a blast reaches the hull, m: a blast is measured to the hull, not to its middle. */
   radiusM: number;
+  /** U-067: how it drives — its speed, how fast the hull turns, and how near a waypoint counts as reached. */
+  speedMps: number;
+  turnDegPerSec: number;
+  arriveM: number;
   hull: VehiclePart;
   turret: VehiclePart;
   armour: {
@@ -395,7 +399,7 @@ function parseVehiclePart(raw: unknown, where: string): VehiclePart {
 
 function parseVehicle(raw: unknown, where: string): EnemyVehicle {
   const row = obj(raw, where);
-  only(row, ['radiusM', 'hull', 'turret', 'armour'], where);
+  only(row, ['radiusM', 'speedMps', 'turnDegPerSec', 'arriveM', 'hull', 'turret', 'armour'], where);
   const armourRow = obj(row['armour'], `${where}.armour`);
   only(armourRow, ['bullet', 'blast', 'blastDefault'], `${where}.armour`);
   const blastRow = obj(armourRow['blast'], `${where}.armour.blast`);
@@ -406,6 +410,10 @@ function parseVehicle(raw: unknown, where: string): EnemyVehicle {
   }
   return {
     radiusM: num(row, 'radiusM', where, 0.5, 10),
+    // A slow walk to a fast one, and a turn from a crawl to a spin: a tank is neither a statue nor a car.
+    speedMps: num(row, 'speedMps', where, 0.1, 6),
+    turnDegPerSec: num(row, 'turnDegPerSec', where, 1, 120),
+    arriveM: num(row, 'arriveM', where, 0.1, 10),
     hull: parseVehiclePart(row['hull'], `${where}.hull`),
     turret: parseVehiclePart(row['turret'], `${where}.turret`),
     armour: {

@@ -77,6 +77,9 @@ const SHAPED: Record<string, Record<string, unknown>> = {
     health: 1000,
     vehicle: {
       radiusM: 2,
+      speedMps: 1.6,
+      turnDegPerSec: 30,
+      arriveM: 1.5,
       hull: { from: [0, 1, -1.6], to: [0, 1, 1.6], radius: 1.3 },
       turret: { from: [0, 2, 0], to: [0, 2.3, 0], radius: 0.9 },
       armour: { bullet: 0.1, blast: { frag: 0.1, rocket: 1, c4: 1, claymore: 1 }, blastDefault: 0.1 },
