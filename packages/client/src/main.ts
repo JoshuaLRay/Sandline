@@ -572,6 +572,9 @@ function emptyGunInReach(client: NetClient, x: number, z: number): boolean {
   return false;
 }
 const pouchTrigger = new PouchTrigger();
+/** U-046: when (seconds) the pin was pulled on the grenade in hand, or null. The host keeps the real fuse. */
+let cookStartedAt: number | null = null;
+let cookWasHeld = false;
 /** The loadout index sent last, and to which client, so a switch is sent once. */
 let equipSent: { net: NetClient; item: number } | null = null;
 function loadoutItem(): number {
@@ -2199,6 +2202,16 @@ function frame(): void {
     mountedGun = mount;
 
     const beforeStep = net.simulated;
+    // U-046: right click with a grenade (a thrown item) in hand pulls the pin; the host starts the fuse on the press.
+    const cooking = holdingPouch && throws.def.kind === 'thrown' && throws.def.fuseSeconds > 0 && input.rightHeld && net.vitality === 'alive';
+    tickInput.cook = cooking;
+    if (cooking && !cookWasHeld && cookStartedAt === null && throws.count() > 0) {
+      cookStartedAt = tickNumber * TICK_SECONDS;
+      playerHud.notify('Pin pulled');
+    }
+    cookWasHeld = cooking;
+    // The host has let it go off in the hand: forget the cook.
+    if (cookStartedAt !== null && tickNumber * TICK_SECONDS - cookStartedAt > (throws.defOf(throws.kind)?.fuseSeconds ?? 0) + 0.3) cookStartedAt = null;
     net.tick(tickNumber, tickInput, input.pitchWire);
     if (tickInput.moveX !== 0 || tickInput.moveY !== 0) hints.did('move', secondsNow());
     sparring?.tick(tickNumber);
@@ -2349,7 +2362,10 @@ function frame(): void {
       // U-002: from the eye of the stance the body is in, as the server launches it.
       const eye = stanceEye(here);
       const from = throws.origin(eye, direction, projectileWorld());
-      if (throws.throwFrom(from, aimYaw, aimPitch, tickNumber * TICK_SECONDS) !== null) {
+      const fuse = throws.def.fuseSeconds;
+      const cooked = cookStartedAt === null || fuse <= 0 ? 0 : Math.max(0, Math.min(tickNumber * TICK_SECONDS - cookStartedAt, fuse - TICK_SECONDS));
+      if (throws.throwFrom(from, aimYaw, aimPitch, tickNumber * TICK_SECONDS, cooked) !== null) {
+        cookStartedAt = null;
         net.throwProjectile(tickNumber, aimYaw, aimPitch, throws.kind);
         hints.did('throw', secondsNow());
         // The last one gone: back to the gun, as a shooter does.
@@ -2451,6 +2467,7 @@ function frame(): void {
   const localVitality = net?.vitality ?? 'alive';
   const localDowned = localVitality !== 'alive';
   // U-021: the character in hand decides whether the sight and first person exist for this player.
+  input.rightClickIsNotAim = holdingPouch && throws.def.kind === 'thrown';
   input.restrictView({ ads: localLoadout?.ads ?? true, firstPerson: localLoadout?.firstPerson ?? true });
   // The pose first, then the gait on top of it (T-2.22): the driver composes
   // on the pose's base transforms, so the order is what makes a crouch-walk

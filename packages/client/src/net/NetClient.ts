@@ -766,7 +766,8 @@ export class NetClient {
       (input.interact ? INPUT_BUTTONS.interact : 0) |
       (input.firing ? INPUT_BUTTONS.fire : 0) |
       (input.prone ? INPUT_BUTTONS.prone : 0) |
-      (input.drop ? INPUT_BUTTONS.drop : 0);
+      (input.drop ? INPUT_BUTTONS.drop : 0) |
+      (input.cook ? INPUT_BUTTONS.cook : 0);
     this.transport.send(
       encodeMessage({
         kind: 'Input',

@@ -222,7 +222,8 @@ export class LocalInput {
       if (!this.locked) return;
       this.buttons.add(e.button);
       if (e.button === 0) this.triggerEdge = true;
-      if (e.button === 2) beginAds(this.viewState);
+      // U-046: with a grenade in hand right click pulls the pin instead of aiming.
+      if (e.button === 2 && !this.rightClickIsNotAim) beginAds(this.viewState);
     });
     addEventListener('mouseup', (e) => {
       if (e.button === 0 && this.buttons.has(0)) this.triggerReleased = true;
@@ -468,6 +469,14 @@ export class LocalInput {
   /** Left mouse held: pull the trigger. Cadence is the weapon's, not the mouse's. */
   get firing(): boolean {
     return this.buttons.has(0);
+  }
+
+  /** Set by the page each frame: right click does not aim (a thrown item is in hand). */
+  rightClickIsNotAim = false;
+
+  /** Right mouse held, whatever the view allows (U-046: with a grenade in hand it pulls the pin). */
+  get rightHeld(): boolean {
+    return this.buttons.has(2);
   }
 
   /** Right mouse held: aim down sights and enter FPS when starting from TPS. */

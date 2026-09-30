@@ -202,7 +202,7 @@ export class ThrowQA {
    * Throw one: spend it, start the cooldown, and hand back the ghost to draw.
    * Null when this client's copy says there is nothing to throw.
    */
-  throwFrom(origin: Vec3, yaw: number, pitch: number, now: number): Ghost | null {
+  throwFrom(origin: Vec3, yaw: number, pitch: number, now: number, cookedSeconds = 0): Ghost | null {
     if (!this.canThrow(now)) return null;
     const def = this.def;
     this.counts[this.index] = this.count() - 1;
@@ -212,7 +212,8 @@ export class ThrowQA {
       id: this.nextGhostId++,
       kind: this.index,
       def,
-      state: createProjectileState(origin, launchVelocity(def, yaw, pitch)),
+      // U-046: a cooked grenade flies with the fuse it has left.
+      state: { ...createProjectileState(origin, launchVelocity(def, yaw, pitch)), age: cookedSeconds },
       prev: { x: origin.x, y: origin.y, z: origin.z },
       netId: null,
       age: 0,

@@ -408,6 +408,11 @@ export interface Slot {
   dropPending: boolean;
   /** U-029: the pistol the class lists has been put down (until a respawn, a retry, or taking one up). */
   noPistol: boolean;
+  /** U-046: a grenade with its pin pulled: which projectile, and when (seconds) the fuse started. Goes off in hand if not thrown. */
+  cook: { kind: number; since: number } | null;
+  /** U-046: right click was held on the newest input, and on the one before (to see a press). */
+  cookHeld: boolean;
+  cookWasHeld: boolean;
   /**
    * U-022: the second primary of a character who carries two (Preach, once he
    * has taken one; the support from the start), or null.
@@ -1049,6 +1054,9 @@ export class Session {
         pickedUp: false,
         dropPending: false,
         noPistol: false,
+        cook: null,
+        cookHeld: false,
+        cookWasHeld: false,
         secondary: null,
         stowed: new Map(),
         suppression: createSuppression(),
@@ -1939,6 +1947,7 @@ export class Session {
   private restorePrimary(slot: Slot): void {
     // Every gun comes back fresh with the soldier (U-022).
     slot.stowed.clear();
+    slot.cook = null;
     if (!slot.pickedUp) return;
     const def = this.classLoadouts === 'class' ? classById(this.classSlots[slot.index] ?? '') : undefined;
     // U-029: a soldier who put every primary down gets the class's back in hand.
@@ -3048,6 +3057,8 @@ export class Session {
           prone: (frame.buttons & 0b100000) !== 0,
           // U-029.
           drop: (frame.buttons & 0b1000000) !== 0,
+          // U-046.
+          cook: (frame.buttons & 0b10000000) !== 0,
         },
       });
     }
@@ -3403,7 +3414,49 @@ export class Session {
     if (!isAlive(slot.health)) return;
     if (slot.state.vault) return;
 
-    this.launch(slot, slot.index, msg.projectile, msg.yaw, msg.pitch);
+    // U-046: a grenade with its pin pulled flies with the fuse it has left; the host's own clock says how long it was cooked.
+    const cooked = slot.cook?.kind === msg.projectile ? this.nowMs / 1000 - slot.cook.since : 0;
+    const fuse = this.projectileDefs[msg.projectile]?.fuseSeconds ?? 0;
+    // A sliver of fuse is always left: a grenade thrown at the last moment still leaves the hand.
+    const age = fuse > 0 ? Math.max(0, Math.min(cooked, fuse - TICK_SECONDS)) : 0;
+    if (this.launch(slot, slot.index, msg.projectile, msg.yaw, msg.pitch, age) && slot.cook?.kind === msg.projectile) slot.cook = null;
+  }
+
+  /**
+   * U-046: right click with a thrown item in hand pulls the pin (a press, not a hold); the fuse runs from then. A
+   * grenade not thrown in time goes off in the hand, where its soldier stands (dead or alive), and is spent.
+   */
+  private updateCooking(nowSeconds: number): void {
+    for (const slot of this.slots) {
+      const held = slot.cookHeld && !this.autonomous(slot);
+      const pressed = held && !slot.cookWasHeld;
+      slot.cookWasHeld = held;
+      if (pressed && slot.cook === null && isAlive(slot.health) && !slot.mounted && !slot.state.vault && slot.heldProjectile >= 0) {
+        const def = this.projectileDefs[slot.heldProjectile];
+        if (def && def.kind === 'thrown' && def.fuseSeconds > 0 && (slot.pouch[slot.heldProjectile] ?? 0) > 0) {
+          slot.cook = { kind: slot.heldProjectile, since: nowSeconds };
+        }
+      }
+      const cook = slot.cook;
+      if (cook === null) continue;
+      const def = this.projectileDefs[cook.kind];
+      if (!def || (slot.pouch[cook.kind] ?? 0) <= 0) {
+        slot.cook = null;
+      } else if (nowSeconds - cook.since >= def.fuseSeconds && this.projectiles.length < MAX_PROJECTILES) {
+        slot.pouch[cook.kind] = (slot.pouch[cook.kind] ?? 0) - 1;
+        const origin = throwEye(slot.state);
+        this.projectiles.push({
+          netId: this.nextProjectileNetId++,
+          def,
+          kind: cook.kind,
+          ownerSlot: slot.index,
+          ownerNetId: slot.netId,
+          xpPlayerId: this.xpPlayer(slot.index),
+          state: { ...createProjectileState(origin, { x: 0, y: 0, z: 0 }), age: def.fuseSeconds },
+        });
+        slot.cook = null;
+      }
+    }
   }
 
   /**
@@ -3418,6 +3471,7 @@ export class Session {
     projectile: number,
     yawIn: number,
     pitchIn: number,
+    cookedSeconds = 0,
   ): boolean {
     const def = this.projectileDefs[projectile] ?? null;
     if (def === null) return false; // Out-of-range index: drop it, do not throw.
@@ -3438,7 +3492,7 @@ export class Session {
       ownerSlot,
       ownerNetId: thrower.netId,
       xpPlayerId: this.xpPlayer(this.slots.findIndex((s) => s.netId === thrower.netId)),
-      state: createProjectileState(origin, velocity),
+      state: { ...createProjectileState(origin, velocity), age: cookedSeconds },
     });
     return true;
   }
@@ -3771,6 +3825,7 @@ export class Session {
           slot.input = ahead.input;
           slot.interactHeld = ahead.input.interact === true;
           if (ahead.input.drop === true) slot.dropPending = true;
+          slot.cookHeld = ahead.input.cook === true;
           slot.pendingInputTick = ahead.tick;
           slot.staleTicks = 0;
           slot.input.downed = isDowned(slot.health);
@@ -3783,6 +3838,7 @@ export class Session {
           slot.input = next.input;
           slot.interactHeld = next.input.interact === true;
           if (next.input.drop === true) slot.dropPending = true;
+          slot.cookHeld = next.input.cook === true;
           slot.pendingInputTick = next.tick;
           slot.staleTicks = 0;
         } else {
@@ -3857,6 +3913,7 @@ export class Session {
     // Resolve revive interaction after consuming this tick's input, so a newly pressed E starts immediately.
     this.updateRevives();
     // T-4.29: mounting and dismounting, after the revive has had first claim on the same press.
+    this.updateCooking(nowSeconds);
     this.updateMounts(nowSeconds);
     // U-010: the enemy at the upload's lever.
     this.updateLever(nowSeconds);
