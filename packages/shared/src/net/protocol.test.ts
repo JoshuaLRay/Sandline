@@ -38,6 +38,8 @@ const SAMPLES: Message[] = [
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: '', world: 'greybox-01' },
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: '', key: 'k', world: 'range' },
   { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: '', world: 'mission-01', quick: true },
+  { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: 'KM7X', slot: 0 },
+  { kind: 'Join', version: PROTOCOL_VERSION, name: 'bravo-six', room: 'KM7X', slot: 5 },
   { kind: 'RoomState', started: false, creator: 0, world: 'mission-01', ready: [true, false, false, false, false, false], classes: ['', '', '', '', '', ''] },
   { kind: 'RoomCommand', command: 'ready', ready: true },
   { kind: 'RoomCommand', command: 'start' },

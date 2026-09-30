@@ -23,12 +23,12 @@
  * wrong model of the game (ADR-001).
  */
 import { checkRoomInput, HostUrlError, parseHostUrl } from '../net/RemoteServer.ts';
-import { REGIONS, type Region, regionByTag, regionForHost, splitTaggedCode, tagCode } from '@sandline/shared';
+import { CLASSES, classById, REGIONS, type Region, regionByTag, regionForHost, splitTaggedCode, tagCode } from '@sandline/shared';
 import { type Rtt, describeRtt, measureRtt, pickRegion, readStoredRegion, storeRegion } from '../net/regions.ts';
 
 export type LobbyChoice =
   | { kind: 'local' }
-  | { kind: 'remote'; host: string; room: string; name: string; key: string; world: string; quick: boolean };
+  | { kind: 'remote'; host: string; room: string; name: string; key: string; world: string; quick: boolean; slot: number };
 
 /**
  * The maps a new room can be built with (T-3.35 follow-up), as the Join asks
@@ -183,6 +183,15 @@ export function createLobby(options: LobbyOptions): Lobby {
     mapInput.append(option);
   }
 
+  // U-051: the character to play, if it is free when the join is seated; otherwise the lowest free slot.
+  const slotInput = document.createElement('select');
+  for (const [value, label] of [['-1', 'Any free character']].concat(CLASSES.slotDefaults.map((id, i) => [String(i), `${i + 1}. ${classById(id)?.name ?? id}`])) as [string, string][]) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    slotInput.append(option);
+  }
+
   const roomInput = document.createElement('input');
   roomInput.type = 'text';
   roomInput.spellcheck = false;
@@ -299,7 +308,7 @@ export function createLobby(options: LobbyOptions): Lobby {
     const key = keyInput.value.trim();
     storeKey(key);
     say('', 'info');
-    options.onChoose({ kind: 'remote', host, room, name, key, world: room === '' ? mapInput.value : '', quick });
+    options.onChoose({ kind: 'remote', host, room, name, key, world: room === '' ? mapInput.value : '', quick, slot: Number(slotInput.value) });
   };
 
   const hostButton = button('Host a room', 'lobby-primary', () => remote(false));
@@ -349,6 +358,7 @@ export function createLobby(options: LobbyOptions): Lobby {
     field('Host', hostInput),
     field('Key', keyInput),
     field('Mission', mapInput),
+    field('Character', slotInput),
     hostButton,
     quickButton,
     joinRow,

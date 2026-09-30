@@ -73,6 +73,8 @@ export class ServerConnection {
   identity = '';
   /** T-4.19: match an empty-room Join before creating a room. */
   quick = false;
+  /** U-051: the slot the client asked for, or -1 for the lowest free. */
+  wantedSlot = -1;
   /**
    * T-4.22: who this is, once the host has verified or issued an identity:
    * the durable player ID, and the token the JoinAck hands back. Both empty
@@ -203,6 +205,7 @@ export class ServerConnection {
       this.resume = join.resume ?? '';
       this.identity = join.identity ?? '';
       this.quick = join.quick ?? false;
+      this.wantedSlot = join.slot ?? -1;
       this.state = 'active';
       this.events.onJoined?.(this);
       return;

@@ -632,7 +632,7 @@ export class NetClient {
   }
 
   /** Handshake. An empty room creates one unless quick-match is requested (T-4.19). */
-  join(room = '', key = '', world = '', resume = '', identity = '', quick = false): void {
+  join(room = '', key = '', world = '', resume = '', identity = '', quick = false, slot = -1): void {
     this.transport.send(
       encodeMessage({
         kind: 'Join',
@@ -644,6 +644,7 @@ export class NetClient {
         ...(resume === '' ? {} : { resume }),
         ...(identity === '' ? {} : { identity }),
         ...(quick ? { quick } : {}),
+        ...(slot >= 0 ? { slot } : {}),
       }),
     );
   }
