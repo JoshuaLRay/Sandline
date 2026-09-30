@@ -279,6 +279,8 @@ export class NetClient {
   /** U-018: our own soldier's primary (a WEAPON_IDS index) as the host last said; null before it has. */
   private primaryValue: number | null = null;
   /** U-022: our own soldier's second primary as the host last said (a WEAPON_IDS index); null for none, and before it has said. */
+  /** U-029: the host says our soldier has put its pistol down. */
+  private noPistolValue = false;
   private secondaryValue: number | null = null;
   /**
    * Replicated with the health (T-2.13). Vitality is gameplay, not cosmetic:
@@ -550,6 +552,10 @@ export class NetClient {
   }
 
   /** U-022: our own soldier's second primary, a WEAPON_IDS index; null when it carries only one (or the host has not said). */
+  get noPistol(): boolean {
+    return this.noPistolValue;
+  }
+
   get secondary(): number | null {
     return this.secondaryValue;
   }
@@ -715,6 +721,7 @@ export class NetClient {
     this.magazineValue = null;
     this.primaryValue = null;
     this.secondaryValue = null;
+    this.noPistolValue = false;
     this.vitalityValue = 'alive';
     this.vitalTimerValue = 0;
     this.reviveProgressValue = 0;
@@ -1439,6 +1446,7 @@ export class NetClient {
           this.primaryValue = first === undefined ? null : first === NO_SECONDARY ? NO_PRIMARY : first;
           const second = weapon[5 + PROJECTILE_IDS.length] as number | undefined;
           this.secondaryValue = second === undefined || second === NO_SECONDARY ? null : second;
+          this.noPistolValue = (weapon[6 + PROJECTILE_IDS.length] as number | undefined) === 1;
         }
         const velocity = entity.components[V];
         if (this.spectatedSlotValue >= 0) {

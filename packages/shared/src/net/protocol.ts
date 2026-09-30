@@ -18,7 +18,7 @@ import type { MissionStats } from '../sim/scoreboard.ts';
 import { WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 46;
+export const PROTOCOL_VERSION = 47;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({

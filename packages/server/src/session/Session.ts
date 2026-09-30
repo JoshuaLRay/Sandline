@@ -406,6 +406,8 @@ export interface Slot {
   pickedUp: boolean;
   /** U-029: G was pressed on an input the host has just taken; the next mount pass drops the held gun. */
   dropPending: boolean;
+  /** U-029: the pistol the class lists has been put down (until a respawn, a retry, or taking one up). */
+  noPistol: boolean;
   /**
    * U-022: the second primary of a character who carries two (Preach, once he
    * has taken one; the support from the start), or null.
@@ -1046,6 +1048,7 @@ export class Session {
         primary: WEAPON_IDS[0],
         pickedUp: false,
         dropPending: false,
+        noPistol: false,
         secondary: null,
         stowed: new Map(),
         suppression: createSuppression(),
@@ -1651,6 +1654,7 @@ export class Session {
     // U-018: a new class is its own primary again.
     slot.primary = def.guns.find((g) => g !== 'sidearm') ?? gun;
     slot.secondary = classPrimaries(def)[1] ?? null;
+    slot.noPistol = false;
     slot.stowed.clear();
     slot.pickedUp = false;
     slot.pouch = [...def.pouch];
@@ -1903,7 +1907,7 @@ export class Session {
     if (!def) return true;
     // Anything else on the class's list is the pistol; its other guns are the primary and the second primary, held above.
     // With a second primary in hand-reach there is no pistol (Preach, like the support): it goes with the second gun.
-    return gun === 'sidearm' && def.guns.includes('sidearm') && slot.secondary === null;
+    return gun === 'sidearm' && def.guns.includes('sidearm') && slot.secondary === null && !slot.noPistol;
   }
 
   /**
@@ -1940,6 +1944,7 @@ export class Session {
     // U-029: a soldier who put every primary down gets the class's back in hand.
     const dropped = slot.primary === null;
     slot.primary = this.classPrimary(slot);
+    slot.noPistol = false;
     slot.secondary = def ? (classPrimaries(def)[1] ?? null) : null;
     slot.pickedUp = false;
     // If the gun in hand was one that only a pickup had given, the primary is drawn instead.
@@ -1950,6 +1955,13 @@ export class Session {
       slot.weapon = getWeapon(slot.primary);
       slot.weaponState = createWeaponState(slot.weapon);
     }
+  }
+
+  /** U-029: a pistol on the ground is taken only by a character whose class lists one, who has put it down and holds one primary at most. */
+  private canTakePistol(slot: Slot): boolean {
+    if (this.classLoadouts !== 'class') return false;
+    const def = classById(this.classSlots[slot.index] ?? '');
+    return !!def?.guns.includes('sidearm') && slot.noPistol && slot.secondary === null;
   }
 
   /** U-029: a character whose own gun is left-handed (the slot-4 sniper) — he takes only left-handed guns. */
@@ -1963,16 +1975,19 @@ export class Session {
   /**
    * U-029: G puts the gun in hand on the ground where the soldier stands, with the rounds it has (a reload in
    * progress is cancelled). The other primary, if there is one, becomes the primary and is drawn; else the pistol
-   * the class lists, else the knife. Only a primary can be put down: the knife and the pistol stay. The host judges
+   * the class lists, else the knife. Only a primary or the pistol can be put down: the knife stays. The host judges
    * the press; nothing the page sends names a gun or its rounds. Returns whether one was dropped.
    */
   private dropHeld(slot: Slot): boolean {
     if (!isAlive(slot.health) || isDowned(slot.health) || slot.state.vault || slot.mounted) return false;
     const gun = slot.weapon.id;
-    if (gun !== slot.primary && gun !== slot.secondary) return false;
+    const isPistol = gun === 'sidearm' && this.classLoadouts === 'class' && this.carries(slot, 'sidearm');
+    if (gun !== slot.primary && gun !== slot.secondary && !isPistol) return false;
     slot.weaponState.reloadEndsAt = 0;
     this.placePickup(gun, slot.weaponState.ammo, slot.state, slot.yaw);
-    if (gun === slot.primary) {
+    if (isPistol) {
+      slot.noPistol = true;
+    } else if (gun === slot.primary) {
       slot.primary = slot.secondary;
       slot.secondary = null;
     } else {
@@ -1980,7 +1995,7 @@ export class Session {
     }
     slot.pickedUp = true;
     const def = this.classLoadouts === 'class' ? classById(this.classSlots[slot.index] ?? '') : undefined;
-    const next = slot.primary ?? (def?.guns.includes('sidearm') ? 'sidearm' : 'knife');
+    const next = slot.primary ?? (def?.guns.includes('sidearm') && !slot.noPistol && slot.secondary === null ? 'sidearm' : 'knife');
     slot.weapon = getWeapon(next);
     slot.weaponState = slot.stowed.get(next) ?? createWeaponState(slot.weapon);
     slot.stowed.delete(next);
@@ -2013,6 +2028,7 @@ export class Session {
     for (const [i, p] of this.pickupList.entries()) {
       const at = { x: p.x, y: p.y + PICKUP_AIM_M, z: p.z };
       const d = Math.hypot(eye.x - at.x, eye.y - at.y, eye.z - at.z);
+      if (WEAPON_IDS[p.weapon] === 'sidearm' && !this.canTakePistol(slot)) continue;
       if (lefty && !canWield(getWeapon(WEAPON_IDS[p.weapon]!), true)) continue;
       if (d <= PICKUPS.reachM && d < bestD && lineOfSight(eye, at, this.collisionBoxes)) {
         best = i;
@@ -2022,6 +2038,20 @@ export class Session {
     if (best < 0) return false;
     const target = this.pickupList[best]!;
     const gun = WEAPON_IDS[target.weapon]!;
+    if (gun === 'sidearm') {
+      // U-029: a pistol put down comes back as the pistol, never as a primary; the gun in hand is put away with its rounds.
+      this.pickupList.splice(best, 1);
+      finishReload(slot.weapon, slot.weaponState, this.nowMs / 1000);
+      slot.weaponState.reloadEndsAt = 0;
+      slot.stowed.set(slot.weapon.id, slot.weaponState);
+      slot.noPistol = false;
+      slot.weapon = getWeapon('sidearm');
+      slot.stowed.delete('sidearm');
+      slot.weaponState = createWeaponState(slot.weapon);
+      slot.weaponState.ammo = Math.min(target.ammo, slot.weapon.magSize);
+      slot.heldProjectile = -1;
+      return true;
+    }
     // U-022: which of the soldier's primaries it becomes. Everyone has one, and takes the gun as it. Preach and the
     // support may carry two: the second is an AR, SMG or shotgun beside a first that is one too — never an LMG, a
     // marksman rifle or a sniper rifle beside another primary.
@@ -4485,6 +4515,8 @@ export class Session {
             s.primary === null ? NO_SECONDARY : Math.max(0, (WEAPON_IDS as readonly string[]).indexOf(s.primary)),
             // U-022: and the second primary, if the soldier carries one.
             s.secondary === null ? NO_SECONDARY : Math.max(0, (WEAPON_IDS as readonly string[]).indexOf(s.secondary)),
+            // U-029: and whether the pistol has been put down.
+            s.noPistol ? 1 : 0,
           ],
           // T-3.16: how suppressed, so the page can show it and widen its cone to match.
           [COMPONENT_IDS.Suppression]: [suppressionToWire(suppressionLevel(s.suppression, this.nowMs / 1000))],

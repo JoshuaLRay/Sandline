@@ -129,6 +129,32 @@ describe('dropping the held gun (U-029)', () => {
     // The knife is not a gun to put down.
     r.drop_(support);
     expect(r.session.pickups).toHaveLength(2);
+    expect(r.session.loadoutOf(support.net.slot).weapon).toBe('knife');
+  });
+
+  it('the pistol can be put down too, comes back only as the pistol, and only to a class that lists one; the knife stays', () => {
+    const { r, ps } = started(3);
+    const [a, , support] = [ps[0]!, ps[1]!, ps[2]!];
+    r.send(a, { kind: 'Equip', item: WEAPON_IDS.indexOf('sidearm') });
+    r.session.slots[a.net.slot]!.weaponState.ammo = 4;
+    r.place(a, NEAR);
+    r.drop_(a);
+    expect(r.session.loadoutOf(a.net.slot)).toMatchObject({ weapon: 'carbine', primary: 'carbine' });
+    expect(r.session.pickups.map((p) => [WEAPON_IDS[p.weapon], p.ammo])).toEqual([['sidearm', 4]]);
+    expect(a.net.noPistol).toBe(true);
+    // Not carried any more: Equip is refused.
+    r.send(a, { kind: 'Equip', item: WEAPON_IDS.indexOf('sidearm') });
+    expect(r.session.loadoutOf(a.net.slot).weapon).toBe('carbine');
+    // The support's class lists no pistol: it cannot pick this one up.
+    r.place(support, { x: NEAR.x + 0.3, z: NEAR.z });
+    r.press(support);
+    expect(r.session.pickups).toHaveLength(1);
+    expect(r.session.loadoutOf(support.net.slot).primary).toBe('smg');
+    // Preach can, and it is the pistol in hand with its rounds, the carbine still his primary.
+    r.press(a);
+    expect(r.session.loadoutOf(a.net.slot)).toMatchObject({ weapon: 'sidearm', primary: 'carbine', ammo: 4 });
+    expect(r.session.pickups).toHaveLength(0);
+    expect(a.net.noPistol).toBe(false);
   });
 
   it('a downed soldier cannot drop, and a forged press changes nothing that is not the host\'s to give', () => {
