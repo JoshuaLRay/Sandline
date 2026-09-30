@@ -19,6 +19,6 @@ describe('pouch counts on the wire (U-024)', () => {
   it('follow the weapon, the reload and the item in hand, one per projectile in PROJECTILE_IDS order', () => {
     const names = schemaById(COMPONENT_IDS.Weapon).fields.map((f) => f.name);
     // U-028's magazine count follows them.
-    expect(names).toEqual(['index', 'reloadProgress', 'pouch', ...PROJECTILE_IDS.map((id) => `left_${id}`), 'ammo', 'primary', 'secondary', 'noPistol', 'kits', 'kitProgress']);
+    expect(names).toEqual(['index', 'reloadProgress', 'pouch', ...PROJECTILE_IDS.map((id) => `left_${id}`), 'ammo', 'primary', 'secondary', 'noPistol', 'kits', 'kitProgress', 'equipment']);
   });
 });

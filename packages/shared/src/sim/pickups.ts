@@ -64,6 +64,15 @@ export function isPickupNetId(netId: number): boolean {
   return netId >= FIRST_PICKUP_NET_ID && netId < PICKUP_NET_ID_LIMIT;
 }
 
-/** Bits a pickup's weapon (a WEAPON_IDS index) and its rounds take on the wire. */
-export const PICKUP_WEAPON_BITS = 4;
+/**
+ * Bits a pickup's item and its rounds (or count) take on the wire. The item is a WEAPON_IDS index, or, from
+ * WEAPON_IDS.length up, a dropped piece of equipment (U-048): `PROJECTILE_IDS` index plus WEAPON_IDS.length, its
+ * amount the count it carries.
+ */
+export const PICKUP_WEAPON_BITS = 5;
 export const PICKUP_AMMO_BITS = 7;
+
+/** The `PROJECTILE_IDS` index a pickup's item stands for, or -1 when it is a gun (U-048). */
+export function pickupProjectile(item: number): number {
+  return item >= WEAPON_IDS.length ? item - WEAPON_IDS.length : -1;
+}

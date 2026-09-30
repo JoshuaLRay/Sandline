@@ -13,7 +13,7 @@ import { ENEMY_ARCHETYPE_BITS, ENEMY_FACTION_BITS } from '../sim/enemies.ts';
 import { EMPLACEMENT_HEAT_BITS, EMPLACEMENT_KIND_BITS } from '../sim/emplacement.ts';
 import { PICKUP_AMMO_BITS, PICKUP_WEAPON_BITS } from '../sim/pickups.ts';
 import { WEAPON_INDEX_BITS } from '../sim/weapons.ts';
-import { PROJECTILE_IDS } from '../sim/ballistics.ts';
+import { PROJECTILE_IDS, PROJECTILE_INDEX_BITS } from '../sim/ballistics.ts';
 import { SUPPRESSION_BITS } from '../sim/suppression.ts';
 import { ANGLE_BITS_WIRE, HEALTH, POSITION, VELOCITY, dequantize, quantize, quantizeAngle } from './quantize.ts';
 
@@ -132,8 +132,9 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // U-018: then the primary (a WEAPON_IDS index) — what key 1 draws, a picked-up gun once one is taken.
     // U-022: then the second primary of a character who carries two (a WEAPON_IDS index), or `NO_SECONDARY` for none.
     // U-047: then the health kits left (0-7) and the percent through applying one (0 when none is being applied).
+    // U-048: then the soldier's slot-5 equipment, a PROJECTILE_IDS index plus one (0 for none) — what key 5 draws, a picked-up item once one is taken.
     // U-029: then 1 when the soldier has put its pistol down (a class that lists one), so the page does not offer it.
-    fields: [uint('index', WEAPON_INDEX_BITS), uint('reloadProgress', 7), uint('pouch', 2), ...PROJECTILE_IDS.map((id) => uint(`left_${id}`, POUCH_COUNT_BITS)), uint('ammo', AMMO_BITS), uint('primary', WEAPON_INDEX_BITS), uint('secondary', WEAPON_INDEX_BITS), uint('noPistol', 1), uint('kits', 3), uint('kitProgress', 7)],
+    fields: [uint('index', WEAPON_INDEX_BITS), uint('reloadProgress', 7), uint('pouch', PROJECTILE_INDEX_BITS), ...PROJECTILE_IDS.map((id) => uint(`left_${id}`, POUCH_COUNT_BITS)), uint('ammo', AMMO_BITS), uint('primary', WEAPON_INDEX_BITS), uint('secondary', WEAPON_INDEX_BITS), uint('noPistol', 1), uint('kits', 3), uint('kitProgress', 7), uint('equipment', PROJECTILE_INDEX_BITS)],
   },
   {
     id: COMPONENT_IDS.Projectile,
@@ -142,7 +143,7 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // that threw it, both of which a client needs before it can draw the thing
     // — and neither of which changes for the life of the entity, so they cost
     // their bits once on the spawn and nothing per tick after (T-1.04).
-    fields: [uint('kind', 2), uint('ownerSlot', 3)],
+    fields: [uint('kind', PROJECTILE_INDEX_BITS), uint('ownerSlot', 3)],
   },
   {
     id: COMPONENT_IDS.Enemy,

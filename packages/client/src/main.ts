@@ -68,6 +68,7 @@ import {
   enemyByIndex,
   CALLOUTS,
   KIT_EQUIP_ITEM,
+  pickupProjectile,
 } from '@sandline/shared';
 import { ReloadWatcher, ShotDeduper, cycleSoundPlan, gunSoundPlan } from './audio/weaponSounds.ts';
 import { CalloutDirector, type CalloutPlay, voiceIndex } from './audio/callouts.ts';
@@ -636,6 +637,12 @@ function equipGun(index: number): void {
   holdingPouch = false;
   holdingKit = false;
   pouchTrigger.cancel();
+}
+/** The name a pickup goes by in the prompt: a gun's, or a dropped piece of equipment's (U-048). */
+function pickupName(item: number): string {
+  const projectile = pickupProjectile(item);
+  if (projectile >= 0) return getProjectile(PROJECTILE_IDS[projectile] ?? 'frag').name.toUpperCase();
+  return getWeapon(WEAPON_IDS[item] ?? 'carbine').name.toUpperCase();
 }
 /** U-047: slot 6. Drawn like a grenade; the trigger then applies one (the host does it, this only holds them). */
 function equipKit(): void {
@@ -2836,7 +2843,11 @@ function frame(): void {
         magSize: magazine.magSize,
         reloading: magazine.reloading,
         reloadFraction: magazine.reloadFraction,
-        pouch: [...throws.rows().map((row, i) => ({ ...row, selected: holdingPouch && throws.kind === i })), { name: 'Health kit', count: net?.kits ?? 0, selected: holdingKit }],
+        // The frag, this soldier's equipment if it has one (U-048), and the kits.
+        pouch: [
+          ...throws.rows().flatMap((row, i) => (i === PROJECTILE_ORDER.indexOf('frag') || i === net?.equipment ? [{ ...row, selected: holdingPouch && throws.kind === i }] : [])),
+          { name: 'Health kit', count: net?.kits ?? 0, selected: holdingKit },
+        ],
       }),
       stance: stanceOf({
         downed,
@@ -2857,7 +2868,7 @@ function frame(): void {
         : net && !downed && sim && emptyGunInReach(net, sim.x, sim.z)
           ? 'E  MAN THE GUN'
           : reachablePickup
-            ? `E  TAKE THE ${getWeapon(WEAPON_IDS[reachablePickup.weapon] ?? 'carbine').name.toUpperCase()}`
+            ? `E  TAKE THE ${pickupName(reachablePickup.weapon)}`
           : net && !downed && sim
             ? uploadPrompt(net.mission, net.world ? missionFor(net.world.id) : undefined, eyePosition(sim.x, sim.y, sim.z, DEFAULT_MUZZLE_RIG, eyeStance(sim.crouched, sim.prone)))
             : '',
@@ -3169,8 +3180,10 @@ addEventListener('keydown', (e) => {
   // keys pick who hears it (T-3.29); deviceSlotForKey returns null then.
   const device = deviceSlotForKey(e.code, keyContext);
   if (device === 'grenade' || device === 'equipment') {
-    const index = PROJECTILE_ORDER.findIndex((id) => getProjectile(id).kind === (device === 'grenade' ? 'thrown' : 'rocket'));
-    if (index >= 0) equipPouch(index);
+    // Key 4 is the frag; key 5 is whatever equipment the host says this soldier carries (U-048).
+    const index = device === 'grenade' ? PROJECTILE_ORDER.indexOf('frag') : (live?.net.equipment ?? -1);
+    if (index >= 0 && (device === 'grenade' || throws.count(index) > 0)) equipPouch(index);
+    else if (device === 'equipment') playerHud.notify('No equipment');
   } else if (device === 'health') {
     equipKit();
   }

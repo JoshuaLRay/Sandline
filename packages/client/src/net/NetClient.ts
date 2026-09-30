@@ -283,6 +283,8 @@ export class NetClient {
   private noPistolValue = false;
   /** U-047: our health kits left, and the percent through applying one, as the host last said. */
   private kitsValue = 0;
+  /** U-048: our slot-5 equipment as the host last said, a PROJECTILE_IDS index, or -1 for none. */
+  private equipmentValue = -1;
   private kitProgressValue = 0;
   private secondaryValue: number | null = null;
   /**
@@ -555,6 +557,10 @@ export class NetClient {
   }
 
   /** U-022: our own soldier's second primary, a WEAPON_IDS index; null when it carries only one (or the host has not said). */
+  get equipment(): number {
+    return this.equipmentValue;
+  }
+
   get kits(): number {
     return this.kitsValue;
   }
@@ -736,6 +742,7 @@ export class NetClient {
     this.noPistolValue = false;
     this.kitsValue = 0;
     this.kitProgressValue = 0;
+    this.equipmentValue = -1;
     this.vitalityValue = 'alive';
     this.vitalTimerValue = 0;
     this.reviveProgressValue = 0;
@@ -1464,6 +1471,7 @@ export class NetClient {
           this.noPistolValue = (weapon[6 + PROJECTILE_IDS.length] as number | undefined) === 1;
           this.kitsValue = (weapon[7 + PROJECTILE_IDS.length] as number | undefined) ?? 0;
           this.kitProgressValue = (weapon[8 + PROJECTILE_IDS.length] as number | undefined) ?? 0;
+          this.equipmentValue = ((weapon[9 + PROJECTILE_IDS.length] as number | undefined) ?? 0) - 1;
         }
         const velocity = entity.components[V];
         if (this.spectatedSlotValue >= 0) {

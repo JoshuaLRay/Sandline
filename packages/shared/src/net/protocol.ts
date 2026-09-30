@@ -16,10 +16,10 @@ import type { ScriptBlockerState } from '../sim/events.ts';
 import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 import type { MissionStats } from '../sim/scoreboard.ts';
 import { WEAPON_IDS, WEAPON_INDEX_BITS } from '../sim/weapons.ts';
-import { PROJECTILE_IDS } from '../sim/ballistics.ts';
+import { PROJECTILE_IDS, PROJECTILE_INDEX_BITS } from '../sim/ballistics.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 49;
+export const PROTOCOL_VERSION = 50;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -137,15 +137,17 @@ const MAX_SLOT_CODE = 5;
  * U-028: the Equip item code that is a Reload. Loadout items are the guns
  * then the pouch. Four bits leave room for the knife and both pouch items.
  */
-export const RELOAD_ITEM = 15;
+/** Bits an Equip item takes (U-048): 31 codes, up from 15, for the guns, every pouch item, the kit and the reload. */
+export const EQUIP_ITEM_BITS = 5;
+export const RELOAD_ITEM = (1 << EQUIP_ITEM_BITS) - 1;
 
 /**
  * U-047: the Equip item code for the health kits (slot 6): after the guns and
- * the pouch. The Weapon component's 2-bit `pouch` field shows it to others as
+ * the pouch. The Weapon component's `pouch` (PROJECTILE_INDEX_BITS) field shows it to others as
  * `PROJECTILE_IDS.length + 1` (what is in hand, plus one).
  */
 export const KIT_EQUIP_ITEM = WEAPON_IDS.length + PROJECTILE_IDS.length;
-if (KIT_EQUIP_ITEM >= RELOAD_ITEM || PROJECTILE_IDS.length + 1 > 3) throw new Error('the health kit no longer fits the Equip code or the 2-bit pouch field');
+if (KIT_EQUIP_ITEM >= RELOAD_ITEM || PROJECTILE_IDS.length + 1 > (1 << PROJECTILE_INDEX_BITS) - 1) throw new Error('the health kit no longer fits the Equip code or the 2-bit pouch field');
 
 /** Sub-kinds under `MessageType.Ext`, three bits: the wire order. */
 const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks: 5, Mission: 6, Events: 7 } as const;
@@ -613,20 +615,20 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeVarUint(msg.tick);
       w.writeBits(msg.yaw & 0xfff, 12);
       w.writeBits(msg.pitch & 0xfff, 12);
-      w.writeBits(msg.projectile & 0x3, 2);
+      w.writeBits(msg.projectile & ((1 << PROJECTILE_INDEX_BITS) - 1), PROJECTILE_INDEX_BITS);
       break;
     case 'Equip':
       w.writeBits(MessageType.Equip, TYPE_BITS);
-      w.writeBits(msg.item & 0xf, 4);
+      w.writeBits(msg.item & RELOAD_ITEM, EQUIP_ITEM_BITS);
       break;
     case 'Reload':
       w.writeBits(MessageType.Equip, TYPE_BITS);
-      w.writeBits(RELOAD_ITEM, 4);
+      w.writeBits(RELOAD_ITEM, EQUIP_ITEM_BITS);
       break;
     case 'Detonation': {
       w.writeBits(MessageType.Detonation, TYPE_BITS);
       w.writeVarUint(msg.netId);
-      w.writeBits(msg.projectile & 0x3, 2);
+      w.writeBits(msg.projectile & ((1 << PROJECTILE_INDEX_BITS) - 1), PROJECTILE_INDEX_BITS);
       w.writeVarUint(msg.tick);
       w.writeBits(quantize(msg.x, POSITION), POSITION.bits);
       w.writeBits(quantize(msg.y, POSITION), POSITION.bits);
@@ -1138,15 +1140,15 @@ export function decodeMessage(bytes: Uint8Array): Message {
           tick: r.readVarUint(),
           yaw: r.readBits(12),
           pitch: r.readBits(12),
-          projectile: r.readBits(2),
+          projectile: r.readBits(PROJECTILE_INDEX_BITS),
         };
       case MessageType.Equip: {
-        const item = r.readBits(4);
+        const item = r.readBits(EQUIP_ITEM_BITS);
         return item === RELOAD_ITEM ? { kind: 'Reload' } : { kind: 'Equip', item };
       }
       case MessageType.Detonation: {
         const netId = r.readVarUint();
-        const projectile = r.readBits(2);
+        const projectile = r.readBits(PROJECTILE_INDEX_BITS);
         const tick = r.readVarUint();
         const x = dequantize(r.readBits(POSITION.bits), POSITION);
         const y = dequantize(r.readBits(POSITION.bits), POSITION);
