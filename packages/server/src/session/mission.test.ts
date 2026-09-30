@@ -18,6 +18,7 @@ import {
   createLoopbackPair,
   missionFor,
   parseEncounter,
+  parseMission,
   requireWorld,
 } from '@sandline/shared';
 import { createBrainRegistry } from '../ai/Brain.ts';
@@ -49,6 +50,9 @@ function fake() {
     dead: false,
     protected: new Set<string>(),
     groups: new Map<string, { dead: boolean; spawned: number; down: number }>(),
+    /** U-063: prisoners held, and who is holding E beside one. */
+    held: 0,
+    holding: null as { scale: number } | null,
   };
   const world: MissionWorld = {
     enemiesIn: (a) => w.enemies.get(a) ?? 0,
@@ -58,9 +62,61 @@ function fake() {
     soldierDead: () => w.dead || w.wipe,
     protectedLost: (id) => w.protected.has(id),
     group: (id) => w.groups.get(id) ?? { dead: false, spawned: 0, down: 0 },
+    rescue: () => ({ held: w.held, holding: w.holding }),
   };
   return { w, world };
 }
+
+describe('rescue (U-063)', () => {
+  const RESCUE: ObjectiveDef = { type: 'rescue', label: 'Vance', holdSeconds: 5, reachM: 2 };
+
+  it('counts the hold while someone keeps it, starts over when they let go, and completes at the hold', () => {
+    const run = runOf([RESCUE]);
+    const { w, world } = fake();
+    w.held = 1;
+    run.step(world);
+    expect(run.current).toMatchObject({ state: 'progress', type: 'rescue', progress: 0, goal: ticks(5), satisfied: false });
+    w.holding = { scale: 1 };
+    for (let i = 0; i < ticks(5) - 1; i++) run.step(world);
+    expect(run.current).toMatchObject({ state: 'progress', progress: ticks(5) - 1, satisfied: true });
+    w.holding = null;
+    run.step(world);
+    expect(run.current).toMatchObject({ progress: 0, satisfied: false });
+    w.holding = { scale: 1 };
+    for (let i = 0; i < ticks(5); i++) run.step(world);
+    expect(run.current.state).toBe('complete');
+  });
+
+  it('is quicker for a soldier with a shorter interaction time', () => {
+    const run = runOf([RESCUE]);
+    const { w, world } = fake();
+    w.held = 1;
+    w.holding = { scale: 0.8 };
+    run.step(world);
+    expect(run.current.goal).toBe(ticks(4));
+    for (let i = 0; i < ticks(4); i++) run.step(world);
+    expect(run.current.state).toBe('complete');
+  });
+
+  it('completes at once with nobody held, and goes on to the next objective', () => {
+    const run = runOf([RESCUE, { type: 'survive', label: 'the night', seconds: 60 }]);
+    const { world } = fake();
+    run.step(world);
+    expect(run.current).toMatchObject({ state: 'progress', objective: 1, type: 'survive' });
+  });
+
+  it('parses a rescue and refuses a bad one', () => {
+    const base = { id: 'test', world: 'greybox-01', respawn: false };
+    const ok = parseMission({ ...base, objectives: [{ type: 'rescue', label: 'Vance', holdSeconds: 5, reachM: 2, slot: 5 }] });
+    expect(ok.objectives[0]).toEqual({ type: 'rescue', label: 'Vance', slot: 5, holdSeconds: 5, reachM: 2 });
+    const bad = (o: Record<string, unknown>) => () => parseMission({ ...base, objectives: [{ type: 'rescue', label: 'x', holdSeconds: 5, reachM: 2, ...o }] });
+    expect(bad({ slot: 6 })).toThrow(/slot/);
+    expect(bad({ slot: 1.5 })).toThrow(/slot/);
+    expect(bad({ reachM: 9 })).toThrow(/reachM/);
+    expect(bad({ holdSeconds: -1 })).toThrow(/holdSeconds/);
+    expect(bad({ extra: true })).toThrow(/unknown/);
+  });
+});
 
 describe('each objective type, on its own (T-4.14)', () => {
   it('fails when all six are down even though none has died', () => {

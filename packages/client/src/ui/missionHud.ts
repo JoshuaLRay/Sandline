@@ -27,6 +27,9 @@ function objectiveText(view: MissionView): string {
       return `survive ${view.label}  ·  ${clock}`;
     case 'upload':
       return uploadText(view);
+    case 'rescue':
+      // U-063: nobody held completes it at once; otherwise the hold is the clock.
+      return view.satisfied ? `freeing ${view.label}  ·  ${clock}  ·  keep holding E` : `free ${view.label}  ·  hold E beside them  ·  ${secs(view.goal, Math.round)} s`;
   }
 }
 

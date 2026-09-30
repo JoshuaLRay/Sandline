@@ -23,7 +23,7 @@ import MISSION_01 from '../data/missions/mission-01.json' with { type: 'json' };
 import type { AreaRef, Encounter } from './encounters.ts';
 import type { World } from './world.ts';
 
-export const OBJECTIVE_TYPES = ['clear-and-hold', 'reach', 'destroy', 'defend', 'survive', 'upload'] as const;
+export const OBJECTIVE_TYPES = ['clear-and-hold', 'reach', 'destroy', 'defend', 'survive', 'upload', 'rescue'] as const;
 export type ObjectiveType = (typeof OBJECTIVE_TYPES)[number];
 
 /** U-009: what an interrupted upload keeps. The order is not on the wire. */
@@ -74,6 +74,14 @@ export type ObjectiveDef = { label: string } & (
    * starts over, and either way a soldier restarts it at the terminal.
    */
   | { type: 'upload'; terminal: MissionPoint; reachM: number; seconds: number; onInterrupt: UploadOnInterrupt; lever?: UploadLever }
+  /**
+   * U-063: free a prisoner (U-061). A standing squad soldier within `reachM` of a held prisoner, with a clear line to
+   * them, holds interact for `holdSeconds` (less for a character with a shorter interaction time, U-049); letting go,
+   * leaving or going down sets the hold back to nothing. `slot` names the prisoner to free (0–5); without it, any one.
+   * The place is the prisoner's own, saved with the campaign. With nobody held, there is nothing to free and the
+   * objective is complete at once, so a campaign that lost no one is not stuck.
+   */
+  | { type: 'rescue'; slot?: number; holdSeconds: number; reachM: number }
 );
 
 /** Mission-wide failure rules beyond the always-on squad loss rule. */
@@ -180,7 +188,7 @@ function point(where: string, v: unknown): MissionPoint {
 }
 
 function parseObjective(where: string, raw: unknown): ObjectiveDef {
-  const head = obj(where, raw, ['type', 'label'], ['area', 'holdSeconds', 'who', 'group', 'seconds', 'breachSeconds', 'terminal', 'reachM', 'onInterrupt', 'lever']);
+  const head = obj(where, raw, ['type', 'label'], ['area', 'holdSeconds', 'who', 'group', 'seconds', 'breachSeconds', 'terminal', 'reachM', 'onInterrupt', 'lever', 'slot']);
   const type = head['type'];
   if (typeof type !== 'string' || !(OBJECTIVE_TYPES as readonly string[]).includes(type)) {
     throw new MissionDataError(`${where}.type must be one of ${OBJECTIVE_TYPES.join(', ')}, got ${JSON.stringify(type)}`);
@@ -215,6 +223,18 @@ function parseObjective(where: string, raw: unknown): ObjectiveDef {
     case 'survive': {
       const o = obj(where, raw, ['type', 'label', 'seconds']);
       return { type: 'survive', label, seconds: seconds(`${where}.seconds`, o['seconds']) };
+    }
+    case 'rescue': {
+      const o = obj(where, raw, ['type', 'label', 'holdSeconds', 'reachM'], ['slot']);
+      const reachM = o['reachM'];
+      if (typeof reachM !== 'number' || !Number.isFinite(reachM) || reachM <= 0 || reachM > UPLOAD_REACH_MAX_M) {
+        throw new MissionDataError(`${where}.reachM must be a number in (0, ${UPLOAD_REACH_MAX_M}], got ${JSON.stringify(reachM)}`);
+      }
+      const slot = o['slot'];
+      if (slot !== undefined && (typeof slot !== 'number' || !Number.isInteger(slot) || slot < 0 || slot > 5)) {
+        throw new MissionDataError(`${where}.slot must be a slot 0–5, got ${JSON.stringify(slot)}`);
+      }
+      return { type: 'rescue', label, ...(slot === undefined ? {} : { slot }), holdSeconds: seconds(`${where}.holdSeconds`, o['holdSeconds']), reachM };
     }
     case 'upload': {
       const o = obj(where, raw, ['type', 'label', 'terminal', 'reachM', 'seconds', 'onInterrupt'], ['lever']);

@@ -36,6 +36,12 @@ describe('the mission HUD line (T-3.34, T-4.14)', () => {
     expect(missionLine(view({ type: 'survive', label: 'the night', goal: T(90), progress: T(45), satisfied: true }))).toBe('Objective: survive the night  ·  45/90 s');
   });
 
+  it('says what a rescue wants: hold E beside the prisoner, and how far along the hold is (U-063)', () => {
+    const rescue = (v: Partial<MissionView>) => view({ type: 'rescue', label: 'Vance', goal: T(5), ...v });
+    expect(missionLine(rescue({}))).toBe('Objective: free Vance  ·  hold E beside them  ·  5 s');
+    expect(missionLine(rescue({ satisfied: true, progress: T(2) }))).toBe('Objective: freeing Vance  ·  2/5 s  ·  keep holding E');
+  });
+
   it('says what an upload wants in each of its phases: start it, it runs without you, restart it (U-009)', () => {
     const upload = (v: Partial<MissionView>) => view({ type: 'upload', label: 'the relay', goal: T(60), ...v });
     expect(missionLine(upload({ phase: 'idle' }))).toBe('Objective: start the upload at the relay  ·  E at the terminal');
