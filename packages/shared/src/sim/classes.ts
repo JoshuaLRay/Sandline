@@ -41,6 +41,8 @@ export interface ClassDef {
    * discount, so a 10 s health kit takes 8 s. Default 1. Not for firing, reloading or swapping.
    */
   readonly interactionTimeScale: number;
+  /** A multiple on walking and sprinting speed (U-050): the support's 1.1 is the owner's +10%. Default 1. */
+  readonly speedScale: number;
   /**
    * May carry two primaries at once (U-022): only Preach and the support. The
    * second is another AR, SMG or shotgun; never with an LMG, marksman rifle
@@ -115,6 +117,7 @@ export function parseClassConfig(raw: unknown): ClassConfig {
       guns: guns as string[],
       pouch,
       orders,
+      speedScale: row['speedScale'] === undefined ? 1 : num(row, 'speedScale', where, 0.5, 2),
       interactionTimeScale: row['interactionTimeScale'] === undefined ? 1 : num(row, 'interactionTimeScale', where, 0.1, 2),
       healthKits: row['healthKits'] === undefined ? 3 : num(row, 'healthKits', where, 0, 7),
       dualPrimary: bool(row, 'dualPrimary', where, false),

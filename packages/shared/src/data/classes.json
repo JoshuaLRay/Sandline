@@ -1,5 +1,5 @@
 {
-  "$comment": "T-4.27, U-021. The squad's six characters (docs/design/squad-roster.md), as data, each bound to its slot by `slotDefaults` and never picked. (The file and the wire still say \"class\": a character's id is the `classId` a roster and a save carry.) Each is a loadout — the guns it carries (weapons.json ids, the first in hand at spawn; a second non-sidearm gun is the secondary, key 2) and the pouch it spawns with (projectiles.json id → count; an id left out is 0) — its health, and what it may do: `orders` is whom its orders reach, the whole `squad` or only its own `fireteam` (squad.json); target marking is open to everyone (ADR-001). `dualPrimary` (default false) lets a character carry two primaries (Preach picks his second up; the support starts with both); `ads` and `firstPerson` (default true) are what a shooter may do: the support has neither. Order scopes keep what each slot had as a Team Leader or Marksman (slots 0-2 reach the squad, 3-5 their fireteam), so the commander model (U-025) works as before. Healths, pouches and anything else other than the owner's decisions (Preach leads, the support's guns and restrictions, Brennan's rocket launcher) are PROPOSALS. `interactionTimeScale` (default 1) multiplies the time of the character's timed interactions — revive and health kits; the support's 0.8 is the owner's 20% discount (2026-09-29). The owner deferred skills (2026-09-29).",
+  "$comment": "T-4.27, U-021. The squad's six characters (docs/design/squad-roster.md), as data, each bound to its slot by `slotDefaults` and never picked. (The file and the wire still say \"class\": a character's id is the `classId` a roster and a save carry.) Each is a loadout — the guns it carries (weapons.json ids, the first in hand at spawn; a second non-sidearm gun is the secondary, key 2) and the pouch it spawns with (projectiles.json id → count; an id left out is 0) — its health, and what it may do: `orders` is whom its orders reach, the whole `squad` or only its own `fireteam` (squad.json); target marking is open to everyone (ADR-001). `dualPrimary` (default false) lets a character carry two primaries (Preach picks his second up; the support starts with both); `ads` and `firstPerson` (default true) are what a shooter may do: the support has neither. Order scopes keep what each slot had as a Team Leader or Marksman (slots 0-2 reach the squad, 3-5 their fireteam), so the commander model (U-025) works as before. Healths, pouches and anything else other than the owner's decisions (Preach leads, the support's guns and restrictions, Brennan's rocket launcher) are PROPOSALS. `interactionTimeScale` (default 1) multiplies the time of the character's timed interactions — revive and health kits; the support's 0.8 is the owner's 20% discount (2026-09-29). `speedScale` (default 1) multiplies walking and sprinting speed; the support's 1.1 is the owner's +10% (2026-09-29). The owner deferred skills (2026-09-29).",
   "classes": {
     "preach": {
       "name": "Preach",
@@ -45,7 +45,8 @@
       "ads": false,
       "firstPerson": false,
       "dualPrimary": true,
-      "interactionTimeScale": 0.8
+      "interactionTimeScale": 0.8,
+      "speedScale": 1.1
     },
     "ortiz": {
       "name": "Ortiz",

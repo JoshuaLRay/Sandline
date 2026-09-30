@@ -89,6 +89,14 @@ export interface MoveInput {
    */
   downed?: boolean;
   /**
+   * A multiple on walking and sprinting speed (U-050): the support's 1.1. Not a
+   * button and not on the wire: the host sets it from the soldier's character
+   * each tick, and the client predictor from its own, so both step the same
+   * input and a forged one changes nothing. Default 1. Crouch and prone are
+   * not scaled.
+   */
+  speedScale?: number;
+  /**
    * The trigger is held (T-2.21). Movement ignores it except to refuse a
    * vault: a soldier does not throw themselves over a wall mid-burst. A
    * client that lies about it can only deny itself vaults.
@@ -233,9 +241,7 @@ export function stepCharacter(
       ? config.proneSpeed
       : level === 1
         ? config.crouchSpeed
-        : input.sprint
-          ? config.sprintSpeed
-          : config.walkSpeed;
+        : (input.sprint ? config.sprintSpeed : config.walkSpeed) * (input.speedScale ?? 1);
 
   // Table trig, not Math.cos. See the header.
   const a: BinAngle = wireToTable(input.yaw);

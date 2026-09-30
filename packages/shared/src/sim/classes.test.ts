@@ -95,4 +95,11 @@ describe('how far an order reaches (T-4.27)', () => {
     raw.classes[CLASSES.ids[0]!]!['interactionTimeScale'] = 0;
     expect(() => parseClassConfig(raw)).toThrow(ClassDataError);
   });
+
+  it('only the support is faster (1.1), the rest 1, and the data is bounded (U-050)', () => {
+    for (const id of CLASSES.ids) expect(classById(id)?.speedScale, id).toBe(id === 'holloway' ? 1.1 : 1);
+    const raw = JSON.parse(JSON.stringify(RAW)) as { classes: Record<string, Record<string, unknown>> };
+    raw.classes[CLASSES.ids[0]!]!['speedScale'] = 3;
+    expect(() => parseClassConfig(raw)).toThrow(ClassDataError);
+  });
 });

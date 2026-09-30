@@ -599,3 +599,23 @@ describe('vault (T-2.21)', () => {
     expect(b).toEqual(a);
   });
 });
+
+describe('speed scale (U-050)', () => {
+  const dist = (inp: MoveInput) => {
+    const d = move(inp);
+    return Math.sqrt(d.x * d.x + d.z * d.z);
+  };
+
+  it('scales walking and sprinting, and only those; the default is no change', () => {
+    expect(dist(input({ moveY: 1, speedScale: 1.1 }))).toBeCloseTo(dist(input({ moveY: 1 })) * 1.1, 9);
+    expect(dist(input({ moveY: 1, sprint: true, speedScale: 1.1 }))).toBeCloseTo(dist(input({ moveY: 1, sprint: true })) * 1.1, 9);
+    expect(dist(input({ moveY: 1, speedScale: 1 }))).toBe(dist(input({ moveY: 1 })));
+    // Crouched and prone speeds are not the support's to raise.
+    expect(dist(input({ moveY: 1, crouch: true, speedScale: 1.1 }))).toBe(dist(input({ moveY: 1, crouch: true })));
+    expect(dist(input({ moveY: 1, prone: true, speedScale: 1.1 }))).toBe(dist(input({ moveY: 1, prone: true })));
+  });
+
+  it('a downed soldier is still held still', () => {
+    expect(dist(input({ moveY: 1, downed: true, speedScale: 1.1 }))).toBe(0);
+  });
+});
