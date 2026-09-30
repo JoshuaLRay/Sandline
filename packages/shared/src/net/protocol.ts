@@ -19,7 +19,7 @@ import { WEAPON_IDS, WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 import { PROJECTILE_IDS, PROJECTILE_INDEX_BITS } from '../sim/ballistics.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 56;
+export const PROTOCOL_VERSION = 57;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -101,6 +101,8 @@ export interface RosterEntry {
    * and for a bot while no human is seated (the session is paused then).
    */
   commander: number;
+  /** U-061: held prisoner by the enemy: the character cannot be played until rescued. */
+  captured: boolean;
 }
 
 export const MessageType = {
@@ -688,6 +690,7 @@ export function encodeMessage(msg: Message): Uint8Array {
         w.writeString(entry.classId);
         // -1..6 as 0..7: none, or a slot.
         w.writeBits((entry.commander + 1) & 0x7, 3);
+        w.writeBool(entry.captured);
       }
       break;
     case 'AiDebugRequest':
@@ -1178,7 +1181,8 @@ export function decodeMessage(bytes: Uint8Array): Message {
           const human = r.readBool();
           const name = r.readString();
           const classId = r.readString();
-          slots.push({ human, name, classId, commander: r.readBits(3) - 1 });
+          const commander = r.readBits(3) - 1;
+          slots.push({ human, name, classId, commander, captured: r.readBool() });
         }
         return { kind: 'Roster', slots };
       }

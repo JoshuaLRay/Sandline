@@ -65,12 +65,12 @@ const SAMPLES: Message[] = [
   {
     kind: 'Roster',
     slots: [
-      { human: true, name: 'ray', classId: 'team-leader', commander: -1 },
-      { human: false, name: '', classId: 'marksman', commander: 0 },
-      { human: true, name: 'austin', classId: 'marksman', commander: -1 },
-      { human: false, name: '', classId: 'marksman', commander: 2 },
-      { human: false, name: '', classId: 'marksman', commander: 0 },
-      { human: false, name: '', classId: 'marksman', commander: 5 },
+      { human: true, name: 'ray', classId: 'team-leader', commander: -1, captured: false },
+      { human: false, name: '', classId: 'marksman', commander: 0, captured: false },
+      { human: true, name: 'austin', classId: 'marksman', commander: -1, captured: false },
+      { human: false, name: '', classId: 'marksman', commander: 2, captured: false },
+      { human: false, name: '', classId: 'marksman', commander: 0, captured: false },
+      { human: false, name: '', classId: 'marksman', commander: 5, captured: false },
     ],
   },
   // U-025: every bot and commander slot there is, the edges of three bits included.

@@ -71,12 +71,12 @@ describe('stance (T-4.25)', () => {
 
 describe('the squad rows (T-4.25)', () => {
   const roster: RosterEntry[] = [
-    { name: 'kai', human: true, classId: 'preach', commander: -1 },
-    { name: '', human: false, classId: 'brennan', commander: 0 },
-    { name: 'rae', human: true, classId: 'holloway', commander: -1 },
-    { name: '', human: false, classId: 'ortiz', commander: 2 },
-    { name: '', human: false, classId: 'marsh', commander: 0 },
-    { name: '', human: false, classId: 'vance', commander: 0 },
+    { name: 'kai', human: true, classId: 'preach', commander: -1, captured: false },
+    { name: '', human: false, classId: 'brennan', commander: 0, captured: false },
+    { name: 'rae', human: true, classId: 'holloway', commander: -1, captured: false },
+    { name: '', human: false, classId: 'ortiz', commander: 2, captured: false },
+    { name: '', human: false, classId: 'marsh', commander: 0, captured: false },
+    { name: '', human: false, classId: 'vance', commander: 0, captured: false },
   ];
   const orders: BotOrder[] = [{ slot: 1, order: 'move', point: { x: 1, y: 0, z: 2 }, target: null, from: 0 }];
   it('is six rows always: names for people, Bot for bots, the host\'s vitality and the order each bot is under', () => {

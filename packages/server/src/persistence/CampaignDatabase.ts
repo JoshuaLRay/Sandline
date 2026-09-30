@@ -13,6 +13,10 @@ export interface SoldierSave {
   classId: string;
   rank: number;
   xp: number;
+  /** U-061: held prisoner by the enemy, to be rescued. Absent: free. */
+  captured?: boolean;
+  /** U-061: where the prisoner is held, while `captured`. */
+  prisoner?: { x: number; y: number; z: number } | null;
 }
 
 export interface CampaignCheckpoint {
@@ -122,7 +126,14 @@ function normalizedState(input: CampaignState): CampaignState {
     if (typeof soldier.classId !== 'string') throw new Error(`soldier ${slot} classId must be a string`);
     if (!Number.isInteger(soldier.rank) || soldier.rank < 0) throw new Error(`soldier ${slot} rank must be a non-negative integer`);
     if (!Number.isInteger(soldier.xp) || soldier.xp < 0) throw new Error(`soldier ${slot} xp must be a non-negative integer`);
-    return { slot, classId: soldier.classId, rank: soldier.rank, xp: soldier.xp };
+    const base = { slot, classId: soldier.classId, rank: soldier.rank, xp: soldier.xp };
+    if (soldier.captured !== true) return base;
+    // U-061: a prisoner needs a place to be held; a captured record without one is a malformed save.
+    const at = soldier.prisoner;
+    if (!at || !Number.isFinite(at.x) || !Number.isFinite(at.y) || !Number.isFinite(at.z)) {
+      throw new Error(`soldier ${slot} is captured but has no finite prisoner position`);
+    }
+    return { ...base, captured: true, prisoner: { x: at.x, y: at.y, z: at.z } };
   });
   let checkpoint: CampaignCheckpoint | null = null;
   if (input.checkpoint !== null) {
