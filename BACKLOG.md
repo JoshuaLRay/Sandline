@@ -70,7 +70,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-043](docs/backlog/U-043.md) | Distinct report and handling sounds for the roster weapons | Audio | P2 | DONE | U-040 | [#200](https://github.com/JoshuaLRay/Sandline/pull/200) |
 | [U-021](docs/backlog/U-021.md) | Bind six persistent characters to the squad slots | Squad | P2 | DONE | U-019, U-020 | [#202](https://github.com/JoshuaLRay/Sandline/pull/202) |
 | [U-022](docs/backlog/U-022.md) | Implement dual-primary rules for Preach and Support | Squad | P2 | DONE | U-018, U-020, U-021 | [#204](https://github.com/JoshuaLRay/Sandline/pull/204) |
-| [U-029](docs/backlog/U-029.md) | Enforce squad weapon exchanges and left-handed loot access | Squad | P2 | READY | U-018, U-020, U-021 | — |
+| [U-029](docs/backlog/U-029.md) | Enforce squad weapon exchanges and left-handed loot access | Squad | P2 | REVIEW | U-018, U-020, U-021 | — |
 | [U-023](docs/backlog/U-023.md) | Break approved character skills into implementation tasks | Squad | P2 | BLOCKED | Owner deferred skills to a later version (2026-09-29); needs a new go-ahead | — |
 | [U-032](docs/backlog/U-032.md) | Capture downed characters as prisoners for next-mission rescue | Campaign | P2 | INBOX | U-031; design decomposition needed | — |
 | [U-035](docs/backlog/U-035.md) | Add an enemy tank that attacks during mission-01's upload | Mission / vehicle combat | P2 | INBOX | Vehicle simulation and damage design; route geometry and asset decisions | — |
@@ -85,6 +85,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-049](docs/backlog/U-049.md) | Per-character interaction-speed multiplier (the Support's 20% discount) | Squad | P2 | READY | U-021 | — |
 | [U-050](docs/backlog/U-050.md) | The support runs 10% faster | Squad | P2 | READY | U-021 | — |
 | [U-051](docs/backlog/U-051.md) | A joining player may take any free slot | Squad | P2 | READY | U-021 | — |
+| [U-052](docs/backlog/U-052.md) | Authored loot: a mission places a left-handed gun for the sniper | Squad | P3 | INBOX | U-029 | — |
 
 ## Existing work retained
 

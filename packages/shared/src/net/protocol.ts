@@ -18,7 +18,7 @@ import type { MissionStats } from '../sim/scoreboard.ts';
 import { WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 46;
+export const PROTOCOL_VERSION = 47;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -29,6 +29,8 @@ export const INPUT_BUTTONS = Object.freeze({
   fire: 0b10000,
   /** T-2.40, ADR-016: voluntary prone. Beats crouch when both are held. */
   prone: 0b100000,
+  /** U-029: G puts the held gun on the ground. Carried on the one input frame it was pressed on. */
+  drop: 0b1000000,
 });
 
 /**

@@ -80,7 +80,7 @@ import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { type ClientLink, DEFAULT_LINK, type LinkConditions, LocalServer, type LocalServerOptions } from './net/LocalServer.ts';
 import { type NavMesh, initNav } from '@sandline/server/nav';
-import { NetClient, type RemoteEmplacement, type ServerDetonation, type ServerShot } from './net/NetClient.ts';
+import { NO_PRIMARY, NetClient, type RemoteEmplacement, type ServerDetonation, type ServerShot } from './net/NetClient.ts';
 import { type EmplacementModel, createEmplacementModel } from './weapons/emplacementModel.ts';
 import { syncHostPrimary, type PrimarySeen } from './weapons/hostPrimary.ts';
 import { PickupModels, pickupInReach } from './weapons/pickupModels.ts';
@@ -606,11 +606,15 @@ function hostSecondary(): string | null {
  */
 function carriedGuns(): readonly string[] | null {
   if (!localLoadout) return null;
+  // U-029: every primary put down leaves the pistol the class lists, if any.
+  // U-029: the pistol too can be put down, until a respawn or taking it up again.
+  const pistol = live?.net.noPistol ? [] : localLoadout.guns.filter((g) => g === 'sidearm');
+  if (live?.net.primary === NO_PRIMARY) return pistol;
   const primary = hostPrimary();
-  if (!primary) return localLoadout.guns;
+  if (!primary) return live?.net.noPistol ? localLoadout.guns.filter((g) => g !== 'sidearm') : localLoadout.guns;
   const second = hostSecondary();
   // A second primary replaces the pistol (U-022).
-  return second ? [primary, second] : [primary, ...localLoadout.guns.filter((g) => g === 'sidearm')];
+  return second ? [primary, second] : [primary, ...pistol];
 }
 /** U-018: the host's primary last seen, to notice a new one (taken off the ground, or given back on a respawn). */
 let primarySeen: PrimarySeen | null = null;

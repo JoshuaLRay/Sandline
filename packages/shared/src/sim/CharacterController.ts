@@ -76,6 +76,8 @@ export interface MoveInput {
   prone?: boolean;
   /** T-2.15: hold the interact button to revive a nearby downed teammate. */
   interact?: boolean;
+  /** U-029: G, put the held gun on the ground. The host judges it; the step ignores it. */
+  drop?: boolean;
   /**
    * Downed (T-2.13, B-05): immobile. Not a button — the server sets it from
    * the soldier's vitality and the client predictor from the replicated one,

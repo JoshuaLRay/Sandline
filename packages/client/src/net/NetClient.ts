@@ -200,6 +200,9 @@ export interface NetStats {
   reviverSlot: number;
 }
 
+/** U-029: `NetClient.primary` when the host says the soldier carries no primary (it has put them all down). */
+export const NO_PRIMARY = -1;
+
 export class NetClient {
   private readonly store = new SnapshotStore();
   private predictor: Predictor | null = null;
@@ -276,6 +279,8 @@ export class NetClient {
   /** U-018: our own soldier's primary (a WEAPON_IDS index) as the host last said; null before it has. */
   private primaryValue: number | null = null;
   /** U-022: our own soldier's second primary as the host last said (a WEAPON_IDS index); null for none, and before it has said. */
+  /** U-029: the host says our soldier has put its pistol down. */
+  private noPistolValue = false;
   private secondaryValue: number | null = null;
   /**
    * Replicated with the health (T-2.13). Vitality is gameplay, not cosmetic:
@@ -547,6 +552,10 @@ export class NetClient {
   }
 
   /** U-022: our own soldier's second primary, a WEAPON_IDS index; null when it carries only one (or the host has not said). */
+  get noPistol(): boolean {
+    return this.noPistolValue;
+  }
+
   get secondary(): number | null {
     return this.secondaryValue;
   }
@@ -712,6 +721,7 @@ export class NetClient {
     this.magazineValue = null;
     this.primaryValue = null;
     this.secondaryValue = null;
+    this.noPistolValue = false;
     this.vitalityValue = 'alive';
     this.vitalTimerValue = 0;
     this.reviveProgressValue = 0;
@@ -755,7 +765,8 @@ export class NetClient {
       (input.crouch ? INPUT_BUTTONS.crouch : 0) |
       (input.interact ? INPUT_BUTTONS.interact : 0) |
       (input.firing ? INPUT_BUTTONS.fire : 0) |
-      (input.prone ? INPUT_BUTTONS.prone : 0);
+      (input.prone ? INPUT_BUTTONS.prone : 0) |
+      (input.drop ? INPUT_BUTTONS.drop : 0);
     this.transport.send(
       encodeMessage({
         kind: 'Input',
@@ -1430,9 +1441,12 @@ export class NetClient {
         // U-028: the host's magazine, and the gun it is in.
         if (weapon && weapon.length > 3 + PROJECTILE_IDS.length) {
           this.magazineValue = { weapon: (weapon[0] as number | undefined) ?? 0, ammo: (weapon[3 + PROJECTILE_IDS.length] as number | undefined) ?? 0 };
-          this.primaryValue = (weapon[4 + PROJECTILE_IDS.length] as number | undefined) ?? null;
+          const first = weapon[4 + PROJECTILE_IDS.length] as number | undefined;
+          // U-029: the soldier put every primary down — NO_PRIMARY, not "the host has not said" (null).
+          this.primaryValue = first === undefined ? null : first === NO_SECONDARY ? NO_PRIMARY : first;
           const second = weapon[5 + PROJECTILE_IDS.length] as number | undefined;
           this.secondaryValue = second === undefined || second === NO_SECONDARY ? null : second;
+          this.noPistolValue = (weapon[6 + PROJECTILE_IDS.length] as number | undefined) === 1;
         }
         const velocity = entity.components[V];
         if (this.spectatedSlotValue >= 0) {
