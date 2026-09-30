@@ -47,6 +47,22 @@ describe('who carries two primaries (U-022)', () => {
   });
 });
 
+describe('two primaries mean no pistol (U-022)', () => {
+  it('Preach has the pistol with one primary and gives it up on taking a second', () => {
+    const { session, x, at, take } = room();
+    const s = at(0);
+    expect(x.carries(s, 'sidearm')).toBe(true);
+    expect(take(0, 'smg')).toBe(true);
+    expect(session.loadoutOf(0)).toMatchObject({ primary: 'carbine', secondary: 'smg', weapon: 'smg' });
+    expect(x.carries(s, 'sidearm')).toBe(false);
+    expect(s.stowed.has('sidearm')).toBe(false);
+    // A respawn gives the class back: one primary and the pistol again.
+    x.restorePrimary(s);
+    expect(session.loadoutOf(0).secondary).toBeNull();
+    expect(x.carries(s, 'sidearm')).toBe(true);
+  });
+});
+
 describe('each gun keeps its own magazine (U-022)', () => {
   it('rounds spent on one primary are still gone when it is drawn again, and the other is untouched', () => {
     const { x, at } = room();

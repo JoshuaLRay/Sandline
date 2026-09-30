@@ -29,7 +29,8 @@ export function weaponIndexForKey(code: string, context: WeaponKeyContext): numb
     const guns = context.loadoutGuns ?? FREE_RANGE_GUNS;
     // 2 is the secondary (U-044): the pistol, or for a character without one (the support) its other primary.
     const primary = context.primary ?? guns.find((id) => id !== 'sidearm');
-    const pistol = guns.find((id) => id === 'sidearm');
+    // A character with a second primary has no pistol (U-022), whatever the class lists.
+    const pistol = context.secondary ? undefined : guns.find((id) => id === 'sidearm');
     const second = context.secondary ?? guns.find((id) => id !== 'sidearm' && id !== primary);
     // Key 2 is the pistol, or the second primary; a character with both cycles between them.
     const twoSecondaries = pistol !== undefined && second !== undefined && second !== pistol;

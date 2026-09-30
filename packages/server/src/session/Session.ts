@@ -1898,7 +1898,8 @@ export class Session {
     const def = classById(this.classSlots[slot.index] ?? '');
     if (!def) return true;
     // Anything else on the class's list is the pistol; its other guns are the primary and the second primary, held above.
-    return gun === 'sidearm' && def.guns.includes('sidearm');
+    // With a second primary in hand-reach there is no pistol (Preach, like the support): it goes with the second gun.
+    return gun === 'sidearm' && def.guns.includes('sidearm') && slot.secondary === null;
   }
 
   /**
@@ -2012,6 +2013,8 @@ export class Session {
     }
     if (into === 'primary') slot.primary = gun;
     else slot.secondary = gun;
+    // Two primaries and a pistol do not go together (U-022): taking the second gives the pistol up.
+    if (slot.secondary !== null) slot.stowed.delete('sidearm');
     slot.pickedUp = true;
     slot.weapon = getWeapon(gun);
     slot.stowed.delete(gun);
