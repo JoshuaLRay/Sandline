@@ -77,7 +77,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-037](docs/backlog/U-037.md) | Keep mobile controls and layout when the phone is rotated | Mobile | P1 | DONE | — | [#182](https://github.com/JoshuaLRay/Sandline/pull/182) |
 | [U-038](docs/backlog/U-038.md) | Mobile zoom-out limit: 6x portrait, 3x landscape | Mobile | P1 | DONE | U-037 | [#183](https://github.com/JoshuaLRay/Sandline/pull/183) |
 | [U-039](docs/backlog/U-039.md) | Never show the crosshair on mobile | Mobile | P1 | DONE | — | [#184](https://github.com/JoshuaLRay/Sandline/pull/184) |
-| [U-044](docs/backlog/U-044.md) | Long-term control scheme: slots 1–6, swap to use, right-click aim, left-click use (umbrella) | Controls | P2 | BLOCKED | U-046, U-047, U-048, U-049 | — |
+| [U-044](docs/backlog/U-044.md) | Long-term control scheme: slots 1–6, swap to use, right-click aim, left-click use (umbrella) | Controls | P2 | DONE | U-046, U-047, U-048, U-049 | — |
 | [U-045](docs/backlog/U-045.md) | Weapon and device slots 1–6 with swap-to-use | Controls | P2 | DONE | — | [#195](https://github.com/JoshuaLRay/Sandline/pull/195) |
 | [U-046](docs/backlog/U-046.md) | Right click aims, left click uses | Controls | P2 | DONE | U-045 | [#209](https://github.com/JoshuaLRay/Sandline/pull/209) |
 | [U-047](docs/backlog/U-047.md) | Health kits | Controls | P2 | DONE | U-045 (the Support's 8 s waits on U-049) | [#211](https://github.com/JoshuaLRay/Sandline/pull/211) |
@@ -90,8 +90,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-054](docs/backlog/U-054.md) | C4 for the Support: throw it, place it, detonate it | Controls | P2 | DONE | U-048 | [#219](https://github.com/JoshuaLRay/Sandline/pull/219) |
 | [U-055](docs/backlog/U-055.md) | Claymore for the left-handed sniper | Controls | P3 | DONE | U-054 | [#221](https://github.com/JoshuaLRay/Sandline/pull/221) |
 | [U-056](docs/backlog/U-056.md) | Concussion grenades for Preach | Controls | P2 | DONE | U-048 | [#220](https://github.com/JoshuaLRay/Sandline/pull/220) |
-| [U-057](docs/backlog/U-057.md) | Motion sensor for the right-handed sniper | Controls | P3 | REVIEW | U-054 | `task/U-057-motion-sensor` |
-| [U-058](docs/backlog/U-058.md) | Smoke grenades for Ortiz | Controls | P3 | READY | U-048 | — |
+| [U-057](docs/backlog/U-057.md) | Motion sensor for the right-handed sniper | Controls | P3 | DONE | U-054 | [#222](https://github.com/JoshuaLRay/Sandline/pull/222) |
+| [U-058](docs/backlog/U-058.md) | Smoke grenades for Ortiz | Controls | P3 | REVIEW | U-048 | — |
 
 ## Existing work retained
 

@@ -108,6 +108,10 @@ export interface ProjectileDef {
   senseM: number;
   /** The horizontal speed, m/s, an enemy must exceed for a sensor to mark it. */
   senseSpeedMps: number;
+  /** The projectile a detonation of this one releases where it goes off (U-058: a smoke grenade releases its cloud); empty for none. */
+  releases: string;
+  /** A placed cloud of this radius, metres, blocks sight through it (U-058); 0 is not a cloud. */
+  smokeM: number;
   /** How many a soldier carries. */
   carried: number;
   /** Minimum seconds between two of these leaving the same hand. */
@@ -119,7 +123,7 @@ export interface ProjectileDef {
  * index is what travels in a Throw message and in the `Projectile` component,
  * so reordering this is a PROTOCOL_VERSION bump.
  */
-export const PROJECTILE_IDS = ['frag', 'rocket', 'c4', 'concussion', 'claymore', 'sensor'] as const;
+export const PROJECTILE_IDS = ['frag', 'rocket', 'c4', 'concussion', 'claymore', 'sensor', 'smoke', 'smokecloud'] as const;
 
 /**
  * Bits a projectile index takes on the wire (U-048): the Projectile component's kind, a Throw, a Detonation and the
@@ -215,6 +219,8 @@ function parseProjectileDef(key: string, raw: unknown): ProjectileDef {
     triggerM: num(row, 'triggerM', key, 0, 30),
     senseM: num(row, 'senseM', key, 0, 100),
     senseSpeedMps: num(row, 'senseSpeedMps', key, 0, 20),
+    releases: typeof row['releases'] === 'string' ? row['releases'] : '',
+    smokeM: num(row, 'smokeM', key, 0, 50),
     carried: num(row, 'carried', key, 0, 99),
     cooldownSeconds: num(row, 'cooldownSeconds', key, 0, 60),
   };
@@ -224,6 +230,9 @@ function parseProjectileDef(key: string, raw: unknown): ProjectileDef {
     throw new ProjectileDataError(
       `projectile "${key}": with no fuse and no impact detonation it can only die of old age`,
     );
+  }
+  if (def.releases !== '' && !(PROJECTILE_IDS as readonly string[]).includes(def.releases)) {
+    throw new ProjectileDataError(`projectile "${key}": releases unknown projectile "${def.releases}"`);
   }
   if (def.fuseSeconds > def.maxLifeSeconds) {
     throw new ProjectileDataError(

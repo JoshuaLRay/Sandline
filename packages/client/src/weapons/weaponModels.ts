@@ -184,6 +184,30 @@ const BUILDERS: Record<string, Builder> = {
       hip: [0.14, -0.1, -0.08],
     };
   },
+  smoke(g) {
+    // A tall grey canister with a spoon, held low like the frag (a placeholder until it is drawn).
+    tube(g, 'metal', 0.032, 0.14, [0, -0.04, 0.2], 8);
+    box(g, 'metal', [0.022, 0.03, 0.024], [0, 0.04, 0.2]);
+    box(g, 'metal', [0.012, 0.08, 0.01], [-0.03, -0.01, 0.2], 0.1);
+    return {
+      gripRight: [0, -0.08, 0.2],
+      gripLeft: [0.2, -0.16, 0.26],
+      sight: [0, -0.04, 0.2],
+      eyeRelief: 0.3,
+      hip: [0.14, -0.1, -0.08],
+    };
+  },
+  // The cloud is never held; it has a model only because every projectile id does.
+  smokecloud(g) {
+    box(g, 'metal', [0.05, 0.05, 0.05], [0, -0.04, 0.2]);
+    return {
+      gripRight: [0, -0.08, 0.2],
+      gripLeft: [0.2, -0.16, 0.26],
+      sight: [0, -0.04, 0.2],
+      eyeRelief: 0.3,
+      hip: [0.14, -0.1, -0.08],
+    };
+  },
   concussion(g) {
     // A stubby dark canister with a spoon and a ring, held low like the frag (a placeholder until it is drawn).
     tube(g, 'polymer', 0.035, 0.11, [0, -0.04, 0.2], 8);
@@ -384,6 +408,8 @@ const MUZZLES: Record<WeaponSide, Readonly<Record<string, Vec3Tuple>>> = {
     concussion: [0, -0.04, 0.2],
     claymore: [0, -0.04, 0.2],
     sensor: [0, -0.04, 0.2],
+    smoke: [0, -0.04, 0.2],
+    smokecloud: [0, -0.04, 0.2],
   },
   enemy: {
     carbine: [0, 0, 0.83],

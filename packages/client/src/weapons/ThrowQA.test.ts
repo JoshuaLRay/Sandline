@@ -83,7 +83,7 @@ describe('the pouch (T-2.32)', () => {
     throws.select(ROCKET);
     expect(throws.kind).toBe(ROCKET);
     expect(throws.def.id).toBe(PROJECTILE_IDS[ROCKET]);
-    throws.select(7);
+    throws.select(PROJECTILE_IDS.length + 5);
     expect(throws.kind).toBe(ROCKET);
     throws.select(-1);
     expect(throws.kind).toBe(ROCKET);

@@ -7,6 +7,7 @@ import {
   coneHalfAngle,
   inViewCone,
   isDetected,
+  segmentThroughSmoke,
   sight,
   stanceHeight,
   stepAwareness,
@@ -245,5 +246,37 @@ describe('awareness (T-3.13)', () => {
     // Time is the dt passed in: no time, no change.
     expect(stepAwareness(0.3, a, t, P, 0)).toBe(0.3);
     expect(JSON.stringify([OBSERVER, t, world, P])).toBe(snapshot);
+  });
+});
+
+describe('smoke (U-058)', () => {
+  const CLOUD = { x: 0, y: 1, z: 10, radiusM: 3 };
+
+  it('blocks a line that passes through it, starts in it or ends in it, and only that', () => {
+    const eye = { x: 0, y: 1.55, z: 0 };
+    expect(segmentThroughSmoke(eye, { x: 0, y: 1.55, z: 20 }, [CLOUD])).toBe(true); // through
+    expect(segmentThroughSmoke(eye, { x: 0, y: 1.55, z: 10 }, [CLOUD])).toBe(true); // ends in it
+    expect(segmentThroughSmoke({ x: 0, y: 1, z: 10 }, { x: 0, y: 1, z: 30 }, [CLOUD])).toBe(true); // starts in it
+    expect(segmentThroughSmoke(eye, { x: 0, y: 1.55, z: 5 }, [CLOUD])).toBe(false); // stops short
+    expect(segmentThroughSmoke(eye, { x: 8, y: 1.55, z: 20 }, [CLOUD])).toBe(false); // passes beside it
+    expect(segmentThroughSmoke(eye, { x: 0, y: 1.55, z: 20 }, [])).toBe(false);
+    expect(segmentThroughSmoke(eye, { x: 0, y: 1.55, z: 20 }, [{ ...CLOUD, radiusM: 0 }])).toBe(false);
+  });
+
+  it('hides a target seen through it, or standing in it, and leaves the world\'s own answer alone otherwise', () => {
+    const open = sight(OBSERVER, target(20), [], P);
+    expect(open.visible).toBe(true);
+    // Between the two: nothing is seen, nothing is exposed.
+    const through = sight(OBSERVER, target(20), [], P, DEFAULT_MOVE_CONFIG, undefined, [CLOUD]);
+    expect(through.visible).toBe(false);
+    expect(through.exposure).toBe(0);
+    // In it.
+    const inside = sight(OBSERVER, target(10), [], P, DEFAULT_MOVE_CONFIG, undefined, [CLOUD]);
+    expect(inside.visible).toBe(false);
+    // In front of it (closer than the cloud): seen.
+    const before = sight(OBSERVER, target(5), [], P, DEFAULT_MOVE_CONFIG, undefined, [CLOUD]);
+    expect(before.visible).toBe(true);
+    // Range and cone are still the archetype's: smoke only adds concealment.
+    expect(sight(OBSERVER, target(200), [], P, DEFAULT_MOVE_CONFIG, undefined, [CLOUD]).inRange).toBe(false);
   });
 });
