@@ -22,6 +22,14 @@ export function gunSoundPlan(weaponId: string, distanceM: number, cfg: WeaponSou
 }
 
 /**
+ * The sound a bolt-action gun makes working its bolt after a shot, and how
+ * long after (U-043); null for every other gun.
+ */
+export function cycleSoundPlan(weaponId: string, cfg: WeaponSoundsConfig = WEAPON_SOUNDS): { sound: string; delaySeconds: number } | null {
+  return cfg.guns[weaponId]?.cycle ?? null;
+}
+
+/**
  * One report per trigger pull: the server sends a shot event per pellet, so a
  * shotgun's eight arrive together. The first from a shooter plays; the rest
  * within `windowMs` of it do not.

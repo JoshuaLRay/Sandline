@@ -68,19 +68,18 @@ describe('the DSP (T-2.44)', () => {
 describe('the renders (T-2.44)', () => {
   const manifest = JSON.parse(readFileSync(RENDERS_FILE, 'utf8')) as RendersManifest;
 
-  it('a render is byte-identical when repeated, and variants differ', () => {
-    for (const def of SOUNDS.sounds.values()) {
+  // One test per recipe. Rendering is real DSP (about half of it FFT reverb), so a single test that renders
+  // them all grows with the set and would hit the 5 s test limit on a busy machine; per recipe, each test
+  // is a fraction of a second and a failure names the sound.
+  for (const [id, def] of SOUNDS.sounds) {
+    it(`'${id}' is byte-identical when repeated, and its variants differ`, () => {
       const once = wavBytes(toPcm16(renderSound(def, 0)));
       const again = wavBytes(toPcm16(renderSound(def, 0)));
       expect(sha256(again)).toBe(sha256(once));
       if (def.variants > 1) expect(sha256(wavBytes(toPcm16(renderSound(def, 1))))).not.toBe(sha256(once));
-    }
-  });
+    });
 
-  it('the committed renders are what the live recipes and DSP make — run pnpm gen:audio if not', () => {
-    expect(manifest.inputsHash, 'renders are stale — run pnpm gen:audio').toBe(audioInputsHash());
-    expect(Object.keys(manifest.sounds).sort()).toEqual([...SOUNDS.sounds.keys()].sort());
-    for (const [id, def] of SOUNDS.sounds) {
+    it(`'${id}': the committed renders are what the live recipe and DSP make — run pnpm gen:audio if not`, () => {
       const files = manifest.sounds[id]!;
       expect(files).toHaveLength(def.variants);
       files.forEach((entry, v) => {
@@ -89,7 +88,12 @@ describe('the renders (T-2.44)', () => {
         expect(sha256(bytes), `${entry.file} is not what gen:audio wrote`).toBe(entry.sha256);
         expect(sha256(wavBytes(toPcm16(renderSound(def, v))))).toBe(entry.sha256);
       });
-    }
+    });
+  }
+
+  it('the committed manifest is for these recipes and this DSP — run pnpm gen:audio if not', () => {
+    expect(manifest.inputsHash, 'renders are stale — run pnpm gen:audio').toBe(audioInputsHash());
+    expect(Object.keys(manifest.sounds).sort()).toEqual([...SOUNDS.sounds.keys()].sort());
   });
 
   it('goes stale when a recipe or the DSP source changes', () => {

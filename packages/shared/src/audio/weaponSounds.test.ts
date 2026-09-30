@@ -29,3 +29,35 @@ describe('weapon sounds as data (T-2.46)', () => {
     expect(() => parseWeaponSounds({ ...raw, loud: true })).toThrow("unknown key 'loud'");
   });
 });
+
+describe('the roster guns sound like themselves (U-043)', () => {
+  it('each has reports of its own, none borrowed from another gun', () => {
+    const roster = ['smg', 'carbine-scoped', 'sniper-semi', 'sniper-bolt-left'];
+    const names = Object.entries(WEAPON_SOUNDS.guns).flatMap(([id, g]) => (id === 'knife' ? [] : [g.near, g.far]));
+    expect(new Set(names).size).toBe(names.length);
+    for (const id of roster) {
+      const gun = WEAPON_SOUNDS.guns[id]!;
+      expect(gun.near).toBe(`${id === 'sniper-bolt-left' ? 'sniper-bolt' : id}-near`);
+      expect(gun.far).toBe(`${id === 'sniper-bolt-left' ? 'sniper-bolt' : id}-far`);
+    }
+  });
+
+  it('only the bolt-action gun has a bolt-cycle sound, after the shot, and it is a recipe', () => {
+    for (const [id, gun] of Object.entries(WEAPON_SOUNDS.guns)) {
+      expect(gun.cycle !== undefined, id).toBe(WEAPONS[id]!.action === 'bolt');
+    }
+    const cycle = WEAPON_SOUNDS.guns['sniper-bolt-left']!.cycle!;
+    expect(SOUNDS.sounds.get(cycle.sound)?.class).toBe('weapon');
+    // Later than the report (it is the bolt after the shot) and before the next shot is due.
+    expect(cycle.delaySeconds).toBeGreaterThan(0.2);
+    expect(cycle.delaySeconds).toBeLessThan(60 / WEAPONS['sniper-bolt-left']!.rpm);
+  });
+
+  it('refuses a cycle with a bad delay or an unknown sound, each by name', () => {
+    const raw = JSON.parse(JSON.stringify(RAW)) as { guns: Record<string, Record<string, unknown>> };
+    const withCycle = (cycle: unknown) => ({ ...raw, guns: { ...raw.guns, 'sniper-bolt-left': { ...raw.guns['sniper-bolt-left'], cycle } } });
+    expect(() => parseWeaponSounds(withCycle({ sound: 'bolt-cycle', delaySeconds: 0 }))).toThrow('cycle.delaySeconds');
+    expect(() => parseWeaponSounds(withCycle({ sound: 'kazoo', delaySeconds: 0.5 }))).toThrow("no sound 'kazoo'");
+    expect(() => parseWeaponSounds(withCycle({ sound: 'bolt-cycle' }))).toThrow("missing 'delaySeconds'");
+  });
+});

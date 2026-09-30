@@ -171,3 +171,106 @@ describe('the audio engine, headless (T-2.45)', () => {
     expect(SOUNDS.sounds.size).toBeGreaterThan(0);
   });
 });
+
+describe('lazy sounds (U-043)', () => {
+  const LAZY = parseSounds({
+    sounds: {
+      click: { class: 'ui', seconds: 0.05, bounds: { peakDb: [-6, 0], rmsDb: [-60, 0], seconds: [0, 0.05] }, layers: [{ source: { kind: 'impulse' }, envelope: { attack: 0, decay: 0.01 } }] },
+      rare: { class: 'weapon', seconds: 0.3, variants: 2, lazy: true, bounds: { peakDb: [-6, 0], rmsDb: [-60, 0], seconds: [0, 0.3] }, layers: [{ source: { kind: 'noise' }, envelope: { attack: 0, decay: 0.1 } }] },
+    },
+  });
+
+  async function lazyEngine() {
+    const fake = fakeContext();
+    const fetched: string[] = [];
+    const e = new AudioEngine({
+      createContext: () => fake.ctx,
+      fetchBytes: (file) => {
+        fetched.push(file);
+        return Promise.resolve(new ArrayBuffer(16));
+      },
+      sounds: LAZY,
+    });
+    await e.unlock();
+    return { e, fetched };
+  }
+
+  it('does not fetch a lazy sound at start, and is ready without it', async () => {
+    const { e, fetched } = await lazyEngine();
+    expect(fetched.some((f) => f.includes('rare'))).toBe(false);
+    expect(e.ready).toBe(true);
+  });
+
+  it('the first play misses and starts one fetch, and later plays sound', async () => {
+    const { e, fetched } = await lazyEngine();
+    expect(e.play('rare')).toBe(false);
+    expect(e.play('rare')).toBe(false);
+    await e.preload(['rare']);
+    expect(fetched.filter((f) => f.includes('rare')).length).toBe(2);
+    expect(e.play('rare')).toBe(true);
+  });
+
+  it('a preload brings it in before it is needed', async () => {
+    const { e } = await lazyEngine();
+    await e.preload(['rare', 'not-a-sound']);
+    expect(e.play('rare')).toBe(true);
+  });
+});
+
+describe('holding the bulk of the renders back (U-043)', () => {
+  const MANY = parseSounds({
+    sounds: {
+      click: { class: 'ui', seconds: 0.05, bounds: { peakDb: [-6, 0], rmsDb: [-60, 0], seconds: [0, 0.05] }, layers: [{ source: { kind: 'impulse' }, envelope: { attack: 0, decay: 0.01 } }] },
+      boom: { class: 'world', seconds: 0.3, bounds: { peakDb: [-6, 0], rmsDb: [-60, 0], seconds: [0, 0.3] }, layers: [{ source: { kind: 'noise' }, envelope: { attack: 0, decay: 0.1 } }] },
+      shot: { class: 'weapon', seconds: 0.3, bounds: { peakDb: [-6, 0], rmsDb: [-60, 0], seconds: [0, 0.3] }, layers: [{ source: { kind: 'noise' }, envelope: { attack: 0, decay: 0.1 } }] },
+      thud: { class: 'body', seconds: 0.3, bounds: { peakDb: [-6, 0], rmsDb: [-60, 0], seconds: [0, 0.3] }, layers: [{ source: { kind: 'noise' }, envelope: { attack: 0, decay: 0.1 } }] },
+    },
+  });
+
+  function held(deferBackground: boolean) {
+    const fake = fakeContext();
+    const fetched: string[] = [];
+    const e = new AudioEngine({
+      createContext: () => fake.ctx,
+      fetchBytes: (file) => {
+        fetched.push(file);
+        return Promise.resolve(new ArrayBuffer(16));
+      },
+      sounds: MANY,
+      deferBackground,
+    });
+    return { e, fetched };
+  }
+
+  it('loads only the UI sounds until released, then the rest in the order they matter', async () => {
+    const { e, fetched } = held(true);
+    const unlocked = e.unlock();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(fetched).toEqual(['click.0.wav']);
+    expect(e.ready).toBe(false);
+    e.releaseBackground();
+    await unlocked;
+    expect(fetched).toEqual(['click.0.wav', 'shot.0.wav', 'thud.0.wav', 'boom.0.wav']);
+    expect(e.ready).toBe(true);
+    expect(e.play('shot')).toBe(true);
+  });
+
+  it('a sound held back does not play yet, and releasing twice is harmless', async () => {
+    const { e } = held(true);
+    void e.unlock();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(e.play('shot')).toBe(false);
+    e.releaseBackground();
+    e.releaseBackground();
+    await e.unlock();
+    expect(e.play('shot')).toBe(true);
+  });
+
+  it('without the option it loads everything at unlock, as before', async () => {
+    const { e, fetched } = held(false);
+    await e.unlock();
+    expect(fetched.length).toBe(4);
+    expect(e.ready).toBe(true);
+  });
+});
+

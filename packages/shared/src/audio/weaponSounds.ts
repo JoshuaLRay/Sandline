@@ -10,7 +10,8 @@ import { SOUNDS, type SoundsConfig } from './sounds.ts';
 
 export interface WeaponSoundsConfig {
   crossfade: { nearM: number; farM: number };
-  guns: Readonly<Record<string, { near: string; far: string }>>;
+  /** `cycle`: a bolt-action gun's own sound, played `delaySeconds` after each shot (U-043). */
+  guns: Readonly<Record<string, { near: string; far: string; cycle?: { sound: string; delaySeconds: number } }>>;
   handling: { reloadOut: string; reloadIn: string; reloadBolt: string; dryFire: string; equip: string };
   stages: { in: number; bolt: number };
 }
@@ -19,10 +20,10 @@ export class WeaponSoundsDataError extends Error {}
 
 type Obj = Record<string, unknown>;
 
-function obj(where: string, v: unknown, keys: readonly string[]): Obj {
+function obj(where: string, v: unknown, keys: readonly string[], optional: readonly string[] = []): Obj {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new WeaponSoundsDataError(`${where}: expected an object`);
   const o = v as Obj;
-  for (const k of Object.keys(o)) if (!keys.includes(k) && k !== '$comment') throw new WeaponSoundsDataError(`${where}: unknown key '${k}'`);
+  for (const k of Object.keys(o)) if (!keys.includes(k) && !optional.includes(k) && k !== '$comment') throw new WeaponSoundsDataError(`${where}: unknown key '${k}'`);
   for (const k of keys) if (!(k in o)) throw new WeaponSoundsDataError(`${where}: missing '${k}'`);
   return o;
 }
@@ -44,12 +45,18 @@ export function parseWeaponSounds(raw: unknown, sounds: SoundsConfig = SOUNDS): 
   if (typeof nearM !== 'number' || typeof farM !== 'number' || !(nearM >= 0) || !(farM > nearM)) throw new WeaponSoundsDataError('weaponSounds.crossfade: need 0 <= nearM < farM');
   const g = o['guns'];
   if (typeof g !== 'object' || g === null || Array.isArray(g)) throw new WeaponSoundsDataError('weaponSounds.guns: expected an object');
-  const guns: Record<string, { near: string; far: string }> = {};
+  const guns: Record<string, { near: string; far: string; cycle?: { sound: string; delaySeconds: number } }> = {};
   for (const [id, row] of Object.entries(g as Obj)) {
     if (id === '$comment') continue;
     if (!(id in WEAPONS)) throw new WeaponSoundsDataError(`weaponSounds.guns: '${id}' is not a weapons.json row`);
-    const r = obj(`weaponSounds.guns.${id}`, row, ['near', 'far']);
+    const r = obj(`weaponSounds.guns.${id}`, row, ['near', 'far'], ['cycle']);
     guns[id] = { near: sound(`weaponSounds.guns.${id}.near`, r['near']), far: sound(`weaponSounds.guns.${id}.far`, r['far']) };
+    if (r['cycle'] !== undefined) {
+      const c = obj(`weaponSounds.guns.${id}.cycle`, r['cycle'], ['sound', 'delaySeconds']);
+      const delay = c['delaySeconds'];
+      if (typeof delay !== 'number' || !Number.isFinite(delay) || delay <= 0 || delay > 5) throw new WeaponSoundsDataError(`weaponSounds.guns.${id}.cycle.delaySeconds must be in (0, 5], got ${JSON.stringify(delay)}`);
+      guns[id].cycle = { sound: sound(`weaponSounds.guns.${id}.cycle.sound`, c['sound']), delaySeconds: delay };
+    }
   }
   for (const id of Object.keys(WEAPONS)) if (!guns[id]) throw new WeaponSoundsDataError(`weaponSounds.guns: no sounds for '${id}'`);
   const h = obj('weaponSounds.handling', o['handling'], ['reloadOut', 'reloadIn', 'reloadBolt', 'dryFire', 'equip']);
