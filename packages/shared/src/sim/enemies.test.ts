@@ -60,7 +60,7 @@ const ROW = {
 };
 
 /** What a parsed row adds to the authored one: no role preference and no archetype block, unless given. */
-const PARSED_EXTRAS = { prefersRole: null, deploy: null, launcher: null, scope: null, command: null };
+const PARSED_EXTRAS = { prefersRole: null, deploy: null, launcher: null, scope: null, command: null, vehicle: null };
 
 const table = (row: Record<string, unknown>) => ({ rifleman: row });
 
@@ -71,6 +71,17 @@ const SHAPED: Record<string, Record<string, unknown>> = {
   rpg: { ...ROW, id: 'rpg', launcher: { projectile: 'rocket' } },
   sniper: { ...ROW, id: 'sniper', weapon: 'marksman', scope: { aimSeconds: 2 } },
   officer: { ...ROW, id: 'officer', weapon: 'sidearm', prefersRole: 'flanker', command: { radiusM: 30 } },
+  tank: {
+    ...ROW,
+    id: 'tank',
+    health: 1000,
+    vehicle: {
+      radiusM: 2,
+      hull: { from: [0, 1, -1.6], to: [0, 1, 1.6], radius: 1.3 },
+      turret: { from: [0, 2, 0], to: [0, 2.3, 0], radius: 0.9 },
+      armour: { bullet: 0.1, blast: { frag: 0.1, rocket: 1, c4: 1, claymore: 1 }, blastDefault: 0.1 },
+    },
+  },
 };
 
 describe('enemy archetypes (T-3.10)', () => {
@@ -78,8 +89,8 @@ describe('enemy archetypes (T-3.10)', () => {
     expect(parseEnemyTable(table(ROW))['rifleman']).toEqual({ ...ROW, ...PARSED_EXTRAS });
   });
 
-  it('validates the committed data: exactly the two slice archetypes (ADR-015), none downable', () => {
-    expect(Object.keys(ENEMIES)).toEqual(['rifleman', 'mg']);
+  it('validates the committed data: the two slice archetypes (ADR-015) and the tank (U-066), none downable', () => {
+    expect(Object.keys(ENEMIES)).toEqual(['rifleman', 'mg', 'tank']);
     expect(ENEMY_IDS.slice(0, 2)).toEqual(['rifleman', 'mg']);
     expect(getEnemy('rifleman').tree).toBe('rifleman');
     expect(getEnemy('mg').tree).toBe('mg');
@@ -142,7 +153,7 @@ describe('the five archetype shapes (T-3.23)', () => {
     expect(Object.keys(parsed)).toEqual([...ENEMY_IDS]);
     for (const id of ENEMY_IDS) {
       const shape = ENEMY_SHAPES[id];
-      for (const block of ['deploy', 'launcher', 'scope', 'command'] as const) {
+      for (const block of ['deploy', 'launcher', 'scope', 'command', 'vehicle'] as const) {
         if (block === shape) expect(parsed[id]![block]).toEqual(SHAPED[id]![block]);
         else expect(parsed[id]![block]).toBeNull();
       }
@@ -164,6 +175,11 @@ describe('the five archetype shapes (T-3.23)', () => {
     ['a negative deploy time', 'mg', { deploy: { seconds: -1, movingSpeedMps: 0.2 } }, /seconds/],
     ['a role nobody hands out', 'mg', { prefersRole: 'cook' }, /prefersRole/],
     ['a weapon in no table', 'mg', { weapon: 'railgun' }, /railgun/],
+    ['a tank with no vehicle block', 'tank', { vehicle: undefined }, /needs a "vehicle"/],
+    ['a rifleman with armour', 'rifleman', { vehicle: SHAPED['tank']!['vehicle'] }, /"vehicle" is not a rifleman's/],
+    ['armour against a projectile that does not exist', 'tank', { vehicle: { ...(SHAPED['tank']!['vehicle'] as object), armour: { bullet: 0.1, blast: { brick: 1 }, blastDefault: 0.1 } } }, /brick/],
+    ['armour that lets through more than a bullet had', 'tank', { vehicle: { ...(SHAPED['tank']!['vehicle'] as object), armour: { bullet: 2, blast: {}, blastDefault: 0.1 } } }, /bullet/],
+    ['a hull with a point off the body', 'tank', { vehicle: { ...(SHAPED['tank']!['vehicle'] as object), hull: { from: [0, 1, 99], to: [0, 1, 1], radius: 1 } } }, /forward/],
   ])('refuses %s', (_label, id, change, message) => {
     expect(() => parseEnemyTable({ [id]: { ...SHAPED[id], ...change } })).toThrow(message);
   });

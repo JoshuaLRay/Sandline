@@ -122,6 +122,31 @@ export interface EnemyCommand {
 /** A group role (T-3.21) an archetype is given first when there is a choice. */
 export type EnemyRolePreference = 'suppressor' | 'flanker';
 
+/** U-066: one solid of a vehicle's body, a capsule in the vehicle's frame: `[right, up, forward]` metres from its feet. */
+export interface VehiclePart {
+  from: readonly [number, number, number];
+  to: readonly [number, number, number];
+  radius: number;
+}
+
+/**
+ * U-066: a tank's body and armour. It is an enemy on rails (owner, 2026-09-30), not a rigid body: the hull and the turret
+ * are the capsules a shot is traced against, and `armour` is how much of a hit's damage gets through by its class.
+ */
+export interface EnemyVehicle {
+  /** How far out from its centre a blast reaches the hull, m: a blast is measured to the hull, not to its middle. */
+  radiusM: number;
+  hull: VehiclePart;
+  turret: VehiclePart;
+  armour: {
+    /** The share of a bullet's damage that gets through. */
+    bullet: number;
+    /** The share of a blast's, by projectile id; `blastDefault` for any not listed. */
+    blast: Readonly<Record<string, number>>;
+    blastDefault: number;
+  };
+}
+
 export interface EnemyDef {
   id: string;
   name: string;
@@ -150,6 +175,8 @@ export interface EnemyDef {
   launcher: EnemyLauncher | null;
   scope: EnemyScope | null;
   command: EnemyCommand | null;
+  /** U-066: a tank's body and armour, or null for a soldier. */
+  vehicle: EnemyVehicle | null;
 }
 
 /**
@@ -160,18 +187,19 @@ export interface EnemyDef {
  * the schema is written for; ADR-015 builds the first two, so the data holds
  * rows for those alone and `enemyByIndex` is null for the rest.
  */
-export const ENEMY_IDS = ['rifleman', 'mg', 'rpg', 'sniper', 'officer'] as const;
+export const ENEMY_IDS = ['rifleman', 'mg', 'rpg', 'sniper', 'officer', 'tank'] as const;
 export type EnemyId = (typeof ENEMY_IDS)[number];
 
 /** Each archetype's own block (its shape): required on it, refused on every other. None for the rifleman. */
-export const ENEMY_SHAPES: Readonly<Record<EnemyId, 'deploy' | 'launcher' | 'scope' | 'command' | null>> = {
+export const ENEMY_SHAPES: Readonly<Record<EnemyId, 'deploy' | 'launcher' | 'scope' | 'command' | 'vehicle' | null>> = {
   rifleman: null,
   mg: 'deploy',
   rpg: 'launcher',
   sniper: 'scope',
   officer: 'command',
+  tank: 'vehicle',
 };
-const SHAPE_BLOCKS = ['deploy', 'launcher', 'scope', 'command'] as const;
+const SHAPE_BLOCKS = ['deploy', 'launcher', 'scope', 'command', 'vehicle'] as const;
 
 /** Bits of the `Enemy` component's archetype index: eight archetypes. */
 export const ENEMY_ARCHETYPE_BITS = 3;
@@ -351,6 +379,43 @@ function parseCommand(raw: unknown, where: string): EnemyCommand {
   return { radiusM: num(row, 'radiusM', where, 1, 500) };
 }
 
+function triple(row: Row, key: string, where: string, limit: number): [number, number, number] {
+  const v = row[key];
+  if (!Array.isArray(v) || v.length !== 3 || v.some((n) => typeof n !== 'number' || !Number.isFinite(n) || Math.abs(n) > limit)) {
+    throw new EnemyDataError(`${where}.${key} must be [right, up, forward] metres within ±${limit}`);
+  }
+  return [v[0] as number, v[1] as number, v[2] as number];
+}
+
+function parseVehiclePart(raw: unknown, where: string): VehiclePart {
+  const row = obj(raw, where);
+  only(row, ['from', 'to', 'radius'], where);
+  return { from: triple(row, 'from', where, 20), to: triple(row, 'to', where, 20), radius: num(row, 'radius', where, 0.1, 5) };
+}
+
+function parseVehicle(raw: unknown, where: string): EnemyVehicle {
+  const row = obj(raw, where);
+  only(row, ['radiusM', 'hull', 'turret', 'armour'], where);
+  const armourRow = obj(row['armour'], `${where}.armour`);
+  only(armourRow, ['bullet', 'blast', 'blastDefault'], `${where}.armour`);
+  const blastRow = obj(armourRow['blast'], `${where}.armour.blast`);
+  const blast: Record<string, number> = {};
+  for (const id of Object.keys(blastRow)) {
+    if (!(PROJECTILE_IDS as readonly string[]).includes(id)) throw new EnemyDataError(`${where}.armour.blast: unknown projectile "${id}"`);
+    blast[id] = num(blastRow, id, `${where}.armour.blast`, 0, 2);
+  }
+  return {
+    radiusM: num(row, 'radiusM', where, 0.5, 10),
+    hull: parseVehiclePart(row['hull'], `${where}.hull`),
+    turret: parseVehiclePart(row['turret'], `${where}.turret`),
+    armour: {
+      bullet: num(armourRow, 'bullet', `${where}.armour`, 0, 1),
+      blast,
+      blastDefault: num(armourRow, 'blastDefault', `${where}.armour`, 0, 2),
+    },
+  };
+}
+
 function parseEnemyDef(key: string, raw: unknown): EnemyDef {
   const where = `enemy "${key}"`;
   const row = obj(raw, where);
@@ -394,6 +459,7 @@ function parseEnemyDef(key: string, raw: unknown): EnemyDef {
     launcher: shape === 'launcher' ? parseLauncher(row['launcher'], `${where}.launcher`) : null,
     scope: shape === 'scope' ? parseScope(row['scope'], `${where}.scope`) : null,
     command: shape === 'command' ? parseCommand(row['command'], `${where}.command`) : null,
+    vehicle: shape === 'vehicle' ? parseVehicle(row['vehicle'], `${where}.vehicle`) : null,
   };
 }
 

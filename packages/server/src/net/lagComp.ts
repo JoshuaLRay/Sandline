@@ -29,7 +29,7 @@
  * is no restore step to get wrong.
  */
 
-import { DEFAULT_WORLD, type HitZone, type WorldBox, cos, rayWorld, sin, wireToTable, zoneAt } from '@sandline/shared';
+import { DEFAULT_WORLD, type HitZone, type VehiclePart, type WorldBox, cos, rayWorld, sin, wireToTable, zoneAt } from '@sandline/shared';
 
 /**
  * How far back a shot may be rewound, whatever the client claims.
@@ -92,6 +92,25 @@ export interface Hitbox {
    * capsules in the body's frame, beside the one zoned by height.
    */
   standingArms?: readonly BodyPartSpec[];
+  /**
+   * U-066: a body that is not a soldier's — a tank: these capsules in the body's frame, for every stance, the wreck
+   * included, turning with the facing. Replaces the upright capsule and the posed bodies.
+   */
+  body?: readonly BodyPartSpec[];
+}
+
+/**
+ * U-066: a tank's body — its hull and its turret as two capsules in its frame, every stance alike (it never crouches,
+ * and a wreck is the same shape). Each scores as torso: its armour, not a zone, decides how much gets through.
+ */
+export function vehicleHitbox(vehicle: { hull: VehiclePart; turret: VehiclePart }): Hitbox {
+  const spec = (part: VehiclePart, name: string): BodyPartSpec => ({ from: part.from, to: part.to, radius: part.radius, zone: 'torso', part: name });
+  return {
+    radius: vehicle.hull.radius,
+    halfHeight: Math.abs(vehicle.turret.to[1] - vehicle.hull.from[1]) / 2,
+    centerOffsetY: vehicle.hull.from[1],
+    body: [spec(vehicle.hull, 'hull'), spec(vehicle.turret, 'turret')],
+  };
 }
 
 /** The stances a body is shaped for part by part: every one but standing. */
@@ -114,6 +133,8 @@ export interface BodyPartSpec {
    * standing, so no stance turns a chest-high shot into a limb hit.
    */
   zone: HitZone | null;
+  /** U-066: which part of a vehicle this is ('hull', 'turret'), reported on a hit. */
+  part?: string;
 }
 
 /**
@@ -217,6 +238,7 @@ export interface BodyPart {
   b: Vec3;
   radius: number;
   zone: HitZone | null;
+  part?: string;
 }
 
 /**
@@ -237,7 +259,8 @@ export function bodyParts(hitbox: Hitbox, stance: BodyStance, feet: Vec3, yaw = 
     z: feet.z + p[0] * fx + p[2] * fz,
   });
   const specs = (list: readonly BodyPartSpec[]): BodyPart[] =>
-    list.map((part) => ({ a: place(part.from), b: place(part.to), radius: part.radius, zone: part.zone }));
+    list.map((part) => ({ a: place(part.from), b: place(part.to), radius: part.radius, zone: part.zone, ...(part.part === undefined ? {} : { part: part.part }) }));
+  if (hitbox.body !== undefined) return specs(hitbox.body);
   if (posed !== undefined) return specs(posed);
   const { halfHeight, centerOffsetY } = capsuleFor(hitbox, stance === 'crouched', stance !== 'standing' && stance !== 'crouched');
   const y = feet.y + centerOffsetY;
@@ -393,6 +416,8 @@ export interface HistoryState {
 /** Per-entity position history, written once per tick by the session. */
 export class HitboxHistory {
   private readonly tracks = new Map<number, Track>();
+  /** U-066: entities whose body is not the default soldier's (a tank), by netId. */
+  private readonly shapes = new Map<number, Hitbox>();
 
   constructor(
     private readonly windowMs: number = HISTORY_WINDOW_MS,
@@ -438,9 +463,20 @@ export class HitboxHistory {
     return [...this.tracks.keys()];
   }
 
+  /** U-066: give an entity its own body to be shot at, in place of the default's. */
+  setShape(netId: number, hitbox: Hitbox): void {
+    this.shapes.set(netId, hitbox);
+  }
+
+  /** U-066: an entity's own body, or undefined for the default's. */
+  shapeOf(netId: number): Hitbox | undefined {
+    return this.shapes.get(netId);
+  }
+
   /** Drop an entity's history, e.g. when a slot is recycled. */
   forget(netId: number): void {
     this.tracks.delete(netId);
+    this.shapes.delete(netId);
   }
 }
 
@@ -560,6 +596,8 @@ export interface ShotHit {
   rewindMs: number;
   /** The zone the hit scores (T-1.19); meaningless on scenery. */
   zone: HitZone;
+  /** U-066: which part of a vehicle was hit ('hull', 'turret'); absent on a soldier and on scenery. */
+  part?: string;
 }
 
 /**
@@ -595,7 +633,8 @@ export function resolveShot(
     const state = history.stateAt(netId, rewoundTo);
     if (state === null) continue;
     const feet = state.position;
-    const hit = rayBody(query.ray, bodyParts(hitbox, state.stance, feet, state.yaw));
+    const shape = history.shapeOf(netId) ?? hitbox;
+    const hit = rayBody(query.ray, bodyParts(shape, state.stance, feet, state.yaw));
     if (hit === null) continue;
     const { distance } = hit;
     if (best !== null && distance >= best.distance) continue;
@@ -606,7 +645,7 @@ export function resolveShot(
       y: o.y + d.y * distance,
       z: o.z + d.z * distance,
     };
-    best = { netId, distance, point, rewoundTo, rewindMs, zone: zoneOfHit(hit.part, point, feet.y, hitbox) };
+    best = { netId, distance, point, rewoundTo, rewindMs, zone: zoneOfHit(hit.part, point, feet.y, shape), ...(hit.part.part === undefined ? {} : { part: hit.part.part }) };
   }
   return best;
 }
