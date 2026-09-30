@@ -1,6 +1,6 @@
 # The squad roster: six named characters (U-019)
 
-**Status: DECIDED for this version (2026-09-29).** On 2026-09-27 the owner
+**Status: DECIDED for this version (2026-09-29); the roster's identities, loadouts and the support's restrictions are implemented (U-021).** On 2026-09-27 the owner
 confirmed Preach, the snipers' handedness and starting weapons, weapon
 acquisition rules and the two-primary limits. On 2026-09-29 the owner accepted
 the remaining proposals (names, the support's speed and no-pistol loadout, free

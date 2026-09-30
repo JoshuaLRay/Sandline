@@ -16,15 +16,15 @@ const conds = (...c: HintCondition[]) => new Set<HintCondition>(c);
 
 describe('the briefing (T-5.03)', () => {
   it('lists the mission’s objectives in order, its routes, the squad and the keys', () => {
-    const b = briefingFor('mission-01', ['team-leader', 'team-leader', 'team-leader', 'marksman', 'marksman', 'marksman'])!;
+    const b = briefingFor('mission-01', ['preach', 'brennan', 'holloway', 'ortiz', 'marsh', 'vance'])!;
     const mission = missionFor('mission-01')!;
     expect(b.objectives).toEqual(mission.objectives.map(objectiveText));
     expect(b.objectives.length).toBe(mission.objectives.length);
     expect(b.title).toBe('Mission 01');
     expect(b.routes).toMatch(/^Two ways in: the overwatch route up the west, and the assault route up the east/);
-    expect(b.squad).toBe('3 Team Leader, 3 Marksman');
+    expect(b.squad).toBe('Preach, Brennan, Holloway, Ortiz, Marsh, Vance');
     expect(b.controls.map((c) => c.action)).toContain('Order wheel');
-    expect(b.controls.find((c) => c.action === 'Weapons')?.keys).toContain('1 primary · 2 pistol');
+    expect(b.controls.find((c) => c.action === 'Weapons')?.keys).toContain('1 primary · 2 secondary');
     expect(briefingFor('range')).toBeNull();
   });
 

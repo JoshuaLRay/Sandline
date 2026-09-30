@@ -56,14 +56,9 @@ export function routesText(world: World): string {
   return `${routes.length === 2 ? 'Two ways in' : `${routes.length} ways in`}: ${parts.join(', and ')}. Split the squad — one fireteam covers while the other moves.`;
 }
 
-/** The squad by class: "3 Team Leader, 3 Marksman". */
+/** The squad by character, in slot order: "Preach, Brennan, Holloway, Ortiz, Marsh, Vance" (U-021). */
 export function squadText(classIds: readonly string[]): string {
-  const counts = new Map<string, number>();
-  for (const id of classIds) {
-    const name = classById(id)?.name;
-    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
-  }
-  return [...counts].map(([name, n]) => `${n} ${name}`).join(', ');
+  return classIds.flatMap((id) => classById(id)?.name ?? []).join(', ');
 }
 
 /** The briefing for a world's mission, or null when the world has none. */
