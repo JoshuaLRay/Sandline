@@ -97,6 +97,13 @@ export interface ProjectileDef {
    * the edge), instead of the shared curve in suppression.json; 0 keeps the shared curve (U-056).
    */
   suppression: number;
+  /**
+   * A directional blast (U-055): full width in degrees of the cone in front of the placed device inside which the
+   * blast hurts anyone; 0 is a blast in every direction.
+   */
+  coneDeg: number;
+  /** A placed device goes off by itself when a hostile soldier comes within this many metres in front of it (U-055); 0 is manual only. */
+  triggerM: number;
   /** How many a soldier carries. */
   carried: number;
   /** Minimum seconds between two of these leaving the same hand. */
@@ -108,7 +115,7 @@ export interface ProjectileDef {
  * index is what travels in a Throw message and in the `Projectile` component,
  * so reordering this is a PROTOCOL_VERSION bump.
  */
-export const PROJECTILE_IDS = ['frag', 'rocket', 'c4', 'concussion'] as const;
+export const PROJECTILE_IDS = ['frag', 'rocket', 'c4', 'concussion', 'claymore'] as const;
 
 /**
  * Bits a projectile index takes on the wire (U-048): the Projectile component's kind, a Throw, a Detonation and the
@@ -200,6 +207,8 @@ function parseProjectileDef(key: string, raw: unknown): ProjectileDef {
     blastMinFraction: num(row, 'blastMinFraction', key, 0, 1),
     blastCoverFraction: num(row, 'blastCoverFraction', key, 0, 1),
     suppression: num(row, 'suppression', key, 0, 1),
+    coneDeg: num(row, 'coneDeg', key, 0, 360),
+    triggerM: num(row, 'triggerM', key, 0, 30),
     carried: num(row, 'carried', key, 0, 99),
     cooldownSeconds: num(row, 'cooldownSeconds', key, 0, 60),
   };
