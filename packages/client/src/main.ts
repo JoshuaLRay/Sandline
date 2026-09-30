@@ -609,7 +609,8 @@ function carriedGuns(): readonly string[] | null {
   const primary = hostPrimary();
   if (!primary) return localLoadout.guns;
   const second = hostSecondary();
-  return [primary, ...(second ? [second] : []), ...localLoadout.guns.filter((g) => g === 'sidearm')];
+  // A second primary replaces the pistol (U-022).
+  return second ? [primary, second] : [primary, ...localLoadout.guns.filter((g) => g === 'sidearm')];
 }
 /** U-018: the host's primary last seen, to notice a new one (taken off the ground, or given back on a respawn). */
 let primarySeen: PrimarySeen | null = null;

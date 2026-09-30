@@ -48,14 +48,16 @@ describe('weapon slot keys (U-005)', () => {
     expect(weaponIndexForKey('Digit3', ready({ primary: 'breacher' }))).toBe(WEAPON_IDS.indexOf('knife'));
   });
 
-  it('key 2 is the second primary for a character without a pistol, and cycles pistol and second primary for one with both (U-022)', () => {
+  it('key 2 is the second primary; a character carrying two primaries has no pistol (U-022)', () => {
     const support = { loadoutGuns: ['smg', 'breacher'], primary: 'smg', secondary: 'breacher' };
     expect(weaponIndexForKey('Digit2', ready(support))).toBe(WEAPON_IDS.indexOf('breacher'));
-    const both = { loadoutGuns: ['carbine', 'smg', 'sidearm'], primary: 'carbine', secondary: 'smg' };
-    expect(weaponIndexForKey('Digit2', ready({ ...both, held: 'carbine' }))).toBe(WEAPON_IDS.indexOf('sidearm'));
-    expect(weaponIndexForKey('Digit2', ready({ ...both, held: 'sidearm' }))).toBe(WEAPON_IDS.indexOf('smg'));
-    expect(weaponIndexForKey('Digit2', ready({ ...both, held: 'smg' }))).toBe(WEAPON_IDS.indexOf('sidearm'));
-    expect(weaponIndexForKey('Digit1', ready(both))).toBe(WEAPON_IDS.indexOf('carbine'));
+    // Preach with a second primary: the class list still names the pistol, but key 2 is the second gun.
+    const preach = { loadoutGuns: ['carbine', 'smg', 'sidearm'], primary: 'carbine', secondary: 'smg' };
+    expect(weaponIndexForKey('Digit2', ready({ ...preach, held: 'carbine' }))).toBe(WEAPON_IDS.indexOf('smg'));
+    expect(weaponIndexForKey('Digit2', ready({ ...preach, held: 'smg' }))).toBe(WEAPON_IDS.indexOf('smg'));
+    expect(weaponIndexForKey('Digit1', ready(preach))).toBe(WEAPON_IDS.indexOf('carbine'));
+    // With one primary, Preach keeps the pistol on 2.
+    expect(weaponIndexForKey('Digit2', ready({ loadoutGuns: ['carbine', 'sidearm'], primary: 'carbine' }))).toBe(WEAPON_IDS.indexOf('sidearm'));
   });
 
   it('gives number keys to Q, menus and text fields, and refuses switches while downed or mounted', () => {
