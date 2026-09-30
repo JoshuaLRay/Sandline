@@ -504,6 +504,10 @@ function coneHalfCos(coneDeg: number): number {
   return Math.cos((coneDeg / 2) * (Math.PI / 180));
 }
 
+/** U-057: a blast this close destroys a placed sensor, metres; a sensor's mark fades this many ticks after its enemy stops. */
+const SENSOR_BLAST_KILL_M = 2;
+const SENSOR_LINGER_TICKS = 30;
+
 /** U-054: how far from the eye a soldier can put a charge on a surface, metres. */
 const PLACE_REACH_M = 2.5;
 const FRAG_INDEX = (PROJECTILE_IDS as readonly string[]).indexOf('frag');
@@ -571,6 +575,8 @@ interface ActiveProjectile {
   stuck?: boolean;
   /** U-055: the flat direction a directional device (a claymore) faces, a unit vector on x/z. */
   facing?: { x: number; z: number };
+  /** U-057: a blast has destroyed this stuck device; it is dropped at the end of the tick. */
+  destroyed?: boolean;
 }
 
 /**
@@ -1411,6 +1417,7 @@ export class Session {
       this.orderRuns[slot.index] = null;
     }
     this.marks = [];
+    this.sensorMarks.clear();
     this.broadcastOrders();
     this.broadcastMarks();
     this.startEncounter(completedGroups);
@@ -2543,6 +2550,10 @@ export class Session {
     this.endOrder(slot, outcome, reason);
   }
   private marks: TargetMark[] = [];
+  /** U-057: the marks the placed sensors hold (by enemy), the last tick each was sensed, and each enemy's last horizontal position. */
+  private sensorMarks = new Map<number, { mark: TargetMark; lastTick: number }>();
+  private sensorPositions = new Map<number, { x: number; z: number }>();
+  private marksChanged = false;
   private nextMarkId = 1;
 
   /**
@@ -3774,9 +3785,56 @@ export class Session {
     return false;
   }
 
+  /**
+   * U-057: every stuck sensor marks each living enemy within `senseM` (through walls) that moved faster than
+   * `senseSpeedMps` since the last tick, for the whole squad, through the same marks a player's ping makes. A mark
+   * lingers `SENSOR_LINGER_TICKS` after the enemy stops or leaves, then fades; with the sensor gone they all do.
+   */
+  private updateSensors(): void {
+    const seen = new Set<number>();
+    const sensors = this.projectiles.filter((p) => p.def.senseM > 0 && p.stuck === true && p.destroyed !== true);
+    for (const enemy of this.enemyList) {
+      const before = this.sensorPositions.get(enemy.netId);
+      this.sensorPositions.set(enemy.netId, { x: enemy.state.x, z: enemy.state.z });
+      if (isDead(enemy.health) || before === undefined) continue;
+      const speed = Math.hypot(enemy.state.x - before.x, enemy.state.z - before.z) / TICK_SECONDS;
+      for (const s of sensors) {
+        if (speed <= s.def.senseSpeedMps) continue;
+        if (Math.hypot(enemy.state.x - s.state.x, enemy.state.y - s.state.y, enemy.state.z - s.state.z) > s.def.senseM) continue;
+        seen.add(enemy.netId);
+        const held = this.sensorMarks.get(enemy.netId);
+        const from = s.ownerSlot;
+        if (held) held.lastTick = this.currentTick;
+        else {
+          const mark: TargetMark = {
+            id: this.nextMarkId++,
+            from,
+            point: { x: enemy.state.x, y: enemy.state.y, z: enemy.state.z },
+            target: enemy.netId,
+            expiresTick: Number.MAX_SAFE_INTEGER,
+          };
+          this.sensorMarks.set(enemy.netId, { mark, lastTick: this.currentTick });
+          this.marks.push(mark);
+          this.marksChanged = true;
+        }
+        break;
+      }
+    }
+    for (const [netId, held] of this.sensorMarks) {
+      if (seen.has(netId) || this.currentTick - held.lastTick <= SENSOR_LINGER_TICKS) continue;
+      this.sensorMarks.delete(netId);
+      this.marks = this.marks.filter((m) => m !== held.mark);
+      this.marksChanged = true;
+    }
+    if (this.marksChanged) {
+      this.marksChanged = false;
+      this.broadcastMarks();
+    }
+  }
+
   /** U-054: every armed charge of this kind that `slot` has out goes off at once. */
   private detonateCharges(slot: Slot, kind: number): void {
-    const mine = this.projectiles.filter((p) => p.kind === kind && p.stuck === true && p.ownerNetId === slot.netId);
+    const mine = this.projectiles.filter((p) => p.kind === kind && p.stuck === true && p.ownerNetId === slot.netId && p.def.senseM <= 0);
     if (mine.length === 0) return;
     const rest = this.projectiles.filter((p) => !mine.includes(p));
     this.projectiles.length = 0;
@@ -3911,6 +3969,7 @@ export class Session {
     for (const projectile of this.projectiles) {
       // U-054: a placed charge goes off only on its owner's word; a stuck one just waits, and a very old one goes quietly.
       if (projectile.def.kind === 'placed') {
+        if (projectile.destroyed === true) continue;
         if (!projectile.stuck) {
           const flight = stepProjectile(projectile.def, projectile.state, TICK_SECONDS, world);
           projectile.state = flight.state;
@@ -3955,7 +4014,7 @@ export class Session {
       this.detonate(projectile, at);
     }
     this.projectiles.length = 0;
-    for (const projectile of survivors) this.projectiles.push(projectile);
+    for (const projectile of survivors) if (projectile.destroyed !== true) this.projectiles.push(projectile);
   }
 
   /**
@@ -4046,6 +4105,12 @@ export class Session {
         this.bumpStat(ownerSlot, 'kills');
       }
       targets.push({ netId: enemy.netId, damage: result.applied });
+    }
+
+    // U-057: a blast within `SENSOR_BLAST_KILL_M` destroys any sensor standing there.
+    for (const other of this.projectiles) {
+      if (other === projectile || other.def.senseM <= 0 || other.stuck !== true) continue;
+      if (Math.hypot(other.state.x - at.x, other.state.y - at.y, other.state.z - at.z) <= SENSOR_BLAST_KILL_M) other.destroyed = true;
     }
 
     // T-3.14: heard at the blast, and a threat from whoever threw it.
@@ -4352,6 +4417,7 @@ export class Session {
      */
     this.stepProjectiles();
     this.expireMarks();
+    this.updateSensors();
     this.stepMission();
     const snapshot = this.buildSnapshot();
     this.broadcast(snapshot);

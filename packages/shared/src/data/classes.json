@@ -90,8 +90,10 @@
         "sidearm"
       ],
       "pouch": {
-        "frag": 1
+        "frag": 1,
+        "sensor": 1
       },
+      "equipment": "sensor",
       "orders": "fireteam"
     }
   },
