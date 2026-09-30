@@ -25,6 +25,26 @@ const OPEN: ProjectileWorld = { boxes: [], groundY: 0 };
 const EYE = { x: 0, y: 1.55, z: 0 };
 const FORWARD = { x: 0, y: 0, z: 1 };
 
+describe('a cooked grenade (U-046)', () => {
+  it('flies with the fuse it has left: the ghost starts as old as the cook, and goes off sooner', () => {
+    const fuse = getProjectile('frag').fuseSeconds;
+    const cold = new ThrowQA();
+    cold.select(FRAG);
+    const a = cold.throwFrom(EYE, 0, 0, 0)!;
+    const warm = new ThrowQA();
+    warm.select(FRAG);
+    const b = warm.throwFrom(EYE, 0, 0, 0, 2)!;
+    expect(a.state.age).toBe(0);
+    expect(b.state.age).toBe(2);
+    let ticks = 0;
+    while (warm.ghosts[0] && warm.ghosts[0].state.age < fuse && ticks < 1000) {
+      warm.tick(OPEN);
+      ticks += 1;
+    }
+    expect(ticks * TICK_SECONDS).toBeLessThan(fuse - 1.9);
+  });
+});
+
 describe('the pouch (T-2.32)', () => {
   it('starts with what the data says is carried, and spends it', () => {
     const throws = new ThrowQA();

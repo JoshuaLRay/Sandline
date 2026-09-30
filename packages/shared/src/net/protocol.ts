@@ -31,6 +31,8 @@ export const INPUT_BUTTONS = Object.freeze({
   prone: 0b100000,
   /** U-029: G puts the held gun on the ground. Carried on the one input frame it was pressed on. */
   drop: 0b1000000,
+  /** U-046: right click held with a thrown item in hand; a press (up to down) pulls the pin and starts the fuse. */
+  cook: 0b10000000,
 });
 
 /**
