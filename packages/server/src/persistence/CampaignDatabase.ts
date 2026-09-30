@@ -22,7 +22,15 @@ export interface CampaignCheckpoint {
   spawns: { x: number; y: number; z: number }[];
   completedGroups: string[];
   event: unknown | null;
+  /**
+   * U-060: the world at the checkpoint (enemies, spawner, soldiers, pickups, devices), as a session wrote it. The
+   * session validates it on load (`parseCheckpointWorld`); the database only bounds its size. Absent in older saves.
+   */
+  world?: unknown | null;
 }
+
+/** U-060: a checkpoint world larger than this is dropped from the save, which then keeps the basic checkpoint. */
+export const CHECKPOINT_WORLD_MAX_BYTES = 512 * 1024;
 
 export interface CampaignState {
   formatVersion: number;
@@ -89,6 +97,17 @@ function text(row: Row, key: string): string {
   return String(row[key]);
 }
 
+/** U-060: the checkpoint world if it is JSON within bounds, else null. */
+function boundedWorld(world: unknown): unknown | null {
+  if (world === undefined || world === null) return null;
+  try {
+    const json = JSON.stringify(world);
+    return json.length <= CHECKPOINT_WORLD_MAX_BYTES ? JSON.parse(json) : null;
+  } catch {
+    return null;
+  }
+}
+
 function normalizedState(input: CampaignState): CampaignState {
   if (input.formatVersion !== CAMPAIGN_SAVE_VERSION) {
     throw new Error(`campaign save format ${input.formatVersion} is not supported by format ${CAMPAIGN_SAVE_VERSION}`);
@@ -117,6 +136,7 @@ function normalizedState(input: CampaignState): CampaignState {
     if (!Array.isArray(saved.completedGroups) || saved.completedGroups.some((id) => typeof id !== 'string' || id === '')) {
       throw new Error('checkpoint completedGroups must contain ids');
     }
+    const world = boundedWorld(saved.world);
     checkpoint = {
       mission: saved.mission,
       objective: saved.objective,
@@ -124,6 +144,7 @@ function normalizedState(input: CampaignState): CampaignState {
       spawns: saved.spawns.map((p) => ({ x: p.x, y: p.y, z: p.z })),
       completedGroups: [...saved.completedGroups],
       event: saved.event ?? null,
+      ...(world === null ? {} : { world }),
     };
   }
   return {

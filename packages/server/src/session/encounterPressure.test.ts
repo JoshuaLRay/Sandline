@@ -277,7 +277,7 @@ describe('mission-01 enemy pressure (U-001)', () => {
     const direct = play({ campaign: saved });
     direct.step(2);
     expect(direct.living('garrison').length).toBeGreaterThan(0);
-    expect(direct.session.spawner!.spawnedBy('overwatch-patrol')).toHaveLength(0);
+    expect(direct.living('overwatch-patrol')).toHaveLength(0);
 
     // … and a hosted room, once its one human is ready.
     const room = play({ campaign: saved, roomLobby: true });
@@ -292,6 +292,6 @@ describe('mission-01 enemy pressure (U-001)', () => {
     expect(room.session.started).toBe(true);
     room.step(2);
     expect(room.living('garrison').length).toBe(direct.living('garrison').length);
-    expect(room.session.spawner!.spawnedBy('overwatch-patrol')).toHaveLength(0);
+    expect(room.living('overwatch-patrol')).toHaveLength(0);
   });
 });
