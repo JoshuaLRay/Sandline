@@ -99,6 +99,12 @@ import {
   vitalityCode,
   createMoveState,
   createWeaponState,
+  blockedAt,
+  createDrive,
+  driveYawWire,
+  stepDrive,
+  type EnemyVehicle,
+  type VehicleDrive,
   degToWire,
   damageAtDistance,
   decayBloom,
@@ -619,6 +625,9 @@ interface ActiveProjectile {
  */
 export const MAX_ENEMIES = 64;
 
+/** U-067: the height of a tank's hull, m, for what it can drive under: a bridge lower than this stops it. */
+const TANK_CLEARANCE_M = 2.4;
+
 /** T-3.32: a spawn candidate counts as on the navmesh when its nearest mesh point is this near, metres. */
 export const SPAWN_ON_MESH_M = 0.3;
 
@@ -640,6 +649,8 @@ export interface EnemyEntity {
   pitch: number;
   /** U-066: a tank's turret facing, wire units, apart from the hull's `yaw`; a soldier's follows its own. */
   turretYaw: number;
+  /** U-067: a tank's drive along its path, or null for a soldier and for a tank given no path. */
+  drive: VehicleDrive | null;
   input: MoveInput;
   health: HealthState;
   /** Its brain, stopped on the tick it dies. */
@@ -740,6 +751,8 @@ export interface EnemySpawn {
   group?: number;
   /** T-3.32: the posture it spawns in and returns to (`actions/posture.ts`); none stands down. */
   posture?: EnemyPosture;
+  /** U-067: the waypoints a tank drives, in order, from where it stands; without them it stands still. */
+  path?: readonly { x: number; z: number }[];
 }
 
 /** What a session is built with beyond its tuning, room and world. */
@@ -2244,6 +2257,7 @@ export class Session {
       yaw,
       pitch: 0,
       turretYaw: yaw,
+      drive: def.vehicle && at.path && at.path.length > 0 ? createDrive(at.path, yaw) : null,
       input: idleInput(yaw),
       health: { current: def.health, max: def.health, downedAt: null, diedAt: null },
       brain: null,
@@ -5421,6 +5435,29 @@ export class Session {
   }
 
   /**
+   * U-067: one tick of a tank's driving (`stepDrive`). It may stand only where the hull clears every wall and every
+   * script blocker (three footprints along its length), and not on a living soldier: it waits for either to go and
+   * does not push through or run anyone over.
+   */
+  private driveTank(enemy: EnemyEntity, drive: VehicleDrive, vehicle: EnemyVehicle): void {
+    const clear = (x: number, z: number, forward: { x: number; z: number }): boolean => {
+      const half = vehicle.hull.radius + 0.1;
+      const reach = Math.abs(vehicle.hull.to[2] - vehicle.hull.from[2]) / 2;
+      for (const along of [0, reach, -reach]) {
+        if (blockedAt(x + forward.x * along, z + forward.z * along, half, enemy.state.y, this.moveConfig.stepHeight, TANK_CLEARANCE_M, this.collisionBoxes)) return false;
+      }
+      const margin = vehicle.radiusM + 0.4;
+      return !this.slots.some((s) => !isDead(s.health) && (s.state.x - x) ** 2 + (s.state.z - z) ** 2 < margin * margin);
+    };
+    const to = stepDrive({ x: enemy.state.x, z: enemy.state.z }, drive, vehicle, TICK_SECONDS, clear);
+    enemy.state = { ...enemy.state, x: to.x, z: to.z };
+    enemy.yaw = driveYawWire(drive);
+    enemy.input = { ...enemy.input, yaw: enemy.yaw, moveX: 0, moveY: 0 };
+    // The turret rides the hull until U-068 turns it on a target.
+    enemy.turretYaw = enemy.yaw;
+  }
+
+  /**
    * Step every living enemy through `stepCharacter` with the input its brain's
    * intent produced (or an idle one), and take away corpses whose time is up.
    * A corpse is not stepped: like a dead slot it lies where it fell.
@@ -5435,6 +5472,13 @@ export class Session {
       enemy.input.downed = false;
       const fromX = enemy.state.x;
       const fromZ = enemy.state.z;
+      // U-067: a tank drives its path; it does not walk on a soldier's controller.
+      if (enemy.drive && enemy.def.vehicle) {
+        this.driveTank(enemy, enemy.drive, enemy.def.vehicle);
+        enemy.speed = Math.sqrt((enemy.state.x - fromX) ** 2 + (enemy.state.z - fromZ) ** 2) / TICK_SECONDS;
+        decayBloom(enemy.weapon, enemy.weaponState, TICK_SECONDS);
+        continue;
+      }
       // T-4.29: a gunner stays on its gun, crouched behind it, whatever its brain's feet want.
       if (enemy.mounted) enemy.input = { ...enemy.input, moveX: 0, moveY: 0, jump: false, sprint: false, crouch: true, prone: false, yaw: enemy.yaw };
       enemy.state = stepCharacter(enemy.state, enemy.input, TICK_SECONDS, this.moveConfig, this.collisionBoxes);
