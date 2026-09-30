@@ -79,4 +79,13 @@ describe('how far an order reaches (T-4.27)', () => {
     expect(orderReach('', 0, all, SQUAD.fireteams)).toEqual([]);
     expect(orderReach('vance', 9, all, SQUAD.fireteams)).toEqual([]);
   });
+
+  it('every character carries 3 health kits unless the data says otherwise, and no more than the wire holds (U-047)', () => {
+    for (const id of CLASSES.ids) expect(classById(id)?.healthKits, id).toBe(3);
+    const raw = JSON.parse(JSON.stringify(RAW)) as { classes: Record<string, Record<string, unknown>> };
+    raw.classes[CLASSES.ids[0]!]!['healthKits'] = 5;
+    expect(parseClassConfig(raw).classes[CLASSES.ids[0]!]?.healthKits).toBe(5);
+    raw.classes[CLASSES.ids[0]!]!['healthKits'] = 8;
+    expect(() => parseClassConfig(raw)).toThrow(ClassDataError);
+  });
 });

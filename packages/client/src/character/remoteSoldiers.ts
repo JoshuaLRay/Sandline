@@ -132,6 +132,8 @@ function wireToRadians(wire: number): number {
 
 /** What a remote with a replicated Weapon component holds (T-2.26, T-2.32). */
 export function heldFromWeapon(weapon: { index: number; pouch: number } | null | undefined): string {
+  // U-047: one past the last pouch item is the health kits, which have no model yet: bare hands (the knife's).
+  if (weapon && weapon.pouch === PROJECTILE_IDS.length) return 'knife';
   if (weapon && weapon.pouch >= 0) return PROJECTILE_IDS[weapon.pouch] ?? WEAPON_IDS[0];
   return WEAPON_IDS[weapon?.index ?? 0] ?? WEAPON_IDS[0];
 }

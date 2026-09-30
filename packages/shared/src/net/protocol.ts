@@ -15,10 +15,11 @@ import { MISSION_FAILURE_REASONS, MISSION_STATES, OBJECTIVE_PHASES, OBJECTIVE_TY
 import type { ScriptBlockerState } from '../sim/events.ts';
 import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 import type { MissionStats } from '../sim/scoreboard.ts';
-import { WEAPON_INDEX_BITS } from '../sim/weapons.ts';
+import { WEAPON_IDS, WEAPON_INDEX_BITS } from '../sim/weapons.ts';
+import { PROJECTILE_IDS } from '../sim/ballistics.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 47;
+export const PROTOCOL_VERSION = 48;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -134,6 +135,14 @@ const TYPE_BITS = 4;
  * then the pouch. Four bits leave room for the knife and both pouch items.
  */
 export const RELOAD_ITEM = 15;
+
+/**
+ * U-047: the Equip item code for the health kits (slot 6): after the guns and
+ * the pouch. The Weapon component's 2-bit `pouch` field shows it to others as
+ * `PROJECTILE_IDS.length + 1` (what is in hand, plus one).
+ */
+export const KIT_EQUIP_ITEM = WEAPON_IDS.length + PROJECTILE_IDS.length;
+if (KIT_EQUIP_ITEM >= RELOAD_ITEM || PROJECTILE_IDS.length + 1 > 3) throw new Error('the health kit no longer fits the Equip code or the 2-bit pouch field');
 
 /** Sub-kinds under `MessageType.Ext`, three bits: the wire order. */
 const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks: 5, Mission: 6, Events: 7 } as const;
