@@ -92,6 +92,11 @@ export interface ProjectileDef {
   blastMinFraction: number;
   /** What a target takes with the whole body behind cover (see `blastExposure`). */
   blastCoverFraction: number;
+  /**
+   * Suppression a blast adds to the hostile soldiers inside `blastRadiusM` (0..1 at its centre, falling to nothing at
+   * the edge), instead of the shared curve in suppression.json; 0 keeps the shared curve (U-056).
+   */
+  suppression: number;
   /** How many a soldier carries. */
   carried: number;
   /** Minimum seconds between two of these leaving the same hand. */
@@ -103,7 +108,7 @@ export interface ProjectileDef {
  * index is what travels in a Throw message and in the `Projectile` component,
  * so reordering this is a PROTOCOL_VERSION bump.
  */
-export const PROJECTILE_IDS = ['frag', 'rocket', 'c4'] as const;
+export const PROJECTILE_IDS = ['frag', 'rocket', 'c4', 'concussion'] as const;
 
 /**
  * Bits a projectile index takes on the wire (U-048): the Projectile component's kind, a Throw, a Detonation and the
@@ -194,6 +199,7 @@ function parseProjectileDef(key: string, raw: unknown): ProjectileDef {
     blastDamage: num(row, 'blastDamage', key, 0, 1000),
     blastMinFraction: num(row, 'blastMinFraction', key, 0, 1),
     blastCoverFraction: num(row, 'blastCoverFraction', key, 0, 1),
+    suppression: num(row, 'suppression', key, 0, 1),
     carried: num(row, 'carried', key, 0, 99),
     cooldownSeconds: num(row, 'cooldownSeconds', key, 0, 60),
   };

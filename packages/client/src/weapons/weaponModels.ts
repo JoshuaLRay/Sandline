@@ -184,6 +184,19 @@ const BUILDERS: Record<string, Builder> = {
       hip: [0.14, -0.1, -0.08],
     };
   },
+  concussion(g) {
+    // A stubby dark canister with a spoon and a ring, held low like the frag (a placeholder until it is drawn).
+    tube(g, 'polymer', 0.035, 0.11, [0, -0.04, 0.2], 8);
+    box(g, 'metal', [0.022, 0.03, 0.024], [0, 0.03, 0.2]);
+    box(g, 'metal', [0.012, 0.08, 0.01], [-0.03, -0.02, 0.2], 0.1);
+    return {
+      gripRight: [0, -0.08, 0.2],
+      gripLeft: [0.2, -0.16, 0.26],
+      sight: [0, -0.04, 0.2],
+      eyeRelief: 0.3,
+      hip: [0.14, -0.1, -0.08],
+    };
+  },
   c4(g) {
     // A block of charge with a detonator wire, carried low in the right hand (a placeholder until the model is drawn).
     box(g, 'olive', [0.16, 0.05, 0.09], [0, -0.04, 0.2]);
@@ -343,6 +356,7 @@ const MUZZLES: Record<WeaponSide, Readonly<Record<string, Vec3Tuple>>> = {
     rocket: [0, 0.08, 0.67],
     frag: [0, -0.04, 0.2],
     c4: [0, -0.04, 0.2],
+    concussion: [0, -0.04, 0.2],
   },
   enemy: {
     carbine: [0, 0, 0.83],

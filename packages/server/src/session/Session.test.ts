@@ -19,6 +19,7 @@ import {
   TICK_SECONDS,
   stepCharacter,
   NO_SECONDARY,
+  PROJECTILE_IDS,
   WEAPON_IDS,
   createWeaponState,
   encodeMessage,
@@ -569,7 +570,7 @@ describe('Session replicates the weapon and its reload (T-2.26)', () => {
     // Carbine, no reload, a gun (not the pouch) in hand; and (U-024) a full pouch left, in PROJECTILE_IDS order;
     // (U-028) the magazine; (U-018) the carbine its primary.
     expect(seen()).toEqual([0, 0, 0, ...slot.pouch, slot.weaponState.ammo, 0, NO_SECONDARY, 0, 3, 0, 2]);
-    expect(slot.pouch.length).toBe(3);
+    expect(slot.pouch.length).toBe(PROJECTILE_IDS.length);
     // The server's own reload: the one it starts on an empty magazine.
     slot.weaponState.ammo = 0;
     slot.weaponState.reloadEndsAt = now / 1000 + slot.weapon.reloadSeconds;

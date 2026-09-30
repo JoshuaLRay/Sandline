@@ -10,8 +10,10 @@
         "sidearm"
       ],
       "pouch": {
-        "frag": 2
+        "frag": 2,
+        "concussion": 4
       },
+      "equipment": "concussion",
       "orders": "squad",
       "dualPrimary": true
     },

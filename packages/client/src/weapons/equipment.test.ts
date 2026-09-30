@@ -60,6 +60,7 @@ function room() {
 
 
 const ROCKET = PROJECTILE_IDS.indexOf('rocket');
+const CONCUSSION = PROJECTILE_IDS.indexOf('concussion');
 const FRAG = PROJECTILE_IDS.indexOf('frag');
 const item = (projectile: number) => WEAPON_IDS.length + projectile;
 
@@ -77,17 +78,20 @@ describe('per-character equipment (U-048)', () => {
     return { r, preach, brennan, sp: r.session.slots[preach.net.slot]!, sb: r.session.slots[brennan.net.slot]! };
   };
 
-  it('Brennan carries 2 rockets in slot 5 and Preach none; only the carried equipment can be drawn', () => {
+  it('Brennan carries 2 rockets in slot 5 and Preach 4 concussion grenades; only the carried equipment can be drawn', () => {
     const { r, preach, brennan, sp, sb } = started();
     expect(sb.pouch[ROCKET]).toBe(2);
     expect(sb.equipment).toBe(ROCKET);
     expect(sp.pouch[ROCKET]).toBe(0);
-    expect(sp.equipment).toBe(-1);
+    expect(sp.pouch[CONCUSSION]).toBe(4);
+    expect(sp.equipment).toBe(CONCUSSION);
     r.step(2);
     expect(brennan.net.equipment).toBe(ROCKET);
-    expect(preach.net.equipment).toBe(-1);
+    expect(preach.net.equipment).toBe(CONCUSSION);
     r.send(preach, { kind: 'Equip', item: item(ROCKET) });
     expect(sp.heldProjectile).toBe(-1);
+    r.send(preach, { kind: 'Equip', item: item(CONCUSSION) });
+    expect(sp.heldProjectile).toBe(CONCUSSION);
     r.send(brennan, { kind: 'Equip', item: item(ROCKET) });
     expect(sb.heldProjectile).toBe(ROCKET);
     r.send(brennan, { kind: 'Equip', item: item(FRAG) });
@@ -116,17 +120,22 @@ describe('per-character equipment (U-048)', () => {
     r.send(brennan, { kind: 'Equip', item: item(ROCKET) });
     r.tap(INPUT_BUTTONS.drop, brennan);
     r.press(preach);
+    // A soldier carries one kind in slot 5: taking the rockets puts his concussion grenades down, whole.
     expect(sp.equipment).toBe(ROCKET);
     expect(sp.pouch[ROCKET]).toBe(2);
+    expect(sp.pouch[CONCUSSION]).toBe(0);
     expect(sb.pouch[ROCKET]).toBe(0);
-    expect(r.session.pickups).toHaveLength(0);
+    expect(r.session.pickups.map((p) => [pickupProjectile(p.weapon), p.ammo])).toEqual([[CONCUSSION, 4]]);
     r.step(2);
     expect(preach.net.equipment).toBe(ROCKET);
     r.send(preach, { kind: 'Equip', item: item(ROCKET) });
     expect(sp.heldProjectile).toBe(ROCKET);
-    // The dropper cannot take his own back twice: the pickup is gone.
+    // The dropper, empty-handed, takes the concussion grenades Preach put down.
     r.press(brennan);
+    expect(sb.equipment).toBe(CONCUSSION);
+    expect(sb.pouch[CONCUSSION]).toBe(4);
     expect(sb.pouch[ROCKET]).toBe(0);
+    expect(r.session.pickups).toHaveLength(0);
   });
 
   it('a retry or respawn gives the character\'s own equipment back', () => {
@@ -137,7 +146,8 @@ describe('per-character equipment (U-048)', () => {
     expect(sp.equipment).toBe(ROCKET);
     r.session.refillPouch(sp.index);
     r.session.refillPouch(sb.index);
-    expect(sp.equipment).toBe(-1);
+    expect(sp.equipment).toBe(CONCUSSION);
+    expect(sp.pouch[CONCUSSION]).toBe(4);
     expect(sp.pouch[ROCKET]).toBe(0);
     expect(sb.equipment).toBe(ROCKET);
     expect(sb.pouch[ROCKET]).toBe(2);

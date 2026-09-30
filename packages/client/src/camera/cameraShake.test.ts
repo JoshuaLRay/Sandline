@@ -188,6 +188,7 @@ const GRENADE: ProjectileDef = {
   blastDamage: 100,
   blastMinFraction: 0.1,
   blastCoverFraction: 0.25,
+  suppression: 0,
   carried: 3,
   cooldownSeconds: 1,
 };
