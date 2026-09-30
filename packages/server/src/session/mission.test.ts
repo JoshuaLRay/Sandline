@@ -573,7 +573,8 @@ describe('the mission on a session (T-3.34, T-4.14)', () => {
       expect([slot.state.x, slot.state.y, slot.state.z]).toEqual([checkpoint[i]!.x, checkpoint[i]!.y, checkpoint[i]!.z]);
     });
     expect(m.session.spawner!.dead('g')).toBe(true);
-    expect(m.session.spawner!.spawnedBy('g')).toEqual([]);
+    // U-059: the spawner remembers its dead (they were sent), and none of them comes back.
+    expect(m.session.spawner!.spawnedBy('g').every((id) => !m.session.enemies.some((e) => e.netId === id))).toBe(true);
     m.step(2);
     expect(m.session.enemies).toHaveLength(0);
     expect(m.session.mission!.objective).toBe(1);

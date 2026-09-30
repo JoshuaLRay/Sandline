@@ -171,7 +171,6 @@ describe('mission-01 enemy pressure (U-001)', () => {
     console.log(`[U-001] retry at objective 1 (seed-free, 1-human budget): ${m.session.spawner!.describe()}`);
     // The patrol stays beaten; the garrison is back, once.
     expect(m.living('overwatch-patrol')).toHaveLength(0);
-    expect(m.session.spawner!.spawnedBy('overwatch-patrol')).toHaveLength(0);
     expect(m.living('garrison')).toHaveLength(garrison);
     expect(m.living()).toHaveLength(garrison);
     m.step(30 * 10);
@@ -223,7 +222,8 @@ describe('mission-01 enemy pressure (U-001)', () => {
     console.log(`[U-001] retry in the defend: ${m.session.spawner!.describe()}`);
     expect(retried.filter((l) => l.wave === 1)).toHaveLength(firstWave);
     expect(retried.every((l) => l.wave === 1)).toBe(true);
-    expect(m.session.spawner!.spawnedBy('garrison')).toHaveLength(0);
+    // U-059: its dead are remembered as sent, and none of them lives.
+    expect(m.living('garrison')).toHaveLength(0);
     expect(m.session.spawner!.dead('garrison')).toBe(true);
 
     m.killEvery(3);
@@ -235,8 +235,12 @@ describe('mission-01 enemy pressure (U-001)', () => {
     m.session.retryMission();
     m.step(30 * 60);
     console.log(`[U-001] retry at the fall-back: ${m.session.spawner!.describe()}`);
-    expect(m.session.spawner!.spawnedBy('counterattack-push')).toHaveLength(0);
-    expect(m.session.spawner!.status().find((g) => g.id === 'counterattack-push')!.state).toBe('stopped');
+    // U-059: what it had sent is remembered, those still alive at the checkpoint are back, and nothing more comes.
+    expect(m.session.spawner!.log.filter((l) => l.group === 'counterattack-push')).toHaveLength(0);
+    // All its waves count as sent: it is stopped, or beaten down to what was still alive.
+    const push = m.session.spawner!.status().find((g) => g.id === 'counterattack-push')!;
+    expect(push.wavesSent).toBe(push.waves);
+    expect(push.queued).toBe(0);
     expect(m.living('exfil-ambush').length).toBeGreaterThan(0);
   });
 

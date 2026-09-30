@@ -180,6 +180,21 @@ interface Pending {
   archetype: string;
 }
 
+/** U-059: where a spawner stood at a checkpoint — every group's progress, and the members still queued. */
+export interface SpawnerCheckpoint {
+  runs: {
+    id: string;
+    firedAt: number | null;
+    wavesSent: number;
+    lastWaveAt: number;
+    waveTimes: number[];
+    spawned: number[];
+    stopped: boolean;
+    stragglingSince: number | null;
+  }[];
+  queue: { group: string; wave: number; archetype: string }[];
+}
+
 export class Spawner {
   private readonly runs: GroupRun[];
   private readonly queue: Pending[] = [];
@@ -221,6 +236,52 @@ export class Spawner {
       }
       this.candidates.set(zone.id, points);
     }
+  }
+
+  /** U-059: the whole of this spawner's progress, as plain data for a checkpoint. */
+  checkpoint(): SpawnerCheckpoint {
+    return {
+      runs: this.runs.map((r) => ({
+        id: r.def.id,
+        firedAt: r.firedAt,
+        wavesSent: r.wavesSent,
+        lastWaveAt: r.lastWaveAt,
+        waveTimes: [...r.waveTimes],
+        spawned: [...r.spawned],
+        stopped: r.stopped,
+        stragglingSince: r.stragglingSince,
+      })),
+      queue: this.queue.map((p) => ({ group: p.run.def.id, wave: p.wave, archetype: p.archetype })),
+    };
+  }
+
+  /**
+   * U-059: put a checkpoint's progress back into this (fresh) spawner. `remap` maps the netId an enemy had then to the
+   * one it has now; a member absent from it was dead at the checkpoint and keeps its old id, which no living enemy has.
+   */
+  restore(saved: SpawnerCheckpoint, remap: ReadonlyMap<number, number>): void {
+    for (const r of saved.runs) {
+      const run = this.run(r.id);
+      run.firedAt = r.firedAt;
+      run.wavesSent = r.wavesSent;
+      run.lastWaveAt = r.lastWaveAt;
+      run.waveTimes = [...r.waveTimes];
+      run.spawned = r.spawned.map((id) => remap.get(id) ?? id);
+      run.stopped = r.stopped;
+      run.stragglingSince = r.stragglingSince;
+    }
+    this.queue.length = 0;
+    for (const q of saved.queue) this.queue.push({ run: this.run(q.group), wave: q.wave, archetype: q.archetype });
+  }
+
+  /** U-059: the session group id a group's enemies share. */
+  sessionGroupOf(groupId: string): number {
+    return this.run(groupId).sessionGroup;
+  }
+
+  /** U-059: the encounter group that spawned this enemy, or null. */
+  groupOfEnemy(netId: number): string | null {
+    return this.runs.find((r) => r.spawned.includes(netId))?.def.id ?? null;
   }
 
   /** The candidate points of a zone, in the order they are tried. */

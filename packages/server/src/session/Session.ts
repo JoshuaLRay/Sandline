@@ -187,7 +187,7 @@ import { CoverSystem, DEFAULT_COVER_BODY } from '../ai/cover.ts';
 import { EnemyGroup } from '../ai/group.ts';
 import type { CombatWorld } from '../ai/actions/combat.ts';
 import type { EnemyPosture } from '../ai/actions/posture.ts';
-import { Spawner, type SpawnerHost } from '../ai/director/spawner.ts';
+import { Spawner, type SpawnerCheckpoint, type SpawnerHost } from '../ai/director/spawner.ts';
 import { Director } from '../ai/director/director.ts';
 import { MissionRun } from './mission.ts';
 import { EventRun, type EventCheckpoint, type EventHost } from './events.ts';
@@ -679,6 +679,8 @@ export interface EnemyEntity {
 /** U-017: a dead enemy's firearm on the ground. */
 /** U-052: one soldier's carried loadout at a checkpoint, restored by a retry. */
 interface SlotCheckpoint {
+  /** U-059: health when it was saved (a dead soldier's is its maximum: it returns whole). */
+  health: number;
   weapon: string;
   primary: string | null;
   secondary: string | null;
@@ -689,6 +691,31 @@ interface SlotCheckpoint {
   pouch: number[];
   kits: number;
   equipment: number;
+}
+
+/** U-059: a living enemy at a checkpoint. */
+interface EnemyCheckpoint {
+  netId: number;
+  archetype: string;
+  faction: number;
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  health: number;
+  /** The encounter group that sent it, or null. */
+  group: string | null;
+  posture: EnemyPosture | null;
+  ammo: number;
+  pouch: number[];
+}
+
+/** U-059: a placed device (C4, claymore, sensor, smoke cloud) at a checkpoint. */
+interface PlacedCheckpoint {
+  kind: number;
+  ownerSlot: number;
+  state: ProjectileState;
+  facing?: { x: number; z: number };
 }
 
 /** U-052: a pickup on the ground at a checkpoint. */
@@ -948,7 +975,17 @@ export class Session {
     /** U-052: what each soldier carried, and what lay on the ground, when the objective was completed. */
     slots?: SlotCheckpoint[];
     ground?: GroundCheckpoint[];
+    /** U-059: the mission clock, the living enemies, the spawner's progress and the placed devices at that moment. */
+    seconds?: number;
+    enemies?: EnemyCheckpoint[];
+    spawner?: SpawnerCheckpoint;
+    placed?: PlacedCheckpoint[];
   } | null = null;
+  /**
+   * U-059: an objective was completed while a soldier was downed, so its checkpoint is not saved yet (a restored world
+   * never holds a downed soldier). It is taken once the squad is up; until then a retry goes back to `previous`.
+   */
+  private queuedCheckpoint: { previous: { objective: number; elapsed: number } } | null = null;
   private readonly encounter: Encounter | null;
   private readonly testHumanCount: number | null;
   private readonly profileAi: boolean;
@@ -1267,6 +1304,7 @@ export class Session {
     if (!run) return;
     const beforeObjective = run.current.objective;
     const beforeState = run.current.state;
+    const beforeCheckpoint = { objective: run.checkpoint, elapsed: run.checkpointElapsed };
     const before = { type: run.current.type, label: run.current.label };
     const inside = (a: GroundArea) => (p: { x: number; z: number }) => Math.sqrt((p.x - a.x) ** 2 + (p.z - a.z) ** 2) <= a.radius;
     const living = this.slots.filter((s) => !isDead(s.health));
@@ -1295,14 +1333,45 @@ export class Session {
       // U-009: say so — the HUD's line moves straight on to what comes next.
       if (before.type === 'upload') this.eventHost().message(`Upload complete: ${before.label}`);
     }
-    if (run.current.state === 'progress' && run.current.objective > beforeObjective) this.captureMissionCheckpoint();
+    if (run.current.state === 'progress' && run.current.objective > beforeObjective) this.requestCheckpoint(beforeCheckpoint);
+    else if (this.queuedCheckpoint && run.current.state === 'progress') this.takeQueuedCheckpoint();
     if (beforeState === 'progress' && run.current.state === 'complete') {
       if (this.missionId) this.campaignCompletedMissions.add(this.missionId);
       this.missionCheckpointState = null;
+      this.queuedCheckpoint = null;
       this.persistCampaign();
     }
     if (beforeState === 'progress' && run.current.state === 'failed') this.persistCampaign();
     if (changed) this.broadcastMission();
+  }
+
+  /** U-059: whether any soldier is downed: no checkpoint is saved while one is (owner, 2026-09-30). */
+  private someoneDowned(): boolean {
+    return this.slots.some((s) => isDowned(s.health));
+  }
+
+  /**
+   * U-059: an objective was completed. The checkpoint is saved now, unless a soldier is downed, when it is queued
+   * until the squad is up (`previous` is where a retry goes meanwhile: the last checkpoint that was saved).
+   */
+  private requestCheckpoint(previous: { objective: number; elapsed: number }): void {
+    if (this.someoneDowned()) {
+      // A second objective completed while still waiting keeps the first previous: it is still the last saved.
+      this.queuedCheckpoint ??= { previous };
+      this.missionRun?.setCheckpoint(this.queuedCheckpoint.previous.objective, this.queuedCheckpoint.previous.elapsed);
+      return;
+    }
+    this.queuedCheckpoint = null;
+    this.captureMissionCheckpoint();
+  }
+
+  /** U-059: the queued checkpoint, once nobody is downed: taken as of now, at the objective the squad is on. */
+  private takeQueuedCheckpoint(): void {
+    const run = this.missionRun;
+    if (!run || !this.queuedCheckpoint || this.someoneDowned()) return;
+    this.queuedCheckpoint = null;
+    run.setCheckpoint(run.current.objective, run.elapsed);
+    this.captureMissionCheckpoint();
   }
 
   /** Remember the squad, cleared encounter groups and script state at a completed objective. */
@@ -1315,6 +1384,27 @@ export class Session {
       spawns: this.slots.map((s) => ({ x: s.state.x, y: s.state.y, z: s.state.z })),
       completedGroups,
       event: this.eventRun?.checkpoint() ?? null,
+      seconds: (this.currentTick - this.missionStartTick) * TICK_SECONDS,
+      ...(spawner ? { spawner: spawner.checkpoint() } : {}),
+      enemies: this.enemyList
+        .filter((e) => !isDead(e.health))
+        .map((e) => ({
+          netId: e.netId,
+          archetype: e.def.id,
+          faction: e.faction,
+          x: e.state.x,
+          y: e.state.y,
+          z: e.state.z,
+          yaw: e.yaw,
+          health: e.health.current,
+          group: spawner?.groupOfEnemy(e.netId) ?? null,
+          posture: e.posture ? structuredClone(e.posture) : null,
+          ammo: e.weaponState.ammo,
+          pouch: [...e.pouch],
+        })),
+      placed: this.projectiles
+        .filter((p) => p.stuck && !p.destroyed)
+        .map((p) => ({ kind: p.kind, ownerSlot: p.ownerSlot, state: { ...p.state }, ...(p.facing ? { facing: { ...p.facing } } : {}) })),
       slots: this.slots.map((slot) => this.checkpointSlot(slot)),
       ground: this.pickupList.map((p) => ({ weapon: p.weapon, ammo: p.ammo, x: p.x, y: p.y, z: p.z, yaw: p.yaw, authored: this.authoredPickups.has(p.netId) })),
     };
@@ -1326,6 +1416,7 @@ export class Session {
     const ammo: [string, number][] = [[slot.weapon.id, slot.weaponState.ammo]];
     for (const [id, state] of slot.stowed) if (id !== slot.weapon.id) ammo.push([id, state.ammo]);
     return {
+      health: isDead(slot.health) ? slot.health.max : slot.health.current,
       weapon: slot.weapon.id,
       primary: slot.primary,
       secondary: slot.secondary,
@@ -1339,11 +1430,20 @@ export class Session {
   }
 
   /** U-052: a retry puts the world back as the checkpoint saw it: what each soldier carried, and what lay on the ground. */
-  private restoreCheckpointWorld(saved: { slots?: SlotCheckpoint[]; ground?: GroundCheckpoint[] } | null): void {
-    if (!saved) return;
+  private restoreCheckpointWorld(saved: {
+    seconds?: number;
+    slots?: SlotCheckpoint[];
+    ground?: GroundCheckpoint[];
+    enemies?: EnemyCheckpoint[];
+    spawner?: SpawnerCheckpoint;
+    placed?: PlacedCheckpoint[];
+  } | null): boolean {
+    if (!saved) return false;
     for (const [i, snap] of (saved.slots ?? []).entries()) {
       const slot = this.slots[i];
       if (!slot) continue;
+      // U-059: as hurt as it was when saved (nobody was downed then), never above its maximum.
+      if (snap.health > 0) slot.health.current = Math.min(snap.health, slot.health.max);
       slot.primary = snap.primary;
       slot.secondary = snap.secondary;
       slot.noPistol = snap.noPistol;
@@ -1364,6 +1464,56 @@ export class Session {
       slot.heldProjectile = -1;
     }
     for (const g of saved.ground ?? []) this.placePickupItem(g.weapon, g.ammo, g, g.yaw, g.authored);
+    for (const d of saved.placed ?? []) {
+      const def = this.projectileDefs[d.kind];
+      const owner = this.slots[d.ownerSlot];
+      if (!def || !owner) continue;
+      this.projectiles.push({
+        netId: this.nextProjectileNetId++,
+        def,
+        kind: d.kind,
+        ownerSlot: owner.index,
+        ownerNetId: owner.netId,
+        xpPlayerId: this.xpPlayer(owner.index),
+        state: { ...d.state },
+        stuck: true,
+        ...(d.facing ? { facing: { ...d.facing } } : {}),
+      });
+    }
+    return this.restoreEnemies(saved);
+  }
+
+  /**
+   * U-059: the enemies alive at the checkpoint, where they stood and as hurt, back in their groups; and the spawner as
+   * it was, so what had been sent stays sent and what was queued still comes. Their minds start fresh: what each
+   * knew of the squad is not kept. Returns whether the spawner was restored.
+   */
+  private restoreEnemies(saved: { seconds?: number; enemies?: EnemyCheckpoint[]; spawner?: SpawnerCheckpoint }): boolean {
+    const spawner = this.spawnerValue;
+    if (!spawner || !saved.spawner) return false;
+    const remap = new Map<number, number>();
+    for (const e of saved.enemies ?? []) {
+      const group = e.group === null ? undefined : spawner.sessionGroupOf(e.group);
+      const netId = this.spawnEnemy(e.archetype, {
+        x: e.x,
+        y: e.y,
+        z: e.z,
+        yaw: e.yaw,
+        faction: e.faction,
+        ...(e.posture ? { posture: structuredClone(e.posture) } : {}),
+        ...(group !== undefined ? { group } : {}),
+      });
+      if (netId === null) continue;
+      const enemy = this.enemyList.find((x) => x.netId === netId)!;
+      enemy.health.current = Math.min(e.health, enemy.health.max);
+      enemy.weaponState.ammo = e.ammo;
+      enemy.pouch = [...e.pouch];
+      remap.set(e.netId, netId);
+    }
+    spawner.restore(saved.spawner, remap);
+    // The mission clock goes on from the checkpoint, so the times the spawner and the script kept still mean something.
+    if (saved.seconds !== undefined) this.missionStartTick = this.currentTick - Math.round(saved.seconds / TICK_SECONDS);
+    return true;
   }
 
   /** T-4.23: checkpoint/mission-end persistence; never called from the tick hot path otherwise. */
@@ -1515,13 +1665,15 @@ export class Session {
    * "sent" to the script and never spawned by the spawner — the garrison
    * gone, and the counterattack waiting on its death for ever.
    */
-  private restoreEvents(saved: { completedGroups: readonly string[]; event: EventCheckpoint | null } | null): void {
+  private restoreEvents(saved: { completedGroups: readonly string[]; event: EventCheckpoint | null } | null, spawnerRestored = false): void {
     if (!this.eventRun) return;
     if (!saved?.event) {
       this.eventRun.reset();
       return;
     }
     this.eventRun.restore(saved.event);
+    // U-059: the spawner already stands as the checkpoint left it: nothing is sent again.
+    if (spawnerRestored) return;
     const { sent, stopped } = this.eventRun.groups();
     for (const id of stopped) this.spawnerValue?.stop(id, 0);
     for (const id of sent) if (!saved.completedGroups.includes(id)) this.spawnerValue?.activate(id, 0);
@@ -1614,9 +1766,11 @@ export class Session {
       return { x: point.x, y: point.y, z: point.z };
     });
     this.resetMissionWorld(spawns, saved?.completedGroups ?? []);
-    this.restoreCheckpointWorld(saved);
+    // U-059: a checkpoint still queued was never saved: the retry point was put back to the last one that was.
+    this.queuedCheckpoint = null;
+    const worldRestored = this.restoreCheckpointWorld(saved);
     run.retry();
-    this.restoreEvents(saved);
+    this.restoreEvents(saved, worldRestored);
     this.broadcastMission();
     this.broadcastScriptState();
   }
@@ -1635,6 +1789,7 @@ export class Session {
       return { x: point.x, y: point.y, z: point.z };
     });
     this.missionCheckpointState = null;
+    this.queuedCheckpoint = null;
     this.resetMissionWorld(spawns, []);
     this.missionRun?.reset();
     this.eventRun?.reset();
