@@ -88,4 +88,11 @@ describe('how far an order reaches (T-4.27)', () => {
     raw.classes[CLASSES.ids[0]!]!['healthKits'] = 8;
     expect(() => parseClassConfig(raw)).toThrow(ClassDataError);
   });
+
+  it('only the support has an interaction discount (0.8), the rest 1, and the data is bounded (U-049)', () => {
+    for (const id of CLASSES.ids) expect(classById(id)?.interactionTimeScale, id).toBe(id === 'holloway' ? 0.8 : 1);
+    const raw = JSON.parse(JSON.stringify(RAW)) as { classes: Record<string, Record<string, unknown>> };
+    raw.classes[CLASSES.ids[0]!]!['interactionTimeScale'] = 0;
+    expect(() => parseClassConfig(raw)).toThrow(ClassDataError);
+  });
 });

@@ -37,6 +37,11 @@ export interface ClassDef {
   /** Health kits carried at spawn (U-047; default 3, the owner's number). */
   readonly healthKits: number;
   /**
+   * How long this character's timed interactions take, as a multiple (U-049): the support's 0.8 is the owner's 20%
+   * discount, so a 10 s health kit takes 8 s. Default 1. Not for firing, reloading or swapping.
+   */
+  readonly interactionTimeScale: number;
+  /**
    * May carry two primaries at once (U-022): only Preach and the support. The
    * second is another AR, SMG or shotgun; never with an LMG, marksman rifle
    * or sniper rifle in hand as the first.
@@ -110,6 +115,7 @@ export function parseClassConfig(raw: unknown): ClassConfig {
       guns: guns as string[],
       pouch,
       orders,
+      interactionTimeScale: row['interactionTimeScale'] === undefined ? 1 : num(row, 'interactionTimeScale', where, 0.1, 2),
       healthKits: row['healthKits'] === undefined ? 3 : num(row, 'healthKits', where, 0, 7),
       dualPrimary: bool(row, 'dualPrimary', where, false),
       ads: bool(row, 'ads', where, true),
