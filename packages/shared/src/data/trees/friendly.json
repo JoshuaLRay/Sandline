@@ -1,5 +1,5 @@
 {
-  "$comment": "T-3.25/T-3.26/T-3.28. A friendly bot. First, an order a player gave it (T-3.28, server/src/ai/friendly/orders.ts): move, attack, hold, regroup or revive \u2014 it pre-empts everything below until it finishes, fails or is replaced. Then, a downed squadmate within reach of it (squad.json bot.reviveSeekM) that nobody else is reviving, unless it is pinned down itself: go to them and hold interact, through the human's revive path. Then, with an enemy known: the rifleman's fight on its own slot \u2014 a grenade at an enemy gone still in cover, reload when low, relocate when flanked, peek and fire from cover unless pressured, else stay down, else take cover (only cover within its formation band of its formation place), else fight where it stands. It never fires with a squadmate on the line (the session holds the trigger). Nothing known: follow its fireteam's lead in formation (server/src/ai/friendly/formation.ts).",
+  "$comment": "T-3.25/T-3.26/T-3.28. A friendly bot. First, an order a player gave it (T-3.28, server/src/ai/friendly/orders.ts): move, attack, hold, regroup or revive — it pre-empts everything below until it finishes, fails or is replaced. Then, a downed squadmate within reach of it (squad.json bot.reviveSeekM) that nobody else is reviving, unless it is pinned down itself: go to them and hold interact, through the human's revive path. Then (U-053), a hurt squadmate below squad.json bot.kitBelowFraction of their health, when it still has health kits and is not pinned down: go to them and hold the use of a kit, through the human's health-kit path. Then, with an enemy known: the rifleman's fight on its own slot — a grenade at an enemy gone still in cover, reload when low, relocate when flanked, peek and fire from cover unless pressured, else stay down, else take cover (only cover within its formation band of its formation place), else fight where it stands. It never fires with a squadmate on the line (the session holds the trigger). Nothing known: follow its fireteam's lead in formation (server/src/ai/friendly/formation.ts).",
   "id": "friendly",
   "root": {
     "type": "selector",
@@ -112,6 +112,31 @@
           {
             "type": "action",
             "name": "revive"
+          }
+        ]
+      },
+      {
+        "type": "sequence",
+        "reactive": true,
+        "children": [
+          {
+            "type": "condition",
+            "name": "hurtMate"
+          },
+          {
+            "type": "inverter",
+            "child": {
+              "type": "condition",
+              "name": "pressured",
+              "args": {
+                "suppression": 0.6,
+                "hurtSeconds": 1.0
+              }
+            }
+          },
+          {
+            "type": "action",
+            "name": "heal"
           }
         ]
       },

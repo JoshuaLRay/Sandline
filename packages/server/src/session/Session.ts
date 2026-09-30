@@ -997,6 +997,7 @@ export class Session {
     const squad: SquadView = {
       place: (index) => this.formation.place(index),
       downedNear: (index) => this.downedNear(index),
+      hurtNear: (index) => this.hurtNear(index),
       order: (index) => {
         const order = this.orders[index];
         const run = this.orderRuns[index];
@@ -1851,6 +1852,28 @@ export class Session {
       if (d <= bestD) {
         bestD = d;
         best = { index: s.index, x: s.state.x, y: s.state.y, z: s.state.z, reachM: DAMAGE.downed.reviveRangeM };
+      }
+    }
+    return best;
+  }
+
+  /**
+   * U-053: the nearest hurt (alive, not downed) squadmate below `bot.kitBelowFraction` of their health within
+   * `bot.reviveSeekM` of a bot slot that still has health kits, that no one else is already healing.
+   */
+  private hurtNear(index: number): DownedMate | null {
+    const me = this.slots[index];
+    if (!me || !isAlive(me.health) || me.kits <= 0) return null;
+    let best: DownedMate | null = null;
+    let bestD = SQUAD_CONFIG.bot.reviveSeekM;
+    for (const s of this.slots) {
+      if (s === me || !isAlive(s.health) || s.mounted) continue;
+      if (s.health.current >= s.health.max * SQUAD_CONFIG.bot.kitBelowFraction) continue;
+      if (this.slots.some((o) => o !== me && o.kitTarget === s.index)) continue;
+      const d = Math.sqrt((s.state.x - me.state.x) ** 2 + (s.state.z - me.state.z) ** 2);
+      if (d <= bestD) {
+        bestD = d;
+        best = { index: s.index, x: s.state.x, y: s.state.y, z: s.state.z, reachM: DAMAGE.kit.reachM };
       }
     }
     return best;
@@ -3465,16 +3488,20 @@ export class Session {
    * themselves. The application runs `DAMAGE.kit.seconds` and is interrupted by
    * letting go, by putting the kits away, by damage, or by the target moving out
    * of reach or changing state; a downed soldier cannot apply one, even to
-   * themselves. Spent on completion. Bots do not use them yet.
+   * themselves. Spent on completion. Bots use them (U-053) on a hurt mate.
    */
   private updateKits(): void {
     const reachSq = DAMAGE.kit.reachM * DAMAGE.kit.reachM;
     for (const slot of this.slots) {
       const damaged = slot.health.current < slot.kitHealth;
       slot.kitHealth = slot.health.current;
+      // A bot's brain asks for the use itself (U-053) and takes the kit out to do it; a human holds the trigger with it drawn.
+      const botWants = this.autonomous(slot) && (slot.brain?.read('useKit') ?? false);
+      if (botWants) slot.heldProjectile = KIT_HELD;
+      else if (this.autonomous(slot) && slot.heldProjectile === KIT_HELD) slot.heldProjectile = -1;
       const using =
-        !this.autonomous(slot) && slot.heldProjectile === KIT_HELD && slot.kits > 0 && isAlive(slot.health) && !slot.mounted && !slot.state.vault &&
-        slot.input.firing === true && slot.staleTicks <= MAX_INPUT_REPEAT && !damaged;
+        slot.heldProjectile === KIT_HELD && slot.kits > 0 && isAlive(slot.health) && !slot.mounted && !slot.state.vault && !damaged &&
+        (this.autonomous(slot) ? botWants : slot.input.firing === true && slot.staleTicks <= MAX_INPUT_REPEAT);
       if (!using) {
         slot.kitProgress = 0;
         slot.kitTarget = -1;
@@ -4444,7 +4471,11 @@ export class Session {
    */
   private thinkBrains(): void {
     for (const slot of this.slots) {
-      if (slot.brain?.due(this.currentTick)) slot.brain.think(this.currentTick);
+      if (slot.brain?.due(this.currentTick)) {
+        // U-053: holding a kit's use is asked afresh each think, so a branch that pre-empts the heal lets go of it.
+        slot.brain.take('useKit');
+        slot.brain.think(this.currentTick);
+      }
     }
     // Enemies' netIds are consecutive, so they spread over the phases too.
     for (const enemy of this.enemyList) {
