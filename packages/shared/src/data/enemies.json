@@ -85,5 +85,85 @@
       "seconds": 1.5,
       "movingSpeedMps": 0.2
     }
+  },
+  "tank": {
+    "id": "tank",
+    "name": "Tank",
+    "health": 1000,
+    "weapon": "lmg",
+    "tree": "idle",
+    "downable": false,
+    "corpseSeconds": 600,
+    "perception": {
+      "visionRangeM": 80,
+      "fovDeg": 120,
+      "detectAt": 0.7,
+      "nearRatePerSec": 3.5,
+      "farRatePerSec": 0.2,
+      "maxRatePerSec": 3,
+      "decayPerSec": 0.25,
+      "crouchFactor": 0.6,
+      "proneFactor": 0.25,
+      "movingSpeedMps": 0.5,
+      "movingFactor": 1.5,
+      "firingFactor": 3,
+      "edgeFactor": 0.3
+    },
+    "accuracy": {
+      "baseConeDeg": 2.0,
+      "distanceDoublingM": 55,
+      "speedFactorPerMps": 0.15,
+      "suppressionFactor": 1.5,
+      "acquireFactor": 3,
+      "settleSeconds": 2.5,
+      "maxConeDeg": 14,
+      "holdBloomDeg": 6.0,
+      "burstRounds": 45,
+      "burstPauseSeconds": 0.25,
+      "hitBand": {
+        "rangeM": 20,
+        "min": 0.2,
+        "max": 0.6
+      }
+    },
+    "vehicle": {
+      "radiusM": 2.0,
+      "hull": {
+        "from": [
+          0,
+          1.0,
+          -1.6
+        ],
+        "to": [
+          0,
+          1.0,
+          1.6
+        ],
+        "radius": 1.3
+      },
+      "turret": {
+        "from": [
+          0,
+          2.0,
+          0
+        ],
+        "to": [
+          0,
+          2.3,
+          0
+        ],
+        "radius": 0.9
+      },
+      "armour": {
+        "bullet": 0.1,
+        "blast": {
+          "frag": 0.1,
+          "rocket": 1,
+          "c4": 1,
+          "claymore": 1
+        },
+        "blastDefault": 0.1
+      }
+    }
   }
 }

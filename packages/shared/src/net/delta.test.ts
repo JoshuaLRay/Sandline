@@ -138,13 +138,13 @@ describe('delta compression (T-1.04)', () => {
         [H]: [100, 100, 0, 0, 0, 0],
         [COMPONENT_IDS.Crouch]: [1, 0],
         // The widest values the fields hold: a width mismatch corrupts these.
-        [COMPONENT_IDS.Enemy]: [7, 3],
+        [COMPONENT_IDS.Enemy]: [7, 3, 0],
       },
     };
     const next: WorldSnapshot = { tick: 2, entities: [...base.entities, enemy] };
     const got = decodeDelta(encodeDelta(next, base), base);
     expectSameWorld(got, next);
-    expect(got.entities.find((e) => e.netId === 2000)?.components[COMPONENT_IDS.Enemy]).toEqual([7, 3]);
+    expect(got.entities.find((e) => e.netId === 2000)?.components[COMPONENT_IDS.Enemy]).toEqual([7, 3, 0]);
     // Identity never changes, so a tick later it costs nothing.
     const still: WorldSnapshot = { tick: 3, entities: next.entities };
     expect(encodeDelta(still, next).length).toBeLessThan(10);

@@ -65,7 +65,7 @@ function enemyEntity(netId: number, x: number, z: number, vitality: 'alive' | 'd
       [T]: transform(x, z),
       [H]: [dead ? 0 : 100, 100, vitalityCode(vitality), dead ? 10 : 0, 0, 0],
       [COMPONENT_IDS.Crouch]: [0, 0],
-      [COMPONENT_IDS.Enemy]: [RIFLEMAN, 0],
+      [COMPONENT_IDS.Enemy]: [RIFLEMAN, 0, 0],
     },
   };
 }
@@ -141,7 +141,7 @@ describe('enemies in the page (T-3.11)', () => {
     const h = harness();
     for (let tick = 10; tick < 16; tick += 1) h.frame(tick, [slotEntity(4, 1), enemyEntity(2000, -5, 40)]);
 
-    expect(h.net.remoteEnemy(2000)).toEqual({ archetype: RIFLEMAN, faction: 0 });
+    expect(h.net.remoteEnemy(2000)).toEqual({ archetype: RIFLEMAN, faction: 0, turretYaw: 0 });
     expect(h.net.remoteEnemy(4)).toBeNull();
     // No slot: every HUD line keyed by slot (the squad panel, the revive
     // banner's names) asks `remoteSlot` or `roster`, and gets nothing.

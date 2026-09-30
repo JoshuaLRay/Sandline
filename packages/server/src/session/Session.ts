@@ -180,7 +180,7 @@ import {
   suppressionLevel,
   suppressionToWire,
 } from '@sandline/shared';
-import { DEFAULT_HITBOX, HitboxHistory, bodyParts, bodyStance, capsuleFor, clampRewindMs, rayBody, rayCapsule, resolveShot } from '../net/lagComp.ts';
+import { DEFAULT_HITBOX, HitboxHistory, bodyParts, bodyStance, capsuleFor, clampRewindMs, rayBody, rayCapsule, resolveShot, vehicleHitbox } from '../net/lagComp.ts';
 import { BRAIN_PERIOD_TICKS, Brain, type BrainTree, createBrainRegistry, defaultBrainTree } from '../ai/Brain.ts';
 import { type AiDebugSource, buildAiDebug } from '../ai/debug.ts';
 import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, lineOfSight, visibleAimPoint } from '../ai/aim.ts';
@@ -306,6 +306,17 @@ const BOT_ARCHETYPE = getEnemy(SQUAD_CONFIG.bot.archetype);
 const SUPPRESSIVE_AIM = -1;
 
 /** A soldier's eye where it stands now, in its stance: prone, crouched (the cover body's crouched eye, T-3.19) or standing. */
+/** U-066: the point `from` moved `metres` toward `to` (or all the way there, if it is nearer): where a blast meets a tank's hull. */
+function towardBy(from: { x: number; y: number; z: number }, to: { x: number; y: number; z: number }, metres: number): { x: number; y: number; z: number } {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dz = to.z - from.z;
+  const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  if (d <= 1e-6) return { x: from.x, y: from.y, z: from.z };
+  const t = Math.min(d, metres) / d;
+  return { x: from.x + dx * t, y: from.y + dy * t, z: from.z + dz * t };
+}
+
 function soldierEye(state: MoveState): { x: number; y: number; z: number } {
   const h = state.prone ? DEFAULT_MUZZLE_RIG.proneEyeHeight : state.crouched ? (DEFAULT_COVER_BODY.crouched[2] as number) : DEFAULT_MUZZLE_RIG.eyeHeight;
   return { x: state.x, y: state.y + h, z: state.z };
@@ -627,6 +638,8 @@ export interface EnemyEntity {
   /** Facing, wire units, as a slot's. */
   yaw: number;
   pitch: number;
+  /** U-066: a tank's turret facing, wire units, apart from the hull's `yaw`; a soldier's follows its own. */
+  turretYaw: number;
   input: MoveInput;
   health: HealthState;
   /** Its brain, stopped on the tick it dies. */
@@ -2230,6 +2243,7 @@ export class Session {
       state: createMoveState(at.x, at.y, at.z),
       yaw,
       pitch: 0,
+      turretYaw: yaw,
       input: idleInput(yaw),
       health: { current: def.health, max: def.health, downedAt: null, diedAt: null },
       brain: null,
@@ -2276,6 +2290,8 @@ export class Session {
     enemy.group?.add(enemy.netId);
     enemy.brain = new Brain(enemy, at.tree ?? this.enemyTree(def.tree));
     this.enemyList.push(enemy);
+    // U-066: a tank is shot at in its own shape — a hull and a turret — not as a soldier.
+    if (def.vehicle) this.hitboxes.setShape(enemy.netId, vehicleHitbox(def.vehicle));
     return enemy.netId;
   }
 
@@ -3998,6 +4014,8 @@ export class Session {
         // rather than going down (T-3.10, its archetype's `downable`).
         const enemy = target ? undefined : this.enemyList.find((e) => e.netId === hit.netId);
         if (enemy) {
+          // U-066: a tank's armour turns most of a bullet away.
+          if (enemy.def.vehicle) dealt *= enemy.def.vehicle.armour.bullet;
           const result = applyDamage(enemy.health, dealt, this.nowMs / 1000, DAMAGE, enemy.def.downable);
           dealt = result.applied;
           if (dealt > 0) enemy.lastDamagedAt = this.nowMs / 1000;
@@ -4694,14 +4712,17 @@ export class Session {
     for (const enemy of this.enemyList) {
       if (isDead(enemy.health)) continue;
       if (!this.inBlastCone(projectile, enemy.state)) continue;
-      const height = enemy.state.prone ? PRONE_HITBOX_HEIGHT : enemy.state.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT;
-      const damage = blastDamageOn(
-        projectile.def,
-        at,
-        { x: enemy.state.x, y: enemy.state.y, z: enemy.state.z },
-        height,
-        this.collisionBoxes,
-      );
+      const vehicle = enemy.def.vehicle;
+      // U-066: a blast reaches a tank's hull, not its middle: measured from its skin, and cut by its armour.
+      const height = vehicle ? 2 * vehicle.hull.radius + 0.6 : enemy.state.prone ? PRONE_HITBOX_HEIGHT : enemy.state.crouched ? CROUCH_HITBOX_HEIGHT : HITBOX_HEIGHT;
+      let feet = { x: enemy.state.x, y: enemy.state.y, z: enemy.state.z };
+      if (vehicle) {
+        // The point of the hull nearest the blast, then the feet that put that point at the middle of `height`.
+        const skin = towardBy({ x: feet.x, y: feet.y + vehicle.hull.from[1], z: feet.z }, at, vehicle.radiusM);
+        feet = { x: skin.x, y: skin.y - height / 2, z: skin.z };
+      }
+      const raw = blastDamageOn(projectile.def, at, feet, height, this.collisionBoxes);
+      const damage = vehicle ? raw * (vehicle.armour.blast[PROJECTILE_IDS[projectile.kind] ?? ''] ?? vehicle.armour.blastDefault) : raw;
       if (damage <= 0) continue;
       const result = applyDamage(enemy.health, damage, nowSeconds, DAMAGE, enemy.def.downable);
       if (result.applied > 0) enemy.lastDamagedAt = nowSeconds;
@@ -5699,7 +5720,8 @@ export class Session {
             0,
           ],
           [C]: [e.state.crouched ? 1 : 0, e.state.prone ? 1 : 0],
-          [COMPONENT_IDS.Enemy]: [e.archetype, e.faction],
+          // U-066: a tank's turret faces its own way; a soldier's is 0.
+          [COMPONENT_IDS.Enemy]: [e.archetype, e.faction, e.def.vehicle ? e.turretYaw & 0x3ff : 0],
         },
       });
     }

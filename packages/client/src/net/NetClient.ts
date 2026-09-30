@@ -90,6 +90,8 @@ export interface RemoteWeapon {
 export interface RemoteEnemy {
   archetype: number;
   faction: number;
+  /** U-066: a tank's turret yaw, wire units, apart from its hull's (0 for a soldier). A delta carries it only while it turns. */
+  turretYaw: number;
 }
 
 /** A weapon emplacement as this client sees it (T-4.29): where, whose, how hot, and the way it is laid. */
@@ -1526,6 +1528,7 @@ export class NetClient {
         this.remoteEnemies.set(entity.netId, {
           archetype: (enemy[0] as number | undefined) ?? 0,
           faction: (enemy[1] as number | undefined) ?? 0,
+          turretYaw: ((enemy[2] as number | undefined) ?? 0) & 0x3ff,
         });
       }
       let buffer = this.buffers.get(entity.netId);

@@ -151,7 +151,9 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // T-3.10. `archetype` indexes ENEMY_IDS and `faction` names the side; like
     // a projectile's identity neither changes for the life of the entity, so
     // they cost their bits once, on the spawn. Widths from enemies.ts.
-    fields: [uint('archetype', ENEMY_ARCHETYPE_BITS), uint('faction', ENEMY_FACTION_BITS)],
+    // U-066: and `turretYaw` (wire units), a tank's turret facing apart from its hull's (the Transform's); 0 for a soldier.
+    // It rides this component, not one of its own, so no entity pays another bit of the presence mask.
+    fields: [uint('archetype', ENEMY_ARCHETYPE_BITS), uint('faction', ENEMY_FACTION_BITS), uint('turretYaw', ANGLE_BITS_WIRE)],
   },
   {
     id: COMPONENT_IDS.Suppression,

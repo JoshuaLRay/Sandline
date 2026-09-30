@@ -48,7 +48,7 @@ export const Projectile = defineComponent({ kind: Types.ui8, ownerSlot: Types.ui
  * `Health` as a soldier's do; this is what tells a client the soldier is the
  * other side's, and never changes for the life of the entity.
  */
-export const Enemy = defineComponent({ archetype: Types.ui8, faction: Types.ui8 });
+export const Enemy = defineComponent({ archetype: Types.ui8, faction: Types.ui8, turretYaw: Types.ui16 });
 
 /**
  * How suppressed a soldier is (T-3.16): the level, 0..63 for 0..1
