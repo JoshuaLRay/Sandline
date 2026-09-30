@@ -19,7 +19,7 @@ import { WEAPON_IDS, WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 import { PROJECTILE_IDS } from '../sim/ballistics.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 48;
+export const PROTOCOL_VERSION = 49;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -130,6 +130,9 @@ export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
 
 const TYPE_BITS = 4;
 
+/** U-051: the highest slot a Join can ask for (six slots, 0-5). */
+const MAX_SLOT_CODE = 5;
+
 /**
  * U-028: the Equip item code that is a Reload. Loadout items are the guns
  * then the pouch. Four bits leave room for the knife and both pouch items.
@@ -236,6 +239,11 @@ export type Message =
       version: number;
       name: string;
       room: string;
+      /**
+       * U-051: the slot (0-5) the player would like, if it is free; absent means the lowest free. The host seats
+       * a resume in its own slot whatever this says, and a slot already taken falls back to the lowest free.
+       */
+      slot?: number;
       /**
        * The host's join key, as the player typed it. Absent and empty mean the
        * same: no key, which a host without `JOIN_KEY` accepts and one with it
@@ -526,6 +534,8 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeString(msg.resume ?? '');
       w.writeString(msg.identity ?? '');
       w.writeBool(msg.quick ?? false);
+      // U-051: 0 for none (or a slot out of range), else the slot plus one (a slot is 0-5).
+      w.writeBits(msg.slot === undefined || !(msg.slot >= 0 && msg.slot <= MAX_SLOT_CODE) ? 0 : Math.floor(msg.slot) + 1, 3);
       break;
     case 'JoinAck':
       w.writeBits(MessageType.JoinAck, TYPE_BITS);
@@ -1043,6 +1053,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
         const resume = r.readString();
         const identity = r.readString();
         const quick = r.readBool();
+        const wanted = r.readBits(3);
         return {
           kind: 'Join',
           version,
@@ -1053,6 +1064,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
           ...(resume === '' ? {} : { resume }),
           ...(identity === '' ? {} : { identity }),
           ...(quick ? { quick } : {}),
+          ...(wanted === 0 ? {} : { slot: wanted - 1 }),
         };
       }
       case MessageType.JoinAck:

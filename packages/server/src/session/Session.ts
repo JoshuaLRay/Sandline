@@ -2319,7 +2319,7 @@ export class Session {
 
   private assignSlot(conn: ServerConnection): boolean {
     const resumed = this.resumeSlot(conn);
-    const slot = resumed ?? this.freeSlot();
+    const slot = resumed ?? this.wantedSlot(conn) ?? this.freeSlot();
     if (!slot) {
       conn.reject('room full');
       return false;
@@ -2598,6 +2598,18 @@ export class Session {
     }
     if (!slot.isBot || slot.reservedUntilMs < this.nowMs) return null;
     return slot;
+  }
+
+  /**
+   * U-051: the slot a newcomer asked for, if a bot holds it and nobody has a claim on it (a dropped player's
+   * reserved seat is not given away); null otherwise, and the newcomer gets the lowest free one. Two asking
+   * for the same slot are seated one after the other, so the second finds it taken.
+   */
+  private wantedSlot(conn: ServerConnection): Slot | null {
+    const want = conn.wantedSlot;
+    if (want < 0) return null;
+    const slot = this.slots[want];
+    return slot && slot.isBot && slot.reservedUntilMs <= this.nowMs ? slot : null;
   }
 
   /**

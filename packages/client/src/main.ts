@@ -1400,7 +1400,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
       resetCallouts();
       // The map only means something to a room being made (T-3.35 follow-up); a rejoin takes the room's.
       // T-4.22: who we are to this host, if it has told us before.
-      net.join(roomJoined, choice.key, roomJoined === '' ? choice.world : '', joinedOnce ? resume : '', freshIdentity ? '' : readIdentity(choice.host), !joinedOnce && roomJoined === '' && choice.quick);
+      net.join(roomJoined, choice.key, roomJoined === '' ? choice.world : '', joinedOnce ? resume : '', freshIdentity ? '' : readIdentity(choice.host), !joinedOnce && roomJoined === '' && choice.quick, joinedOnce ? -1 : choice.slot);
     };
     net.onJoined = (_slot, room) => {
       // Back in our own slot the soldier is where we left it; any other slot
