@@ -23,6 +23,8 @@ export interface CommandRow {
   options: CommandOption[];
   /** U-026: a bot you command: you may take control of it. */
   switchable: boolean;
+  /** U-064: a prisoner: greyed out and not to be chosen; the label says why. */
+  captured: boolean;
 }
 
 /** A seated human as the squad names them: their name, "(you)" for you. */
@@ -42,13 +44,15 @@ export function commandRows(roster: readonly RosterEntry[], mySlot: number): Com
     const human = entry?.human ?? false;
     const short = classById(entry?.classId ?? '')?.short ?? '';
     const who = human ? humanLabel(entry, slot, mySlot) : 'Bot';
+    const captured = entry?.captured === true;
     rows.push({
       slot,
-      label: `${slot + 1}  ${who}${short ? ` · ${short}` : ''}`,
+      label: `${slot + 1}  ${who}${short ? ` · ${short}` : ''}${captured ? ' · Captured — rescue them to play' : ''}`,
       human,
       commander: human ? -1 : (entry?.commander ?? -1),
       options: human ? [] : humans,
-      switchable: !human && mySlot >= 0 && entry?.commander === mySlot,
+      switchable: !human && !captured && mySlot >= 0 && entry?.commander === mySlot,
+      captured,
     });
   }
   return rows;
@@ -56,7 +60,7 @@ export function commandRows(roster: readonly RosterEntry[], mySlot: number): Com
 
 /** A key that changes exactly when the rows would draw differently: the menu redraws on it, not every frame. */
 export function commandKey(rows: readonly CommandRow[]): string {
-  return rows.map((r) => `${r.label}|${r.commander}|${r.switchable}|${r.options.map((o) => `${o.slot}:${o.label}`).join(',')}`).join(';');
+  return rows.map((r) => `${r.label}|${r.commander}|${r.switchable}|${r.captured}|${r.options.map((o) => `${o.slot}:${o.label}`).join(',')}`).join(';');
 }
 
 /** The spectator's relationship to the watched soldier, from the host roster. */

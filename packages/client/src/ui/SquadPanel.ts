@@ -96,7 +96,8 @@ export function createSquadPanel(options: SquadPanelOptions): SquadPanel {
         row.root.classList.toggle('human', human);
         row.root.classList.toggle('me', i === mySlot);
         row.who.textContent = human ? entry?.name || 'player' : 'bot';
-        row.tag.textContent = i === mySlot ? 'you' : human ? 'human' : '';
+        row.tag.textContent = entry?.captured ? 'captured' : i === mySlot ? 'you' : human ? 'human' : '';
+        row.root.classList.toggle('captured', entry?.captured === true);
       }
     },
   };

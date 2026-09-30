@@ -65,12 +65,20 @@ const SAMPLES: Message[] = [
   {
     kind: 'Roster',
     slots: [
-      { human: true, name: 'ray', classId: 'team-leader', commander: -1, captured: false },
-      { human: false, name: '', classId: 'marksman', commander: 0, captured: false },
-      { human: true, name: 'austin', classId: 'marksman', commander: -1, captured: false },
-      { human: false, name: '', classId: 'marksman', commander: 2, captured: false },
-      { human: false, name: '', classId: 'marksman', commander: 0, captured: false },
-      { human: false, name: '', classId: 'marksman', commander: 5, captured: false },
+      { human: true, name: 'ray', classId: 'team-leader', commander: -1, captured: false, takenBy: -1 },
+      { human: false, name: '', classId: 'marksman', commander: 0, captured: false, takenBy: -1 },
+      { human: true, name: 'austin', classId: 'marksman', commander: -1, captured: false, takenBy: -1 },
+      { human: false, name: '', classId: 'marksman', commander: 2, captured: false, takenBy: -1 },
+      { human: false, name: '', classId: 'marksman', commander: 0, captured: false, takenBy: -1 },
+      { human: false, name: '', classId: 'marksman', commander: 5, captured: false, takenBy: -1 },
+    ],
+  },
+  // U-064: a prisoner, and a character whose capturer is named (the net id rides as id + 1, so -1 costs one byte).
+  {
+    kind: 'Roster',
+    slots: [
+      { human: true, name: 'ray', classId: 'team-leader', commander: -1, captured: false, takenBy: 300 },
+      { human: false, name: '', classId: 'marksman', commander: 0, captured: true, takenBy: -1 },
     ],
   },
   // U-025: every bot and commander slot there is, the edges of three bits included.

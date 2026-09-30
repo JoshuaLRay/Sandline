@@ -221,10 +221,12 @@ export function createHud(parent: HTMLElement): PlayerHud {
         if (!node) return;
         setText(node.name, `${row.slot + 1}  ${row.label}`);
         setText(node.cls, row.classShort);
-        setText(node.order, row.order);
+        // U-064: a prisoner and a capture under way say so where an order would be.
+        setText(node.order, row.state === 'captured' ? 'captured' : row.taken ? 'being taken' : row.order);
         setText(node.cmd, row.commander ? `→ ${row.commander}` : '');
         setData(node.root, 'mine', row.mine ? 'yes' : 'no');
         setData(node.root, 'state', row.state);
+        setData(node.root, 'taken', row.taken ? 'yes' : 'no');
         setData(node.root, 'you', row.you ? 'yes' : 'no');
         setData(node.root, 'human', row.human ? 'yes' : 'no');
       });

@@ -19,7 +19,7 @@ import { WEAPON_IDS, WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 import { PROJECTILE_IDS, PROJECTILE_INDEX_BITS } from '../sim/ballistics.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 57;
+export const PROTOCOL_VERSION = 58;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -103,6 +103,11 @@ export interface RosterEntry {
   commander: number;
   /** U-061: held prisoner by the enemy: the character cannot be played until rescued. */
   captured: boolean;
+  /**
+   * U-064: the net id of the enemy holding this (downed) character while a capture is under way, or -1. The hold has
+   * begun (the capturer is at them), not merely walking there; the squad has the 5 s channel to react.
+   */
+  takenBy: number;
 }
 
 export const MessageType = {
@@ -691,6 +696,7 @@ export function encodeMessage(msg: Message): Uint8Array {
         // -1..6 as 0..7: none, or a slot.
         w.writeBits((entry.commander + 1) & 0x7, 3);
         w.writeBool(entry.captured);
+        w.writeVarUint(entry.takenBy + 1);
       }
       break;
     case 'AiDebugRequest':
@@ -1182,7 +1188,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
           const name = r.readString();
           const classId = r.readString();
           const commander = r.readBits(3) - 1;
-          slots.push({ human, name, classId, commander, captured: r.readBool() });
+          slots.push({ human, name, classId, commander, captured: r.readBool(), takenBy: r.readVarUint() - 1 });
         }
         return { kind: 'Roster', slots };
       }

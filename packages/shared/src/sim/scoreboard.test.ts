@@ -33,6 +33,11 @@ describe('the scoreboard (T-4.28)', () => {
     expect(rows[2]).toMatchObject({ label: 'rae', kills: 4, deaths: 1, revives: 2, ordersGiven: 3, ordersCarried: 0 });
   });
 
+  it('marks a prisoner and a character being taken (U-064)', () => {
+    const rows = scoreboardRows(null, [{ name: 'kai', human: true }, { name: '', human: false, captured: true }, { name: '', human: false, takenBy: 12 }], 0);
+    expect(rows.map((r) => r.status)).toEqual(['', 'captured', 'being taken', '', '', '']);
+  });
+
   it('sums up a finished mission: how it ended, in how long, and the objectives done', () => {
     const stats = { ...createMissionStats(), elapsedTicks: Math.round(272 / TICK_SECONDS), objectivesDone: 3, objectives: 3 };
     expect(afterActionSummary(null, stats)).toBe('');

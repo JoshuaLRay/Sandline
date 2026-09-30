@@ -163,7 +163,8 @@ export function stanceOf(s: StanceInput): Stance {
 
 // -- The squad ------------------------------------------------------------
 
-export type SquadState = Vitality | 'unknown';
+/** U-064: `captured` is a prisoner, out of play and not dead. */
+export type SquadState = Vitality | 'unknown' | 'captured';
 
 export interface SquadRow {
   slot: number;
@@ -172,6 +173,8 @@ export interface SquadRow {
   human: boolean;
   you: boolean;
   state: SquadState;
+  /** U-064: a capture of this (downed) character has begun: the squad has the channel's few seconds to stop it. */
+  taken: boolean;
   /** The order the bot is under, or '' (a human is under none). */
   order: string;
   /** The class's two letters (T-4.27), '' before the host has assigned one. */
@@ -204,7 +207,8 @@ export function squadRows(
       label: human && entry?.name ? entry.name : 'Bot',
       human,
       you: slot === mySlot,
-      state: vitalityOf(slot) ?? 'unknown',
+      state: entry?.captured ? 'captured' : (vitalityOf(slot) ?? 'unknown'),
+      taken: (entry?.takenBy ?? -1) >= 0,
       order: order?.order ?? '',
       classShort: classById(entry?.classId ?? '')?.short ?? '',
       commander: by < 0 ? '' : by === mySlot ? 'you' : roster[by]?.name || `Player ${by + 1}`,

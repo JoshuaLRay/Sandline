@@ -1362,6 +1362,18 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
     scriptNotice = `Radio: ${id}`;
     scriptNoticeUntil = performance.now() + 3000;
   };
+  // U-064: the picker before joining cannot know who is held; when the character asked for turns out to be a prisoner, say why another was given.
+  let capturedAskSaid = false;
+  net.onRoster = (slots) => {
+    if (capturedAskSaid || choice.kind !== 'remote' || choice.slot < 0) return;
+    const asked = slots[choice.slot];
+    if (!asked) return;
+    capturedAskSaid = true;
+    if (asked.captured) {
+      scriptNotice = `${classById(asked.classId)?.name ?? `Character ${choice.slot + 1}`} is captured — rescue them to play; you were given another character`;
+      scriptNoticeUntil = performance.now() + 7000;
+    }
+  };
   net.onOrderFailed = (slot) => calloutWatcher.onOrderFailed(slot);
   // U-026: another soldier's hands — its gun as it is, its pouch — and nothing to tell the host it already knows.
   net.onPossessed = (possessed) => {
@@ -2605,6 +2617,11 @@ function frame(): void {
     const shownMarkers = orderMarkers(net.orders, net.marks, {
       slot: (slot) => (slot === net.slot ? self : bySlot.get(slot) ?? null),
       netId: (netId) => (netId === net.netId ? self : drawn.get(netId) ?? null),
+    });
+    // U-064: whoever is taking a squadmate prisoner, marked where they are drawn for as long as the hold lasts.
+    net.roster.forEach((entry, slot) => {
+      const at = entry.takenBy >= 0 ? drawn.get(entry.takenBy) : undefined;
+      if (at) shownMarkers.push({ key: `c${slot}`, kind: 'mark', at, bot: null, label: 'Capturer' });
     });
     orderMarkerOverlay.show(shownMarkers);
     // The same markers on the compass (T-4.25), by bearing from where we are drawn.

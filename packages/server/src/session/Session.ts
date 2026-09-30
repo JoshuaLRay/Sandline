@@ -886,6 +886,8 @@ export class Session {
   private readonly captureUse = new Map<number, { enemy: EnemyEntity; seconds: number }>();
   /** U-062: capturers whose job was interrupted or had no way there, and until when they are not sent again (seconds). */
   private readonly captureBarred = new Map<number, number>();
+  /** U-064: the slots the squad has been told are being taken, so each capture is announced once and its end said once. */
+  private readonly captureAnnounced = new Set<number>();
   /** T-3.19's cover over this world's baked points, or null without any. */
   readonly cover: CoverSystem | null;
   /** T-3.20: what fighting leaves see of the session; every enemy is handed this one. */
@@ -1429,6 +1431,8 @@ export class Session {
     const slot = this.slots[index];
     if (!slot || slot.captured || isDead(slot.health)) return false;
     this.holdPrisoner(slot, at);
+    this.captureAnnounced.delete(index);
+    this.sayToSquad(`${this.characterName(index)} was taken prisoner`);
     this.broadcastRoster();
     return true;
   }
@@ -1456,8 +1460,42 @@ export class Session {
     slot.kits = this.kitsFor(slot.index);
     slot.equipment = this.equipmentFor(slot.index);
     slot.nextThrowAt = 0;
+    this.sayToSquad(`${this.characterName(index)} was rescued`);
     this.broadcastRoster();
     return true;
+  }
+
+  /** U-064: a slot's character as the squad names them: the class's name, or the slot number before one is assigned. */
+  private characterName(index: number): string {
+    return classById(this.classSlots[index] ?? '')?.name ?? `Soldier ${index + 1}`;
+  }
+
+  /** U-064: a line to every seated connection (the client shows it as a notice; no voice is implied, ADR-017). */
+  private sayToSquad(text: string): void {
+    const msg: Message = { kind: 'ScriptMessage', text };
+    for (const conn of this.connections) if (conn.state === 'active') conn.send(msg);
+  }
+
+  /**
+   * U-064: says, once each, that a capture has begun (the capturer is at the character) and that one was stopped
+   * without taking them, and sends the roster when who is being held changed. A capture that completes is said by
+   * `captureCharacter`, which takes the slot out of the set.
+   */
+  private announceCaptures(): void {
+    let changed = false;
+    for (const [index, job] of this.captureUse) {
+      if (job.seconds <= 0 || this.captureAnnounced.has(index)) continue;
+      this.captureAnnounced.add(index);
+      this.sayToSquad(`${this.characterName(index)} is being taken`);
+      changed = true;
+    }
+    for (const index of [...this.captureAnnounced]) {
+      if ((this.captureUse.get(index)?.seconds ?? 0) > 0) continue;
+      this.captureAnnounced.delete(index);
+      if (!this.slots[index]?.captured) this.sayToSquad(`${this.characterName(index)} was not taken`);
+      changed = true;
+    }
+    if (changed) this.broadcastRoster();
   }
 
   /** U-059: whether any soldier is downed: no checkpoint is saved while one is (owner, 2026-09-30). */
@@ -1764,6 +1802,7 @@ export class Session {
     // U-062: no capture in progress, nobody barred from one.
     this.captureUse.clear();
     this.captureBarred.clear();
+    this.captureAnnounced.clear();
     // U-017: the retried world starts with nothing on the ground (its ids are not handed out again).
     this.pickupList.length = 0;
     this.authoredPickups.clear();
@@ -2730,6 +2769,8 @@ export class Session {
       classId: this.classSlots[s.index] ?? '',
       commander: this.commanders[s.index] ?? -1,
       captured: s.captured,
+      // U-064: the capturer, once the hold has begun.
+      takenBy: (this.captureUse.get(s.index)?.seconds ?? 0) > 0 ? this.captureUse.get(s.index)!.enemy.netId : -1,
     }));
   }
 
@@ -3469,6 +3510,7 @@ export class Session {
       this.captureUse.delete(index);
       this.captureCharacter(index, { x: held.state.x, y: held.state.y, z: held.state.z });
     }
+    this.announceCaptures();
   }
 
   /** U-062: sends the nearest able enemy to each eligible downed character that has no capturer. */

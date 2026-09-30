@@ -96,8 +96,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-060](docs/backlog/U-060.md) | Save the checkpoint's world in the campaign file | Campaign | P2 | REVIEW | U-059 | `task/U-060-campaign-world` |
 | [U-061](docs/backlog/U-061.md) | Captured state: persistence, slot rules, retry behaviour | Campaign | P2 | DONE | U-060 | #230 |
 | [U-062](docs/backlog/U-062.md) | Enemy capture behaviour: 2 s rule, 5 s channel, interruption | Campaign | P2 | DONE | U-061 | [#231](https://github.com/JoshuaLRay/Sandline/pull/231) |
-| [U-063](docs/backlog/U-063.md) | The `rescue` objective type | Campaign | P2 | REVIEW | U-061 | `task/U-063-rescue` |
-| [U-064](docs/backlog/U-064.md) | Captured characters in the slot picker, HUD and messages | Campaign | P2 | BLOCKED | U-061 | — |
+| [U-063](docs/backlog/U-063.md) | The `rescue` objective type | Campaign | P2 | DONE | U-061 | [#232](https://github.com/JoshuaLRay/Sandline/pull/232) |
+| [U-064](docs/backlog/U-064.md) | Captured characters in the slot picker, HUD and messages | Campaign | P2 | REVIEW | U-061 | `task/U-064-captured-ui` |
 | [U-065](docs/backlog/U-065.md) | Author a mission that holds a rescue | Campaign | P2 | INBOX | U-063; mission content decision | — |
 
 ## Existing work retained

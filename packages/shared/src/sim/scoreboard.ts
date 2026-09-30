@@ -56,12 +56,14 @@ export interface ScoreboardRow extends SlotStats {
   label: string;
   human: boolean;
   you: boolean;
+  /** U-064: held prisoner (out of play, not dead) or, while a capture has begun, being taken; '' otherwise. */
+  status: '' | 'captured' | 'being taken';
 }
 
 /** The six rows a Tab scoreboard shows, in slot order. */
 export function scoreboardRows(
   stats: MissionStats | null,
-  roster: readonly { name: string; human: boolean }[],
+  roster: readonly { name: string; human: boolean; captured?: boolean; takenBy?: number }[],
   mySlot: number,
 ): ScoreboardRow[] {
   const rows: ScoreboardRow[] = [];
@@ -69,7 +71,8 @@ export function scoreboardRows(
     const entry = roster[slot];
     const human = entry?.human ?? false;
     const s = stats?.slots[slot] ?? createSlotStats(slot);
-    rows.push({ ...s, slot, label: human && entry?.name ? entry.name : 'Bot', human, you: slot === mySlot });
+    const status = entry?.captured ? 'captured' : (entry?.takenBy ?? -1) >= 0 ? 'being taken' : '';
+    rows.push({ ...s, slot, label: human && entry?.name ? entry.name : 'Bot', human, you: slot === mySlot, status });
   }
   return rows;
 }
