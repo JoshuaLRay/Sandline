@@ -28,6 +28,10 @@
  *     Neither call does anything in any other phase, objective or state, so
  *     a repeated or late request cannot advance it, and progress only ever
  *     comes from ticks while it runs, up to the goal.
+ *   - rescue (U-063): the hold counts a tick while the session says a
+ *     standing soldier is holding interact beside a prisoner, and starts over
+ *     the tick they stop; complete at the hold, or at once with nobody held.
+ *     The session frees the prisoner when it completes.
  *
  * Whatever the objective, any soldier's death or all six soldiers unable to stand fails the
  * mission. The next objective starts the tick one completes; the mission is
@@ -51,6 +55,11 @@ export interface MissionWorld {
   protectedLost(id: string): boolean;
   /** An encounter group: whether it is dead, and how many it has placed and lost so far. */
   group(id: string): { dead: boolean; spawned: number; down: number };
+  /**
+   * U-063: the prisoners a rescue could free (`slot`, or any when null): how many are held, and whether a standing
+   * soldier is holding interact beside one now (`scale` is that soldier's multiple on an interaction's time).
+   */
+  rescue(slot: number | null, reachM: number): { held: number; holding: { scale: number } | null };
 }
 
 const ticksOf = (seconds: number): number => Math.max(1, Math.round(seconds / TICK_SECONDS));
@@ -137,7 +146,7 @@ export class MissionRun {
   /** Objective `index`'s opening view. */
   private start(index: number, attempt: number): MissionView {
     const o = this.def.objectives[index]!;
-    const goal = o.type === 'clear-and-hold' ? ticksOf(o.holdSeconds) : o.type === 'defend' || o.type === 'survive' || o.type === 'upload' ? ticksOf(o.seconds) : 1;
+    const goal = o.type === 'clear-and-hold' || o.type === 'rescue' ? ticksOf(o.holdSeconds) : o.type === 'defend' || o.type === 'survive' || o.type === 'upload' ? ticksOf(o.seconds) : 1;
     this.breach = 0;
     return {
       state: 'progress',
@@ -149,7 +158,7 @@ export class MissionRun {
       label: o.label,
       progress: 0,
       goal,
-      satisfied: o.type !== 'clear-and-hold' && o.type !== 'reach' && o.type !== 'upload',
+      satisfied: o.type !== 'clear-and-hold' && o.type !== 'reach' && o.type !== 'upload' && o.type !== 'rescue',
     };
   }
 
@@ -239,6 +248,17 @@ export class MissionRun {
         case 'upload':
           if (next.phase === 'active') next = { ...next, progress: Math.min(next.goal, next.progress + 1) };
           break;
+        case 'rescue': {
+          // U-063: nobody held, nothing to free. Otherwise the hold counts while a soldier keeps it and starts over when they do not.
+          const r = w.rescue(def.slot ?? null, def.reachM);
+          if (r.held === 0) {
+            next = { ...next, goal: 1, progress: 1, satisfied: true };
+            break;
+          }
+          const goal = ticksOf(def.holdSeconds * (r.holding?.scale ?? 1));
+          next = { ...next, goal, progress: r.holding ? Math.min(goal, next.progress + 1) : 0, satisfied: r.holding !== null };
+          break;
+        }
       }
       const done = def.type === 'reach' ? next.satisfied : def.type === 'destroy' ? w.group(def.group).dead : next.progress >= next.goal;
       if (next.state === 'progress' && done) {
