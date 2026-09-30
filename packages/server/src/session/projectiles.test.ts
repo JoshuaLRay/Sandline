@@ -31,6 +31,7 @@ import {
   createLoopbackPair,
   decodeMessage,
   encodeMessage,
+  PROJECTILE_IDS,
   getProjectile,
   isEnemyNetId,
   isRangeTarget,
@@ -253,10 +254,10 @@ describe('the pouch (T-2.31)', () => {
   it('refuses an index that is not a projectile', () => {
     const session = new Session();
     const client = connect(session);
-    client.throwOne({ projectile: 3 });
+    client.throwOne({ projectile: 9 });
     client.run(2);
     expect(projectilesIn(client.store)).toHaveLength(0);
-    expect(session.slots[0]?.pouch).toEqual([getProjectile('frag').carried, getProjectile('rocket').carried, getProjectile('c4').carried]);
+    expect(session.slots[0]?.pouch).toEqual(PROJECTILE_IDS.map((id) => getProjectile(id).carried));
   });
 
   it('refuses a downed thrower and a vaulting one', () => {
@@ -369,7 +370,7 @@ describe('equipping (grenade and rocket in hand)', () => {
     const session = new Session();
     const client = connect(session);
     client.send({ kind: 'Equip', item: WEAPON_IDS.length + FRAG });
-    client.send({ kind: 'Equip', item: WEAPON_IDS.length + 4 });
+    client.send({ kind: 'Equip', item: WEAPON_IDS.length + PROJECTILE_IDS.length + 1 });
     client.run(1);
     expect(session.slots[0]?.heldProjectile).toBe(FRAG);
   });

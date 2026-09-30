@@ -19,7 +19,7 @@ import { WEAPON_IDS, WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 import { PROJECTILE_IDS, PROJECTILE_INDEX_BITS } from '../sim/ballistics.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 51;
+export const PROTOCOL_VERSION = 52;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({

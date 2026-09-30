@@ -18,6 +18,7 @@
     "blastDamage": 130,
     "blastMinFraction": 0.12,
     "blastCoverFraction": 0.25,
+    "suppression": 0,
     "carried": 3,
     "cooldownSeconds": 1
   },
@@ -40,6 +41,7 @@
     "blastDamage": 170,
     "blastMinFraction": 0.15,
     "blastCoverFraction": 0.2,
+    "suppression": 0,
     "carried": 2,
     "cooldownSeconds": 1.8
   },
@@ -62,7 +64,31 @@
     "blastDamage": 250,
     "blastMinFraction": 0.3,
     "blastCoverFraction": 0.25,
+    "suppression": 0,
     "carried": 2,
+    "cooldownSeconds": 1
+  },
+  "concussion": {
+    "id": "concussion",
+    "name": "Concussion Grenade",
+    "kind": "thrown",
+    "speedMPerSec": 20,
+    "loftDeg": 10,
+    "gravity": 9.81,
+    "dragPerSec": 0.1,
+    "radiusM": 0.09,
+    "restitution": 0.2,
+    "friction": 0.7,
+    "rollDragPerSec": 5,
+    "fuseSeconds": 2.5,
+    "detonateOnImpact": false,
+    "maxLifeSeconds": 8,
+    "blastRadiusM": 8,
+    "blastDamage": 0,
+    "blastMinFraction": 0,
+    "blastCoverFraction": 0,
+    "suppression": 1,
+    "carried": 4,
     "cooldownSeconds": 1
   }
 }

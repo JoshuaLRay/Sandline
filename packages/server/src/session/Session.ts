@@ -4010,7 +4010,10 @@ export class Session {
       if (!this.hostile(thrower, soldier.side)) continue;
       const centre = soldierCapsule(soldier.state).centre;
       const d = Math.sqrt((centre.x - at.x) ** 2 + (centre.y - at.y) ** 2 + (centre.z - at.z) ** 2);
-      raiseSuppression(soldier.suppression, blastSuppression(d), nowSeconds);
+      // U-056: a concussion grenade's own amount over its own radius; the others use the shared curve.
+      const own = projectile.def.suppression;
+      const level = own === 0 ? blastSuppression(d) : d < projectile.def.blastRadiusM ? own * (1 - Math.max(0, d) / projectile.def.blastRadiusM) : 0;
+      raiseSuppression(soldier.suppression, level, nowSeconds);
     }
 
     const event: Message = {
