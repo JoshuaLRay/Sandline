@@ -148,6 +148,7 @@ export function createMenu(options: MenuOptions): Menu {
       const li = el('li', 'menu-command-row', commandList);
       li.dataset['slot'] = String(row.slot);
       li.dataset['human'] = row.human ? 'yes' : 'no';
+      li.dataset['captured'] = row.captured ? 'yes' : 'no';
       const name = el('span', 'menu-row-label', li);
       name.textContent = row.label;
       if (options.onSpectate) {

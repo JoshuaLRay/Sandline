@@ -116,3 +116,6 @@
   .menu-command-select { max-width: 100%; }
   .menu-reset, .menu-button, .menu-resume { min-height: 44px; }
 }
+
+/* U-064: a prisoner's row is greyed out; its label says why it cannot be played. */
+.menu-command-row[data-captured='yes'] { opacity: 0.55; font-style: italic; }

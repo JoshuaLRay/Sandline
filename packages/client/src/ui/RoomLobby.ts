@@ -100,7 +100,8 @@ export function createRoomLobby(options: RoomLobbyOptions): RoomLobby {
         row.who.textContent = human ? (entry?.name || 'player') : 'bot';
         // The character the slot plays (U-021): fixed by the slot, whoever sits in it.
         row.className.textContent = classById(state.classes[i] ?? '')?.name ?? '';
-        row.state.textContent = human ? (state.ready[i] ? 'ready' : i === state.creator ? 'creator' : 'not ready') : 'bot';
+        row.state.textContent = entry?.captured ? 'captured' : human ? (state.ready[i] ? 'ready' : i === state.creator ? 'creator' : 'not ready') : 'bot';
+        row.root.classList.toggle('captured', entry?.captured === true);
       }
     },
     hide() {

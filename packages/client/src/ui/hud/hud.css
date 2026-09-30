@@ -203,6 +203,9 @@
 }
 .phud-squad-row[data-state='downed'] { border-left-color: #ff8ce0; }
 .phud-squad-row[data-state='dead'] { border-left-color: #777; color: rgba(232, 220, 200, 0.55); }
+.phud-squad-row[data-state='captured'] { border-left-color: #d4a44a; color: rgba(232, 220, 200, 0.55); font-style: italic; }
+.phud-squad-row[data-taken='yes'] { border-left-color: #ff5a3c; }
+.phud-squad-row[data-taken='yes'] .phud-squad-order { color: #ff5a3c; opacity: 1; }
 .phud-squad-row[data-state='unknown'] { border-left-color: rgba(232, 220, 200, 0.25); }
 .phud-squad-row[data-you='yes'] .phud-squad-name { color: var(--amber, #f0b429); font-weight: 700; }
 .phud-squad-row[data-human='no'] .phud-squad-name { opacity: 0.8; }

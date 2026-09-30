@@ -108,7 +108,8 @@ export function createScoreboard(parent: HTMLElement): Scoreboard {
       next.forEach((row, i) => {
         const node = rows[i];
         if (!node) return;
-        setText(node.name, row.label);
+        setText(node.name, row.status ? `${row.label} — ${row.status}` : row.label);
+        node.root.dataset['status'] = row.status;
         node.root.classList.toggle('you', row.you);
         node.root.classList.toggle('bot', !row.human);
         COLUMNS.forEach((column, c) => setText(node.cells[c]!, String(row[column])));

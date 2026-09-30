@@ -71,26 +71,33 @@ describe('stance (T-4.25)', () => {
 
 describe('the squad rows (T-4.25)', () => {
   const roster: RosterEntry[] = [
-    { name: 'kai', human: true, classId: 'preach', commander: -1, captured: false },
-    { name: '', human: false, classId: 'brennan', commander: 0, captured: false },
-    { name: 'rae', human: true, classId: 'holloway', commander: -1, captured: false },
-    { name: '', human: false, classId: 'ortiz', commander: 2, captured: false },
-    { name: '', human: false, classId: 'marsh', commander: 0, captured: false },
-    { name: '', human: false, classId: 'vance', commander: 0, captured: false },
+    { name: 'kai', human: true, classId: 'preach', commander: -1, captured: false, takenBy: -1 },
+    { name: '', human: false, classId: 'brennan', commander: 0, captured: false, takenBy: -1 },
+    { name: 'rae', human: true, classId: 'holloway', commander: -1, captured: false, takenBy: -1 },
+    { name: '', human: false, classId: 'ortiz', commander: 2, captured: false, takenBy: -1 },
+    { name: '', human: false, classId: 'marsh', commander: 0, captured: false, takenBy: -1 },
+    { name: '', human: false, classId: 'vance', commander: 0, captured: false, takenBy: -1 },
   ];
   const orders: BotOrder[] = [{ slot: 1, order: 'move', point: { x: 1, y: 0, z: 2 }, target: null, from: 0 }];
   it('is six rows always: names for people, Bot for bots, the host\'s vitality and the order each bot is under', () => {
     const vitality = (slot: number) => (slot === 0 ? 'alive' : slot === 1 ? 'downed' : slot === 2 ? 'dead' : slot === 3 ? 'alive' : null);
     const rows = squadRows(roster, 2, vitality, orders);
     expect(rows).toHaveLength(6);
-    expect(rows[0]).toEqual({ slot: 0, label: 'kai', human: true, you: false, state: 'alive', order: '', classShort: 'PRC', commander: '', mine: false });
-    expect(rows[1]).toEqual({ slot: 1, label: 'Bot', human: false, you: false, state: 'downed', order: 'move', classShort: 'BRN', commander: 'kai', mine: false });
-    expect(rows[2]).toEqual({ slot: 2, label: 'rae', human: true, you: true, state: 'dead', order: '', classShort: 'HOL', commander: '', mine: false });
+    expect(rows[0]).toEqual({ slot: 0, label: 'kai', human: true, you: false, state: 'alive', taken: false, order: '', classShort: 'PRC', commander: '', mine: false });
+    expect(rows[1]).toEqual({ slot: 1, label: 'Bot', human: false, you: false, state: 'downed', taken: false, order: 'move', classShort: 'BRN', commander: 'kai', mine: false });
+    expect(rows[2]).toEqual({ slot: 2, label: 'rae', human: true, you: true, state: 'dead', taken: false, order: '', classShort: 'HOL', commander: '', mine: false });
     expect(rows[3]?.state).toBe('alive');
     // U-025: the bot rae commands reads "you" on rae's screen.
     expect(rows[3]).toMatchObject({ commander: 'you', mine: true });
     expect(rows[4]?.state).toBe('unknown');
-    expect(rows[5]).toEqual({ slot: 5, label: 'Bot', human: false, you: false, state: 'unknown', order: '', classShort: 'VAN', commander: 'kai', mine: false });
+    expect(rows[5]).toEqual({ slot: 5, label: 'Bot', human: false, you: false, state: 'unknown', taken: false, order: '', classShort: 'VAN', commander: 'kai', mine: false });
+  });
+  it('marks a prisoner over whatever the host says of their body, and a character being taken (U-064)', () => {
+    const held = roster.map((r, i) => (i === 1 ? { ...r, captured: true } : i === 4 ? { ...r, takenBy: 77 } : r));
+    const rows = squadRows(held, 0, () => 'downed', orders);
+    expect(rows[1]).toMatchObject({ state: 'captured', taken: false });
+    expect(rows[4]).toMatchObject({ state: 'downed', taken: true });
+    expect(rows.filter((r) => r.taken || r.state === 'captured')).toHaveLength(2);
   });
   it('is six rows of bots before the roster arrives', () => {
     const rows = squadRows([], -1, () => null, []);
