@@ -2,6 +2,7 @@
   "carbine": {
     "id": "carbine",
     "name": "MK4 Carbine",
+    "role": "ar",
     "rpm": 720,
     "damage": 22,
     "pellets": 1,
@@ -31,6 +32,7 @@
   "marksman": {
     "id": "marksman",
     "name": "LR-9 Marksman",
+    "role": "marksman",
     "rpm": 180,
     "damage": 58,
     "pellets": 1,
@@ -61,6 +63,7 @@
   "breacher": {
     "id": "breacher",
     "name": "M12 Breacher",
+    "role": "shotgun",
     "rpm": 90,
     "damage": 13,
     "pellets": 9,
@@ -90,6 +93,7 @@
   "sidearm": {
     "id": "sidearm",
     "name": "P7 Sidearm",
+    "role": "pistol",
     "rpm": 420,
     "damage": 18,
     "pellets": 1,
@@ -119,6 +123,7 @@
   "lmg": {
     "id": "lmg",
     "name": "Light machine gun",
+    "role": "lmg",
     "rpm": 900,
     "damage": 24,
     "pellets": 1,
@@ -148,6 +153,7 @@
   "knife": {
     "id": "knife",
     "name": "Combat Knife",
+    "role": "melee",
     "rpm": 90,
     "damage": 40,
     "pellets": 1,
@@ -177,6 +183,7 @@
   "smg": {
     "id": "smg",
     "name": "S3 Submachine Gun",
+    "role": "smg",
     "rpm": 850,
     "damage": 17,
     "pellets": 1,
@@ -206,6 +213,7 @@
   "carbine-scoped": {
     "id": "carbine-scoped",
     "name": "MK4-S Scoped Carbine",
+    "role": "ar",
     "rpm": 600,
     "damage": 24,
     "pellets": 1,
@@ -236,6 +244,7 @@
   "sniper-semi": {
     "id": "sniper-semi",
     "name": "LR-12 Semi-Auto Sniper",
+    "role": "sniper",
     "rpm": 150,
     "damage": 70,
     "pellets": 1,
@@ -266,6 +275,7 @@
   "sniper-bolt-left": {
     "id": "sniper-bolt-left",
     "name": "B98 Bolt-Action Sniper (left-handed)",
+    "role": "sniper",
     "rpm": 45,
     "damage": 110,
     "pellets": 1,

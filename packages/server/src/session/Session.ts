@@ -83,6 +83,7 @@ import {
   createSlotStats,
   type SlotStats,
   classById,
+  classPrimaries,
   orderReach,
   expireBleedOut,
   isDead,
@@ -108,7 +109,9 @@ import {
   DEFAULT_MUZZLE_RIG,
   eyePosition,
   eyeStance,
+  canBeDualPrimary,
   getWeapon,
+  NO_SECONDARY,
   shotDirections,
   startReload,
   tryFire,
@@ -400,6 +403,16 @@ export interface Slot {
    */
   primary: string;
   pickedUp: boolean;
+  /**
+   * U-022: the second primary of a character who carries two (Preach, once he
+   * has taken one; the support from the start), or null.
+   */
+  secondary: string | null;
+  /**
+   * U-022: the magazine and clocks of each gun not in hand, so a gun drawn
+   * again is as it was left (a reload cancelled, its rounds kept), not fresh.
+   */
+  stowed: Map<string, WeaponState>;
   /**
    * T-3.16: how suppressed this soldier is. Rounds past it raise it; it
    * widens the weapon cone by `SUPPRESSION.coneDeg` at full, and replicates.
@@ -1029,6 +1042,8 @@ export class Session {
         weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
         primary: WEAPON_IDS[0],
         pickedUp: false,
+        secondary: null,
+        stowed: new Map(),
         suppression: createSuppression(),
         pitch: 0,
         pouch: this.fullPouch(),
@@ -1591,10 +1606,10 @@ export class Session {
   }
 
   /** T-4.27: what a slot carries and its health, for a test to read. */
-  loadoutOf(slot: number): { weapon: string; primary: string; ammo: number; pouch: number[]; health: number; maxHealth: number } {
+  loadoutOf(slot: number): { weapon: string; primary: string; secondary: string | null; ammo: number; pouch: number[]; health: number; maxHealth: number } {
     const s = this.slots[slot];
     if (!s) throw new Error(`no slot ${slot}`);
-    return { weapon: s.weapon.id, primary: s.primary, ammo: s.weaponState.ammo, pouch: [...s.pouch], health: s.health.current, maxHealth: s.health.max };
+    return { weapon: s.weapon.id, primary: s.primary, secondary: s.secondary, ammo: s.weaponState.ammo, pouch: [...s.pouch], health: s.health.current, maxHealth: s.health.max };
   }
 
   /**
@@ -1631,6 +1646,8 @@ export class Session {
     }
     // U-018: a new class is its own primary again.
     slot.primary = def.guns.find((g) => g !== 'sidearm') ?? gun;
+    slot.secondary = classPrimaries(def)[1] ?? null;
+    slot.stowed.clear();
     slot.pickedUp = false;
     slot.pouch = [...def.pouch];
     slot.heldProjectile = -1;
@@ -1876,11 +1893,28 @@ export class Session {
    */
   private carries(slot: Slot, gun: string): boolean {
     if (gun === 'knife') return true;
-    if (gun === slot.primary) return true;
+    if (gun === slot.primary || gun === slot.secondary) return true;
     if (this.classLoadouts !== 'class') return true;
     const def = classById(this.classSlots[slot.index] ?? '');
     if (!def) return true;
-    return def.guns.includes(gun) && (gun === 'sidearm' || !slot.pickedUp);
+    // Anything else on the class's list is the pistol; its other guns are the primary and the second primary, held above.
+    return gun === 'sidearm' && def.guns.includes('sidearm');
+  }
+
+  /**
+   * U-022: put the gun in hand away and take `gun` out. A gun keeps its
+   * magazine and clocks while away (a reload in progress is cancelled, since
+   * the hands left it), so a soldier with two primaries has two magazines.
+   */
+  private drawGun(slot: Slot, gun: string): void {
+    if (gun === slot.weapon.id) return;
+    const nowSeconds = this.nowMs / 1000;
+    finishReload(slot.weapon, slot.weaponState, nowSeconds);
+    slot.weaponState.reloadEndsAt = 0;
+    slot.stowed.set(slot.weapon.id, slot.weaponState);
+    slot.weapon = getWeapon(gun);
+    slot.weaponState = slot.stowed.get(gun) ?? createWeaponState(slot.weapon);
+    slot.stowed.delete(gun);
   }
 
   /** U-018: the class's own primary, or the carbine on a free loadout. */
@@ -1894,12 +1928,18 @@ export class Session {
    * soldier: the class's primary does, in hand if the primary was.
    */
   private restorePrimary(slot: Slot): void {
+    // Every gun comes back fresh with the soldier (U-022).
+    slot.stowed.clear();
     if (!slot.pickedUp) return;
-    const held = slot.weapon.id === slot.primary;
+    const def = this.classLoadouts === 'class' ? classById(this.classSlots[slot.index] ?? '') : undefined;
     slot.primary = this.classPrimary(slot);
+    slot.secondary = def ? (classPrimaries(def)[1] ?? null) : null;
     slot.pickedUp = false;
-    if (held) {
+    // If the gun in hand was one that only a pickup had given, the primary is drawn instead.
+    if (!this.carries(slot, slot.weapon.id)) {
       slot.weapon = getWeapon(slot.primary);
+      slot.weaponState = createWeaponState(slot.weapon);
+    } else if (slot.weapon.id === slot.primary) {
       slot.weaponState = createWeaponState(slot.weapon);
     }
   }
@@ -1934,20 +1974,50 @@ export class Session {
       }
     }
     if (best < 0) return false;
-    const [taken] = this.pickupList.splice(best, 1);
-    const gun = WEAPON_IDS[taken!.weapon]!;
-    const old = slot.primary;
-    const oldHeld = slot.weapon.id === old;
-    const oldAmmo = oldHeld ? slot.weaponState.ammo : getWeapon(old).magSize;
-    slot.primary = gun;
+    const target = this.pickupList[best]!;
+    const gun = WEAPON_IDS[target.weapon]!;
+    // U-022: which of the soldier's primaries it becomes. Everyone has one, and takes the gun as it. Preach and the
+    // support may carry two: the second is an AR, SMG or shotgun beside a first that is one too — never an LMG, a
+    // marksman rifle or a sniper rifle beside another primary.
+    let into: 'primary' | 'secondary' = 'primary';
+    const def = this.classLoadouts === 'class' ? classById(this.classSlots[slot.index] ?? '') : undefined;
+    if (def?.dualPrimary) {
+      const eligible = canBeDualPrimary(getWeapon(gun));
+      if (gun === slot.primary) into = 'primary';
+      else if (gun === slot.secondary) into = 'secondary';
+      else if (slot.secondary === null) {
+        if (eligible && canBeDualPrimary(getWeapon(slot.primary))) into = 'secondary';
+      } else {
+        // Both hands' worth are full: an ineligible gun would sit beside a second primary, so it is left where it lies.
+        if (!eligible) return false;
+        into = slot.weapon.id === slot.secondary ? 'secondary' : 'primary';
+      }
+    }
+    this.pickupList.splice(best, 1);
+    const replaced = into === 'primary' ? slot.primary : slot.secondary;
+    const nowSeconds = this.nowMs / 1000;
+    if (replaced !== null) {
+      // It goes down where the soldier stands, with the rounds it had (in hand or stowed).
+      const inHand = slot.weapon.id === replaced;
+      const oldAmmo = inHand ? slot.weaponState.ammo : (slot.stowed.get(replaced)?.ammo ?? getWeapon(replaced).magSize);
+      slot.stowed.delete(replaced);
+      // Every squad gun is on the wire now (U-041), so none vanishes: the LMG, the SMG and the rest go down like a carbine does.
+      this.placePickup(replaced, oldAmmo, slot.state, slot.yaw);
+    }
+    if (slot.weapon.id !== replaced) {
+      // The gun in hand is put away, keeping its rounds.
+      finishReload(slot.weapon, slot.weaponState, nowSeconds);
+      slot.weaponState.reloadEndsAt = 0;
+      slot.stowed.set(slot.weapon.id, slot.weaponState);
+    }
+    if (into === 'primary') slot.primary = gun;
+    else slot.secondary = gun;
     slot.pickedUp = true;
     slot.weapon = getWeapon(gun);
+    slot.stowed.delete(gun);
     slot.weaponState = createWeaponState(slot.weapon);
-    slot.weaponState.ammo = Math.min(taken!.ammo, slot.weapon.magSize);
+    slot.weaponState.ammo = Math.min(target.ammo, slot.weapon.magSize);
     slot.heldProjectile = -1;
-    // The one it replaces, where the soldier stands. Every squad gun is on the wire now (U-041), so none vanishes:
-    // the LMG, the SMG and the rest go down like a carbine does.
-    this.placePickup(old, oldAmmo, slot.state, slot.yaw);
     return true;
   }
 
@@ -2951,10 +3021,7 @@ export class Session {
     if (id === undefined) return; // Out-of-range index: drop it, do not throw.
     // U-018: a Fire names a gun the soldier carries, or it is refused — as a forged Equip is. (It used to swap to any.)
     if (!this.carries(slot, id)) return;
-    if (id !== slot.weapon.id) {
-      slot.weapon = getWeapon(id);
-      slot.weaponState = createWeaponState(slot.weapon);
-    }
+    this.drawGun(slot, id);
     // A shot is a gun in hand, whatever the last Equip said.
     slot.heldProjectile = -1;
 
@@ -3309,10 +3376,7 @@ export class Session {
     if (gun !== undefined) {
       // T-4.27: a class carries its own guns and no others — its primary a picked-up one, since U-018.
       if (!this.carries(slot, gun)) return;
-      if (gun !== slot.weapon.id) {
-        slot.weapon = getWeapon(gun);
-        slot.weaponState = createWeaponState(slot.weapon);
-      }
+      this.drawGun(slot, gun);
       slot.heldProjectile = -1;
       return;
     }
@@ -4362,6 +4426,8 @@ export class Session {
             Math.min(AMMO_MAX, s.weaponState.ammo),
             // U-018: and what key 1 draws.
             Math.max(0, (WEAPON_IDS as readonly string[]).indexOf(s.primary)),
+            // U-022: and the second primary, if the soldier carries one.
+            s.secondary === null ? NO_SECONDARY : Math.max(0, (WEAPON_IDS as readonly string[]).indexOf(s.secondary)),
           ],
           // T-3.16: how suppressed, so the page can show it and widen its cone to match.
           [COMPONENT_IDS.Suppression]: [suppressionToWire(suppressionLevel(s.suppression, this.nowMs / 1000))],

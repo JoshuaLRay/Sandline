@@ -6,6 +6,7 @@ import {
   WEAPON_IDS,
   WEAPON_INDEX_BITS,
   allowsFire,
+  canBeDualPrimary,
   canWield,
   type WeaponDef,
   createWeaponState,
@@ -62,6 +63,7 @@ const FIXTURE: WeaponDef = {
   magSize: 5,
   reloadSeconds: 2,
   auto: true,
+  role: 'ar',
   action: 'auto',
   handedness: 'right',
   recoilKickDeg: 1,
@@ -436,5 +438,15 @@ describe('the roster weapons (U-020)', () => {
     // Not again until the bolt has cycled: 60 / rpm seconds.
     expect(tryFire(bolt, state, 0.5, false)).toBeNull();
     expect(tryFire(bolt, state, 60 / bolt.rpm + 0.001, false)).not.toBeNull();
+  });
+});
+
+describe('weapon roles and the dual-primary rule (U-022)', () => {
+  it('every weapon has a role, and only an AR, an SMG or a shotgun may be one of two primaries', () => {
+    const eligible = Object.values(WEAPONS).filter(canBeDualPrimary).map((w) => w.id).sort();
+    expect(eligible).toEqual(['breacher', 'carbine', 'carbine-scoped', 'smg']);
+    for (const id of ['lmg', 'marksman', 'sniper-semi', 'sniper-bolt-left', 'sidearm', 'knife']) expect(canBeDualPrimary(getWeapon(id)), id).toBe(false);
+    expect(getWeapon('carbine-scoped').role).toBe('ar');
+    expect(() => parseWeaponTable({ a: { ...FIXTURE, id: 'a', role: 'railgun' } })).toThrow(/"a": role/);
   });
 });

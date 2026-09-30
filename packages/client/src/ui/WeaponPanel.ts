@@ -59,7 +59,7 @@ const ROWS: Row[] = [
  * list to the type.
  */
 export const JSON_ORDER: (keyof WeaponDef)[] = [
-  'id', 'name', 'rpm', 'damage', 'pellets', 'hipSpreadDeg', 'adsSpreadDeg',
+  'id', 'name', 'role', 'rpm', 'damage', 'pellets', 'hipSpreadDeg', 'adsSpreadDeg',
   'proneSpreadScale', 'bloomPerShotDeg', 'maxSpreadDeg', 'bloomDecayDegPerSec', 'falloffStartM',
   'falloffEndM', 'falloffMinFraction', 'maxRangeM', 'magSize', 'reloadSeconds',
   'auto', 'action', 'handedness',

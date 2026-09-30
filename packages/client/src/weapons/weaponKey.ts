@@ -11,6 +11,10 @@ export interface WeaponKeyContext {
   loadoutGuns: readonly string[] | null;
   /** U-018: the primary the host says this soldier carries (a picked-up gun once one is taken); key 1 draws it. */
   primary?: string | null;
+  /** U-022: the second primary a dual-primary character carries, if any. */
+  secondary?: string | null;
+  /** The gun in hand, so key 2 can cycle between the pistol and the second primary. */
+  held?: string | null;
 }
 
 const FREE_RANGE_GUNS = ['carbine', 'sidearm'] as const;
@@ -25,7 +29,11 @@ export function weaponIndexForKey(code: string, context: WeaponKeyContext): numb
     const guns = context.loadoutGuns ?? FREE_RANGE_GUNS;
     // 2 is the secondary (U-044): the pistol, or for a character without one (the support) its other primary.
     const primary = context.primary ?? guns.find((id) => id !== 'sidearm');
-    const weaponId = digit === 1 ? primary : (guns.find((id) => id === 'sidearm') ?? guns.find((id) => id !== 'sidearm' && id !== primary));
+    const pistol = guns.find((id) => id === 'sidearm');
+    const second = context.secondary ?? guns.find((id) => id !== 'sidearm' && id !== primary);
+    // Key 2 is the pistol, or the second primary; a character with both cycles between them.
+    const twoSecondaries = pistol !== undefined && second !== undefined && second !== pistol;
+    const weaponId = digit === 1 ? primary : twoSecondaries ? (context.held === pistol ? second : pistol) : (pistol ?? second);
     if (weaponId === undefined) return null;
     const index = WEAPON_IDS.indexOf(weaponId as (typeof WEAPON_IDS)[number]);
     return index >= 0 ? index : null;

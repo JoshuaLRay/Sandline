@@ -48,6 +48,7 @@ import {
   type WorldBox,
   type ScriptBlockerState,
   getWorld,
+  NO_SECONDARY,
   PROJECTILE_IDS,
 } from '@sandline/shared';
 
@@ -274,6 +275,8 @@ export class NetClient {
   private magazineValue: { weapon: number; ammo: number } | null = null;
   /** U-018: our own soldier's primary (a WEAPON_IDS index) as the host last said; null before it has. */
   private primaryValue: number | null = null;
+  /** U-022: our own soldier's second primary as the host last said (a WEAPON_IDS index); null for none, and before it has said. */
+  private secondaryValue: number | null = null;
   /**
    * Replicated with the health (T-2.13). Vitality is gameplay, not cosmetic:
    * the predictor needs it to hold still when the server does (B-05), and the
@@ -543,6 +546,11 @@ export class NetClient {
     return this.primaryValue;
   }
 
+  /** U-022: our own soldier's second primary, a WEAPON_IDS index; null when it carries only one (or the host has not said). */
+  get secondary(): number | null {
+    return this.secondaryValue;
+  }
+
   /** U-024: what the server says is left in our pouch, PROJECTILE_IDS order; null before the first snapshot of us. */
   get pouch(): readonly number[] | null {
     return this.pouchValue;
@@ -703,6 +711,7 @@ export class NetClient {
     this.pouchValue = null;
     this.magazineValue = null;
     this.primaryValue = null;
+    this.secondaryValue = null;
     this.vitalityValue = 'alive';
     this.vitalTimerValue = 0;
     this.reviveProgressValue = 0;
@@ -1422,6 +1431,8 @@ export class NetClient {
         if (weapon && weapon.length > 3 + PROJECTILE_IDS.length) {
           this.magazineValue = { weapon: (weapon[0] as number | undefined) ?? 0, ammo: (weapon[3 + PROJECTILE_IDS.length] as number | undefined) ?? 0 };
           this.primaryValue = (weapon[4 + PROJECTILE_IDS.length] as number | undefined) ?? null;
+          const second = weapon[5 + PROJECTILE_IDS.length] as number | undefined;
+          this.secondaryValue = second === undefined || second === NO_SECONDARY ? null : second;
         }
         const velocity = entity.components[V];
         if (this.spectatedSlotValue >= 0) {

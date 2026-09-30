@@ -32,6 +32,13 @@ import { cos, sin } from '../math/trig.ts';
 import RAW_WEAPONS from '../data/weapons.json' with { type: 'json' };
 
 export type WeaponAction = 'auto' | 'semi' | 'bolt';
+/**
+ * What kind of gun it is (U-022). The dual-primary rule is written in these:
+ * only an AR, an SMG or a shotgun may be one of two primaries; an LMG, a
+ * marksman rifle or a sniper rifle cannot, nor can a pistol or the knife.
+ */
+export type WeaponRole = 'ar' | 'smg' | 'shotgun' | 'lmg' | 'marksman' | 'sniper' | 'pistol' | 'melee';
+export const WEAPON_ROLES: readonly WeaponRole[] = ['ar', 'smg', 'shotgun', 'lmg', 'marksman', 'sniper', 'pistol', 'melee'];
 export type Handedness = 'right' | 'left';
 const ACTIONS: readonly WeaponAction[] = ['auto', 'semi', 'bolt'];
 const HANDS: readonly Handedness[] = ['right', 'left'];
@@ -74,6 +81,8 @@ export interface WeaponDef {
    * down), not a presentation detail — so it lives in data with the rest.
    */
   auto: boolean;
+  /** What kind of gun it is (U-022). */
+  role: WeaponRole;
   /**
    * How the gun cycles (U-020): `auto` holds the trigger, `semi` needs a pull
    * per shot, `bolt` is a manual action whose long cycle is the slow `rpm`.
@@ -217,6 +226,7 @@ function parseWeaponDef(key: string, raw: unknown): WeaponDef {
     magSize: num(row, 'magSize', key, 1, 500),
     reloadSeconds: num(row, 'reloadSeconds', key, 0, 60),
     auto: bool(row, 'auto', key),
+    role: oneOf(row, 'role', key, WEAPON_ROLES),
     action: oneOf(row, 'action', key, ACTIONS),
     handedness: oneOf(row, 'handedness', key, HANDS),
     recoilKickDeg: num(row, 'recoilKickDeg', key, 0, 30),
@@ -272,6 +282,9 @@ export const WEAPON_IDS = ['carbine', 'marksman', 'breacher', 'sidearm', 'knife'
 /** Bits a `WEAPON_IDS` index takes on the wire (U-041): room for sixteen, so appending needs no more bumps until then. */
 export const WEAPON_INDEX_BITS = 4;
 
+/** The wire value for "no second primary" (U-022): the top of the field, past every gun. */
+export const NO_SECONDARY = (1 << WEAPON_INDEX_BITS) - 1;
+
 /** The shipped table, validated at import so bad data fails loudly at boot. */
 export const WEAPONS: Readonly<Record<string, WeaponDef>> = Object.freeze(parseWeaponTable(RAW_WEAPONS));
 
@@ -280,6 +293,11 @@ export const WEAPONS: Readonly<Record<string, WeaponDef>> = Object.freeze(parseW
  * roster's left-handed sniper, U-019) may use only those; everyone else may
  * use any. Acquisition rules (U-029) sit on top of this.
  */
+/** Whether the gun may be one of two primaries (U-022): an AR, an SMG or a shotgun. */
+export function canBeDualPrimary(def: WeaponDef): boolean {
+  return def.role === 'ar' || def.role === 'smg' || def.role === 'shotgun';
+}
+
 export function canWield(def: WeaponDef, leftHandedOnly: boolean): boolean {
   return !leftHandedOnly || def.handedness === 'left';
 }

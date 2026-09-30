@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
-import { BitWriter, COMPONENT_IDS, POSITION, PROJECTILE_IDS, TICK_SECONDS, createLoopbackPair, encodeMessage, getWeapon, quantize, writeDelta } from '@sandline/shared';
+import { BitWriter, COMPONENT_IDS, POSITION, PROJECTILE_IDS, TICK_SECONDS, createLoopbackPair, encodeMessage, getWeapon, NO_SECONDARY, quantize, writeDelta } from '@sandline/shared';
 import { NetClient } from '../net/NetClient.ts';
 import { CombatQA, WEAPON_ORDER } from './CombatQA.ts';
 import { syncHostPrimary, type PrimarySeen } from './hostPrimary.ts';
@@ -20,7 +20,7 @@ it('keeps firing the mounted MG through a carried-primary snapshot and adopts th
       { netId: 7, components: {
         [COMPONENT_IDS.Transform]: transform,
         [COMPONENT_IDS.PlayerSlot]: [2, 0],
-        [COMPONENT_IDS.Weapon]: [primary, 0, 0, ...PROJECTILE_IDS.map(() => 0), ammo, primary],
+        [COMPONENT_IDS.Weapon]: [primary, 0, 0, ...PROJECTILE_IDS.map(() => 0), ammo, primary, NO_SECONDARY],
       } },
       { netId: 50, components: {
         [COMPONENT_IDS.Transform]: transform,

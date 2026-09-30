@@ -151,3 +151,11 @@ wire and saves still call it `classId` (its value is the character id), so the
 protocol did not change. The support (slot 2) has no pistol, cannot aim down the
 sight (the host takes the sight from its shots) and cannot play in first person.
 
+
+## Addendum (U-022): two primaries
+
+Slots still keep position between occupants. A slot now also keeps a
+`secondary` gun and a per-gun magazine for whichever gun is stowed. Only the
+characters flagged `dualPrimary` (Preach, Support) may carry a second primary,
+and only an AR, SMG or shotgun; it is refused while two are carried and the
+pickup is an LMG or sniper. The wire field is `secondary` (protocol 46).

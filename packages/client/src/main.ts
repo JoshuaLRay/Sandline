@@ -594,6 +594,11 @@ function hostPrimary(): string | null {
   const index = live?.net.primary ?? null;
   return index === null ? null : (WEAPON_IDS[index] ?? null);
 }
+/** U-022: the second primary the host says a dual-primary soldier carries, if any. */
+function hostSecondary(): string | null {
+  const index = live?.net.secondary ?? null;
+  return index === null ? null : (WEAPON_IDS[index] ?? null);
+}
 /**
  * U-018: the guns the page's soldier carries on a class loadout — the
  * class's, its first replaced by the primary the host says (a gun taken off
@@ -602,7 +607,9 @@ function hostPrimary(): string | null {
 function carriedGuns(): readonly string[] | null {
   if (!localLoadout) return null;
   const primary = hostPrimary();
-  return primary ? [primary, ...localLoadout.guns.filter((g) => g === 'sidearm')] : localLoadout.guns;
+  if (!primary) return localLoadout.guns;
+  const second = hostSecondary();
+  return [primary, ...(second ? [second] : []), ...localLoadout.guns.filter((g) => g === 'sidearm')];
 }
 /** U-018: the host's primary last seen, to notice a new one (taken off the ground, or given back on a respawn). */
 let primarySeen: PrimarySeen | null = null;
@@ -3102,6 +3109,8 @@ addEventListener('keydown', (e) => {
     mounted: mountedGun !== null,
     loadoutGuns: carriedGuns(),
     primary: hostPrimary(),
+    secondary: hostSecondary(),
+    held: WEAPON_ORDER[combat.weaponIndex] ?? null,
   };
   const equipmentInputAllowed = !keyContext.orderWheelOpen && !keyContext.menuOpen && !keyContext.textFieldFocused && keyContext.alive && !keyContext.mounted;
   const weaponIndex = weaponIndexForKey(e.code, keyContext);

@@ -110,21 +110,21 @@ describe('taking a gun off the ground as the primary (U-018)', () => {
     const a = r.join('a');
     r.send(a, { kind: 'RoomCommand', command: 'start' });
     r.step(5);
-    r.drop('breacher', 5);
+    r.drop('marksman', 5);
     r.place(a, NEAR);
     r.press(a);
-    expect(r.session.loadoutOf(a.net.slot).primary).toBe('breacher');
+    expect(r.session.loadoutOf(a.net.slot).primary).toBe('marksman');
     r.send(a, { kind: 'Equip', item: idx('sidearm') });
     expect(r.session.loadoutOf(a.net.slot).weapon).toBe('sidearm');
     r.send(a, { kind: 'Equip', item: idx('carbine') });
     expect(r.session.loadoutOf(a.net.slot).weapon).toBe('sidearm');
-    r.send(a, { kind: 'Equip', item: idx('breacher') });
-    expect(r.session.loadoutOf(a.net.slot).weapon).toBe('breacher');
+    r.send(a, { kind: 'Equip', item: idx('marksman') });
+    expect(r.session.loadoutOf(a.net.slot).weapon).toBe('marksman');
     // A Fire naming the carbine used to put it back in hand; now it is refused, shot and all.
     const before = r.session.loadoutOf(a.net.slot).ammo;
     a.net.fire(r.session.tick, 0, 0, idx('carbine'), false);
     r.step(2);
-    expect(r.session.loadoutOf(a.net.slot)).toMatchObject({ weapon: 'breacher', ammo: before });
+    expect(r.session.loadoutOf(a.net.slot)).toMatchObject({ weapon: 'marksman', ammo: before });
   });
 
   it('two soldiers pressing on the same tick: one takes it, one transfer, nothing doubled', () => {
@@ -174,10 +174,10 @@ describe('taking a gun off the ground as the primary (U-018)', () => {
     expect(r.session.loadoutOf(back.net.slot)).toMatchObject({ weapon: 'carbine', primary: 'carbine', ammo: getWeapon('carbine').magSize });
     // Taken again, then a restart: the carbine again.
     // (The carbine the first take left lies at NEAR; this one lies clear of it.)
-    r.drop('breacher', 3, { x: 15, y: 0, z: 12.2 });
+    r.drop('marksman', 3, { x: 15, y: 0, z: 12.2 });
     r.place(back, { x: 15, z: 11.4 });
     r.press(back);
-    expect(r.session.loadoutOf(back.net.slot).primary).toBe('breacher');
+    expect(r.session.loadoutOf(back.net.slot).primary).toBe('marksman');
     r.session.restartMission();
     r.step(2);
     expect(r.session.loadoutOf(back.net.slot)).toMatchObject({ primary: 'carbine', weapon: 'carbine' });
