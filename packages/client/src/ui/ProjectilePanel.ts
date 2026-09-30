@@ -58,7 +58,7 @@ const ROWS: Row[] = [
 export const PROJECTILE_JSON_ORDER: (keyof ProjectileDef)[] = [
   'id', 'name', 'kind', 'speedMPerSec', 'loftDeg', 'gravity', 'dragPerSec', 'radiusM', 'restitution',
   'friction', 'rollDragPerSec', 'fuseSeconds', 'detonateOnImpact', 'maxLifeSeconds', 'blastRadiusM',
-  'blastDamage', 'blastMinFraction', 'blastCoverFraction', 'suppression', 'coneDeg', 'triggerM', 'carried', 'cooldownSeconds',
+  'blastDamage', 'blastMinFraction', 'blastCoverFraction', 'suppression', 'coneDeg', 'triggerM', 'senseM', 'senseSpeedMps', 'carried', 'cooldownSeconds',
 ];
 
 /** Where a throw ends up, on open ground: its first landing, and where it goes off. */

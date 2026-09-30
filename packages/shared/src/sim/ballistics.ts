@@ -104,6 +104,10 @@ export interface ProjectileDef {
   coneDeg: number;
   /** A placed device goes off by itself when a hostile soldier comes within this many metres in front of it (U-055); 0 is manual only. */
   triggerM: number;
+  /** A placed sensor (U-057) marks a moving enemy for the squad within this many metres, through walls; 0 is no sensor. */
+  senseM: number;
+  /** The horizontal speed, m/s, an enemy must exceed for a sensor to mark it. */
+  senseSpeedMps: number;
   /** How many a soldier carries. */
   carried: number;
   /** Minimum seconds between two of these leaving the same hand. */
@@ -115,7 +119,7 @@ export interface ProjectileDef {
  * index is what travels in a Throw message and in the `Projectile` component,
  * so reordering this is a PROTOCOL_VERSION bump.
  */
-export const PROJECTILE_IDS = ['frag', 'rocket', 'c4', 'concussion', 'claymore'] as const;
+export const PROJECTILE_IDS = ['frag', 'rocket', 'c4', 'concussion', 'claymore', 'sensor'] as const;
 
 /**
  * Bits a projectile index takes on the wire (U-048): the Projectile component's kind, a Throw, a Detonation and the
@@ -209,6 +213,8 @@ function parseProjectileDef(key: string, raw: unknown): ProjectileDef {
     suppression: num(row, 'suppression', key, 0, 1),
     coneDeg: num(row, 'coneDeg', key, 0, 360),
     triggerM: num(row, 'triggerM', key, 0, 30),
+    senseM: num(row, 'senseM', key, 0, 100),
+    senseSpeedMps: num(row, 'senseSpeedMps', key, 0, 20),
     carried: num(row, 'carried', key, 0, 99),
     cooldownSeconds: num(row, 'cooldownSeconds', key, 0, 60),
   };
