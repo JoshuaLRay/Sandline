@@ -117,6 +117,18 @@ export class MissionRun {
     this.view = this.start(objective, 1);
   }
 
+  /**
+   * U-059: move the retry point without touching the play in progress — the objective a failed run goes back to, and
+   * the elapsed time it had then. `restoreCheckpoint` is for a new session; this is for the one in play.
+   */
+  setCheckpoint(objective: number, elapsedTicks: number): void {
+    if (!Number.isInteger(objective) || objective < 0 || objective >= this.def.objectives.length) {
+      throw new Error(`mission checkpoint objective ${objective} is out of range`);
+    }
+    this.checkpointObjective = objective;
+    this.checkpointElapsedTicks = elapsedTicks;
+  }
+
   /** The objective being played, and its resolved area if it has one. */
   get objective(): { def: ObjectiveDef; area: GroundArea | null } {
     return { def: this.def.objectives[this.view.objective]!, area: this.areas[this.view.objective] ?? null };
