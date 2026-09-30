@@ -60,6 +60,8 @@ export interface CombatBody extends BrainBody {
   coverNear?(): { x: number; z: number; withinM: number } | null;
   /** U-010: the lever the session has sent it to (its feet's goal, and how near counts), or absent/null: no job. */
   leverJob?(): { x: number; y: number; z: number; reachM: number } | null;
+  /** U-062: the downed character the session has sent it to take prisoner (where they lie, and how near counts), or absent/null: no job. */
+  captureJob?(): { x: number; y: number; z: number; reachM: number } | null;
 }
 
 export function isCombatBody(body: BrainBody): body is CombatBody {

@@ -64,6 +64,24 @@ export interface KitConfig {
   downedHealthFraction: number;
 }
 
+/** Enemy capture of a downed character (U-062). Tuning only; the rules are the session's. */
+export interface CaptureConfig {
+  /** A character must have been downed this long before they can be taken, seconds. */
+  downedMinSeconds: number;
+  /** ...and no living squadmate may be within this of them, metres. */
+  squadmateRadiusM: number;
+  /** Seconds the capturer must hold them, unsuppressed and unrelieved, before they are taken. */
+  channelSeconds: number;
+  /** How close the capturer must stand to begin the channel, metres. */
+  reachM: number;
+  /** The capturer's suppression (0-1) at or above which the channel is cancelled. */
+  suppression: number;
+  /** A capturer that gave up (interrupted or no way there) is not sent again for this long, seconds. */
+  retrySeconds: number;
+  /** How fast a capturer is assumed to cover ground getting there, for the can-it-finish-in-time check, m/s. */
+  approachSpeedMps: number;
+}
+
 export interface DamageConfig {
   maxHealth: number;
   respawnSeconds: number;
@@ -75,6 +93,7 @@ export interface DamageConfig {
   respawnImmunitySeconds: number;
   downed: DownedConfig;
   kit: KitConfig;
+  capture: CaptureConfig;
   zones: Record<HitZone, ZoneRule>;
 }
 
@@ -136,12 +155,26 @@ export function parseDamageConfig(raw: unknown): DamageConfig {
     downedHealthFraction: num(k, 'downedHealthFraction', 'damage.kit', 0.01, 1),
   };
 
+  const rawCapture = row['capture'];
+  if (typeof rawCapture !== 'object' || rawCapture === null) throw new DamageDataError('damage.capture: expected an object');
+  const c = rawCapture as Record<string, unknown>;
+  const capture: CaptureConfig = {
+    downedMinSeconds: num(c, 'downedMinSeconds', 'damage.capture', 0, 300),
+    squadmateRadiusM: num(c, 'squadmateRadiusM', 'damage.capture', 0, 200),
+    channelSeconds: num(c, 'channelSeconds', 'damage.capture', 0.1, 120),
+    reachM: num(c, 'reachM', 'damage.capture', 0.1, 10),
+    suppression: num(c, 'suppression', 'damage.capture', 0.01, 1),
+    retrySeconds: num(c, 'retrySeconds', 'damage.capture', 0, 300),
+    approachSpeedMps: num(c, 'approachSpeedMps', 'damage.capture', 0.5, 20),
+  };
+
   return {
     maxHealth: num(row, 'maxHealth', 'damage', 1, 1000),
     respawnSeconds: num(row, 'respawnSeconds', 'damage', 0, 60),
     respawnImmunitySeconds: num(row, 'respawnImmunitySeconds', 'damage', 0, 30),
     downed,
     kit,
+    capture,
     zones,
   };
 }

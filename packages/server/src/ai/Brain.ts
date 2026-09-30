@@ -21,6 +21,7 @@ import { registerGrenadeLeaves } from './actions/grenade.ts';
 import { registerFriendlyLeaves } from './actions/friendly.ts';
 import { registerOrderLeaves } from './friendly/orders.ts';
 import { registerPostureLeaves } from './actions/posture.ts';
+import { registerCaptureLeaves } from './actions/capture.ts';
 import { registerLeverLeaves } from './actions/lever.ts';
 
 /** Ticks between a brain's thoughts: 30 Hz sim, 10 Hz brains. */
@@ -110,7 +111,7 @@ export function createBrainRegistry(): BrainRegistry {
     blackboard.set('intent', null);
     return 'running';
   });
-  return registerLeverLeaves(registerPostureLeaves(registerOrderLeaves(registerFriendlyLeaves(registerGrenadeLeaves(registerRiflemanLeaves(registry))))));
+  return registerCaptureLeaves(registerLeverLeaves(registerPostureLeaves(registerOrderLeaves(registerFriendlyLeaves(registerGrenadeLeaves(registerRiflemanLeaves(registry)))))));
 }
 
 let idleTree: BrainTree | null = null;
