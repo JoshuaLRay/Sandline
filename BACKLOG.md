@@ -94,7 +94,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-058](docs/backlog/U-058.md) | Smoke grenades for Ortiz | Controls | P3 | DONE | U-048 | [#223](https://github.com/JoshuaLRay/Sandline/pull/223) |
 | [U-059](docs/backlog/U-059.md) | Checkpoints restore the whole world: living enemies, positions, health | Campaign | P2 | DONE | U-052 | [#227](https://github.com/JoshuaLRay/Sandline/pull/227) |
 | [U-060](docs/backlog/U-060.md) | Save the checkpoint's world in the campaign file | Campaign | P2 | REVIEW | U-059 | `task/U-060-campaign-world` |
-| [U-061](docs/backlog/U-061.md) | Captured state: persistence, slot rules, retry behaviour | Campaign | P2 | READY | U-060 | — |
+| [U-061](docs/backlog/U-061.md) | Captured state: persistence, slot rules, retry behaviour | Campaign | P2 | REVIEW | U-060 | `task/U-061-captured-state` |
 | [U-062](docs/backlog/U-062.md) | Enemy capture behaviour: 2 s rule, 5 s channel, interruption | Campaign | P2 | BLOCKED | U-061 | — |
 | [U-063](docs/backlog/U-063.md) | The `rescue` objective type | Campaign | P2 | BLOCKED | U-061 | — |
 | [U-064](docs/backlog/U-064.md) | Captured characters in the slot picker, HUD and messages | Campaign | P2 | BLOCKED | U-061 | — |
