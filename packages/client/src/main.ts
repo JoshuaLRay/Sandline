@@ -1663,7 +1663,7 @@ const fetchAudio = (file: string): Promise<ArrayBuffer> => fetch(`./audio/${file
   return r.arrayBuffer();
 });
 // The real context has more (and stricter-typed) members than the engine uses; it is the engine's shape at runtime.
-const audio = new AudioEngine({ createContext: () => new AudioContext({ latencyHint: 'interactive' }) as unknown as AudioContextLike, fetchBytes: fetchAudio });
+const audio = new AudioEngine({ createContext: () => new AudioContext({ latencyHint: 'interactive' }) as unknown as AudioContextLike, fetchBytes: fetchAudio, deferBackground: true });
 // T-2.49: which voice lines are committed, so a callout knows whether to play one or the chirp.
 void fetchAudio('voice/renders.json')
   .then((bytes) => {
@@ -1675,6 +1675,8 @@ const unlockAudio = (): void => {
   void audio.unlock().then(() => {
     if (audio.missing.length > 0) console.warn(`[audio] ${audio.missing.length} render(s) failed to load and will not play: ${audio.missing.join(', ')}`);
   });
+  // U-043: whatever happens, the held-back sounds load in the end (the game releases them sooner, once it is playable).
+  setTimeout(() => audio.releaseBackground(), 45_000);
   removeEventListener('pointerdown', unlockAudio, true);
   removeEventListener('keydown', unlockAudio, true);
 };
@@ -1684,7 +1686,10 @@ if (new URLSearchParams(location.search).has('sounds')) {
   createSoundBoard(document.body, {
     sounds: SOUNDS,
     fetchBytes: fetchAudio,
-    play: (id, variant) => void audio.unlock().then(() => audio.play(id, { variant })),
+    play: (id, variant) => {
+      audio.releaseBackground();
+      void audio.unlock().then(() => audio.play(id, { variant }));
+    },
     playFile: (file) => void new Audio(`./audio/${file}`).play().catch(() => undefined),
   });
 }
@@ -3034,6 +3039,8 @@ function frame(): void {
   if (playablePending && live?.net === playablePending) {
     document.body.dataset['playable'] = 'true';
     playablePending = null;
+    // U-043: the game can start, so the sounds may now have the link to themselves.
+    audio.releaseBackground();
   }
   aiDebug.render(camera, innerWidth, innerHeight);
   orderMarkerOverlay.render(camera, innerWidth, innerHeight);

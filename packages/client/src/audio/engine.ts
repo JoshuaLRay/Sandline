@@ -88,6 +88,13 @@ export interface EngineOptions {
   createContext: () => AudioContextLike;
   /** Fetches a committed render's bytes by file name. */
   fetchBytes: (file: string) => Promise<ArrayBuffer>;
+  /**
+   * Hold the bulk of the renders back until `releaseBackground()` (U-043):
+   * only the UI sounds load at unlock. The game releases them once it is
+   * playable, so the audio (over half the bytes of a first load) does not
+   * share a slow link with the assets that decide when the game can start.
+   */
+  deferBackground?: boolean;
   sounds?: SoundsConfig;
   mix?: MixConfig;
   /** Which variant plays; a counter by default, so automatic fire never repeats one back to back. */
@@ -118,6 +125,9 @@ export interface Volumes {
 }
 
 /** The next variant after `last`, cycling: never the same one twice in a row when there are two or more. */
+/** The order the renders load in (U-043): what is heard first comes first. */
+const LOAD_ORDER: readonly SoundClass[] = ['ui', 'weapon', 'body', 'voice', 'world'];
+
 export function nextVariant(def: SoundDef, last: number): number {
   return def.variants <= 1 ? 0 : (last + 1) % def.variants;
 }
@@ -138,6 +148,9 @@ export class AudioEngine {
   private boxes: readonly WorldBox[] = [];
   private volumes: Volumes = { master: 0.8, effects: 1, voice: 1 };
   private loading: Promise<void> | null = null;
+  /** Resolves when the background renders may start loading (U-043). */
+  private background: Promise<void>;
+  private releaseGate: () => void = () => undefined;
   /** Lazy sounds being fetched (U-043), so a burst of plays starts one fetch. */
   private readonly lazyLoading = new Map<string, Promise<void>>();
   /** Renders that would not fetch or decode, by file (U-007): shown, not swallowed. */
@@ -147,6 +160,15 @@ export class AudioEngine {
     this.sounds = options.sounds ?? SOUNDS;
     this.mix = options.mix ?? MIX;
     this.pool = new VoicePool<Voice>(this.mix.voiceLimit);
+    this.background = new Promise<void>((resolve) => {
+      this.releaseGate = resolve;
+    });
+    if (!options.deferBackground) this.releaseGate();
+  }
+
+  /** Let the renders held back by `deferBackground` load now (U-043). Idempotent. */
+  releaseBackground(): void {
+    this.releaseGate();
   }
 
   /** Whether the context exists and every render has loaded. */
@@ -193,7 +215,12 @@ export class AudioEngine {
 
   private async loadAll(): Promise<void> {
     // A lazy sound (U-043) is not part of the first load: it comes on first use or a `preload`.
-    await Promise.all([...this.sounds.sounds.values()].filter((def) => def.lazy !== true).map((def) => this.loadOne(def)));
+    const wanted = [...this.sounds.sounds.values()].filter((def) => def.lazy !== true);
+    // The UI's first, whatever else is held back; then, once released, in the order they matter: guns, bodies, voices, the world.
+    const tiers = LOAD_ORDER.map((cls) => wanted.filter((def) => def.class === cls));
+    await Promise.all((tiers[0] ?? []).map((def) => this.loadOne(def)));
+    await this.background;
+    for (const tier of tiers.slice(1)) await Promise.all(tier.map((def) => this.loadOne(def)));
   }
 
   private async loadOne(def: SoundDef): Promise<void> {
