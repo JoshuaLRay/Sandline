@@ -88,6 +88,7 @@ import {
   classById,
   classPrimaries,
   orderReach,
+  bleedOutRemaining,
   expireBleedOut,
   isDead,
   isDowned,
@@ -687,6 +688,8 @@ export interface EnemyEntity {
   coverNear(): { x: number; z: number; withinM: number } | null;
   /** U-010: the lever the session has sent it to, or null. */
   leverJob(): { x: number; y: number; z: number; reachM: number } | null;
+  /** U-062: the downed character the session has sent it to take prisoner, or null. */
+  captureJob(): { x: number; y: number; z: number; reachM: number } | null;
 }
 
 /** U-017: a dead enemy's firearm on the ground. */
@@ -879,6 +882,10 @@ export class Session {
   private leverUse: { enemy: EnemyEntity; seconds: number } | null = null;
   /** U-010: enemies that could not get to the lever, and until when they are not sent again (seconds). */
   private readonly leverBarred = new Map<number, number>();
+  /** U-062: the capture jobs under way, by the slot index being taken, and how long each capturer has held them (seconds). */
+  private readonly captureUse = new Map<number, { enemy: EnemyEntity; seconds: number }>();
+  /** U-062: capturers whose job was interrupted or had no way there, and until when they are not sent again (seconds). */
+  private readonly captureBarred = new Map<number, number>();
   /** T-3.19's cover over this world's baked points, or null without any. */
   readonly cover: CoverSystem | null;
   /** T-3.20: what fighting leaves see of the session; every enemy is handed this one. */
@@ -1708,6 +1715,9 @@ export class Session {
     // U-010: nobody at the lever, nobody barred from it.
     this.leverUse = null;
     this.leverBarred.clear();
+    // U-062: no capture in progress, nobody barred from one.
+    this.captureUse.clear();
+    this.captureBarred.clear();
     // U-017: the retried world starts with nothing on the ground (its ids are not handed out again).
     this.pickupList.length = 0;
     this.authoredPickups.clear();
@@ -2167,6 +2177,14 @@ export class Session {
         const lever = this.leverUse?.enemy === enemy ? this.activeLever() : null;
         return lever ? { ...lever.at, reachM: lever.reachM } : null;
       },
+      captureJob: () => {
+        for (const [index, job] of this.captureUse) {
+          if (job.enemy !== enemy) continue;
+          const held = this.slots[index];
+          return held ? { x: held.state.x, y: held.state.y, z: held.state.z, reachM: DAMAGE.capture.reachM } : null;
+        }
+        return null;
+      },
     };
     enemy.group?.add(enemy.netId);
     enemy.brain = new Brain(enemy, at.tree ?? this.enemyTree(def.tree));
@@ -2202,6 +2220,20 @@ export class Session {
   private botTarget(slot: Slot, nowSeconds: number): number | null {
     const order = this.orders[slot.index];
     if (order?.order === 'attack' && order.target !== null && this.enemyList.some((e) => e.netId === order.target && !isDead(e.health))) return order.target;
+    // U-062: someone taking a squadmate prisoner, if the bot knows of them, comes before any other target.
+    let taker: number | null = null;
+    let takerD = Infinity;
+    for (const job of this.captureUse.values()) {
+      if (job.seconds <= 0) continue;
+      const entry = slot.memory.entries.get(job.enemy.netId);
+      if (!entry) continue;
+      const d = (entry.x - slot.state.x) ** 2 + (entry.z - slot.state.z) ** 2;
+      if (d < takerD) {
+        takerD = d;
+        taker = job.enemy.netId;
+      }
+    }
+    if (taker !== null) return taker;
     let best: number | null = null;
     let bestD = Infinity;
     for (const mark of this.marks) {
@@ -2223,12 +2255,17 @@ export class Session {
     if (!me || !isAlive(me.health)) return null;
     let best: DownedMate | null = null;
     let bestD = SQUAD_CONFIG.bot.reviveSeekM;
+    let bestTaken = false;
     for (const s of this.slots) {
       if (s === me || !isDowned(s.health)) continue;
       if (s.reviveBySlot >= 0 && s.reviveBySlot !== index) continue;
       const d = Math.sqrt((s.state.x - me.state.x) ** 2 + (s.state.z - me.state.z) ** 2);
-      if (d <= bestD) {
+      // U-062: a squadmate being taken prisoner is a priority, from wherever the bot is, over any other revive.
+      const taken = (this.captureUse.get(s.index)?.seconds ?? 0) > 0;
+      const better = taken ? !bestTaken || d < bestD : !bestTaken && d <= bestD;
+      if (better) {
         bestD = d;
+        bestTaken = taken;
         best = { index: s.index, x: s.state.x, y: s.state.y, z: s.state.z, reachM: DAMAGE.downed.reviveRangeM };
       }
     }
@@ -3301,6 +3338,123 @@ export class Session {
       this.broadcastMission();
       this.eventHost().message('The upload was cut at the lever');
     }
+  }
+
+  /** U-062: the capture jobs under way — slot index, capturer and seconds held — for tests and the QA readout. */
+  get captures(): { slot: number; netId: number; seconds: number }[] {
+    return [...this.captureUse].map(([slot, job]) => ({ slot, netId: job.enemy.netId, seconds: job.seconds }));
+  }
+
+  /**
+   * U-062: whether a downed character may be taken prisoner now: downed at least `downedMinSeconds`, no squadmate who is
+   * up within `squadmateRadiusM`, and at least one squadmate up anywhere (a wipe is a failure, not a capture).
+   */
+  private captureEligible(slot: Slot, nowSeconds: number): boolean {
+    const cfg = DAMAGE.capture;
+    if (slot.captured || !isDowned(slot.health) || slot.health.downedAt === null) return false;
+    if (nowSeconds - slot.health.downedAt < cfg.downedMinSeconds) return false;
+    let someoneUp = false;
+    for (const other of this.slots) {
+      if (other === slot || other.captured || !isAlive(other.health)) continue;
+      someoneUp = true;
+      if (this.distanceSq(slot, other) <= cfg.squadmateRadiusM * cfg.squadmateRadiusM) return false;
+    }
+    return someoneUp;
+  }
+
+  /** U-062: the length of a nav path from `from` that ends within reach of `to`'s foot, metres, or null if there is none. */
+  private walkDistanceTo(from: Readonly<MoveState>, to: { x: number; y: number; z: number }): number | null {
+    const points = this.navMesh?.path(from, to)?.points;
+    const end = points?.at(-1);
+    if (!points || !end || Math.hypot(end.x - to.x, end.z - to.z) > LEVER_PATH_END_M) return null;
+    let length = 0;
+    let prev: { x: number; z: number } = from;
+    for (const p of points) {
+      length += Math.hypot(p.x - prev.x, p.z - prev.z);
+      prev = p;
+    }
+    return length;
+  }
+
+  /**
+   * U-062: enemies taking downed characters prisoner, a tick at a time. An enemy with nothing to shoot is sent to an
+   * eligible downed character (nearest first, one capturer each) when it can walk there and hold them for
+   * `channelSeconds` inside what is left of the bleed-out; the session, not the brain, times the hold. The job is
+   * dropped, and the channel starts over with nothing kept, when the capturer dies or is suppressed past the threshold,
+   * finds a target, loses its path or is sent to the lever, when the character stops being eligible (a squadmate
+   * comes within range — so a revive, which needs one, lands as it always did — or they die, or the squad is
+   * wiped) or when it can no longer finish inside the bleed-out. An interrupted capturer is barred for `retrySeconds`.
+   * A hold that completes calls `captureCharacter`.
+   */
+  private updateCaptures(nowSeconds: number): void {
+    const cfg = DAMAGE.capture;
+    for (const [netId, until] of this.captureBarred) if (until <= nowSeconds) this.captureBarred.delete(netId);
+    for (const [index, job] of this.captureUse) {
+      const held = this.slots[index];
+      const e = job.enemy;
+      const gone = !held || isDead(e.health) || !this.enemyList.includes(e) || e.mounted !== null || !e.brain || e.brain.isStopped || this.leverUse?.enemy === e;
+      if (gone || !this.captureEligible(held!, nowSeconds)) {
+        this.captureUse.delete(index);
+        continue;
+      }
+      const atHeld = this.atHeld(e, held!);
+      if (
+        e.target !== null ||
+        suppressionLevel(e.suppression, nowSeconds) >= cfg.suppression ||
+        (e.pathStatus === 'unreachable' && !atHeld) ||
+        bleedOutRemaining(held!.health, nowSeconds) < cfg.channelSeconds - job.seconds
+      ) {
+        this.captureBarred.set(e.netId, nowSeconds + cfg.retrySeconds);
+        this.captureUse.delete(index);
+      }
+    }
+    // Only every half second: a path for each capturer and downed character is not free.
+    if (this.currentTick % 15 === 0) this.assignCaptures(nowSeconds);
+    for (const [index, job] of [...this.captureUse]) {
+      const held = this.slots[index]!;
+      if (!this.atHeld(job.enemy, held) || !job.enemy.brain!.read('interact')) {
+        job.seconds = 0;
+        continue;
+      }
+      job.seconds += TICK_SECONDS;
+      if (job.seconds < cfg.channelSeconds) continue;
+      this.captureUse.delete(index);
+      this.captureCharacter(index, { x: held.state.x, y: held.state.y, z: held.state.z });
+    }
+  }
+
+  /** U-062: sends the nearest able enemy to each eligible downed character that has no capturer. */
+  private assignCaptures(nowSeconds: number): void {
+    const cfg = DAMAGE.capture;
+    const busy = new Set([...this.captureUse.values()].map((job) => job.enemy));
+    for (const held of this.slots) {
+      if (this.captureUse.has(held.index) || !this.captureEligible(held, nowSeconds)) continue;
+      const remaining = bleedOutRemaining(held.health, nowSeconds);
+      const dist = (e: EnemyEntity) => Math.hypot(e.state.x - held.state.x, e.state.z - held.state.z);
+      const candidates = this.enemyList
+        .filter(
+          (e) =>
+            !busy.has(e) && !isDead(e.health) && !e.mounted && e.brain && !e.brain.isStopped && e.target === null &&
+            e.faction !== SQUAD && this.leverUse?.enemy !== e && !this.captureBarred.has(e.netId) &&
+            // Straight-line lower bound first: one too far to finish in time is not worth a path.
+            dist(e) / cfg.approachSpeedMps + cfg.channelSeconds <= remaining,
+        )
+        .sort((a, b) => dist(a) - dist(b))
+        .slice(0, 4);
+      for (const e of candidates) {
+        const walk = this.walkDistanceTo(e.state, held.state);
+        if (walk === null || walk / cfg.approachSpeedMps + cfg.channelSeconds > remaining) continue;
+        this.captureUse.set(held.index, { enemy: e, seconds: 0 });
+        busy.add(e);
+        break;
+      }
+    }
+  }
+
+  /** U-062: whether an enemy stands close enough over a downed character to hold them. */
+  private atHeld(e: EnemyEntity, held: Slot): boolean {
+    if (isDead(e.health) || e.state.vault) return false;
+    return Math.hypot(e.state.x - held.state.x, e.state.z - held.state.z) <= DAMAGE.capture.reachM && Math.abs(e.state.y - held.state.y) <= 1.5;
   }
 
   /** U-010: whether an enemy stands at the lever by the terminal's rules: in reach of its eye, and a clear line to it. */
@@ -4749,6 +4903,8 @@ export class Session {
     this.updateMounts(nowSeconds);
     // U-010: the enemy at the upload's lever.
     this.updateLever(nowSeconds);
+    // U-062: enemies taking downed characters prisoner.
+    this.updateCaptures(nowSeconds);
     // U-017: weapons on the ground past their time.
     this.expirePickups(nowSeconds);
 

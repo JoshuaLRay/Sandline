@@ -13,6 +13,15 @@
     "reachM": 1.5,
     "downedHealthFraction": 0.5
   },
+  "capture": {
+    "downedMinSeconds": 2,
+    "squadmateRadiusM": 15,
+    "channelSeconds": 5,
+    "reachM": 1.5,
+    "suppression": 0.25,
+    "retrySeconds": 6,
+    "approachSpeedMps": 4
+  },
   "zones": {
     "head": {
       "multiplier": 2.5,

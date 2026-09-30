@@ -36,6 +36,7 @@ const CONFIG: DamageConfig = {
   respawnImmunitySeconds: 2,
   downed: { bleedOutSeconds: 20, reviveSeconds: 3, reviveRangeM: 1.5, reviveHealthFraction: 0.4 },
   kit: { seconds: 10, reachM: 1.5, downedHealthFraction: 0.5 },
+  capture: { downedMinSeconds: 2, squadmateRadiusM: 15, channelSeconds: 5, reachM: 1.5, suppression: 0.25, retrySeconds: 6, approachSpeedMps: 4 },
   zones: {
     head: { multiplier: 2, minFraction: 0.8 },
     torso: { multiplier: 1, minFraction: 0.4 },
@@ -333,6 +334,14 @@ describe('damage data', () => {
     expect(() => parseDamageConfig(noDowned)).toThrow(/damage\.downed/);
     expect(() => parseDamageConfig({ ...CONFIG, downed: { ...CONFIG.downed, reviveHealthFraction: 0 } })).toThrow(/reviveHealthFraction/);
     expect(() => parseDamageConfig({ ...CONFIG, downed: { ...CONFIG.downed, bleedOutSeconds: 0 } })).toThrow(/bleedOutSeconds/);
+  });
+
+  it('rejects a capture block that is missing or out of range (U-062)', () => {
+    const { capture: _drop, ...noCapture } = CONFIG;
+    expect(() => parseDamageConfig(noCapture)).toThrow(/damage\.capture/);
+    expect(() => parseDamageConfig({ ...CONFIG, capture: { ...CONFIG.capture, channelSeconds: 0 } })).toThrow(/channelSeconds/);
+    expect(() => parseDamageConfig({ ...CONFIG, capture: { ...CONFIG.capture, suppression: 2 } })).toThrow(/suppression/);
+    expect(DAMAGE.capture.channelSeconds).toBeLessThan(DAMAGE.downed.bleedOutSeconds);
   });
 
   it('rejects a missing or malformed field', () => {
