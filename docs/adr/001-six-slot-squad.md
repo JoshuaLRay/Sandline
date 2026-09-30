@@ -138,3 +138,16 @@ Owner decisions closing U-019:
 
 This supersedes, for the support only, the 2026-09-27 wording that left its pistol
 and speed open. Slots, possession and command (above) are unchanged.
+
+## Addendum — 2026-09-30: characters are bound to slots (U-021)
+
+The six characters of the 2026-09-27 and 2026-09-29 addenda are implemented as
+data: `classes.json` holds one entry per character and `slotDefaults` binds them
+to slots 0–5, unique and fixed. Nobody picks a character (the room's class
+picker and the `class` room command are gone or ignored); whoever occupies a
+slot, human or bot, plays its character with its loadout, health and pouch, so a
+join, a leave, a drop and a resume, and a U-026 switch, keep the identity. The
+wire and saves still call it `classId` (its value is the character id), so the
+protocol did not change. The support (slot 2) has no pistol, cannot aim down the
+sight (the host takes the sight from its shots) and cannot play in first person.
+

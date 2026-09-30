@@ -23,9 +23,9 @@ export function weaponIndexForKey(code: string, context: WeaponKeyContext): numb
   if (digit === 3) return WEAPON_IDS.indexOf('knife');
   if (digit === 1 || digit === 2) {
     const guns = context.loadoutGuns ?? FREE_RANGE_GUNS;
-    const weaponId = digit === 1
-      ? (context.primary ?? guns.find((id) => id !== 'sidearm'))
-      : guns.find((id) => id === 'sidearm');
+    // 2 is the secondary (U-044): the pistol, or for a character without one (the support) its other primary.
+    const primary = context.primary ?? guns.find((id) => id !== 'sidearm');
+    const weaponId = digit === 1 ? primary : (guns.find((id) => id === 'sidearm') ?? guns.find((id) => id !== 'sidearm' && id !== primary));
     if (weaponId === undefined) return null;
     const index = WEAPON_IDS.indexOf(weaponId as (typeof WEAPON_IDS)[number]);
     return index >= 0 ? index : null;

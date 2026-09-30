@@ -852,7 +852,7 @@ export class Session {
   private roomStarted: boolean;
   private creatorSlot = -1;
   private readonly readySlots: boolean[] = Array.from({ length: MAX_SLOTS }, () => false);
-  /** T-4.27: the class each slot plays, as `assignClasses` last decided it — what the roster and the room carry. */
+  /** T-4.27, U-021: the character each slot plays — fixed by the slot (`assignClasses`) — what the roster and the room carry. */
   private readonly classSlots: string[] = Array.from({ length: MAX_SLOTS }, () => '');
   /**
    * U-025: the slot of the human in command of each bot slot; -1 for a human's
@@ -865,8 +865,6 @@ export class Session {
   private pausedMs = 0;
   /** The wall time of the latest `step`, to measure a pause by. */
   private lastWallMs: number | null = null;
-  /** T-4.27: each human's own pick ('' for none, and for a bot); the assignment starts from these. */
-  private readonly classPicks: string[] = Array.from({ length: MAX_SLOTS }, () => '');
   /** T-4.28: the scoreboard's rows, counted here as things happen and sent whole on every change. */
   private readonly slotStats: SlotStats[] = Array.from({ length: MAX_SLOTS }, (_, slot) => createSlotStats(slot));
   /** The mission state and objective the scoreboard was last sent for, so its clock is resent when either moves. */
@@ -1600,12 +1598,13 @@ export class Session {
   }
 
   /**
-   * T-4.27: who plays what, from the humans' picks and the bots filling
-   * behind them (`assignClasses`). A slot whose class changed takes its
-   * loadout, when the session plays by loadouts.
+   * U-021: who plays what is the slot's: a character is bound to its slot for
+   * good (`assignClasses`), whoever or whatever occupies it, so a join, a
+   * leave, a drop and a resume never change it. Only the first call, which
+   * sets each slot's character, applies a loadout.
    */
   private reassignClasses(): void {
-    const assigned = assignClasses(this.slots.map((s) => s.isBot && !this.heldSeat(s)), this.classPicks);
+    const assigned = assignClasses();
     for (const slot of this.slots) {
       const id = assigned[slot.index] ?? '';
       if (this.classSlots[slot.index] === id) continue;
@@ -1614,22 +1613,10 @@ export class Session {
     }
   }
 
-  /** U-024: a bot's seat held for a dropped player within the grace (T-4.18), who keeps its class meanwhile. */
-  private heldSeat(slot: Slot): boolean {
-    return slot.isBot && slot.reservedUntilMs > 0 && slot.reservedUntilMs >= this.nowMs;
-  }
-
-  /** U-024: a held seat whose grace has run out is a bot's like any other: its kept pick goes, and the classes settle. */
-  private releaseLapsedSeats(): void {
-    let lapsed = false;
-    for (const slot of this.slots) {
-      if (!slot.isBot || slot.reservedUntilMs === 0 || slot.reservedUntilMs >= this.nowMs || this.classPicks[slot.index] === '') continue;
-      this.classPicks[slot.index] = '';
-      lapsed = true;
-    }
-    if (!lapsed) return;
-    this.reassignClasses();
-    this.broadcastRoster();
+  /** U-021: whether the slot's character may aim down the sight; the support may not, whatever its page sends. */
+  private mayAim(slot: Slot): boolean {
+    if (this.classLoadouts !== 'class') return true;
+    return classById(this.classSlots[slot.index] ?? '')?.ads ?? true;
   }
 
   /** The class's first gun in hand, its pouch, and its health. */
@@ -1933,6 +1920,8 @@ export class Session {
    */
   private takePickupAt(slot: Slot): boolean {
     if (!isAlive(slot.health) || slot.state.vault || slot.mounted) return false;
+    // U-021, owner 2026-09-27: a left-handed shooter (the slot-4 sniper) takes no gun off the ground; his come from authored loot (U-029).
+    if (getWeapon(slot.primary).handedness === 'left') return false;
     const eye = soldierEye(slot.state);
     let best = -1;
     let bestD = Number.POSITIVE_INFINITY;
@@ -1956,8 +1945,9 @@ export class Session {
     slot.weaponState = createWeaponState(slot.weapon);
     slot.weaponState.ammo = Math.min(taken!.ammo, slot.weapon.magSize);
     slot.heldProjectile = -1;
-    // The one it replaces, where the soldier stands — if it is one that lies on the ground.
-    if (PICKUPS.weapons.includes(old)) this.placePickup(old, oldAmmo, slot.state, slot.yaw);
+    // The one it replaces, where the soldier stands. Every squad gun is on the wire now (U-041), so none vanishes:
+    // the LMG, the SMG and the rest go down like a carbine does.
+    this.placePickup(old, oldAmmo, slot.state, slot.yaw);
     return true;
   }
 
@@ -2160,8 +2150,6 @@ export class Session {
     slot.connection = conn;
     slot.staleTicks = 0;
     this.readySlots[slot.index] = false;
-    // U-024: a resumed player comes back to the class they held the seat with.
-    if (!resumed) this.classPicks[slot.index] = '';
     if (!this.roomStarted && this.creatorSlot < 0) this.creatorSlot = slot.index;
 
     /**
@@ -2206,7 +2194,6 @@ export class Session {
     conn.accept(slot.netId, slot.index, this.currentTick, this.room, this.world.id, slot.resumeToken, resumed !== null);
     this.sendProgression(conn);
     this.sendStats(conn);
-    this.reassignClasses();
     // U-025: the slot is a human's now; a first human puts every bot under them.
     this.reconcileCommanders();
     this.broadcastRoster();
@@ -2757,9 +2744,6 @@ export class Session {
     slot.isBot = true;
     slot.connection = null;
     this.readySlots[slot.index] = false;
-    // U-024: a seat held for a dropped player keeps its class, and so its loadout, until
-    // the grace is out — a drop and a resume would otherwise hand back a fresh pouch.
-    if (slot.reservedUntilMs === 0) this.classPicks[slot.index] = '';
     if (!this.roomStarted && this.creatorSlot === slot.index) {
       this.creatorSlot = this.slots.find((s) => !s.isBot && s.connection !== null)?.index ?? -1;
     }
@@ -2771,7 +2755,6 @@ export class Session {
     // out the departed player's last few inputs would look briefly possessed.
     slot.queue.length = 0;
     this.giveBrain(slot);
-    this.reassignClasses();
     // U-025: the departed player's bots, and the slot they leave, go to the lowest-numbered human left.
     this.reconcileCommanders();
     this.broadcastRoster();
@@ -2866,15 +2849,8 @@ export class Session {
       else this.broadcastRoomState();
       return;
     }
-    if (msg.command === 'class') {
-      // T-4.27: a pick the data knows stands; anything else is no pick, and the slot's default returns.
-      const id = msg.classId ?? '';
-      this.classPicks[slot.index] = classById(id) ? id : '';
-      this.reassignClasses();
-      this.broadcastRoster();
-      this.broadcastRoomState();
-      return;
-    }
+    // U-021: a character is the slot's, so there is nothing to pick; a 'class' command from an older page is ignored.
+    if (msg.command === 'class') return;
     if (msg.command === 'start' && slot.index === this.creatorSlot) this.startRoom();
   }
 
@@ -3006,7 +2982,7 @@ export class Session {
     // U-002 (B-09): and a crouched one from a crouched eye, in the stance it fired in.
     const crouchedThen = shooterThen?.crouched ?? slot.state.crouched;
     // T-3.16: suppression widens the cone by its data's amount, at the level the page is told.
-    const shot = tryFire(slot.weapon, slot.weaponState, nowSeconds, msg.ads, proneThen, suppressionConeUnits(suppressionLevel(slot.suppression, nowSeconds)));
+    const shot = tryFire(slot.weapon, slot.weaponState, nowSeconds, msg.ads && this.mayAim(slot), proneThen, suppressionConeUnits(suppressionLevel(slot.suppression, nowSeconds)));
     if (shot === null) {
       // Cadence, reload or an empty magazine. Auto-reload so a player who
       // empties a magazine is not stuck until they think to press a key.
@@ -3528,7 +3504,6 @@ export class Session {
     this.lastWallMs = wallNow;
     const now = wallNow - this.pausedMs;
     this.nowMs = now;
-    this.releaseLapsedSeats();
     for (const conn of [...this.connections]) {
       // Advance each connection's clock BEFORE testing the timeout: messages
       // arriving between ticks are stamped with the latest tick time.

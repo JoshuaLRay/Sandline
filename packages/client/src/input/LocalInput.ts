@@ -11,7 +11,7 @@
  */
 import { WIRE_ANGLE_UNITS, type MoveInput, type OrderAddress } from '@sandline/shared';
 import { MouseGuard } from './mouseGuard.ts';
-import { beginAds, createViewState, endAds, pressShoulderKey, shoulderSide } from './viewState.ts';
+import { beginAds, createViewState, endAds, pressShoulderKey, restrictView, shoulderSide } from './viewState.ts';
 import { composePitch } from '../weapons/recoil.ts';
 import { armKeyboardLock, requestFullscreenForKeyboardLock } from './keyboardLock.ts';
 import { type WheelPointer, type WheelRelease, addressForDigit, moveWheelPointer } from '../ui/OrderWheel.ts';
@@ -350,6 +350,11 @@ export class LocalInput {
   /** Current stored TPS shoulder: +1 right, -1 left. */
   get shoulderSide(): 1 | -1 {
     return shoulderSide(this.viewState);
+  }
+
+  /** U-021: what the character being played may do with its view (the support: no sight, no first person). */
+  restrictView(allowed: { ads: boolean; firstPerson: boolean }): void {
+    restrictView(this.viewState, allowed);
   }
 
   /** Camera mode. ADS enters FPS; releasing ADS does not leave FPS. */

@@ -77,7 +77,6 @@ describe('taking a gun off the ground as the primary (U-018)', () => {
   it('the host takes the press only in reach and in sight; then it is the primary, in hand with its rounds, and the old one lies in its place', () => {
     const r = room();
     const a = r.join('a');
-    r.send(a, { kind: 'RoomCommand', command: 'class', classId: 'team-leader' });
     r.send(a, { kind: 'RoomCommand', command: 'start' });
     r.step(5);
     expect(r.session.loadoutOf(a.net.slot)).toMatchObject({ weapon: 'carbine', primary: 'carbine' });
@@ -109,7 +108,6 @@ describe('taking a gun off the ground as the primary (U-018)', () => {
   it('key 2 is still the pistol and 1 the new gun; the class\'s old primary — by Equip or by a Fire naming it — is refused', () => {
     const r = room();
     const a = r.join('a');
-    r.send(a, { kind: 'RoomCommand', command: 'class', classId: 'team-leader' });
     r.send(a, { kind: 'RoomCommand', command: 'start' });
     r.step(5);
     r.drop('breacher', 5);
@@ -133,25 +131,27 @@ describe('taking a gun off the ground as the primary (U-018)', () => {
     const r = room();
     const a = r.join('a');
     const b = r.join('b');
-    for (const p of [a, b]) r.send(p, { kind: 'RoomCommand', command: 'class', classId: 'team-leader' });
     r.send(a, { kind: 'RoomCommand', command: 'start' });
     r.step(5);
+    // Slot 0 is Preach (carbine), slot 1 Brennan (LMG): whoever takes it puts their own primary down.
+    const before = [a, b].map((p) => r.session.loadoutOf(p.net.slot).primary);
+    expect(before).toEqual(['carbine', 'lmg']);
     r.drop('marksman', 9);
     r.place(a, NEAR);
     r.place(b, { x: NEAR.x + 0.6, z: NEAR.z });
     r.press(a, b);
     const primaries = [a, b].map((p) => r.session.loadoutOf(p.net.slot).primary);
     expect(primaries.filter((g) => g === 'marksman')).toHaveLength(1);
-    expect(primaries.filter((g) => g === 'carbine')).toHaveLength(1);
-    // The marksman left the ground; one carbine went down in its place.
-    expect(r.session.pickups.map((p) => WEAPON_IDS[p.weapon])).toEqual(['carbine']);
+    // Nothing doubled and nothing lost: what is held and what lies on the ground is what there was, plus the marksman.
+    const everything = [...primaries, ...r.session.pickups.map((p) => WEAPON_IDS[p.weapon] as string)].sort();
+    expect(everything).toEqual([...before, 'marksman'].sort());
+    expect(r.session.pickups).toHaveLength(1);
   });
 
   it('a respawn and a retry give the class\'s primary back; a dropped player who resumes keeps what they took', () => {
     const r = room();
     const a = r.join('a');
     const keep = r.join('keep'); // a second seated player: the room is not paused while `a` is away (U-025)
-    r.send(a, { kind: 'RoomCommand', command: 'class', classId: 'team-leader' });
     r.send(a, { kind: 'RoomCommand', command: 'start' });
     r.step(5);
     r.drop('marksman', 9);

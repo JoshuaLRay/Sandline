@@ -1,81 +1,82 @@
 /**
- * T-4.27: the classes as data, who plays which, and how far an order reaches.
+ * T-4.27, U-021: the squad's characters as data, which slot plays which, and
+ * how far an order reaches.
  */
 import { describe, expect, it } from 'vitest';
 import { CLASSES, ClassDataError, assignClasses, classById, orderReach, parseClassConfig } from './classes.ts';
 import { PROJECTILE_IDS } from './ballistics.ts';
+import { getWeapon } from './weapons.ts';
 import { SQUAD } from './squad.ts';
 import RAW from '../data/classes.json' with { type: 'json' };
 
-const ALL_BOTS = [true, true, true, true, true, true];
-const NO_PICKS = ['', '', '', '', '', ''];
+const ORDER = ['preach', 'brennan', 'holloway', 'ortiz', 'marsh', 'vance'];
 
-describe('classes.json (T-4.27)', () => {
-  it('ships the slice\'s two classes with real loadouts', () => {
-    expect(CLASSES.ids).toEqual(['team-leader', 'marksman']);
-    const tl = classById('team-leader')!;
-    expect(tl.guns[0]).toBe('carbine');
-    expect(tl.orders).toBe('squad');
-    const mm = classById('marksman')!;
-    expect(mm.guns[0]).toBe('marksman');
-    expect(mm.orders).toBe('fireteam');
-    expect(mm.health).toBeLessThan(tl.health);
-    // The pouch is indexed like PROJECTILE_IDS; an id left out is none.
-    expect(tl.pouch).toHaveLength(PROJECTILE_IDS.length);
-    expect(mm.pouch[PROJECTILE_IDS.indexOf('rocket')]).toBe(0);
-    expect(classById('medic')).toBeNull();
+describe('classes.json: the six characters (U-021)', () => {
+  it('has exactly the roster, one per slot, in slot order', () => {
+    expect(CLASSES.ids).toEqual(ORDER);
+    expect(CLASSES.slotDefaults).toEqual(ORDER);
+    expect(new Set(CLASSES.slotDefaults).size).toBe(6);
+    expect(assignClasses()).toEqual(ORDER);
+  });
+
+  it('gives each their roster loadout: the two snipers, the LMG, the AR, the scoped AR and the support', () => {
+    const guns = (id: string) => classById(id)!.guns;
+    expect(guns('preach')[0]).toBe('carbine');
+    expect(guns('brennan')[0]).toBe('lmg');
+    expect(guns('ortiz')[0]).toBe('carbine-scoped');
+    // Slot 4 starts with the left-handed bolt-action sniper, slot 5 with the semi-automatic one (owner, 2026-09-27).
+    expect(getWeapon(guns('marsh')[0]!)).toMatchObject({ action: 'bolt', handedness: 'left' });
+    expect(getWeapon(guns('vance')[0]!)).toMatchObject({ action: 'semi', handedness: 'right' });
+    // The support carries an SMG and a shotgun, and no pistol (owner, 2026-09-29).
+    expect(guns('holloway')).toEqual(['smg', 'breacher']);
+    for (const id of ORDER.filter((c) => c !== 'holloway')) expect(guns(id), id).toContain('sidearm');
+    // The role counts: two snipers (bolt and semi), one of the rest.
+    const primaries = ORDER.map((id) => guns(id)[0]);
+    expect(new Set(primaries).size).toBe(6);
+  });
+
+  it('the support alone may not aim down the sight or play in first person', () => {
+    for (const id of ORDER) {
+      const c = classById(id)!;
+      expect(c.ads, id).toBe(id !== 'holloway');
+      expect(c.firstPerson, id).toBe(id !== 'holloway');
+    }
+  });
+
+  it('names and short codes are unique and shown in a row', () => {
+    const defs = ORDER.map((id) => classById(id)!);
+    expect(new Set(defs.map((d) => d.name)).size).toBe(6);
+    expect(new Set(defs.map((d) => d.short)).size).toBe(6);
+    expect(defs[0]!.name).toBe('Preach');
+    for (const d of defs) expect(d.pouch).toHaveLength(PROJECTILE_IDS.length);
+    expect(classById('team-leader')).toBeNull();
     expect(classById('')).toBeNull();
   });
 
-  it('refuses a loadout the weapons or projectiles do not have, and defaults that name no class', () => {
+  it('refuses a loadout the weapons or projectiles do not have, a bad flag, and defaults that are not six distinct characters', () => {
     const edit = (f: (o: Record<string, unknown>) => void) => {
       const o = JSON.parse(JSON.stringify(RAW)) as Record<string, unknown>;
       f(o);
       return () => parseClassConfig(o);
     };
-    expect(edit((o) => { (o['classes'] as Record<string, Record<string, unknown>>)['marksman']!['guns'] = ['lasgun']; })).toThrow(ClassDataError);
-    expect(edit((o) => { (o['classes'] as Record<string, Record<string, unknown>>)['marksman']!['pouch'] = { mine: 1 }; })).toThrow(ClassDataError);
-    expect(edit((o) => { (o['classes'] as Record<string, Record<string, unknown>>)['marksman']!['orders'] = 'platoon'; })).toThrow(ClassDataError);
-    expect(edit((o) => { o['slotDefaults'] = ['team-leader']; })).toThrow(ClassDataError);
-    expect(edit((o) => { o['required'] = { medic: 1 }; })).toThrow(ClassDataError);
-  });
-});
-
-describe('who plays which class (T-4.27)', () => {
-  it('bots take the slot defaults: the assault fireteam leads, the overwatch fireteam watches', () => {
-    expect(assignClasses(ALL_BOTS, NO_PICKS)).toEqual(['team-leader', 'team-leader', 'team-leader', 'marksman', 'marksman', 'marksman']);
-  });
-
-  it('a human\'s pick stands; without one they take the slot\'s default', () => {
-    const isBot = [false, true, true, false, true, true];
-    expect(assignClasses(isBot, ['marksman', '', '', '', '', ''])).toEqual(['marksman', 'team-leader', 'team-leader', 'marksman', 'marksman', 'marksman']);
-    expect(assignClasses(isBot, ['', '', '', 'team-leader', '', ''])).toEqual(['team-leader', 'team-leader', 'team-leader', 'team-leader', 'marksman', 'marksman']);
-    // A pick the data does not know is no pick.
-    expect(assignClasses(isBot, ['medic', '', '', '', '', ''])[0]).toBe('team-leader');
-    // A bot's "pick" is ignored: only a human chooses.
-    expect(assignClasses(isBot, ['', 'marksman', '', '', '', ''])[1]).toBe('team-leader');
-  });
-
-  it('a bot fills the class the squad is required to have when the humans leave it short', () => {
-    // Three humans in the assault fireteam all pick marksman: the first bot, in overwatch, leads.
-    const isBot = [false, false, false, true, true, true];
-    expect(assignClasses(isBot, ['marksman', 'marksman', 'marksman', '', '', ''])).toEqual(['marksman', 'marksman', 'marksman', 'team-leader', 'marksman', 'marksman']);
-    // One of them switches back to leader: the bot returns to its own default.
-    expect(assignClasses(isBot, ['team-leader', 'marksman', 'marksman', '', '', ''])).toEqual(['team-leader', 'marksman', 'marksman', 'marksman', 'marksman', 'marksman']);
-    // Six humans, none a leader: nobody to fill it, and their picks stand.
-    const humans = [false, false, false, false, false, false];
-    expect(assignClasses(humans, ['marksman', 'marksman', 'marksman', 'marksman', 'marksman', 'marksman'])).toEqual(Array(6).fill('marksman'));
+    const row = (o: Record<string, unknown>, id: string) => (o['classes'] as Record<string, Record<string, unknown>>)[id]!;
+    expect(edit((o) => { row(o, 'vance')['guns'] = ['lasgun']; })).toThrow(ClassDataError);
+    expect(edit((o) => { row(o, 'vance')['pouch'] = { mine: 1 }; })).toThrow(ClassDataError);
+    expect(edit((o) => { row(o, 'vance')['orders'] = 'platoon'; })).toThrow(ClassDataError);
+    expect(edit((o) => { row(o, 'holloway')['ads'] = 'no'; })).toThrow(ClassDataError);
+    expect(edit((o) => { o['slotDefaults'] = ['preach']; })).toThrow(ClassDataError);
+    expect(edit((o) => { o['slotDefaults'] = ['preach', 'preach', 'holloway', 'ortiz', 'marsh', 'vance']; })).toThrow('only one slot');
   });
 });
 
 describe('how far an order reaches (T-4.27)', () => {
   const all = [0, 1, 2, 3, 4, 5];
-  it('a Team Leader orders the whole squad; a Marksman only their own fireteam', () => {
-    expect(orderReach('team-leader', 4, all, SQUAD.fireteams)).toEqual(all);
-    expect(orderReach('marksman', 4, all, SQUAD.fireteams)).toEqual([3, 4, 5]);
-    expect(orderReach('marksman', 0, [1, 5], SQUAD.fireteams)).toEqual([1]);
-    expect(orderReach('marksman', 0, [3], SQUAD.fireteams)).toEqual([]);
+  it('the assault team (slots 0-2) orders the whole squad, as its Team Leaders did; the overwatch team only its own fireteam', () => {
+    for (const [id, slot] of [['preach', 0], ['brennan', 1], ['holloway', 2]] as const) expect(orderReach(id, slot, all, SQUAD.fireteams), id).toEqual(all);
+    expect(orderReach('ortiz', 3, all, SQUAD.fireteams)).toEqual([3, 4, 5]);
+    expect(orderReach('marsh', 4, [0, 5], SQUAD.fireteams)).toEqual([5]);
+    expect(orderReach('vance', 5, [1], SQUAD.fireteams)).toEqual([]);
     expect(orderReach('', 0, all, SQUAD.fireteams)).toEqual([]);
-    expect(orderReach('marksman', 9, all, SQUAD.fireteams)).toEqual([]);
+    expect(orderReach('vance', 9, all, SQUAD.fireteams)).toEqual([]);
   });
 });

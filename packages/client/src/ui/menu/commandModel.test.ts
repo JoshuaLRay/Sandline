@@ -3,11 +3,11 @@ import type { RosterEntry } from '@sandline/shared';
 import { commandKey, commandRows, watchedStatus } from './commandModel.ts';
 
 const roster: RosterEntry[] = [
-  { name: 'kai', human: true, classId: 'team-leader', commander: -1 },
-  { name: '', human: false, classId: 'marksman', commander: 0 },
-  { name: 'rae', human: true, classId: 'marksman', commander: -1 },
-  { name: '', human: false, classId: 'marksman', commander: 2 },
-  { name: '', human: false, classId: 'marksman', commander: 0 },
+  { name: 'kai', human: true, classId: 'preach', commander: -1 },
+  { name: '', human: false, classId: 'brennan', commander: 0 },
+  { name: 'rae', human: true, classId: 'holloway', commander: -1 },
+  { name: '', human: false, classId: 'ortiz', commander: 2 },
+  { name: '', human: false, classId: 'marsh', commander: 0 },
   { name: '', human: false, classId: '', commander: 0 },
 ];
 
@@ -15,11 +15,11 @@ describe('the squad command rows (U-025)', () => {
   it('six rows: each bot with its commander and every seated human to hand it to, you marked', () => {
     const rows = commandRows(roster, 2);
     expect(rows).toHaveLength(6);
-    expect(rows[0]).toEqual({ slot: 0, label: '1  kai · TL', human: true, commander: -1, options: [], switchable: false });
-    expect(rows[2]).toMatchObject({ label: '3  rae (you) · MM', human: true, options: [] });
+    expect(rows[0]).toEqual({ slot: 0, label: '1  kai · PRC', human: true, commander: -1, options: [], switchable: false });
+    expect(rows[2]).toMatchObject({ label: '3  rae (you) · HOL', human: true, options: [] });
     expect(rows[3]).toEqual({
       slot: 3,
-      label: '4  Bot · MM',
+      label: '4  Bot · ORT',
       human: false,
       commander: 2,
       options: [{ slot: 0, label: 'kai' }, { slot: 2, label: 'rae (you)' }],

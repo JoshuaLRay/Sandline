@@ -1631,7 +1631,6 @@ squadPanel.setVisible(false);
 const roomLobby = createRoomLobby({
   onReady: (ready) => live?.net.setRoomReady(ready),
   onStart: () => live?.net.startRoom(),
-  onClass: (classId) => live?.net.setRoomClass(classId),
   onLeave: () => leaveSession({ text: 'left the room', tone: 'info' }),
   link: currentShareLink,
 });
@@ -2439,6 +2438,8 @@ function frame(): void {
 
   const localVitality = net?.vitality ?? 'alive';
   const localDowned = localVitality !== 'alive';
+  // U-021: the character in hand decides whether the sight and first person exist for this player.
+  input.restrictView({ ads: localLoadout?.ads ?? true, firstPerson: localLoadout?.firstPerson ?? true });
   // The pose first, then the gait on top of it (T-2.22): the driver composes
   // on the pose's base transforms, so the order is what makes a crouch-walk
   // the crouch with a gait on it.

@@ -1,16 +1,16 @@
 /**
- * Soldier classes (T-4.27): the slice's Team Leader and Marksman, as data
- * (`data/classes.json`, PLAN §1.3 and §4.1).
+ * The squad's characters (T-4.27, U-021), as data (`data/classes.json`,
+ * `docs/design/squad-roster.md`).
  *
- * A class is a loadout (guns, in hand-order; the pouch it spawns with), a
- * health, and what it may do: whom its orders reach. Which slot takes which
- * class is the one piece of arithmetic here — `assignClasses` — and it is
- * pure, so the session and a test agree on it: a human's pick stands, a
- * slot without one takes the slot's default, and bots then fill whatever
- * the squad is required to have and lacks, lowest slot first. Enforcing a
- * loadout (which Equip a session accepts) and an order's reach is the
- * session's; the rule for the reach, `orderReach`, lives here beside the
- * data it reads.
+ * The file keeps the name "classes" and the word `classId` on the wire and in
+ * saves for compatibility, but since U-021 each entry IS one of the six
+ * characters, bound to its slot for good: `slotDefaults[slot]` names the
+ * character a slot plays, whoever or whatever occupies it. An entry is a
+ * loadout (guns, in hand-order; the pouch it spawns with), a health, whom its
+ * orders reach, and what its shooter may not do (`ads`, `firstPerson`: the
+ * support has neither). Enforcing a loadout (which Equip a session accepts)
+ * and an order's reach is the session's; the rule for the reach, `orderReach`,
+ * lives here beside the data it reads.
  */
 import RAW_CLASSES from '../data/classes.json' with { type: 'json' };
 import { MAX_SLOTS } from '../net/Connection.ts';
@@ -34,16 +34,18 @@ export interface ClassDef {
   /** The pouch at spawn, indexed like PROJECTILE_IDS. */
   readonly pouch: readonly number[];
   readonly orders: OrderScope;
+  /** May aim down the sight (default true); the support may not (U-021). */
+  readonly ads: boolean;
+  /** May play in first person (default true); the support may not (U-021). */
+  readonly firstPerson: boolean;
 }
 
 export interface ClassConfig {
   readonly classes: Readonly<Record<string, ClassDef>>;
-  /** Class ids in file order: the order a picker offers them. */
+  /** Class ids in file order. */
   readonly ids: readonly string[];
-  /** The class a slot takes with no pick, one per slot. */
+  /** The character each slot plays, one per slot, unique: a slot's character is fixed. */
   readonly slotDefaults: readonly string[];
-  /** Class id → how many the squad must have; bots make up the shortfall. */
-  readonly required: Readonly<Record<string, number>>;
 }
 
 type Obj = Record<string, unknown>;
@@ -56,6 +58,13 @@ function obj(where: string, v: unknown): Obj {
 function str(o: Obj, key: string, where: string): string {
   const v = o[key];
   if (typeof v !== 'string' || v.length === 0) throw new ClassDataError(`${where}.${key} must be a non-empty string`);
+  return v;
+}
+
+function bool(o: Obj, key: string, where: string, fallback: boolean): boolean {
+  const v = o[key];
+  if (v === undefined) return fallback;
+  if (typeof v !== 'boolean') throw new ClassDataError(`${where}.${key} must be true or false`);
   return v;
 }
 
@@ -93,6 +102,8 @@ export function parseClassConfig(raw: unknown): ClassConfig {
       guns: guns as string[],
       pouch,
       orders,
+      ads: bool(row, 'ads', where, true),
+      firstPerson: bool(row, 'firstPerson', where, true),
     };
     ids.push(id);
   }
@@ -102,14 +113,9 @@ export function parseClassConfig(raw: unknown): ClassConfig {
   for (const id of defaultsRaw) {
     if (typeof id !== 'string' || classes[id] === undefined) throw new ClassDataError(`classes.json.slotDefaults: unknown class ${String(id)}`);
   }
-  const requiredRaw = root['required'] === undefined ? {} : obj('classes.json.required', root['required']);
-  const required: Record<string, number> = {};
-  for (const [id, count] of Object.entries(requiredRaw)) {
-    if (classes[id] === undefined) throw new ClassDataError(`classes.json.required: unknown class ${id}`);
-    if (typeof count !== 'number' || !Number.isInteger(count) || count < 0 || count > MAX_SLOTS) throw new ClassDataError(`classes.json.required.${id} must be an integer in [0, ${MAX_SLOTS}]`);
-    required[id] = count;
-  }
-  return { classes, ids, slotDefaults: defaultsRaw as string[], required };
+  // A character is bound to one slot: the same one twice would be two soldiers with one identity.
+  if (new Set(defaultsRaw as string[]).size !== defaultsRaw.length) throw new ClassDataError('classes.json.slotDefaults: a character may take only one slot');
+  return { classes, ids, slotDefaults: defaultsRaw as string[] };
 }
 
 export const CLASSES: ClassConfig = Object.freeze(parseClassConfig(RAW_CLASSES));
@@ -120,30 +126,12 @@ export function classById(id: string, config: ClassConfig = CLASSES): ClassDef |
 }
 
 /**
- * The class every slot plays (T-4.27): a human's pick where it names a
- * class, else the slot's default; then, for each class the squad is
- * required to have and is short of, bots switch to it, lowest slot first
- * (a bot already playing a required class that is not itself short stays).
- * With no bots to switch, the shortfall stands: humans pick freely.
+ * The character every slot plays (U-021): the slot's own, fixed by the data.
+ * (Until U-021 this took the humans' picks and the required leader; a
+ * character is the slot's now, so a pick has nothing to decide.)
  */
-export function assignClasses(isBot: readonly boolean[], picks: readonly string[], config: ClassConfig = CLASSES): string[] {
-  const out: string[] = [];
-  for (let slot = 0; slot < MAX_SLOTS; slot += 1) {
-    const pick = isBot[slot] ? '' : picks[slot] ?? '';
-    out.push(config.classes[pick] !== undefined ? pick : config.slotDefaults[slot] ?? config.ids[0]!);
-  }
-  const count = (id: string): number => out.filter((c) => c === id).length;
-  const shortOf = (id: string): number => (config.required[id] ?? 0) - count(id);
-  for (const id of Object.keys(config.required)) {
-    for (let slot = 0; slot < MAX_SLOTS && shortOf(id) > 0; slot += 1) {
-      if (!isBot[slot] || out[slot] === id) continue;
-      // A bot on another required class is switched only when that class can spare it.
-      const from = out[slot]!;
-      if ((config.required[from] ?? 0) > 0 && shortOf(from) >= 0 && count(from) - 1 < (config.required[from] ?? 0)) continue;
-      out[slot] = id;
-    }
-  }
-  return out;
+export function assignClasses(config: ClassConfig = CLASSES): string[] {
+  return Array.from({ length: MAX_SLOTS }, (_, slot) => config.slotDefaults[slot] ?? config.ids[0]!);
 }
 
 /**

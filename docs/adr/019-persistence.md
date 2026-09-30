@@ -38,7 +38,10 @@ service, not the memory of one room process.
 1. **A campaign is the unit of progress (owner's choice).**
    - **What it holds:** the missions completed, the current checkpoint
      (T-4.16), and the squad: six soldiers, one per slot, each with a
-     class, a rank and XP.
+     class, a rank and XP. (Since U-021 the "class" is the slot's fixed
+     character id, e.g. `preach`; saves from the two-class slice carry
+     `team-leader`/`marksman` there, are read as before, and are written back
+     with the character. Rank and XP are the slot's and are never touched.)
    - **Who creates it:** starting a campaign from the lobby creates it and
      issues it a **campaign code**. It is a longer, durable cousin of the
      four-character room code.

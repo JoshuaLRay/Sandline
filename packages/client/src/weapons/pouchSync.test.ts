@@ -105,13 +105,15 @@ describe('a hosted room with class loadouts, end to end (U-024, B-18)', () => {
     return { session, join, send, step, get now() { return now; } };
   }
 
-  it('a Marksman\'s page shows the Marksman\'s pouch through reset, a throw, a respawn and a fresh page after a drop', () => {
+  it('a sniper\'s page shows the character\'s pouch (one frag, no rocket) through reset, a throw, a respawn and a fresh page after a drop', () => {
     const r = room();
+    // Slot 4 is Marsh: seat four players ahead of the one under test (U-021: a character is the slot's).
+    const others = ['f0', 'f1', 'f2', 'f3'].map((n) => r.join(n));
     const a = r.join('a');
-    r.send(a, { kind: 'RoomCommand', command: 'class', classId: 'marksman' });
-    r.send(a, { kind: 'RoomCommand', command: 'start' });
+    expect(a.net.slot).toBe(4);
+    r.send(others[0]!, { kind: 'RoomCommand', command: 'start' });
     r.step(5);
-    const marksman = classById('marksman')!.pouch;
+    const marksman = classById('marsh')!.pouch;
     expect(a.net.pouch).toEqual(marksman);
     const throws = new ThrowQA();
     const t = () => r.now / 1000;
