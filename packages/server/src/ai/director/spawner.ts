@@ -257,16 +257,18 @@ export class Spawner {
 
   /**
    * U-059: put a checkpoint's progress back into this (fresh) spawner. `remap` maps the netId an enemy had then to the
-   * one it has now; a member absent from it was dead at the checkpoint and keeps its old id, which no living enemy has.
+   * one it has now. A member absent from it was dead at the checkpoint: it stays counted as sent, under an id no enemy
+   * has (a negative one — a resumed process hands out the old positive ids again, to other enemies).
    */
   restore(saved: SpawnerCheckpoint, remap: ReadonlyMap<number, number>): void {
+    let gone = 0;
     for (const r of saved.runs) {
       const run = this.run(r.id);
       run.firedAt = r.firedAt;
       run.wavesSent = r.wavesSent;
       run.lastWaveAt = r.lastWaveAt;
       run.waveTimes = [...r.waveTimes];
-      run.spawned = r.spawned.map((id) => remap.get(id) ?? id);
+      run.spawned = r.spawned.map((id) => remap.get(id) ?? -++gone);
       run.stopped = r.stopped;
       run.stragglingSince = r.stragglingSince;
     }

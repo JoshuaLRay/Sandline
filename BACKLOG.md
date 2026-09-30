@@ -92,8 +92,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-056](docs/backlog/U-056.md) | Concussion grenades for Preach | Controls | P2 | DONE | U-048 | [#220](https://github.com/JoshuaLRay/Sandline/pull/220) |
 | [U-057](docs/backlog/U-057.md) | Motion sensor for the right-handed sniper | Controls | P3 | DONE | U-054 | [#222](https://github.com/JoshuaLRay/Sandline/pull/222) |
 | [U-058](docs/backlog/U-058.md) | Smoke grenades for Ortiz | Controls | P3 | DONE | U-048 | [#223](https://github.com/JoshuaLRay/Sandline/pull/223) |
-| [U-059](docs/backlog/U-059.md) | Checkpoints restore the whole world: living enemies, positions, health | Campaign | P2 | REVIEW | U-052 | `task/U-059-checkpoint-world` |
-| [U-060](docs/backlog/U-060.md) | Save the checkpoint's world in the campaign file | Campaign | P2 | INBOX | U-059 | — |
+| [U-059](docs/backlog/U-059.md) | Checkpoints restore the whole world: living enemies, positions, health | Campaign | P2 | DONE | U-052 | [#227](https://github.com/JoshuaLRay/Sandline/pull/227) |
+| [U-060](docs/backlog/U-060.md) | Save the checkpoint's world in the campaign file | Campaign | P2 | REVIEW | U-059 | `task/U-060-campaign-world` |
 
 ## Existing work retained
 

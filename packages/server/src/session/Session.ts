@@ -188,6 +188,15 @@ import { EnemyGroup } from '../ai/group.ts';
 import type { CombatWorld } from '../ai/actions/combat.ts';
 import type { EnemyPosture } from '../ai/actions/posture.ts';
 import { Spawner, type SpawnerCheckpoint, type SpawnerHost } from '../ai/director/spawner.ts';
+import {
+  CHECKPOINT_WORLD_VERSION,
+  type CheckpointWorld,
+  type EnemyCheckpoint,
+  type GroundCheckpoint,
+  type PlacedCheckpoint,
+  type SlotCheckpoint,
+  parseCheckpointWorld,
+} from './checkpointWorld.ts';
 import { Director } from '../ai/director/director.ts';
 import { MissionRun } from './mission.ts';
 import { EventRun, type EventCheckpoint, type EventHost } from './events.ts';
@@ -677,58 +686,6 @@ export interface EnemyEntity {
 }
 
 /** U-017: a dead enemy's firearm on the ground. */
-/** U-052: one soldier's carried loadout at a checkpoint, restored by a retry. */
-interface SlotCheckpoint {
-  /** U-059: health when it was saved (a dead soldier's is its maximum: it returns whole). */
-  health: number;
-  weapon: string;
-  primary: string | null;
-  secondary: string | null;
-  noPistol: boolean;
-  pickedUp: boolean;
-  /** Rounds in each gun carried, the one in hand included. */
-  ammo: [string, number][];
-  pouch: number[];
-  kits: number;
-  equipment: number;
-}
-
-/** U-059: a living enemy at a checkpoint. */
-interface EnemyCheckpoint {
-  netId: number;
-  archetype: string;
-  faction: number;
-  x: number;
-  y: number;
-  z: number;
-  yaw: number;
-  health: number;
-  /** The encounter group that sent it, or null. */
-  group: string | null;
-  posture: EnemyPosture | null;
-  ammo: number;
-  pouch: number[];
-}
-
-/** U-059: a placed device (C4, claymore, sensor, smoke cloud) at a checkpoint. */
-interface PlacedCheckpoint {
-  kind: number;
-  ownerSlot: number;
-  state: ProjectileState;
-  facing?: { x: number; z: number };
-}
-
-/** U-052: a pickup on the ground at a checkpoint. */
-interface GroundCheckpoint {
-  weapon: number;
-  ammo: number;
-  x: number;
-  y: number;
-  z: number;
-  yaw: number;
-  authored: boolean;
-}
-
 export interface PickupEntity {
   readonly netId: number;
   /** A WEAPON_IDS index. */
@@ -1230,10 +1187,23 @@ export class Session {
     const saved = options.campaign?.checkpoint;
     if (saved && this.missionRun && saved.mission === this.missionId) {
       this.missionRun.restoreCheckpoint(saved.objective, saved.elapsedTicks);
+      // U-060: the world the checkpoint saved, if the file has one a session could have written; else the basic checkpoint.
+      const world = saved.world == null ? null : parseCheckpointWorld(saved.world);
+      if (saved.world != null && world === null) console.warn(`[campaign] the saved checkpoint world for '${saved.mission}' was refused; resuming from the basic checkpoint`);
       this.missionCheckpointState = {
         spawns: saved.spawns.map((point) => ({ ...point })),
         completedGroups: [...saved.completedGroups],
         event: saved.event as EventCheckpoint | null,
+        ...(world
+          ? {
+              seconds: world.seconds,
+              slots: world.slots,
+              ground: world.ground,
+              enemies: world.enemies,
+              placed: world.placed,
+              ...(world.spawner ? { spawner: world.spawner } : {}),
+            }
+          : {}),
       };
       for (const slot of this.slots) {
         const point = saved.spawns[slot.index] ?? spawnFor(slot.index);
@@ -1242,7 +1212,7 @@ export class Session {
       // U-001: a started session's spawner was built before the checkpoint was known.
       if (this.roomStarted) {
         this.startEncounter(this.missionCheckpointState.completedGroups);
-        this.restoreEvents(this.missionCheckpointState);
+        this.restoreEvents(this.missionCheckpointState, this.restoreCheckpointWorld(this.missionCheckpointState));
       }
     }
   }
@@ -1516,6 +1486,20 @@ export class Session {
     return true;
   }
 
+  /** U-060: the saved checkpoint's world as the campaign file keeps it, or null for a checkpoint that has none. */
+  private checkpointWorldOf(saved: NonNullable<Session['missionCheckpointState']>): CheckpointWorld | null {
+    if (saved.seconds === undefined || !saved.slots || !saved.ground || !saved.enemies || !saved.placed) return null;
+    return {
+      version: CHECKPOINT_WORLD_VERSION,
+      seconds: saved.seconds,
+      slots: saved.slots,
+      ground: saved.ground,
+      enemies: saved.enemies,
+      spawner: saved.spawner ?? null,
+      placed: saved.placed,
+    };
+  }
+
   /** T-4.23: checkpoint/mission-end persistence; never called from the tick hot path otherwise. */
   private persistCampaign(): void {
     if (!this.campaignSave) return;
@@ -1529,6 +1513,7 @@ export class Session {
           spawns: saved.spawns.map((point) => ({ ...point })),
           completedGroups: [...saved.completedGroups],
           event: saved.event,
+          world: this.checkpointWorldOf(saved),
         }
       : null;
     const soldiers = this.campaignSoldiers.map((soldier, slot) => ({
@@ -3387,7 +3372,9 @@ export class Session {
       slot.pendingInputTick = -1;
     }
     this.startEncounter(this.missionCheckpointState?.completedGroups ?? []);
-    if (this.missionCheckpointState?.event) this.restoreEvents(this.missionCheckpointState);
+    // U-060: a resumed campaign starts in the world its checkpoint saved, as a retry does.
+    const worldRestored = this.restoreCheckpointWorld(this.missionCheckpointState);
+    if (this.missionCheckpointState?.event) this.restoreEvents(this.missionCheckpointState, worldRestored);
     // U-025: the campaign starts with every bot under the lowest-numbered human.
     this.reconcileCommanders(true);
     this.broadcastRoster();

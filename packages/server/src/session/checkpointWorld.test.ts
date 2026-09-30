@@ -3,7 +3,7 @@
  * (where they stood, as hurt), what had been sent and what was queued, each soldier's health, the devices they
  * had placed — and no checkpoint is saved while a soldier is downed: it is queued until the squad is up.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   ClientConnection,
   type Message,
@@ -14,7 +14,9 @@ import {
   parseEncounter,
   requireWorld,
 } from '@sandline/shared';
+import { CHECKPOINT_WORLD_MAX_BYTES, CampaignDatabase, type CampaignState } from '../persistence/CampaignDatabase.ts';
 import { Session } from './Session.ts';
+import { parseCheckpointWorld } from './checkpointWorld.ts';
 
 const TICK_MS = 1000 / 30;
 const world = requireWorld('greybox-01');
@@ -49,8 +51,8 @@ interface Internals {
   someoneDowned(): boolean;
 }
 
-function play() {
-  const session = new Session(undefined, '', world, { encounter: ENCOUNTER, mission: MISSION, testHumanCount: 1 });
+function play(extra: { campaign?: CampaignState; onCampaignSave?: (s: CampaignState) => void } = {}) {
+  const session = new Session(undefined, '', world, { encounter: ENCOUNTER, mission: MISSION, testHumanCount: 1, ...extra });
   const pair = createLoopbackPair();
   session.addConnection(pair.a, 0);
   const client = new ClientConnection(pair.b, { onMission: (_m: Extract<Message, { kind: 'Mission' }>) => {} });
@@ -184,5 +186,84 @@ describe('no checkpoint is saved while a soldier is downed (U-059)', () => {
     m.session.retryMission();
     expect(m.session.mission).toMatchObject({ state: 'progress', objective: 0, attempt: 2 });
     expect(m.x.queuedCheckpoint).toBeNull();
+  });
+});
+
+describe('the checkpoint world in the campaign file (U-060)', () => {
+  /** Play to a checkpoint with enemies in play, and return what the host saved. */
+  function saved() {
+    const saves: CampaignState[] = [];
+    const m = play({ onCampaignSave: (s) => saves.push(s) });
+    m.step(90);
+    m.living('b')[0]!.health.current = 27;
+    m.beatA();
+    const state = saves.at(-1)!;
+    return { m, state, sent: m.living('b').length };
+  }
+
+  it('carries the world through JSON, and a session built from the file starts in it', () => {
+    const { state, sent } = saved();
+    expect(state.checkpoint?.world).toBeTruthy();
+    const fromFile = JSON.parse(JSON.stringify(state)) as CampaignState;
+    const resumed = play({ campaign: fromFile });
+    const enemies = (state.checkpoint!.world as { enemies: { x: number; z: number; health: number; group: string | null }[] }).enemies.filter((e) => e.group === 'b');
+    expect(enemies).toHaveLength(sent);
+    const back = resumed.living('b');
+    expect(back).toHaveLength(sent);
+    expect(back.map((e) => Math.round(e.health.current)).sort()).toEqual(enemies.map((e) => Math.round(e.health)).sort());
+    for (const e of enemies) expect(back.some((b) => Math.abs(b.state.x - e.x) < 1e-6 && Math.abs(b.state.z - e.z) < 1e-6)).toBe(true);
+    // Group a stays beaten and group b is not sent again.
+    resumed.step(30 * 5);
+    expect(resumed.session.spawner!.dead('a')).toBe(true);
+    expect(resumed.session.spawner!.spawnedBy('b')).toHaveLength(sent);
+  });
+
+  it('an older save with no world loads as it always did', () => {
+    const { state } = saved();
+    const old = JSON.parse(JSON.stringify(state)) as CampaignState;
+    delete (old.checkpoint as { world?: unknown }).world;
+    const resumed = play({ campaign: old });
+    resumed.step(2);
+    expect(resumed.session.mission).toMatchObject({ state: 'progress', objective: 1 });
+    expect(resumed.session.spawner!.dead('a')).toBe(true);
+  });
+
+  it('refuses a malformed world with a warning and resumes from the basic checkpoint', () => {
+    const { state } = saved();
+    const bad = JSON.parse(JSON.stringify(state)) as CampaignState;
+    (bad.checkpoint as { world: unknown }).world = { version: 1, seconds: 'soon', slots: [], ground: [], enemies: [], spawner: null, placed: [] };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const resumed = play({ campaign: bad });
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
+    resumed.step(2);
+    expect(resumed.session.mission).toMatchObject({ state: 'progress', objective: 1 });
+  });
+
+  it('the parser takes what a session writes and refuses anything else', () => {
+    const { state } = saved();
+    const world = JSON.parse(JSON.stringify(state.checkpoint!.world)) as Record<string, unknown>;
+    expect(parseCheckpointWorld(world)).toMatchObject({ version: 1 });
+    expect(parseCheckpointWorld({ ...world, version: 2 })).toBeNull();
+    expect(parseCheckpointWorld({ ...world, seconds: Number.POSITIVE_INFINITY })).toBeNull();
+    expect(parseCheckpointWorld({ ...world, enemies: Array.from({ length: 65 }, () => (world['enemies'] as unknown[])[0]) })).toBeNull();
+    expect(parseCheckpointWorld({ ...world, slots: 'none' })).toBeNull();
+    expect(parseCheckpointWorld(null)).toBeNull();
+    expect(parseCheckpointWorld('nope')).toBeNull();
+  });
+
+  it('the database drops a world past its size bound and keeps the basic checkpoint', () => {
+    const { state } = saved();
+    const db = new CampaignDatabase(':memory:');
+    const made = db.createCampaign('owner', 'greybox-01');
+    const big = JSON.parse(JSON.stringify(state)) as CampaignState;
+    (big.checkpoint as { world: unknown }).world = { filler: 'x'.repeat(CHECKPOINT_WORLD_MAX_BYTES + 1) };
+    db.saveCampaign(made.code, big);
+    const loaded = db.loadCampaign(made.code)!;
+    expect(loaded.state.checkpoint).toMatchObject({ objective: 1 });
+    expect(loaded.state.checkpoint).not.toHaveProperty('world');
+    db.saveCampaign(made.code, state);
+    expect(db.loadCampaign(made.code)!.state.checkpoint?.world).toBeTruthy();
+    db.close();
   });
 });
