@@ -29,6 +29,8 @@ export const INPUT_BUTTONS = Object.freeze({
   fire: 0b10000,
   /** T-2.40, ADR-016: voluntary prone. Beats crouch when both are held. */
   prone: 0b100000,
+  /** U-029: G puts the held gun on the ground. Carried on the one input frame it was pressed on. */
+  drop: 0b1000000,
 });
 
 /**

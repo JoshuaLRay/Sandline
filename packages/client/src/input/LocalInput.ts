@@ -522,6 +522,7 @@ export class LocalInput {
       crouch: this.crouching,
       prone: this.proning,
       interact: tapped('KeyE'),
+      drop: tapped('KeyG'),
       // Carried so the server can refuse a vault mid-burst (T-2.21).
       firing: this.firing,
     };

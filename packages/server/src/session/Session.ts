@@ -110,6 +110,7 @@ import {
   eyePosition,
   eyeStance,
   canBeDualPrimary,
+  canWield,
   getWeapon,
   NO_SECONDARY,
   shotDirections,
@@ -401,8 +402,10 @@ export interface Slot {
    * loadout — until the soldier takes another off the ground; `pickedUp` says
    * it came from there, so a respawn or a retry gives the class's back.
    */
-  primary: string;
+  primary: string | null;
   pickedUp: boolean;
+  /** U-029: G was pressed on an input the host has just taken; the next mount pass drops the held gun. */
+  dropPending: boolean;
   /**
    * U-022: the second primary of a character who carries two (Preach, once he
    * has taken one; the support from the start), or null.
@@ -1042,6 +1045,7 @@ export class Session {
         weaponState: createWeaponState(getWeapon(WEAPON_IDS[0])),
         primary: WEAPON_IDS[0],
         pickedUp: false,
+        dropPending: false,
         secondary: null,
         stowed: new Map(),
         suppression: createSuppression(),
@@ -1606,7 +1610,7 @@ export class Session {
   }
 
   /** T-4.27: what a slot carries and its health, for a test to read. */
-  loadoutOf(slot: number): { weapon: string; primary: string; secondary: string | null; ammo: number; pouch: number[]; health: number; maxHealth: number } {
+  loadoutOf(slot: number): { weapon: string; primary: string | null; secondary: string | null; ammo: number; pouch: number[]; health: number; maxHealth: number } {
     const s = this.slots[slot];
     if (!s) throw new Error(`no slot ${slot}`);
     return { weapon: s.weapon.id, primary: s.primary, secondary: s.secondary, ammo: s.weaponState.ammo, pouch: [...s.pouch], health: s.health.current, maxHealth: s.health.max };
@@ -1933,6 +1937,8 @@ export class Session {
     slot.stowed.clear();
     if (!slot.pickedUp) return;
     const def = this.classLoadouts === 'class' ? classById(this.classSlots[slot.index] ?? '') : undefined;
+    // U-029: a soldier who put every primary down gets the class's back in hand.
+    const dropped = slot.primary === null;
     slot.primary = this.classPrimary(slot);
     slot.secondary = def ? (classPrimaries(def)[1] ?? null) : null;
     slot.pickedUp = false;
@@ -1940,9 +1946,46 @@ export class Session {
     if (!this.carries(slot, slot.weapon.id)) {
       slot.weapon = getWeapon(slot.primary);
       slot.weaponState = createWeaponState(slot.weapon);
-    } else if (slot.weapon.id === slot.primary) {
+    } else if (dropped || slot.weapon.id === slot.primary) {
+      slot.weapon = getWeapon(slot.primary);
       slot.weaponState = createWeaponState(slot.weapon);
     }
+  }
+
+  /** U-029: a character whose own gun is left-handed (the slot-4 sniper) — he takes only left-handed guns. */
+  private leftHandedShooter(slot: Slot): boolean {
+    if (this.classLoadouts !== 'class') return false;
+    const def = classById(this.classSlots[slot.index] ?? '');
+    const own = def ? classPrimaries(def)[0] : undefined;
+    return own !== undefined && getWeapon(own).handedness === 'left';
+  }
+
+  /**
+   * U-029: G puts the gun in hand on the ground where the soldier stands, with the rounds it has (a reload in
+   * progress is cancelled). The other primary, if there is one, becomes the primary and is drawn; else the pistol
+   * the class lists, else the knife. Only a primary can be put down: the knife and the pistol stay. The host judges
+   * the press; nothing the page sends names a gun or its rounds. Returns whether one was dropped.
+   */
+  private dropHeld(slot: Slot): boolean {
+    if (!isAlive(slot.health) || isDowned(slot.health) || slot.state.vault || slot.mounted) return false;
+    const gun = slot.weapon.id;
+    if (gun !== slot.primary && gun !== slot.secondary) return false;
+    slot.weaponState.reloadEndsAt = 0;
+    this.placePickup(gun, slot.weaponState.ammo, slot.state, slot.yaw);
+    if (gun === slot.primary) {
+      slot.primary = slot.secondary;
+      slot.secondary = null;
+    } else {
+      slot.secondary = null;
+    }
+    slot.pickedUp = true;
+    const def = this.classLoadouts === 'class' ? classById(this.classSlots[slot.index] ?? '') : undefined;
+    const next = slot.primary ?? (def?.guns.includes('sidearm') ? 'sidearm' : 'knife');
+    slot.weapon = getWeapon(next);
+    slot.weaponState = slot.stowed.get(next) ?? createWeaponState(slot.weapon);
+    slot.stowed.delete(next);
+    slot.heldProjectile = -1;
+    return true;
   }
 
   /**
@@ -1961,14 +2004,16 @@ export class Session {
    */
   private takePickupAt(slot: Slot): boolean {
     if (!isAlive(slot.health) || slot.state.vault || slot.mounted) return false;
-    // U-021, owner 2026-09-27: a left-handed shooter (the slot-4 sniper) takes no gun off the ground; his come from authored loot (U-029).
-    if (getWeapon(slot.primary).handedness === 'left') return false;
+    // U-021/U-029, owner 2026-09-27: a left-handed shooter (the slot-4 sniper) takes no gun a squadmate or an enemy
+    // left (all right-handed); only a left-handed gun — authored loot, or his own put down — is his to take.
+    const lefty = this.leftHandedShooter(slot);
     const eye = soldierEye(slot.state);
     let best = -1;
     let bestD = Number.POSITIVE_INFINITY;
     for (const [i, p] of this.pickupList.entries()) {
       const at = { x: p.x, y: p.y + PICKUP_AIM_M, z: p.z };
       const d = Math.hypot(eye.x - at.x, eye.y - at.y, eye.z - at.z);
+      if (lefty && !canWield(getWeapon(WEAPON_IDS[p.weapon]!), true)) continue;
       if (d <= PICKUPS.reachM && d < bestD && lineOfSight(eye, at, this.collisionBoxes)) {
         best = i;
         bestD = d;
@@ -1987,7 +2032,7 @@ export class Session {
       if (gun === slot.primary) into = 'primary';
       else if (gun === slot.secondary) into = 'secondary';
       else if (slot.secondary === null) {
-        if (eligible && canBeDualPrimary(getWeapon(slot.primary))) into = 'secondary';
+        if (eligible && slot.primary !== null && canBeDualPrimary(getWeapon(slot.primary))) into = 'secondary';
       } else {
         // Both hands' worth are full: an ineligible gun would sit beside a second primary, so it is left where it lies.
         if (!eligible) return false;
@@ -1995,7 +2040,7 @@ export class Session {
       }
     }
     this.pickupList.splice(best, 1);
-    const replaced = into === 'primary' ? slot.primary : slot.secondary;
+    const replaced: string | null = into === 'primary' ? slot.primary : slot.secondary;
     const nowSeconds = this.nowMs / 1000;
     if (replaced !== null) {
       // It goes down where the soldier stands, with the rounds it had (in hand or stowed).
@@ -2617,10 +2662,15 @@ export class Session {
       if (slot.mounted && (this.autonomous(slot) || !isAlive(slot.health))) this.dismount(slot);
       if (this.autonomous(slot)) {
         slot.interactWasHeld = false;
+        slot.dropPending = false;
         // U-011: a bot holding at a waiting upload's terminal starts it, through the same checks as a player's press —
         // unless the hands it holds out are a revive's.
         if (this.holdingInteract(slot) && !this.slots.some((t) => t.reviveBySlot === slot.index)) this.startUploadAt(slot);
         continue;
+      }
+      if (slot.dropPending) {
+        slot.dropPending = false;
+        this.dropHeld(slot);
       }
       const held = this.holdingInteract(slot);
       const pressed = held && !slot.interactWasHeld;
@@ -2966,6 +3016,8 @@ export class Session {
           firing: (frame.buttons & 0b10000) !== 0,
           // T-2.40, ADR-016.
           prone: (frame.buttons & 0b100000) !== 0,
+          // U-029.
+          drop: (frame.buttons & 0b1000000) !== 0,
         },
       });
     }
@@ -3688,6 +3740,7 @@ export class Session {
           if (!ahead) break;
           slot.input = ahead.input;
           slot.interactHeld = ahead.input.interact === true;
+          if (ahead.input.drop === true) slot.dropPending = true;
           slot.pendingInputTick = ahead.tick;
           slot.staleTicks = 0;
           slot.input.downed = isDowned(slot.health);
@@ -3699,6 +3752,7 @@ export class Session {
         if (next) {
           slot.input = next.input;
           slot.interactHeld = next.input.interact === true;
+          if (next.input.drop === true) slot.dropPending = true;
           slot.pendingInputTick = next.tick;
           slot.staleTicks = 0;
         } else {
@@ -4428,7 +4482,7 @@ export class Session {
             // U-028: and the rounds in the magazine.
             Math.min(AMMO_MAX, s.weaponState.ammo),
             // U-018: and what key 1 draws.
-            Math.max(0, (WEAPON_IDS as readonly string[]).indexOf(s.primary)),
+            s.primary === null ? NO_SECONDARY : Math.max(0, (WEAPON_IDS as readonly string[]).indexOf(s.primary)),
             // U-022: and the second primary, if the soldier carries one.
             s.secondary === null ? NO_SECONDARY : Math.max(0, (WEAPON_IDS as readonly string[]).indexOf(s.secondary)),
           ],

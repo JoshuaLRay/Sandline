@@ -20,7 +20,8 @@ export function syncHostPrimary(
   const next = { net, primary, secondary };
   const held = net.magazine?.weapon;
   // A pickup can replace either carried primary, or turn into the second one and be drawn (U-022).
-  if (changed && held !== undefined && (held === primary || held === secondary) && combat.weaponIndex !== held) {
+  // (or be put down, U-029: the host has then drawn the other primary, the pistol or the knife).
+  if (changed && held !== undefined && combat.weaponIndex !== held) {
     combat.adopt(held, net.magazine!.ammo);
     return { seen: next, adopted: true };
   }

@@ -80,7 +80,7 @@ import { LocalInput } from './input/LocalInput.ts';
 import { DEFAULT_CAMERA_CONFIG } from './camera/cameraConfig.ts';
 import { type ClientLink, DEFAULT_LINK, type LinkConditions, LocalServer, type LocalServerOptions } from './net/LocalServer.ts';
 import { type NavMesh, initNav } from '@sandline/server/nav';
-import { NetClient, type RemoteEmplacement, type ServerDetonation, type ServerShot } from './net/NetClient.ts';
+import { NO_PRIMARY, NetClient, type RemoteEmplacement, type ServerDetonation, type ServerShot } from './net/NetClient.ts';
 import { type EmplacementModel, createEmplacementModel } from './weapons/emplacementModel.ts';
 import { syncHostPrimary, type PrimarySeen } from './weapons/hostPrimary.ts';
 import { PickupModels, pickupInReach } from './weapons/pickupModels.ts';
@@ -606,6 +606,8 @@ function hostSecondary(): string | null {
  */
 function carriedGuns(): readonly string[] | null {
   if (!localLoadout) return null;
+  // U-029: every primary put down leaves the pistol the class lists, if any.
+  if (live?.net.primary === NO_PRIMARY) return localLoadout.guns.filter((g) => g === 'sidearm');
   const primary = hostPrimary();
   if (!primary) return localLoadout.guns;
   const second = hostSecondary();
