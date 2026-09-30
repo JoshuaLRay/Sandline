@@ -32,6 +32,8 @@ export interface SquadBotConfig {
   readonly reviveSeekM: number;
   /** Share of the revive range a bot closes to before it holds interact. */
   readonly reviveReachFraction: number;
+  /** A hurt (not downed) squadmate below this share of their health is one a bot with kits goes to heal (U-053). */
+  readonly kitBelowFraction: number;
   /**
    * T-5.06: when a bot under an order is under fire — suppression at or over
    * `suppression`, or hurt within `hurtSeconds` — and the cover it takes: an
@@ -114,7 +116,7 @@ export function parseSquadConfig(raw: unknown): SquadConfig {
   if (typeof rawBot !== 'object' || rawBot === null || Array.isArray(rawBot)) throw new SquadDataError('squad.bot: expected an object');
   const bot = rawBot as Record<string, unknown>;
   for (const k of Object.keys(bot)) {
-    if (!['archetype', 'friendlyMarginM', 'reviveSeekM', 'reviveReachFraction', 'underFire'].includes(k)) throw new SquadDataError(`squad.bot: unknown key "${k}"`);
+    if (!['archetype', 'friendlyMarginM', 'reviveSeekM', 'reviveReachFraction', 'kitBelowFraction', 'underFire'].includes(k)) throw new SquadDataError(`squad.bot: unknown key "${k}"`);
   }
   const archetype = bot['archetype'];
   if (typeof archetype !== 'string' || !ENEMIES[archetype]) throw new SquadDataError(`squad.bot.archetype: no enemies.json row "${String(archetype)}"`);
@@ -150,6 +152,7 @@ export function parseSquadConfig(raw: unknown): SquadConfig {
       reviveSeekM: botNum('reviveSeekM', 0, 500),
       // Above zero and at most the whole range: it must be in reach to revive at all.
       reviveReachFraction: botNum('reviveReachFraction', 0.05, 1),
+      kitBelowFraction: botNum('kitBelowFraction', 0.05, 1),
       underFire,
     },
   };

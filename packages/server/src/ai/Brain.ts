@@ -68,6 +68,8 @@ export interface BrainMemory {
   relocatedAt: number;
   /** T-3.26: holding interact — a friendly bot reviving a squadmate, through the human's held-E path. */
   interact: boolean;
+  /** U-053: holding the use of a health kit on a hurt squadmate; the session clears it before each think and the leaf sets it while beside them. */
+  useKit: boolean;
   /** U-011: an enemy sent to a lever stays off it until this (seconds) once it has come under fire: time to reach cover. */
   leverBackOffUntil: number;
   /** T-3.20: a leaf's own step through a manoeuvre (a peek's out, fire, back), and the tick it began. */
@@ -77,7 +79,7 @@ export interface BrainMemory {
 
 /** A blackboard as every brain starts it. */
 export function freshMemory(): BrainMemory {
-  return { intent: null, fireAt: null, crouch: false, reload: false, lookAt: null, suppressAt: null, throwAt: null, throwNextAt: 0, flankedAt: null, relocatedAt: -Infinity, interact: false, leverBackOffUntil: 0, phase: null, phaseAt: 0 };
+  return { intent: null, fireAt: null, crouch: false, reload: false, lookAt: null, suppressAt: null, throwAt: null, throwNextAt: 0, flankedAt: null, relocatedAt: -Infinity, interact: false, useKit: false, leverBackOffUntil: 0, phase: null, phaseAt: 0 };
 }
 
 /** The entity a brain drives, read live: the session's own slot, never a copy. */

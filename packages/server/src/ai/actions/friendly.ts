@@ -52,6 +52,8 @@ export interface SquadView {
   place(slotIndex: number): FormationPlace | null;
   /** T-3.26: the nearest downed squadmate within `reviveSeekM` that nobody else is reviving, or null. */
   downedNear(slotIndex: number): DownedMate | null;
+  /** U-053: the nearest hurt (not downed) squadmate this bot, with kits, would heal, or null. */
+  hurtNear?(slotIndex: number): DownedMate | null;
   /** T-3.28: the order this slot's bot is under, or null. */
   order(slotIndex: number): ActiveOrder | null;
   /** T-3.28: how it went — done, or failed and why. */
@@ -84,6 +86,30 @@ export function registerFriendlyLeaves(registry: BrainRegistry): BrainRegistry {
       blackboard.set('fireAt', null);
       blackboard.set('crouch', false);
       blackboard.set('interact', false);
+      return 'running';
+    })
+    .condition('hurtMate', ({ ctx }) => isSquadBody(ctx) && (ctx.squad.hurtNear?.(ctx.index) ?? null) !== null)
+    /** To the hurt squadmate, then hold the use of a health kit beside them until they are healed or it is interrupted (U-053). */
+    .action('heal', ({ ctx, blackboard }) => {
+      if (!isSquadBody(ctx)) return 'failure';
+      const mate = ctx.squad.hurtNear?.(ctx.index) ?? null;
+      if (!mate) return 'failure';
+      blackboard.set('fireAt', null);
+      blackboard.set('suppressAt', null);
+      blackboard.set('reload', false);
+      blackboard.set('lookAt', null);
+      blackboard.set('interact', false);
+      const reach = mate.reachM * SQUAD.bot.reviveReachFraction;
+      const d = Math.sqrt((ctx.state.x - mate.x) ** 2 + (ctx.state.z - mate.z) ** 2);
+      if (d > reach) {
+        blackboard.set('useKit', false);
+        blackboard.set('crouch', false);
+        blackboard.set('intent', { goal: { x: mate.x, y: mate.y, z: mate.z }, pace: d > 4 ? 'sprint' : 'walk' });
+        return 'running';
+      }
+      blackboard.set('intent', null);
+      blackboard.set('crouch', false);
+      blackboard.set('useKit', true);
       return 'running';
     })
     .condition('downedMate', ({ ctx }) => isSquadBody(ctx) && ctx.squad.downedNear(ctx.index) !== null)
