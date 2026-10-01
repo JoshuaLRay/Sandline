@@ -10,6 +10,7 @@
  */
 import { MAX_SLOTS } from '@sandline/shared';
 import { MARKER_COLOURS } from '../OrderMarkers.ts';
+import type { TankTargetView } from '../../character/tankLook.ts';
 import type { AmmoView, CompassView, DamageDirectionView, HeatView, SquadRow, Stance, VitalsView } from './hudModel.ts';
 
 export interface HudFrame {
@@ -29,6 +30,8 @@ export interface HudFrame {
   prompt: string;
   /** T-5.03: a first-run hint, '' for none. */
   hint?: string;
+  /** U-070: a tank under the crosshair — its health and what hurts it — or null. */
+  target?: TankTargetView | null;
 }
 
 export interface PlayerHud {
@@ -120,6 +123,12 @@ export function createHud(parent: HTMLElement): PlayerHud {
   for (let i = 0; i < DAMAGE_ARCS; i += 1) arcs.push(el('div', 'phud-damage', centre));
   // -- Under the reticle: what E would do (T-4.29). --
   const prompt = el('div', 'phud-prompt', root);
+  // -- Above the reticle: a tank's health and armour while the crosshair is on it (U-070). --
+  const target = el('div', 'phud-target', root);
+  const targetLabel = el('div', 'phud-target-label', target);
+  const targetBar = el('div', 'phud-target-bar', target);
+  const targetFill = el('div', 'phud-target-fill', targetBar);
+  const targetArmour = el('div', 'phud-target-armour', target);
   const hint = el('div', 'phud-hint', root);
   const notice = el('div', 'phud-notice', root);
   notice.setAttribute('role', 'status');
@@ -210,6 +219,12 @@ export function createHud(parent: HTMLElement): PlayerHud {
       }
       setText(prompt, frame.prompt);
       setData(prompt, 'shown', frame.prompt.length > 0 ? 'yes' : 'no');
+      setData(target, 'shown', frame.target ? 'yes' : 'no');
+      if (frame.target) {
+        setText(targetLabel, frame.target.label);
+        targetFill.style.width = `${(frame.target.fraction * 100).toFixed(1)}%`;
+        setText(targetArmour, frame.target.armour);
+      }
       setText(hint, frame.hint ?? '');
       setData(hint, 'shown', (frame.hint ?? '').length > 0 ? 'yes' : 'no');
       // The objective.

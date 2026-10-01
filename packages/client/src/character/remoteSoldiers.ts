@@ -193,6 +193,9 @@ export class RemoteSoldiers {
   update(view: RemoteView | null, dt: number): void {
     const seen = new Set<number>();
     for (const [netId, sample] of view?.remotes() ?? []) {
+      // U-070: a vehicle is not a soldier; `TankModels` draws it.
+      const enemy = view!.remoteEnemy(netId);
+      if (enemy && enemyByIndex(enemy.archetype)?.vehicle) continue;
       seen.add(netId);
       this.draw(netId, sample, remoteSoldierState(view!, netId), dt);
     }

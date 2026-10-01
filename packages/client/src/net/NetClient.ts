@@ -305,6 +305,8 @@ export class NetClient {
   private reviverSlotValue = -1;
   /** Each remote soldier's vitality from its newest snapshot, for the pose (T-2.14). */
   private readonly remoteVitalities = new Map<number, Vitality>();
+  /** U-070: a remote's health and maximum as of its newest snapshot, for the tank's marker. */
+  private readonly remoteHealths = new Map<number, { current: number; max: number }>();
   private readonly remoteReviveProgressValues = new Map<number, number>();
   /** Each remote's weapon index and reload progress 0..1, for the body (T-2.26). */
   private readonly remoteWeapons = new Map<number, RemoteWeapon>();
@@ -752,6 +754,7 @@ export class NetClient {
     this.reviveProgressValue = 0;
     this.reviverSlotValue = -1;
     this.remoteVitalities.clear();
+    this.remoteHealths.clear();
     this.remoteReviveProgressValues.clear();
     this.remoteWeapons.clear();
     this.projectileBuffers.clear();
@@ -1081,6 +1084,7 @@ export class NetClient {
       this.remoteGoneAt.delete(netId);
       this.buffers.delete(netId);
       this.remoteVitalities.delete(netId);
+      this.remoteHealths.delete(netId);
       this.remoteReviveProgressValues.delete(netId);
       this.remoteReviverSlots.delete(netId);
       this.remoteWeapons.delete(netId);
@@ -1101,6 +1105,20 @@ export class NetClient {
 
   get simulated(): MoveState | null {
     return this.predictor?.simulated ?? null;
+  }
+
+  /** A delta may carry only the field that changed: keep the rest of what the last snapshot said. */
+  private noteRemoteHealth(netId: number, health: ArrayLike<unknown>): void {
+    const before = this.remoteHealths.get(netId);
+    this.remoteHealths.set(netId, {
+      current: (health[0] as number | undefined) ?? before?.current ?? 0,
+      max: (health[1] as number | undefined) ?? before?.max ?? 0,
+    });
+  }
+
+  /** U-070: a remote's health and its maximum, as of its newest snapshot; null if none has arrived. */
+  remoteHealth(netId: number): { current: number; max: number } | null {
+    return this.remoteHealths.get(netId) ?? null;
   }
 
   /** A remote soldier's vitality, as of their newest snapshot. Not interpolated: a state, not a position. */
@@ -1501,6 +1519,7 @@ export class NetClient {
             pouch: ((weapon[2] as number | undefined) ?? 0) - 1,
           });
           if (health) this.remoteVitalities.set(entity.netId, vitalityFromCode((health[2] as number | undefined) ?? 0));
+          if (health) this.noteRemoteHealth(entity.netId, health);
           continue;
         }
         this.reconcile(
@@ -1566,6 +1585,7 @@ export class NetClient {
       const health = entity.components[H];
       if (health) {
         this.remoteVitalities.set(entity.netId, vitalityFromCode((health[2] as number | undefined) ?? 0));
+        this.noteRemoteHealth(entity.netId, health);
         this.remoteReviveProgressValues.set(entity.netId, (health[4] as number | undefined) ?? 0);
         const encodedReviverSlot = (health[5] as number | undefined) ?? 0;
         this.remoteReviverSlots.set(entity.netId, encodedReviverSlot === 0 ? -1 : encodedReviverSlot - 1);

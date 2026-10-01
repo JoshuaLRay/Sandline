@@ -143,6 +143,25 @@
 }
 .phud-prompt[data-shown='yes'] { display: block; }
 
+/* U-070: a tank under the crosshair: its health and what hurts it. */
+.phud-target {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 86px);
+  transform: translateX(-50%);
+  min-width: 200px;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  padding: 4px 10px;
+  background: rgba(15, 12, 7, 0.55);
+  display: none;
+}
+.phud-target[data-shown='yes'] { display: block; }
+.phud-target-bar { height: 4px; background: rgba(255, 255, 255, 0.15); margin: 3px 0; }
+.phud-target-fill { height: 4px; background: #ff5a3c; width: 0; transition: width 120ms linear; }
+.phud-target-armour { font-size: 10px; opacity: 0.8; }
+
 /* T-5.03: a first-run hint, low and centred, out of the aim's way. */
 .phud-hint {
   position: absolute;
