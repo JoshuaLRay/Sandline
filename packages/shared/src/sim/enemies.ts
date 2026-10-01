@@ -203,6 +203,11 @@ export interface EnemyDef {
   downable: boolean;
   /** Seconds a corpse lies before the entity despawns. */
   corpseSeconds: number;
+  /**
+   * U-075: an escorted character: on the squad's side, not a target for it and not counted as an enemy, unarmed in
+   * play (its tree never fires). Absent in the data means false.
+   */
+  friendly: boolean;
   perception: EnemyPerception;
   accuracy: EnemyAccuracy;
   /** T-3.23: the group role it is handed first (the MG suppresses), or null for none. */
@@ -224,7 +229,7 @@ export interface EnemyDef {
  * the schema is written for; ADR-015 builds the first two, so the data holds
  * rows for those alone and `enemyByIndex` is null for the rest.
  */
-export const ENEMY_IDS = ['rifleman', 'mg', 'rpg', 'sniper', 'officer', 'tank'] as const;
+export const ENEMY_IDS = ['rifleman', 'mg', 'rpg', 'sniper', 'officer', 'tank', 'pow'] as const;
 export type EnemyId = (typeof ENEMY_IDS)[number];
 
 /** Each archetype's own block (its shape): required on it, refused on every other. None for the rifleman. */
@@ -235,6 +240,7 @@ export const ENEMY_SHAPES: Readonly<Record<EnemyId, 'deploy' | 'launcher' | 'sco
   sniper: 'scope',
   officer: 'command',
   tank: 'vehicle',
+  pow: null,
 };
 const SHAPE_BLOCKS = ['deploy', 'launcher', 'scope', 'command', 'vehicle'] as const;
 
@@ -388,7 +394,7 @@ function parseAccuracy(raw: unknown, where: string): EnemyAccuracy {
   return out;
 }
 
-const DEF_KEYS = ['id', 'name', 'health', 'weapon', 'tree', 'downable', 'corpseSeconds', 'perception', 'accuracy', 'prefersRole', ...SHAPE_BLOCKS] as const;
+const DEF_KEYS = ['id', 'name', 'health', 'weapon', 'tree', 'downable', 'corpseSeconds', 'friendly', 'perception', 'accuracy', 'prefersRole', ...SHAPE_BLOCKS] as const;
 
 function parseDeploy(raw: unknown, where: string): EnemyDeploy {
   const row = obj(raw, where);
@@ -528,6 +534,7 @@ function parseEnemyDef(key: string, raw: unknown): EnemyDef {
     tree,
     downable,
     corpseSeconds: num(row, 'corpseSeconds', where, 0, 600),
+    friendly: row['friendly'] === undefined ? false : bool(row, 'friendly', where),
     perception,
     accuracy,
     prefersRole: prefers ?? null,

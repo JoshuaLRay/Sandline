@@ -65,6 +65,8 @@ export interface MissionWorld {
   /** Standing squad soldiers — alive, not downed — in all, and inside an area. */
   standing(): number;
   standingIn(area: GroundArea): number;
+  /** U-075: the escorted characters — how many there are (alive) and how many of those are inside an area. Absent: none. */
+  escortsIn?(area: GroundArea): { total: number; inside: number };
   /** Whether any squad soldier is dead. */
   soldierDead(): boolean;
   /** A protected encounter entity has spawned and been lost. */
@@ -359,7 +361,10 @@ export class MissionRun {
       case 'reach': {
         const need = def.who === 'all' ? w.standing() : 1;
         const there = Math.min(w.standingIn(area!), Math.max(need, 1));
-        next = { ...next, goal: Math.max(need, 1), progress: there, satisfied: need > 0 && there >= need };
+        // U-075: an extraction that needs the escort needs every escorted character with the squad.
+        const escorts = def.escort ? (w.escortsIn?.(area!) ?? { total: 0, inside: 0 }) : null;
+        const escortsThere = escorts === null || (escorts.total > 0 && escorts.inside >= escorts.total);
+        next = { ...next, goal: Math.max(need, 1), progress: there, satisfied: need > 0 && there >= need && escortsThere };
         break;
       }
       case 'destroy': {

@@ -10,6 +10,7 @@
  *
  * - **Slots are always relevant.** The squad is always on the HUD, so an
  *   entity carrying `PlayerSlot` is never filtered, whatever the distance.
+ *   (U-075: nor is the escorted character.)
  * - **Everything else** (enemies, projectiles) is relevant within
  *   `RELEVANCE_RADIUS_M` of the viewer's own slot, measured on the quantized
  *   positions the snapshot carries.
@@ -23,7 +24,9 @@
  * works only because the baseline is the VIEW this client was sent at the
  * acknowledged tick, not the whole world — `ClientView` keeps those.
  */
-import { COMPONENT_IDS, POSITION, SnapshotHistory, dequantize, type WorldSnapshot } from '@sandline/shared';
+import { COMPONENT_IDS, ENEMY_IDS, POSITION, SnapshotHistory, dequantize, type WorldSnapshot } from '@sandline/shared';
+
+const POW_ARCHETYPE = ENEMY_IDS.indexOf('pow');
 
 /** ADR-012's radius, from the viewer's slot. */
 export const RELEVANCE_RADIUS_M = 120;
@@ -60,7 +63,8 @@ function positionOf(e: Entity): { x: number; y: number; z: number } | null {
 
 /** Whether an entity is sent to every client regardless of distance. */
 export function alwaysRelevant(e: Entity): boolean {
-  return e.components[COMPONENT_IDS.PlayerSlot] !== undefined;
+  // U-075: the escorted character is on the squad's side, always on its HUD and always spectatable.
+  return e.components[COMPONENT_IDS.PlayerSlot] !== undefined || e.components[COMPONENT_IDS.Enemy]?.[0] === POW_ARCHETYPE;
 }
 
 /**

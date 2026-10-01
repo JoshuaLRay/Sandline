@@ -1,0 +1,13 @@
+{
+  "$comment": "U-075. The escorted character (a rescued prisoner): unarmed, never fights. He does what the squad last told him — `stay` (hold where he stands), `go` (to the ordered point, then stay there) — and otherwise follows the squad's lead at a pace the squad can match, stopping short of the lead. The orders are the session's `escortOrder`: hold, move and regroup from a player address him as stay, go and follow.",
+  "id": "escort",
+  "root": {
+    "type": "selector",
+    "reactive": true,
+    "children": [
+      { "type": "sequence", "reactive": true, "children": [{ "type": "condition", "name": "escortStays" }, { "type": "action", "name": "escortStay" }] },
+      { "type": "sequence", "reactive": true, "children": [{ "type": "condition", "name": "escortGoes" }, { "type": "action", "name": "escortGo" }] },
+      { "type": "action", "name": "escortFollow", "args": { "keepM": 3 } }
+    ]
+  }
+}

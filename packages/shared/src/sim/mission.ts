@@ -67,7 +67,8 @@ export type ObjectiveDef = {
   /** No living enemy inside `area` and a living squad soldier in it, for `holdSeconds` in all; an enemy inside resets it. */
   | { type: 'clear-and-hold'; area: AreaRef; holdSeconds: number }
   /** Every standing squad soldier (`all`), or any one (`any`), inside `area`. */
-  | { type: 'reach'; area: AreaRef; who: 'all' | 'any' }
+  /** `escort`: (U-075) the escorted characters must be alive and inside the area as well. */
+  | { type: 'reach'; area: AreaRef; who: 'all' | 'any'; escort?: boolean }
   /** An encounter group dead: every member it will send placed and none alive. */
   | { type: 'destroy'; group: string }
   /** `seconds` pass; fails if the enemy holds `area` (living enemy in, no living squad) for `breachSeconds` straight. */
@@ -216,7 +217,7 @@ function point(where: string, v: unknown): MissionPoint {
 }
 
 function parseObjective(where: string, raw: unknown): ObjectiveDef {
-  const top = obj(where, raw, ['type', 'label'], ['area', 'holdSeconds', 'who', 'group', 'seconds', 'breachSeconds', 'terminal', 'reachM', 'onInterrupt', 'lever', 'slot', 'stage', 'optional']);
+  const top = obj(where, raw, ['type', 'label'], ['area', 'holdSeconds', 'who', 'group', 'seconds', 'breachSeconds', 'terminal', 'reachM', 'onInterrupt', 'lever', 'slot', 'escort', 'stage', 'optional']);
   const { stage, optional, ...rest } = top;
   if (stage !== undefined && (typeof stage !== 'number' || !Number.isInteger(stage) || stage < 0 || stage > 15)) {
     throw new MissionDataError(`${where}.stage must be a whole number 0–15, got ${JSON.stringify(stage)}`);
@@ -227,7 +228,7 @@ function parseObjective(where: string, raw: unknown): ObjectiveDef {
 }
 
 function parseObjectiveBody(where: string, raw: unknown): ObjectiveDef {
-  const head = obj(where, raw, ['type', 'label'], ['area', 'holdSeconds', 'who', 'group', 'seconds', 'breachSeconds', 'terminal', 'reachM', 'onInterrupt', 'lever', 'slot']);
+  const head = obj(where, raw, ['type', 'label'], ['area', 'holdSeconds', 'who', 'group', 'seconds', 'breachSeconds', 'terminal', 'reachM', 'onInterrupt', 'lever', 'slot', 'escort']);
   const type = head['type'];
   if (typeof type !== 'string' || !(OBJECTIVE_TYPES as readonly string[]).includes(type)) {
     throw new MissionDataError(`${where}.type must be one of ${OBJECTIVE_TYPES.join(', ')}, got ${JSON.stringify(type)}`);
@@ -240,9 +241,10 @@ function parseObjectiveBody(where: string, raw: unknown): ObjectiveDef {
       return { type: 'clear-and-hold', label, area: area(`${where}.area`, o['area']), holdSeconds: seconds(`${where}.holdSeconds`, o['holdSeconds']) };
     }
     case 'reach': {
-      const o = obj(where, raw, ['type', 'label', 'area', 'who']);
+      const o = obj(where, raw, ['type', 'label', 'area', 'who'], ['escort']);
       if (o['who'] !== 'all' && o['who'] !== 'any') throw new MissionDataError(`${where}.who must be all or any`);
-      return { type: 'reach', label, area: area(`${where}.area`, o['area']), who: o['who'] };
+      if (o['escort'] !== undefined && typeof o['escort'] !== 'boolean') throw new MissionDataError(`${where}.escort must be true or false`);
+      return { type: 'reach', label, area: area(`${where}.area`, o['area']), who: o['who'], ...(o['escort'] === true ? { escort: true } : {}) };
     }
     case 'destroy': {
       const o = obj(where, raw, ['type', 'label', 'group']);

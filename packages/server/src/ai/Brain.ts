@@ -24,6 +24,7 @@ import { registerPostureLeaves } from './actions/posture.ts';
 import { registerCaptureLeaves } from './actions/capture.ts';
 import { registerLeverLeaves } from './actions/lever.ts';
 import { registerArmourLeaves } from './actions/armour.ts';
+import { registerEscortLeaves } from './actions/escort.ts';
 
 /** Ticks between a brain's thoughts: 30 Hz sim, 10 Hz brains. */
 export const BRAIN_PERIOD_TICKS = 3;
@@ -116,7 +117,7 @@ export function createBrainRegistry(): BrainRegistry {
     blackboard.set('intent', null);
     return 'running';
   });
-  return registerArmourLeaves(registerCaptureLeaves(registerLeverLeaves(registerPostureLeaves(registerOrderLeaves(registerFriendlyLeaves(registerGrenadeLeaves(registerRiflemanLeaves(registry))))))));
+  return registerEscortLeaves(registerArmourLeaves(registerCaptureLeaves(registerLeverLeaves(registerPostureLeaves(registerOrderLeaves(registerFriendlyLeaves(registerGrenadeLeaves(registerRiflemanLeaves(registry)))))))));
 }
 
 let idleTree: BrainTree | null = null;
