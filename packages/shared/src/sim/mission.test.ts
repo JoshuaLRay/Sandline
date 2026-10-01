@@ -49,6 +49,8 @@ describe('mission messages (T-3.34, T-4.14)', () => {
         w.writeBool(true);
         w.writeVarUint(o.progress ?? 0);
         w.writeVarUint(o.goal ?? 10);
+        w.writeBits(0, 3); // no failure reason
+        w.writeVarUint(0); // U-074: no open objectives listed
       });
     expect(() => decodeMessage(mission((w) => {
       w.writeBits(2, 3);

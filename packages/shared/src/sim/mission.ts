@@ -53,7 +53,17 @@ export interface UploadLever {
   group: string;
 }
 
-export type ObjectiveDef = { label: string } & (
+export type ObjectiveDef = {
+  label: string;
+  /**
+   * U-074: the stage it belongs to. The objectives of one stage are all open at once and may be done in any order; the
+   * stage is done when every one that is not `optional` is. Without `stage` on any objective, every objective is its
+   * own stage, in order, which is every mission before U-074. All or none of a mission's objectives name one.
+   */
+  stage?: number;
+  /** U-074: part of a stage that need not be done for the stage to be done. Only in a mission that uses stages. */
+  optional?: boolean;
+} & (
   /** No living enemy inside `area` and a living squad soldier in it, for `holdSeconds` in all; an enemy inside resets it. */
   | { type: 'clear-and-hold'; area: AreaRef; holdSeconds: number }
   /** Every standing squad soldier (`all`), or any one (`any`), inside `area`. */
@@ -123,6 +133,20 @@ export type ObjectivePhase = (typeof OBJECTIVE_PHASES)[number];
  * current objective's. Ticks and counts, not seconds: integers round-trip
  * exactly. Once the mission is complete the objective is the last one.
  */
+/** U-074: one objective of the stage being played, as the HUD lists it. */
+export interface OpenObjective {
+  index: number;
+  type: ObjectiveType;
+  label: string;
+  phase: ObjectivePhase;
+  satisfied: boolean;
+  progress: number;
+  goal: number;
+  /** Done already (it stays listed until the stage is). */
+  done: boolean;
+  optional: boolean;
+}
+
 export interface MissionView {
   state: MissionStatus;
   /** The host's reason for failure, preserved for clients joining after it happened. */
@@ -149,6 +173,11 @@ export interface MissionView {
    * upload running (upload). Always true for the others.
    */
   satisfied: boolean;
+  /**
+   * U-074: every objective of the stage being played, when it has more than one (they are open together); absent for a
+   * stage of one, where the fields above are all there is. The fields above describe the first one still to do.
+   */
+  open?: readonly OpenObjective[];
 }
 
 export class MissionDataError extends Error {}
@@ -187,6 +216,17 @@ function point(where: string, v: unknown): MissionPoint {
 }
 
 function parseObjective(where: string, raw: unknown): ObjectiveDef {
+  const top = obj(where, raw, ['type', 'label'], ['area', 'holdSeconds', 'who', 'group', 'seconds', 'breachSeconds', 'terminal', 'reachM', 'onInterrupt', 'lever', 'slot', 'stage', 'optional']);
+  const { stage, optional, ...rest } = top;
+  if (stage !== undefined && (typeof stage !== 'number' || !Number.isInteger(stage) || stage < 0 || stage > 15)) {
+    throw new MissionDataError(`${where}.stage must be a whole number 0–15, got ${JSON.stringify(stage)}`);
+  }
+  if (optional !== undefined && typeof optional !== 'boolean') throw new MissionDataError(`${where}.optional must be true or false, got ${JSON.stringify(optional)}`);
+  const def = parseObjectiveBody(where, rest);
+  return { ...def, ...(stage === undefined ? {} : { stage: stage as number }), ...(optional === true ? { optional: true } : {}) };
+}
+
+function parseObjectiveBody(where: string, raw: unknown): ObjectiveDef {
   const head = obj(where, raw, ['type', 'label'], ['area', 'holdSeconds', 'who', 'group', 'seconds', 'breachSeconds', 'terminal', 'reachM', 'onInterrupt', 'lever', 'slot']);
   const type = head['type'];
   if (typeof type !== 'string' || !(OBJECTIVE_TYPES as readonly string[]).includes(type)) {
@@ -292,13 +332,51 @@ export function parseMission(raw: unknown): MissionDef {
   }
   const list = o['objectives'];
   if (!Array.isArray(list) || list.length === 0 || list.length > 16) throw new MissionDataError(`${where}.objectives must list 1–16 objectives`);
+  const objectives = list.map((x, i) => parseObjective(`${where}.objectives[${i}]`, x));
+  checkStages(where, objectives);
   return {
     id,
     world: o['world'],
     respawn: o['respawn'],
     ...(failure ? { failure } : {}),
-    objectives: list.map((x, i) => parseObjective(`${where}.objectives[${i}]`, x)),
+    objectives,
   };
+}
+
+/** U-074: stages are all or none; in order and without gaps; each with something required; one upload and one rescue at most. */
+function checkStages(where: string, objectives: readonly ObjectiveDef[]): void {
+  const named = objectives.filter((o) => o.stage !== undefined).length;
+  if (named === 0) {
+    const stray = objectives.findIndex((o) => o.optional);
+    if (stray >= 0) throw new MissionDataError(`${where}.objectives[${stray}].optional needs stages: give every objective a stage`);
+    return;
+  }
+  if (named !== objectives.length) throw new MissionDataError(`${where}: give every objective a stage, or none`);
+  let previous = -1;
+  objectives.forEach((o, i) => {
+    const stage = o.stage!;
+    if (i === 0 && stage !== 0) throw new MissionDataError(`${where}.objectives[0].stage must be 0`);
+    if (stage < previous || stage > previous + 1) {
+      throw new MissionDataError(`${where}.objectives[${i}].stage ${stage} must stay or grow by one from ${Math.max(previous, 0)}`);
+    }
+    previous = stage;
+  });
+  for (const group of objectiveStages({ objectives } as MissionDef)) {
+    const at = `${where} stage ${objectives[group[0]!]!.stage}`;
+    if (group.every((i) => objectives[i]!.optional)) throw new MissionDataError(`${at}: needs at least one objective that is not optional`);
+    if (group.filter((i) => objectives[i]!.type === 'upload').length > 1) throw new MissionDataError(`${at}: at most one upload at a time`);
+    if (group.filter((i) => objectives[i]!.type === 'rescue').length > 1) throw new MissionDataError(`${at}: at most one rescue at a time`);
+  }
+}
+
+/** U-074: the objective indices of each stage, in order. A mission with no stages has one objective in each. */
+export function objectiveStages(mission: Pick<MissionDef, 'objectives'>): number[][] {
+  const out: number[][] = [];
+  mission.objectives.forEach((o, i) => {
+    const stage = o.stage ?? i;
+    (out[stage] ??= []).push(i);
+  });
+  return out.filter((g) => g !== undefined);
 }
 
 /**

@@ -106,8 +106,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-070](docs/backlog/U-070.md) | Tank look and HUD: placeholder mesh, tell and arrival warning | Mission / vehicle combat | P2 | DONE | U-066 | [#239](https://github.com/JoshuaLRay/Sandline/pull/239) |
 | [U-071](docs/backlog/U-071.md) | Campaign design: premise, structure and the mission list (umbrella; [design doc](docs/design/CAMPAIGN.md)) | Campaign design | P2 | BLOCKED | Owner answers to Q1–Q4 in the design doc (D1–D10 answered 2026-10-01); a mission 1 brief | — |
 | [U-072](docs/backlog/U-072.md) | Campaign flow: campaign and replay runs, mission select and the debrief | Campaign design | P2 | BLOCKED | Owner answers to Q2, Q3 (proposals in the design doc) | — |
-| [U-073](docs/backlog/U-073.md) | Register a mission in one place; checks and the mission sim cover every mission | Campaign design | P2 | REVIEW | — | `task/U-073-mission-registry` |
-| [U-074](docs/backlog/U-074.md) | Objectives in any order: parallel objectives and optional enemies | Campaign design | P2 | READY | — | — |
+| [U-073](docs/backlog/U-073.md) | Register a mission in one place; checks and the mission sim cover every mission | Campaign design | P2 | DONE | — | [#243](https://github.com/JoshuaLRay/Sandline/pull/243) |
+| [U-074](docs/backlog/U-074.md) | Objectives in any order: parallel objectives and optional enemies | Campaign design | P2 | REVIEW | — | `task/U-074-parallel-objectives` |
 | [U-075](docs/backlog/U-075.md) | Escort: the POW as an unarmed seventh friendly, commandable and spectatable | Campaign design | P2 | BLOCKED | Owner's ADR-001 addendum (design doc Q1) | — |
 | [U-076](docs/backlog/U-076.md) | Spike: feasibility of a three-lane map about ten times mission-01's area | Campaign design | P2 | READY | — | — |
 | [U-077](docs/backlog/U-077.md) | Carry weapons, ammo and gear to the next mission; pickups replace the slot | Campaign design | P2 | BLOCKED | U-072; the replay-loadout rule (card) | — |
