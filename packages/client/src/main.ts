@@ -144,7 +144,7 @@ import { tankTargetView } from './character/tankLook.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
 import { FULL_RESTART_KEY, RESTART_KEY, afterActionXp, missionLine, uploadPrompt } from './ui/missionHud.ts';
-import { type ClassDef, TICK_SECONDS as MISSION_TICK_SECONDS, type Vitality, afterActionSummary, classById, scoreboardRows } from '@sandline/shared';
+import { type ClassDef, ESCORT_SPECTATE_SLOT, TICK_SECONDS as MISSION_TICK_SECONDS, type Vitality, afterActionSummary, classById, scoreboardRows } from '@sandline/shared';
 import { createScoreboard } from './ui/scoreboard.ts';
 import { missionMenuModel, runChoiceModel } from './ui/runChoice.ts';
 import { createMenu } from './ui/menu/Menu.ts';
@@ -1833,6 +1833,12 @@ const menu = createMenu({
     if (live && !mobileMode) renderer.domElement.requestPointerLock?.();
   },
   onMissionChoose: (run, mission) => live?.net.chooseRun(run, mission),
+  // U-091: the escorted character is watched through the same message, as the sentinel slot.
+  onSpectateEscort: () => {
+    live?.net.spectate(ESCORT_SPECTATE_SLOT);
+    menu.hide();
+    if (live && !mobileMode) renderer.domElement.requestPointerLock?.();
+  },
 });
 document.body.appendChild(menu.root);
 const mobileCommand = createMobileCommand(document.body, {
@@ -2215,7 +2221,7 @@ function frame(): void {
       if (tickInput.moveX !== 0 || tickInput.moveY !== 0 || tickInput.jump ||
           tickInput.sprint || tickInput.crouch || tickInput.prone || tickInput.interact ||
           tickInput.firing || input.ads) {
-        if (!net.roster[net.spectatedSlot]?.human && !spectatorTakeoverPending) {
+        if (net.spectatedSlot !== ESCORT_SPECTATE_SLOT && !net.roster[net.spectatedSlot]?.human && !spectatorTakeoverPending) {
           spectatorTakeoverPending = true;
           net.switchTo(net.spectatedSlot);
         }
@@ -2828,9 +2834,13 @@ function frame(): void {
     let text = '';
     if (net && net.spectatedSlot >= 0) {
       const watched = net.spectatedSlot;
-      const name = net.roster[watched]?.name || `Bot ${watched + 1}`;
-      const status = watchedStatus(commandRows(net.roster, net.slot), watched, net.slot);
-      text = `SPECTATING ${name} — ${status}${!net.roster[watched]?.human && !mobileMode ? ' · move, aim, fire or E to take control' : ''}`;
+      if (watched === ESCORT_SPECTATE_SLOT) {
+        text = 'SPECTATING the prisoner — watch only · orders to the whole squad reach him';
+      } else {
+        const name = net.roster[watched]?.name || `Bot ${watched + 1}`;
+        const status = watchedStatus(commandRows(net.roster, net.slot), watched, net.slot);
+        text = `SPECTATING ${name} — ${status}${!net.roster[watched]?.human && !mobileMode ? ' · move, aim, fire or E to take control' : ''}`;
+      }
     } else if (localVitality === 'dead') {
       // Dead is not downed: nobody can revive a body, and the timer is the respawn's.
       text = timer > 0 ? `KILLED — back in ${timer}s` : 'KILLED';
@@ -2861,6 +2871,7 @@ function frame(): void {
   // U-025: the pause menu's squad command, from the roster the host last sent (redrawn only when it changes).
   if (menu.mode === 'pause' && live) {
     menu.setCommand(commandRows(live.net.roster, live.net.slot));
+    menu.setEscort(live.net.escortNetId !== null);
     menu.setMission(missionMenuModel(live.net.runOffer, live.net.slot));
   }
   // T-4.28: the scoreboard while Tab is down, and on its own once the mission is over.
@@ -2988,7 +2999,9 @@ function frame(): void {
     camSolve.position.z + camSolve.shake.z,
   );
   if (net && net.spectatedSlot >= 0) {
-    const watched = [...net.remotes()].find(([id]) => net.remoteSlot(id) === net.spectatedSlot)?.[1];
+    const watched = net.spectatedSlot === ESCORT_SPECTATE_SLOT
+      ? (net.escortNetId === null ? undefined : net.remotes().get(net.escortNetId))
+      : [...net.remotes()].find(([id]) => net.remoteSlot(id) === net.spectatedSlot)?.[1];
     const own = net.spectatedSlot === net.slot ? net.simulated : null;
     if (watched || own) {
       const at = watched ?? own!;

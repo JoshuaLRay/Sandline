@@ -28,6 +28,11 @@ export const HEARTBEAT_TIMEOUT_MS = 5000;
 
 /** ADR-001: the squad is always six. */
 export const MAX_SLOTS = 6;
+/**
+ * U-091: the slot value that names the escorted character on the spectate wire (`SwitchCharacter`/`Spectating`, three
+ * bits). Not a slot: the squad is six (ADR-001 addendum), so the first value past them is free.
+ */
+export const ESCORT_SPECTATE_SLOT = MAX_SLOTS;
 
 export interface ServerConnectionEvents {
   onJoined?: (conn: ServerConnection) => void;
