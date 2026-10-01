@@ -37,6 +37,10 @@ export interface GroupConfig {
   flankMinM: number;
   flankMaxM: number;
   flankExposureCost: number;
+  /** U-083: a stretch of a route farther than this from the target is not priced for exposure (it costs its length): no ray is cast for it. */
+  pricedRangeM: number;
+  /** U-083: the most cover points priced as a flank's goal: the ones nearest a flanker. */
+  flankCandidates: number;
   waypointM: number;
   waypointGridM: number;
   waypointSearchM: number;
@@ -47,7 +51,7 @@ class GroupDataError extends Error {}
 export function parseGroupConfig(raw: unknown): GroupConfig {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new GroupDataError('group: expected an object');
   const row = raw as Record<string, unknown>;
-  const keys = ['$comment', 'pinSeconds', 'suppressAimUpM', 'flankMinM', 'flankMaxM', 'flankExposureCost', 'waypointM', 'waypointGridM', 'waypointSearchM'];
+  const keys = ['$comment', 'pinSeconds', 'suppressAimUpM', 'flankMinM', 'flankMaxM', 'flankExposureCost', 'pricedRangeM', 'flankCandidates', 'waypointM', 'waypointGridM', 'waypointSearchM'];
   for (const k of Object.keys(row)) if (!keys.includes(k)) throw new GroupDataError(`group: unknown key "${k}"`);
   const num = (key: string, min: number, max: number): number => {
     const v = row[key];
@@ -62,6 +66,8 @@ export function parseGroupConfig(raw: unknown): GroupConfig {
     flankMaxM: num('flankMaxM', 1, 200),
     // At least 1: a penalty below 1 would draw the route INTO the target's sight.
     flankExposureCost: num('flankExposureCost', 1, 100),
+    pricedRangeM: num('pricedRangeM', 10, 500),
+    flankCandidates: num('flankCandidates', 1, 1000),
     waypointM: num('waypointM', 0.1, 10),
     waypointGridM: num('waypointGridM', 0.5, 20),
     waypointSearchM: num('waypointSearchM', 0, 60),
@@ -137,8 +143,10 @@ export function seesGround(eyeFeet: Vec3, at: Vec3, boxes: readonly WorldBox[]):
 /**
  * A route's length with the stretches the target at `feet` can see priced
  * `cost` times over, sampled every half metre: how the group compares flanks.
+ * Only the stretches within `rangeM` of the target are looked at (U-083): a ray per half metre of a route that starts
+ * hundreds of metres off, for every candidate, was a tick of hundreds of milliseconds on a big map.
  */
-export function pricedLength(points: readonly Vec3[], feet: Vec3, boxes: readonly WorldBox[], cost: number): number {
+export function pricedLength(points: readonly Vec3[], feet: Vec3, boxes: readonly WorldBox[], cost: number, rangeM = Infinity): number {
   let total = 0;
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1]!;
@@ -148,7 +156,8 @@ export function pricedLength(points: readonly Vec3[], feet: Vec3, boxes: readonl
     for (let k = 0; k < steps; k++) {
       const f = (k + 0.5) / steps;
       const at = { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, z: a.z + (b.z - a.z) * f };
-      total += (len / steps) * (seesGround(feet, at, boxes) ? cost : 1);
+      const far = (at.x - feet.x) ** 2 + (at.z - feet.z) ** 2 > rangeM * rangeM;
+      total += (len / steps) * (!far && seesGround(feet, at, boxes) ? cost : 1);
     }
   }
   return total;
@@ -288,13 +297,21 @@ export class EnemyGroup {
     // A member that would rather suppress (the MG) is not sent round, while anyone else can be.
     const rather = (m: GroupMember) => m.prefers === 'suppressor';
     const flankers = living.some((m) => !rather(m)) ? living.filter((m) => !rather(m)) : [];
+    // U-083: a flank's goal is one of the cover points nearest a flanker (a long way round costs more than a short one,
+    // so the cheapest is among them), not every point in the ring round the target: pricing each took a ray per half
+    // metre of its route, hundreds of points at a time.
+    if (candidates.length > this.config.flankCandidates && flankers.length > 0) {
+      const nearest = (c: { point: CoverPoint }) => Math.min(...flankers.map((f) => (f.state.x - c.point.x) ** 2 + (f.state.z - c.point.z) ** 2));
+      candidates.sort((a, b) => nearest(a) - nearest(b) || a.index - b.index);
+      candidates.length = this.config.flankCandidates;
+    }
     // Every route against one marking of what the target sees (`NavMesh.avoiding`): the same routes, priced once.
     const price = (pathOf?: PathOf) => {
       for (const member of [...flankers].sort((a, b) => a.netId - b.netId)) {
         for (const c of candidates) {
           const route = this.route(member.state, c.point, seen, world, pathOf);
           if (!route) continue;
-          const cost = pricedLength([member.state, ...route], feet, world.boxes, flankExposureCost);
+          const cost = pricedLength([member.state, ...route], feet, world.boxes, flankExposureCost, this.config.pricedRangeM);
           if (!best || cost < best.cost) best = { member, point: c.point, index: c.index, cost, route };
         }
       }
@@ -384,7 +401,7 @@ export class EnemyGroup {
     const goal = route[route.length - 1]!;
     const cost = this.config.flankExposureCost;
     let best = route;
-    let bestCost = pricedLength([from, ...route], feet, world.boxes, cost);
+    let bestCost = pricedLength([from, ...route], feet, world.boxes, cost, this.config.pricedRangeM);
     const margin = this.config.waypointSearchM;
     const step = this.config.waypointGridM;
     const minX = Math.min(from.x, goal.x) - margin;
@@ -401,7 +418,7 @@ export class EnemyGroup {
         const b = mesh.path(via, goal, 4);
         if (!a || !b) continue;
         const candidate = [...a.points.slice(1), ...b.points.slice(1), goal];
-        const c = pricedLength([from, ...candidate], feet, world.boxes, cost);
+        const c = pricedLength([from, ...candidate], feet, world.boxes, cost, this.config.pricedRangeM);
         if (c < bestCost) {
           bestCost = c;
           best = candidate;
