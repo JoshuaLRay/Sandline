@@ -175,5 +175,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm sim-run --scenario mission --all-missions --seeds 3
-      - run: pnpm sim-run --scenario mission --seeds 3
+      # U-085: twenty seeds, not three: three cannot measure a completion rate, so the floors in mission.json were never
+      # asserted in CI and a failing default went unseen. About five minutes.
+      - run: pnpm sim-run --scenario mission --seeds 20
         if: ${{ !cancelled() }}
