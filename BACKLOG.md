@@ -124,7 +124,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-088](docs/backlog/U-088.md) | The campaign as data: order, titles, briefings and debriefs | Campaign design | P2 | DONE | — | [#259](https://github.com/JoshuaLRay/Sandline/pull/259) |
 | [U-089](docs/backlog/U-089.md) | Run kinds in the campaign file, and separate prisoner pools | Campaign design | P2 | DONE | — | [#260](https://github.com/JoshuaLRay/Sandline/pull/260) |
 | [U-090](docs/backlog/U-090.md) | The host chooses the next run; briefing, debrief and the handoff | Campaign design | P2 | DONE | U-089 | [#261](https://github.com/JoshuaLRay/Sandline/pull/261) |
-| [U-091](docs/backlog/U-091.md) | Spectate the escorted character | Campaign design | P3 | REVIEW | U-075 | — |
+| [U-091](docs/backlog/U-091.md) | Spectate the escorted character | Campaign design | P3 | DONE | U-075 | [#267](https://github.com/JoshuaLRay/Sandline/pull/267) |
 
 ## Existing work retained
 
