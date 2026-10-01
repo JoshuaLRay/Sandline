@@ -114,8 +114,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-078](docs/backlog/U-078.md) | In-mission menu: restart from checkpoint, restart mission, return to mission select | Campaign design | P2 | BLOCKED | U-072 | — |
 | [U-079](docs/backlog/U-079.md) | Bots fight armour: help destroy a tank | Enemy AI | P2 | READY | — | — |
 | [U-080](docs/backlog/U-080.md) | Realistic character models: a more grounded look | Art | P2 | BLOCKED | Owner's reference set and approach (card) | — |
-| [U-081](docs/backlog/U-081.md) | The cover search must not scale with the whole map | Enemy AI | P1 | REVIEW | — | `task/U-081-cover-search` |
-| [U-082](docs/backlog/U-082.md) | Rectangular floors: bake, collide and draw only where the map is | Campaign design | P2 | READY | — | — |
+| [U-081](docs/backlog/U-081.md) | The cover search must not scale with the whole map | Enemy AI | P1 | DONE | — | [#246](https://github.com/JoshuaLRay/Sandline/pull/246) |
+| [U-082](docs/backlog/U-082.md) | Rectangular floors: bake, collide and draw only where the map is | Campaign design | P2 | REVIEW | — | `task/U-082-rect-floor` |
 | [U-083](docs/backlog/U-083.md) | Flank assignment must be bounded (a ray broad phase was tried and did not help) | Campaign design | P2 | REVIEW | — | `task/U-083-ray-broadphase` |
 
 ## Existing work retained
