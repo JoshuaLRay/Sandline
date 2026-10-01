@@ -118,8 +118,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-082](docs/backlog/U-082.md) | Rectangular floors: bake, collide and draw only where the map is | Campaign design | P2 | DONE | — | [#247](https://github.com/JoshuaLRay/Sandline/pull/247) |
 | [U-083](docs/backlog/U-083.md) | Flank assignment must be bounded (a ray broad phase was tried and did not help) | Campaign design | P2 | DONE | — | [#249](https://github.com/JoshuaLRay/Sandline/pull/249) |
 | [U-084](docs/backlog/U-084.md) | Mission-01: the squad dies in the garrison fight before the upload | Enemy AI | P2 | DONE | — | [#252](https://github.com/JoshuaLRay/Sandline/pull/252) |
-| [U-085](docs/backlog/U-085.md) | Mission-01 at six humans: the squad is lost before the upload | Enemy AI | P2 | BLOCKED | U-086 (the tactics lever the investigation found) | — |
-| [U-086](docs/backlog/U-086.md) | Attack orders fight from cover instead of standing in the open | Enemy AI | P2 | IN_PROGRESS | U-085 (PR 253, base branch) | `task/U-086-attack-from-cover` |
+| [U-085](docs/backlog/U-085.md) | Mission-01 at six humans: the squad is lost before the upload | Enemy AI | P2 | BLOCKED | Owner decision on the six-human floor and squad tactics (card) | — |
+| [U-086](docs/backlog/U-086.md) | Attack orders fight from cover instead of standing in the open | Enemy AI | P2 | REVIEW | — | `task/U-086-attack-from-cover` |
 
 ## Existing work retained
 
