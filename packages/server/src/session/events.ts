@@ -24,7 +24,9 @@ export interface EventCheckpoint {
   fired: string[];
   flags: [string, boolean][];
   blockers: ScriptBlockerState[];
-  previousObjective: { index: number; state: MissionStatus } | null;
+  /** U-074: the objectives to do at the last step (U-069 and earlier saves have `previousObjective` instead). */
+  previousActive?: number[] | null;
+  previousObjective?: { index: number; state: MissionStatus } | null;
 }
 
 export interface EventHost {
@@ -33,7 +35,11 @@ export interface EventHost {
   spawnGroup(id: string, seconds: number): boolean;
   /** U-001: no more waves from the group. */
   stopGroup(id: string, seconds: number): boolean;
-  objective(): { index: number; state: MissionStatus; phase: ObjectivePhase } | null;
+  /**
+   * U-074: where the mission stands and which of its objectives are open and still to do (a stage can have several,
+   * each in its own phase); null with no mission.
+   */
+  objectives(): { state: MissionStatus; active: readonly { index: number; phase: ObjectivePhase }[] } | null;
   setObjective(index: number): boolean;
   /** U-009: stop the running upload, if one is. */
   interruptUpload(): boolean;
@@ -68,7 +74,8 @@ export class EventRun {
   private readonly fired = new Set<string>();
   private readonly flags = new Map<string, boolean>();
   private readonly blockerState = new Map<string, ScriptBlockerState>();
-  private previousObjective: { index: number; state: MissionStatus } | null = null;
+  /** The objectives that were open and to do at the last step; null before the first. */
+  private previousActive: number[] | null = null;
 
   constructor(
     private readonly script: EventScript,
@@ -92,7 +99,7 @@ export class EventRun {
       fired: [...this.fired],
       flags: [...this.flags],
       blockers: this.blockers.map((b) => ({ ...b, boxes: [...b.boxes] })),
-      previousObjective: this.previousObjective ? { ...this.previousObjective } : null,
+      previousActive: this.previousActive ? [...this.previousActive] : null,
     };
   }
 
@@ -102,7 +109,11 @@ export class EventRun {
     for (const id of checkpoint.fired) this.fired.add(id);
     this.flags.clear();
     for (const [id, value] of checkpoint.flags) this.flags.set(id, value);
-    this.previousObjective = checkpoint.previousObjective ? { ...checkpoint.previousObjective } : null;
+    this.previousActive = checkpoint.previousActive
+      ? [...checkpoint.previousActive]
+      : checkpoint.previousObjective
+        ? checkpoint.previousObjective.state === 'progress' ? [checkpoint.previousObjective.index] : []
+        : null;
     this.blockerState.clear();
     for (const b of checkpoint.blockers) {
       const state = { ...b, boxes: [...b.boxes] };
@@ -135,7 +146,7 @@ export class EventRun {
   reset(): void {
     this.fired.clear();
     this.flags.clear();
-    this.previousObjective = null;
+    this.previousActive = null;
     this.blockerState.clear();
     for (const b of this.script.blockers) {
       const state = { id: b.id, active: b.active, boxes: b.boxes };
@@ -148,16 +159,16 @@ export class EventRun {
     return this.host.squadFeet().some((p) => Math.hypot(p.x - area.x, p.z - area.z) <= area.radius);
   }
 
-  private triggered(trigger: EventTrigger, seconds: number, started: number | null, completed: number | null): boolean {
+  private triggered(trigger: EventTrigger, seconds: number, started: readonly number[], completed: readonly number[]): boolean {
     switch (trigger.kind) {
       case 'objective-start':
-        return started === trigger.objective;
+        return started.includes(trigger.objective);
       case 'upload-start': {
-        const now = this.host.objective();
-        return now !== null && now.index === trigger.objective && now.state === 'progress' && now.phase === 'active';
+        const now = this.host.objectives();
+        return now !== null && now.state === 'progress' && now.active.some((o) => o.index === trigger.objective && o.phase === 'active');
       }
       case 'objective-complete':
-        return completed === trigger.objective;
+        return completed.includes(trigger.objective);
       case 'enter':
         return this.inArea(resolveArea(trigger.area, this.encounter, this.world));
       case 'time':
@@ -214,17 +225,13 @@ export class EventRun {
 
   /** Evaluate one mission tick. */
   step(seconds: number): void {
-    const now = this.host.objective();
-    const started =
-      now && now.state === 'progress' && (this.previousObjective === null || now.index !== this.previousObjective.index)
-        ? now.index
-        : null;
-    const completed =
-      this.previousObjective &&
-      this.previousObjective.state === 'progress' &&
-      (now === null || now.index !== this.previousObjective.index || now.state === 'complete')
-        ? this.previousObjective.index
-        : null;
+    // U-074: the objectives open and still to do now against at the last step: newly open ones started, ones no longer
+    // to do (done, or left with their stage) completed. A failed mission completes nothing and leaves the record alone.
+    const now = this.host.objectives();
+    const active = now && now.state === 'progress' ? now.active.map((o) => o.index) : [];
+    const previous = this.previousActive;
+    const started = previous === null || now?.state === 'progress' ? active.filter((i) => previous === null || !previous.includes(i)) : [];
+    const completed = previous && now?.state !== 'failed' ? previous.filter((i) => !active.includes(i)) : [];
 
     // Repeat stable passes so a set-flag can satisfy another event this tick
     // without making file ordering a hidden rule.
@@ -238,6 +245,7 @@ export class EventRun {
       }
       if (!progressed) break;
     }
-    this.previousObjective = this.host.objective();
+    const after = this.host.objectives();
+    if (after?.state !== 'failed') this.previousActive = after && after.state === 'progress' ? after.active.map((o) => o.index) : [];
   }
 }

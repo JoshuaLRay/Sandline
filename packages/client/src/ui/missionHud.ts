@@ -11,8 +11,11 @@ export const FULL_RESTART_KEY = 'KeyO';
 
 const secs = (ticks: number, round: (n: number) => number = Math.floor) => round(ticks * TICK_SECONDS);
 
+/** What an objective's view says: the fields `MissionView` and one of its `open` entries share. */
+type ObjectiveFields = Pick<MissionView, 'type' | 'label' | 'phase' | 'satisfied' | 'progress' | 'goal'>;
+
 /** What the current objective asks, and how far along it is. */
-function objectiveText(view: MissionView): string {
+function objectiveText(view: ObjectiveFields): string {
   const clock = `${secs(view.progress)}/${secs(view.goal, Math.round)} s`;
   switch (view.type) {
     case 'clear-and-hold':
@@ -38,7 +41,7 @@ function objectiveText(view: MissionView): string {
  * it — start it, it is running on its own, it was stopped (and whether it
  * kept what it had sent).
  */
-function uploadText(view: MissionView): string {
+function uploadText(view: ObjectiveFields): string {
   const percent = `${Math.floor((100 * view.progress) / Math.max(1, view.goal))}%`;
   switch (view.phase) {
     case 'idle':
@@ -50,6 +53,15 @@ function uploadText(view: MissionView): string {
   }
 }
 
+/** U-074: the upload still to finish, whether it is the objective described or one of a stage's several. */
+function openUpload(view: MissionView): (ObjectiveFields & { index: number }) | null {
+  if (view.open) {
+    const up = view.open.find((o) => o.type === 'upload' && !o.done);
+    return up ?? null;
+  }
+  return view.type === 'upload' ? { index: view.objective, type: view.type, label: view.label, phase: view.phase, satisfied: view.satisfied, progress: view.progress, goal: view.goal } : null;
+}
+
 /**
  * U-009: the interact prompt at an upload's terminal — within its reach of
  * the eye, while the upload waits to be started or restarted. The terminal
@@ -59,12 +71,13 @@ function uploadText(view: MissionView): string {
  * to the panel included.
  */
 export function uploadPrompt(view: MissionView | null, mission: MissionDef | undefined, eye: { x: number; y: number; z: number }): string {
-  if (!view || view.state !== 'progress' || view.type !== 'upload' || view.phase === 'active') return '';
-  const def = mission?.objectives[view.objective];
-  if (def?.type !== 'upload' || def.label !== view.label) return '';
+  const up = view ? openUpload(view) : null;
+  if (!view || !up || view.state !== 'progress' || up.phase === 'active') return '';
+  const def = mission?.objectives[up.index];
+  if (def?.type !== 'upload' || def.label !== up.label) return '';
   const t = def.terminal;
   if (Math.hypot(eye.x - t.x, eye.y - t.y, eye.z - t.z) > def.reachM) return '';
-  return view.phase === 'idle' ? 'E  START THE UPLOAD' : 'E  RESTART THE UPLOAD';
+  return up.phase === 'idle' ? 'E  START THE UPLOAD' : 'E  RESTART THE UPLOAD';
 }
 
 /**
@@ -85,8 +98,14 @@ export function missionLine(view: MissionView | null, leverPercent = 0): string 
       : 'Squad lost';
     return `Mission failed: ${why}${attempt}  ·  P: last checkpoint  ·  O: restart mission`;
   }
+  const up = openUpload(view);
+  const lever = up && up.phase === 'active' && leverPercent > 0 ? `  ·  ENEMY AT THE LEVER ${Math.min(100, Math.floor(leverPercent))}% — stop them` : '';
+  // U-074: a stage with several objectives lists them all, the finished ones ticked and the optional ones named.
+  if (view.open) {
+    const items = view.open.map((o) => `${o.done ? '✓ ' : ''}${objectiveText(o)}${o.optional ? ' (optional)' : ''}`);
+    return `Objectives: ${items.join('   |   ')}${lever}${attempt}`;
+  }
   const step = view.objectives > 1 ? ` ${view.objective + 1}/${view.objectives}` : '';
-  const lever = view.type === 'upload' && view.phase === 'active' && leverPercent > 0 ? `  ·  ENEMY AT THE LEVER ${Math.min(100, Math.floor(leverPercent))}% — stop them` : '';
   return `Objective${step}: ${objectiveText(view)}${lever}${attempt}`;
 }
 
