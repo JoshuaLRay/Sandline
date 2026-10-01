@@ -36,41 +36,73 @@ one event script. The grey-box `greybox-01` is its test twin. Everything below i
    mission list (`sim/mission.ts`), the encounter list (`sim/encounters.ts`), the script lookup (`sim/scripts.ts`), a baked navmesh
    (`server/src/ai/nav/baked`), the lobby entry, the level checker's join table (`tools/src/level-check.ts`), and the
    mission sim, which is fixed to `mission-01` (`tools/src/scenarios/mission.ts`).
-3. **One map, one look.** The kit has dirt, road, walls, props and a compound; there is no second environment, no
+3. **One map, one look, and a small one.** mission-01 is about 200 x 100 m and two lanes; the season needs three-lane maps roughly ten times that area. The kit has dirt, road, walls, props and a compound; there is no second environment, no
    interiors, no night and no weather.
 4. **No vehicles for the squad, no air, no stealth, no multi-stage maps** (a mission is one level).
 5. **The friendly bots cannot yet fight armour** (the tank beats them in the mission sim). Any mission with a tank
    needs that first, or accepts that bots do not complete it.
 
-## 2. Decisions the owner needs to make
+## 2. Owner decisions (answered 2026-10-01)
 
-Each has a **Proposal**. Answering them turns U-071 into a mission list and the rest into READY cards.
-
-| # | Question | Proposal |
+| # | Decision | Recorded |
 |---|---|---|
-| D1 | **Premise and tone.** Where and when; what the squad is for; how serious. The shipped mission is a qalat compound, which reads as modern Afghanistan. | Keep it: a small multinational squad working through a valley campaign. No named real-world factions; the enemy is "the insurgents" in the data. |
-| D2 | **Length.** How many missions in the first campaign. | **Five** for the first release: mission-01 plus four, so a campaign is about 2–3 hours of co-op play. |
-| D3 | **Structure.** Linear, or a map with a choice of order. | **Linear**, with one branch point after mission 3 (two optional missions in either order). Simplest to test and to save (`completedMissions` already is a set). |
-| D4 | **Pacing rule.** What each mission adds. | **One new thing per mission**, on top of everything before: m1 clear and hold (built), m2 rescue, m3 armour and mounted guns, m4 night or low visibility, m5 a finale that uses all of it. |
-| D5 | **Map size and time.** | 8–15 minutes a mission, one level of roughly mission-01's footprint (about 200 x 100 m), at most one interior set piece. |
-| D6 | **What carries over.** | Rank and XP, and prisoners (built). Not weapons or ammo: each mission starts from the class loadout, so a lost gun is never a campaign-ending debt. |
-| D7 | **Failure.** | Retry from the last objective checkpoint, any number of times (built). A full restart returns to the mission's start. No permadeath. |
-| D8 | **Difficulty.** | The director already scales enemy pressure from 1 to 6 humans; keep that as the only dial. No difficulty menu in the first campaign. |
-| D9 | **Debrief and story.** | A text briefing before each mission (the objective list already carries labels) and a short after-action screen (exists for stats). No cutscenes, no voice (ADR-017). |
-| D10 | **Art.** | Reuse and extend the code-built kit for each new level; real art is a separate later epic. |
+| D1 | **Premise and tone** | **Afghanistan after 9/11; the enemy is the Taliban and al-Qaeda.** Grounded and tense. This changes the art as well as the story: the characters must look more realistic (see U-080). The owner's yardstick is *Conflict: Desert Storm*: ours read as scrawny and "drawn", too cartoonish even for PS2 standards. |
+| D2 | **Length** | A first **season of ten missions of 30–45 minutes each**, built **one mission at a time**; they need not all exist at once. |
+| D3 | **Structure** | **Straight line.** Past missions can be replayed. Two kinds of run (below). |
+| D4 | **Pacing / objectives** | **Reimagined.** No clear-and-hold, and above all no holding a spot. Maps are bigger: **three lanes and much longer.** A mission's objectives can be done **in any order the players choose, where applicable**, and not every enemy has to be cleared. Mission 1 is a rescue and escort (section 3). |
+| D5 | **Map size and time** | Three-lane maps, **30–45 minutes**, "fairly large": about **10x the area of mission-01's map** (at least where there are assets). |
+| D6 | **Carry-over** | **Weapons, ammo and gear carry to the next mission**, but a pickup **replaces the gear in the character's current slot**. Replaying a mission is how players fetch different weapons for their squad. Rank and XP "are not all that important right now" and may eventually live on the player instead of the campaign soldier. |
+| D7 | **Failure and restarts** | Eventually three choices: **restart from the last checkpoint, restart the mission, or return to mission select.** |
+| D8 | **Difficulty** | The default: the director's budget (1–6 humans) is the only dial. May change later. |
+| D9 | **Briefing and story** | The default: a short text briefing and debrief, no cutscenes, no voice. |
+| D10 | **Art** | The default: reuse and extend the code-built kit for levels. (Characters are the exception: D1.) |
+
+### Campaign runs and replay runs (from D3)
+
+After each mission, completed **or failed**, the team leader chooses what to play next:
+
+- a **campaign run** of the newest mission the campaign has reached; or
+- a **replay run** of any mission already beaten.
+
+The two keep **separate prisoner pools**: a character captured in a campaign run can only be rescued in the *next
+campaign-run mission*, never in a replay; a character captured in a replay run can only be rescued in the *next replay
+run*. A replay run is how players collect other weapons (D6).
 
 ## 3. Missions
 
-Filled in as D1 to D5 are answered. A row is one mission; each becomes a design brief (the template in section 4)
-and then a set of cards (level, encounter, script, mission, verification).
+The first season is ten missions. A row is one mission; each becomes a design brief (section 4) and then cards.
 
-| # | Working title | New element (D4) | Map idea | Status |
-|---|---|---|---|---|
-| 1 | Clear and hold the qalat | clear and hold, upload, lever, tank | the qalat valley | **Built** (mission-01) |
-| 2 | — | rescue | — | **Proposal:** a prisoner held in a village; this is U-065 |
-| 3 | — | armour and mounted guns | — | Proposal, awaiting D1 to D4 |
-| 4 | — | low visibility | — | Proposal, awaiting D1 to D4 |
-| 5 | — | finale | — | Proposal, awaiting D1 to D4 |
+| # | Working title | What it is | Status |
+|---|---|---|---|
+| 1 | — | **A rescue and escort.** The squad frees an **unarmed POW** from the compound he is held in; he joins the squad as a seventh member who can be **commanded** (go / stay / follow) and **spectated** but not controlled. On the way back out a **tank rides in along the route home**: the squad must destroy it, then reach the extraction point **with all seven alive**. | Brief owed (U-065) |
+| 2–10 | — | Not yet designed. One at a time, in order. | Open |
+
+The existing `mission-01` (clear and hold the qalat) is the vertical slice. **Assumption, to confirm:** it stays
+playable as the test and QA mission until the new campaign mission 1 replaces it, and is not part of the season.
+
+### What mission 1 needs that does not exist yet
+
+| Need | Card |
+|---|---|
+| Objectives done in any order, and not every enemy cleared | U-074 |
+| An unarmed seventh friendly the squad commands and escorts (conflicts with ADR-001's "always six", see below) | U-075 |
+| Feasibility of a three-lane map about ten times the area (navmesh, snapshots, enemy caps, client draw) | U-076 |
+| Bots that can help destroy a tank | U-079 |
+| The route home that the tank comes down, and extraction with "all seven" alive | in U-065 |
+| Run types, mission select, campaign flow | U-072 |
+| Registering a mission in one place | U-073 |
+
+## 3a. Open questions this raises
+
+| # | Question | Proposal |
+|---|---|---|
+| Q1 | **ADR-001 says the squad is always six.** The POW is a seventh, unarmed member who is *not* a slot (no player can take him), so the slot machinery (roster, picker, scoreboard) should not change. That is a deliberate exception and needs an ADR-001 addendum from the owner. | Add the addendum: a mission may add **escorted characters**: non-slot, non-playable, commandable (the existing move / hold / regroup orders read as go / stay / follow) and spectatable. The squad stays six. |
+| Q2 | **Who is the "team leader"** who chooses the next run? | The player in slot 0 (the squad lead, Preach); if that seat is a bot, the room's host. |
+| Q3 | **Does a failed mission end a campaign run?** The owner chooses after "complete **or failure**". | A failed campaign run lets the leader retry (the same mission) or choose a replay, never skip ahead. |
+| Q4 | **"All 7 safely" when the POW dies.** | The mission fails if the POW dies, as it does when a squad character dies today (U-033), and the retry goes back to the last checkpoint. |
+| Q5 | **"10x the size"** is an area; that is about 3.2x in each direction (roughly 630 x 320 m). | Confirm by the feasibility spike (U-076); keep the three lanes and a 30–45 minute pace as the aim, with the size following. |
+| Q6 | **Carry-over of ammo** across a mission that was failed, replayed or restarted. | A mission starts from what the campaign file holds at its start; a restart or a retry returns to that, never to a half-spent state. |
+| Q7 | **Where XP lives.** ADR-019 puts it on the campaign soldier; the owner expects it may move to the player. | Leave as is; not a campaign-design blocker. Note it when XP is revisited. |
 
 ## 4. Mission brief template
 
@@ -86,11 +118,12 @@ One short document per mission, in this folder, written before any level is buil
 
 ## 5. Order of work
 
-1. **Now:** owner answers D1 to D5 (U-071). This also fixes the mission list in section 3.
-2. **Plumbing that does not depend on content:** U-073 (register a mission in one place and make the checks and the
-   mission sim run every registered mission) and U-072 (what comes next: mission order, the lobby, the debrief). Both
-   can start as soon as the owner says go, and both make every later mission cheaper.
-3. **Missions in order**, each a brief, a level, an encounter, a script and its verification, one PR per card. U-065
-   (rescue) is mission 2 by default.
-4. **Bots versus armour** before a mission whose bots must beat a tank.
-5. **Owner playtests** of each mission before the next is built on it. No verdict is claimed without one.
+1. **Decide Q1 to Q4** (this page). They block the escort (U-075) and the flow (U-072).
+2. **Ready now, content-independent:** U-073 (register a mission in one place), U-074 (objectives in any order) and
+   U-076 (the large-map feasibility spike). Together they decide what mission 1 can be.
+3. **Then mission 1's parts:** the POW as an escorted friendly (U-075), the run types and mission select (U-072),
+   bots against armour (U-079), carry-over (U-077), then mission 1 itself (U-065), whose brief comes first.
+4. **In parallel, art:** the character rework (U-080) is its own line of work, since it decides how the campaign looks.
+5. **In-mission menu** (U-078) once there is a mission select to return to.
+6. **Missions 2 to 10**, one at a time, each a brief, a level, an encounter, a script and its verification, and
+   an **owner playtest** before the next is built on it. No verdict is claimed without one.
