@@ -346,4 +346,5 @@ Format: `T-<id> — <what changed>`
 - Docs — U-072 (campaign flow umbrella) is DONE with its leaves U-088, U-089 and U-090; U-078 is unblocked.
 - U-078 — the host's mission menu in the pause menu (restart from the last checkpoint, restart the mission, return to mission select); `RunOffer` is made while the mission is on (protocol 63); leaving mid-mission keeps the checkpoint, tagged by run kind, and completes nothing.
 - U-080 — first pass at a more grounded look: the US soldier's limbs, boots, hands and vest are heavier (same rig, hit boxes and animation); screenshots for the owner's review, fighter and texture pass still to do.
+- Docs — U-065's mission 1 brief drafted (docs/design/MISSION-01.md) with defaults and six questions, awaiting the owner's approval.
 - U-091 — the escorted character can be spectated: slot value 6 on the spectate wire (no protocol change), a pause-menu button, a follow camera; mobile's cycle unchanged.
