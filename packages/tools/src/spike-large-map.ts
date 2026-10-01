@@ -8,6 +8,8 @@
  * tick cost and the bytes sent to one client.
  *
  * Nothing is committed from it; the numbers go on the U-076 card. Run: pnpm spike:large-map [lengthM ...]
+ * `FLOORS=square|tight` picks the floor baked (both by default); `COVER=none` runs the session without cover points,
+ * which is how the cost's cause was found.
  */
 import {
   PROTOCOL_VERSION,
@@ -108,7 +110,8 @@ interface Row {
 async function session(world: World, mesh: NavMesh, cover: ReturnType<typeof coverPoints>, layout: 'spread' | 'packed') {
   const s = new Session(undefined, '', world, {
     navMesh: mesh,
-    cover,
+    // COVER=none passes the session no cover points: a diagnosis of what the cost scales with, not a setting.
+    cover: process.env['COVER'] === 'none' ? [] : cover,
     brainTree: buildTree('friendly', createBrainRegistry()),
     profileAi: true,
   });
