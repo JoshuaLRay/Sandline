@@ -1,12 +1,21 @@
 name: CI
 
+# A pull request's branch used to run this whole workflow twice for every push (once for `push`, once for
+# `pull_request`), eight jobs where four do. The pull-request run is the one that counts (it tests the branch merged
+# into its base), so `push` is now only main, and a newer push to the same pull request replaces the run in flight.
 on:
   push:
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       # No `version:` here on purpose. package.json's `packageManager` field is
@@ -30,6 +39,7 @@ jobs:
   # first rendered mission frame inside ADR-013's 30 second ceiling.
   streaming:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -38,7 +48,23 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      - id: playwright
+        run: echo "version=$(pnpm exec playwright --version | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+      # The browser download is most of this job's time and the slowest, flakiest step in CI: cache it by Playwright's
+      # version, and retry (with a time limit) the one download that stalls.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Install Chromium
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 pnpm exec playwright install --with-deps chromium && exit 0
+            echo "playwright install attempt $attempt failed or timed out" >&2
+            # A timed-out attempt leaves its apt-get running; a retry needs the dpkg lock it holds.
+            for _ in $(seq 60); do sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; sleep 5; done
+          done
+          exit 1
       - run: pnpm check:packs
       - run: pnpm --filter @sandline/client build
       - run: pnpm check:load-time
@@ -50,6 +76,7 @@ jobs:
   # nothing in this project can detect it.
   parity-non-v8:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       # No `version:` here on purpose. package.json's `packageManager` field is
@@ -63,7 +90,25 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Chromium for T-3.01's navmesh run; the ADR-014 parity project still
       # runs on Firefox and WebKit only.
-      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      #
+      # Three browsers downloaded and their system libraries installed, every run, took 6 minutes to over half an hour
+      # (the parity test itself takes 15 seconds), and sometimes stalled for good. The browsers are cached by
+      # Playwright's version, and the install is retried with a time limit.
+      - id: playwright
+        run: echo "version=$(pnpm exec playwright --version | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-parity-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Install browsers
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 pnpm exec playwright install --with-deps chromium firefox webkit && exit 0
+            echo "playwright install attempt $attempt failed or timed out" >&2
+            # A timed-out attempt leaves its apt-get running; a retry needs the dpkg lock it holds.
+            for _ in $(seq 60); do sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; sleep 5; done
+          done
+          exit 1
       - run: pnpm test:parity-browsers
 
   # T-4.17: discover every committed mission file; three seeds at both budgets.
@@ -72,6 +117,7 @@ jobs:
   # Keep T-3.35's combat/AI-cost gate as a separate step, even after a mission fails.
   mission:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
