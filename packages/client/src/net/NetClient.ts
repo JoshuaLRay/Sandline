@@ -13,6 +13,7 @@
 import {
   type BotOrder,
   type OrderKind,
+  type RunKind,
   type MissionView,
   type TargetMark,
   COMPONENT_IDS,
@@ -418,6 +419,10 @@ export class NetClient {
   onScriptCallout: ((id: string) => void) | null = null;
   /** T-2.49: a bot could not carry out its order. */
   onOrderFailed: ((slot: number, order: OrderKind) => void) | null = null;
+  /** U-090: the host chose the next run; this room is moving to `mission`. Rejoin the same code. */
+  onHandoff: ((handoff: Extract<Message, { kind: 'Handoff' }>) => void) | null = null;
+  /** U-090: what the host may choose now, from the host's last `RunOffer`; null while the mission is on. */
+  private runOfferValue: Extract<Message, { kind: 'RunOffer' }> | null = null;
   private aiDebugWanted = false;
 
   constructor(
@@ -489,6 +494,17 @@ export class NetClient {
   /** T-4.19: null for a direct session; hosted rooms send this on seating and ready/start changes. */
   get roomState(): Extract<Message, { kind: 'RoomState' }> | null {
     return this.roomStateValue;
+  }
+
+  /** U-090: what the host may choose to play next, once the mission is over; null otherwise. */
+  get runOffer(): Extract<Message, { kind: 'RunOffer' }> | null {
+    return this.runOfferValue;
+  }
+
+  /** U-090: the host's choice of the next run (the host checks it is the host's to make, and was offered). */
+  chooseRun(run: RunKind, mission: string): void {
+    if (!this.joinedFlag) return;
+    this.transport.send(encodeMessage({ kind: 'RoomCommand', command: 'choose', run, mission }), 'reliable');
   }
 
   /** T-3.34: the mission, from the host's last `Mission` message; null when it has none. */
@@ -731,6 +747,7 @@ export class NetClient {
     this.joinedFlag = false;
     this.disconnectReasonValue = null;
     this.disconnectCodeValue = null;
+    this.runOfferValue = null;
     this.roomValue = '';
     this.worldValue = null;
     this.worldBoxesValue.length = 0;
@@ -1287,6 +1304,8 @@ export class NetClient {
       case 'Mission': {
         const { kind: _kind, ...view } = msg;
         this.missionValue = view;
+        // A retry or a restart is a mission on again: there is nothing to choose.
+        if (view.state === 'progress') this.runOfferValue = null;
         break;
       }
 
@@ -1316,6 +1335,14 @@ export class NetClient {
 
       case 'OrderFailed':
         this.onOrderFailed?.(msg.slot, msg.order);
+        break;
+
+      case 'RunOffer':
+        this.runOfferValue = msg;
+        break;
+
+      case 'Handoff':
+        this.onHandoff?.(msg);
         break;
 
       case 'HitEvent':

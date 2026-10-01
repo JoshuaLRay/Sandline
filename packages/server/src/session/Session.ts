@@ -1825,16 +1825,12 @@ export class Session {
   }
 
   /**
-   * U-090: who may choose the next run: the room's creator while seated, else the lowest-numbered human (design doc
-   * Q2: the host, not slot 0). -1 when nobody is seated.
+   * U-090: who may choose the next run: the host, the lowest-numbered seated human (design doc Q2: the host, not
+   * slot 0 as such; the same rule as who commands the bots, U-025). Stable across a handoff, when everyone rejoins in
+   * no particular order, where "whoever created the room" would go to whoever reconnects first. -1 when nobody is seated.
    */
   private hostSlot(): number {
-    const seated = (i: number) => {
-      const s = this.slots[i];
-      return s !== undefined && !s.isBot && s.connection !== null;
-    };
-    if (this.creatorSlot >= 0 && seated(this.creatorSlot)) return this.creatorSlot;
-    return this.slots.findIndex((s) => seated(s.index));
+    return this.slots.findIndex((s) => !s.isBot && s.connection !== null);
   }
 
   /** U-090: what the host may choose now, or null while the mission is on, or in a room with no campaign to move through. */

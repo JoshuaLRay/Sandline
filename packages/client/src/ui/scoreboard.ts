@@ -4,13 +4,16 @@
  * Built once; `update` writes the rows `scoreboardRows` computed from the
  * host's `Stats` message and the roster, touching the DOM only on change.
  */
-import { MAX_SLOTS, type MissionView, type ScoreboardRow, clockText } from '@sandline/shared';
+import { MAX_SLOTS, type MissionView, type RunKind, type ScoreboardRow, clockText } from '@sandline/shared';
 import { missionLine } from './missionHud.ts';
+import { type RunChoiceModel, createRunChoice } from './runChoice.ts';
 
 export interface Scoreboard {
   readonly root: HTMLElement;
   update(rows: readonly ScoreboardRow[], clockSeconds: number, summary: string): void;
   setOutcome(mission: MissionView | null, restart: (full: boolean) => void): void;
+  /** U-090: the debrief and the host's choice of the next run, or null while the mission is on. */
+  setRunChoice(model: RunChoiceModel | null, choose: (run: RunKind, mission: string) => void): void;
   setVisible(on: boolean): void;
   readonly visible: boolean;
 }
@@ -85,6 +88,7 @@ export function createScoreboard(parent: HTMLElement): Scoreboard {
   full.textContent = 'Restart mission';
   actions.append(checkpoint, full);
   root.append(head, failure, table, summary, actions);
+  const runs = createRunChoice(root);
   parent.append(root);
   let shown = false;
   let onRestart: (full: boolean) => void = () => {};
@@ -101,6 +105,9 @@ export function createScoreboard(parent: HTMLElement): Scoreboard {
       setText(failure, failed ? missionLine(mission).split('  ·  ')[0]! : '');
       failure.classList.toggle('hidden', !failed);
       actions.classList.toggle('hidden', !failed);
+    },
+    setRunChoice(model, choose) {
+      runs.set(model, choose);
     },
     update(next, clockSeconds, summaryText) {
       if (!shown) return;
