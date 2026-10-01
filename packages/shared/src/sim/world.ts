@@ -324,6 +324,107 @@ export function loadMission(worldId: string, raw: unknown): WorldMission {
   return { start: { x: start.x, z: start.z, radius: start.radius }, objective: { x: objective.x, z: objective.z, radius: objective.radius }, routes, spawnZones, checks };
 }
 
+/** How far past a ray's own bounds a box must lie before `rayWorld` skips it without the slab test, metres: rounding, and far more. */
+const REJECT_PAD_M = 1e-6;
+
+// -- A broad phase for big worlds (U-083) -----------------------------------------------------------------------
+//
+// `rayWorld` used to test every box in the list for every ray. A map ten times mission-01's has twenty times its
+// boxes, and the AI casts thousands of rays a tick, so line-of-sight alone cost 45% of a tick. A list may now carry an
+// index: a uniform grid over the ground, each cell holding the boxes whose padded footprint reaches it. A ray tests the
+// boxes of the cells its own bounds cover, in the list's order, which is exactly the boxes that could hit it. It is
+// culling only: the same slab test runs on the same boxes in the same order, so every answer is the scan's.
+//
+// The index belongs to the list (a `WeakMap`), is built by `indexBoxes` and is ignored if the list's length has
+// changed since, so a list changed in place and not re-indexed falls back to the scan rather than to a stale answer.
+// Whoever changes a list in place (the session, on a script blocker) re-indexes it.
+
+/** Metres across one cell. */
+const GRID_CELL_M = 16;
+/** Lists shorter than this are not indexed: the scan is as fast and there is nothing to get wrong. */
+export const GRID_MIN_BOXES = 64;
+/** Boxes are registered padded by this, so a ray inflated by up to this (a grenade's radius) still finds them; more falls back to the scan. */
+const GRID_MAX_INFLATE_M = 1;
+/** More cells than this in a ray's bounds is a long diagonal: the scan is cheaper than gathering them. */
+const GRID_MAX_CELLS = 400;
+
+interface BoxGrid {
+  count: number;
+  minCx: number;
+  minCz: number;
+  width: number;
+  depth: number;
+  cells: number[][];
+  /** Per box, the query that last collected it: de-duplicates a box that spans cells without a set. */
+  seen: Uint32Array;
+}
+
+const GRIDS = new WeakMap<readonly WorldBox[], BoxGrid>();
+let queryMark = 0;
+const scratchIndices: number[] = [];
+const scratchBoxes: WorldBox[] = [];
+
+/**
+ * Index a box list for `rayWorld`, replacing any index it had. Call again whenever the list changes in place. A list
+ * under `GRID_MIN_BOXES` is left to the scan (and any old index is dropped).
+ */
+export function indexBoxes(boxes: readonly WorldBox[]): void {
+  if (boxes.length < GRID_MIN_BOXES) {
+    GRIDS.delete(boxes);
+    return;
+  }
+  const pad = GRID_MAX_INFLATE_M + REJECT_PAD_M;
+  let minCx = Infinity;
+  let minCz = Infinity;
+  let maxCx = -Infinity;
+  let maxCz = -Infinity;
+  for (const b of boxes) {
+    minCx = Math.min(minCx, Math.floor((b.minX - pad) / GRID_CELL_M));
+    minCz = Math.min(minCz, Math.floor((b.minZ - pad) / GRID_CELL_M));
+    maxCx = Math.max(maxCx, Math.floor((b.maxX + pad) / GRID_CELL_M));
+    maxCz = Math.max(maxCz, Math.floor((b.maxZ + pad) / GRID_CELL_M));
+  }
+  const width = maxCx - minCx + 1;
+  const depth = maxCz - minCz + 1;
+  const cells: number[][] = Array.from({ length: width * depth }, () => []);
+  boxes.forEach((b, i) => {
+    const x0 = Math.floor((b.minX - pad) / GRID_CELL_M) - minCx;
+    const x1 = Math.floor((b.maxX + pad) / GRID_CELL_M) - minCx;
+    const z0 = Math.floor((b.minZ - pad) / GRID_CELL_M) - minCz;
+    const z1 = Math.floor((b.maxZ + pad) / GRID_CELL_M) - minCz;
+    for (let cx = x0; cx <= x1; cx++) for (let cz = z0; cz <= z1; cz++) cells[cx * depth + cz]!.push(i);
+  });
+  GRIDS.set(boxes, { count: boxes.length, minCx, minCz, width, depth, cells, seen: new Uint32Array(boxes.length) });
+}
+
+/** The boxes a segment with these bounds can touch, in list order: the list itself when it is not indexed or the query is too wide. */
+function candidates(world: readonly WorldBox[], minX: number, maxX: number, minZ: number, maxZ: number): readonly WorldBox[] {
+  const grid = GRIDS.get(world);
+  if (!grid || grid.count !== world.length) return world;
+  const x0 = Math.max(0, Math.floor(minX / GRID_CELL_M) - grid.minCx);
+  const x1 = Math.min(grid.width - 1, Math.floor(maxX / GRID_CELL_M) - grid.minCx);
+  const z0 = Math.max(0, Math.floor(minZ / GRID_CELL_M) - grid.minCz);
+  const z1 = Math.min(grid.depth - 1, Math.floor(maxZ / GRID_CELL_M) - grid.minCz);
+  scratchBoxes.length = 0;
+  if (x1 < x0 || z1 < z0) return scratchBoxes;
+  if ((x1 - x0 + 1) * (z1 - z0 + 1) > GRID_MAX_CELLS) return world;
+  const mark = ++queryMark;
+  scratchIndices.length = 0;
+  for (let cx = x0; cx <= x1; cx++) {
+    for (let cz = z0; cz <= z1; cz++) {
+      for (const i of grid.cells[cx * grid.depth + cz]!) {
+        if (grid.seen[i] === mark) continue;
+        grid.seen[i] = mark;
+        scratchIndices.push(i);
+      }
+    }
+  }
+  // The scan's order, so a tie between two boxes goes to the one it always did.
+  scratchIndices.sort((a, b) => a - b);
+  for (const i of scratchIndices) scratchBoxes.push(world[i]!);
+  return scratchBoxes;
+}
+
 /** Open ground left round a world's outermost box when its file names no floor. */
 export const FLOOR_MARGIN_M = 5;
 
@@ -365,6 +466,8 @@ export function loadWorld(raw: unknown, level: { pieces: readonly PlacedPiece[];
     floorHalfExtent = half;
   }
   const mission = (raw as { mission?: unknown }).mission;
+  // U-083: a big world's boxes are indexed once, here; the list is never changed after.
+  indexBoxes(boxes);
   return {
     id: file.id,
     boxes,
@@ -483,12 +586,15 @@ export function rayWorld(
   const segMaxY = (o.y > endY ? o.y : endY) + pad;
   const segMinZ = (o.z < endZ ? o.z : endZ) - pad;
   const segMaxZ = (o.z > endZ ? o.z : endZ) + pad;
+  // U-083: in a world big enough to have been indexed, only the boxes in the ground cells the segment can touch are
+  // tested, in their original order, so the answer is the one the full scan gives.
+  const list = inflate <= GRID_MAX_INFLATE_M ? candidates(world, segMinX, segMaxX, segMinZ, segMaxZ) : world;
   let best: WorldBox | null = null;
   let bestT = maxDistance;
   /** Axis (0/1/2) and sign of the face the ray entered through, or -1 inside. */
   let bestAxis = -1;
   let bestSign = 0;
-  for (const box of world) {
+  for (const box of list) {
     if (box.maxX < segMinX || box.minX > segMaxX || box.maxY < segMinY || box.minY > segMaxY || box.maxZ < segMinZ || box.minZ > segMaxZ) continue;
     let tNear = 0;
     let tFar = bestT;
@@ -591,8 +697,7 @@ export function rayWorld(
   };
 }
 
-/** How far past a ray's own bounds a box must lie before `rayWorld` skips it without the slab test, metres: rounding, and far more. */
-const REJECT_PAD_M = 1e-6;
+
 
 export interface WorldSurface {
   box: WorldBox;
