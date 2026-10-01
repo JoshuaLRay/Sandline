@@ -294,7 +294,7 @@ html.mobile .phud-compass { width: 70vw; }
   pointer-events: none;
 }
 #scoreboard.hidden { display: none; }
-#scoreboard:has(.scoreboard-actions:not(.hidden)) { pointer-events: auto; }
+#scoreboard:has(.scoreboard-actions:not(.hidden)), #scoreboard:has(.scoreboard-runs:not(.hidden)) { pointer-events: auto; }
 .scoreboard-failure { text-align: center; color: #ffbda8; font-size: 14px; margin: 8px 0 12px; }
 .scoreboard-failure.hidden, .scoreboard-actions.hidden { display: none; }
 .scoreboard-actions { display: flex; gap: 10px; margin-top: 14px; justify-content: center; }
@@ -313,3 +313,13 @@ html.mobile .scoreboard-actions { flex-wrap: wrap; }
 #scoreboard tr.bot .scoreboard-name { opacity: 0.7; }
 .scoreboard-summary { margin-top: 10px; font-size: 12px; letter-spacing: 0.06em; text-align: center; }
 .scoreboard-summary.hidden { display: none; }
+
+/* U-090: the debrief and the host's choice of the next run, under the scoreboard. */
+.scoreboard-runs { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--rule, rgba(232,220,200,.4)); }
+.scoreboard-runs.hidden { display: none; }
+.scoreboard-runs-heading { font-size: 14px; letter-spacing: .04em; text-align: center; margin-bottom: 8px; }
+.scoreboard-runs-debrief, .scoreboard-runs-briefing { margin: 4px 0; font-size: 13px; line-height: 1.4; opacity: .85; }
+.scoreboard-runs-waiting { text-align: center; font-size: 13px; opacity: .85; margin-top: 8px; }
+.scoreboard-runs-option { margin-top: 10px; }
+.scoreboard-runs-option button { width: 100%; padding: 10px 12px; min-height: 44px; text-align: left; color: var(--dust, #e8dcc8); background: rgba(255,255,255,.1); border: 1px solid var(--rule, rgba(232,220,200,.4)); border-radius: 4px; cursor: pointer; }
+.scoreboard-runs-option button:hover, .scoreboard-runs-option button:focus-visible { background: rgba(255,255,255,.18); }
