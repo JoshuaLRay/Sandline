@@ -22,6 +22,8 @@ export interface SoldierSave {
 export interface CampaignCheckpoint {
   mission: string;
   objective: number;
+  /** U-074: which objectives of that objective's stage were already done (absent in older saves: none). */
+  done?: number[];
   elapsedTicks: number;
   spawns: { x: number; y: number; z: number }[];
   completedGroups: string[];
@@ -148,9 +150,15 @@ function normalizedState(input: CampaignState): CampaignState {
       throw new Error('checkpoint completedGroups must contain ids');
     }
     const world = boundedWorld(saved.world);
+    // U-074: which of a stage's objectives were done; additive, so an older save has none.
+    const done = saved.done ?? [];
+    if (!Array.isArray(done) || done.length > 16 || done.some((i) => !Number.isInteger(i) || i < 0 || i > 15)) {
+      throw new Error('checkpoint done must list objective indices');
+    }
     checkpoint = {
       mission: saved.mission,
       objective: saved.objective,
+      ...(done.length > 0 ? { done: [...done] } : {}),
       elapsedTicks: saved.elapsedTicks,
       spawns: saved.spawns.map((p) => ({ x: p.x, y: p.y, z: p.z })),
       completedGroups: [...saved.completedGroups],

@@ -992,7 +992,7 @@ export class Session {
    * U-059: an objective was completed while a soldier was downed, so its checkpoint is not saved yet (a restored world
    * never holds a downed soldier). It is taken once the squad is up; until then a retry goes back to `previous`.
    */
-  private queuedCheckpoint: { previous: { objective: number; elapsed: number } } | null = null;
+  private queuedCheckpoint: { previous: { objective: number; elapsed: number; done: readonly number[] } } | null = null;
   private readonly encounter: Encounter | null;
   private readonly testHumanCount: number | null;
   private readonly profileAi: boolean;
@@ -1120,9 +1120,8 @@ export class Session {
       report: (index, outcome, reason) => this.orderOutcome(index, outcome, reason),
       terminal: () => {
         const run = this.missionRun;
-        if (!run || !this.roomStarted || run.current.state !== 'progress' || run.current.phase === 'active') return null;
-        const { def } = run.objective;
-        return def.type === 'upload' ? { ...def.terminal, reachM: def.reachM } : null;
+        const up = run && this.roomStarted ? run.openUpload() : null;
+        return up && up.phase !== 'active' ? { ...up.def.terminal, reachM: up.def.reachM } : null;
       },
       reachable: (from, to) => {
         const m = this.navMesh;
@@ -1243,7 +1242,7 @@ export class Session {
     this.applyCaptured(this.capturedAtStart);
     const saved = options.campaign?.checkpoint;
     if (saved && this.missionRun && saved.mission === this.missionId) {
-      this.missionRun.restoreCheckpoint(saved.objective, saved.elapsedTicks);
+      this.missionRun.restoreCheckpoint(saved.objective, saved.elapsedTicks, saved.done ?? []);
       // U-060: the world the checkpoint saved, if the file has one a session could have written; else the basic checkpoint.
       const world = saved.world == null ? null : parseCheckpointWorld(saved.world);
       if (saved.world != null && world === null) console.warn(`[campaign] the saved checkpoint world for '${saved.mission}' was refused; resuming from the basic checkpoint`);
@@ -1330,10 +1329,9 @@ export class Session {
   private stepMission(): void {
     const run = this.missionRun;
     if (!run) return;
-    const beforeObjective = run.current.objective;
+    const beforeDone = new Set(run.doneObjectives);
     const beforeState = run.current.state;
-    const beforeCheckpoint = { objective: run.checkpoint, elapsed: run.checkpointElapsed };
-    const before = { type: run.current.type, label: run.current.label };
+    const beforeCheckpoint = { objective: run.checkpoint, elapsed: run.checkpointElapsed, done: run.checkpointDoneList };
     const inside = (a: GroundArea) => (p: { x: number; z: number }) => Math.sqrt((p.x - a.x) ** 2 + (p.z - a.z) ** 2) <= a.radius;
     const living = this.slots.filter((s) => !isDead(s.health));
     const standing = this.slots.filter((s) => isAlive(s.health));
@@ -1358,14 +1356,19 @@ export class Session {
       },
       rescue: (slot, reachM) => this.rescueHold(slot, reachM),
     });
-    if (beforeState === 'progress' && (run.current.objective > beforeObjective || run.current.state === 'complete')) {
+    // U-074: every objective that finished this tick (a stage can finish several at once).
+    const finished = run.doneObjectives.filter((i) => !beforeDone.has(i));
+    if (beforeState === 'progress' && finished.length > 0) {
       for (const slot of this.slots) this.awardXp(slot.index, 'objective');
-      // U-009: say so — the HUD's line moves straight on to what comes next.
-      if (before.type === 'upload') this.eventHost().message(`Upload complete: ${before.label}`);
-      // U-063: a rescue finished frees the prisoner it was held over.
-      if (before.type === 'rescue') this.completeRescue();
+      for (const i of finished) {
+        const def = run.objectiveDef(i);
+        // U-009: say so — the HUD's line moves straight on to what comes next.
+        if (def.type === 'upload') this.eventHost().message(`Upload complete: ${def.label}`);
+        // U-063: a rescue finished frees the prisoner it was held over.
+        if (def.type === 'rescue') this.completeRescue();
+      }
     }
-    if (run.current.state === 'progress' && run.current.objective > beforeObjective) this.requestCheckpoint(beforeCheckpoint);
+    if (run.current.state === 'progress' && finished.length > 0) this.requestCheckpoint(beforeCheckpoint);
     else if (this.queuedCheckpoint && run.current.state === 'progress') this.takeQueuedCheckpoint();
     if (beforeState === 'progress' && run.current.state === 'complete') {
       if (this.missionId) this.campaignCompletedMissions.add(this.missionId);
@@ -1538,11 +1541,11 @@ export class Session {
    * U-059: an objective was completed. The checkpoint is saved now, unless a soldier is downed, when it is queued
    * until the squad is up (`previous` is where a retry goes meanwhile: the last checkpoint that was saved).
    */
-  private requestCheckpoint(previous: { objective: number; elapsed: number }): void {
+  private requestCheckpoint(previous: { objective: number; elapsed: number; done: readonly number[] }): void {
     if (this.someoneDowned()) {
       // A second objective completed while still waiting keeps the first previous: it is still the last saved.
       this.queuedCheckpoint ??= { previous };
-      this.missionRun?.setCheckpoint(this.queuedCheckpoint.previous.objective, this.queuedCheckpoint.previous.elapsed);
+      this.missionRun?.setCheckpoint(this.queuedCheckpoint.previous.objective, this.queuedCheckpoint.previous.elapsed, this.queuedCheckpoint.previous.done);
       return;
     }
     this.queuedCheckpoint = null;
@@ -1554,7 +1557,7 @@ export class Session {
     const run = this.missionRun;
     if (!run || !this.queuedCheckpoint || this.someoneDowned()) return;
     this.queuedCheckpoint = null;
-    run.setCheckpoint(run.current.objective, run.elapsed);
+    run.setCheckpoint(run.point.objective, run.elapsed, run.point.done);
     this.captureMissionCheckpoint();
   }
 
@@ -1755,6 +1758,7 @@ export class Session {
           mission: this.missionId,
           objective: run.checkpoint,
           elapsedTicks: run.checkpointElapsed,
+          done: [...run.checkpointDoneList],
           spawns: saved.spawns.map((point) => ({ ...point })),
           completedGroups: [...saved.completedGroups],
           event: saved.event,
@@ -1786,7 +1790,7 @@ export class Session {
     const msg = { kind: 'Mission', ...this.missionRun.current } as const;
     for (const c of this.connections) if (c.state === 'active') c.send(msg);
     // T-4.28: the scoreboard's clock and objectives move with the state and the objective, not with every tick of progress.
-    const key = `${msg.state}:${msg.objective}`;
+    const key = `${msg.state}:${msg.objective}:${this.missionRun.doneCount}`;
     if (key !== this.lastStatsKey) {
       this.lastStatsKey = key;
       this.broadcastStats();
@@ -1800,7 +1804,7 @@ export class Session {
       kind: 'Stats',
       slots: this.slotStats.map((row) => ({ ...row })),
       elapsedTicks: this.missionRun?.elapsed ?? 0,
-      objectivesDone: view ? (view.state === 'complete' ? view.objectives : view.objective) : 0,
+      objectivesDone: view ? (view.state === 'complete' ? view.objectives : (this.missionRun?.doneCount ?? view.objective)) : 0,
       objectives: view?.objectives ?? 0,
     };
   }
@@ -2090,9 +2094,10 @@ export class Session {
       groupDead: (id) => this.spawnerValue?.broken(id) ?? false,
       spawnGroup: (id, seconds) => this.spawnerValue?.activate(id, seconds) ?? false,
       stopGroup: (id, seconds) => this.spawnerValue?.stop(id, seconds) ?? false,
-      objective: () => {
-        const m = this.missionRun?.current;
-        return m ? { index: m.objective, state: m.state, phase: m.phase } : null;
+      objectives: () => {
+        const run = this.missionRun;
+        if (!run) return null;
+        return { state: run.current.state, active: run.openObjectives().filter((o) => !o.done).map((o) => ({ index: o.index, phase: o.phase })) };
       },
       setObjective: (index) => {
         const changed = this.missionRun?.setObjective(index) ?? false;
@@ -3432,9 +3437,8 @@ export class Session {
   /** U-010: the running upload's lever, or null — no upload running, or one with no lever. */
   private activeLever(): UploadLever | null {
     const run = this.missionRun;
-    if (!run || !this.roomStarted || run.current.state !== 'progress' || run.current.phase !== 'active') return null;
-    const { def } = run.objective;
-    return def.type === 'upload' ? (def.lever ?? null) : null;
+    const up = run && this.roomStarted ? run.openUpload() : null;
+    return up && up.phase === 'active' ? (up.def.lever ?? null) : null;
   }
 
   /** U-010: how far the lever's user is through its pull, percent. */
@@ -3653,9 +3657,9 @@ export class Session {
    */
   private startUploadAt(slot: Slot): void {
     const run = this.missionRun;
-    if (!run || !this.roomStarted || run.current.state !== 'progress' || run.current.phase === 'active') return;
-    const { def } = run.objective;
-    if (def.type !== 'upload') return;
+    const up = run && this.roomStarted ? run.openUpload() : null;
+    if (!run || !up || up.phase === 'active') return;
+    const def = up.def;
     if (!isAlive(slot.health) || slot.state.vault || slot.mounted) return;
     const eye = soldierEye(slot.state);
     const t = def.terminal;

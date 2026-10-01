@@ -11,7 +11,7 @@ import { HEALTH, POSITION, dequantize, quantize } from './quantize.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isJoinCode } from './roomCode.ts';
 import { MAX_MARKS, ORDER_KINDS, type BotOrder, type OrderAddress, type OrderKind, type OrderPoint, type TargetMark } from '../sim/orders.ts';
-import { MISSION_FAILURE_REASONS, MISSION_STATES, OBJECTIVE_PHASES, OBJECTIVE_TYPES, type MissionView } from '../sim/mission.ts';
+import { MISSION_FAILURE_REASONS, MISSION_STATES, OBJECTIVE_PHASES, OBJECTIVE_TYPES, type MissionView, type OpenObjective } from '../sim/mission.ts';
 import type { ScriptBlockerState } from '../sim/events.ts';
 import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 import type { MissionStats } from '../sim/scoreboard.ts';
@@ -19,7 +19,7 @@ import { WEAPON_IDS, WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 import { PROJECTILE_IDS, PROJECTILE_INDEX_BITS } from '../sim/ballistics.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 60;
+export const PROTOCOL_VERSION = 61;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -751,6 +751,19 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeVarUint(msg.progress);
       w.writeVarUint(msg.goal);
       w.writeBits(MISSION_FAILURE_REASONS.indexOf(msg.failureReason ?? 'none'), 3);
+      // U-074: the objectives of a stage with several, each as the HUD lists it.
+      w.writeVarUint(msg.open?.length ?? 0);
+      for (const o of msg.open ?? []) {
+        w.writeVarUint(o.index);
+        w.writeBits(OBJECTIVE_TYPES.indexOf(o.type), 3);
+        w.writeBits(OBJECTIVE_PHASES.indexOf(o.phase), 2);
+        w.writeString(o.label);
+        w.writeBool(o.satisfied);
+        w.writeVarUint(o.progress);
+        w.writeVarUint(o.goal);
+        w.writeBool(o.done);
+        w.writeBool(o.optional);
+      }
       break;
     case 'MissionRestart':
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -1317,7 +1330,24 @@ export function decodeMessage(bytes: Uint8Array): Message {
             if (failureReason === undefined) throw new ProtocolError('unknown mission failure reason');
             if (objectives === 0 || objective >= objectives) throw new ProtocolError('objective out of the mission');
             if (progress > goal) throw new ProtocolError('objective past its goal');
-            return { kind: 'Mission', state, attempt, objective, objectives, type, phase, label, satisfied, progress, goal, ...(failureReason !== 'none' ? { failureReason } : {}) };
+            const openCount = r.readVarUint();
+            if (openCount > objectives) throw new ProtocolError('more open objectives than the mission has');
+            const open: OpenObjective[] = [];
+            for (let i = 0; i < openCount; i++) {
+              const index = r.readVarUint();
+              const openType = OBJECTIVE_TYPES[r.readBits(3)];
+              const openPhase = OBJECTIVE_PHASES[r.readBits(2)];
+              if (openType === undefined || openPhase === undefined) throw new ProtocolError('unknown open objective type or phase');
+              const openLabel = r.readString();
+              const openSatisfied = r.readBool();
+              const openProgress = r.readVarUint();
+              const openGoal = r.readVarUint();
+              const done = r.readBool();
+              const optional = r.readBool();
+              if (index >= objectives || openProgress > openGoal) throw new ProtocolError('open objective out of the mission');
+              open.push({ index, type: openType, label: openLabel, phase: openPhase, satisfied: openSatisfied, progress: openProgress, goal: openGoal, done, optional });
+            }
+            return { kind: 'Mission', state, attempt, objective, objectives, type, phase, label, satisfied, progress, goal, ...(failureReason !== 'none' ? { failureReason } : {}), ...(open.length > 0 ? { open } : {}) };
           }
           case EXT.Events: {
             const variant = r.readBits(2);

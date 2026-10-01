@@ -81,3 +81,53 @@ describe('the mission HUD line (T-3.34, T-4.14)', () => {
     expect(missionLine(view({ state: 'failed', type: 'defend', label: 'the compound', failureReason: 'area-overrun' }))).toContain('the compound overrun');
   });
 });
+
+describe('a stage of several objectives on the HUD (U-074)', () => {
+  const open = () =>
+    view({
+      objective: 0,
+      objectives: 3,
+      type: 'reach',
+      label: 'the road',
+      goal: 1,
+      open: [
+        { index: 0, type: 'reach', label: 'the road', phase: 'active', satisfied: false, progress: 0, goal: 1, done: false, optional: false },
+        { index: 1, type: 'destroy', label: 'the post', phase: 'active', satisfied: true, progress: 1, goal: 3, done: false, optional: false },
+        { index: 2, type: 'survive', label: 'extra time', phase: 'active', satisfied: true, progress: T(2), goal: T(10), done: false, optional: true },
+      ],
+    });
+
+  it('lists every objective of the stage, ticks the done ones and names the optional ones', () => {
+    const v = open();
+    expect(missionLine(v)).toBe('Objectives: reach the road  ·  0/1 there   |   destroy the post  ·  1/3 down   |   survive extra time  ·  2/10 s (optional)');
+    const done = { ...v, open: v.open!.map((o) => (o.index === 1 ? { ...o, done: true, progress: 3 } : o)) };
+    expect(missionLine(done)).toContain('✓ destroy the post  ·  3/3 down');
+  });
+
+  it('a stage of one reads as a single objective, as before', () => {
+    expect(missionLine(view({ objective: 1, objectives: 3, type: 'survive', label: 'the night', goal: T(90) }))).toBe('Objective 2/3: survive the night  ·  0/90 s');
+  });
+
+  it('prompts for an upload that is one of a stage, from the stage\'s own entry', () => {
+    const terminal = { x: 0, y: 1, z: 0 };
+    const def: MissionDef = {
+      id: 'm', world: 'w', respawn: false,
+      objectives: [
+        { type: 'reach', label: 'the road', area: 'start', who: 'any', stage: 0 },
+        { type: 'upload', label: 'the relay', terminal, reachM: 2, seconds: 10, onInterrupt: 'keep-progress', stage: 0 },
+      ],
+    };
+    const v = view({
+      objective: 0, objectives: 2, type: 'reach', label: 'the road', goal: 1,
+      open: [
+        { index: 0, type: 'reach', label: 'the road', phase: 'active', satisfied: false, progress: 0, goal: 1, done: false, optional: false },
+        { index: 1, type: 'upload', label: 'the relay', phase: 'idle', satisfied: false, progress: 0, goal: T(10), done: false, optional: false },
+      ],
+    });
+    expect(uploadPrompt(v, def, { x: 0, y: 1, z: 1 })).toBe('E  START THE UPLOAD');
+    expect(uploadPrompt(v, def, { x: 0, y: 1, z: 9 })).toBe('');
+    // Once it is done the stage lists it as done and nothing prompts.
+    const done = { ...v, open: v.open!.map((o) => (o.index === 1 ? { ...o, done: true } : o)) };
+    expect(uploadPrompt(done, def, { x: 0, y: 1, z: 1 })).toBe('');
+  });
+});
