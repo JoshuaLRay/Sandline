@@ -54,6 +54,8 @@ export interface SquadView {
   downedNear(slotIndex: number): DownedMate | null;
   /** U-053: the nearest hurt (not downed) squadmate this bot, with kits, would heal, or null. */
   hurtNear?(slotIndex: number): DownedMate | null;
+  /** U-084: whether this slot's bot is hurt below `bot.kitBelowFraction` of its health, upright, and has a health kit to use on itself. */
+  needsKit?(slotIndex: number): boolean;
   /** T-3.28: the order this slot's bot is under, or null. */
   order(slotIndex: number): ActiveOrder | null;
   /** T-3.28: how it went — done, or failed and why. */
@@ -108,6 +110,28 @@ export function registerFriendlyLeaves(registry: BrainRegistry): BrainRegistry {
         return 'running';
       }
       blackboard.set('intent', null);
+      blackboard.set('crouch', false);
+      blackboard.set('useKit', true);
+      return 'running';
+    })
+    /**
+     * U-084: hurt, with a kit, and no order that has it on the move or in a fight — none, a hold, or a move it has
+     * finished — so it can stand where it is and use the kit on itself.
+     */
+    .condition('kitSelf', ({ ctx }) => {
+      if (!isSquadBody(ctx) || !ctx.squad.needsKit?.(ctx.index)) return false;
+      const order = ctx.squad.order(ctx.index);
+      return order === null || order.order === 'hold' || (order.order === 'move' && order.status === 'done');
+    })
+    /** Stand and hold the use of a health kit on itself until it is healed or hurt again (the session's kit path). */
+    .action('healSelf', ({ ctx, blackboard }) => {
+      if (!isSquadBody(ctx)) return 'failure';
+      blackboard.set('intent', null);
+      blackboard.set('fireAt', null);
+      blackboard.set('suppressAt', null);
+      blackboard.set('reload', false);
+      blackboard.set('lookAt', null);
+      blackboard.set('interact', false);
       blackboard.set('crouch', false);
       blackboard.set('useKit', true);
       return 'running';

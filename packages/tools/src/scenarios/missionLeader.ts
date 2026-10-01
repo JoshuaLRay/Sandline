@@ -147,6 +147,11 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
       const up = f.slots.filter((i) => standing(i) && !reviving.has(i));
       const arrived = up.length > 0 && up.every((i) => flat(session.slots[i]!.state, goal) <= config.arriveM);
       if (arrived || tick - since[t]! >= config.stopSeconds / TICK_SECONDS) {
+        // A lead brings the fireteams to the objective together: one does not start its last leg while another has
+        // not started its own, for up to `groupUpSeconds` (they would arrive one at a time, the faster into the garrison alone).
+        const lastLeg = at[t]! + 1 === stops[t]!.length - 1;
+        const behind = SQUAD.fireteams.some((o, u) => u !== t && o.slots.some((i) => standing(i)) && at[u]! < stops[u]!.length - 1);
+        if (lastLeg && behind && tick - since[t]! < config.groupUpSeconds / TICK_SECONDS) return;
         at[t]!++;
         since[t] = tick;
         orderTeam(t);
