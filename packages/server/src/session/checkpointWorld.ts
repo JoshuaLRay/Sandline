@@ -188,6 +188,34 @@ function spawner(where: string, v: unknown): SpawnerCheckpoint | null {
   };
 }
 
+function slotCheckpoint(w: string, s: unknown): SlotCheckpoint {
+  const x = obj(w, s);
+  return {
+    health: num(`${w}.health`, x['health']),
+    weapon: str(`${w}.weapon`, x['weapon']),
+    primary: strOrNull(`${w}.primary`, x['primary']),
+    secondary: strOrNull(`${w}.secondary`, x['secondary']),
+    noPistol: bool(`${w}.noPistol`, x['noPistol']),
+    pickedUp: bool(`${w}.pickedUp`, x['pickedUp']),
+    ammo: list(`${w}.ammo`, x['ammo'], 16).map((a, k) => {
+      const pair = list(`${w}.ammo[${k}]`, a, 2);
+      return [str(`${w}.ammo[${k}][0]`, pair[0]), int(`${w}.ammo[${k}][1]`, pair[1], 0, 65535)] as [string, number];
+    }),
+    pouch: pouch(`${w}.pouch`, x['pouch']),
+    kits: int(`${w}.kits`, x['kits'], 0, 255),
+    equipment: int(`${w}.equipment`, x['equipment'], -1, 255),
+  };
+}
+
+/** U-077: a soldier's saved loadout from its JSON, or null if it is not what a session would have written. */
+export function parseSoldierLoadout(raw: unknown): SlotCheckpoint | null {
+  try {
+    return slotCheckpoint('loadout', raw);
+  } catch {
+    return null;
+  }
+}
+
 /** The checkpoint world from its saved JSON, or null if any part of it is not what a session would have written. */
 export function parseCheckpointWorld(raw: unknown): CheckpointWorld | null {
   try {
@@ -196,25 +224,7 @@ export function parseCheckpointWorld(raw: unknown): CheckpointWorld | null {
     return {
       version: CHECKPOINT_WORLD_VERSION,
       seconds: num('seconds', o['seconds']),
-      slots: list('slots', o['slots'], MAX_SLOTS).map((s, i) => {
-        const w = `slots[${i}]`;
-        const x = obj(w, s);
-        return {
-          health: num(`${w}.health`, x['health']),
-          weapon: str(`${w}.weapon`, x['weapon']),
-          primary: strOrNull(`${w}.primary`, x['primary']),
-          secondary: strOrNull(`${w}.secondary`, x['secondary']),
-          noPistol: bool(`${w}.noPistol`, x['noPistol']),
-          pickedUp: bool(`${w}.pickedUp`, x['pickedUp']),
-          ammo: list(`${w}.ammo`, x['ammo'], 16).map((a, k) => {
-            const pair = list(`${w}.ammo[${k}]`, a, 2);
-            return [str(`${w}.ammo[${k}][0]`, pair[0]), int(`${w}.ammo[${k}][1]`, pair[1], 0, 65535)] as [string, number];
-          }),
-          pouch: pouch(`${w}.pouch`, x['pouch']),
-          kits: int(`${w}.kits`, x['kits'], 0, 255),
-          equipment: int(`${w}.equipment`, x['equipment'], -1, 255),
-        };
-      }),
+      slots: list('slots', o['slots'], MAX_SLOTS).map((s, i) => slotCheckpoint(`slots[${i}]`, s)),
       ground: list('ground', o['ground'], MAX_GROUND).map((g, i) => {
         const w = `ground[${i}]`;
         const x = obj(w, g);

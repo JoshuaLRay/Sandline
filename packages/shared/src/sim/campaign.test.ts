@@ -34,6 +34,10 @@ describe('refusing a bad campaign (U-088)', () => {
   const ok = known(['a', 'b']);
   it('refuses an unknown mission, a repeat, empty text and stray keys', () => {
     expect(() => parseCampaign({ id: 't', missions: [entry('zzz')] }, ok)).toThrow(/not a registered mission/);
+    // U-077: whether a replay's end loadout is kept for the campaign; true when the data says nothing.
+    expect(parseCampaign({ id: 't', missions: [entry('a')] }, known(['a'])).replayKeepsLoadout).toBe(true);
+    expect(parseCampaign({ id: 't', replayKeepsLoadout: false, missions: [entry('a')] }, known(['a'])).replayKeepsLoadout).toBe(false);
+    expect(() => parseCampaign({ id: 't', replayKeepsLoadout: 'no', missions: [entry('a')] }, known(['a']))).toThrow(/replayKeepsLoadout/);
     expect(() => parseCampaign({ id: 't', missions: [entry('a'), entry('a')] }, ok)).toThrow(/listed twice/);
     expect(() => parseCampaign({ id: 't', missions: [entry('a', { title: ' ' })] }, ok)).toThrow(/title/);
     expect(() => parseCampaign({ id: 't', missions: [entry('a', { briefing: [] })] }, ok)).toThrow(/briefing/);

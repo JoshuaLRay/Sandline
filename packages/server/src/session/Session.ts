@@ -1047,6 +1047,9 @@ export class Session {
   private handedOff = false;
   /** U-089: the replay pool as the save held it: in play in a replay run, carried through untouched in a campaign run. */
   private readonly replayPoolAtLoad: ReplayPrisoner[];
+  /** U-077: each soldier's loadout at the start of this run (null: the class's), and what they carried when the mission was won. */
+  private startLoadout: (SlotCheckpoint | null)[] = [];
+  private completionLoadout: SlotCheckpoint[] | null = null;
   private readonly campaignSoldiers: CampaignState['soldiers'];
   private readonly xp: SoldierXp;
   /** Local sessions have no identity service; keep a temporary identity across seat resumes. */
@@ -1266,6 +1269,8 @@ export class Session {
     }
     // T-4.27: every slot plays a class from the start; a bot's is the slot's default.
     this.reassignClasses();
+    this.startLoadout = this.campaignSoldiers.map((soldier) => soldier.loadout ?? null);
+    for (const slot of this.slots) this.applyStartLoadout(slot);
     // U-061: the prisoners the campaign carries in are out of play from the start.
     // U-089: only the pool of this kind of run is in play: a campaign run holds the campaign pool (the soldier records),
     // a replay run the replay pool; the other is kept for the next run of its kind.
@@ -1411,6 +1416,8 @@ export class Session {
     if (beforeState === 'progress' && run.current.state === 'complete') {
       // U-089: a replay does not move the campaign on.
       if (this.missionId && this.runKind === 'campaign') this.campaignCompletedMissions.add(this.missionId);
+      // U-077: what each soldier carries as the mission is won is what the campaign holds for the next run.
+      this.completionLoadout = this.slots.map((slot) => this.checkpointSlot(slot));
       this.missionCheckpointState = null;
       this.queuedCheckpoint = null;
       this.persistCampaign();
@@ -1670,6 +1677,44 @@ export class Session {
     };
   }
 
+  /** U-052: put a soldier's guns, rounds, pouch, kits and equipment back as a snapshot has them. Health is the caller's. */
+  private applySlotLoadout(slot: Slot, snap: SlotCheckpoint): void {
+    slot.primary = snap.primary;
+    slot.secondary = snap.secondary;
+    slot.noPistol = snap.noPistol;
+    slot.pickedUp = snap.pickedUp;
+    slot.stowed.clear();
+    for (const [id, rounds] of snap.ammo) {
+      if (id === snap.weapon) continue;
+      const state = createWeaponState(getWeapon(id));
+      state.ammo = rounds;
+      slot.stowed.set(id, state);
+    }
+    slot.weapon = getWeapon(snap.weapon);
+    slot.weaponState = createWeaponState(slot.weapon);
+    slot.weaponState.ammo = snap.ammo.find(([id]) => id === snap.weapon)?.[1] ?? slot.weaponState.ammo;
+    slot.pouch = [...snap.pouch];
+    slot.kits = snap.kits;
+    slot.equipment = snap.equipment;
+    slot.heldProjectile = -1;
+  }
+
+  /**
+   * U-077: a campaign run starts each soldier from the loadout the campaign holds (absent: the class's), and a retry
+   * or a restart returns to that, never to a half-spent state. A replay run starts from the class's, the mission's default.
+   */
+  private applyStartLoadout(slot: Slot): void {
+    const snap = this.startLoadout[slot.index];
+    if (!snap || this.classLoadouts !== 'class' || this.runKind !== 'campaign') return;
+    try {
+      for (const [id] of snap.ammo) getWeapon(id);
+      getWeapon(snap.weapon);
+    } catch {
+      return;
+    }
+    this.applySlotLoadout(slot, snap);
+  }
+
   /** U-052: a retry puts the world back as the checkpoint saw it: what each soldier carried, and what lay on the ground. */
   private restoreCheckpointWorld(saved: {
     seconds?: number;
@@ -1685,24 +1730,7 @@ export class Session {
       if (!slot) continue;
       // U-059: as hurt as it was when saved (nobody was downed then), never above its maximum.
       if (snap.health > 0) slot.health.current = Math.min(snap.health, slot.health.max);
-      slot.primary = snap.primary;
-      slot.secondary = snap.secondary;
-      slot.noPistol = snap.noPistol;
-      slot.pickedUp = snap.pickedUp;
-      slot.stowed.clear();
-      for (const [id, rounds] of snap.ammo) {
-        if (id === snap.weapon) continue;
-        const state = createWeaponState(getWeapon(id));
-        state.ammo = rounds;
-        slot.stowed.set(id, state);
-      }
-      slot.weapon = getWeapon(snap.weapon);
-      slot.weaponState = createWeaponState(slot.weapon);
-      slot.weaponState.ammo = snap.ammo.find(([id]) => id === snap.weapon)?.[1] ?? slot.weaponState.ammo;
-      slot.pouch = [...snap.pouch];
-      slot.kits = snap.kits;
-      slot.equipment = snap.equipment;
-      slot.heldProjectile = -1;
+      this.applySlotLoadout(slot, snap);
     }
     for (const g of saved.ground ?? []) this.placePickupItem(g.weapon, g.ammo, g, g.yaw, g.authored);
     for (const d of saved.placed ?? []) {
@@ -1814,8 +1842,12 @@ export class Session {
     const held = this.missionRun?.current.state === 'complete' ? this.capturedList() : (saved?.captured ?? this.capturedAtStart);
     // U-089: this run's prisoners go in this run's pool; the other pool is written as it was loaded.
     const campaignRun = this.runKind === 'campaign';
-    const soldiers = this.campaignSoldiers.map((soldier, slot) => {
+    const soldiers = this.campaignSoldiers.map((saved, slot) => {
+      let soldier = saved;
       const classId = this.classSlots[slot] || soldier.classId;
+      // U-077: a won mission's end loadout is the campaign's; a replay's only if the campaign keeps it. Until then, the loadout it began with.
+      const kept = this.completionLoadout && (campaignRun || this.campaignDef.replayKeepsLoadout) ? this.completionLoadout[slot] : undefined;
+      if (kept) soldier = { ...soldier, loadout: kept };
       if (!campaignRun) return { ...soldier, classId };
       const { captured: _captured, prisoner: _prisoner, ...rest } = soldier;
       const prisoner = held.find((c) => c.slot === slot);
@@ -1999,6 +2031,7 @@ export class Session {
       slot.pouch = this.pouchFor(slot.index);
       slot.kits = this.kitsFor(slot.index);
       slot.equipment = this.equipmentFor(slot.index);
+      this.applyStartLoadout(slot);
       slot.nextThrowAt = 0;
       this.orders[slot.index] = null;
       this.orderRuns[slot.index] = null;
