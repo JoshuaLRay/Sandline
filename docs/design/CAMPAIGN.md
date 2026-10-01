@@ -100,7 +100,7 @@ playable as the test and QA mission until the new campaign mission 1 replaces it
 | Q2 | **Who is the "team leader"** who chooses the next run? | The player in slot 0 (the squad lead, Preach); if that seat is a bot, the room's host. |
 | Q3 | **Does a failed mission end a campaign run?** The owner chooses after "complete **or failure**". | A failed campaign run lets the leader retry (the same mission) or choose a replay, never skip ahead. |
 | Q4 | **"All 7 safely" when the POW dies.** | The mission fails if the POW dies, as it does when a squad character dies today (U-033), and the retry goes back to the last checkpoint. |
-| Q5 | **"10x the size"** is an area; that is about 3.2x in each direction (roughly 630 x 320 m). | Confirm by the feasibility spike (U-076); keep the three lanes and a 30–45 minute pace as the aim, with the size following. |
+| Q5 | **"10x the size"** is an area. mission-01's *play* area is about 65 x 90 m (5,800 m2), not its 200 x 200 m floor, so 10x is about 58,000 m2: three 40 m lanes by about 480 m. | **Measured by U-076:** feasible once U-081 (the cover search cost) and U-082 (rectangular floors) are done; keep a map under about 4x until U-081 lands. |
 | Q6 | **Carry-over of ammo** across a mission that was failed, replayed or restarted. | A mission starts from what the campaign file holds at its start; a restart or a retry returns to that, never to a half-spent state. |
 | Q7 | **Where XP lives.** ADR-019 puts it on the campaign soldier; the owner expects it may move to the player. | Leave as is; not a campaign-design blocker. Note it when XP is revisited. |
 

@@ -21,6 +21,7 @@
     "import:voice": "tsx packages/tools/src/import-voice-submission.ts",
     "bench:rapier": "tsx packages/tools/src/bench-rapier.ts",
     "bench:nav": "tsx packages/tools/src/bench-nav.ts",
+    "spike:large-map": "tsx packages/tools/src/spike-large-map.ts",
     "test:parity-browsers": "vitest run --config vitest.browser.config.ts",
     "build:artifact": "pnpm --filter @sandline/client build && tsx packages/tools/src/build-artifact.ts",
     "bench:bandwidth": "tsx packages/tools/src/bench-bandwidth.ts",
