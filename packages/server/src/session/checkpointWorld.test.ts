@@ -252,6 +252,19 @@ describe('the checkpoint world in the campaign file (U-060)', () => {
     expect(parseCheckpointWorld('nope')).toBeNull();
   });
 
+  it('takes a tank\'s drive through JSON and refuses a malformed one (U-069)', () => {
+    const { state } = saved();
+    const world = JSON.parse(JSON.stringify(state.checkpoint!.world)) as { enemies: Record<string, unknown>[] };
+    const vehicle = { path: [{ x: 1, z: 2 }, { x: 3, z: 4 }], next: 1, heading: 17.5, phase: 'driving', origin: { x: 0, z: 0 }, withdrawing: false, turretYaw: 300, cannonIn: 2.5 };
+    const withTank = (v: unknown) => ({ ...world, enemies: [{ ...world.enemies[0]!, vehicle: v }] });
+    expect(parseCheckpointWorld(withTank(vehicle))!.enemies[0]!.vehicle).toEqual(vehicle);
+    expect(parseCheckpointWorld(withTank({ ...vehicle, origin: null }))!.enemies[0]!.vehicle!.origin).toBeNull();
+    expect(parseCheckpointWorld(withTank({ ...vehicle, phase: 'flying' }))).toBeNull();
+    expect(parseCheckpointWorld(withTank({ ...vehicle, next: 3 }))).toBeNull();
+    expect(parseCheckpointWorld(withTank({ ...vehicle, turretYaw: 1024 }))).toBeNull();
+    expect(parseCheckpointWorld(withTank({ ...vehicle, cannonIn: Number.NaN }))).toBeNull();
+  });
+
   it('the database drops a world past its size bound and keeps the basic checkpoint', () => {
     const { state } = saved();
     const db = new CampaignDatabase(':memory:');

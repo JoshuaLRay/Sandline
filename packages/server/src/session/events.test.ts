@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   PROTOCOL_VERSION,
+  type MissionDef,
   type Message,
   TICK_SECONDS,
   createLoopbackPair,
@@ -71,13 +72,15 @@ describe('authored loot action (U-052)', () => {
       groupDead: () => false,
       spawnGroup: () => true,
       stopGroup: () => true,
-      objective: () => ({ index: 0, state: 'progress' }),
+      objective: () => ({ index: 0, state: 'progress', phase: 'idle' }),
       setObjective: () => true,
       interruptUpload: () => true,
       setBlocker: () => {},
       message: () => {},
       callout: () => {},
       placeLoot: (...args) => placed.push(args),
+      spawnVehicle: () => {},
+      withdrawVehicles: () => {},
     };
     const run = new EventRun(script({ kind: 'pickup', weapon: 'sniper-semi-left', ammo: 4, x: 7, y: 0, z: 65.3, yawDeg: 90 }), ENCOUNTER, WORLD, host);
     run.step(TICK_SECONDS);
@@ -110,7 +113,7 @@ describe('event runner triggers and actions (T-4.15)', () => {
       MISSION,
     );
 
-    let objective = { index: 0, state: 'progress' as const };
+    let objective = { index: 0, state: 'progress' as const, phase: 'idle' as const };
     let squad = [{ x: 10, z: 10 }];
     let dead = false;
     const messages: string[] = [];
@@ -128,7 +131,7 @@ describe('event runner triggers and actions (T-4.15)', () => {
       objective: () => objective,
       setObjective: (index) => {
         objectiveSets.push(index);
-        objective = { index, state: 'progress' };
+        objective = { index, state: 'progress', phase: 'idle' };
         return true;
       },
       interruptUpload: () => {
@@ -139,6 +142,8 @@ describe('event runner triggers and actions (T-4.15)', () => {
       message: (text) => messages.push(text),
       callout: (id) => callouts.push(id),
       placeLoot: () => {},
+      spawnVehicle: () => {},
+      withdrawVehicles: () => {},
     };
     const run = new EventRun(script, ENCOUNTER, WORLD, host);
 
@@ -146,7 +151,7 @@ describe('event runner triggers and actions (T-4.15)', () => {
     run.step(0);
     expect(messages).toEqual(['started']);
 
-    objective = { index: 1, state: 'progress' };
+    objective = { index: 1, state: 'progress', phase: 'idle' };
     run.step(0.1);
     expect(callouts).toEqual(['objective-clear']);
 
@@ -327,5 +332,74 @@ describe('blocker navigation on the real two-route mission (T-4.15)', () => {
     expect(reopened).not.toBeNull();
     expect(reopened!.points.at(-1)!.z).toBeGreaterThan(68);
     nav.destroy();
+  });
+});
+
+describe('vehicle events (U-069)', () => {
+  const UPLOAD_MISSION: MissionDef = {
+    id: 'v',
+    world: 'greybox-01',
+    respawn: false,
+    objectives: [{ type: 'destroy', label: 'g', group: 'g' }, { type: 'upload', label: 'u', terminal: { x: 10, y: 1.2, z: 12.5 }, reachM: 2, seconds: 10, onInterrupt: 'keep-progress' }],
+  };
+  const parse = (events: unknown[], mission: MissionDef | null = UPLOAD_MISSION) =>
+    parseEventScript({ world: 'greybox-01', blockers: [], events }, ENCOUNTER, WORLD, mission);
+  const tank = (over: Record<string, unknown> = {}) => ({
+    kind: 'spawn-vehicle',
+    vehicle: 'tank',
+    x: -40,
+    z: -40,
+    path: [{ x: -40, z: -30 }, { x: -40, z: -20 }],
+    ...over,
+  });
+
+  it('parses an upload-start trigger only for an upload objective', () => {
+    const ok = parse([{ id: 'a', trigger: { kind: 'upload-start', objective: 1 }, actions: [tank(), { kind: 'withdraw-vehicles' }] }]);
+    expect(ok.events[0]!.trigger).toEqual({ kind: 'upload-start', objective: 1 });
+    expect(ok.events[0]!.actions[0]).toMatchObject({ kind: 'spawn-vehicle', vehicle: 'tank', yawDeg: 0 });
+    expect(() => parse([{ id: 'a', trigger: { kind: 'upload-start', objective: 0 }, actions: [] }])).toThrow(/not an upload/);
+  });
+
+  it('refuses a vehicle that is not one, no path, too long a path, and a hull that does not fit', () => {
+    const at = (action: unknown) => () => parse([{ id: 'a', trigger: { kind: 'time', seconds: 0 }, actions: [action] }]);
+    expect(at(tank({ vehicle: 'rifleman' }))).toThrow(/vehicle archetype/);
+    expect(at(tank({ path: [] }))).toThrow(/path/);
+    expect(at(tank({ path: Array.from({ length: 65 }, () => ({ x: -40, z: -30 })) }))).toThrow(/path/);
+    // Inside as-wall-1 (x 3..20, z 12.8..13.2).
+    expect(at(tank({ path: [{ x: 10, z: 13 }] }))).toThrow(/hull does not fit/);
+    // Close enough that the hull, not just the point, would be in the wall.
+    expect(at(tank({ path: [{ x: 10, z: 14.5 }] }))).toThrow(/hull does not fit/);
+    expect(at(tank({ x: 10, z: 13 }))).toThrow(/hull does not fit/);
+  });
+
+  it('fires upload-start only once the upload is running, and once', () => {
+    const spawned: unknown[] = [];
+    let objective: { index: number; state: 'progress'; phase: 'idle' | 'active' | 'interrupted' } = { index: 1, state: 'progress', phase: 'idle' };
+    const host: EventHost = {
+      squadFeet: () => [],
+      groupDead: () => false,
+      spawnGroup: () => true,
+      stopGroup: () => true,
+      objective: () => objective,
+      setObjective: () => true,
+      interruptUpload: () => true,
+      setBlocker: () => {},
+      message: () => {},
+      callout: () => {},
+      placeLoot: () => {},
+      spawnVehicle: (...args) => spawned.push(args),
+      withdrawVehicles: () => {},
+    };
+    const run = new EventRun(parse([{ id: 'a', trigger: { kind: 'upload-start', objective: 1 }, actions: [tank()] }]), ENCOUNTER, WORLD, host);
+    run.step(0);
+    run.step(1);
+    expect(spawned).toHaveLength(0);
+    objective = { ...objective, phase: 'active' };
+    run.step(2);
+    objective = { ...objective, phase: 'interrupted' };
+    run.step(3);
+    objective = { ...objective, phase: 'active' };
+    run.step(4);
+    expect(spawned).toEqual([['tank', { x: -40, z: -40 }, 0, [{ x: -40, z: -30 }, { x: -40, z: -20 }]]]);
   });
 });

@@ -126,6 +126,82 @@
           "group": "exfil-ambush"
         }
       ]
+    },
+    {
+      "$comment": "U-069: the tank (U-035) comes when the upload is actually running — a press at the terminal, a squadmate's too — not when the objective is merely reached; once per attempt, and a restarted upload does not bring a second. It leaves the squad start by the west road, goes round the low walls where the sniper nests are, and stops at the compound's west gap, with the terminal in its sights.",
+      "id": "tank-arrives",
+      "trigger": {
+        "kind": "upload-start",
+        "objective": 3
+      },
+      "actions": [
+        {
+          "kind": "message",
+          "text": "Armour on the west road — a tank is coming for the compound"
+        },
+        {
+          "kind": "callout",
+          "id": "contact"
+        },
+        {
+          "kind": "spawn-vehicle",
+          "vehicle": "tank",
+          "x": -22,
+          "z": -12,
+          "yawDeg": 0,
+          "path": [
+            {
+              "x": -22,
+              "z": 0
+            },
+            {
+              "x": -22,
+              "z": 26
+            },
+            {
+              "x": -29.5,
+              "z": 29
+            },
+            {
+              "x": -29.5,
+              "z": 37
+            },
+            {
+              "x": -22,
+              "z": 41
+            },
+            {
+              "x": -22,
+              "z": 60
+            },
+            {
+              "x": -19,
+              "z": 68
+            },
+            {
+              "x": -16,
+              "z": 70.2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "$comment": "U-069: the upload done, a tank still alive turns back the way it came and leaves, so the way out is open; a destroyed one stays where it fell.",
+      "id": "tank-withdraws",
+      "trigger": {
+        "kind": "objective-complete",
+        "objective": 3
+      },
+      "actions": [
+        {
+          "kind": "withdraw-vehicles"
+        },
+        {
+          "kind": "message",
+          "text": "Upload complete — the tank is pulling back"
+        }
+      ]
     }
   ]
 }

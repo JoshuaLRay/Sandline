@@ -14,6 +14,7 @@ import {
   type EventTrigger,
   type GroundArea,
   type MissionStatus,
+  type ObjectivePhase,
   type ScriptBlockerState,
   type World,
   resolveArea,
@@ -32,7 +33,7 @@ export interface EventHost {
   spawnGroup(id: string, seconds: number): boolean;
   /** U-001: no more waves from the group. */
   stopGroup(id: string, seconds: number): boolean;
-  objective(): { index: number; state: MissionStatus } | null;
+  objective(): { index: number; state: MissionStatus; phase: ObjectivePhase } | null;
   setObjective(index: number): boolean;
   /** U-009: stop the running upload, if one is. */
   interruptUpload(): boolean;
@@ -41,6 +42,10 @@ export interface EventHost {
   callout(id: string): void;
   /** U-052: authored loot on the ground. */
   placeLoot(weapon: string, ammo: number, at: { x: number; y: number; z: number }, yawDeg: number): void;
+  /** U-069: a vehicle to drive `path` from where it is put. */
+  spawnVehicle(vehicle: string, at: { x: number; z: number }, yawDeg: number, path: readonly { x: number; z: number }[]): void;
+  /** U-069: every driving vehicle heads out the way it came. */
+  withdrawVehicles(): void;
 }
 
 /** A group's own trigger as an event; none for a group only a script sends (U-001). */
@@ -147,6 +152,10 @@ export class EventRun {
     switch (trigger.kind) {
       case 'objective-start':
         return started === trigger.objective;
+      case 'upload-start': {
+        const now = this.host.objective();
+        return now !== null && now.index === trigger.objective && now.state === 'progress' && now.phase === 'active';
+      }
       case 'objective-complete':
         return completed === trigger.objective;
       case 'enter':
@@ -193,6 +202,12 @@ export class EventRun {
         break;
       case 'pickup':
         this.host.placeLoot(action.weapon, action.ammo, { x: action.x, y: action.y, z: action.z }, action.yawDeg);
+        break;
+      case 'spawn-vehicle':
+        this.host.spawnVehicle(action.vehicle, { x: action.x, z: action.z }, action.yawDeg, action.path);
+        break;
+      case 'withdraw-vehicles':
+        this.host.withdrawVehicles();
         break;
     }
   }

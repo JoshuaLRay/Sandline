@@ -35,16 +35,34 @@ export interface VehicleDrive {
   /** Hull heading in table units, kept fractional so a slow turn is not lost to rounding. */
   heading: number;
   phase: DrivePhase;
+  /** U-069: where it started, so a withdrawal can drive all the way out. */
+  origin: DrivePoint | null;
+  /** U-069: heading back out along the way it came; it holds its fire and is gone on arriving. */
+  withdrawing: boolean;
 }
 
 /** Keep it to a road: a path longer than this is a mistake in the data. */
 export const MAX_DRIVE_POINTS = 64;
 
 /** A drive that starts at `path[0]`'s direction of travel: it begins facing the wire yaw given (1024 to a turn). */
-export function createDrive(path: readonly DrivePoint[], yawWire: number): VehicleDrive {
+export function createDrive(path: readonly DrivePoint[], yawWire: number, origin: DrivePoint | null = null): VehicleDrive {
   if (path.length === 0 || path.length > MAX_DRIVE_POINTS) throw new RangeError(`a drive path has 1–${MAX_DRIVE_POINTS} points, got ${path.length}`);
   for (const p of path) if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) throw new RangeError('a drive path point is not finite');
-  return { path: path.map((p) => ({ x: p.x, z: p.z })), next: 0, heading: ((yawWire & (WIRE_ANGLE_UNITS - 1)) * ANGLE_UNITS) / WIRE_ANGLE_UNITS, phase: 'driving' };
+  return { path: path.map((p) => ({ x: p.x, z: p.z })), next: 0, heading: ((yawWire & (WIRE_ANGLE_UNITS - 1)) * ANGLE_UNITS) / WIRE_ANGLE_UNITS, phase: 'driving', origin: origin ? { x: origin.x, z: origin.z } : null, withdrawing: false };
+}
+
+/**
+ * U-069: turn the drive about to leave the way it came: the waypoints it has passed, last first, then where it
+ * started. A tank that has not moved yet leaves by its start alone. Idempotent: already withdrawing is left as is.
+ */
+export function withdrawDrive(drive: VehicleDrive): void {
+  if (drive.withdrawing) return;
+  const back = drive.path.slice(0, Math.min(drive.next, drive.path.length)).reverse();
+  if (drive.origin) back.push({ x: drive.origin.x, z: drive.origin.z });
+  drive.path = back;
+  drive.next = 0;
+  drive.withdrawing = true;
+  drive.phase = back.length === 0 ? 'arrived' : 'driving';
 }
 
 /** The hull's heading as a wire yaw (1024 to a turn), for the entity's replicated facing. */
