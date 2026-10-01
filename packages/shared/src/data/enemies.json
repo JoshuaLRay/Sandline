@@ -131,6 +131,32 @@
       "speedMps": 1.6,
       "turnDegPerSec": 30,
       "arriveM": 1.5,
+      "turretTurnDegPerSec": 45,
+      "fireMaxSpeedMps": 0.5,
+      "cannon": {
+        "projectile": "rocket",
+        "intervalSeconds": 6,
+        "tellSeconds": 1.0,
+        "rangeM": 90,
+        "alignDeg": 3,
+        "speedMPerSec": 28,
+        "blastDamage": 140,
+        "blastRadiusM": 4.5,
+        "muzzle": [
+          0,
+          2.2,
+          3.0
+        ]
+      },
+      "machineGun": {
+        "rangeM": 60,
+        "alignDeg": 6,
+        "muzzle": [
+          0,
+          2.1,
+          2.2
+        ]
+      },
       "hull": {
         "from": [
           0,

@@ -187,7 +187,7 @@ describe('interest management on the wire (T-3.12)', () => {
     slotA.state.x = home.x;
     slotA.state.z = home.z;
     run(session, [a, b], 1);
-    expect(a.sees(id)).toEqual({ x: 3.5, z: 14, health: 70, enemy: [0, 1, 0] });
+    expect(a.sees(id)).toEqual({ x: 3.5, z: 14, health: 70, enemy: [0, 1, 0, 0] });
     expect(a.failures).toEqual([]);
     expect(b.failures).toEqual([]);
   });

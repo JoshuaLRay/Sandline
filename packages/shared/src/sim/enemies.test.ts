@@ -80,6 +80,10 @@ const SHAPED: Record<string, Record<string, unknown>> = {
       speedMps: 1.6,
       turnDegPerSec: 30,
       arriveM: 1.5,
+      turretTurnDegPerSec: 45,
+      fireMaxSpeedMps: 0.5,
+      cannon: { projectile: 'rocket', intervalSeconds: 6, tellSeconds: 1, rangeM: 90, alignDeg: 3, speedMPerSec: 28, blastDamage: 140, blastRadiusM: 4.5, muzzle: [0, 2.2, 3] },
+      machineGun: { rangeM: 60, alignDeg: 6, muzzle: [0, 2.1, 2.2] },
       hull: { from: [0, 1, -1.6], to: [0, 1, 1.6], radius: 1.3 },
       turret: { from: [0, 2, 0], to: [0, 2.3, 0], radius: 0.9 },
       armour: { bullet: 0.1, blast: { frag: 0.1, rocket: 1, c4: 1, claymore: 1 }, blastDefault: 0.1 },
@@ -182,6 +186,9 @@ describe('the five archetype shapes (T-3.23)', () => {
     ['a rifleman with armour', 'rifleman', { vehicle: SHAPED['tank']!['vehicle'] }, /"vehicle" is not a rifleman's/],
     ['armour against a projectile that does not exist', 'tank', { vehicle: { ...(SHAPED['tank']!['vehicle'] as object), armour: { bullet: 0.1, blast: { brick: 1 }, blastDefault: 0.1 } } }, /brick/],
     ['armour that lets through more than a bullet had', 'tank', { vehicle: { ...(SHAPED['tank']!['vehicle'] as object), armour: { bullet: 2, blast: {}, blastDefault: 0.1 } } }, /bullet/],
+    ['a cannon that fires a grenade', 'tank', { vehicle: { ...(SHAPED['tank']!['vehicle'] as object), cannon: { ...(SHAPED['tank']!['vehicle'] as { cannon: object }).cannon, projectile: 'frag' } } }, /not a rocket/],
+    ['a cannon firing something that is not a projectile', 'tank', { vehicle: { ...(SHAPED['tank']!['vehicle'] as object), cannon: { ...(SHAPED['tank']!['vehicle'] as { cannon: object }).cannon, projectile: 'brick' } } }, /brick/],
+    ['a cannon with a tell longer than the round', 'tank', { vehicle: { ...(SHAPED['tank']!['vehicle'] as object), cannon: { ...(SHAPED['tank']!['vehicle'] as { cannon: object }).cannon, tellSeconds: 99 } } }, /tellSeconds/],
     ['a hull with a point off the body', 'tank', { vehicle: { ...(SHAPED['tank']!['vehicle'] as object), hull: { from: [0, 1, 99], to: [0, 1, 1], radius: 1 } } }, /forward/],
   ])('refuses %s', (_label, id, change, message) => {
     expect(() => parseEnemyTable({ [id]: { ...SHAPED[id], ...change } })).toThrow(message);

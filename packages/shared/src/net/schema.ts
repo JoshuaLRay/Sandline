@@ -153,7 +153,8 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // they cost their bits once, on the spawn. Widths from enemies.ts.
     // U-066: and `turretYaw` (wire units), a tank's turret facing apart from its hull's (the Transform's); 0 for a soldier.
     // It rides this component, not one of its own, so no entity pays another bit of the presence mask.
-    fields: [uint('archetype', ENEMY_ARCHETYPE_BITS), uint('faction', ENEMY_FACTION_BITS), uint('turretYaw', ANGLE_BITS_WIRE)],
+    // U-068: and `aiming`, 1 while a tank's cannon is locked on a point and about to fire: the warning and the muzzle flash.
+    fields: [uint('archetype', ENEMY_ARCHETYPE_BITS), uint('faction', ENEMY_FACTION_BITS), uint('turretYaw', ANGLE_BITS_WIRE), uint('aiming', 1)],
   },
   {
     id: COMPONENT_IDS.Suppression,
