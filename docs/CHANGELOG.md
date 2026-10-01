@@ -344,3 +344,4 @@ Format: `T-<id> — <what changed>`
 - Docs — U-091 (spectate the escorted character) split out of U-075.
 - U-077 — the campaign carries each soldier's loadout (guns, rounds, pouch, kits, equipment) from a won mission into the next campaign run; retry/restart return to the start loadout; a replay starts from the class loadout and its end loadout is kept per `replayKeepsLoadout` (inference, flagged).
 - Docs — U-072 (campaign flow umbrella) is DONE with its leaves U-088, U-089 and U-090; U-078 is unblocked.
+- U-080 — first pass at a more grounded look: the US soldier's limbs, boots, hands and vest are heavier (same rig, hit boxes and animation); screenshots for the owner's review, fighter and texture pass still to do.

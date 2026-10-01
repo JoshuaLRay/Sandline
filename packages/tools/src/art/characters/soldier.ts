@@ -47,6 +47,17 @@ function pouchRings(cx: number, cz: number, top: number, bottom: number, rx: num
   ];
 }
 
+/**
+ * U-080: the build's proportions. The first version read scrawny next to the reference (*Conflict: Desert Storm*): thin
+ * limbs under a narrow vest. These factors thicken the rings of each part about its own axis (never its height, so the
+ * joints and every pose stay where the rig has them), inside the server's hit capsule.
+ */
+const BULK = { legs: 1.1, boots: 1.1, arms: 1.2, hands: 1.12, torso: 1.1 } as const;
+/** Thighs grow front to back more than across: the legs keep their daylight (the fighter's silhouette test reads it). */
+const LEG_DEPTH = 1.26;
+const bulk = (rings: Ring[], k: number, kz = k): Ring[] =>
+  rings.map((r) => ({ ...r, rx: r.rx * k, rzF: r.rzF * kz, ...(r.rzB === undefined ? {} : { rzB: r.rzB * kz }) }));
+
 export function buildDetailedSoldier(): BuiltSkin {
   const b = new SkinBuilder();
   const R = region;
@@ -129,7 +140,7 @@ export function buildDetailedSoldier(): BuiltSkin {
 
   // -- Interceptor vest ------------------------------------------------------
   b.loft(
-    [
+    bulk([
       { y: 1.5, rx: 0.088, rzF: 0.088, rzB: 0.078, bones: only('chest') },
       { y: 1.475, rx: 0.11, rzF: 0.1, rzB: 0.094, bones: only('chest') },
       { y: 1.455, rx: 0.165, rzF: 0.13, rzB: 0.125, n: 2.4, bones: only('chest') },
@@ -138,7 +149,7 @@ export function buildDetailedSoldier(): BuiltSkin {
       { y: 1.14, rx: 0.166, rzF: 0.146, rzB: 0.134, n: 3, bones: blend('spine', 'chest', 0.4) },
       { y: 1.03, rx: 0.162, rzF: 0.138, rzB: 0.13, n: 3, bones: blend('spine', 'hips', 0.5) },
       { y: 0.985, rx: 0.158, rzF: 0.132, rzB: 0.127, n: 3, bones: blend('hips', 'spine', 0.4) },
-    ],
+    ], BULK.torso),
     { sides: 22, region: R('vest') },
   );
   // Three magazine pouches across the belly, a radio pouch high on the left, two grenade pouches on the right.
@@ -184,7 +195,7 @@ export function buildDetailedSoldier(): BuiltSkin {
     const foot = `foot-${side}` as const;
     const cx = JOINTS[upper][0];
     b.loft(
-      [
+      bulk([
         { y: 0.93, cx, rx: 0.098, rzF: 0.1, bones: blend('hips', upper, 0.5) },
         { y: 0.86, cx, rx: 0.094, rzF: 0.096, bones: blend(upper, 'hips', 0.15) },
         { y: 0.74, cx, rx: 0.088, rzF: 0.088, rzB: 0.09, bones: only(upper) },
@@ -195,29 +206,29 @@ export function buildDetailedSoldier(): BuiltSkin {
         { y: 0.36, cx, rx: 0.062, rzF: 0.062, rzB: 0.074, bones: only(lower) },
         { y: 0.28, cx, rx: 0.056, rzF: 0.058, rzB: 0.064, bones: only(lower) },
         { y: 0.21, cx, rx: 0.058, rzF: 0.064, rzB: 0.064, bones: only(lower) },
-      ],
+      ], BULK.legs, LEG_DEPTH),
       { sides: 14, region: R('trousers') },
     );
     // The cargo pocket on the outside of the thigh.
     b.loft(
-      [
+      bulk([
         { y: 0.76, cx, rx: 0.1, rzF: 0.098, rzB: 0.1, bones: only(upper) },
         { y: 0.75, cx, rx: 0.103, rzF: 0.1, rzB: 0.102, bones: only(upper) },
         { y: 0.62, cx, rx: 0.094, rzF: 0.09, rzB: 0.092, bones: only(upper) },
         { y: 0.61, cx, rx: 0.089, rzF: 0.086, rzB: 0.088, bones: only(upper) },
-      ],
+      ], BULK.legs, LEG_DEPTH),
       { sides: 6, region: R('cuff'), arc: s > 0 ? [0.66, 0.84] : [0.16, 0.34] },
     );
     // Desert boots: the upper round the ankle, the foot forward to the toe, a thick sole.
     b.loft(
-      [
+      bulk([
         { y: 0.25, cx, rx: 0.062, rzF: 0.068, rzB: 0.068, bones: only(lower) },
         { y: 0.17, cx, rx: 0.058, rzF: 0.07, rzB: 0.066, bones: blend(lower, foot, 0.5) },
         { y: 0.11, cx, cz: 0.02, rx: 0.056, rzF: 0.1, rzB: 0.07, bones: only(foot) },
         { y: 0.06, cx, cz: 0.03, rx: 0.058, rzF: 0.13, rzB: 0.072, n: 2.5, bones: only(foot) },
         { y: 0.028, cx, cz: 0.03, rx: 0.06, rzF: 0.142, rzB: 0.076, n: 3, bones: only(foot) },
         { y: 0, cx, cz: 0.03, rx: 0.058, rzF: 0.138, rzB: 0.074, n: 3, bones: only(foot) },
-      ],
+      ], BULK.boots),
       { sides: 14, region: R('boot'), capBottom: true },
     );
   }
@@ -230,7 +241,7 @@ export function buildDetailedSoldier(): BuiltSkin {
     const hand = `hand-${side}` as const;
     const cx = JOINTS[upper][0];
     b.loft(
-      [
+      bulk([
         { y: 1.5, cx, rx: 0.04, rzF: 0.045, bones: blend('chest', upper, 0.5) },
         { y: 1.48, cx, rx: 0.062, rzF: 0.066, bones: blend(upper, 'chest', 0.3) },
         { y: 1.42, cx, rx: 0.068, rzF: 0.07, bones: blend(upper, 'chest', 0.1) },
@@ -240,36 +251,36 @@ export function buildDetailedSoldier(): BuiltSkin {
         { y: 1.12, cx, rx: 0.051, rzF: 0.054, rzB: 0.056, bones: blend(lower, upper, 0.35) },
         { y: 1.04, cx, rx: 0.05, rzF: 0.05, bones: only(lower) },
         { y: 0.95, cx, rx: 0.044, rzF: 0.044, bones: only(lower) },
-      ],
+      ], BULK.arms),
       { sides: 12, region: R('blouse'), capTop: true },
     );
     // The cuff, rolled over the glove's top.
     b.loft(
-      [
+      bulk([
         { y: 0.96, cx, rx: 0.048, rzF: 0.048, bones: only(lower) },
         { y: 0.91, cx, rx: 0.046, rzF: 0.046, bones: blend(lower, hand, 0.3) },
-      ],
+      ], BULK.arms),
       { sides: 12, region: R('cuff') },
     );
     if (s > 0) {
       b.loft(
-        [
+        bulk([
           { y: 1.36, cx, rx: 0.066, rzF: 0.068, bones: only(upper) },
           { y: 1.3, cx, rx: 0.064, rzF: 0.066, bones: only(upper) },
-        ],
+        ], BULK.arms),
         { sides: 12, region: R('strap'), material: 1 },
       );
     }
     // The hand hangs palm-in: thin across x, long along z.
     b.loft(
-      [
+      bulk([
         { y: 0.915, cx, rx: 0.038, rzF: 0.04, bones: blend(lower, hand, 0.4) },
         { y: 0.86, cx, rx: 0.03, rzF: 0.05, rzB: 0.042, n: 2.6, bones: only(hand) },
         { y: 0.8, cx, cz: 0.004, rx: 0.026, rzF: 0.054, rzB: 0.044, n: 3, bones: only(hand) },
         { y: 0.76, cx, cz: 0.006, rx: 0.024, rzF: 0.05, rzB: 0.04, n: 3, bones: only(hand) },
         { y: 0.71, cx, cz: 0.008, rx: 0.02, rzF: 0.042, rzB: 0.032, n: 2.6, bones: only(hand) },
         { y: 0.69, cx, cz: 0.008, rx: 0.014, rzF: 0.03, rzB: 0.022, bones: only(hand) },
-      ],
+      ], BULK.hands),
       { sides: 12, region: R('glove'), capBottom: true },
     );
     // The thumb, forward and toward the body.

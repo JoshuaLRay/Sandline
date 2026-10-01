@@ -113,7 +113,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-077](docs/backlog/U-077.md) | Carry weapons, ammo and gear to the next mission; pickups replace the slot | Campaign design | P2 | REVIEW | U-090 | — |
 | [U-078](docs/backlog/U-078.md) | In-mission menu: restart from checkpoint, restart mission, return to mission select | Campaign design | P2 | READY | U-090 | — |
 | [U-079](docs/backlog/U-079.md) | Bots fight armour: help destroy a tank | Enemy AI | P2 | DONE | — | [#250](https://github.com/JoshuaLRay/Sandline/pull/250) |
-| [U-080](docs/backlog/U-080.md) | Realistic character models: a more grounded look | Art | P2 | READY | — | — |
+| [U-080](docs/backlog/U-080.md) | Realistic character models: a more grounded look | Art | P2 | REVIEW | — | — |
 | [U-081](docs/backlog/U-081.md) | The cover search must not scale with the whole map | Enemy AI | P1 | DONE | — | [#246](https://github.com/JoshuaLRay/Sandline/pull/246) |
 | [U-082](docs/backlog/U-082.md) | Rectangular floors: bake, collide and draw only where the map is | Campaign design | P2 | DONE | — | [#247](https://github.com/JoshuaLRay/Sandline/pull/247) |
 | [U-083](docs/backlog/U-083.md) | Flank assignment must be bounded (a ray broad phase was tried and did not help) | Campaign design | P2 | DONE | — | [#249](https://github.com/JoshuaLRay/Sandline/pull/249) |
