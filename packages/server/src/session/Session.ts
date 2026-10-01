@@ -100,7 +100,6 @@ import {
   createMoveState,
   createWeaponState,
   blockedAt,
-  indexBoxes,
   createDrive,
   VEHICLE_CLEARANCE_M,
   withdrawDrive,
@@ -1046,8 +1045,6 @@ export class Session {
   ) {
     this.world = typeof world === 'string' ? requireWorld(world) : world;
     this.collisionBoxes = [...this.world.boxes];
-    // U-083: a big world's line-of-sight rays test the boxes near them; re-indexed whenever a script blocker changes the list.
-    indexBoxes(this.collisionBoxes);
     this.navMesh = options.navMesh ?? null;
     // T-3.33: an encounter is paced by the director, from the fight and the humans in it.
     this.encounter = options.encounter ?? null;
@@ -2146,7 +2143,6 @@ export class Session {
       ...this.world.boxes,
       ...[...this.blockerStates.values()].filter((b) => b.active).flatMap((b) => b.boxes),
     );
-    indexBoxes(this.collisionBoxes);
     this.navMesh?.setBlocker(blocker.id, blocker.boxes, blocker.active);
     this.broadcastScriptState();
   }
