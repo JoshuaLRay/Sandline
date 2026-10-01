@@ -44,6 +44,21 @@ export interface EnemyCheckpoint {
   posture: EnemyPosture | null;
   ammo: number;
   pouch: number[];
+  /** U-069: a tank's drive (its path, place on it and heading), turret and the time to its next shell. */
+  vehicle?: VehicleCheckpoint;
+}
+
+/** U-069: what a checkpoint keeps of a tank beyond what every enemy has. */
+export interface VehicleCheckpoint {
+  path: { x: number; z: number }[];
+  next: number;
+  heading: number;
+  phase: 'driving' | 'arrived' | 'blocked';
+  origin: { x: number; z: number } | null;
+  withdrawing: boolean;
+  turretYaw: number;
+  /** Seconds until the cannon may fire again. */
+  cannonIn: number;
 }
 
 /** U-059: a placed device (C4, claymore, sensor, smoke cloud) at a checkpoint. */
@@ -126,6 +141,23 @@ function posture(where: string, v: unknown): EnemyPosture | null {
     route: list(`${where}.route`, o['route'], 64).map((p, i) => pt(`${where}.route[${i}]`, p)),
     area: area === null ? null : { x: num(`${where}.area.x`, area['x']), z: num(`${where}.area.z`, area['z']), radius: num(`${where}.area.radius`, area['radius']) },
     leg: int(`${where}.leg`, o['leg'], 0, 1024),
+  };
+}
+
+function vehicle(where: string, v: unknown): VehicleCheckpoint {
+  const o = obj(where, v);
+  const phase = o['phase'];
+  if (phase !== 'driving' && phase !== 'arrived' && phase !== 'blocked') return fail(`${where}.phase`);
+  const path = list(`${where}.path`, o['path'], 64).map((p, i) => pt(`${where}.path[${i}]`, p));
+  return {
+    path,
+    next: int(`${where}.next`, o['next'], 0, path.length),
+    heading: num(`${where}.heading`, o['heading']),
+    phase,
+    origin: o['origin'] === null ? null : pt(`${where}.origin`, o['origin']),
+    withdrawing: bool(`${where}.withdrawing`, o['withdrawing']),
+    turretYaw: int(`${where}.turretYaw`, o['turretYaw'], 0, 1023),
+    cannonIn: num(`${where}.cannonIn`, o['cannonIn']),
   };
 }
 
@@ -212,6 +244,7 @@ export function parseCheckpointWorld(raw: unknown): CheckpointWorld | null {
           posture: posture(`${w}.posture`, x['posture']),
           ammo: int(`${w}.ammo`, x['ammo'], 0, 65535),
           pouch: pouch(`${w}.pouch`, x['pouch']),
+          ...(x['vehicle'] === undefined ? {} : { vehicle: vehicle(`${w}.vehicle`, x['vehicle']) }),
         };
       }),
       spawner: spawner('spawner', o['spawner']),

@@ -15,18 +15,22 @@
 import type { Encounter, AreaRef } from './encounters.ts';
 import type { MissionDef } from './mission.ts';
 import { WEAPON_IDS, getWeapon } from './weapons.ts';
-import { boxFrom, type BoxSpec, type World, type WorldBox } from './world.ts';
+import { getEnemy, ENEMY_IDS } from './enemies.ts';
+import { MAX_DRIVE_POINTS } from './vehicle.ts';
+import { blockedAt, boxFrom, type BoxSpec, type World, type WorldBox } from './world.ts';
 
-export const EVENT_TRIGGER_KINDS = ['objective-start', 'objective-complete', 'enter', 'time', 'group-dead', 'flag'] as const;
+export const EVENT_TRIGGER_KINDS = ['objective-start', 'upload-start', 'objective-complete', 'enter', 'time', 'group-dead', 'flag'] as const;
 export type EventTrigger =
   | { kind: 'objective-start'; objective: number }
+  /** U-069: the upload objective actually running (a terminal pressed), not merely reached. Fires once per attempt. */
+  | { kind: 'upload-start'; objective: number }
   | { kind: 'objective-complete'; objective: number }
   | { kind: 'enter'; area: AreaRef }
   | { kind: 'time'; seconds: number }
   | { kind: 'group-dead'; group: string }
   | { kind: 'flag'; flag: string; value: boolean };
 
-export const EVENT_ACTION_KINDS = ['spawn-group', 'stop-group', 'set-objective', 'interrupt-upload', 'toggle-blocker', 'message', 'callout', 'set-flag', 'pickup'] as const;
+export const EVENT_ACTION_KINDS = ['spawn-group', 'stop-group', 'set-objective', 'interrupt-upload', 'toggle-blocker', 'message', 'callout', 'set-flag', 'pickup', 'spawn-vehicle', 'withdraw-vehicles'] as const;
 export type EventAction =
   | { kind: 'spawn-group'; group: string }
   /** U-001: no more waves from the group, and none of its queued members placed; the living fight on. */
@@ -42,7 +46,11 @@ export type EventAction =
    * U-052: authored loot — a gun lying at a place, for whoever may take it (`handedness`: only the left-handed
    * sniper takes a left-handed gun). It stays until taken: the enemy-drop despawn and cap do not touch it.
    */
-  | { kind: 'pickup'; weapon: string; ammo: number; x: number; y: number; z: number; yawDeg: number };
+  | { kind: 'pickup'; weapon: string; ammo: number; x: number; y: number; z: number; yawDeg: number }
+  /** U-069: a tank (an enemy with a `vehicle` block) put where it starts, to drive `path` in order. */
+  | { kind: 'spawn-vehicle'; vehicle: string; x: number; z: number; yawDeg: number; path: readonly { x: number; z: number }[] }
+  /** U-069: every driving vehicle turns for the way it came and leaves; one that is shot to pieces stays a wreck. */
+  | { kind: 'withdraw-vehicles' };
 
 export interface EventDef {
   id: string;
@@ -134,6 +142,10 @@ function box(where: string, value: unknown, blocker: string, index: number): Wor
   return boxFrom(spec, 'blocker');
 }
 
+/** What a driving vehicle's hull clears (m): the step it rides over and the headroom it needs. The server drives by the same numbers. */
+export const VEHICLE_STEP_M = 0.45;
+export const VEHICLE_CLEARANCE_M = 2.4;
+
 /** Parse and validate an authored event file against its encounter, world and mission. */
 export function parseEventScript(raw: unknown, encounter: Encounter, world: World, mission: MissionDef | null): EventScript {
   const top = obj('events', raw, ['world', 'blockers', 'events']);
@@ -177,6 +189,13 @@ export function parseEventScript(raw: unknown, encounter: Encounter, world: Worl
     const tk = typeof tr === 'object' && tr !== null ? tr['kind'] : undefined;
     let trigger: EventTrigger;
     switch (tk) {
+      case 'upload-start': {
+        const t = obj(`${where}.trigger`, tr, ['kind', 'objective']);
+        const n = objective(`${where}.trigger.objective`, t['objective']);
+        if (mission!.objectives[n]!.type !== 'upload') throw new EventDataError(`${where}.trigger.objective: objective ${n} is not an upload`);
+        trigger = { kind: tk, objective: n };
+        break;
+      }
       case 'objective-start': {
         const t = obj(`${where}.trigger`, tr, ['kind', 'objective']);
         trigger = { kind: tk, objective: objective(`${where}.trigger.objective`, t['objective']) };
@@ -264,6 +283,32 @@ export function parseEventScript(raw: unknown, encounter: Encounter, world: Worl
             yawDeg: x['yawDeg'] === undefined ? 0 : finite(`${aw}.yawDeg`, x['yawDeg'], -360, 360),
           };
         }
+        case 'spawn-vehicle': {
+          const x = obj(aw, a, ['kind', 'vehicle', 'x', 'z', 'path'], ['yawDeg']);
+          const name = x['vehicle'];
+          const def = typeof name === 'string' && (ENEMY_IDS as readonly string[]).includes(name) ? getEnemy(name) : null;
+          if (!def?.vehicle) throw new EventDataError(`${aw}.vehicle: expected a vehicle archetype`);
+          const from = { x: finite(`${aw}.x`, x['x']), z: finite(`${aw}.z`, x['z']) };
+          const rawPath = x['path'];
+          if (!Array.isArray(rawPath) || rawPath.length === 0 || rawPath.length > MAX_DRIVE_POINTS) {
+            throw new EventDataError(`${aw}.path: expected 1–${MAX_DRIVE_POINTS} waypoints`);
+          }
+          const path = rawPath.map((raw, k) => {
+            const w = obj(`${aw}.path[${k}]`, raw, ['x', 'z']);
+            return { x: finite(`${aw}.path[${k}].x`, w['x']), z: finite(`${aw}.path[${k}].z`, w['z']) };
+          });
+          // The hull must fit where it starts and at every waypoint: a point in a wall is a route no tank can drive.
+          const half = def.vehicle.hull.radius + 0.1;
+          for (const [k, at] of [from, ...path].entries()) {
+            if (blockedAt(at.x, at.z, half, 0, VEHICLE_STEP_M, VEHICLE_CLEARANCE_M, world.boxes)) {
+              throw new EventDataError(`${aw}.${k === 0 ? 'x/z' : `path[${k - 1}]`}: the ${name}'s hull does not fit at (${at.x}, ${at.z})`);
+            }
+          }
+          return { kind: ak, vehicle: name as string, x: from.x, z: from.z, yawDeg: x['yawDeg'] === undefined ? 0 : finite(`${aw}.yawDeg`, x['yawDeg'], -360, 360), path };
+        }
+        case 'withdraw-vehicles':
+          obj(aw, a, ['kind']);
+          return { kind: ak };
         default:
           throw new EventDataError(`${aw}.kind must be one of ${EVENT_ACTION_KINDS.join(', ')}`);
       }

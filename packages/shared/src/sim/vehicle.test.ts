@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { WIRE_ANGLE_UNITS } from '../math/angles.ts';
-import { type DriveConfig, type DrivePoint, MAX_DRIVE_POINTS, type VehicleDrive, createDrive, driveYawWire, stepDrive } from './vehicle.ts';
+import { type DriveConfig, type DrivePoint, MAX_DRIVE_POINTS, type VehicleDrive, createDrive, driveYawWire, stepDrive, withdrawDrive } from './vehicle.ts';
 
 const DT = 1 / 30;
 const CONFIG: DriveConfig = { speedMps: 1.6, turnDegPerSec: 30, arriveM: 1.5 };
@@ -113,5 +113,40 @@ describe('a tank\'s drive (U-067)', () => {
     const a = run({ x: 0, z: 0 }, createDrive([{ x: 12, z: 18 }, { x: -6, z: 40 }], 100), 3000);
     const b = run({ x: 0, z: 0 }, createDrive([{ x: 12, z: 18 }, { x: -6, z: 40 }], 100), 3000);
     expect(b).toEqual(a);
+  });
+});
+
+describe('a tank withdrawing (U-069)', () => {
+  const ROAD = [{ x: 0, z: 10 }, { x: 0, z: 20 }, { x: 10, z: 20 }];
+
+  it('goes back by the waypoints it passed, last first, then to where it started', () => {
+    const drive = createDrive(ROAD, 0, { x: 0, z: -5 });
+    const trail = run({ x: 0, z: -5 }, drive, 3000, open, () => drive.next >= 2);
+    const at = trail.at(-1)!;
+    withdrawDrive(drive);
+    expect(drive.withdrawing).toBe(true);
+    expect(drive.path).toEqual([{ x: 0, z: 20 }, { x: 0, z: 10 }, { x: 0, z: -5 }]);
+    run(at, drive, 6000);
+    expect(drive.phase).toBe('arrived');
+  });
+
+  it('a tank that has not moved leaves by its start alone, and one with no start is simply done', () => {
+    const fresh = createDrive(ROAD, 0, { x: 3, z: 4 });
+    withdrawDrive(fresh);
+    expect(fresh.path).toEqual([{ x: 3, z: 4 }]);
+    const none = createDrive(ROAD, 0);
+    withdrawDrive(none);
+    expect(none.path).toEqual([]);
+    expect(none.phase).toBe('arrived');
+  });
+
+  it('is idempotent: a second call does not turn it round again', () => {
+    const drive = createDrive(ROAD, 0, { x: 0, z: -5 });
+    drive.next = 3;
+    withdrawDrive(drive);
+    const once = JSON.stringify(drive);
+    withdrawDrive(drive);
+    expect(JSON.stringify(drive)).toBe(once);
+    expect(drive.path).toHaveLength(4);
   });
 });

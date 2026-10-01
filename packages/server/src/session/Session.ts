@@ -101,6 +101,8 @@ import {
   createWeaponState,
   blockedAt,
   createDrive,
+  VEHICLE_CLEARANCE_M,
+  withdrawDrive,
   driveYawWire,
   stepDrive,
   type EnemyVehicle,
@@ -625,9 +627,6 @@ interface ActiveProjectile {
  */
 export const MAX_ENEMIES = 64;
 
-/** U-067: the height of a tank's hull, m, for what it can drive under: a bridge lower than this stops it. */
-const TANK_CLEARANCE_M = 2.4;
-
 /** T-3.32: a spawn candidate counts as on the navmesh when its nearest mesh point is this near, metres. */
 export const SPAWN_ON_MESH_M = 0.3;
 
@@ -651,6 +650,8 @@ export interface EnemyEntity {
   turretYaw: number;
   /** U-067: a tank's drive along its path, or null for a soldier and for a tank given no path. */
   drive: VehicleDrive | null;
+  /** U-069: a withdrawing tank that has left the map; taken off the list at the end of the step. */
+  departed: boolean;
   /** U-068: when a tank's cannon may next begin a tell, seconds. */
   cannonReadyAt: number;
   /** U-068: a tank's cannon locked on a point and about to fire at it, or null: the replicated `aiming`. */
@@ -1585,6 +1586,20 @@ export class Session {
           posture: e.posture ? structuredClone(e.posture) : null,
           ammo: e.weaponState.ammo,
           pouch: [...e.pouch],
+          ...(e.def.vehicle
+            ? {
+                vehicle: {
+                  path: e.drive ? e.drive.path.map((p) => ({ x: p.x, z: p.z })) : [],
+                  next: e.drive?.next ?? 0,
+                  heading: e.drive?.heading ?? 0,
+                  phase: e.drive?.phase ?? 'arrived',
+                  origin: e.drive?.origin ? { ...e.drive.origin } : null,
+                  withdrawing: e.drive?.withdrawing ?? false,
+                  turretYaw: e.turretYaw,
+                  cannonIn: Math.max(0, e.cannonReadyAt - this.nowMs / 1000),
+                },
+              }
+            : {}),
         })),
       placed: this.projectiles
         .filter((p) => p.stuck && !p.destroyed)
@@ -1692,6 +1707,22 @@ export class Session {
       enemy.health.current = Math.min(e.health, enemy.health.max);
       enemy.weaponState.ammo = e.ammo;
       enemy.pouch = [...e.pouch];
+      // U-069: a tank goes on from where it was: its place on the road, its heading, its turret and its next shell.
+      if (e.vehicle && enemy.def.vehicle) {
+        enemy.drive =
+          e.vehicle.path.length > 0
+            ? {
+                path: e.vehicle.path.map((p) => ({ ...p })),
+                next: e.vehicle.next,
+                heading: e.vehicle.heading,
+                phase: e.vehicle.phase,
+                origin: e.vehicle.origin ? { ...e.vehicle.origin } : null,
+                withdrawing: e.vehicle.withdrawing,
+              }
+            : null;
+        enemy.turretYaw = e.vehicle.turretYaw;
+        enemy.cannonReadyAt = this.nowMs / 1000 + e.vehicle.cannonIn;
+      }
       remap.set(e.netId, netId);
     }
     spawner.restore(saved.spawner, remap);
@@ -2061,7 +2092,7 @@ export class Session {
       stopGroup: (id, seconds) => this.spawnerValue?.stop(id, seconds) ?? false,
       objective: () => {
         const m = this.missionRun?.current;
-        return m ? { index: m.objective, state: m.state } : null;
+        return m ? { index: m.objective, state: m.state, phase: m.phase } : null;
       },
       setObjective: (index) => {
         const changed = this.missionRun?.setObjective(index) ?? false;
@@ -2084,6 +2115,12 @@ export class Session {
       },
       placeLoot: (weapon, ammo, at, yawDeg) => {
         this.placePickupItem((WEAPON_IDS as readonly string[]).indexOf(weapon), ammo, at, degToWire(yawDeg), true);
+      },
+      spawnVehicle: (vehicle, at, yawDeg, path) => {
+        this.spawnEnemy(vehicle, { x: at.x, y: this.moveConfig.groundY, z: at.z, yaw: degToWire(yawDeg), path });
+      },
+      withdrawVehicles: () => {
+        for (const enemy of this.enemyList) if (enemy.drive && !isDead(enemy.health)) withdrawDrive(enemy.drive);
       },
     };
   }
@@ -2261,10 +2298,11 @@ export class Session {
       yaw,
       pitch: 0,
       turretYaw: yaw,
-      drive: def.vehicle && at.path && at.path.length > 0 ? createDrive(at.path, yaw) : null,
+      drive: def.vehicle && at.path && at.path.length > 0 ? createDrive(at.path, yaw, { x: at.x, z: at.z }) : null,
       // The first shell waits half an interval, so a tank that has just come into view is not already firing.
       cannonReadyAt: this.nowMs / 1000 + (def.vehicle ? def.vehicle.cannon.intervalSeconds / 2 : 0),
       tell: null,
+      departed: false,
       input: idleInput(yaw),
       health: { current: def.health, max: def.health, downedAt: null, diedAt: null },
       brain: null,
@@ -5276,6 +5314,11 @@ export class Session {
         enemy.tell = null;
         continue;
       }
+      // U-069: a tank on its way out holds its fire.
+      if (enemy.drive?.withdrawing) {
+        enemy.tell = null;
+        continue;
+      }
       const cannon = vehicle.cannon;
       const eye = this.turretPoint(enemy, vehicle.machineGun.muzzle);
 
@@ -5600,7 +5643,7 @@ export class Session {
       const half = vehicle.hull.radius + 0.1;
       const reach = Math.abs(vehicle.hull.to[2] - vehicle.hull.from[2]) / 2;
       for (const along of [0, reach, -reach]) {
-        if (blockedAt(x + forward.x * along, z + forward.z * along, half, enemy.state.y, this.moveConfig.stepHeight, TANK_CLEARANCE_M, this.collisionBoxes)) return false;
+        if (blockedAt(x + forward.x * along, z + forward.z * along, half, enemy.state.y, this.moveConfig.stepHeight, VEHICLE_CLEARANCE_M, this.collisionBoxes)) return false;
       }
       const margin = vehicle.radiusM + 0.4;
       return !this.slots.some((s) => !isDead(s.health) && (s.state.x - x) ** 2 + (s.state.z - z) ** 2 < margin * margin);
@@ -5631,6 +5674,11 @@ export class Session {
         this.driveTank(enemy, enemy.drive, enemy.def.vehicle);
         enemy.speed = Math.sqrt((enemy.state.x - fromX) ** 2 + (enemy.state.z - fromZ) ** 2) / TICK_SECONDS;
         decayBloom(enemy.weapon, enemy.weaponState, TICK_SECONDS);
+        // U-069: a withdrawing tank that has driven out is gone — not a corpse, not a wreck.
+        if (enemy.drive.withdrawing && enemy.drive.phase === 'arrived') {
+          enemy.departed = true;
+          expired = true;
+        }
         continue;
       }
       // T-4.29: a gunner stays on its gun, crouched behind it, whatever its brain's feet want.
@@ -5650,7 +5698,7 @@ export class Session {
     }
     if (!expired) return;
     const kept = this.enemyList.filter((enemy) => {
-      const gone = isDead(enemy.health) && nowSeconds - (enemy.health.diedAt as number) >= enemy.def.corpseSeconds;
+      const gone = enemy.departed || (isDead(enemy.health) && nowSeconds - (enemy.health.diedAt as number) >= enemy.def.corpseSeconds);
       // Out of the history too, or a rewound shot could still find the corpse.
       if (gone) this.hitboxes.forget(enemy.netId);
       return !gone;
