@@ -61,6 +61,8 @@ jobs:
           for attempt in 1 2 3; do
             timeout 300 pnpm exec playwright install --with-deps chromium && exit 0
             echo "playwright install attempt $attempt failed or timed out" >&2
+            # A timed-out attempt leaves its apt-get running; a retry needs the dpkg lock it holds.
+            for _ in $(seq 60); do sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; sleep 5; done
           done
           exit 1
       - run: pnpm check:packs
@@ -103,6 +105,8 @@ jobs:
           for attempt in 1 2 3; do
             timeout 300 pnpm exec playwright install --with-deps chromium firefox webkit && exit 0
             echo "playwright install attempt $attempt failed or timed out" >&2
+            # A timed-out attempt leaves its apt-get running; a retry needs the dpkg lock it holds.
+            for _ in $(seq 60); do sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; sleep 5; done
           done
           exit 1
       - run: pnpm test:parity-browsers
