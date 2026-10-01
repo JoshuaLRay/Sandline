@@ -515,12 +515,12 @@ function fillStrokeCircle(png: PNG, cx: number, cy: number, radius: number, colo
 }
 
 function levelBounds(world: World): { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number } {
-  let minX = -world.floorHalfExtent;
-  let maxX = world.floorHalfExtent;
+  let minX = -world.floorHalfWidth;
+  let maxX = world.floorHalfWidth;
   let minY = 0;
   let maxY = 2;
-  let minZ = -world.floorHalfExtent;
-  let maxZ = world.floorHalfExtent;
+  let minZ = -world.floorHalfDepth;
+  let maxZ = world.floorHalfDepth;
   for (const box of world.boxes) {
     const e = boxExtents(box);
     minX = Math.min(minX, e.minX);
@@ -553,8 +553,8 @@ function drawTopDown(world: World): PNG {
   fillRect(png, 0, 0, width - 1, height - 1, COLORS.background);
   const bounds = levelBounds(world);
   const map = topDownProject(bounds, width, height);
-  const floorA = map({ x: -world.floorHalfExtent, z: -world.floorHalfExtent });
-  const floorB = map({ x: world.floorHalfExtent, z: world.floorHalfExtent });
+  const floorA = map({ x: -world.floorHalfWidth, z: -world.floorHalfDepth });
+  const floorB = map({ x: world.floorHalfWidth, z: world.floorHalfDepth });
   fillRect(png, floorA.x, floorB.y, floorB.x, floorA.y, COLORS.floor);
 
   const span = Math.max(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ);
@@ -662,10 +662,10 @@ function drawCamera(world: World, yaw: number): PNG {
   const pitch = 0.55;
 
   const projectedGround = [
-    { x: -world.floorHalfExtent, y: 0, z: -world.floorHalfExtent },
-    { x: world.floorHalfExtent, y: 0, z: -world.floorHalfExtent },
-    { x: world.floorHalfExtent, y: 0, z: world.floorHalfExtent },
-    { x: -world.floorHalfExtent, y: 0, z: world.floorHalfExtent },
+    { x: -world.floorHalfWidth, y: 0, z: -world.floorHalfDepth },
+    { x: world.floorHalfWidth, y: 0, z: -world.floorHalfDepth },
+    { x: world.floorHalfWidth, y: 0, z: world.floorHalfDepth },
+    { x: -world.floorHalfWidth, y: 0, z: world.floorHalfDepth },
   ].map((p) => cameraProject(p, center, yaw, pitch, scale, width, height));
   fillPolygon(png, projectedGround, COLORS.floor);
 
