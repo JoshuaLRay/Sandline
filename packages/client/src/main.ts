@@ -139,6 +139,8 @@ import { addKick, createKick, decayKick } from './character/weaponKick.ts';
 import { createLocomotionPoseDriver } from './character/locomotionPose.ts';
 import { createFootPlacementDriver } from './character/footPlacement.ts';
 import { RemoteSoldiers } from './character/remoteSoldiers.ts';
+import { TankModels } from './character/tankModel.ts';
+import { tankTargetView } from './character/tankLook.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
 import { FULL_RESTART_KEY, RESTART_KEY, afterActionXp, missionLine, uploadPrompt } from './ui/missionHud.ts';
@@ -514,6 +516,9 @@ const remotes = new RemoteSoldiers({
     if (sound) for (const _foot of tracker.update(phase, state)) audio.play(sound, { at: feet });
   },
 });
+
+/** U-070: the tanks, drawn apart from the soldiers. */
+const tankModels = new TankModels(scene, shootable);
 
 /** A signed wire angle (1024 per turn) in radians. */
 function wireToRadians(wire: number): number {
@@ -1555,6 +1560,7 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
     gone.networkPanel.root.remove();
   }
   remotes.clear();
+  tankModels.clear();
   for (const model of emplacementModels.values()) {
     scene.remove(model.root);
     model.dispose();
@@ -1827,7 +1833,7 @@ const mobileCommand = createMobileCommand(document.body, {
     // An upward/horizon tap can miss the finite ground mesh. Keep its fallback
     // on the ground at a nearby world coordinate, never at the camera's far plane.
     const point = hit?.point ?? ray.ray.at(30, new THREE.Vector3()).setY(config.groundY);
-    const id = hit ? remotes.netIdOf(hit.object) : null;
+    const id = hit ? (remotes.netIdOf(hit.object) ?? tankModels.netIdOf(hit.object)) : null;
     const enemy = id !== null && live.net.remoteEnemy(id) !== null;
     const vitality = id === null ? 'alive' : live.net.remoteVitality(id);
     const order = buildOrder(kind, address, {
@@ -2577,6 +2583,7 @@ function frame(): void {
   // it is in no roster and on no HUD. Anything the client no longer returns
   // has despawned, and everything drawn for it goes with it.
   remotes.update(net, dt);
+  tankModels.update(net, dt);
 
   // T-4.29: the emplacements, each laid the way the host says its gun is laid.
   const seenGuns = new Set<number>();
@@ -2626,6 +2633,11 @@ function frame(): void {
     orderMarkerOverlay.show(shownMarkers);
     // The same markers on the compass (T-4.25), by bearing from where we are drawn.
     compassMarkers = shownMarkers.map((m) => ({ key: m.key, kind: m.kind, label: m.label, x: m.at.x, z: m.at.z }));
+    // U-070: a living tank on the compass, where it is drawn.
+    for (const netId of tankModels.ids()) {
+      const at = net.remoteVitality(netId) === 'alive' ? tankModels.at(netId) : null;
+      if (at) compassMarkers.push({ key: `t${netId}`, kind: 'mark', label: 'Tank', x: at.x, z: at.z });
+    }
   } else {
     compassMarkers = [];
   }
@@ -2913,6 +2925,11 @@ function frame(): void {
             ? uploadPrompt(net.mission, net.world ? missionFor(net.world.id) : undefined, eyePosition(sim.x, sim.y, sim.z, DEFAULT_MUZZLE_RIG, eyeStance(sim.crouched, sim.prone)))
             : '',
       hint,
+      target: tankTargetView(
+        net && aimNetId !== null && tankModels.has(aimNetId) && net.remoteHealth(aimNetId)
+          ? { name: 'Tank', ...net.remoteHealth(aimNetId)!, vitality: net.remoteVitality(aimNetId) }
+          : null,
+      ),
     });
   }
   // Every value in the camera panel describes where the arm puts the camera
@@ -2995,7 +3012,7 @@ function frame(): void {
   aimRaycaster.set(aimOrigin, aimDirection);
   aimRaycaster.far = AIM_RANGE;
   const [reticleHit] = aimRaycaster.intersectObjects(shootable, false);
-  aimNetId = reticleHit ? remotes.netIdOf(reticleHit.object) : null;
+  aimNetId = reticleHit ? (remotes.netIdOf(reticleHit.object) ?? tankModels.netIdOf(reticleHit.object)) : null;
   if (reticleHit) {
     aimPoint.copy(reticleHit.point);
   } else {
