@@ -29,7 +29,8 @@ export interface ArmourConfig {
   chargeMinRangeM: number;
   chargeMaxRangeM: number;
   chargeReachM: number;
-  claymoreAheadM: number;
+  claymoreSpotM: number;
+  claymoreReachM: number;
   detonateWithinM: number;
   detonateAfterSeconds: number;
   approachM: number;
@@ -55,7 +56,8 @@ export function parseArmourConfig(raw: unknown): ArmourConfig {
     chargeMinRangeM: [0, 200],
     chargeMaxRangeM: [1, 200],
     chargeReachM: [0, 10],
-    claymoreAheadM: [0, 10],
+    claymoreSpotM: [0, 10],
+    claymoreReachM: [0, 5],
     detonateWithinM: [0, 20],
     detonateAfterSeconds: [0, 60],
     approachM: [0, 50],

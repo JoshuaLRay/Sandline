@@ -177,10 +177,10 @@ export function registerArmourLeaves(registry: BrainRegistry): BrainRegistry {
         const shot = chooseRocket(def, ctx.state, view, friends, ctx.combat.projectileWorld());
         if (shot) throwAt = { projectile: kind, yaw: shot.yaw, pitch: shot.pitch };
       } else {
-        // A claymore goes short of the hull, on the bot's side, facing it; C4 on the hull's foot.
-        const back = kind === CLAYMORE ? ARMOUR.claymoreAheadM + view.radiusM : 0;
+        // A claymore goes close to the hull, on the bot's side, facing it; C4 on the hull's foot.
+        const back = kind === CLAYMORE ? ARMOUR.claymoreSpotM : 0;
         const spot = { x: view.x + ((ctx.state.x - view.x) / (range || 1)) * back, y: view.y, z: view.z + ((ctx.state.z - view.z) / (range || 1)) * back };
-        const place = choosePlacement(def, ctx.state, spot, ARMOUR.chargeReachM, friends, ctx.combat.projectileWorld());
+        const place = choosePlacement(def, ctx.state, spot, kind === CLAYMORE ? ARMOUR.claymoreReachM : ARMOUR.chargeReachM, friends, ctx.combat.projectileWorld());
         if (place) throwAt = { projectile: kind, yaw: place.yaw, pitch: place.pitch };
       }
       blackboard.set('throwNextAt', now + ARMOUR.retrySeconds);

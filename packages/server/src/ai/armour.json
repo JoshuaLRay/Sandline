@@ -1,5 +1,5 @@
 {
-  "$comment": "U-079 bots against armour. A bot whose position is inside a tank's locked shell's blast radius plus dodgeMarginM runs out of it (dodgeShell), to the nearest place out of the shell's way (its flight line, and the blast at the lock and where it ends) or, when the mesh offers none, cover within dodgeCoverM; it stays there for dodgeHoldSeconds after the lock ends, while the shell lands. A bot carrying a rocket fires it at a visible tank between rocketMinRangeM and rocketMaxRangeM: the yaw at the tank's hull centre led by its speed, the pitch searched over aimSpanDeg either side in aimStepDeg steps through projectileArc, and it fires the arc that passes within hitFraction of the hull radius of the hull, provided the hit is further than the rocket's blast radius plus safetyMarginM from it and every squadmate. A carrier of C4 or a claymore waits for a tank slower than chargeMaxTankSpeedMps within chargeMinRangeM to chargeMaxRangeM and throws it to land within chargeReachM of the hull (the claymore short of it by claymoreAheadM, facing it); C4 is detonated once it is within detonateWithinM of the hull and the bot and every squadmate is further than its blast radius plus safetyMarginM from it, or after detonateAfterSeconds anyway if that is safe. A search that finds nothing is not tried again for retrySeconds. approachM is how much inside the range band a bot walks to.",
+  "$comment": "U-079 bots against armour. A bot whose position is inside a tank's locked shell's blast radius plus dodgeMarginM runs out of it (dodgeShell), to the nearest place out of the shell's way (its flight line, and the blast at the lock and where it ends) or, when the mesh offers none, cover within dodgeCoverM; it stays there for dodgeHoldSeconds after the lock ends, while the shell lands. A bot carrying a rocket fires it at a visible tank between rocketMinRangeM and rocketMaxRangeM: the yaw at the tank's hull centre led by its speed, the pitch searched over aimSpanDeg either side in aimStepDeg steps through projectileArc, and it fires the arc that passes within hitFraction of the hull radius of the hull, provided the hit is further than the rocket's blast radius plus safetyMarginM from it and every squadmate. A carrier of C4 or a claymore waits for a tank slower than chargeMaxTankSpeedMps within chargeMinRangeM to chargeMaxRangeM and throws it to land within chargeReachM of the hull (the claymore claymoreSpotM from the tank on the bot's side, within claymoreReachM, facing it: close enough that the tank trips it); C4 is detonated once it is within detonateWithinM of the hull and the bot and every squadmate is further than its blast radius plus safetyMarginM from it, or after detonateAfterSeconds anyway if that is safe. A search that finds nothing is not tried again for retrySeconds. approachM is how much inside the range band a bot walks to.",
   "dodgeMarginM": 1.5,
   "dodgeCoverM": 14,
   "dodgeHoldSeconds": 1.6,
@@ -14,7 +14,8 @@
   "chargeMinRangeM": 7,
   "chargeMaxRangeM": 14,
   "chargeReachM": 1.5,
-  "claymoreAheadM": 2,
+  "claymoreSpotM": 2,
+  "claymoreReachM": 0.8,
   "detonateWithinM": 3,
   "detonateAfterSeconds": 6,
   "approachM": 4
