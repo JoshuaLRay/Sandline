@@ -5,7 +5,7 @@
  * its pieces.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { createTargetMemory, requireWorld, rememberSeen } from '@sandline/shared';
+import { type WorldBox, createTargetMemory, requireWorld, rememberSeen } from '@sandline/shared';
 import { CoverSystem } from './cover.ts';
 import { EnemyGroup, GROUP, type GroupMember, type GroupRole, parseGroupConfig, pricedLength, seesConcealed, seesGround } from './group.ts';
 import RAW_GROUP from './group.json' with { type: 'json' };
@@ -36,6 +36,41 @@ describe('group tuning (T-3.21)', () => {
     expect(() => parseGroupConfig({ ...RAW_GROUP, luck: 1 })).toThrow(/luck/);
     expect(() => parseGroupConfig({ ...RAW_GROUP, flankExposureCost: 0.5 })).toThrow(/flankExposureCost/);
     expect(() => parseGroupConfig({ ...RAW_GROUP, flankMaxM: 2 })).toThrow(/flankMaxM/);
+    expect(() => parseGroupConfig({ ...RAW_GROUP, pricedRangeM: 1 })).toThrow(/pricedRangeM/);
+    expect(() => parseGroupConfig({ ...RAW_GROUP, flankCandidates: 0 })).toThrow(/flankCandidates/);
+  });
+});
+
+/** Rays cast through a box list: each `rayWorld` iterates the list once. */
+function counted(boxes: readonly WorldBox[]): { list: readonly WorldBox[]; rays: () => number } {
+  let rays = 0;
+  const list = new Proxy([...boxes], {
+    get(target, key, receiver) {
+      if (key === Symbol.iterator) rays++;
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  return { list, rays: () => rays };
+}
+
+describe('the work a flank costs is bounded (U-083)', () => {
+  it('prices only the stretches within range of the target, and casts no ray for the rest', () => {
+    // Open ground: everything the eye can reach is seen, so a priced stretch costs `cost` times its length.
+    const route = [{ x: 0, y: 0, z: 0 }, { x: 100, y: 0, z: 0 }];
+    const eye = { x: 0, y: 0, z: 0 };
+    expect(pricedLength(route, eye, [], 8)).toBeCloseTo(800, 1);
+    // Within 30 m: 30 m priced at 8, the other 70 m at its length.
+    expect(pricedLength(route, eye, [], 8, 30)).toBeCloseTo(30 * 8 + 70, 0);
+    const c = counted([]);
+    pricedLength(route, eye, c.list, 8, 30);
+    // A ray every half metre of the first 30 m (give or take a sample), none for the 70 m beyond.
+    expect(c.rays()).toBeGreaterThan(55);
+    expect(c.rays()).toBeLessThanOrEqual(62);
+  });
+
+  it('prices the same route, to the metre, as before inside the range', () => {
+    const open = [{ x: -3, y: 0, z: 2 }, { x: 3, y: 0, z: 2 }];
+    expect(pricedLength(open, TARGET, range.boxes, 8, 60)).toBeCloseTo(pricedLength(open, TARGET, range.boxes, 8), 6);
   });
 });
 
