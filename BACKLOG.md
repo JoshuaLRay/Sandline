@@ -117,8 +117,9 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-081](docs/backlog/U-081.md) | The cover search must not scale with the whole map | Enemy AI | P1 | DONE | — | [#246](https://github.com/JoshuaLRay/Sandline/pull/246) |
 | [U-082](docs/backlog/U-082.md) | Rectangular floors: bake, collide and draw only where the map is | Campaign design | P2 | DONE | — | [#247](https://github.com/JoshuaLRay/Sandline/pull/247) |
 | [U-083](docs/backlog/U-083.md) | Flank assignment must be bounded (a ray broad phase was tried and did not help) | Campaign design | P2 | DONE | — | [#249](https://github.com/JoshuaLRay/Sandline/pull/249) |
-| [U-084](docs/backlog/U-084.md) | Mission-01: the squad dies in the garrison fight before the upload | Enemy AI | P2 | REVIEW | — | `task/U-084-opening-fight` |
-| [U-085](docs/backlog/U-085.md) | Mission-01 at six humans: the squad is lost before the upload | Enemy AI | P2 | IN_PROGRESS | U-084 (PR 252, base branch) | `task/U-085-six-human-opening` |
+| [U-084](docs/backlog/U-084.md) | Mission-01: the squad dies in the garrison fight before the upload | Enemy AI | P2 | DONE | — | [#252](https://github.com/JoshuaLRay/Sandline/pull/252) |
+| [U-085](docs/backlog/U-085.md) | Mission-01 at six humans: the squad is lost before the upload | Enemy AI | P2 | BLOCKED | U-086 (the tactics lever the investigation found) | — |
+| [U-086](docs/backlog/U-086.md) | Attack orders fight from cover instead of standing in the open | Enemy AI | P2 | READY | — | — |
 
 ## Existing work retained
 
