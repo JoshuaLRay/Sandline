@@ -159,3 +159,14 @@ Slots still keep position between occupants. A slot now also keeps a
 characters flagged `dualPrimary` (Preach, Support) may carry a second primary,
 and only an AR, SMG or shotgun; it is refused while two are carried and the
 pickup is an LMG or sniper. The wire field is `secondary` (protocol 46).
+
+## Addendum — 2026-10-01: escorted characters (U-075)
+
+Owner decision (campaign design, [CAMPAIGN.md](../design/CAMPAIGN.md) Q1, accepted as proposed): a mission may add
+**escorted characters** — the first is mission 1's rescued POW. An escorted character is **not a slot and not
+playable**: no player can take him, so the roster, the character picker, the scoreboard and the six-slot machinery do
+not change, and **the squad is still always six**. He is unarmed, takes damage and goes down like a soldier, and
+**any player may order him** (the existing move, hold and regroup orders read as go, stay and follow) and **spectate**
+him, as with bots. Enemies treat him as a squad member; **his death fails the mission** (Q4), and a retry restores him
+from the checkpoint. Encounter difficulty still scales on human count, which an escorted character does not change.
+

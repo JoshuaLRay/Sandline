@@ -92,12 +92,12 @@ playable as the test and QA mission until the new campaign mission 1 replaces it
 | Run types, mission select, campaign flow | U-072 |
 | Registering a mission in one place | U-073 |
 
-## 3a. Open questions this raises
+## 3a. Questions this raised (answered 2026-10-01: the proposals accepted, except Q2)
 
 | # | Question | Proposal |
 |---|---|---|
 | Q1 | **ADR-001 says the squad is always six.** The POW is a seventh, unarmed member who is *not* a slot (no player can take him), so the slot machinery (roster, picker, scoreboard) should not change. That is a deliberate exception and needs an ADR-001 addendum from the owner. | Add the addendum: a mission may add **escorted characters**: non-slot, non-playable, commandable (the existing move / hold / regroup orders read as go / stay / follow) and spectatable. The squad stays six. |
-| Q2 | **Who is the "team leader"** who chooses the next run? | The player in slot 0 (the squad lead, Preach); if that seat is a bot, the room's host. |
+| Q2 | **Who is the "team leader"** who chooses the next run? | **Owner: the room's host** (not slot 0). The host chooses the next run, and has the in-mission menu (U-078). |
 | Q3 | **Does a failed mission end a campaign run?** The owner chooses after "complete **or failure**". | A failed campaign run lets the leader retry (the same mission) or choose a replay, never skip ahead. |
 | Q4 | **"All 7 safely" when the POW dies.** | The mission fails if the POW dies, as it does when a squad character dies today (U-033), and the retry goes back to the last checkpoint. |
 | Q5 | **"10x the size"** is an area. mission-01's *play* area is about 65 x 90 m (5,800 m2), not its 200 x 200 m floor, so 10x is about 58,000 m2: three 40 m lanes by about 480 m. | **Measured by U-076:** feasible once U-081 (the cover search cost) and U-082 (rectangular floors) are done; keep a map under about 4x until U-081 lands. |
