@@ -23,7 +23,7 @@
  * wrong model of the game (ADR-001).
  */
 import { checkRoomInput, HostUrlError, parseHostUrl } from '../net/RemoteServer.ts';
-import { CLASSES, classById, REGIONS, type Region, regionByTag, regionForHost, splitTaggedCode, tagCode } from '@sandline/shared';
+import { CLASSES, classById, lobbyMaps, REGIONS, type Region, regionByTag, regionForHost, splitTaggedCode, tagCode } from '@sandline/shared';
 import { type Rtt, describeRtt, measureRtt, pickRegion, readStoredRegion, storeRegion } from '../net/regions.ts';
 
 export type LobbyChoice =
@@ -36,12 +36,7 @@ export type LobbyChoice =
  * where it has one and the host runs its AI (`HOST_AI=1`). Joining a room
  * takes whatever map it was made with.
  */
-export const LOBBY_MAPS: readonly { world: string; label: string }[] = [
-  { world: 'mission-01', label: 'Mission 01 — clear and hold the qalat' },
-  { world: 'greybox-01', label: 'Grey box — mission layout fixture' },
-  { world: 'range', label: 'Range — the QA range, no mission' },
-  { world: 'kit-gallery', label: 'Kit gallery — every kit piece, walkable' },
-];
+export const LOBBY_MAPS: readonly { world: string; label: string }[] = lobbyMaps();
 
 export interface LobbyOptions {
   /** The host baked into the build (T-1.5.07); empty when there is none. */
