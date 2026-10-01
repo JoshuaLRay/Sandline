@@ -1114,6 +1114,10 @@ export class Session {
       place: (index) => this.formation.place(index),
       downedNear: (index) => this.downedNear(index),
       hurtNear: (index) => this.hurtNear(index),
+      needsKit: (index) => {
+        const me = this.slots[index];
+        return !!me && isAlive(me.health) && !me.mounted && me.kits > 0 && me.health.current < me.health.max * SQUAD_CONFIG.bot.kitBelowFraction;
+      },
       order: (index) => {
         const order = this.orders[index];
         const run = this.orderRuns[index];

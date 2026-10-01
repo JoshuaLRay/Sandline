@@ -3,6 +3,9 @@
  * same host path a human's kit takes (`Session.updateKits`): it walks to them,
  * holds the use for the kit's time, and spends one. A downed mate is still the
  * revive's (faster), a healthy one is left alone, and with no kits it does not go.
+ *
+ * U-084: and a hurt bot with a kit and nobody else to heal uses it on itself where it stands, under no order or a hold,
+ * but not while it is on its way somewhere under a move order, nor with no kits.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
 import { ClientConnection, DAMAGE, buildTree, createLoopbackPair, createMoveState } from '@sandline/shared';
@@ -78,5 +81,46 @@ describe('a friendly bot heals (U-053)', () => {
     run(30 * 20, () => downed.health.downedAt === null && downed.health.current > 0);
     expect(downed.health.downedAt).toBeNull();
     expect(session.slots[1]!.kits).toBe(3);
+  });
+});
+
+describe('a friendly bot heals itself (U-084)', () => {
+  it('uses a kit on itself where it stands when it is hurt and nobody else is', () => {
+    const { session, run } = room();
+    const bot = session.slots[1]!;
+    bot.health.current = 30;
+    const at = { x: bot.state.x, z: bot.state.z };
+    run(30 * 20, () => bot.health.current === bot.health.max);
+    expect(bot.health.current).toBe(bot.health.max);
+    expect(bot.kits).toBe(2);
+    expect(Math.hypot(bot.state.x - at.x, bot.state.z - at.z)).toBeLessThan(1.5);
+  });
+
+  it('does so on a hold order too, and stays at its post', () => {
+    const { session, run } = room();
+    const bot = session.slots[1]!;
+    session.orderFrom(0, { order: 'hold', address: { to: 'slot', index: 1 }, point: null, target: null });
+    bot.health.current = 30;
+    run(30 * 20, () => bot.health.current === bot.health.max);
+    expect(bot.health.current).toBe(bot.health.max);
+    expect(bot.kits).toBe(2);
+    expect(session.orderFor(1)?.order).toBe('hold');
+  });
+
+  it('does not stop for it on the way somewhere under a move order, nor with no kits', () => {
+    const moving = room();
+    const walker = moving.session.slots[1]!;
+    moving.session.orderFrom(0, { order: 'move', address: { to: 'slot', index: 1 }, point: { x: 6, y: 0, z: 30 }, target: null });
+    walker.health.current = 30;
+    moving.run(30 * 4);
+    expect(walker.kits).toBe(3);
+    expect(walker.state.z).toBeGreaterThan(-6 + 5);
+
+    const bare = room();
+    const none = bare.session.slots[1]!;
+    none.kits = 0;
+    none.health.current = 30;
+    bare.run(30 * 15);
+    expect(none.health.current).toBe(30);
   });
 });
