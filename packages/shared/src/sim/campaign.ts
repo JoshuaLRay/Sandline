@@ -27,6 +27,11 @@ export interface CampaignMission {
 export interface CampaignDef {
   id: string;
   missions: readonly CampaignMission[];
+  /**
+   * U-077: whether the loadout a replay run ends with is kept for the campaign (replaying is how a squad fetches other
+   * weapons, design doc D6), so the next campaign run starts from it. False: a replay keeps nothing. Absent in the data: true.
+   */
+  replayKeepsLoadout: boolean;
 }
 
 /** The kind of run: the newest mission, or one already beaten. */
@@ -49,7 +54,7 @@ function lines(at: string, v: unknown): string[] {
 export function parseCampaign(raw: unknown, known: (id: string) => boolean = (id) => missionFor(id) !== undefined): CampaignDef {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new CampaignDataError('campaign: expected an object');
   const row = raw as Record<string, unknown>;
-  for (const k of Object.keys(row)) if (!['$comment', 'id', 'missions'].includes(k)) throw new CampaignDataError(`campaign: unknown key "${k}"`);
+  for (const k of Object.keys(row)) if (!['$comment', 'id', 'missions', 'replayKeepsLoadout'].includes(k)) throw new CampaignDataError(`campaign: unknown key "${k}"`);
   if (typeof row['id'] !== 'string' || row['id'] === '') throw new CampaignDataError('campaign.id must be a non-empty string');
   const list = row['missions'];
   if (!Array.isArray(list) || list.length === 0) throw new CampaignDataError('campaign.missions must be a non-empty list');
@@ -68,7 +73,9 @@ export function parseCampaign(raw: unknown, known: (id: string) => boolean = (id
     if (typeof title !== 'string' || title.trim() === '') throw new CampaignDataError(`${at}.title must be a non-empty string`);
     return { mission, title, briefing: lines(`${at}.briefing`, e['briefing']), debrief: lines(`${at}.debrief`, e['debrief']) };
   });
-  return { id: row['id'], missions };
+  const keeps = row['replayKeepsLoadout'];
+  if (keeps !== undefined && typeof keeps !== 'boolean') throw new CampaignDataError('campaign.replayKeepsLoadout must be true or false');
+  return { id: row['id'], missions, replayKeepsLoadout: keeps ?? true };
 }
 
 /** The committed campaign, validated once at import. */

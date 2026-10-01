@@ -50,6 +50,22 @@ describe('campaign persistence (T-4.23)', () => {
     reopened.close();
   });
 
+  it('keeps a soldier\'s carried loadout (U-077) and drops one that is not what a session writes', () => {
+    const database = new CampaignDatabase(file());
+    const made = database.createCampaign('player-one', 'mission-01', 1000, 'ACDEFGHJ');
+    const state = advanced();
+    const loadout = { health: 100, weapon: 'carbine', primary: 'carbine', secondary: null, noPistol: false, pickedUp: true, ammo: [['carbine', 12]] as [string, number][], pouch: [0, 1], kits: 2, equipment: -1 };
+    state.soldiers[1] = { ...state.soldiers[1]!, loadout };
+    state.soldiers[2] = { ...state.soldiers[2]!, loadout: { ...loadout, kits: -4 } };
+    state.soldiers[3] = { ...state.soldiers[3]!, loadout: 'a gun' as unknown as typeof loadout };
+    const loaded = database.saveCampaign(made.code, state, 2000).state;
+    expect(loaded.soldiers[1]!.loadout).toEqual(loadout);
+    expect(loaded.soldiers[2]!.loadout).toBeUndefined();
+    expect(loaded.soldiers[3]!.loadout).toBeUndefined();
+    expect(loaded.soldiers[0]!.loadout).toBeUndefined();
+    database.close();
+  });
+
   it('is idempotent and retries a failed write without double-advancing the revision', () => {
     const path = file();
     let failBefore = true;
