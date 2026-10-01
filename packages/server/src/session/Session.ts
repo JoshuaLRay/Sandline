@@ -210,6 +210,7 @@ import { Director } from '../ai/director/director.ts';
 import { MissionRun } from './mission.ts';
 import { EventRun, type EventCheckpoint, type EventHost } from './events.ts';
 import type { CampaignState, ReplayPrisoner, RunKind } from '../persistence/CampaignDatabase.ts';
+import { CAMPAIGN, type CampaignDef, isOffered, runOptions } from '@sandline/shared';
 import { SoldierXp } from '../persistence/xp.ts';
 import type { DownedMate, SquadView } from '../ai/actions/friendly.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
@@ -830,6 +831,10 @@ export interface SessionOptions {
   campaign?: CampaignState;
   /** T-4.23: called only at a completed checkpoint or mission end. */
   onCampaignSave?: (state: CampaignState) => void;
+  /** U-090: the campaign the host chooses runs from; the committed one by default (a test gives its own). */
+  campaignDef?: CampaignDef;
+  /** U-090: this room is moving to another mission (the save is written and the clients told): retire it so a rejoin builds the new one. */
+  onHandoff?: () => void;
 }
 
 export interface SessionStats {
@@ -1028,6 +1033,13 @@ export class Session {
   private readonly campaignCompletedMissions: Set<string>;
   /** U-089: the kind of run this room is. */
   private readonly runKind: RunKind;
+  /** U-090: the order missions are played in, which decides what the host may choose next. */
+  private readonly campaignDef: CampaignDef;
+  /** U-090: the offer last sent, so the same one is not sent every time the mission message is. */
+  private lastOfferKey = '';
+  private readonly onHandoff: (() => void) | null;
+  /** U-090: this room has moved on: it offers nothing more while it closes. */
+  private handedOff = false;
   /** U-089: the replay pool as the save held it: in play in a replay run, carried through untouched in a campaign run. */
   private readonly replayPoolAtLoad: ReplayPrisoner[];
   private readonly campaignSoldiers: CampaignState['soldiers'];
@@ -1064,6 +1076,8 @@ export class Session {
     this.campaignSave = options.onCampaignSave ?? null;
     this.campaignCompletedMissions = new Set(options.campaign?.completedMissions ?? []);
     this.runKind = options.campaign?.run ?? 'campaign';
+    this.campaignDef = options.campaignDef ?? CAMPAIGN;
+    this.onHandoff = options.onHandoff ?? null;
     this.replayPoolAtLoad = (options.campaign?.replayPrisoners ?? []).map((p) => ({ slot: p.slot, at: { ...p.at } }));
     this.campaignSoldiers = (options.campaign?.soldiers ?? Array.from({ length: MAX_SLOTS }, (_, slot) => ({ slot, classId: '', rank: 0, xp: 0 })))
       .map((soldier) => ({ ...soldier }));
@@ -1766,7 +1780,13 @@ export class Session {
 
   /** T-4.23: checkpoint/mission-end persistence; never called from the tick hot path otherwise. */
   private persistCampaign(): void {
-    if (!this.campaignSave) return;
+    const state = this.campaignSnapshot();
+    if (state) this.campaignSave?.(state);
+  }
+
+  /** The campaign file as this room would save it now, or null for a room with no campaign. */
+  private campaignSnapshot(): CampaignState | null {
+    if (!this.campaignSave) return null;
     const saved = this.missionCheckpointState;
     const run = this.missionRun;
     const checkpoint = saved && run && this.missionId
@@ -1793,7 +1813,7 @@ export class Session {
       return { ...rest, classId, ...(prisoner ? { captured: true, prisoner: { ...prisoner.at } } : {}) };
     });
     const replayPrisoners = (campaignRun ? this.replayPoolAtLoad : held).map((p) => ({ slot: p.slot, at: { ...p.at } }));
-    this.campaignSave({
+    return {
       formatVersion: 1,
       world: this.world.id,
       completedMissions: [...this.campaignCompletedMissions],
@@ -1801,13 +1821,77 @@ export class Session {
       soldiers,
       ...(this.runKind === 'replay' ? { run: 'replay' as const } : {}),
       ...(replayPrisoners.length > 0 ? { replayPrisoners } : {}),
-    });
+    };
+  }
+
+  /**
+   * U-090: who may choose the next run: the room's creator while seated, else the lowest-numbered human (design doc
+   * Q2: the host, not slot 0). -1 when nobody is seated.
+   */
+  private hostSlot(): number {
+    const seated = (i: number) => {
+      const s = this.slots[i];
+      return s !== undefined && !s.isBot && s.connection !== null;
+    };
+    if (this.creatorSlot >= 0 && seated(this.creatorSlot)) return this.creatorSlot;
+    return this.slots.findIndex((s) => seated(s.index));
+  }
+
+  /** U-090: what the host may choose now, or null while the mission is on, or in a room with no campaign to move through. */
+  private runOffer(): Extract<Message, { kind: 'RunOffer' }> | null {
+    const state = this.missionRun?.current.state;
+    if (this.handedOff || !this.campaignSave || !this.missionId || !this.roomStarted || state === undefined || state === 'progress') return null;
+    const options = runOptions(this.campaignCompletedMissions, this.campaignDef);
+    return { kind: 'RunOffer', mission: this.missionId, result: state === 'complete' ? 'complete' : 'failed', host: Math.max(0, this.hostSlot()), campaign: options.campaign ?? '', replay: options.replay };
+  }
+
+  /** U-090: tell everyone what the host may choose, once per ending (and again if the host changes). */
+  private broadcastRunOffer(): void {
+    const offer = this.runOffer();
+    const key = offer ? `${offer.result}:${this.missionRun?.current.attempt}:${offer.host}` : '';
+    if (key === this.lastOfferKey) return;
+    this.lastOfferKey = key;
+    if (!offer) return;
+    for (const c of this.connections) if (c.state === 'active') c.send(offer);
+  }
+
+  /**
+   * U-090: the host's choice. Only the host, only once the mission is over, only what was offered (never a mission
+   * beyond the newest). Choosing the mission just failed as the same kind of run is the existing retry; anything else
+   * writes the new world and kind into the campaign file, tells the room, and retires it: the clients rejoin the
+   * same code and a room is built from the file.
+   */
+  private applyRunChoice(conn: ServerConnection, msg: Extract<Message, { kind: 'RoomCommand' }>): void {
+    const slot = this.slots.find((candidate) => candidate.connection === conn && !candidate.isBot);
+    const offer = this.runOffer();
+    if (!slot || !offer || slot.index !== this.hostSlot()) return;
+    const run: RunKind = msg.run === 'replay' ? 'replay' : 'campaign';
+    const mission = msg.mission ?? '';
+    if (!isOffered(run, mission, this.campaignCompletedMissions, this.campaignDef)) return;
+    if (offer.result === 'failed' && mission === this.missionId && run === this.runKind) {
+      this.retryMission();
+      return;
+    }
+    this.handOff(mission, run);
+  }
+
+  private handOff(mission: string, run: RunKind): void {
+    const state = this.campaignSnapshot();
+    if (!state || !this.campaignSave) return;
+    const { run: _was, ...rest } = state;
+    this.campaignSave({ ...rest, world: mission, checkpoint: null, ...(run === 'replay' ? { run } : {}) });
+    this.handedOff = true;
+    const handoff: Message = { kind: 'Handoff', mission, run };
+    for (const c of this.connections) if (c.state === 'active') c.send(handoff);
+    this.onHandoff?.();
+    this.close('moving to the next mission');
   }
 
   private broadcastMission(): void {
     if (!this.missionRun) return;
     const msg = { kind: 'Mission', ...this.missionRun.current } as const;
     for (const c of this.connections) if (c.state === 'active') c.send(msg);
+    this.broadcastRunOffer();
     // T-4.28: the scoreboard's clock and objectives move with the state and the objective, not with every tick of progress.
     const key = `${msg.state}:${msg.objective}:${this.missionRun.doneCount}`;
     if (key !== this.lastStatsKey) {
@@ -3058,6 +3142,9 @@ export class Session {
     }
     conn.send({ kind: 'Marks', marks: [...this.marks] });
     if (this.missionRun && this.roomStarted) conn.send({ kind: 'Mission', ...this.missionRun.current });
+    // U-090: someone who joins after the mission has ended is shown what the host may choose.
+    const offer = this.runOffer();
+    if (offer) conn.send(offer);
     conn.send({ kind: 'ScriptState', blockers: this.scriptBlockers() });
     return true;
   }
@@ -3737,6 +3824,8 @@ export class Session {
     if (!this.roomStarted && this.creatorSlot === slot.index) {
       this.creatorSlot = this.slots.find((s) => !s.isBot && s.connection !== null)?.index ?? -1;
     }
+    // U-090: if the mission is over, whoever hosts now is told what they may choose.
+    this.broadcastRunOffer();
     slot.input = idleInput(slot.yaw);
     slot.interactHeld = false;
     // A bot has a gun in hand, not whatever the departed player was holding.
@@ -3832,6 +3921,10 @@ export class Session {
   }
 
   private applyRoomCommand(conn: ServerConnection, msg: Extract<Message, { kind: 'RoomCommand' }>): void {
+    if (msg.command === 'choose') {
+      this.applyRunChoice(conn, msg);
+      return;
+    }
     if (!this.roomLobbyEnabled || this.roomStarted) return;
     const slot = this.slots.find((candidate) => candidate.connection === conn && !candidate.isBot);
     if (!slot) return;

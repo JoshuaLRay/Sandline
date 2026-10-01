@@ -339,6 +339,10 @@ export interface ClientConnectionEvents {
   onRoomState?: (room: Extract<Message, { kind: 'RoomState' }>) => void;
   /** T-2.49: a bot could not carry out its order. */
   onOrderFailed?: (failed: Extract<Message, { kind: 'OrderFailed' }>) => void;
+  /** U-090: the mission is over and the host may choose the next run. */
+  onRunOffer?: (offer: Extract<Message, { kind: 'RunOffer' }>) => void;
+  /** U-090: the host chose; this room is moving to another mission. */
+  onHandoff?: (handoff: Extract<Message, { kind: 'Handoff' }>) => void;
   /** U-026: the host moved this client into another soldier. */
   onPossessed?: (possessed: Extract<Message, { kind: 'Possessed' }>) => void;
   onClosed?: (reason: string, code: DisconnectCode | null) => void;
@@ -419,6 +423,12 @@ export class ClientConnection {
         break;
       case 'OrderFailed':
         this.events.onOrderFailed?.(msg);
+        break;
+      case 'RunOffer':
+        this.events.onRunOffer?.(msg);
+        break;
+      case 'Handoff':
+        this.events.onHandoff?.(msg);
         break;
       case 'Disconnect':
         this.rejectionReason = msg.reason;

@@ -110,6 +110,14 @@ const SAMPLES: Message[] = [
   { kind: 'ScriptMessage', text: 'Gate is shut' },
   { kind: 'ScriptCallout', id: 'contact-front' },
   { kind: 'OrderFailed', slot: 4, order: 'move' },
+  // U-090: the offer after a mission, the host's choice and the handoff.
+  { kind: 'RunOffer', mission: 'mission-01', result: 'complete', host: 0, campaign: 'mission-02', replay: ['mission-01'] },
+  { kind: 'RunOffer', mission: 'mission-02', result: 'failed', host: 5, campaign: 'mission-02', replay: ['mission-01'] },
+  { kind: 'RunOffer', mission: 'mission-10', result: 'complete', host: 2, campaign: '', replay: ['mission-01', 'mission-02', 'mission-03'] },
+  { kind: 'Handoff', mission: 'mission-02', run: 'campaign' },
+  { kind: 'Handoff', mission: 'mission-01', run: 'replay' },
+  { kind: 'RoomCommand', command: 'choose', run: 'campaign', mission: 'mission-02' },
+  { kind: 'RoomCommand', command: 'choose', run: 'replay', mission: 'mission-01' },
   {
     kind: 'HitEvent',
     shooterNetId: 3,
