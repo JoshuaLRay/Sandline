@@ -119,3 +119,7 @@
 
 /* U-064: a prisoner's row is greyed out; its label says why it cannot be played. */
 .menu-command-row[data-captured='yes'] { opacity: 0.55; font-style: italic; }
+.menu-mission { margin-top: 18px; }
+.menu-mission .menu-button { display: block; width: 100%; margin: 6px 0; }
+.menu-mission-option { margin: 8px 0 12px; }
+.menu-mission-option .menu-note { margin: 2px 0; }
