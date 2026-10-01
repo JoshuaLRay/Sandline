@@ -1,6 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
+import type { RunKind } from '@sandline/shared';
 import { PlayerDirectory, type PlayerRecord } from '../identity/PlayerDirectory.ts';
+
+export type { RunKind };
 
 export const CAMPAIGN_CODE_ALPHABET = 'ACDEFGHJKMNPRTUVWXY34679';
 export const CAMPAIGN_CODE_LENGTH = 8;
@@ -38,8 +41,6 @@ export interface CampaignCheckpoint {
 /** U-060: a checkpoint world larger than this is dropped from the save, which then keeps the basic checkpoint. */
 export const CHECKPOINT_WORLD_MAX_BYTES = 512 * 1024;
 
-/** U-089: a run of the campaign's newest mission, or a replay of one already beaten (design doc D3). */
-export type RunKind = 'campaign' | 'replay';
 
 /** U-089: a character held prisoner in the replay pool, and where. */
 export interface ReplayPrisoner {

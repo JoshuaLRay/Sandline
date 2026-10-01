@@ -146,6 +146,7 @@ import { AiDebugOverlay } from './ui/AiDebug.ts';
 import { FULL_RESTART_KEY, RESTART_KEY, afterActionXp, missionLine, uploadPrompt } from './ui/missionHud.ts';
 import { type ClassDef, TICK_SECONDS as MISSION_TICK_SECONDS, type Vitality, afterActionSummary, classById, scoreboardRows } from '@sandline/shared';
 import { createScoreboard } from './ui/scoreboard.ts';
+import { runChoiceModel } from './ui/runChoice.ts';
 import { createMenu } from './ui/menu/Menu.ts';
 import { type AudioContextLike, AudioEngine } from './audio/engine.ts';
 import { createSoundBoard } from './ui/SoundBoard.ts';
@@ -1466,7 +1467,18 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
       remote.markJoined();
       history.replaceState(null, '', shareLink(location.href, choice.host, taggedRoom(choice.host, room), __DEFAULT_HOST__));
     };
+    // U-090: the host chose the next mission. The room closes behind the Handoff; rejoin the same code in the same slot
+    // (the server saved the campaign under it) rather than showing the close as a refusal.
+    let handingOff = false;
+    net.onHandoff = () => {
+      if (handingOff || live?.net !== net) return;
+      handingOff = true;
+      const slot = net.slot;
+      leaveSession(null);
+      chooseSession({ ...choice, room: roomJoined, slot, world: '', quick: false }, true);
+    };
     net.onDisconnect = (reason, code) => {
+      if (handingOff) return;
       remote.noteRefusal(code, reason);
       if (code === 'bad identity') {
         // A host may have restarted with a new signing secret. Clear the stale
@@ -2845,6 +2857,11 @@ function frame(): void {
   const missionOver = (net?.mission?.state ?? 'progress') !== 'progress';
   scoreboard.setVisible(live !== null && (tabHeld || missionOver));
   scoreboard.setOutcome(net?.mission ?? null, (full) => live?.net.restartMission(full));
+  // U-090: the host's pick of what to play next; everyone else sees whose choice it is.
+  scoreboard.setRunChoice(
+    net ? runChoiceModel(net.runOffer, net.slot, net.roster.find((r) => r.human)?.name ?? 'the host') : null,
+    (run, mission) => live?.net.chooseRun(run, mission),
+  );
   if (scoreboard.visible && net) {
     scoreboard.update(
       scoreboardRows(net.scoreboard, net.roster, net.slot),

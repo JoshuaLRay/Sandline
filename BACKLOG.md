@@ -122,8 +122,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-086](docs/backlog/U-086.md) | Attack orders fight from cover instead of standing in the open | Enemy AI | P2 | DONE | — | [#255](https://github.com/JoshuaLRay/Sandline/pull/255) |
 | [U-087](docs/backlog/U-087.md) | Squad tactics: bounding, focus fire and fighting as a group | Enemy AI | P3 | BLOCKED | Deferred by the owner (U-085) | — |
 | [U-088](docs/backlog/U-088.md) | The campaign as data: order, titles, briefings and debriefs | Campaign design | P2 | DONE | — | [#259](https://github.com/JoshuaLRay/Sandline/pull/259) |
-| [U-089](docs/backlog/U-089.md) | Run kinds in the campaign file, and separate prisoner pools | Campaign design | P2 | REVIEW | — | `task/U-089-run-kinds` |
-| [U-090](docs/backlog/U-090.md) | The host chooses the next run; briefing, debrief and the handoff | Campaign design | P2 | BLOCKED | U-089 | — |
+| [U-089](docs/backlog/U-089.md) | Run kinds in the campaign file, and separate prisoner pools | Campaign design | P2 | DONE | — | [#260](https://github.com/JoshuaLRay/Sandline/pull/260) |
+| [U-090](docs/backlog/U-090.md) | The host chooses the next run; briefing, debrief and the handoff | Campaign design | P2 | DONE | U-089 | [#261](https://github.com/JoshuaLRay/Sandline/pull/261) |
 | [U-091](docs/backlog/U-091.md) | Spectate the escorted character | Campaign design | P3 | READY | U-075 | — |
 
 ## Existing work retained

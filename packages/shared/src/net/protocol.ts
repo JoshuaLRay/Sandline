@@ -13,13 +13,14 @@ import { isJoinCode } from './roomCode.ts';
 import { MAX_MARKS, ORDER_KINDS, type BotOrder, type OrderAddress, type OrderKind, type OrderPoint, type TargetMark } from '../sim/orders.ts';
 import { MISSION_FAILURE_REASONS, MISSION_STATES, OBJECTIVE_PHASES, OBJECTIVE_TYPES, type MissionView, type OpenObjective } from '../sim/mission.ts';
 import type { ScriptBlockerState } from '../sim/events.ts';
+import type { RunKind } from '../sim/campaign.ts';
 import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 import type { MissionStats } from '../sim/scoreboard.ts';
 import { WEAPON_IDS, WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 import { PROJECTILE_IDS, PROJECTILE_INDEX_BITS } from '../sim/ballistics.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 61;
+export const PROTOCOL_VERSION = 62;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -162,9 +163,10 @@ const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks
  * Mission, room and progression messages share a three-bit variant (T-4.24).
  */
 const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3, Progression: 4, Stats: 5, AssignCommander: 6, Possess: 7 } as const;
-const ROOM_COMMANDS = ['ready', 'start', 'class'] as const;
+const ROOM_COMMANDS = ['ready', 'start', 'class', 'choose'] as const;
 /** T-4.15: state plus transient message/callout notifications. */
-const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2, OrderFailed: 3 } as const;
+/** Three bits since U-090 (two held four variants; the run offer and the handoff make six). */
+const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2, OrderFailed: 3, RunOffer: 4, Handoff: 5 } as const;
 const EXT_BITS = 3;
 const ORDER_KIND_BITS = 3;
 const ADDRESS_TO = ['slot', 'fireteam', 'all'] as const;
@@ -517,8 +519,11 @@ export type Message =
   | ({ kind: 'Stats' } & MissionStats)
   /** T-4.19: authoritative pre-mission room state. Class ids are reserved for T-4.27. */
   | { kind: 'RoomState'; started: boolean; creator: number; world: string; ready: readonly boolean[]; classes: readonly string[] }
-  /** T-4.19: ready toggle or creator-only force start. */
-  | { kind: 'RoomCommand'; command: (typeof ROOM_COMMANDS)[number]; ready?: boolean; classId?: string }
+  /**
+   * T-4.19: ready toggle or creator-only force start. U-090: `choose`, the room host's choice of the next run once a
+   * mission is over: a campaign run of the newest mission or a replay run of a beaten one (`mission`, a world id).
+   */
+  | { kind: 'RoomCommand'; command: (typeof ROOM_COMMANDS)[number]; ready?: boolean; classId?: string; run?: RunKind; mission?: string }
   /** T-4.15: all dynamic blockers, whole, whenever one changes and on seating. Host to client. */
   | { kind: 'ScriptState'; blockers: readonly ScriptBlockerState[] }
   /** T-4.15: an authored on-screen mission message. Host to client. */
@@ -526,7 +531,15 @@ export type Message =
   /** T-4.15: an authored E-2.7 callout id. Host to client. */
   | { kind: 'ScriptCallout'; id: string }
   /** T-2.49: a bot could not carry out its order (it could not get there, or its target went); the callout's "can't get there". Host to client. */
-  | { kind: 'OrderFailed'; slot: number; order: OrderKind };
+  | { kind: 'OrderFailed'; slot: number; order: OrderKind }
+  /**
+   * U-090: the mission `mission` is over (`result`); the room host (`host`, a slot) may now choose what is played next:
+   * a campaign run of `campaign` (empty when the season is done) or a replay run of any of `replay`. Host to client,
+   * when the mission ends and to anyone who joins after. Titles, briefings and debriefs are the campaign data's.
+   */
+  | { kind: 'RunOffer'; mission: string; result: 'complete' | 'failed'; host: number; campaign: string; replay: readonly string[] }
+  /** U-090: the host chose; this room is moving to `mission` as a `run`. Rejoin the same code. Host to client. */
+  | { kind: 'Handoff'; mission: string; run: RunKind };
 
 export class ProtocolError extends Error {}
 
@@ -830,9 +843,10 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(EXT.Mission, EXT_BITS);
       w.writeBits(MISSION_VARIANT.RoomCommand, 3);
       w.writeBits(ROOM_COMMANDS.indexOf(msg.command), 2);
-      w.writeBool(msg.command === 'ready' ? (msg.ready ?? false) : false);
+      // The same bool and string for every command; U-090's `choose` carries (replay?, mission) in them.
+      w.writeBool(msg.command === 'ready' ? (msg.ready ?? false) : msg.command === 'choose' ? msg.run === 'replay' : false);
       // T-4.27: the class a player picks in the room.
-      w.writeString(msg.command === 'class' ? (msg.classId ?? '') : '');
+      w.writeString(msg.command === 'class' ? (msg.classId ?? '') : msg.command === 'choose' ? (msg.mission ?? '') : '');
       break;
     case 'Stats': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -869,7 +883,7 @@ export function encodeMessage(msg: Message): Uint8Array {
     case 'ScriptState': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Events, EXT_BITS);
-      w.writeBits(EVENT_VARIANT.State, 2);
+      w.writeBits(EVENT_VARIANT.State, 3);
       const blockers = msg.blockers.slice(0, 32);
       w.writeVarUint(blockers.length);
       for (const blocker of blockers) {
@@ -891,21 +905,41 @@ export function encodeMessage(msg: Message): Uint8Array {
     case 'ScriptMessage':
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Events, EXT_BITS);
-      w.writeBits(EVENT_VARIANT.Message, 2);
+      w.writeBits(EVENT_VARIANT.Message, 3);
       w.writeString(msg.text);
       break;
     case 'ScriptCallout':
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Events, EXT_BITS);
-      w.writeBits(EVENT_VARIANT.Callout, 2);
+      w.writeBits(EVENT_VARIANT.Callout, 3);
       w.writeString(msg.id);
       break;
     case 'OrderFailed':
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Events, EXT_BITS);
-      w.writeBits(EVENT_VARIANT.OrderFailed, 2);
+      w.writeBits(EVENT_VARIANT.OrderFailed, 3);
       w.writeBits(msg.slot & 0x7, 3);
       w.writeBits(ORDER_KINDS.indexOf(msg.order), ORDER_KIND_BITS);
+      break;
+    case 'RunOffer': {
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Events, EXT_BITS);
+      w.writeBits(EVENT_VARIANT.RunOffer, 3);
+      w.writeString(msg.mission);
+      w.writeBool(msg.result === 'failed');
+      w.writeBits(msg.host & 0x7, 3);
+      w.writeString(msg.campaign);
+      const replay = msg.replay.slice(0, 16);
+      w.writeVarUint(replay.length);
+      for (const id of replay) w.writeString(id);
+      break;
+    }
+    case 'Handoff':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Events, EXT_BITS);
+      w.writeBits(EVENT_VARIANT.Handoff, 3);
+      w.writeString(msg.mission);
+      w.writeBool(msg.run === 'replay');
       break;
     case 'Marks': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -1296,6 +1330,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
               const classId = r.readString();
               if (command === 'ready') return { kind: 'RoomCommand', command, ready };
               if (command === 'class') return { kind: 'RoomCommand', command, classId };
+              if (command === 'choose') return { kind: 'RoomCommand', command, run: ready ? 'replay' : 'campaign', mission: classId };
               return { kind: 'RoomCommand', command };
             }
             if (variant === MISSION_VARIANT.RoomState) {
@@ -1350,7 +1385,20 @@ export function decodeMessage(bytes: Uint8Array): Message {
             return { kind: 'Mission', state, attempt, objective, objectives, type, phase, label, satisfied, progress, goal, ...(failureReason !== 'none' ? { failureReason } : {}), ...(open.length > 0 ? { open } : {}) };
           }
           case EXT.Events: {
-            const variant = r.readBits(2);
+            const variant = r.readBits(3);
+            if (variant === EVENT_VARIANT.RunOffer) {
+              const mission = r.readString();
+              const result = r.readBool() ? 'failed' : 'complete';
+              const host = r.readBits(3);
+              const campaign = r.readString();
+              const replay: string[] = [];
+              for (let i = readCount(r, 16, 'replay mission'); i > 0; i -= 1) replay.push(r.readString());
+              return { kind: 'RunOffer', mission, result, host, campaign, replay };
+            }
+            if (variant === EVENT_VARIANT.Handoff) {
+              const mission = r.readString();
+              return { kind: 'Handoff', mission, run: r.readBool() ? 'replay' : 'campaign' };
+            }
             if (variant === EVENT_VARIANT.Message) return { kind: 'ScriptMessage', text: r.readString() };
             if (variant === EVENT_VARIANT.Callout) return { kind: 'ScriptCallout', id: r.readString() };
             if (variant === EVENT_VARIANT.OrderFailed) return { kind: 'OrderFailed', slot: r.readBits(3), order: readOrderKind(r) };

@@ -214,7 +214,7 @@ export class Registry {
         maxSessionMs: this.maxSessionMs,
         profileAi: this.profileAi,
         roomLobby: true,
-        ...(campaign ? { campaign: campaign.state, onCampaignSave: campaign.onSave } : {}),
+        ...(campaign ? { campaign: campaign.state, onCampaignSave: campaign.onSave, onHandoff: () => this.retire(code) } : {}),
       }),
       createdAt: now,
       simTimeMs: 0,
@@ -222,6 +222,14 @@ export class Registry {
     };
     this.rooms.set(code, room);
     return room;
+  }
+
+  /**
+   * U-090: drop a room that has moved on to another mission. Its campaign code is free again, so the clients' rejoin
+   * (the campaign file now names the new mission) builds a room on that one. The session closes itself.
+   */
+  retire(code: string): void {
+    this.rooms.delete(code);
   }
 
   /** T-4.19: find a compatible room with a human seat, preferring one still assembling. */
