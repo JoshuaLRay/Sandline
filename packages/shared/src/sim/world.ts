@@ -184,9 +184,15 @@ export interface World {
    * on the origin (T-3.03). The ground is not a box — nothing collides with it
    * but `groundY` — so this is only what the navmesh bake walks. A file may
    * set it (`floor.halfExtent`); otherwise it is the boxes' extent plus
-   * `FLOOR_MARGIN_M`.
+   * `FLOOR_MARGIN_M`. Since U-082 the floor may be a rectangle (`floor.halfWidth`
+   * across x, `floor.halfDepth` along z, still centred on the origin): this is then
+   * the larger of the two, the side of the smallest square that holds it.
    */
   floorHalfExtent: number;
+  /** U-082: half the floor's width, along x. Equal to `floorHalfExtent` for a square floor (every world before U-082). */
+  floorHalfWidth: number;
+  /** U-082: half the floor's depth, along z. */
+  floorHalfDepth: number;
   /** T-3.31: where a mission on this world starts, what it takes, and the ways there; null for a world with none. */
   mission: WorldMission | null;
   /** T-4.09: the kit pieces a level places, for the renderer to draw; empty for a box-only world. Their collision is already in `boxes`. */
@@ -357,18 +363,33 @@ export function loadWorld(raw: unknown, level: { pieces: readonly PlacedPiece[];
   let floorHalfExtent = 0;
   for (const b of boxes) floorHalfExtent = Math.max(floorHalfExtent, -b.minX, b.maxX, -b.minZ, b.maxZ);
   floorHalfExtent += FLOOR_MARGIN_M;
+  let floorHalfWidth = floorHalfExtent;
+  let floorHalfDepth = floorHalfExtent;
   if (floor !== undefined) {
-    const half = (floor as { halfExtent?: unknown } | null)?.halfExtent;
-    if (typeof half !== 'number' || !Number.isFinite(half) || half <= 0) {
-      throw new Error(`world '${file.id}': floor.halfExtent must be a positive number`);
+    const spec = floor as { halfExtent?: unknown; halfWidth?: unknown; halfDepth?: unknown } | null;
+    const positive = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0;
+    if (spec && (spec.halfWidth !== undefined || spec.halfDepth !== undefined)) {
+      // U-082: a rectangle, both sides named, and not also a square.
+      if (spec.halfExtent !== undefined) throw new Error(`world '${file.id}': floor names halfExtent or halfWidth and halfDepth, not both`);
+      if (!positive(spec.halfWidth) || !positive(spec.halfDepth)) {
+        throw new Error(`world '${file.id}': floor.halfWidth and floor.halfDepth must both be positive numbers`);
+      }
+      floorHalfWidth = spec.halfWidth;
+      floorHalfDepth = spec.halfDepth;
+    } else {
+      if (!positive(spec?.halfExtent)) throw new Error(`world '${file.id}': floor.halfExtent must be a positive number`);
+      floorHalfWidth = spec.halfExtent;
+      floorHalfDepth = spec.halfExtent;
     }
-    floorHalfExtent = half;
+    floorHalfExtent = Math.max(floorHalfWidth, floorHalfDepth);
   }
   const mission = (raw as { mission?: unknown }).mission;
   return {
     id: file.id,
     boxes,
     floorHalfExtent,
+    floorHalfWidth,
+    floorHalfDepth,
     mission: mission === undefined ? null : loadMission(file.id, mission),
     pieces: level.pieces,
     encounter: level.encounter,

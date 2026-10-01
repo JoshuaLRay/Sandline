@@ -40,6 +40,8 @@ const fixtureWorld = (): World => ({
   id: 'fixture',
   boxes: [],
   floorHalfExtent: 20,
+  floorHalfWidth: 20,
+  floorHalfDepth: 20,
   mission: fixtureMission,
   pieces: [],
   encounter: null,

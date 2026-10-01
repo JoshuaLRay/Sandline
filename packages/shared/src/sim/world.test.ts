@@ -12,6 +12,7 @@ import {
   type WorldRay,
   figureBox,
   getWorld,
+  loadLevel,
   loadWorld,
   railBoxes,
   requireWorld,
@@ -255,6 +256,28 @@ describe('a world names its floor (T-3.03)', () => {
   it('refuses a floor that is not a positive size', () => {
     expect(() => loadWorld({ id: 'f', floor: { halfExtent: 0 }, cover })).toThrow(/floor.halfExtent/);
     expect(() => loadWorld({ id: 'f', floor: 5, cover })).toThrow(/floor.halfExtent/);
+  });
+  it('may be a rectangle (U-082): half the width across x, half the depth along z', () => {
+    const w = loadWorld({ id: 'f', floor: { halfWidth: 60, halfDepth: 240 }, cover });
+    expect([w.floorHalfWidth, w.floorHalfDepth, w.floorHalfExtent]).toEqual([60, 240, 240]);
+    // A square keeps all three the same, so every world before U-082 is as it was.
+    const sq = loadWorld({ id: 'f', floor: { halfExtent: 30 }, cover });
+    expect([sq.floorHalfWidth, sq.floorHalfDepth, sq.floorHalfExtent]).toEqual([30, 30, 30]);
+    const derived = loadWorld({ id: 'f', cover });
+    expect([derived.floorHalfWidth, derived.floorHalfDepth]).toEqual([13 + FLOOR_MARGIN_M, 13 + FLOOR_MARGIN_M]);
+    for (const id of ['range', 'greybox-01', 'kit-gallery', 'mission-01']) {
+      const world = requireWorld(id);
+      expect([world.floorHalfWidth, world.floorHalfDepth]).toEqual([world.floorHalfExtent, world.floorHalfExtent]);
+    }
+  });
+  it('comes through a level file too', () => {
+    const w = loadLevel({ id: 'lane', format: 1, floor: { halfWidth: 60, halfDepth: 240 }, boxes: [{ id: 'crate', x: 0, y: 0, z: 0, w: 2, h: 1, d: 2 }], pieces: [] });
+    expect([w.floorHalfWidth, w.floorHalfDepth]).toEqual([60, 240]);
+  });
+  it('refuses half a rectangle, a rectangle that is also a square, and a side that is not positive', () => {
+    expect(() => loadWorld({ id: 'f', floor: { halfWidth: 60 }, cover })).toThrow(/halfWidth and floor.halfDepth/);
+    expect(() => loadWorld({ id: 'f', floor: { halfWidth: 60, halfDepth: 0 }, cover })).toThrow(/halfWidth and floor.halfDepth/);
+    expect(() => loadWorld({ id: 'f', floor: { halfWidth: 60, halfDepth: 90, halfExtent: 90 }, cover })).toThrow(/not both/);
   });
 });
 
