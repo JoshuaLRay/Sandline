@@ -116,7 +116,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-080](docs/backlog/U-080.md) | Realistic character models: a more grounded look | Art | P2 | BLOCKED | Owner's reference set and approach (card) | — |
 | [U-081](docs/backlog/U-081.md) | The cover search must not scale with the whole map | Enemy AI | P1 | REVIEW | — | `task/U-081-cover-search` |
 | [U-082](docs/backlog/U-082.md) | Rectangular floors: bake, collide and draw only where the map is | Campaign design | P2 | READY | — | — |
-| [U-083](docs/backlog/U-083.md) | Ray casts must not scan every box on the map | Campaign design | P2 | READY | — | — |
+| [U-083](docs/backlog/U-083.md) | Flank assignment must be bounded (a ray broad phase was tried and did not help) | Campaign design | P2 | REVIEW | — | `task/U-083-ray-broadphase` |
 
 ## Existing work retained
 
