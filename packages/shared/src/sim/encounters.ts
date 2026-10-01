@@ -29,8 +29,7 @@
  * are; and against the world, so a zone or place that does not exist is a
  * load-time error rather than a group that never comes.
  */
-import GREYBOX_01 from '../data/encounters/greybox-01.json' with { type: 'json' };
-import MISSION_01 from '../data/encounters/mission-01.json' with { type: 'json' };
+import { COMMITTED, type CampaignEntry } from './campaignRegistry.ts';
 import { ENEMIES } from './enemies.ts';
 import { type GroundArea, type World, getWorld } from './world.ts';
 
@@ -243,11 +242,21 @@ export function resolveArea(ref: AreaRef, encounter: Encounter, world: World): G
   return encounter.areas[ref]!;
 }
 
+/** The encounters of a list of registry entries, by world id (U-073); `worldOf` finds their worlds. */
+export function encountersFrom(entries: readonly CampaignEntry[], worldOf: (id: string) => World | undefined = getWorld): ReadonlyMap<string, Encounter> {
+  return new Map(
+    entries
+      .filter((e) => e.encounter !== undefined)
+      .map((entry) => {
+        const e = parseEncounter(entry.encounter, worldOf);
+        if (e.world !== entry.id) throw new Error(`registry entry '${entry.id}': its encounter file is for world '${e.world}'`);
+        return [e.world, e] as const;
+      }),
+  );
+}
+
 /** Every committed encounter, by world id. Validated once, at import. */
-const ENCOUNTERS: ReadonlyMap<string, Encounter> = new Map([GREYBOX_01, MISSION_01].map((raw) => {
-  const e = parseEncounter(raw);
-  return [e.world, e] as const;
-}));
+const ENCOUNTERS: ReadonlyMap<string, Encounter> = encountersFrom(COMMITTED);
 
 /** The committed encounter for a world, or undefined when it has none. */
 export function encounterFor(worldId: string): Encounter | undefined {

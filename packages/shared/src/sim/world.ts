@@ -34,9 +34,7 @@
  * below rather than read from disk, because this module runs in the page too.
  */
 import RANGE_WORLD from '../data/worlds/range.json' with { type: 'json' };
-import GREYBOX_01_LEVEL from '../data/levels/greybox-01.json' with { type: 'json' };
-import KIT_GALLERY_LEVEL from '../data/levels/kit-gallery.json' with { type: 'json' };
-import MISSION_01_LEVEL from '../data/levels/mission-01.json' with { type: 'json' };
+import { COMMITTED, type CampaignEntry } from './campaignRegistry.ts';
 import { POSITION } from '../net/quantize.ts';
 import { type PlacedEmplacement, parsePlacedEmplacements } from './emplacement.ts';
 import { type PlacedPiece, expandLevel } from './level.ts';
@@ -388,10 +386,19 @@ export function loadLevel(raw: unknown): World {
   return loadWorld(expanded, { pieces: expanded.pieces, encounter: expanded.encounter });
 }
 
+/** The worlds of a list of registry entries, by id (U-073). An entry whose file names another id is refused. */
+export function worldsFrom(entries: readonly CampaignEntry[]): ReadonlyMap<string, World> {
+  return new Map(
+    entries.map((entry) => {
+      const world = entry.world.kind === 'world' ? loadWorld(entry.world.raw) : loadLevel(entry.world.raw);
+      if (world.id !== entry.id) throw new Error(`registry entry '${entry.id}': its world file is '${world.id}'`);
+      return [world.id, world] as const;
+    }),
+  );
+}
+
 /** Every world this build knows, by id. Validated once, at import. */
-const WORLDS: ReadonlyMap<string, World> = new Map(
-  [loadWorld(RANGE_WORLD), loadLevel(GREYBOX_01_LEVEL), loadLevel(KIT_GALLERY_LEVEL), loadLevel(MISSION_01_LEVEL)].map((world) => [world.id, world] as const),
-);
+const WORLDS: ReadonlyMap<string, World> = worldsFrom(COMMITTED);
 
 /** The world a session gets when nobody names one. */
 export const DEFAULT_WORLD_ID = 'range';

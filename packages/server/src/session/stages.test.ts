@@ -98,12 +98,14 @@ describe('a stage of two objectives (U-074)', () => {
       expect(run.current.open?.map((o) => [o.index, o.done])).toEqual([[0, false], [1, false]]);
       expect(run.current.objective).toBe(0);
       const doReach = () => w.standing.set(AREA, 1);
-      first === 'reach' ? doReach() : kill('g');
+      if (first === 'reach') doReach();
+      else kill('g');
       run.step(world);
       expect(run.current).toMatchObject({ state: 'progress', objective: first === 'reach' ? 1 : 0 });
       expect(run.current.open?.map((o) => o.done)).toEqual(first === 'reach' ? [true, false] : [false, true]);
       expect(run.doneCount).toBe(1);
-      first === 'reach' ? kill('g') : doReach();
+      if (first === 'reach') kill('g');
+      else doReach();
       run.step(world);
       // Both done: the second stage opens (a stage of one lists no `open`).
       expect(run.current).toMatchObject({ state: 'progress', objective: 2, type: 'survive' });
