@@ -154,16 +154,16 @@ describe('the tank is an enemy entity (U-066)', () => {
     const snap = () => (session as unknown as { buildSnapshot(): WorldSnapshot }).buildSnapshot();
     const tank = (w: WorldSnapshot) => w.entities.find((e) => e.netId === id)!;
     const first = decodeFull(snap());
-    expect(tank(first).components[COMPONENT_IDS.Enemy]).toEqual([TANK_INDEX, 0, 700]);
+    expect(tank(first).components[COMPONENT_IDS.Enemy]).toEqual([TANK_INDEX, 0, 700, 0]);
     expect(tank(first).components[COMPONENT_IDS.Transform]?.[3]).toBe(100);
     // A soldier's third field is 0, whatever its facing.
     const rifleman = session.spawnEnemy('rifleman', { x: 4, y: 0, z: 30, yaw: 300 }) as number;
-    expect(snap().entities.find((e) => e.netId === rifleman)!.components[COMPONENT_IDS.Enemy]).toEqual([0, 0, 0]);
+    expect(snap().entities.find((e) => e.netId === rifleman)!.components[COMPONENT_IDS.Enemy]).toEqual([0, 0, 0, 0]);
     // Turning the turret changes the Enemy component only, and a delta carries it.
     enemy.turretYaw = 123;
     const next = snap();
     const delta = decodeDelta(next, first);
-    expect(tank(delta).components[COMPONENT_IDS.Enemy]).toEqual([TANK_INDEX, 0, 123]);
+    expect(tank(delta).components[COMPONENT_IDS.Enemy]).toEqual([TANK_INDEX, 0, 123, 0]);
     expect(tank(delta).components[COMPONENT_IDS.Transform]?.[3]).toBe(100);
   });
 });

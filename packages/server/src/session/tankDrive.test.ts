@@ -30,8 +30,8 @@ function play(path: { x: number; z: number }[] | undefined, at = START, yaw = 0)
       session.step(now);
     }
   };
-  // The soldiers stand clear of the road, off to one side.
-  for (const s of session.slots) s.state = { ...s.state, x: -40 - s.index, z: 0 };
+  // The soldiers stand far clear of the road (past the cannon's range), off to one side.
+  for (const s of session.slots) s.state = { ...s.state, x: -200 - s.index, z: 0 };
   const wall = (id: string, z: number, active: boolean) =>
     (session as unknown as Internals).setBlocker({ id, active, boxes: [boxFrom({ id: `b:${id}`, x: 0, y: 0, z, w: 12, h: 3, d: 0.5 }, 'blocker')] });
   return { session, enemy, step, wall, x: session as unknown as Internals };
@@ -99,7 +99,7 @@ describe('a tank driving on a session (U-067)', () => {
     step(30 * 30);
     expect(enemy.drive?.phase).toBe('blocked');
     expect(enemy.state.z).toBeLessThan(25 - VEHICLE.radiusM);
-    soldier.state = { ...soldier.state, x: -40, z: 0 };
+    soldier.state = { ...soldier.state, x: -200, z: 0 };
     step(30 * 40);
     expect(enemy.drive?.phase).toBe('arrived');
   });

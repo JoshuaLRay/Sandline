@@ -651,6 +651,10 @@ export interface EnemyEntity {
   turretYaw: number;
   /** U-067: a tank's drive along its path, or null for a soldier and for a tank given no path. */
   drive: VehicleDrive | null;
+  /** U-068: when a tank's cannon may next begin a tell, seconds. */
+  cannonReadyAt: number;
+  /** U-068: a tank's cannon locked on a point and about to fire at it, or null: the replicated `aiming`. */
+  tell: { until: number; netId: number; point: { x: number; y: number; z: number } } | null;
   input: MoveInput;
   health: HealthState;
   /** Its brain, stopped on the tick it dies. */
@@ -2258,6 +2262,9 @@ export class Session {
       pitch: 0,
       turretYaw: yaw,
       drive: def.vehicle && at.path && at.path.length > 0 ? createDrive(at.path, yaw) : null,
+      // The first shell waits half an interval, so a tank that has just come into view is not already firing.
+      cannonReadyAt: this.nowMs / 1000 + (def.vehicle ? def.vehicle.cannon.intervalSeconds / 2 : 0),
+      tell: null,
       input: idleInput(yaw),
       health: { current: def.health, max: def.health, downedAt: null, diedAt: null },
       brain: null,
@@ -4676,7 +4683,8 @@ export class Session {
       if (netId === excludeNetId) continue;
       const state = this.hitboxes.stateAt(netId, this.nowMs);
       if (state === null) continue;
-      const distance = rayBody(ray, bodyParts(DEFAULT_HITBOX, state.stance, state.position, state.yaw))?.distance ?? null;
+      // U-068: a rocket goes off on a tank's hull, not on the soldier-sized capsule at its middle.
+      const distance = rayBody(ray, bodyParts(this.hitboxes.shapeOf(netId) ?? DEFAULT_HITBOX, state.stance, state.position, state.yaw))?.distance ?? null;
       if (distance === null) continue;
       if (best === null || distance < best) best = distance;
     }
@@ -5065,6 +5073,8 @@ export class Session {
     // After everyone has moved and been recorded: an AI shoots at this tick's world.
     const fireFrom = this.profileAi ? performance.now() : 0;
     this.fireEnemies(nowSeconds);
+    // U-068: and the tanks, from their turrets.
+    this.fireTanks(nowSeconds);
     if (this.profileAi) this.aiMs += performance.now() - fireFrom;
 
     this.currentTick++;
@@ -5237,6 +5247,150 @@ export class Session {
     if (input.sprint && input.moveY < 0.7) input.sprint = false;
   }
 
+  /** U-068: a point on a tank's turret (`[right, up, forward]` from its feet), turning with the turret. */
+  private turretPoint(enemy: EnemyEntity, offset: readonly [number, number, number]): { x: number; y: number; z: number } {
+    const a = wireToTable(enemy.turretYaw);
+    const fx = sin(a);
+    const fz = cos(a);
+    return { x: enemy.state.x - offset[0] * fz + offset[2] * fx, y: enemy.state.y + offset[1], z: enemy.state.z + offset[0] * fx + offset[2] * fz };
+  }
+
+  /**
+   * U-068: every living tank's turret, cannon and machine gun, each tick.
+   *
+   * The target is the nearest standing squad soldier in range with a clear line from the muzzle (so never one it
+   * could not hit through cover, nor one who is down or held prisoner). The turret turns to it, at its own rate and
+   * apart from the hull, or back to the hull's heading with nobody to shoot. Only while it is at a firing position or
+   * crawling (`fireMaxSpeedMps`) and the turret is on the bearing does anything fire.
+   *
+   * The machine gun is the tank's own weapon in the archetype's bursts. The cannon first LOCKS: the turret holds a
+   * point for `tellSeconds` (replicated as `aiming`, for the muzzle flash and the warning) and the shell goes at that
+   * point, not at wherever the target has moved to: a squad that moves in the tell is missed, which is the counterplay.
+   * Then it waits out its interval.
+   */
+  private fireTanks(nowSeconds: number): void {
+    for (const enemy of this.enemyList) {
+      const vehicle = enemy.def.vehicle;
+      if (!vehicle) continue;
+      if (isDead(enemy.health)) {
+        enemy.tell = null;
+        continue;
+      }
+      const cannon = vehicle.cannon;
+      const eye = this.turretPoint(enemy, vehicle.machineGun.muzzle);
+
+      // The tell holds its target; otherwise the nearest one it can see.
+      let target: Slot | null = null;
+      let point: { x: number; y: number; z: number } | null = null;
+      if (enemy.tell) {
+        const locked = this.slots.find((s) => s.netId === enemy.tell!.netId);
+        if (locked && isAlive(locked.health)) {
+          target = locked;
+          point = enemy.tell.point;
+        } else enemy.tell = null;
+      }
+      if (!target) {
+        let bestD = cannon.rangeM * cannon.rangeM;
+        for (const slot of this.slots) {
+          if (!isAlive(slot.health)) continue;
+          const d = (slot.state.x - enemy.state.x) ** 2 + (slot.state.z - enemy.state.z) ** 2;
+          if (d >= bestD) continue;
+          const seen = visibleAimPoint(eye, aimPoints(slot.state, slot.state.crouched, slot.state.prone, DEFAULT_HITBOX, lyingPose(slot)), this.collisionBoxes);
+          if (!seen) continue;
+          bestD = d;
+          target = slot;
+          point = seen;
+        }
+      }
+
+      // The turret: onto the target's bearing, or back to the hull's.
+      const wantYaw = point ? tableToWire(aimAngles(eye, point).yaw) : enemy.yaw;
+      const rate = Math.max(1, Math.round(((vehicle.turretTurnDegPerSec / 360) * 1024) * TICK_SECONDS));
+      const off = ((wantYaw - enemy.turretYaw + 1536) & 1023) - 512;
+      enemy.turretYaw = (enemy.turretYaw + Math.max(-rate, Math.min(rate, off)) + 1024) & 1023;
+      const remaining = Math.abs(((wantYaw - enemy.turretYaw + 1536) & 1023) - 512);
+      const aligned = (deg: number): boolean => remaining <= (deg / 360) * 1024;
+
+      const steady = enemy.speed <= vehicle.fireMaxSpeedMps;
+      if (!target || !point || !steady) {
+        if (!steady) enemy.tell = null;
+        enemy.aim = null;
+        continue;
+      }
+      if (!enemy.aim || enemy.aim.netId !== target.netId) enemy.aim = { netId: target.netId, since: nowSeconds };
+      const range = Math.sqrt((point.x - eye.x) ** 2 + (point.y - eye.y) ** 2 + (point.z - eye.z) ** 2);
+
+      // The cannon: lock, hold, fire at the locked point, wait.
+      if (enemy.tell) {
+        if (nowSeconds >= enemy.tell.until) {
+          this.fireShell(enemy, vehicle, enemy.tell.point);
+          enemy.tell = null;
+          enemy.cannonReadyAt = nowSeconds + cannon.intervalSeconds;
+        }
+      } else if (nowSeconds >= enemy.cannonReadyAt && aligned(cannon.alignDeg)) {
+        enemy.tell = { until: nowSeconds + cannon.tellSeconds, netId: target.netId, point: { ...point } };
+      }
+
+      // The machine gun: bursts on sight inside its range, the turret on the bearing.
+      if (range <= vehicle.machineGun.rangeM && aligned(vehicle.machineGun.alignDeg)) this.fireTankGun(enemy, vehicle, target, eye, point, range, nowSeconds);
+    }
+  }
+
+  /** U-068: one tick of a tank's coaxial gun, by the archetype's burst discipline and aim error (as `aiShoot`, but the hull does not turn to it). */
+  private fireTankGun(enemy: EnemyEntity, vehicle: EnemyVehicle, target: Slot, eye: { x: number; y: number; z: number }, point: { x: number; y: number; z: number }, range: number, nowSeconds: number): void {
+    const accuracy = enemy.def.accuracy;
+    const ws = enemy.weaponState;
+    finishReload(enemy.weapon, ws, nowSeconds);
+    if (ws.ammo === 0) startReload(enemy.weapon, ws, nowSeconds);
+    if (ws.bloomUnits > degToAngle(accuracy.holdBloomDeg) || nowSeconds < enemy.burst.pauseUntil) return;
+    const line = aimAngles(eye, point);
+    const cone = aimConeDeg(accuracy, {
+      distanceM: range,
+      targetSpeedMps: this.slotSpeed[target.index] ?? 0,
+      suppression: suppressionLevel(enemy.suppression, nowSeconds),
+      timeOnTargetSeconds: nowSeconds - (enemy.aim?.since ?? nowSeconds),
+    });
+    const aimed = aimError(line.yaw, line.pitch, cone, aimSeed(this.currentTick, enemy.netId, ws.shotIndex));
+    const shot = tryFire(enemy.weapon, ws, nowSeconds, true, false);
+    if (shot === null) return;
+    if (++enemy.burst.rounds >= accuracy.burstRounds) {
+      enemy.burst.rounds = 0;
+      enemy.burst.pauseUntil = nowSeconds + accuracy.burstPauseSeconds;
+    }
+    this.enemyFiredTick.set(enemy.netId, this.currentTick);
+    this.traceShot(enemy.netId, enemy.weapon, shot, this.currentTick, eye, aimed.yaw, aimed.pitch, this.nowMs);
+    if (ws.ammo === 0) startReload(enemy.weapon, ws, nowSeconds);
+  }
+
+  /** U-068: the cannon's shell leaves the barrel for a point, with the projectile row's look and the tank's own numbers. */
+  private fireShell(enemy: EnemyEntity, vehicle: EnemyVehicle, at: { x: number; y: number; z: number }): void {
+    const cannon = vehicle.cannon;
+    const index = (PROJECTILE_IDS as readonly string[]).indexOf(cannon.projectile);
+    const base = this.projectileDefs[index];
+    if (!base || this.projectiles.length >= MAX_PROJECTILES) return;
+    const def: ProjectileDef = { ...base, speedMPerSec: cannon.speedMPerSec, blastDamage: cannon.blastDamage, blastRadiusM: cannon.blastRadiusM };
+    const origin = this.turretPoint(enemy, cannon.muzzle);
+    const dx = at.x - origin.x;
+    const dz = at.z - origin.z;
+    const flat = Math.sqrt(dx * dx + dz * dz);
+    // Aim high by the drop over the flight, so the shell arrives where the barrel was laid.
+    const seconds = flat / cannon.speedMPerSec;
+    const dy = at.y + 0.5 * def.gravity * seconds * seconds - origin.y;
+    const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (length <= 1e-6) return;
+    const v = cannon.speedMPerSec / length;
+    this.projectiles.push({
+      netId: this.nextProjectileNetId++,
+      def,
+      kind: index,
+      ownerSlot: NO_SLOT,
+      ownerNetId: enemy.netId,
+      xpPlayerId: null,
+      state: createProjectileState(origin, { x: dx * v, y: dy * v, z: dz * v }),
+    });
+    this.stimuli.push({ kind: 'shot', at: origin, sourceNetId: enemy.netId });
+  }
+
   /**
    * AI trigger pulls (T-3.15), every tick, for every living enemy whose brain
    * names someone to shoot.
@@ -5253,6 +5407,8 @@ export class Session {
   private fireEnemies(nowSeconds: number): void {
     for (const enemy of this.enemyList) {
       if (isDead(enemy.health)) continue;
+      // U-068: a tank fights with its own turret (`fireTanks`), not a soldier's hands.
+      if (enemy.def.vehicle) continue;
       // T-4.29: a mounted gun is deployed by nature, and fires with the gun's numbers from the gun's muzzle.
       if (this.aiShoot(enemy, enemy.def.accuracy, enemy.mounted !== null || this.deployed(enemy, nowSeconds), false, nowSeconds, enemy.mounted)) this.enemyFiredTick.set(enemy.netId, this.currentTick);
     }
@@ -5453,8 +5609,6 @@ export class Session {
     enemy.state = { ...enemy.state, x: to.x, z: to.z };
     enemy.yaw = driveYawWire(drive);
     enemy.input = { ...enemy.input, yaw: enemy.yaw, moveX: 0, moveY: 0 };
-    // The turret rides the hull until U-068 turns it on a target.
-    enemy.turretYaw = enemy.yaw;
   }
 
   /**
@@ -5764,8 +5918,8 @@ export class Session {
             0,
           ],
           [C]: [e.state.crouched ? 1 : 0, e.state.prone ? 1 : 0],
-          // U-066: a tank's turret faces its own way; a soldier's is 0.
-          [COMPONENT_IDS.Enemy]: [e.archetype, e.faction, e.def.vehicle ? e.turretYaw & 0x3ff : 0],
+          // U-066: a tank's turret faces its own way; a soldier's is 0. U-068: and 1 while its cannon is locked on a point.
+          [COMPONENT_IDS.Enemy]: [e.archetype, e.faction, e.def.vehicle ? e.turretYaw & 0x3ff : 0, e.tell ? 1 : 0],
         },
       });
     }

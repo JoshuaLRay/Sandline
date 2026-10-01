@@ -23,7 +23,7 @@
 import RAW_ENEMIES from '../data/enemies.json' with { type: 'json' };
 import { TREE_DEFS } from '../ai/bt.ts';
 import { WEAPONS } from './weapons.ts';
-import { PROJECTILE_IDS } from './ballistics.ts';
+import { PROJECTILES, PROJECTILE_IDS } from './ballistics.ts';
 
 export interface EnemyPerception {
   /** How far this archetype can see anything at all, metres. */
@@ -133,7 +133,40 @@ export interface VehiclePart {
  * U-066: a tank's body and armour. It is an enemy on rails (owner, 2026-09-30), not a rigid body: the hull and the turret
  * are the capsules a shot is traced against, and `armour` is how much of a hit's damage gets through by its class.
  */
+/** U-068: a tank's cannon: a shell from a `rocket`-kind projectile row with the tank's own numbers, fired on a cadence after a tell. */
+export interface TankCannon {
+  /** A `PROJECTILE_IDS` entry of kind `rocket`: what the shell looks like and flies as. */
+  projectile: string;
+  /** Seconds between shells. */
+  intervalSeconds: number;
+  /** Seconds the turret is locked on its aim point before the shell leaves: the squad's window to move. */
+  tellSeconds: number;
+  rangeM: number;
+  /** The turret must be this near the bearing (degrees) to start a tell. */
+  alignDeg: number;
+  /** The shell's own numbers, over the projectile row's. */
+  speedMPerSec: number;
+  blastDamage: number;
+  blastRadiusM: number;
+  /** Where the shell leaves, `[right, up, forward]` metres from the tank's feet, turning with the turret. */
+  muzzle: readonly [number, number, number];
+}
+
+/** U-068: the coaxial machine gun: the tank's `weapon` (the LMG) in bursts on sight, with the archetype's `accuracy`. */
+export interface TankMachineGun {
+  rangeM: number;
+  /** The turret must be this near the bearing (degrees) to fire. */
+  alignDeg: number;
+  muzzle: readonly [number, number, number];
+}
+
 export interface EnemyVehicle {
+  /** U-068: how fast the turret turns, apart from the hull. */
+  turretTurnDegPerSec: number;
+  /** U-068: it fires only while driving no faster than this, so at a firing position or a slow crawl. */
+  fireMaxSpeedMps: number;
+  cannon: TankCannon;
+  machineGun: TankMachineGun;
   /** How far out from its centre a blast reaches the hull, m: a blast is measured to the hull, not to its middle. */
   radiusM: number;
   /** U-067: how it drives — its speed, how fast the hull turns, and how near a waypoint counts as reached. */
@@ -397,9 +430,40 @@ function parseVehiclePart(raw: unknown, where: string): VehiclePart {
   return { from: triple(row, 'from', where, 20), to: triple(row, 'to', where, 20), radius: num(row, 'radius', where, 0.1, 5) };
 }
 
+function parseCannon(raw: unknown, where: string): TankCannon {
+  const row = obj(raw, where);
+  only(row, ['projectile', 'intervalSeconds', 'tellSeconds', 'rangeM', 'alignDeg', 'speedMPerSec', 'blastDamage', 'blastRadiusM', 'muzzle'], where);
+  const projectile = str(row, 'projectile', where);
+  if (!(PROJECTILE_IDS as readonly string[]).includes(projectile)) throw new EnemyDataError(`${where}.projectile: unknown projectile "${projectile}"`);
+  // A shell flies and bursts on impact: a rocket-kind row, not a grenade that bounces and waits.
+  if (PROJECTILES[projectile]?.kind !== 'rocket') throw new EnemyDataError(`${where}.projectile: "${projectile}" is not a rocket`);
+  const intervalSeconds = num(row, 'intervalSeconds', where, 1, 60);
+  const tellSeconds = num(row, 'tellSeconds', where, 0.2, 10);
+  // The tell sits inside the wait between shells.
+  if (tellSeconds >= intervalSeconds) throw new EnemyDataError(`${where}: tellSeconds is not below intervalSeconds`);
+  return {
+    projectile,
+    // A shell every few seconds, with a tell long enough to react to.
+    intervalSeconds,
+    tellSeconds,
+    rangeM: num(row, 'rangeM', where, 5, 500),
+    alignDeg: num(row, 'alignDeg', where, 0.5, 45),
+    speedMPerSec: num(row, 'speedMPerSec', where, 5, 200),
+    blastDamage: num(row, 'blastDamage', where, 1, 1000),
+    blastRadiusM: num(row, 'blastRadiusM', where, 0.5, 20),
+    muzzle: triple(row, 'muzzle', where, 20),
+  };
+}
+
+function parseMachineGun(raw: unknown, where: string): TankMachineGun {
+  const row = obj(raw, where);
+  only(row, ['rangeM', 'alignDeg', 'muzzle'], where);
+  return { rangeM: num(row, 'rangeM', where, 5, 500), alignDeg: num(row, 'alignDeg', where, 0.5, 45), muzzle: triple(row, 'muzzle', where, 20) };
+}
+
 function parseVehicle(raw: unknown, where: string): EnemyVehicle {
   const row = obj(raw, where);
-  only(row, ['radiusM', 'speedMps', 'turnDegPerSec', 'arriveM', 'hull', 'turret', 'armour'], where);
+  only(row, ['radiusM', 'speedMps', 'turnDegPerSec', 'arriveM', 'turretTurnDegPerSec', 'fireMaxSpeedMps', 'cannon', 'machineGun', 'hull', 'turret', 'armour'], where);
   const armourRow = obj(row['armour'], `${where}.armour`);
   only(armourRow, ['bullet', 'blast', 'blastDefault'], `${where}.armour`);
   const blastRow = obj(armourRow['blast'], `${where}.armour.blast`);
@@ -414,6 +478,10 @@ function parseVehicle(raw: unknown, where: string): EnemyVehicle {
     speedMps: num(row, 'speedMps', where, 0.1, 6),
     turnDegPerSec: num(row, 'turnDegPerSec', where, 1, 120),
     arriveM: num(row, 'arriveM', where, 0.1, 10),
+    turretTurnDegPerSec: num(row, 'turretTurnDegPerSec', where, 1, 360),
+    fireMaxSpeedMps: num(row, 'fireMaxSpeedMps', where, 0, 6),
+    cannon: parseCannon(row['cannon'], `${where}.cannon`),
+    machineGun: parseMachineGun(row['machineGun'], `${where}.machineGun`),
     hull: parseVehiclePart(row['hull'], `${where}.hull`),
     turret: parseVehiclePart(row['turret'], `${where}.turret`),
     armour: {

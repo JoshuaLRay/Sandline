@@ -100,8 +100,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-064](docs/backlog/U-064.md) | Captured characters in the slot picker, HUD and messages | Campaign | P2 | REVIEW | U-061 | `task/U-064-captured-ui` |
 | [U-065](docs/backlog/U-065.md) | Author a mission that holds a rescue | Campaign | P2 | INBOX | U-063; mission content decision | — |
 | [U-066](docs/backlog/U-066.md) | Tank entity: hull, turret, hitbox, armour and health | Mission / vehicle combat | P2 | DONE | — | [#235](https://github.com/JoshuaLRay/Sandline/pull/235) |
-| [U-067](docs/backlog/U-067.md) | Tank movement: follow a path, stop at a firing position | Mission / vehicle combat | P2 | REVIEW | U-066 | `task/U-067-tank-movement` |
-| [U-068](docs/backlog/U-068.md) | Tank weapons: cannon and coaxial machine gun | Mission / vehicle combat | P2 | READY | U-066 | — |
+| [U-067](docs/backlog/U-067.md) | Tank movement: follow a path, stop at a firing position | Mission / vehicle combat | P2 | DONE | U-066 | [#236](https://github.com/JoshuaLRay/Sandline/pull/236) |
+| [U-068](docs/backlog/U-068.md) | Tank weapons: cannon and coaxial machine gun | Mission / vehicle combat | P2 | REVIEW | U-066 | `task/U-068-tank-weapons` |
 | [U-069](docs/backlog/U-069.md) | Mission-01 integration: the upload trigger, retry and the survivor | Mission / vehicle combat | P2 | BLOCKED | U-067, U-068 | — |
 | [U-070](docs/backlog/U-070.md) | Tank look and HUD: placeholder mesh, tell and arrival warning | Mission / vehicle combat | P2 | READY | U-066 | — |
 

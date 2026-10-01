@@ -198,7 +198,7 @@ describe('an enemy on the wire (T-3.10)', () => {
     // side, and no PlayerSlot — nothing that would put it in the squad.
     const first = seen(client.store.current, id);
     expect(first).not.toBeNull();
-    expect(first?.enemy).toEqual([RIFLEMAN_INDEX, 1, 0]);
+    expect(first?.enemy).toEqual([RIFLEMAN_INDEX, 1, 0, 0]);
     expect(first?.slot).toBeUndefined();
     expect(first?.health?.slice(0, 3)).toEqual([RIFLEMAN.health, RIFLEMAN.health, 0]);
     expect(first?.x).toBeCloseTo(start.x, 1);
