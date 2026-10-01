@@ -4,6 +4,7 @@ import { missionMenuModel, runChoiceModel } from './runChoice.ts';
 
 const campaign: CampaignDef = {
   id: 't',
+  replayKeepsLoadout: true,
   missions: [
     { mission: 'a', title: 'Alpha', briefing: ['go a'], debrief: ['won a'] },
     { mission: 'b', title: 'Bravo', briefing: ['go b'], debrief: [] },

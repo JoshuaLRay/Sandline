@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import type { RunKind } from '@sandline/shared';
 import { PlayerDirectory, type PlayerRecord } from '../identity/PlayerDirectory.ts';
+import { type SlotCheckpoint, parseSoldierLoadout } from '../session/checkpointWorld.ts';
 
 export type { RunKind };
 
@@ -20,6 +21,11 @@ export interface SoldierSave {
   captured?: boolean;
   /** U-061: where the prisoner is held, while `captured`. */
   prisoner?: { x: number; y: number; z: number } | null;
+  /**
+   * U-077: what the soldier carried at the end of the last mission the campaign holds: guns and their rounds, pouch,
+   * kits, equipment. The next campaign run starts from it. Absent (every older save): the class loadout.
+   */
+  loadout?: SlotCheckpoint;
 }
 
 export interface CampaignCheckpoint {
@@ -151,7 +157,9 @@ function normalizedState(input: CampaignState): CampaignState {
     if (typeof soldier.classId !== 'string') throw new Error(`soldier ${slot} classId must be a string`);
     if (!Number.isInteger(soldier.rank) || soldier.rank < 0) throw new Error(`soldier ${slot} rank must be a non-negative integer`);
     if (!Number.isInteger(soldier.xp) || soldier.xp < 0) throw new Error(`soldier ${slot} xp must be a non-negative integer`);
-    const base = { slot, classId: soldier.classId, rank: soldier.rank, xp: soldier.xp };
+    // U-077: a loadout that is not what a session writes is dropped, not fatal: the soldier starts from the class.
+    const loadout = soldier.loadout === undefined ? null : parseSoldierLoadout(soldier.loadout);
+    const base = { slot, classId: soldier.classId, rank: soldier.rank, xp: soldier.xp, ...(loadout ? { loadout } : {}) };
     if (soldier.captured !== true) return base;
     // U-061: a prisoner needs a place to be held; a captured record without one is a malformed save.
     const at = soldier.prisoner;
