@@ -105,13 +105,13 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-069](docs/backlog/U-069.md) | Mission-01 integration: the upload trigger, retry and the survivor | Mission / vehicle combat | P2 | DONE | U-067, U-068 | [#238](https://github.com/JoshuaLRay/Sandline/pull/238) |
 | [U-070](docs/backlog/U-070.md) | Tank look and HUD: placeholder mesh, tell and arrival warning | Mission / vehicle combat | P2 | DONE | U-066 | [#239](https://github.com/JoshuaLRay/Sandline/pull/239) |
 | [U-071](docs/backlog/U-071.md) | Campaign design: premise, structure and the mission list (umbrella; [design doc](docs/design/CAMPAIGN.md)) | Campaign design | P2 | BLOCKED | Owner answers to Q1–Q4 in the design doc (D1–D10 answered 2026-10-01); a mission 1 brief | — |
-| [U-072](docs/backlog/U-072.md) | Campaign flow: campaign and replay runs, mission select and the debrief | Campaign design | P2 | READY | — | — |
+| [U-072](docs/backlog/U-072.md) | Campaign flow: campaign and replay runs, mission select and the debrief | Campaign design | P2 | BLOCKED | U-088, U-089, U-090 (the split; umbrella) | — |
 | [U-073](docs/backlog/U-073.md) | Register a mission in one place; checks and the mission sim cover every mission | Campaign design | P2 | DONE | — | [#243](https://github.com/JoshuaLRay/Sandline/pull/243) |
 | [U-074](docs/backlog/U-074.md) | Objectives in any order: parallel objectives and optional enemies | Campaign design | P2 | DONE | — | [#244](https://github.com/JoshuaLRay/Sandline/pull/244) |
 | [U-075](docs/backlog/U-075.md) | Escort: the POW as an unarmed seventh friendly, commandable and spectatable | Campaign design | P2 | READY | — | — |
 | [U-076](docs/backlog/U-076.md) | Spike: feasibility of a three-lane map about ten times mission-01's area | Campaign design | P2 | DONE | — | [#245](https://github.com/JoshuaLRay/Sandline/pull/245) |
-| [U-077](docs/backlog/U-077.md) | Carry weapons, ammo and gear to the next mission; pickups replace the slot | Campaign design | P2 | BLOCKED | U-072 | — |
-| [U-078](docs/backlog/U-078.md) | In-mission menu: restart from checkpoint, restart mission, return to mission select | Campaign design | P2 | BLOCKED | U-072 | — |
+| [U-077](docs/backlog/U-077.md) | Carry weapons, ammo and gear to the next mission; pickups replace the slot | Campaign design | P2 | BLOCKED | U-090 | — |
+| [U-078](docs/backlog/U-078.md) | In-mission menu: restart from checkpoint, restart mission, return to mission select | Campaign design | P2 | BLOCKED | U-090 | — |
 | [U-079](docs/backlog/U-079.md) | Bots fight armour: help destroy a tank | Enemy AI | P2 | DONE | — | [#250](https://github.com/JoshuaLRay/Sandline/pull/250) |
 | [U-080](docs/backlog/U-080.md) | Realistic character models: a more grounded look | Art | P2 | READY | — | — |
 | [U-081](docs/backlog/U-081.md) | The cover search must not scale with the whole map | Enemy AI | P1 | DONE | — | [#246](https://github.com/JoshuaLRay/Sandline/pull/246) |
@@ -121,6 +121,9 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-085](docs/backlog/U-085.md) | Mission-01 at six humans: the squad is lost before the upload | Enemy AI | P2 | READY | — | — |
 | [U-086](docs/backlog/U-086.md) | Attack orders fight from cover instead of standing in the open | Enemy AI | P2 | DONE | — | [#255](https://github.com/JoshuaLRay/Sandline/pull/255) |
 | [U-087](docs/backlog/U-087.md) | Squad tactics: bounding, focus fire and fighting as a group | Enemy AI | P3 | BLOCKED | Deferred by the owner (U-085) | — |
+| [U-088](docs/backlog/U-088.md) | The campaign as data: order, titles, briefings and debriefs | Campaign design | P2 | IN_PROGRESS | — | `task/U-088-campaign-data` |
+| [U-089](docs/backlog/U-089.md) | Run kinds in the campaign file, and separate prisoner pools | Campaign design | P2 | BLOCKED | U-088 | — |
+| [U-090](docs/backlog/U-090.md) | The host chooses the next run; briefing, debrief and the handoff | Campaign design | P2 | BLOCKED | U-089 | — |
 
 ## Existing work retained
 
