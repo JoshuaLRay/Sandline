@@ -60,7 +60,7 @@ const ROW = {
 };
 
 /** What a parsed row adds to the authored one: no role preference and no archetype block, unless given. */
-const PARSED_EXTRAS = { prefersRole: null, deploy: null, launcher: null, scope: null, command: null, vehicle: null };
+const PARSED_EXTRAS = { friendly: false, prefersRole: null, deploy: null, launcher: null, scope: null, command: null, vehicle: null };
 
 const table = (row: Record<string, unknown>) => ({ rifleman: row });
 
@@ -89,6 +89,7 @@ const SHAPED: Record<string, Record<string, unknown>> = {
       armour: { bullet: 0.1, blast: { frag: 0.1, rocket: 1, c4: 1, claymore: 1 }, blastDefault: 0.1 },
     },
   },
+  pow: { ...ROW, id: 'pow', friendly: true },
 };
 
 describe('enemy archetypes (T-3.10)', () => {
@@ -96,8 +97,8 @@ describe('enemy archetypes (T-3.10)', () => {
     expect(parseEnemyTable(table(ROW))['rifleman']).toEqual({ ...ROW, ...PARSED_EXTRAS });
   });
 
-  it('validates the committed data: the two slice archetypes (ADR-015) and the tank (U-066), none downable', () => {
-    expect(Object.keys(ENEMIES)).toEqual(['rifleman', 'mg', 'tank']);
+  it('validates the committed data: the two slice archetypes (ADR-015), the tank (U-066) and the escorted character (U-075), none downable', () => {
+    expect(Object.keys(ENEMIES)).toEqual(['rifleman', 'mg', 'tank', 'pow']);
     expect(ENEMY_IDS.slice(0, 2)).toEqual(['rifleman', 'mg']);
     expect(getEnemy('rifleman').tree).toBe('rifleman');
     expect(getEnemy('mg').tree).toBe('mg');
@@ -168,6 +169,14 @@ describe('the five archetype shapes (T-3.23)', () => {
     expect(parsed['mg']!.prefersRole).toBe('suppressor');
     expect(parsed['officer']!.prefersRole).toBe('flanker');
     expect(parsed['rifleman']!.prefersRole).toBeNull();
+  });
+
+  it('marks only a row that says so friendly (U-075)', () => {
+    expect(parseEnemyTable({ rifleman: ROW })['rifleman']!.friendly).toBe(false);
+    expect(parseEnemyTable({ pow: { ...ROW, id: 'pow', friendly: true } })['pow']!.friendly).toBe(true);
+    expect(() => parseEnemyTable({ rifleman: { ...ROW, friendly: 'yes' } })).toThrow(/friendly/);
+    expect(ENEMIES['pow']!.friendly).toBe(true);
+    expect(ENEMIES['rifleman']!.friendly).toBe(false);
   });
 
   it.each([
