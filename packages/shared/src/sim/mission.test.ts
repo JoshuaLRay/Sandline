@@ -113,6 +113,11 @@ describe('mission files (T-4.14)', () => {
     expect(() => parseMission(one({ type: 'survive', label: 'x', seconds: 5, area: 'objective' }))).toThrow(/unknown key 'area'/);
     expect(() => parseMission(one({ type: 'reach', label: 'x', area: 'objective', who: 'most' }))).toThrow(/who must be all or any/);
     expect(() => parseMission(one({ type: 'reach', label: 'x', area: { x: 0, z: 0, radius: -1 }, who: 'any' }))).toThrow(/radius must be positive/);
+    // U-075: a reach may require the escorted character; only a boolean says so.
+    expect(parseMission(one({ type: 'reach', label: 'x', area: 'objective', who: 'all', escort: true })).objectives[0]).toMatchObject({ type: 'reach', escort: true });
+    expect(parseMission(one({ type: 'reach', label: 'x', area: 'objective', who: 'all' })).objectives[0]).not.toHaveProperty('escort');
+    expect(() => parseMission(one({ type: 'reach', label: 'x', area: 'objective', who: 'all', escort: 'yes' }))).toThrow(/escort must be true or false/);
+    expect(() => parseMission(one({ type: 'survive', label: 'x', seconds: 5, escort: true }))).toThrow(/escort/);
     expect(() => parseMission(one({ type: 'defend', label: 'x', area: 'objective', seconds: 5 }))).toThrow(/missing 'breachSeconds'/);
     expect(() => parseMission(one({ type: 'survive', label: '', seconds: 5 }))).toThrow(/label/);
     expect(() => parseMission({ ...base, respawn: 'no' })).toThrow(/respawn/);

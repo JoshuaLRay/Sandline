@@ -213,6 +213,7 @@ import type { CampaignState, ReplayPrisoner, RunKind } from '../persistence/Camp
 import { CAMPAIGN, type CampaignDef, isOffered, runOptions } from '@sandline/shared';
 import { SoldierXp } from '../persistence/xp.ts';
 import type { DownedMate, SquadView } from '../ai/actions/friendly.ts';
+import type { EscortOrder, EscortView } from '../ai/actions/escort.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
 import type { CoverPoint } from '../ai/nav/baked/types.ts';
@@ -236,6 +237,8 @@ const PRONE_HITBOX_HEIGHT = 2 * ((DEFAULT_HITBOX.proneHalfHeight ?? DEFAULT_HITB
  * (`ENEMY_FACTION_BITS` wide), so no faction is ever mistaken for the squad.
  */
 const SQUAD = -1;
+/** U-075: the wire faction of an escorted character: a side of his own, not the squad's slots and not the enemy's. */
+const ESCORT_FACTION = 3;
 
 /**
  * What the AI's hands and trigger read and write (T-3.26): an enemy, or a
@@ -659,6 +662,8 @@ export interface EnemyEntity {
   tell: { until: number; netId: number; point: { x: number; y: number; z: number } } | null;
   input: MoveInput;
   health: HealthState;
+  /** U-075: what an escorted character's leaves read (the squad, and his order); absent for every other archetype. */
+  escort?: EscortView;
   /** Its brain, stopped on the tick it dies. */
   brain: Brain | null;
   /** Path following for the brain's intent, made on the first one, as a bot's. */
@@ -1372,12 +1377,16 @@ export class Session {
     const spawner = this.spawnerValue;
     const alive = (netId: number) => this.enemyList.some((e) => e.netId === netId && !isDead(e.health));
     const changed = run.step({
-      enemiesIn: (a) => this.enemyList.filter((e) => !isDead(e.health) && inside(a)(e.state)).length,
+      enemiesIn: (a) => this.enemyList.filter((e) => !e.def.friendly && !isDead(e.health) && inside(a)(e.state)).length,
       squadIn: (a) => living.filter((s) => inside(a)(s.state)).length,
+      escortsIn: (a) => {
+        const escorts = this.enemyList.filter((e) => e.def.friendly && !isDead(e.health));
+        return { total: escorts.length, inside: escorts.filter((e) => inside(a)(e.state)).length };
+      },
       standing: () => standing.length,
       standingIn: (a) => standing.filter((s) => inside(a)(s.state)).length,
       // U-061: a prisoner is not a death: the mission goes on without them.
-      soldierDead: () => this.slots.some((s) => isDead(s.health) && !s.captured),
+      soldierDead: () => this.slots.some((s) => isDead(s.health) && !s.captured) || this.enemyList.some((e) => e.def.friendly && isDead(e.health)),
       protectedLost: (id) => {
         if (!spawner || !spawner.fired(id)) return false;
         const placed = spawner.spawnedBy(id);
@@ -2198,8 +2207,8 @@ export class Session {
         this.slots
           .filter((s) => !s.isBot && living(s.health))
           .map((s) => eyePosition(s.state.x, s.state.y, s.state.z, DEFAULT_MUZZLE_RIG, eyeStance(false, s.state.prone))),
-      squadFeet: () => this.slots.filter((s) => living(s.health)).map((s) => ({ x: s.state.x, z: s.state.z })),
-      enemyFeet: () => this.enemyList.filter((e) => living(e.health)).map((e) => ({ x: e.state.x, z: e.state.z })),
+      squadFeet: () => [...this.slots.filter((s) => living(s.health)).map((s) => ({ x: s.state.x, z: s.state.z })), ...this.enemyList.filter((e) => e.def.friendly && living(e.health)).map((e) => ({ x: e.state.x, z: e.state.z }))],
+      enemyFeet: () => this.enemyList.filter((e) => living(e.health) && !e.def.friendly).map((e) => ({ x: e.state.x, z: e.state.z })),
       isAlive: (netId) => {
         const e = this.enemyList.find((x) => x.netId === netId);
         return e !== undefined && living(e.health);
@@ -2422,6 +2431,39 @@ export class Session {
     this.projectileDefs[index] = { ...def };
   }
 
+  /** U-075: the order the squad last gave the escorted character (all of them, there is one at a time in practice). */
+  private escortOrder: EscortOrder = { kind: 'follow', point: null };
+
+  private escortView(enemy: EnemyEntity): EscortView {
+    return {
+      order: () => this.escortOrder,
+      nearestSquad: () => {
+        let best: { x: number; y: number; z: number } | null = null;
+        let bestD = Infinity;
+        for (const slot of this.slots) {
+          if (isDead(slot.health)) continue;
+          const d = (slot.state.x - enemy.state.x) ** 2 + (slot.state.z - enemy.state.z) ** 2;
+          if (d < bestD) {
+            bestD = d;
+            best = slot.state;
+          }
+        }
+        return best;
+      },
+    };
+  }
+
+  /**
+   * U-075: an order addressed to the whole squad also reaches the escorted character: hold is stay, move is go to the
+   * point, regroup is follow. Others (attack, revive...) mean nothing to an unarmed civilian.
+   */
+  private orderEscort(msg: Omit<Extract<Message, { kind: 'Order' }>, 'kind'>): void {
+    if (msg.address.to !== 'all') return;
+    if (msg.order === 'hold') this.escortOrder = { kind: 'stay', point: null };
+    else if (msg.order === 'move' && msg.point) this.escortOrder = { kind: 'go', point: { ...msg.point } };
+    else if (msg.order === 'regroup') this.escortOrder = { kind: 'follow', point: null };
+  }
+
   spawnEnemy(archetype: string, at: EnemySpawn): number | null {
     const def = getEnemy(archetype);
     if (this.enemyList.length >= MAX_ENEMIES || this.nextEnemyNetId >= ENEMY_NET_ID_LIMIT) return null;
@@ -2430,7 +2472,7 @@ export class Session {
       netId: this.nextEnemyNetId++,
       def,
       archetype: enemyIndex(def.id),
-      faction: at.faction ?? 0,
+      faction: at.faction ?? (def.friendly ? ESCORT_FACTION : 0),
       state: createMoveState(at.x, at.y, at.z),
       yaw,
       pitch: 0,
@@ -2484,6 +2526,7 @@ export class Session {
       },
     };
     enemy.group?.add(enemy.netId);
+    if (def.friendly) enemy.escort = this.escortView(enemy);
     enemy.brain = new Brain(enemy, at.tree ?? this.enemyTree(def.tree));
     this.enemyList.push(enemy);
     // U-066: a tank is shot at in its own shape — a hull and a turret — not as a soldier.
@@ -3324,6 +3367,7 @@ export class Session {
       return !commanderOnly || this.commanders[i] === from.index ||
         (i === from.index && from.connection !== null && this.spectators.has(from.connection));
     });
+    this.orderEscort(msg);
     if (bots.length === 0) return;
     this.bumpStat(from.index, 'ordersGiven');
     for (const i of bots) {
@@ -3554,7 +3598,7 @@ export class Session {
       else if (!this.takeOwnCharge(slot) && !this.takePickupAt(slot)) this.startUploadAt(slot);
     }
     for (const enemy of this.enemyList) {
-      if (enemy.mounted || isDead(enemy.health) || enemy.state.vault) continue;
+      if (enemy.mounted || isDead(enemy.health) || enemy.state.vault || enemy.def.friendly) continue;
       const gun = this.emptyGunNear(enemy.state, (def) => def.ai.takeWithinM, enemy.def.weapon);
       if (!gun) continue;
       const targetId = enemy.brain?.fireAt ?? null;
@@ -3739,7 +3783,7 @@ export class Session {
         .filter(
           (e) =>
             !busy.has(e) && !isDead(e.health) && !e.mounted && e.brain && !e.brain.isStopped && e.target === null &&
-            e.faction !== SQUAD && this.leverUse?.enemy !== e && !this.captureBarred.has(e.netId) &&
+            e.faction !== SQUAD && !e.def.friendly && this.leverUse?.enemy !== e && !this.captureBarred.has(e.netId) &&
             // Straight-line lower bound first: one too far to finish in time is not worth a path.
             dist(e) / cfg.approachSpeedMps + cfg.channelSeconds <= remaining,
         )
@@ -4226,8 +4270,11 @@ export class Session {
           if (result.killed) {
             this.killEnemy(enemy);
             const shooterSlot = this.slots.findIndex((s) => s.netId === shooterNetId);
-            this.awardXp(shooterSlot, 'kill');
-            this.bumpStat(shooterSlot, 'kills');
+            // U-075: shooting the escorted character earns nothing.
+            if (!enemy.def.friendly) {
+              this.awardXp(shooterSlot, 'kill');
+              this.bumpStat(shooterSlot, 'kills');
+            }
           }
         }
         // Range targets take no damage: they are the range's fixtures, not
@@ -4327,14 +4374,15 @@ export class Session {
   private livingSoldiers(): { netId: number; state: MoveState; suppression: SuppressionState; side: number }[] {
     const out: { netId: number; state: MoveState; suppression: SuppressionState; side: number }[] = [];
     for (const slot of this.slots) if (!isDead(slot.health)) out.push({ netId: slot.netId, state: slot.state, suppression: slot.suppression, side: SQUAD });
-    for (const e of this.enemyList) if (!isDead(e.health)) out.push({ netId: e.netId, state: e.state, suppression: e.suppression, side: e.faction });
+    for (const e of this.enemyList) if (!isDead(e.health)) out.push({ netId: e.netId, state: e.state, suppression: e.suppression, side: e.def.friendly ? SQUAD : e.faction });
     return out;
   }
 
   /** Whose side a netId is on: `SQUAD`, an enemy's faction, or null for no soldier. */
   private side(netId: number): number | null {
     if (this.slots.some((s) => s.netId === netId)) return SQUAD;
-    return this.enemyList.find((e) => e.netId === netId)?.faction ?? null;
+    const e = this.enemyList.find((x) => x.netId === netId);
+    return e ? (e.def.friendly ? SQUAD : e.faction) : null;
   }
 
   /**
@@ -5034,7 +5082,7 @@ export class Session {
     if (this.spawnerValue) {
       const seconds = (this.currentTick - this.missionStartTick) * TICK_SECONDS;
       const at = now / 1000;
-      const living = this.enemyList.filter((e) => !isDead(e.health));
+      const living = this.enemyList.filter((e) => !isDead(e.health) && !e.def.friendly);
       this.directorValue!.sample({
         seconds,
         humans: this.testHumanCount ?? this.slots.filter((s) => !s.isBot).length,
@@ -5296,8 +5344,27 @@ export class Session {
     if (this.enemyList.length === 0) return;
     const squad = heard.filter((s) => this.slots.some((slot) => slot.netId === s.sourceNetId));
     const dt = BRAIN_PERIOD_TICKS * TICK_SECONDS;
+    // What an enemy can see and shoot at: the six slots, and (U-075) an escorted character on the squad's side.
+    const sightable = [
+      ...this.slots.map((slot) => ({
+        netId: slot.netId,
+        state: slot.state,
+        health: slot.health,
+        speed: this.slotSpeed[slot.index] ?? 0,
+        firing: this.currentTick - (this.lastFiredTick[slot.index] ?? -Infinity) <= BRAIN_PERIOD_TICKS,
+      })),
+      ...this.enemyList
+        .filter((e) => e.def.friendly)
+        .map((e) => ({
+          netId: e.netId,
+          state: e.state,
+          health: e.health,
+          speed: e.speed,
+          firing: false,
+        })),
+    ];
     for (const enemy of this.enemyList) {
-      if (isDead(enemy.health)) continue;
+      if (isDead(enemy.health) || enemy.def.friendly) continue;
       const eye = eyePosition(enemy.state.x, enemy.state.y, enemy.state.z, DEFAULT_MUZZLE_RIG, eyeStance(false, enemy.state.prone));
       for (const stimulus of squad) if (hears(eye, stimulus)) rememberHeard(enemy.memory, stimulus, nowSeconds);
       if (!enemy.brain?.due(this.currentTick)) continue;
@@ -5305,27 +5372,27 @@ export class Session {
       beginThink(enemy.memory, nowSeconds);
       const perception = enemy.def.perception;
       const observer = { eye, yaw: wireToTable(enemy.yaw) };
-      for (const slot of this.slots) {
-        if (isDead(slot.health)) {
-          forgetTarget(enemy.memory, slot.netId);
-          enemy.awareness.delete(slot.netId);
+      for (const other of sightable) {
+        if (isDead(other.health)) {
+          forgetTarget(enemy.memory, other.netId);
+          enemy.awareness.delete(other.netId);
           continue;
         }
         const target = {
-          feet: { x: slot.state.x, y: slot.state.y, z: slot.state.z },
-          stance: slot.state.prone ? ('prone' as const) : slot.state.crouched ? ('crouched' as const) : ('standing' as const),
-          speed: this.slotSpeed[slot.index] ?? 0,
-          firing: this.currentTick - (this.lastFiredTick[slot.index] ?? -Infinity) <= BRAIN_PERIOD_TICKS,
+          feet: { x: other.state.x, y: other.state.y, z: other.state.z },
+          stance: other.state.prone ? ('prone' as const) : other.state.crouched ? ('crouched' as const) : ('standing' as const),
+          speed: other.speed,
+          firing: other.firing,
         };
         const sighting = sight(observer, target, this.collisionBoxes, perception, this.moveConfig, undefined, this.smokeClouds());
-        const awareness = stepAwareness(enemy.awareness.get(slot.netId) ?? 0, sighting, target, perception, dt);
-        enemy.awareness.set(slot.netId, awareness);
+        const awareness = stepAwareness(enemy.awareness.get(other.netId) ?? 0, sighting, target, perception, dt);
+        enemy.awareness.set(other.netId, awareness);
         if (sighting.visible && isDetected(awareness, perception)) {
-          rememberSeen(enemy.memory, slot.netId, target.feet, nowSeconds, isDowned(slot.health));
+          rememberSeen(enemy.memory, other.netId, target.feet, nowSeconds, isDowned(other.health));
         }
         // U-031: a soldier who is down is down whether or not it is in sight this think, and stops being a target.
-        const known = enemy.memory.entries.get(slot.netId);
-        if (known) known.downed = isDowned(slot.health);
+        const known = enemy.memory.entries.get(other.netId);
+        if (known) known.downed = isDowned(other.health);
       }
       enemy.target = chooseTarget(enemy.memory, enemy.state, nowSeconds);
       watchStill(enemy.still, enemy.target, enemy.memory, enemy.state.y, nowSeconds);
@@ -5339,7 +5406,7 @@ export class Session {
    * (`squad.json` bot.archetype), into its own memory and target.
    */
   private perceiveForBots(heard: readonly Stimulus[], nowSeconds: number): void {
-    const hostile = heard.filter((s) => this.enemyList.some((e) => e.netId === s.sourceNetId));
+    const hostile = heard.filter((s) => this.enemyList.some((e) => e.netId === s.sourceNetId && !e.def.friendly));
     const dt = BRAIN_PERIOD_TICKS * TICK_SECONDS;
     const perception = BOT_ARCHETYPE.perception;
     for (const slot of this.slots) {
@@ -5350,6 +5417,7 @@ export class Session {
       beginThink(slot.memory, nowSeconds);
       const observer = { eye, yaw: wireToTable(slot.yaw) };
       for (const enemy of this.enemyList) {
+        if (enemy.def.friendly) continue;
         if (isDead(enemy.health)) {
           forgetTarget(slot.memory, enemy.netId);
           slot.awareness.delete(enemy.netId);

@@ -51,6 +51,18 @@
       "gearShade": "#1e1f24",
       "accent": "#8e2c26"
     },
+    "prisoner": {
+      "skin": "#b88a66",
+      "skinShade": "#976848",
+      "uniform": "#b9a98a",
+      "uniformLight": "#cbbd9f",
+      "uniformShade": "#8f8168",
+      "webbing": "#7a6f5a",
+      "webbingShade": "#5e5544",
+      "gear": "#6b6150",
+      "gearShade": "#4c4538",
+      "accent": "#d8d2c4"
+    },
     "slot-1": { "accent": "#c4682a" },
     "slot-2": { "accent": "#3f79a8" },
     "slot-3": { "accent": "#6fa03c" },
