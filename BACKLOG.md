@@ -98,12 +98,15 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-062](docs/backlog/U-062.md) | Enemy capture behaviour: 2 s rule, 5 s channel, interruption | Campaign | P2 | DONE | U-061 | [#231](https://github.com/JoshuaLRay/Sandline/pull/231) |
 | [U-063](docs/backlog/U-063.md) | The `rescue` objective type | Campaign | P2 | DONE | U-061 | [#232](https://github.com/JoshuaLRay/Sandline/pull/232) |
 | [U-064](docs/backlog/U-064.md) | Captured characters in the slot picker, HUD and messages | Campaign | P2 | DONE | U-061 | [#233](https://github.com/JoshuaLRay/Sandline/pull/233) |
-| [U-065](docs/backlog/U-065.md) | Author a mission that holds a rescue | Campaign | P2 | INBOX | U-063; mission content decision | — |
+| [U-065](docs/backlog/U-065.md) | Author a mission that holds a rescue | Campaign design | P2 | INBOX | U-063, U-071 (mission content decision) | — |
 | [U-066](docs/backlog/U-066.md) | Tank entity: hull, turret, hitbox, armour and health | Mission / vehicle combat | P2 | DONE | — | [#235](https://github.com/JoshuaLRay/Sandline/pull/235) |
 | [U-067](docs/backlog/U-067.md) | Tank movement: follow a path, stop at a firing position | Mission / vehicle combat | P2 | DONE | U-066 | [#236](https://github.com/JoshuaLRay/Sandline/pull/236) |
 | [U-068](docs/backlog/U-068.md) | Tank weapons: cannon and coaxial machine gun | Mission / vehicle combat | P2 | DONE | U-066 | [#237](https://github.com/JoshuaLRay/Sandline/pull/237) |
 | [U-069](docs/backlog/U-069.md) | Mission-01 integration: the upload trigger, retry and the survivor | Mission / vehicle combat | P2 | DONE | U-067, U-068 | [#238](https://github.com/JoshuaLRay/Sandline/pull/238) |
 | [U-070](docs/backlog/U-070.md) | Tank look and HUD: placeholder mesh, tell and arrival warning | Mission / vehicle combat | P2 | DONE | U-066 | [#239](https://github.com/JoshuaLRay/Sandline/pull/239) |
+| [U-071](docs/backlog/U-071.md) | Campaign design: premise, structure and the mission list (umbrella; [design doc](docs/design/CAMPAIGN.md)) | Campaign design | P2 | BLOCKED | Owner decisions D1–D10 in the design doc (each has a proposal) | — |
+| [U-072](docs/backlog/U-072.md) | Campaign flow: which mission is next, mission select and the debrief | Campaign design | P2 | INBOX | U-071 (D3, D9) | — |
+| [U-073](docs/backlog/U-073.md) | Register a mission in one place; checks and the mission sim cover every mission | Campaign design | P2 | INBOX | — (ready to scope on the owner's go) | — |
 
 ## Existing work retained
 
