@@ -54,3 +54,20 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | `pnpm export:soldier` | write the code-built soldier as `assets/src/soldier.glb`, the pipeline's test asset |
 | `pnpm gen:nav` | re-bake every named world's navmesh; required after editing a world, `MoveConfig` or the hitbox (a test fails until you do) |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
+
+## Adding a mission (U-073)
+
+A mission is its data files plus **one entry** in `packages/shared/src/sim/campaignRegistry.ts`; the world, mission,
+encounter and script tables and the lobby's map list are all built from that list.
+
+1. Author the data under `packages/shared/src/data/`: `levels/<id>.json`, `missions/<id>.json`, `encounters/<id>.json`
+   and, if the mission has one, `scripts/<id>.json`. The level's `id`, the mission's `world` and the encounter's
+   `world` are all `<id>`; the level's `encounter` names `<id>`.
+2. In `campaignRegistry.ts`, import the files and add one entry (`id`, `world`, `mission`, `encounter`, `script`, and
+   a `lobby` label and order if it should be offered in the lobby). A mismatched id is refused at import, naming the entry.
+3. `pnpm gen:nav` bakes its navmesh and cover (it covers every registered world), then `pnpm verify`.
+4. Nothing else needs editing: `level-check`, `check:assets`, `check:packs` and `pnpm sim-run --scenario mission --all-missions`
+   find the mission from its files. `level-check`'s join table holds only the two legacy levels' exceptions: a new level has none.
+
+`packages/shared/src/sim/campaignRegistry.test.ts` shows the shape: a throwaway mission built from copies of mission-01's
+files under another id goes through every builder with no other edit.

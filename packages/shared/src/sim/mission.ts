@@ -18,8 +18,7 @@
  * The rule itself is the server's (`server/src/session/mission.ts`); what
  * travels is `MissionView`.
  */
-import GREYBOX_01 from '../data/missions/greybox-01.json' with { type: 'json' };
-import MISSION_01 from '../data/missions/mission-01.json' with { type: 'json' };
+import { COMMITTED, type CampaignEntry } from './campaignRegistry.ts';
 import type { AreaRef, Encounter } from './encounters.ts';
 import type { World } from './world.ts';
 
@@ -340,13 +339,21 @@ export function checkMission(mission: MissionDef, encounter: Encounter, world: W
   }
 }
 
+/** The missions of a list of registry entries, by world id (U-073). */
+export function missionsFrom(entries: readonly CampaignEntry[]): ReadonlyMap<string, MissionDef> {
+  return new Map(
+    entries
+      .filter((e) => e.mission !== undefined)
+      .map((e) => {
+        const m = parseMission(e.mission);
+        if (m.world !== e.id) throw new Error(`registry entry '${e.id}': its mission file is for world '${m.world}'`);
+        return [m.world, m] as const;
+      }),
+  );
+}
+
 /** Every committed mission, by world id. Validated once, at import. */
-const MISSIONS: ReadonlyMap<string, MissionDef> = new Map(
-  [GREYBOX_01, MISSION_01].map((raw) => {
-    const m = parseMission(raw);
-    return [m.world, m] as const;
-  }),
-);
+const MISSIONS: ReadonlyMap<string, MissionDef> = missionsFrom(COMMITTED);
 
 /** The committed mission for a world, or undefined when it has none. */
 export function missionFor(worldId: string): MissionDef | undefined {

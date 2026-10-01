@@ -32,7 +32,7 @@ one event script. The grey-box `greybox-01` is its test twin. Everything below i
 1. **No flow between missions.** The campaign file stores which missions are done, but nothing yet decides which
    mission comes next, offers a choice, or carries a debrief from one to the next. The lobby lists one hard-coded
    world (`client/src/ui/Lobby.ts`).
-2. **Adding a mission means editing about eight places by hand:** the world registry (`shared/src/sim/world.ts`), the
+2. **Adding a mission used to mean editing about eight places by hand (U-073 reduced it to one registry entry, `shared/src/sim/campaignRegistry.ts`; see "Adding a mission" in `docs/COMMANDS.md`).** What it was: the world registry (`shared/src/sim/world.ts`), the
    mission list (`sim/mission.ts`), the encounter list (`sim/encounters.ts`), the script lookup (`sim/scripts.ts`), a baked navmesh
    (`server/src/ai/nav/baked`), the lobby entry, the level checker's join table (`tools/src/level-check.ts`), and the
    mission sim, which is fixed to `mission-01` (`tools/src/scenarios/mission.ts`).
