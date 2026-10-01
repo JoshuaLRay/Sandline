@@ -56,6 +56,17 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      # The browsers' system libraries come from an Ubuntu mirror that is sometimes very slow (a package every few
+      # seconds; fifteen minutes for three browsers): keep the .debs apt downloads and put them back before the install.
+      - id: debs
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/apt-debs
+          key: apt-debs-streaming-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Seed apt with the cached packages
+        run: |
+          mkdir -p ~/apt-debs
+          sudo cp -n ~/apt-debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true
       - name: Install Chromium
         run: |
           for attempt in 1 2 3; do
@@ -65,6 +76,19 @@ jobs:
             for _ in $(seq 60); do sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; sleep 5; done
           done
           exit 1
+      - name: Keep the downloaded packages
+        if: always() && steps.debs.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/apt-debs
+          sudo cp -n /var/cache/apt/archives/*.deb ~/apt-debs/ 2>/dev/null || true
+          sudo chown -R "$USER" ~/apt-debs
+      - name: Save the downloaded packages
+        if: always() && steps.debs.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: ~/apt-debs
+          key: apt-debs-streaming-${{ runner.os }}-${{ steps.playwright.outputs.version }}
       - run: pnpm check:packs
       - run: pnpm --filter @sandline/client build
       - run: pnpm check:load-time
@@ -100,6 +124,17 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-parity-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      # The browsers' system libraries come from an Ubuntu mirror that is sometimes very slow (a package every few
+      # seconds; fifteen minutes for three browsers): keep the .debs apt downloads and put them back before the install.
+      - id: debs
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/apt-debs
+          key: apt-debs-parity-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Seed apt with the cached packages
+        run: |
+          mkdir -p ~/apt-debs
+          sudo cp -n ~/apt-debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true
       - name: Install browsers
         run: |
           for attempt in 1 2 3; do
@@ -109,6 +144,19 @@ jobs:
             for _ in $(seq 60); do sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; sleep 5; done
           done
           exit 1
+      - name: Keep the downloaded packages
+        if: always() && steps.debs.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/apt-debs
+          sudo cp -n /var/cache/apt/archives/*.deb ~/apt-debs/ 2>/dev/null || true
+          sudo chown -R "$USER" ~/apt-debs
+      - name: Save the downloaded packages
+        if: always() && steps.debs.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: ~/apt-debs
+          key: apt-debs-parity-${{ runner.os }}-${{ steps.playwright.outputs.version }}
       - run: pnpm test:parity-browsers
 
   # T-4.17: discover every committed mission file; three seeds at both budgets.
