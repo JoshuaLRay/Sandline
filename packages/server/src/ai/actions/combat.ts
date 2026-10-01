@@ -33,6 +33,10 @@ export interface CombatWorld {
   projectileDef(index: number): Readonly<ProjectileDef> | null;
   /** T-3.22: what a projectile collides with here. */
   projectileWorld(): ProjectileWorld;
+  /** U-079: every living armoured vehicle on the map. */
+  armour(): readonly ArmourView[];
+  /** U-079: the stuck placed charges of PROJECTILE_IDS index `kind` that `ownerNetId` has out. */
+  placed(ownerNetId: number, kind: number): readonly Vec3[];
 }
 
 /** A body that can fight: an enemy, as the session builds it. */
@@ -90,4 +94,24 @@ export function threatEye(body: CombatBody): Vec3 | null {
 /** Horizontal distance. */
 export function across(a: Vec3, b: Vec3): number {
   return Math.sqrt((a.x - b.x) ** 2 + (a.z - b.z) ** 2);
+}
+
+/** U-079: a living armoured vehicle (an enemy with a `vehicle` archetype) as a bot may reason about it. */
+export interface ArmourView {
+  readonly netId: number;
+  /** Its feet. */
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  /** The middle of its hull and the hull's radius, metres. */
+  readonly centre: Vec3;
+  readonly radiusM: number;
+  /** The way the hull points (flat, unit) and how fast it is going, metres a second. */
+  readonly headingX: number;
+  readonly headingZ: number;
+  readonly speedMps: number;
+  /** The shell it has locked on, when it has: where it will land and until when (seconds), or null. */
+  readonly tell: { readonly until: number; readonly point: Vec3 } | null;
+  /** Its cannon shell's blast radius, metres. */
+  readonly shellBlastM: number;
 }

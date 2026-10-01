@@ -194,7 +194,7 @@ import { type AiDebugSource, buildAiDebug } from '../ai/debug.ts';
 import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, lineOfSight, visibleAimPoint } from '../ai/aim.ts';
 import { CoverSystem, DEFAULT_COVER_BODY } from '../ai/cover.ts';
 import { EnemyGroup } from '../ai/group.ts';
-import type { CombatWorld } from '../ai/actions/combat.ts';
+import type { ArmourView, CombatWorld } from '../ai/actions/combat.ts';
 import type { EnemyPosture } from '../ai/actions/posture.ts';
 import { Spawner, type SpawnerCheckpoint, type SpawnerHost } from '../ai/director/spawner.ts';
 import {
@@ -1101,6 +1101,8 @@ export class Session {
           .map((e) => ({ x: e.state.x, y: e.state.y, z: e.state.z })),
       projectileDef: (index) => this.projectileDef(index),
       projectileWorld: () => this.projectileWorld(),
+      armour: () => this.armourViews(),
+      placed: (ownerNetId, kind) => this.projectiles.filter((p) => p.kind === kind && p.stuck === true && p.ownerNetId === ownerNetId).map((p) => ({ x: p.state.x, y: p.state.y, z: p.state.z })),
     };
     this.brainTree = options.brainTree ?? defaultBrainTree();
     this.aiDebugAllowed = options.aiDebug ?? false;
@@ -5264,6 +5266,10 @@ export class Session {
     if (brain.read('reload')) startReload(body.weapon, body.weaponState, nowSeconds);
     // A throw it asked for on this think, made once (T-3.22). Mid-vault the
     // hands are on the wall, as for a player; it faces the way it threw.
+    // U-079: a bot's word to set off the charges it has out, the human's detonator.
+    const detonate = brain.take('detonate');
+    const caster = ownerSlot === NO_SLOT ? undefined : this.slots[ownerSlot];
+    if (detonate !== null && caster && isAlive(caster.health)) this.detonateCharges(caster, detonate);
     const toss = brain.take('throwAt');
     if (toss && !body.state.vault && this.launch(body, ownerSlot, toss.projectile, toss.yaw, toss.pitch)) {
       body.yaw = tableToWire(toss.yaw);
@@ -5287,6 +5293,31 @@ export class Session {
     input.yaw = yaw;
     // Sprinting is forward only: a strafe is a walk.
     if (input.sprint && input.moveY < 0.7) input.sprint = false;
+  }
+
+  /** U-079: every living armoured vehicle, as the bots' combat world shows it. */
+  private armourViews(): ArmourView[] {
+    const out: ArmourView[] = [];
+    for (const enemy of this.enemyList) {
+      const vehicle = enemy.def.vehicle;
+      if (!vehicle || isDead(enemy.health)) continue;
+      const heading = wireToTable(enemy.yaw);
+      const mid = (vehicle.hull.from[1] + vehicle.hull.to[1]) / 2;
+      out.push({
+        netId: enemy.netId,
+        x: enemy.state.x,
+        y: enemy.state.y,
+        z: enemy.state.z,
+        centre: { x: enemy.state.x, y: enemy.state.y + mid, z: enemy.state.z },
+        radiusM: vehicle.hull.radius,
+        headingX: sin(heading),
+        headingZ: cos(heading),
+        speedMps: enemy.speed,
+        tell: enemy.tell ? { until: enemy.tell.until, point: { ...enemy.tell.point } } : null,
+        shellBlastM: vehicle.cannon.blastRadiusM,
+      });
+    }
+    return out;
   }
 
   /** U-068: a point on a tank's turret (`[right, up, forward]` from its feet), turning with the turret. */
