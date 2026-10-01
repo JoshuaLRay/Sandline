@@ -24,7 +24,7 @@ import {
 import { createBrainRegistry } from '../../server/src/ai/Brain.ts';
 import { NavMesh, initNav } from '../../server/src/ai/nav/NavMesh.ts';
 import { Session } from '../../server/src/session/Session.ts';
-import { DEFAULT_NAV_AGENT, bakeWorld, onMesh } from './nav/bake.ts';
+import { DEFAULT_NAV_AGENT, bakeNavMesh, bakeWorld, navConfigFor, onMesh, worldSoup } from './nav/bake.ts';
 import { coverPoints } from './nav/cover.ts';
 
 const LANE_WIDTH_M = 40;
@@ -83,7 +83,14 @@ function largeWorld(lengthM: number): World {
 const ms = (n: number) => `${n.toFixed(n < 10 ? 2 : 0)} ms`;
 const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
 
+/** How the floor is baked: the world's own (always square, centred on the origin) or a rectangle tight to the lanes. */
+type FloorMode = 'square' | 'tight';
+
 interface Row {
+  mode: FloorMode;
+  voxels: number;
+  /** Set when the bake failed: nothing else was measured. */
+  failed?: string;
   lengthM: number;
   boxes: number;
   areaM2: number;
@@ -139,11 +146,30 @@ async function session(world: World, mesh: NavMesh, cover: ReturnType<typeof cov
   return { tickUs: (wall * 1000) / TICKS, stepUs: (stepMs * 1000) / TICKS, bytesPerTick: bytes / TICKS };
 }
 
-async function measure(lengthM: number): Promise<Row> {
+async function measure(lengthM: number, mode: FloorMode): Promise<Row> {
   const world = largeWorld(lengthM);
   await initNav();
+  const floorW = mode === 'square' ? world.floorHalfExtent * 2 : WIDTH_M + 8;
+  const floorD = mode === 'square' ? world.floorHalfExtent * 2 : lengthM + 20;
+  const voxels = (floorW / 0.1) * (floorD / 0.1);
+  const empty = { tickUs: 0, stepUs: 0, bytesPerTick: 0 };
   const a = performance.now();
-  const bytes = await bakeWorld(world);
+  let bytes: Uint8Array;
+  try {
+    if (mode === 'square') bytes = await bakeWorld(world);
+    else {
+      // One bare bake over a floor cut to the lanes (no vault links: a measurement, not a shippable mesh).
+      const soup = worldSoup(world, DEFAULT_NAV_AGENT.groundY);
+      const p = soup.positions;
+      p[0] = p[9] = -floorW / 2;
+      p[3] = p[6] = floorW / 2;
+      p[2] = p[5] = -floorD / 2;
+      p[8] = p[11] = floorD / 2;
+      bytes = await bakeNavMesh(soup, navConfigFor(DEFAULT_NAV_AGENT));
+    }
+  } catch (e) {
+    return { mode, voxels, failed: (e as Error).message, lengthM, boxes: world.boxes.length, areaM2: WIDTH_M * lengthM, bakeMs: performance.now() - a, navBytes: 0, coverMs: 0, coverPoints: 0, pathUs: 0, pathFound: 0, spread: empty, packed: empty };
+  }
   const bakeMs = performance.now() - a;
   const mesh = NavMesh.load(bytes);
   const b = performance.now();
@@ -166,6 +192,8 @@ async function measure(lengthM: number): Promise<Row> {
   const packed = await session(world, mesh, cover, 'packed');
   mesh.destroy();
   return {
+    mode,
+    voxels,
     lengthM,
     boxes: world.boxes.length,
     areaM2: WIDTH_M * lengthM,
@@ -182,13 +210,18 @@ async function measure(lengthM: number): Promise<Row> {
 
 const lengths = process.argv.slice(2).map(Number).filter((n) => Number.isFinite(n) && n > 0);
 const rows: Row[] = [];
+const modes = (process.env['FLOORS'] ?? 'square,tight').split(',') as FloorMode[];
 for (const lengthM of lengths.length > 0 ? lengths : [250, 480, 960]) {
-  rows.push(await measure(lengthM));
+  for (const mode of modes) rows.push(await measure(lengthM, mode));
 }
 console.log(`three lanes of ${LANE_WIDTH_M} m, ${ENEMIES} enemies, ${TICKS} ticks, Node ${process.version}`);
 console.log('(mission-01: about 65 x 90 m = 5,800 m2 of play, 34 boxes + kit pieces, a 231 KB navmesh, ~7.3 ms of AI per 7.9 ms tick at 40 enemies)\n');
 for (const r of rows) {
-  console.log(`${r.lengthM} m long: ${WIDTH_M} x ${r.lengthM} = ${r.areaM2.toLocaleString()} m2 (${(r.areaM2 / 5800).toFixed(1)}x mission-01's play area), ${r.boxes} boxes`);
+  console.log(`${r.lengthM} m long: ${WIDTH_M} x ${r.lengthM} = ${r.areaM2.toLocaleString()} m2 (${(r.areaM2 / 5800).toFixed(1)}x mission-01's play area), ${r.boxes} boxes; ${r.mode} floor baked as ${(r.voxels / 1e6).toFixed(0)}M voxels`);
+  if (r.failed) {
+    console.log(`  navmesh bake FAILED after ${ms(r.bakeMs)}: ${r.failed}\n`);
+    continue;
+  }
   console.log(`  navmesh bake ${ms(r.bakeMs)} -> ${kb(r.navBytes)}   cover bake ${ms(r.coverMs)} -> ${r.coverPoints} points`);
   console.log(`  path across the map ${r.pathUs.toFixed(0)} us (${(r.pathFound * 100).toFixed(0)}% found)`);
   for (const [name, x] of [['enemies spread along the map', r.spread], ['enemies packed round the squad', r.packed]] as const) {
