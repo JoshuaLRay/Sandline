@@ -49,6 +49,7 @@ import TREE_IDLE from '../data/trees/idle.json' with { type: 'json' };
 import TREE_RIFLEMAN from '../data/trees/rifleman.json' with { type: 'json' };
 import TREE_MG from '../data/trees/mg.json' with { type: 'json' };
 import TREE_FRIENDLY from '../data/trees/friendly.json' with { type: 'json' };
+import TREE_ESCORT from '../data/trees/escort.json' with { type: 'json' };
 import { Sfc32 } from '../math/prng.ts';
 import type { Blackboard } from './blackboard.ts';
 
@@ -185,7 +186,7 @@ export function parseTreeDef(raw: unknown): BtTreeDef {
 /** Every committed tree, validated at import. Keyed by id. */
 export const TREE_DEFS: ReadonlyMap<string, BtTreeDef> = (() => {
   const map = new Map<string, BtTreeDef>();
-  for (const raw of [TREE_IDLE, TREE_RIFLEMAN, TREE_MG, TREE_FRIENDLY]) {
+  for (const raw of [TREE_IDLE, TREE_RIFLEMAN, TREE_MG, TREE_FRIENDLY, TREE_ESCORT]) {
     const def = parseTreeDef(raw);
     if (map.has(def.id)) throw new BtDataError(`tree '${def.id}': duplicate id`);
     map.set(def.id, def);

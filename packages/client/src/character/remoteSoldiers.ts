@@ -98,6 +98,10 @@ export interface RemoteView {
 export function remoteSoldierState(view: RemoteView, netId: number): RemoteSoldierState {
   const enemy = view.remoteEnemy(netId);
   const vitality = view.remoteVitality(netId);
+  // U-075: the escorted character wears civilian clothes and carries nothing (bare hands).
+  if (enemy && enemyByIndex(enemy.archetype)?.friendly) {
+    return { palette: paletteFor({ prisoner: true }), vitality, held: 'knife', reload: 0 };
+  }
   if (enemy) {
     return {
       palette: paletteFor({ enemy: true }),

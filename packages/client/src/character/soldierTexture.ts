@@ -139,11 +139,14 @@ export const SLOT_PALETTES = paletteNames()
  */
 export function paletteFor(who: {
   enemy?: boolean | undefined;
+  /** U-075: the escorted character, in civilian clothes until U-080. */
+  prisoner?: boolean | undefined;
   local?: boolean | undefined;
   /** Absent means "the roster has not said yet", which is not the same as a bot. */
   human?: boolean | undefined;
   slot?: number | undefined;
 }): PaletteName {
+  if (who.prisoner) return 'prisoner';
   if (who.enemy) return 'enemy';
   if (who.local) return 'local';
   if (who.human === false) return 'bot';
