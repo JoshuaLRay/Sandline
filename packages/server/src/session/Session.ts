@@ -17,6 +17,7 @@ import {
   BitWriter,
   COMPONENT_IDS,
   DEFAULT_MOVE_CONFIG,
+  ESCORT_SPECTATE_SLOT,
   MAX_SLOTS,
   type MoveConfig,
   RANGE_TARGETS,
@@ -2099,6 +2100,18 @@ export class Session {
    */
   private applySwitchCharacter(conn: ServerConnection, msg: Extract<Message, { kind: 'SwitchCharacter' }>): void {
     const from = this.slots.find((s) => s.connection === conn && !s.isBot);
+    if (from && msg.spectate && msg.slot === ESCORT_SPECTATE_SLOT && this.roomStarted && !this.paused) {
+      // U-091: the escorted character is watched, not a slot: no takeover, no command, nothing changes about the seat.
+      if (!this.escort()) return;
+      this.spectators.set(conn, ESCORT_SPECTATE_SLOT);
+      if (from.mounted) this.dismount(from);
+      from.input = idleInput(from.yaw);
+      from.queue.length = 0;
+      from.interactHeld = false;
+      if (!from.brain) this.giveBrain(from);
+      conn.send({ kind: 'Spectating', slot: ESCORT_SPECTATE_SLOT });
+      return;
+    }
     const to = this.slots[msg.slot];
     if (!from || !to || !this.roomStarted || this.paused) return;
     if (msg.spectate) {
@@ -2451,6 +2464,11 @@ export class Session {
 
   /** U-075: the order the squad last gave the escorted character (all of them, there is one at a time in practice). */
   private escortOrder: EscortOrder = { kind: 'follow', point: null };
+
+  /** U-091: the escorted character, or undefined when the mission has none. */
+  private escort(): EnemyEntity | undefined {
+    return this.enemyList.find((e) => e.def.friendly);
+  }
 
   private escortView(enemy: EnemyEntity): EscortView {
     return {
@@ -6310,7 +6328,7 @@ export class Session {
       // they get a full view, which is self-healing.
       const baseline = conn.lastAckedTick >= 0 ? view.history.get(conn.lastAckedTick) : null;
       const watched = this.spectators.get(conn);
-      const current = view.next(snapshot, watched === undefined ? (slot ? slot.netId : null) : (this.slots[watched]?.netId ?? null));
+      const current = view.next(snapshot, watched === undefined ? (slot ? slot.netId : null) : watched === ESCORT_SPECTATE_SLOT ? (this.escort()?.netId ?? slot?.netId ?? null) : (this.slots[watched]?.netId ?? null));
       const w = new BitWriter();
       writeDelta(w, current, baseline);
       const payload = w.toUint8Array();

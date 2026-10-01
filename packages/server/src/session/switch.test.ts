@@ -8,6 +8,7 @@
  */
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
+  ESCORT_SPECTATE_SLOT,
   type Message,
   PROTOCOL_VERSION,
   TICK_SECONDS,
@@ -298,5 +299,21 @@ describe('taking control of a bot you command (U-026)', () => {
     back.switchTo(1);
     expect(back.possessed).toHaveLength(0);
     expect(r.session.slots[1]!.isBot).toBe(true);
+  });
+  it('watches the escorted character (U-091) without a seat change, and refuses when there is none', () => {
+    const r = room();
+    const a = r.join('a');
+    a.spectate(ESCORT_SPECTATE_SLOT);
+    // No escorted character in this mission: nothing happens.
+    expect(a.spectating).toHaveLength(0);
+    r.session.spawnEnemy('pow', { x: 4, y: 0, z: 4 });
+    a.spectate(ESCORT_SPECTATE_SLOT);
+    expect(a.spectating).toEqual([{ kind: 'Spectating', slot: ESCORT_SPECTATE_SLOT }]);
+    // He is not a slot: nobody can take control of him, and the seat is the human's still.
+    a.switchTo(ESCORT_SPECTATE_SLOT);
+    expect(a.possessed).toHaveLength(0);
+    expect(r.controllers()).toEqual([a.slot]);
+    expect(r.session.slots).toHaveLength(6);
+    r.step(3);
   });
 });

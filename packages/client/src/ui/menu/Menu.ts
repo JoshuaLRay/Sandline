@@ -29,6 +29,8 @@ export interface MenuOptions {
   /** U-026: take control of the bot in `slot`, one you command. */
   onSwitch?: (slot: number) => void;
   onSpectate?: (slot: number) => void;
+  /** U-091: watch the escorted character. */
+  onSpectateEscort?: () => void;
   /** U-078: the host restarts the mission: `full` from the start, else from the last checkpoint. */
   onMissionRestart?: (full: boolean) => void;
   /** U-078: the host leaves the mission for another (a campaign or a replay run). */
@@ -54,6 +56,8 @@ export interface Menu {
   setCommand(rows: readonly CommandRow[]): void;
   /** U-078: the host's mission section (null hides it); redrawn only when it changes. */
   setMission(model: MissionMenuModel | null): void;
+  /** U-091: whether there is an escorted character to watch (shows the button). */
+  setEscort(present: boolean): void;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, parent?: HTMLElement): HTMLElementTagNameMap[K] {
@@ -194,6 +198,10 @@ export function createMenu(options: MenuOptions): Menu {
     }
   };
   drawCommand([]);
+
+  // -- U-091: watch the escorted character --
+  const escortWatch = button('Spectate the prisoner', 'menu-button menu-escort-watch', () => options.onSpectateEscort?.(), pausePanel);
+  escortWatch.hidden = true;
 
   // -- U-078: the host's mission menu: restart from the checkpoint, restart the mission, or leave for another. --
   const mission = el('div', 'menu-mission', pausePanel);
@@ -399,6 +407,9 @@ export function createMenu(options: MenuOptions): Menu {
     },
     setMission(model) {
       drawMission(model);
+    },
+    setEscort(present) {
+      escortWatch.hidden = !present || !options.onSpectateEscort;
     },
   };
 }

@@ -46,6 +46,7 @@ import {
   type Vitality,
   vitalityFromCode,
   type World,
+  enemyByIndex,
   type WorldBox,
   type ScriptBlockerState,
   getWorld,
@@ -619,6 +620,12 @@ export class NetClient {
   /** The remote's `Enemy` component, or null for anything that is not an enemy — every slot included (T-3.11). */
   remoteEnemy(netId: number): RemoteEnemy | null {
     return this.remoteEnemies.get(netId) ?? null;
+  }
+
+  /** U-091: the netId of the escorted character in view (the friendly `pow` archetype), or null when the mission has none. */
+  get escortNetId(): number | null {
+    for (const [netId, enemy] of this.remoteEnemies) if (enemyByIndex(enemy.archetype)?.friendly) return netId;
+    return null;
   }
 
   remoteReviveProgress(netId: number): number {
