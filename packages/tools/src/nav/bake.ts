@@ -44,14 +44,18 @@ export interface TriangleSoup {
   indices: number[];
 }
 
+/** U-082: a floor's half sides: a number for a square, or the width (x) and depth (z) of a rectangle, both centred on the origin. */
+export type FloorSize = number | { halfWidth: number; halfDepth: number };
+
 /**
- * A square floor at y = 0 plus each box as a closed cuboid. Every triangle is
+ * A floor at y = 0 (a square, or a rectangle since U-082) plus each box as a closed cuboid. Every triangle is
  * wound counter-clockwise seen from outside, so Recast's slope test sees the
  * floor and box tops as facing up and the sides as walls.
  */
-export function boxSoup(floorHalfExtent: number, boxes: readonly SoupBox[]): TriangleSoup {
-  const f = floorHalfExtent;
-  const positions = [-f, 0, -f, f, 0, -f, f, 0, f, -f, 0, f];
+export function boxSoup(floor: FloorSize, boxes: readonly SoupBox[]): TriangleSoup {
+  const w = typeof floor === 'number' ? floor : floor.halfWidth;
+  const d = typeof floor === 'number' ? floor : floor.halfDepth;
+  const positions = [-w, 0, -d, w, 0, -d, w, 0, d, -w, 0, d];
   const indices = [0, 2, 1, 0, 3, 2];
   for (const { min, max } of boxes) {
     const o = positions.length / 3;
@@ -207,7 +211,7 @@ export function navConfigFor(agent: NavAgent): Partial<SoloNavMeshGeneratorConfi
  */
 export function worldSoup(world: World, groundY = DEFAULT_NAV_AGENT.groundY): TriangleSoup {
   const soup = boxSoup(
-    world.floorHalfExtent,
+    { halfWidth: world.floorHalfWidth, halfDepth: world.floorHalfDepth },
     world.boxes.map((b) => ({ min: [b.minX, b.minY, b.minZ], max: [b.maxX, b.maxY, b.maxZ] }) as const),
   );
   if (groundY !== 0) for (let i = 1; i < 12; i += 3) soup.positions[i] = groundY;
@@ -225,6 +229,8 @@ export function navBakeHash(world: World, agent: NavAgent = DEFAULT_NAV_AGENT, e
     world: {
       id: world.id,
       floorHalfExtent: world.floorHalfExtent,
+      // U-082: only a rectangular floor adds to what is hashed, so every square world keeps the hash it has.
+      ...(world.floorHalfWidth === world.floorHalfDepth ? {} : { floorHalfWidth: world.floorHalfWidth, floorHalfDepth: world.floorHalfDepth }),
       boxes: world.boxes.map((b) => [b.id, b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ]),
     },
     agent,

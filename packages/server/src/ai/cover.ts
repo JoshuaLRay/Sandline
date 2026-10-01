@@ -233,11 +233,14 @@ export function straightLine(a: Vec3, b: Vec3): number {
   return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2 + (b.z - a.z) ** 2);
 }
 
-/** One threat eye's view of every point (`CoverSystem.sightFrom`). */
+/** One threat eye's view of the points (`CoverSystem.sightFrom`), each worked out when first asked for (U-081). */
 interface ThreatSight {
-  protects: readonly boolean[];
+  protects: (index: number) => boolean;
   firing: (index: number) => Vec3 | null;
 }
+
+/** Metres across one cell of the grid the points are indexed in (U-081). */
+const GRID_CELL_M = 16;
 
 /** Threat eyes remembered at once: a squad and then some, over a tick or two. */
 const SIGHT_CACHE_SIZE = 64;
@@ -257,7 +260,37 @@ export class CoverSystem {
     private readonly pathCost: PathCost = straightLine,
     private readonly config: CoverConfig = COVER,
     private readonly body: CoverBody = DEFAULT_COVER_BODY,
-  ) {}
+  ) {
+    // U-081: the points by ground cell, so a query looks at the cells within its reach and not at the whole map.
+    points.forEach((p, i) => {
+      const key = this.cellKey(Math.floor(p.x / GRID_CELL_M), Math.floor(p.z / GRID_CELL_M));
+      const cell = this.grid.get(key);
+      if (cell) cell.push(i);
+      else this.grid.set(key, [i]);
+    });
+  }
+
+  private readonly grid = new Map<number, number[]>();
+
+  private cellKey(cx: number, cz: number): number {
+    return (cx + 32768) * 65536 + (cz + 32768);
+  }
+
+  /** The indices of the points within `radius` of `from` on the ground, or a superset of them; never more than the cells that reach. */
+  private near(from: Vec3, radius: number): number[] {
+    const x0 = Math.floor((from.x - radius) / GRID_CELL_M);
+    const x1 = Math.floor((from.x + radius) / GRID_CELL_M);
+    const z0 = Math.floor((from.z - radius) / GRID_CELL_M);
+    const z1 = Math.floor((from.z + radius) / GRID_CELL_M);
+    const out: number[] = [];
+    for (let cx = x0; cx <= x1; cx++) {
+      for (let cz = z0; cz <= z1; cz++) {
+        const cell = this.grid.get(this.cellKey(cx, cz));
+        if (cell) for (const i of cell) out.push(i);
+      }
+    }
+    return out;
+  }
 
   /**
    * The best point for `owner` against `query`, reserved for it — or null when
@@ -296,27 +329,29 @@ export class CoverSystem {
     const combat = query.combat ?? true;
     const sights = query.threats.map((t) => this.sightFrom(t));
     const optimistic: { choice: CoverChoice; bound: number }[] = [];
-    this.points.forEach((point, index) => {
+    // U-081: only the points within reach are looked at, and a threat's view of one is traced only then.
+    for (const index of this.near(query.from, maxPathM)) {
+      const point = this.points[index]!;
       const holder = this.heldBy.get(index);
-      if (holder !== undefined && holder !== owner) return;
-      if (query.accept && !query.accept(point)) return;
+      if (holder !== undefined && holder !== owner) continue;
+      if (query.accept && !query.accept(point)) continue;
       const straight = straightLine(query.from, point);
-      if (straight > maxPathM) return;
+      if (straight > maxPathM) continue;
       let hidden = 0;
       let firingFrom: Vec3 | null = null;
       for (const sight of sights) {
-        if (sight.protects[index]) hidden++;
+        if (sight.protects(index)) hidden++;
         firingFrom ??= sight.firing(index);
       }
       const protection = query.threats.length === 0 ? 0 : hidden / query.threats.length;
-      if (protection === 0) return;
-      if (combat && !firingFrom) return;
+      if (protection === 0) continue;
+      if (combat && !firingFrom) continue;
       let crowd = 0;
       for (const f of query.friends ?? []) if ((f.x - point.x) ** 2 + (f.z - point.z) ** 2 <= crowdRadiusM ** 2) crowd++;
       // A firing position is what combat asks for; to hide, it is worth nothing extra.
       const base = weights.protection * protection + (combat && firingFrom ? weights.firing : 0) - weights.crowd * crowd;
       optimistic.push({ choice: { index, point, score: base, protection, firingFrom, pathM: straight }, bound: base - weights.pathPerM * straight });
-    });
+    }
     optimistic.sort((a, b) => b.bound - a.bound || a.choice.index - b.choice.index);
     const out: CoverChoice[] = [];
     for (const { choice, bound } of optimistic) {
@@ -336,6 +371,9 @@ export class CoverSystem {
   /** Path queries made so far, for the cost test. */
   pathQueries = 0;
 
+  /** Points a threat's view has been traced for so far (U-081): a query pays for the points near it, not for the map. */
+  protectsTraces = 0;
+
   /**
    * What one threat's eye sees of every point: whether each hides its
    * concealed body, and (lazily, since most candidates never need it) where
@@ -350,10 +388,18 @@ export class CoverSystem {
     let sight = this.sights.get(key);
     if (!sight) {
       if (this.sights.size >= SIGHT_CACHE_SIZE) this.sights.clear();
-      const protectsAll = this.points.map((p) => protects(p, threatEye, this.boxes, this.body));
+      const hides = new Map<number, boolean>();
       const firing = new Map<number, Vec3 | null>();
       sight = {
-        protects: protectsAll,
+        protects: (i) => {
+          let hidden = hides.get(i);
+          if (hidden === undefined) {
+            this.protectsTraces++;
+            hidden = protects(this.points[i]!, threatEye, this.boxes, this.body);
+            hides.set(i, hidden);
+          }
+          return hidden;
+        },
         firing: (i) => {
           if (!firing.has(i)) firing.set(i, firingPosition(this.points[i]!, threatEye, this.boxes, this.config, this.body));
           return firing.get(i)!;
