@@ -53,6 +53,8 @@ export function runChoiceModel(
     options.push({ run: 'replay', mission, label: `Replay — ${title(mission, campaign)}`, briefing: campaignMission(mission, campaign)?.briefing ?? [] });
   }
   const host = mySlot === offer.host;
+  // U-078: the offer made while the mission is on is for the pause menu, not the after-action panel.
+  if (offer.result === 'progress') return null;
   return {
     heading: `${title(offer.mission, campaign)} — ${offer.result}`,
     debrief: offer.result === 'complete' ? (played?.debrief ?? []) : [],
@@ -117,4 +119,34 @@ export function createRunChoice(parent: HTMLElement): RunChoice {
       }
     },
   };
+}
+
+/** U-078: the host's mission menu, in the pause menu: restart from the checkpoint, restart the mission, or leave for another. */
+export interface MissionMenuModel {
+  /** Where we are, for the heading. */
+  mission: string;
+  /** The missions the host may leave for (the same options as after a mission), each with its briefing. */
+  options: readonly RunChoiceOption[];
+}
+
+/**
+ * The mission menu: only for the room's host, and only in a room with a campaign (an offer exists); null for anyone
+ * else, who has nothing to choose. The mission already on is not an option: while it is on, a campaign run of it
+ * shows as `campaign === mission`, and a replay of it as the mission being among the beaten ones.
+ */
+export function missionMenuModel(
+  offer: Offer | null,
+  mySlot: number,
+  campaign: CampaignDef = CAMPAIGN,
+): MissionMenuModel | null {
+  if (!offer || mySlot !== offer.host) return null;
+  const options: RunChoiceOption[] = [];
+  if (offer.campaign !== '' && offer.campaign !== offer.mission) {
+    options.push({ run: 'campaign', mission: offer.campaign, label: `Campaign — ${title(offer.campaign, campaign)}`, briefing: campaignMission(offer.campaign, campaign)?.briefing ?? [] });
+  }
+  for (const mission of offer.replay) {
+    if (mission === offer.mission) continue;
+    options.push({ run: 'replay', mission, label: `Replay — ${title(mission, campaign)}`, briefing: campaignMission(mission, campaign)?.briefing ?? [] });
+  }
+  return { mission: title(offer.mission, campaign), options };
 }

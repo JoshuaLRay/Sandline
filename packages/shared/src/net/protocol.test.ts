@@ -113,6 +113,7 @@ const SAMPLES: Message[] = [
   // U-090: the offer after a mission, the host's choice and the handoff.
   { kind: 'RunOffer', mission: 'mission-01', result: 'complete', host: 0, campaign: 'mission-02', replay: ['mission-01'] },
   { kind: 'RunOffer', mission: 'mission-02', result: 'failed', host: 5, campaign: 'mission-02', replay: ['mission-01'] },
+  { kind: 'RunOffer', mission: 'mission-02', result: 'progress', host: 1, campaign: 'mission-02', replay: ['mission-01'] },
   { kind: 'RunOffer', mission: 'mission-10', result: 'complete', host: 2, campaign: '', replay: ['mission-01', 'mission-02', 'mission-03'] },
   { kind: 'Handoff', mission: 'mission-02', run: 'campaign' },
   { kind: 'Handoff', mission: 'mission-01', run: 'replay' },
