@@ -5315,6 +5315,7 @@ export class Session {
         speedMps: enemy.speed,
         tell: enemy.tell ? { until: enemy.tell.until, point: { ...enemy.tell.point } } : null,
         shellBlastM: vehicle.cannon.blastRadiusM,
+        muzzle: this.turretPoint(enemy, vehicle.cannon.muzzle),
       });
     }
     return out;

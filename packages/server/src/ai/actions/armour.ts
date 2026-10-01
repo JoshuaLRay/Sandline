@@ -10,7 +10,8 @@
  */
 import { PROJECTILE_IDS } from '@sandline/shared';
 import type { BrainMemory, BrainRegistry } from '../Brain.ts';
-import { ARMOUR, chooseRocket, choosePlacement, dodgePoint } from '../armour.ts';
+import { ARMOUR, chooseRocket, choosePlacement, dodgeRing, shellDanger } from '../armour.ts';
+import { isSquadBody } from './friendly.ts';
 import { type ArmourView, type CombatBody, isCombatBody } from './combat.ts';
 
 const ROCKET = (PROJECTILE_IDS as readonly string[]).indexOf('rocket');
@@ -23,15 +24,21 @@ function flat(a: Vec3, b: Vec3): number {
   return Math.sqrt((a.x - b.x) ** 2 + (a.z - b.z) ** 2);
 }
 
-/** The tank whose lock this body stands in, nearest first, or null. */
-function lockOn(body: CombatBody): { view: ArmourView; to: Vec3 } | null {
+/** The tank whose locked shell this body stands in the way of, and the test of where is safe. */
+function lockOn(body: CombatBody): { view: ArmourView; danger: (p: Vec3) => boolean } | null {
   const now = body.combat.now();
   for (const view of body.combat.armour()) {
     if (!view.tell || now >= view.tell.until) continue;
-    const to = dodgePoint(body.state, view);
-    if (to) return { view, to };
+    const danger = shellDanger(view, body.combat.boxes);
+    if (danger && danger(body.state)) return { view, danger };
   }
   return null;
+}
+
+/** Last resort: a few metres sideways of the line from the tank. */
+function awayFrom(me: Vec3, view: ArmourView): Vec3 {
+  const d = flat(me, view) || 1;
+  return { x: me.x - ((me.z - view.z) / d) * 6, y: me.y, z: me.z + ((me.x - view.x) / d) * 6 };
 }
 
 /** The nearest tank this body has in sight now, or null. */
@@ -73,13 +80,38 @@ function stand(bb: { set<K extends keyof BrainMemory>(key: K, value: BrainMemory
 
 export function registerArmourLeaves(registry: BrainRegistry): BrainRegistry {
   return registry
-    .condition('shellLocked', ({ ctx }) => isCombatBody(ctx) && lockOn(ctx) !== null)
-    /** Run out of the locked shell's blast: sprint, firing nothing. */
+    /** In the way of a locked shell, or keeping clear of it until it has landed. */
+    .condition('shellLocked', ({ ctx, blackboard }) => {
+      if (!isCombatBody(ctx)) return false;
+      if (lockOn(ctx) !== null) return true;
+      const kept = blackboard.get('dodge');
+      return kept !== null && ctx.combat.now() < kept.until + ARMOUR.dodgeHoldSeconds;
+    })
+    /** Run out of the locked shell's way and stay out until it has landed: sprint, firing nothing. */
     .action('dodgeShell', ({ ctx, blackboard }) => {
       if (!isCombatBody(ctx)) return 'failure';
       const lock = lockOn(ctx);
-      if (!lock) return 'failure';
-      stand(blackboard, { goal: lock.to, pace: 'sprint' });
+      const kept = blackboard.get('dodge');
+      if (!lock) {
+        // The shell is away: stay at the goal chosen until it has landed.
+        if (kept === null || ctx.combat.now() >= kept.until + ARMOUR.dodgeHoldSeconds) return 'failure';
+        stand(blackboard, flat(ctx.state, kept.goal) > 0.5 ? { goal: kept.goal, pace: 'sprint' } : null);
+        return 'running';
+      }
+      // The one goal for this lock, chosen when it was first seen: out of the shell's way and, where there is a place,
+      // out of the tank's sight; else the nearest point the mesh can walk to.
+      const until = lock.view.tell!.until;
+      let goal: Vec3;
+      if (kept && kept.until === until) goal = kept.goal;
+      else {
+        const eyes = [{ x: lock.view.x, y: lock.view.y + 2.2, z: lock.view.z }];
+        const safe = (p: Vec3) => !lock.danger(p) && flat(p, ctx.state) <= ARMOUR.dodgeCoverM;
+        const ring = isSquadBody(ctx) ? dodgeRing(ctx.state, lock.danger, (p) => ctx.squad.reachable(ctx.state, p)) : null;
+        const pick = ring ? null : ctx.combat.cover?.choose(ctx.netId, { from: ctx.state, threats: eyes, friends: ctx.combat.friendsOf(ctx.netId, ctx.faction), combat: true, accept: safe });
+        goal = ring ?? pick?.point ?? awayFrom(ctx.state, lock.view);
+        blackboard.set('dodge', { until, goal });
+      }
+      stand(blackboard, { goal, pace: 'sprint' });
       return 'running';
     })
     .condition('armourFight', ({ ctx }) => {
@@ -87,8 +119,10 @@ export function registerArmourLeaves(registry: BrainRegistry): BrainRegistry {
       if (chargesOut(ctx).length > 0) return true;
       return carried(ctx) >= 0 && seenArmour(ctx) !== null;
     })
-    .action('fightArmour', ({ ctx, blackboard }) => {
+    .action('fightArmour', ({ ctx, blackboard }, args) => {
       if (!isCombatBody(ctx)) return 'failure';
+      // On a hold order it fires from its post and walks nowhere.
+      const stationary = args['stationary'] === true;
       const now = ctx.combat.now();
       const friends = ctx.combat.friendsOf(ctx.netId, ctx.faction);
       const view = seenArmour(ctx) ?? ctx.combat.armour()[0] ?? null;
@@ -120,6 +154,7 @@ export function registerArmourLeaves(registry: BrainRegistry): BrainRegistry {
       if (!def || ctx.state.vault) return 'failure';
       const range = flat(ctx.state, view);
       const [min, max] = kind === ROCKET ? [ARMOUR.rocketMinRangeM, ARMOUR.rocketMaxRangeM] : [ARMOUR.chargeMinRangeM, ARMOUR.chargeMaxRangeM];
+      if (stationary && (range > max || range < min)) return 'failure';
       if (range > max) {
         stand(blackboard, { goal: { x: view.x, y: view.y, z: view.z }, pace: 'sprint' });
         return 'running';

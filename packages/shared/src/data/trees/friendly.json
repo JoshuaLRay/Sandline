@@ -65,6 +65,30 @@
             }
           },
           {
+            "type": "condition",
+            "name": "armourFight"
+          },
+          {
+            "type": "action",
+            "name": "fightArmour",
+            "args": {
+              "stationary": true
+            }
+          }
+        ]
+      },
+      {
+        "type": "sequence",
+        "reactive": true,
+        "children": [
+          {
+            "type": "condition",
+            "name": "ordered",
+            "args": {
+              "kind": "hold"
+            }
+          },
+          {
             "type": "action",
             "name": "orderHold"
           }

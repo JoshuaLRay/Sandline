@@ -112,6 +112,7 @@ export interface ArmourView {
   readonly speedMps: number;
   /** The shell it has locked on, when it has: where it will land and until when (seconds), or null. */
   readonly tell: { readonly until: number; readonly point: Vec3 } | null;
-  /** Its cannon shell's blast radius, metres. */
+  /** Its cannon shell's blast radius, metres, and where the shell leaves the barrel. */
   readonly shellBlastM: number;
+  readonly muzzle: Vec3;
 }

@@ -6,7 +6,7 @@
  * through `projectileArc`, the stepper the server flies, from the launch the session's throw path makes
  * (`throwLaunch`). Server-only, deterministic: no randomness.
  */
-import { type ProjectileDef, type ProjectileWorld, degToAngle, projectileArc } from '@sandline/shared';
+import { type ProjectileDef, type ProjectileWorld, type WorldBox, degToAngle, projectileArc, rayWorld } from '@sandline/shared';
 import { aimAngles } from './aim.ts';
 import type { ArmourView } from './actions/combat.ts';
 import RAW_ARMOUR from './armour.json' with { type: 'json' };
@@ -16,6 +16,8 @@ type Vec3 = { x: number; y: number; z: number };
 
 export interface ArmourConfig {
   dodgeMarginM: number;
+  dodgeCoverM: number;
+  dodgeHoldSeconds: number;
   rocketMinRangeM: number;
   rocketMaxRangeM: number;
   aimSpanDeg: number;
@@ -40,6 +42,8 @@ export function parseArmourConfig(raw: unknown): ArmourConfig {
   const row = raw as Record<string, unknown>;
   const ranges: Record<keyof ArmourConfig, [number, number]> = {
     dodgeMarginM: [0, 20],
+    dodgeCoverM: [0, 50],
+    dodgeHoldSeconds: [0, 10],
     rocketMinRangeM: [0, 200],
     rocketMaxRangeM: [1, 200],
     aimSpanDeg: [0, 45],
@@ -71,34 +75,96 @@ export function parseArmourConfig(raw: unknown): ArmourConfig {
 
 export const ARMOUR: ArmourConfig = parseArmourConfig(RAW_ARMOUR);
 
+/** How near a rocket may pass a squadmate's middle, metres: the capsule, the rocket and a margin. */
+const LANE_CLEAR_M = 1;
+
+/** Whether the arc's first `upTo` steps pass clear of every friend (feet) — their middle taken a metre up. */
+function laneClear(points: readonly Vec3[], upTo: number, friends: readonly Vec3[]): boolean {
+  for (const friend of friends) {
+    const cx = friend.x;
+    const cy = friend.y + 1;
+    const cz = friend.z;
+    for (let i = 1; i <= upTo && i < points.length; i++) {
+      const a = points[i - 1]!;
+      const b = points[i]!;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dz = b.z - a.z;
+      const len2 = dx * dx + dy * dy + dz * dz;
+      const t = len2 > 0 ? Math.max(0, Math.min(1, ((cx - a.x) * dx + (cy - a.y) * dy + (cz - a.z) * dz) / len2)) : 0;
+      const px = a.x + dx * t - cx;
+      const py = a.y + dy * t - cy;
+      const pz = a.z + dz * t - cz;
+      if (px * px + py * py + pz * pz < LANE_CLEAR_M * LANE_CLEAR_M) return false;
+    }
+  }
+  return true;
+}
+
+/** Compass points tried round a shell's lock. */
+const RING_DIRECTIONS = 16;
+
+/** How many looks a step of an arc is given. */
+const SUBSTEPS = 6;
+
 function flat(a: Vec3, b: Vec3): number {
   return Math.sqrt((a.x - b.x) ** 2 + (a.z - b.z) ** 2);
 }
 
+/** How near a shell's flight line a body is hit, metres: the capsule and the shell. */
+const CORRIDOR_M = 1.6;
+/** The farthest a shell is reckoned to fly, metres. */
+const SHELL_REACH_M = 150;
+
+function toSegment(p: Vec3, a: Vec3, b: Vec3): number {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const len2 = dx * dx + dz * dz;
+  const t = len2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / len2)) : 0;
+  return Math.sqrt((p.x - (a.x + dx * t)) ** 2 + (p.z - (a.z + dz * t)) ** 2);
+}
+
 /**
- * Where to run to leave a shell's lock: straight away from the point it will land on (away from the tank itself when
- * standing on it), far enough to be outside its blast radius and the margin.
+ * Where a locked shell can hurt, as a test of a position: the shell goes at the locked point and on, bursting on the
+ * first body or wall it meets, so a body in its flight line is hit and everyone within the blast of where it ends (or of
+ * the lock, where it may burst on a squadmate first) is caught. Null when the tank has locked nothing.
  */
-export function dodgePoint(me: Vec3, view: ArmourView, config: ArmourConfig = ARMOUR): Vec3 | null {
+export function shellDanger(view: ArmourView, boxes: readonly WorldBox[], config: ArmourConfig = ARMOUR): ((p: Vec3) => boolean) | null {
   const lock = view.tell?.point;
   if (!lock) return null;
-  const reach = view.shellBlastM + config.dodgeMarginM;
-  const d = flat(me, lock);
-  if (d >= reach) return null;
-  let dx = me.x - lock.x;
-  let dz = me.z - lock.z;
-  let length = Math.sqrt(dx * dx + dz * dz);
-  if (length < 0.5) {
-    dx = me.x - view.x;
-    dz = me.z - view.z;
-    length = Math.sqrt(dx * dx + dz * dz);
-    if (length < 0.5) {
-      dx = -view.headingZ;
-      dz = view.headingX;
-      length = 1;
+  const dx = lock.x - view.muzzle.x;
+  const dy = lock.y - view.muzzle.y;
+  const dz = lock.z - view.muzzle.z;
+  const length = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+  const hit = rayWorld({ origin: view.muzzle, direction: { x: dx / length, y: dy / length, z: dz / length }, maxDistance: SHELL_REACH_M }, boxes);
+  const reach = hit ? hit.distance : SHELL_REACH_M;
+  const end = { x: view.muzzle.x + (dx / length) * reach, y: 0, z: view.muzzle.z + (dz / length) * reach };
+  const clear = view.shellBlastM + config.dodgeMarginM;
+  return (p) => toSegment(p, view.muzzle, end) < CORRIDOR_M || flat(p, end) < clear || flat(p, lock) < clear;
+}
+
+/**
+ * Where to run to leave a locked shell's danger: the nearest point on rings round `me` that is out of it and that
+ * `reachable` says the mesh can walk to; null when it is already out, or when nothing is.
+ */
+export function dodgeRing(me: Vec3, danger: (p: Vec3) => boolean, reachable: (to: Vec3) => boolean): Vec3 | null {
+  if (!danger(me)) return null;
+  for (const radius of [3, 5, 7.5, 10]) {
+    let best: Vec3 | null = null;
+    let bestD = Infinity;
+    for (let k = 0; k < RING_DIRECTIONS; k++) {
+      const a = (k / RING_DIRECTIONS) * Math.PI * 2;
+      const p = { x: me.x + Math.sin(a) * radius, y: me.y, z: me.z + Math.cos(a) * radius };
+      if (danger(p) || !reachable(p)) continue;
+      const d = flat(me, p);
+      if (d < bestD) {
+        best = p;
+        bestD = d;
+      }
     }
+    if (best) return best;
   }
-  return { x: lock.x + (dx / length) * (reach + 1), y: me.y, z: lock.z + (dz / length) * (reach + 1) };
+  return null;
 }
 
 export interface ShotChoice {
@@ -145,15 +211,31 @@ export function chooseRocket(
     const pitch = (base + k * step) & 0xfff;
     const { origin, velocity } = throwLaunch(def, eye, yaw, pitch, world);
     const arc = projectileArc(def, origin, velocity, { dt: 1 / 30, maxSeconds: Math.min(def.maxLifeSeconds, (range / def.speedMPerSec) * 2 + 0.5), world });
-    for (let i = 0; i < arc.points.length; i++) {
-      const p = arc.points[i]!;
-      const h = hullAt(view, i / 30);
-      const miss = Math.sqrt((p.x - h.x) ** 2 + (p.y - h.y) ** 2 + (p.z - h.z) ** 2);
-      if (miss < bestMiss) {
-        bestMiss = miss;
-        best = { yaw, pitch, hit: p, seconds: i / 30 };
+    // A step is 1.5 m of flight at 45 m/s: look between the steps too, or a true line reads as a miss by half of one.
+    let near: ShotChoice | null = null;
+    let nearMiss = Infinity;
+    let nearAt = 0;
+    for (let i = 1; i < arc.points.length; i++) {
+      const a = arc.points[i - 1]!;
+      const b = arc.points[i]!;
+      for (let j = 1; j <= SUBSTEPS; j++) {
+        const f = j / SUBSTEPS;
+        const p = { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, z: a.z + (b.z - a.z) * f };
+        const t = (i - 1 + f) / 30;
+        const h = hullAt(view, t);
+        const miss = Math.sqrt((p.x - h.x) ** 2 + (p.y - h.y) ** 2 + (p.z - h.z) ** 2);
+        if (miss < nearMiss) {
+          nearMiss = miss;
+          nearAt = i;
+          near = { yaw, pitch, hit: p, seconds: t };
+        }
       }
     }
+    if (near === null || nearMiss >= bestMiss) continue;
+    // A rocket goes off on the first body it meets: never down a lane with a squadmate in it.
+    if (!laneClear(arc.points, nearAt, friends)) continue;
+    best = near;
+    bestMiss = nearMiss;
   }
   if (best === null || bestMiss > view.radiusM * config.hitFraction) return null;
   if (flat(best.hit, body) <= clear) return null;
