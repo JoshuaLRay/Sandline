@@ -177,9 +177,8 @@ describe('the campaign file keeps the run kind and both pools (U-089)', () => {
     const plain = d.loadCampaign(created.code)!.state;
     expect(plain.run).toBeUndefined();
     expect(plain.replayPrisoners).toBeUndefined();
-    const bad = newCampaignState('greybox-01') as CampaignState & { run: string };
-    bad.run = 'speedrun';
-    expect(() => d.saveCampaign(created.code, bad as CampaignState)).toThrow(/run/);
+    const bad = { ...newCampaignState('greybox-01'), run: 'speedrun' } as unknown as CampaignState;
+    expect(() => d.saveCampaign(created.code, bad)).toThrow(/run/);
     const dup = newCampaignState('greybox-01');
     dup.replayPrisoners = [{ slot: 1, at: REPLAY_AT }, { slot: 1, at: REPLAY_AT }];
     expect(() => d.saveCampaign(created.code, dup)).toThrow(/distinct/);
