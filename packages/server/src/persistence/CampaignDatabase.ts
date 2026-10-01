@@ -38,12 +38,32 @@ export interface CampaignCheckpoint {
 /** U-060: a checkpoint world larger than this is dropped from the save, which then keeps the basic checkpoint. */
 export const CHECKPOINT_WORLD_MAX_BYTES = 512 * 1024;
 
+/** U-089: a run of the campaign's newest mission, or a replay of one already beaten (design doc D3). */
+export type RunKind = 'campaign' | 'replay';
+
+/** U-089: a character held prisoner in the replay pool, and where. */
+export interface ReplayPrisoner {
+  slot: number;
+  at: { x: number; y: number; z: number };
+}
+
 export interface CampaignState {
   formatVersion: number;
+  /** The mission (world) the campaign is on, and so the room that is built from this save. */
   world: string;
   completedMissions: string[];
   checkpoint: CampaignCheckpoint | null;
   soldiers: SoldierSave[];
+  /**
+   * U-089: the kind of run in progress on `world`; absent is a campaign run (every older save).
+   */
+  run?: RunKind;
+  /**
+   * U-089: the prisoners of REPLAY runs. The soldier records' `captured`/`prisoner` (U-061) are the CAMPAIGN pool, so
+   * an older save has its prisoners where it always did. A character captured in one kind of run can be rescued only
+   * in the next run of that kind; the other pool is carried through untouched.
+   */
+  replayPrisoners?: ReplayPrisoner[];
 }
 
 export interface CampaignRecord {
@@ -166,12 +186,26 @@ function normalizedState(input: CampaignState): CampaignState {
       ...(world === null ? {} : { world }),
     };
   }
+  // U-089: additive. A campaign run is the default, so only a replay is written; an empty pool is not written.
+  const run: RunKind | undefined = input.run;
+  if (run !== undefined && run !== 'campaign' && run !== 'replay') throw new Error(`campaign run must be 'campaign' or 'replay', got ${String(run)}`);
+  const pool = input.replayPrisoners ?? [];
+  if (!Array.isArray(pool) || pool.length > 6) throw new Error('campaign replayPrisoners must list at most six prisoners');
+  const seen = new Set<number>();
+  const replayPrisoners = pool.map((p) => {
+    if (!Number.isInteger(p.slot) || p.slot < 0 || p.slot > 5 || seen.has(p.slot)) throw new Error('replayPrisoners must name distinct slots 0..5');
+    seen.add(p.slot);
+    if (!p.at || !Number.isFinite(p.at.x) || !Number.isFinite(p.at.y) || !Number.isFinite(p.at.z)) throw new Error(`replay prisoner ${p.slot} has no finite position`);
+    return { slot: p.slot, at: { x: p.at.x, y: p.at.y, z: p.at.z } };
+  });
   return {
     formatVersion: CAMPAIGN_SAVE_VERSION,
     world: input.world,
     completedMissions: [...new Set(input.completedMissions)],
     checkpoint,
     soldiers,
+    ...(run === 'replay' ? { run } : {}),
+    ...(replayPrisoners.length > 0 ? { replayPrisoners } : {}),
   };
 }
 

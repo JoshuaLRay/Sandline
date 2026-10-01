@@ -209,7 +209,7 @@ import {
 import { Director } from '../ai/director/director.ts';
 import { MissionRun } from './mission.ts';
 import { EventRun, type EventCheckpoint, type EventHost } from './events.ts';
-import type { CampaignState } from '../persistence/CampaignDatabase.ts';
+import type { CampaignState, ReplayPrisoner, RunKind } from '../persistence/CampaignDatabase.ts';
 import { SoldierXp } from '../persistence/xp.ts';
 import type { DownedMate, SquadView } from '../ai/actions/friendly.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
@@ -1026,6 +1026,10 @@ export class Session {
   private readonly classLoadouts: 'class' | 'free';
   /** T-4.23: the durable campaign metadata this room advances. */
   private readonly campaignCompletedMissions: Set<string>;
+  /** U-089: the kind of run this room is. */
+  private readonly runKind: RunKind;
+  /** U-089: the replay pool as the save held it: in play in a replay run, carried through untouched in a campaign run. */
+  private readonly replayPoolAtLoad: ReplayPrisoner[];
   private readonly campaignSoldiers: CampaignState['soldiers'];
   private readonly xp: SoldierXp;
   /** Local sessions have no identity service; keep a temporary identity across seat resumes. */
@@ -1059,6 +1063,8 @@ export class Session {
     this.missionId = missionDef?.id ?? null;
     this.campaignSave = options.onCampaignSave ?? null;
     this.campaignCompletedMissions = new Set(options.campaign?.completedMissions ?? []);
+    this.runKind = options.campaign?.run ?? 'campaign';
+    this.replayPoolAtLoad = (options.campaign?.replayPrisoners ?? []).map((p) => ({ slot: p.slot, at: { ...p.at } }));
     this.campaignSoldiers = (options.campaign?.soldiers ?? Array.from({ length: MAX_SLOTS }, (_, slot) => ({ slot, classId: '', rank: 0, xp: 0 })))
       .map((soldier) => ({ ...soldier }));
     this.xp = new SoldierXp(this.campaignSoldiers);
@@ -1242,9 +1248,12 @@ export class Session {
     // T-4.27: every slot plays a class from the start; a bot's is the slot's default.
     this.reassignClasses();
     // U-061: the prisoners the campaign carries in are out of play from the start.
-    this.capturedAtStart = this.campaignSoldiers.flatMap((soldier, slot) =>
-      soldier.captured === true && soldier.prisoner ? [{ slot, at: { ...soldier.prisoner } }] : [],
-    );
+    // U-089: only the pool of this kind of run is in play: a campaign run holds the campaign pool (the soldier records),
+    // a replay run the replay pool; the other is kept for the next run of its kind.
+    this.capturedAtStart =
+      this.runKind === 'replay'
+        ? this.replayPoolAtLoad.map((p) => ({ slot: p.slot, at: { ...p.at } }))
+        : this.campaignSoldiers.flatMap((soldier, slot) => (soldier.captured === true && soldier.prisoner ? [{ slot, at: { ...soldier.prisoner } }] : []));
     this.applyCaptured(this.capturedAtStart);
     const saved = options.campaign?.checkpoint;
     if (saved && this.missionRun && saved.mission === this.missionId) {
@@ -1377,7 +1386,8 @@ export class Session {
     if (run.current.state === 'progress' && finished.length > 0) this.requestCheckpoint(beforeCheckpoint);
     else if (this.queuedCheckpoint && run.current.state === 'progress') this.takeQueuedCheckpoint();
     if (beforeState === 'progress' && run.current.state === 'complete') {
-      if (this.missionId) this.campaignCompletedMissions.add(this.missionId);
+      // U-089: a replay does not move the campaign on.
+      if (this.missionId && this.runKind === 'campaign') this.campaignCompletedMissions.add(this.missionId);
       this.missionCheckpointState = null;
       this.queuedCheckpoint = null;
       this.persistCampaign();
@@ -1773,21 +1783,24 @@ export class Session {
       : null;
     // U-061: prisoners are saved as they stood at the checkpoint, or as they stand when the mission is won; a failed attempt's captures are undone by the retry and so are not kept.
     const held = this.missionRun?.current.state === 'complete' ? this.capturedList() : (saved?.captured ?? this.capturedAtStart);
+    // U-089: this run's prisoners go in this run's pool; the other pool is written as it was loaded.
+    const campaignRun = this.runKind === 'campaign';
     const soldiers = this.campaignSoldiers.map((soldier, slot) => {
+      const classId = this.classSlots[slot] || soldier.classId;
+      if (!campaignRun) return { ...soldier, classId };
       const { captured: _captured, prisoner: _prisoner, ...rest } = soldier;
       const prisoner = held.find((c) => c.slot === slot);
-      return {
-        ...rest,
-        classId: this.classSlots[slot] || soldier.classId,
-        ...(prisoner ? { captured: true, prisoner: { ...prisoner.at } } : {}),
-      };
+      return { ...rest, classId, ...(prisoner ? { captured: true, prisoner: { ...prisoner.at } } : {}) };
     });
+    const replayPrisoners = (campaignRun ? this.replayPoolAtLoad : held).map((p) => ({ slot: p.slot, at: { ...p.at } }));
     this.campaignSave({
       formatVersion: 1,
       world: this.world.id,
       completedMissions: [...this.campaignCompletedMissions],
       checkpoint,
       soldiers,
+      ...(this.runKind === 'replay' ? { run: 'replay' as const } : {}),
+      ...(replayPrisoners.length > 0 ? { replayPrisoners } : {}),
     });
   }
 
