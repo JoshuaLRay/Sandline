@@ -23,7 +23,9 @@ const ONE: MissionDef = { id: 'one', world: 'greybox-01', respawn: false, object
 const entry = (mission: string) => ({ mission, title: `Title ${mission}`, briefing: [`Brief ${mission}`], debrief: [`Debrief ${mission}`] });
 const THREE = parseCampaign({ id: 't', missions: [entry('one'), entry('two'), entry('three')] }, () => true);
 
-function room(campaign: CampaignState = newCampaignState('greybox-01'), durable = true) {
+const ZERO_FIRST = parseCampaign({ id: 'z', missions: [entry('zero'), entry('one'), entry('two')] }, () => true);
+
+function room(campaign: CampaignState = newCampaignState('greybox-01'), durable = true, def = THREE) {
   const saves: CampaignState[] = [];
   let handoffCount = 0;
   const session = new Session(undefined, '', world, {
@@ -31,7 +33,7 @@ function room(campaign: CampaignState = newCampaignState('greybox-01'), durable 
     mission: ONE,
     testHumanCount: 2,
     campaign,
-    campaignDef: THREE,
+    campaignDef: def,
     ...(durable ? { onCampaignSave: (s: CampaignState) => saves.push(s) } : {}),
     onHandoff: () => (handoffCount += 1),
   });
@@ -76,8 +78,11 @@ function room(campaign: CampaignState = newCampaignState('greybox-01'), durable 
   /** What the host sent this person, decoded: the loopback drops a closed peer's inbox, a real socket flushes before it closes. */
   const sent = (who: number): Message[] => people[who]!.pair.a.sent.map((d) => decodeMessage(d.data));
   const handoffs = (who: number) => sent(who).filter((x): x is Extract<Message, { kind: 'Handoff' }> => x.kind === 'Handoff');
-  const offers = (who: number) => people[who]!.heard.filter((m): m is Extract<Message, { kind: 'RunOffer' }> => m.kind === 'RunOffer');
-  return { session, saves, handoffCount: () => handoffCount, sentHandoffs: handoffs, join, step, win, lose, choose, offers, people };
+  /** Every offer a person heard, the in-mission ones (U-078, `progress`) included. */
+  const allOffers = (who: number) => people[who]!.heard.filter((m): m is Extract<Message, { kind: 'RunOffer' }> => m.kind === 'RunOffer');
+  /** The offers after a mission ended (U-090). */
+  const offers = (who: number) => allOffers(who).filter((m) => m.result !== 'progress');
+  return { session, saves, handoffCount: () => handoffCount, sentHandoffs: handoffs, join, step, win, lose, choose, offers, allOffers, people };
 }
 
 describe('the offer after a mission (U-090)', () => {
@@ -87,6 +92,8 @@ describe('the offer after a mission (U-090)', () => {
     m.join('other');
     m.step(2);
     expect(m.offers(0)).toHaveLength(0);
+    // U-078: while it is on, the host already has the way out the in-mission menu shows.
+    expect(m.allOffers(0)).toEqual([{ kind: 'RunOffer', mission: 'one', result: 'progress', host: 0, campaign: 'one', replay: [] }]);
     m.win();
     expect(m.session.mission!.state).toBe('complete');
     for (const who of [0, 1]) {
@@ -215,5 +222,76 @@ describe('the host chooses (U-090)', () => {
     m.choose(0, 'replay', 'one');
     expect(m.saves.at(-1)).toMatchObject({ world: 'one', run: 'replay' });
     expect(m.handoffCount()).toBe(1);
+  });
+});
+
+describe('the in-mission menu (U-078)', () => {
+  const restart = (m: ReturnType<typeof room>, who: number, full: boolean) => {
+    m.people[who]!.client.send({ kind: 'MissionRestart', ...(full ? { full: true } : {}) });
+    for (const p of m.people) p.pair.settle();
+    m.step(2);
+  };
+
+  it('lets the host go back to the last checkpoint, or to the start, while the mission is on', () => {
+    const m = room();
+    m.join('host');
+    m.step(2);
+    expect(m.session.mission!.attempt).toBe(1);
+    restart(m, 0, false);
+    expect(m.session.mission).toMatchObject({ state: 'progress', attempt: 2 });
+    restart(m, 0, true);
+    expect(m.session.mission).toMatchObject({ state: 'progress', attempt: 3, objective: 0 });
+  });
+
+  it('refuses anyone else mid-mission', () => {
+    const m = room();
+    m.join('host');
+    m.join('other');
+    m.step(2);
+    restart(m, 1, false);
+    restart(m, 1, true);
+    expect(m.session.mission!.attempt).toBe(1);
+  });
+
+  it('refuses a mid-mission restart in a room with no campaign file', () => {
+    const m = room(undefined, false);
+    m.join('host');
+    m.step(2);
+    restart(m, 0, false);
+    expect(m.session.mission!.attempt).toBe(1);
+  });
+
+  it('lets the host leave for another mission while it is on, keeping the checkpoint and marking nothing complete', () => {
+    const done = newCampaignState('greybox-01');
+    done.completedMissions = ['zero'];
+    const m = room(done, true, ZERO_FIRST);
+    m.join('host');
+    m.step(2);
+    m.choose(0, 'replay', 'zero');
+    const save = m.saves.at(-1)!;
+    expect(save).toMatchObject({ world: 'zero', run: 'replay', completedMissions: ['zero'] });
+    expect(save.completedMissions).not.toContain('one');
+    expect(m.sentHandoffs(0)).toEqual([{ kind: 'Handoff', mission: 'zero', run: 'replay' }]);
+  });
+
+  it('is not a handoff to pick the mission already on, as the same kind of run', () => {
+    const m = room();
+    m.join('host');
+    m.step(2);
+    m.choose(0, 'campaign', 'one');
+    expect(m.handoffCount()).toBe(0);
+    expect(m.session.mission!.attempt).toBe(1);
+  });
+
+  it('resumes a checkpoint only in the kind of run it was made in, and carries another kind’s through untouched', () => {
+    const state = newCampaignState('greybox-01');
+    state.world = 'one';
+    state.checkpoint = { mission: 'one', run: 'replay', objective: 0, elapsedTicks: 50, spawns: Array.from({ length: 6 }, () => ({ x: 0, y: 0, z: 0 })), completedGroups: [], event: null };
+    const saves: CampaignState[] = [];
+    const session = new Session(undefined, '', world, { encounter: ENCOUNTER, mission: ONE, testHumanCount: 1, campaign: state, campaignDef: THREE, onCampaignSave: (s) => saves.push(s) });
+    // A campaign run of 'one': the replay's checkpoint is not its own; the file still has it.
+    expect(session.mission!.attempt).toBe(1);
+    const snapshot = (session as unknown as { campaignSnapshot(): CampaignState | null }).campaignSnapshot();
+    expect(snapshot!.checkpoint).toMatchObject({ mission: 'one', run: 'replay', elapsedTicks: 50 });
   });
 });

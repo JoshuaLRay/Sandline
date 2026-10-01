@@ -110,8 +110,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-074](docs/backlog/U-074.md) | Objectives in any order: parallel objectives and optional enemies | Campaign design | P2 | DONE | — | [#244](https://github.com/JoshuaLRay/Sandline/pull/244) |
 | [U-075](docs/backlog/U-075.md) | Escort: the POW as an unarmed seventh friendly, commandable and spectatable | Campaign design | P2 | DONE | — | [#262](https://github.com/JoshuaLRay/Sandline/pull/262) |
 | [U-076](docs/backlog/U-076.md) | Spike: feasibility of a three-lane map about ten times mission-01's area | Campaign design | P2 | DONE | — | [#245](https://github.com/JoshuaLRay/Sandline/pull/245) |
-| [U-077](docs/backlog/U-077.md) | Carry weapons, ammo and gear to the next mission; pickups replace the slot | Campaign design | P2 | REVIEW | U-090 | — |
-| [U-078](docs/backlog/U-078.md) | In-mission menu: restart from checkpoint, restart mission, return to mission select | Campaign design | P2 | READY | U-090 | — |
+| [U-077](docs/backlog/U-077.md) | Carry weapons, ammo and gear to the next mission; pickups replace the slot | Campaign design | P2 | DONE | U-090 | [#263](https://github.com/JoshuaLRay/Sandline/pull/263) |
+| [U-078](docs/backlog/U-078.md) | In-mission menu: restart from checkpoint, restart mission, return to mission select | Campaign design | P2 | REVIEW | U-090 | — |
 | [U-079](docs/backlog/U-079.md) | Bots fight armour: help destroy a tank | Enemy AI | P2 | DONE | — | [#250](https://github.com/JoshuaLRay/Sandline/pull/250) |
 | [U-080](docs/backlog/U-080.md) | Realistic character models: a more grounded look | Art | P2 | READY | — | — |
 | [U-081](docs/backlog/U-081.md) | The cover search must not scale with the whole map | Enemy AI | P1 | DONE | — | [#246](https://github.com/JoshuaLRay/Sandline/pull/246) |

@@ -1305,7 +1305,8 @@ export class NetClient {
         const { kind: _kind, ...view } = msg;
         this.missionValue = view;
         // A retry or a restart is a mission on again: there is nothing to choose.
-        if (view.state === 'progress') this.runOfferValue = null;
+        // U-078: a mission that is on has its own (`progress`) offer; one left over from the ending is stale.
+        if (view.state === 'progress' && this.runOfferValue?.result !== 'progress') this.runOfferValue = null;
         break;
       }
 
