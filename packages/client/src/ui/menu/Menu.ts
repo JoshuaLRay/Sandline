@@ -10,7 +10,9 @@
  * is not built yet, and say so.
  */
 import { DEFAULT_SETTINGS, KEY_BINDINGS, QUALITY_LEVELS, SETTINGS_RANGES, type QualityLevel, type Settings } from './settings.ts';
+import type { RunKind } from '@sandline/shared';
 import { type CommandRow, commandKey } from './commandModel.ts';
+import type { MissionMenuModel } from '../runChoice.ts';
 import './menu.css';
 
 export interface MenuOptions {
@@ -27,6 +29,10 @@ export interface MenuOptions {
   /** U-026: take control of the bot in `slot`, one you command. */
   onSwitch?: (slot: number) => void;
   onSpectate?: (slot: number) => void;
+  /** U-078: the host restarts the mission: `full` from the start, else from the last checkpoint. */
+  onMissionRestart?: (full: boolean) => void;
+  /** U-078: the host leaves the mission for another (a campaign or a replay run). */
+  onMissionChoose?: (run: RunKind, mission: string) => void;
 }
 
 export type MenuMode = 'hidden' | 'main' | 'pause';
@@ -46,6 +52,8 @@ export interface Menu {
   setSettings(next: Settings): void;
   /** U-025: the squad's command as the host last said it; redrawn only when it changes. */
   setCommand(rows: readonly CommandRow[]): void;
+  /** U-078: the host's mission section (null hides it); redrawn only when it changes. */
+  setMission(model: MissionMenuModel | null): void;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, parent?: HTMLElement): HTMLElementTagNameMap[K] {
@@ -186,6 +194,34 @@ export function createMenu(options: MenuOptions): Menu {
     }
   };
   drawCommand([]);
+
+  // -- U-078: the host's mission menu: restart from the checkpoint, restart the mission, or leave for another. --
+  const mission = el('div', 'menu-mission', pausePanel);
+  mission.hidden = true;
+  let missionDrawn = '';
+  const drawMission = (model: MissionMenuModel | null): void => {
+    const key = model ? JSON.stringify(model) : '';
+    if (key === missionDrawn) return;
+    missionDrawn = key;
+    mission.replaceChildren();
+    mission.hidden = model === null;
+    if (!model) return;
+    const heading = el('h2', 'menu-heading', mission);
+    heading.textContent = `Mission — ${model.mission}`;
+    const note = el('p', 'menu-note', mission);
+    note.textContent = 'You are the room’s host: these apply to everyone.';
+    button('Restart from the last checkpoint', 'menu-button menu-mission-checkpoint', () => options.onMissionRestart?.(false), mission);
+    button('Restart the mission', 'menu-button menu-mission-restart', () => options.onMissionRestart?.(true), mission);
+    if (model.options.length > 0) {
+      const leave = el('h3', 'menu-subheading', mission);
+      leave.textContent = 'Return to mission select';
+      for (const option of model.options) {
+        const row = el('div', 'menu-mission-option', mission);
+        button(option.label, 'menu-button menu-mission-choose', () => options.onMissionChoose?.(option.run, option.mission), row);
+        for (const line of option.briefing) el('p', 'menu-note', row).textContent = line;
+      }
+    }
+  };
 
   // -- Settings --
   const settingsPanel = el('section', 'menu-panel menu-settings', body);
@@ -360,6 +396,9 @@ export function createMenu(options: MenuOptions): Menu {
     },
     setCommand(rows) {
       drawCommand(rows);
+    },
+    setMission(model) {
+      drawMission(model);
     },
   };
 }

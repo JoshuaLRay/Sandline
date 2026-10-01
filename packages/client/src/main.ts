@@ -146,7 +146,7 @@ import { AiDebugOverlay } from './ui/AiDebug.ts';
 import { FULL_RESTART_KEY, RESTART_KEY, afterActionXp, missionLine, uploadPrompt } from './ui/missionHud.ts';
 import { type ClassDef, TICK_SECONDS as MISSION_TICK_SECONDS, type Vitality, afterActionSummary, classById, scoreboardRows } from '@sandline/shared';
 import { createScoreboard } from './ui/scoreboard.ts';
-import { runChoiceModel } from './ui/runChoice.ts';
+import { missionMenuModel, runChoiceModel } from './ui/runChoice.ts';
 import { createMenu } from './ui/menu/Menu.ts';
 import { type AudioContextLike, AudioEngine } from './audio/engine.ts';
 import { createSoundBoard } from './ui/SoundBoard.ts';
@@ -1826,6 +1826,13 @@ const menu = createMenu({
     menu.hide();
     if (live && !mobileMode) renderer.domElement.requestPointerLock?.();
   },
+  // U-078: the host's choices; the host checks them and answers with a Mission (a restart) or a Handoff (leaving).
+  onMissionRestart: (full) => {
+    live?.net.restartMission(full);
+    menu.hide();
+    if (live && !mobileMode) renderer.domElement.requestPointerLock?.();
+  },
+  onMissionChoose: (run, mission) => live?.net.chooseRun(run, mission),
 });
 document.body.appendChild(menu.root);
 const mobileCommand = createMobileCommand(document.body, {
@@ -2852,7 +2859,10 @@ function frame(): void {
    */
   playerHud.setVisible(live !== null);
   // U-025: the pause menu's squad command, from the roster the host last sent (redrawn only when it changes).
-  if (menu.mode === 'pause' && live) menu.setCommand(commandRows(live.net.roster, live.net.slot));
+  if (menu.mode === 'pause' && live) {
+    menu.setCommand(commandRows(live.net.roster, live.net.slot));
+    menu.setMission(missionMenuModel(live.net.runOffer, live.net.slot));
+  }
   // T-4.28: the scoreboard while Tab is down, and on its own once the mission is over.
   const missionOver = (net?.mission?.state ?? 'progress') !== 'progress';
   scoreboard.setVisible(live !== null && (tabHeld || missionOver));

@@ -342,3 +342,4 @@ Format: `T-<id> — <what changed>`
 - U-090 — the host chooses the next run: `RunOffer`/`Handoff`/`choose` (protocol 62), the save written for the next mission, the room retired and clients rejoining the same code; briefing and debrief on the after-action panel.
 - U-075 — the escorted character: a friendly `pow` archetype (not a slot) that follows the squad, stays or goes on an all-squad order, is hunted by enemies, fails the mission when he dies and gates a `reach` with `escort: true`; spectating him from the UI is left as a follow-up.
 - Docs — U-091 (spectate the escorted character) split out of U-075.
+- U-078 — the host's mission menu in the pause menu (restart from the last checkpoint, restart the mission, return to mission select); `RunOffer` is made while the mission is on (protocol 63); leaving mid-mission keeps the checkpoint, tagged by run kind, and completes nothing.

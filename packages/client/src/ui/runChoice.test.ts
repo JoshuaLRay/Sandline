@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CampaignDef } from '@sandline/shared';
-import { runChoiceModel } from './runChoice.ts';
+import { missionMenuModel, runChoiceModel } from './runChoice.ts';
 
 const campaign: CampaignDef = {
   id: 't',
@@ -53,5 +53,30 @@ describe('runChoiceModel', () => {
   it('offers only replays once the season is done', () => {
     const m = runChoiceModel(offer({ campaign: '', replay: ['a', 'b'] }), 2, 'Ann', campaign)!;
     expect(m.options.map((o) => o.run)).toEqual(['replay', 'replay']);
+  });
+});
+
+describe('missionMenuModel (U-078)', () => {
+  const running = (over = {}) => offer({ mission: 'b', result: 'progress', host: 1, campaign: 'b', replay: ['a'], ...over });
+
+  it('is for the host only, and for nobody without an offer', () => {
+    expect(missionMenuModel(null, 1, campaign)).toBeNull();
+    expect(missionMenuModel(running(), 0, campaign)).toBeNull();
+    expect(missionMenuModel(running(), 1, campaign)).not.toBeNull();
+  });
+
+  it('offers the other missions, not the one already on', () => {
+    const m = missionMenuModel(running(), 1, campaign)!;
+    expect(m.mission).toBe('Bravo');
+    expect(m.options.map((o) => [o.run, o.mission])).toEqual([['replay', 'a']]);
+  });
+
+  it('on a replay of a beaten mission, offers the campaign’s newest and the other replays', () => {
+    const m = missionMenuModel(running({ mission: 'a', campaign: 'b', replay: ['a'] }), 1, campaign)!;
+    expect(m.options.map((o) => [o.run, o.mission])).toEqual([['campaign', 'b']]);
+  });
+
+  it('is not the after-action panel: the in-mission offer has no debrief to show', () => {
+    expect(runChoiceModel(running(), 1, 'Ann', campaign)).toBeNull();
   });
 });

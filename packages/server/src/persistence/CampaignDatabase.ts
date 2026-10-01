@@ -24,6 +24,8 @@ export interface SoldierSave {
 
 export interface CampaignCheckpoint {
   mission: string;
+  /** U-078: the kind of run it was made in; absent is a campaign run. A checkpoint resumes only its own kind. */
+  run?: RunKind;
   objective: number;
   /** U-074: which objectives of that objective's stage were already done (absent in older saves: none). */
   done?: number[];
@@ -178,6 +180,7 @@ function normalizedState(input: CampaignState): CampaignState {
     }
     checkpoint = {
       mission: saved.mission,
+      ...(saved.run === 'replay' ? { run: 'replay' as const } : {}),
       objective: saved.objective,
       ...(done.length > 0 ? { done: [...done] } : {}),
       elapsedTicks: saved.elapsedTicks,

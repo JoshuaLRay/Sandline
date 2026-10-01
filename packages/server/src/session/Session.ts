@@ -1047,6 +1047,8 @@ export class Session {
   private handedOff = false;
   /** U-089: the replay pool as the save held it: in play in a replay run, carried through untouched in a campaign run. */
   private readonly replayPoolAtLoad: ReplayPrisoner[];
+  /** U-078: a saved checkpoint that is not this run's (another mission or kind), written back as it was until this run makes its own. */
+  private carriedCheckpoint: CampaignState['checkpoint'] = null;
   private readonly campaignSoldiers: CampaignState['soldiers'];
   private readonly xp: SoldierXp;
   /** Local sessions have no identity service; keep a temporary identity across seat resumes. */
@@ -1275,7 +1277,10 @@ export class Session {
         : this.campaignSoldiers.flatMap((soldier, slot) => (soldier.captured === true && soldier.prisoner ? [{ slot, at: { ...soldier.prisoner } }] : []));
     this.applyCaptured(this.capturedAtStart);
     const saved = options.campaign?.checkpoint;
-    if (saved && this.missionRun && saved.mission === this.missionId) {
+    // U-078: a checkpoint is for the kind of run it was made in; another kind's, or another mission's, is carried through untouched.
+    const honoured = saved && saved.mission === this.missionId && (saved.run ?? 'campaign') === this.runKind;
+    this.carriedCheckpoint = saved && !honoured ? saved : null;
+    if (saved && honoured && this.missionRun) {
       this.missionRun.restoreCheckpoint(saved.objective, saved.elapsedTicks, saved.done ?? []);
       // U-060: the world the checkpoint saved, if the file has one a session could have written; else the basic checkpoint.
       const world = saved.world == null ? null : parseCheckpointWorld(saved.world);
@@ -1801,6 +1806,7 @@ export class Session {
     const checkpoint = saved && run && this.missionId
       ? {
           mission: this.missionId,
+          ...(this.runKind === 'replay' ? { run: 'replay' as const } : {}),
           objective: run.checkpoint,
           elapsedTicks: run.checkpointElapsed,
           done: [...run.checkpointDoneList],
@@ -1809,7 +1815,7 @@ export class Session {
           event: saved.event,
           world: this.checkpointWorldOf(saved),
         }
-      : null;
+      : this.carriedCheckpoint;
     // U-061: prisoners are saved as they stood at the checkpoint, or as they stand when the mission is won; a failed attempt's captures are undone by the retry and so are not kept.
     const held = this.missionRun?.current.state === 'complete' ? this.capturedList() : (saved?.captured ?? this.capturedAtStart);
     // U-089: this run's prisoners go in this run's pool; the other pool is written as it was loaded.
@@ -1842,12 +1848,13 @@ export class Session {
     return this.slots.findIndex((s) => !s.isBot && s.connection !== null);
   }
 
-  /** U-090: what the host may choose now, or null while the mission is on, or in a room with no campaign to move through. */
+  /** U-090: what the host may choose now (U-078: also while the mission is on), or null in a room with no campaign to move through. */
   private runOffer(): Extract<Message, { kind: 'RunOffer' }> | null {
     const state = this.missionRun?.current.state;
-    if (this.handedOff || !this.campaignSave || !this.missionId || !this.roomStarted || state === undefined || state === 'progress') return null;
+    if (this.handedOff || !this.campaignSave || !this.missionId || !this.roomStarted || state === undefined) return null;
     const options = runOptions(this.campaignCompletedMissions, this.campaignDef);
-    return { kind: 'RunOffer', mission: this.missionId, result: state === 'complete' ? 'complete' : 'failed', host: Math.max(0, this.hostSlot()), campaign: options.campaign ?? '', replay: options.replay };
+    // U-078: while the mission is on, the offer is the host's way out: the in-mission menu's "choose another mission".
+    return { kind: 'RunOffer', mission: this.missionId, result: state === 'complete' ? 'complete' : state === 'failed' ? 'failed' : 'progress', host: Math.max(0, this.hostSlot()), campaign: options.campaign ?? '', replay: options.replay };
   }
 
   /** U-090: tell everyone what the host may choose, once per ending (and again if the host changes). */
@@ -1873,8 +1880,9 @@ export class Session {
     const run: RunKind = msg.run === 'replay' ? 'replay' : 'campaign';
     const mission = msg.mission ?? '';
     if (!isOffered(run, mission, this.campaignCompletedMissions, this.campaignDef)) return;
-    if (offer.result === 'failed' && mission === this.missionId && run === this.runKind) {
-      this.retryMission();
+    if (mission === this.missionId && run === this.runKind) {
+      // The mission just failed: the existing retry. While it is on, or after a win: this is where we are.
+      if (offer.result === 'failed') this.retryMission();
       return;
     }
     this.handOff(mission, run);
@@ -1883,8 +1891,10 @@ export class Session {
   private handOff(mission: string, run: RunKind): void {
     const state = this.campaignSnapshot();
     if (!state || !this.campaignSave) return;
+    // U-078: the checkpoint of the run being left is kept, tagged with its mission and kind, for a retry of that run;
+    // leaving is not a completion (`completedMissions` is as the snapshot has it).
     const { run: _was, ...rest } = state;
-    this.campaignSave({ ...rest, world: mission, checkpoint: null, ...(run === 'replay' ? { run } : {}) });
+    this.campaignSave({ ...rest, world: mission, ...(run === 'replay' ? { run } : {}) });
     this.handedOff = true;
     const handoff: Message = { kind: 'Handoff', mission, run };
     for (const c of this.connections) if (c.state === 'active') c.send(handoff);
@@ -1956,7 +1966,15 @@ export class Session {
 
   /** A seated human asked to start again: failed missions retry their checkpoint; completed missions start over. */
   private requestRestart(conn: ServerConnection, full = false): void {
-    if (!this.humanFor(conn) || !this.missionRun || this.missionRun.current.state === 'progress') return;
+    const human = this.humanFor(conn);
+    if (!human || !this.missionRun) return;
+    if (this.missionRun.current.state === 'progress') {
+      // U-078: mid-mission, the room's host may go back to the last checkpoint or to the start.
+      if (!this.campaignSave || human.index !== this.hostSlot()) return;
+      if (full) this.restartMission();
+      else this.retryMission(true);
+      return;
+    }
     if (this.missionRun.current.state === 'failed' && !full) this.retryMission();
     else this.restartMission();
   }
@@ -2110,9 +2128,9 @@ export class Session {
   }
 
   /** Retry a failed mission from the latest completed-objective checkpoint. */
-  retryMission(): void {
+  retryMission(midMission = false): void {
     const run = this.missionRun;
-    if (!run || run.current.state !== 'failed') return;
+    if (!run || (run.current.state !== 'failed' && !midMission)) return;
     const saved = this.missionCheckpointState;
     const spawns = saved?.spawns ?? this.slots.map((slot) => {
       const point = spawnFor(slot.index);

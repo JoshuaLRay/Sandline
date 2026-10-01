@@ -20,7 +20,7 @@ import { WEAPON_IDS, WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 import { PROJECTILE_IDS, PROJECTILE_INDEX_BITS } from '../sim/ballistics.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 62;
+export const PROTOCOL_VERSION = 63;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -537,7 +537,7 @@ export type Message =
    * a campaign run of `campaign` (empty when the season is done) or a replay run of any of `replay`. Host to client,
    * when the mission ends and to anyone who joins after. Titles, briefings and debriefs are the campaign data's.
    */
-  | { kind: 'RunOffer'; mission: string; result: 'complete' | 'failed'; host: number; campaign: string; replay: readonly string[] }
+  | { kind: 'RunOffer'; mission: string; result: 'complete' | 'failed' | 'progress'; host: number; campaign: string; replay: readonly string[] }
   /** U-090: the host chose; this room is moving to `mission` as a `run`. Rejoin the same code. Host to client. */
   | { kind: 'Handoff'; mission: string; run: RunKind };
 
@@ -926,7 +926,7 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(EXT.Events, EXT_BITS);
       w.writeBits(EVENT_VARIANT.RunOffer, 3);
       w.writeString(msg.mission);
-      w.writeBool(msg.result === 'failed');
+      w.writeBits(msg.result === 'failed' ? 1 : msg.result === 'progress' ? 2 : 0, 2);
       w.writeBits(msg.host & 0x7, 3);
       w.writeString(msg.campaign);
       const replay = msg.replay.slice(0, 16);
@@ -1388,7 +1388,8 @@ export function decodeMessage(bytes: Uint8Array): Message {
             const variant = r.readBits(3);
             if (variant === EVENT_VARIANT.RunOffer) {
               const mission = r.readString();
-              const result = r.readBool() ? 'failed' : 'complete';
+              const code = r.readBits(2);
+              const result = code === 1 ? 'failed' : code === 2 ? 'progress' : 'complete';
               const host = r.readBits(3);
               const campaign = r.readString();
               const replay: string[] = [];
