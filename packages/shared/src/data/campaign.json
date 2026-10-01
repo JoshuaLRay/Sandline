@@ -1,0 +1,18 @@
+{
+  "$comment": "U-088: the campaign as data. `missions` is the order the squad plays them in, a straight line (design doc D3): each entry names a registered mission (its world id) and carries the text the host sees: a title, a short briefing before it and a short debrief after it, as lines. The first entry is the slice's mission-01 with text for the mission as it plays today; U-065 replaces it with campaign mission 1. To add a mission: register it (campaignRegistry.ts), then add one entry here. Nothing else changes.",
+  "id": "season-1",
+  "missions": [
+    {
+      "mission": "mission-01",
+      "title": "Mission 01 — The qalat on the ridge road",
+      "briefing": [
+        "A walled compound on the ridge road is being used to watch our convoys. Take it, and put the relay at its terminal on our network.",
+        "Two fireteams, two ways in. Expect a patrol on the west lane and men waiting on the east, and a counterattack once you are inside. Hold the terminal until the upload completes."
+      ],
+      "debrief": [
+        "The relay is ours and the road is watched by us now.",
+        "The compound is a foothold, not a victory. The next mission starts from here."
+      ]
+    }
+  ]
+}
