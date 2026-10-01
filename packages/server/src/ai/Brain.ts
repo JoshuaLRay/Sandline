@@ -23,6 +23,7 @@ import { registerOrderLeaves } from './friendly/orders.ts';
 import { registerPostureLeaves } from './actions/posture.ts';
 import { registerCaptureLeaves } from './actions/capture.ts';
 import { registerLeverLeaves } from './actions/lever.ts';
+import { registerArmourLeaves } from './actions/armour.ts';
 
 /** Ticks between a brain's thoughts: 30 Hz sim, 10 Hz brains. */
 export const BRAIN_PERIOD_TICKS = 3;
@@ -59,6 +60,10 @@ export interface BrainMemory {
    * throws it through the human path, pouch and cooldown included.
    */
   throwAt: { projectile: number; yaw: number; pitch: number } | null;
+  /** U-079: the PROJECTILE_IDS index of the placed charges it wants set off now (the human's detonator), taken once by the session. */
+  detonate: number | null;
+  /** U-079: where it is running to out of a tank's locked shell, and which lock (its `until`) it chose that for. */
+  dodge: { until: number; goal: { x: number; y: number; z: number } } | null;
   /** T-3.22: the earliest it searches for a throw again, seconds: a fruitless search, or a throw, waits before the next. */
   throwNextAt: number;
   /**
@@ -80,7 +85,7 @@ export interface BrainMemory {
 
 /** A blackboard as every brain starts it. */
 export function freshMemory(): BrainMemory {
-  return { intent: null, fireAt: null, crouch: false, reload: false, lookAt: null, suppressAt: null, throwAt: null, throwNextAt: 0, flankedAt: null, relocatedAt: -Infinity, interact: false, useKit: false, leverBackOffUntil: 0, phase: null, phaseAt: 0 };
+  return { intent: null, fireAt: null, crouch: false, reload: false, lookAt: null, suppressAt: null, throwAt: null, detonate: null, dodge: null, throwNextAt: 0, flankedAt: null, relocatedAt: -Infinity, interact: false, useKit: false, leverBackOffUntil: 0, phase: null, phaseAt: 0 };
 }
 
 /** The entity a brain drives, read live: the session's own slot, never a copy. */
@@ -111,7 +116,7 @@ export function createBrainRegistry(): BrainRegistry {
     blackboard.set('intent', null);
     return 'running';
   });
-  return registerCaptureLeaves(registerLeverLeaves(registerPostureLeaves(registerOrderLeaves(registerFriendlyLeaves(registerGrenadeLeaves(registerRiflemanLeaves(registry)))))));
+  return registerArmourLeaves(registerCaptureLeaves(registerLeverLeaves(registerPostureLeaves(registerOrderLeaves(registerFriendlyLeaves(registerGrenadeLeaves(registerRiflemanLeaves(registry))))))));
 }
 
 let idleTree: BrainTree | null = null;

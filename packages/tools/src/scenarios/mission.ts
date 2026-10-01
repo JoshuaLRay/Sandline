@@ -118,7 +118,7 @@ function missionDetail(session: Session, def: MissionDef, encounter: Encounter, 
   const objective = def.objectives[view.objective]!;
   const parts = [`objective ${view.objective + 1}/${view.objectives} ${view.type} '${view.label}' ${view.progress}/${view.goal}`];
   const wiped = session.slots.every((s) => isDead(s.health));
-  if (outcome === 'failed') parts.push(wiped ? 'squad wipe' : 'defended area overrun');
+  if (outcome === 'failed') parts.push(wiped ? 'squad wipe' : view.failureReason === 'area-overrun' ? 'defended area overrun' : `failed: ${view.failureReason ?? 'unknown'}`);
   if (outcome === 'timeout') parts.push('simulation time limit reached');
   if ('area' in objective) {
     const area = resolveArea(objective.area, encounter, world);
