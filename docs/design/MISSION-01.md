@@ -1,8 +1,9 @@
-# Mission 1 — brief (draft for owner approval)
+# Mission 1 — brief (approved)
 
-Status: **DRAFT, owed to the owner by U-065.** Everything marked *(default)* is my choice where the owner's decisions
-([CAMPAIGN.md](CAMPAIGN.md)) do not say; say which to change and I change them before any level is built. Nothing here is
-built yet. Working title: **"The Qalat Road"** *(default)*.
+Status: **APPROVED by the owner as suggested (2026-10-02)**: every *(default)* below stands as written, and the six
+questions at the end are answered by those defaults. Changes from here are the owner's to ask for, and recorded here.
+([CAMPAIGN.md](CAMPAIGN.md) has the campaign decisions this builds on.) Nothing is built yet: the level, encounter, script,
+mission file and verification become separate cards. Working title: **"The Qalat Road"** *(default)*.
 
 ## 1. Premise
 
@@ -79,7 +80,7 @@ garrison fight, and the first stretch of the way home is quiet and short, long e
 - Only a human playtest can say whether 30–45 minutes is right, whether the three lanes feel different, whether the
   tank is fair, and how the POW feels to look after. No verdict is claimed without one.
 
-## Decisions I need from the owner (defaults in italics above)
+## Decisions (approved 2026-10-02: the defaults in italics above, as suggested)
 
 1. **Title and setting details**: *"The Qalat Road"*, a valley and a walled compound.
 2. **The optional radio operator** (calls the tank early): keep, or drop for simplicity.
