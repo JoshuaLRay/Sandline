@@ -351,3 +351,5 @@ Format: `T-<id> — <what changed>`
 - Docs — the owner approved mission 1's brief as suggested (U-065) and confirmed that a replay's end loadout is kept for the campaign (U-077, `replayKeepsLoadout`).
 - U-080 — second character art pass: tapered armour, rounded shoulders and calves, fitted helmet, modelled pack pockets and straps, muted desert camouflage with cloth shading; enemy shoulder and cloth improvements. Regenerated assets and added a front/back comparison for review.
 - Docs — mission 1's build split into U-092 (level), U-093 (encounter), U-094 (mission file and script) and U-095 (verification); U-065 is their umbrella.
+
+- U-080 — Rebuilt procedural soldier/enemy anatomy with rounded shoulder sweeps, landmark faces, baggy cloth folds and a connected trouser fork; regenerated GLBs/manifest and captured production standing/crouched rigs. Visual acceptance remains in REVIEW.

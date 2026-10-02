@@ -85,11 +85,11 @@ type Painter = (u: number, v: number, x: number, y: number) => Rgb;
 
 const PAINT: Record<FighterRegion, Painter> = {
   face(u, v, x, y) {
-    // u round the head, the face at u = 0.5; v by height from the crown (y 1.83) to the neck (1.52).
+    // u round the head, the face at u = 0.5; v by height from the crown (y 1.85) to the neck (1.53).
     const g = grain(x, y, 211);
     const du = u - 0.5;
     const adu = Math.abs(du);
-    const hy = 1.83 - v * 0.31;
+    const hy = 1.85 - v * 0.32;
     // Sun-darkened skin, shadowed toward the sides.
     let c = shade(SKIN, 0.9 + tiledNoise(213, u * 6, v * 6, 6) * 0.08 + (g - 0.5) * 0.05 - adu * 0.22);
     for (const side of [-1, 1]) c = mix(c, [176, 104, 80], 0.18 * soft(Math.sqrt(((du - side * 0.07) / 0.06) ** 2 + ((hy - 1.64) / 0.03) ** 2), 1));
@@ -103,11 +103,11 @@ const PAINT: Record<FighterRegion, Painter> = {
     if (Math.abs(adu - 0.25) < 0.03 && hy > 1.63 && hy < 1.7) c = shade(c, Math.abs(adu - 0.25) < 0.012 ? 0.66 : 0.85);
     // Deep-set eyes under a heavy brow.
     for (const side of [-1, 1]) {
-      const ex = du - side * 0.048;
+      const ex = du - side * 0.055;
       const hyE = hy - 1.672;
       c = shade(c, 1 - 0.24 * soft(Math.sqrt((ex / 0.042) ** 2 + ((hyE - 0.004) / 0.022) ** 2), 1));
-      if ((ex / 0.016) ** 2 + (hyE / 0.0045) ** 2 < 1) c = [190, 176, 156];
-      if ((ex / 0.0065) ** 2 + (hyE / 0.0045) ** 2 < 1) c = [44, 32, 24];
+      if ((ex / 0.016) ** 2 + (hyE / 0.0028) ** 2 < 1) c = [145, 129, 109];
+      if ((ex / 0.0065) ** 2 + (hyE / 0.0028) ** 2 < 1) c = [44, 32, 24];
       if (Math.abs(ex) < 0.028 && Math.abs(hy - 1.69 + ex * ex * 5) < 0.004) c = mix(c, [30, 24, 20], 0.9);
     }
     // The nose: lit ridge, shaded side, nostrils.

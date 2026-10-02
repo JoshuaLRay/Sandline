@@ -2,10 +2,11 @@
  * The character mesh builder (T-4.08, ADR-018): smooth, skinned forms for a
  * soldier that must read as a 2002 console character, not a stack of boxes.
  *
- * EVERYTHING IS A VERTICAL LOFT. In the rig's bind pose the arms hang
+ * ANATOMICAL SURFACES START AS LOFTS. In the rig's bind pose the arms hang
  * straight down and the legs stand straight (humanoidSoldier.ts), so every
  * limb, the torso, the head, the helmet, the vest and each pouch is a stack
- * of horizontal rings joined into a tube. A ring is a superellipse, so the
+ * of sections joined into a surface. Nonplanar sections and stitched branches
+ * supply anatomical landmarks, shoulder slopes, folds and a trouser crotch. A ring is a superellipse, so the
  * same primitive gives a round forearm (exponent 2), a boxy vest (3) or a
  * pouch with rounded corners (4). It can be deeper in front than behind, for
  * a boot's toe or a chest plate, and can drop at the back, for a helmet's
@@ -35,6 +36,12 @@ export interface Ring {
   dropBack?: number;
   /** Bone weights, [boneIndex, weight]; normalised here. */
   bones: readonly (readonly [number, number])[];
+  /** Shape a cross-section after the ellipse: sloping shoulders, saddle crotches,
+   * inset eye sockets and cloth folds need surfaces that are not planar rings. */
+  surface?: (t: number, point: Vec3) => Vec3;
+  /** Angular skinning lets a shoulder envelope follow the chest centrally and
+   * the upper arm at its outside, without changing the existing skeleton. */
+  skinAt?: (t: number) => readonly (readonly [number, number])[];
   /** Local swellings outward: a nose at t 0.5, ears at 0.25 and 0.75. `w` is the half-width in t, `d` the height in metres. */
   bumps?: readonly { t: number; w: number; d: number }[];
 }
@@ -56,6 +63,8 @@ export interface LoftOptions {
   capBottom?: boolean;
   /** v by height down the tube rather than by ring count, so a painter can place a feature at a model height (the face). */
   vByHeight?: boolean;
+  /** Shared vertical UV frame for multiple surfaces, such as a trouser fork. */
+  heightRange?: readonly [number, number];
   /** Only this span of the way round (0..1, front at 0.5), for a patch on one side. Closed tube when omitted. */
   arc?: readonly [number, number];
 }
@@ -92,7 +101,8 @@ function ringPoint(ring: Ring, t: number): Vec3 {
   const x = ring.rx * sx;
   const z = rz * sz;
   const len = Math.sqrt(x * x + z * z) || 1;
-  return [r5((ring.cx ?? 0) + x + (bump * x) / len), r5(ring.y - back), r5((ring.cz ?? 0) + z + (bump * z) / len)];
+  const p: Vec3 = [(ring.cx ?? 0) + x + (bump * x) / len, ring.y - back, (ring.cz ?? 0) + z + (bump * z) / len];
+  return (ring.surface ? ring.surface(t, p) : p).map(r5) as Vec3;
 }
 
 export class SkinBuilder {
@@ -105,13 +115,13 @@ export class SkinBuilder {
     const base = this.out.positions.length / 3;
     const tri = this.out.indices[o.material ?? 0];
     const faceNormals: Vec3[] = [];
-    const yTop = rings[0]!.y;
-    const ySpan = yTop - rings[rings.length - 1]!.y;
+    const yTop = o.heightRange?.[0] ?? rings[0]!.y;
+    const ySpan = yTop - (o.heightRange?.[1] ?? rings[rings.length - 1]!.y);
     rings.forEach((ring, j) => {
-      const v = o.vByHeight ? (yTop - ring.y) / ySpan : j / (rings.length - 1);
-      const w = weights4(ring.bones);
+      const v = o.vByHeight || o.heightRange ? (yTop - ring.y) / ySpan : j / (rings.length - 1);
       for (let i = 0; i < cols; i++) {
         const t = a0 + ((a1 - a0) * i) / o.sides;
+        const w = weights4(ring.skinAt?.(t % 1) ?? ring.bones);
         this.out.positions.push(...ringPoint(ring, t % 1));
         this.out.normals.push(0, 0, 0);
         this.out.uvs.push(o.region.u0 + (o.region.u1 - o.region.u0) * ((t - a0) / (a1 - a0)), o.region.v0 + (o.region.v1 - o.region.v0) * v);
@@ -148,7 +158,37 @@ export class SkinBuilder {
     return this;
   }
 
+  /** Join existing surface boundaries, e.g. the waist and two thigh tubes.
+   * Recompute area-weighted normals after joining; normalised tube normals
+   * cannot be accumulated directly with fresh junction triangles. */
+  stitch(triangles: readonly number[], material: 0 | 1 = 0): this {
+    this.out.indices[material].push(...triangles);
+    return this;
+  }
+
   build(): BuiltSkin {
+    this.out.normals.fill(0);
+    const faces: Vec3[] = [];
+    for (const indices of this.out.indices) {
+      const kept: number[] = [];
+      for (let i = 0; i < indices.length; i += 3) this.tri(kept, faces, indices[i]!, indices[i + 1]!, indices[i + 2]!);
+      indices.splice(0, indices.length, ...kept);
+    }
+    // UV seams and stitched boundaries have duplicate positions. Weld their
+    // lighting while retaining UVs and skin attributes in their own vertices.
+    const shared = new Map<string, number[]>();
+    for (let v = 0; v < this.out.positions.length / 3; v++) {
+      const key = this.out.positions.slice(v * 3, v * 3 + 3).join(',');
+      const group = shared.get(key) ?? [];
+      group.push(v);
+      shared.set(key, group);
+    }
+    for (const group of shared.values()) {
+      const sum = [0, 0, 0];
+      for (const v of group) for (let k = 0; k < 3; k++) sum[k]! += this.out.normals[v * 3 + k]!;
+      for (const v of group) for (let k = 0; k < 3; k++) this.out.normals[v * 3 + k] = sum[k]!;
+    }
+    this.normalise(0);
     return this.out;
   }
 

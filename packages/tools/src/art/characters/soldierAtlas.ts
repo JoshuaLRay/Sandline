@@ -61,7 +61,7 @@ const grain = (x: number, y: number, seed: number): number => rng((x * 73856093)
 
 const DCU = { tan: [190, 177, 150] as Rgb, khaki: [153, 151, 123] as Rgb, brown: [128, 111, 88] as Rgb };
 const NYLON: Rgb = [146, 139, 111];
-const SKIN: Rgb = [196, 146, 112];
+const SKIN: Rgb = [182, 143, 113];
 
 /**
  * Three-colour desert: large khaki blobs over the tan field, brown blotches
@@ -107,7 +107,7 @@ const PAINT: Record<RegionName, Painter> = {
     let c = shade(SKIN, 0.9 + tiledNoise(3, u * 6, v * 6, 6) * 0.08 + (g - 0.5) * 0.05 - adu * 0.2);
     const soft = (d: number, r: number): number => Math.max(0, 1 - d / r) ** 2;
     // Warmth on the cheeks, in soft ovals.
-    for (const side of [-1, 1]) c = mix(c, [206, 132, 104], 0.2 * soft(Math.sqrt(((du - side * 0.07) / 0.06) ** 2 + ((hy - 1.638) / 0.03) ** 2), 1));
+    for (const side of [-1, 1]) c = mix(c, [206, 132, 104], 0.08 * soft(Math.sqrt(((du - side * 0.07) / 0.06) ** 2 + ((hy - 1.638) / 0.03) ** 2), 1));
     // Short dark hair at the back and sides above the ears; stubble on the jaw and lip.
     if (adu > 0.21 && hy > 1.64) c = mix(c, [62, 50, 40], 0.8 + g * 0.2);
     // Stubble thickens toward the jaw line and fades up the cheek.
@@ -116,13 +116,13 @@ const PAINT: Record<RegionName, Painter> = {
     if (Math.abs(adu - 0.25) < 0.03 && hy > 1.63 && hy < 1.7) c = shade(c, Math.abs(adu - 0.25) < 0.012 ? 0.68 : 0.86);
     // The brow ridge's shadow falls softly over each eye.
     for (const side of [-1, 1]) {
-      const ex = du - side * 0.048;
+      const ex = du - side * 0.055;
       const hyE = hy - 1.672;
       // Eye socket in shadow, a small narrowed eye, a dark iris, the lid line above.
-      c = shade(c, 1 - 0.2 * soft(Math.sqrt((ex / 0.04) ** 2 + ((hyE - 0.003) / 0.02) ** 2), 1));
-      if ((ex / 0.017) ** 2 + (hyE / 0.0045) ** 2 < 1) c = [196, 184, 166];
-      if ((ex / 0.0065) ** 2 + (hyE / 0.0045) ** 2 < 1) c = [52, 40, 32];
-      if (Math.abs(ex) < 0.019 && Math.abs(hyE - 0.005) < 0.0022) c = [78, 56, 44];
+      c = shade(c, 1 - 0.32 * soft(Math.sqrt((ex / 0.04) ** 2 + ((hyE - 0.003) / 0.02) ** 2), 1));
+      if ((ex / 0.015) ** 2 + (hyE / 0.0025) ** 2 < 1) c = [151, 137, 119];
+      if ((ex / 0.0065) ** 2 + (hyE / 0.0028) ** 2 < 1) c = [52, 40, 32];
+      if (Math.abs(ex) < 0.019 && Math.abs(hyE - 0.003) < 0.0018) c = [78, 56, 44];
       if (Math.abs(ex) < 0.03 && Math.abs(hy - 1.69 + ex * ex * 5) < 0.0035) c = mix(c, [58, 44, 34], 0.85);
     }
     // The nose: lit ridge, shaded side and nostrils under it.
@@ -133,6 +133,14 @@ const PAINT: Record<RegionName, Painter> = {
     if (adu < 0.03 && hy < 1.602 && hy > 1.595) c = mix(c, [168, 100, 86], 0.3);
     // The chinstrap: a thin olive line down each cheek under the jaw.
     if (Math.abs(hy - 1.572 - (adu - 0.12) * 0.35) < 0.0028 && adu > 0.1 && adu < 0.26) c = [84, 78, 58];
+    // Soft anatomical shading under the cheekbone and beside the nose, with
+    // nasolabial folds following the muzzle rather than straight cartoon lines.
+    if (adu < 0.18 && hy < 1.66 && hy > 1.585) {
+      const cheek = soft(Math.abs(adu - .10), .065) * soft(Math.abs(hy - 1.63), .034);
+      c = shade(c, 1 - .13 * cheek);
+      const crease = soft(Math.abs(adu - (.028 + (1.635 - hy) * .45)), .009) * soft(Math.abs(hy - 1.618), .024);
+      c = shade(c, 1 - .10 * crease);
+    }
     return c;
   },
   helmet(u, v, x, y) {
@@ -143,12 +151,12 @@ const PAINT: Record<RegionName, Painter> = {
     return c;
   },
   blouse(u, v, x, y) {
-    let c = dcu(u, v, x, y, 41, 4);
+    let c = dcu(u, v, x, y, 41, 6);
     c = shade(c, seam(u, 0.25, 0.004) * seam(u, 0.75, 0.004));
     return c;
   },
   trousers(u, v, x, y) {
-    let c = dcu(u, v, x, y, 61, 4);
+    let c = dcu(u, v, x, y, 61, 6);
     // Side seams, and the knee darkened by wear.
     c = shade(c, seam(u, 0.25, 0.004) * seam(u, 0.75, 0.004));
     if (Math.abs(v - 0.55) < 0.06 && Math.abs(u - 0.5) < 0.18) c = shade(c, 0.9);
