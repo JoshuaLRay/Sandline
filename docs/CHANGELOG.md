@@ -348,3 +348,4 @@ Format: `T-<id> — <what changed>`
 - U-080 — first pass at a more grounded look: the US soldier's limbs, boots, hands and vest are heavier (same rig, hit boxes and animation); screenshots for the owner's review, fighter and texture pass still to do.
 - Docs — U-065's mission 1 brief drafted (docs/design/MISSION-01.md) with defaults and six questions, awaiting the owner's approval.
 - U-091 — the escorted character can be spectated: slot value 6 on the spectate wire (no protocol change), a pause-menu button, a follow camera; mobile's cycle unchanged.
+- Docs — the owner approved mission 1's brief as suggested (U-065) and confirmed that a replay's end loadout is kept for the campaign (U-077, `replayKeepsLoadout`).
