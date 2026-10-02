@@ -350,3 +350,4 @@ Format: `T-<id> — <what changed>`
 - U-091 — the escorted character can be spectated: slot value 6 on the spectate wire (no protocol change), a pause-menu button, a follow camera; mobile's cycle unchanged.
 - Docs — the owner approved mission 1's brief as suggested (U-065) and confirmed that a replay's end loadout is kept for the campaign (U-077, `replayKeepsLoadout`).
 - U-080 — second character art pass: tapered armour, rounded shoulders and calves, fitted helmet, modelled pack pockets and straps, muted desert camouflage with cloth shading; enemy shoulder and cloth improvements. Regenerated assets and added a front/back comparison for review.
+- Docs — mission 1's build split into U-092 (level), U-093 (encounter), U-094 (mission file and script) and U-095 (verification); U-065 is their umbrella.
