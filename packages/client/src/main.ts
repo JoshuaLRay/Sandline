@@ -300,6 +300,8 @@ function collisionBoxes(): readonly WorldBox[] {
 const worldMeshes: THREE.Mesh[] = [];
 
 function buildScenery(world: World): void {
+  // U-095: the visible ground follows the same rectangular floor the nav bake uses.
+  ground.scale.set(world.floorHalfWidth / 100, world.floorHalfDepth / 100, 1);
   for (const mesh of worldMeshes.splice(0)) {
     scene.remove(mesh);
     mesh.geometry.dispose();
