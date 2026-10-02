@@ -356,4 +356,4 @@ Format: `T-<id> — <what changed>`
 
 - U-080 — layered blouse/armour and fitted soft gear, shared modelled/painted cloth folds, refined face and extremities, and staggered low crouch. Regenerated soldier/fighter assets and added same-lighting comparison and posed review images.
 
-- U-092 — Added the Qalat Road three-lane valley map preview, kit compound, climbable terrace overlooks, fresh nav/cover and route/sight-line tests; owner visual acceptance pending.
+- U-092 — Added the Qalat Road three-lane valley map preview, kit compound, climbable terrace overlooks, fresh nav/cover and route/sight-line tests; owner visual acceptance pending ([#274](https://github.com/JoshuaLRay/Sandline/pull/274)).
