@@ -49,10 +49,11 @@ function pouchRings(cx: number, cz: number, top: number, bottom: number, rx: num
 
 /**
  * U-080: the build's proportions. The first version read scrawny next to the reference (*Conflict: Desert Storm*): thin
- * limbs under a narrow vest. These factors thicken the rings of each part about its own axis (never its height, so the
+ * limbs under a narrow vest. The second pass adds chest taper and fuller deltoids/calves. These factors thicken
+ * the rings of each part about its own axis (never its height, so the
  * joints and every pose stay where the rig has them), inside the server's hit capsule.
  */
-const BULK = { legs: 1.1, boots: 1.1, arms: 1.2, hands: 1.12, torso: 1.1 } as const;
+const BULK = { legs: 1.1, boots: 1.1, arms: 1.2, hands: 1.12, torso: 1.22 } as const;
 /** Thighs grow front to back more than across: the legs keep their daylight (the fighter's silhouette test reads it). */
 const LEG_DEPTH = 1.26;
 const bulk = (rings: Ring[], k: number, kz = k): Ring[] =>
@@ -113,27 +114,27 @@ export function buildDetailedSoldier(): BuiltSkin {
     { y: 1.708, rx: 0.16, rzF: 0.16, rzB: 0.172, dropBack: 0.05, bones: only('head') },
     { y: 1.715, rx: 0.13, rzF: 0.13, rzB: 0.135, dropBack: 0.05, bones: only('head') },
   ];
-  b.loft(helmet, { sides: 22, region: R('helmet'), capTop: true });
+  b.loft(bulk(helmet, 0.96), { sides: 22, region: R('helmet'), capTop: true });
   // The goggles' strap round the helmet, the goggles resting on the front.
   b.loft(
     [
-      { y: 1.79, rx: 0.157, rzF: 0.162, rzB: 0.167, bones: only('head') },
-      { y: 1.765, rx: 0.159, rzF: 0.164, rzB: 0.169, bones: only('head') },
+      { y: 1.79, rx: 0.15072, rzF: 0.15552, rzB: 0.16032, bones: only('head') },
+      { y: 1.765, rx: 0.15264, rzF: 0.15744, rzB: 0.16224, bones: only('head') },
     ],
     { sides: 22, region: R('strap') },
   );
   b.loft(
     [
-      { y: 1.8, rx: 0.164, rzF: 0.172, bones: only('head') },
-      { y: 1.755, rx: 0.166, rzF: 0.174, bones: only('head') },
+      { y: 1.8, rx: 0.15744, rzF: 0.16512, bones: only('head') },
+      { y: 1.755, rx: 0.15936, rzF: 0.16704, bones: only('head') },
     ],
     { sides: 10, region: R('goggle'), arc: [0.38, 0.62] },
   );
   // The squad marking: a band on the helmet's back, in the slot colour.
   b.loft(
     [
-      { y: 1.77, rx: 0.16, rzF: 0.168, rzB: 0.171, bones: only('head') },
-      { y: 1.745, rx: 0.161, rzF: 0.168, rzB: 0.172, bones: only('head') },
+      { y: 1.77, rx: 0.15360, rzF: 0.16128, rzB: 0.16416, bones: only('head') },
+      { y: 1.745, rx: 0.15456, rzF: 0.16128, rzB: 0.16512, bones: only('head') },
     ],
     { sides: 8, region: R('strap'), arc: [0.9, 1.1], material: 1 },
   );
@@ -144,29 +145,40 @@ export function buildDetailedSoldier(): BuiltSkin {
       { y: 1.5, rx: 0.088, rzF: 0.088, rzB: 0.078, bones: only('chest') },
       { y: 1.475, rx: 0.11, rzF: 0.1, rzB: 0.094, bones: only('chest') },
       { y: 1.455, rx: 0.165, rzF: 0.13, rzB: 0.125, n: 2.4, bones: only('chest') },
-      { y: 1.38, rx: 0.172, rzF: 0.148, rzB: 0.138, n: 2.8, bones: only('chest') },
-      { y: 1.26, rx: 0.172, rzF: 0.155, rzB: 0.14, n: 3, bones: blend('chest', 'spine', 0.3) },
-      { y: 1.14, rx: 0.166, rzF: 0.146, rzB: 0.134, n: 3, bones: blend('spine', 'chest', 0.4) },
-      { y: 1.03, rx: 0.162, rzF: 0.138, rzB: 0.13, n: 3, bones: blend('spine', 'hips', 0.5) },
-      { y: 0.985, rx: 0.158, rzF: 0.132, rzB: 0.127, n: 3, bones: blend('hips', 'spine', 0.4) },
+      { y: 1.38, rx: 0.183, rzF: 0.148, rzB: 0.138, n: 2.8, bones: only('chest') },
+      { y: 1.26, rx: 0.177, rzF: 0.155, rzB: 0.14, n: 3, bones: blend('chest', 'spine', 0.3) },
+      { y: 1.14, rx: 0.157, rzF: 0.146, rzB: 0.134, n: 3, bones: blend('spine', 'chest', 0.4) },
+      { y: 1.03, rx: 0.15, rzF: 0.138, rzB: 0.13, n: 3, bones: blend('spine', 'hips', 0.5) },
+      { y: 0.985, rx: 0.15, rzF: 0.132, rzB: 0.127, n: 3, bones: blend('hips', 'spine', 0.4) },
     ], BULK.torso),
     { sides: 22, region: R('vest') },
   );
   // Three magazine pouches across the belly, a radio pouch high on the left, two grenade pouches on the right.
-  for (const x of [-0.085, 0, 0.085]) b.loft(pouchRings(x, 0.175, 1.15, 1.03, 0.038, 0.03, blend('spine', 'chest', 0.4)), { sides: 12, region: R('pouch'), capTop: true, capBottom: true });
-  b.loft(pouchRings(0.095, 0.178, 1.36, 1.23, 0.034, 0.028, only('chest')), { sides: 12, region: R('pouch'), capTop: true, capBottom: true });
-  for (const y of [1.33, 1.26]) b.loft(pouchRings(-0.1, 0.172, y, y - 0.055, 0.028, 0.025, only('chest')), { sides: 10, region: R('pouch'), capTop: true, capBottom: true });
+  for (const x of [-0.085, 0, 0.085]) b.loft(pouchRings(x, 0.199, 1.15, 1.03, 0.038, 0.03, blend('spine', 'chest', 0.4)), { sides: 12, region: R('pouch'), capTop: true, capBottom: true });
+  b.loft(pouchRings(0.095, 0.212, 1.36, 1.23, 0.034, 0.028, only('chest')), { sides: 12, region: R('pouch'), capTop: true, capBottom: true });
+  for (const y of [1.33, 1.26]) b.loft(pouchRings(-0.1, 0.205, y, y - 0.055, 0.028, 0.025, only('chest')), { sides: 10, region: R('pouch'), capTop: true, capBottom: true });
   // The three-day pack on the back.
   b.loft(
     [
       { y: 1.44, cz: -0.2, rx: 0.115, rzF: 0.045, rzB: 0.045, n: 4, bones: only('chest') },
-      { y: 1.41, cz: -0.2, rx: 0.135, rzF: 0.058, rzB: 0.062, n: 4, bones: only('chest') },
-      { y: 1.2, cz: -0.2, rx: 0.14, rzF: 0.058, rzB: 0.068, n: 4, bones: blend('chest', 'spine', 0.3) },
-      { y: 1.08, cz: -0.195, rx: 0.135, rzF: 0.056, rzB: 0.062, n: 4, bones: blend('spine', 'chest', 0.4) },
+      { y: 1.41, cz: -0.2, rx: 0.135, rzF: 0.058, rzB: 0.062, n: 2.6, bones: only('chest') },
+      { y: 1.2, cz: -0.2, rx: 0.145, rzF: 0.062, rzB: 0.078, n: 2.6, bones: blend('chest', 'spine', 0.3) },
+      { y: 1.08, cz: -0.195, rx: 0.13, rzF: 0.056, rzB: 0.062, n: 2.6, bones: blend('spine', 'chest', 0.4) },
       { y: 1.05, cz: -0.19, rx: 0.115, rzF: 0.045, rzB: 0.048, n: 4, bones: blend('spine', 'chest', 0.4) },
     ],
     { sides: 16, region: R('pack'), capTop: true, capBottom: true },
   );
+
+  // Pack pockets and shoulder webbing break up the formerly flat slab.
+  b.loft(pouchRings(0, -0.278, 1.28, 1.09, 0.083, 0.025, blend('chest', 'spine', 0.3)), { sides: 12, region: R('pouch'), capTop: true, capBottom: true });
+  for (const s of [-1, 1]) {
+    b.loft(pouchRings(s * 0.13, -0.19, 1.34, 1.17, 0.035, 0.045, only('chest')), { sides: 12, region: R('pouch'), capTop: true, capBottom: true });
+    b.loft([
+      { y: 1.475, cx: s * 0.11, cz: 0.082, rx: 0.023, rzF: 0.025, n: 3, bones: only('chest') },
+      { y: 1.41, cx: s * 0.13, cz: 0.153, rx: 0.022, rzF: 0.012, n: 3, bones: only('chest') },
+      { y: 1.22, cx: s * 0.115, cz: 0.181, rx: 0.02, rzF: 0.012, n: 3, bones: blend('chest', 'spine', 0.2) },
+    ], { sides: 8, region: R('strap'), capTop: true, capBottom: true });
+  }
 
   // -- Pelvis, belt, canteen ------------------------------------------------
   b.loft(
@@ -203,8 +215,8 @@ export function buildDetailedSoldier(): BuiltSkin {
         { y: 0.53, cx, rx: 0.068, rzF: 0.072, rzB: 0.07, bones: blend(upper, lower, 0.3) },
         { y: 0.48, cx, rx: 0.066, rzF: 0.074, rzB: 0.066, bones: blend(upper, lower, 0.5) },
         { y: 0.43, cx, rx: 0.064, rzF: 0.068, rzB: 0.07, bones: blend(lower, upper, 0.3) },
-        { y: 0.36, cx, rx: 0.062, rzF: 0.062, rzB: 0.074, bones: only(lower) },
-        { y: 0.28, cx, rx: 0.056, rzF: 0.058, rzB: 0.064, bones: only(lower) },
+        { y: 0.36, cx, rx: 0.071, rzF: 0.067, rzB: 0.084, bones: only(lower) },
+        { y: 0.28, cx, rx: 0.064, rzF: 0.06, rzB: 0.076, bones: only(lower) },
         { y: 0.21, cx, rx: 0.058, rzF: 0.064, rzB: 0.064, bones: only(lower) },
       ], BULK.legs, LEG_DEPTH),
       { sides: 14, region: R('trousers') },
@@ -242,14 +254,14 @@ export function buildDetailedSoldier(): BuiltSkin {
     const cx = JOINTS[upper][0];
     b.loft(
       bulk([
-        { y: 1.5, cx, rx: 0.04, rzF: 0.045, bones: blend('chest', upper, 0.5) },
-        { y: 1.48, cx, rx: 0.062, rzF: 0.066, bones: blend(upper, 'chest', 0.3) },
-        { y: 1.42, cx, rx: 0.068, rzF: 0.07, bones: blend(upper, 'chest', 0.1) },
+        { y: 1.5, cx, rx: 0.059, rzF: 0.061, bones: blend('chest', upper, 0.5) },
+        { y: 1.48, cx, rx: 0.076, rzF: 0.078, bones: blend(upper, 'chest', 0.3) },
+        { y: 1.42, cx, rx: 0.077, rzF: 0.079, bones: blend(upper, 'chest', 0.1) },
         { y: 1.33, cx, rx: 0.062, rzF: 0.064, bones: only(upper) },
         { y: 1.23, cx, rx: 0.057, rzF: 0.058, bones: only(upper) },
         { y: 1.17, cx, rx: 0.053, rzF: 0.055, bones: blend(upper, lower, 0.35) },
         { y: 1.12, cx, rx: 0.051, rzF: 0.054, rzB: 0.056, bones: blend(lower, upper, 0.35) },
-        { y: 1.04, cx, rx: 0.05, rzF: 0.05, bones: only(lower) },
+        { y: 1.04, cx, rx: 0.055, rzF: 0.057, bones: only(lower) },
         { y: 0.95, cx, rx: 0.044, rzF: 0.044, bones: only(lower) },
       ], BULK.arms),
       { sides: 12, region: R('blouse'), capTop: true },

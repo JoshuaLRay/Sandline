@@ -226,7 +226,7 @@ function cloth(): BuiltSkin {
         { y: 0.53, cx, rx: 0.088, rzF: 0.094, rzB: 0.092, bones: blend(upper, lower, 0.3) },
         { y: 0.48, cx, rx: 0.086, rzF: 0.094, rzB: 0.088, bones: blend(upper, lower, 0.5) },
         { y: 0.42, cx, rx: 0.084, rzF: 0.088, rzB: 0.09, bones: blend(lower, upper, 0.3) },
-        { y: 0.32, cx, rx: 0.078, rzF: 0.082, rzB: 0.086, bones: only(lower) },
+        { y: 0.32, cx, rx: 0.082, rzF: 0.085, rzB: 0.098, bones: only(lower) },
         { y: 0.22, cx, rx: 0.068, rzF: 0.072, rzB: 0.074, bones: only(lower) },
         { y: 0.18, cx, rx: 0.058, rzF: 0.064, rzB: 0.064, bones: blend(lower, `foot-${side}`, 0.3) },
         { y: 0.16, cx, rx: 0.06, rzF: 0.066, rzB: 0.066, bones: blend(lower, `foot-${side}`, 0.4) },
@@ -243,8 +243,8 @@ function cloth(): BuiltSkin {
     b.loft(
       [
         { y: 1.5, cx, rx: 0.042, rzF: 0.046, bones: blend('chest', upper, 0.5) },
-        { y: 1.48, cx, rx: 0.066, rzF: 0.07, bones: blend(upper, 'chest', 0.3) },
-        { y: 1.42, cx, rx: 0.072, rzF: 0.074, bones: blend(upper, 'chest', 0.1) },
+        { y: 1.48, cx, rx: 0.078, rzF: 0.08, bones: blend(upper, 'chest', 0.3) },
+        { y: 1.42, cx, rx: 0.082, rzF: 0.084, bones: blend(upper, 'chest', 0.1) },
         { y: 1.32, cx, rx: 0.068, rzF: 0.07, bones: only(upper) },
         { y: 1.22, cx, rx: 0.064, rzF: 0.066, bones: only(upper) },
         { y: 1.17, cx, rx: 0.06, rzF: 0.062, bones: blend(upper, lower, 0.35) },

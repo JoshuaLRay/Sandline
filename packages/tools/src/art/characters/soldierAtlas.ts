@@ -59,8 +59,8 @@ const grain = (x: number, y: number, seed: number): number => rng((x * 73856093)
 
 /* -- Materials ---------------------------------------------------------------- */
 
-const DCU = { tan: [206, 186, 148] as Rgb, khaki: [165, 158, 118] as Rgb, brown: [124, 98, 70] as Rgb };
-const NYLON: Rgb = [178, 156, 116];
+const DCU = { tan: [190, 177, 150] as Rgb, khaki: [153, 151, 123] as Rgb, brown: [128, 111, 88] as Rgb };
+const NYLON: Rgb = [146, 139, 111];
 const SKIN: Rgb = [196, 146, 112];
 
 /**
@@ -78,8 +78,14 @@ function dcu(u: number, v: number, x: number, y: number, seed: number, scale: nu
   // Weave, and creases running down the cloth.
   const weave = ((x + y) % 2) * 0.03;
   const crease = tiledNoise(seed + 77, u * 18, v * 3, 18);
+  // Broad painted form shadows survive game distance; diagonal folds soften
+  // the cylindrical limbs without a normal map or extra material.
+  const round = 0.82 + 0.18 * Math.abs(Math.cos(u * Math.PI * 2));
+  const folds = Math.sin(v * 39 + Math.sin(u * 12) * 2.5);
+  const foldShade = 1 - Math.max(0, folds) ** 8 * 0.14;
+  const dust = 1 - Math.max(0, v - 0.72) * 0.16;
   const g = grain(x, y, seed);
-  return shade(c, 0.9 + weave + (crease - 0.5) * 0.12 + (g - 0.5) * 0.05);
+  return shade(c, (0.94 + weave + (crease - 0.5) * 0.18 + (g - 0.5) * 0.05) * round * foldShade * dust);
 }
 
 /** A seam: a darker line with a pale stitch row beside it, `at` in [0, 1] across `t`. */
@@ -156,6 +162,8 @@ const PAINT: Record<RegionName, Painter> = {
     const molle = v > 0.18 && v < 0.85 && row < 0.22 && Math.abs(Math.abs(u - 0.5) - 0.25) > 0.07;
     if (molle) c = shade(c, row < 0.04 || row > 0.18 ? 0.72 : 1.05);
     // The collar at the top and the hem.
+    // Baked shading under the arms and around the plate edges.
+    c = shade(c, 0.84 + 0.16 * Math.abs(Math.cos(u * Math.PI * 2)));
     if (v < 0.08) c = shade(c, 0.85);
     if (v > 0.94) c = shade(c, 0.78);
     // The side closures, darker.
@@ -166,7 +174,14 @@ const PAINT: Record<RegionName, Painter> = {
     // A tan three-day pack: two compression straps down the back, a lid at the top.
     const g = grain(x, y, 91);
     let c = shade(mix(NYLON, DCU.khaki, 0.3), 0.9 + tiledNoise(93, u * 8, v * 8, 8) * 0.14 + (g - 0.5) * 0.05);
-    for (const s of [0.4, 0.6]) if (Math.abs(u - s) < 0.02) c = shade(c, 0.78);
+    for (const s of [0.08, 0.92]) {
+      if (Math.abs(u - s) < 0.018) c = shade(c, 0.62);
+      if (Math.abs(u - s) < 0.006 && (v * 48) % 1 < 0.5) c = shade(c, 1.16);
+    }
+    c = shade(c, 0.82 + 0.18 * Math.abs(Math.cos(u * Math.PI * 2)));
+    // Compression strap across the main compartment with a dark buckle.
+    if (Math.abs(v - 0.62) < 0.018) c = shade(c, 0.67);
+    if (Math.abs(v - 0.62) < 0.027 && Math.abs(u - 0.5) < 0.04) c = [66, 66, 57];
     if (v < 0.2) c = shade(c, 0.9);
     if (Math.abs(v - 0.2) < 0.008) c = shade(c, 0.65);
     return c;
