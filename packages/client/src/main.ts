@@ -3191,7 +3191,6 @@ function frame(): void {
   }
 
   // T-4.07: choose each static placement's LOD from this frame's camera before drawing.
-  levelPieces.update(camera);
   if (mapReviewView) {
     camera.position.set(...mapReviewView.position);
     camera.lookAt(...mapReviewView.target);
@@ -3199,6 +3198,7 @@ function frame(): void {
     camera.updateProjectionMatrix();
     scene.fog = null;
   }
+  levelPieces.update(camera);
   renderer.render(scene, camera);
   if (perf) {
     // T-5.04: this frame's time since the last, and the world's draw calls and triangles.
