@@ -23,6 +23,7 @@
 import { HUMANOID_BONES, type HumanoidBoneName } from '../../../../client/src/character/humanoidRig.ts';
 import { JOINTS } from '../../../../client/src/character/humanoidSoldier.ts';
 import { type BuiltSkin, type Ring, SkinBuilder } from './skin.ts';
+import { anatomicalHead, anatomicalSleeve, anatomicalTrousers } from './anatomy.ts';
 import { fighterRegion as R } from './fighterAtlas.ts';
 
 const B = (name: HumanoidBoneName): number => HUMANOID_BONES.indexOf(name);
@@ -50,29 +51,7 @@ function pouchRings(cx: number, cz: number, top: number, bottom: number, rx: num
 /** The skin, the waistcoat, the rig, the sash, the scarf, the boots and the hands: never tinted. */
 function body(): BuiltSkin {
   const b = new SkinBuilder();
-  // -- Head: a long face with a full beard, the jaw squared by it ----------
-  const ears = [
-    { t: 0.25, w: 0.035, d: 0.014 },
-    { t: 0.75, w: 0.035, d: 0.014 },
-  ];
-  b.loft(
-    [
-      { y: 1.84, rx: 0.02, rzF: 0.02, bones: only('head') },
-      { y: 1.82, rx: 0.07, rzF: 0.074, rzB: 0.078, bones: only('head') },
-      { y: 1.78, rx: 0.09, rzF: 0.096, rzB: 0.1, bones: only('head') },
-      { y: 1.73, rx: 0.095, rzF: 0.102, rzB: 0.103, bones: only('head') },
-      { y: 1.7, rx: 0.094, rzF: 0.103, rzB: 0.097, bones: only('head') },
-      { y: 1.675, rx: 0.092, rzF: 0.1, rzB: 0.093, bumps: ears, bones: only('head') },
-      { y: 1.65, rx: 0.09, rzF: 0.1, rzB: 0.089, bumps: [...ears, { t: 0.5, w: 0.05, d: 0.022 }], bones: only('head') },
-      { y: 1.625, rx: 0.092, rzF: 0.102, rzB: 0.086, bumps: [{ t: 0.5, w: 0.08, d: 0.01 }], bones: only('head') },
-      // The beard fills the jaw and juts at the chin.
-      { y: 1.595, rx: 0.09, rzF: 0.104, rzB: 0.08, n: 2.3, bumps: [{ t: 0.5, w: 0.12, d: 0.016 }], bones: only('head') },
-      { y: 1.565, rx: 0.078, rzF: 0.098, rzB: 0.07, n: 2.3, bumps: [{ t: 0.5, w: 0.1, d: 0.02 }], bones: blend('head', 'neck', 0.3) },
-      { y: 1.54, rx: 0.062, rzF: 0.07, rzB: 0.062, bones: blend('head', 'neck', 0.6) },
-      { y: 1.52, rx: 0.06, rzF: 0.058, rzB: 0.06, bones: blend('head', 'neck', 0.8) },
-    ],
-    { sides: 20, region: R('face'), capTop: true, vByHeight: true },
-  );
+  b.loft(anatomicalHead(true), { sides: 40, region: R('face'), capTop: true, vByHeight: true });
   b.loft(
     [
       { y: 1.54, rx: 0.06, rzF: 0.056, bones: only('neck') },
@@ -214,47 +193,11 @@ function cloth(): BuiltSkin {
   );
   // The shalwar: loose from the hip, deep in the thigh, gathered at the ankle over the boot.
   for (const s of [1, -1] as const) {
-    const side = s > 0 ? 'left' : 'right';
-    const upper = `upper-leg-${side}` as const;
-    const lower = `lower-leg-${side}` as const;
-    const cx = JOINTS[upper][0];
-    b.loft(
-      [
-        { y: 0.9, cx, rx: 0.1, rzF: 0.104, bones: blend('hips', upper, 0.5) },
-        { y: 0.78, cx, rx: 0.1, rzF: 0.106, bones: only(upper) },
-        { y: 0.64, cx, rx: 0.094, rzF: 0.1, rzB: 0.1, bones: only(upper) },
-        { y: 0.53, cx, rx: 0.088, rzF: 0.094, rzB: 0.092, bones: blend(upper, lower, 0.3) },
-        { y: 0.48, cx, rx: 0.086, rzF: 0.094, rzB: 0.088, bones: blend(upper, lower, 0.5) },
-        { y: 0.42, cx, rx: 0.084, rzF: 0.088, rzB: 0.09, bones: blend(lower, upper, 0.3) },
-        { y: 0.32, cx, rx: 0.082, rzF: 0.085, rzB: 0.098, bones: only(lower) },
-        { y: 0.22, cx, rx: 0.068, rzF: 0.072, rzB: 0.074, bones: only(lower) },
-        { y: 0.18, cx, rx: 0.058, rzF: 0.064, rzB: 0.064, bones: blend(lower, `foot-${side}`, 0.3) },
-        { y: 0.16, cx, rx: 0.06, rzF: 0.066, rzB: 0.066, bones: blend(lower, `foot-${side}`, 0.4) },
-      ],
-      { sides: 14, region: R('trousers') },
-    );
+    b.loft(anatomicalTrousers(s), { sides: 20, region: R('trousers') });
   }
   // The sleeves: loose to the wrist.
   for (const s of [1, -1] as const) {
-    const side = s > 0 ? 'left' : 'right';
-    const upper = `upper-arm-${side}` as const;
-    const lower = `lower-arm-${side}` as const;
-    const cx = JOINTS[upper][0];
-    b.loft(
-      [
-        { y: 1.5, cx, rx: 0.042, rzF: 0.046, bones: blend('chest', upper, 0.5) },
-        { y: 1.48, cx, rx: 0.078, rzF: 0.08, bones: blend(upper, 'chest', 0.3) },
-        { y: 1.42, cx, rx: 0.082, rzF: 0.084, bones: blend(upper, 'chest', 0.1) },
-        { y: 1.32, cx, rx: 0.068, rzF: 0.07, bones: only(upper) },
-        { y: 1.22, cx, rx: 0.064, rzF: 0.066, bones: only(upper) },
-        { y: 1.17, cx, rx: 0.06, rzF: 0.062, bones: blend(upper, lower, 0.35) },
-        { y: 1.12, cx, rx: 0.058, rzF: 0.062, rzB: 0.064, bones: blend(lower, upper, 0.35) },
-        { y: 1.03, cx, rx: 0.056, rzF: 0.058, bones: only(lower) },
-        { y: 0.95, cx, rx: 0.05, rzF: 0.052, bones: only(lower) },
-        { y: 0.93, cx, rx: 0.044, rzF: 0.046, bones: blend(lower, `hand-${side}`, 0.2) },
-      ],
-      { sides: 12, region: R('sleeve'), capTop: true },
-    );
+    b.loft(anatomicalSleeve(s, 1.03), { sides: 20, region: R('sleeve'), capTop: true });
   }
   return b.build();
 }
@@ -264,14 +207,14 @@ function pakol(): BuiltSkin {
   const b = new SkinBuilder();
   b.loft(
     [
-      { y: 1.868, rx: 0.06, rzF: 0.062, bones: only('head') },
-      { y: 1.866, rx: 0.112, rzF: 0.116, bones: only('head') },
-      { y: 1.852, rx: 0.12, rzF: 0.124, bones: only('head') },
-      { y: 1.83, rx: 0.124, rzF: 0.128, bones: only('head') },
-      { y: 1.81, rx: 0.13, rzF: 0.134, bones: only('head') },
-      { y: 1.785, rx: 0.132, rzF: 0.136, bones: only('head') },
-      { y: 1.762, rx: 0.126, rzF: 0.13, bones: only('head') },
-      { y: 1.75, rx: 0.108, rzF: 0.114, bones: only('head') },
+      { y: 1.868, rx: 0.051600, rzF: 0.053320, bones: only('head') },
+      { y: 1.866, rx: 0.096320, rzF: 0.099760, bones: only('head') },
+      { y: 1.852, rx: 0.103200, rzF: 0.106640, bones: only('head') },
+      { y: 1.83, rx: 0.106640, rzF: 0.110080, bones: only('head') },
+      { y: 1.81, rx: 0.111800, rzF: 0.115240, bones: only('head') },
+      { y: 1.785, rx: 0.113520, rzF: 0.116960, bones: only('head') },
+      { y: 1.762, rx: 0.108360, rzF: 0.111800, bones: only('head') },
+      { y: 1.75, rx: 0.092880, rzF: 0.098040, bones: only('head') },
     ],
     { sides: 22, region: R('pakol'), capTop: true },
   );
@@ -283,23 +226,23 @@ function turban(): BuiltSkin {
   const b = new SkinBuilder();
   b.loft(
     [
-      { y: 1.905, rx: 0.04, rzF: 0.042, bones: only('head') },
-      { y: 1.898, rx: 0.1, rzF: 0.104, bones: only('head') },
-      { y: 1.878, rx: 0.136, rzF: 0.142, rzB: 0.138, bones: only('head') },
-      { y: 1.845, rx: 0.15, rzF: 0.156, rzB: 0.15, bones: only('head') },
-      { y: 1.805, rx: 0.148, rzF: 0.154, rzB: 0.15, bones: only('head') },
-      { y: 1.768, rx: 0.132, rzF: 0.14, rzB: 0.138, dropBack: 0.02, bones: only('head') },
-      { y: 1.738, rx: 0.114, rzF: 0.124, rzB: 0.122, dropBack: 0.03, bones: only('head') },
-      { y: 1.728, rx: 0.098, rzF: 0.106, rzB: 0.108, dropBack: 0.03, bones: only('head') },
+      { y: 1.905, rx: 0.031200, rzF: 0.032760, bones: only('head') },
+      { y: 1.898, rx: 0.078000, rzF: 0.081120, bones: only('head') },
+      { y: 1.878, rx: 0.106080, rzF: 0.110760, rzB: 0.107640, bones: only('head') },
+      { y: 1.845, rx: 0.117000, rzF: 0.121680, rzB: 0.117000, bones: only('head') },
+      { y: 1.805, rx: 0.115440, rzF: 0.120120, rzB: 0.117000, bones: only('head') },
+      { y: 1.768, rx: 0.102960, rzF: 0.109200, rzB: 0.107640, dropBack: 0.02, bones: only('head') },
+      { y: 1.738, rx: 0.088920, rzF: 0.096720, rzB: 0.095160, dropBack: 0.03, bones: only('head') },
+      { y: 1.728, rx: 0.076440, rzF: 0.082680, rzB: 0.084240, dropBack: 0.03, bones: only('head') },
     ],
     { sides: 22, region: R('turban'), capTop: true },
   );
   // The tail, down the back of the neck.
   b.loft(
     [
-      { y: 1.74, cz: -0.12, rx: 0.036, rzF: 0.014, n: 3, bones: only('head') },
-      { y: 1.6, cz: -0.115, rx: 0.038, rzF: 0.014, n: 3, bones: blend('head', 'neck', 0.4) },
-      { y: 1.5, cz: -0.12, rx: 0.036, rzF: 0.014, n: 3, bones: blend('neck', 'chest', 0.5) },
+      { y: 1.74, cz: -0.12, rx: 0.028080, rzF: 0.010920, n: 3, bones: only('head') },
+      { y: 1.6, cz: -0.115, rx: 0.029640, rzF: 0.010920, n: 3, bones: blend('head', 'neck', 0.4) },
+      { y: 1.5, cz: -0.12, rx: 0.028080, rzF: 0.010920, n: 3, bones: blend('neck', 'chest', 0.5) },
     ],
     { sides: 10, region: R('turban'), capBottom: true },
   );
