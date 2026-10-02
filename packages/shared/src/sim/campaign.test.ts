@@ -18,11 +18,11 @@ const known = (ids: string[]) => (id: string) => ids.includes(id);
 const three = parseCampaign({ id: 't', missions: [entry('a'), entry('b'), entry('c')] }, known(['a', 'b', 'c']));
 
 describe('the committed campaign (U-088)', () => {
-  it('parses, starts at mission-01, and names only registered missions', () => {
+  it('parses, starts at qalat-road, and names only registered missions', () => {
     expect(CAMPAIGN.id).toBe('season-1');
-    expect(campaignOrder()[0]).toBe('mission-01');
+    expect(campaignOrder()[0]).toBe('qalat-road');
     for (const id of campaignOrder()) expect(missionFor(id), id).toBeDefined();
-    const m = campaignMission('mission-01')!;
+    const m = campaignMission('qalat-road')!;
     expect(m.title).not.toBe('');
     expect(m.briefing.length).toBeGreaterThan(0);
     expect(m.debrief.length).toBeGreaterThan(0);

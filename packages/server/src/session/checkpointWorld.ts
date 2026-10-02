@@ -32,6 +32,7 @@ export interface SlotCheckpoint {
 /** U-059: a living enemy at a checkpoint. */
 export interface EnemyCheckpoint {
   captive?: boolean;
+  escortOrder?: { kind: 'follow' | 'stay' | 'go'; point: { x: number; y: number; z: number } | null };
   netId: number;
   archetype: string;
   faction: number;
@@ -253,6 +254,7 @@ export function parseCheckpointWorld(raw: unknown): CheckpointWorld | null {
           health: num(`${w}.health`, x['health']),
           group: strOrNull(`${w}.group`, x['group']),
           posture: posture(`${w}.posture`, x['posture']),
+          ...(x['escortOrder'] === undefined ? {} : { escortOrder: escortOrder(`${w}.escortOrder`, x['escortOrder']) }),
           ...(x['captive'] === undefined ? {} : { captive: bool(`${w}.captive`, x['captive']) }),
           ammo: int(`${w}.ammo`, x['ammo'], 0, 65535),
           pouch: pouch(`${w}.pouch`, x['pouch']),
@@ -287,4 +289,14 @@ export function parseCheckpointWorld(raw: unknown): CheckpointWorld | null {
     if (error instanceof Refused) return null;
     throw error;
   }
+}
+
+function escortOrder(w: string, raw: unknown): NonNullable<EnemyCheckpoint['escortOrder']> {
+  const o = obj(w, raw);
+  const kind = o['kind'];
+  if (kind !== 'follow' && kind !== 'stay' && kind !== 'go') throw new Refused(`${w}.kind`);
+  const p = o['point'] === null ? null : obj(`${w}.point`, o['point']);
+  const point = p ? { x: num(`${w}.x`, p['x']), y: num(`${w}.y`, p['y']), z: num(`${w}.z`, p['z']) } : null;
+  if (kind === 'go' && !point) throw new Refused(`${w}.point`);
+  return { kind, point };
 }

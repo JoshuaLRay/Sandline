@@ -359,3 +359,5 @@ Format: `T-<id> — <what changed>`
 - U-092 — Added the Qalat Road three-lane valley map preview, kit compound, climbable terrace overlooks, fresh nav/cover and route/sight-line tests; owner visual acceptance pending ([#274](https://github.com/JoshuaLRay/Sandline/pull/274)).
 
 - U-093 — Authored Qalat patrols, captive prisoner, compound garrison, reserves and conditional delayed tank route; persisted event deadlines and captivity.
+
+- U-094 — Made The Qalat Road the campaign opener with staged captive rescue, optional radio, tank destruction, all-seven extraction and selective POW-restoring checkpoints.

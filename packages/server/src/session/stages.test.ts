@@ -161,6 +161,16 @@ describe('an optional objective (U-074)', () => {
 });
 
 describe('checkpoints inside a stage (U-074)', () => {
+  it('does not checkpoint a completion explicitly excluded by the mission', () => {
+    const run = runOf([reach('approach', { stage: 0 }), destroy('radio', 'g', { stage: 0, optional: true, checkpoint: false }), survive('home', 1000, { stage: 1 })]);
+    const { w, world, kill } = fake();
+    kill('g'); run.step(world);
+    expect(run.checkpointDoneList).toEqual([]);
+    w.dead = true; run.step(world); w.dead = false; run.retry();
+    expect(run.current.open?.map((o) => o.done)).toEqual([false, false]);
+    w.standing.set(AREA, 1); run.step(world);
+    expect(run.checkpoint).toBe(2);
+  });
   it('save which objectives were done, and a retry resumes with them done', () => {
     const run = runOf([reach('the road', { stage: 0 }), destroy('the post', 'g', { stage: 0 }), survive('then', 1000, { stage: 1 })]);
     const { w, world, kill } = fake();

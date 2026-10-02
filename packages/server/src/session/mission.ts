@@ -77,7 +77,7 @@ export interface MissionWorld {
    * U-063: the prisoners a rescue could free (`slot`, or any when null): how many are held, and whether a standing
    * soldier is holding interact beside one now (`scale` is that soldier's multiple on an interaction's time).
    */
-  rescue(slot: number | null, reachM: number): { held: number; holding: { scale: number } | null };
+  rescue(slot: number | null, reachM: number, group?: string): { held: number; holding: { scale: number } | null };
 }
 
 const ticksOf = (seconds: number): number => Math.max(1, Math.round(seconds / TICK_SECONDS));
@@ -387,7 +387,7 @@ export class MissionRun {
         break;
       case 'rescue': {
         // U-063: nobody held, nothing to free. Otherwise the hold counts while a soldier keeps it and starts over when they do not.
-        const r = w.rescue(def.slot ?? null, def.reachM);
+        const r = w.rescue(def.slot ?? null, def.reachM, def.group);
         if (r.held === 0) {
           next = { ...next, goal: 1, progress: 1, satisfied: true };
           break;
@@ -424,6 +424,7 @@ export class MissionRun {
     } else {
       let overrun = false;
       let completedNow = false;
+      let checkpointNow = false;
       const group = this.stages[this.stage]!;
       for (const index of group) {
         if (this.states[index]!.done) continue;
@@ -433,6 +434,7 @@ export class MissionRun {
         if (this.isDone(index, st, w)) {
           st.done = true;
           completedNow = true;
+          checkpointNow ||= this.def.objectives[index]!.checkpoint !== false;
         }
         this.states[index] = st;
       }
@@ -440,7 +442,7 @@ export class MissionRun {
         next = { ...this.build('failed', 'area-overrun') };
       } else {
         const requiredLeft = group.some((i) => !this.states[i]!.done && !this.def.objectives[i]!.optional);
-        if (completedNow && requiredLeft) {
+        if (checkpointNow && requiredLeft) {
           // A checkpoint at every completion: this stage, and which of it is done.
           this.checkpointObjective = group[0]!;
           this.checkpointDone = this.doneInStage();
@@ -450,9 +452,11 @@ export class MissionRun {
           if (this.stage + 1 < this.stages.length) {
             // Whatever optional objective was still open goes with the stage; the next stage's first objective is the checkpoint.
             for (const i of group) this.states[i] = { ...this.states[i]!, done: true };
-            this.checkpointObjective = this.stages[this.stage + 1]![0]!;
-            this.checkpointDone = [];
-            this.checkpointElapsedTicks = this.elapsedTicks;
+            if (checkpointNow) {
+              this.checkpointObjective = this.stages[this.stage + 1]![0]!;
+              this.checkpointDone = [];
+              this.checkpointElapsedTicks = this.elapsedTicks;
+            }
             next = this.open(this.stage + 1, [], this.attempt);
           } else {
             next = this.build('complete', undefined);

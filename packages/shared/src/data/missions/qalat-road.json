@@ -2,12 +2,51 @@
   "id": "qalat-road",
   "world": "qalat-road",
   "respawn": false,
+  "failure": {
+    "protectedGroup": "prisoner"
+  },
   "objectives": [
     {
       "type": "reach",
-      "area": "objective",
+      "stage": 0,
+      "area": "compound-ring",
       "who": "any",
-      "label": "Map preview: reach the compound"
+      "label": "Approach: reach the compound"
+    },
+    {
+      "type": "rescue",
+      "stage": 1,
+      "group": "prisoner",
+      "holdSeconds": 3,
+      "reachM": 2,
+      "label": "Free the prisoner"
+    },
+    {
+      "type": "destroy",
+      "stage": 1,
+      "group": "radio-operator",
+      "optional": true,
+      "checkpoint": false,
+      "label": "Silence the radio operator"
+    },
+    {
+      "type": "destroy",
+      "stage": 2,
+      "group": "tank",
+      "label": "Destroy the tank"
+    },
+    {
+      "type": "reach",
+      "stage": 2,
+      "area": {
+        "x": 0,
+        "z": -6,
+        "radius": 8
+      },
+      "who": "all",
+      "escort": true,
+      "checkpoint": false,
+      "label": "Extract with all seven standing"
     }
   ]
 }

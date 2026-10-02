@@ -999,6 +999,7 @@ export class Session {
   } | null = null;
   /** U-063: the prisoner a soldier is holding interact beside, or null. */
   private rescueTarget: number | null = null;
+  private rescueEscortTarget: number | null = null;
   /** U-061: the slots that were prisoners when this mission began: a restart goes back to exactly these. */
   private capturedAtStart: { slot: number; at: { x: number; y: number; z: number } }[] = [];
   /**
@@ -1160,7 +1161,14 @@ export class Session {
       terminal: () => {
         const run = this.missionRun;
         const up = run && this.roomStarted ? run.openUpload() : null;
-        return up && up.phase !== 'active' ? { ...up.def.terminal, reachM: up.def.reachM } : null;
+        if (up && up.phase !== 'active') return { ...up.def.terminal, reachM: up.def.reachM };
+        const rescue = run?.openObjectives().filter((o) => !o.done).map((o) => o.def).find((o) => o.type === 'rescue');
+        if (rescue?.type === 'rescue' && rescue.group) {
+          const ids = this.spawnerValue?.spawnedBy(rescue.group) ?? [];
+          const pow = this.enemyList.find((e) => ids.includes(e.netId) && e.captive && isAlive(e.health));
+          if (pow) return { x: pow.state.x, y: pow.state.y + 1, z: pow.state.z, reachM: rescue.reachM };
+        }
+        return null;
       },
       reachable: (from, to) => {
         const m = this.navMesh;
@@ -1405,7 +1413,7 @@ export class Session {
         const placed = spawner.spawnedBy(id);
         return { dead: spawner.dead(id), spawned: placed.length, down: placed.filter((n) => !alive(n)).length };
       },
-      rescue: (slot, reachM) => this.rescueHold(slot, reachM),
+      rescue: (slot, reachM, group) => this.rescueHold(slot, reachM, group),
     });
     // U-074: every objective that finished this tick (a stage can finish several at once).
     const finished = run.doneObjectives.filter((i) => !beforeDone.has(i));
@@ -1419,7 +1427,7 @@ export class Session {
         if (def.type === 'rescue') this.completeRescue();
       }
     }
-    if (run.current.state === 'progress' && finished.length > 0) this.requestCheckpoint(beforeCheckpoint);
+    if (run.current.state === 'progress' && finished.some((i) => run.objectiveDef(i).checkpoint !== false)) this.requestCheckpoint(beforeCheckpoint);
     else if (this.queuedCheckpoint && run.current.state === 'progress') this.takeQueuedCheckpoint();
     if (beforeState === 'progress' && run.current.state === 'complete') {
       // U-089: a replay does not move the campaign on.
@@ -1440,7 +1448,22 @@ export class Session {
    * prisoner to the first such soldier (in slot order) is the one being freed, and a change of prisoner starts the
    * hold over.
    */
-  private rescueHold(slot: number | null, reachM: number): { held: number; holding: { scale: number } | null } {
+  private rescueHold(slot: number | null, reachM: number, group?: string): { held: number; holding: { scale: number } | null } {
+    if (group) {
+      const ids = this.spawnerValue?.spawnedBy(group) ?? [];
+      const pow = this.enemyList.find((e) => ids.includes(e.netId) && e.def.friendly);
+      if (pow && !pow.captive) return { held: 0, holding: null };
+      const holder = pow && isAlive(pow.health) ? this.slots.find((s) => {
+        if (s.captured || !isAlive(s.health) || s.state.vault || !this.holdingInteract(s)) return false;
+        const eye = soldierEye(s.state);
+        const at = { x: pow.state.x, y: pow.state.y + 1, z: pow.state.z };
+        return Math.sqrt((eye.x - at.x) ** 2 + (eye.y - at.y) ** 2 + (eye.z - at.z) ** 2) <= reachM && lineOfSight(eye, at, this.collisionBoxes);
+      }) : undefined;
+      const target = holder ? pow!.netId : null;
+      const changed = target !== this.rescueEscortTarget;
+      this.rescueEscortTarget = target;
+      return { held: 1, holding: holder && !changed ? { scale: this.interactionScale(holder.index) } : null };
+    }
     const held = this.slots.filter((s) => s.captured && s.prisoner && (slot === null || s.index === slot));
     let target: Slot | null = null;
     let holder: Slot | null = null;
@@ -1470,6 +1493,12 @@ export class Session {
 
   /** U-063: the hold completed (or there was no one to free): free whoever it was held over. */
   private completeRescue(): void {
+    const escort = this.enemyList.find((e) => e.netId === this.rescueEscortTarget);
+    this.rescueEscortTarget = null;
+    if (escort) {
+      escort.captive = false;
+      this.escortOrder = { kind: 'follow', point: null };
+    }
     const target = this.rescueTarget;
     this.rescueTarget = null;
     if (target !== null) this.freeCharacter(target);
@@ -1633,7 +1662,7 @@ export class Session {
         .map((e) => ({
           netId: e.netId,
           archetype: e.def.id,
-          ...(e.def.friendly ? { captive: e.captive ?? false } : {}),
+          ...(e.def.friendly ? { captive: e.captive ?? false, escortOrder: structuredClone(this.escortOrder) } : {}),
           faction: e.faction,
           x: e.state.x,
           y: e.state.y,
@@ -1784,6 +1813,7 @@ export class Session {
       });
       if (netId === null) continue;
       const enemy = this.enemyList.find((x) => x.netId === netId)!;
+      if (enemy.def.friendly && e.escortOrder) this.escortOrder = structuredClone(e.escortOrder);
       enemy.health.current = Math.min(e.health, enemy.health.max);
       enemy.weaponState.ammo = e.ammo;
       enemy.pouch = [...e.pouch];
@@ -2023,6 +2053,7 @@ export class Session {
       this.hitboxes.forget(enemy.netId);
     }
     this.enemyList.length = 0;
+    this.escortOrder = { kind: 'follow', point: null };
     this.groups.clear();
     // U-010: nobody at the lever, nobody barred from it.
     this.leverUse = null;
@@ -2193,6 +2224,7 @@ export class Session {
     // U-061: captures made since the checkpoint are undone; those it had stand.
     this.applyCaptured(saved?.captured ?? this.capturedAtStart);
     this.rescueTarget = null;
+    this.rescueEscortTarget = null;
     run.retry();
     this.restoreEvents(saved, worldRestored);
     this.broadcastMission();
@@ -2218,6 +2250,7 @@ export class Session {
     // U-061: back to the prisoners the mission began with.
     this.applyCaptured(this.capturedAtStart);
     this.rescueTarget = null;
+    this.rescueEscortTarget = null;
     this.missionRun?.reset();
     this.eventRun?.reset();
     this.broadcastMission();
