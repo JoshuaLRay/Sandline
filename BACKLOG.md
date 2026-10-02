@@ -128,7 +128,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-092](docs/backlog/U-092.md) | Mission 1 level: the three-lane valley and the compound | Campaign design | P2 | DONE | — | [#274](https://github.com/JoshuaLRay/Sandline/pull/274); owner authorized assumed approval through U-095 |
 | [U-093](docs/backlog/U-093.md) | Mission 1 encounter: the garrison, the patrols and the tank's arrival | Campaign design | P2 | DONE | U-092 | [#275](https://github.com/JoshuaLRay/Sandline/pull/275); CI #1634 green |
 | [U-094](docs/backlog/U-094.md) | Mission 1 mission file and script: staged objectives, rescue and extraction | Campaign design | P2 | DONE | U-093 | [#276](https://github.com/JoshuaLRay/Sandline/pull/276); CI #1636 green |
-| [U-095](docs/backlog/U-095.md) | Mission 1 verification: the headless run and its completion baseline | Campaign design | P2 | DONE | U-094 | `task/U-095-qalat-verification`; proposed technical completion on green merge; owner playtest owed |
+| [U-095](docs/backlog/U-095.md) | Mission 1 verification: the headless run and its completion baseline | Campaign design | P2 | DONE | U-094 | [#277](https://github.com/JoshuaLRay/Sandline/pull/277); proposed technical completion on green merge; owner playtest owed |
 
 ## Existing work retained
 
