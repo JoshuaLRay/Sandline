@@ -1,0 +1,28 @@
+{
+  "world": "qalat-road",
+  "aliveCap": 1,
+  "probes": [
+    0.3,
+    1,
+    1.7
+  ],
+  "areas": {},
+  "groups": [
+    {
+      "id": "preview-placeholder",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 1
+        }
+      ],
+      "zone": "north-reserve",
+      "posture": {
+        "kind": "hold"
+      },
+      "trigger": {
+        "kind": "script"
+      }
+    }
+  ]
+}

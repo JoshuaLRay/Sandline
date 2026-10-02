@@ -355,3 +355,5 @@ Format: `T-<id> — <what changed>`
 - U-080 — Rebuilt procedural soldier/enemy anatomy with rounded shoulder sweeps, landmark faces, baggy cloth folds and a connected trouser fork; regenerated GLBs/manifest and captured production standing/crouched rigs. Visual acceptance remains in REVIEW.
 
 - U-080 — layered blouse/armour and fitted soft gear, shared modelled/painted cloth folds, refined face and extremities, and staggered low crouch. Regenerated soldier/fighter assets and added same-lighting comparison and posed review images.
+
+- U-092 — Added the Qalat Road three-lane valley map preview, kit compound, climbable terrace overlooks, fresh nav/cover and route/sight-line tests; owner visual acceptance pending.

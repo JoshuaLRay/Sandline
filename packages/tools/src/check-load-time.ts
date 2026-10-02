@@ -12,7 +12,8 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { chromium } from 'playwright';
 
 const PORT = 4173;
-const URL = `http://127.0.0.1:${PORT}/?mission`;
+const WORLD = process.env['SANDLINE_LOAD_WORLD'] ?? 'mission-01';
+const URL = `http://127.0.0.1:${PORT}/?mission&world=${encodeURIComponent(WORLD)}`;
 const PLAYABLE_LIMIT_MS = 30_000;
 const DOWNLOAD_BYTES_PER_SECOND = (4 * 1024 * 1024) / 8;
 const UPLOAD_BYTES_PER_SECOND = (1 * 1024 * 1024) / 8;

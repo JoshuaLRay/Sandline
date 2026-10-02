@@ -39,7 +39,7 @@ describe('the committed registry (U-073)', () => {
   });
 
   it('lists the lobby\'s maps in the order the entries ask, mission-01 first', () => {
-    expect(lobbyMaps().map((m) => m.world)).toEqual(['mission-01', 'greybox-01', 'range', 'kit-gallery']);
+    expect(lobbyMaps().map((m) => m.world)).toEqual(['mission-01', 'greybox-01', 'range', 'kit-gallery', 'qalat-road']);
     expect(lobbyMaps().every((m) => m.label.length > 0)).toBe(true);
   });
 });

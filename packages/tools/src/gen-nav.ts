@@ -39,6 +39,14 @@ for (const id of ids) {
   mesh.destroy();
   const counts = coverCounts(cover);
   const lines = Buffer.from(bytes).toString('base64').match(/.{1,100}/g) ?? [];
+  // Widen each bounded chunk before spreading it: large cover arrays otherwise
+  // make TypeScript infer thousands of literal variants and exceed its union limit.
+  const coverLines: string[] = [];
+  for (let offset = 0; offset < cover.length; offset += 256) {
+    const chunk = cover.slice(offset, offset + 256);
+    coverLines.push(`...([${chunk.map((c) => JSON.stringify(c)).join(',\n    ')}] as BakedNav['cover'])`);
+  }
+  const coverSource = cover.length > 1000 ? coverLines.join(',\n    ') : cover.map((c) => JSON.stringify(c)).join(',\n    ');
   const out = `${HEADER}
 import type { BakedNav } from './types.ts';
 
@@ -54,7 +62,7 @@ export const BAKED: BakedNav = {
   ].join(''),
   // T-3.18: ${counts.total} cover points, ${counts.low} low and ${counts.high} high.
   cover: [
-    ${cover.map((c) => JSON.stringify(c)).join(',\n    ')},
+    ${coverSource},
   ],
 };
 `;

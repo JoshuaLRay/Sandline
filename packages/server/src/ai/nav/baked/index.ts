@@ -4,12 +4,14 @@ import type { BakedNav } from './types.ts';
 import { BAKED as W0 } from './greybox-01.ts';
 import { BAKED as W1 } from './kit-gallery.ts';
 import { BAKED as W2 } from './mission-01.ts';
-import { BAKED as W3 } from './range.ts';
+import { BAKED as W3 } from './qalat-road.ts';
+import { BAKED as W4 } from './range.ts';
 
 /** Every committed bake, by world id. */
 export const BAKED_NAV: Readonly<Record<string, BakedNav>> = {
   'greybox-01': W0,
   'kit-gallery': W1,
   'mission-01': W2,
-  'range': W3,
+  'qalat-road': W3,
+  'range': W4,
 };

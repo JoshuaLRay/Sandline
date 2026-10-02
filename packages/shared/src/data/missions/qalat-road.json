@@ -1,0 +1,13 @@
+{
+  "id": "qalat-road",
+  "world": "qalat-road",
+  "respawn": false,
+  "objectives": [
+    {
+      "type": "reach",
+      "area": "objective",
+      "who": "any",
+      "label": "Map preview: reach the compound"
+    }
+  ]
+}

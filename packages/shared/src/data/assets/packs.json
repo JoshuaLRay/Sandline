@@ -18,9 +18,18 @@
     "weapon-sniper"
   ],
   "levels": {
-    "range": ["fighter"],
-    "greybox-01": ["fighter"],
-    "mission-01": ["fighter", "ground-dirt-4m", "ground-paving-4m", "ground-road-4m"],
+    "range": [
+      "fighter"
+    ],
+    "greybox-01": [
+      "fighter"
+    ],
+    "mission-01": [
+      "fighter",
+      "ground-dirt-4m",
+      "ground-paving-4m",
+      "ground-road-4m"
+    ],
     "kit-gallery": [
       "fighter",
       "concrete-barrier-2m",
@@ -48,6 +57,19 @@
       "wall-plaster-2m",
       "wall-plaster-4m",
       "wall-window-4m"
+    ],
+    "qalat-road": [
+      "fighter",
+      "crate-large",
+      "ground-dirt-4m",
+      "ground-paving-4m",
+      "ground-road-4m",
+      "roof-slab-4m",
+      "rubble-large",
+      "sandbags-2m",
+      "stairs-3m",
+      "wall-low-4m",
+      "wall-plaster-4m"
     ]
   }
 }
