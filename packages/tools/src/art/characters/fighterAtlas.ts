@@ -13,6 +13,7 @@
  */
 import { PNG } from 'pngjs';
 import { rng, tiledFbm, tiledNoise } from '../noise.ts';
+import { clothShade } from './garments.ts';
 import type { Region } from './skin.ts';
 
 export const FIGHTER_ATLAS_SIZE = 1024;
@@ -34,6 +35,7 @@ const PX = {
   sash: [640, 384, 128, 128],
   bandolier: [768, 256, 256, 128],
   sleeve: [768, 384, 256, 128],
+  sleeveRight: [0, 512, 256, 128],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 
 export type FighterRegion = keyof typeof PX;
@@ -134,9 +136,15 @@ const PAINT: Record<FighterRegion, Painter> = {
     return c;
   },
   sleeve(u, v, x, y) {
-    let c = cloth(u, v, x, y, 241, 5);
+    let c = shade(cloth(u, v, x, y, 241, 5), clothShade('sleeve', u, 1.515-v*.565));
     c = shade(c, seam(u, 0.5, 0.004));
     if (v > 0.9) c = shade(c, 0.84);
+    return c;
+  },
+  sleeveRight(u,v,x,y) {
+    let c=shade(cloth(u,v,x,y,241,5),clothShade('sleeve',u,1.515-v*.565,-1));
+    c=shade(c,seam(u,.5,.004));
+    if(v>.9)c=shade(c,.84);
     return c;
   },
   waistcoat(u, v, x, y) {

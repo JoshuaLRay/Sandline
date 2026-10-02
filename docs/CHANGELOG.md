@@ -353,3 +353,5 @@ Format: `T-<id> — <what changed>`
 - Docs — mission 1's build split into U-092 (level), U-093 (encounter), U-094 (mission file and script) and U-095 (verification); U-065 is their umbrella.
 
 - U-080 — Rebuilt procedural soldier/enemy anatomy with rounded shoulder sweeps, landmark faces, baggy cloth folds and a connected trouser fork; regenerated GLBs/manifest and captured production standing/crouched rigs. Visual acceptance remains in REVIEW.
+
+- U-080 — layered blouse/armour and fitted soft gear, shared modelled/painted cloth folds, refined face and extremities, and staggered low crouch. Regenerated soldier/fighter assets and added same-lighting comparison and posed review images.

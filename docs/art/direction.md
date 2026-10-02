@@ -42,7 +42,8 @@ physically based shine, no screen-space effects.
   the gloves, cargo pockets on the thighs, trousers bloused into the boots.
 - **Helmet:** PASGT, with a desert cover and the skirt lower at the sides
   and back. Goggles on the front, on their strap round the helmet.
-- **Vest:** Interceptor, in desert tan, with a collar and rows of MOLLE
+- **Vest:** Interceptor with a subdued woodland cloth cover over the DCU blouse,
+  separate fitted front/back panels and visible side closures, with a collar and rows of MOLLE
   webbing. Three magazine pouches across the belly, a radio pouch high on
   the left, grenade pouches on the right.
 - **Pack:** a tan three-day pack.
@@ -94,3 +95,16 @@ physically based shine, no screen-space effects.
    play). The question is: "does it read as 2002 at its best?"
 3. The answer is a list of what's wrong. The generator changes and CI
    rebuilds.
+
+### U-080 garment and equipment refinement
+
+The reference asks for irregular dressed silhouettes rather than clean geometric
+shells. The current generator samples named compression/hanging folds in metres
+for both cloth geometry and diffuse shading (`garments.ts`). Blouse, curved
+armour panels, side closures and staggered pouches are separate fitted layers
+(`equipment.ts`); fingers, boot tongues and lace runs are modelled. A subdued
+woodland armour cover over the desert uniform retains the campaign setting while
+breaking up the previously plain vest. The low crouch is staggered, with a lowered
+rear knee, using the existing skeleton and authoritative crouch state. Visual
+acceptance still requires the owner's comparison; CI does not establish a
+near-zero difference from a screenshot.

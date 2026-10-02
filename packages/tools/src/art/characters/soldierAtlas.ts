@@ -18,6 +18,7 @@
  */
 import { PNG } from 'pngjs';
 import { rng, tiledFbm, tiledNoise } from '../noise.ts';
+import { clothShade } from './garments.ts';
 import type { Region } from './skin.ts';
 
 export const SOLDIER_ATLAS_SIZE = 1024;
@@ -40,6 +41,8 @@ const PX = {
   goggle: [896, 256, 128, 128],
   strap: [768, 384, 128, 128],
   cuff: [896, 384, 128, 128],
+  sleeve: [0, 512, 256, 256],
+  sleeveRight: [256, 512, 256, 256],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 
 export type RegionName = keyof typeof PX;
@@ -60,7 +63,7 @@ const grain = (x: number, y: number, seed: number): number => rng((x * 73856093)
 /* -- Materials ---------------------------------------------------------------- */
 
 const DCU = { tan: [190, 177, 150] as Rgb, khaki: [153, 151, 123] as Rgb, brown: [128, 111, 88] as Rgb };
-const NYLON: Rgb = [146, 139, 111];
+const NYLON: Rgb = [126, 130, 96];
 const SKIN: Rgb = [182, 143, 113];
 
 /**
@@ -78,14 +81,11 @@ function dcu(u: number, v: number, x: number, y: number, seed: number, scale: nu
   // Weave, and creases running down the cloth.
   const weave = ((x + y) % 2) * 0.03;
   const crease = tiledNoise(seed + 77, u * 18, v * 3, 18);
-  // Broad painted form shadows survive game distance; diagonal folds soften
-  // the cylindrical limbs without a normal map or extra material.
-  const round = 0.82 + 0.18 * Math.abs(Math.cos(u * Math.PI * 2));
-  const folds = Math.sin(v * 39 + Math.sin(u * 12) * 2.5);
-  const foldShade = 1 - Math.max(0, folds) ** 8 * 0.14;
+  // Broad form shading; landmark folds are sampled by each garment painter.
+  const round = 0.84 + 0.16 * Math.abs(Math.cos(u * Math.PI * 2));
   const dust = 1 - Math.max(0, v - 0.72) * 0.16;
   const g = grain(x, y, seed);
-  return shade(c, (0.94 + weave + (crease - 0.5) * 0.18 + (g - 0.5) * 0.05) * round * foldShade * dust);
+  return shade(c, (0.94 + weave + (crease - 0.5) * 0.18 + (g - 0.5) * 0.05) * round * dust);
 }
 
 /** A seam: a darker line with a pale stitch row beside it, `at` in [0, 1] across `t`. */
@@ -104,14 +104,14 @@ const PAINT: Record<RegionName, Painter> = {
     const adu = Math.abs(du);
     const hy = 1.85 - v * 0.32; // model height of this texel's ring
     // Weathered skin, warmer on the cheeks, cooler and darker toward the sides.
-    let c = shade(SKIN, 0.9 + tiledNoise(3, u * 6, v * 6, 6) * 0.08 + (g - 0.5) * 0.05 - adu * 0.2);
+    let c = shade(SKIN, 0.82 + tiledNoise(3, u * 6, v * 6, 6) * 0.08 + (g - 0.5) * 0.05 - adu * 0.2);
     const soft = (d: number, r: number): number => Math.max(0, 1 - d / r) ** 2;
     // Warmth on the cheeks, in soft ovals.
     for (const side of [-1, 1]) c = mix(c, [206, 132, 104], 0.08 * soft(Math.sqrt(((du - side * 0.07) / 0.06) ** 2 + ((hy - 1.638) / 0.03) ** 2), 1));
     // Short dark hair at the back and sides above the ears; stubble on the jaw and lip.
     if (adu > 0.21 && hy > 1.64) c = mix(c, [62, 50, 40], 0.8 + g * 0.2);
     // Stubble thickens toward the jaw line and fades up the cheek.
-    if (adu < 0.21) c = mix(c, [110, 88, 72], (0.22 + g * 0.16) * Math.min(1, Math.max(0, (1.625 - hy) / 0.03)) * Math.min(1, Math.max(0, (hy - 1.545) / 0.02)));
+    if (adu < 0.21) c = mix(c, [83, 75, 65], (0.32 + g * 0.16) * Math.min(1, Math.max(0, (1.625 - hy) / 0.03)) * Math.min(1, Math.max(0, (hy - 1.545) / 0.02)));
     // Ears in shadow, the inner ear darker.
     if (Math.abs(adu - 0.25) < 0.03 && hy > 1.63 && hy < 1.7) c = shade(c, Math.abs(adu - 0.25) < 0.012 ? 0.68 : 0.86);
     // The brow ridge's shadow falls softly over each eye.
@@ -120,7 +120,7 @@ const PAINT: Record<RegionName, Painter> = {
       const hyE = hy - 1.672;
       // Eye socket in shadow, a small narrowed eye, a dark iris, the lid line above.
       c = shade(c, 1 - 0.32 * soft(Math.sqrt((ex / 0.04) ** 2 + ((hyE - 0.003) / 0.02) ** 2), 1));
-      if ((ex / 0.015) ** 2 + (hyE / 0.0025) ** 2 < 1) c = [151, 137, 119];
+      if ((ex / 0.013) ** 2 + (hyE / 0.0025) ** 2 < 1) c = [126, 117, 104];
       if ((ex / 0.0065) ** 2 + (hyE / 0.0028) ** 2 < 1) c = [52, 40, 32];
       if (Math.abs(ex) < 0.019 && Math.abs(hyE - 0.003) < 0.0018) c = [78, 56, 44];
       if (Math.abs(ex) < 0.03 && Math.abs(hy - 1.69 + ex * ex * 5) < 0.0035) c = mix(c, [58, 44, 34], 0.85);
@@ -151,12 +151,25 @@ const PAINT: Record<RegionName, Painter> = {
     return c;
   },
   blouse(u, v, x, y) {
-    let c = dcu(u, v, x, y, 41, 6);
+    let c = dcu(u, v, x, y, 41, 10);
+    c = shade(c, clothShade('blouse', u, 1.505 - v * .525));
     c = shade(c, seam(u, 0.25, 0.004) * seam(u, 0.75, 0.004));
     return c;
   },
+  sleeve(u,v,x,y) {
+    let c=dcu(u,v,x,y,43,5);
+    c=shade(c,clothShade('sleeve',u,1.515-v*.565));
+    return shade(c,seam(u,.25,.004)*seam(u,.75,.004));
+  },
+  sleeveRight(u,v,x,y) {
+    let c=dcu(u,v,x,y,43,5);
+    c=shade(c,clothShade('sleeve',u,1.515-v*.565,-1));
+    return shade(c,seam(u,.25,.004)*seam(u,.75,.004));
+  },
   trousers(u, v, x, y) {
-    let c = dcu(u, v, x, y, 61, 6);
+    let c = dcu(u, v, x, y, 61, 10);
+    const side = u < .5 ? -1 : 1;
+    c = shade(c, clothShade('trousers', (u * 2) % 1, .985 - v * .775, side));
     // Side seams, and the knee darkened by wear.
     c = shade(c, seam(u, 0.25, 0.004) * seam(u, 0.75, 0.004));
     if (Math.abs(v - 0.55) < 0.06 && Math.abs(u - 0.5) < 0.18) c = shade(c, 0.9);
@@ -165,7 +178,12 @@ const PAINT: Record<RegionName, Painter> = {
   vest(u, v, x, y) {
     // Interceptor outer tactical vest: tan nylon, MOLLE rows across the front and back, the side opening.
     const g = grain(x, y, 81);
-    let c = shade(NYLON, 0.9 + tiledNoise(83, u * 8, v * 8, 8) * 0.12 + (g - 0.5) * 0.05);
+    let c = shade(NYLON, 0.82 + tiledNoise(83, u * 8, v * 8, 8) * 0.12 + (g - 0.5) * 0.05);
+    // Worn cloth armour cover: subdued woodland over the desert blouse.
+    const patch=tiledFbm(84,u*7,v*7,7,2);
+    if(patch>.58)c=mix(c,[76,86,61],.72);
+    if(patch<.36)c=mix(c,[97,80,59],.72);
+    if(tiledNoise(86,u*12,v*12,12)>.70)c=mix(c,[49,53,43],.48);
     const row = (v * 9) % 1;
     const molle = v > 0.18 && v < 0.85 && row < 0.22 && Math.abs(Math.abs(u - 0.5) - 0.25) > 0.07;
     if (molle) c = shade(c, row < 0.04 || row > 0.18 ? 0.72 : 1.05);
@@ -174,6 +192,9 @@ const PAINT: Record<RegionName, Painter> = {
     c = shade(c, 0.84 + 0.16 * Math.abs(Math.cos(u * Math.PI * 2)));
     if (v < 0.08) c = shade(c, 0.85);
     if (v > 0.94) c = shade(c, 0.78);
+    c=shade(c,seam(u,.025,.005)*seam(u,.975,.005));
+    const crease=Math.exp(-(((v-.76+(u-.5)*.15)/.025)**2));
+    c=shade(c,1-.15*crease);
     // The side closures, darker.
     if (Math.abs(Math.abs(u - 0.5) - 0.25) < 0.02) c = shade(c, 0.75);
     return c;

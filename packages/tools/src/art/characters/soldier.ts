@@ -27,6 +27,7 @@ import { HUMANOID_BONES, type HumanoidBoneName } from '../../../../client/src/ch
 import { JOINTS } from '../../../../client/src/character/humanoidSoldier.ts';
 import { type BuiltSkin, type Ring, SkinBuilder } from './skin.ts';
 import { anatomicalHead, anatomicalSleeve, buildTrouserFork } from './anatomy.ts';
+import { buildLayeredTorso, softPouch } from './equipment.ts';
 import { region } from './soldierAtlas.ts';
 
 const B = (name: HumanoidBoneName): number => HUMANOID_BONES.indexOf(name);
@@ -37,16 +38,7 @@ const blend = (a: HumanoidBoneName, b: HumanoidBoneName, t: number): W => [
   [B(b), t],
 ];
 
-/** Rings for a pouch, a box with rounded corners and bevelled top and bottom edges. */
-function pouchRings(cx: number, cz: number, top: number, bottom: number, rx: number, rz: number, bones: W): Ring[] {
-  const bev = Math.min(0.012, (top - bottom) / 4);
-  return [
-    { y: top, cx, cz, rx: rx - bev, rzF: rz - bev, n: 4, bones },
-    { y: top - bev, cx, cz, rx, rzF: rz, n: 4, bones },
-    { y: bottom + bev, cx, cz, rx, rzF: rz, n: 4, bones },
-    { y: bottom, cx, cz, rx: rx - bev, rzF: rz - bev, n: 4, bones },
-  ];
-}
+const pouchRings = softPouch;
 
 /** Equipment thickness factors retained from the intermediate U-080 pass.
  * Human anatomy/cloth now comes from shared shaped surfaces, not these multipliers. */
@@ -116,30 +108,23 @@ export function buildDetailedSoldier(): BuiltSkin {
     { sides: 8, region: R('strap'), arc: [0.9, 1.1], material: 1 },
   );
 
-  // -- Interceptor vest ------------------------------------------------------
-  b.loft(
-    bulk([
-      { y: 1.5, rx: 0.088, rzF: 0.088, rzB: 0.078, bones: only('chest') },
-      { y: 1.475, rx: 0.11, rzF: 0.1, rzB: 0.094, bones: only('chest') },
-      { y: 1.455, rx: 0.162, rzF: 0.125, rzB: 0.12, n: 2.05, bones: only('chest') },
-      { y: 1.38, rx: 0.183, rzF: 0.148, rzB: 0.138, n: 2.15, bones: only('chest') },
-      { y: 1.26, rx: 0.177, rzF: 0.155, rzB: 0.14, n: 2.2, bones: blend('chest', 'spine', 0.3) },
-      { y: 1.14, rx: 0.157, rzF: 0.146, rzB: 0.134, n: 2.2, bones: blend('spine', 'chest', 0.4) },
-      { y: 1.03, rx: 0.15, rzF: 0.138, rzB: 0.13, n: 2.2, bones: blend('spine', 'hips', 0.5) },
-      { y: 0.985, rx: 0.15, rzF: 0.132, rzB: 0.127, n: 2.2, bones: blend('hips', 'spine', 0.4) },
-    ], BULK.torso),
-    { sides: 22, region: R('vest') },
-  );
-  // Three magazine pouches across the belly, a radio pouch high on the left, two grenade pouches on the right.
-  for (const x of [-0.085, 0, 0.085]) b.loft(pouchRings(x, 0.174, 1.15, 1.03, 0.038, 0.03, blend('spine', 'chest', 0.4)), { sides: 12, region: R('pouch'), capTop: true, capBottom: true });
-  b.loft(pouchRings(0.095, 0.18, 1.36, 1.23, 0.034, 0.028, only('chest')), { sides: 12, region: R('pouch'), capTop: true, capBottom: true });
-  for (const y of [1.33, 1.26]) b.loft(pouchRings(-0.1, 0.177, y, y - 0.055, 0.028, 0.025, only('chest')), { sides: 10, region: R('pouch'), capTop: true, capBottom: true });
+  // -- Layered blouse, fitted front/back armour and side closures -----------
+  buildLayeredTorso(b);
+  // Staggered gear sits on the curved panel, rather than on one flat plane.
+  for (const [i,x] of [-.095,-.012,.077].entries()) {
+    const depth = .174 - Math.abs(x) * .12;
+    const top = 1.21 - i * .016;
+    b.loft(pouchRings(x,depth,top,top-.15,.038,.033,blend('spine','chest',.55),i),
+      {sides:12,region:R('pouch'),capTop:true,capBottom:true});
+  }
+  b.loft(pouchRings(.107,.145,1.40,1.265,.034,.028,only('chest'),4),{sides:12,region:R('pouch'),capTop:true,capBottom:true});
+  for (const [i,y] of [1.375,1.302].entries()) b.loft(pouchRings(-.108,.147,y,y-.065,.029,.028,only('chest'),i+5),{sides:10,region:R('pouch'),capTop:true,capBottom:true});
   // The three-day pack on the back.
   b.loft(
     [
-      { y: 1.44, cz: -0.2, rx: 0.115, rzF: 0.045, rzB: 0.045, n: 4, bones: only('chest') },
-      { y: 1.41, cz: -0.2, rx: 0.135, rzF: 0.058, rzB: 0.062, n: 2.6, bones: only('chest') },
-      { y: 1.2, cz: -0.2, rx: 0.145, rzF: 0.062, rzB: 0.078, n: 2.6, bones: blend('chest', 'spine', 0.3) },
+      { y: 1.44, cz: -0.188, rx: 0.105, rzF: 0.045, rzB: 0.045, n: 2.4, bones: only('chest') },
+      { y: 1.41, cz: -0.188, rx: 0.125, rzF: 0.058, rzB: 0.062, n: 2.3, bones: only('chest') },
+      { y: 1.2, cz: -0.191, rx: 0.137, rzF: 0.062, rzB: 0.078, n: 2.6, bones: blend('chest', 'spine', 0.3) },
       { y: 1.08, cz: -0.195, rx: 0.13, rzF: 0.056, rzB: 0.062, n: 2.6, bones: blend('spine', 'chest', 0.4) },
       { y: 1.05, cz: -0.19, rx: 0.115, rzF: 0.045, rzB: 0.048, n: 4, bones: blend('spine', 'chest', 0.4) },
     ],
@@ -149,7 +134,7 @@ export function buildDetailedSoldier(): BuiltSkin {
   // Pack pockets and shoulder webbing break up the formerly flat slab.
   b.loft(pouchRings(0, -0.278, 1.28, 1.09, 0.083, 0.025, blend('chest', 'spine', 0.3)), { sides: 12, region: R('pouch'), capTop: true, capBottom: true });
   for (const s of [-1, 1]) {
-    b.loft(pouchRings(s * 0.13, -0.19, 1.34, 1.17, 0.035, 0.045, only('chest')), { sides: 12, region: R('pouch'), capTop: true, capBottom: true });
+    b.loft(pouchRings(s * 0.13, -0.19, 1.34 - (s > 0 ? .045 : 0), 1.17 - (s > 0 ? .025 : 0), 0.035, 0.045, only('chest')), { sides: 12, region: R('pouch'), capTop: true, capBottom: true });
     b.loft([
       { y: 1.475, cx: s * 0.11, cz: 0.082, rx: 0.023, rzF: 0.025, n: 3, bones: only('chest') },
       { y: 1.41, cx: s * 0.13, cz: 0.153, rx: 0.022, rzF: 0.012, n: 3, bones: only('chest') },
@@ -199,6 +184,23 @@ export function buildDetailedSoldier(): BuiltSkin {
     );
   }
 
+  // Tongue, welt and lace runs follow each boot's instep in model space.
+  for (const s of [-1,1] as const) {
+    const side=s>0?'left':'right';
+    const cx=JOINTS[`upper-leg-${side}`][0];
+    b.loft([
+      {y:.235,cx,cz:.071,rx:.029,rzF:.006,n:3,bones:only(`lower-leg-${side}`)},
+      {y:.16,cx,cz:.086,rx:.028,rzF:.006,n:3,bones:blend(`lower-leg-${side}`,`foot-${side}`,.6)},
+      {y:.09,cx,cz:.136,rx:.035,rzF:.006,n:3,bones:only(`foot-${side}`)},
+    ],{sides:8,region:R('boot'),capTop:true,capBottom:true});
+    for (let i=0;i<5;i++) {
+      const y=.21-i*.022, z=.078+i*.009;
+      b.loft([{y:y+.004,cx,cz:z,rx:.026,rzF:.003,n:3,bones:blend(`lower-leg-${side}`,`foot-${side}`,i/4)},
+        {y:y-.004,cx,cz:z+.003,rx:.026,rzF:.003,n:3,bones:blend(`lower-leg-${side}`,`foot-${side}`,i/4)}],
+        {sides:8,region:R('strap'),capTop:true,capBottom:true});
+    }
+  }
+
   // -- Arms, cuffs, the armband, gloved hands -------------------------------
   for (const s of [1, -1] as const) {
     const side = s > 0 ? 'left' : 'right';
@@ -206,36 +208,37 @@ export function buildDetailedSoldier(): BuiltSkin {
     const lower = `lower-arm-${side}` as const;
     const hand = `hand-${side}` as const;
     const cx = JOINTS[upper][0];
-    b.loft(anatomicalSleeve(s), { sides: 20, region: R('blouse'), capTop: true });
+    b.loft(anatomicalSleeve(s), { sides: 20, region: R(s > 0 ? 'sleeve' : 'sleeveRight'), capTop: true, vByHeight: true });
     // The cuff, rolled over the glove's top.
     b.loft(
       bulk([
-        { y: 0.96, cx, rx: 0.048, rzF: 0.048, bones: only(lower) },
+        { y: 0.96, cx, rx: 0.046, rzF: 0.046, bones: only(lower) },
         { y: 0.91, cx, rx: 0.046, rzF: 0.046, bones: blend(lower, hand, 0.3) },
       ], BULK.arms),
       { sides: 12, region: R('cuff') },
     );
     if (s > 0) {
-      b.loft(
-        bulk([
-          { y: 1.36, cx, rx: 0.066, rzF: 0.068, bones: only(upper) },
-          { y: 1.3, cx, rx: 0.064, rzF: 0.066, bones: only(upper) },
-        ], BULK.arms),
-        { sides: 12, region: R('strap'), material: 1 },
-      );
+      // The marking follows the same shaped sleeve, so cloth crests do not
+      // poke through a rigid cylindrical armband.
+      const band = anatomicalSleeve(s).filter(r => r.y <= 1.36 && r.y >= 1.30)
+        .map(r => ({...r, rx:r.rx+.002, rzF:r.rzF+.002, rzB:(r.rzB ?? r.rzF)+.002}));
+      b.loft(band,{sides:20,region:R('strap'),material:1});
     }
-    // The hand hangs palm-in: thin across x, long along z.
-    b.loft(
-      bulk([
-        { y: 0.915, cx, rx: 0.038, rzF: 0.04, bones: blend(lower, hand, 0.4) },
-        { y: 0.86, cx, rx: 0.03, rzF: 0.05, rzB: 0.042, n: 2.6, bones: only(hand) },
-        { y: 0.8, cx, cz: 0.004, rx: 0.026, rzF: 0.054, rzB: 0.044, n: 3, bones: only(hand) },
-        { y: 0.76, cx, cz: 0.006, rx: 0.024, rzF: 0.05, rzB: 0.04, n: 3, bones: only(hand) },
-        { y: 0.71, cx, cz: 0.008, rx: 0.02, rzF: 0.042, rzB: 0.032, n: 2.6, bones: only(hand) },
-        { y: 0.69, cx, cz: 0.008, rx: 0.014, rzF: 0.03, rzB: 0.022, bones: only(hand) },
-      ], BULK.hands),
-      { sides: 12, region: R('glove'), capBottom: true },
-    );
+    // Palm and four rounded fingers; the thumb is a separate opposable form.
+    b.loft([
+      {y:.92,cx,rx:.031,rzF:.035,bones:blend(lower,hand,.5)},
+      {y:.875,cx,rx:.024,rzF:.048,rzB:.037,n:2.4,bones:only(hand)},
+      {y:.815,cx,rx:.024,rzF:.049,rzB:.037,n:2.5,bones:only(hand)},
+    ],{sides:12,region:R('glove'),capBottom:true});
+    for (let finger=0;finger<4;finger++) {
+      const z=-.026+finger*.021;
+      const end=.745+Math.abs(finger-1.3)*.009;
+      b.loft([
+        {y:.83,cx,cz:z,rx:.021,rzF:.010,bones:only(hand)},
+        {y:.79,cx:cx-s*.006,cz:z+.003,rx:.019,rzF:.0095,bones:only(hand)},
+        {y:end,cx:cx-s*.011,cz:z+.006,rx:.012,rzF:.008,bones:only(hand)},
+      ],{sides:8,region:R('glove'),capBottom:true});
+    }
     // The thumb, forward and toward the body.
     const tx = cx - s * 0.014;
     b.loft(

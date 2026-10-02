@@ -197,7 +197,7 @@ function cloth(): BuiltSkin {
   }
   // The sleeves: loose to the wrist.
   for (const s of [1, -1] as const) {
-    b.loft(anatomicalSleeve(s, 1.03), { sides: 20, region: R('sleeve'), capTop: true });
+    b.loft(anatomicalSleeve(s, 1.03), { sides: 20, region: R(s > 0 ? 'sleeve' : 'sleeveRight'), capTop: true, vByHeight: true });
   }
   return b.build();
 }
