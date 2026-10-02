@@ -25,6 +25,10 @@ import GREYBOX_01_ENCOUNTER from '../data/encounters/greybox-01.json' with { typ
 import MISSION_01_ENCOUNTER from '../data/encounters/mission-01.json' with { type: 'json' };
 import MISSION_01_SCRIPT from '../data/scripts/mission-01.json' with { type: 'json' };
 
+import QALAT_LEVEL from '../data/levels/qalat-road.json' with { type: 'json' };
+import QALAT_MISSION from '../data/missions/qalat-road.json' with { type: 'json' };
+import QALAT_ENCOUNTER from '../data/encounters/qalat-road.json' with { type: 'json' };
+
 /** One world and what plays on it. Everything but `id` and `world` is optional: the range has no mission. */
 export interface CampaignEntry {
   /** The world's id; also the key a mission, encounter and script are found by. */
@@ -57,6 +61,13 @@ export const COMMITTED: readonly CampaignEntry[] = [
     encounter: MISSION_01_ENCOUNTER,
     script: MISSION_01_SCRIPT,
     lobby: { label: 'Mission 01 — clear and hold the qalat', order: 0 },
+  },
+  {
+    id: 'qalat-road',
+    world: { kind: 'level', raw: QALAT_LEVEL },
+    mission: QALAT_MISSION,
+    encounter: QALAT_ENCOUNTER,
+    lobby: { label: 'The Qalat Road — valley map preview', order: 4 },
   },
 ];
 

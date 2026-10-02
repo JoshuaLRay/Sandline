@@ -72,3 +72,9 @@ encounter and script tables and the lobby's map list are all built from that lis
 
 `packages/shared/src/sim/campaignRegistry.test.ts` shows the shape: a throwaway mission built from copies of mission-01's
 files under another id goes through every builder with no other edit.
+
+### Qalat Road map preview (U-092)
+
+Choose **The Qalat Road — valley map preview** in the lobby, or open `?mission&world=qalat-road`. The 120 × 200 m valley is registered as `qalat-road`; its encounter is inert and its reach objective is a preview placeholder for U-093/U-094. Start and extraction are at `(0, -6)`, compound centre `(0, 182)`. West riverbed is centred on x=-40, road on x=0 (x=8 after the northern bend), and east terraces on x=40. The three climbable overlooks are at `(40, 60)`, `(40, 114)` and `(40, 164)`, height 3.25 m. Walk each lane north and south and inspect the road from the MG, the east gate from the upper terrace, and the northern road bend.
+
+`SANDLINE_LOAD_WORLD=qalat-road pnpm check:load-time` runs the production preview under the standard 4 Mbit/s, 30 s budget; the streaming CI job covers both the slice and this map. `pnpm exec tsx packages/tools/src/level-check.ts` writes review renders for all registered levels. Owner visual acceptance is still pending; this is a map preview, not the completed campaign mission.

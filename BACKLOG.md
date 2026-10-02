@@ -125,7 +125,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-089](docs/backlog/U-089.md) | Run kinds in the campaign file, and separate prisoner pools | Campaign design | P2 | DONE | — | [#260](https://github.com/JoshuaLRay/Sandline/pull/260) |
 | [U-090](docs/backlog/U-090.md) | The host chooses the next run; briefing, debrief and the handoff | Campaign design | P2 | DONE | U-089 | [#261](https://github.com/JoshuaLRay/Sandline/pull/261) |
 | [U-091](docs/backlog/U-091.md) | Spectate the escorted character | Campaign design | P3 | DONE | U-075 | [#267](https://github.com/JoshuaLRay/Sandline/pull/267) |
-| [U-092](docs/backlog/U-092.md) | Mission 1 level: the three-lane valley and the compound | Campaign design | P2 | READY | — | — |
+| [U-092](docs/backlog/U-092.md) | Mission 1 level: the three-lane valley and the compound | Campaign design | P2 | REVIEW | — | [#274](https://github.com/JoshuaLRay/Sandline/pull/274) (owner look pending) |
 | [U-093](docs/backlog/U-093.md) | Mission 1 encounter: the garrison, the patrols and the tank's arrival | Campaign design | P2 | BLOCKED | U-092 | — |
 | [U-094](docs/backlog/U-094.md) | Mission 1 mission file and script: staged objectives, rescue and extraction | Campaign design | P2 | BLOCKED | U-093 | — |
 | [U-095](docs/backlog/U-095.md) | Mission 1 verification: the headless run and its completion baseline | Campaign design | P2 | BLOCKED | U-094 | — |

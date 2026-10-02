@@ -137,7 +137,7 @@ describe('T-4.11 level validation', () => {
       const reports = await checkAllLevels({
         renderDir: outDir,
       });
-      expect(reports.map((r) => r.id)).toEqual(['greybox-01', 'kit-gallery', 'mission-01']);
+      expect(reports.map((r) => r.id)).toEqual(['greybox-01', 'kit-gallery', 'mission-01', 'qalat-road']);
       for (const report of reports) {
         expect(report.issues, report.id + ': ' + JSON.stringify(report.issues)).toEqual([]);
         expect(report.renders).toBeDefined();

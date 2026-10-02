@@ -1,0 +1,4382 @@
+{
+  "id": "qalat-road",
+  "format": 1,
+  "$comment": "U-092: 120 x 200 m (24,000 m\u00b2) first-cut valley. West riverbed, open centre road and bend, east terraced fields and climbable 3.25 m overlooks. South spawn/extraction loop, north compound with side gates. Mission and encounter are explicitly inert U-093/U-094 placeholders.",
+  "floor": {
+    "halfWidth": 64,
+    "halfDepth": 202
+  },
+  "boxes": [],
+  "pieces": [
+    {
+      "id": "west-edge-0",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": -8,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-4",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": -4,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-8",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 0,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-12",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 4,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-16",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 8,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-20",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 12,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-24",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 16,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-28",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 20,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-32",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 24,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-36",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 28,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-40",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 32,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-44",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 36,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-48",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 40,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-52",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 44,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-56",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 48,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-60",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 52,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-64",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 56,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-68",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 60,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-72",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 64,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-76",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 68,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-80",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 72,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-84",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 76,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-88",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 80,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-92",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 84,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-96",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 88,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-100",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 92,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-104",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 96,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-108",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 100,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-112",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 104,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-116",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 108,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-120",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 112,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-124",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 116,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-128",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 120,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-132",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 124,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-136",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 128,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-140",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 132,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-144",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 136,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-148",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 140,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-152",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 144,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-156",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 148,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-160",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 152,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-164",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 156,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-168",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 160,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-172",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 164,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-176",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 168,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-180",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 172,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-184",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 176,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-188",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 180,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-192",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 184,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-196",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 188,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-200",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 192,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "west-edge-204",
+      "piece": "wall-plaster-4m",
+      "x": -60,
+      "z": 196,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-0",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": -8,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-4",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": -4,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-8",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 0,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-12",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 4,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-16",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 8,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-20",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 12,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-24",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 16,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-28",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 20,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-32",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 24,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-36",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 28,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-40",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 32,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-44",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 36,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-48",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 40,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-52",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 44,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-56",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 48,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-60",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 52,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-64",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 56,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-68",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 60,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-72",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 64,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-76",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 68,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-80",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 72,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-84",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 76,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-88",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 80,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-92",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 84,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-96",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 88,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-100",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 92,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-104",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 96,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-108",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 100,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-112",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 104,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-116",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 108,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-120",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 112,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-124",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 116,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-128",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 120,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-132",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 124,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-136",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 128,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-140",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 132,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-144",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 136,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-148",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 140,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-152",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 144,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-156",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 148,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-160",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 152,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-164",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 156,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-168",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 160,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-172",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 164,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-176",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 168,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-180",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 172,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-184",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 176,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-188",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 180,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-192",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 184,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-196",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 188,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-200",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 192,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "east-edge-204",
+      "piece": "wall-plaster-4m",
+      "x": 60,
+      "z": 196,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "north-edge-0",
+      "piece": "wall-plaster-4m",
+      "x": -58,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-0",
+      "piece": "wall-plaster-4m",
+      "x": -58,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-4",
+      "piece": "wall-plaster-4m",
+      "x": -54,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-4",
+      "piece": "wall-plaster-4m",
+      "x": -54,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-8",
+      "piece": "wall-plaster-4m",
+      "x": -50,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-8",
+      "piece": "wall-plaster-4m",
+      "x": -50,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-12",
+      "piece": "wall-plaster-4m",
+      "x": -46,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-12",
+      "piece": "wall-plaster-4m",
+      "x": -46,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-16",
+      "piece": "wall-plaster-4m",
+      "x": -42,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-16",
+      "piece": "wall-plaster-4m",
+      "x": -42,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-20",
+      "piece": "wall-plaster-4m",
+      "x": -38,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-20",
+      "piece": "wall-plaster-4m",
+      "x": -38,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-24",
+      "piece": "wall-plaster-4m",
+      "x": -34,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-24",
+      "piece": "wall-plaster-4m",
+      "x": -34,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-28",
+      "piece": "wall-plaster-4m",
+      "x": -30,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-28",
+      "piece": "wall-plaster-4m",
+      "x": -30,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-32",
+      "piece": "wall-plaster-4m",
+      "x": -26,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-32",
+      "piece": "wall-plaster-4m",
+      "x": -26,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-36",
+      "piece": "wall-plaster-4m",
+      "x": -22,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-36",
+      "piece": "wall-plaster-4m",
+      "x": -22,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-40",
+      "piece": "wall-plaster-4m",
+      "x": -18,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-40",
+      "piece": "wall-plaster-4m",
+      "x": -18,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-44",
+      "piece": "wall-plaster-4m",
+      "x": -14,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-44",
+      "piece": "wall-plaster-4m",
+      "x": -14,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-48",
+      "piece": "wall-plaster-4m",
+      "x": -10,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-48",
+      "piece": "wall-plaster-4m",
+      "x": -10,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-52",
+      "piece": "wall-plaster-4m",
+      "x": -6,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-52",
+      "piece": "wall-plaster-4m",
+      "x": -6,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-56",
+      "piece": "wall-plaster-4m",
+      "x": -2,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-56",
+      "piece": "wall-plaster-4m",
+      "x": -2,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-60",
+      "piece": "wall-plaster-4m",
+      "x": 2,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-60",
+      "piece": "wall-plaster-4m",
+      "x": 2,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-64",
+      "piece": "wall-plaster-4m",
+      "x": 6,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-64",
+      "piece": "wall-plaster-4m",
+      "x": 6,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-68",
+      "piece": "wall-plaster-4m",
+      "x": 10,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-68",
+      "piece": "wall-plaster-4m",
+      "x": 10,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-72",
+      "piece": "wall-plaster-4m",
+      "x": 14,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-72",
+      "piece": "wall-plaster-4m",
+      "x": 14,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-76",
+      "piece": "wall-plaster-4m",
+      "x": 18,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-76",
+      "piece": "wall-plaster-4m",
+      "x": 18,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-80",
+      "piece": "wall-plaster-4m",
+      "x": 22,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-80",
+      "piece": "wall-plaster-4m",
+      "x": 22,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-84",
+      "piece": "wall-plaster-4m",
+      "x": 26,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-84",
+      "piece": "wall-plaster-4m",
+      "x": 26,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-88",
+      "piece": "wall-plaster-4m",
+      "x": 30,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-88",
+      "piece": "wall-plaster-4m",
+      "x": 30,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-92",
+      "piece": "wall-plaster-4m",
+      "x": 34,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-92",
+      "piece": "wall-plaster-4m",
+      "x": 34,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-96",
+      "piece": "wall-plaster-4m",
+      "x": 38,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-96",
+      "piece": "wall-plaster-4m",
+      "x": 38,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-100",
+      "piece": "wall-plaster-4m",
+      "x": 42,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-100",
+      "piece": "wall-plaster-4m",
+      "x": 42,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-104",
+      "piece": "wall-plaster-4m",
+      "x": 46,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-104",
+      "piece": "wall-plaster-4m",
+      "x": 46,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-108",
+      "piece": "wall-plaster-4m",
+      "x": 50,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-108",
+      "piece": "wall-plaster-4m",
+      "x": 50,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-112",
+      "piece": "wall-plaster-4m",
+      "x": 54,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-112",
+      "piece": "wall-plaster-4m",
+      "x": 54,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "north-edge-116",
+      "piece": "wall-plaster-4m",
+      "x": 58,
+      "z": 198.2,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "south-edge-116",
+      "piece": "wall-plaster-4m",
+      "x": 58,
+      "z": -12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "spawn-screen-0",
+      "piece": "wall-plaster-4m",
+      "x": -10,
+      "z": 4,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "spawn-screen-4",
+      "piece": "wall-plaster-4m",
+      "x": -6,
+      "z": 4,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "spawn-screen-8",
+      "piece": "wall-plaster-4m",
+      "x": -2,
+      "z": 4,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "spawn-screen-12",
+      "piece": "wall-plaster-4m",
+      "x": 2,
+      "z": 4,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "spawn-screen-16",
+      "piece": "wall-plaster-4m",
+      "x": 6,
+      "z": 4,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "spawn-screen-20",
+      "piece": "wall-plaster-4m",
+      "x": 10,
+      "z": 4,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-12-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-12-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-12-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 12,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-16-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 16,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-16-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 16,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-16-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 16,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-20-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 20,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-20-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 20,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-20-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 20,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-24-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 24,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-24-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 24,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-24-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 24,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-28-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 28,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-28-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 28,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-28-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 28,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-32-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 32,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-32-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 32,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-32-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 32,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-36-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 36,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-36-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 36,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-36-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 36,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-40-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 40,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-40-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 40,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-40-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 40,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-44-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 44,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-44-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 44,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-44-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 44,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-48-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 48,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-48-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 48,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-48-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 48,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-52-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 52,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-52-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 52,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-52-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 52,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-56-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 56,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-56-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 56,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-56-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 56,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-60-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 60,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-60-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 60,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-60-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 60,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-64-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 64,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-64-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 64,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-64-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 64,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-68-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 68,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-68-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 68,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-68-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 68,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-72-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 72,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-72-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 72,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-72-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 72,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-76-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 76,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-76-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 76,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-76-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 76,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-80-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 80,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-80-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 80,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-80-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 80,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-84-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 84,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-84-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 84,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-84-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 84,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-88-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 88,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-88-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 88,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-88-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 88,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-92-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 92,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-92-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 92,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-92-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 92,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-96-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 96,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-96-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 96,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-96-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 96,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-100-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 100,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-100-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 100,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-100-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 100,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-104-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 104,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-104-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 104,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-104-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 104,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-108-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 108,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-108-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 108,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-108-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 108,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-112-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 112,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-112-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 112,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-112-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 112,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-116-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 116,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-116-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 116,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-116-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 116,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-120-0",
+      "piece": "ground-road-4m",
+      "x": -4,
+      "z": 120,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-120-4",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 120,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-120-8",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 120,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-124-0",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 124,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-124-4",
+      "piece": "ground-road-4m",
+      "x": 8,
+      "z": 124,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-124-8",
+      "piece": "ground-road-4m",
+      "x": 12,
+      "z": 124,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-128-0",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 128,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-128-4",
+      "piece": "ground-road-4m",
+      "x": 8,
+      "z": 128,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-128-8",
+      "piece": "ground-road-4m",
+      "x": 12,
+      "z": 128,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-132-0",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 132,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-132-4",
+      "piece": "ground-road-4m",
+      "x": 8,
+      "z": 132,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-132-8",
+      "piece": "ground-road-4m",
+      "x": 12,
+      "z": 132,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-136-0",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 136,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-136-4",
+      "piece": "ground-road-4m",
+      "x": 8,
+      "z": 136,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-136-8",
+      "piece": "ground-road-4m",
+      "x": 12,
+      "z": 136,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-140-0",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 140,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-140-4",
+      "piece": "ground-road-4m",
+      "x": 8,
+      "z": 140,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-140-8",
+      "piece": "ground-road-4m",
+      "x": 12,
+      "z": 140,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-144-0",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 144,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-144-4",
+      "piece": "ground-road-4m",
+      "x": 8,
+      "z": 144,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-144-8",
+      "piece": "ground-road-4m",
+      "x": 12,
+      "z": 144,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-148-0",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 148,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-148-4",
+      "piece": "ground-road-4m",
+      "x": 8,
+      "z": 148,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-148-8",
+      "piece": "ground-road-4m",
+      "x": 12,
+      "z": 148,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-152-0",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 152,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-152-4",
+      "piece": "ground-road-4m",
+      "x": 8,
+      "z": 152,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-152-8",
+      "piece": "ground-road-4m",
+      "x": 12,
+      "z": 152,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-156-0",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 156,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-156-4",
+      "piece": "ground-road-4m",
+      "x": 8,
+      "z": 156,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-156-8",
+      "piece": "ground-road-4m",
+      "x": 12,
+      "z": 156,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-160-0",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 160,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-160-4",
+      "piece": "ground-road-4m",
+      "x": 8,
+      "z": 160,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-160-8",
+      "piece": "ground-road-4m",
+      "x": 12,
+      "z": 160,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-164-0",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 164,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-164-4",
+      "piece": "ground-road-4m",
+      "x": 8,
+      "z": 164,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-164-8",
+      "piece": "ground-road-4m",
+      "x": 12,
+      "z": 164,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-168-0",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 168,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-168-4",
+      "piece": "ground-road-4m",
+      "x": 8,
+      "z": 168,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-168-8",
+      "piece": "ground-road-4m",
+      "x": 12,
+      "z": 168,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "bend-0",
+      "piece": "ground-road-4m",
+      "x": 0,
+      "z": 122,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "bend-4",
+      "piece": "ground-road-4m",
+      "x": 4,
+      "z": 122,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "bend-8",
+      "piece": "ground-road-4m",
+      "x": 8,
+      "z": 122,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-boulder-0",
+      "piece": "rubble-large",
+      "x": -42,
+      "z": 20,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-0-0",
+      "piece": "wall-low-4m",
+      "x": -46,
+      "z": 24,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-0-4",
+      "piece": "wall-low-4m",
+      "x": -42,
+      "z": 24,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-0-8",
+      "piece": "wall-low-4m",
+      "x": -38,
+      "z": 24,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-0-0",
+      "piece": "ground-dirt-4m",
+      "x": -44,
+      "z": 27,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-0-4",
+      "piece": "ground-dirt-4m",
+      "x": -40,
+      "z": 27,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-0-8",
+      "piece": "ground-dirt-4m",
+      "x": -36,
+      "z": 27,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-boulder-1",
+      "piece": "rubble-large",
+      "x": -30,
+      "z": 34,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-1-0",
+      "piece": "wall-low-4m",
+      "x": -34,
+      "z": 38,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-1-4",
+      "piece": "wall-low-4m",
+      "x": -30,
+      "z": 38,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-1-8",
+      "piece": "wall-low-4m",
+      "x": -26,
+      "z": 38,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-1-0",
+      "piece": "ground-dirt-4m",
+      "x": -44,
+      "z": 41,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-1-4",
+      "piece": "ground-dirt-4m",
+      "x": -40,
+      "z": 41,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-1-8",
+      "piece": "ground-dirt-4m",
+      "x": -36,
+      "z": 41,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-boulder-2",
+      "piece": "rubble-large",
+      "x": -42,
+      "z": 48,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-2-0",
+      "piece": "wall-low-4m",
+      "x": -46,
+      "z": 52,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-2-4",
+      "piece": "wall-low-4m",
+      "x": -42,
+      "z": 52,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-2-8",
+      "piece": "wall-low-4m",
+      "x": -38,
+      "z": 52,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-2-0",
+      "piece": "ground-dirt-4m",
+      "x": -44,
+      "z": 55,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-2-4",
+      "piece": "ground-dirt-4m",
+      "x": -40,
+      "z": 55,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-2-8",
+      "piece": "ground-dirt-4m",
+      "x": -36,
+      "z": 55,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-boulder-3",
+      "piece": "rubble-large",
+      "x": -30,
+      "z": 62,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-3-0",
+      "piece": "wall-low-4m",
+      "x": -34,
+      "z": 66,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-3-4",
+      "piece": "wall-low-4m",
+      "x": -30,
+      "z": 66,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-3-8",
+      "piece": "wall-low-4m",
+      "x": -26,
+      "z": 66,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-3-0",
+      "piece": "ground-dirt-4m",
+      "x": -44,
+      "z": 69,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-3-4",
+      "piece": "ground-dirt-4m",
+      "x": -40,
+      "z": 69,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-3-8",
+      "piece": "ground-dirt-4m",
+      "x": -36,
+      "z": 69,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-boulder-4",
+      "piece": "rubble-large",
+      "x": -42,
+      "z": 76,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-4-0",
+      "piece": "wall-low-4m",
+      "x": -46,
+      "z": 80,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-4-4",
+      "piece": "wall-low-4m",
+      "x": -42,
+      "z": 80,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-4-8",
+      "piece": "wall-low-4m",
+      "x": -38,
+      "z": 80,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-4-0",
+      "piece": "ground-dirt-4m",
+      "x": -44,
+      "z": 83,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-4-4",
+      "piece": "ground-dirt-4m",
+      "x": -40,
+      "z": 83,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-4-8",
+      "piece": "ground-dirt-4m",
+      "x": -36,
+      "z": 83,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-boulder-5",
+      "piece": "rubble-large",
+      "x": -30,
+      "z": 90,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-5-0",
+      "piece": "wall-low-4m",
+      "x": -34,
+      "z": 94,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-5-4",
+      "piece": "wall-low-4m",
+      "x": -30,
+      "z": 94,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-5-8",
+      "piece": "wall-low-4m",
+      "x": -26,
+      "z": 94,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-5-0",
+      "piece": "ground-dirt-4m",
+      "x": -44,
+      "z": 97,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-5-4",
+      "piece": "ground-dirt-4m",
+      "x": -40,
+      "z": 97,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-5-8",
+      "piece": "ground-dirt-4m",
+      "x": -36,
+      "z": 97,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-boulder-6",
+      "piece": "rubble-large",
+      "x": -42,
+      "z": 104,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-6-0",
+      "piece": "wall-low-4m",
+      "x": -46,
+      "z": 108,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-6-4",
+      "piece": "wall-low-4m",
+      "x": -42,
+      "z": 108,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-6-8",
+      "piece": "wall-low-4m",
+      "x": -38,
+      "z": 108,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-6-0",
+      "piece": "ground-dirt-4m",
+      "x": -44,
+      "z": 111,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-6-4",
+      "piece": "ground-dirt-4m",
+      "x": -40,
+      "z": 111,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-6-8",
+      "piece": "ground-dirt-4m",
+      "x": -36,
+      "z": 111,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-boulder-7",
+      "piece": "rubble-large",
+      "x": -30,
+      "z": 118,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-7-0",
+      "piece": "wall-low-4m",
+      "x": -34,
+      "z": 122,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-7-4",
+      "piece": "wall-low-4m",
+      "x": -30,
+      "z": 122,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-7-8",
+      "piece": "wall-low-4m",
+      "x": -26,
+      "z": 122,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-7-0",
+      "piece": "ground-dirt-4m",
+      "x": -44,
+      "z": 125,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-7-4",
+      "piece": "ground-dirt-4m",
+      "x": -40,
+      "z": 125,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-7-8",
+      "piece": "ground-dirt-4m",
+      "x": -36,
+      "z": 125,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-boulder-8",
+      "piece": "rubble-large",
+      "x": -42,
+      "z": 132,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-8-0",
+      "piece": "wall-low-4m",
+      "x": -46,
+      "z": 136,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-8-4",
+      "piece": "wall-low-4m",
+      "x": -42,
+      "z": 136,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-8-8",
+      "piece": "wall-low-4m",
+      "x": -38,
+      "z": 136,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-8-0",
+      "piece": "ground-dirt-4m",
+      "x": -44,
+      "z": 139,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-8-4",
+      "piece": "ground-dirt-4m",
+      "x": -40,
+      "z": 139,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-8-8",
+      "piece": "ground-dirt-4m",
+      "x": -36,
+      "z": 139,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-boulder-9",
+      "piece": "rubble-large",
+      "x": -30,
+      "z": 146,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-9-0",
+      "piece": "wall-low-4m",
+      "x": -34,
+      "z": 150,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-9-4",
+      "piece": "wall-low-4m",
+      "x": -30,
+      "z": 150,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-9-8",
+      "piece": "wall-low-4m",
+      "x": -26,
+      "z": 150,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-9-0",
+      "piece": "ground-dirt-4m",
+      "x": -44,
+      "z": 153,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-9-4",
+      "piece": "ground-dirt-4m",
+      "x": -40,
+      "z": 153,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-9-8",
+      "piece": "ground-dirt-4m",
+      "x": -36,
+      "z": 153,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-boulder-10",
+      "piece": "rubble-large",
+      "x": -42,
+      "z": 160,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-10-0",
+      "piece": "wall-low-4m",
+      "x": -46,
+      "z": 164,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-10-4",
+      "piece": "wall-low-4m",
+      "x": -42,
+      "z": 164,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-bank-10-8",
+      "piece": "wall-low-4m",
+      "x": -38,
+      "z": 164,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-10-0",
+      "piece": "ground-dirt-4m",
+      "x": -44,
+      "z": 167,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-10-4",
+      "piece": "ground-dirt-4m",
+      "x": -40,
+      "z": 167,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "river-earth-10-8",
+      "piece": "ground-dirt-4m",
+      "x": -36,
+      "z": 167,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-0-23",
+      "piece": "wall-low-4m",
+      "x": 23,
+      "z": 24,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-0-27",
+      "piece": "wall-low-4m",
+      "x": 27,
+      "z": 24,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-0-31",
+      "piece": "wall-low-4m",
+      "x": 31,
+      "z": 24,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-0-35",
+      "piece": "wall-low-4m",
+      "x": 35,
+      "z": 24,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-0-28",
+      "piece": "ground-dirt-4m",
+      "x": 28,
+      "z": 30,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-0-36",
+      "piece": "ground-dirt-4m",
+      "x": 36,
+      "z": 30,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-0-44",
+      "piece": "ground-dirt-4m",
+      "x": 44,
+      "z": 30,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-0-52",
+      "piece": "ground-dirt-4m",
+      "x": 52,
+      "z": 30,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-1-41",
+      "piece": "wall-low-4m",
+      "x": 41,
+      "z": 42,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-1-45",
+      "piece": "wall-low-4m",
+      "x": 45,
+      "z": 42,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-1-49",
+      "piece": "wall-low-4m",
+      "x": 49,
+      "z": 42,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-1-53",
+      "piece": "wall-low-4m",
+      "x": 53,
+      "z": 42,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-1-28",
+      "piece": "ground-dirt-4m",
+      "x": 28,
+      "z": 48,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-1-36",
+      "piece": "ground-dirt-4m",
+      "x": 36,
+      "z": 48,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-1-44",
+      "piece": "ground-dirt-4m",
+      "x": 44,
+      "z": 48,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-1-52",
+      "piece": "ground-dirt-4m",
+      "x": 52,
+      "z": 48,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-2-23",
+      "piece": "wall-low-4m",
+      "x": 23,
+      "z": 60,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-2-27",
+      "piece": "wall-low-4m",
+      "x": 27,
+      "z": 60,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-2-31",
+      "piece": "wall-low-4m",
+      "x": 31,
+      "z": 60,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-2-35",
+      "piece": "wall-low-4m",
+      "x": 35,
+      "z": 60,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-2-28",
+      "piece": "ground-dirt-4m",
+      "x": 28,
+      "z": 66,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-2-36",
+      "piece": "ground-dirt-4m",
+      "x": 36,
+      "z": 66,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-2-44",
+      "piece": "ground-dirt-4m",
+      "x": 44,
+      "z": 66,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-2-52",
+      "piece": "ground-dirt-4m",
+      "x": 52,
+      "z": 66,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-3-41",
+      "piece": "wall-low-4m",
+      "x": 41,
+      "z": 78,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-3-45",
+      "piece": "wall-low-4m",
+      "x": 45,
+      "z": 78,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-3-49",
+      "piece": "wall-low-4m",
+      "x": 49,
+      "z": 78,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-3-53",
+      "piece": "wall-low-4m",
+      "x": 53,
+      "z": 78,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-3-28",
+      "piece": "ground-dirt-4m",
+      "x": 28,
+      "z": 84,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-3-36",
+      "piece": "ground-dirt-4m",
+      "x": 36,
+      "z": 84,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-3-44",
+      "piece": "ground-dirt-4m",
+      "x": 44,
+      "z": 84,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-3-52",
+      "piece": "ground-dirt-4m",
+      "x": 52,
+      "z": 84,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-4-23",
+      "piece": "wall-low-4m",
+      "x": 23,
+      "z": 96,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-4-27",
+      "piece": "wall-low-4m",
+      "x": 27,
+      "z": 96,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-4-31",
+      "piece": "wall-low-4m",
+      "x": 31,
+      "z": 96,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-4-35",
+      "piece": "wall-low-4m",
+      "x": 35,
+      "z": 96,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-4-28",
+      "piece": "ground-dirt-4m",
+      "x": 28,
+      "z": 102,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-4-36",
+      "piece": "ground-dirt-4m",
+      "x": 36,
+      "z": 102,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-4-44",
+      "piece": "ground-dirt-4m",
+      "x": 44,
+      "z": 102,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-4-52",
+      "piece": "ground-dirt-4m",
+      "x": 52,
+      "z": 102,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-5-41",
+      "piece": "wall-low-4m",
+      "x": 41,
+      "z": 114,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-5-45",
+      "piece": "wall-low-4m",
+      "x": 45,
+      "z": 114,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-5-49",
+      "piece": "wall-low-4m",
+      "x": 49,
+      "z": 114,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-5-53",
+      "piece": "wall-low-4m",
+      "x": 53,
+      "z": 114,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-5-28",
+      "piece": "ground-dirt-4m",
+      "x": 28,
+      "z": 120,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-5-36",
+      "piece": "ground-dirt-4m",
+      "x": 36,
+      "z": 120,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-5-44",
+      "piece": "ground-dirt-4m",
+      "x": 44,
+      "z": 120,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-5-52",
+      "piece": "ground-dirt-4m",
+      "x": 52,
+      "z": 120,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-6-23",
+      "piece": "wall-low-4m",
+      "x": 23,
+      "z": 132,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-6-27",
+      "piece": "wall-low-4m",
+      "x": 27,
+      "z": 132,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-6-31",
+      "piece": "wall-low-4m",
+      "x": 31,
+      "z": 132,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-6-35",
+      "piece": "wall-low-4m",
+      "x": 35,
+      "z": 132,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-6-28",
+      "piece": "ground-dirt-4m",
+      "x": 28,
+      "z": 138,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-6-36",
+      "piece": "ground-dirt-4m",
+      "x": 36,
+      "z": 138,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-6-44",
+      "piece": "ground-dirt-4m",
+      "x": 44,
+      "z": 138,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-6-52",
+      "piece": "ground-dirt-4m",
+      "x": 52,
+      "z": 138,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-7-41",
+      "piece": "wall-low-4m",
+      "x": 41,
+      "z": 150,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-7-45",
+      "piece": "wall-low-4m",
+      "x": 45,
+      "z": 150,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-7-49",
+      "piece": "wall-low-4m",
+      "x": 49,
+      "z": 150,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-wall-7-53",
+      "piece": "wall-low-4m",
+      "x": 53,
+      "z": 150,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-7-28",
+      "piece": "ground-dirt-4m",
+      "x": 28,
+      "z": 156,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-7-36",
+      "piece": "ground-dirt-4m",
+      "x": 36,
+      "z": 156,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-7-44",
+      "piece": "ground-dirt-4m",
+      "x": 44,
+      "z": 156,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "field-earth-7-52",
+      "piece": "ground-dirt-4m",
+      "x": 52,
+      "z": 156,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "terrace-stair-0",
+      "piece": "stairs-3m",
+      "x": 40,
+      "z": 55.75,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "terrace-deck-0",
+      "piece": "roof-slab-4m",
+      "x": 40,
+      "z": 60,
+      "y": 3,
+      "rot": 0
+    },
+    {
+      "id": "terrace-stair-1",
+      "piece": "stairs-3m",
+      "x": 40,
+      "z": 109.75,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "terrace-deck-1",
+      "piece": "roof-slab-4m",
+      "x": 40,
+      "z": 114,
+      "y": 3,
+      "rot": 0
+    },
+    {
+      "id": "terrace-stair-2",
+      "piece": "stairs-3m",
+      "x": 40,
+      "z": 159.75,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "terrace-deck-2",
+      "piece": "roof-slab-4m",
+      "x": 40,
+      "z": 164,
+      "y": 3,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-170-0",
+      "piece": "wall-plaster-4m",
+      "x": -18,
+      "z": 170,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-170-4",
+      "piece": "wall-plaster-4m",
+      "x": -14,
+      "z": 170,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-170-8",
+      "piece": "wall-plaster-4m",
+      "x": -10,
+      "z": 170,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-170-12",
+      "piece": "wall-plaster-4m",
+      "x": -6,
+      "z": 170,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-170-16",
+      "piece": "wall-plaster-4m",
+      "x": -2,
+      "z": 170,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-170-20",
+      "piece": "wall-plaster-4m",
+      "x": 2,
+      "z": 170,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-170-32",
+      "piece": "wall-plaster-4m",
+      "x": 14,
+      "z": 170,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-170-36",
+      "piece": "wall-plaster-4m",
+      "x": 18,
+      "z": 170,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-194-0",
+      "piece": "wall-plaster-4m",
+      "x": -18,
+      "z": 194,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-194-4",
+      "piece": "wall-plaster-4m",
+      "x": -14,
+      "z": 194,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-194-8",
+      "piece": "wall-plaster-4m",
+      "x": -10,
+      "z": 194,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-194-12",
+      "piece": "wall-plaster-4m",
+      "x": -6,
+      "z": 194,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-194-16",
+      "piece": "wall-plaster-4m",
+      "x": -2,
+      "z": 194,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-194-20",
+      "piece": "wall-plaster-4m",
+      "x": 2,
+      "z": 194,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-194-24",
+      "piece": "wall-plaster-4m",
+      "x": 6,
+      "z": 194,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-194-28",
+      "piece": "wall-plaster-4m",
+      "x": 10,
+      "z": 194,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-194-32",
+      "piece": "wall-plaster-4m",
+      "x": 14,
+      "z": 194,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-wall-194-36",
+      "piece": "wall-plaster-4m",
+      "x": 18,
+      "z": 194,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-side-0-172-2",
+      "piece": "wall-plaster-4m",
+      "x": -20,
+      "z": 172.2,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "compound-side-0-176-2",
+      "piece": "wall-plaster-4m",
+      "x": -20,
+      "z": 176.2,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "compound-side-0-188",
+      "piece": "wall-plaster-4m",
+      "x": -20,
+      "z": 187.8,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "compound-side-0-192",
+      "piece": "wall-plaster-4m",
+      "x": -20,
+      "z": 191.8,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "compound-side-40-172-2",
+      "piece": "wall-plaster-4m",
+      "x": 20,
+      "z": 172.2,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "compound-side-40-176-2",
+      "piece": "wall-plaster-4m",
+      "x": 20,
+      "z": 176.2,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "compound-side-40-188",
+      "piece": "wall-plaster-4m",
+      "x": 20,
+      "z": 187.8,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "compound-side-40-192",
+      "piece": "wall-plaster-4m",
+      "x": 20,
+      "z": 191.8,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "courtyard-0-172",
+      "piece": "ground-paving-4m",
+      "x": -18,
+      "z": 172,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-0-176",
+      "piece": "ground-paving-4m",
+      "x": -18,
+      "z": 176,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-0-180",
+      "piece": "ground-paving-4m",
+      "x": -18,
+      "z": 180,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-0-184",
+      "piece": "ground-paving-4m",
+      "x": -18,
+      "z": 184,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-0-188",
+      "piece": "ground-paving-4m",
+      "x": -18,
+      "z": 188,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-0-192",
+      "piece": "ground-paving-4m",
+      "x": -18,
+      "z": 192,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-4-172",
+      "piece": "ground-paving-4m",
+      "x": -14,
+      "z": 172,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-4-176",
+      "piece": "ground-paving-4m",
+      "x": -14,
+      "z": 176,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-4-180",
+      "piece": "ground-paving-4m",
+      "x": -14,
+      "z": 180,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-4-184",
+      "piece": "ground-paving-4m",
+      "x": -14,
+      "z": 184,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-4-188",
+      "piece": "ground-paving-4m",
+      "x": -14,
+      "z": 188,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-4-192",
+      "piece": "ground-paving-4m",
+      "x": -14,
+      "z": 192,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-8-172",
+      "piece": "ground-paving-4m",
+      "x": -10,
+      "z": 172,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-8-176",
+      "piece": "ground-paving-4m",
+      "x": -10,
+      "z": 176,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-8-180",
+      "piece": "ground-paving-4m",
+      "x": -10,
+      "z": 180,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-8-184",
+      "piece": "ground-paving-4m",
+      "x": -10,
+      "z": 184,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-8-188",
+      "piece": "ground-paving-4m",
+      "x": -10,
+      "z": 188,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-8-192",
+      "piece": "ground-paving-4m",
+      "x": -10,
+      "z": 192,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-12-172",
+      "piece": "ground-paving-4m",
+      "x": -6,
+      "z": 172,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-12-176",
+      "piece": "ground-paving-4m",
+      "x": -6,
+      "z": 176,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-12-180",
+      "piece": "ground-paving-4m",
+      "x": -6,
+      "z": 180,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-12-184",
+      "piece": "ground-paving-4m",
+      "x": -6,
+      "z": 184,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-12-188",
+      "piece": "ground-paving-4m",
+      "x": -6,
+      "z": 188,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-12-192",
+      "piece": "ground-paving-4m",
+      "x": -6,
+      "z": 192,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-16-172",
+      "piece": "ground-paving-4m",
+      "x": -2,
+      "z": 172,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-16-176",
+      "piece": "ground-paving-4m",
+      "x": -2,
+      "z": 176,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-16-180",
+      "piece": "ground-paving-4m",
+      "x": -2,
+      "z": 180,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-16-184",
+      "piece": "ground-paving-4m",
+      "x": -2,
+      "z": 184,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-16-188",
+      "piece": "ground-paving-4m",
+      "x": -2,
+      "z": 188,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-16-192",
+      "piece": "ground-paving-4m",
+      "x": -2,
+      "z": 192,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-20-172",
+      "piece": "ground-paving-4m",
+      "x": 2,
+      "z": 172,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-20-176",
+      "piece": "ground-paving-4m",
+      "x": 2,
+      "z": 176,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-20-180",
+      "piece": "ground-paving-4m",
+      "x": 2,
+      "z": 180,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-20-184",
+      "piece": "ground-paving-4m",
+      "x": 2,
+      "z": 184,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-20-188",
+      "piece": "ground-paving-4m",
+      "x": 2,
+      "z": 188,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-20-192",
+      "piece": "ground-paving-4m",
+      "x": 2,
+      "z": 192,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-24-172",
+      "piece": "ground-paving-4m",
+      "x": 6,
+      "z": 172,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-24-176",
+      "piece": "ground-paving-4m",
+      "x": 6,
+      "z": 176,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-24-180",
+      "piece": "ground-paving-4m",
+      "x": 6,
+      "z": 180,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-24-184",
+      "piece": "ground-paving-4m",
+      "x": 6,
+      "z": 184,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-24-188",
+      "piece": "ground-paving-4m",
+      "x": 6,
+      "z": 188,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-24-192",
+      "piece": "ground-paving-4m",
+      "x": 6,
+      "z": 192,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-28-172",
+      "piece": "ground-paving-4m",
+      "x": 10,
+      "z": 172,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-28-176",
+      "piece": "ground-paving-4m",
+      "x": 10,
+      "z": 176,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-28-180",
+      "piece": "ground-paving-4m",
+      "x": 10,
+      "z": 180,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-28-184",
+      "piece": "ground-paving-4m",
+      "x": 10,
+      "z": 184,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-28-188",
+      "piece": "ground-paving-4m",
+      "x": 10,
+      "z": 188,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-28-192",
+      "piece": "ground-paving-4m",
+      "x": 10,
+      "z": 192,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-32-172",
+      "piece": "ground-paving-4m",
+      "x": 14,
+      "z": 172,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-32-176",
+      "piece": "ground-paving-4m",
+      "x": 14,
+      "z": 176,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-32-180",
+      "piece": "ground-paving-4m",
+      "x": 14,
+      "z": 180,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-32-184",
+      "piece": "ground-paving-4m",
+      "x": 14,
+      "z": 184,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-32-188",
+      "piece": "ground-paving-4m",
+      "x": 14,
+      "z": 188,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-32-192",
+      "piece": "ground-paving-4m",
+      "x": 14,
+      "z": 192,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-36-172",
+      "piece": "ground-paving-4m",
+      "x": 18,
+      "z": 172,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-36-176",
+      "piece": "ground-paving-4m",
+      "x": 18,
+      "z": 176,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-36-180",
+      "piece": "ground-paving-4m",
+      "x": 18,
+      "z": 180,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-36-184",
+      "piece": "ground-paving-4m",
+      "x": 18,
+      "z": 184,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-36-188",
+      "piece": "ground-paving-4m",
+      "x": 18,
+      "z": 188,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "courtyard-36-192",
+      "piece": "ground-paving-4m",
+      "x": 18,
+      "z": 192,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "mg-cover",
+      "piece": "sandbags-2m",
+      "x": 0,
+      "z": 168,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-crate-0",
+      "piece": "crate-large",
+      "x": -12,
+      "z": 180,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-crate-1",
+      "piece": "crate-large",
+      "x": 12,
+      "z": 188,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-crate-2",
+      "piece": "crate-large",
+      "x": -12,
+      "z": 188,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "compound-crate-3",
+      "piece": "crate-large",
+      "x": 12,
+      "z": 176,
+      "y": 0,
+      "rot": 0
+    }
+  ],
+  "encounter": "qalat-road",
+  "emplacements": [
+    {
+      "id": "compound-mg",
+      "kind": "mg-nest",
+      "x": 0,
+      "y": 0,
+      "z": 169,
+      "yawDeg": 180
+    }
+  ],
+  "mission": {
+    "start": {
+      "x": 0,
+      "z": -6,
+      "radius": 6
+    },
+    "objective": {
+      "x": 0,
+      "z": 182,
+      "radius": 8
+    },
+    "routes": [
+      {
+        "id": "riverbed",
+        "role": "overwatch",
+        "via": [
+          {
+            "x": -40,
+            "z": 16
+          },
+          {
+            "x": -40,
+            "z": 60
+          },
+          {
+            "x": -40,
+            "z": 110
+          },
+          {
+            "x": -40,
+            "z": 160
+          },
+          {
+            "x": -24,
+            "z": 182
+          }
+        ]
+      },
+      {
+        "id": "road",
+        "role": "overwatch",
+        "via": [
+          {
+            "x": 16,
+            "z": 10
+          },
+          {
+            "x": 0,
+            "z": 30
+          },
+          {
+            "x": 0,
+            "z": 110
+          },
+          {
+            "x": 8,
+            "z": 140
+          },
+          {
+            "x": 8,
+            "z": 174
+          }
+        ]
+      },
+      {
+        "id": "terraces",
+        "role": "assault",
+        "via": [
+          {
+            "x": 40,
+            "z": 16
+          },
+          {
+            "x": 40,
+            "z": 44
+          },
+          {
+            "x": 40,
+            "z": 96
+          },
+          {
+            "x": 36,
+            "z": 150
+          },
+          {
+            "x": 24,
+            "z": 182
+          }
+        ]
+      }
+    ],
+    "spawnZones": [
+      {
+        "id": "north-reserve",
+        "on": "objective",
+        "x": 0,
+        "z": 196,
+        "radius": 1
+      }
+    ],
+    "checks": {
+      "sampleM": 0.5,
+      "minDistinctShare": 0.7,
+      "coverWithinM": 5,
+      "maxUncoveredM": {
+        "overwatch": 36,
+        "assault": 22
+      },
+      "sightM": 40
+    }
+  }
+}

@@ -92,6 +92,8 @@ jobs:
       - run: pnpm check:packs
       - run: pnpm --filter @sandline/client build
       - run: pnpm check:load-time
+      - name: Qalat Road first playable frame budget
+        run: SANDLINE_LOAD_WORLD=qalat-road pnpm check:load-time
       # T-5.04: the slice mission with the squad, walked and fought; asserts the draw budget, records frame time.
       - run: pnpm perf:frame
 
