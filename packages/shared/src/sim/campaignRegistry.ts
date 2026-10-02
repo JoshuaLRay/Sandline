@@ -61,7 +61,7 @@ export const COMMITTED: readonly CampaignEntry[] = [
     mission: MISSION_01_MISSION,
     encounter: MISSION_01_ENCOUNTER,
     script: MISSION_01_SCRIPT,
-    lobby: { label: 'Mission 01 — clear and hold the qalat', order: 0 },
+    lobby: { label: 'QA slice — clear and hold the qalat', order: 0 },
   },
   {
     id: 'qalat-road',
@@ -69,7 +69,7 @@ export const COMMITTED: readonly CampaignEntry[] = [
     mission: QALAT_MISSION,
     encounter: QALAT_ENCOUNTER,
     script: QALAT_SCRIPT,
-    lobby: { label: 'The Qalat Road — valley map preview', order: 4 },
+    lobby: { label: 'Mission 01 — The Qalat Road', order: 4 },
   },
 ];
 

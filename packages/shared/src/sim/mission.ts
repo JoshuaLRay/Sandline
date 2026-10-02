@@ -63,6 +63,8 @@ export type ObjectiveDef = {
   stage?: number;
   /** U-074: part of a stage that need not be done for the stage to be done. Only in a mission that uses stages. */
   optional?: boolean;
+  /** Whether this completion saves a retry point; defaults to true. */
+  checkpoint?: boolean;
 } & (
   /** No living enemy inside `area` and a living squad soldier in it, for `holdSeconds` in all; an enemy inside resets it. */
   | { type: 'clear-and-hold'; area: AreaRef; holdSeconds: number }
@@ -91,7 +93,7 @@ export type ObjectiveDef = {
    * The place is the prisoner's own, saved with the campaign. With nobody held, there is nothing to free and the
    * objective is complete at once, so a campaign that lost no one is not stuck.
    */
-  | { type: 'rescue'; slot?: number; holdSeconds: number; reachM: number }
+  | { type: 'rescue'; slot?: number; group?: string; holdSeconds: number; reachM: number }
 );
 
 /** Mission-wide failure rules beyond the always-on squad loss rule. */
@@ -217,14 +219,15 @@ function point(where: string, v: unknown): MissionPoint {
 }
 
 function parseObjective(where: string, raw: unknown): ObjectiveDef {
-  const top = obj(where, raw, ['type', 'label'], ['area', 'holdSeconds', 'who', 'group', 'seconds', 'breachSeconds', 'terminal', 'reachM', 'onInterrupt', 'lever', 'slot', 'escort', 'stage', 'optional']);
-  const { stage, optional, ...rest } = top;
+  const top = obj(where, raw, ['type', 'label'], ['area', 'holdSeconds', 'who', 'group', 'seconds', 'breachSeconds', 'terminal', 'reachM', 'onInterrupt', 'lever', 'slot', 'escort', 'stage', 'optional', 'checkpoint']);
+  const { stage, optional, checkpoint, ...rest } = top;
+  if (checkpoint !== undefined && typeof checkpoint !== 'boolean') throw new MissionDataError(`${where}.checkpoint must be boolean`);
   if (stage !== undefined && (typeof stage !== 'number' || !Number.isInteger(stage) || stage < 0 || stage > 15)) {
     throw new MissionDataError(`${where}.stage must be a whole number 0–15, got ${JSON.stringify(stage)}`);
   }
   if (optional !== undefined && typeof optional !== 'boolean') throw new MissionDataError(`${where}.optional must be true or false, got ${JSON.stringify(optional)}`);
   const def = parseObjectiveBody(where, rest);
-  return { ...def, ...(stage === undefined ? {} : { stage: stage as number }), ...(optional === true ? { optional: true } : {}) };
+  return { ...def, ...(stage === undefined ? {} : { stage: stage as number }), ...(optional === true ? { optional: true } : {}), ...(checkpoint === undefined ? {} : { checkpoint: checkpoint as boolean }) };
 }
 
 function parseObjectiveBody(where: string, raw: unknown): ObjectiveDef {
@@ -266,7 +269,7 @@ function parseObjectiveBody(where: string, raw: unknown): ObjectiveDef {
       return { type: 'survive', label, seconds: seconds(`${where}.seconds`, o['seconds']) };
     }
     case 'rescue': {
-      const o = obj(where, raw, ['type', 'label', 'holdSeconds', 'reachM'], ['slot']);
+      const o = obj(where, raw, ['type', 'label', 'holdSeconds', 'reachM'], ['slot', 'group']);
       const reachM = o['reachM'];
       if (typeof reachM !== 'number' || !Number.isFinite(reachM) || reachM <= 0 || reachM > UPLOAD_REACH_MAX_M) {
         throw new MissionDataError(`${where}.reachM must be a number in (0, ${UPLOAD_REACH_MAX_M}], got ${JSON.stringify(reachM)}`);
@@ -275,7 +278,9 @@ function parseObjectiveBody(where: string, raw: unknown): ObjectiveDef {
       if (slot !== undefined && (typeof slot !== 'number' || !Number.isInteger(slot) || slot < 0 || slot > 5)) {
         throw new MissionDataError(`${where}.slot must be a slot 0–5, got ${JSON.stringify(slot)}`);
       }
-      return { type: 'rescue', label, ...(slot === undefined ? {} : { slot }), holdSeconds: seconds(`${where}.holdSeconds`, o['holdSeconds']), reachM };
+      const group = o['group'];
+      if (group !== undefined && (typeof group !== 'string' || !group || slot !== undefined)) throw new MissionDataError(`${where}.group must name a group instead of a slot`);
+      return { type: 'rescue', label, ...(group === undefined ? {} : { group: group as string }), ...(slot === undefined ? {} : { slot }), holdSeconds: seconds(`${where}.holdSeconds`, o['holdSeconds']), reachM };
     }
     case 'upload': {
       const o = obj(where, raw, ['type', 'label', 'terminal', 'reachM', 'seconds', 'onInterrupt'], ['lever']);
@@ -395,6 +400,10 @@ export function checkMission(mission: MissionDef, encounter: Encounter, world: W
       throw new MissionDataError(`${at}.area: no place '${o.area}' (start, objective or one of the encounter's areas)`);
     }
     if (o.type === 'destroy' && !encounter.groups.some((g) => g.id === o.group)) throw new MissionDataError(`${at}.group: no encounter group '${o.group}'`);
+    if (o.type === 'rescue' && o.group) {
+      const g = encounter.groups.find((g) => g.id === o.group);
+      if (!g || !g.captive || g.members.reduce((n, m) => n + m.count, 0) * g.waves.count !== 1) throw new MissionDataError(`${at}.group must name one captive escort`);
+    }
     if (o.type === 'upload') {
       // A panel inside a wall could never be seen, and so never started.
       const insideOf = (t: MissionPoint) => world.boxes.find((b) => t.x > b.minX && t.x < b.maxX && t.y > b.minY && t.y < b.maxY && t.z > b.minZ && t.z < b.maxZ);

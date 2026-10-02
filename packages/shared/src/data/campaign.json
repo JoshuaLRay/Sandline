@@ -1,18 +1,18 @@
 {
-  "$comment": "U-088: the campaign as data. `missions` is the order the squad plays them in, a straight line (design doc D3): each entry names a registered mission (its world id) and carries the text the host sees: a title, a short briefing before it and a short debrief after it, as lines. The first entry is the slice's mission-01 with text for the mission as it plays today; U-065 replaces it with campaign mission 1. To add a mission: register it (campaignRegistry.ts), then add one entry here. Nothing else changes. U-077: `replayKeepsLoadout` says the loadout a replay run ends with is kept for the campaign (from design doc D6; the owner confirmed it 2026-10-02); false means a replay keeps nothing.",
+  "$comment": "The season plays The Qalat Road first; mission-01 remains a registered QA slice outside the season. replayKeepsLoadout follows the owner-approved campaign rule.",
   "id": "season-1",
   "replayKeepsLoadout": true,
   "missions": [
     {
-      "mission": "mission-01",
-      "title": "Mission 01 — The qalat on the ridge road",
+      "mission": "qalat-road",
+      "title": "Mission 01 \u2014 The Qalat Road",
       "briefing": [
-        "A walled compound on the ridge road is being used to watch our convoys. Take it, and put the relay at its terminal on our network.",
-        "Two fireteams, two ways in. Expect a patrol on the west lane and men waiting on the east, and a counterattack once you are inside. Hold the terminal until the upload completes."
+        "Afghanistan, late 2001. An allied prisoner is held in the compound beyond the valley. Choose the riverbed, road or terraces to reach him.",
+        "Hold interact beside the POW to free him. Silencing the radio operator holds back the early warning. Expect armour on the road home; destroy it and extract with all seven standing."
       ],
       "debrief": [
-        "The relay is ours and the road is watched by us now.",
-        "The compound is a foothold, not a victory. The next mission starts from here."
+        "The prisoner is home, the armour is destroyed, and all seven made it out.",
+        "The valley route is open. The squad carries its surviving loadout into the next mission."
       ]
     }
   ]

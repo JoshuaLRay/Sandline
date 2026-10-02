@@ -3,6 +3,24 @@
   "blockers": [],
   "events": [
     {
+      "id": "release-prisoner",
+      "trigger": {
+        "kind": "objective-complete",
+        "objective": 1
+      },
+      "actions": [
+        {
+          "kind": "set-flag",
+          "flag": "pow-freed",
+          "value": true
+        },
+        {
+          "kind": "message",
+          "text": "Prisoner free. Bring all seven home; armour is inbound."
+        }
+      ]
+    },
+    {
       "id": "pow-freed",
       "trigger": {
         "kind": "flag",
