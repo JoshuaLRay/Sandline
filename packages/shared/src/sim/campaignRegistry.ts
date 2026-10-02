@@ -27,6 +27,7 @@ import MISSION_01_SCRIPT from '../data/scripts/mission-01.json' with { type: 'js
 
 import QALAT_LEVEL from '../data/levels/qalat-road.json' with { type: 'json' };
 import QALAT_MISSION from '../data/missions/qalat-road.json' with { type: 'json' };
+import QALAT_SCRIPT from '../data/scripts/qalat-road.json' with { type: 'json' };
 import QALAT_ENCOUNTER from '../data/encounters/qalat-road.json' with { type: 'json' };
 
 /** One world and what plays on it. Everything but `id` and `world` is optional: the range has no mission. */
@@ -67,6 +68,7 @@ export const COMMITTED: readonly CampaignEntry[] = [
     world: { kind: 'level', raw: QALAT_LEVEL },
     mission: QALAT_MISSION,
     encounter: QALAT_ENCOUNTER,
+    script: QALAT_SCRIPT,
     lobby: { label: 'The Qalat Road — valley map preview', order: 4 },
   },
 ];

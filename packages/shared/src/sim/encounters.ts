@@ -30,6 +30,8 @@
  * load-time error rather than a group that never comes.
  */
 import { COMMITTED, type CampaignEntry } from './campaignRegistry.ts';
+import { blockedAt } from './world.ts';
+import { MAX_DRIVE_POINTS } from './vehicle.ts';
 import { ENEMIES } from './enemies.ts';
 import { type GroundArea, type World, getWorld } from './world.ts';
 
@@ -62,6 +64,9 @@ export interface EncounterGroup {
    * `everySeconds` after the last as a rule, never sooner than `minSeconds`
    * nor later than `maxSeconds` — the bounds the director (T-3.33) paces inside.
    */
+  fixedCount?: boolean;
+  captive?: boolean;
+  path?: readonly { x: number; z: number }[];
   waves: { count: number; everySeconds: number; minSeconds: number; maxSeconds: number };
 }
 
@@ -150,7 +155,7 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
   const zones = new Set(mission.spawnZones.map((z) => z.id));
   const groups: EncounterGroup[] = top['groups'].map((g, i) => {
     const gw = `${at}.groups[${i}]`;
-    const o = obj(gw, g, ['id', 'members', 'zone', 'posture', 'trigger'], ['waves']);
+    const o = obj(gw, g, ['id', 'members', 'zone', 'posture', 'trigger'], ['waves', 'captive', 'path', 'fixedCount']);
     if (typeof o['id'] !== 'string' || o['id'] === '') throw new EncounterDataError(`${gw}: id must be a name`);
     if (ids.has(o['id'])) throw new EncounterDataError(`${at}.groups: duplicate id '${o['id']}'`);
     ids.add(o['id']);
@@ -222,7 +227,23 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
         throw new EncounterDataError(`${gw}.waves: needs minSeconds ≤ everySeconds ≤ maxSeconds, got ${waves.minSeconds}, ${waves.everySeconds}, ${waves.maxSeconds}`);
       }
     }
-    return { id: o['id'], members, zone: o['zone'], posture, trigger, waves };
+    const fixedCount = o['fixedCount'];
+    if (fixedCount !== undefined && typeof fixedCount !== 'boolean') throw new EncounterDataError(`${gw}.fixedCount: expected a boolean`);
+    const captive = o['captive'];
+    if (captive !== undefined && (typeof captive !== 'boolean' || members.some((m) => !ENEMIES[m.archetype]!.friendly))) throw new EncounterDataError(`${gw}.captive: only friendly groups may be captive`);
+    let path: { x: number; z: number }[] | undefined;
+    if (o['path'] !== undefined) {
+      if (!Array.isArray(o['path']) || o['path'].length === 0 || o['path'].length > MAX_DRIVE_POINTS || members.some((m) => !ENEMIES[m.archetype]!.vehicle)) throw new EncounterDataError(`${gw}.path: expected a vehicle group and a bounded path`);
+      path = o['path'].map((p, j) => {
+        const q = obj(`${gw}.path[${j}]`, p, ['x', 'z']);
+        return { x: num(`${gw}.path[${j}].x`, q['x'], -Infinity), z: num(`${gw}.path[${j}].z`, q['z'], -Infinity) };
+      });
+      const start = mission.spawnZones.find((z) => z.id === o['zone'])!;
+      for (const m of members) for (const point of [start, ...path]) {
+        if (blockedAt(point.x, point.z, ENEMIES[m.archetype]!.vehicle!.hull.radius + .1, 0, .45, 2.4, world.boxes)) throw new EncounterDataError(`${gw}.path: vehicle hull does not fit`);
+      }
+    }
+    return { id: o['id'], members, zone: o['zone'], posture, trigger, waves, ...(fixedCount === undefined ? {} : { fixedCount: fixedCount as boolean }), ...(captive === undefined ? {} : { captive: captive as boolean }), ...(path ? { path } : {}) };
   });
   // A `dead` trigger names a group that exists and is not itself.
   for (const g of groups) {

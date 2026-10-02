@@ -29,6 +29,7 @@
  * give it eyes and a squad of its own.
  */
 import {
+  getEnemy,
   type Encounter,
   type EncounterGroup,
   type GroundArea,
@@ -57,7 +58,7 @@ export interface SpawnerHost {
   enemyFeet(): readonly { x: number; z: number }[];
   isAlive(netId: number): boolean;
   /** Spawn one; null when the session refuses (its own hard cap). */
-  spawn(archetype: string, at: Vec3 & { yaw: number; posture: EnemyPosture; group: number }): number | null;
+  spawn(archetype: string, at: Vec3 & { yaw: number; posture: EnemyPosture; group: number; captive?: boolean; path?: readonly { x: number; z: number }[] }): number | null;
   /** Snap a point onto the navmesh, or null when it is off it. Absent: every fitting point is ground. */
   ground?(p: Vec3): Vec3 | null;
 }
@@ -413,7 +414,8 @@ export class Spawner {
     run.waveTimes.push(seconds);
     // Sized now, by the pacing: a wave already on its way keeps its size.
     for (const m of run.def.members) {
-      const count = this.pacing.waveSize(m.count);
+      const def = getEnemy(m.archetype);
+      const count = run.def.fixedCount || def.friendly || def.vehicle ? m.count : this.pacing.waveSize(m.count);
       for (let i = 0; i < count; i++) this.queue.push({ run, wave: run.wavesSent, archetype: m.archetype });
     }
   }
@@ -490,7 +492,7 @@ export class Spawner {
       const posture = this.postureFor(item.run.def, point);
       const face = posture.kind === 'patrol' ? posture.route[0]! : posture.face;
       const yaw = yawToward(face.x - point.x, face.z - point.z);
-      const netId = this.host.spawn(item.archetype, { ...point, yaw, posture, group: item.run.sessionGroup });
+      const netId = this.host.spawn(item.archetype, { ...point, yaw, posture, group: item.run.sessionGroup, ...(item.run.def.captive === undefined ? {} : { captive: item.run.def.captive }), ...(item.run.def.path ? { path: item.run.def.path } : {}) });
       if (netId === null) break;
       item.run.spawned.push(netId);
       this.log.push({ seconds, group: item.run.def.id, wave: item.wave, archetype: item.archetype, netId, point: { ...point }, skippedVisible });

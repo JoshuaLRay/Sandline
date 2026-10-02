@@ -53,6 +53,9 @@ export type EventAction =
   | { kind: 'withdraw-vehicles' };
 
 export interface EventDef {
+  delaySeconds?: number;
+  ifGroupAlive?: string;
+  unlessFlag?: string;
   id: string;
   trigger: EventTrigger;
   actions: readonly EventAction[];
@@ -180,7 +183,7 @@ export function parseEventScript(raw: unknown, encounter: Encounter, world: Worl
 
   const events: EventDef[] = top['events'].map((rawEvent, i) => {
     const where = `events.events[${i}]`;
-    const o = obj(where, rawEvent, ['id', 'trigger', 'actions']);
+    const o = obj(where, rawEvent, ['id', 'trigger', 'actions'], ['delaySeconds', 'ifGroupAlive', 'unlessFlag']);
     const eventId = id(`${where}.id`, o['id']);
     if (eventIds.has(eventId)) throw new EventDataError(`${where}: duplicate event '${eventId}'`);
     eventIds.add(eventId);
@@ -313,7 +316,7 @@ export function parseEventScript(raw: unknown, encounter: Encounter, world: Worl
           throw new EventDataError(`${aw}.kind must be one of ${EVENT_ACTION_KINDS.join(', ')}`);
       }
     });
-    return { id: eventId, trigger, actions };
+    return { id: eventId, trigger, actions, ...(o['delaySeconds'] === undefined ? {} : { delaySeconds: finite(`${where}.delaySeconds`, o['delaySeconds'], 0, 3600) }), ...(o['ifGroupAlive'] === undefined ? {} : { ifGroupAlive: group(`${where}.ifGroupAlive`, o['ifGroupAlive']) }), ...(o['unlessFlag'] === undefined ? {} : { unlessFlag: flag(`${where}.unlessFlag`, o['unlessFlag']) }) };
   });
 
   return { world: world.id, blockers, events };

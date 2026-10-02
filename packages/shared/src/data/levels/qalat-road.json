@@ -1097,26 +1097,10 @@
       "rot": 0
     },
     {
-      "id": "north-edge-64",
-      "piece": "wall-plaster-4m",
-      "x": 6,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
       "id": "south-edge-64",
       "piece": "wall-plaster-4m",
       "x": 6,
       "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-68",
-      "piece": "wall-plaster-4m",
-      "x": 10,
-      "z": 198.2,
       "y": 0,
       "rot": 0
     },
@@ -3641,22 +3625,6 @@
       "rot": 0
     },
     {
-      "id": "compound-wall-194-24",
-      "piece": "wall-plaster-4m",
-      "x": 6,
-      "z": 194,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "compound-wall-194-28",
-      "piece": "wall-plaster-4m",
-      "x": 10,
-      "z": 194,
-      "y": 0,
-      "rot": 0
-    },
-    {
       "id": "compound-wall-194-32",
       "piece": "wall-plaster-4m",
       "x": 14,
@@ -4361,11 +4329,60 @@
     ],
     "spawnZones": [
       {
-        "id": "north-reserve",
+        "id": "garrison",
         "on": "objective",
         "x": 0,
-        "z": 196,
+        "z": 186,
+        "radius": 7
+      },
+      {
+        "id": "road-patrol",
+        "on": "road",
+        "x": 0,
+        "z": 66,
+        "radius": 3
+      },
+      {
+        "id": "river-patrol",
+        "on": "riverbed",
+        "x": -40,
+        "z": 52,
+        "radius": 3
+      },
+      {
+        "id": "terrace-post",
+        "on": "terraces",
+        "x": 40,
+        "z": 148,
         "radius": 1
+      },
+      {
+        "id": "radio",
+        "on": "objective",
+        "x": -8,
+        "z": 186,
+        "radius": 0.3
+      },
+      {
+        "id": "prisoner",
+        "on": "objective",
+        "x": -6,
+        "z": 178,
+        "radius": 0.3
+      },
+      {
+        "id": "north-reserve",
+        "on": "objective",
+        "x": -14,
+        "z": 196,
+        "radius": 2
+      },
+      {
+        "id": "tank-entry",
+        "on": "road",
+        "x": 8,
+        "z": 196,
+        "radius": 0.3
       }
     ],
     "checks": {

@@ -651,6 +651,7 @@ export interface EnemyEntity {
   /** Facing, wire units, as a slot's. */
   yaw: number;
   pitch: number;
+  captive?: boolean;
   /** U-066: a tank's turret facing, wire units, apart from the hull's `yaw`; a soldier's follows its own. */
   turretYaw: number;
   /** U-067: a tank's drive along its path, or null for a soldier and for a tank given no path. */
@@ -746,6 +747,7 @@ export interface PickupEntity {
 
 /** Where and how to spawn an enemy. */
 export interface EnemySpawn {
+  captive?: boolean;
   /** Feet position. */
   x: number;
   y: number;
@@ -1631,6 +1633,7 @@ export class Session {
         .map((e) => ({
           netId: e.netId,
           archetype: e.def.id,
+          ...(e.def.friendly ? { captive: e.captive ?? false } : {}),
           faction: e.faction,
           x: e.state.x,
           y: e.state.y,
@@ -1775,6 +1778,7 @@ export class Session {
         z: e.z,
         yaw: e.yaw,
         faction: e.faction,
+        captive: e.captive ?? false,
         ...(e.posture ? { posture: structuredClone(e.posture) } : {}),
         ...(group !== undefined ? { group } : {}),
       });
@@ -2238,7 +2242,7 @@ export class Session {
         this.slots
           .filter((s) => !s.isBot && living(s.health))
           .map((s) => eyePosition(s.state.x, s.state.y, s.state.z, DEFAULT_MUZZLE_RIG, eyeStance(false, s.state.prone))),
-      squadFeet: () => [...this.slots.filter((s) => living(s.health)).map((s) => ({ x: s.state.x, z: s.state.z })), ...this.enemyList.filter((e) => e.def.friendly && living(e.health)).map((e) => ({ x: e.state.x, z: e.state.z }))],
+      squadFeet: () => [...this.slots.filter((s) => living(s.health)).map((s) => ({ x: s.state.x, z: s.state.z })), ...this.enemyList.filter((e) => e.def.friendly && !e.captive && living(e.health)).map((e) => ({ x: e.state.x, z: e.state.z }))],
       enemyFeet: () => this.enemyList.filter((e) => living(e.health) && !e.def.friendly).map((e) => ({ x: e.state.x, z: e.state.z })),
       isAlive: (netId) => {
         const e = this.enemyList.find((x) => x.netId === netId);
@@ -2472,7 +2476,7 @@ export class Session {
 
   private escortView(enemy: EnemyEntity): EscortView {
     return {
-      order: () => this.escortOrder,
+      order: () => enemy.captive ? { kind: 'stay', point: null } : this.escortOrder,
       nearestSquad: () => {
         let best: { x: number; y: number; z: number } | null = null;
         let bestD = Infinity;
@@ -2506,6 +2510,7 @@ export class Session {
     const yaw = at.yaw ?? 0;
     const enemy: EnemyEntity = {
       netId: this.nextEnemyNetId++,
+      captive: at.captive ?? false,
       def,
       archetype: enemyIndex(def.id),
       faction: at.faction ?? (def.friendly ? ESCORT_FACTION : 0),

@@ -46,8 +46,8 @@ describe('U-092 valley routes and authored sight lines', () => {
     expect(clear({ x: 8, y: 1.6, z: 174 }, { x: 8, y: 1.6, z: 126 })).toBe(true);
     connected({ x: 8, y: 0, z: 174 }, { x: 8, y: 0, z: 126 });
   });
-  it('screens the squad start from the road and keeps preview enemies inert', () => {
+  it('screens the squad start and authors a captive prisoner', () => {
     expect(clear({ x: 0, y: 1.6, z: -6 }, { x: 0, y: 1.6, z: 60 })).toBe(false);
-    expect(encounterFor(world.id)!.groups.every((g) => g.trigger.kind === 'script')).toBe(true);
+    expect(encounterFor(world.id)!.groups.find((g) => g.id === 'prisoner')!.captive).toBe(true);
   });
 });
