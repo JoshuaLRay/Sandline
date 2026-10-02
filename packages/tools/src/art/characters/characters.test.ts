@@ -77,7 +77,7 @@ describe('the detailed soldier (T-4.08)', () => {
   });
 
   it('keeps every body UV inside an atlas region, so filtering never bleeds one part into another', () => {
-    const rects = (['face', 'helmet', 'blouse', 'trousers', 'vest', 'pack', 'pouch', 'boot', 'glove', 'belt', 'skin', 'goggle', 'strap', 'cuff'] as RegionName[]).map(region);
+    const rects = (['face', 'helmet', 'blouse', 'trousers', 'vest', 'pack', 'pouch', 'boot', 'glove', 'belt', 'skin', 'goggle', 'strap', 'cuff', 'sleeve', 'sleeveRight'] as RegionName[]).map(region);
     const used = new Set(skin.indices[0]);
     for (const v of used) {
       const [u, w] = [skin.uvs[v * 2]!, skin.uvs[v * 2 + 1]!];

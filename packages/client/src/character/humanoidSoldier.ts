@@ -131,10 +131,9 @@ interface PoseOffset {
 type PoseOffsets = Partial<Record<HumanoidBoneName, PoseOffset>>;
 
 /**
- * A deep crouch: hips 0.55 m down, thighs up, shins forward, the spine
- * leaning into the rifle and the head brought back up to look ahead. It is
- * the gameplay crouch's 1.2 m (`MoveConfig.crouchHeight`) to the top of the
- * helmet, its eye at the cover body's crouched eye, so a soldier crouched in
+ * A staggered low crouch: hips 0.55 m down, one knee lowered behind the
+ * planted lead foot, and the spine leaning into the rifle and the head brought back up to look ahead. It is
+ * the same helmet clearance as the existing gameplay crouch, its eye at the cover body's crouched eye, so a soldier crouched in
  * cover is hidden where the AI's cover search says they are.
  */
 const CROUCHED: PoseOffsets = {
@@ -143,12 +142,12 @@ const CROUCHED: PoseOffsets = {
   chest: { euler: [0.2, 0, 0] },
   neck: { euler: [-0.3, 0, 0] },
   head: { euler: [-0.35, 0, 0] },
-  'upper-leg-left': { euler: [-1.7, 0, 0.06] },
-  'lower-leg-left': { euler: [2.3, 0, 0] },
-  'foot-left': { euler: [-0.6, 0, 0] },
-  'upper-leg-right': { euler: [-1.7, 0, -0.06] },
-  'lower-leg-right': { euler: [2.3, 0, 0] },
-  'foot-right': { euler: [-0.6, 0, 0] },
+  'upper-leg-left': { euler: [-1.4, 0, 0.10] },
+  'lower-leg-left': { euler: [2.22, 0, 0] },
+  'foot-left': { euler: [-0.82, 0, 0] },
+  'upper-leg-right': { euler: [-1.1, 0, -0.08] },
+  'lower-leg-right': { euler: [2.4, 0, 0] },
+  'foot-right': { euler: [-1.30, 0, 0] },
 };
 
 /**
