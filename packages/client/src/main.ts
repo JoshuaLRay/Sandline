@@ -461,6 +461,14 @@ scene.add(player);
  */
 // T-4.06: the initial pack must be present before the lobby becomes usable.
 const query = new URLSearchParams(location.search);
+/** U-095: explicit QA-only camera for reproducible screenshots of the authored map. */
+type MapReviewView = { position: [number, number, number]; target: [number, number, number] };
+let mapReviewView: MapReviewView | null = null;
+if (query.has('review-map')) {
+  (window as unknown as { __sandlineMapReview: (view: MapReviewView) => void }).__sandlineMapReview = (view) => {
+    mapReviewView = view;
+  };
+}
 const initialPresentationReady = initialPackReady.then(async () => {
   const jobs: Promise<unknown>[] = [];
   // T-4.36: period weapons are already in the initial pack; this cache-hit turns them into runtime models.
@@ -3184,6 +3192,13 @@ function frame(): void {
 
   // T-4.07: choose each static placement's LOD from this frame's camera before drawing.
   levelPieces.update(camera);
+  if (mapReviewView) {
+    camera.position.set(...mapReviewView.position);
+    camera.lookAt(...mapReviewView.target);
+    camera.far = 1000;
+    camera.updateProjectionMatrix();
+    scene.fog = null;
+  }
   renderer.render(scene, camera);
   if (perf) {
     // T-5.04: this frame's time since the last, and the world's draw calls and triangles.

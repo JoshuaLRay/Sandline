@@ -1,0 +1,45 @@
+U-095 baseline: 20 seeds at budgets 1 and 6, 2026-10-02
+Command: node --import tsx packages/tools/src/sim-run.ts --scenario mission --mission packages/shared/src/data/missions/qalat-road.json --seeds 20
+
+  1h seed 1: failed at 80.9s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 2: failed at 25.9s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/3, living enemies in area 1
+  1h seed 3: failed at 31.9s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/3, living enemies in area 1
+  1h seed 4: failed at 62.8s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 5: failed at 25.7s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/3, living enemies in area 1
+  1h seed 6: failed at 21.5s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/3, living enemies in area 1
+  1h seed 7: failed at 35.6s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: all-downed; standing in area 0/0, living enemies in area 1
+  1h seed 8: failed at 28.9s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/1, living enemies in area 1
+  1h seed 9: failed at 71.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 10: failed at 73.8s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 11: failed at 33.3s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: all-downed; standing in area 0/0, living enemies in area 1
+  1h seed 12: failed at 59.7s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/0, living enemies in area 1
+  1h seed 13: failed at 72.6s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 14: failed at 18.7s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/3, living enemies in area 1
+  1h seed 15: failed at 46.3s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/2, living enemies in area 1
+  1h seed 16: failed at 69.1s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 17: failed at 29.5s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/3, living enemies in area 1
+  1h seed 18: failed at 71.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 19: failed at 56.2s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/2, living enemies in area 1
+  1h seed 20: failed at 31.3s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/2, living enemies in area 1
+  6h seed 1: failed at 80.9s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 2: failed at 25.9s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/3, living enemies in area 1
+  6h seed 3: failed at 31.9s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/3, living enemies in area 1
+  6h seed 4: failed at 62.8s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 5: failed at 25.7s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/3, living enemies in area 1
+  6h seed 6: failed at 21.5s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/3, living enemies in area 1
+  6h seed 7: failed at 35.6s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: all-downed; standing in area 0/0, living enemies in area 1
+  6h seed 8: failed at 28.9s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/1, living enemies in area 1
+  6h seed 9: failed at 71.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 10: failed at 73.8s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 11: failed at 33.3s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: all-downed; standing in area 0/0, living enemies in area 1
+  6h seed 12: failed at 59.7s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/0, living enemies in area 1
+  6h seed 13: failed at 72.6s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 14: failed at 18.7s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/3, living enemies in area 1
+  6h seed 15: failed at 46.3s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/2, living enemies in area 1
+  6h seed 16: failed at 69.1s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 17: failed at 29.5s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/3, living enemies in area 1
+  6h seed 18: failed at 71.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 19: failed at 56.2s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/2, living enemies in area 1
+  6h seed 20: failed at 31.3s; objective 1/5 reach 'Approach: reach the compound' 0/1; failed: soldier-dead; standing in area 0/2, living enemies in area 1
+
+0/20 at each budget. All runs end before freeing the prisoner. No completion floor was guessed. Scenario tests prove the later mechanics separately.

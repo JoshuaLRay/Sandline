@@ -95,6 +95,13 @@ jobs:
       - name: Qalat Road first playable frame budget
         run: SANDLINE_LOAD_WORLD=qalat-road pnpm check:load-time
       # T-5.04: the slice mission with the squad, walked and fought; asserts the draw budget, records frame time.
+      - name: Capture Qalat map review
+        run: pnpm exec tsx packages/tools/src/capture-map-review.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qalat-map-review
+          path: artifacts/map-review/*.png
+          if-no-files-found: error
       - run: pnpm perf:frame
 
   # ADR-014: the transcendental-drift bug is invisible on a V8-to-V8 pairing.
@@ -180,4 +187,7 @@ jobs:
       # U-085: twenty seeds, not three: three cannot measure a completion rate, so the floors in mission.json were never
       # asserted in CI and a failing default went unseen. About five minutes.
       - run: pnpm sim-run --scenario mission --seeds 20
+        if: ${{ !cancelled() }}
+      - name: Qalat measured baseline at both budgets
+        run: pnpm sim-run --scenario mission --mission packages/shared/src/data/missions/qalat-road.json --seeds 20
         if: ${{ !cancelled() }}
