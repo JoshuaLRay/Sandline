@@ -68,7 +68,8 @@ function cloth(u: number, v: number, x: number, y: number, seed: number, folds: 
   const weave = ((x + (y >> 1)) % 2) * 0.025;
   const fold = tiledNoise(seed + 7, u * folds, v * 2, folds);
   const blotch = tiledFbm(seed + 13, u * 3, v * 3, 3, 2);
-  let c = shade(PALE, 0.84 + weave + (fold - 0.5) * 0.22 + (blotch - 0.5) * 0.08 + (g - 0.5) * 0.05);
+  let c = shade(PALE, 0.84 + weave + (fold - 0.5) * 0.34 + (blotch - 0.5) * 0.08 + (g - 0.5) * 0.05);
+  c = shade(c, 0.84 + 0.16 * Math.abs(Math.cos(u * Math.PI * 2)));
   // Dust climbs the cloth from the ground.
   c = mix(c, [196, 176, 146], Math.max(0, v - 0.7) * 0.9);
   return c;
