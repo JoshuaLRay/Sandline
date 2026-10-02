@@ -98,7 +98,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-062](docs/backlog/U-062.md) | Enemy capture behaviour: 2 s rule, 5 s channel, interruption | Campaign | P2 | DONE | U-061 | [#231](https://github.com/JoshuaLRay/Sandline/pull/231) |
 | [U-063](docs/backlog/U-063.md) | The `rescue` objective type | Campaign | P2 | DONE | U-061 | [#232](https://github.com/JoshuaLRay/Sandline/pull/232) |
 | [U-064](docs/backlog/U-064.md) | Captured characters in the slot picker, HUD and messages | Campaign | P2 | DONE | U-061 | [#233](https://github.com/JoshuaLRay/Sandline/pull/233) |
-| [U-065](docs/backlog/U-065.md) | Campaign mission 1: rescue, escort and the armoured ambush | Campaign design | P2 | BLOCKED | Mission 1 brief (approved 2026-10-02); the level, encounter and script become cards (U-092 onward) | — |
+| [U-065](docs/backlog/U-065.md) | Campaign mission 1: rescue, escort and the armoured ambush | Campaign design | P2 | BLOCKED | Mission 1 brief (approved 2026-10-02); U-092, U-093, U-094, U-095 (umbrella) | — |
 | [U-066](docs/backlog/U-066.md) | Tank entity: hull, turret, hitbox, armour and health | Mission / vehicle combat | P2 | DONE | — | [#235](https://github.com/JoshuaLRay/Sandline/pull/235) |
 | [U-067](docs/backlog/U-067.md) | Tank movement: follow a path, stop at a firing position | Mission / vehicle combat | P2 | DONE | U-066 | [#236](https://github.com/JoshuaLRay/Sandline/pull/236) |
 | [U-068](docs/backlog/U-068.md) | Tank weapons: cannon and coaxial machine gun | Mission / vehicle combat | P2 | DONE | U-066 | [#237](https://github.com/JoshuaLRay/Sandline/pull/237) |
@@ -125,6 +125,10 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-089](docs/backlog/U-089.md) | Run kinds in the campaign file, and separate prisoner pools | Campaign design | P2 | DONE | — | [#260](https://github.com/JoshuaLRay/Sandline/pull/260) |
 | [U-090](docs/backlog/U-090.md) | The host chooses the next run; briefing, debrief and the handoff | Campaign design | P2 | DONE | U-089 | [#261](https://github.com/JoshuaLRay/Sandline/pull/261) |
 | [U-091](docs/backlog/U-091.md) | Spectate the escorted character | Campaign design | P3 | DONE | U-075 | [#267](https://github.com/JoshuaLRay/Sandline/pull/267) |
+| [U-092](docs/backlog/U-092.md) | Mission 1 level: the three-lane valley and the compound | Campaign design | P2 | READY | — | — |
+| [U-093](docs/backlog/U-093.md) | Mission 1 encounter: the garrison, the patrols and the tank's arrival | Campaign design | P2 | BLOCKED | U-092 | — |
+| [U-094](docs/backlog/U-094.md) | Mission 1 mission file and script: staged objectives, rescue and extraction | Campaign design | P2 | BLOCKED | U-093 | — |
+| [U-095](docs/backlog/U-095.md) | Mission 1 verification: the headless run and its completion baseline | Campaign design | P2 | BLOCKED | U-094 | — |
 
 ## Existing work retained
 
