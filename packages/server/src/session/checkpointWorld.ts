@@ -31,6 +31,7 @@ export interface SlotCheckpoint {
 
 /** U-059: a living enemy at a checkpoint. */
 export interface EnemyCheckpoint {
+  captive?: boolean;
   netId: number;
   archetype: string;
   faction: number;
@@ -252,6 +253,7 @@ export function parseCheckpointWorld(raw: unknown): CheckpointWorld | null {
           health: num(`${w}.health`, x['health']),
           group: strOrNull(`${w}.group`, x['group']),
           posture: posture(`${w}.posture`, x['posture']),
+          ...(x['captive'] === undefined ? {} : { captive: bool(`${w}.captive`, x['captive']) }),
           ammo: int(`${w}.ammo`, x['ammo'], 0, 65535),
           pouch: pouch(`${w}.pouch`, x['pouch']),
           ...(x['vehicle'] === undefined ? {} : { vehicle: vehicle(`${w}.vehicle`, x['vehicle']) }),

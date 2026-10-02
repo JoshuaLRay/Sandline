@@ -21,6 +21,7 @@ import {
 } from '@sandline/shared';
 
 export interface EventCheckpoint {
+  pending?: [string, number][];
   fired: string[];
   flags: [string, boolean][];
   blockers: ScriptBlockerState[];
@@ -72,6 +73,7 @@ function encounterEvent(group: Encounter['groups'][number]): EventDef[] {
 export class EventRun {
   private readonly defs: readonly EventDef[];
   private readonly fired = new Set<string>();
+  private readonly pending = new Map<string, number>();
   private readonly flags = new Map<string, boolean>();
   private readonly blockerState = new Map<string, ScriptBlockerState>();
   /** The objectives that were open and to do at the last step; null before the first. */
@@ -97,6 +99,7 @@ export class EventRun {
   checkpoint(): EventCheckpoint {
     return {
       fired: [...this.fired],
+      ...(this.pending.size > 0 ? { pending: [...this.pending] } : {}),
       flags: [...this.flags],
       blockers: this.blockers.map((b) => ({ ...b, boxes: [...b.boxes] })),
       previousActive: this.previousActive ? [...this.previousActive] : null,
@@ -105,7 +108,9 @@ export class EventRun {
 
   /** Restore a previously captured checkpoint without replaying already-fired events. */
   restore(checkpoint: EventCheckpoint): void {
+    this.pending.clear();
     this.fired.clear();
+    for (const [id, due] of checkpoint.pending ?? []) this.pending.set(id, due);
     for (const id of checkpoint.fired) this.fired.add(id);
     this.flags.clear();
     for (const [id, value] of checkpoint.flags) this.flags.set(id, value);
@@ -144,6 +149,7 @@ export class EventRun {
 
   /** Start a new mission attempt. */
   reset(): void {
+    this.pending.clear();
     this.fired.clear();
     this.flags.clear();
     this.previousActive = null;
@@ -238,8 +244,17 @@ export class EventRun {
     for (let pass = 0; pass <= this.defs.length; pass++) {
       let progressed = false;
       for (const def of this.defs) {
-        if (this.fired.has(def.id) || !this.triggered(def.trigger, seconds, started, completed)) continue;
+        if (this.fired.has(def.id)) continue;
+        let due = this.pending.get(def.id);
+        if (due === undefined) {
+          if (!this.triggered(def.trigger, seconds, started, completed)) continue;
+          due = seconds + (def.delaySeconds ?? 0);
+          this.pending.set(def.id, due);
+        }
+        if (seconds + 1e-9 < due) continue;
+        this.pending.delete(def.id);
         this.fired.add(def.id);
+        if ((def.ifGroupAlive && this.host.groupDead(def.ifGroupAlive)) || (def.unlessFlag && this.flags.get(def.unlessFlag))) continue;
         progressed = true;
         for (const action of def.actions) this.action(action, seconds);
       }

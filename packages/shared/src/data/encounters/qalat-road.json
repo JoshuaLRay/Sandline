@@ -1,28 +1,219 @@
 {
   "world": "qalat-road",
-  "aliveCap": 1,
+  "aliveCap": 42,
   "probes": [
     0.3,
     1,
     1.7
   ],
-  "areas": {},
+  "stragglers": {
+    "alive": 0,
+    "seconds": 60
+  },
+  "areas": {
+    "compound-ring": {
+      "x": 0,
+      "z": 180,
+      "radius": 30
+    }
+  },
   "groups": [
     {
-      "id": "preview-placeholder",
+      "id": "garrison",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 6
+        },
+        {
+          "archetype": "mg",
+          "count": 1
+        }
+      ],
+      "zone": "garrison",
+      "posture": {
+        "kind": "garrison",
+        "at": "objective"
+      },
+      "trigger": {
+        "kind": "enter",
+        "area": "compound-ring"
+      },
+      "fixedCount": true
+    },
+    {
+      "id": "road-patrol",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 3
+        }
+      ],
+      "zone": "road-patrol",
+      "posture": {
+        "kind": "patrol",
+        "route": [
+          {
+            "x": 0,
+            "z": 64
+          },
+          {
+            "x": 0,
+            "z": 106
+          }
+        ]
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "fixedCount": true
+    },
+    {
+      "id": "river-patrol",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 3
+        }
+      ],
+      "zone": "river-patrol",
+      "posture": {
+        "kind": "patrol",
+        "route": [
+          {
+            "x": -40,
+            "z": 52
+          },
+          {
+            "x": -40,
+            "z": 128
+          }
+        ]
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "fixedCount": true
+    },
+    {
+      "id": "terrace-post",
       "members": [
         {
           "archetype": "rifleman",
           "count": 1
         }
       ],
+      "zone": "terrace-post",
+      "posture": {
+        "kind": "hold",
+        "face": "compound-ring"
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "fixedCount": true
+    },
+    {
+      "id": "radio-operator",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 1
+        }
+      ],
+      "zone": "radio",
+      "posture": {
+        "kind": "garrison",
+        "at": "objective"
+      },
+      "trigger": {
+        "kind": "enter",
+        "area": "compound-ring"
+      },
+      "fixedCount": true
+    },
+    {
+      "id": "prisoner",
+      "members": [
+        {
+          "archetype": "pow",
+          "count": 1
+        }
+      ],
+      "zone": "prisoner",
+      "posture": {
+        "kind": "hold"
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "captive": true,
+      "fixedCount": true
+    },
+    {
+      "id": "counterattack",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 4
+        }
+      ],
       "zone": "north-reserve",
+      "posture": {
+        "kind": "garrison",
+        "at": "objective"
+      },
+      "trigger": {
+        "kind": "script"
+      },
+      "fixedCount": true
+    },
+    {
+      "id": "tank",
+      "members": [
+        {
+          "archetype": "tank",
+          "count": 1
+        }
+      ],
+      "zone": "tank-entry",
       "posture": {
         "kind": "hold"
       },
       "trigger": {
         "kind": "script"
-      }
+      },
+      "path": [
+        {
+          "x": 8,
+          "z": 174
+        },
+        {
+          "x": 8,
+          "z": 126
+        },
+        {
+          "x": 0,
+          "z": 120
+        },
+        {
+          "x": 0,
+          "z": 12
+        },
+        {
+          "x": 16,
+          "z": 10
+        },
+        {
+          "x": 16,
+          "z": -6
+        },
+        {
+          "x": 0,
+          "z": -6
+        }
+      ],
+      "fixedCount": true
     }
   ]
 }

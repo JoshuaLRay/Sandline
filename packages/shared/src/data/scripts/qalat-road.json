@@ -1,0 +1,71 @@
+{
+  "world": "qalat-road",
+  "blockers": [],
+  "events": [
+    {
+      "id": "pow-freed",
+      "trigger": {
+        "kind": "flag",
+        "flag": "pow-freed",
+        "value": true
+      },
+      "actions": [
+        {
+          "kind": "spawn-group",
+          "group": "counterattack"
+        }
+      ]
+    },
+    {
+      "id": "tank-early",
+      "trigger": {
+        "kind": "flag",
+        "flag": "pow-freed",
+        "value": true
+      },
+      "delaySeconds": 5,
+      "ifGroupAlive": "radio-operator",
+      "unlessFlag": "tank-arrived",
+      "actions": [
+        {
+          "kind": "spawn-group",
+          "group": "tank"
+        },
+        {
+          "kind": "set-flag",
+          "flag": "tank-arrived",
+          "value": true
+        },
+        {
+          "kind": "message",
+          "text": "The radio operator called in armour. Tank inbound!"
+        }
+      ]
+    },
+    {
+      "id": "tank-delayed",
+      "trigger": {
+        "kind": "flag",
+        "flag": "pow-freed",
+        "value": true
+      },
+      "delaySeconds": 20,
+      "unlessFlag": "tank-arrived",
+      "actions": [
+        {
+          "kind": "spawn-group",
+          "group": "tank"
+        },
+        {
+          "kind": "set-flag",
+          "flag": "tank-arrived",
+          "value": true
+        },
+        {
+          "kind": "message",
+          "text": "Armour on the road. Keep the prisoner behind cover!"
+        }
+      ]
+    }
+  ]
+}
