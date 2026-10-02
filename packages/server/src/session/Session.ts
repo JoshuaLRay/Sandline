@@ -1400,6 +1400,7 @@ export class Session {
         return { total: escorts.length, inside: escorts.filter((e) => inside(a)(e.state)).length };
       },
       standing: () => standing.length,
+      squadSize: () => this.slots.length,
       standingIn: (a) => standing.filter((s) => inside(a)(s.state)).length,
       // U-061: a prisoner is not a death: the mission goes on without them.
       soldierDead: () => this.slots.some((s) => isDead(s.health) && !s.captured) || this.enemyList.some((e) => e.def.friendly && isDead(e.health)),

@@ -98,7 +98,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-062](docs/backlog/U-062.md) | Enemy capture behaviour: 2 s rule, 5 s channel, interruption | Campaign | P2 | DONE | U-061 | [#231](https://github.com/JoshuaLRay/Sandline/pull/231) |
 | [U-063](docs/backlog/U-063.md) | The `rescue` objective type | Campaign | P2 | DONE | U-061 | [#232](https://github.com/JoshuaLRay/Sandline/pull/232) |
 | [U-064](docs/backlog/U-064.md) | Captured characters in the slot picker, HUD and messages | Campaign | P2 | DONE | U-061 | [#233](https://github.com/JoshuaLRay/Sandline/pull/233) |
-| [U-065](docs/backlog/U-065.md) | Campaign mission 1: rescue, escort and the armoured ambush | Campaign design | P2 | BLOCKED | Mission 1 brief (approved 2026-10-02); U-092, U-093, U-094, U-095 (umbrella) | — |
+| [U-065](docs/backlog/U-065.md) | Campaign mission 1: rescue, escort and the armoured ambush | Campaign design | P2 | REVIEW | Mission 1 brief (approved 2026-10-02); U-092, U-093, U-094, U-095 (umbrella) | Technical implementation complete on U-095 green merge; owner playtest and headless completion remain open |
 | [U-066](docs/backlog/U-066.md) | Tank entity: hull, turret, hitbox, armour and health | Mission / vehicle combat | P2 | DONE | — | [#235](https://github.com/JoshuaLRay/Sandline/pull/235) |
 | [U-067](docs/backlog/U-067.md) | Tank movement: follow a path, stop at a firing position | Mission / vehicle combat | P2 | DONE | U-066 | [#236](https://github.com/JoshuaLRay/Sandline/pull/236) |
 | [U-068](docs/backlog/U-068.md) | Tank weapons: cannon and coaxial machine gun | Mission / vehicle combat | P2 | DONE | U-066 | [#237](https://github.com/JoshuaLRay/Sandline/pull/237) |
@@ -127,8 +127,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-091](docs/backlog/U-091.md) | Spectate the escorted character | Campaign design | P3 | DONE | U-075 | [#267](https://github.com/JoshuaLRay/Sandline/pull/267) |
 | [U-092](docs/backlog/U-092.md) | Mission 1 level: the three-lane valley and the compound | Campaign design | P2 | DONE | — | [#274](https://github.com/JoshuaLRay/Sandline/pull/274); owner authorized assumed approval through U-095 |
 | [U-093](docs/backlog/U-093.md) | Mission 1 encounter: the garrison, the patrols and the tank's arrival | Campaign design | P2 | DONE | U-092 | [#275](https://github.com/JoshuaLRay/Sandline/pull/275); CI #1634 green |
-| [U-094](docs/backlog/U-094.md) | Mission 1 mission file and script: staged objectives, rescue and extraction | Campaign design | P2 | DONE | U-093 | `task/U-094-qalat-mission`; proposed completion on green merge |
-| [U-095](docs/backlog/U-095.md) | Mission 1 verification: the headless run and its completion baseline | Campaign design | P2 | BLOCKED | U-094 | — |
+| [U-094](docs/backlog/U-094.md) | Mission 1 mission file and script: staged objectives, rescue and extraction | Campaign design | P2 | DONE | U-093 | [#276](https://github.com/JoshuaLRay/Sandline/pull/276); CI #1636 green |
+| [U-095](docs/backlog/U-095.md) | Mission 1 verification: the headless run and its completion baseline | Campaign design | P2 | DONE | U-094 | [#277](https://github.com/JoshuaLRay/Sandline/pull/277); proposed technical completion on green merge; owner playtest owed |
 
 ## Existing work retained
 

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { encounterFor, missionFor, parseMission, checkMission, requireWorld, scriptFor, TICK_SECONDS } from '@sandline/shared';
+import { encounterFor, missionFor, parseMission, checkMission, requireWorld, scriptFor, TICK_SECONDS, PROJECTILE_IDS } from '@sandline/shared';
 import { initNav } from '../ai/nav/NavMesh.ts';
 import { loadWorldNavMesh } from '../ai/nav/bakedNav.ts';
 import { Session } from './Session.ts';
@@ -13,9 +13,9 @@ function play() {
   const mesh = loadWorldNavMesh(world.id);
   const session = new Session(undefined, '', world, { brainTree: buildTree('friendly', createBrainRegistry()), encounter, mission, events: scriptFor(world.id)!, navMesh: mesh, testHumanCount: 0 });
   let now = 0;
-  const step = (n = 1) => {
+  const step = (n = 1, clearTank = true) => {
     for (let i = 0; i < n; i++) {
-      for (const e of session.enemies) if (!e.def.friendly) Object.assign(e.health, { current: 0, diedAt: now / 1000 });
+      for (const e of session.enemies) if (!e.def.friendly && (clearTank || !e.def.vehicle)) Object.assign(e.health, { current: 0, diedAt: now / 1000 });
       now += TICK_SECONDS * 1000;
       session.step(now);
     }
@@ -29,7 +29,50 @@ function play() {
   const pow = () => session.enemies.find((e) => e.def.friendly)!;
   return { session, step, place, pow, mesh };
 }
-describe('U-094 Qalat mission', () => {
+describe('U-094/U-095 Qalat mission', () => {
+  it('follows, holds and moves on all-squad orders after rescue, preserving hold on retry', () => {
+    const p = play(); p.step(5); p.place(-6, 177); p.step(160);
+    p.place(-6, 162); p.step(150);
+    expect(p.pow().state.z).toBeLessThan(174);
+    p.session.orderFrom(0, { order: 'hold', address: { to: 'all' }, point: null, target: null });
+    const held = { ...p.pow().state };
+    (p.session as unknown as { captureMissionCheckpoint(): void }).captureMissionCheckpoint();
+    p.session.retryMission(true);
+    p.place(-6, 150); p.step(90);
+    expect(Math.hypot(p.pow().state.x - held.x, p.pow().state.z - held.z)).toBeLessThan(.5);
+    p.session.orderFrom(0, { order: 'move', address: { to: 'all' }, point: { x: -6, y: 0, z: 158 }, target: null });
+    p.step(180);
+    expect(p.pow().state.z).toBeLessThan(held.z - 2);
+    p.mesh.destroy();
+  });
+  it('destroys the spawned tank with real rocket blasts and restores the POW on a retry after it', () => {
+    const p = play(); p.step(5); p.place(-6, 177); p.step(160);
+    p.step(30 * 21, false);
+    const tank = p.session.enemies.find((e) => e.def.vehicle)!;
+    expect(tank.health.diedAt).toBeNull();
+    const kind = PROJECTILE_IDS.indexOf('rocket');
+    const at = { x: tank.state.x + 1.5, y: tank.state.y + 1, z: tank.state.z };
+    const detonate = p.session as unknown as { detonate(projectile: unknown, at: { x: number; y: number; z: number }): void };
+    for (let i = 0; i < 6; i++) detonate.detonate({ netId: 60000 + i, kind, def: p.session.projectileDef(kind)!, ownerSlot: 0, ownerNetId: p.session.slots[0]!.netId, xpPlayerId: null, state: { ...at, vx: 0, vy: 0, vz: 0, age: 0, bounces: 0, resting: false } }, at);
+    expect(tank.health.diedAt).not.toBeNull();
+    p.step();
+    p.session.slots[0]!.health.diedAt = 30;
+    p.step(); expect(p.session.mission!.state).toBe('failed');
+    p.session.retryMission();
+    expect(p.session.mission!.objective).toBe(4);
+    expect(p.pow().captive).toBe(false);
+    expect(p.pow().health.diedAt).toBeNull();
+    expect(p.session.spawner!.dead('tank')).toBe(true);
+    p.place(0, -6); p.pow().state = { ...p.pow().state, x: 0, z: -6 };
+    p.session.slots[5]!.health.current = 0;
+    p.session.slots[5]!.health.downedAt = 30;
+    p.step(); expect(p.session.mission!.state).toBe('progress');
+    p.session.slots[5]!.health.current = p.session.slots[5]!.health.max;
+    p.session.slots[5]!.health.downedAt = null;
+    p.step(); expect(p.session.mission!.state).toBe('complete');
+    p.mesh.destroy();
+  });
+
   it('validates its stages and rejects invalid captive rescue/checkpoint data', () => {
     expect(() => checkMission(mission, encounter, world)).not.toThrow();
     expect(mission.objectives.map((o) => o.stage)).toEqual([0, 1, 1, 2, 2]);

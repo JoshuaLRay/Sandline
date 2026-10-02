@@ -1,7 +1,7 @@
 {
   "id": "qalat-road",
   "format": 1,
-  "$comment": "U-092: 120 x 200 m (24,000 m\u00b2) first-cut valley. West riverbed, open centre road and bend, east terraced fields and climbable 3.25 m overlooks. South spawn/extraction loop, north compound with side gates. Mission and encounter are explicitly inert U-093/U-094 placeholders.",
+  "$comment": "U-092: 120 x 200 m (24,000 m\u00b2) first-cut valley. West riverbed, open centre road and bend, east terraced fields and climbable 3.25 m overlooks. South spawn/extraction loop, north compound with side gates. U-093/U-094 provide the live encounter, captive rescue and extraction mission.",
   "floor": {
     "halfWidth": 64,
     "halfDepth": 202

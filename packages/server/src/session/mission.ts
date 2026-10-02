@@ -64,6 +64,8 @@ export interface MissionWorld {
   squadIn(area: GroundArea): number;
   /** Standing squad soldiers — alive, not downed — in all, and inside an area. */
   standing(): number;
+  /** Total squad slots, for an escort extraction requiring everyone standing. */
+  squadSize?(): number;
   standingIn(area: GroundArea): number;
   /** U-075: the escorted characters — how many there are (alive) and how many of those are inside an area. Absent: none. */
   escortsIn?(area: GroundArea): { total: number; inside: number };
@@ -359,7 +361,7 @@ export class MissionRun {
         break;
       }
       case 'reach': {
-        const need = def.who === 'all' ? w.standing() : 1;
+        const need = def.who === 'all' ? (def.escort ? w.squadSize?.() ?? w.standing() : w.standing()) : 1;
         const there = Math.min(w.standingIn(area!), Math.max(need, 1));
         // U-075: an extraction that needs the escort needs every escorted character with the squad.
         const escorts = def.escort ? (w.escortsIn?.(area!) ?? { total: 0, inside: 0 }) : null;

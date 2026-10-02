@@ -18,7 +18,7 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
     const group = encounter.groups.find((g) => g.id === id);
     return group?.posture.kind === 'garrison' && group.posture.at === 'objective' && group.trigger.kind === 'start';
   };
-  const approachIndex = def.objectives.findIndex((o) => (o.type === 'clear-and-hold' && o.area === 'objective') || (o.type === 'destroy' && garrisons(o.group)));
+  const approachIndex = def.objectives.findIndex((o) => (o.type === 'reach' && o.area === 'compound-ring') || (o.type === 'clear-and-hold' && o.area === 'objective') || (o.type === 'destroy' && garrisons(o.group)));
   const roles = ['overwatch', 'assault'] as const;
   const stops = SQUAD.fireteams.map((_, i) => approachIndex >= 0
     ? (mission.routes.find((r) => r.role === roles[i % roles.length])?.via ?? []).map((p) => ({ ...p, y: 0 }))
@@ -95,6 +95,14 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
     } else if (objective.type === 'destroy') {
       ({ point, target } = groupHint(objective.group, slot));
       if (target !== null) order = 'attack';
+    } else if (objective.type === 'rescue' && objective.group) {
+      const ids = session.spawner!.spawnedBy(objective.group);
+      const pow = session.enemies.find((e) => ids.includes(e.netId) && e.def.friendly && !isDead(e.health));
+      point = pow ? { x: pow.state.x, y: pow.state.y, z: pow.state.z - 1 } : groupHint(objective.group, slot).point;
+      const from = session.slots[slot]!.state;
+      const threat = session.enemies.filter((e) => !e.def.friendly && !isDead(e.health) && flat(e.state, point) <= config.clearWithinM)
+        .reduce<Session['enemies'][number] | null>((best, e) => best === null || flat(from, e.state) < flat(from, best.state) ? e : best, null);
+      if (threat) { order = 'attack'; target = threat.netId; }
     } else if (objective.type === 'upload') {
       if (presser < 0 || !standing(presser)) pickPresser(objective.terminal);
       if (slot === presser || !objective.lever) {
@@ -162,7 +170,7 @@ export function createMissionLeader(session: Session, def: MissionDef, encounter
     const approached = objectiveIndex !== approachIndex || at.every((a, t) => a >= stops[t]!.length);
     // U-011: an upload's presser can fall; the next nearest takes the terminal.
     const presserLost = current.type === 'upload' && (presser < 0 || !standing(presser));
-    if (current.type === 'destroy' || (current.type === 'clear-and-hold' && approached) || presserLost) SQUAD.fireteams.forEach((_, t) => orderTeam(t));
+    if (current.type === 'rescue' || current.type === 'destroy' || (current.type === 'clear-and-hold' && approached) || presserLost) SQUAD.fireteams.forEach((_, t) => orderTeam(t));
     for (const [reviver, downed] of [...reviving]) {
       if (!isDowned(session.slots[downed]!.health) || !standing(reviver)) {
         reviving.delete(reviver);

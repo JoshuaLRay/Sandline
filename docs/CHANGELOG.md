@@ -361,3 +361,5 @@ Format: `T-<id> — <what changed>`
 - U-093 — Authored Qalat patrols, captive prisoner, compound garrison, reserves and conditional delayed tank route; persisted event deadlines and captivity.
 
 - U-094 — Made The Qalat Road the campaign opener with staged captive rescue, optional radio, tank destruction, all-seven extraction and selective POW-restoring checkpoints.
+
+- U-095 — Recorded Qalat’s 0/20 baseline at both budgets, verified rescue/escort/tank/retry/extraction scenarios, fixed downed-soldier extraction and rectangular floor rendering, and added real Chromium map review captures.
