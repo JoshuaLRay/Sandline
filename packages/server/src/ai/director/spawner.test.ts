@@ -442,3 +442,28 @@ describe('posture is honoured on spawn, on the grey-box map (T-3.32)', () => {
     expect(diff).toBeLessThan((10 * Math.PI) / 180);
   });
 });
+
+describe('raised-ground spawning (U-097)', () => {
+  it('checks body clearance after snapping to terrain and accepts its supporting solid', () => {
+    const world = loadWorld({ id: WORLD.id, floor: { halfExtent: 40 }, cover: [
+      { id: 'terrace', x: 20, y: 0, z: 30, w: 10, h: 3.25, d: 10 },
+    ], mission: WORLD.mission });
+    const base = fakeHost();
+    const host = { ...base, ground: (p: Vec3) => ({ ...p, y: 3.3 }) };
+    const spawner = new Spawner(encounter([group('raised', { kind: 'start' })]), world, host);
+    run(spawner, 0, 1);
+    expect(base.spawns).toHaveLength(1);
+    expect(base.spawns[0]!.at.y).toBe(3.3);
+  });
+  it('rejects a body obstruction at the raised standing height', () => {
+    const world = loadWorld({ id: WORLD.id, floor: { halfExtent: 40 }, cover: [
+      { id: 'terrace', x: 20, y: 0, z: 30, w: 10, h: 3.25, d: 10 },
+      { id: 'wall', x: 20, y: 3.25, z: 30, w: 10, h: 3, d: 10 },
+    ], mission: WORLD.mission });
+    const base = fakeHost();
+    const host = { ...base, ground: (p: Vec3) => ({ ...p, y: 3.3 }) };
+    const spawner = new Spawner(encounter([group('raised', { kind: 'start' })]), world, host);
+    run(spawner, 0, 1);
+    expect(base.spawns).toHaveLength(0);
+  });
+});

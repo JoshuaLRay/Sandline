@@ -59,7 +59,7 @@ export const DEFAULT_COVER_EYES = coverEyesFrom();
 
 /** Everything that decides the cover beyond the world and the agent, for the staleness hash. */
 export function coverHashInputs(eyes: CoverEyes = DEFAULT_COVER_EYES): Record<string, unknown> {
-  return { spacing: COVER_SPACING_M, margin: COVER_MARGIN_M, eyes };
+  return { support: 'box-base', spacing: COVER_SPACING_M, margin: COVER_MARGIN_M, eyes };
 }
 
 /** The class a box top `heightM` above the feet gives, or null for none. */
@@ -123,7 +123,7 @@ export function coverPoints(
         // re-bakes byte for byte; every check below is of the rounded point.
         const x = round(alongX ? t : face + nx * stand);
         const z = round(alongX ? face + nz * stand : t);
-        const y = supportUnder(x, z, r, agent.groundY + agent.climb, world.boxes, agent.groundY);
+        const y = supportUnder(x, z, r, box.minY + agent.climb, world.boxes, agent.groundY);
         const height = heightClass(box.maxY - y, eyes);
         if (!height) continue;
         if (bodyBlocked(x, y, z, world, agent)) continue;

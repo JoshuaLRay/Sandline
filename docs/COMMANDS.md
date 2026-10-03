@@ -73,8 +73,12 @@ encounter and script tables and the lobby's map list are all built from that lis
 `packages/shared/src/sim/campaignRegistry.test.ts` shows the shape: a throwaway mission built from copies of mission-01's
 files under another id goes through every builder with no other edit.
 
-### Qalat Road map preview (U-092)
+### Qalat Road terrain and mission review (U-097)
 
-Choose **The Qalat Road — valley map preview** in the lobby, or open `?mission&world=qalat-road`. The 120 × 200 m valley is registered as `qalat-road`; its encounter is inert and its reach objective is a preview placeholder for U-093/U-094. Start and extraction are at `(0, -6)`, compound centre `(0, 182)`. West riverbed is centred on x=-40, road on x=0 (x=8 after the northern bend), and east terraces on x=40. The three climbable overlooks are at `(40, 60)`, `(40, 114)` and `(40, 164)`, height 3.25 m. Walk each lane north and south and inspect the road from the MG, the east gate from the upper terrace, and the northern road bend.
+Choose **The Qalat Road** in the lobby or open `?mission&world=qalat-road`. This is the live rescue/escort/tank mission from U-093/U-094/U-095. Start and extraction are `(0, -6)`; compound centre is `(0, 182)`.
 
-`SANDLINE_LOAD_WORLD=qalat-road pnpm check:load-time` runs the production preview under the standard 4 Mbit/s, 30 s budget; the streaming CI job covers both the slice and this map. `pnpm exec tsx packages/tools/src/level-check.ts` writes review renders for all registered levels. Owner visual acceptance is still pending; this is a map preview, not the completed campaign mission.
+Walk each lane north and south. The riverbed at x=-40 stays at 0 m with shallow 0.75 m sills near z=32 and z=158. Road banks at x=-20 and x=19 rise to 1 m, flanking the unchanged tank corridor at x=0/8. Eastern fields occupy x=25..57: 1 m at z=24..76, 2 m at z=80..128 and 3.25 m at z=133..174. Broad 0.25 m steps join them; the northern descent ends at z=186. Approach the compound east gate via `(40, 188)` and `(22, 182)`. Observe the gate from the west edge of the upper terrace `(26, 164)`, not from behind the terrace's own lip. The former isolated overlooks are replaced by connected fields.
+
+For the walk-through: cross the southern river sill, climb either road bank, walk the terrace steps through all three elevations, descend north to the east gate, free the POW, order him back along each lane, destroy the scripted tank and extract all seven at the south. Compare sight lines from river `(−40, 60)`, bank `(19, 110)` and upper terrace `(26, 164)`. Owner gameplay and visual review remain pending.
+
+`SANDLINE_LOAD_WORLD=qalat-road pnpm check:load-time` tests the 4 Mbit/s, 30 s budget. `pnpm exec tsx packages/tools/src/level-check.ts` validates authored geometry/routes and writes schematic renders. After a client build, `pnpm exec tsx packages/tools/src/capture-map-review.ts` captures production client views at ground and elevated positions; streaming CI uploads `qalat-map-review` with those PNGs. These are actual client renders with a QA camera, not an owner playtest verdict.

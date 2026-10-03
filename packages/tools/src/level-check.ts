@@ -16,6 +16,7 @@ import {
   DEFAULT_MUZZLE_RIG,
   loadLevel,
   rayWorld,
+  supportUnder,
   type AssetManifest,
   type LevelBoxSpec,
   type World,
@@ -217,7 +218,7 @@ export function visibleSpawnZones(world: World): LevelIssue[] {
     outer:
     for (const sample of spawnSamples(zone)) {
       for (const y of SPAWN_PROBES_M) {
-        const target = { x: sample.x, y, z: sample.z };
+        const target = { x: sample.x, y: supportUnder(sample.x, sample.z, 0, Infinity, world.boxes, 0) + y, z: sample.z };
         const dx = target.x - mission.start.x;
         const dy = target.y - DEFAULT_MUZZLE_RIG.eyeHeight;
         const dz = target.z - mission.start.z;
@@ -247,12 +248,12 @@ export function visibleSpawnZones(world: World): LevelIssue[] {
   return out;
 }
 
-function routeStops(mission: WorldMission, route: WorldMission['routes'][number]): NavPoint[] {
+function routeStops(mission: WorldMission, boxes: readonly WorldBox[], route: WorldMission['routes'][number]): NavPoint[] {
   return [
     { x: mission.start.x, y: 0, z: mission.start.z },
     ...route.via.map((p) => ({ x: p.x, y: 0, z: p.z })),
     { x: mission.objective.x, y: 0, z: mission.objective.z },
-  ];
+  ].map((p) => ({ ...p, y: supportUnder(p.x, p.z, 0, Infinity, boxes, 0) }));
 }
 
 export interface RouteConnectivityResult {
@@ -260,12 +261,12 @@ export interface RouteConnectivityResult {
   routePaths: Map<string, NavPath[]>;
 }
 
-export function routeConnectivity(nav: LevelNavProbe, mission: WorldMission): RouteConnectivityResult {
+export function routeConnectivity(nav: LevelNavProbe, mission: WorldMission, boxes: readonly WorldBox[] = []): RouteConnectivityResult {
   const issues: LevelIssue[] = [];
   const routePaths = new Map<string, NavPath[]>();
 
   for (const route of mission.routes) {
-    const stops = routeStops(mission, route);
+    const stops = routeStops(mission, boxes, route);
     const paths: NavPath[] = [];
     for (let i = 1; i < stops.length; i++) {
       const path = nav.path(stops[i - 1]!, stops[i]!);
@@ -283,7 +284,7 @@ export function routeConnectivity(nav: LevelNavProbe, mission: WorldMission): Ro
       if (last === undefined) {
         issues.push(issue('route-connectivity', route.id + ': leg ' + i + ' returned an empty path'));
       } else {
-        const gap = Math.hypot(last.x - stops[i]!.x, last.z - stops[i]!.z);
+        const gap = Math.hypot(last.x - stops[i]!.x, last.y - stops[i]!.y, last.z - stops[i]!.z);
         if (gap > REACH_M) {
           issues.push(issue(
             'route-connectivity',
@@ -359,7 +360,7 @@ export function checkLevel(world: World, nav: LevelNavProbe, manifest: AssetMani
   const spawnIssues = visibleSpawnZones(world);
   const routeResult = world.mission === null
     ? { issues: [], routePaths: new Map<string, NavPath[]>() }
-    : routeConnectivity(nav, world.mission);
+    : routeConnectivity(nav, world.mission, world.boxes);
   const budgetResult = pieceBudgetTotals(world, manifest);
 
   return {

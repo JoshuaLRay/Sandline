@@ -21,6 +21,11 @@ try {
   await page.addStyleTag({ content: 'body > :not(canvas) { visibility: hidden !important; } canvas { visibility: visible !important; }' });
   await mkdir('artifacts/map-review', { recursive: true });
   const views = [
+    { name: 'riverbed-ground', position: [-40, 1.7, 58], target: [-20, 1, 90] },
+    { name: 'road-bank-ground', position: [19, 2.7, 106], target: [0, 0.7, 140] },
+    { name: 'terrace-lower-ground', position: [40, 2.7, 70], target: [40, 2.5, 92] },
+    { name: 'terrace-upper-ground', position: [26, 4.95, 164], target: [20, 1.5, 182] },
+    { name: 'compound-approach-steps', position: [40, 1.7, 188], target: [40, 3.25, 171] },
     { name: 'valley-overview', position: [130, 145, -35], target: [0, 0, 92] },
     { name: 'compound-and-north-gate', position: [68, 38, 140], target: [0, 0, 181] },
     { name: 'terraces-and-east-gate', position: [75, 25, 112], target: [25, 2, 157] },

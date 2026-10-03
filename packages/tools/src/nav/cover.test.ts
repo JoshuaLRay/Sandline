@@ -172,3 +172,16 @@ describe('cover is under the bake hash (T-3.18)', () => {
     expect(navBakeHash(range)).toBe(committed);
   });
 });
+
+// U-097: cover on a terrace must be sampled at its base, not inside the terrain below it.
+describe('raised-ground cover', () => {
+  it('keeps a low wall on a terrace classified relative to the standing surface', () => {
+    const world = loadWorld({ id: 'raised-cover', floor: { halfExtent: 12 }, cover: [
+      { id: 'earth', x: 0, y: 0, z: 0, w: 12, h: 3.25, d: 12 },
+      { id: 'wall', x: 0, y: 3.25, z: 0, w: 4, h: 1.1, d: .3 },
+    ] });
+    const points = coverPoints(world, DEFAULT_NAV_AGENT, () => true).filter((p) => p.box === 'wall');
+    expect(points.length).toBeGreaterThan(0);
+    expect(points.every((p) => p.y === 3.25 && p.height === 'low')).toBe(true);
+  });
+});
