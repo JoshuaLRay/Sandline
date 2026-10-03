@@ -143,7 +143,7 @@ import { TankModels } from './character/tankModel.ts';
 import { tankTargetView } from './character/tankLook.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
-import { FULL_RESTART_KEY, RESTART_KEY, afterActionXp, missionLine, uploadPrompt } from './ui/missionHud.ts';
+import { FULL_RESTART_KEY, RESTART_KEY, afterActionXp, missionJustEnded, missionLine, uploadPrompt } from './ui/missionHud.ts';
 import { type ClassDef, ESCORT_SPECTATE_SLOT, TICK_SECONDS as MISSION_TICK_SECONDS, type Vitality, afterActionSummary, classById, scoreboardRows } from '@sandline/shared';
 import { createScoreboard } from './ui/scoreboard.ts';
 import { missionMenuModel, runChoiceModel } from './ui/runChoice.ts';
@@ -2050,6 +2050,7 @@ const missionHud = document.getElementById('mission');
  * behind H and N.
  */
 const playerHud = createHud(document.body);
+let missionWasOver = false;
 /** T-4.28: the six slots' numbers, the server's, shown while Tab is held and once the mission is over. */
 const scoreboard = createScoreboard(document.body);
 let tabHeld = false;
@@ -2886,6 +2887,9 @@ function frame(): void {
   }
   // T-4.28: the scoreboard while Tab is down, and on its own once the mission is over.
   const missionOver = (net?.mission?.state ?? 'progress') !== 'progress';
+  // U-098: the end-of-mission buttons need a cursor; Esc would open the pause menu instead.
+  if (missionJustEnded(missionWasOver, missionOver) && document.pointerLockElement) document.exitPointerLock();
+  missionWasOver = missionOver;
   scoreboard.setVisible(live !== null && (tabHeld || missionOver));
   scoreboard.setOutcome(net?.mission ?? null, (full) => live?.net.restartMission(full));
   // U-090: the host's pick of what to play next; everyone else sees whose choice it is.

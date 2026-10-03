@@ -9,6 +9,15 @@ import { PROGRESSION, TICK_SECONDS, type MissionDef, type MissionView, type Sold
 export const RESTART_KEY = 'KeyP';
 export const FULL_RESTART_KEY = 'KeyO';
 
+/**
+ * U-098: true on the one frame a mission goes from in progress to over (won or
+ * failed), when the pointer lock must be let go so the end-of-mission buttons
+ * can be clicked. A new attempt re-arms it; it never fires while already over.
+ */
+export function missionJustEnded(wasOver: boolean, isOver: boolean): boolean {
+  return isOver && !wasOver;
+}
+
 const secs = (ticks: number, round: (n: number) => number = Math.floor) => round(ticks * TICK_SECONDS);
 
 /** What an objective's view says: the fields `MissionView` and one of its `open` entries share. */
