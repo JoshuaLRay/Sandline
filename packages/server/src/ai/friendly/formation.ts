@@ -26,7 +26,7 @@
  * Server-only (§7.9 rule 2) and deterministic: it reads the session's slots
  * and remembers only each slot's last position and heading.
  */
-import { SQUAD, type SquadConfig, fireteamOf } from '@sandline/shared';
+import { SQUAD, type SquadConfig, type SquadSpread, fireteamOf } from '@sandline/shared';
 import type { LocomotionIntent } from '../locomotion/followPath.ts';
 import type { NavPoint } from '../nav/NavMesh.ts';
 
@@ -43,6 +43,7 @@ export interface FormationSlot {
   readonly speed: number;
   /** Holding sprint. */
   readonly sprint: boolean;
+  readonly spread?: SquadSpread;
 }
 
 /** The lead of `fireteam`: its first human; else the squad's first human; else slot 0. */
@@ -159,6 +160,17 @@ export class Formation {
 
   /** Where `slotIndex` should be, or null for a human, a lead, or a place with nowhere on the mesh to stand. */
   place(slotIndex: number): FormationPlace | null {
+    const lead = this.leadFor(slotIndex);
+    const reserved: NavPoint[] = [];
+    for (const index of this.followersOf(lead)) {
+      const place = this.placeReserved(index, reserved);
+      if (index === slotIndex) return place;
+      if (place) reserved.push(place.goal);
+    }
+    return null;
+  }
+
+  private placeReserved(slotIndex: number, reserved: readonly NavPoint[]): FormationPlace | null {
     const me = this.slots.find((s) => s.index === slotIndex);
     if (!me || me.human) return null;
     const lead = this.leadFor(slotIndex);
@@ -167,10 +179,14 @@ export class Formation {
     if (!leader) return null;
     const rank = this.followersOf(lead).indexOf(slotIndex);
     const offsets = this.config.formations[this.config.fireteams[fireteamOf(lead, this.config)]!.formation]!;
-    const offset = offsets[Math.min(rank, offsets.length - 1)]!;
+    const rawOffset = offsets[Math.min(rank, offsets.length - 1)]!;
+    const spread = this.config.spreadScales[me.spread ?? 'standard'];
+    const offset: readonly [number, number] = [rawOffset[0] * spread, rawOffset[1] * spread];
     const still = leader.speed <= this.config.stillMps;
     const sprinting = leader.sprint && !still;
-    const scale = still ? this.config.closeUpScale : 1;
+    const baseScale = still ? this.config.closeUpScale : 1;
+    const length = Math.sqrt(offset[0] ** 2 + offset[1] ** 2);
+    const scale = Math.max(baseScale, (this.config.minFromLeadM + 0.01) / length);
     const side = sprinting ? this.config.sprintSpreadScale : 1;
     const head = { x: leader.x, z: leader.z };
     // Back is measured along the lead's own trail, so a follower takes a
@@ -199,6 +215,16 @@ export class Formation {
       // Squeezed onto the lead: straight behind it at the same distance instead.
       goal = this.project(at(0, Math.sqrt(offset[0] ** 2 + offset[1] ** 2) * scale));
       if (!goal || !far(goal)) return null;
+    }
+    const free = (p: NavPoint) => reserved.every((r) => Math.sqrt((p.x - r.x) ** 2 + (p.z - r.z) ** 2) >= this.config.minFromLeadM);
+    if (!free(goal)) {
+      let alternate: NavPoint | null = null;
+      for (let n = 1; n <= 6; n++) {
+        const p = this.project(at(offset[0] * scale * side, offset[1] * scale + n * this.config.minFromLeadM));
+        if (p && far(p) && free(p)) { alternate = p; break; }
+      }
+      if (!alternate) return null;
+      goal = alternate;
     }
     const gap = Math.sqrt((goal.x - me.x) ** 2 + (goal.z - me.z) ** 2);
     if (still && gap <= this.config.arriveM) return { lead, rank, offset, goal, intent: null };

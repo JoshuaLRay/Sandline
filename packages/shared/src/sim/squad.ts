@@ -13,6 +13,9 @@ import { MAX_SLOTS } from '../net/Connection.ts';
 import { ENEMIES } from './enemies.ts';
 
 /** An offset from the lead: metres to its right, and behind it. */
+import { SPREAD_KINDS, type SquadSpread } from './tactics.ts';
+export { SPREAD_KINDS, type SquadSpread } from './tactics.ts';
+
 export type FormationOffset = readonly [right: number, back: number];
 
 export interface Fireteam {
@@ -58,6 +61,7 @@ export interface SquadConfig {
   readonly bandM: number;
   readonly bandPerM: number;
   readonly bot: SquadBotConfig;
+  readonly spreadScales: Readonly<Record<SquadSpread, number>>;
 }
 
 /** Hand-written for the reason `weapons.ts` gives: zod would be a new runtime dep. */
@@ -73,7 +77,7 @@ function num(row: Record<string, unknown>, key: string, min: number, max: number
 export function parseSquadConfig(raw: unknown): SquadConfig {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new SquadDataError('squad: expected an object');
   const row = raw as Record<string, unknown>;
-  const keys = ['$comment', 'fireteams', 'formations', 'stillMps', 'closeUpScale', 'catchUpM', 'arriveM', 'minFromLeadM', 'sprintSpreadScale', 'bandM', 'bandPerM', 'bot'];
+  const keys = ['$comment', 'fireteams', 'formations', 'stillMps', 'closeUpScale', 'catchUpM', 'arriveM', 'minFromLeadM', 'sprintSpreadScale', 'bandM', 'bandPerM', 'bot', 'spreadScales'];
   for (const k of Object.keys(row)) if (!keys.includes(k)) throw new SquadDataError(`squad: unknown key "${k}"`);
 
   const rawFormations = row['formations'];
@@ -134,7 +138,14 @@ export function parseSquadConfig(raw: unknown): SquadConfig {
     holdCoverM: num(under, 'holdCoverM', 0, 50),
   };
 
+  const rawScales = row['spreadScales'];
+  if (typeof rawScales !== 'object' || rawScales === null || Array.isArray(rawScales)) throw new SquadDataError('squad.spreadScales: expected an object');
+  const scales = rawScales as Record<string, unknown>;
+  for (const k of Object.keys(scales)) if (!(SPREAD_KINDS as readonly string[]).includes(k)) throw new SquadDataError(`squad.spreadScales: unknown key "${k}"`);
+  const spreadScales = { tight: num(scales, 'tight', 0.3, 1), standard: num(scales, 'standard', 1, 1), wide: num(scales, 'wide', 1, 3) };
+  if (!(spreadScales.tight < spreadScales.standard && spreadScales.wide > spreadScales.standard)) throw new SquadDataError('squad.spreadScales: expected tight < standard < wide');
   return {
+    spreadScales,
     fireteams,
     formations,
     stillMps: num(row, 'stillMps', 0, 10),

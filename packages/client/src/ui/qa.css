@@ -538,6 +538,9 @@ html.mobile body { overflow-y: auto; }
   pointer-events: none;
   display: none;
 }
+.squad-control { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0; }
+.squad-control select { min-height: 44px; max-width: 140px; font: inherit; }
+
 #downed.shown { display: block; }
 /* T-3.34: the mission's after-action credit and script notices, under the player HUD's objective (T-4.25). */
 #mission {
