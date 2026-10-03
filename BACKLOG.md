@@ -104,7 +104,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-068](docs/backlog/U-068.md) | Tank weapons: cannon and coaxial machine gun | Mission / vehicle combat | P2 | DONE | U-066 | [#237](https://github.com/JoshuaLRay/Sandline/pull/237) |
 | [U-069](docs/backlog/U-069.md) | Mission-01 integration: the upload trigger, retry and the survivor | Mission / vehicle combat | P2 | DONE | U-067, U-068 | [#238](https://github.com/JoshuaLRay/Sandline/pull/238) |
 | [U-070](docs/backlog/U-070.md) | Tank look and HUD: placeholder mesh, tell and arrival warning | Mission / vehicle combat | P2 | DONE | U-066 | [#239](https://github.com/JoshuaLRay/Sandline/pull/239) |
-| [U-071](docs/backlog/U-071.md) | Campaign design: premise, structure and the mission list (umbrella; [design doc](docs/design/CAMPAIGN.md)) | Campaign design | P2 | BLOCKED | Owner answers to Q1–Q4 in the design doc (D1–D10 answered 2026-10-01); a mission 1 brief | — |
+| [U-071](docs/backlog/U-071.md) | Campaign design: premise, structure and the mission list (umbrella; [design doc](docs/design/CAMPAIGN.md)) | Campaign design | P2 | DONE | Q1–Q4 accepted 2026-10-01; mission 1 brief approved 2026-10-02 | `task/U-071-campaign-design-reconcile`; completion becomes effective on green merge |
 | [U-072](docs/backlog/U-072.md) | Campaign flow: campaign and replay runs, mission select and the debrief | Campaign design | P2 | DONE | U-088, U-089, U-090 (the split; umbrella) | — |
 | [U-073](docs/backlog/U-073.md) | Register a mission in one place; checks and the mission sim cover every mission | Campaign design | P2 | DONE | — | [#243](https://github.com/JoshuaLRay/Sandline/pull/243) |
 | [U-074](docs/backlog/U-074.md) | Objectives in any order: parallel objectives and optional enemies | Campaign design | P2 | DONE | — | [#244](https://github.com/JoshuaLRay/Sandline/pull/244) |
@@ -118,7 +118,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-082](docs/backlog/U-082.md) | Rectangular floors: bake, collide and draw only where the map is | Campaign design | P2 | DONE | — | [#247](https://github.com/JoshuaLRay/Sandline/pull/247) |
 | [U-083](docs/backlog/U-083.md) | Flank assignment must be bounded (a ray broad phase was tried and did not help) | Campaign design | P2 | DONE | — | [#249](https://github.com/JoshuaLRay/Sandline/pull/249) |
 | [U-084](docs/backlog/U-084.md) | Mission-01: the squad dies in the garrison fight before the upload | Enemy AI | P2 | DONE | — | [#252](https://github.com/JoshuaLRay/Sandline/pull/252) |
-| [U-085](docs/backlog/U-085.md) | Mission-01 at six humans: the squad is lost before the upload | Enemy AI | P2 | REVIEW | — | `task/U-085-floors` |
+| [U-085](docs/backlog/U-085.md) | Mission-01 at six humans: the squad is lost before the upload | Enemy AI | P2 | DONE | — | [#258](https://github.com/JoshuaLRay/Sandline/pull/258); merged; CI #1594 green |
 | [U-086](docs/backlog/U-086.md) | Attack orders fight from cover instead of standing in the open | Enemy AI | P2 | DONE | — | [#255](https://github.com/JoshuaLRay/Sandline/pull/255) |
 | [U-087](docs/backlog/U-087.md) | Squad tactics: bounding, focus fire and fighting as a group | Enemy AI | P3 | BLOCKED | Deferred by the owner (U-085) | — |
 | [U-088](docs/backlog/U-088.md) | The campaign as data: order, titles, briefings and debriefs | Campaign design | P2 | DONE | — | [#259](https://github.com/JoshuaLRay/Sandline/pull/259) |
@@ -128,7 +128,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-092](docs/backlog/U-092.md) | Mission 1 level: the three-lane valley and the compound | Campaign design | P2 | DONE | — | [#274](https://github.com/JoshuaLRay/Sandline/pull/274); owner authorized assumed approval through U-095 |
 | [U-093](docs/backlog/U-093.md) | Mission 1 encounter: the garrison, the patrols and the tank's arrival | Campaign design | P2 | DONE | U-092 | [#275](https://github.com/JoshuaLRay/Sandline/pull/275); CI #1634 green |
 | [U-094](docs/backlog/U-094.md) | Mission 1 mission file and script: staged objectives, rescue and extraction | Campaign design | P2 | DONE | U-093 | [#276](https://github.com/JoshuaLRay/Sandline/pull/276); CI #1636 green |
-| [U-095](docs/backlog/U-095.md) | Mission 1 verification: the headless run and its completion baseline | Campaign design | P2 | DONE | U-094 | [#277](https://github.com/JoshuaLRay/Sandline/pull/277); proposed technical completion on green merge; owner playtest owed |
+| [U-095](docs/backlog/U-095.md) | Mission 1 verification: the headless run and its completion baseline | Campaign design | P2 | DONE | U-094 | [#277](https://github.com/JoshuaLRay/Sandline/pull/277); merged; CI #1641 green; owner playtest owed |
 
 ## Existing work retained
 
