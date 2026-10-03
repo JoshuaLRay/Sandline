@@ -12,7 +12,7 @@ function setup() {
   const parent = document.createElement('div');
   document.body.append(parent);
   roots.push(parent);
-  const actions = { watch: vi.fn(), assign: vi.fn(), order: vi.fn(() => true), settings: vi.fn(), leave: vi.fn(), recenter: vi.fn() };
+  const actions = { watch: vi.fn(), assign: vi.fn(), aggression: vi.fn(), order: vi.fn(() => true), settings: vi.fn(), leave: vi.fn(), recenter: vi.fn() };
   const ui = createMobileCommand(parent, actions);
   ui.root.hidden = false;
   ui.update(rows, 0, 0);
@@ -65,5 +65,66 @@ describe('mobile direct commands', () => {
     ui.issueAt(20, 20);
     expect(actions.order).not.toHaveBeenCalled();
     expect(ui.root.querySelector('[role="status"]')?.textContent).toContain('unavailable');
+  });
+});
+
+
+describe('mobile aggression commands', () => {
+  function openSquad(ui: ReturnType<typeof createMobileCommand>) {
+    (ui.root.querySelector('.mobile-trigger') as HTMLButtonElement).click();
+  }
+  function policies(ui: ReturnType<typeof createMobileCommand>) {
+    return Array.from(ui.root.querySelectorAll<HTMLButtonElement>('.mobile-aggression button'));
+  }
+  it('sends every group policy directly and waits for authoritative confirmation', () => {
+    const { ui, actions } = setup();
+    openSquad(ui);
+    expect(policies(ui).map(button => button.textContent)).toEqual(['Hold fire', 'Defensive', 'Aggressive']);
+    for (const [index, mode] of ['hold-fire', 'defensive', 'aggressive'].entries()) {
+      policies(ui)[index]!.click();
+      expect(actions.aggression).toHaveBeenLastCalledWith(mode, { to: 'all' });
+    }
+    expect(actions.aggression).toHaveBeenCalledTimes(3);
+    expect(actions.order).not.toHaveBeenCalled();
+    expect(policies(ui)[2]!.getAttribute('aria-pressed')).toBe('true');
+    ui.update(rows, 0, 0, ['hold-fire', 'defensive', 'aggressive']);
+    expect(ui.root.querySelector('.mobile-aggression-status')?.textContent).toBe('Current: mixed');
+    expect(policies(ui).every(button => button.getAttribute('aria-pressed') === 'false')).toBe(true);
+    ui.update(rows, 0, 0, ['defensive', 'defensive', 'aggressive']);
+    expect(policies(ui)[1]!.getAttribute('aria-pressed')).toBe('true');
+  });
+  it('addresses the selected bot, including the spectator’s own AI character', () => {
+    const { ui, actions } = setup();
+    (ui.root.querySelectorAll('.mobile-squad button')[2] as HTMLButtonElement).click();
+    ui.update(rows, 1, 0, ['aggressive', 'hold-fire', 'aggressive']);
+    openSquad(ui);
+    expect(policies(ui)[0]!.getAttribute('aria-pressed')).toBe('true');
+    policies(ui)[1]!.click();
+    expect(actions.aggression).toHaveBeenCalledExactlyOnceWith('defensive', { to: 'slot', index: 1 });
+    (ui.root.querySelectorAll('.mobile-squad button')[1] as HTMLButtonElement).click();
+    policies(ui)[0]!.click();
+    expect(actions.aggression).toHaveBeenLastCalledWith('hold-fire', { to: 'slot', index: 0 });
+  });
+  it('cancels armed scene placement when opening the policy menu', () => {
+    const { ui, actions } = setup();
+    (ui.root.querySelector('.mobile-quick-orders button') as HTMLButtonElement).click();
+    openSquad(ui);
+    policies(ui)[0]!.click();
+    expect(ui.tapAt(10, 10)).toBe(false);
+    expect(actions.order).not.toHaveBeenCalled();
+  });
+  it('disables policies after a selected bot is captured or reassigned, and for groups without eligible bots', () => {
+    for (const unavailable of [{ captured: true }, { commander: 2 }, { human: true, label: '2 · Human · AR' }]) {
+      const { ui, actions } = setup();
+      (ui.root.querySelectorAll('.mobile-squad button')[2] as HTMLButtonElement).click();
+      openSquad(ui);
+      ui.update(rows.map(row => row.slot === 1 ? { ...row, ...unavailable } : row), 1, 0);
+      expect(policies(ui).every(button => button.disabled)).toBe(true);
+      policies(ui)[0]!.click();
+      expect(actions.aggression).not.toHaveBeenCalled();
+      (ui.root.querySelector('.mobile-squad button') as HTMLButtonElement).click();
+      ui.update(rows.map(row => ({ ...row, commander: 2 })), 1, 0);
+      expect(policies(ui).every(button => button.disabled)).toBe(true);
+    }
   });
 });
