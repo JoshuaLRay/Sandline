@@ -3293,9 +3293,9 @@ export class Session {
     if (this.orders[slot.index]) {
       this.endOrder(slot.index, 'replaced', 'a human took the slot');
     } else {
-      conn.send({ kind: 'Spreads', spreads: this.spreads });
       conn.send({ kind: 'Orders', orders: this.currentOrders() });
     }
+    conn.send({ kind: 'Spreads', spreads: this.spreads });
     conn.send({ kind: 'Marks', marks: [...this.marks] });
     if (this.missionRun && this.roomStarted) conn.send({ kind: 'Mission', ...this.missionRun.current });
     // U-090: someone who joins after the mission has ended is shown what the host may choose.

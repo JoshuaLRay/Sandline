@@ -26,6 +26,8 @@ describe('squad spread (U-100)', () => {
     const roster = session.roster;
     first.client.send({ kind: 'Spread', address: { to: 'all' }, spread: 'wide' }); first.pair.settle(); second.pair.settle();
     for (let i = 0; i < 6; i++) expect(session.spreadFor(i)).toBe(!roster[i]!.human && roster[i]!.commander === 0 ? 'wide' : 'standard');
+    first.client.send({ kind: 'Order', order: 'hold', address: { to: 'slot', index: 2 }, point: null, target: null }); first.pair.settle();
+    // A join that replaces a bot's active order must receive presets too.
     const late = connect();
     expect(late.spreads()).toEqual(Array.from({ length: 6 }, (_, i) => session.spreadFor(i)));
     expect(first.spreads()).toEqual(second.spreads());
