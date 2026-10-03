@@ -169,6 +169,7 @@ import {
 } from './ui/hud/hudModel.ts';
 import { type AimSubject, OrderWheelView, buildMark, orderFromRelease } from './ui/OrderWheel.ts';
 import { buildOrder } from './ui/OrderWheel.ts';
+import { mobileOrbit, MOBILE_ORBIT_PITCH, MOBILE_ORBIT_MIN_PITCH, MOBILE_ORBIT_MAX_PITCH } from './camera/mobileOrbit.ts';
 import { createMobileCommand } from './ui/MobileCommand.ts';
 import { initialMobileSpectateSlot } from './ui/mobileSpectate.ts';
 import { type MarkerVec, OrderMarkerOverlay, orderMarkers } from './ui/OrderMarkers.ts';
@@ -1422,7 +1423,9 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
     spectatorLookYaw = 0;
     spectatorLookPitch = 0;
     mobileLookYaw = 0;
-    mobileLookPitch = 0;
+    mobileLookPitch = MOBILE_ORBIT_PITCH;
+    mobileCameraDistance = 6;
+    mobileCommand.cancelPlacement();
     spectatorTakeoverPending = false;
   };
   net.onShot = (shot) => onServerShot(net, shot);
@@ -1865,7 +1868,8 @@ const menu = createMenu({
 });
 document.body.appendChild(menu.root);
 const mobileCommand = createMobileCommand(document.body, {
-  settings: () => { menu.showPause(); menu.select('settings'); },
+  settings: () => { mobileCommand.cancelPlacement(); menu.showPause(); menu.select('settings'); },
+  recenter: () => { mobileCommand.cancelPlacement(); lastMobileTap = null; mobileLookYaw = 0; mobileLookPitch = MOBILE_ORBIT_PITCH; spectatorCameraYaw = null; },
   watch: (slot) => live?.net.spectate(slot),
   assign: (bot, commander) => live?.net.assignCommander(bot, commander),
   order: (kind, address, x, y) => {
@@ -1892,6 +1896,7 @@ const mobileCommand = createMobileCommand(document.body, {
     });
     if (!order) return false;
     live.net.order(order);
+    lastMobileTap = null;
     return true;
   },
   leave: () => leaveSession({ text: 'left the session', tone: 'info' }),
@@ -1899,8 +1904,9 @@ const mobileCommand = createMobileCommand(document.body, {
 /** The last heading the local body had while alive; a downed or dead body holds it (U-030). */
 let localBodyYaw = 0;
 let mobileLookYaw = 0;
-let mobileLookPitch = 0;
-let mobileCameraDistance = 3;
+let mobileLookPitch = MOBILE_ORBIT_PITCH;
+let mobileCameraDistance = 6;
+const cameraDirection = new THREE.Vector3();
 let mobileDrag: { id: number; x: number; y: number; startX: number; startY: number; moved: boolean } | null = null;
 let lastMobileTap: { x: number; y: number; at: number } | null = null;
 if (mobileMode) {
@@ -1908,12 +1914,13 @@ if (mobileMode) {
   const touches = new Map<number, { x: number; y: number }>();
   let pinch: { span: number; distance: number } | null = null;
   renderer.domElement.addEventListener('pointerdown', event => {
-    if (event.pointerType !== 'touch' || !live || menu.mode !== 'hidden') return;
+    if ((event.pointerType !== 'touch' && !new URLSearchParams(location.search).has('mobile')) || !live || menu.mode !== 'hidden') return;
     touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
     renderer.domElement.setPointerCapture(event.pointerId);
     if (touches.size > 1) {
       mobileDrag = null;
       lastMobileTap = null;
+      mobileCommand.cancelPlacement();
       const [a, b] = [...touches.values()];
       if (a && b) pinch = { span: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), distance: mobileCameraDistance };
       return;
@@ -1922,6 +1929,7 @@ if (mobileMode) {
       startX: event.clientX, startY: event.clientY, moved: false };
   });
   renderer.domElement.addEventListener('pointermove', event => {
+    if (!live || menu.mode !== 'hidden') { touches.clear(); pinch = null; mobileDrag = null; lastMobileTap = null; return; }
     if (touches.has(event.pointerId)) touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pinch && touches.size >= 2) {
       const [a, b] = [...touches.values()];
@@ -1933,8 +1941,9 @@ if (mobileMode) {
     const dy = event.clientY - mobileDrag.y;
     if (Math.hypot(event.clientX - mobileDrag.startX, event.clientY - mobileDrag.startY) > 8) mobileDrag.moved = true;
     if (mobileDrag.moved) {
+      mobileCommand.cancelPlacement();
       mobileLookYaw -= dx * 0.005;
-      mobileLookPitch = Math.max(-1.2, Math.min(1.2, mobileLookPitch - dy * 0.005));
+      mobileLookPitch = Math.max(MOBILE_ORBIT_MIN_PITCH, Math.min(MOBILE_ORBIT_MAX_PITCH, mobileLookPitch - dy * 0.005));
       lastMobileTap = null;
     }
     mobileDrag.x = event.clientX;
@@ -1952,6 +1961,7 @@ if (mobileMode) {
     const moved = mobileDrag.moved;
     mobileDrag = null;
     if (moved || !live || menu.mode !== 'hidden') return;
+    if (mobileCommand.tapAt(event.clientX, event.clientY)) { lastMobileTap = null; return; }
     const now = performance.now();
     if (lastMobileTap && now - lastMobileTap.at < 350 &&
         Math.hypot(lastMobileTap.x - event.clientX, lastMobileTap.y - event.clientY) < 32) {
@@ -1966,7 +1976,15 @@ if (mobileMode) {
     pinch = null;
     mobileDrag = null;
     lastMobileTap = null;
+    mobileCommand.cancelPlacement();
   });
+  const clearTouch = (): void => {
+    touches.clear(); pinch = null; mobileDrag = null; lastMobileTap = null;
+    mobileCommand.cancelPlacement();
+  };
+  addEventListener('blur', clearTouch);
+  addEventListener('resize', clearTouch);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) clearTouch(); });
 }
 if (new URLSearchParams(location.search).has('record-voice')) showVoiceSubmission(document.body, __DEFAULT_HOST__);
 
@@ -2204,6 +2222,7 @@ function frame(): void {
   const net = live?.net ?? null;
   if (mobileMode) {
     mobileCommand.root.hidden = !net || menu.mode !== 'hidden';
+    if (mobileCommand.root.hidden) mobileCommand.cancelPlacement();
     if (net && net.slot >= 0) {
       const rows = commandRows(net.roster, net.slot).map(row => row.slot === net.slot
         ? { ...row, label: row.label.replace('(you)', '(your bot)'), human: false, commander: net.slot }
@@ -2857,6 +2876,7 @@ function frame(): void {
     const timer = stats?.vitalTimer ?? 0;
     let text = '';
     if (net && net.spectatedSlot >= 0) {
+      // Mobile already names the watched soldier in its compact command HUD.
       const watched = net.spectatedSlot;
       if (watched === ESCORT_SPECTATE_SLOT) {
         text = 'SPECTATING the prisoner — watch only · orders to the whole squad reach him';
@@ -2865,6 +2885,7 @@ function frame(): void {
         const status = watchedStatus(commandRows(net.roster, net.slot), watched, net.slot);
         text = `SPECTATING ${name} — ${status}${!net.roster[watched]?.human && !mobileMode ? ' · move, aim, fire or E to take control' : ''}`;
       }
+      if (mobileMode) text = '';
     } else if (localVitality === 'dead') {
       // Dead is not downed: nobody can revive a body, and the timer is the respawn's.
       text = timer > 0 ? `KILLED — back in ${timer}s` : 'KILLED';
@@ -2936,7 +2957,7 @@ function frame(): void {
     damageHits = liveHits(damageHits, hudNow);
     const vitalsStats = net?.stats;
     const magazine = combat.magazine(hudNow);
-    const hint = net ? onboarding(net, sim, magazine) : '';
+    const hint = net && !mobileMode ? onboarding(net, sim, magazine) : '';
     const vitalityOfSlot = (slot: number): Vitality | null => {
       if (!net) return null;
       if (slot === net.slot) return net.vitality;
@@ -3039,8 +3060,18 @@ function frame(): void {
       const yaw = spectatorCameraYaw + (mobileMode ? mobileLookYaw : spectatorLookYaw);
       if (mobileMode) mobileCameraDistance = clampMobileCameraDistance(mobileCameraDistance, innerHeight > innerWidth);
       const distance = mobileMode ? mobileCameraDistance : 3;
-      camera.position.set(at.x - Math.sin(yaw) * distance, at.y + 2.2 * distance / 3, at.z - Math.cos(yaw) * distance);
-      camera.rotation.set(mobileMode ? mobileLookPitch : spectatorLookPitch, yaw + Math.PI, 0, 'YXZ');
+      if (mobileMode) {
+        const orbit = mobileOrbit(at, yaw, mobileLookPitch, distance, config.groundY, cameraCollider);
+        camera.position.set(orbit.position.x, orbit.position.y, orbit.position.z);
+        camera.lookAt(orbit.focus.x, orbit.focus.y, orbit.focus.z);
+      } else {
+        camera.position.set(at.x - Math.sin(yaw) * distance, at.y + 2.2 * distance / 3, at.z - Math.cos(yaw) * distance);
+        camera.rotation.set(spectatorLookPitch, yaw + Math.PI, 0, 'YXZ');
+      }
+      camera.getWorldDirection(cameraDirection);
+      camSolve.direction.x = cameraDirection.x;
+      camSolve.direction.y = cameraDirection.y;
+      camSolve.direction.z = cameraDirection.z;
       camSolve.position.x = camera.position.x;
       camSolve.position.y = camera.position.y;
       camSolve.position.z = camera.position.z;
