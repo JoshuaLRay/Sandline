@@ -6,6 +6,7 @@
  * a clear reason rather than silently misreading every subsequent snapshot,
  * which is precisely the corrupt-state failure ADR-009 warns about.
  */
+import { SPREAD_KINDS, type SquadSpread } from '../sim/tactics.ts';
 import { BitReader, BitWriter } from './BitStream.ts';
 import { HEALTH, POSITION, dequantize, quantize } from './quantize.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
@@ -20,7 +21,7 @@ import { WEAPON_IDS, WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 import { PROJECTILE_IDS, PROJECTILE_INDEX_BITS } from '../sim/ballistics.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 63;
+export const PROTOCOL_VERSION = 64;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -166,7 +167,7 @@ const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3, Pr
 const ROOM_COMMANDS = ['ready', 'start', 'class', 'choose'] as const;
 /** T-4.15: state plus transient message/callout notifications. */
 /** Three bits since U-090 (two held four variants; the run offer and the handoff make six). */
-const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2, OrderFailed: 3, RunOffer: 4, Handoff: 5 } as const;
+const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2, OrderFailed: 3, RunOffer: 4, Handoff: 5, Spread: 6, Spreads: 7 } as const;
 const EXT_BITS = 3;
 const ORDER_KIND_BITS = 3;
 const ADDRESS_TO = ['slot', 'fireteam', 'all'] as const;
@@ -495,6 +496,8 @@ export type Message =
   /** T-3.27: a player marking a point, or a target at it, for the squad. Client to host. */
   | { kind: 'Mark'; point: OrderPoint; target: number | null }
   /** T-3.27: every bot's current order, whole, whenever one changes and on seating. Host to client. */
+  | { kind: 'Spread'; address: OrderAddress; spread: SquadSpread }
+  | { kind: 'Spreads'; spreads: readonly SquadSpread[] }
   | { kind: 'Orders'; orders: readonly BotOrder[] }
   /** T-3.27: every standing mark, whole, whenever one is made or expires and on seating. Host to client. */
   | { kind: 'Marks'; marks: readonly TargetMark[] }
@@ -731,6 +734,21 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(EXT.Mark, EXT_BITS);
       writePoint(w, msg.point);
       writeOptionalTarget(w, msg.target);
+      break;
+    case 'Spread':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Events, EXT_BITS);
+      w.writeBits(EVENT_VARIANT.Spread, 3);
+      w.writeBits(ADDRESS_TO.indexOf(msg.address.to), 2);
+      w.writeBits(msg.address.to === 'all' ? 0 : msg.address.index, 3);
+      w.writeBits(SPREAD_KINDS.indexOf(msg.spread), 2);
+      break;
+    case 'Spreads':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Events, EXT_BITS);
+      w.writeBits(EVENT_VARIANT.Spreads, 3);
+      if (msg.spreads.length !== 6) throw new ProtocolError('expected six spread settings');
+      for (const spread of msg.spreads) w.writeBits(SPREAD_KINDS.indexOf(spread), 2);
       break;
     case 'Orders': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -1402,6 +1420,22 @@ export function decodeMessage(bytes: Uint8Array): Message {
             }
             if (variant === EVENT_VARIANT.Message) return { kind: 'ScriptMessage', text: r.readString() };
             if (variant === EVENT_VARIANT.Callout) return { kind: 'ScriptCallout', id: r.readString() };
+            if (variant === EVENT_VARIANT.Spread) {
+              const to = ADDRESS_TO[r.readBits(2)];
+              const index = r.readBits(3);
+              const spread = SPREAD_KINDS[r.readBits(2)];
+              if (!to || !spread || (to !== 'all' && index > 5)) throw new ProtocolError('invalid spread command');
+              return { kind: 'Spread', address: to === 'all' ? { to } : { to, index }, spread };
+            }
+            if (variant === EVENT_VARIANT.Spreads) {
+              const spreads: SquadSpread[] = [];
+              for (let i = 0; i < 6; i++) {
+                const spread = SPREAD_KINDS[r.readBits(2)];
+                if (!spread) throw new ProtocolError('invalid spread setting');
+                spreads.push(spread);
+              }
+              return { kind: 'Spreads', spreads };
+            }
             if (variant === EVENT_VARIANT.OrderFailed) return { kind: 'OrderFailed', slot: r.readBits(3), order: readOrderKind(r) };
             if (variant !== EVENT_VARIANT.State) throw new ProtocolError(`unknown event message ${variant}`);
             const blockers: ScriptBlockerState[] = [];

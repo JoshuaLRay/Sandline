@@ -12,6 +12,7 @@
  */
 import {
   type BotOrder,
+  type SquadSpread,
   type CharacterSpace,
   DEFAULT_MOVE_CONFIG,
   type OrderKind,
@@ -357,6 +358,10 @@ export class NetClient {
    * the host says so: the markers show what the squad is doing, not what it
    * was asked (T-3.29).
    */
+  private spreadsValue: readonly SquadSpread[] = Array.from({ length: 6 }, () => 'standard');
+  get spreads(): readonly SquadSpread[] { return this.spreadsValue; }
+  spread(spread: SquadSpread): void { if (this.joinedFlag) this.transport.send(encodeMessage({ kind: 'Spread', address: { to: 'all' }, spread }), 'reliable'); }
+
   private ordersValue: readonly BotOrder[] = [];
   private marksValue: readonly TargetMark[] = [];
   /** T-3.34: where the mission stands, as the host last said; null with none. */
@@ -795,6 +800,7 @@ export class NetClient {
     this.remoteEmplacements.clear();
     this.remotePickups.clear();
     this.remoteGoneAt.clear();
+    this.spreadsValue = Array.from({ length: 6 }, () => 'standard');
     this.ordersValue = [];
     this.marksValue = [];
     this.missionValue = null;
@@ -1297,6 +1303,9 @@ export class NetClient {
         this.onAiDebug?.(msg);
         break;
 
+      case 'Spreads':
+        this.spreadsValue = msg.spreads;
+        break;
       case 'Orders':
         this.ordersValue = msg.orders;
         break;

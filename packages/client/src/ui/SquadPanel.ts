@@ -12,21 +12,35 @@
  * Leave, which returns to the lobby. Rendered from `NetClient.roster`, which
  * is whatever the host last said (a `Roster` message on every change).
  */
-import { MAX_SLOTS, type RosterEntry } from '@sandline/shared';
+import { MAX_SLOTS, SPREAD_KINDS, type SquadSpread, type RosterEntry } from '@sandline/shared';
 import { type Panel, createPanel } from './Panel.ts';
 
 export interface SquadPanelOptions {
   onLeave: () => void;
   /** The link to hand the other player, or null on an in-page session. */
   link: () => string | null;
+  onSpread?: (spread: SquadSpread) => void;
 }
 
 export interface SquadPanel extends Panel {
-  update(roster: readonly RosterEntry[], mySlot: number, room: string, statusLine: string): void;
+  update(roster: readonly RosterEntry[], mySlot: number, room: string, statusLine: string, spreads?: readonly SquadSpread[]): void;
 }
 
 export function createSquadPanel(options: SquadPanelOptions): SquadPanel {
   const panel = createPanel('squad', 'Squad');
+  const spreadLabel = document.createElement('label');
+  spreadLabel.textContent = 'Group spread ';
+  const spreadSelect = document.createElement('select');
+  spreadSelect.setAttribute('aria-label', 'Spread of commanded squad');
+  for (const value of SPREAD_KINDS) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value[0]!.toUpperCase() + value.slice(1);
+    spreadSelect.append(option);
+  }
+  spreadSelect.value = 'standard';
+  spreadSelect.addEventListener('change', () => options.onSpread?.(spreadSelect.value as SquadSpread));
+  spreadLabel.append(spreadSelect);
 
   const status = document.createElement('p');
   status.className = 'squad-status';
@@ -79,11 +93,14 @@ export function createSquadPanel(options: SquadPanelOptions): SquadPanel {
   leave.addEventListener('click', options.onLeave);
   actions.append(copy, leave);
 
-  panel.body.append(status, code, list, actions);
+  panel.body.append(status, code, spreadLabel, list, actions);
 
   return {
     ...panel,
-    update(roster, mySlot, room, statusLine) {
+    update(roster, mySlot, room, statusLine, spreads = []) {
+      const commanded = roster.findIndex((entry) => entry.commander === mySlot && !entry.human);
+      spreadSelect.disabled = commanded < 0;
+      if (commanded >= 0) spreadSelect.value = spreads[commanded] ?? 'standard';
       status.textContent = statusLine;
       code.hidden = room === '';
       codeValue.textContent = room;

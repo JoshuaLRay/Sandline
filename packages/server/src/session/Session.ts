@@ -160,6 +160,8 @@ import {
   ORDERS,
   orderProblem,
   type BotOrder,
+  SPREAD_KINDS,
+  type SquadSpread,
   type OrderKind,
   type OrderPoint,
   type TargetMark,
@@ -3209,6 +3211,7 @@ export class Session {
       onEquip: (c, msg) => { if (this.roomStarted && !this.spectators.has(c)) this.applyEquip(c, msg); },
       onReload: (c) => { if (this.roomStarted && !this.spectators.has(c)) this.applyReload(c); },
       onAiDebugRequest: (c, on) => this.applyAiDebugRequest(c, on),
+      onSpread: (c, msg) => this.applySpread(c, msg),
       onOrder: (c, msg) => { if (this.roomStarted) this.applyOrder(c, msg); },
       onMark: (c, msg) => { if (this.roomStarted) this.applyMark(c, msg); },
       onMissionRestart: (c, full) => { if (this.roomStarted) this.requestRestart(c, full); },
@@ -3290,6 +3293,7 @@ export class Session {
     if (this.orders[slot.index]) {
       this.endOrder(slot.index, 'replaced', 'a human took the slot');
     } else {
+      conn.send({ kind: 'Spreads', spreads: this.spreads });
       conn.send({ kind: 'Orders', orders: this.currentOrders() });
     }
     conn.send({ kind: 'Marks', marks: [...this.marks] });
@@ -3306,6 +3310,19 @@ export class Session {
   // -------------------------------------------------------------------------
 
   /** Each slot's current order, or null: only ever a bot's. */
+  private readonly spreads: SquadSpread[] = Array.from({ length: MAX_SLOTS }, () => 'standard');
+
+  spreadFor(slot: number): SquadSpread { return this.spreads[slot] ?? 'standard'; }
+
+  private applySpread(conn: ServerConnection, msg: Extract<Message, { kind: 'Spread' }>): void {
+    const from = this.humanFor(conn);
+    if (!from || !SPREAD_KINDS.includes(msg.spread)) return;
+    const a = msg.address;
+    const addressed = a.to === 'all' ? this.slots.map((s) => s.index) : a.to === 'fireteam' ? SQUAD_CONFIG.fireteams[a.index]?.slots ?? [] : [a.index];
+    for (const i of addressed) if (this.slots[i] && this.autonomous(this.slots[i]!) && this.commanders[i] === from.index) this.spreads[i] = msg.spread;
+    for (const c of this.connections) if (c.state === 'active') c.send({ kind: 'Spreads', spreads: this.spreads });
+  }
+
   private readonly orders: (BotOrder | null)[] = Array.from({ length: MAX_SLOTS }, () => null);
   /**
    * T-3.28: how each standing order is going — active, or done and still
@@ -3454,7 +3471,7 @@ export class Session {
     for (const i of bots) {
       let point = msg.point;
       if (point && msg.address.to !== 'slot') {
-        const gap = 2 * this.moveConfig.radius + 0.1;
+        const gap = Math.max(2 * this.moveConfig.radius + 0.001, (2 * this.moveConfig.radius + 0.1) * SQUAD_CONFIG.spreadScales[this.spreadFor(i)]);
         const offsets = msg.order === 'move' ? [[-1, -1], [1, -1], [-1, -2], [1, -2], [-1, -3], [1, -3]] : [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -2], [0, 2]];
         const centre = bots.reduce((p, index) => ({ x: p.x + this.slots[index]!.state.x / bots.length, z: p.z + this.slots[index]!.state.z / bots.length }), { x: 0, z: 0 });
         const length = Math.hypot(msg.point!.x - centre.x, msg.point!.z - centre.z);
@@ -5207,6 +5224,7 @@ export class Session {
         yaw: s.yaw,
         speed: this.slotSpeed[s.index] ?? 0,
         sprint: s.input.sprint,
+        spread: this.spreadFor(s.index),
       })),
     );
     this.thinkBrains();
