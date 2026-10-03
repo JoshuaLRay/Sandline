@@ -82,3 +82,10 @@ Walk each lane north and south. The riverbed at x=-40 stays at 0 m with shallow 
 For the walk-through: cross the southern river sill, climb either road bank, walk the terrace steps through all three elevations, descend north to the east gate, free the POW, order him back along each lane, destroy the scripted tank and extract all seven at the south. Compare sight lines from river `(−40, 60)`, bank `(19, 110)` and upper terrace `(26, 164)`. Owner gameplay and visual review remain pending.
 
 `SANDLINE_LOAD_WORLD=qalat-road pnpm check:load-time` tests the 4 Mbit/s, 30 s budget. `pnpm exec tsx packages/tools/src/level-check.ts` validates authored geometry/routes and writes schematic renders. After a client build, `pnpm exec tsx packages/tools/src/capture-map-review.ts` captures production client views at ground and elevated positions; streaming CI uploads `qalat-map-review` with those PNGs. These are actual client renders with a QA camera, not an owner playtest verdict.
+
+
+### Qalat authored art review (U-096)
+
+Default campaign play has no diagnostic grid. Append `&grid` to `?mission&world=qalat-road` to request it for QA. The art pass skins U-097's existing supporting planes; look for grey dry-channel gravel, a dusty two-rut road, olive-brown fallow fields and worn compound paving. Sparse ankle-high scrub/gravel and twelve sub-step-height bank rocks sit off the tank corridor.
+
+After `pnpm --filter @sandline/client build`, run `pnpm exec tsx packages/tools/src/capture-map-review.ts`. It writes nine actual production-client views, an explicit-grid comparison and `measurements.json` under `artifacts/map-review/`. It fails if the default grid appears, the requested grid is missing, or a view reaches 300 draw calls. Streaming CI uploads `qalat-map-review`. Compare the riverbed, road bank, lower/upper terrace, compound interior and overview with U-096's baseline images. Continue the U-097 north/south walking route above to review clearance and cover readability. A screenshot or green CI does not replace owner visual acceptance.

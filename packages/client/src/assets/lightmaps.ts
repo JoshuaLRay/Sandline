@@ -67,6 +67,10 @@ export function bakeStaticPieceAo(root: THREE.Object3D): StaticAoBakeResult {
 
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh) || object instanceof THREE.SkinnedMesh) return;
+    if (object.userData['sandlineBakedAo'] === true) {
+      if (object.geometry.hasAttribute('color')) enableVertexColours(object);
+      return;
+    }
 
     const geometry = object.geometry;
     const position = geometry.getAttribute('position');
@@ -99,11 +103,12 @@ export function bakeStaticPieceAo(root: THREE.Object3D): StaticAoBakeResult {
     const geometry = sample.mesh.geometry;
     if (geometry.userData[AO_BAKE_KEY] !== true) {
       const colours = new Float32Array(sample.positions.length * 3);
+      const authored = geometry.getAttribute('color');
       for (let i = 0; i < sample.positions.length; i += 1) {
         const ao = vertexAo(sample.positions[i]!, sample.normals[i]!, triangles);
-        colours[i * 3] = ao;
-        colours[i * 3 + 1] = ao;
-        colours[i * 3 + 2] = ao;
+        colours[i * 3] = ao * (authored?.getX(i) ?? 1);
+        colours[i * 3 + 1] = ao * (authored?.getY(i) ?? 1);
+        colours[i * 3 + 2] = ao * (authored?.getZ(i) ?? 1);
       }
       geometry.setAttribute('color', new THREE.BufferAttribute(colours, 3));
       geometry.userData[AO_BAKE_KEY] = true;

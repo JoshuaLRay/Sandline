@@ -74,4 +74,24 @@ describe('static piece AO fallback (T-4.12)', () => {
     expect(bakeStaticPieceAo(root)).toEqual({ meshes: 0, vertices: 0 });
     expect(floor.getAttribute('color')).toBe(first);
   });
+
+  it('multiplies authored terrain colour by AO, retaining the lane palette', () => {
+    const { root, floor } = fixture();
+    floor.setAttribute('color', new THREE.Float32BufferAttribute(Array.from({ length: 4 }, () => [.8, .5, .2]).flat(), 3));
+    bakeStaticPieceAo(root);
+    const colour = floor.getAttribute('color');
+    expect(colour.getX(0) / colour.getY(0)).toBeCloseTo(1.6);
+    expect(colour.getZ(0) / colour.getY(0)).toBeCloseTo(.4);
+    expect(colour.getX(0)).toBeLessThan(.8);
+  });
+
+  it('retains generator-baked shading without repeating the runtime bake', () => {
+    const { root, floor, material } = fixture();
+    root.children.forEach((mesh) => { mesh.userData['sandlineBakedAo'] = true; });
+    const colour = new THREE.Float32BufferAttribute(Array.from({ length: 4 }, () => [.6, .5, .3]).flat(), 3);
+    floor.setAttribute('color', colour);
+    expect(bakeStaticPieceAo(root)).toEqual({ meshes: 0, vertices: 0 });
+    expect(floor.getAttribute('color')).toBe(colour);
+    expect(material.vertexColors).toBe(true);
+  });
 });

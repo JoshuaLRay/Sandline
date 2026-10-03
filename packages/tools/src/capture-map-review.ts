@@ -1,6 +1,6 @@
 /** U-095: real production-rendered map views, captured in CI's Chromium. */
 import { spawn } from 'node:child_process';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 const url = 'http://127.0.0.1:4173/?mission&world=qalat-road&review-map';
 const vite = spawn('pnpm', ['--filter', '@sandline/client', 'exec', 'vite', 'preview', '--host', '127.0.0.1', '--port', '4173', '--strictPort'], { stdio: 'ignore' });
@@ -29,14 +29,28 @@ try {
     { name: 'valley-overview', position: [130, 145, -35], target: [0, 0, 92] },
     { name: 'compound-and-north-gate', position: [68, 38, 140], target: [0, 0, 181] },
     { name: 'terraces-and-east-gate', position: [75, 25, 112], target: [25, 2, 157] },
+    { name: 'compound-ground', position: [16, 1.7, 186], target: [-8, 1, 180] },
   ];
+  const measurements: Record<string, unknown> = {};
   for (const view of views) {
-    await page.evaluate((v) => {
-      const hook = (globalThis as unknown as { __sandlineMapReview: (view: { position: number[]; target: number[] }) => void }).__sandlineMapReview;
-      hook(v);
-    }, view);
+    await page.evaluate((v) => (globalThis as unknown as { __sandlineMapReview: (view: { position: number[]; target: number[] }) => unknown }).__sandlineMapReview(v), view);
     await page.waitForTimeout(1000);
+    const stats = await page.evaluate((v) => (globalThis as unknown as { __sandlineMapReview: (view: { position: number[]; target: number[] }) => { grid: boolean; calls: number; triangles: number } }).__sandlineMapReview(v), view);
+    if (stats.grid) throw new Error('Default gameplay unexpectedly draws the diagnostic grid');
+    if (stats.calls >= 300) throw new Error(`${view.name}: ${stats.calls} draw calls exceeds ADR-013`);
+    measurements[view.name] = stats;
     await page.screenshot({ path: `artifacts/map-review/${view.name}.png` });
-    console.log(`Captured ${view.name}`);
+    console.log(`Captured ${view.name}: ${stats.calls} calls, ${stats.triangles} triangles, grid off`);
   }
+  await page.goto(`${url}&grid`);
+  await page.locator('#load-screen').waitFor({ state: 'hidden' });
+  await page.getByRole('button', { name: /Practise here/i }).click();
+  await page.waitForFunction("document.body.dataset.playable === 'true'", undefined, { timeout: 30000 });
+  await page.addStyleTag({ content: 'body > :not(canvas) { visibility: hidden !important; } canvas { visibility: visible !important; }' });
+  const qa = await page.evaluate((v) => (globalThis as unknown as { __sandlineMapReview: (view: { position: number[]; target: number[] }) => { grid: boolean } }).__sandlineMapReview(v), views[0]!);
+  if (!qa.grid) throw new Error('Explicit ?grid did not draw the QA grid');
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: 'artifacts/map-review/qa-grid.png' });
+  measurements['explicit-grid'] = qa;
+  await writeFile('artifacts/map-review/measurements.json', JSON.stringify(measurements, null, 2) + '\n');
 } finally { await browser?.close(); vite.kill('SIGTERM'); }

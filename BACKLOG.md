@@ -131,7 +131,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-095](docs/backlog/U-095.md) | Mission 1 verification: the headless run and its completion baseline | Campaign design | P2 | DONE | U-094 | [#277](https://github.com/JoshuaLRay/Sandline/pull/277); merged; CI #1641 green; owner playtest owed |
 
 | [U-097](docs/backlog/U-097.md) | Give the Qalat valley connected, playable elevation | Map design | P1 | REVIEW | U-092 | `task/U-097-connected-elevation`; technical verification, owner terrain review pending |
-| [U-096](docs/backlog/U-096.md) | Give the Qalat map an authored art pass and remove its grid feel | Map art | P1 | BLOCKED | U-097: finish terrain before final art placement | — |
+| [U-096](docs/backlog/U-096.md) | Give the Qalat map an authored art pass and remove its grid feel | Map art | P1 | REVIEW | U-097 terrain merged (#281); owner requested continuation on 2026-10-03; visual acceptance pending | [#282](https://github.com/JoshuaLRay/Sandline/pull/282); technical checks green, owner art review pending |
 | [U-098](docs/backlog/U-098.md) | Release the mouse when the mission ends so the end-of-mission buttons can be clicked | Controls / UI | P1 | REVIEW | — | `task/U-098-mission-end-cursor` |
 
 ## Existing work retained

@@ -61,15 +61,15 @@
     "qalat-road": [
       "fighter",
       "crate-large",
-      "ground-dirt-4m",
-      "ground-paving-4m",
-      "ground-road-4m",
       "roof-slab-4m",
       "rubble-large",
       "sandbags-2m",
       "stairs-3m",
       "wall-low-4m",
-      "wall-plaster-4m"
+      "wall-plaster-4m",
+      "qalat-ground",
+      "qalat-detail",
+      "qalat-bank-rock"
     ]
   }
 }

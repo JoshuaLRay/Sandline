@@ -1,7 +1,7 @@
 {
   "id": "qalat-road",
   "format": 1,
-  "$comment": "U-097: connected earth terraces (1, 2, 3.25 m), raised road banks and lower riverbed with shallow fords. Existing axis-aligned solids; 0.25 m steps. Central tank road, compound, mission triggers and spawn unchanged. Surface dressing follows in U-096.",
+  "$comment": "U-096: authored earth/gravel, dusty road, fallow terraces and worn compound paving over the unchanged U-097 terrain. Diagnostic grid is opt-in; generated landscape details are ankle-high, bank rocks below step height.",
   "floor": {
     "halfWidth": 64,
     "halfDepth": 202
@@ -1858,990 +1858,6 @@
       "rot": 0
     },
     {
-      "id": "road-12-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-12-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-12-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-16-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 16,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-16-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 16,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-16-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 16,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-20-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 20,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-20-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 20,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-20-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 20,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-24-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 24,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-24-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 24,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-24-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 24,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-28-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 28,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-28-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 28,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-28-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 28,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-32-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 32,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-32-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 32,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-32-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 32,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-36-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 36,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-36-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 36,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-36-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 36,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-40-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 40,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-40-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 40,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-40-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 40,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-44-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 44,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-44-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 44,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-44-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 44,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-48-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 48,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-48-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 48,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-48-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 48,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-52-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 52,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-52-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 52,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-52-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 52,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-56-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 56,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-56-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 56,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-56-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 56,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-60-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 60,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-60-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 60,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-60-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 60,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-64-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 64,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-64-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 64,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-64-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 64,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-68-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 68,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-68-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 68,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-68-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 68,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-72-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 72,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-72-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 72,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-72-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 72,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-76-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 76,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-76-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 76,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-76-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 76,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-80-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 80,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-80-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 80,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-80-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 80,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-84-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 84,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-84-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 84,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-84-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 84,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-88-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 88,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-88-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 88,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-88-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 88,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-92-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 92,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-92-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 92,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-92-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 92,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-96-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 96,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-96-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 96,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-96-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 96,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-100-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 100,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-100-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 100,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-100-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 100,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-104-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 104,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-104-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 104,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-104-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 104,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-108-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 108,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-108-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 108,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-108-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 108,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-112-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 112,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-112-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 112,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-112-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 112,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-116-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 116,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-116-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 116,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-116-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 116,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-120-0",
-      "piece": "ground-road-4m",
-      "x": -4,
-      "z": 120,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-120-4",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 120,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-120-8",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 120,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-124-0",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 124,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-124-4",
-      "piece": "ground-road-4m",
-      "x": 8,
-      "z": 124,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-124-8",
-      "piece": "ground-road-4m",
-      "x": 12,
-      "z": 124,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-128-0",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 128,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-128-4",
-      "piece": "ground-road-4m",
-      "x": 8,
-      "z": 128,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-128-8",
-      "piece": "ground-road-4m",
-      "x": 12,
-      "z": 128,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-132-0",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 132,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-132-4",
-      "piece": "ground-road-4m",
-      "x": 8,
-      "z": 132,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-132-8",
-      "piece": "ground-road-4m",
-      "x": 12,
-      "z": 132,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-136-0",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 136,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-136-4",
-      "piece": "ground-road-4m",
-      "x": 8,
-      "z": 136,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-136-8",
-      "piece": "ground-road-4m",
-      "x": 12,
-      "z": 136,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-140-0",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 140,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-140-4",
-      "piece": "ground-road-4m",
-      "x": 8,
-      "z": 140,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-140-8",
-      "piece": "ground-road-4m",
-      "x": 12,
-      "z": 140,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-144-0",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 144,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-144-4",
-      "piece": "ground-road-4m",
-      "x": 8,
-      "z": 144,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-144-8",
-      "piece": "ground-road-4m",
-      "x": 12,
-      "z": 144,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-148-0",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 148,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-148-4",
-      "piece": "ground-road-4m",
-      "x": 8,
-      "z": 148,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-148-8",
-      "piece": "ground-road-4m",
-      "x": 12,
-      "z": 148,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-152-0",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 152,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-152-4",
-      "piece": "ground-road-4m",
-      "x": 8,
-      "z": 152,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-152-8",
-      "piece": "ground-road-4m",
-      "x": 12,
-      "z": 152,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-156-0",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 156,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-156-4",
-      "piece": "ground-road-4m",
-      "x": 8,
-      "z": 156,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-156-8",
-      "piece": "ground-road-4m",
-      "x": 12,
-      "z": 156,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-160-0",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 160,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-160-4",
-      "piece": "ground-road-4m",
-      "x": 8,
-      "z": 160,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-160-8",
-      "piece": "ground-road-4m",
-      "x": 12,
-      "z": 160,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-164-0",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 164,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-164-4",
-      "piece": "ground-road-4m",
-      "x": 8,
-      "z": 164,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-164-8",
-      "piece": "ground-road-4m",
-      "x": 12,
-      "z": 164,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-168-0",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 168,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-168-4",
-      "piece": "ground-road-4m",
-      "x": 8,
-      "z": 168,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "road-168-8",
-      "piece": "ground-road-4m",
-      "x": 12,
-      "z": 168,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "bend-0",
-      "piece": "ground-road-4m",
-      "x": 0,
-      "z": 122,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "bend-4",
-      "piece": "ground-road-4m",
-      "x": 4,
-      "z": 122,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "bend-8",
-      "piece": "ground-road-4m",
-      "x": 8,
-      "z": 122,
-      "y": 0,
-      "rot": 0
-    },
-    {
       "id": "river-boulder-0",
       "piece": "rubble-large",
       "x": -42,
@@ -2871,30 +1887,6 @@
       "x": -38,
       "z": 24,
       "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-0-0",
-      "piece": "ground-dirt-4m",
-      "x": -44,
-      "z": 27,
-      "y": 0.5,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-0-4",
-      "piece": "ground-dirt-4m",
-      "x": -40,
-      "z": 27,
-      "y": 0.5,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-0-8",
-      "piece": "ground-dirt-4m",
-      "x": -36,
-      "z": 27,
-      "y": 0.5,
       "rot": 0
     },
     {
@@ -2930,30 +1922,6 @@
       "rot": 0
     },
     {
-      "id": "river-earth-1-0",
-      "piece": "ground-dirt-4m",
-      "x": -44,
-      "z": 41,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-1-4",
-      "piece": "ground-dirt-4m",
-      "x": -40,
-      "z": 41,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-1-8",
-      "piece": "ground-dirt-4m",
-      "x": -36,
-      "z": 41,
-      "y": 0,
-      "rot": 0
-    },
-    {
       "id": "river-boulder-2",
       "piece": "rubble-large",
       "x": -42,
@@ -2982,30 +1950,6 @@
       "piece": "wall-low-4m",
       "x": -38,
       "z": 52,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-2-0",
-      "piece": "ground-dirt-4m",
-      "x": -44,
-      "z": 55,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-2-4",
-      "piece": "ground-dirt-4m",
-      "x": -40,
-      "z": 55,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-2-8",
-      "piece": "ground-dirt-4m",
-      "x": -36,
-      "z": 55,
       "y": 0,
       "rot": 0
     },
@@ -3042,30 +1986,6 @@
       "rot": 0
     },
     {
-      "id": "river-earth-3-0",
-      "piece": "ground-dirt-4m",
-      "x": -44,
-      "z": 69,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-3-4",
-      "piece": "ground-dirt-4m",
-      "x": -40,
-      "z": 69,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-3-8",
-      "piece": "ground-dirt-4m",
-      "x": -36,
-      "z": 69,
-      "y": 0,
-      "rot": 0
-    },
-    {
       "id": "river-boulder-4",
       "piece": "rubble-large",
       "x": -42,
@@ -3094,30 +2014,6 @@
       "piece": "wall-low-4m",
       "x": -38,
       "z": 80,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-4-0",
-      "piece": "ground-dirt-4m",
-      "x": -44,
-      "z": 83,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-4-4",
-      "piece": "ground-dirt-4m",
-      "x": -40,
-      "z": 83,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-4-8",
-      "piece": "ground-dirt-4m",
-      "x": -36,
-      "z": 83,
       "y": 0,
       "rot": 0
     },
@@ -3154,30 +2050,6 @@
       "rot": 0
     },
     {
-      "id": "river-earth-5-0",
-      "piece": "ground-dirt-4m",
-      "x": -44,
-      "z": 97,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-5-4",
-      "piece": "ground-dirt-4m",
-      "x": -40,
-      "z": 97,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-5-8",
-      "piece": "ground-dirt-4m",
-      "x": -36,
-      "z": 97,
-      "y": 0,
-      "rot": 0
-    },
-    {
       "id": "river-boulder-6",
       "piece": "rubble-large",
       "x": -42,
@@ -3206,30 +2078,6 @@
       "piece": "wall-low-4m",
       "x": -38,
       "z": 108,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-6-0",
-      "piece": "ground-dirt-4m",
-      "x": -44,
-      "z": 111,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-6-4",
-      "piece": "ground-dirt-4m",
-      "x": -40,
-      "z": 111,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-6-8",
-      "piece": "ground-dirt-4m",
-      "x": -36,
-      "z": 111,
       "y": 0,
       "rot": 0
     },
@@ -3266,30 +2114,6 @@
       "rot": 0
     },
     {
-      "id": "river-earth-7-0",
-      "piece": "ground-dirt-4m",
-      "x": -44,
-      "z": 125,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-7-4",
-      "piece": "ground-dirt-4m",
-      "x": -40,
-      "z": 125,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-7-8",
-      "piece": "ground-dirt-4m",
-      "x": -36,
-      "z": 125,
-      "y": 0,
-      "rot": 0
-    },
-    {
       "id": "river-boulder-8",
       "piece": "rubble-large",
       "x": -42,
@@ -3318,30 +2142,6 @@
       "piece": "wall-low-4m",
       "x": -38,
       "z": 136,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-8-0",
-      "piece": "ground-dirt-4m",
-      "x": -44,
-      "z": 139,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-8-4",
-      "piece": "ground-dirt-4m",
-      "x": -40,
-      "z": 139,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-8-8",
-      "piece": "ground-dirt-4m",
-      "x": -36,
-      "z": 139,
       "y": 0,
       "rot": 0
     },
@@ -3378,30 +2178,6 @@
       "rot": 0
     },
     {
-      "id": "river-earth-9-0",
-      "piece": "ground-dirt-4m",
-      "x": -44,
-      "z": 153,
-      "y": 0.5,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-9-4",
-      "piece": "ground-dirt-4m",
-      "x": -40,
-      "z": 153,
-      "y": 0.5,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-9-8",
-      "piece": "ground-dirt-4m",
-      "x": -36,
-      "z": 153,
-      "y": 0.5,
-      "rot": 0
-    },
-    {
       "id": "river-boulder-10",
       "piece": "rubble-large",
       "x": -42,
@@ -3430,30 +2206,6 @@
       "piece": "wall-low-4m",
       "x": -38,
       "z": 164,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-10-0",
-      "piece": "ground-dirt-4m",
-      "x": -44,
-      "z": 167,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-10-4",
-      "piece": "ground-dirt-4m",
-      "x": -40,
-      "z": 167,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-earth-10-8",
-      "piece": "ground-dirt-4m",
-      "x": -36,
-      "z": 167,
       "y": 0,
       "rot": 0
     },
@@ -3490,38 +2242,6 @@
       "rot": 0
     },
     {
-      "id": "field-earth-0-28",
-      "piece": "ground-dirt-4m",
-      "x": 28,
-      "z": 30,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-0-36",
-      "piece": "ground-dirt-4m",
-      "x": 36,
-      "z": 30,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-0-44",
-      "piece": "ground-dirt-4m",
-      "x": 44,
-      "z": 30,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-0-52",
-      "piece": "ground-dirt-4m",
-      "x": 52,
-      "z": 30,
-      "y": 1,
-      "rot": 0
-    },
-    {
       "id": "field-wall-1-41",
       "piece": "wall-low-4m",
       "x": 41,
@@ -3550,38 +2270,6 @@
       "piece": "wall-low-4m",
       "x": 53,
       "z": 42,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-1-28",
-      "piece": "ground-dirt-4m",
-      "x": 28,
-      "z": 48,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-1-36",
-      "piece": "ground-dirt-4m",
-      "x": 36,
-      "z": 48,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-1-44",
-      "piece": "ground-dirt-4m",
-      "x": 44,
-      "z": 48,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-1-52",
-      "piece": "ground-dirt-4m",
-      "x": 52,
-      "z": 48,
       "y": 1,
       "rot": 0
     },
@@ -3618,38 +2306,6 @@
       "rot": 0
     },
     {
-      "id": "field-earth-2-28",
-      "piece": "ground-dirt-4m",
-      "x": 28,
-      "z": 66,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-2-36",
-      "piece": "ground-dirt-4m",
-      "x": 36,
-      "z": 66,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-2-44",
-      "piece": "ground-dirt-4m",
-      "x": 44,
-      "z": 66,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-2-52",
-      "piece": "ground-dirt-4m",
-      "x": 52,
-      "z": 66,
-      "y": 1,
-      "rot": 0
-    },
-    {
       "id": "field-wall-3-41",
       "piece": "wall-low-4m",
       "x": 41,
@@ -3678,38 +2334,6 @@
       "piece": "wall-low-4m",
       "x": 53,
       "z": 82,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-3-28",
-      "piece": "ground-dirt-4m",
-      "x": 28,
-      "z": 84,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-3-36",
-      "piece": "ground-dirt-4m",
-      "x": 36,
-      "z": 84,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-3-44",
-      "piece": "ground-dirt-4m",
-      "x": 44,
-      "z": 84,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-3-52",
-      "piece": "ground-dirt-4m",
-      "x": 52,
-      "z": 84,
       "y": 2,
       "rot": 0
     },
@@ -3746,38 +2370,6 @@
       "rot": 0
     },
     {
-      "id": "field-earth-4-28",
-      "piece": "ground-dirt-4m",
-      "x": 28,
-      "z": 102,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-4-36",
-      "piece": "ground-dirt-4m",
-      "x": 36,
-      "z": 102,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-4-44",
-      "piece": "ground-dirt-4m",
-      "x": 44,
-      "z": 102,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-4-52",
-      "piece": "ground-dirt-4m",
-      "x": 52,
-      "z": 102,
-      "y": 2,
-      "rot": 0
-    },
-    {
       "id": "field-wall-5-41",
       "piece": "wall-low-4m",
       "x": 41,
@@ -3806,38 +2398,6 @@
       "piece": "wall-low-4m",
       "x": 53,
       "z": 114,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-5-28",
-      "piece": "ground-dirt-4m",
-      "x": 28,
-      "z": 120,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-5-36",
-      "piece": "ground-dirt-4m",
-      "x": 36,
-      "z": 120,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-5-44",
-      "piece": "ground-dirt-4m",
-      "x": 44,
-      "z": 120,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-5-52",
-      "piece": "ground-dirt-4m",
-      "x": 52,
-      "z": 120,
       "y": 2,
       "rot": 0
     },
@@ -3874,38 +2434,6 @@
       "rot": 0
     },
     {
-      "id": "field-earth-6-28",
-      "piece": "ground-dirt-4m",
-      "x": 28,
-      "z": 138,
-      "y": 3.25,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-6-36",
-      "piece": "ground-dirt-4m",
-      "x": 36,
-      "z": 138,
-      "y": 3.25,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-6-44",
-      "piece": "ground-dirt-4m",
-      "x": 44,
-      "z": 138,
-      "y": 3.25,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-6-52",
-      "piece": "ground-dirt-4m",
-      "x": 52,
-      "z": 138,
-      "y": 3.25,
-      "rot": 0
-    },
-    {
       "id": "field-wall-7-41",
       "piece": "wall-low-4m",
       "x": 41,
@@ -3934,38 +2462,6 @@
       "piece": "wall-low-4m",
       "x": 53,
       "z": 150,
-      "y": 3.25,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-7-28",
-      "piece": "ground-dirt-4m",
-      "x": 28,
-      "z": 156,
-      "y": 3.25,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-7-36",
-      "piece": "ground-dirt-4m",
-      "x": 36,
-      "z": 156,
-      "y": 3.25,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-7-44",
-      "piece": "ground-dirt-4m",
-      "x": 44,
-      "z": 156,
-      "y": 3.25,
-      "rot": 0
-    },
-    {
-      "id": "field-earth-7-52",
-      "piece": "ground-dirt-4m",
-      "x": 52,
-      "z": 156,
       "y": 3.25,
       "rot": 0
     },
@@ -4162,486 +2658,6 @@
       "rot": 90
     },
     {
-      "id": "courtyard-0-172",
-      "piece": "ground-paving-4m",
-      "x": -18,
-      "z": 172,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-0-176",
-      "piece": "ground-paving-4m",
-      "x": -18,
-      "z": 176,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-0-180",
-      "piece": "ground-paving-4m",
-      "x": -18,
-      "z": 180,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-0-184",
-      "piece": "ground-paving-4m",
-      "x": -18,
-      "z": 184,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-0-188",
-      "piece": "ground-paving-4m",
-      "x": -18,
-      "z": 188,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-0-192",
-      "piece": "ground-paving-4m",
-      "x": -18,
-      "z": 192,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-4-172",
-      "piece": "ground-paving-4m",
-      "x": -14,
-      "z": 172,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-4-176",
-      "piece": "ground-paving-4m",
-      "x": -14,
-      "z": 176,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-4-180",
-      "piece": "ground-paving-4m",
-      "x": -14,
-      "z": 180,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-4-184",
-      "piece": "ground-paving-4m",
-      "x": -14,
-      "z": 184,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-4-188",
-      "piece": "ground-paving-4m",
-      "x": -14,
-      "z": 188,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-4-192",
-      "piece": "ground-paving-4m",
-      "x": -14,
-      "z": 192,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-8-172",
-      "piece": "ground-paving-4m",
-      "x": -10,
-      "z": 172,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-8-176",
-      "piece": "ground-paving-4m",
-      "x": -10,
-      "z": 176,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-8-180",
-      "piece": "ground-paving-4m",
-      "x": -10,
-      "z": 180,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-8-184",
-      "piece": "ground-paving-4m",
-      "x": -10,
-      "z": 184,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-8-188",
-      "piece": "ground-paving-4m",
-      "x": -10,
-      "z": 188,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-8-192",
-      "piece": "ground-paving-4m",
-      "x": -10,
-      "z": 192,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-12-172",
-      "piece": "ground-paving-4m",
-      "x": -6,
-      "z": 172,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-12-176",
-      "piece": "ground-paving-4m",
-      "x": -6,
-      "z": 176,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-12-180",
-      "piece": "ground-paving-4m",
-      "x": -6,
-      "z": 180,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-12-184",
-      "piece": "ground-paving-4m",
-      "x": -6,
-      "z": 184,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-12-188",
-      "piece": "ground-paving-4m",
-      "x": -6,
-      "z": 188,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-12-192",
-      "piece": "ground-paving-4m",
-      "x": -6,
-      "z": 192,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-16-172",
-      "piece": "ground-paving-4m",
-      "x": -2,
-      "z": 172,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-16-176",
-      "piece": "ground-paving-4m",
-      "x": -2,
-      "z": 176,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-16-180",
-      "piece": "ground-paving-4m",
-      "x": -2,
-      "z": 180,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-16-184",
-      "piece": "ground-paving-4m",
-      "x": -2,
-      "z": 184,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-16-188",
-      "piece": "ground-paving-4m",
-      "x": -2,
-      "z": 188,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-16-192",
-      "piece": "ground-paving-4m",
-      "x": -2,
-      "z": 192,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-20-172",
-      "piece": "ground-paving-4m",
-      "x": 2,
-      "z": 172,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-20-176",
-      "piece": "ground-paving-4m",
-      "x": 2,
-      "z": 176,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-20-180",
-      "piece": "ground-paving-4m",
-      "x": 2,
-      "z": 180,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-20-184",
-      "piece": "ground-paving-4m",
-      "x": 2,
-      "z": 184,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-20-188",
-      "piece": "ground-paving-4m",
-      "x": 2,
-      "z": 188,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-20-192",
-      "piece": "ground-paving-4m",
-      "x": 2,
-      "z": 192,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-24-172",
-      "piece": "ground-paving-4m",
-      "x": 6,
-      "z": 172,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-24-176",
-      "piece": "ground-paving-4m",
-      "x": 6,
-      "z": 176,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-24-180",
-      "piece": "ground-paving-4m",
-      "x": 6,
-      "z": 180,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-24-184",
-      "piece": "ground-paving-4m",
-      "x": 6,
-      "z": 184,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-24-188",
-      "piece": "ground-paving-4m",
-      "x": 6,
-      "z": 188,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-24-192",
-      "piece": "ground-paving-4m",
-      "x": 6,
-      "z": 192,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-28-172",
-      "piece": "ground-paving-4m",
-      "x": 10,
-      "z": 172,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-28-176",
-      "piece": "ground-paving-4m",
-      "x": 10,
-      "z": 176,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-28-180",
-      "piece": "ground-paving-4m",
-      "x": 10,
-      "z": 180,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-28-184",
-      "piece": "ground-paving-4m",
-      "x": 10,
-      "z": 184,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-28-188",
-      "piece": "ground-paving-4m",
-      "x": 10,
-      "z": 188,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-28-192",
-      "piece": "ground-paving-4m",
-      "x": 10,
-      "z": 192,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-32-172",
-      "piece": "ground-paving-4m",
-      "x": 14,
-      "z": 172,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-32-176",
-      "piece": "ground-paving-4m",
-      "x": 14,
-      "z": 176,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-32-180",
-      "piece": "ground-paving-4m",
-      "x": 14,
-      "z": 180,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-32-184",
-      "piece": "ground-paving-4m",
-      "x": 14,
-      "z": 184,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-32-188",
-      "piece": "ground-paving-4m",
-      "x": 14,
-      "z": 188,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-32-192",
-      "piece": "ground-paving-4m",
-      "x": 14,
-      "z": 192,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-36-172",
-      "piece": "ground-paving-4m",
-      "x": 18,
-      "z": 172,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-36-176",
-      "piece": "ground-paving-4m",
-      "x": 18,
-      "z": 176,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-36-180",
-      "piece": "ground-paving-4m",
-      "x": 18,
-      "z": 180,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-36-184",
-      "piece": "ground-paving-4m",
-      "x": 18,
-      "z": 184,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-36-188",
-      "piece": "ground-paving-4m",
-      "x": 18,
-      "z": 188,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "courtyard-36-192",
-      "piece": "ground-paving-4m",
-      "x": 18,
-      "z": 192,
-      "y": 0,
-      "rot": 0
-    },
-    {
       "id": "mg-cover",
       "piece": "sandbags-2m",
       "x": 0,
@@ -4680,6 +2696,118 @@
       "z": 176,
       "y": 0,
       "rot": 0
+    },
+    {
+      "id": "qalat-ground",
+      "piece": "qalat-ground",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "rot": 0
+    },
+    {
+      "id": "qalat-detail",
+      "piece": "qalat-detail",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "rot": 0
+    },
+    {
+      "id": "bank-rock-0",
+      "piece": "qalat-bank-rock",
+      "x": -54,
+      "y": 0,
+      "z": 45,
+      "rot": 0
+    },
+    {
+      "id": "bank-rock-1",
+      "piece": "qalat-bank-rock",
+      "x": -30,
+      "y": 0,
+      "z": 58,
+      "rot": 90
+    },
+    {
+      "id": "bank-rock-2",
+      "piece": "qalat-bank-rock",
+      "x": -54,
+      "y": 0,
+      "z": 86,
+      "rot": 180
+    },
+    {
+      "id": "bank-rock-3",
+      "piece": "qalat-bank-rock",
+      "x": -30,
+      "y": 0,
+      "z": 102,
+      "rot": 270
+    },
+    {
+      "id": "bank-rock-4",
+      "piece": "qalat-bank-rock",
+      "x": -54,
+      "y": 0,
+      "z": 139,
+      "rot": 0
+    },
+    {
+      "id": "bank-rock-5",
+      "piece": "qalat-bank-rock",
+      "x": -29,
+      "y": 0,
+      "z": 148,
+      "rot": 90
+    },
+    {
+      "id": "bank-rock-6",
+      "piece": "qalat-bank-rock",
+      "x": 53,
+      "y": 1,
+      "z": 38,
+      "rot": 180
+    },
+    {
+      "id": "bank-rock-7",
+      "piece": "qalat-bank-rock",
+      "x": 53,
+      "y": 1,
+      "z": 61,
+      "rot": 270
+    },
+    {
+      "id": "bank-rock-8",
+      "piece": "qalat-bank-rock",
+      "x": 27,
+      "y": 2,
+      "z": 91,
+      "rot": 0
+    },
+    {
+      "id": "bank-rock-9",
+      "piece": "qalat-bank-rock",
+      "x": 54,
+      "y": 2,
+      "z": 104,
+      "rot": 90
+    },
+    {
+      "id": "bank-rock-10",
+      "piece": "qalat-bank-rock",
+      "x": 53,
+      "y": 3.25,
+      "z": 145,
+      "rot": 180
+    },
+    {
+      "id": "bank-rock-11",
+      "piece": "qalat-bank-rock",
+      "x": 29,
+      "y": 3.25,
+      "z": 162,
+      "rot": 270
     }
   ],
   "encounter": "qalat-road",

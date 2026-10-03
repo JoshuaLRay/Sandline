@@ -223,7 +223,13 @@ const ground = new THREE.Mesh(
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
-scene.add(new THREE.GridHelper(200, 100, 0x8a7550, 0x6a5940));
+// U-096: diagnostic geometry is explicitly requested, never part of campaign art.
+if (new URLSearchParams(location.search).has('grid')) {
+  const grid = new THREE.GridHelper(200, 100, 0x8a7550, 0x6a5940);
+  grid.name = 'qa-grid';
+  grid.position.y = .025;
+  scene.add(grid);
+}
 /** T-3.09: the AI debug overlay, off until B. */
 const aiDebug = new AiDebugOverlay(document.body);
 /**
@@ -300,6 +306,10 @@ function collisionBoxes(): readonly WorldBox[] {
 const worldMeshes: THREE.Mesh[] = [];
 
 function buildScenery(world: World): void {
+  // Winter valley haze rather than the range's dark diagnostic backdrop.
+  const qalatArt = world.id === 'qalat-road' && world.pieces.some((p) => p.piece === 'qalat-ground');
+  scene.background = new THREE.Color(qalatArt ? 0x9baab1 : 0x1a1408);
+  scene.fog = new THREE.Fog(qalatArt ? 0x9baab1 : 0x1a1408, qalatArt ? 100 : 45, qalatArt ? 280 : 130);
   // U-095: the visible ground follows the same rectangular floor the nav bake uses.
   ground.scale.set(world.floorHalfWidth / 100, world.floorHalfDepth / 100, 1);
   for (const mesh of worldMeshes.splice(0)) {
@@ -315,7 +325,7 @@ function buildScenery(world: World): void {
     // A kit piece's box (T-4.10) collides and takes rays but is not drawn: the piece's mesh is (`levelPieces`).
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(c.w, c.h, c.d),
-      box.kind === 'figure' || box.piece !== undefined ? invisible : worldMaterials[box.kind],
+      box.kind === 'figure' || box.piece !== undefined || (qalatArt && /^(terrace-|road-bank-|river-sill-)/.test(box.id)) ? invisible : worldMaterials[box.kind],
     );
     mesh.position.set(c.x, c.y, c.z);
     mesh.castShadow = box.kind !== 'figure';
@@ -467,8 +477,9 @@ const query = new URLSearchParams(location.search);
 type MapReviewView = { position: [number, number, number]; target: [number, number, number] };
 let mapReviewView: MapReviewView | null = null;
 if (query.has('review-map')) {
-  (window as unknown as { __sandlineMapReview: (view: MapReviewView) => void }).__sandlineMapReview = (view) => {
+  (window as unknown as { __sandlineMapReview: (view: MapReviewView) => unknown }).__sandlineMapReview = (view) => {
     mapReviewView = view;
+    return { grid: scene.getObjectByName('qa-grid')?.visible === true, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles };
   };
 }
 const initialPresentationReady = initialPackReady.then(async () => {

@@ -100,7 +100,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: qalat-map-review
-          path: artifacts/map-review/*.png
+          path: artifacts/map-review/*
           if-no-files-found: error
       - run: pnpm perf:frame
 

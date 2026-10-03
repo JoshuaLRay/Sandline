@@ -419,6 +419,82 @@
       ]
     },
     {
+      "id": "qalat-bank-rock",
+      "source": "assets/src/qalat-bank-rock.glb",
+      "file": "assets/qalat-bank-rock.glb",
+      "inputHash": "b6df8c0c4c1c3a799301b389360b749ad7cf457ccc7400a76f4fe1b97ff989ba",
+      "hash": "c72b3e9a2f806aca74b8b2e2c727ea9c4554852b45650ce99963d72a43550799",
+      "bytes": 458676,
+      "class": "kit",
+      "triangles": 4,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": [
+        {
+          "min": [
+            -1,
+            0,
+            -0.7
+          ],
+          "max": [
+            1,
+            0.4,
+            0.7
+          ]
+        }
+      ]
+    },
+    {
+      "id": "qalat-detail",
+      "source": "assets/src/qalat-detail.glb",
+      "file": "assets/qalat-detail.glb",
+      "inputHash": "0f03703bcc06a87e3e118c099f3fb49cc452587ef39ef69986d567be8156e27c",
+      "hash": "7a33fbb437c90024b9d423c7abc985c7cb1a53f2aab2b61c0f55b4f59d905205",
+      "bytes": 508528,
+      "class": "kit",
+      "triangles": 1644,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
+      "id": "qalat-ground",
+      "source": "assets/src/qalat-ground.glb",
+      "file": "assets/qalat-ground.glb",
+      "inputHash": "b4089eaecc355bff9d7aa64a4df3af7a4df9403218f02503a3d25a313b1b63b7",
+      "hash": "54f239f843c6b03c110f0bcdb0a3c302bc1195917d070e627fab994eccb2caac",
+      "bytes": 545736,
+      "class": "kit",
+      "triangles": 3470,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
       "id": "roof-slab-4m",
       "source": "assets/src/roof-slab-4m.glb",
       "file": "assets/roof-slab-4m.glb",
