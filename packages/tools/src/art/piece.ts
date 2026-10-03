@@ -26,6 +26,12 @@ export interface Piece {
   tileM: Readonly<Record<string, number>>;
   /** A decal (a ground tile): drawn, and colliding with nothing. Every other piece must collide. */
   decal?: true;
+  /** Linear vertex tint for large authored surfaces; multiplied by static AO in the client. */
+  tint?: (x: number, y: number, z: number) => [number, number, number];
+  /** Generator already includes static shading; avoids a quadratic runtime bake on landscape meshes. */
+  bakedAo?: true;
+  /** Landscape textures use smooth filtering, matching the raised fidelity target. */
+  smooth?: true;
   build(b: MeshBuilder): void;
 }
 
@@ -52,7 +58,7 @@ export function pieceDocument(piece: Piece): Document {
   const material = doc.createMaterial(piece.family.id).setBaseColorTexture(texture).setMetallicFactor(0).setRoughnessFactor(1);
   material
     .getBaseColorTextureInfo()!
-    .setMagFilter(NEAREST)
+    .setMagFilter(piece.smooth ? 9729 : NEAREST)
     .setMinFilter(LINEAR_MIPMAP_LINEAR)
     .setWrapS(CLAMP_TO_EDGE)
     .setWrapT(CLAMP_TO_EDGE);
@@ -67,6 +73,13 @@ export function pieceDocument(piece: Piece): Document {
     .setAttribute('NORMAL', accessor('normal', 'VEC3', new Float32Array(mesh.normals)))
     .setAttribute('TEXCOORD_0', accessor('uv', 'VEC2', new Float32Array(mesh.uvs)))
     .setIndices(accessor('indices', 'SCALAR', vertexCount < 65536 ? new Uint16Array(mesh.indices) : new Uint32Array(mesh.indices)));
-  scene.addChild(doc.createNode(piece.id).setMesh(doc.createMesh(piece.id).addPrimitive(prim)));
+  if (piece.tint) {
+    const colours = new Float32Array(mesh.positions.length);
+    for (let i = 0; i < mesh.positions.length; i += 3) colours.set(piece.tint(mesh.positions[i]!, mesh.positions[i + 1]!, mesh.positions[i + 2]!), i);
+    prim.setAttribute('COLOR_0', accessor('tint', 'VEC3', colours));
+  }
+  const node = doc.createNode(piece.id).setMesh(doc.createMesh(piece.id).addPrimitive(prim));
+  if (piece.bakedAo) node.setExtras({ sandlineBakedAo: true });
+  scene.addChild(node);
   return doc;
 }

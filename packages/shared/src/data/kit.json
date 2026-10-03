@@ -25,6 +25,9 @@
     { "id": "crate-large", "cover": "low", "about": "1.2 m crate" },
     { "id": "crate-stack", "cover": "high", "about": "large crate with a small one on it, 2 m" },
     { "id": "drum", "cover": "low", "about": "200-litre drum" },
-    { "id": "fence-wood-2m", "cover": "low", "about": "2 m plank fence, 1.2 m" }
+    { "id": "fence-wood-2m", "cover": "low", "about": "2 m plank fence, 1.2 m" },
+    { "id": "qalat-ground", "cover": "none", "about": "Qalat terrain skin over the U-097 collision planes" },
+    { "id": "qalat-detail", "cover": "none", "about": "Ankle-high winter scrub and gravel clusters (cosmetic)" },
+    { "id": "qalat-bank-rock", "cover": "none", "about": "0.4 m faceted bank rock, below character step height" }
   ]
 }

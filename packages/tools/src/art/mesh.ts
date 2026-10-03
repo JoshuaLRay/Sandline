@@ -176,6 +176,27 @@ export class MeshBuilder {
     return this.out;
   }
 
+  /** An authored triangle (terrain skins, small stones and blades), with UVs inside one atlas cell. */
+  triangle(points: readonly [Vec3, Vec3, Vec3], surface: string, uv: readonly [number, number][] = [[0, 0], [1, 0], [0, 1]]): this {
+    const [a, b, c] = points;
+    const ab = b.map((v, i) => v - a[i]!);
+    const ac = c.map((v, i) => v - a[i]!);
+    const n = [ab[1]! * ac[2]! - ab[2]! * ac[1]!, ab[2]! * ac[0]! - ab[0]! * ac[2]!, ab[0]! * ac[1]! - ab[1]! * ac[0]!];
+    const length = Math.sqrt(n.reduce((sum, v) => sum + v * v, 0));
+    if (length < 1e-9) throw new Error('triangle: degenerate face');
+    const rect = cellRect(this.family, surface);
+    const base = this.out.positions.length / 3;
+    points.forEach((p, i) => {
+      this.out.positions.push(...p);
+      this.out.normals.push(...n.map((v) => v / length));
+      const [u, v] = uv[i]!;
+      if (u < 0 || u > 1 || v < 0 || v > 1) throw new Error('triangle: UV outside surface cell');
+      this.out.uvs.push(rect.u0 + u * (rect.u1 - rect.u0), rect.v0 + v * (rect.v1 - rect.v0));
+    });
+    this.out.indices.push(base, base + 1, base + 2);
+    return this;
+  }
+
   private face(min: Vec3, max: Vec3, face: Face, surface: string): void {
     const { n, u, v } = FACES[face];
     const tile = this.tileM[surface];

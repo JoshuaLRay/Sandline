@@ -3,6 +3,7 @@
  * `assets/src/<id>.glb`; `data/kit.json` gives each its cover class.
  */
 import type { Piece } from '../piece.ts';
+import { QALAT_BANK_ROCK, QALAT_DETAIL, QALAT_GROUND } from './qalat.ts';
 import { CRATE_LARGE, CRATE_SMALL, CRATE_STACK, DRUM, FENCE_WOOD_2M, SANDBAGS_2M, SANDBAGS_CORNER } from './props.ts';
 import {
   CONCRETE_BARRIER_2M,
@@ -53,4 +54,7 @@ export const PIECES: readonly Piece[] = [
   CRATE_STACK,
   DRUM,
   FENCE_WOOD_2M,
+  QALAT_GROUND,
+  QALAT_DETAIL,
+  QALAT_BANK_ROCK,
 ];
