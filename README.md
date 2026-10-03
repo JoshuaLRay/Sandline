@@ -9,6 +9,9 @@ and [PLAN.md](PLAN.md); architecture decisions are in [docs/adr/](docs/adr/).
 Agents read [CLAUDE.md](CLAUDE.md), then the ongoing queue and one task card.
 The hosted QA endpoint is `wss://sandline-host.fly.dev`.
 
+**Working with Codex (including iOS):** see [the environment setup guide](docs/CODEX.md).
+Codex loads [AGENTS.md](AGENTS.md), which points to the same repository rules.
+
 ## Quick start
 
 ```bash
