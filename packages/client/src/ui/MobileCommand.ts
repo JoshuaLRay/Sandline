@@ -9,6 +9,7 @@ export function createMobileCommand(parent: HTMLElement, actions: {
   order: (kind: OrderKind, address: OrderAddress, x: number, y: number) => boolean;
   settings: () => void;
   leave: () => void;
+  recenter: () => void;
 }) {
   const root = document.createElement('aside');
   root.className = 'mobile-command';
@@ -16,7 +17,7 @@ export function createMobileCommand(parent: HTMLElement, actions: {
   root.setAttribute('aria-label', 'Spectator and squad command');
   const overview = document.createElement('p');
   overview.className = 'mobile-overview';
-  overview.textContent = 'Spectator · Commander | Drag to look · Double tap to order';
+  overview.textContent = 'Drag to orbit · Pinch to zoom';
   const fullscreen = document.createElement('button');
   fullscreen.type = 'button';
   fullscreen.className = 'mobile-fullscreen';
@@ -67,6 +68,24 @@ export function createMobileCommand(parent: HTMLElement, actions: {
   settings.setAttribute('aria-label', 'Settings');
   settings.textContent = '⚙';
   settings.addEventListener('click', actions.settings);
+  const recenter = document.createElement('button');
+  recenter.type = 'button';
+  recenter.className = 'mobile-recenter';
+  recenter.textContent = '↺';
+  recenter.setAttribute('aria-label', 'Recenter camera');
+  recenter.addEventListener('click', actions.recenter);
+  const feedback = document.createElement('p');
+  feedback.className = 'mobile-feedback';
+  feedback.setAttribute('role', 'status');
+  const marker = document.createElement('div');
+  marker.className = 'mobile-order-marker';
+  marker.hidden = true;
+  const squad = document.createElement('div');
+  squad.className = 'mobile-squad';
+  squad.setAttribute('aria-label', 'Watch and select squad member');
+  const quickOrders = document.createElement('div');
+  quickOrders.className = 'mobile-quick-orders';
+  quickOrders.setAttribute('aria-label', 'Quick orders');
   const status = document.createElement('p');
   status.className = 'mobile-watch-status';
   const who = document.createElement('button');
@@ -75,23 +94,109 @@ export function createMobileCommand(parent: HTMLElement, actions: {
     button.type = 'button';
     button.className = 'mobile-trigger';
   }
-  who.setAttribute('aria-label', 'Choose who receives orders');
+  who.setAttribute('aria-label', 'Squad options and commander assignments');
   what.setAttribute('aria-label', 'Choose order');
   const controls = document.createElement('div');
   controls.className = 'mobile-controls';
-  controls.append(who, what);
+  const placementHelp = document.createElement('p');
+  placementHelp.className = 'mobile-placement-help';
+  placementHelp.textContent = 'Drag an order to command, or tap it then tap the scene';
+  controls.append(who, placementHelp, what);
   const menu = document.createElement('div');
   menu.className = 'mobile-command-menu';
   menu.hidden = true;
-  root.append(overview, status, fullscreen, settings, fullscreenHelp, controls, menu);
+  root.append(overview, status, fullscreen, settings, recenter, fullscreenHelp, squad, quickOrders, feedback, marker, controls, menu);
   parent.append(root);
   let rows: readonly CommandRow[] = [];
   let watched = -1;
   let mySlot = -1;
   let address: OrderAddress = { to: 'all' };
   let kind: OrderKind = 'move';
-  let open: 'who' | 'order' | null = null;
+  let open: 'who' | null = null;
   let drawn = '';
+  let armed = false;
+  let drag: { id: number; x: number; y: number; moved: boolean; kind: OrderKind; address: OrderAddress } | null = null;
+  let feedbackTimer: ReturnType<typeof setTimeout> | undefined;
+  const announce = (text: string): void => {
+    feedback.textContent = text;
+    clearTimeout(feedbackTimer);
+    feedbackTimer = setTimeout(() => { feedback.textContent = ''; }, 2400);
+  };
+  const eligible = (target: OrderAddress): boolean => target.to === 'all'
+    ? rows.some(row => !row.human && !row.captured && row.commander === mySlot)
+    : rows.some(row => row.slot === target.index && !row.human && !row.captured && row.commander === mySlot);
+  const submit = (order: OrderKind, target: OrderAddress, x: number, y: number): boolean => {
+    const sent = eligible(target) && actions.order(order, target, x, y);
+    announce(sent ? `${order[0]!.toUpperCase()}${order.slice(1)} order sent` : 'Order unavailable here — choose a valid target');
+    return sent;
+  };
+  const cancelPlacement = (): void => {
+    drag = null;
+    armed = false;
+    marker.hidden = true;
+    what.hidden = true;
+    placementHelp.hidden = false;
+    quickOrders.querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', 'false'));
+  };
+  for (const option of ORDER_KINDS) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = option[0]!.toUpperCase() + option.slice(1);
+    button.setAttribute('aria-label', `${button.textContent}: drag to target or tap then tap scene`);
+    button.title = 'Drag onto the scene, or tap then tap your destination';
+    button.setAttribute('aria-pressed', 'false');
+    button.addEventListener('pointerdown', event => {
+      if (event.button !== 0) return;
+      cancelPlacement();
+      open = null;
+      kind = option;
+      render();
+      drag = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false, kind, address };
+      button.setPointerCapture(event.pointerId);
+    });
+    button.addEventListener('pointermove', event => {
+      if (!drag || event.pointerId !== drag.id) return;
+      if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) > 12) drag.moved = true;
+      if (!drag.moved) return;
+      marker.hidden = false;
+      marker.textContent = option;
+      marker.style.left = `${event.clientX}px`;
+      marker.style.top = `${event.clientY}px`;
+    });
+    button.addEventListener('pointerup', event => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const released = drag;
+      cancelPlacement();
+      if (released.moved) {
+        // Hit test with capture ignored: dropping on another control never orders.
+        if (document.elementFromPoint(event.clientX, event.clientY) instanceof HTMLCanvasElement) {
+          submit(released.kind, released.address, event.clientX, event.clientY);
+        }
+      } else {
+        armed = true;
+        button.setAttribute('aria-pressed', 'true');
+        what.hidden = false;
+        placementHelp.hidden = true;
+        announce(`${button.textContent}: tap the scene to place · drag the scene to cancel`);
+      }
+    });
+    button.addEventListener('pointercancel', cancelPlacement);
+    button.addEventListener('lostpointercapture', () => { if (drag) cancelPlacement(); });
+    button.addEventListener('click', event => {
+      // Keyboard activation has no pointer gesture.
+      if (event.detail !== 0) return;
+      cancelPlacement();
+      kind = option;
+      armed = true;
+      button.setAttribute('aria-pressed', 'true');
+      what.hidden = false;
+      placementHelp.hidden = true;
+      announce(`${button.textContent}: tap the scene to place`);
+    });
+    quickOrders.append(button);
+  }
+  addEventListener('blur', cancelPlacement);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) cancelPlacement(); });
 
   function choice(text: string, selected: boolean, action: () => void): void {
     const button = document.createElement('button');
@@ -109,33 +214,55 @@ export function createMobileCommand(parent: HTMLElement, actions: {
     menu.append(label);
   }
   function render(): void {
-    status.textContent = watchedStatus(rows, watched, mySlot);
+    const watchedRow = rows.find(row => row.slot === watched);
+    status.textContent = watchedRow ? `Watching ${watchedRow.label}` : watchedStatus(rows, watched, mySlot);
+    squad.replaceChildren();
+    const all = document.createElement('button');
+    all.type = 'button';
+    all.textContent = 'All';
+    all.setAttribute('aria-label', 'Select all commanded bots');
+    all.setAttribute('aria-pressed', String(address.to === 'all'));
+    all.addEventListener('click', () => { cancelPlacement(); address = { to: 'all' }; render(); });
+    squad.append(all);
+    for (const row of rows) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = row.label.split(' · ').at(-1) ?? String(row.slot + 1);
+      button.disabled = row.captured;
+      button.setAttribute('aria-label', `Watch ${row.label}${!row.human && row.commander === mySlot ? ' and select for orders' : ''}`);
+      button.setAttribute('aria-pressed', String(address.to === 'slot' && address.index === row.slot));
+      button.classList.toggle('watching', watched === row.slot);
+      button.addEventListener('click', () => {
+        cancelPlacement();
+        actions.watch(row.slot);
+        watched = row.slot;
+        if (!row.human && row.commander === mySlot) address = { to: 'slot', index: row.slot };
+        render();
+      });
+      squad.append(button);
+    }
     const selectedSlot = address.to === 'slot' ? address.index : -1;
     const selectedRow = rows.find(row => row.slot === selectedSlot);
     const recipient = selectedSlot < 0 ? 'All my bots' : selectedRow && !selectedRow.human && selectedRow.commander === mySlot ? selectedRow.label : 'Unavailable bot';
-    who.textContent = `Who · ${recipient}`;
-    what.textContent = `Order · ${kind[0]!.toUpperCase()}${kind.slice(1)}`;
+    who.textContent = `Squad · ${recipient}`;
+    what.textContent = 'Cancel';
+    what.hidden = !armed;
+    placementHelp.hidden = armed;
     who.setAttribute('aria-expanded', String(open === 'who'));
-    what.setAttribute('aria-expanded', String(open === 'order'));
+    what.setAttribute('aria-label', 'Cancel order placement');
     menu.replaceChildren();
     menu.hidden = open === null;
-    if (open === 'order') {
-      heading('Choose order, then double tap the scene');
-      for (const option of ORDER_KINDS) choice(option[0]!.toUpperCase() + option.slice(1), kind === option, () => {
-        kind = option; open = null; render();
-      });
-    }
     if (open !== 'who') return;
     heading('Order recipients');
     choice('All commanded bots', address.to === 'all', () => { address = { to: 'all' }; open = null; render(); });
     for (const row of rows) {
-      if (row.human || row.commander !== mySlot) continue;
+      if (row.human || row.captured || row.commander !== mySlot) continue;
       choice(row.label, selectedSlot === row.slot, () => {
         address = { to: 'slot', index: row.slot }; open = null; render();
       });
     }
     heading('Watch');
-    for (const row of rows) choice(`${row.label} · ${row.human ? 'Human' : row.commander === mySlot ? 'Your bot' : 'Other player’s bot'}`, watched === row.slot, () => {
+    for (const row of rows.filter(row => !row.captured)) choice(`${row.label} · ${row.human ? 'Human' : row.commander === mySlot ? 'Your bot' : 'Other player’s bot'}`, watched === row.slot, () => {
       actions.watch(row.slot); watched = row.slot; open = null; render();
     });
     heading('Commander assignments');
@@ -154,20 +281,31 @@ export function createMobileCommand(parent: HTMLElement, actions: {
     }
     choice('Leave session', false, actions.leave);
   }
-  who.addEventListener('click', () => { open = open === 'who' ? null : 'who'; render(); });
-  what.addEventListener('click', () => { open = open === 'order' ? null : 'order'; render(); });
+  who.addEventListener('click', () => { cancelPlacement(); open = open === 'who' ? null : 'who'; render(); });
+  what.addEventListener('click', () => { cancelPlacement(); render(); });
   render();
   return {
     root,
+    cancelPlacement,
     issueAt(x: number, y: number): boolean {
-      const selectedSlot = address.to === 'slot' ? address.index : -1;
-      if (selectedSlot >= 0 && !rows.some(row => row.slot === selectedSlot && !row.human && row.commander === mySlot)) return false;
-      return actions.order(kind, address, x, y);
+      cancelPlacement();
+      render();
+      return submit(kind, address, x, y);
+    },
+    tapAt(x: number, y: number): boolean {
+      if (!armed) return false;
+      cancelPlacement();
+      render();
+      submit(kind, address, x, y);
+      return true;
     },
     update(next: readonly CommandRow[], slot: number, commanderSlot: number) {
+      if (root.hidden) cancelPlacement();
+      if (mySlot !== commanderSlot) { cancelPlacement(); address = { to: 'all' }; drawn = ''; }
       mySlot = commanderSlot;
       const key = commandKey(next);
       if (key !== drawn) {
+        cancelPlacement();
         drawn = key;
         rows = next;
         render();

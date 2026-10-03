@@ -1,6 +1,6 @@
 # Mobile spectator and commander controls
 
-**Status:** Approved interaction requirements (2026-09-28). This document specifies the touch interface; implementation and validation belong to the client change.
+**Status:** Approved scope (2026-09-28), interaction upgrade requested 2026-10-03 (U-099). This document specifies the touch interface; implementation and validation belong to the client change.
 
 ## Scope
 
@@ -26,3 +26,24 @@ A phone or tablet participant watches squad members and commands eligible bots. 
 2. Both menus can be opened, navigated and closed by touch; their labels and current selections are understandable without hover.
 3. Dragging pans the camera without issuing an order. Double tapping a scene point sends one location based order to the chosen recipient; tapping a control does not.
 4. Watching another soldier, commander assignment and leaving remain available. Mobile never gains manual walking, aiming or firing controls.
+
+
+## U-099 interaction update (2026-10-03)
+
+The owner requested fewer taps and a modern camera/control feel. This supersedes
+menu-first placement requirements above while preserving spectator/commander scope.
+
+- A visible squad strip watches a soldier with one tap; eligible bots also become
+  the recipient. All selects all commanded bots. Watching a human does not grant
+  command permission or silently change the order recipient.
+- Five visible order buttons allow dragging onto the scene and releasing to send.
+  Tapping an order arms one scene tap instead; Cancel order clears it. Existing
+  double tap placement remains available. Selection alone never sends an order.
+- Dragging or pinching the scene cancels armed placement. Control drops, pointer
+  cancellation, focus loss, hidden UI and roster changes clear placement.
+- The camera orbits the watched soldier's chest; pinch controls distance within
+  U-038 limits, and Recenter restores heading and elevation. Scenery shortens the
+  camera arm. Crosshairs remain hidden on mobile.
+- Squad menu retains assignments, independent recipient selection and leaving.
+  A brief message reports local submission or invalid placement; it does not
+  claim authoritative execution. Owner real-device feel review remains pending.

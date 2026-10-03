@@ -16,3 +16,31 @@
 .mobile-assignment { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding-left: 12px; }
 .mobile-assignment select { max-width: 58%; color-scheme: dark; }
 @media (max-height: 450px) { .mobile-overview { top: 4px; font-size: 11px; } .mobile-command-menu { max-height: 58vh; } }
+
+.mobile-recenter { pointer-events: auto; position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 58px); right: max(12px, env(safe-area-inset-right)); width: 48px; height: 48px; border: 1px solid #fff1db66; border-radius: 16px; background: #0e141899; color: inherit; font: 28px system-ui; touch-action: manipulation; }
+.mobile-squad, .mobile-quick-orders { pointer-events: auto; position: absolute; left: max(14px, env(safe-area-inset-left)); right: max(14px, env(safe-area-inset-right)); display: flex; gap: 6px; }
+.mobile-squad { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 116px); overflow-x: auto; overscroll-behavior: contain; }
+.mobile-quick-orders { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 60px); }
+.mobile-squad button, .mobile-quick-orders button { flex: 1; min-height: 48px; min-width: 44px; padding: 8px 6px; border: 1px solid #fff1db55; border-radius: 14px; background: #0e1418b8; color: inherit; font: 600 12px system-ui; backdrop-filter: blur(8px); }
+.mobile-squad button { white-space: nowrap; touch-action: manipulation; }
+.mobile-quick-orders button { touch-action: none; user-select: none; }
+.mobile-squad button[aria-pressed="true"], .mobile-quick-orders button[aria-pressed="true"] { border-color: #e3c383; background: #67512ddd; }
+.mobile-squad button.watching { box-shadow: inset 0 -3px #e3c383; }
+.mobile-squad button:disabled { opacity: .4; }
+.mobile-feedback { position: absolute; left: 50%; top: 28%; transform: translateX(-50%); max-width: calc(100vw - 32px); width: max-content; margin: 0; padding: 10px 14px; border-radius: 14px; background: #0e1418dd; text-align: center; }
+.mobile-feedback:empty { display: none; }
+.mobile-order-marker { position: fixed; transform: translate(-50%, -110%); padding: 8px 12px; border: 2px solid #e3c383; border-radius: 20px; background: #0e1418dd; text-transform: capitalize; }
+.mobile-order-marker[hidden], .mobile-trigger[hidden] { display: none; }
+.mobile-command-menu { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 174px); max-height: min(50vh, 520px); }
+@media (max-height: 450px) {
+  .mobile-squad { left: max(14px, env(safe-area-inset-left)); right: auto; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 60px); max-width: 42vw; }
+  .mobile-quick-orders { left: auto; width: 50vw; }
+  .mobile-watch-status { top: 30px; max-width: calc(100vw - 140px); }
+  .mobile-command-menu { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 116px); max-height: 45vh; }
+}
+.mobile-overview { max-width: calc(100vw - 140px); }
+html.mobile .phud-vitals, html.mobile .phud-weapon, html.mobile .phud-prompt { display: none; }
+html.mobile .phud-objective { top: 112px; max-width: calc(100vw - 24px); white-space: normal; text-align: center; }
+@media (max-height: 450px) { html.mobile .phud-objective { top: 60px; max-width: calc(100vw - 150px); } }
+.mobile-placement-help { align-self: center; max-width: 46%; margin: 0; padding: 4px 8px; color: #fff1dbcc; font-size: 11px; line-height: 1.45; text-align: right; text-shadow: 0 1px 3px #000; }
+.mobile-placement-help[hidden] { display: none; }
