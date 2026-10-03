@@ -48,3 +48,5 @@ export * from './ai/bt.ts';
 export * from './ai/perception.ts';
 export * from './ai/stimuli.ts';
 export * from './ai/memory.ts';
+
+export * from './sim/tactics.ts';

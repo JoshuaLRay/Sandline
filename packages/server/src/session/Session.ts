@@ -161,6 +161,9 @@ import {
   orderProblem,
   type BotOrder,
   SPREAD_KINDS,
+  AGGRESSION_KINDS,
+  MEMORY,
+  type SquadAggression,
   type SquadSpread,
   type OrderKind,
   type OrderPoint,
@@ -1152,6 +1155,8 @@ export class Session {
     this.formation = new Formation((p) => (mesh ? (mesh.nearestPoint(p)?.point ?? null) : p));
     const squad: SquadView = {
       place: (index) => this.formation.place(index),
+      aggression: (index) => this.aggressionFor(index),
+      canEngage: (index, target) => this.canBotEngage(index, target),
       downedNear: (index) => this.downedNear(index),
       hurtNear: (index) => this.hurtNear(index),
       needsKit: (index) => {
@@ -2644,6 +2649,9 @@ export class Session {
   private botTarget(slot: Slot, nowSeconds: number): number | null {
     const order = this.orders[slot.index];
     if (order?.order === 'attack' && order.target !== null && this.enemyList.some((e) => e.netId === order.target && !isDead(e.health))) return order.target;
+    const aggression = this.aggressionFor(slot.index);
+    if (aggression === 'hold-fire') return null;
+    if (aggression === 'defensive') return chooseTarget({ entries: new Map([...slot.memory.entries].filter(([, entry]) => entry.visible && entry.threatAt !== null && nowSeconds - entry.threatAt <= MEMORY.threatSeconds)) }, slot.state, nowSeconds);
     // U-062: someone taking a squadmate prisoner, if the bot knows of them, comes before any other target.
     let taker: number | null = null;
     let takerD = Infinity;
@@ -3211,6 +3219,7 @@ export class Session {
       onEquip: (c, msg) => { if (this.roomStarted && !this.spectators.has(c)) this.applyEquip(c, msg); },
       onReload: (c) => { if (this.roomStarted && !this.spectators.has(c)) this.applyReload(c); },
       onAiDebugRequest: (c, on) => this.applyAiDebugRequest(c, on),
+      onAggression: (c, msg) => this.applyAggression(c, msg),
       onSpread: (c, msg) => this.applySpread(c, msg),
       onOrder: (c, msg) => { if (this.roomStarted) this.applyOrder(c, msg); },
       onMark: (c, msg) => { if (this.roomStarted) this.applyMark(c, msg); },
@@ -3295,6 +3304,7 @@ export class Session {
     } else {
       conn.send({ kind: 'Orders', orders: this.currentOrders() });
     }
+    conn.send({ kind: 'Aggressions', aggressions: this.aggressions });
     conn.send({ kind: 'Spreads', spreads: this.spreads });
     conn.send({ kind: 'Marks', marks: [...this.marks] });
     if (this.missionRun && this.roomStarted) conn.send({ kind: 'Mission', ...this.missionRun.current });
@@ -3310,6 +3320,36 @@ export class Session {
   // -------------------------------------------------------------------------
 
   /** Each slot's current order, or null: only ever a bot's. */
+  private readonly aggressions: SquadAggression[] = Array.from({ length: MAX_SLOTS }, () => 'aggressive');
+  aggressionFor(slot: number): SquadAggression { return this.aggressions[slot] ?? 'aggressive'; }
+
+  private canBotEngage(index: number, target: number | null): boolean {
+    const slot = this.slots[index];
+    if (!slot) return false;
+    const order = this.orders[index];
+    if (order?.order === 'attack') return target !== null && order.target === target;
+    const aggression = this.aggressionFor(index);
+    if (aggression === 'aggressive') return true;
+    if (aggression === 'hold-fire' || target === null) return false;
+    const entry = slot.memory.entries.get(target);
+    return !!entry?.visible && entry.threatAt !== null && this.nowMs / 1000 - entry.threatAt <= MEMORY.threatSeconds;
+  }
+
+  private applyAggression(conn: ServerConnection, msg: Extract<Message, { kind: 'Aggression' }>): void {
+    const from = this.humanFor(conn);
+    if (!from || !AGGRESSION_KINDS.includes(msg.aggression)) return;
+    const a = msg.address;
+    const addressed = a.to === 'all' ? this.slots.map((s) => s.index) : a.to === 'fireteam' ? SQUAD_CONFIG.fireteams[a.index]?.slots ?? [] : [a.index];
+    for (const i of addressed) {
+      const slot = this.slots[i];
+      if (!slot || (i !== from.index && (!this.autonomous(slot) || this.commanders[i] !== from.index))) continue;
+      this.aggressions[i] = msg.aggression;
+      slot.target = this.botTarget(slot, this.nowMs / 1000);
+      slot.brain?.take('fireAt'); slot.brain?.take('suppressAt'); slot.brain?.take('throwAt'); slot.brain?.take('detonate'); slot.brain?.take('intent'); slot.brain?.take('phase');
+    }
+    for (const c of this.connections) if (c.state === 'active') c.send({ kind: 'Aggressions', aggressions: this.aggressions });
+  }
+
   private readonly spreads: SquadSpread[] = Array.from({ length: MAX_SLOTS }, () => 'standard');
 
   spreadFor(slot: number): SquadSpread { return this.spreads[slot] ?? 'standard'; }
@@ -5593,9 +5633,9 @@ export class Session {
     // U-079: a bot's word to set off the charges it has out, the human's detonator.
     const detonate = brain.take('detonate');
     const caster = ownerSlot === NO_SLOT ? undefined : this.slots[ownerSlot];
-    if (detonate !== null && caster && isAlive(caster.health)) this.detonateCharges(caster, detonate);
+    if (detonate !== null && caster && isAlive(caster.health) && this.canBotEngage(caster.index, caster.target)) this.detonateCharges(caster, detonate);
     const toss = brain.take('throwAt');
-    if (toss && !body.state.vault && this.launch(body, ownerSlot, toss.projectile, toss.yaw, toss.pitch)) {
+    if (toss && (ownerSlot === NO_SLOT || this.canBotEngage(ownerSlot, this.slots[ownerSlot]?.target ?? null)) && !body.state.vault && this.launch(body, ownerSlot, toss.projectile, toss.yaw, toss.pitch)) {
       body.yaw = tableToWire(toss.yaw);
       body.input.yaw = body.yaw;
       body.pitch = tableToWire(toss.pitch);
@@ -5819,7 +5859,7 @@ export class Session {
     if (!this.botsDriven) return;
     for (const slot of this.slots) {
       if (!this.autonomous(slot) || !slot.brain || !isAlive(slot.health)) continue;
-      if (this.aiShoot(slot, BOT_ARCHETYPE.accuracy, true, true, nowSeconds)) this.lastFiredTick[slot.index] = this.currentTick;
+      if (this.canBotEngage(slot.index, slot.brain.fireAt ?? slot.target) && this.aiShoot(slot, BOT_ARCHETYPE.accuracy, true, true, nowSeconds)) this.lastFiredTick[slot.index] = this.currentTick;
     }
   }
 

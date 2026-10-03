@@ -14,6 +14,7 @@ Use a Node 22 (or newer) runtime and this setup script:
 ```sh
 set -eu
 node --version
+corepack enable
 corepack pnpm install --frozen-lockfile
 ```
 
