@@ -4,6 +4,7 @@ export * from './sim/Clock.ts';
 export * from './sim/physics.ts';
 export * from './sim/Simulation.ts';
 export * from './sim/CharacterController.ts';
+export * from './sim/characterSpace.ts';
 export * from './sim/campaignRegistry.ts';
 export * from './sim/campaign.ts';
 export * from './sim/world.ts';
