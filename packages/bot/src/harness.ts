@@ -53,6 +53,11 @@ export function runScenario(options: ScenarioOptions): ScenarioResult {
   const { bots: botCount, ticks, latencyMs = 0, jitterMs = 0, lossRate = 0, seed = 1 } = options;
 
   const session = new Session();
+  // The transport/prediction matrix measures independent movement through
+  // static scenery. Separate clients' lanes so remote-body contact (whose
+  // positions arrive over a delayed snapshot) does not masquerade as a
+  // dropped-input correction. Physical contact has Session/Predictor tests.
+  for (const slot of session.slots) slot.state.x += slot.index * 40;
   const bots: BotClient[] = [];
   const sims: NetSim[] = [];
   const pumps: (() => void)[] = [];

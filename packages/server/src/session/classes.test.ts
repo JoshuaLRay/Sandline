@@ -224,10 +224,12 @@ describe('characters on the session (T-4.27, U-021)', () => {
     session.orderFrom(0, { order: 'move', address: { to: 'all' }, point: { x: 2, y: 0, z: 2 }, target: null });
     settleAll();
     expect(humans[0]!.orders?.map((o) => o.slot).sort()).toEqual([4, 5]);
+    const previousPoint = humans[3]!.orders?.find((o) => o.slot === 4)?.point;
+    expect(previousPoint).not.toBeNull();
     // Ortiz addressing the other fireteam directly is refused too.
     session.orderFrom(3, { order: 'move', address: { to: 'fireteam', index: 0 }, point: { x: 3, y: 0, z: 3 }, target: null });
     settleAll();
-    expect(humans[3]!.orders?.find((o) => o.slot === 4)?.point).toEqual({ x: 2, y: 0, z: 2 });
+    expect(humans[3]!.orders?.find((o) => o.slot === 4)?.point).toEqual(previousPoint);
   });
 
   it('the left-handed sniper takes no gun off the ground, and a gun put down is never lost (U-021)', () => {

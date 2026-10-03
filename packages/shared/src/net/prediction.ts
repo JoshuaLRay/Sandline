@@ -20,6 +20,7 @@ import {
   DEFAULT_MOVE_CONFIG,
   stepCharacter,
 } from '../sim/CharacterController.ts';
+import { type CharacterSpace, keepCharacterSpace } from '../sim/characterSpace.ts';
 import { TICK_SECONDS } from '../sim/Clock.ts';
 import { DEFAULT_WORLD, type WorldBox } from '../sim/world.ts';
 
@@ -93,6 +94,8 @@ export class Predictor {
      * collide with exactly the boxes the server collides with.
      */
     private readonly world: readonly WorldBox[] = DEFAULT_WORLD,
+    private readonly characters: () => readonly CharacterSpace[] = () => [],
+    private readonly netId?: number,
   ) {
     this.state = initial;
   }
@@ -108,7 +111,7 @@ export class Predictor {
 
   /** Apply one input immediately and remember it for replay. */
   predict(tick: number, input: MoveInput): MoveState {
-    this.state = stepCharacter(this.state, input, TICK_SECONDS, this.config, this.world);
+    this.state = keepCharacterSpace(this.state, stepCharacter(this.state, input, TICK_SECONDS, this.config, this.world), this.characters(), this.config, this.world, this.netId);
     this.history.push({ tick, input, state: this.state });
     if (this.history.length > this.historyLength) this.history.shift();
     return this.state;
@@ -179,7 +182,7 @@ export class Predictor {
     let replayed = serverState;
     this.history = [];
     for (const entry of unacked) {
-      replayed = stepCharacter(replayed, entry.input, TICK_SECONDS, this.config, this.world);
+      replayed = keepCharacterSpace(replayed, stepCharacter(replayed, entry.input, TICK_SECONDS, this.config, this.world), this.characters(), this.config, this.world, this.netId);
       this.history.push({ tick: entry.tick, input: entry.input, state: replayed });
     }
     this.state = replayed;

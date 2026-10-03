@@ -135,6 +135,8 @@ import {
   tryFire,
   quantize,
   stepCharacter,
+  characterSpace,
+  keepCharacterSpace,
   writeDelta,
   type EnemyDef,
   type Encounter,
@@ -216,6 +218,7 @@ import { CAMPAIGN, type CampaignDef, isOffered, runOptions } from '@sandline/sha
 import { SoldierXp } from '../persistence/xp.ts';
 import type { DownedMate, SquadView } from '../ai/actions/friendly.ts';
 import type { EscortOrder, EscortView } from '../ai/actions/escort.ts';
+import { ESCORT_ARRIVED_M } from '../ai/actions/escort.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
 import type { CoverPoint } from '../ai/nav/baked/types.ts';
@@ -3447,12 +3450,31 @@ export class Session {
     this.orderEscort(msg);
     if (bots.length === 0) return;
     this.bumpStat(from.index, 'ordersGiven');
+    const destinations: { x: number; y: number; z: number }[] = [];
     for (const i of bots) {
+      let point = msg.point;
+      if (point && msg.address.to !== 'slot') {
+        const gap = 2 * this.moveConfig.radius + 0.1;
+        const offsets = msg.order === 'move' ? [[-1, -1], [1, -1], [-1, -2], [1, -2], [-1, -3], [1, -3]] : [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -2], [0, 2]];
+        const centre = bots.reduce((p, index) => ({ x: p.x + this.slots[index]!.state.x / bots.length, z: p.z + this.slots[index]!.state.z / bots.length }), { x: 0, z: 0 });
+        const length = Math.hypot(msg.point!.x - centre.x, msg.point!.z - centre.z);
+        const fx = length > 0.01 ? (msg.point!.x - centre.x) / length : 0;
+        const fz = length > 0.01 ? (msg.point!.z - centre.z) / length : 1;
+        for (let n = 0; n < offsets.length; n++) {
+          const offset = offsets[(i + n) % offsets.length]!;
+          const escort = msg.order === 'move' && this.enemyList.some((e) => e.def.friendly && !e.captive && isAlive(e.health));
+          const back = offset[1]! * gap - (escort ? ESCORT_ARRIVED_M : 0);
+          const asked = { x: msg.point!.x + offset[0]! * fz * gap + back * fx, y: point.y, z: msg.point!.z - offset[0]! * fx * gap + back * fz };
+          const projected = this.navMesh?.nearestPoint(asked)?.point ?? asked;
+          if (destinations.every((p) => Math.hypot(p.x - projected.x, p.z - projected.z) >= gap)) { point = projected; break; }
+        }
+        destinations.push(point);
+      }
       // T-3.28: the order it was under, if it had not finished, is replaced; either way it is reported.
       if (this.orders[i]) this.reportOrder(i, this.orderRuns[i]?.status === 'done' ? 'done' : 'replaced', `${msg.order} from slot ${from.index}`);
-      this.orders[i] = { slot: i, order: msg.order, point: msg.point ? { ...msg.point } : null, target: msg.target, from: from.index };
+      this.orders[i] = { slot: i, order: msg.order, point: point ? { ...point } : null, target: msg.target, from: from.index };
       const at = this.slots[i]!.state;
-      this.orderRuns[i] = { status: 'active', anchor: msg.point ? { ...msg.point } : { x: at.x, y: at.y, z: at.z }, xpPlayerId: this.xpPlayer(from.index) };
+      this.orderRuns[i] = { status: 'active', anchor: point ? { ...point } : { x: at.x, y: at.y, z: at.z }, xpPlayerId: this.xpPlayer(from.index) };
     }
     this.broadcastOrders();
   }
@@ -5254,7 +5276,7 @@ export class Session {
           slot.staleTicks = 0;
           slot.input.downed = isDowned(slot.health);
           slot.input.speedScale = this.speedScaleOf(slot.index);
-          slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig, this.collisionBoxes);
+          slot.state = this.stepSoldier(slot.netId, slot.state, slot.input);
           extra -= 1;
         }
 
@@ -5306,7 +5328,7 @@ export class Session {
       const fromZ = slot.state.z;
       // T-4.29: a gunner is held at the gun, crouched, looking within its arc.
       if (slot.mounted) this.pinGunner(slot, slot.mounted);
-      slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, this.moveConfig, this.collisionBoxes);
+      slot.state = this.stepSoldier(slot.netId, slot.state, slot.input);
       if (slot.mounted) {
         slot.state.x = slot.mounted.place.x;
         slot.state.z = slot.mounted.place.z;
@@ -6003,7 +6025,7 @@ export class Session {
       }
       // T-4.29: a gunner stays on its gun, crouched behind it, whatever its brain's feet want.
       if (enemy.mounted) enemy.input = { ...enemy.input, moveX: 0, moveY: 0, jump: false, sprint: false, crouch: true, prone: false, yaw: enemy.yaw };
-      enemy.state = stepCharacter(enemy.state, enemy.input, TICK_SECONDS, this.moveConfig, this.collisionBoxes);
+      enemy.state = this.stepSoldier(enemy.netId, enemy.state, enemy.input);
       if (enemy.mounted) {
         enemy.state.x = enemy.mounted.place.x;
         enemy.state.z = enemy.mounted.place.z;
@@ -6033,6 +6055,13 @@ export class Session {
    * A bot whose brain wants nothing, and never has since it last stood still,
    * keeps whatever input it has — an idle one — exactly as before brains.
    */
+  private stepSoldier(netId: number, state: MoveState, input: MoveInput): MoveState {
+    const others = [...this.slots, ...this.enemyList.filter((e) => !e.def.vehicle)]
+      .filter((body) => body.netId !== netId)
+      .map((body) => characterSpace(body.state, this.moveConfig, !isAlive(body.health), body.netId));
+    return keepCharacterSpace(state, stepCharacter(state, input, TICK_SECONDS, this.moveConfig, this.collisionBoxes), others, this.moveConfig, this.collisionBoxes, netId);
+  }
+
   private driveBots(): void {
     const mesh = this.navMesh;
     if (!mesh) return;

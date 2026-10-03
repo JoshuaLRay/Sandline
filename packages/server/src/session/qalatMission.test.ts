@@ -15,7 +15,7 @@ function play() {
   let now = 0;
   const step = (n = 1, clearTank = true) => {
     for (let i = 0; i < n; i++) {
-      for (const e of session.enemies) if (!e.def.friendly && (clearTank || !e.def.vehicle)) Object.assign(e.health, { current: 0, diedAt: now / 1000 });
+      for (const e of session.enemies) if (!e.def.friendly && (clearTank || !e.def.vehicle)) Object.assign(e.health, { current: 0, diedAt: e.health.diedAt ?? now / 1000 });
       now += TICK_SECONDS * 1000;
       session.step(now);
     }

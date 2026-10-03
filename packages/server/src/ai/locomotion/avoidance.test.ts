@@ -3,8 +3,8 @@
  *
  * Bot slots of a real `Session` on the range, driven the way T-3.08's brains
  * will: each tick a `PathFollower` makes an input, `Avoidance` steers it
- * round everyone else, the slot takes it, and `Session.step` moves everyone
- * through `stepCharacter`. The crowd never moves anyone.
+ * round everyone else, and `stepCharacter` moves everyone. This isolates
+ * steering from Session's physical collision constraint. The crowd never moves anyone.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
 import { DEFAULT_MOVE_CONFIG, type MoveInput, type MoveState, TICK_SECONDS, createMoveState, stepCharacter } from '@sandline/shared';
@@ -16,7 +16,6 @@ import { Avoidance, type AvoidanceConfig, type AvoidanceEntry, DEFAULT_AVOIDANCE
 import { type LocomotionIntent, type LocomotionPace, PathFollower } from './followPath.ts';
 import RAW_AVOIDANCE from './avoidance.json' with { type: 'json' };
 
-const TICK_MS = 1000 / 30;
 const CAPSULE = DEFAULT_HITBOX.radius;
 /** Capsules closer than two radii by more than this overlap. */
 const OVERLAP_EPSILON_M = 0.05;
@@ -73,7 +72,6 @@ function run(mesh: NavMesh, soldiers: readonly Soldier[], maxTicks: number, avoi
   let longestOverlap = 0;
   let nearestHuman = Infinity;
   let spentMs = 0;
-  let now = 0;
   let tick = 0;
   for (; tick < maxTicks; tick++) {
     const entries: AvoidanceEntry[] = soldiers.map((s, i) => {
@@ -93,8 +91,13 @@ function run(mesh: NavMesh, soldiers: readonly Soldier[], maxTicks: number, avoi
       session.slots[s.slot]!.input = input;
       inputs[i]!.push({ ...input });
     });
-    now += TICK_MS;
-    session.step(now);
+    // This fixture measures steering in isolation. Session additionally
+    // resolves physical character collisions (U-099); that belongs in its
+    // integration tests rather than the steering replay contract below.
+    for (const soldier of soldiers) {
+      const slot = session.slots[soldier.slot]!;
+      slot.state = stepCharacter(slot.state, slot.input, TICK_SECONDS, DEFAULT_MOVE_CONFIG, session.world.boxes);
+    }
     soldiers.forEach((s, i) => {
       if (s.intent) states[i]!.push(structuredClone(session.slots[s.slot]!.state));
     });
