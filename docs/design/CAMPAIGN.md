@@ -74,13 +74,12 @@ The first season is ten missions. A row is one mission; each becomes a design br
 
 | # | Working title | What it is | Status |
 |---|---|---|---|
-| 1 | — | **A rescue and escort.** The squad frees an **unarmed POW** from the compound he is held in; he joins the squad as a seventh member who can be **commanded** (go / stay / follow) and **spectated** but not controlled. On the way back out a **tank rides in along the route home**: the squad must destroy it, then reach the extraction point **with all seven alive**. | Brief owed (U-065) |
+| 1 | [The Qalat Road](MISSION-01.md) | **A rescue and escort.** The squad frees an **unarmed POW** from the compound he is held in; he joins the squad as a seventh member who can be **commanded** (go / stay / follow) and **spectated** but not controlled. On the way back out a **tank rides in along the route home**: the squad must destroy it, then reach the extraction point **with all seven alive**. | Brief approved 2026-10-02; U-092–U-095 implemented; [U-065 review owed](../backlog/U-065.md) |
 | 2–10 | — | Not yet designed. One at a time, in order. | Open |
 
-The existing `mission-01` (clear and hold the qalat) is the vertical slice. **Assumption, to confirm:** it stays
-playable as the test and QA mission until the new campaign mission 1 replaces it, and is not part of the season.
+The existing `mission-01` (clear and hold the qalat) is the vertical slice. **Approved in the mission 1 brief (2026-10-02):** it stays playable as the test and QA mission outside the season. The Qalat Road is the campaign opener.
 
-### What mission 1 needs that does not exist yet
+### Mission 1 dependencies
 
 | Need | Card |
 |---|---|
@@ -117,6 +116,8 @@ One short document per mission, in this folder, written before any level is buil
 7. **Verification:** what `sim-run` and the scenario tests must show, and what only a human playtest can say.
 
 ## 5. Order of work
+
+Current checkpoint (2026-10-03): campaign decisions and mission 1 design are delivered. Its level, encounter, mission and verification are implemented. U-065 still owes the owner playtest and headless completion (current bots complete 0/20 at both budgets). The sequence below is retained as the design order; it does not reopen completed dependencies.
 
 1. **Decide Q1 to Q4** (this page). They block the escort (U-075) and the flow (U-072).
 2. **Ready now, content-independent:** U-073 (register a mission in one place), U-074 (objectives in any order) and
