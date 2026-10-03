@@ -1735,6 +1735,8 @@ function currentShareLink(): string | null {
 }
 
 const squadPanel = createSquadPanel({
+  onSpread: (spread) => live?.net.spread(spread),
+  onAggression: (aggression, address) => live?.net.aggression(aggression, address),
   onLeave: () => leaveSession({ text: 'left the room', tone: 'info' }),
   link: currentShareLink,
 });
@@ -3234,7 +3236,7 @@ function frame(): void {
   netgraph.sample();
   if (live && now - squadAt >= 250) {
     squadAt = now;
-    squadPanel.update(live.net.roster, live.net.slot, live.net.room, squadStatus());
+    squadPanel.update(live.net.roster, live.net.slot, live.net.room, squadStatus(), live.net.spreads, live.net.aggressions);
     roomLobby.update(live.net.roster, live.net.slot, live.net.room, live.net.roomState);
   }
 

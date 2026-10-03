@@ -46,6 +46,8 @@ export interface ServerConnectionEvents {
   /** T-3.09: the client wants AI debug reports, or no longer does. */
   onAiDebugRequest?: (conn: ServerConnection, on: boolean) => void;
   /** T-3.27: a player's order to bots, and a mark — untrusted; the session checks both. */
+  onAggression?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Aggression' }>) => void;
+  onSpread?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Spread' }>) => void;
   onOrder?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Order' }>) => void;
   onMark?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Mark' }>) => void;
   /** T-3.34: a seated player asking for the mission to start again. */
@@ -245,6 +247,14 @@ export class ServerConnection {
       case 'AiDebugRequest':
         this.events.onAiDebugRequest?.(this, msg.on);
         break;
+      case 'Aggression':
+        this.lastActive = now;
+        this.events.onAggression?.(this, msg);
+        break;
+      case 'Spread':
+        this.lastActive = now;
+        this.events.onSpread?.(this, msg);
+        break;
       case 'Order':
         this.lastActive = now;
         this.events.onOrder?.(this, msg);
@@ -333,6 +343,8 @@ export interface ClientConnectionEvents {
   onPong?: (msg: Extract<Message, { kind: 'Pong' }>) => void;
   onRoster?: (slots: RosterEntry[]) => void;
   /** T-3.27: every bot's current order, and every standing mark, as the host last sent them. */
+  onAggressions?: (aggressions: Extract<Message, { kind: 'Aggressions' }>['aggressions']) => void;
+  onSpreads?: (spreads: Extract<Message, { kind: 'Spreads' }>['spreads']) => void;
   onOrders?: (orders: Extract<Message, { kind: 'Orders' }>['orders']) => void;
   onMarks?: (marks: Extract<Message, { kind: 'Marks' }>['marks']) => void;
   /** T-3.34: where the mission stands. */
@@ -404,6 +416,12 @@ export class ClientConnection {
         break;
       case 'Roster':
         this.events.onRoster?.(msg.slots);
+        break;
+      case 'Aggressions':
+        this.events.onAggressions?.(msg.aggressions);
+        break;
+      case 'Spreads':
+        this.events.onSpreads?.(msg.spreads);
         break;
       case 'Orders':
         this.events.onOrders?.(msg.orders);

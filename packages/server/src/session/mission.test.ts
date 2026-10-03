@@ -605,7 +605,7 @@ describe('the mission on a session (T-3.34, T-4.14)', () => {
     m.step(2);
     expect(m.session.enemies).toHaveLength(2);
 
-    const checkpoint = m.session.slots.map((slot, i) => ({ x: start.x + i * 0.5, y: slot.state.y, z: start.z + 6 + i * 0.25 }));
+    const checkpoint = m.session.slots.map((slot, i) => ({ x: start.x + i * 1.0, y: slot.state.y, z: start.z + 6 + i * 0.25 }));
     m.session.slots.forEach((slot, i) => {
       const point = checkpoint[i]!;
       slot.state = { ...slot.state, x: point.x, y: point.y, z: point.z };

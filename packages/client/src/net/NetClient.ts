@@ -12,6 +12,11 @@
  */
 import {
   type BotOrder,
+  type SquadSpread,
+  type SquadAggression,
+  type OrderAddress,
+  type CharacterSpace,
+  DEFAULT_MOVE_CONFIG,
   type OrderKind,
   type RunKind,
   type MissionView,
@@ -212,6 +217,7 @@ export const NO_PRIMARY = -1;
 export class NetClient {
   private readonly store = new SnapshotStore();
   private predictor: Predictor | null = null;
+  private characterSpaces: CharacterSpace[] = [];
   private readonly buffers = new Map<number, InterpolationBuffer>();
   private netIdValue = -1;
   private slotValue = -1;
@@ -354,6 +360,14 @@ export class NetClient {
    * the host says so: the markers show what the squad is doing, not what it
    * was asked (T-3.29).
    */
+  private aggressionsValue: readonly SquadAggression[] = Array.from({ length: 6 }, () => 'aggressive');
+  get aggressions(): readonly SquadAggression[] { return this.aggressionsValue; }
+  aggression(aggression: SquadAggression, address: OrderAddress): void { if (this.joinedFlag) this.transport.send(encodeMessage({ kind: 'Aggression', aggression, address }), 'reliable'); }
+
+  private spreadsValue: readonly SquadSpread[] = Array.from({ length: 6 }, () => 'standard');
+  get spreads(): readonly SquadSpread[] { return this.spreadsValue; }
+  spread(spread: SquadSpread): void { if (this.joinedFlag) this.transport.send(encodeMessage({ kind: 'Spread', address: { to: 'all' }, spread }), 'reliable'); }
+
   private ordersValue: readonly BotOrder[] = [];
   private marksValue: readonly TargetMark[] = [];
   /** T-3.34: where the mission stands, as the host last said; null with none. */
@@ -748,6 +762,7 @@ export class NetClient {
   resetForRejoin(): void {
     this.store.reset();
     this.predictor = null;
+    this.characterSpaces = [];
     this.buffers.clear();
     this.netIdValue = -1;
     this.slotValue = -1;
@@ -791,6 +806,8 @@ export class NetClient {
     this.remoteEmplacements.clear();
     this.remotePickups.clear();
     this.remoteGoneAt.clear();
+    this.aggressionsValue = Array.from({ length: 6 }, () => 'aggressive');
+    this.spreadsValue = Array.from({ length: 6 }, () => 'standard');
     this.ordersValue = [];
     this.marksValue = [];
     this.missionValue = null;
@@ -1217,6 +1234,7 @@ export class NetClient {
         this.slotValue = msg.slot;
         this.resumeTokenValue = msg.resume;
         this.predictor = null;
+    this.characterSpaces = [];
         this.buffers.delete(msg.netId);
         this.remoteGoneAt.delete(msg.netId);
         // U-024: the new soldier's pouch, until its own snapshot says; U-028, its magazine too.
@@ -1292,6 +1310,12 @@ export class NetClient {
         this.onAiDebug?.(msg);
         break;
 
+      case 'Aggressions':
+        this.aggressionsValue = msg.aggressions;
+        break;
+      case 'Spreads':
+        this.spreadsValue = msg.spreads;
+        break;
       case 'Orders':
         this.ordersValue = msg.orders;
         break;
@@ -1422,6 +1446,17 @@ export class NetClient {
     lastProcessedInputTick: number,
   ): void {
     const projectilesSeen = new Set<number>();
+    const characterConfig = this.moveConfig ?? DEFAULT_MOVE_CONFIG;
+    this.characterSpaces = entities.flatMap((entity) => {
+      const tr = entity.components[T];
+      const health = entity.components[H];
+      const enemy = entity.components[COMPONENT_IDS.Enemy];
+      if (entity.netId === this.netIdValue || !tr || !health || (enemy && enemyByIndex(enemy[0] as number)?.vehicle)) return [];
+      const crouch = entity.components[COMPONENT_IDS.Crouch];
+      const lying = vitalityFromCode((health[2] as number | undefined) ?? 0) !== 'alive';
+      return [{ netId: entity.netId, x: dequantize(tr[0] as number, POSITION), y: dequantize(tr[1] as number, POSITION), z: dequantize(tr[2] as number, POSITION), radius: characterConfig.radius,
+        height: lying || crouch?.[1] === 1 ? characterConfig.proneHeight : crouch?.[0] === 1 ? characterConfig.crouchHeight : characterConfig.height }];
+    });
     const remotesSeen = new Set<number>();
     const emplacementsSeen = new Set<number>();
     const pickupsSeen = new Set<number>();
@@ -1650,7 +1685,7 @@ export class NetClient {
 
   private reconcile(authoritative: MoveState, lastProcessedInputTick: number): void {
     if (!this.predictor) {
-      this.predictor = new Predictor(authoritative, this.moveConfig, undefined, this.worldBoxesValue);
+      this.predictor = new Predictor(authoritative, this.moveConfig, undefined, this.worldBoxesValue, () => this.characterSpaces, this.netIdValue);
       return;
     }
     if (lastProcessedInputTick < 0) return;

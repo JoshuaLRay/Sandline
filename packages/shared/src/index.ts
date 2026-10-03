@@ -4,6 +4,7 @@ export * from './sim/Clock.ts';
 export * from './sim/physics.ts';
 export * from './sim/Simulation.ts';
 export * from './sim/CharacterController.ts';
+export * from './sim/characterSpace.ts';
 export * from './sim/campaignRegistry.ts';
 export * from './sim/campaign.ts';
 export * from './sim/world.ts';
@@ -47,3 +48,5 @@ export * from './ai/bt.ts';
 export * from './ai/perception.ts';
 export * from './ai/stimuli.ts';
 export * from './ai/memory.ts';
+
+export * from './sim/tactics.ts';

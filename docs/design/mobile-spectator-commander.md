@@ -1,6 +1,6 @@
 # Mobile spectator and commander controls
 
-**Status:** Approved scope (2026-09-28), interaction upgrade requested 2026-10-03 (U-099). This document specifies the touch interface; implementation and validation belong to the client change.
+**Status:** Approved scope (2026-09-28), interaction upgrade requested 2026-10-03 (U-102). This document specifies the touch interface; implementation and validation belong to the client change.
 
 ## Scope
 
@@ -28,7 +28,7 @@ A phone or tablet participant watches squad members and commands eligible bots. 
 4. Watching another soldier, commander assignment and leaving remain available. Mobile never gains manual walking, aiming or firing controls.
 
 
-## U-099 interaction update (2026-10-03)
+## U-102 interaction update (2026-10-03)
 
 The owner requested fewer taps and a modern camera/control feel. This supersedes
 menu-first placement requirements above while preserving spectator/commander scope.

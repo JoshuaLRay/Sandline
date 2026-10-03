@@ -513,6 +513,9 @@ html.mobile body { overflow-y: auto; }
 .squad-list li.me { background: rgba(240, 180, 41, 0.12); }
 .squad-who { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .squad-tag { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--amber); }
+.squad-control select, .squad-aggression { min-height: 44px; max-width: 140px; color: var(--amber); background: #171b21; border: 1px solid currentColor; border-radius: 4px; padding: 4px; font: inherit; }
+.squad-aggression { flex: 0 1 115px; font-size: 11px; }
+.squad-control select:disabled, .squad-aggression:disabled { opacity: 0.45; }
 .squad-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 8px; }
 .squad-actions .panel-reset { margin-top: 0; }
 .squad-actions .panel-reset[hidden] { display: none; }
@@ -538,6 +541,8 @@ html.mobile body { overflow-y: auto; }
   pointer-events: none;
   display: none;
 }
+.squad-control { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0; }
+
 #downed.shown { display: block; }
 /* T-3.34: the mission's after-action credit and script notices, under the player HUD's objective (T-4.25). */
 #mission {

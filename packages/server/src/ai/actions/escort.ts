@@ -29,7 +29,7 @@ export function isEscortBody(body: BrainBody): body is EscortBody {
 }
 
 /** How near a `go` has to get, metres, before he counts as there. */
-const ARRIVED_M = 1.5;
+export const ESCORT_ARRIVED_M = 1.5;
 
 function distance(a: { x: number; z: number }, b: { x: number; z: number }): number {
   return Math.sqrt((a.x - b.x) ** 2 + (a.z - b.z) ** 2);
@@ -56,7 +56,7 @@ export function registerEscortLeaves(registry: BrainRegistry): BrainRegistry {
       if (!isEscortBody(ctx)) return 'failure';
       const point = ctx.escort.order().point;
       idle(blackboard);
-      if (!point || distance(ctx.state, point) <= ARRIVED_M) {
+      if (!point || distance(ctx.state, point) <= ESCORT_ARRIVED_M) {
         blackboard.set('intent', null);
         return 'running';
       }

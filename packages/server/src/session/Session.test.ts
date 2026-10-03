@@ -776,7 +776,7 @@ describe('Session revive edge cases (T-2.15)', () => {
     s.step(33);
     expect(targetSlot.reviveProgressSeconds).toBeGreaterThan(0);
 
-    reviverSlot.state.x += 2;
+    reviverSlot.state.x = targetSlot.state.x + 4;
     reviver.input(2, 0, 0, 0, 0b1000);
     target.input(2, 0, 0);
     s.step(66);

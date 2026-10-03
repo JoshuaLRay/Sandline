@@ -12,6 +12,10 @@
  */
 import {
   type InputFrame,
+  type CharacterSpace,
+  DEFAULT_MOVE_CONFIG,
+  vitalityFromCode,
+  enemyByIndex,
   MAX_PRIOR_INPUTS,
   type Message,
   type MoveInput,
@@ -106,6 +110,7 @@ class InputWalk {
 export class BotClient {
   readonly store = new SnapshotStore();
   private predictor: Predictor | null = null;
+  private characterSpaces: CharacterSpace[] = [];
   private worldBoxes: readonly WorldBox[] | undefined;
   private readonly walk: InputWalk;
   private readonly script: readonly MoveInput[] | null;
@@ -262,6 +267,15 @@ export class BotClient {
   ): void {
     if (this.netId < 0) return;
 
+    this.characterSpaces = entities.flatMap((entity) => {
+      const tr = entity.components[T]; const health = entity.components[COMPONENT_IDS.Health];
+      const enemy = entity.components[COMPONENT_IDS.Enemy];
+      if (entity.netId === this.netId || !tr || !health || (enemy && enemyByIndex(enemy[0] as number)?.vehicle)) return [];
+      const crouch = entity.components[COMPONENT_IDS.Crouch];
+      const lying = vitalityFromCode((health[2] as number | undefined) ?? 0) !== 'alive';
+      return [{ netId: entity.netId, x: dequantize(tr[0] as number, POSITION), y: dequantize(tr[1] as number, POSITION), z: dequantize(tr[2] as number, POSITION), radius: DEFAULT_MOVE_CONFIG.radius,
+        height: lying || crouch?.[1] === 1 ? DEFAULT_MOVE_CONFIG.proneHeight : crouch?.[0] === 1 ? DEFAULT_MOVE_CONFIG.crouchHeight : DEFAULT_MOVE_CONFIG.height }];
+    });
     const mine = entities.find((e) => e.netId === this.netId);
     const transform = mine?.components[T];
     if (!transform) return;
@@ -281,7 +295,7 @@ export class BotClient {
 
     // First authoritative word on where we are: adopt it as the baseline.
     if (!this.predictor) {
-      this.predictor = new Predictor(authoritative, undefined, undefined, this.worldBoxes);
+      this.predictor = new Predictor(authoritative, undefined, undefined, this.worldBoxes, () => this.characterSpaces, this.netId);
       return;
     }
 

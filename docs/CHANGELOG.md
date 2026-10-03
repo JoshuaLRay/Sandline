@@ -371,4 +371,7 @@ Format: `T-<id> — <what changed>`
 
 - U-096 — Authored Qalat gravel, road, winter fields and compound surfaces; added sparse scrub/bank rocks, opt-in QA grid and real-client review captures. [#282](https://github.com/JoshuaLRay/Sandline/pull/282); technical checks green, owner visual acceptance pending.
 
-- U-099 — Direct mobile squad/order shortcuts, drag-to-command placement and a collision-aware spectator orbit with pinch zoom/recenter; touch emulation verified, owner phone feel review pending.
+- U-099 — Enforce shared character footprints in authoritative movement and prediction, with distinct group destinations; manual bottleneck review pending.
+- U-100 — Add authoritative Tight / Standard / Wide squad spread presets and synchronize them on possession; manual UI review pending.
+- U-101 — Add per-character Hold fire / Defensive / Aggressive settings with bounded pursuit; owner playtest pending.
+- U-102 — Direct mobile squad/order shortcuts, drag-to-command placement and a collision-aware spectator orbit with pinch zoom/recenter; touch emulation verified, owner phone feel review pending.
