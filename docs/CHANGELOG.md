@@ -369,4 +369,4 @@ Format: `T-<id> — <what changed>`
 
 - U-097 — Added connected Qalat terrace elevations, raised road banks and lower riverbed transitions; fixed raised-ground spawning/cover/probes, regenerated nav and added bidirectional squad/POW traversal evidence. Owner visual review pending.
 
-- U-096 — Authored Qalat gravel, road, winter fields and compound surfaces; added sparse scrub/bank rocks, opt-in QA grid and real-client review captures. Technical review on `task/U-096-qalat-art`; owner visual acceptance pending.
+- U-096 — Authored Qalat gravel, road, winter fields and compound surfaces; added sparse scrub/bank rocks, opt-in QA grid and real-client review captures. [#282](https://github.com/JoshuaLRay/Sandline/pull/282); technical checks green, owner visual acceptance pending.
