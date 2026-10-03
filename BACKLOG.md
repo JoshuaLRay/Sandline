@@ -34,7 +34,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
-| [U-099](docs/backlog/U-099.md) | Direct mobile commands and a framed orbit camera | Mobile | P1 | REVIEW | — | `task/U-099-mobile-ux` |
+| [U-099](docs/backlog/U-099.md) | Direct mobile commands and a framed orbit camera | Mobile | P1 | REVIEW | — | [#287](https://github.com/JoshuaLRay/Sandline/pull/287) |
 | [U-001](docs/backlog/U-001.md) | Restore reliable mission enemy pressure | Mission | P1 | DONE | — | [#132](https://github.com/JoshuaLRay/Sandline/pull/132) |
 | [U-002](docs/backlog/U-002.md) | Correct authoritative firing origins for every stance | Weapon feel | P1 | DONE | — | [#133](https://github.com/JoshuaLRay/Sandline/pull/133) |
 | [U-025](docs/backlog/U-025.md) | Assign every bot to a human commander and allow reassignment | Squad command | P1 | DONE | — | [#137](https://github.com/JoshuaLRay/Sandline/pull/137) |
