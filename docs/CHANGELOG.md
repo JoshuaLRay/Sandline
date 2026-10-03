@@ -365,3 +365,4 @@ Format: `T-<id> — <what changed>`
 - U-095 — Recorded Qalat’s 0/20 baseline at both budgets, verified rescue/escort/tank/retry/extraction scenarios, fixed downed-soldier extraction and rectangular floor rendering, and added real Chromium map review captures.
 
 - U-071 — Reconciled accepted campaign decisions, ADR-001 escort addendum and The Qalat Road’s approved brief; refreshed stale U-085/U-095 merge status while retaining U-065’s open review ([#278](https://github.com/JoshuaLRay/Sandline/pull/278)).
+- U-098 — the mouse is released the moment a mission ends (failure or success), so the end-of-mission buttons are clickable without Esc opening the pause menu.

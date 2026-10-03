@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { type Message, type MissionDef, type MissionView, TICK_SECONDS, decodeMessage, encodeMessage } from '@sandline/shared';
-import { afterActionXp, missionLine, uploadPrompt } from './missionHud.ts';
+import { afterActionXp, missionJustEnded, missionLine, uploadPrompt } from './missionHud.ts';
 
 const T = (s: number) => Math.round(s / TICK_SECONDS);
 const view = (v: Partial<MissionView>): MissionView => {
@@ -129,5 +129,14 @@ describe('a stage of several objectives on the HUD (U-074)', () => {
     // Once it is done the stage lists it as done and nothing prompts.
     const done = { ...v, open: v.open!.map((o) => (o.index === 1 ? { ...o, done: true } : o)) };
     expect(uploadPrompt(done, def, { x: 0, y: 1, z: 1 })).toBe('');
+  });
+});
+
+describe('missionJustEnded (U-098)', () => {
+  it('fires only on the frame the mission goes from in progress to over', () => {
+    expect(missionJustEnded(false, true)).toBe(true);
+    expect(missionJustEnded(true, true)).toBe(false);
+    expect(missionJustEnded(false, false)).toBe(false);
+    expect(missionJustEnded(true, false)).toBe(false);
   });
 });

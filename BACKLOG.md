@@ -132,6 +132,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 
 | [U-097](docs/backlog/U-097.md) | Give the Qalat valley connected, playable elevation | Map design | P1 | READY | U-092 | — |
 | [U-096](docs/backlog/U-096.md) | Give the Qalat map an authored art pass and remove its grid feel | Map art | P1 | BLOCKED | U-097: finish terrain before final art placement | — |
+| [U-098](docs/backlog/U-098.md) | Release the mouse when the mission ends so the end-of-mission buttons can be clicked | Controls / UI | P1 | REVIEW | — | `task/U-098-mission-end-cursor` |
 
 ## Existing work retained
 
