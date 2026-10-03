@@ -14,9 +14,10 @@
  * and timer (`Session.updateRevives`). The fight itself is the rifleman's
  * leaves (`actions/rifleman.ts`), on the slot's own `CombatBody`.
  */
-import { type BotOrder, type OrderPoint, SQUAD } from '@sandline/shared';
+import { type BotOrder, type OrderPoint, type SquadAggression, SQUAD, DEFAULT_MUZZLE_RIG, formationBand, suppressionLevel } from '@sandline/shared';
 import type { BrainBody, BrainRegistry } from '../Brain.ts';
 import type { FormationPlace } from '../friendly/formation.ts';
+import { isCombatBody } from './combat.ts';
 
 /** A downed squadmate a bot could revive (T-3.26). */
 export interface DownedMate {
@@ -50,6 +51,8 @@ export interface NamedSoldier {
 /** The squad as a slot's brain sees it. */
 export interface SquadView {
   place(slotIndex: number): FormationPlace | null;
+  aggression?(slotIndex: number): SquadAggression;
+  canEngage?(slotIndex: number, target: number | null): boolean;
   /** T-3.26: the nearest downed squadmate within `reviveSeekM` that nobody else is reviving, or null. */
   downedNear(slotIndex: number): DownedMate | null;
   /** U-053: the nearest hurt (not downed) squadmate this bot, with kits, would heal, or null. */
@@ -80,14 +83,53 @@ export function isSquadBody(body: BrainBody): body is SquadBody {
 
 export function registerFriendlyLeaves(registry: BrainRegistry): BrainRegistry {
   return registry
+    .condition('autonomousFight', ({ ctx }) => !isSquadBody(ctx) || (ctx.squad.aggression?.(ctx.index) ?? 'aggressive') !== 'hold-fire')
+    .action('advanceContact', ({ ctx, blackboard }) => {
+      if (!isSquadBody(ctx) || !isCombatBody(ctx) || (ctx.squad.aggression?.(ctx.index) ?? 'aggressive') !== 'aggressive' || ctx.target === null) return 'failure';
+      const entry = ctx.memory.entries.get(ctx.target);
+      const place = ctx.squad.place(ctx.index);
+      // A heard shot alone is not a visually identified contact.
+      if (!entry || entry.confidence < 1 || entry.visible || !place) return 'failure';
+      const dx = entry.x - place.goal.x; const dz = entry.z - place.goal.z;
+      const length = Math.sqrt(dx * dx + dz * dz);
+      if (length < 0.01) return 'failure';
+      const distance = Math.min(length, formationBand(place.offset));
+      const goal = { x: place.goal.x + dx / length * distance, y: place.goal.y, z: place.goal.z + dz / length * distance };
+      if (Math.sqrt((goal.x - ctx.state.x) ** 2 + (goal.z - ctx.state.z) ** 2) <= SQUAD.arriveM || !ctx.squad.reachable(ctx.state, goal)) return 'failure';
+      blackboard.set('intent', { goal, pace: 'walk' });
+      blackboard.set('fireAt', null); blackboard.set('suppressAt', null);
+      blackboard.set('lookAt', null); blackboard.set('crouch', false); blackboard.set('interact', false);
+      return 'running';
+    })
     .action('follow', ({ ctx, blackboard }) => {
       if (!isSquadBody(ctx)) return 'failure';
       const place = ctx.squad.place(ctx.index);
       blackboard.set('intent', place?.intent ?? null);
       blackboard.set('lookAt', null);
       blackboard.set('fireAt', null);
+      blackboard.set('suppressAt', null);
+      blackboard.set('throwAt', null);
+      blackboard.set('detonate', null);
+      blackboard.set('phase', null);
       blackboard.set('crouch', false);
       blackboard.set('interact', false);
+      // Hold fire and Defensive still protect themselves, without acquiring
+      // an offensive target or leaving their chosen formation footprint.
+      if (isCombatBody(ctx) && (ctx.squad.aggression?.(ctx.index) ?? 'aggressive') !== 'aggressive') {
+        const now = ctx.combat.now();
+        const pressured = suppressionLevel(ctx.suppression, now) >= SQUAD.bot.underFire.suppression || now - ctx.lastDamagedAt < SQUAD.bot.underFire.hurtSeconds;
+        if (pressured && ctx.combat.cover) {
+          const threats = [...ctx.memory.entries.values()].filter((e) => e.threatAt !== null && now - e.threatAt <= SQUAD.bot.underFire.threatSeconds)
+            .map((e) => ({ x: e.x, y: e.y + DEFAULT_MUZZLE_RIG.eyeHeight, z: e.z }));
+          const refuge = threats.length === 0 ? null : ctx.combat.cover.choose(ctx.netId, { from: ctx.state, threats, friends: ctx.combat.friendsOf(ctx.netId, ctx.faction), combat: false,
+            accept: (p) => !place || Math.sqrt((p.x - place.goal.x) ** 2 + (p.z - place.goal.z) ** 2) <= formationBand(place.offset) })?.point;
+          if (refuge) {
+            const distance = Math.sqrt((refuge.x - ctx.state.x) ** 2 + (refuge.z - ctx.state.z) ** 2);
+            blackboard.set('intent', distance > SQUAD.arriveM ? { goal: refuge, pace: 'walk' } : null);
+            blackboard.set('crouch', distance <= SQUAD.arriveM && refuge.height === 'low');
+          }
+        }
+      }
       return 'running';
     })
     .condition('hurtMate', ({ ctx }) => isSquadBody(ctx) && (ctx.squad.hurtNear?.(ctx.index) ?? null) !== null)

@@ -47,6 +47,7 @@ function seenArmour(body: CombatBody): ArmourView | null {
   let bestD = Infinity;
   for (const view of body.combat.armour()) {
     if (body.memory.entries.get(view.netId)?.visible !== true) continue;
+    if (isSquadBody(body) && body.squad.canEngage && !body.squad.canEngage(body.index, view.netId)) continue;
     const d = flat(body.state, view);
     if (d < bestD) {
       bestD = d;
@@ -116,7 +117,7 @@ export function registerArmourLeaves(registry: BrainRegistry): BrainRegistry {
     })
     .condition('armourFight', ({ ctx }) => {
       if (!isCombatBody(ctx)) return false;
-      if (chargesOut(ctx).length > 0) return true;
+      if (chargesOut(ctx).length > 0 && (!isSquadBody(ctx) || (ctx.squad.aggression?.(ctx.index) ?? 'aggressive') === 'aggressive' || seenArmour(ctx) !== null)) return true;
       return carried(ctx) >= 0 && seenArmour(ctx) !== null;
     })
     .action('fightArmour', ({ ctx, blackboard }, args) => {
@@ -125,7 +126,7 @@ export function registerArmourLeaves(registry: BrainRegistry): BrainRegistry {
       const stationary = args['stationary'] === true;
       const now = ctx.combat.now();
       const friends = ctx.combat.friendsOf(ctx.netId, ctx.faction);
-      const view = seenArmour(ctx) ?? ctx.combat.armour()[0] ?? null;
+      const view = seenArmour(ctx) ?? ctx.combat.armour().find((v) => !isSquadBody(ctx) || !ctx.squad.canEngage || ctx.squad.canEngage(ctx.index, v.netId)) ?? null;
 
       // C4 down: set it off once it lies by the hull and nobody is in its blast, else wait it out where it is.
       const out = chargesOut(ctx);

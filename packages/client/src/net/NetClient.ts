@@ -13,6 +13,8 @@
 import {
   type BotOrder,
   type SquadSpread,
+  type SquadAggression,
+  type OrderAddress,
   type CharacterSpace,
   DEFAULT_MOVE_CONFIG,
   type OrderKind,
@@ -358,6 +360,10 @@ export class NetClient {
    * the host says so: the markers show what the squad is doing, not what it
    * was asked (T-3.29).
    */
+  private aggressionsValue: readonly SquadAggression[] = Array.from({ length: 6 }, () => 'aggressive');
+  get aggressions(): readonly SquadAggression[] { return this.aggressionsValue; }
+  aggression(aggression: SquadAggression, address: OrderAddress): void { if (this.joinedFlag) this.transport.send(encodeMessage({ kind: 'Aggression', aggression, address }), 'reliable'); }
+
   private spreadsValue: readonly SquadSpread[] = Array.from({ length: 6 }, () => 'standard');
   get spreads(): readonly SquadSpread[] { return this.spreadsValue; }
   spread(spread: SquadSpread): void { if (this.joinedFlag) this.transport.send(encodeMessage({ kind: 'Spread', address: { to: 'all' }, spread }), 'reliable'); }
@@ -800,6 +806,7 @@ export class NetClient {
     this.remoteEmplacements.clear();
     this.remotePickups.clear();
     this.remoteGoneAt.clear();
+    this.aggressionsValue = Array.from({ length: 6 }, () => 'aggressive');
     this.spreadsValue = Array.from({ length: 6 }, () => 'standard');
     this.ordersValue = [];
     this.marksValue = [];
@@ -1303,6 +1310,9 @@ export class NetClient {
         this.onAiDebug?.(msg);
         break;
 
+      case 'Aggressions':
+        this.aggressionsValue = msg.aggressions;
+        break;
       case 'Spreads':
         this.spreadsValue = msg.spreads;
         break;

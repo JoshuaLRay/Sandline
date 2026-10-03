@@ -12,7 +12,7 @@
  * Leave, which returns to the lobby. Rendered from `NetClient.roster`, which
  * is whatever the host last said (a `Roster` message on every change).
  */
-import { MAX_SLOTS, SPREAD_KINDS, type SquadSpread, type RosterEntry } from '@sandline/shared';
+import { MAX_SLOTS, SPREAD_KINDS, AGGRESSION_KINDS, type SquadSpread, type SquadAggression, type OrderAddress, type RosterEntry } from '@sandline/shared';
 import { type Panel, createPanel } from './Panel.ts';
 
 export interface SquadPanelOptions {
@@ -20,10 +20,11 @@ export interface SquadPanelOptions {
   /** The link to hand the other player, or null on an in-page session. */
   link: () => string | null;
   onSpread?: (spread: SquadSpread) => void;
+  onAggression?: (aggression: SquadAggression, address: OrderAddress) => void;
 }
 
 export interface SquadPanel extends Panel {
-  update(roster: readonly RosterEntry[], mySlot: number, room: string, statusLine: string, spreads?: readonly SquadSpread[]): void;
+  update(roster: readonly RosterEntry[], mySlot: number, room: string, statusLine: string, spreads?: readonly SquadSpread[], aggressions?: readonly SquadAggression[]): void;
 }
 
 export function createSquadPanel(options: SquadPanelOptions): SquadPanel {
@@ -41,6 +42,28 @@ export function createSquadPanel(options: SquadPanelOptions): SquadPanel {
   spreadSelect.value = 'standard';
   spreadSelect.addEventListener('change', () => options.onSpread?.(spreadSelect.value as SquadSpread));
   spreadLabel.append(spreadSelect);
+  spreadLabel.className = 'squad-control';
+  const aggressionSelect = (address: OrderAddress, label: string): HTMLSelectElement => {
+    const select = document.createElement('select');
+    select.setAttribute('aria-label', label);
+    for (const value of AGGRESSION_KINDS) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value === 'hold-fire' ? 'Hold fire' : value[0]!.toUpperCase() + value.slice(1);
+      select.append(option);
+    }
+    select.addEventListener('change', () => {
+      if ((AGGRESSION_KINDS as readonly string[]).includes(select.value)) options.onAggression?.(select.value as SquadAggression, address);
+    });
+    return select;
+  };
+  const groupAggression = aggressionSelect({ to: 'all' }, 'Apply aggression to commanded group');
+  const placeholder = document.createElement('option');
+  placeholder.value = ''; placeholder.textContent = 'Choose aggression'; placeholder.disabled = true;
+  groupAggression.prepend(placeholder); groupAggression.value = '';
+  const groupAggressionLabel = document.createElement('label');
+  groupAggressionLabel.className = 'squad-control';
+  groupAggressionLabel.textContent = 'Apply to group '; groupAggressionLabel.append(groupAggression);
 
   const status = document.createElement('p');
   status.className = 'squad-status';
@@ -52,7 +75,7 @@ export function createSquadPanel(options: SquadPanelOptions): SquadPanel {
   const codeValue = document.createElement('b');
   code.append(codeLabel, codeValue);
 
-  const rows: { root: HTMLElement; who: HTMLElement; tag: HTMLElement }[] = [];
+  const rows: { root: HTMLElement; who: HTMLElement; tag: HTMLElement; aggression: HTMLSelectElement }[] = [];
   const list = document.createElement('ol');
   list.className = 'squad-list';
   for (let i = 0; i < MAX_SLOTS; i++) {
@@ -61,9 +84,11 @@ export function createSquadPanel(options: SquadPanelOptions): SquadPanel {
     who.className = 'squad-who';
     const tag = document.createElement('span');
     tag.className = 'squad-tag';
-    li.append(who, tag);
+    const aggression = aggressionSelect({ to: 'slot', index: i }, `Character ${i + 1} aggression`);
+    aggression.className = 'squad-aggression';
+    li.append(who, tag, aggression);
     list.append(li);
-    rows.push({ root: li, who, tag });
+    rows.push({ root: li, who, tag, aggression });
   }
 
   const actions = document.createElement('div');
@@ -93,13 +118,15 @@ export function createSquadPanel(options: SquadPanelOptions): SquadPanel {
   leave.addEventListener('click', options.onLeave);
   actions.append(copy, leave);
 
-  panel.body.append(status, code, spreadLabel, list, actions);
+  panel.body.append(status, code, spreadLabel, groupAggressionLabel, list, actions);
 
   return {
     ...panel,
-    update(roster, mySlot, room, statusLine, spreads = []) {
+    update(roster, mySlot, room, statusLine, spreads = [], aggressions = []) {
       const commanded = roster.findIndex((entry) => entry.commander === mySlot && !entry.human);
       spreadSelect.disabled = commanded < 0;
+      groupAggression.disabled = commanded < 0;
+      groupAggression.value = '';
       if (commanded >= 0) spreadSelect.value = spreads[commanded] ?? 'standard';
       status.textContent = statusLine;
       code.hidden = room === '';
@@ -110,6 +137,8 @@ export function createSquadPanel(options: SquadPanelOptions): SquadPanel {
         if (!row) continue;
         const entry = roster[i];
         const human = entry?.human ?? false;
+        row.aggression.disabled = i !== mySlot && (human || entry?.commander !== mySlot);
+        row.aggression.value = aggressions[i] ?? 'aggressive';
         row.root.classList.toggle('human', human);
         row.root.classList.toggle('me', i === mySlot);
         row.who.textContent = human ? entry?.name || 'player' : 'bot';
