@@ -5,7 +5,7 @@ import type { BakedNav } from './types.ts';
 /** World 'greybox-01': 224648 bytes of Detour navmesh. */
 export const BAKED: BakedNav = {
   world: 'greybox-01',
-  hash: '4ee4740121cc97d5e5376b391b927ce1d21f3df62ee2b1454c2a4fc77594623d',
+  hash: '89d10c53578e6f09b3950a346dd015f8f410983852fe2df65f557474976414c8',
   agent: {"radius":0.35,"height":1.8,"climb":0.45,"groundY":0,"vaultMaxHeight":1.25,"vaultDistance":1.5,"vaultProbe":0.35},
   // An array joined once at load, not a chain of `+`: two thousand
   // concatenations nest too deep for a parser to walk.

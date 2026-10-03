@@ -101,6 +101,7 @@ import {
   createMoveState,
   createWeaponState,
   blockedAt,
+  supportUnder,
   createDrive,
   VEHICLE_CLEARANCE_M,
   withdrawDrive,
@@ -2286,7 +2287,8 @@ export class Session {
       ...(this.navMesh
         ? {
             ground: (p: { x: number; y: number; z: number }) => {
-              const hit = this.navMesh!.nearestPoint(p);
+              const y = supportUnder(p.x, p.z, this.moveConfig.radius, Infinity, this.collisionBoxes, this.moveConfig.groundY);
+              const hit = this.navMesh!.nearestPoint({ ...p, y });
               if (!hit) return null;
               const off = Math.sqrt((hit.point.x - p.x) ** 2 + (hit.point.z - p.z) ** 2);
               return off <= SPAWN_ON_MESH_M ? { x: p.x, y: hit.point.y, z: p.z } : null;

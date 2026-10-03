@@ -114,8 +114,8 @@ export function zoneCandidates(zone: GroundArea): { x: number; z: number }[] {
   return out;
 }
 
-function fits(p: { x: number; z: number }, boxes: readonly WorldBox[]): boolean {
-  return !boxes.some((b) => b.minY < HEADROOM_M && overlapsFootprint(p.x, p.z, FOOTPRINT_HALF_M, b));
+function fits(p: Vec3, boxes: readonly WorldBox[]): boolean {
+  return !boxes.some((b) => b.maxY > p.y + .05 && b.minY < p.y + HEADROOM_M && overlapsFootprint(p.x, p.z, FOOTPRINT_HALF_M, b));
 }
 
 /** Whether any of these eyes has a clear line to any probe above the point. */
@@ -230,10 +230,9 @@ export class Spawner {
     for (const zone of world.mission!.spawnZones) {
       const points: Vec3[] = [];
       for (const c of zoneCandidates(zone)) {
-        if (!fits(c, world.boxes)) continue;
         const at = { x: c.x, y: 0, z: c.z };
         const ground = host.ground ? host.ground(at) : at;
-        if (ground) points.push(ground);
+        if (ground && fits(ground, world.boxes)) points.push(ground);
       }
       this.candidates.set(zone.id, points);
     }

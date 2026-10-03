@@ -8,6 +8,7 @@ import {
   type AssetManifest,
   type World,
   requireWorld,
+  boxFrom,
 } from '@sandline/shared';
 import {
   checkAllLevels,
@@ -104,6 +105,17 @@ describe('T-4.11 level validation', () => {
     const result = routeConnectivity(nav, fixtureMission);
     expect(result.issues).toHaveLength(1);
     expect(result.issues[0]!.message).toContain('route-a');
+  });
+
+  it('queries raised route stops at their supporting height rather than the ground underneath', () => {
+    const goals: { x: number; y: number; z: number }[] = [];
+    const nav: LevelNavProbe = {
+      polygons: () => [],
+      path: (from, to) => { goals.push(to); return { points: [from, to], corridor: [], vaults: [] }; },
+    };
+    const boxes = [boxFrom({ id: 'terrace', x: 10, y: 0, z: 0, w: 4, h: 3.25, d: 4 }, 'cover')];
+    expect(routeConnectivity(nav, fixtureMission, boxes).issues).toEqual([]);
+    expect(goals[0]!.y).toBe(3.25);
   });
 
   it('detects summed level piece bytes over the initial-download budget in a failing fixture', () => {

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { encounterFor, missionFor, parseMission, checkMission, requireWorld, scriptFor, TICK_SECONDS, PROJECTILE_IDS } from '@sandline/shared';
+import { encounterFor, missionFor, parseMission, checkMission, requireWorld, scriptFor, TICK_SECONDS, PROJECTILE_IDS, createMoveState, supportUnder } from '@sandline/shared';
 import { initNav } from '../ai/nav/NavMesh.ts';
 import { loadWorldNavMesh } from '../ai/nav/bakedNav.ts';
 import { Session } from './Session.ts';
@@ -73,6 +73,31 @@ describe('U-094/U-095 Qalat mission', () => {
     p.mesh.destroy();
   });
 
+  for (const route of world.mission!.routes) {
+    for (const reverse of [false, true]) {
+      it(`escorts the rescued POW through ${route.id} ${reverse ? 'south' : 'north'} without stranding`, () => {
+        const p = play(); p.step(5); p.place(-6, 177); p.step(160);
+        expect(p.pow().captive).toBe(false);
+        const points = [world.mission!.start, ...route.via, world.mission!.objective].map((at) => ({ ...at, y: supportUnder(at.x, at.z, 0, Infinity, world.boxes, 0) }));
+        if (reverse) points.reverse();
+        const first = points[0]!;
+        p.pow().state = createMoveState(first.x, first.y, first.z);
+        // A controlled fixture starts at a route endpoint; movement thereafter is the live escort AI.
+        for (const point of points.slice(1)) {
+          p.session.orderFrom(0, { order: 'move', address: { to: 'all' }, point, target: null });
+          let arrived = false;
+          for (let tick = 0; tick < 2400; tick++) {
+            p.step();
+            const state = p.pow().state;
+            if (Math.hypot(state.x - point.x, state.z - point.z) <= 1.5 && Math.abs(state.y - point.y) < .5) { arrived = true; break; }
+          }
+          expect(arrived, `${route.id} escort failed at ${JSON.stringify(point)}: ${JSON.stringify(p.pow().state)}`).toBe(true);
+          expect(p.pow().health.diedAt).toBeNull();
+        }
+        p.mesh.destroy();
+      }, 30000);
+    }
+  }
   it('validates its stages and rejects invalid captive rescue/checkpoint data', () => {
     expect(() => checkMission(mission, encounter, world)).not.toThrow();
     expect(mission.objectives.map((o) => o.stage)).toEqual([0, 1, 1, 2, 2]);

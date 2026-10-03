@@ -52,6 +52,8 @@ describe('U-093 Qalat encounter', { timeout: 30000 }, () => {
     expect(session.spawner!.spawnedBy('road-patrol')).toHaveLength(3);
     expect(session.spawner!.spawnedBy('river-patrol')).toHaveLength(3);
     expect(session.spawner!.spawnedBy('terrace-post')).toHaveLength(1);
+    const post = session.enemies.find((e) => session.spawner!.spawnedBy('terrace-post').includes(e.netId))!;
+    expect(post.state.y).toBeCloseTo(3.25, 1);
     mesh.destroy();
   });
   it.each([-40, 40])('delays the tank 20 seconds with the radio dead, and drives to extraction from lane %s', (lane) => {
