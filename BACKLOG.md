@@ -34,6 +34,9 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
+| [U-099](docs/backlog/U-099.md) | Keep characters from occupying the same space | Squad command | P1 | READY | Owner requested 2026-10-03; first step for new squad controls | — |
+| [U-100](docs/backlog/U-100.md) | Adjustable Tight / Standard / Wide squad spread | Squad command | P2 | BLOCKED | U-099 | — |
+| [U-101](docs/backlog/U-101.md) | Per-character Hold fire / Defensive / Aggressive settings | Squad command | P2 | BLOCKED | U-100; meanings approved 2026-10-03 | — |
 | [U-001](docs/backlog/U-001.md) | Restore reliable mission enemy pressure | Mission | P1 | DONE | — | [#132](https://github.com/JoshuaLRay/Sandline/pull/132) |
 | [U-002](docs/backlog/U-002.md) | Correct authoritative firing origins for every stance | Weapon feel | P1 | DONE | — | [#133](https://github.com/JoshuaLRay/Sandline/pull/133) |
 | [U-025](docs/backlog/U-025.md) | Assign every bot to a human commander and allow reassignment | Squad command | P1 | DONE | — | [#137](https://github.com/JoshuaLRay/Sandline/pull/137) |
