@@ -13,6 +13,33 @@ each `maps/<world-id>.md` owns its geometry, crossings and validation plan.
 [Map index](maps/README.md) lists scope and [the template](maps/TEMPLATE.md) supplies
 the required per-map record. Design targets are not claims about shipped geometry.
 
+## Authored geography and mission 1 amendment
+
+Owner follow-up, 2026-10-04: lane separation alone is insufficient. Mission 1
+requires a full authored replacement with a naturally concealed insertion,
+winding main road, climbing ridge and giant underground basement passage, with
+enemies on every path. [Its construction specification](maps/qalat-road.md)
+replaces the earlier rectangular valley plan.
+
+For all campaign maps, make the playable footprint follow landforms, structures
+and encounter spaces, not three stripes inside a large rectangle. Give each
+route a readable entrance, changing views and a distinct arrival at the objective.
+Place spawn out of every enemy-route sight line with credible topography or
+architecture; prove that concealment with geometric tests rather than a grace
+period or arbitrary wall. Technical floor bounds do not define playable terrain.
+
+For mission 1 specifically, the flank is fully underground with no intermediate
+surface exits. Its large rooms may be wider than a surface route; its circulation
+is narrower and isolated. This is an explicit refinement of the narrow-flank rule,
+not a reason to shrink a giant basement into a crawl tunnel. Other mission types
+may use another flank form under their own per-map record.
+
+Build specifications must include coordinate conventions, measured route spines,
+floor/ceiling heights, room and doorway dimensions, physical boundaries, exact
+cover/enemy placement, patrols, triggers, supplies, return paths and checkpoint
+behaviour. Separate required engine work from capabilities already present.
+Stacked floors require height-aware spawning, objectives, orders, cover and saves.
+
 ## Three route roles
 
 | Route | Purpose | Shape and cost | Relationship to other routes |

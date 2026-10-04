@@ -79,6 +79,10 @@ files under another id goes through every builder with no other edit.
 
 ### Qalat Road terrain and mission review (U-097)
 
+These are **current U-106 build** review coordinates. For the owner-requested
+replacement, use [U-107’s complete construction and verification specification](design/maps/qalat-road.md).
+Its hidden spawn, ridge and basement are not implemented by the documentation PR.
+
 Choose **The Qalat Road** in the lobby or open `?mission&world=qalat-road`. This is the live rescue/escort/tank mission from U-093/U-094/U-095. Start and extraction are `(0, -6)`; compound centre is `(0, 182)`.
 
 Walk each lane north and south. U-106 narrows the riverbed to a winding 6 m

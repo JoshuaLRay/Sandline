@@ -18,9 +18,14 @@ size estimates below are historical feasibility guidance, not a lane-width rule.
 
 Use [Map and mission creation](MAP-MISSION-CREATION.md) for the shared rules and
 [the map index/template](maps/README.md) for a separate record for each map.
-[Qalat's map rework](maps/qalat-road.md) specifies the opener; it is documentation,
-not an implemented geometry change. Missions 2–10 remain undesigned and are built
-one at a time under the same standard.
+[Qalat's complete replacement specification](maps/qalat-road.md) now supersedes
+the U-105/U-106 rectangular lane plan: hidden ravine insertion, winding road,
+climbing ridge and wholly underground depot approach, enemies on all routes,
+exact construction dimensions and mission behaviour. U-106 is merged but the
+owner requests this further redesign; U-107 is documentation, with implementation
+and quality review still pending. Its basement chambers are intentionally large,
+with narrower circulation aisles. Missions 2–10 remain undesigned and are built
+one at a time under the shared standard.
 
 ## 1. What exists today (verified 2026-10-01)
 
@@ -89,7 +94,7 @@ The first season is ten missions. A row is one mission; each becomes a design br
 
 | # | Working title | What it is | Status |
 |---|---|---|---|
-| 1 | [The Qalat Road](MISSION-01.md) | **A rescue and escort.** The squad frees an **unarmed POW** from the compound he is held in; he joins the squad as a seventh member who can be **commanded** (go / stay / follow) and **spectated** but not controlled. On the way back out a **tank rides in along the route home**: the squad must destroy it, then reach the extraction point **with all seven alive**. | Brief approved 2026-10-02; U-092–U-095 implemented; [U-065 review owed](../backlog/U-065.md) |
+| 1 | [The Qalat Road](MISSION-01.md) | **A rescue and escort.** The squad frees an **unarmed POW** from the compound he is held in; he joins the squad as a seventh member who can be **commanded** (go / stay / follow) and **spectated** but not controlled. On the way back out a **tank rides in along the route home**: the squad must destroy it, then reach the extraction point **with all seven alive**. | Original mission implemented; U-107 replacement design specified; [U-065 review owed](../backlog/U-065.md) |
 | 2–10 | — | Not yet designed. One at a time, in order. | Open |
 
 The existing `mission-01` (clear and hold the qalat) is the vertical slice. **Approved in the mission 1 brief (2026-10-02):** it stays playable as the test and QA mission outside the season. The Qalat Road is the campaign opener.

@@ -7,7 +7,8 @@ Shared rules: [Map and mission creation](../MAP-MISSION-CREATION.md).
 ## Constraints and current state
 
 - Existing geometry versus requested design; date/source of decisions.
-- Footprint, coordinate orientation, start/extraction and bounded convergence areas.
+- Irregular playable footprint, coordinate orientation, concealed start/extraction and bounded convergence areas.
+- Exact route spines, room/doorway dimensions, floor/ceiling heights and construction recipes; distinguish technical floor bounds from playable terrain.
 - Objective stages, vehicle/escort needs, checkpoints and performance constraints.
 
 ## Routes and boundaries
@@ -35,6 +36,7 @@ State explicitly that no other movement links are permitted.
 
 ## Combat, support and mission flow
 
+Enumerate fixed cover, enemy sockets/counts, patrols, supplies and event timing.
 Name overlook firing positions, their assault targets and blind spots. Describe
 flank reward and opposition, patrol routes, spawn screening, objective entry,
 return/escort paths, tank clearance where applicable and retry behaviour.
@@ -42,6 +44,7 @@ return/escort paths, tank clearance where applicable and retry behaviour.
 ## Implementation and verification
 
 List actual level/encounter/script/mission, generation and test entry points.
+Specify engineering prerequisites, stacked-floor behaviour and checkpoint migration where needed.
 Separate proposed dimensions from measured final ones. Record positive paths,
 negative boundary/path-transition checks, controller shortcut attempts, support
 sight lines, squad/POW bottlenecks, stage/vehicle/retry regressions and budgets.

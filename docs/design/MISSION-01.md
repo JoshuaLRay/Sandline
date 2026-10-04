@@ -1,103 +1,106 @@
 # Mission 1 — The Qalat Road
 
-Status: the original mission brief was **approved by the owner on 2026-10-02**.
-The level, encounters, script and mission are implemented (U-092–U-095), followed
-by elevation/art work (U-097/U-096); owner gameplay review remains pending.
-**Owner amendment, 2026-10-04:** replace freely interchangeable lanes with distinct
-assault, overlook/support and narrow isolated flank routes. The map rework below
-is documented but not yet implemented. Other approved mission decisions stand.
-[CAMPAIGN.md](CAMPAIGN.md) owns campaign decisions; the
-[map creation standard](MAP-MISSION-CREATION.md) governs this and future maps.
-Working title: **"The Qalat Road"**.
+**Current design: U-107 full replacement, 2026-10-04.** The owner rejected the
+rectangular valley as insufficient and requested an authored map with naturally
+concealed insertion, a primary road, an overlooking ridge and a giant underground
+basement approach, all occupied by enemies. U-106's merged map remains the current
+game until this new design is implemented. This documentation does not claim a
+new playable level or owner quality approval.
 
-## 1. Premise
+The **[complete map and mission construction specification](maps/qalat-road.md)**
+is authoritative for geometry, exact coordinates, room dimensions, enemy sockets,
+mission timing, supplies, checkpoints, engine prerequisites and verification.
+This brief is its summary. [CAMPAIGN.md](CAMPAIGN.md) owns campaign progression;
+[the shared standard](MAP-MISSION-CREATION.md) governs route design.
 
-Afghanistan, late 2001. An allied prisoner is held in a walled compound on the far side of a valley, and a convoy route
-home runs back through the same valley. The squad frees him, brings him out alive, and is met on the way home by an
-armoured vehicle it has to destroy before it can reach the extraction point **with all seven alive**.
+## Premise and mission flow
 
-## 2. Objectives
+Afghanistan, winter 2001–2002. An allied prisoner is held in the records room of
+an occupied mountain logistics outpost. The squad approaches through the surface
+road, its eastern ridge or the buried storehouses of an older depot, rescues him,
+defeats the responding tank and returns to Juniper Hollow with all seven alive.
 
-A stage is a set of objectives that may be done in any order (U-074); a stage is finished when its required ones are.
+1. **Insert:** all six start together in a ravine pocket screened from every
+   enemy position/route by folded terrain and a natural overhang. Two bends reveal
+   the weigh-station court and three clear route entrances.
+2. **Approach:** choose the winding supply road, climbing ridge or underground
+   depot. Split squads can use the ridge to support the road. The basement has no
+   intermediate surface connection. Enemies occupy every route.
+3. **Outpost:** enter through south, east or west gate, reach the northwest records
+   room and hold the rescue interaction for 3 seconds. Eliminating the radio
+   operator in the northeast room is optional and delays armour release.
+4. **Return:** shelter and command the POW, choose any of the three routes home,
+   destroy the tank and extract all seven at the original insertion pocket.
 
-| # | Stage | Objective | Type | Required | Fails on | Checkpoint |
-|---|---|---|---|---|---|---|
-| 1 | Approach | Reach the compound (any lane) | `reach` (who: any) | yes | squad death | on entering the compound's outer ring |
-| 2 | The compound | Free the prisoner | `rescue` (hold E beside the POW) | yes | squad or POW death | on freeing him |
-| 2 | The compound | Silence the compound's radio operator *(default)* | `destroy` (a group of one) | **optional**: it holds back the tank's early warning | | none |
-| 3 | The way home | Destroy the tank | `destroy` (the tank group) | yes | squad or POW death | when it is destroyed |
-| 3 | The way home | Reach the extraction point with the POW and everyone standing | `reach` (`who: all`, `escort: true`) | yes | squad or POW death | none: ends the mission |
+## Objectives and checkpoints
 
-Not every enemy has to be cleared: nothing requires killing the garrison; stealth and speed through a quieter lane are valid.
-Failure is the first death of a squad character or the POW (Q4); a retry goes back to the last checkpoint with the POW
-restored (U-075).
+| Index / stage | Objective | Required | Checkpoint |
+|---|---|---|---|
+| 0 / approach | Reach the outpost through any ground-floor entrance | Yes | On completion |
+| 1 / rescue | Free the prisoner (`rescue`, 3 s, 2 m, same-floor LOS) | Yes | On completion |
+| 2 / rescue | Silence the radio operator (`destroy`) | No | None |
+| 3 / return | Destroy the tank (`destroy`) | Yes | On completion |
+| 4 / extraction | Reach Juniper Hollow with all six soldiers and POW standing | Yes | Activates after tank destruction; mission ends with all seven present |
 
-## 3. Map
+No hold-the-area objective, forced route-clear or kill-every-enemy requirement.
+First squad/POW death fails; existing all-downed behaviour remains. All objectives
+and interaction distances distinguish floors: underground presence does not
+satisfy a surface trigger. Exact volumes and retry state are in specification §10.
 
-The authoritative map record is [maps/qalat-road.md](maps/qalat-road.md): route
-graph, usable widths, physical boundaries, exhaustive crossing register, support
-sight lines, convergence areas and implementation checks. The current playable
-valley is about 120 × 200 m; retain that footprint for the lane rework. Expansion
-toward ~60,000 m² is separate and must preserve route separation.
+## Map identity
 
-| Route | Location | Role and connections |
+| Route | Construction | Connections |
 |---|---|---|
-| 1 — primary assault | Centre road | Direct, broad approach under the MG's frontal threat; tank return route |
-| 2 — overlook/support | East terraces | Connected higher ground with useful fire onto route 1 and the east gate; three named passages to route 1 |
-| 3 — flank | West dry riverbed | Narrower, screened, winding route to the west gate; **zero intermediate connections** to routes 1 or 2 |
+| 1 — assault road | Winding 12 m carriageway plus 4 m shoulders; three fight spaces separated by rock spurs; floor y8 | Two named stair passages to ridge |
+| 2 — ridge | Continuous 8 m shelf climbing from y8 to y30; three distinct overlooks, return descent and bridge over tank ingress | C12-L/C12-U; joins outpost east gate |
+| 3 — underground depot | Buried grain stores, cistern, generator gallery, great vault and service rooms at y0; 4 m passages, large chambers | Only loading entrance and outpost west stair; zero intermediate surface links |
 
-The start and compound are bounded shared spaces; between them collision-backed
-barriers make routes distinct. Different textures, low cover and elevation alone
-are insufficient. The previous equal-width (~40 m each) lane prescription is
-superseded by the 2026-10-04 direction. Passage positions/widths in the map record
-are blockout defaults to verify, not claims of implemented or playtested geometry.
+The old 120×200 m rectangle, riverbed flank, terrace slots and three C12 openings
+are superseded. New content spans roughly 184 m across and 478 m north-south,
+with irregular walkable ribbons and rooms; bounding dimensions are not playable
+area. The centreline approach is about 321 m on the road and 356 m on the ridge,
+plus the shared insertion and final gate legs. Large basement chambers deliberately
+exceed the narrower circulation aisles. See the specification's three diagrams.
 
-Preserve the MG road line, upper-terrace/east-gate support angle and northern tank
-bend. Start and extraction stay at the south end, with all six starting together;
-all routes must support the return journey with the POW.
+## Opposition and return set piece
 
-## 4. Opposition
+Thirty-two initial guards: 10 road, 6 ridge, 9 basement, 6 garrison and 1 radio
+operator, using existing rifleman/MG archetypes. Four reserve riflemen and one
+tank are staged in screened spaces; they are not spawned in sight. Captive POW
+is separate. Counts, individual coordinates, patrols and cover regions are fixed
+in specification §9. The map remains below the existing encounter cap 42.
 
-| Group | Archetypes | Where | Trigger | Notes |
-|---|---|---|---|---|
-| Garrison | riflemen ×6, MG ×1 | the compound, garrisoned (U-011 postures) | on the squad entering the outer ring | alerted by shots; the radio operator, if alive, calls the tank early |
-| Road patrol | riflemen ×3 | the road, patrolling | on start | a warning if met |
-| Riverbed patrol | riflemen ×3 | the west lane | on start | |
-| Terrace sniper *(default)* | sniper | the east terraces | on start | the archetype exists in the schema but has no row yet, so this waits: **default is a rifleman until the sniper is built** |
-| Counter-attack | riflemen ×4 | from the north, behind the compound | on the POW being freed | |
-| The tank | tank ×1 (U-066) | enters at the road's north end and drives the road south (U-067) | on the POW being freed, delayed 20 s *(default)*; arrives sooner if the radio operator is alive | the set piece: the squad is walking home with the POW and must find cover and fight it (U-079); leaving by another lane does not escape it, it drives to the extraction point and fires at what it sees |
+The tank activates 5 seconds after rescue if the radio operator is alive then,
+otherwise 20 seconds after rescue. It follows an external service road, passes
+under the ridge and joins the main approach southbound. It stops at the southern
+road throat **outside** the concealed insertion ravine. Destroying it is required
+even if the squad returns underground. Reserve infantry release at 45 seconds,
+allowing an initial escort-teaching beat. The map supplies finite rocket/medical/
+ammo caches; their new runtime support is an explicit prerequisite, not assumed.
 
-If the squad leaves by the west or east lane, the tank still comes down the road and parks at the extraction point: the
-squad has to destroy it to extract either way. *(default)*
+## Campaign and verification
 
-## 5. The new element
+Preserve existing run types, prisoner pools, six playable slots plus one unplayable
+escorted POW, end-loadout carry-over, replay behaviour and legacy QA mission-01.
+Old-map checkpoints need revision-aware restart, not coordinate transplantation.
 
-The escorted POW (U-075). It is taught before it is tested: freeing him is the first thing that happens after the
-garrison fight, and the first stretch of the way home is quiet and short, long enough to see him follow, to hold him
-(`hold`) behind a wall and to send him (`move`) with the squad. The tank is then the test: keep him alive in the open.
+The map specification lists twelve geometry gates and all nine approach/return
+pairings, enemy/trigger/save tests, tank clearance, supplies, rendering budgets,
+mobile commands and actual capture positions. Run existing repository CI and
+measured combat simulations after implementation; previous 0/20 completion is a
+historical limitation, not a success floor. Human review still judges route feel,
+fairness, underground readability and the campaign's30–45-minute target.
 
-## 6. Campaign state
+## Superseded decisions and retained history
 
-- Assumes no prisoners; it is the first mission. A squad character downed and captured here (U-061/U-062) is held for the
-  next *campaign-run* mission as the rules say; the POW is not part of the prisoner pools (U-072).
-- Grants: the mission is complete on extraction; each soldier's end loadout is carried to mission 2 (U-077); XP as today.
-- Replaces the vertical-slice mission-01 in the season; the slice stays as the test/QA mission (the assumption in CAMPAIGN.md).
+The original brief was approved 2026-10-02; U-092–U-095 implemented it, U-097/U-096
+added elevation/art, and U-106 implemented the first lane-separation revision.
+Those cards retain their evidence. The new owner direction authorizes redesign,
+not a claim that those historical acceptance checks prove this new map.
 
-## 7. Verification
-
-- `sim-run --scenario mission` loads and plays it headless at both budgets (3 seeds in CI, 20 for the rates); the
-  expected completion rate is not guessed: it is measured and recorded, as for the slice, before any floor is set.
-- Scenario tests: the rescue frees the POW; the POW follows, holds and goes on an all-squad order; the tank appears
-  after he is freed and can be destroyed; the extraction needs all seven alive (POW dead → failed → retry restores him).
-- Map validation also follows [the per-map acceptance plan](maps/qalat-road.md#implementation-handoff-and-acceptance): legal crossings, blocked shortcuts, support sight lines and escorted return paths.
-- Only a human playtest can say whether 30–45 minutes is right, whether the three lanes feel different, whether the
-  tank is fair, and how the POW feels to look after. No verdict is claimed without one.
-
-## Decisions (approved 2026-10-02: the defaults in italics above, as suggested)
-
-1. **Title and setting details**: *"The Qalat Road"*, a valley and a walled compound.
-2. **The optional radio operator** (calls the tank early): keep, or drop for simplicity.
-3. **Tank behaviour if the squad avoids the road**: *it drives to the extraction point and the squad must destroy it* (above), or it should chase the squad.
-4. **Extraction at the start point** (a loop) or a separate exit on the far side.
-5. **Sniper**: *wait for the archetype*, or build it as part of this mission.
-6. **Scale**: *4× first cut, grown after U-081* vs wait for the full ~10×. The 2026-10-04 lane rework retains the current first-cut footprint; expansion is separate.
+U-107 replaces footprint/layout, flank type, crossing count, guard distribution,
+spawn elevation/occlusion, counterattack release timing, tank endpoint, final extraction stage and map
+checkpoint compatibility. It retains the rescue premise, optional radio's5/20-second
+armour timing, mandatory tank destruction, all-seven extraction and carry-over.
+The complete numeric design is in the linked construction specification; do not
+combine its coordinates with older cards or QA review routes.
