@@ -34,7 +34,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
-| [U-104](docs/backlog/U-104.md) | Hold Tab to access the mouse | Controls / UI | P1 | REVIEW | Full verification and owner gameplay review pending | `task/U-104-tab-cursor` |
+| [U-104](docs/backlog/U-104.md) | Hold Tab to access the mouse | Controls / UI | P1 | REVIEW | Automated checks passed; owner gameplay review pending | [#289](https://github.com/JoshuaLRay/Sandline/pull/289) |
 | [U-099](docs/backlog/U-099.md) | Keep characters from occupying the same space | Squad command | P1 | REVIEW | Automated verification passed; manual bottleneck review pending | [#284](https://github.com/JoshuaLRay/Sandline/pull/284) |
 | [U-100](docs/backlog/U-100.md) | Adjustable Tight / Standard / Wide squad spread | Squad command | P2 | REVIEW | U-099; automated checks passed; manual UI review pending | [#285](https://github.com/JoshuaLRay/Sandline/pull/285) |
 | [U-101](docs/backlog/U-101.md) | Per-character Hold fire / Defensive / Aggressive settings | Squad command | P2 | REVIEW | U-100; automated checks passed; owner playtest pending | [#286](https://github.com/JoshuaLRay/Sandline/pull/286) |
