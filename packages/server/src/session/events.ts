@@ -18,6 +18,7 @@ import {
   type ScriptBlockerState,
   type World,
   resolveArea,
+  areaContains,
 } from '@sandline/shared';
 
 export interface EventCheckpoint {
@@ -31,7 +32,7 @@ export interface EventCheckpoint {
 }
 
 export interface EventHost {
-  squadFeet(): readonly { x: number; z: number }[];
+  squadFeet(): readonly { x: number; y?: number; z: number }[];
   groupDead(id: string): boolean;
   spawnGroup(id: string, seconds: number): boolean;
   /** U-001: no more waves from the group. */
@@ -162,7 +163,7 @@ export class EventRun {
   }
 
   private inArea(area: GroundArea): boolean {
-    return this.host.squadFeet().some((p) => Math.hypot(p.x - area.x, p.z - area.z) <= area.radius);
+    return this.host.squadFeet().some((p) => areaContains(area, p));
   }
 
   private triggered(trigger: EventTrigger, seconds: number, started: readonly number[], completed: readonly number[]): boolean {

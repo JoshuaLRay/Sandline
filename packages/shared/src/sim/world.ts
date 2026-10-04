@@ -38,6 +38,7 @@ import { COMMITTED, type CampaignEntry } from './campaignRegistry.ts';
 import { POSITION } from '../net/quantize.ts';
 import { type PlacedEmplacement, parsePlacedEmplacements } from './emplacement.ts';
 import { type PlacedPiece, expandLevel } from './level.ts';
+import { parseAreaHeightBounds } from './areas.ts';
 
 export type WorldBoxKind = 'post-minor' | 'post-major' | 'rail' | 'figure' | 'cover' | 'blocker';
 
@@ -205,11 +206,13 @@ export interface World {
 
 /* -- Missions (T-3.31) --------------------------------------------------------- */
 
-/** A circle on the ground. */
+/** A horizontal circle, optionally bounded by inclusive actor feet heights. */
 export interface GroundArea {
   x: number;
   z: number;
   radius: number;
+  minY?: number;
+  maxY?: number;
 }
 
 /** What a route is for (§1.2): a fireteam's way to the objective. */
@@ -228,6 +231,8 @@ export interface SpawnZone extends GroundArea {
   id: string;
   /** `objective`, or a route id. */
   on: string;
+  /** Authored floor height; absent keeps legacy automatic surface projection. */
+  y?: number;
 }
 
 /** What the world's own tests hold its routes to (the file's numbers, not the tests'). */
@@ -256,18 +261,19 @@ function finite(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v);
 }
 
-function exactKeys(where: string, v: unknown, keys: readonly string[]): Record<string, unknown> {
+function exactKeys(where: string, v: unknown, keys: readonly string[], optional: readonly string[] = []): Record<string, unknown> {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error(`${where}: expected an object`);
   const o = v as Record<string, unknown>;
-  for (const k of Object.keys(o)) if (!keys.includes(k)) throw new Error(`${where}: unknown key '${k}'`);
+  for (const k of Object.keys(o)) if (!keys.includes(k) && !optional.includes(k)) throw new Error(`${where}: unknown key '${k}'`);
   for (const k of keys) if (!(k in o)) throw new Error(`${where}: missing '${k}'`);
   return o;
 }
 
-function area(where: string, v: unknown, extra: readonly string[] = []): GroundArea & Record<string, unknown> {
-  const o = exactKeys(where, v, ['x', 'z', 'radius', ...extra]);
+function area(where: string, v: unknown, extra: readonly string[] = [], optional: readonly string[] = []): GroundArea & Record<string, unknown> {
+  const o = exactKeys(where, v, ['x', 'z', 'radius', ...extra], ['minY', 'maxY', ...optional]);
   if (!finite(o['x']) || !finite(o['z'])) throw new Error(`${where}: x and z must be numbers`);
   if (!finite(o['radius']) || o['radius'] <= 0) throw new Error(`${where}: radius must be a positive number`);
+  parseAreaHeightBounds(where, o);
   return o as GroundArea & Record<string, unknown>;
 }
 
@@ -304,14 +310,18 @@ export function loadMission(worldId: string, raw: unknown): WorldMission {
   if (!Array.isArray(m['spawnZones']) || m['spawnZones'].length === 0) throw new Error(`${at}.spawnZones: expected a non-empty list`);
   const zoneIds = new Set<string>();
   const spawnZones: SpawnZone[] = m['spawnZones'].map((z, i) => {
-    const o = area(`${at}.spawnZones[${i}]`, z, ['id', 'on']);
+    const o = area(`${at}.spawnZones[${i}]`, z, ['id', 'on'], ['y']);
+    if ('y' in o && !finite(o['y'])) throw new Error(`${at}.spawnZones[${i}].y must be a finite number`);
+    if (typeof o['y'] === 'number' && ((o.minY !== undefined && o['y'] < o.minY) || (o.maxY !== undefined && o['y'] > o.maxY))) {
+      throw new Error(`${at}.spawnZones[${i}].y must lie within minY and maxY`);
+    }
     if (typeof o['id'] !== 'string' || o['id'] === '') throw new Error(`${at}.spawnZones[${i}]: id must be a name`);
     if (zoneIds.has(o['id'])) throw new Error(`${at}.spawnZones: duplicate id '${o['id']}'`);
     zoneIds.add(o['id']);
     if (typeof o['on'] !== 'string' || (o['on'] !== 'objective' && !ids.has(o['on']))) {
       throw new Error(`${at}.spawnZones[${i}]: on must be 'objective' or a route id, got ${JSON.stringify(o['on'])}`);
     }
-    return { id: o['id'], on: o['on'], x: o.x, z: o.z, radius: o.radius };
+    return { id: o['id'], on: o['on'], x: o.x, z: o.z, radius: o.radius, ...parseAreaHeightBounds(`${at}.spawnZones[${i}]`, o), ...(typeof o['y'] === 'number' ? { y: o['y'] } : {}) };
   });
   const c = exactKeys(`${at}.checks`, m['checks'], ['sampleM', 'minDistinctShare', 'coverWithinM', 'maxUncoveredM', 'sightM']);
   const share = c['minDistinctShare'];
@@ -327,7 +337,11 @@ export function loadMission(worldId: string, raw: unknown): WorldMission {
     },
     sightM: positive(`${at}.checks.sightM`, c['sightM']),
   };
-  return { start: { x: start.x, z: start.z, radius: start.radius }, objective: { x: objective.x, z: objective.z, radius: objective.radius }, routes, spawnZones, checks };
+  return {
+    start: { x: start.x, z: start.z, radius: start.radius, ...parseAreaHeightBounds(`${at}.start`, start) },
+    objective: { x: objective.x, z: objective.z, radius: objective.radius, ...parseAreaHeightBounds(`${at}.objective`, objective) },
+    routes, spawnZones, checks,
+  };
 }
 
 /** Open ground left round a world's outermost box when its file names no floor. */

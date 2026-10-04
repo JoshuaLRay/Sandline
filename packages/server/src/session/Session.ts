@@ -15,6 +15,7 @@
  */
 import {
   BitWriter,
+  areaContains,
   COMPONENT_IDS,
   DEFAULT_MOVE_CONFIG,
   ESCORT_SPECTATE_SLOT,
@@ -101,7 +102,6 @@ import {
   createMoveState,
   createWeaponState,
   blockedAt,
-  supportUnder,
   createDrive,
   VEHICLE_CLEARANCE_M,
   withdrawDrive,
@@ -205,6 +205,7 @@ import { CoverSystem, DEFAULT_COVER_BODY } from '../ai/cover.ts';
 import { EnemyGroup } from '../ai/group.ts';
 import type { ArmourView, CombatWorld } from '../ai/actions/combat.ts';
 import type { EnemyPosture } from '../ai/actions/posture.ts';
+import { spawnGround } from '../ai/director/spawnGround.ts';
 import { Spawner, type SpawnerCheckpoint, type SpawnerHost } from '../ai/director/spawner.ts';
 import {
   CHECKPOINT_WORLD_VERSION,
@@ -642,7 +643,7 @@ interface ActiveProjectile {
 export const MAX_ENEMIES = 64;
 
 /** T-3.32: a spawn candidate counts as on the navmesh when its nearest mesh point is this near, metres. */
-export const SPAWN_ON_MESH_M = 0.3;
+export { SPAWN_ON_MESH_M } from '../ai/director/spawnGround.ts';
 
 /**
  * One enemy the session owns (T-3.10). Shaped like the parts of a `Slot` the
@@ -1398,7 +1399,7 @@ export class Session {
     const beforeDone = new Set(run.doneObjectives);
     const beforeState = run.current.state;
     const beforeCheckpoint = { objective: run.checkpoint, elapsed: run.checkpointElapsed, done: run.checkpointDoneList };
-    const inside = (a: GroundArea) => (p: { x: number; z: number }) => Math.sqrt((p.x - a.x) ** 2 + (p.z - a.z) ** 2) <= a.radius;
+    const inside = (a: GroundArea) => (p: { x: number; y: number; z: number }) => areaContains(a, p);
     const living = this.slots.filter((s) => !isDead(s.health));
     const standing = this.slots.filter((s) => isAlive(s.health));
     const spawner = this.spawnerValue;
@@ -2287,31 +2288,22 @@ export class Session {
         this.slots
           .filter((s) => !s.isBot && living(s.health))
           .map((s) => eyePosition(s.state.x, s.state.y, s.state.z, DEFAULT_MUZZLE_RIG, eyeStance(false, s.state.prone))),
-      squadFeet: () => [...this.slots.filter((s) => living(s.health)).map((s) => ({ x: s.state.x, z: s.state.z })), ...this.enemyList.filter((e) => e.def.friendly && !e.captive && living(e.health)).map((e) => ({ x: e.state.x, z: e.state.z }))],
-      enemyFeet: () => this.enemyList.filter((e) => living(e.health) && !e.def.friendly).map((e) => ({ x: e.state.x, z: e.state.z })),
+      squadFeet: () => [...this.slots.filter((s) => living(s.health)).map((s) => ({ x: s.state.x, y: s.state.y, z: s.state.z })), ...this.enemyList.filter((e) => e.def.friendly && !e.captive && living(e.health)).map((e) => ({ x: e.state.x, y: e.state.y, z: e.state.z }))],
+      enemyFeet: () => this.enemyList.filter((e) => living(e.health) && !e.def.friendly).map((e) => ({ x: e.state.x, y: e.state.y, z: e.state.z })),
       isAlive: (netId) => {
         const e = this.enemyList.find((x) => x.netId === netId);
         return e !== undefined && living(e.health);
       },
       spawn: (archetype, at) => this.spawnEnemy(archetype, at),
-      ...(this.navMesh
-        ? {
-            ground: (p: { x: number; y: number; z: number }) => {
-              const y = supportUnder(p.x, p.z, this.moveConfig.radius, Infinity, this.collisionBoxes, this.moveConfig.groundY);
-              const hit = this.navMesh!.nearestPoint({ ...p, y });
-              if (!hit) return null;
-              const off = Math.sqrt((hit.point.x - p.x) ** 2 + (hit.point.z - p.z) ** 2);
-              return off <= SPAWN_ON_MESH_M ? { x: p.x, y: hit.point.y, z: p.z } : null;
-            },
-          }
-        : {}),
+      ground: (p, authoredY) => spawnGround(p, authoredY, this.collisionBoxes, this.moveConfig,
+        this.navMesh ? (point) => this.navMesh!.nearestPoint(point) : undefined),
     };
   }
 
   /** The session as T-4.15's event runner sees it. */
   private eventHost(): EventHost {
     return {
-      squadFeet: () => this.slots.filter((s) => !isDead(s.health)).map((s) => ({ x: s.state.x, z: s.state.z })),
+      squadFeet: () => this.slots.filter((s) => !isDead(s.health)).map((s) => ({ x: s.state.x, y: s.state.y, z: s.state.z })),
       // U-001: a group down to stragglers long enough counts, so one hidden survivor holds nothing back.
       groupDead: (id) => this.spawnerValue?.broken(id) ?? false,
       spawnGroup: (id, seconds) => this.spawnerValue?.activate(id, seconds) ?? false,

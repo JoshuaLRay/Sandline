@@ -8,6 +8,7 @@ export * from './sim/characterSpace.ts';
 export * from './sim/campaignRegistry.ts';
 export * from './sim/campaign.ts';
 export * from './sim/world.ts';
+export * from './sim/areas.ts';
 export * from './sim/level.ts';
 export * from './sim/kit.ts';
 export * from './sim/encounters.ts';

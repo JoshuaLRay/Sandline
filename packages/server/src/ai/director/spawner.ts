@@ -30,6 +30,7 @@
  */
 import {
   getEnemy,
+  DEFAULT_MOVE_CONFIG,
   type Encounter,
   type EncounterGroup,
   type GroundArea,
@@ -38,7 +39,9 @@ import {
   overlapsFootprint,
   rayWorld,
   resolveArea,
+  areaContains,
 } from '@sandline/shared';
+import { spawnGround, SPAWN_ON_MESH_M } from './spawnGround.ts';
 import type { EnemyPosture } from '../actions/posture.ts';
 import { yawToward } from '../locomotion/followPath.ts';
 
@@ -53,14 +56,14 @@ export interface SpawnerHost {
   /** Where every seated human's eyes are (alive or downed). */
   humanEyes(): readonly Vec3[];
   /** Where every living squad soldier stands, human or bot: who "the squad" is to an `enter` trigger. */
-  squadFeet(): readonly { x: number; z: number }[];
+  squadFeet(): readonly { x: number; y?: number; z: number }[];
   /** Every living enemy's feet, this spawner's or not: the alive cap counts them all. */
-  enemyFeet(): readonly { x: number; z: number }[];
+  enemyFeet(): readonly { x: number; y?: number; z: number }[];
   isAlive(netId: number): boolean;
   /** Spawn one; null when the session refuses (its own hard cap). */
   spawn(archetype: string, at: Vec3 & { yaw: number; posture: EnemyPosture; group: number; captive?: boolean; path?: readonly { x: number; z: number }[] }): number | null;
   /** Snap a point onto the navmesh, or null when it is off it. Absent: every fitting point is ground. */
-  ground?(p: Vec3): Vec3 | null;
+  ground?(p: Vec3, authoredY?: number): Vec3 | null;
 }
 
 /**
@@ -230,10 +233,11 @@ export class Spawner {
     for (const zone of world.mission!.spawnZones) {
       const points: Vec3[] = [];
       for (const c of zoneCandidates(zone)) {
-        const at = { x: c.x, y: 0, z: c.z };
-        const ground = host.ground ? host.ground(at) : at;
-        if (ground && fits(ground, world.boxes)) points.push(ground);
+        const at = { x: c.x, y: zone.y ?? 0, z: c.z };
+        const ground = host.ground ? host.ground(at, zone.y) : spawnGround(at, zone.y, world.boxes, DEFAULT_MOVE_CONFIG);
+        if (ground && (zone.y === undefined || Math.abs(ground.y - zone.y) <= SPAWN_ON_MESH_M) && (zone.minY === undefined || areaContains(zone, ground)) && fits(ground, world.boxes)) points.push(ground);
       }
+      if (zone.y !== undefined && points.length === 0) throw new Error(`spawn zone '${zone.id}': no valid candidates on authored floor y=${zone.y}`);
       this.candidates.set(zone.id, points);
     }
   }
@@ -398,7 +402,7 @@ export class Spawner {
         return seconds >= t.seconds;
       case 'enter': {
         const area = resolveArea(t.area, this.encounter, this.world);
-        return this.host.squadFeet().some((p) => Math.sqrt((p.x - area.x) ** 2 + (p.z - area.z) ** 2) <= area.radius);
+        return this.host.squadFeet().some((p) => areaContains(area, p));
       }
       case 'dead':
         return this.broken(t.group);
@@ -454,7 +458,7 @@ export class Spawner {
     if (this.queue.length === 0) return;
 
     const eyes = this.host.humanEyes();
-    const taken = this.host.enemyFeet().map((p) => ({ x: p.x, z: p.z }));
+    const taken = this.host.enemyFeet().map((p) => ({ ...p }));
     let alive = taken.length;
     /** Zones with nowhere left this tick: later members for them wait too. */
     const full = new Set<string>();
@@ -473,7 +477,7 @@ export class Spawner {
       let skippedVisible = 0;
       let point: Vec3 | null = null;
       for (const c of this.candidatesOf(zone)) {
-        if (taken.some((q) => Math.sqrt((q.x - c.x) ** 2 + (q.z - c.z) ** 2) < OCCUPIED_M)) continue;
+        if (taken.some((q) => (q.y === undefined || Math.abs(q.y - c.y) < HEADROOM_M) && Math.sqrt((q.x - c.x) ** 2 + (q.z - c.z) ** 2) < OCCUPIED_M)) continue;
         if (seenByAny(c, this.encounter.probes, eyes, this.world.boxes)) {
           skippedVisible++;
           continue;
@@ -495,7 +499,7 @@ export class Spawner {
       if (netId === null) break;
       item.run.spawned.push(netId);
       this.log.push({ seconds, group: item.run.def.id, wave: item.wave, archetype: item.archetype, netId, point: { ...point }, skippedVisible });
-      taken.push({ x: point.x, z: point.z });
+      taken.push({ ...point });
       alive++;
       this.queue.splice(i, 1);
     }

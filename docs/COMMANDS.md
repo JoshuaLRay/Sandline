@@ -111,3 +111,35 @@ hubs, crossings and bays.
 Default campaign play has no diagnostic grid. Append `&grid` to `?mission&world=qalat-road` to request it for QA. The art pass skins U-097's existing supporting planes; look for grey dry-channel gravel, a dusty two-rut road, olive-brown fallow fields and worn compound paving. Sparse ankle-high scrub/gravel and twelve sub-step-height bank rocks sit off the tank corridor.
 
 After `pnpm --filter @sandline/client build`, run `pnpm exec tsx packages/tools/src/capture-map-review.ts`. It writes nine actual production-client views, an explicit-grid comparison and `measurements.json` under `artifacts/map-review/`. It fails if the default grid appears, the requested grid is missing, or a view reaches 300 draw calls. Streaming CI uploads `qalat-map-review`. Compare the riverbed, road bank, lower/upper terrace, compound interior and overview with U-096's baseline images. Continue the U-097 north/south walking route above to review clearance and cover readability. A screenshot or green CI does not replace owner visual acceptance.
+
+## Authoring stacked floors (U-108)
+
+World mission start/objective/spawn circles, encounter areas, mission objective
+areas and script enter areas accept optional `minY` and `maxY`. Supply both as
+finite numbers with `minY <= maxY`; bounds include their endpoints and compare
+actor **feet** height. Omit both for the legacy circle across all heights. A
+caller without a feet height cannot satisfy a bounded area. Named encounter
+areas retain their bounds when referenced by mission or script triggers.
+
+For example, `{ "x": 0, "z": 10, "radius": 3, "minY": 7.5, "maxY": 8.5 }`
+accepts a soldier on the surface at y8 and rejects one below at y0. This applies
+to enemy/squad counts, reach/hold conditions, prisoner extraction and enter
+triggers. Choose bounds wide enough to include navmesh surface offsets.
+
+Enemy spawn zones additionally accept `y`, the physical supporting floor height.
+Explicit `"y": 0` selects the basement under an overhead slab; `"y": 8` selects
+the slab top. When bounds are present, y must lie inside them. Support must match
+the authored floor within 0.05 m; nav projection must remain within 0.3 m both
+horizontally and vertically, and the spawn must fit its collision headroom. A
+zone with no valid candidates on an explicit floor fails with the zone name
+rather than silently moving guards onto another storey. Bounds alone filter
+candidates; use explicit y to select a lower floor.
+
+Omitting y preserves legacy projection (highest support with navigation; y0
+without navigation). Enemy occupancy only conflicts within 1.8 m vertically and
+1 m horizontally; old callers without y conservatively block either floor.
+
+This foundation does not yet change squad starts, vehicle paths, fixed member
+sockets, navigation generation, cover selection or command targeting. Those
+prerequisites and the actual map build are tracked in [U-109](backlog/U-109.md)
+through [U-119](backlog/U-119.md). Current playable mission geometry is unchanged.
