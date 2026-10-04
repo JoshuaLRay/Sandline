@@ -44,3 +44,8 @@ html.mobile .phud-objective { top: 112px; max-width: calc(100vw - 24px); white-s
 @media (max-height: 450px) { html.mobile .phud-objective { top: 60px; max-width: calc(100vw - 150px); } }
 .mobile-placement-help { align-self: center; max-width: 46%; margin: 0; padding: 4px 8px; color: #fff1dbcc; font-size: 11px; line-height: 1.45; text-align: right; text-shadow: 0 1px 3px #000; }
 .mobile-placement-help[hidden] { display: none; }
+
+.mobile-aggression { display: flex; gap: 6px; }
+.mobile-aggression .mobile-choice { flex: 1; min-width: 0; padding: 10px 6px; text-align: center; }
+.mobile-aggression .mobile-choice:disabled { opacity: .4; }
+.mobile-aggression-status { margin: 0; padding: 0 6px; font-size: 12px; }

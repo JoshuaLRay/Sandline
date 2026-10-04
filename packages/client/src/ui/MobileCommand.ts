@@ -1,4 +1,4 @@
-import { ORDER_KINDS, type OrderAddress, type OrderKind } from '@sandline/shared';
+import { AGGRESSION_KINDS, ORDER_KINDS, type SquadAggression, type OrderAddress, type OrderKind } from '@sandline/shared';
 import { commandKey, watchedStatus, type CommandRow } from './menu/commandModel.ts';
 import './mobileCommand.css';
 
@@ -6,6 +6,7 @@ import './mobileCommand.css';
 export function createMobileCommand(parent: HTMLElement, actions: {
   watch: (slot: number) => void;
   assign: (bot: number, commander: number) => void;
+  aggression: (mode: SquadAggression, address: OrderAddress) => void;
   order: (kind: OrderKind, address: OrderAddress, x: number, y: number) => boolean;
   settings: () => void;
   leave: () => void;
@@ -108,6 +109,7 @@ export function createMobileCommand(parent: HTMLElement, actions: {
   root.append(overview, status, fullscreen, settings, recenter, fullscreenHelp, squad, quickOrders, feedback, marker, controls, menu);
   parent.append(root);
   let rows: readonly CommandRow[] = [];
+  let aggressions: readonly SquadAggression[] = [];
   let watched = -1;
   let mySlot = -1;
   let address: OrderAddress = { to: 'all' };
@@ -253,6 +255,35 @@ export function createMobileCommand(parent: HTMLElement, actions: {
     menu.replaceChildren();
     menu.hidden = open === null;
     if (open !== 'who') return;
+    heading(`Aggression · ${recipient}`);
+    const targets = rows.filter(row => !row.human && !row.captured && row.commander === mySlot &&
+      (address.to === 'all' || row.slot === address.index));
+    const modes = targets.map(row => aggressions[row.slot] ?? 'aggressive');
+    const modeStatus = document.createElement('p');
+    modeStatus.className = 'mobile-aggression-status';
+    modeStatus.textContent = modes.length === 0 ? 'No commanded bots available' :
+      new Set(modes).size > 1 ? 'Current: mixed' : `Current: ${aggressionLabel(modes[0]!)}`;
+    menu.append(modeStatus);
+    const policies = document.createElement('div');
+    policies.className = 'mobile-aggression';
+    policies.setAttribute('role', 'group');
+    policies.setAttribute('aria-label', 'Aggression of selected bots');
+    for (const mode of AGGRESSION_KINDS) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'mobile-choice';
+      button.textContent = aggressionLabel(mode);
+      button.disabled = !eligible(address);
+      button.setAttribute('aria-pressed', String(modes.length > 0 && modes.every(value => value === mode)));
+      button.addEventListener('click', () => {
+        if (!eligible(address)) return;
+        cancelPlacement();
+        actions.aggression(mode, address);
+        announce(`${aggressionLabel(mode)} requested for ${recipient}`);
+      });
+      policies.append(button);
+    }
+    menu.append(policies);
     heading('Order recipients');
     choice('All commanded bots', address.to === 'all', () => { address = { to: 'all' }; open = null; render(); });
     for (const row of rows) {
@@ -299,10 +330,12 @@ export function createMobileCommand(parent: HTMLElement, actions: {
       submit(kind, address, x, y);
       return true;
     },
-    update(next: readonly CommandRow[], slot: number, commanderSlot: number) {
+    update(next: readonly CommandRow[], slot: number, commanderSlot: number, nextAggressions: readonly SquadAggression[] = []) {
       if (root.hidden) cancelPlacement();
       if (mySlot !== commanderSlot) { cancelPlacement(); address = { to: 'all' }; drawn = ''; }
       mySlot = commanderSlot;
+      const modesChanged = aggressions.join('|') !== nextAggressions.join('|');
+      aggressions = [...nextAggressions];
       const key = commandKey(next);
       if (key !== drawn) {
         cancelPlacement();
@@ -310,10 +343,15 @@ export function createMobileCommand(parent: HTMLElement, actions: {
         rows = next;
         render();
       }
+      if (modesChanged) render();
       if (watched !== slot) {
         watched = slot;
         render();
       }
     },
   };
+}
+
+function aggressionLabel(mode: SquadAggression): string {
+  return mode === 'hold-fire' ? 'Hold fire' : mode === 'defensive' ? 'Defensive' : 'Aggressive';
 }
