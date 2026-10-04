@@ -34,6 +34,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
+| [U-105](docs/backlog/U-105.md) | Define distinct campaign lanes and per-map creation records | Map design | P1 | REVIEW | Documentation review; geometry implementation remains follow-up | [#290](https://github.com/JoshuaLRay/Sandline/pull/290) |
 | [U-104](docs/backlog/U-104.md) | Hold Tab to access the mouse | Controls / UI | P1 | REVIEW | Automated checks passed; owner gameplay review pending | [#289](https://github.com/JoshuaLRay/Sandline/pull/289) |
 | [U-099](docs/backlog/U-099.md) | Keep characters from occupying the same space | Squad command | P1 | REVIEW | Automated verification passed; manual bottleneck review pending | [#284](https://github.com/JoshuaLRay/Sandline/pull/284) |
 | [U-100](docs/backlog/U-100.md) | Adjustable Tight / Standard / Wide squad spread | Squad command | P2 | REVIEW | U-099; automated checks passed; manual UI review pending | [#285](https://github.com/JoshuaLRay/Sandline/pull/285) |

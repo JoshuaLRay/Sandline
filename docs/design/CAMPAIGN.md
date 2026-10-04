@@ -7,6 +7,21 @@ nothing marked so is decided. Status and order live in [BACKLOG.md](../../BACKLO
 Not to be confused with the **Campaign** *systems* epic (U-032, U-059 to U-065): saving the world at a checkpoint,
 prisoners and the rescue objective. Those are built and are the campaign's tools, not its content.
 
+## Map direction amendment — 2026-10-04
+
+The owner requires **three physically distinct lanes** for mission 1 and all
+forthcoming missions: direct primary assault, overlook/support, and a narrower
+separate flank. Routes 1 and 2 may have several deliberate passages; the flank
+has none by default, or one justified exception. Continuous lateral access fails
+this requirement. This supersedes the equal-width interpretation of D4/D5/Q5;
+size estimates below are historical feasibility guidance, not a lane-width rule.
+
+Use [Map and mission creation](MAP-MISSION-CREATION.md) for the shared rules and
+[the map index/template](maps/README.md) for a separate record for each map.
+[Qalat's map rework](maps/qalat-road.md) specifies the opener; it is documentation,
+not an implemented geometry change. Missions 2–10 remain undesigned and are built
+one at a time under the same standard.
+
 ## 1. What exists today (verified 2026-10-01)
 
 **One real mission**, `mission-01` ("clear and hold the qalat"): five objectives on one level, one encounter file and
@@ -109,7 +124,7 @@ One short document per mission, in this folder, written before any level is buil
 
 1. **Premise** in two sentences, and what the squad must do.
 2. **Objectives in order**, each with its type, its failure and its checkpoint.
-3. **Map:** footprint, the route, three sight lines worth building around, where the squad starts and exits.
+3. **Map:** link a separate `maps/<world-id>.md` copied from [the map template](maps/TEMPLATE.md). Apply [the shared standard](MAP-MISSION-CREATION.md): three route roles, physical separators, every crossing, convergence bounds, support sight lines, start/exit and validation plan.
 4. **Opposition:** groups, archetypes, triggers and the set pieces (an emplacement nest, an armoured arrival, a counter-attack).
 5. **The new element** (D4) and how the mission teaches it before it tests it.
 6. **Campaign state:** which prisoners it assumes, what it grants.

@@ -57,6 +57,10 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 
 ## Adding a mission (U-073)
 
+Before authoring data, write the mission brief and a per-map record using the
+[map and mission creation standard](design/MAP-MISSION-CREATION.md) and
+[map template](design/maps/TEMPLATE.md).
+
 A mission is its data files plus **one entry** in `packages/shared/src/sim/campaignRegistry.ts`; the world, mission,
 encounter and script tables and the lobby's map list are all built from that list.
 
