@@ -22,7 +22,16 @@ try {
   await mkdir('artifacts/map-review', { recursive: true });
   const views = [
     { name: 'riverbed-ground', position: [-40, 1.7, 58], target: [-20, 1, 90] },
-    { name: 'road-bank-ground', position: [19, 2.7, 106], target: [0, 0.7, 140] },
+    { name: 'road-bank-ground', position: [8, 1.7, 106], target: [0, 0.7, 140] },
+    { name: 'C12-S', position: [8, 1.7, 44], target: [28, 2, 44] },
+    { name: 'C12-M', position: [8, 1.7, 104], target: [28, 3, 104] },
+    { name: 'C12-N', position: [8, 1.7, 154], target: [28, 4.25, 154] },
+    { name: 'west-bank-closed', position: [-40, 1.7, 68], target: [-28, 2, 80] },
+    { name: 'flank-bottleneck', position: [-42, 1.7, 88], target: [-41, 1, 104] },
+    { name: 'flank-west-gate', position: [-24, 1.7, 182], target: [-8, 1, 182] },
+    { name: 'O1-support', position: [11.8, 2.7, 60], target: [0, 1, 60] },
+    { name: 'O2-support', position: [11.8, 3.7, 112], target: [0, 1, 112] },
+    { name: 'O3-support', position: [11.8, 4.95, 164], target: [0, 1, 164] },
     { name: 'terrace-lower-ground', position: [40, 2.7, 70], target: [40, 2.5, 92] },
     { name: 'terrace-upper-ground', position: [26, 4.95, 164], target: [20, 1.5, 182] },
     { name: 'compound-approach-steps', position: [40, 1.7, 188], target: [40, 3.25, 171] },

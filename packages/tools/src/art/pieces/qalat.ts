@@ -97,10 +97,10 @@ function plane(b: MeshBuilder, x0: number, x1: number, z0: number, z1: number, y
 export const QALAT_GROUND: Piece = {
   id: 'qalat-ground', class: 'kit', family: FAMILY, tileM: TILES, decal: true, bakedAo: true, smooth: true, tint: qalatTint,
   build(b) {
-    plane(b, -level.floor.halfWidth, level.floor.halfWidth, -level.floor.halfDepth, level.floor.halfDepth, skin, 10);
+    plane(b, -level.floor.halfWidth, level.floor.halfWidth, -level.floor.halfDepth, level.floor.halfDepth, skin, 16);
     for (const box of level.boxes) {
       const x0 = box.x - box.w / 2, x1 = box.x + box.w / 2, z0 = box.z - box.d / 2, z1 = box.z + box.d / 2;
-      plane(b, x0, x1, z0, z1, box.y + box.h + skin);
+      plane(b, x0, x1, z0, z1, box.y + box.h + skin, box.h >= 4 ? 16 : 8);
       b.box([x0, box.y, z0], [x1, box.y + box.h, z1], { all: 'earth' }, { omit: ['py', 'ny'] });
     }
   },

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="650" height="1060" viewBox="0 0 650 1060"><rect width="100%" height="100%" fill="#f4f0e5"/><style>text{font:15px sans-serif;fill:#172a2a} .label{font-weight:bold}</style><text x="25" y="25" class="label">Qalat — U-106 authored route overview</text>
+<rect x="30.0" y="929.0" width="512" height="8" fill="#8e8272"/>
+<rect x="30.0" y="65.0" width="512" height="8" fill="#8e8272"/>
+<rect x="30.0" y="81.0" width="8" height="848" fill="#8e8272"/>
+<rect x="534.0" y="81.0" width="8" height="848" fill="#8e8272"/>
+<rect x="38.0" y="721.0" width="76.0" height="88" fill="#8e8272"/>
+<rect x="138.0" y="721.0" width="108.0" height="88" fill="#8e8272"/>
+<rect x="38.0" y="681.0" width="68.0" height="40" fill="#8e8272"/>
+<rect x="130.0" y="681.0" width="116.0" height="40" fill="#8e8272"/>
+<rect x="38.0" y="641.0" width="68.0" height="40" fill="#8e8272"/>
+<rect x="138.0" y="641.0" width="108.0" height="40" fill="#8e8272"/>
+<rect x="38.0" y="561.0" width="76.0" height="80" fill="#8e8272"/>
+<rect x="138.0" y="561.0" width="108.0" height="80" fill="#8e8272"/>
+<rect x="38.0" y="481.0" width="68.0" height="80" fill="#8e8272"/>
+<rect x="130.0" y="481.0" width="116.0" height="80" fill="#8e8272"/>
+<rect x="38.0" y="409.0" width="72" height="72" fill="#8e8272"/>
+<rect x="142.0" y="409.0" width="104" height="72" fill="#8e8272"/>
+<rect x="38.0" y="353.0" width="76.0" height="56" fill="#8e8272"/>
+<rect x="138.0" y="353.0" width="108.0" height="56" fill="#8e8272"/>
+<rect x="38.0" y="273.0" width="68.0" height="80" fill="#8e8272"/>
+<rect x="130.0" y="273.0" width="116.0" height="80" fill="#8e8272"/>
+<rect x="38.0" y="225.0" width="68.0" height="48" fill="#8e8272"/>
+<rect x="138.0" y="225.0" width="108.0" height="48" fill="#8e8272"/>
+<rect x="38.0" y="193.79999999999995" width="76.0" height="31.200000000000045" fill="#8e8272"/>
+<rect x="138.0" y="193.79999999999995" width="108.0" height="31.200000000000045" fill="#8e8272"/>
+<rect x="330.0" y="705.0" width="56.0" height="104" fill="#8e8272"/>
+<rect x="330.0" y="641.0" width="56.0" height="48" fill="#8e8272"/>
+<rect x="330.0" y="465.0" width="56.0" height="152" fill="#8e8272"/>
+<rect x="330.0" y="433.0" width="56.0" height="16" fill="#8e8272"/>
+<rect x="330.0" y="265.0" width="56.0" height="144" fill="#8e8272"/>
+<rect x="330.0" y="233.0" width="56.0" height="16" fill="#8e8272"/>
+<rect x="330.0" y="193.0" width="1.1200000000000045" height="40" fill="#8e8272"/>
+<rect x="450.0" y="193.0" width="84" height="616" fill="#8e8272"/>
+<polyline points="286,897 126,817 126,633 126,433 122,241 126,177 190,145 286,145" fill="none" stroke="#287d70" stroke-width="4"/>
+<polyline points="286,897 350,833 286,745 286,433 286,273 318,177 286,145" fill="none" stroke="#bd6023" stroke-width="4"/>
+<polyline points="286,897 418,817 418,697 418,489 418,273 418,121 374,145 286,145" fill="none" stroke="#457fb3" stroke-width="4"/>
+<rect x="38" y="809" width="496" height="120" fill="#f3d474" fill-opacity=".22" stroke="#806e26" stroke-dasharray="5 4"/><text x="35" y="869.0">South start/extraction hub</text>
+<rect x="38" y="73" width="496" height="120.79999999999995" fill="#f3d474" fill-opacity=".22" stroke="#806e26" stroke-dasharray="5 4"/><text x="35" y="133.39999999999998">Compound convergence</text>
+<line x1="318" x2="398" y1="697" y2="697" stroke="#bc3043" stroke-width="5"/><text x="402" y="689" class="label">C12-S</text>
+<line x1="318" x2="398" y1="457" y2="457" stroke="#bc3043" stroke-width="5"/><text x="402" y="449" class="label">C12-M</text>
+<line x1="318" x2="398" y1="257" y2="257" stroke="#bc3043" stroke-width="5"/><text x="402" y="249" class="label">C12-N</text>
+<circle cx="333.2" cy="633" r="6" fill="#214d7f"/><text x="394" y="638">O1 firing slot</text>
+<circle cx="333.2" cy="425" r="6" fill="#214d7f"/><text x="394" y="430">O2 firing slot</text>
+<circle cx="333.2" cy="217" r="6" fill="#214d7f"/><text x="394" y="222">O3 firing slot</text>
+<text x="35" y="975">Green: 6 m flank, 8 m pockets; no intermediate links.</text>
+<text x="35" y="998">Orange: 21 m road. Blue: 16 m elevated terraces.</text>
+<text x="35" y="1021">Grey: collision barriers. Red: the three walking passages.</text>
+<text x="35" y="1044">Schematic coordinates; owner gameplay review pending.</text>
+</svg>

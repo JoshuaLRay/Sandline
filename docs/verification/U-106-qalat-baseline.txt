@@ -1,0 +1,66 @@
+U-106 Qalat combat baseline — 2026-10-04
+
+Commands: pnpm sim-run --scenario mission --mission packages/shared/src/data/missions/qalat-road.json --seeds 3 / --seeds 20
+Both commands exit 0 under the existing mission-file regression policy; gameplay losses are reported warnings, not passing completion evidence. No gates were changed.
+
+
+> sandline@ sim-run /workspace/Sandline
+> tsx packages/tools/src/sim-run.ts --scenario mission --mission packages/shared/src/data/missions/qalat-road.json --seeds 3
+
+mission=qalat-road file=packages/shared/src/data/missions/qalat-road.json
+  1h seed 1: failed at 28.0s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 2: failed at 64.6s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 3: failed at 33.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 1: failed at 28.0s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 2: failed at 64.6s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 3: failed at 33.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  WARNING: no completed run: 1h seed 1: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 2: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 3: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 1: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 2: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 3: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+INCOMPLETE: completed 0/6 runs
+
+
+> sandline@ sim-run /workspace/Sandline
+> tsx packages/tools/src/sim-run.ts --scenario mission --mission packages/shared/src/data/missions/qalat-road.json --seeds 20
+
+mission=qalat-road file=packages/shared/src/data/missions/qalat-road.json
+  1h seed 1: failed at 28.0s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 2: failed at 64.6s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 3: failed at 33.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 4: failed at 26.9s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 5: failed at 27.5s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 6: failed at 26.1s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 7: failed at 27.0s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 8: failed at 36.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 9: failed at 33.3s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 10: failed at 34.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 11: failed at 27.6s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 12: failed at 28.0s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 13: failed at 28.3s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 14: failed at 28.3s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 15: failed at 26.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 16: failed at 26.5s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 17: failed at 27.3s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 18: failed at 28.2s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 19: failed at 28.3s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  1h seed 20: failed at 32.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 1: failed at 28.0s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 2: failed at 64.6s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 3: failed at 33.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 4: failed at 26.9s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 5: failed at 27.5s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 6: failed at 26.1s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 7: failed at 27.0s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 8: failed at 36.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 9: failed at 33.3s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 10: failed at 34.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 11: failed at 27.6s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 12: failed at 28.0s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 13: failed at 28.3s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 14: failed at 28.3s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 15: failed at 26.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 16: failed at 26.5s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 17: failed at 27.3s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 18: failed at 28.2s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 19: failed at 28.3s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  6h seed 20: failed at 32.7s; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+  WARNING: no completed run: 1h seed 1: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 2: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 3: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 4: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 5: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 6: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 7: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 8: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 9: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 10: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 11: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 12: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 13: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 14: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 15: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 16: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 17: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 18: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 19: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 1h seed 20: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 1: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 2: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 3: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 4: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 5: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 6: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 7: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 8: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 9: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 10: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 11: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 12: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 13: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 14: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 15: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 16: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 17: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 18: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 19: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead | 6h seed 20: failed; objective 2/5 rescue 'Free the prisoner' 0/90; failed: soldier-dead
+INCOMPLETE: completed 0/40 runs

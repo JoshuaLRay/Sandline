@@ -81,9 +81,23 @@ files under another id goes through every builder with no other edit.
 
 Choose **The Qalat Road** in the lobby or open `?mission&world=qalat-road`. This is the live rescue/escort/tank mission from U-093/U-094/U-095. Start and extraction are `(0, -6)`; compound centre is `(0, 182)`.
 
-Walk each lane north and south. The riverbed at x=-40 stays at 0 m with shallow 0.75 m sills near z=32 and z=158. Road banks at x=-20 and x=19 rise to 1 m, flanking the unchanged tank corridor at x=0/8. Eastern fields occupy x=25..57: 1 m at z=24..76, 2 m at z=80..128 and 3.25 m at z=133..174. Broad 0.25 m steps join them; the northern descent ends at z=186. Approach the compound east gate via `(40, 188)` and `(22, 182)`. Observe the gate from the west edge of the upper terrace `(26, 164)`, not from behind the terrace's own lip. The former isolated overlooks are replaced by connected fields.
+Walk each lane north and south. U-106 narrows the riverbed to a winding 6 m
+channel with 8 m holding pockets, bounded by continuous 6 m banks; its shallow
+0.75 m sills remain near z=32/158. The 21 m road stays at y=0 and preserves the
+tank's x=0/8 corridor. Terraces occupy x=25..41 at 1, 2 and 3.25 m elevation.
+Only C12-S (z=42..46), C12-M (102..106) and C12-N (152..156) connect the road
+to the terraces; walk their 0.25 m stairs in both directions. Outside the south
+hub z=-14..16 and compound convergence z=169.8..200, the flank has no crossovers.
 
-For the walk-through: cross the southern river sill, climb either road bank, walk the terrace steps through all three elevations, descend north to the east gate, free the POW, order him back along each lane, destroy the scripted tank and extract all seven at the south. Compare sight lines from river `(−40, 60)`, bank `(19, 110)` and upper terrace `(26, 164)`. Owner gameplay and visual review remain pending.
+Review O1 `(11.8, 2.6, 60)`, O2 `(11.8, 3.6, 112)` and O3 `(11.8, 4.85, 164)`
+(eye coordinates). Their low firing slots overlook the matching road stretch;
+attempt standing/jumping/crouched/prone shortcuts and verify the lintels block
+passage. Try the closed west-bank sections, a winding flank bottleneck and west
+gate. Free the POW, return along each route with Tight/Standard/Wide squad spread,
+regroup in the holding pockets, destroy the tank and extract all seven. Compare
+commitment, congestion, support angles and blind spots. Owner verdict remains pending.
+[Annotated overview](verification/U-106-qalat-overview.svg) marks the actual barriers,
+hubs, crossings and bays.
 
 `SANDLINE_LOAD_WORLD=qalat-road pnpm check:load-time` tests the 4 Mbit/s, 30 s budget. `pnpm exec tsx packages/tools/src/level-check.ts` validates authored geometry/routes and writes schematic renders. After a client build, `pnpm exec tsx packages/tools/src/capture-map-review.ts` captures production client views at ground and elevated positions; streaming CI uploads `qalat-map-review` with those PNGs. These are actual client renders with a QA camera, not an owner playtest verdict.
 

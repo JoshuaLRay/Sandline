@@ -1,7 +1,7 @@
 {
   "id": "qalat-road",
   "format": 1,
-  "$comment": "U-096: authored earth/gravel, dusty road, fallow terraces and worn compound paving over the unchanged U-097 terrain. Diagnostic grid is opt-in; generated landscape details are ankle-high, bank rocks below step height.",
+  "$comment": "U-106: collision-backed distinct road, support terraces and narrow winding flank; C12-S/M/N are the only intermediate walking crossings. O1/O2/O3 are protected firing bays, not walking links. Hubs z=-14..16 and 169.8..200.",
   "floor": {
     "halfWidth": 64,
     "halfDepth": 202
@@ -9,1806 +9,951 @@
   "boxes": [
     {
       "id": "terrace-south-step-0",
-      "x": 41.0,
+      "x": 33,
       "z": 20.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 0.25
     },
     {
       "id": "terrace-south-step-1",
-      "x": 41.0,
+      "x": 33,
       "z": 21.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 0.5
     },
     {
       "id": "terrace-south-step-2",
-      "x": 41.0,
+      "x": 33,
       "z": 22.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 0.75
     },
     {
       "id": "terrace-south-step-3",
-      "x": 41.0,
+      "x": 33,
       "z": 23.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 1.0
     },
     {
       "id": "terrace-lower",
-      "x": 41.0,
+      "x": 33,
       "z": 50.0,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 52,
       "h": 1
     },
     {
       "id": "terrace-middle-step-0",
-      "x": 41.0,
+      "x": 33,
       "z": 76.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 1.25
     },
     {
       "id": "terrace-middle-step-1",
-      "x": 41.0,
+      "x": 33,
       "z": 77.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 1.5
     },
     {
       "id": "terrace-middle-step-2",
-      "x": 41.0,
+      "x": 33,
       "z": 78.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 1.75
     },
     {
       "id": "terrace-middle-step-3",
-      "x": 41.0,
+      "x": 33,
       "z": 79.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 2.0
     },
     {
       "id": "terrace-middle",
-      "x": 41.0,
+      "x": 33,
       "z": 104.0,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 48,
       "h": 2
     },
     {
       "id": "terrace-upper-step-0",
-      "x": 41.0,
+      "x": 33,
       "z": 128.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 2.25
     },
     {
       "id": "terrace-upper-step-1",
-      "x": 41.0,
+      "x": 33,
       "z": 129.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 2.5
     },
     {
       "id": "terrace-upper-step-2",
-      "x": 41.0,
+      "x": 33,
       "z": 130.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 2.75
     },
     {
       "id": "terrace-upper-step-3",
-      "x": 41.0,
+      "x": 33,
       "z": 131.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 3.0
     },
     {
       "id": "terrace-upper-step-4",
-      "x": 41.0,
+      "x": 33,
       "z": 132.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 3.25
     },
     {
       "id": "terrace-upper",
-      "x": 41.0,
+      "x": 33,
       "z": 153.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 41,
       "h": 3.25
     },
     {
       "id": "terrace-north-step-0",
-      "x": 41.0,
+      "x": 33,
       "z": 174.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 3.0
     },
     {
       "id": "terrace-north-step-1",
-      "x": 41.0,
+      "x": 33,
       "z": 175.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 2.75
     },
     {
       "id": "terrace-north-step-2",
-      "x": 41.0,
+      "x": 33,
       "z": 176.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 2.5
     },
     {
       "id": "terrace-north-step-3",
-      "x": 41.0,
+      "x": 33,
       "z": 177.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 2.25
     },
     {
       "id": "terrace-north-step-4",
-      "x": 41.0,
+      "x": 33,
       "z": 178.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 2.0
     },
     {
       "id": "terrace-north-step-5",
-      "x": 41.0,
+      "x": 33,
       "z": 179.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 1.75
     },
     {
       "id": "terrace-north-step-6",
-      "x": 41.0,
+      "x": 33,
       "z": 180.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 1.5
     },
     {
       "id": "terrace-north-step-7",
-      "x": 41.0,
+      "x": 33,
       "z": 181.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 1.25
     },
     {
       "id": "terrace-north-step-8",
-      "x": 41.0,
+      "x": 33,
       "z": 182.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 1.0
     },
     {
       "id": "terrace-north-step-9",
-      "x": 41.0,
+      "x": 33,
       "z": 183.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 0.75
     },
     {
       "id": "terrace-north-step-10",
-      "x": 41.0,
+      "x": 33,
       "z": 184.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 0.5
     },
     {
       "id": "terrace-north-step-11",
-      "x": 41.0,
+      "x": 33,
       "z": 185.5,
       "y": 0,
-      "w": 32,
+      "w": 16,
       "d": 1,
       "h": 0.25
     },
     {
-      "id": "road-bank-west-south-0",
-      "x": -20.0,
-      "z": 24.5,
+      "id": "valley-south-bound",
+      "x": 0.0,
+      "z": -15.0,
       "y": 0,
-      "w": 12,
-      "d": 1,
+      "w": 128,
+      "d": 2,
+      "h": 8
+    },
+    {
+      "id": "valley-north-bound",
+      "x": 0.0,
+      "z": 201,
+      "y": 0,
+      "w": 128,
+      "d": 2,
+      "h": 8
+    },
+    {
+      "id": "valley-west-bound",
+      "x": -63.0,
+      "z": 92.0,
+      "y": 0,
+      "w": 2,
+      "d": 212,
+      "h": 8
+    },
+    {
+      "id": "valley-east-bound",
+      "x": 63.0,
+      "z": 92.0,
+      "y": 0,
+      "w": 2,
+      "d": 212,
+      "h": 8
+    },
+    {
+      "id": "flank-outer-0",
+      "x": -52.5,
+      "z": 27.0,
+      "y": 0,
+      "w": 19.0,
+      "d": 22,
+      "h": 6
+    },
+    {
+      "id": "flank-inner-0",
+      "x": -23.5,
+      "z": 27.0,
+      "y": 0,
+      "w": 27.0,
+      "d": 22,
+      "h": 6
+    },
+    {
+      "id": "flank-outer-1",
+      "x": -53.5,
+      "z": 43.0,
+      "y": 0,
+      "w": 17.0,
+      "d": 10,
+      "h": 6
+    },
+    {
+      "id": "flank-inner-1",
+      "x": -24.5,
+      "z": 43.0,
+      "y": 0,
+      "w": 29.0,
+      "d": 10,
+      "h": 6
+    },
+    {
+      "id": "flank-outer-2",
+      "x": -53.5,
+      "z": 53.0,
+      "y": 0,
+      "w": 17.0,
+      "d": 10,
+      "h": 6
+    },
+    {
+      "id": "flank-inner-2",
+      "x": -23.5,
+      "z": 53.0,
+      "y": 0,
+      "w": 27.0,
+      "d": 10,
+      "h": 6
+    },
+    {
+      "id": "flank-outer-3",
+      "x": -52.5,
+      "z": 68.0,
+      "y": 0,
+      "w": 19.0,
+      "d": 20,
+      "h": 6
+    },
+    {
+      "id": "flank-inner-3",
+      "x": -23.5,
+      "z": 68.0,
+      "y": 0,
+      "w": 27.0,
+      "d": 20,
+      "h": 6
+    },
+    {
+      "id": "flank-outer-4",
+      "x": -53.5,
+      "z": 88.0,
+      "y": 0,
+      "w": 17.0,
+      "d": 20,
+      "h": 6
+    },
+    {
+      "id": "flank-inner-4",
+      "x": -24.5,
+      "z": 88.0,
+      "y": 0,
+      "w": 29.0,
+      "d": 20,
+      "h": 6
+    },
+    {
+      "id": "flank-outer-5",
+      "x": -53.0,
+      "z": 107,
+      "y": 0,
+      "w": 18,
+      "d": 18,
+      "h": 6
+    },
+    {
+      "id": "flank-inner-5",
+      "x": -23.0,
+      "z": 107,
+      "y": 0,
+      "w": 26,
+      "d": 18,
+      "h": 6
+    },
+    {
+      "id": "flank-outer-6",
+      "x": -52.5,
+      "z": 123,
+      "y": 0,
+      "w": 19.0,
+      "d": 14,
+      "h": 6
+    },
+    {
+      "id": "flank-inner-6",
+      "x": -23.5,
+      "z": 123,
+      "y": 0,
+      "w": 27.0,
+      "d": 14,
+      "h": 6
+    },
+    {
+      "id": "flank-outer-7",
+      "x": -53.5,
+      "z": 140.0,
+      "y": 0,
+      "w": 17.0,
+      "d": 20,
+      "h": 6
+    },
+    {
+      "id": "flank-inner-7",
+      "x": -24.5,
+      "z": 140.0,
+      "y": 0,
+      "w": 29.0,
+      "d": 20,
+      "h": 6
+    },
+    {
+      "id": "flank-outer-8",
+      "x": -53.5,
+      "z": 156.0,
+      "y": 0,
+      "w": 17.0,
+      "d": 12,
+      "h": 6
+    },
+    {
+      "id": "flank-inner-8",
+      "x": -23.5,
+      "z": 156.0,
+      "y": 0,
+      "w": 27.0,
+      "d": 12,
+      "h": 6
+    },
+    {
+      "id": "flank-outer-9",
+      "x": -52.5,
+      "z": 165.9,
+      "y": 0,
+      "w": 19.0,
+      "d": 7.800000000000011,
+      "h": 6
+    },
+    {
+      "id": "flank-inner-9",
+      "x": -23.5,
+      "z": 165.9,
+      "y": 0,
+      "w": 27.0,
+      "d": 7.800000000000011,
+      "h": 6
+    },
+    {
+      "id": "bank-south",
+      "x": 18.0,
+      "z": 29.0,
+      "y": 0,
+      "w": 14.0,
+      "d": 26,
+      "h": 6
+    },
+    {
+      "id": "C12-S-step-0",
+      "x": 12.75,
+      "z": 44.0,
+      "y": 0,
+      "w": 3.5,
+      "d": 4,
       "h": 0.25
     },
     {
-      "id": "road-bank-west-south-1",
-      "x": -20.0,
-      "z": 25.5,
+      "id": "C12-S-step-1",
+      "x": 16.25,
+      "z": 44.0,
       "y": 0,
-      "w": 12,
-      "d": 1,
+      "w": 3.5,
+      "d": 4,
       "h": 0.5
     },
     {
-      "id": "road-bank-west-south-2",
-      "x": -20.0,
-      "z": 26.5,
+      "id": "C12-S-step-2",
+      "x": 19.75,
+      "z": 44.0,
       "y": 0,
-      "w": 12,
-      "d": 1,
+      "w": 3.5,
+      "d": 4,
       "h": 0.75
     },
     {
-      "id": "road-bank-west-south-3",
-      "x": -20.0,
-      "z": 27.5,
+      "id": "C12-S-step-3",
+      "x": 23.25,
+      "z": 44.0,
       "y": 0,
-      "w": 12,
-      "d": 1,
+      "w": 3.5,
+      "d": 4,
       "h": 1.0
     },
     {
-      "id": "road-bank-west",
-      "x": -20.0,
-      "z": 90.0,
+      "id": "bank-lower-a",
+      "x": 18.0,
+      "z": 52.0,
       "y": 0,
-      "w": 12,
-      "d": 124,
-      "h": 1
+      "w": 14.0,
+      "d": 12,
+      "h": 6
     },
     {
-      "id": "road-bank-west-north-0",
-      "x": -20.0,
-      "z": 152.5,
+      "id": "O1-platform",
+      "x": 18.14,
+      "z": 61.0,
       "y": 0,
-      "w": 12,
-      "d": 1,
-      "h": 0.75
-    },
-    {
-      "id": "road-bank-west-north-1",
-      "x": -20.0,
-      "z": 153.5,
-      "y": 0,
-      "w": 12,
-      "d": 1,
-      "h": 0.5
-    },
-    {
-      "id": "road-bank-west-north-2",
-      "x": -20.0,
-      "z": 154.5,
-      "y": 0,
-      "w": 12,
-      "d": 1,
-      "h": 0.25
-    },
-    {
-      "id": "road-bank-east-south-0",
-      "x": 19.0,
-      "z": 24.5,
-      "y": 0,
-      "w": 10,
-      "d": 1,
-      "h": 0.25
-    },
-    {
-      "id": "road-bank-east-south-1",
-      "x": 19.0,
-      "z": 25.5,
-      "y": 0,
-      "w": 10,
-      "d": 1,
-      "h": 0.5
-    },
-    {
-      "id": "road-bank-east-south-2",
-      "x": 19.0,
-      "z": 26.5,
-      "y": 0,
-      "w": 10,
-      "d": 1,
-      "h": 0.75
-    },
-    {
-      "id": "road-bank-east-south-3",
-      "x": 19.0,
-      "z": 27.5,
-      "y": 0,
-      "w": 10,
-      "d": 1,
-      "h": 1.0
-    },
-    {
-      "id": "road-bank-east",
-      "x": 19.0,
-      "z": 90.0,
-      "y": 0,
-      "w": 10,
-      "d": 124,
-      "h": 1
-    },
-    {
-      "id": "road-bank-east-north-0",
-      "x": 19.0,
-      "z": 152.5,
-      "y": 0,
-      "w": 10,
-      "d": 1,
-      "h": 0.75
-    },
-    {
-      "id": "road-bank-east-north-1",
-      "x": 19.0,
-      "z": 153.5,
-      "y": 0,
-      "w": 10,
-      "d": 1,
-      "h": 0.5
-    },
-    {
-      "id": "road-bank-east-north-2",
-      "x": 19.0,
-      "z": 154.5,
-      "y": 0,
-      "w": 10,
-      "d": 1,
-      "h": 0.25
-    },
-    {
-      "id": "river-sill-south-up-0",
-      "x": -41.5,
-      "z": 26.5,
-      "y": 0,
-      "w": 27,
-      "d": 1,
-      "h": 0.25
-    },
-    {
-      "id": "river-sill-south-up-1",
-      "x": -41.5,
-      "z": 27.5,
-      "y": 0,
-      "w": 27,
-      "d": 1,
-      "h": 0.5
-    },
-    {
-      "id": "river-sill-south-up-2",
-      "x": -41.5,
-      "z": 28.5,
-      "y": 0,
-      "w": 27,
-      "d": 1,
-      "h": 0.75
-    },
-    {
-      "id": "river-sill-south",
-      "x": -41.5,
-      "z": 32.0,
-      "y": 0,
-      "w": 27,
+      "w": 13.72,
       "d": 6,
-      "h": 0.75
+      "h": 1
     },
     {
-      "id": "river-sill-south-down-0",
-      "x": -41.5,
-      "z": 35.5,
+      "id": "O1-parapet",
+      "x": 11.14,
+      "z": 61.0,
       "y": 0,
-      "w": 27,
-      "d": 1,
-      "h": 0.5
+      "w": 0.28000000000000114,
+      "d": 6,
+      "h": 2.35
     },
     {
-      "id": "river-sill-south-down-1",
-      "x": -41.5,
-      "z": 36.5,
+      "id": "bank-lower-b",
+      "x": 18.0,
+      "z": 83.0,
       "y": 0,
-      "w": 27,
-      "d": 1,
+      "w": 14.0,
+      "d": 38,
+      "h": 6
+    },
+    {
+      "id": "C12-M-step-0",
+      "x": 11.875,
+      "z": 104.0,
+      "y": 0,
+      "w": 1.75,
+      "d": 4,
       "h": 0.25
     },
     {
-      "id": "river-sill-north-up-0",
-      "x": -41.5,
-      "z": 152.5,
+      "id": "C12-M-step-1",
+      "x": 13.625,
+      "z": 104.0,
       "y": 0,
-      "w": 27,
-      "d": 1,
-      "h": 0.25
-    },
-    {
-      "id": "river-sill-north-up-1",
-      "x": -41.5,
-      "z": 153.5,
-      "y": 0,
-      "w": 27,
-      "d": 1,
+      "w": 1.75,
+      "d": 4,
       "h": 0.5
     },
     {
-      "id": "river-sill-north-up-2",
-      "x": -41.5,
-      "z": 154.5,
+      "id": "C12-M-step-2",
+      "x": 15.375,
+      "z": 104.0,
       "y": 0,
-      "w": 27,
-      "d": 1,
+      "w": 1.75,
+      "d": 4,
       "h": 0.75
     },
     {
-      "id": "river-sill-north",
-      "x": -41.5,
+      "id": "C12-M-step-3",
+      "x": 17.125,
+      "z": 104.0,
+      "y": 0,
+      "w": 1.75,
+      "d": 4,
+      "h": 1.0
+    },
+    {
+      "id": "C12-M-step-4",
+      "x": 18.875,
+      "z": 104.0,
+      "y": 0,
+      "w": 1.75,
+      "d": 4,
+      "h": 1.25
+    },
+    {
+      "id": "C12-M-step-5",
+      "x": 20.625,
+      "z": 104.0,
+      "y": 0,
+      "w": 1.75,
+      "d": 4,
+      "h": 1.5
+    },
+    {
+      "id": "C12-M-step-6",
+      "x": 22.375,
+      "z": 104.0,
+      "y": 0,
+      "w": 1.75,
+      "d": 4,
+      "h": 1.75
+    },
+    {
+      "id": "C12-M-step-7",
+      "x": 24.125,
+      "z": 104.0,
+      "y": 0,
+      "w": 1.75,
+      "d": 4,
+      "h": 2.0
+    },
+    {
+      "id": "bank-middle-a",
+      "x": 18.0,
+      "z": 108.0,
+      "y": 0,
+      "w": 14.0,
+      "d": 4,
+      "h": 6
+    },
+    {
+      "id": "O2-platform",
+      "x": 18.14,
+      "z": 113.0,
+      "y": 0,
+      "w": 13.72,
+      "d": 6,
+      "h": 2
+    },
+    {
+      "id": "O2-parapet",
+      "x": 11.14,
+      "z": 113.0,
+      "y": 0,
+      "w": 0.28000000000000114,
+      "d": 6,
+      "h": 3.35
+    },
+    {
+      "id": "bank-middle-b",
+      "x": 18.0,
+      "z": 134.0,
+      "y": 0,
+      "w": 14.0,
+      "d": 36,
+      "h": 6
+    },
+    {
+      "id": "C12-N-step-0",
+      "x": 11.538461538461538,
+      "z": 154.0,
+      "y": 0,
+      "w": 1.0769230769230766,
+      "d": 4,
+      "h": 0.25
+    },
+    {
+      "id": "C12-N-step-1",
+      "x": 12.615384615384615,
+      "z": 154.0,
+      "y": 0,
+      "w": 1.0769230769230766,
+      "d": 4,
+      "h": 0.5
+    },
+    {
+      "id": "C12-N-step-2",
+      "x": 13.692307692307692,
+      "z": 154.0,
+      "y": 0,
+      "w": 1.0769230769230766,
+      "d": 4,
+      "h": 0.75
+    },
+    {
+      "id": "C12-N-step-3",
+      "x": 14.76923076923077,
+      "z": 154.0,
+      "y": 0,
+      "w": 1.0769230769230749,
+      "d": 4,
+      "h": 1.0
+    },
+    {
+      "id": "C12-N-step-4",
+      "x": 15.846153846153845,
+      "z": 154.0,
+      "y": 0,
+      "w": 1.0769230769230766,
+      "d": 4,
+      "h": 1.25
+    },
+    {
+      "id": "C12-N-step-5",
+      "x": 16.923076923076927,
+      "z": 154.0,
+      "y": 0,
+      "w": 1.0769230769230766,
+      "d": 4,
+      "h": 1.5
+    },
+    {
+      "id": "C12-N-step-6",
+      "x": 18.0,
+      "z": 154.0,
+      "y": 0,
+      "w": 1.076923076923073,
+      "d": 4,
+      "h": 1.75
+    },
+    {
+      "id": "C12-N-step-7",
+      "x": 19.076923076923073,
+      "z": 154.0,
+      "y": 0,
+      "w": 1.0769230769230766,
+      "d": 4,
+      "h": 2.0
+    },
+    {
+      "id": "C12-N-step-8",
+      "x": 20.153846153846153,
+      "z": 154.0,
+      "y": 0,
+      "w": 1.0769230769230766,
+      "d": 4,
+      "h": 2.25
+    },
+    {
+      "id": "C12-N-step-9",
+      "x": 21.230769230769226,
+      "z": 154.0,
+      "y": 0,
+      "w": 1.0769230769230766,
+      "d": 4,
+      "h": 2.5
+    },
+    {
+      "id": "C12-N-step-10",
+      "x": 22.307692307692307,
+      "z": 154.0,
+      "y": 0,
+      "w": 1.0769230769230802,
+      "d": 4,
+      "h": 2.75
+    },
+    {
+      "id": "C12-N-step-11",
+      "x": 23.384615384615387,
+      "z": 154.0,
+      "y": 0,
+      "w": 1.0769230769230802,
+      "d": 4,
+      "h": 3.0
+    },
+    {
+      "id": "C12-N-step-12",
+      "x": 24.461538461538463,
+      "z": 154.0,
+      "y": 0,
+      "w": 1.076923076923073,
+      "d": 4,
+      "h": 3.25
+    },
+    {
+      "id": "bank-upper",
+      "x": 18.0,
       "z": 158.0,
       "y": 0,
-      "w": 27,
-      "d": 6,
-      "h": 0.75
+      "w": 14.0,
+      "d": 4,
+      "h": 6
     },
     {
-      "id": "river-sill-north-down-0",
-      "x": -41.5,
-      "z": 161.5,
+      "id": "O3-platform",
+      "x": 18.14,
+      "z": 164.9,
       "y": 0,
-      "w": 27,
+      "w": 13.72,
+      "d": 9.800000000000011,
+      "h": 3.25
+    },
+    {
+      "id": "O3-parapet",
+      "x": 11.14,
+      "z": 165.0,
+      "y": 0,
+      "w": 0.28000000000000114,
+      "d": 10,
+      "h": 4.6
+    },
+    {
+      "id": "terrace-outer-bank",
+      "x": 51.5,
+      "z": 93.0,
+      "y": 0,
+      "w": 21,
+      "d": 154,
+      "h": 8
+    },
+    {
+      "id": "river-sill-south-0",
+      "x": -40,
+      "z": 26.5,
+      "y": 0,
+      "w": 6,
+      "d": 1,
+      "h": 0.25
+    },
+    {
+      "id": "river-sill-south-1",
+      "x": -40,
+      "z": 27.5,
+      "y": 0,
+      "w": 6,
       "d": 1,
       "h": 0.5
     },
     {
-      "id": "river-sill-north-down-1",
-      "x": -41.5,
-      "z": 162.5,
+      "id": "river-sill-south-2",
+      "x": -40,
+      "z": 28.5,
       "y": 0,
-      "w": 27,
+      "w": 6,
+      "d": 1,
+      "h": 0.75
+    },
+    {
+      "id": "river-sill-south-3",
+      "x": -40,
+      "z": 32.0,
+      "y": 0,
+      "w": 6,
+      "d": 6,
+      "h": 0.75
+    },
+    {
+      "id": "river-sill-south-4",
+      "x": -40,
+      "z": 35.5,
+      "y": 0,
+      "w": 6,
+      "d": 1,
+      "h": 0.5
+    },
+    {
+      "id": "river-sill-south-5",
+      "x": -40,
+      "z": 36.5,
+      "y": 0,
+      "w": 6,
       "d": 1,
       "h": 0.25
+    },
+    {
+      "id": "river-sill-north-0",
+      "x": -41,
+      "z": 152.5,
+      "y": 0,
+      "w": 6,
+      "d": 1,
+      "h": 0.25
+    },
+    {
+      "id": "river-sill-north-1",
+      "x": -41,
+      "z": 153.5,
+      "y": 0,
+      "w": 6,
+      "d": 1,
+      "h": 0.5
+    },
+    {
+      "id": "river-sill-north-2",
+      "x": -41,
+      "z": 154.5,
+      "y": 0,
+      "w": 6,
+      "d": 1,
+      "h": 0.75
+    },
+    {
+      "id": "river-sill-north-3",
+      "x": -41,
+      "z": 158.0,
+      "y": 0,
+      "w": 6,
+      "d": 6,
+      "h": 0.75
+    },
+    {
+      "id": "river-sill-north-4",
+      "x": -41,
+      "z": 161.5,
+      "y": 0,
+      "w": 6,
+      "d": 1,
+      "h": 0.5
+    },
+    {
+      "id": "river-sill-north-5",
+      "x": -40,
+      "z": 162.5,
+      "y": 0,
+      "w": 6,
+      "d": 1,
+      "h": 0.25
+    },
+    {
+      "id": "O1-firing-slot-lintel",
+      "x": 11.14,
+      "z": 61.0,
+      "y": 2.75,
+      "w": 0.28,
+      "d": 6,
+      "h": 3.25
+    },
+    {
+      "id": "O2-firing-slot-lintel",
+      "x": 11.14,
+      "z": 113.0,
+      "y": 3.75,
+      "w": 0.28,
+      "d": 6,
+      "h": 2.25
+    },
+    {
+      "id": "O3-firing-slot-lintel",
+      "x": 11.14,
+      "z": 165.0,
+      "y": 5.0,
+      "w": 0.28,
+      "d": 10,
+      "h": 1.0
     }
   ],
   "pieces": [
-    {
-      "id": "west-edge-0",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": -8,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-4",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": -4,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-8",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 0,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-12",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 4,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-16",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 8,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-20",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 12,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-24",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 16,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-28",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 20,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-32",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 24,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-36",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 28,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-40",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 32,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-44",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 36,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-48",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 40,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-52",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 44,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-56",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 48,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-60",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 52,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-64",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 56,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-68",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 60,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-72",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 64,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-76",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 68,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-80",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 72,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-84",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 76,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-88",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 80,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-92",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 84,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-96",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 88,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-100",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 92,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-104",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 96,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-108",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 100,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-112",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 104,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-116",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 108,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-120",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 112,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-124",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 116,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-128",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 120,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-132",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 124,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-136",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 128,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-140",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 132,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-144",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 136,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-148",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 140,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-152",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 144,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-156",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 148,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-160",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 152,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-164",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 156,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-168",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 160,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-172",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 164,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-176",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 168,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-180",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 172,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-184",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 176,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-188",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 180,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-192",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 184,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-196",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 188,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-200",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 192,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "west-edge-204",
-      "piece": "wall-plaster-4m",
-      "x": -60,
-      "z": 196,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-0",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": -8,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-4",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": -4,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-8",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 0,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-12",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 4,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-16",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 8,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-20",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 12,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-24",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 16,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-28",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 20,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-32",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 24,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-36",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 28,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-40",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 32,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-44",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 36,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-48",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 40,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-52",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 44,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-56",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 48,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-60",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 52,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-64",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 56,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-68",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 60,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-72",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 64,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-76",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 68,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-80",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 72,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-84",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 76,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-88",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 80,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-92",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 84,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-96",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 88,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-100",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 92,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-104",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 96,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-108",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 100,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-112",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 104,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-116",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 108,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-120",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 112,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-124",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 116,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-128",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 120,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-132",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 124,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-136",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 128,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-140",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 132,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-144",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 136,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-148",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 140,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-152",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 144,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-156",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 148,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-160",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 152,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-164",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 156,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-168",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 160,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-172",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 164,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-176",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 168,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-180",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 172,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-184",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 176,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-188",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 180,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-192",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 184,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-196",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 188,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-200",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 192,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "east-edge-204",
-      "piece": "wall-plaster-4m",
-      "x": 60,
-      "z": 196,
-      "y": 0,
-      "rot": 90
-    },
-    {
-      "id": "north-edge-0",
-      "piece": "wall-plaster-4m",
-      "x": -58,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-0",
-      "piece": "wall-plaster-4m",
-      "x": -58,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-4",
-      "piece": "wall-plaster-4m",
-      "x": -54,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-4",
-      "piece": "wall-plaster-4m",
-      "x": -54,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-8",
-      "piece": "wall-plaster-4m",
-      "x": -50,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-8",
-      "piece": "wall-plaster-4m",
-      "x": -50,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-12",
-      "piece": "wall-plaster-4m",
-      "x": -46,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-12",
-      "piece": "wall-plaster-4m",
-      "x": -46,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-16",
-      "piece": "wall-plaster-4m",
-      "x": -42,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-16",
-      "piece": "wall-plaster-4m",
-      "x": -42,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-20",
-      "piece": "wall-plaster-4m",
-      "x": -38,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-20",
-      "piece": "wall-plaster-4m",
-      "x": -38,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-24",
-      "piece": "wall-plaster-4m",
-      "x": -34,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-24",
-      "piece": "wall-plaster-4m",
-      "x": -34,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-28",
-      "piece": "wall-plaster-4m",
-      "x": -30,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-28",
-      "piece": "wall-plaster-4m",
-      "x": -30,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-32",
-      "piece": "wall-plaster-4m",
-      "x": -26,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-32",
-      "piece": "wall-plaster-4m",
-      "x": -26,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-36",
-      "piece": "wall-plaster-4m",
-      "x": -22,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-36",
-      "piece": "wall-plaster-4m",
-      "x": -22,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-40",
-      "piece": "wall-plaster-4m",
-      "x": -18,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-40",
-      "piece": "wall-plaster-4m",
-      "x": -18,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-44",
-      "piece": "wall-plaster-4m",
-      "x": -14,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-44",
-      "piece": "wall-plaster-4m",
-      "x": -14,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-48",
-      "piece": "wall-plaster-4m",
-      "x": -10,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-48",
-      "piece": "wall-plaster-4m",
-      "x": -10,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-52",
-      "piece": "wall-plaster-4m",
-      "x": -6,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-52",
-      "piece": "wall-plaster-4m",
-      "x": -6,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-56",
-      "piece": "wall-plaster-4m",
-      "x": -2,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-56",
-      "piece": "wall-plaster-4m",
-      "x": -2,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-60",
-      "piece": "wall-plaster-4m",
-      "x": 2,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-60",
-      "piece": "wall-plaster-4m",
-      "x": 2,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-64",
-      "piece": "wall-plaster-4m",
-      "x": 6,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-68",
-      "piece": "wall-plaster-4m",
-      "x": 10,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-72",
-      "piece": "wall-plaster-4m",
-      "x": 14,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-72",
-      "piece": "wall-plaster-4m",
-      "x": 14,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-76",
-      "piece": "wall-plaster-4m",
-      "x": 18,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-76",
-      "piece": "wall-plaster-4m",
-      "x": 18,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-80",
-      "piece": "wall-plaster-4m",
-      "x": 22,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-80",
-      "piece": "wall-plaster-4m",
-      "x": 22,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-84",
-      "piece": "wall-plaster-4m",
-      "x": 26,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-84",
-      "piece": "wall-plaster-4m",
-      "x": 26,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-88",
-      "piece": "wall-plaster-4m",
-      "x": 30,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-88",
-      "piece": "wall-plaster-4m",
-      "x": 30,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-92",
-      "piece": "wall-plaster-4m",
-      "x": 34,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-92",
-      "piece": "wall-plaster-4m",
-      "x": 34,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-96",
-      "piece": "wall-plaster-4m",
-      "x": 38,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-96",
-      "piece": "wall-plaster-4m",
-      "x": 38,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-100",
-      "piece": "wall-plaster-4m",
-      "x": 42,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-100",
-      "piece": "wall-plaster-4m",
-      "x": 42,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-104",
-      "piece": "wall-plaster-4m",
-      "x": 46,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-104",
-      "piece": "wall-plaster-4m",
-      "x": 46,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-108",
-      "piece": "wall-plaster-4m",
-      "x": 50,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-108",
-      "piece": "wall-plaster-4m",
-      "x": 50,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-112",
-      "piece": "wall-plaster-4m",
-      "x": 54,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-112",
-      "piece": "wall-plaster-4m",
-      "x": 54,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "north-edge-116",
-      "piece": "wall-plaster-4m",
-      "x": 58,
-      "z": 198.2,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "south-edge-116",
-      "piece": "wall-plaster-4m",
-      "x": 58,
-      "z": -12,
-      "y": 0,
-      "rot": 0
-    },
     {
       "id": "spawn-screen-0",
       "piece": "wall-plaster-4m",
@@ -1855,614 +1000,6 @@
       "x": 10,
       "z": 4,
       "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-boulder-0",
-      "piece": "rubble-large",
-      "x": -42,
-      "z": 20,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-0-0",
-      "piece": "wall-low-4m",
-      "x": -46,
-      "z": 24,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-0-4",
-      "piece": "wall-low-4m",
-      "x": -42,
-      "z": 24,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-0-8",
-      "piece": "wall-low-4m",
-      "x": -38,
-      "z": 24,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-boulder-1",
-      "piece": "rubble-large",
-      "x": -30,
-      "z": 34,
-      "y": 0.75,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-1-0",
-      "piece": "wall-low-4m",
-      "x": -34,
-      "z": 38,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-1-4",
-      "piece": "wall-low-4m",
-      "x": -30,
-      "z": 38,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-1-8",
-      "piece": "wall-low-4m",
-      "x": -26,
-      "z": 38,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "river-boulder-2",
-      "piece": "rubble-large",
-      "x": -42,
-      "z": 48,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-2-0",
-      "piece": "wall-low-4m",
-      "x": -46,
-      "z": 52,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-2-4",
-      "piece": "wall-low-4m",
-      "x": -42,
-      "z": 52,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-2-8",
-      "piece": "wall-low-4m",
-      "x": -38,
-      "z": 52,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-boulder-3",
-      "piece": "rubble-large",
-      "x": -30,
-      "z": 62,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-3-0",
-      "piece": "wall-low-4m",
-      "x": -34,
-      "z": 66,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-3-4",
-      "piece": "wall-low-4m",
-      "x": -30,
-      "z": 66,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-3-8",
-      "piece": "wall-low-4m",
-      "x": -26,
-      "z": 66,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "river-boulder-4",
-      "piece": "rubble-large",
-      "x": -42,
-      "z": 76,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-4-0",
-      "piece": "wall-low-4m",
-      "x": -46,
-      "z": 80,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-4-4",
-      "piece": "wall-low-4m",
-      "x": -42,
-      "z": 80,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-4-8",
-      "piece": "wall-low-4m",
-      "x": -38,
-      "z": 80,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-boulder-5",
-      "piece": "rubble-large",
-      "x": -30,
-      "z": 90,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-5-0",
-      "piece": "wall-low-4m",
-      "x": -34,
-      "z": 94,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-5-4",
-      "piece": "wall-low-4m",
-      "x": -30,
-      "z": 94,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-5-8",
-      "piece": "wall-low-4m",
-      "x": -26,
-      "z": 94,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "river-boulder-6",
-      "piece": "rubble-large",
-      "x": -42,
-      "z": 104,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-6-0",
-      "piece": "wall-low-4m",
-      "x": -46,
-      "z": 108,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-6-4",
-      "piece": "wall-low-4m",
-      "x": -42,
-      "z": 108,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-6-8",
-      "piece": "wall-low-4m",
-      "x": -38,
-      "z": 108,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-boulder-7",
-      "piece": "rubble-large",
-      "x": -30,
-      "z": 118,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-7-0",
-      "piece": "wall-low-4m",
-      "x": -34,
-      "z": 122,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-7-4",
-      "piece": "wall-low-4m",
-      "x": -30,
-      "z": 122,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-7-8",
-      "piece": "wall-low-4m",
-      "x": -26,
-      "z": 122,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "river-boulder-8",
-      "piece": "rubble-large",
-      "x": -42,
-      "z": 132,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-8-0",
-      "piece": "wall-low-4m",
-      "x": -46,
-      "z": 136,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-8-4",
-      "piece": "wall-low-4m",
-      "x": -42,
-      "z": 136,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-8-8",
-      "piece": "wall-low-4m",
-      "x": -38,
-      "z": 136,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-boulder-9",
-      "piece": "rubble-large",
-      "x": -30,
-      "z": 146,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-9-0",
-      "piece": "wall-low-4m",
-      "x": -34,
-      "z": 150,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-9-4",
-      "piece": "wall-low-4m",
-      "x": -30,
-      "z": 150,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-9-8",
-      "piece": "wall-low-4m",
-      "x": -26,
-      "z": 150,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "river-boulder-10",
-      "piece": "rubble-large",
-      "x": -42,
-      "z": 160,
-      "y": 0.75,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-10-0",
-      "piece": "wall-low-4m",
-      "x": -46,
-      "z": 164,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-10-4",
-      "piece": "wall-low-4m",
-      "x": -42,
-      "z": 164,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "river-bank-10-8",
-      "piece": "wall-low-4m",
-      "x": -38,
-      "z": 164,
-      "y": 0,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-0-23",
-      "piece": "wall-low-4m",
-      "x": 23,
-      "z": 24,
-      "y": 0.25,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-0-27",
-      "piece": "wall-low-4m",
-      "x": 27,
-      "z": 24,
-      "y": 1.0,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-0-31",
-      "piece": "wall-low-4m",
-      "x": 31,
-      "z": 24,
-      "y": 1.0,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-0-35",
-      "piece": "wall-low-4m",
-      "x": 35,
-      "z": 24,
-      "y": 1.0,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-1-41",
-      "piece": "wall-low-4m",
-      "x": 41,
-      "z": 42,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-1-45",
-      "piece": "wall-low-4m",
-      "x": 45,
-      "z": 42,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-1-49",
-      "piece": "wall-low-4m",
-      "x": 49,
-      "z": 42,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-1-53",
-      "piece": "wall-low-4m",
-      "x": 53,
-      "z": 42,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-2-23",
-      "piece": "wall-low-4m",
-      "x": 23,
-      "z": 60,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-2-27",
-      "piece": "wall-low-4m",
-      "x": 27,
-      "z": 60,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-2-31",
-      "piece": "wall-low-4m",
-      "x": 31,
-      "z": 60,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-2-35",
-      "piece": "wall-low-4m",
-      "x": 35,
-      "z": 60,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-3-41",
-      "piece": "wall-low-4m",
-      "x": 41,
-      "z": 82,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-3-45",
-      "piece": "wall-low-4m",
-      "x": 45,
-      "z": 82,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-3-49",
-      "piece": "wall-low-4m",
-      "x": 49,
-      "z": 82,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-3-53",
-      "piece": "wall-low-4m",
-      "x": 53,
-      "z": 82,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-4-23",
-      "piece": "wall-low-4m",
-      "x": 23,
-      "z": 96,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-4-27",
-      "piece": "wall-low-4m",
-      "x": 27,
-      "z": 96,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-4-31",
-      "piece": "wall-low-4m",
-      "x": 31,
-      "z": 96,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-4-35",
-      "piece": "wall-low-4m",
-      "x": 35,
-      "z": 96,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-5-41",
-      "piece": "wall-low-4m",
-      "x": 41,
-      "z": 114,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-5-45",
-      "piece": "wall-low-4m",
-      "x": 45,
-      "z": 114,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-5-49",
-      "piece": "wall-low-4m",
-      "x": 49,
-      "z": 114,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-5-53",
-      "piece": "wall-low-4m",
-      "x": 53,
-      "z": 114,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-6-23",
-      "piece": "wall-low-4m",
-      "x": 23,
-      "z": 132,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-6-27",
-      "piece": "wall-low-4m",
-      "x": 27,
-      "z": 132,
-      "y": 3.25,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-6-31",
-      "piece": "wall-low-4m",
-      "x": 31,
-      "z": 132,
-      "y": 3.25,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-6-35",
-      "piece": "wall-low-4m",
-      "x": 35,
-      "z": 132,
-      "y": 3.25,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-7-41",
-      "piece": "wall-low-4m",
-      "x": 41,
-      "z": 150,
-      "y": 3.25,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-7-45",
-      "piece": "wall-low-4m",
-      "x": 45,
-      "z": 150,
-      "y": 3.25,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-7-49",
-      "piece": "wall-low-4m",
-      "x": 49,
-      "z": 150,
-      "y": 3.25,
-      "rot": 0
-    },
-    {
-      "id": "field-wall-7-53",
-      "piece": "wall-low-4m",
-      "x": 53,
-      "z": 150,
-      "y": 3.25,
       "rot": 0
     },
     {
@@ -2714,100 +1251,132 @@
       "rot": 0
     },
     {
-      "id": "bank-rock-0",
-      "piece": "qalat-bank-rock",
-      "x": -54,
+      "id": "flank-cover-0",
+      "piece": "sandbags-2m",
+      "x": -42.5,
+      "z": 22,
       "y": 0,
-      "z": 45,
-      "rot": 0
-    },
-    {
-      "id": "bank-rock-1",
-      "piece": "qalat-bank-rock",
-      "x": -30,
-      "y": 0,
-      "z": 58,
       "rot": 90
     },
     {
-      "id": "bank-rock-2",
-      "piece": "qalat-bank-rock",
-      "x": -54,
+      "id": "flank-cover-1",
+      "piece": "sandbags-2m",
+      "x": -42.5,
+      "z": 66,
       "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "flank-cover-2",
+      "piece": "sandbags-2m",
+      "x": -44.5,
       "z": 86,
-      "rot": 180
-    },
-    {
-      "id": "bank-rock-3",
-      "piece": "qalat-bank-rock",
-      "x": -30,
       "y": 0,
-      "z": 102,
-      "rot": 270
-    },
-    {
-      "id": "bank-rock-4",
-      "piece": "qalat-bank-rock",
-      "x": -54,
-      "y": 0,
-      "z": 139,
-      "rot": 0
-    },
-    {
-      "id": "bank-rock-5",
-      "piece": "qalat-bank-rock",
-      "x": -29,
-      "y": 0,
-      "z": 148,
       "rot": 90
     },
     {
-      "id": "bank-rock-6",
-      "piece": "qalat-bank-rock",
-      "x": 53,
-      "y": 1,
-      "z": 38,
-      "rot": 180
-    },
-    {
-      "id": "bank-rock-7",
-      "piece": "qalat-bank-rock",
-      "x": 53,
-      "y": 1,
-      "z": 61,
-      "rot": 270
-    },
-    {
-      "id": "bank-rock-8",
-      "piece": "qalat-bank-rock",
-      "x": 27,
-      "y": 2,
-      "z": 91,
-      "rot": 0
-    },
-    {
-      "id": "bank-rock-9",
-      "piece": "qalat-bank-rock",
-      "x": 54,
-      "y": 2,
-      "z": 104,
+      "id": "flank-cover-3",
+      "piece": "sandbags-2m",
+      "x": -42.5,
+      "z": 122,
+      "y": 0,
       "rot": 90
     },
     {
-      "id": "bank-rock-10",
-      "piece": "qalat-bank-rock",
-      "x": 53,
-      "y": 3.25,
-      "z": 145,
-      "rot": 180
+      "id": "flank-cover-4",
+      "piece": "sandbags-2m",
+      "x": -44.5,
+      "z": 142,
+      "y": 0,
+      "rot": 90
     },
     {
-      "id": "bank-rock-11",
-      "piece": "qalat-bank-rock",
-      "x": 29,
+      "id": "flank-cover-5",
+      "piece": "sandbags-2m",
+      "x": -42.5,
+      "z": 166,
+      "y": 0,
+      "rot": 90
+    },
+    {
+      "id": "road-shoulder-cover-0",
+      "piece": "sandbags-2m",
+      "x": -8,
+      "z": 34,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-shoulder-cover-1",
+      "piece": "sandbags-2m",
+      "x": -8,
+      "z": 74,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-shoulder-cover-2",
+      "piece": "sandbags-2m",
+      "x": -8,
+      "z": 114,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "road-shoulder-cover-3",
+      "piece": "sandbags-2m",
+      "x": -8,
+      "z": 144,
+      "y": 0,
+      "rot": 0
+    },
+    {
+      "id": "terrace-cover-0",
+      "piece": "sandbags-2m",
+      "x": 37,
+      "z": 32,
+      "y": 1,
+      "rot": 0
+    },
+    {
+      "id": "terrace-cover-1",
+      "piece": "sandbags-2m",
+      "x": 37,
+      "z": 68,
+      "y": 1,
+      "rot": 0
+    },
+    {
+      "id": "terrace-cover-2",
+      "piece": "sandbags-2m",
+      "x": 37,
+      "z": 94,
+      "y": 2,
+      "rot": 0
+    },
+    {
+      "id": "terrace-cover-3",
+      "piece": "sandbags-2m",
+      "x": 37,
+      "z": 120,
+      "y": 2,
+      "rot": 0
+    },
+    {
+      "id": "terrace-cover-4",
+      "piece": "sandbags-2m",
+      "x": 37,
+      "z": 142,
       "y": 3.25,
-      "z": 162,
-      "rot": 270
+      "rot": 0
+    },
+    {
+      "id": "terrace-cover-5",
+      "piece": "sandbags-2m",
+      "x": 37,
+      "z": 168,
+      "y": 3.25,
+      "rot": 0
     }
   ],
   "encounter": "qalat-road",
@@ -2839,7 +1408,7 @@
         "via": [
           {
             "x": -40,
-            "z": 16
+            "z": 14
           },
           {
             "x": -40,
@@ -2850,8 +1419,12 @@
             "z": 110
           },
           {
+            "x": -41,
+            "z": 158
+          },
+          {
             "x": -40,
-            "z": 160
+            "z": 174
           },
           {
             "x": -24,
@@ -2861,22 +1434,22 @@
       },
       {
         "id": "road",
-        "role": "overwatch",
+        "role": "assault",
         "via": [
           {
             "x": 16,
             "z": 10
           },
           {
-            "x": 19,
+            "x": 0,
             "z": 32
           },
           {
-            "x": 19,
+            "x": 0,
             "z": 110
           },
           {
-            "x": 19,
+            "x": 0,
             "z": 150
           },
           {
@@ -2887,26 +1460,26 @@
       },
       {
         "id": "terraces",
-        "role": "assault",
+        "role": "overwatch",
         "via": [
           {
-            "x": 40,
-            "z": 16
+            "x": 33,
+            "z": 14
           },
           {
-            "x": 40,
+            "x": 33,
             "z": 44
           },
           {
-            "x": 40,
+            "x": 33,
             "z": 96
           },
           {
-            "x": 36,
+            "x": 33,
             "z": 150
           },
           {
-            "x": 40,
+            "x": 33,
             "z": 188
           },
           {
@@ -2934,9 +1507,9 @@
       {
         "id": "river-patrol",
         "on": "riverbed",
-        "x": -40,
+        "x": -41,
         "z": 52,
-        "radius": 3
+        "radius": 2
       },
       {
         "id": "terrace-post",
