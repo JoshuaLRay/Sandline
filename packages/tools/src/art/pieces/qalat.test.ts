@@ -6,6 +6,7 @@ describe('U-096 Qalat authored surfaces and route-safe dressing', () => {
   it('skins only supporting terrain; every upward face remains within 1.3 cm of its plane', () => {
     const mesh = buildPiece(QALAT_GROUND);
     expect(mesh.collision).toEqual([]);
+    expect(mesh.indices.length / 3).toBeLessThanOrEqual(4000);
     for (let i = 0; i < mesh.indices.length; i += 3) {
       const indices = mesh.indices.slice(i, i + 3);
       if (mesh.normals[indices[0]! * 3 + 1]! < .9) continue;

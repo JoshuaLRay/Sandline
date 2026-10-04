@@ -98,6 +98,54 @@ describe('U-094/U-095 Qalat mission', () => {
       }, 30000);
     }
   }
+  for (const z of [44, 104, 154]) for (const reverse of [false, true]) {
+    it(`escorts the POW through C12 at ${z} ${reverse ? 'west' : 'east'}`, () => {
+      const p = play();
+      try {
+        p.step(5); p.place(-6, 177); p.step(160);
+        const points = [8, 28].map((x) => ({ x, y: supportUnder(x, z, 0, Infinity, world.boxes, 0), z }));
+        if (reverse) points.reverse();
+        p.pow().state = createMoveState(points[0]!.x, points[0]!.y, z);
+        p.session.orderFrom(0, { order: 'move', address: { to: 'all' }, point: points[1]!, target: null });
+        let arrived = false;
+        for (let tick = 0; tick < 900; tick++) {
+          p.step();
+          if (Math.hypot(p.pow().state.x - points[1]!.x, p.pow().state.z - z) <= 1.5) { arrived = true; break; }
+        }
+        expect(arrived).toBe(true);
+        expect(Math.abs(p.pow().state.y - points[1]!.y)).toBeLessThan(.5);
+      } finally { p.mesh.destroy(); }
+    }, 30000);
+  }
+  for (const spread of ['tight', 'standard', 'wide'] as const) for (const reverse of [false, true]) {
+    it(`passes all six soldiers and POW through the flank bottleneck ${reverse ? 'south' : 'north'} at ${spread} spread`, () => {
+      const p = play();
+      try {
+        p.step(5); p.place(-6, 177); p.step(160);
+        const start = reverse ? { x: -40, z: 120 } : { x: -40, z: 104 };
+        const goal = reverse ? { x: -40, y: 0, z: 104 } : { x: -40, y: 0, z: 120 };
+        const sign = reverse ? -1 : 1;
+        // Controlled initial formation; all movement after this is the live session.
+        for (const slot of p.session.slots) {
+          slot.state = createMoveState(start.x + (slot.index % 2 === 0 ? -.8 : .8), 0, start.z - sign * Math.floor(slot.index / 2) * 1.5);
+        }
+        p.pow().state = createMoveState(start.x, 0, start.z + sign * 2);
+        (p.session as unknown as { spreads: string[] }).spreads.fill(spread);
+        p.session.orderFrom(0, { order: 'move', address: { to: 'all' }, point: goal, target: null });
+        let arrived = false;
+        for (let tick = 0; tick < 1200; tick++) {
+          p.step();
+          const soldiersAcross = p.session.slots.every((slot) => reverse ? slot.state.z < 110 : slot.state.z > 114);
+          const powAcross = reverse ? p.pow().state.z < 110 : p.pow().state.z > 114;
+          const grouped = [...p.session.slots.map((slot) => slot.state), p.pow().state].every((state) => Math.hypot(state.x - goal.x, state.z - goal.z) <= 8);
+          if (soldiersAcross && powAcross && grouped) { arrived = true; break; }
+        }
+        expect(arrived, JSON.stringify({ soldiers: p.session.slots.map((slot) => slot.state), pow: p.pow().state })).toBe(true);
+        expect(p.session.slots.every((slot) => slot.health.diedAt === null)).toBe(true);
+        expect(p.pow().health.diedAt).toBeNull();
+      } finally { p.mesh.destroy(); }
+    }, 30000);
+  }
   it('validates its stages and rejects invalid captive rescue/checkpoint data', () => {
     expect(() => checkMission(mission, encounter, world)).not.toThrow();
     expect(mission.objectives.map((o) => o.stage)).toEqual([0, 1, 1, 2, 2]);
