@@ -375,3 +375,5 @@ Format: `T-<id> — <what changed>`
 - U-100 — Add authoritative Tight / Standard / Wide squad spread presets and synchronize them on possession; manual UI review pending.
 - U-101 — Add per-character Hold fire / Defensive / Aggressive settings with bounded pursuit; owner playtest pending.
 - U-102 — Direct mobile squad/order shortcuts, drag-to-command placement and a collision-aware spectator orbit with pinch zoom/recenter; touch emulation verified, owner phone feel review pending.
+
+- U-104 — Holding Tab frees the cursor with the scoreboard; release restores the previous capture during active gameplay, with cancellation on Escape/F11 or blur and guards for menus and mission outcomes.

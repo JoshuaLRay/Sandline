@@ -434,7 +434,10 @@ for (const spec of RANGE_TARGETS) {
 /* -- Player ---------------------------------------------------------------- */
 
 const config: MoveConfig = { ...DEFAULT_MOVE_CONFIG };
-const input = new LocalInput(renderer.domElement);
+const input = new LocalInput(renderer.domElement, {
+  canResumePointerLock: () => live !== null && !mobileMode && menu.mode === 'hidden'
+    && (live.net.mission?.state ?? 'progress') === 'progress',
+});
 
 /**
  * Camera constants live in a config object so the tuning panel can move them,
@@ -2084,7 +2087,6 @@ const playerHud = createHud(document.body);
 let missionWasOver = false;
 /** T-4.28: the six slots' numbers, the server's, shown while Tab is held and once the mission is over. */
 const scoreboard = createScoreboard(document.body);
-let tabHeld = false;
 /** When our last round landed on a soldier (the server's word), for the hit marker. */
 let lastHitAt: number | null = null;
 /** Where the rounds and blasts that hit us came from, for the damage direction. */
@@ -2924,7 +2926,7 @@ function frame(): void {
   // U-098: the end-of-mission buttons need a cursor; Esc would open the pause menu instead.
   if (missionJustEnded(missionWasOver, missionOver) && document.pointerLockElement) document.exitPointerLock();
   missionWasOver = missionOver;
-  scoreboard.setVisible(live !== null && (tabHeld || missionOver));
+  scoreboard.setVisible(live !== null && (input.tabHeld || missionOver));
   scoreboard.setOutcome(net?.mission ?? null, (full) => live?.net.restartMission(full));
   // U-090: the host's pick of what to play next; everyone else sees whose choice it is.
   scoreboard.setRunChoice(
@@ -3293,11 +3295,7 @@ addEventListener('keydown', (e) => {
       menu.showPause();
     }
   }
-  // Tab holds the scoreboard up (T-4.28); in a session it never moves focus.
-  if (e.code === 'Tab' && live) {
-    e.preventDefault();
-    tabHeld = true;
-  }
+  // LocalInput owns Tab's scoreboard hold and temporary pointer release.
   // R is reload, not reset: this is a shooter now and R is muscle memory.
   // Reset moved to T.
   // Nothing to reload with a grenade or a launcher in hand.
@@ -3370,8 +3368,4 @@ addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
-});
-
-addEventListener('keyup', (e) => {
-  if (e.code === 'Tab') tabHeld = false;
 });
