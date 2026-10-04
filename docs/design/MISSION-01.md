@@ -1,9 +1,14 @@
-# Mission 1 — brief (approved)
+# Mission 1 — The Qalat Road
 
-Status: **APPROVED by the owner as suggested (2026-10-02)**: every *(default)* below stands as written, and the six
-questions at the end are answered by those defaults. Changes from here are the owner's to ask for, and recorded here.
-([CAMPAIGN.md](CAMPAIGN.md) has the campaign decisions this builds on.) Nothing is built yet: the level, encounter, script,
-mission file and verification become separate cards. Working title: **"The Qalat Road"** *(default)*.
+Status: the original mission brief was **approved by the owner on 2026-10-02**.
+The level, encounters, script and mission are implemented (U-092–U-095), followed
+by elevation/art work (U-097/U-096); owner gameplay review remains pending.
+**Owner amendment, 2026-10-04:** replace freely interchangeable lanes with distinct
+assault, overlook/support and narrow isolated flank routes. The map rework below
+is documented but not yet implemented. Other approved mission decisions stand.
+[CAMPAIGN.md](CAMPAIGN.md) owns campaign decisions; the
+[map creation standard](MAP-MISSION-CREATION.md) governs this and future maps.
+Working title: **"The Qalat Road"**.
 
 ## 1. Premise
 
@@ -29,20 +34,27 @@ restored (U-075).
 
 ## 3. Map
 
-Footprint about 60,000 m² *(default; the feasibility spike U-076 allows ~4× the slice without U-081, so the level is
-built in two steps: a 4× first cut, then larger once U-081 lands)*: three lanes, each about 40 m wide, about 480 m long
-from the start in the south to the compound in the north, and the same valley back.
+The authoritative map record is [maps/qalat-road.md](maps/qalat-road.md): route
+graph, usable widths, physical boundaries, exhaustive crossing register, support
+sight lines, convergence areas and implementation checks. The current playable
+valley is about 120 × 200 m; retain that footprint for the lane rework. Expansion
+toward ~60,000 m² is separate and must preserve route separation.
 
-| Lane | Character | Offers |
+| Route | Location | Role and connections |
 |---|---|---|
-| West: the dry riverbed | low, long cover, boulders | quiet approach; a patrol walks it; the tank's route home is *not* here |
-| Centre: the road | open, hard-packed | fastest; the garrison's MG nest covers it from the compound wall; the tank comes down this on the way back |
-| East: the terraces | stepped fields and walls | slow, good cover and sight lines onto the compound's east gate; a sniper post *(default)* |
+| 1 — primary assault | Centre road | Direct, broad approach under the MG's frontal threat; tank return route |
+| 2 — overlook/support | East terraces | Connected higher ground with useful fire onto route 1 and the east gate; three named passages to route 1 |
+| 3 — flank | West dry riverbed | Narrower, screened, winding route to the west gate; **zero intermediate connections** to routes 1 or 2 |
 
-Three sight lines worth building around: the MG nest down the road; the compound's east gate from the upper terrace; the
-road bend where the tank first appears (a long approach where rockets and cover matter, U-079).
-Squad start: south edge, all six together. Exit: the extraction point at the start end of the road *(default: the same
-place they started, so the way home is the way in)*.
+The start and compound are bounded shared spaces; between them collision-backed
+barriers make routes distinct. Different textures, low cover and elevation alone
+are insufficient. The previous equal-width (~40 m each) lane prescription is
+superseded by the 2026-10-04 direction. Passage positions/widths in the map record
+are blockout defaults to verify, not claims of implemented or playtested geometry.
+
+Preserve the MG road line, upper-terrace/east-gate support angle and northern tank
+bend. Start and extraction stay at the south end, with all six starting together;
+all routes must support the return journey with the POW.
 
 ## 4. Opposition
 
@@ -77,6 +89,7 @@ garrison fight, and the first stretch of the way home is quiet and short, long e
   expected completion rate is not guessed: it is measured and recorded, as for the slice, before any floor is set.
 - Scenario tests: the rescue frees the POW; the POW follows, holds and goes on an all-squad order; the tank appears
   after he is freed and can be destroyed; the extraction needs all seven alive (POW dead → failed → retry restores him).
+- Map validation also follows [the per-map acceptance plan](maps/qalat-road.md#implementation-handoff-and-acceptance): legal crossings, blocked shortcuts, support sight lines and escorted return paths.
 - Only a human playtest can say whether 30–45 minutes is right, whether the three lanes feel different, whether the
   tank is fair, and how the POW feels to look after. No verdict is claimed without one.
 
@@ -87,4 +100,4 @@ garrison fight, and the first stretch of the way home is quiet and short, long e
 3. **Tank behaviour if the squad avoids the road**: *it drives to the extraction point and the squad must destroy it* (above), or it should chase the squad.
 4. **Extraction at the start point** (a loop) or a separate exit on the far side.
 5. **Sniper**: *wait for the archetype*, or build it as part of this mission.
-6. **Scale**: *4× first cut, grown after U-081* vs wait for the full ~10×.
+6. **Scale**: *4× first cut, grown after U-081* vs wait for the full ~10×. The 2026-10-04 lane rework retains the current first-cut footprint; expansion is separate.
