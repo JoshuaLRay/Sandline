@@ -34,7 +34,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
-| [U-108](docs/backlog/U-108.md) | Height-aware mission areas and enemy spawn zones | Map implementation | P1 | REVIEW | U-107; implementation ready, CI/review tracked on branch PR | `task/U-108-stacked-floor-foundation` |
+| [U-108](docs/backlog/U-108.md) | Height-aware mission areas and enemy spawn zones | Map implementation | P1 | REVIEW | U-107; implementation ready, CI/review tracked on branch PR | [#293](https://github.com/JoshuaLRay/Sandline/pull/293) |
 | [U-109](docs/backlog/U-109.md) | Stacked-floor navigation, cover and command targets | Map implementation | P1 | BLOCKED | U-108 | — |
 | [U-110](docs/backlog/U-110.md) | Authored squad starts and elevated vehicle paths | Map implementation | P1 | BLOCKED | U-108 | — |
 | [U-111](docs/backlog/U-111.md) | Fixed guard sockets, patrol bounds and staged reserves | Map implementation | P1 | BLOCKED | U-108, U-109 | — |
