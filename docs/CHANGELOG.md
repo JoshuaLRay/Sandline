@@ -376,4 +376,5 @@ Format: `T-<id> — <what changed>`
 - U-101 — Add per-character Hold fire / Defensive / Aggressive settings with bounded pursuit; owner playtest pending.
 - U-102 — Direct mobile squad/order shortcuts, drag-to-command placement and a collision-aware spectator orbit with pinch zoom/recenter; touch emulation verified, owner phone feel review pending.
 
+- U-103 — Added touch-sized mobile Squad aggression commands for selected/all commanded bots, with authoritative and mixed-state feedback ([#288](https://github.com/JoshuaLRay/Sandline/pull/288)).
 - U-105 — Documented distinct assault/support/flank map rules, Qalat's rework and a required per-map template; gameplay geometry remains pending.
