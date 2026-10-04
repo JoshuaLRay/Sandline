@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { requireWorld, supportUnder } from '@sandline/shared';
 import { buildPiece } from '../piece.ts';
 import { QALAT_GROUND, QALAT_DETAIL, QALAT_BANK_ROCK, qalatFragments, qalatTint, terrainHeight } from './qalat.ts';
 
 describe('U-096 Qalat authored surfaces and route-safe dressing', () => {
   it('skins only supporting terrain; every upward face remains within 1.3 cm of its plane', () => {
     const mesh = buildPiece(QALAT_GROUND);
+    const boxes = requireWorld('qalat-road').boxes;
     expect(mesh.collision).toEqual([]);
     expect(mesh.indices.length / 3).toBeLessThanOrEqual(4000);
     for (let i = 0; i < mesh.indices.length; i += 3) {
@@ -15,7 +17,10 @@ describe('U-096 Qalat authored surfaces and route-safe dressing', () => {
       const y = mesh.positions[indices[0]! * 3 + 1]!;
       // Base floor is also drawn below elevated earth, never above the walkable plane.
       expect(y).toBeLessThanOrEqual(terrainHeight(x, z) + .013);
-      expect(y === .012 || Math.abs(y - terrainHeight(x, z) - .012) < 1e-6).toBe(true);
+      // A firing-slot sill is a real supporting face beneath its lintel.
+      // Query collision below this face instead of selecting an overhead top.
+      const support = supportUnder(x, z, 0, y, boxes, 0);
+      expect(y === .012 || Math.abs(y - support - .012) < 1e-6).toBe(true);
     }
   });
 

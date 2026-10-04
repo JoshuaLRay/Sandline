@@ -1,0 +1,97 @@
+{
+  "riverbed-ground": {
+    "grid": false,
+    "calls": 168,
+    "triangles": 314614
+  },
+  "road-bank-ground": {
+    "grid": false,
+    "calls": 147,
+    "triangles": 313018
+  },
+  "C12-S": {
+    "grid": false,
+    "calls": 121,
+    "triangles": 312386
+  },
+  "C12-M": {
+    "grid": false,
+    "calls": 125,
+    "triangles": 312434
+  },
+  "C12-N": {
+    "grid": false,
+    "calls": 130,
+    "triangles": 312494
+  },
+  "west-bank-closed": {
+    "grid": false,
+    "calls": 161,
+    "triangles": 314530
+  },
+  "flank-bottleneck": {
+    "grid": false,
+    "calls": 147,
+    "triangles": 312698
+  },
+  "flank-west-gate": {
+    "grid": false,
+    "calls": 136,
+    "triangles": 312566
+  },
+  "O1-support": {
+    "grid": false,
+    "calls": 134,
+    "triangles": 313854
+  },
+  "O2-support": {
+    "grid": false,
+    "calls": 136,
+    "triangles": 313526
+  },
+  "O3-support": {
+    "grid": false,
+    "calls": 130,
+    "triangles": 312494
+  },
+  "terrace-lower-ground": {
+    "grid": false,
+    "calls": 154,
+    "triangles": 312782
+  },
+  "terrace-upper-ground": {
+    "grid": false,
+    "calls": 103,
+    "triangles": 273494
+  },
+  "compound-approach-steps": {
+    "grid": false,
+    "calls": 169,
+    "triangles": 262338
+  },
+  "valley-overview": {
+    "grid": false,
+    "calls": 182,
+    "triangles": 262814
+  },
+  "compound-and-north-gate": {
+    "grid": false,
+    "calls": 131,
+    "triangles": 255402
+  },
+  "terraces-and-east-gate": {
+    "grid": false,
+    "calls": 133,
+    "triangles": 255106
+  },
+  "compound-ground": {
+    "grid": false,
+    "calls": 118,
+    "triangles": 273994
+  },
+  "explicit-grid": {
+    "grid": true,
+    "calls": 202,
+    "triangles": 321250
+  }
+}

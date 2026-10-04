@@ -34,7 +34,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
-| [U-106](docs/backlog/U-106.md) | Implement Qalat’s distinct assault, support and isolated flank routes | Map design | P1 | REVIEW | U-105; automated verification/captures in progress; owner feel review pending | `task/U-106-qalat-lane-rework` |
+| [U-106](docs/backlog/U-106.md) | Implement Qalat’s distinct assault, support and isolated flank routes | Map design | P1 | REVIEW | U-105; owner route feel/congestion review pending | [#291](https://github.com/JoshuaLRay/Sandline/pull/291) |
 | [U-105](docs/backlog/U-105.md) | Define distinct campaign lanes and per-map creation records | Map design | P1 | DONE | Accepted and merged 2026-10-04; implementation tracked by U-106 | [#290](https://github.com/JoshuaLRay/Sandline/pull/290) |
 | [U-104](docs/backlog/U-104.md) | Hold Tab to access the mouse | Controls / UI | P1 | REVIEW | Automated checks passed; owner gameplay review pending | [#289](https://github.com/JoshuaLRay/Sandline/pull/289) |
 | [U-099](docs/backlog/U-099.md) | Keep characters from occupying the same space | Squad command | P1 | REVIEW | Automated verification passed; manual bottleneck review pending | [#284](https://github.com/JoshuaLRay/Sandline/pull/284) |
