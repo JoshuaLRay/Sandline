@@ -378,3 +378,4 @@ Format: `T-<id> — <what changed>`
 
 - U-103 — Added touch-sized mobile Squad aggression commands for selected/all commanded bots, with authoritative and mixed-state feedback ([#288](https://github.com/JoshuaLRay/Sandline/pull/288)).
 - U-105 — Documented distinct assault/support/flank map rules, Qalat's rework and a required per-map template; gameplay geometry remains pending.
+- U-104 — Holding Tab frees the cursor with the scoreboard; release restores the previous capture during active gameplay, with cancellation on Escape/F11 or blur and guards for menus and mission outcomes.

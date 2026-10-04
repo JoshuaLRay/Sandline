@@ -144,6 +144,6 @@ export const KEY_BINDINGS: readonly { action: string; keys: string }[] = [
   { action: 'Order wheel', keys: 'Q (hold)' },
   { action: 'Mark target', keys: 'F' },
   { action: 'Shoulder / exit first person', keys: 'V' },
-  { action: 'Scoreboard', keys: 'Tab (hold)' },
+  { action: 'Scoreboard / free cursor', keys: 'Tab (hold)' },
   { action: 'Pause menu', keys: 'Esc' },
 ];
