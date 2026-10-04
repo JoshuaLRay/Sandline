@@ -1875,6 +1875,7 @@ const mobileCommand = createMobileCommand(document.body, {
   recenter: () => { mobileCommand.cancelPlacement(); lastMobileTap = null; mobileLookYaw = 0; mobileLookPitch = MOBILE_ORBIT_PITCH; spectatorCameraYaw = null; },
   watch: (slot) => live?.net.spectate(slot),
   assign: (bot, commander) => live?.net.assignCommander(bot, commander),
+  aggression: (mode, address) => live?.net.aggression(mode, address),
   order: (kind, address, x, y) => {
     if (!live || live.net.spectatedSlot < 0) return false;
     const rect = renderer.domElement.getBoundingClientRect();
@@ -2229,7 +2230,7 @@ function frame(): void {
       const rows = commandRows(net.roster, net.slot).map(row => row.slot === net.slot
         ? { ...row, label: row.label.replace('(you)', '(your bot)'), human: false, commander: net.slot }
         : row);
-      mobileCommand.update(rows, net.spectatedSlot, net.slot);
+      mobileCommand.update(rows, net.spectatedSlot, net.slot, net.aggressions);
       if (net.spectatedSlot < 0 && (!mobileSpectateRequested || now - mobileSpectateAttemptAt > 1000)) {
         const target = initialMobileSpectateSlot(net.roster, net.slot);
         if (target !== null) {
