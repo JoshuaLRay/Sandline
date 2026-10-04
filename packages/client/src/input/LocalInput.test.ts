@@ -60,6 +60,94 @@ describe('LocalInput', () => {
 
   afterEach(() => restore());
 
+  describe('Tab cursor access', () => {
+    function setup(locked = true) {
+      let captures = 0;
+      let releases = 0;
+      let gameplay = true;
+      const canvas = Object.assign(fakeTarget(), {
+        requestPointerLock() { captures++; return Promise.resolve(); },
+      });
+      const d = doc as unknown as Record<string, unknown>;
+      d['pointerLockElement'] = locked ? canvas : null;
+      d['exitPointerLock'] = () => { releases++; };
+      const input = new LocalInput(canvas as unknown as HTMLElement, {
+        canResumePointerLock: () => gameplay,
+      });
+      doc.dispatch('pointerlockchange');
+      const down = (extra = {}) => win.dispatch('keydown', {
+        code: 'Tab', target: null, preventDefault() {}, ...extra,
+      });
+      const up = () => win.dispatch('keyup', { code: 'Tab', target: null });
+      const unlock = () => { d['pointerLockElement'] = null; doc.dispatch('pointerlockchange'); };
+      return { input, canvas, down, up, unlock,
+        stopGameplay: () => { gameplay = false; },
+        captures: () => captures, releases: () => releases };
+    }
+
+    it('releases once, blocks canvas capture and mouse input for the hold, then resumes', () => {
+      const t = setup();
+      t.down();
+      t.down({ repeat: true });
+      expect(t.releases()).toBe(1);
+      expect(t.input.tabHeld).toBe(true);
+      // Unlock is asynchronous: mouse events arriving first must be ignored too.
+      win.dispatch('mousedown', { button: 0 });
+      win.dispatch('mousemove', { movementX: 10, movementY: 10 });
+      expect(t.input.firing).toBe(false);
+      expect(t.input.yaw).toBe(0);
+      t.unlock();
+      t.canvas.dispatch('click');
+      expect(t.captures()).toBe(0);
+      t.up();
+      expect(t.input.tabHeld).toBe(false);
+      expect(t.captures()).toBe(1);
+      t.up();
+      expect(t.captures()).toBe(1);
+    });
+
+    it('resumes a quick tap after the pending unlock completes', () => {
+      const t = setup();
+      t.down();
+      t.up();
+      expect(t.captures()).toBe(0);
+      t.unlock();
+      expect(t.captures()).toBe(1);
+    });
+
+    it('leaves an initially free cursor free', () => {
+      const t = setup(false);
+      t.down();
+      t.up();
+      expect(t.releases()).toBe(0);
+      expect(t.captures()).toBe(0);
+    });
+
+    for (const cancel of ['blur', 'Escape', 'F11', 'menu or mission end']) {
+      it(`does not recapture after ${cancel}`, () => {
+        const t = setup();
+        t.down();
+        t.unlock();
+        if (cancel === 'blur') win.dispatch('blur');
+        else if (cancel === 'menu or mission end') t.stopGameplay();
+        else win.dispatch('keydown', { code: cancel, target: null, preventDefault() {} });
+        t.up();
+        expect(t.captures()).toBe(0);
+        expect(t.input.tabHeld).toBe(false);
+      });
+    }
+
+    it('leaves Tab in text fields and outside gameplay alone', () => {
+      const t = setup(false);
+      t.down({ target: new HTMLInputElement() });
+      expect(t.input.tabHeld).toBe(false);
+      t.stopGameplay();
+      t.down();
+      expect(t.input.tabHeld).toBe(false);
+      expect(t.releases()).toBe(0);
+    });
+  });
+
   it('B-06: crouch is a toggle on C, not held-Ctrl', () => {
     const canvas = fakeTarget();
     const input = new LocalInput(canvas as unknown as HTMLElement);

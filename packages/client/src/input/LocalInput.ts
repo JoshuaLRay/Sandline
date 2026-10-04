@@ -17,6 +17,8 @@ import { armKeyboardLock, requestFullscreenForKeyboardLock } from './keyboardLoc
 import { type WheelPointer, type WheelRelease, addressForDigit, moveWheelPointer } from '../ui/OrderWheel.ts';
 
 export interface InputOptions {
+  /** Whether a Tab release may return to gameplay (no menu or mission outcome). */
+  canResumePointerLock?: () => boolean;
   /** Wire-angle units per pixel of mouse movement. */
   sensitivity?: number;
   /** Mouse-down looks up. Off by default; some players want it on. */
@@ -154,6 +156,9 @@ export class LocalInput {
   /** Explicit camera/shoulder/ADS state. ADS changes camera mode but never the stored shoulder. */
   private readonly viewState = createViewState();
   locked = false;
+  tabHeld = false;
+  private resumeAfterTab = false;
+  private readonly canResumePointerLock: () => boolean;
 
   constructor(
     private readonly canvas: HTMLElement,
@@ -162,12 +167,22 @@ export class LocalInput {
     this.sensitivity = options.sensitivity ?? 0.55;
     this.invertY = options.invertY ?? false;
     this.fullscreenTarget = options.fullscreenTarget ?? document.documentElement;
+    this.canResumePointerLock = options.canResumePointerLock ?? (() => true);
 
     addEventListener('keydown', (e) => {
       // Typing in the lobby's fields is not movement, and Space in a name
       // field must stay a space (T-1.5.06).
       if (isTextField(e.target)) return;
       if (this.releaseKey(e)) return;
+      if (e.code === 'Tab' && this.canResumePointerLock()) {
+        e.preventDefault();
+        if (!this.tabHeld && !e.repeat) {
+          this.tabHeld = true;
+          this.resumeAfterTab = this.locked;
+          if (this.locked) document.exitPointerLock?.();
+        }
+        return;
+      }
       // With the mouse captured, the canvas owns the keyboard: every key we
       // handle gets preventDefault, not just Space. Otherwise Ctrl (crouch)
       // held alongside a movement or weapon key fires whatever browser
@@ -186,6 +201,11 @@ export class LocalInput {
       if (!e.repeat) this.pressOrderKey(e.code);
     });
     addEventListener('keyup', (e) => {
+      if (e.code === 'Tab') {
+        this.tabHeld = false;
+        // A fast tap can release before the asynchronous unlock completes.
+        if (document.pointerLockElement !== canvas) this.resumeTabPointer();
+      }
       if (e.code === 'Space') this.jumpSuppressed = false;
       // Same for the wheel: only a Q that opened it gives an order.
       if (e.code === ORDER_KEY && this.wheel) {
@@ -196,6 +216,8 @@ export class LocalInput {
     });
     // Losing focus mid-key leaves a key stuck down forever otherwise.
     addEventListener('blur', () => {
+      this.tabHeld = false;
+      this.resumeAfterTab = false;
       this.held.clear();
       this.buttons.clear();
       this.jumpSuppressed = false;
@@ -208,6 +230,7 @@ export class LocalInput {
     const fullscreenTarget = this.fullscreenTarget;
     if (fullscreenTarget) armKeyboardLock(fullscreenTarget);
     canvas.addEventListener('click', () => {
+      if (this.tabHeld) return;
       if (!this.locked) canvas.requestPointerLock();
       // Same gesture: a click already has user activation, which both
       // requestFullscreen and (via the fullscreenchange listener above)
@@ -219,7 +242,7 @@ export class LocalInput {
     // over the canvas instead.
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     addEventListener('mousedown', (e) => {
-      if (!this.locked) return;
+      if (!this.locked || this.tabHeld) return;
       this.buttons.add(e.button);
       if (e.button === 0) this.triggerEdge = true;
       // U-046: with a grenade in hand right click pulls the pin instead of aiming.
@@ -243,10 +266,14 @@ export class LocalInput {
         this.jumpSuppressed = false;
         this.wheel = null;
         endAds(this.viewState);
+        if (!this.tabHeld) this.resumeTabPointer();
+      } else if (this.tabHeld) {
+        // A capture already in flight when Tab was pressed must also let go.
+        document.exitPointerLock?.();
       }
     });
     addEventListener('mousemove', (e) => {
-      if (!this.locked) return;
+      if (!this.locked || this.tabHeld) return;
       if (!this.mouseGuard.accept(e.movementX, e.movementY)) return;
       if (this.wheel) {
         this.wheel.pointer = moveWheelPointer(this.wheel.pointer, e.movementX, e.movementY);
@@ -261,6 +288,15 @@ export class LocalInput {
       this.pitchAccum = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitchAccum));
       this.constrainView();
     });
+  }
+
+  private resumeTabPointer(): void {
+    const resume = this.resumeAfterTab;
+    this.resumeAfterTab = false;
+    if (resume && this.canResumePointerLock()) {
+      // Browsers may deny recapture; the usual canvas click remains available.
+      this.canvas.requestPointerLock()?.catch(() => {});
+    }
   }
 
   /**
@@ -310,10 +346,12 @@ export class LocalInput {
    */
   private releaseKey(e: KeyboardEvent): boolean {
     if (e.code === 'Escape') {
+      this.resumeAfterTab = false;
       document.exitPointerLock?.();
       return true;
     }
     if (e.code === 'F11') {
+      this.resumeAfterTab = false;
       // Only when the page itself is fullscreen: otherwise F11 is the
       // browser's own fullscreen toggle and stays the browser's.
       if (document.fullscreenElement) {
