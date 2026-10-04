@@ -8,7 +8,7 @@ with the legacy `mission-01` world.
 
 | World / missions | Record | Scope |
 |---|---|---|
-| `qalat-road` / campaign mission 1 | [The Qalat Road](qalat-road.md) | Existing map; distinct-lane rework specified, geometry implementation pending |
+| `qalat-road` / campaign mission 1 | [The Qalat Road](qalat-road.md) | U-107 complete replacement specification: hidden spawn, road, ridge and underground depot; U-106 remains the live map until implemented |
 | Campaign missions 2–10 | Create one record per map from the template when each mission is designed | Not yet designed; the shared standard applies to all |
 
 `mission-01` is the preserved clear-and-hold QA slice, `greybox-01` its layout

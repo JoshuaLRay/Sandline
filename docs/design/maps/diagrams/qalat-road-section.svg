@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="760" viewBox="0 0 1300 760" role="img"><title>Qalat Road vertical construction sections</title><desc>Road above basement, ridge above tank road, and two-flight basement descent. Dimensions control construction.</desc><rect width="1300" height="760" fill="#111d2a"/><g font-family="Arial, sans-serif">
+<text x="40.0" y="42.0" fill="#e8edf3" font-size="26" text-anchor="start">THE QALAT ROAD / VERTICAL SECTIONS</text>
+<text x="40.0" y="69.0" fill="#a9b9c8" font-size="14" text-anchor="start">Schematic sections · not to a common scale · all y values are world heights in metres</text>
+<text x="40.0" y="118.0" fill="#e8edf3" font-size="18" text-anchor="start">A6 / B6 — ROAD OVER GREAT VAULT</text>
+<rect x="60" y="165" width="510" height="75" fill="#786650"/><rect x="60" y="240" width="22" height="160" fill="#786650"/><rect x="548" y="240" width="22" height="160" fill="#786650"/><rect x="60" y="400" width="510" height="14" fill="#41637b"/>
+<text x="90.0" y="156.0" fill="#d8b47b" font-size="14" text-anchor="start">ROAD WALKING SURFACE y8</text>
+<text x="92.0" y="210.0" fill="#e8edf3" font-size="14" text-anchor="start">2.5 m structural roof / earth</text>
+<text x="92.0" y="259.0" fill="#80c8ed" font-size="14" text-anchor="start">CEILING UNDERSIDE y5.5</text>
+<text x="92.0" y="333.0" fill="#e8edf3" font-size="16" text-anchor="start">B6: 28 m clear room width</text>
+<text x="92.0" y="358.0" fill="#e8edf3" font-size="14" text-anchor="start">Standing headroom: 5.5 m</text>
+<text x="92.0" y="394.0" fill="#80c8ed" font-size="14" text-anchor="start">BASEMENT FLOOR y0</text>
+<text x="690.0" y="118.0" fill="#e8edf3" font-size="18" text-anchor="start">R7b / X ROAD — RIDGE SERVICE BRIDGE</text>
+<rect x="710" y="165" width="490" height="52" fill="#608469"/><rect x="710" y="217" width="32" height="183" fill="#786650"/><rect x="1168" y="217" width="32" height="183" fill="#786650"/><rect x="710" y="400" width="490" height="14" fill="#786650"/>
+<text x="755.0" y="156.0" fill="#81cc9a" font-size="14" text-anchor="start">RIDGE DECK y16</text>
+<text x="755.0" y="245.0" fill="#e8edf3" font-size="14" text-anchor="start">UNDERSIDE y14</text>
+<text x="755.0" y="300.0" fill="#e8edf3" font-size="16" text-anchor="start">6 m clear above tank road</text>
+<text x="755.0" y="330.0" fill="#e8edf3" font-size="14" text-anchor="start">12 m carriageway below</text>
+<text x="755.0" y="389.0" fill="#eb947b" font-size="14" text-anchor="start">TANK ROAD y8</text>
+<text x="40.0" y="472.0" fill="#e8edf3" font-size="18" text-anchor="start">B0 → B1 / TWO 20-RISER FLIGHTS</text>
+<path d="M60 505 H220 L420 565 H580 L780 625 H990" fill="none" stroke="#80c8ed" stroke-width="5"/>
+<text x="65.0" y="532.0" fill="#e8edf3" font-size="14" text-anchor="start">y8 / loading vestibule</text>
+<text x="315.0" y="548.0" fill="#e8edf3" font-size="14" text-anchor="start">20 risers</text>
+<text x="454.0" y="593.0" fill="#e8edf3" font-size="14" text-anchor="start">y4 / switchback landing</text>
+<text x="674.0" y="604.0" fill="#e8edf3" font-size="14" text-anchor="start">20 risers</text>
+<text x="820.0" y="655.0" fill="#e8edf3" font-size="14" text-anchor="start">y0 / stair foot</text>
+<text x="65.0" y="702.0" fill="#e8edf3" font-size="14" text-anchor="start">Each flight: 0.20 m rise × 0.40 m tread, 4 m clear width, intermediate landing, ≥3.2 m headroom.</text>
+<text x="65.0" y="730.0" fill="#a9b9c8" font-size="14" text-anchor="start">Illustration unfolds the switchback. Follow the exact x/z vertices in the room table; never cut through a slab.</text>
+</g></svg>

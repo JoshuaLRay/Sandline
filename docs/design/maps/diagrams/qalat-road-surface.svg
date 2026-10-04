@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="1100" viewBox="0 0 1300 1100" role="img"><title>THE QALAT ROAD / SURFACE PLAN</title><desc>U-107 · Revision 2 · Proposed replacement map — not a capture of the current game</desc>
+<rect width="1300" height="1100" fill="#111d2a"/>
+<g font-family="Arial, sans-serif">
+<text x="40.0" y="42.0" fill="#e8edf3" font-size="26" text-anchor="start">THE QALAT ROAD / SURFACE PLAN</text>
+<text x="40.0" y="68.0" fill="#a9b9c8" font-size="14" text-anchor="start">U-107 · Revision 2 · Proposed replacement map — not a capture of the current game</text>
+<path d="M300 1000 H800" stroke="#263645" stroke-width="1"/>
+<text x="280.0" y="1005.0" fill="#a9b9c8" font-size="11" text-anchor="end">z 0</text>
+<path d="M300 900 H800" stroke="#263645" stroke-width="1"/>
+<text x="280.0" y="905.0" fill="#a9b9c8" font-size="11" text-anchor="end">z 50</text>
+<path d="M300 800 H800" stroke="#263645" stroke-width="1"/>
+<text x="280.0" y="805.0" fill="#a9b9c8" font-size="11" text-anchor="end">z 100</text>
+<path d="M300 700 H800" stroke="#263645" stroke-width="1"/>
+<text x="280.0" y="705.0" fill="#a9b9c8" font-size="11" text-anchor="end">z 150</text>
+<path d="M300 600 H800" stroke="#263645" stroke-width="1"/>
+<text x="280.0" y="605.0" fill="#a9b9c8" font-size="11" text-anchor="end">z 200</text>
+<path d="M300 500 H800" stroke="#263645" stroke-width="1"/>
+<text x="280.0" y="505.0" fill="#a9b9c8" font-size="11" text-anchor="end">z 250</text>
+<path d="M300 400 H800" stroke="#263645" stroke-width="1"/>
+<text x="280.0" y="405.0" fill="#a9b9c8" font-size="11" text-anchor="end">z 300</text>
+<path d="M300 300 H800" stroke="#263645" stroke-width="1"/>
+<text x="280.0" y="305.0" fill="#a9b9c8" font-size="11" text-anchor="end">z 350</text>
+<path d="M300 200 H800" stroke="#263645" stroke-width="1"/>
+<text x="280.0" y="205.0" fill="#a9b9c8" font-size="11" text-anchor="end">z 400</text>
+<path d="M300 100 H800" stroke="#263645" stroke-width="1"/>
+<text x="280.0" y="105.0" fill="#a9b9c8" font-size="11" text-anchor="end">z 450</text>
+<text x="40.0" y="118.0" fill="#e8edf3" font-size="16" text-anchor="start">NORTH ↑</text>
+<text x="40.0" y="142.0" fill="#e8edf3" font-size="13" text-anchor="start">x east → · z north ↑</text>
+<text x="40.0" y="164.0" fill="#e8edf3" font-size="13" text-anchor="start">All dimensions in metres</text>
+<text x="40.0" y="186.0" fill="#e8edf3" font-size="13" text-anchor="start">2 drawing units = 1 metre</text>
+<text x="40.0" y="211.0" fill="#a9b9c8" font-size="13" text-anchor="start">Tables govern construction.</text>
+<polygon points="400,1072 432,1072 432,984 440,952 440,916 396,900 352,976" fill="#283b40" stroke="#425653" stroke-width="2"/>
+<polygon points="516,1072 568,1056 588,984 572,940 520,928 480,944 480,976 516,976" fill="#283b40" stroke="#425653" stroke-width="2"/>
+<polygon points="440,908 444,880 484,868 520,880 516,892 484,900" fill="#283b40" stroke="#425653" stroke-width="2"/>
+<polygon points="348,876 448,888 468,812 432,736 444,620 480,572 488,504 444,428 416,280 364,216 328,540" fill="#283b40" stroke="#425653" stroke-width="2"/>
+<polygon points="572,860 656,884 708,768 724,584 700,400 660,272 588,276 596,396 616,496 620,592 580,700" fill="#283b40" stroke="#425653" stroke-width="2"/>
+<polygon points="436,204 472,112 552,72 668,80 760,140 752,256 704,312 660,260 608,164 488,164" fill="#283b40" stroke="#425653" stroke-width="2"/>
+<polyline points="544.0,872.0 504.0,864.0 476.0,864.0 476.0,848.0 476.0,828.0 496.0,828.0 496.0,808.0 476.0,808.0 440.0,808.0 440.0,760.0 408.0,728.0 408.0,680.0 408.0,624.0 444.0,600.0 496.0,568.0 496.0,536.0 496.0,500.0 540.0,500.0 540.0,460.0 540.0,404.0 452.0,404.0 452.0,380.0 452.0,340.0 452.0,308.0 464.0,276.0 464.0,260.0 464.0,248.0 464.0,228.0 484.0,228.0 484.0,248.0 496.0,252.0" fill="none" stroke="#80c8ed" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6 8"/>
+<polyline points="480.0,1012.0 456.0,964.0 456.0,928.0 504.0,912.0 544.0,872.0" fill="none" stroke="#acbbc9" stroke-width="16" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="440" y="976" width="76" height="72" fill="#526c72" stroke="none" stroke-width="1"/>
+<rect x="520" y="850" width="48" height="44" fill="#6d6754" stroke="none" stroke-width="1"/>
+<polyline points="544.0,872.0 544.0,804.0 504.0,744.0 472.0,668.0 472.0,600.0 532.0,536.0 540.0,460.0 496.0,392.0 512.0,336.0 544.0,300.0" fill="none" stroke="#6b604c" stroke-width="40" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="544.0,872.0 544.0,804.0 504.0,744.0 472.0,668.0 472.0,600.0 532.0,536.0 540.0,460.0 496.0,392.0 512.0,336.0 544.0,300.0" fill="none" stroke="#d8b47b" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="544.0,872.0 604.0,864.0 636.0,808.0 608.0,744.0 640.0,664.0 668.0,580.0 652.0,504.0 624.0,428.0 620.0,356.0 620.0,328.0 620.0,300.0 592.0,260.0" fill="none" stroke="#375b49" stroke-width="16" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="544.0,872.0 604.0,864.0 636.0,808.0 608.0,744.0 640.0,664.0 668.0,580.0 652.0,504.0 624.0,428.0 620.0,356.0 620.0,328.0 620.0,300.0 592.0,260.0" fill="none" stroke="#81cc9a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="504.0,744.0 536.0,732.0 560.0,720.0 588.0,720.0 608.0,744.0" fill="none" stroke="#dadbc0" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="532.0,536.0 560.0,564.0 604.0,568.0 636.0,552.0 612.0,512.0 652.0,504.0" fill="none" stroke="#dadbc0" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="672.0,112.0 708.0,136.0 704.0,228.0 688.0,300.0 648.0,324.0 588.0,332.0 512.0,336.0" fill="none" stroke="#704d43" stroke-width="24" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="672.0,112.0 708.0,136.0 704.0,228.0 688.0,300.0 648.0,324.0 588.0,332.0 512.0,336.0" fill="none" stroke="#eb947b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 6"/>
+<rect x="496" y="176" width="96" height="112" fill="#675e50" stroke="#e5d8bc" stroke-width="2"/>
+<rect x="500" y="260" width="32" height="20" fill="#354452" stroke="#bfb9a3" stroke-width="1"/>
+<rect x="500" y="232" width="24" height="16" fill="#354452" stroke="#bfb9a3" stroke-width="1"/>
+<rect x="500" y="208" width="24" height="20" fill="#354452" stroke="#bfb9a3" stroke-width="1"/>
+<rect x="500" y="180" width="24" height="28" fill="#354452" stroke="#bfb9a3" stroke-width="1"/>
+<rect x="564" y="180" width="24" height="40" fill="#354452" stroke="#bfb9a3" stroke-width="1"/>
+<rect x="528" y="104" width="32" height="28" fill="#66575a" stroke="none" stroke-width="1"/>
+<rect x="652" y="92" width="40" height="40" fill="#754c43" stroke="none" stroke-width="1"/>
+<rect x="572" y="876" width="16" height="16" fill="#5a6b78" stroke="none" stroke-width="1"/>
+<rect x="612" y="316" width="16" height="24" fill="#83b390" stroke="#b4e8c5" stroke-width="1"/>
+<circle cx="512" cy="196" r="5" fill="#f6e190"/>
+<circle cx="580" cy="196" r="4" fill="#f2a393"/>
+<circle cx="544" cy="872" r="3" fill="#d8b47b"/>
+<text x="554.0" y="864.0" fill="#d8b47b" font-size="12" text-anchor="start">D0</text>
+<circle cx="544" cy="804" r="3" fill="#d8b47b"/>
+<text x="554.0" y="796.0" fill="#d8b47b" font-size="12" text-anchor="start">A1</text>
+<circle cx="504" cy="744" r="3" fill="#d8b47b"/>
+<text x="514.0" y="736.0" fill="#d8b47b" font-size="12" text-anchor="start">A2</text>
+<circle cx="472" cy="668" r="3" fill="#d8b47b"/>
+<text x="482.0" y="660.0" fill="#d8b47b" font-size="12" text-anchor="start">A3</text>
+<circle cx="472" cy="600" r="3" fill="#d8b47b"/>
+<text x="482.0" y="592.0" fill="#d8b47b" font-size="12" text-anchor="start">A4</text>
+<circle cx="532" cy="536" r="3" fill="#d8b47b"/>
+<text x="542.0" y="528.0" fill="#d8b47b" font-size="12" text-anchor="start">A5</text>
+<circle cx="540" cy="460" r="3" fill="#d8b47b"/>
+<text x="550.0" y="452.0" fill="#d8b47b" font-size="12" text-anchor="start">A6</text>
+<circle cx="496" cy="392" r="3" fill="#d8b47b"/>
+<text x="506.0" y="384.0" fill="#d8b47b" font-size="12" text-anchor="start">A7</text>
+<circle cx="512" cy="336" r="3" fill="#d8b47b"/>
+<text x="522.0" y="328.0" fill="#d8b47b" font-size="12" text-anchor="start">A8</text>
+<circle cx="604" cy="864" r="3" fill="#81cc9a"/>
+<text x="614.0" y="856.0" fill="#81cc9a" font-size="12" text-anchor="start">R0</text>
+<circle cx="636" cy="808" r="3" fill="#81cc9a"/>
+<text x="646.0" y="800.0" fill="#81cc9a" font-size="12" text-anchor="start">R1</text>
+<circle cx="608" cy="744" r="3" fill="#81cc9a"/>
+<text x="618.0" y="736.0" fill="#81cc9a" font-size="12" text-anchor="start">R2</text>
+<circle cx="640" cy="664" r="3" fill="#81cc9a"/>
+<text x="650.0" y="656.0" fill="#81cc9a" font-size="12" text-anchor="start">R3</text>
+<circle cx="668" cy="580" r="3" fill="#81cc9a"/>
+<text x="678.0" y="572.0" fill="#81cc9a" font-size="12" text-anchor="start">R4</text>
+<circle cx="652" cy="504" r="3" fill="#81cc9a"/>
+<text x="662.0" y="496.0" fill="#81cc9a" font-size="12" text-anchor="start">R5</text>
+<circle cx="624" cy="428" r="3" fill="#81cc9a"/>
+<text x="634.0" y="420.0" fill="#81cc9a" font-size="12" text-anchor="start">R6</text>
+<circle cx="596" cy="744" r="5" fill="#d7f5dc"/>
+<text x="586.0" y="734.0" fill="#d7f5dc" font-size="12" text-anchor="end">V1</text>
+<circle cx="656" cy="580" r="5" fill="#d7f5dc"/>
+<text x="646.0" y="570.0" fill="#d7f5dc" font-size="12" text-anchor="end">V2</text>
+<circle cx="612" cy="428" r="5" fill="#d7f5dc"/>
+<text x="602.0" y="418.0" fill="#d7f5dc" font-size="12" text-anchor="end">V3</text>
+<polyline points="596.0,744.0 472.0,748.0" fill="none" stroke="#b3dda7" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="3 6"/>
+<polyline points="656.0,580.0 444.0,600.0" fill="none" stroke="#b3dda7" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="3 6"/>
+<polyline points="612.0,428.0 512.0,336.0" fill="none" stroke="#b3dda7" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="3 6"/>
+<circle cx="494" cy="750" r="9" fill="#ba6060"/>
+<text x="494.0" y="754.0" fill="#ffffff" font-size="11" text-anchor="middle">3</text>
+<circle cx="462" cy="606" r="9" fill="#ba6060"/>
+<text x="462.0" y="610.0" fill="#ffffff" font-size="11" text-anchor="middle">4</text>
+<circle cx="506" cy="342" r="9" fill="#ba6060"/>
+<text x="506.0" y="346.0" fill="#ffffff" font-size="11" text-anchor="middle">3</text>
+<circle cx="630" cy="670" r="9" fill="#ba6060"/>
+<text x="630.0" y="674.0" fill="#ffffff" font-size="11" text-anchor="middle">3</text>
+<circle cx="642" cy="514" r="9" fill="#ba6060"/>
+<text x="642.0" y="518.0" fill="#ffffff" font-size="11" text-anchor="middle">3</text>
+<text x="40.0" y="286.0" fill="#d8b47b" font-size="13" text-anchor="start">ROUTE 1  ·  ASSAULT</text>
+<text x="40.0" y="311.0" fill="#a9b9c8" font-size="13" text-anchor="start">20 m ribbon / road floor y8</text>
+<text x="40.0" y="355.0" fill="#81cc9a" font-size="13" text-anchor="start">ROUTE 2  ·  RIDGE</text>
+<text x="40.0" y="380.0" fill="#a9b9c8" font-size="13" text-anchor="start">8 m shelf / rises to y30</text>
+<text x="40.0" y="424.0" fill="#80c8ed" font-size="13" text-anchor="start">ROUTE 3  ·  BASEMENT</text>
+<text x="40.0" y="449.0" fill="#a9b9c8" font-size="13" text-anchor="start">Dashed below surface / see second plan</text>
+<text x="40.0" y="493.0" fill="#eb947b" font-size="13" text-anchor="start">TANK SERVICE INGRESS</text>
+<text x="40.0" y="518.0" fill="#a9b9c8" font-size="13" text-anchor="start">Separate y8 road; passes below ridge</text>
+<text x="40.0" y="562.0" fill="#a9b9c8" font-size="13" text-anchor="start">Red circles: hostile group size</text>
+<text x="40.0" y="587.0" fill="#a9b9c8" font-size="13" text-anchor="start">Dotted green: support sight line</text>
+<text x="865.0" y="120.0" fill="#e8edf3" font-size="16" text-anchor="start">OUTPOST / y8</text>
+<text x="865.0" y="144.0" fill="#a9b9c8" font-size="13" text-anchor="start">Prisoner northwest · radio northeast</text>
+<text x="865.0" y="164.0" fill="#a9b9c8" font-size="13" text-anchor="start">Three infantry gates; courtyard convergence</text>
+<text x="865.0" y="210.0" fill="#e8edf3" font-size="16" text-anchor="start">RIDGE BRIDGE / y16</text>
+<text x="865.0" y="234.0" fill="#a9b9c8" font-size="13" text-anchor="start">Tank road passes beneath at y8</text>
+<text x="865.0" y="254.0" fill="#a9b9c8" font-size="13" text-anchor="start">No movement link at the crossing</text>
+<text x="865.0" y="350.0" fill="#e8edf3" font-size="16" text-anchor="start">V3 / SURVEY POST</text>
+<text x="865.0" y="374.0" fill="#a9b9c8" font-size="13" text-anchor="start">Supports final road approach</text>
+<text x="865.0" y="394.0" fill="#a9b9c8" font-size="13" text-anchor="start">Prisoner room remains screened</text>
+<text x="865.0" y="500.0" fill="#e8edf3" font-size="16" text-anchor="start">V2 / EAGLE SHELF</text>
+<text x="865.0" y="524.0" fill="#a9b9c8" font-size="13" text-anchor="start">Supports depot frontage + upper stair</text>
+<text x="865.0" y="544.0" fill="#a9b9c8" font-size="13" text-anchor="start">C12-U is the only upper road link</text>
+<text x="865.0" y="700.0" fill="#e8edf3" font-size="16" text-anchor="start">V1 / LOWER SADDLE</text>
+<text x="865.0" y="724.0" fill="#a9b9c8" font-size="13" text-anchor="start">Supports the first road fight</text>
+<text x="865.0" y="744.0" fill="#a9b9c8" font-size="13" text-anchor="start">C12-L is the only lower road link</text>
+<text x="865.0" y="860.0" fill="#e8edf3" font-size="16" text-anchor="start">D0 / ROUTE CHOICE</text>
+<text x="865.0" y="884.0" fill="#a9b9c8" font-size="13" text-anchor="start">Road north · ridge east · basement west</text>
+<text x="865.0" y="904.0" fill="#a9b9c8" font-size="13" text-anchor="start">No enemy in the decision court</text>
+<text x="865.0" y="980.0" fill="#e8edf3" font-size="16" text-anchor="start">S0 / JUNIPER HOLLOW</text>
+<text x="865.0" y="1004.0" fill="#a9b9c8" font-size="13" text-anchor="start">Spawn + extraction behind two rock folds</text>
+<text x="865.0" y="1024.0" fill="#a9b9c8" font-size="13" text-anchor="start">No enemy route has line of sight inside</text>
+<text x="480.0" y="1019.0" fill="white" font-size="14" text-anchor="middle">S0</text>
+</g></svg>
