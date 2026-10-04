@@ -40,7 +40,7 @@ defeats the responding tank and returns to Juniper Hollow with all seven alive.
 | 1 / rescue | Free the prisoner (`rescue`, 3 s, 2 m, same-floor LOS) | Yes | On completion |
 | 2 / rescue | Silence the radio operator (`destroy`) | No | None |
 | 3 / return | Destroy the tank (`destroy`) | Yes | On completion |
-| 4 / return | Reach Juniper Hollow with all six soldiers and POW standing | Yes | Mission ends when both return objectives are complete |
+| 4 / extraction | Reach Juniper Hollow with all six soldiers and POW standing | Yes | Activates after tank destruction; mission ends with all seven present |
 
 No hold-the-area objective, forced route-clear or kill-every-enemy requirement.
 First squad/POW death fails; existing all-downed behaviour remains. All objectives
@@ -99,7 +99,7 @@ Those cards retain their evidence. The new owner direction authorizes redesign,
 not a claim that those historical acceptance checks prove this new map.
 
 U-107 replaces footprint/layout, flank type, crossing count, guard distribution,
-spawn elevation/occlusion, counterattack release timing, tank endpoint and map
+spawn elevation/occlusion, counterattack release timing, tank endpoint, final extraction stage and map
 checkpoint compatibility. It retains the rescue premise, optional radio's5/20-second
 armour timing, mandatory tank destruction, all-seven extraction and carry-over.
 The complete numeric design is in the linked construction specification; do not

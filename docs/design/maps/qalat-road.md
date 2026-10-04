@@ -664,14 +664,15 @@ walking in the basement beneath an objective must not satisfy it.
 | 1 / rescue | **Free the prisoner.** Existing rescue interaction on `prisoner`, 3 s hold, ≤2 m reach, line of sight, same accessible floor; cannot act through wall/ceiling. | Save on completion; protected POW death fails mission |
 | 2 / rescue | **Silence the radio operator (optional).** Destroy `radio-operator`. | No checkpoint; never blocks leaving rescue stage |
 | 3 / return | **Destroy the tank.** Destroy `tank`; no requirement to clear remaining infantry. | Save on destruction |
-| 4 / return | **Extract with all seven standing.** All six living, standing soldiers and the rescued living POW inside centre (0,-6), radius 12, feet y7.5..10.5; tank objective must also be complete. | Mission succeeds once both return objectives complete; no extra defend timer |
+| 4 / extraction | **Extract with all seven standing.** All six living, standing soldiers and the rescued living POW inside centre (0,-6), radius 12, feet y7.5..10.5; tank objective must also be complete. | Activate only after the tank objective completes; success on this predicate, no extra defend timer |
 
 First squad death, POW death or existing all-downed failure ends the mission;
 no new per-route time limit. Downed soldiers cannot satisfy all-standing extraction.
 Rescue and optional radio share a stage. Killing the radio early persists and
-counts when that stage opens. Reaching extraction before tank destruction may
-satisfy the reach predicate in the existing stage model, but must not finish the
-mission; no helicopter arrives to bypass the tank objective.
+counts when that stage opens. Extraction is a separate final stage after tank destruction. Visiting S0 early
+does not credit its reach objective: all seven must be there and standing once
+that final stage is active. Do not bank an early visit and later award success
+while the squad is fighting elsewhere. No helicopter bypasses the tank objective.
 
 ### 10.2 Ordered events and texts
 
@@ -685,13 +686,13 @@ resolve events on the same simulation tick; restore never replays one-shot loot.
 | briefing | Ready/start | Briefing below; no cutscene or forced camera |
 | route-reveal | First standing soldier in D0 bounds x20..44,z53..75,y7.5..10.5 | Show route-choice text from §4 once |
 | approach-complete | Objective 0 completes | “Outpost reached. The prisoner is in the northwest records room.”; checkpoint |
-| prisoner-released | Objective 1 completes, t=0 | POW follows rescuer; set `pow-freed`; arm return objectives/timers; “Prisoner free. Move him to cover. Armour is inbound.”; checkpoint includes armed timers |
+| prisoner-released | Objective 1 completes, t=0 | POW follows rescuer; set `pow-freed`; activate tank objective and arm return timers; “Prisoner free. Move him to cover. Armour is inbound.”; checkpoint includes armed timers |
 | escort-hint | t=3 s, once | “Use Hold to shelter the prisoner, Move to send him to cover, Regroup to bring him with you.” |
 | armour-early | t=5 s, radio operator alive, tank not released | Activate tank; set `tank-arrived`; “The radio operator called in armour. Tank entering the north service road.” |
 | armour-delayed | t=20 s, tank not released | Activate tank; set same flag; “Armour entering the north service road. Keep the prisoner behind cover.” |
 | reserve-release | t=45 s, once | Activate surviving C1..C4 along authored corridor; “Movement at the north gate.” |
 | tank-destroyed | Objective 3 completes | “Armour destroyed. Bring all seven back to Juniper Hollow.”; checkpoint |
-| extraction | Return stage complete | Existing debrief/mission success and carry-over |
+| extraction | Extraction stage complete | Existing debrief/mission success and carry-over |
 
 Armour timing preserves current 5/20-second radio behaviour: the radio condition
 is evaluated at t5, so killing him before t5 still earns the delay. Once released,
@@ -1058,7 +1059,8 @@ road/basement split; mixed-floor squad orders cannot teleport one group to anoth
   activation, correct 5/20-second branch, no respawn of a pre-killed reserve.
 - Return by basement while tank travels directly overhead; no damage through slab,
   no trigger/AI/cover selected on wrong floor.
-- Reach extraction before killing tank: no mission completion. Tank killed before
+- Reach extraction before killing tank, then leave S0: no completion when tank dies;
+  return with all seven to finish. Tank killed before
   rescue: no replacement; the return stage recognises the dead group.
 - Death/downed and retry at each of the three checkpoints; also save with a player
   in B6 and another on A6, and with the tank under the bridge. Restore exact layer.
