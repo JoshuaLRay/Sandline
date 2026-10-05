@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { SPAWN_POINTS, loadWorld, rayWorld, requireWorld } from '@sandline/shared';
 import { COVER, CoverSystem, concealedProbes, firingPosition, parseCoverConfig, protects } from './cover.ts';
 import type { CoverPoint } from './nav/baked/types.ts';
-import { initNav, pathLength } from './nav/NavMesh.ts';
+import { initNav, completePathLength } from './nav/NavMesh.ts';
 import { bakedCoverFor, loadWorldNavMesh } from './nav/bakedNav.ts';
 import RAW_COVER from './cover.json' with { type: 'json' };
 
@@ -34,6 +34,7 @@ const WALL_MIDDLE: CoverPoint = { box: 'wall', x: 0, y: 0, z: 19.4, nx: 0, nz: -
 const WALL_END: CoverPoint = { box: 'wall', x: 4.65, y: 0, z: 19.4, nx: 0, nz: -1, height: 'high' };
 
 const eye = (x: number, z: number) => ({ x, y: 1.55, z });
+const feet = (x: number, z: number) => ({ x, y: 0, z });
 /** North of the crate, in front of the face the points are behind. */
 const IN_FRONT = eye(0, 10);
 /** South, on the soldiers' own side. */
@@ -92,19 +93,19 @@ describe('protection and firing positions (T-3.19)', () => {
 describe('the query (T-3.19)', () => {
   it('moving the threat round invalidates the point', () => {
     const cover = new CoverSystem([CRATE_WEST], boxes);
-    const choice = cover.choose(1, { from: eye(0, -5), threats: [IN_FRONT] });
+    const choice = cover.choose(1, { from: feet(0, -5), threats: [IN_FRONT] });
     expect(choice?.point).toBe(CRATE_WEST);
     expect(cover.stillProtects(1, [IN_FRONT])).toBe(true);
     // Round to the east, then behind: the crate hides nothing from there.
     expect(cover.stillProtects(1, [eye(10, -1.05)])).toBe(false);
     expect(cover.stillProtects(1, [BEHIND])).toBe(false);
     // And asked again, it offers nothing.
-    expect(cover.choose(1, { from: eye(0, -5), threats: [BEHIND] })).toBeNull();
+    expect(cover.choose(1, { from: feet(0, -5), threats: [BEHIND] })).toBeNull();
   });
 
   it('gives two brains asking at once different points', () => {
     const cover = new CoverSystem([CRATE_WEST, CRATE_EAST], boxes);
-    const query = { from: eye(0, -5), threats: [IN_FRONT] };
+    const query = { from: feet(0, -5), threats: [IN_FRONT] };
     const a = cover.choose(1, query)!;
     const b = cover.choose(2, query)!;
     expect(a).not.toBeNull();
@@ -118,7 +119,7 @@ describe('the query (T-3.19)', () => {
 
   it('never chooses a point with no firing position for combat, though it will to hide', () => {
     const cover = new CoverSystem([WALL_MIDDLE, WALL_END], boxes);
-    const from = eye(0, 15);
+    const from = feet(0, 15);
     // The middle is nearer, and would win on path cost alone.
     const ranked = cover.rank({ from, threats: [BEYOND_WALL] });
     expect(ranked.map((c) => c.point)).toEqual([WALL_END]);
@@ -129,33 +130,33 @@ describe('the query (T-3.19)', () => {
 
   it('prefers the shorter walk, and avoids a point a friend is crowding', () => {
     const cover = new CoverSystem([CRATE_WEST, CRATE_EAST], boxes);
-    expect(cover.rank({ from: eye(-3, -5), threats: [IN_FRONT] })[0]!.point).toBe(CRATE_WEST);
-    expect(cover.rank({ from: eye(3, -5), threats: [IN_FRONT] })[0]!.point).toBe(CRATE_EAST);
+    expect(cover.rank({ from: feet(-3, -5), threats: [IN_FRONT] })[0]!.point).toBe(CRATE_WEST);
+    expect(cover.rank({ from: feet(3, -5), threats: [IN_FRONT] })[0]!.point).toBe(CRATE_EAST);
     // A friend standing west of the west point crowds it, not (as much) the east one.
-    const crowded = cover.rank({ from: eye(-3, -5), threats: [IN_FRONT], friends: [{ x: -2.5, y: 0, z: -1.05 }] });
+    const crowded = cover.rank({ from: feet(-3, -5), threats: [IN_FRONT], friends: [{ x: -2.5, y: 0, z: -1.05 }] });
     expect(crowded[0]!.point).toBe(CRATE_EAST);
   });
 
   it('scores protection by the fraction of threats hidden from', () => {
     const cover = new CoverSystem([CRATE_WEST], boxes);
-    const [half] = cover.rank({ from: eye(0, -5), threats: [IN_FRONT, eye(10, -1.05)] });
+    const [half] = cover.rank({ from: feet(0, -5), threats: [IN_FRONT, eye(10, -1.05)] });
     expect(half!.protection).toBe(0.5);
-    const [full] = cover.rank({ from: eye(0, -5), threats: [IN_FRONT] });
+    const [full] = cover.rank({ from: feet(0, -5), threats: [IN_FRONT] });
     expect(full!.score - half!.score).toBeCloseTo(COVER.weights.protection * 0.5, 9);
   });
 
   it('drops a point the path cost cannot reach, or reaches too far round', () => {
     const cover = new CoverSystem([CRATE_WEST], boxes, () => null);
-    expect(cover.rank({ from: eye(0, -5), threats: [IN_FRONT] })).toEqual([]);
+    expect(cover.rank({ from: feet(0, -5), threats: [IN_FRONT] })).toEqual([]);
     const long = new CoverSystem([CRATE_WEST], boxes, () => COVER.maxPathM + 1);
-    expect(long.rank({ from: eye(0, -5), threats: [IN_FRONT] })).toEqual([]);
+    expect(long.rank({ from: feet(0, -5), threats: [IN_FRONT] })).toEqual([]);
   });
 });
 
 describe('reservations (T-3.19)', () => {
   it('releases when the holder leaves the point it reached, or dies, or asks again', () => {
     const cover = new CoverSystem([CRATE_WEST, CRATE_EAST], boxes);
-    const query = { from: eye(0, -5), threats: [IN_FRONT] };
+    const query = { from: feet(0, -5), threats: [IN_FRONT] };
     const a = cover.choose(1, query)!;
     // Still walking there: far, but not yet arrived, so kept.
     cover.track(1, { x: 0, y: 0, z: -5 }, true);
@@ -172,8 +173,8 @@ describe('reservations (T-3.19)', () => {
     expect(cover.holder(b.index)).toBeNull();
 
     // Asking again gives up the old point.
-    const c = cover.choose(3, { ...query, from: eye(-3, -5) })!;
-    const d = cover.choose(3, { ...query, from: eye(3, -5) })!;
+    const c = cover.choose(3, { ...query, from: feet(-3, -5) })!;
+    const d = cover.choose(3, { ...query, from: feet(3, -5) })!;
     expect(c.point).toBe(CRATE_WEST);
     expect(d.point).toBe(CRATE_EAST);
     expect(cover.holder(c.index)).toBeNull();
@@ -189,7 +190,7 @@ describe('the query on the range (T-3.19)', () => {
     const points = bakedCoverFor('range');
     const cover = new CoverSystem(points, range.boxes, (a, b) => {
       const path = mesh.path(a, b);
-      return path ? pathLength(path.points) : null;
+      return completePathLength(path, a, b);
     });
     const threats = SPAWN_POINTS.map((p) => eye(p.x, p.z));
     // Forty brains strewn up the range north of the spawn line, clear of the lane.
@@ -200,7 +201,7 @@ describe('the query on the range (T-3.19)', () => {
     const round = (shift: number) => {
       const system = new CoverSystem(points, range.boxes, (a, b) => {
         const path = mesh.path(a, b);
-        return path ? pathLength(path.points) : null;
+        return completePathLength(path, a, b);
       });
       const moved = threats.map((t) => ({ ...t, x: t.x + shift }));
       const t0 = performance.now();
@@ -219,7 +220,7 @@ describe('the query on the range (T-3.19)', () => {
     // made with the reservations as they stood when it asked.
     const replay = new CoverSystem(points, range.boxes, (a, b) => {
       const path = mesh.path(a, b);
-      return path ? pathLength(path.points) : null;
+      return completePathLength(path, a, b);
     });
     brains.forEach((_, i) => {
       const full = replay.rank(queryOf(i), 100 + i)[0] ?? null;

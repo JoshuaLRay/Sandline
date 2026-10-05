@@ -457,3 +457,14 @@ export function pathLength(points: readonly NavPoint[]): number {
   }
   return total;
 }
+
+/** Full 3D arrival, not a partial Detour corridor ending below/behind a goal. */
+export function completePathLength(path: NavPath | null, from: NavPoint, to: NavPoint, tolerance = DEFAULT_MOVE_CONFIG.stepHeight): number | null {
+  const first = path?.points[0];
+  const last = path?.points.at(-1);
+  if (!path || !first || !last) return null;
+  if (Math.hypot(first.x - from.x, first.y - from.y, first.z - from.z) > tolerance
+    || Math.hypot(last.x - to.x, last.y - to.y, last.z - to.z) > tolerance) return null;
+  // Preserve the established corridor cost after validating both endpoints.
+  return pathLength(path.points);
+}

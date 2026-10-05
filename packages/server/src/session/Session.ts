@@ -228,7 +228,7 @@ import { ESCORT_ARRIVED_M } from '../ai/actions/escort.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
 import type { CoverPoint } from '../ai/nav/baked/types.ts';
-import { pathLength } from '../ai/nav/NavMesh.ts';
+import { completePathLength } from '../ai/nav/NavMesh.ts';
 import { type FollowerStatus, PathFollower } from '../ai/locomotion/followPath.ts';
 import { Avoidance, type AvoidanceEntry } from '../ai/locomotion/avoidance.ts';
 import type { NavMesh } from '../ai/nav/NavMesh.ts';
@@ -1125,8 +1125,12 @@ export class Session {
             this.collisionBoxes,
             mesh
               ? (a, b) => {
-                  const path = mesh.path(a, b);
-                  return path ? pathLength(path.points) : null;
+                  // An active vault is between nav surfaces; plan from its known takeoff.
+                  const vault = (a as Partial<MoveState>).vault;
+                  const from = vault ? { x: vault.fromX, y: vault.fromY, z: vault.fromZ } : a;
+                  const path = mesh.path(from, b);
+                  const cost = completePathLength(path, from, b);
+                  return cost === null ? null : cost + Math.hypot(a.x - from.x, a.y - from.y, a.z - from.z);
                 }
               : undefined,
           )
@@ -2358,6 +2362,7 @@ export class Session {
       ...[...this.blockerStates.values()].filter((b) => b.active).flatMap((b) => b.boxes),
     );
     this.navMesh?.setBlocker(blocker.id, blocker.boxes, blocker.active);
+    this.cover?.invalidateGeometry();
     this.broadcastScriptState();
   }
 
