@@ -25,6 +25,7 @@ import { type BtFrame, DAMAGE, DEFAULT_MUZZLE_RIG, type OrderPoint, SQUAD, type 
 import type { BrainBody, BrainMemory, BrainRegistry } from '../Brain.ts';
 import { type CombatBody, isCombatBody, threatEye } from '../actions/combat.ts';
 import { type ActiveOrder, type SquadBody, isSquadBody } from '../actions/friendly.ts';
+import { within } from '../floor.ts';
 
 type Frame = BtFrame<BrainBody, BrainMemory>;
 type Body = SquadBody & CombatBody;
@@ -36,10 +37,6 @@ export const MOVE_COVER_M = 6;
 const THERE_M = 0.4;
 /** Beyond this, a bot under orders runs. */
 const SPRINT_BEYOND_M = 3;
-
-function flat(a: Vec3, b: Vec3): number {
-  return Math.sqrt((a.x - b.x) ** 2 + (a.z - b.z) ** 2);
-}
 
 function isBody(ctx: BrainBody): ctx is Body {
   return isSquadBody(ctx) && isCombatBody(ctx);
@@ -63,9 +60,14 @@ function hands(frame: Frame, h: { intent?: { goal: Vec3; pace: 'walk' | 'sprint'
   bb.set('phase', null);
 }
 
+/** Far enough to run to: beyond `SPRINT_BEYOND_M`, or on another floor (U-123: the way there is round by the stairs). */
+function far(from: Vec3, goal: Vec3): boolean {
+  return !within(from, goal, SPRINT_BEYOND_M);
+}
+
 /** Walk to `goal`, or run when it is far. */
 function walk(goal: Vec3, from: Vec3): { goal: Vec3; pace: 'walk' | 'sprint' } {
-  return { goal: { x: goal.x, y: goal.y, z: goal.z }, pace: flat(from, goal) > SPRINT_BEYOND_M ? 'sprint' : 'walk' };
+  return { goal: { x: goal.x, y: goal.y, z: goal.z }, pace: far(from, goal) ? 'sprint' : 'walk' };
 }
 
 /** The target it has chosen, if it sees it now: what it may fire at. */
@@ -129,7 +131,7 @@ function threatEyes(ctx: Body): Vec3[] {
 function coverFrom(ctx: Body, near: Vec3, withinM: number, threats: Vec3[]): (Vec3 & { height: 'low' | 'high' }) | null {
   const cover = ctx.combat.cover;
   if (!cover || threats.length === 0) return null;
-  const inReach = (p: Vec3) => flat(p, near) <= withinM;
+  const inReach = (p: Vec3) => within(p, near, withinM);
   const held = cover.heldPoint(ctx.netId);
   if (held && inReach(held) && cover.stillProtects(ctx.netId, threats)) return held;
   return cover.choose(ctx.netId, { from: ctx.state, threats, friends: ctx.combat.friendsOf(ctx.netId, ctx.faction), combat: true, accept: inReach })?.point ?? null;
@@ -158,7 +160,8 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
         let goal: Vec3 = to;
         let low = false;
         if (cover && eye) {
-          const near = (p: Vec3) => flat(p, to) <= MOVE_COVER_M;
+          // U-123: cover near the point on its own floor, not under or over it.
+          const near = (p: Vec3) => within(p, to, MOVE_COVER_M);
           let held = cover.heldPoint(ctx.netId);
           if (!held || !near(held) || !cover.stillProtects(ctx.netId, [eye])) {
             held = cover.choose(ctx.netId, { from: ctx.state, threats: [eye], friends: ctx.combat.friendsOf(ctx.netId, ctx.faction), combat: false, accept: near })?.point ?? null;
@@ -168,18 +171,19 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
             low = held.height === 'low';
           }
         }
-        if (flat(ctx.state, goal) > THERE_M) {
+        // U-123: there means on the goal's floor too; passing beneath a raised goal is not arriving.
+        if (!within(ctx.state, goal, THERE_M)) {
           // T-5.06: shot at on the way, it goes to ground near where it is and fights, moving on when the fire lets up.
-          if (underFire(ctx) && flat(ctx.state, goal) > MOVE_COVER_M) {
+          if (underFire(ctx) && !within(ctx.state, goal, MOVE_COVER_M)) {
             const refuge = coverFrom(ctx, ctx.state, SQUAD.bot.underFire.coverWithinM, threatEyes(ctx));
             if (refuge) {
               const target = seenTarget(ctx);
-              if (flat(ctx.state, refuge) > THERE_M) hands(frame, { intent: walk(refuge, ctx.state), fireAt: target, lookAt: eye });
+              if (!within(ctx.state, refuge, THERE_M)) hands(frame, { intent: walk(refuge, ctx.state), fireAt: target, lookAt: eye });
               else hands(frame, { crouch: refuge.height === 'low' && target === null, fireAt: target, lookAt: eye });
               return 'running';
             }
           }
-          hands(frame, { intent: walk(goal, ctx.state), fireAt: seenTarget(ctx), lookAt: flat(ctx.state, goal) > SPRINT_BEYOND_M ? null : eye });
+          hands(frame, { intent: walk(goal, ctx.state), fireAt: seenTarget(ctx), lookAt: far(ctx.state, goal) ? null : eye });
           return 'running';
         }
         // There: down behind it, facing the threat, firing at what shows.
@@ -213,7 +217,7 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
           const refuge = coverFrom(ctx, ctx.state, SQUAD.bot.underFire.coverWithinM, threatEyes(ctx));
           if (refuge) {
             const target = seenTarget(ctx);
-            if (flat(ctx.state, refuge) > THERE_M) hands(frame, { intent: walk(refuge, ctx.state), fireAt: order.target, lookAt: eye });
+            if (!within(ctx.state, refuge, THERE_M)) hands(frame, { intent: walk(refuge, ctx.state), fireAt: order.target, lookAt: eye });
             else hands(frame, { crouch: refuge.height === 'low' && target === null, fireAt: order.target, lookAt: eye });
             return 'running';
           }
@@ -230,7 +234,7 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
           const choice = cover.rank({ from: ctx.state, threats: [eye], friends: ctx.combat.friendsOf(ctx.netId, ctx.faction), combat: true }, ctx.netId)[0];
           if (choice?.firingFrom) goal = choice.firingFrom;
         }
-        hands(frame, { intent: walk(goal, ctx.state), fireAt: order.target, lookAt: flat(ctx.state, goal) > SPRINT_BEYOND_M ? null : eye });
+        hands(frame, { intent: walk(goal, ctx.state), fireAt: order.target, lookAt: far(ctx.state, goal) ? null : eye });
         return 'running';
       })
 
@@ -243,8 +247,8 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
         const target = seenTarget(ctx);
         const eye = threatEye(ctx);
         const held = ctx.combat.cover?.heldPoint(ctx.netId) ?? null;
-        const inRefuge = held !== null && flat(held, anchor) <= SQUAD.bot.underFire.holdCoverM && flat(ctx.state, held) <= THERE_M * 1.5;
-        if (flat(ctx.state, anchor) > THERE_M * 1.5 && !(inRefuge && underFire(ctx))) {
+        const inRefuge = held !== null && within(held, anchor, SQUAD.bot.underFire.holdCoverM) && within(ctx.state, held, THERE_M * 1.5);
+        if (!within(ctx.state, anchor, THERE_M * 1.5) && !(inRefuge && underFire(ctx))) {
           hands(frame, { intent: walk(anchor, ctx.state), fireAt: target, lookAt: eye });
           return 'running';
         }
@@ -253,7 +257,7 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
         if (underFire(ctx)) {
           const refuge = coverFrom(ctx, anchor, SQUAD.bot.underFire.holdCoverM, threatEyes(ctx));
           if (refuge) {
-            if (flat(ctx.state, refuge) > THERE_M) hands(frame, { intent: walk(refuge, ctx.state), fireAt: target, lookAt: eye });
+            if (!within(ctx.state, refuge, THERE_M)) hands(frame, { intent: walk(refuge, ctx.state), fireAt: target, lookAt: eye });
             else hands(frame, { crouch: refuge.height === 'low' && target === null, fireAt: target, lookAt: eye });
             return 'running';
           }
@@ -277,7 +281,7 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
           hands(frame, {});
           return 'success';
         }
-        if (flat(ctx.state, place.goal) <= formationBand(place.offset)) {
+        if (within(ctx.state, place.goal, formationBand(place.offset))) {
           ctx.squad.report(ctx.index, 'done', 'in formation');
           hands(frame, {});
           return 'success';
@@ -314,7 +318,8 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
           return 'failure';
         }
         const reach = DAMAGE.downed.reviveRangeM * SQUAD.bot.reviveReachFraction;
-        if (flat(ctx.state, at) > reach) {
+        // U-123: beside it on its floor; kneeling beneath a squadmate on the deck above revives nobody.
+        if (!within(ctx.state, at, reach)) {
           hands(frame, { intent: walk(at, ctx.state) });
           return 'running';
         }

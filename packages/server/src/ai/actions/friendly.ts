@@ -17,6 +17,7 @@
 import { type BotOrder, type OrderPoint, type SquadAggression, SQUAD, DEFAULT_MUZZLE_RIG, formationBand, suppressionLevel } from '@sandline/shared';
 import type { BrainBody, BrainRegistry } from '../Brain.ts';
 import type { FormationPlace } from '../friendly/formation.ts';
+import { within } from '../floor.ts';
 import { isCombatBody } from './combat.ts';
 
 /** A downed squadmate a bot could revive (T-3.26). */
@@ -95,7 +96,7 @@ export function registerFriendlyLeaves(registry: BrainRegistry): BrainRegistry {
       if (length < 0.01) return 'failure';
       const distance = Math.min(length, formationBand(place.offset));
       const goal = { x: place.goal.x + dx / length * distance, y: place.goal.y, z: place.goal.z + dz / length * distance };
-      if (Math.sqrt((goal.x - ctx.state.x) ** 2 + (goal.z - ctx.state.z) ** 2) <= SQUAD.arriveM || !ctx.squad.reachable(ctx.state, goal)) return 'failure';
+      if (within(ctx.state, goal, SQUAD.arriveM) || !ctx.squad.reachable(ctx.state, goal)) return 'failure';
       blackboard.set('intent', { goal, pace: 'walk' });
       blackboard.set('fireAt', null); blackboard.set('suppressAt', null);
       blackboard.set('lookAt', null); blackboard.set('crouch', false); blackboard.set('interact', false);
@@ -122,11 +123,11 @@ export function registerFriendlyLeaves(registry: BrainRegistry): BrainRegistry {
           const threats = [...ctx.memory.entries.values()].filter((e) => e.threatAt !== null && now - e.threatAt <= SQUAD.bot.underFire.threatSeconds)
             .map((e) => ({ x: e.x, y: e.y + DEFAULT_MUZZLE_RIG.eyeHeight, z: e.z }));
           const refuge = threats.length === 0 ? null : ctx.combat.cover.choose(ctx.netId, { from: ctx.state, threats, friends: ctx.combat.friendsOf(ctx.netId, ctx.faction), combat: false,
-            accept: (p) => !place || Math.sqrt((p.x - place.goal.x) ** 2 + (p.z - place.goal.z) ** 2) <= formationBand(place.offset) })?.point;
+            accept: (p) => !place || within(p, place.goal, formationBand(place.offset)) })?.point;
           if (refuge) {
-            const distance = Math.sqrt((refuge.x - ctx.state.x) ** 2 + (refuge.z - ctx.state.z) ** 2);
-            blackboard.set('intent', distance > SQUAD.arriveM ? { goal: refuge, pace: 'walk' } : null);
-            blackboard.set('crouch', distance <= SQUAD.arriveM && refuge.height === 'low');
+            const there = within(ctx.state, refuge, SQUAD.arriveM);
+            blackboard.set('intent', there ? null : { goal: refuge, pace: 'walk' });
+            blackboard.set('crouch', there && refuge.height === 'low');
           }
         }
       }
@@ -144,11 +145,11 @@ export function registerFriendlyLeaves(registry: BrainRegistry): BrainRegistry {
       blackboard.set('lookAt', null);
       blackboard.set('interact', false);
       const reach = mate.reachM * SQUAD.bot.reviveReachFraction;
-      const d = Math.sqrt((ctx.state.x - mate.x) ** 2 + (ctx.state.z - mate.z) ** 2);
-      if (d > reach) {
+      // U-123: beside the mate on its floor, not beneath it.
+      if (!within(ctx.state, mate, reach)) {
         blackboard.set('useKit', false);
         blackboard.set('crouch', false);
-        blackboard.set('intent', { goal: { x: mate.x, y: mate.y, z: mate.z }, pace: d > 4 ? 'sprint' : 'walk' });
+        blackboard.set('intent', { goal: { x: mate.x, y: mate.y, z: mate.z }, pace: within(ctx.state, mate, 4) ? 'walk' : 'sprint' });
         return 'running';
       }
       blackboard.set('intent', null);
@@ -189,11 +190,11 @@ export function registerFriendlyLeaves(registry: BrainRegistry): BrainRegistry {
       blackboard.set('reload', false);
       blackboard.set('lookAt', null);
       const reach = mate.reachM * SQUAD.bot.reviveReachFraction;
-      const d = Math.sqrt((ctx.state.x - mate.x) ** 2 + (ctx.state.z - mate.z) ** 2);
-      if (d > reach) {
+      // U-123: beside the mate on its floor, not beneath it.
+      if (!within(ctx.state, mate, reach)) {
         blackboard.set('interact', false);
         blackboard.set('crouch', false);
-        blackboard.set('intent', { goal: { x: mate.x, y: mate.y, z: mate.z }, pace: d > 4 ? 'sprint' : 'walk' });
+        blackboard.set('intent', { goal: { x: mate.x, y: mate.y, z: mate.z }, pace: within(ctx.state, mate, 4) ? 'walk' : 'sprint' });
         return 'running';
       }
       // There: kneel beside it and hold interact, as a human would.
