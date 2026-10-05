@@ -37,9 +37,10 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-120](docs/backlog/U-120.md) | Bake solid overhead undersides and enforce basement headroom | Map implementation | P1 | DONE | Owner-authorized merge; CI #1691 passed all four jobs | [#294](https://github.com/JoshuaLRay/Sandline/pull/294) |
 | [U-121](docs/backlog/U-121.md) | Preserve floors in nav projection, blockers and traversal links | Map implementation | P1 | DONE | Owner-authorized merge; all four CI #1694 jobs passed | [#295](https://github.com/JoshuaLRay/Sandline/pull/295) |
 | [U-122](docs/backlog/U-122.md) | Select and bake cover on the intended floor | Map implementation | P1 | DONE | Proposed on authorized green merge; verification in PR | [#296](https://github.com/JoshuaLRay/Sandline/pull/296) |
-| [U-123](docs/backlog/U-123.md) | Preserve 3D squad/POW command goals and retry positions | Map implementation | P1 | IN_PROGRESS | U-121, U-122 (DONE) | `task/U-123-command-floors` |
+| [U-123](docs/backlog/U-123.md) | Preserve 3D squad/POW command goals and retry positions | Map implementation | P1 | REVIEW | U-121, U-122 (DONE); local verify passed; latest-head CI and owner review pending | `task/U-123-command-floors` |
+| [U-125](docs/backlog/U-125.md) | Remove walkable nav islands baked inside solid boxes | Map implementation | P1 | READY | Found during U-123; U-109 leaf; none | — |
 | [U-108](docs/backlog/U-108.md) | Height-aware mission areas and enemy spawn zones | Map implementation | P1 | DONE | Merged with owner authorization; all four CI jobs passed | [#293](https://github.com/JoshuaLRay/Sandline/pull/293) |
-| [U-109](docs/backlog/U-109.md) | Stacked-floor navigation, cover and command targets | Map implementation | P1 | BLOCKED | Parent: U-120–U-123 | — |
+| [U-109](docs/backlog/U-109.md) | Stacked-floor navigation, cover and command targets | Map implementation | P1 | BLOCKED | Parent: U-120–U-123, U-125 | — |
 | [U-110](docs/backlog/U-110.md) | Authored squad starts and elevated vehicle paths | Map implementation | P1 | READY | U-108 | — |
 | [U-111](docs/backlog/U-111.md) | Fixed guard sockets, patrol bounds and staged reserves | Map implementation | P1 | BLOCKED | U-108, U-109 | — |
 | [U-112](docs/backlog/U-112.md) | Finite projectile, health and ammunition supply caches | Map implementation | P1 | READY | U-107 | — |
@@ -50,6 +51,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-117](docs/backlog/U-117.md) | Integrate redesigned Mission 1 combat, supplies and objectives | Map implementation | P1 | BLOCKED | U-111, U-112, U-113, U-116 | — |
 | [U-118](docs/backlog/U-118.md) | Finish Qalat terrain, architecture, lighting and presentation | Map implementation | P1 | BLOCKED | U-117 | — |
 | [U-119](docs/backlog/U-119.md) | Verify the complete replacement mission and capture review evidence | Map implementation | P1 | BLOCKED | U-118 | — |
+| [U-124](docs/backlog/U-124.md) | Bake the kit gallery’s house and roof stair into its navmesh | Map implementation | P2 | READY | Found during U-123; none | — |
 | [U-107](docs/backlog/U-107.md) | Specify full Mission 1 replacement: hidden spawn, ridge and underground depot | Map design | P1 | DONE | Owner authorized merge/start; merged 2026-10-04 | [#292](https://github.com/JoshuaLRay/Sandline/pull/292) |
 | [U-106](docs/backlog/U-106.md) | Implement Qalat’s distinct assault, support and isolated flank routes | Map design | P1 | REVIEW | U-105; merged blockout superseded by U-107 redesign; no owner quality verdict | [#291](https://github.com/JoshuaLRay/Sandline/pull/291) |
 | [U-105](docs/backlog/U-105.md) | Define distinct campaign lanes and per-map creation records | Map design | P1 | DONE | Accepted and merged 2026-10-04; implementation tracked by U-106 | [#290](https://github.com/JoshuaLRay/Sandline/pull/290) |
