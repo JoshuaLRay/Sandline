@@ -5,6 +5,7 @@ import { FIGHTER_PARTS, buildFighter } from './fighter.ts';
 import { fighterAtlasPng } from './fighterAtlas.ts';
 import { buildDetailedSoldier } from './soldier.ts';
 import { soldierAtlasPng } from './soldierAtlas.ts';
+import { vehicleDocuments } from '../vehicles/index.ts';
 import { weaponDocuments } from '../weapons/index.ts';
 
 export interface Character {
@@ -24,5 +25,5 @@ export const CHARACTERS: readonly Character[] = [
   },
 ];
 
-/** Everything else `gen:art` writes that is not a kit piece: the characters, then the weapons (T-4.36). */
-export const GENERATED: readonly Character[] = [...CHARACTERS, ...weaponDocuments()];
+/** Everything else `gen:art` writes that is not a kit piece: the characters, the weapons (T-4.36), the vehicles (U-126). */
+export const GENERATED: readonly Character[] = [...CHARACTERS, ...weaponDocuments(), ...vehicleDocuments()];
