@@ -251,12 +251,12 @@ function area(p: readonly P2[]): number {
   return s / 2;
 }
 
-function ensureCcw(p: readonly P2[]): P2[] {
+export function ensureCcw(p: readonly P2[]): P2[] {
   return area(p) < 0 ? [...p].reverse() : [...p];
 }
 
 /** Ear clipping for a simple counter-clockwise polygon. */
-function earClip(p: readonly P2[]): [number, number, number][] {
+export function earClip(p: readonly P2[]): [number, number, number][] {
   const idx = p.map((_, i) => i);
   const out: [number, number, number][] = [];
   const cross = (a: P2, b: P2, c: P2) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);

@@ -178,8 +178,8 @@ describe('what a source declares (T-4.02)', () => {
     const doc = prop([]);
     doc.getRoot().listScenes()[0]!.setExtras({ sandline: {} });
     expect(() => statsOf(doc)).toThrow(/sandline.class: expected one of/);
-    doc.getRoot().listScenes()[0]!.setExtras({ sandline: { class: 'vehicle' } });
-    expect(() => statsOf(doc)).toThrow(/got "vehicle"/);
+    doc.getRoot().listScenes()[0]!.setExtras({ sandline: { class: 'aircraft' } });
+    expect(() => statsOf(doc)).toThrow(/got "aircraft"/);
   });
 
   it('refuses a texture it cannot encode', async () => {
