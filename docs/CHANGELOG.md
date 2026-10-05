@@ -396,4 +396,4 @@ Format: `T-<id> — <what changed>`
 
 - U-125 — Mark solid box interiors unwalkable in the nav bake (Recast pipeline with box area marking after erosion); regenerated all worlds (range/kit-gallery bytes unchanged, Qalat 983 → 594 kB) with fixture and committed-bake regressions.
 
-- U-127 — Designed campaign Mission 2, The Kestrel Dam: a full coordinate construction specification (three routes, dam complex, demolition, technicals, prisoners, checks), a mission brief and three generated diagrams; implementation and owner review remain.
+- U-127 — Designed campaign Mission 2, The Kestrel Dam: a full coordinate construction specification (three routes, dam complex, demolition, technicals, prisoners, checks), a mission brief and three generated diagrams ([PR #301](https://github.com/JoshuaLRay/Sandline/pull/301)); implementation and owner review remain.
