@@ -6,7 +6,9 @@ import { loadWorldNavMesh } from '../../server/src/ai/nav/bakedNav.ts';
 import { PathFollower } from '../../server/src/ai/locomotion/followPath.ts';
 
 const world = requireWorld('qalat-road');
-const surface = (p: { x: number; z: number }): NavPoint => ({ ...p, y: supportUnder(p.x, p.z, 0, Infinity, world.boxes, 0) });
+// U-125: a 1 cm footprint, so a sample on the seam between two abutting boxes (stair steps) finds their top, not the
+// ground inside them; the old bake's hidden nav inside solid boxes used to answer for such a point.
+const surface = (p: { x: number; z: number }): NavPoint => ({ ...p, y: supportUnder(p.x, p.z, 0.01, Infinity, world.boxes, 0) });
 let nav: NavMesh;
 function clear(from: NavPoint, to: NavPoint): boolean {
   const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z;
