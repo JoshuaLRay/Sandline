@@ -324,8 +324,9 @@ export class CoverSystem {
   /**
    * Candidates best first, stopping once `limit` are certain. Line of sight
    * and crowding are cheap; the path is not. So every candidate is scored
-   * first with its STRAIGHT-LINE distance, which a path is never shorter than
-   * — an optimistic score — and paths are found in that order only until the
+   * first with its straight-line distance minus allowed endpoint snaps
+   * — a lower bound on corridor cost — and paths
+   * are found in that order only until the
    * next optimistic score cannot beat the `limit`-th real one. The answer is
    * exactly the one pathing every candidate would give (T-3.19's cost test
    * logs what this saves).
@@ -357,7 +358,7 @@ export class CoverSystem {
       for (const f of query.friends ?? []) if (Math.abs(f.y - point.y) < DEFAULT_MOVE_CONFIG.height && (f.x - point.x) ** 2 + (f.z - point.z) ** 2 <= crowdRadiusM ** 2) crowd++;
       // A firing position is what combat asks for; to hide, it is worth nothing extra.
       const base = weights.protection * protection + (combat && firingFrom ? weights.firing : 0) - weights.crowd * crowd;
-      optimistic.push({ choice: { index, point, score: base, protection, firingFrom, pathM: straight }, bound: base - weights.pathPerM * straight });
+      optimistic.push({ choice: { index, point, score: base, protection, firingFrom, pathM: straight }, bound: base - weights.pathPerM * Math.max(0, straight - 2 * DEFAULT_MOVE_CONFIG.stepHeight) });
     }
     optimistic.sort((a, b) => b.bound - a.bound || a.choice.index - b.choice.index);
     const out: CoverChoice[] = [];

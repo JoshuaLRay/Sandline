@@ -1125,8 +1125,11 @@ export class Session {
             this.collisionBoxes,
             mesh
               ? (a, b) => {
-                  const path = mesh.path(a, b);
-                  return completePathLength(path, a, b);
+                  // An active vault is between nav surfaces; plan from its known takeoff.
+                  const vault = (a as Partial<MoveState>).vault;
+                  const from = vault ? { x: vault.fromX, y: vault.fromY, z: vault.fromZ } : a;
+                  const path = mesh.path(from, b);
+                  return completePathLength(path, from, b);
                 }
               : undefined,
           )

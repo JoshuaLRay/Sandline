@@ -465,5 +465,6 @@ export function completePathLength(path: NavPath | null, from: NavPoint, to: Nav
   if (!path || !first || !last) return null;
   if (Math.hypot(first.x - from.x, first.y - from.y, first.z - from.z) > tolerance
     || Math.hypot(last.x - to.x, last.y - to.y, last.z - to.z) > tolerance) return null;
-  return pathLength([from, ...path.points, to]);
+  // Preserve the established corridor cost after validating both endpoints.
+  return pathLength(path.points);
 }
