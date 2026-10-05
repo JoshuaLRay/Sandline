@@ -19,6 +19,7 @@
  * (ADR-006) and arrive here as bytes. AI is not parity-critical (§2.3): a path
  * may differ by a few millimetres between engines and nothing reconciles it.
  */
+import { DEFAULT_MOVE_CONFIG } from '@sandline/shared';
 import {
   Crowd,
   type CrowdParams,
@@ -66,8 +67,10 @@ export interface NavPolygon {
   corners: readonly NavPoint[];
 }
 
-/** X/Z bounds are enough to mark polygons covered by a dynamic blocker. */
+/** Optional vertical bounds constrain a blocker to occupied actor-height volumes. */
 export interface NavBlockerBox {
+  minY?: number;
+  maxY?: number;
   minX: number;
   minZ: number;
   maxX: number;
@@ -128,16 +131,16 @@ export function isNavReady(): boolean {
 export class NavMesh {
   private readonly query: NavMeshQuery;
 
-  private constructor(private readonly mesh: DetourNavMesh) {
+  private constructor(private readonly mesh: DetourNavMesh, private readonly agentHeight: number) {
     this.query = new NavMeshQuery(mesh, { maxNodes: 2048 });
     this.query.defaultQueryHalfExtents = { ...QUERY_HALF_EXTENTS };
   }
 
   /** Load a mesh baked and exported by `packages/tools/src/nav/bake.ts`. */
-  static load(bytes: Uint8Array): NavMesh {
+  static load(bytes: Uint8Array, agentHeight = DEFAULT_MOVE_CONFIG.height): NavMesh {
     if (!initialised) throw new Error('NavMesh.load before initNav() resolved');
     const { navMesh } = importNavMesh(bytes);
-    return new NavMesh(navMesh);
+    return new NavMesh(navMesh, agentHeight);
   }
 
   /**
@@ -151,7 +154,7 @@ export class NavMesh {
    */
   nearestPoint(p: NavPoint, halfExtents: NavPoint = QUERY_HALF_EXTENTS): { point: NavPoint; polyRef: number } | null {
     const r = this.query.findClosestPoint(p, { halfExtents });
-    if (!r.success || r.polyRef === 0) return null;
+    if (!r.success || r.polyRef === 0 || Math.abs(r.point.y - p.y) > halfExtents.y) return null;
     return { point: { x: r.point.x, y: r.point.y, z: r.point.z }, polyRef: r.polyRef };
   }
 
@@ -165,24 +168,18 @@ export class NavMesh {
    * the box that found it: anything nearer would then have been inside the
    * box too. A hit further out than its box is only near — the centre of a
    * range crate answers 1.16 m away through the default box when the true
-   * nearest is 1.00 m — so the search goes on. At the cap the best hit is
-   * returned as it is; null means nothing is within `maxSearchM` at all.
-   * Vertical reach grows with the horizontal once it passes the default, so
-   * a goal on a 2.4 m wall top comes down to the floor beside it.
+   * nearest is 1.00 m — so the search goes on. At the cap, a hit outside
+   * the requested horizontal radius is rejected instead of returned.
+   * Vertical reach stays fixed: widening a horizontal search cannot move a
+   * basement goal onto a roof. Callers may request a tighter vertical tolerance.
    */
-  resolvePoint(p: NavPoint, maxSearchM: number): { point: NavPoint; polyRef: number } | null {
-    let across = QUERY_HALF_EXTENTS.x;
-    let best: { point: NavPoint; polyRef: number } | null = null;
+  resolvePoint(p: NavPoint, maxSearchM: number, maxVerticalM = QUERY_HALF_EXTENTS.y): { point: NavPoint; polyRef: number } | null {
+    if (!Number.isFinite(maxSearchM) || maxSearchM < 0 || !Number.isFinite(maxVerticalM) || maxVerticalM < 0) return null;
+    let across = Math.min(QUERY_HALF_EXTENTS.x, maxSearchM);
     for (;;) {
-      const up = Math.max(QUERY_HALF_EXTENTS.y, across);
-      const hit = this.nearestPoint(p, { x: across, y: up, z: across });
-      if (hit) {
-        best = hit;
-        const dx = hit.point.x - p.x;
-        const dz = hit.point.z - p.z;
-        if (Math.sqrt(dx * dx + dz * dz) <= across && Math.abs(hit.point.y - p.y) <= up) return hit;
-      }
-      if (across >= maxSearchM) return best;
+      const hit = this.nearestPoint(p, { x: across, y: maxVerticalM, z: across });
+      if (hit && Math.hypot(hit.point.x - p.x, hit.point.z - p.z) <= across) return hit;
+      if (across >= maxSearchM) return null;
       across = Math.min(across * RESOLVE_WIDEN, maxSearchM);
     }
   }
@@ -237,7 +234,7 @@ export class NavMesh {
 
   /**
    * Toggle a T-4.15 blocker without rebuilding the mesh. Polygons whose
-   * ground-plane bounds overlap one of the blocker's boxes have their walk
+   * bounds overlap one of the blocker's boxes at standing body height have their walk
    * flags cleared while the blocker is active. Overlapping blockers are
    * reference-counted, so opening one cannot reopen ground another still
    * occupies.
@@ -247,17 +244,22 @@ export class NavMesh {
     if (!refs) {
       refs = this.polygons()
         .filter((polygon) => {
+          let minY = Infinity;
+          let maxY = -Infinity;
           let minX = Infinity;
           let minZ = Infinity;
           let maxX = -Infinity;
           let maxZ = -Infinity;
           for (const p of polygon.corners) {
+            minY = Math.min(minY, p.y);
+            maxY = Math.max(maxY, p.y);
             minX = Math.min(minX, p.x);
             minZ = Math.min(minZ, p.z);
             maxX = Math.max(maxX, p.x);
             maxZ = Math.max(maxZ, p.z);
           }
-          return boxes.some((box) => maxX > box.minX && minX < box.maxX && maxZ > box.minZ && minZ < box.maxZ);
+          return boxes.some((box) => maxX > box.minX && minX < box.maxX && maxZ > box.minZ && minZ < box.maxZ
+            && maxY + this.agentHeight > (box.minY ?? -Infinity) && minY < (box.maxY ?? Infinity));
         })
         .map((polygon) => polygon.ref);
       this.blockerRefs.set(id, refs);

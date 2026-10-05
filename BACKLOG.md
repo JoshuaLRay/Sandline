@@ -34,8 +34,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
-| [U-120](docs/backlog/U-120.md) | Bake solid overhead undersides and enforce basement headroom | Map implementation | P1 | REVIEW | U-108; leaf of U-109; verification tracked in PR | [#294](https://github.com/JoshuaLRay/Sandline/pull/294) |
-| [U-121](docs/backlog/U-121.md) | Preserve floors in nav projection, blockers and traversal links | Map implementation | P1 | BLOCKED | U-120 | — |
+| [U-120](docs/backlog/U-120.md) | Bake solid overhead undersides and enforce basement headroom | Map implementation | P1 | DONE | Owner-authorized merge; CI #1691 passed all four jobs | [#294](https://github.com/JoshuaLRay/Sandline/pull/294) |
+| [U-121](docs/backlog/U-121.md) | Preserve floors in nav projection, blockers and traversal links | Map implementation | P1 | REVIEW | U-120; verification tracked in PR | [#295](https://github.com/JoshuaLRay/Sandline/pull/295) |
 | [U-122](docs/backlog/U-122.md) | Select and bake cover on the intended floor | Map implementation | P1 | BLOCKED | U-121 | — |
 | [U-123](docs/backlog/U-123.md) | Preserve 3D squad/POW command goals and retry positions | Map implementation | P1 | BLOCKED | U-121, U-122 | — |
 | [U-108](docs/backlog/U-108.md) | Height-aware mission areas and enemy spawn zones | Map implementation | P1 | DONE | Merged with owner authorization; all four CI jobs passed | [#293](https://github.com/JoshuaLRay/Sandline/pull/293) |

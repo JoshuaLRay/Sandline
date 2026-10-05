@@ -387,3 +387,5 @@ Format: `T-<id> — <what changed>`
 - U-108 — Added optional height-bounded mission/encounter/script areas and authored enemy spawn floors, with stacked-floor occupancy and real-session objective/escort regressions; queued U-109–U-119 for the Qalat Road build.
 
 - U-120 — Closed nav bake cuboid undersides so low ceilings reject standing paths; versioned geometry inputs, regenerated world bakes and added basement/surface/bridge regressions.
+
+- U-121 — Bound nav goal projection vertically, apply blockers at standing-body height, and bake supported elevated vault/drop links with overhead clearance checks and controller traversal regressions.

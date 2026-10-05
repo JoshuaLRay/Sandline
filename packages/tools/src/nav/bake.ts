@@ -20,6 +20,8 @@ import {
   type MoveConfig,
   type World,
   createMoveState,
+  blockedAt,
+  overlapsFootprint,
   supportUnder,
   tryStartVault,
 } from '@sandline/shared';
@@ -241,7 +243,7 @@ export function navBakeHash(world: World, agent: NavAgent = DEFAULT_NAV_AGENT, e
     // How vault links are searched for and kept (T-3.04). The vault rule's
     // own numbers are in `agent`; the rule itself is the controller's code.
     // U-027 added drop links off raised tops: a rule change the hash must see.
-    links: { spacing: LINK_SPACING_M, approachMargin: APPROACH_MARGIN_M, endOnMesh: LINK_END_ON_MESH_M, drops: 1 },
+    links: { spacing: LINK_SPACING_M, approachMargin: APPROACH_MARGIN_M, endOnMesh: LINK_END_ON_MESH_M, drops: 2, elevatedVaults: 1, sweptHeadroom: 1, vaultLip: DEFAULT_MOVE_CONFIG.vaultLip },
     // How cover points are sampled and classed (T-3.18): stored beside the
     // mesh, so under the same hash.
     cover: coverHashInputs(eyes),
@@ -303,13 +305,22 @@ export function vaultLinks(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): V
         const t = count === 1 ? (lo + hi) / 2 : lo + ((hi - lo) * i) / (count - 1);
         const x = alongX ? t : face - f.dirX * stand;
         const z = alongX ? face - f.dirZ * stand : t;
-        const y = supportUnder(x, z, half, agent.groundY + agent.climb, world.boxes, agent.groundY);
-        const vault = tryStartVault(createMoveState(x, y, z), f.yaw, f.dirX, f.dirZ, config, world.boxes);
-        if (!vault) continue;
-        const toX = x + f.dirX * config.vaultDistance;
-        const toZ = z + f.dirZ * config.vaultDistance;
-        const toY = supportUnder(toX, toZ, half, vault.topY + config.stepHeight, world.boxes, config.groundY);
-        links.push({ box: box.id, from: { x, y, z }, to: { x: toX, y: toY, z: toZ }, yaw: f.yaw });
+        // Ask the controller from every supported layer beside this obstacle,
+        // including a deck or bridge above the global ground plane.
+        const levels = new Set([agent.groundY]);
+        for (const floor of world.boxes) if (overlapsFootprint(x, z, half, floor)) levels.add(floor.maxY);
+        for (const y of [...levels].sort((a, b) => a - b)) {
+          if (blockedAt(x, z, half, y, 0, agent.height, world.boxes)) continue;
+          const vault = tryStartVault(createMoveState(x, y, z), f.yaw, f.dirX, f.dirZ, config, world.boxes);
+          if (!vault) continue;
+          const toX = x + f.dirX * config.vaultDistance;
+          const toZ = z + f.dirZ * config.vaultDistance;
+          const toY = supportUnder(toX, toZ, half, vault.topY + config.stepHeight, world.boxes, config.groundY);
+          const link = { box: box.id, from: { x, y, z }, to: { x: toX, y: toY, z: toZ }, yaw: f.yaw };
+          // The animation deliberately traverses the low obstacle, but never
+          // a taller wall or overhead slab. Use its full conservative envelope.
+          if (clearTraversal(link, world, agent, Math.max(y, vault.topY) + config.vaultLip, (b) => b.maxY <= vault.topY)) links.push(link);
+        }
       }
     }
   }
@@ -353,11 +364,24 @@ export function dropLinks(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): Va
         const toY = supportUnder(toX, toZ, half, y - agent.climb, world.boxes, agent.groundY);
         const drop = y - toY;
         if (drop <= agent.climb || drop > config.vaultMaxHeight) continue;
-        links.push({ box: box.id, from: { x, y, z }, to: { x: toX, y: toY, z: toZ }, yaw: f.yaw });
+        const link = { box: box.id, from: { x, y, z }, to: { x: toX, y: toY, z: toZ }, yaw: f.yaw };
+        if (clearTraversal(link, world, agent, y, (b) => b.id === box.id || b.maxY <= toY)) links.push(link);
       }
     }
   }
   return links;
+}
+
+/** Conservative standing-body sweep; only the deliberately traversed support is exempt. */
+function clearTraversal(link: VaultLink, world: World, agent: NavAgent, highestFeet: number, exempt: (box: World['boxes'][number]) => boolean): boolean {
+  const minX = Math.min(link.from.x, link.to.x) - agent.radius;
+  const maxX = Math.max(link.from.x, link.to.x) + agent.radius;
+  const minZ = Math.min(link.from.z, link.to.z) - agent.radius;
+  const maxZ = Math.max(link.from.z, link.to.z) + agent.radius;
+  const minY = Math.min(link.from.y, link.to.y);
+  const maxY = highestFeet + agent.height;
+  return !world.boxes.some((b) => !exempt(b) && b.minX < maxX && b.maxX > minX
+    && b.minZ < maxZ && b.maxZ > minZ && b.minY < maxY && b.maxY > minY);
 }
 
 /** How close a link end must be, across the ground, to the mesh to count as on it. */
