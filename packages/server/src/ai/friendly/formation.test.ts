@@ -126,6 +126,27 @@ describe('the lead (T-3.25)', () => {
     f.update(slots);
     expect(f.followersOf(4)).toEqual([3, 5, 0, 1, 2]);
   });
+
+  it('lays places at the trail’s own height, and is not there beneath a place on the floor above (U-123)', () => {
+    const f = new Formation((p) => p);
+    const at = (leadX: number, leadY: number, follower: { x: number; y: number; z: number }): FormationSlot[] => [
+      { index: 0, human: true, x: leadX, y: leadY, z: 0, yaw: 256, speed: 1, sprint: false },
+      { index: 1, human: false, ...follower, yaw: 0, speed: 0, sprint: false },
+    ];
+    // The lead climbs a 0.8-in-1 stair east from x0 to x10: a place 2 m back is on the stair, below the lead.
+    for (let x = 0; x <= 10; x += 0.25) f.update(at(x, x * 0.8, { x: -5, y: 0, z: 0 }));
+    const place = f.place(1)!;
+    expect(place.goal.y).toBeLessThan(8);
+    expect(place.goal.y).toBeCloseTo(place.goal.x * 0.8, 1);
+    // Still, on the landing: a follower directly beneath its place is not arrived; one on the place is.
+    const still = (follower: { x: number; y: number; z: number }) => at(10, 8, follower).map((s) => ({ ...s, speed: 0 }));
+    f.update(still({ x: 0, y: 0, z: 0 }));
+    const goal = f.place(1)!.goal;
+    f.update(still({ x: goal.x, y: goal.y - 8, z: goal.z }));
+    expect(f.place(1)!.intent).not.toBeNull();
+    f.update(still({ ...goal }));
+    expect(f.place(1)!.intent).toBeNull();
+  });
 });
 
 /** The route: waypoints, and whether the lead sprints the leg that ends there. */

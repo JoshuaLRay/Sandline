@@ -34,6 +34,7 @@ import {
 } from '../../../server/src/ai/nav/NavMesh.ts';
 import { DEFAULT_HITBOX, type Hitbox } from '../../../server/src/net/lagComp.ts';
 import { type CoverEyes, DEFAULT_COVER_EYES, coverHashInputs } from './cover.ts';
+import { bakeSolidNavMesh } from './solidBake.ts';
 
 /** An axis-aligned box, min and max corners, in world metres. */
 export interface SoupBox {
@@ -222,6 +223,17 @@ export function worldSoup(world: World, groundY = DEFAULT_NAV_AGENT.groundY): Tr
 }
 
 /**
+ * U-125: the boxes whose inside could hold a standing soldier, and so must be
+ * marked unwalkable: those at least the agent's height tall. Nothing shorter
+ * has room inside for anyone, so it is left exactly as Recast bakes it.
+ */
+export function worldSolids(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): SoupBox[] {
+  return world.boxes
+    .filter((b) => b.maxY - b.minY >= agent.height)
+    .map((b) => ({ min: [b.minX, b.minY, b.minZ], max: [b.maxX, b.maxY, b.maxZ] }) as const);
+}
+
+/**
  * Everything that decides a bake, hashed: the world (id, floor, every box,
  * in order), the agent and the voxel grid. The committed bake stores this;
  * a test recomputes it from the live data, so an edited box, a retuned step
@@ -230,7 +242,7 @@ export function worldSoup(world: World, groundY = DEFAULT_NAV_AGENT.groundY): Tr
 export function navBakeHash(world: World, agent: NavAgent = DEFAULT_NAV_AGENT, eyes: CoverEyes = DEFAULT_COVER_EYES): string {
   const inputs = {
     // Geometry algorithm changes must invalidate bakes even when boxes stay put.
-    geometry: { closedBoxUndersides: 1 },
+    geometry: { closedBoxUndersides: 1, solidInteriors: 1 },
     world: {
       id: world.id,
       floorHalfExtent: world.floorHalfExtent,
@@ -409,7 +421,7 @@ export async function meshVaultLinks(world: World, agent: NavAgent = DEFAULT_NAV
 /** Vault links and drop links (U-027) with both ends on the mesh, from one bare bake. */
 export async function meshLinks(world: World, agent: NavAgent = DEFAULT_NAV_AGENT): Promise<{ vaults: VaultLink[]; drops: VaultLink[] }> {
   await initNav();
-  const bare = NavMesh.load(await bakeNavMesh(worldSoup(world, agent.groundY), navConfigFor(agent)));
+  const bare = NavMesh.load(await bakeSolidNavMesh(worldSoup(world, agent.groundY), worldSolids(world, agent), navConfigFor(agent)));
   const keep = (l: VaultLink) => onMesh(bare, l.from, agent.climb) && onMesh(bare, l.to, agent.climb);
   const vaults = vaultLinks(world, agent).filter(keep);
   const drops = dropLinks(world, agent).filter(keep);
@@ -439,5 +451,5 @@ export async function bakeWorld(world: World, agent: NavAgent = DEFAULT_NAV_AGEN
       flags: NAV_FLAG_WALK,
     })),
   ];
-  return bakeNavMesh(worldSoup(world, agent.groundY), { ...navConfigFor(agent), offMeshConnections });
+  return bakeSolidNavMesh(worldSoup(world, agent.groundY), worldSolids(world, agent), { ...navConfigFor(agent), offMeshConnections });
 }

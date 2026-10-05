@@ -392,4 +392,8 @@ Format: `T-<id> — <what changed>`
 
 - U-122 — Bake cover on all supported floors; require complete 3D cover routes and safe firing feet; track crowding/claims by height and refresh cover caches when scripted geometry changes.
 
+- U-123 — Order picks send the floor pointed at; order goals keep their feet height (snapping only within that floor); reachability, bot/escort arrival, revive/kit reach and formation places respect height; real-session, protocol and browser regressions at identical x/z y0/y8/y16; recorded U-124 and U-125.
+
+- U-125 — Mark solid box interiors unwalkable in the nav bake (Recast pipeline with box area marking after erosion); regenerated all worlds (range/kit-gallery bytes unchanged, Qalat 983 → 594 kB) with fixture and committed-bake regressions.
+
 - U-126 — Replace the tank's box stand-in with a generated, modelled and painted period tank (`vehicle-tank`: road wheels, sagging link tracks, cast dome turret, long gun; one atlas, two draw calls), loaded from the initial pack with the U-070 model as fallback; propose a `vehicle` budget class.

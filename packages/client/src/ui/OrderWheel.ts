@@ -6,7 +6,8 @@
  * the order in that sector is sent, at the point under the converged aim —
  * the point the crosshair's own raycast found (`main.ts`), which is what the
  * player was looking at when they opened the wheel, since the view does not
- * move while it is open. Released inside the deadzone, nothing is sent.
+ * move while it is open; a move or hold, at the feet on the floor there
+ * (U-123, `orderPick.ts`). Released inside the deadzone, nothing is sent.
  * Number keys while Q is held choose who hears it: 1–6 a slot, 7 and 8 a
  * fireteam, 0 everyone (the default). A tap of F marks what is under the
  * crosshair: the enemy, if it is one, else the point.
@@ -88,6 +89,12 @@ export interface WheelRelease {
 export interface AimSubject {
   /** The converged aim point: where the crosshair's ray met the world. */
   point: { x: number; y: number; z: number };
+  /**
+   * U-123: the feet a move or hold at that point means (`pickFeet`): the floor
+   * pointed at — a wall's foot, the floor beneath a ceiling — not the face in
+   * mid-air the ray happened to meet.
+   */
+  feet: { x: number; y: number; z: number };
   /** The netId of the soldier the ray hit first, if it hit one. */
   netId: number | null;
   /** That soldier is an enemy that is not dead: something to attack or mark. */
@@ -100,11 +107,11 @@ export interface AimSubject {
  * The Order message for `kind` to `address` at what is under the crosshair,
  * or null when there is nothing to give it to: an attack needs a living enemy
  * under the crosshair, a revive a downed squadmate. Move and hold take the
- * aim point; regroup takes nothing. What the session refuses anyway
+ * aim's feet (U-123); regroup takes nothing. What the session refuses anyway
  * (`orderProblem`) is never built here.
  */
 export function buildOrder(kind: OrderKind, address: OrderAddress, aim: AimSubject): Extract<Message, { kind: 'Order' }> | null {
-  const point = { x: aim.point.x, y: aim.point.y, z: aim.point.z };
+  const point = { x: aim.feet.x, y: aim.feet.y, z: aim.feet.z };
   switch (kind) {
     case 'move':
     case 'hold':

@@ -170,6 +170,7 @@ import {
 } from './ui/hud/hudModel.ts';
 import { type AimSubject, OrderWheelView, buildMark, orderFromRelease } from './ui/OrderWheel.ts';
 import { buildOrder } from './ui/OrderWheel.ts';
+import { pickFeet, pickOrder, screenRay } from './ui/orderPick.ts';
 import { mobileOrbit, MOBILE_ORBIT_PITCH, MOBILE_ORBIT_MIN_PITCH, MOBILE_ORBIT_MAX_PITCH } from './camera/mobileOrbit.ts';
 import { createMobileCommand } from './ui/MobileCommand.ts';
 import { initialMobileSpectateSlot } from './ui/mobileSpectate.ts';
@@ -1881,22 +1882,17 @@ const mobileCommand = createMobileCommand(document.body, {
   aggression: (mode, address) => live?.net.aggression(mode, address),
   order: (kind, address, x, y) => {
     if (!live || live.net.spectatedSlot < 0) return false;
-    const rect = renderer.domElement.getBoundingClientRect();
-    const pointer = new THREE.Vector2((x - rect.left) / rect.width * 2 - 1, -((y - rect.top) / rect.height * 2 - 1));
-    const ray = new THREE.Raycaster();
-    camera.updateMatrixWorld();
-    ray.setFromCamera(pointer, camera);
-    ray.far = AIM_RANGE;
-    const ownBody = remotes.get(live.net.netId);
-    const hit = ray.intersectObjects(shootable, false).find(candidate => candidate.object !== ownBody);
-    // An upward/horizon tap can miss the finite ground mesh. Keep its fallback
-    // on the ground at a nearby world coordinate, never at the camera's far plane.
-    const point = hit?.point ?? ray.ray.at(30, new THREE.Vector3()).setY(config.groundY);
-    const id = hit ? (remotes.netIdOf(hit.object) ?? tankModels.netIdOf(hit.object)) : null;
+    const ray = screenRay(camera, renderer.domElement.getBoundingClientRect(), x, y, AIM_RANGE);
+    // U-123: the floor the tap pointed at. An upward/horizon tap can miss the
+    // finite ground mesh; its fallback is the floor under a nearby point along
+    // the ray, no higher than the eye, never at the camera's far plane.
+    const pick = pickOrder(ray, shootable, remotes.get(live.net.netId), { boxes: collisionBoxes(), groundY: config.groundY });
+    const id = pick.object ? (remotes.netIdOf(pick.object) ?? tankModels.netIdOf(pick.object)) : null;
     const enemy = id !== null && live.net.remoteEnemy(id) !== null;
     const vitality = id === null ? 'alive' : live.net.remoteVitality(id);
     const order = buildOrder(kind, address, {
-      point: { x: point.x, y: point.y, z: point.z },
+      point: pick.point,
+      feet: pick.feet,
       netId: id,
       enemy: enemy && vitality !== 'dead',
       downedMate: id !== null && !enemy && vitality === 'downed',
@@ -2054,13 +2050,18 @@ let aimYaw = 0;
 let aimPitch = 0;
 /** The soldier the crosshair's ray hit first this frame, by netId; null if it hit none. */
 let aimNetId: number | null = null;
+/** U-123: whether the crosshair's ray met anything this frame (else `aimPoint` is its far end). */
+let aimHit = false;
 /** What is under the crosshair, for an order or a mark. */
 function aimSubject(net: NetClient): AimSubject {
   const id = aimNetId;
   const enemy = id !== null && net.remoteEnemy(id) !== null;
   const vitality = id === null ? 'alive' : net.remoteVitality(id);
+  // U-123: the camera ray the aim point was found along (the raycaster keeps its own copy).
+  const { origin, direction } = aimRaycaster.ray;
   return {
     point: { x: aimPoint.x, y: aimPoint.y, z: aimPoint.z },
+    feet: pickFeet(aimHit ? aimPoint : null, origin, direction, { boxes: collisionBoxes(), groundY: config.groundY }),
     netId: id,
     enemy: enemy && vitality !== 'dead',
     downedMate: id !== null && !enemy && vitality === 'downed',
@@ -3117,6 +3118,7 @@ function frame(): void {
   aimRaycaster.far = AIM_RANGE;
   const [reticleHit] = aimRaycaster.intersectObjects(shootable, false);
   aimNetId = reticleHit ? (remotes.netIdOf(reticleHit.object) ?? tankModels.netIdOf(reticleHit.object)) : null;
+  aimHit = reticleHit !== undefined;
   if (reticleHit) {
     aimPoint.copy(reticleHit.point);
   } else {
