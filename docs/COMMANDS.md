@@ -179,3 +179,23 @@ links that intersect overhead or side obstacles. Intended vault obstacles and
 source supports are exempt. The envelope may reject tight borderline traversals;
 author generous clearance and inspect generated links. Link algorithm and vault
 lip changes invalidate the bake hash: regenerate with `pnpm gen:nav`.
+
+### Cover on stacked floors (U-122)
+
+Cover baking samples all supported standing levels beside a wall, in ascending
+y order, and checks nav membership and headroom. A slab overhead is not cover
+for a soldier below it unless its side actually extends down to that floor.
+The cover algorithm is part of the bake hash; run `pnpm gen:nav` after changes.
+
+Runtime cover routes must reach both requested endpoints in 3D within the
+controller's step-height tolerance, including nav voxel offsets. Partial paths
+ending below the destination are rejected. Group flanks and suppressors use
+the same complete-route rule. Other-floor cover remains valid when an actual
+route connects it; authored combat bounds are a separate U-111 requirement.
+
+Asker/friend positions are **feet**, threat positions are eyes. Crowding counts
+only overlapping standing-height levels; arrival/departure uses 3D distance.
+Firing positions need support and standing clearance. Sightline rays retain
+their actual elevations, so visible ridge support fire remains possible.
+`CoverSystem.invalidateGeometry()` clears cached usability and sightlines;
+Session calls it whenever a scripted blocker changes.

@@ -25,7 +25,7 @@
  * Server-only and never predicted (§7.9 rule 2). No randomness: ties go to the
  * earlier point in the baked order, so a run is reproducible.
  */
-import { DEFAULT_MOVE_CONFIG, DEFAULT_MUZZLE_RIG, type MoveConfig, type WorldBox, rayWorld } from '@sandline/shared';
+import { DEFAULT_MOVE_CONFIG, DEFAULT_MUZZLE_RIG, type MoveConfig, type WorldBox, rayWorld, supportUnder } from '@sandline/shared';
 import type { CoverPoint } from './nav/baked/types.ts';
 import { DEFAULT_HITBOX } from '../net/lagComp.ts';
 import RAW_COVER from './cover.json' with { type: 'json' };
@@ -167,7 +167,7 @@ export function firingPosition(
   config: CoverConfig = COVER,
   body: CoverBody = DEFAULT_COVER_BODY,
 ): Vec3 | null {
-  const sees = (feet: Vec3) => clear({ x: feet.x, y: feet.y + body.fireEye, z: feet.z }, threatEye, boxes);
+  const sees = (feet: Vec3) => supported(feet, boxes) && !footprintBlocked(feet, boxes) && clear({ x: feet.x, y: feet.y + body.fireEye, z: feet.z }, threatEye, boxes);
   if (point.height === 'low') return sees(point) ? { x: point.x, y: point.y, z: point.z } : null;
   // Along the face: perpendicular to its normal.
   const tx = -point.nz;
@@ -178,6 +178,12 @@ export function firingPosition(
     if (sees(feet)) return feet;
   }
   return null;
+}
+
+/** Keep firing feet on a real supported layer, including nav voxel offsets. */
+function supported(feet: Vec3, boxes: readonly WorldBox[]): boolean {
+  const y = supportUnder(feet.x, feet.z, DEFAULT_MOVE_CONFIG.radius, feet.y + DEFAULT_MOVE_CONFIG.stepHeight, boxes, DEFAULT_MOVE_CONFIG.groundY);
+  return Math.abs(y - feet.y) <= DEFAULT_MOVE_CONFIG.stepHeight;
 }
 
 /** Whether a standing body's footprint at `feet` overlaps a box above ankle height. */
@@ -257,7 +263,7 @@ export class CoverSystem {
   constructor(
     readonly points: readonly CoverPoint[],
     private readonly boxes: readonly WorldBox[],
-    private readonly pathCost: PathCost = straightLine,
+    private readonly pathCost: PathCost = (a, b) => Math.abs(a.y - b.y) <= DEFAULT_MOVE_CONFIG.stepHeight ? straightLine(a, b) : null,
     private readonly config: CoverConfig = COVER,
     private readonly body: CoverBody = DEFAULT_COVER_BODY,
   ) {
@@ -335,6 +341,7 @@ export class CoverSystem {
       const holder = this.heldBy.get(index);
       if (holder !== undefined && holder !== owner) continue;
       if (query.accept && !query.accept(point)) continue;
+      if (!this.isUsable(index)) continue;
       const straight = straightLine(query.from, point);
       if (straight > maxPathM) continue;
       let hidden = 0;
@@ -347,7 +354,7 @@ export class CoverSystem {
       if (protection === 0) continue;
       if (combat && !firingFrom) continue;
       let crowd = 0;
-      for (const f of query.friends ?? []) if ((f.x - point.x) ** 2 + (f.z - point.z) ** 2 <= crowdRadiusM ** 2) crowd++;
+      for (const f of query.friends ?? []) if (Math.abs(f.y - point.y) < DEFAULT_MOVE_CONFIG.height && (f.x - point.x) ** 2 + (f.z - point.z) ** 2 <= crowdRadiusM ** 2) crowd++;
       // A firing position is what combat asks for; to hide, it is worth nothing extra.
       const base = weights.protection * protection + (combat && firingFrom ? weights.firing : 0) - weights.crowd * crowd;
       optimistic.push({ choice: { index, point, score: base, protection, firingFrom, pathM: straight }, bound: base - weights.pathPerM * straight });
@@ -358,7 +365,7 @@ export class CoverSystem {
       if (out.length >= limit && bound < out[limit - 1]!.score) break;
       this.pathQueries++;
       const pathM = this.pathCost(query.from, choice.point);
-      if (pathM === null || pathM > maxPathM) continue;
+      if (pathM === null || !Number.isFinite(pathM) || pathM > maxPathM) continue;
       const scored = { ...choice, pathM, score: choice.score - weights.pathPerM * pathM };
       // Keep `out` sorted, best first, ties to the earlier point.
       let at = out.length;
@@ -411,16 +418,40 @@ export class CoverSystem {
   }
 
   private readonly sights = new Map<string, ThreatSight>();
+  private readonly usable = new Map<number, boolean>();
+
+  /** A candidate still has support and standing clearance in current geometry. */
+  isUsable(index: number): boolean {
+    const point = this.points[index];
+    if (!point) return false;
+    let usable = this.usable.get(index);
+    if (usable === undefined) {
+      usable = supported(point, this.boxes) && !footprintBlocked(point, this.boxes);
+      this.usable.set(index, usable);
+    }
+    return usable;
+  }
+
+  /** Scripted geometry changed: discard cached headroom and sightline results. */
+  invalidateGeometry(): void {
+    this.usable.clear();
+    this.sights.clear();
+  }
 
   /**
    * Reserve point `index` for `owner` without a query (T-3.21: a group sends
    * its flanker to a point chosen for its sight of the target, not for
-   * hiding from it). Releases what `owner` held; false if another holds it.
+   * hiding from it). Supply feet to enforce reachability. Releases what `owner`
+   * held; false if occupied, unusable or unreachable.
    */
-  reserve(owner: number, index: number): boolean {
+  reserve(owner: number, index: number, from?: Vec3): boolean {
     const holder = this.heldBy.get(index);
     if (holder !== undefined && holder !== owner) return false;
-    if (index < 0 || index >= this.points.length) return false;
+    if (!this.isUsable(index)) return false;
+    if (from) {
+      const cost = this.pathCost(from, this.points[index]!);
+      if (cost === null || !Number.isFinite(cost)) return false;
+    }
     this.release(owner);
     this.heldBy.set(index, owner);
     this.held.set(owner, { index, arrived: false });
@@ -448,7 +479,7 @@ export class CoverSystem {
       return;
     }
     const point = this.points[r.index]!;
-    const d2 = (feet.x - point.x) ** 2 + (feet.z - point.z) ** 2;
+    const d2 = (feet.x - point.x) ** 2 + (feet.y - point.y) ** 2 + (feet.z - point.z) ** 2;
     if (d2 <= this.config.arriveM ** 2) r.arrived = true;
     else if (r.arrived && d2 > this.config.leaveM ** 2) this.release(owner);
   }

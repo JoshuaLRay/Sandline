@@ -228,7 +228,7 @@ import { ESCORT_ARRIVED_M } from '../ai/actions/escort.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
 import type { CoverPoint } from '../ai/nav/baked/types.ts';
-import { pathLength } from '../ai/nav/NavMesh.ts';
+import { completePathLength } from '../ai/nav/NavMesh.ts';
 import { type FollowerStatus, PathFollower } from '../ai/locomotion/followPath.ts';
 import { Avoidance, type AvoidanceEntry } from '../ai/locomotion/avoidance.ts';
 import type { NavMesh } from '../ai/nav/NavMesh.ts';
@@ -1126,7 +1126,7 @@ export class Session {
             mesh
               ? (a, b) => {
                   const path = mesh.path(a, b);
-                  return path ? pathLength(path.points) : null;
+                  return completePathLength(path, a, b);
                 }
               : undefined,
           )
@@ -2358,6 +2358,7 @@ export class Session {
       ...[...this.blockerStates.values()].filter((b) => b.active).flatMap((b) => b.boxes),
     );
     this.navMesh?.setBlocker(blocker.id, blocker.boxes, blocker.active);
+    this.cover?.invalidateGeometry();
     this.broadcastScriptState();
   }
 

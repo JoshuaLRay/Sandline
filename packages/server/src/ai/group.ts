@@ -17,10 +17,10 @@
  * the earlier baked point. The members' own leaves read the group through
  * their body (`actions/combat.ts`).
  */
-import { DEFAULT_MUZZLE_RIG, type TargetMemory, type WorldBox, rayWorld } from '@sandline/shared';
+import { DEFAULT_MOVE_CONFIG, DEFAULT_MUZZLE_RIG, type TargetMemory, type WorldBox, rayWorld } from '@sandline/shared';
 import { type CoverSystem, DEFAULT_COVER_BODY } from './cover.ts';
 import type { CoverPoint } from './nav/baked/types.ts';
-import type { NavMesh, NavPath, NavPoint } from './nav/NavMesh.ts';
+import { completePathLength, type NavMesh, type NavPath, type NavPoint } from './nav/NavMesh.ts';
 import RAW_GROUP from './group.json' with { type: 'json' };
 
 type Vec3 = { x: number; y: number; z: number };
@@ -259,9 +259,9 @@ export class EnemyGroup {
       const me = living.find((m) => m.netId === flank.netId);
       if (me) {
         const next = flank.route[flank.waypoint];
-        if (next && Math.hypot(me.state.x - next.x, me.state.z - next.z) <= this.config.waypointM && flank.waypoint < flank.route.length - 1) flank.waypoint++;
+        if (next && Math.hypot(me.state.x - next.x, me.state.y - next.y, me.state.z - next.z) <= this.config.waypointM && flank.waypoint < flank.route.length - 1) flank.waypoint++;
         // At the point, by the fighting leaves' own measure (0.4 m, `actions/rifleman.ts`).
-        if (Math.hypot(me.state.x - flank.point.x, me.state.z - flank.point.z) <= 0.4) flank.arrived = true;
+        if (Math.hypot(me.state.x - flank.point.x, me.state.y - flank.point.y, me.state.z - flank.point.z) <= 0.4) flank.arrived = true;
       }
     }
   }
@@ -285,6 +285,7 @@ export class EnemyGroup {
     const candidates = cover.points
       .map((point, index) => ({ point, index }))
       .filter(({ point, index }) => {
+        if (!cover.isUsable(index)) return false;
         const holder = cover.holder(index);
         if (holder !== null && !living.some((m) => m.netId === holder)) return false;
         const d = Math.hypot(point.x - feet.x, point.z - feet.z);
@@ -301,7 +302,7 @@ export class EnemyGroup {
     // so the cheapest is among them), not every point in the ring round the target: pricing each took a ray per half
     // metre of its route, hundreds of points at a time.
     if (candidates.length > this.config.flankCandidates && flankers.length > 0) {
-      const nearest = (c: { point: CoverPoint }) => Math.min(...flankers.map((f) => (f.state.x - c.point.x) ** 2 + (f.state.z - c.point.z) ** 2));
+      const nearest = (c: { point: CoverPoint }) => Math.min(...flankers.map((f) => (f.state.x - c.point.x) ** 2 + (f.state.y - c.point.y) ** 2 + (f.state.z - c.point.z) ** 2));
       candidates.sort((a, b) => nearest(a) - nearest(b) || a.index - b.index);
       candidates.length = this.config.flankCandidates;
     }
@@ -329,7 +330,7 @@ export class EnemyGroup {
     const withSight = candidatesFor.filter((m) => clear({ x: m.state.x, y: m.state.y + DEFAULT_MUZZLE_RIG.eyeHeight, z: m.state.z }, aim, world.boxes));
     const pool = withSight.length > 0 ? withSight : candidatesFor;
     const suppressor = pool.reduce((a, b) => (near(a) <= near(b) ? a : b));
-    cover.reserve(chosen.member.netId, chosen.index);
+    if (!cover.reserve(chosen.member.netId, chosen.index, chosen.member.state)) return;
     this.suppressFrom = this.suppressSpot(suppressor, aim, chosen.index, world);
     this.roles.set(chosen.member.netId, 'flanker');
     this.roles.set(suppressor.netId, 'suppressor');
@@ -349,16 +350,18 @@ export class EnemyGroup {
     const cover = world.cover;
     let best: { index: number; d: number } | null = null;
     cover.points.forEach((p, index) => {
-      if (index === flankIndex) return;
+      if (index === flankIndex || !cover.isUsable(index)) return;
       const holder = cover.holder(index);
       if (holder !== null && holder !== suppressor.netId) return;
       if (!clear(eyeAt(p), aim, world.boxes)) return;
-      const d = Math.hypot(p.x - here.x, p.z - here.z);
+      const d = world.mesh ? completePathLength(world.mesh.path(here, p), here, p)
+        : Math.abs(p.y - here.y) <= DEFAULT_MOVE_CONFIG.stepHeight ? Math.hypot(p.x - here.x, p.y - here.y, p.z - here.z) : null;
+      if (d === null) return;
       if (!best || d < best.d) best = { index, d };
     });
     if (!best) return here;
     const { index } = best;
-    cover.reserve(suppressor.netId, index);
+    if (!cover.reserve(suppressor.netId, index, here)) return here;
     const p = cover.points[index]!;
     return { x: p.x, y: p.y, z: p.z };
   }
@@ -380,9 +383,9 @@ export class EnemyGroup {
   /** The flanker's route: the target's sight priced, on the mesh; a straight line without one. */
   route(from: Vec3, point: CoverPoint, seen: Set<number> | null, world: GroupWorld, pathOf?: PathOf): NavPoint[] | null {
     const to = { x: point.x, y: point.y, z: point.z };
-    if (!world.mesh || !seen) return [to];
+    if (!world.mesh || !seen) return Math.abs(from.y - to.y) <= DEFAULT_MOVE_CONFIG.stepHeight ? [to] : null;
     const path = pathOf ? pathOf(from, to, 4) : world.mesh.pathAvoiding(from, to, (poly) => seen.has(poly.ref), this.config.flankExposureCost, 4);
-    return path ? [...path.points.slice(1), to] : null;
+    return path && completePathLength(path, from, to) !== null ? [...path.points.slice(1), to] : null;
   }
 
   /**
@@ -416,7 +419,7 @@ export class EnemyGroup {
         if (seesGround(feet, via, world.boxes)) continue;
         const a = mesh.path(from, via, 4);
         const b = mesh.path(via, goal, 4);
-        if (!a || !b) continue;
+        if (!a || !b || completePathLength(a, from, via) === null || completePathLength(b, via, goal) === null) continue;
         const candidate = [...a.points.slice(1), ...b.points.slice(1), goal];
         const c = pricedLength([from, ...candidate], feet, world.boxes, cost, this.config.pricedRangeM);
         if (c < bestCost) {

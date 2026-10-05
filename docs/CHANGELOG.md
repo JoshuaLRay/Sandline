@@ -389,3 +389,5 @@ Format: `T-<id> — <what changed>`
 - U-120 — Closed nav bake cuboid undersides so low ceilings reject standing paths; versioned geometry inputs, regenerated world bakes and added basement/surface/bridge regressions.
 
 - U-121 — Bound nav goal projection vertically, apply blockers at standing-body height, and bake supported elevated vault/drop links with overhead clearance checks and controller traversal regressions.
+
+- U-122 — Bake cover on all supported floors; require complete 3D cover routes and safe firing feet; track crowding/claims by height and refresh cover caches when scripted geometry changes.

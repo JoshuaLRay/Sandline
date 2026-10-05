@@ -22,7 +22,7 @@
  *     stepping out past its edge. The long walls.
  *   - below the crouched eye: no cover at all, and no point.
  */
-import { DEFAULT_MOVE_CONFIG, DEFAULT_MUZZLE_RIG, type MoveConfig, type MuzzleRig, type World, supportUnder } from '@sandline/shared';
+import { DEFAULT_MOVE_CONFIG, DEFAULT_MUZZLE_RIG, type MoveConfig, type MuzzleRig, type World, supportUnder, overlapsFootprint } from '@sandline/shared';
 import type { CoverPoint } from '../../../server/src/ai/nav/baked/types.ts';
 // Types only: `bake.ts` imports this file for the staleness hash, so nothing
 // of its is needed here at run time and the two never form a load cycle.
@@ -59,7 +59,7 @@ export const DEFAULT_COVER_EYES = coverEyesFrom();
 
 /** Everything that decides the cover beyond the world and the agent, for the staleness hash. */
 export function coverHashInputs(eyes: CoverEyes = DEFAULT_COVER_EYES): Record<string, unknown> {
-  return { support: 'box-base', spacing: COVER_SPACING_M, margin: COVER_MARGIN_M, eyes };
+  return { support: 'all-supported-floors-v1', spacing: COVER_SPACING_M, margin: COVER_MARGIN_M, eyes };
 }
 
 /** The class a box top `heightM` above the feet gives, or null for none. */
@@ -123,12 +123,16 @@ export function coverPoints(
         // re-bakes byte for byte; every check below is of the rounded point.
         const x = round(alongX ? t : face + nx * stand);
         const z = round(alongX ? face + nz * stand : t);
-        const y = supportUnder(x, z, r, box.minY + agent.climb, world.boxes, agent.groundY);
-        const height = heightClass(box.maxY - y, eyes);
-        if (!height) continue;
-        if (bodyBlocked(x, y, z, world, agent)) continue;
-        if (!isOnMesh({ x, y, z })) continue;
-        out.push({ box: box.id, x, y, z, nx, nz, height });
+        const levels = new Set([agent.groundY]);
+        for (const floor of world.boxes) if (overlapsFootprint(x, z, r, floor)) levels.add(floor.maxY);
+        for (const y of [...levels].sort((a, b) => a - b)) {
+          // An overhead slab is not a wall hiding a soldier on the floor below.
+          if (box.minY > y + agent.climb) continue;
+          if (supportUnder(x, z, r, y + agent.climb, world.boxes, agent.groundY) !== y) continue;
+          const height = heightClass(box.maxY - y, eyes);
+          if (!height || bodyBlocked(x, y, z, world, agent) || !isOnMesh({ x, y, z })) continue;
+          out.push({ box: box.id, x, y, z, nx, nz, height });
+        }
       }
     }
   }
