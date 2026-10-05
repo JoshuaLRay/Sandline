@@ -1129,7 +1129,8 @@ export class Session {
                   const vault = (a as Partial<MoveState>).vault;
                   const from = vault ? { x: vault.fromX, y: vault.fromY, z: vault.fromZ } : a;
                   const path = mesh.path(from, b);
-                  return completePathLength(path, from, b);
+                  const cost = completePathLength(path, from, b);
+                  return cost === null ? null : cost + Math.hypot(a.x - from.x, a.y - from.y, a.z - from.z);
                 }
               : undefined,
           )
