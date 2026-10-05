@@ -1,7 +1,8 @@
 /**
  * U-126: the generated tank. It is committed exactly as its generator writes it and is within its budget class.
  * What you see is what can be shot (the hull and turret capsules' bounds, the gun aside). The turret turns about
- * the capsule's axis, every UV lands in a painted region, and every face is wound to its normal.
+ * the capsule's axis (in the shipped copy too), every UV lands in a painted region, and every face is wound to its
+ * normal.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -50,7 +51,19 @@ describe('the generated tank (U-126)', () => {
     expect(turret.map((n) => n.getName())).toEqual([TURRET_NODE]);
     const [x, , z] = turret[0]!.getTranslation();
     expect([x, z]).toEqual([v.turret.from[0], v.turret.from[2]]);
+    // A bare pivot: its mesh hangs under it, where quantizing cannot move the pivot.
+    expect(turret[0]!.getMesh()).toBeNull();
+    expect(turret[0]!.listChildren().map((n) => [n.getName(), n.getMesh() !== null])).toEqual([[`${TURRET_NODE}-mesh`, true]]);
     expect(doc.getRoot().listMaterials()).toHaveLength(1);
+  });
+
+  it('keeps the turret\'s pivot through the pipeline: the committed web copy still turns about it', async () => {
+    const io = await createIO();
+    const web = await io.readBinary(new Uint8Array(readFileSync(new URL('packages/client/public/assets/vehicle-tank.glb', REPO))));
+    const pivot = web.getRoot().listNodes().find((n) => n.getName() === TURRET_NODE)!;
+    pivot.getTranslation().forEach((n, i) => expect(n).toBeCloseTo(built.pivot[i]!, 6));
+    expect(pivot.getScale()).toEqual([1, 1, 1]);
+    expect(pivot.getRotation()).toEqual([0, 0, 0, 1]);
   });
 
   it('draws nothing of the hull outside the hull capsule\'s bounds, and stands on the ground', () => {

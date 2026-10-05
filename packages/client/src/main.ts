@@ -140,6 +140,7 @@ import { createLocomotionPoseDriver } from './character/locomotionPose.ts';
 import { createFootPlacementDriver } from './character/footPlacement.ts';
 import { RemoteSoldiers } from './character/remoteSoldiers.ts';
 import { TankModels } from './character/tankModel.ts';
+import { loadVehicleAssets } from './character/vehicleAssets.ts';
 import { tankTargetView } from './character/tankLook.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
@@ -490,6 +491,8 @@ const initialPresentationReady = initialPackReady.then(async () => {
   const jobs: Promise<unknown>[] = [];
   // T-4.36: period weapons are already in the initial pack; this cache-hit turns them into runtime models.
   if (!query.has('codeweapons')) jobs.push(loadWeaponAssets(assetLoader));
+  // U-126: the generated tank, also in the initial pack; `?codetank` keeps U-070's stand-in for comparison.
+  if (!query.has('codetank')) jobs.push(loadVehicleAssets(assetLoader));
   if (!greyBox && !query.has('codesoldier')) {
     jobs.push(loadDetailedSkin(assetLoader).then((skin) => {
       if (skin) setSoldierPalette(player, 'local');

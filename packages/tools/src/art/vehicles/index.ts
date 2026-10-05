@@ -4,6 +4,10 @@
  * the archetype's frame (origin at its feet, +Z forward). The turret is its child node `turret`, placed at its
  * pivot, so the page turns it with one rotation. The turret mesh's furthest point forward is the drawn muzzle,
  * where the page puts the flash.
+ *
+ * `turret` is a bare pivot, and its mesh hangs under it as `turret-mesh`. The pipeline quantizes geometry: it
+ * gives a mesh's node a scale and offset that decode the positions, and moves a mesh off any node that has
+ * children. A mesh on the pivot itself would lose the pivot to that offset and turn about the wrong point.
  */
 import { Document } from '@gltf-transform/core';
 import { getEnemy } from '@sandline/shared';
@@ -37,7 +41,10 @@ export function vehicleDocument(id: string, tank: TankMeshes, atlas: Uint8Array)
       .setIndices(acc('indices', 'SCALAR', indices));
     return doc.createMesh(name).addPrimitive(primitive);
   };
-  const turret = doc.createNode(TURRET_NODE).setMesh(mesh(TURRET_NODE, tank.turret)).setTranslation([...tank.pivot]);
+  const turret = doc
+    .createNode(TURRET_NODE)
+    .setTranslation([...tank.pivot])
+    .addChild(doc.createNode(`${TURRET_NODE}-mesh`).setMesh(mesh(TURRET_NODE, tank.turret)));
   const hull = doc.createNode(id).setMesh(mesh(id, tank.hull)).addChild(turret);
   scene.addChild(hull);
   return doc;

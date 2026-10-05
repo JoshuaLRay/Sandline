@@ -391,3 +391,5 @@ Format: `T-<id> — <what changed>`
 - U-121 — Bound nav goal projection vertically, apply blockers at standing-body height, and bake supported elevated vault/drop links with overhead clearance checks and controller traversal regressions.
 
 - U-122 — Bake cover on all supported floors; require complete 3D cover routes and safe firing feet; track crowding/claims by height and refresh cover caches when scripted geometry changes.
+
+- U-126 — Replace the tank's box stand-in with a generated, modelled and painted period tank (`vehicle-tank`: road wheels, sagging link tracks, cast dome turret, long gun; one atlas, two draw calls), loaded from the initial pack with the U-070 model as fallback; propose a `vehicle` budget class.
