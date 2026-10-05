@@ -23,5 +23,5 @@ export function bakedCoverFor(worldId: string): readonly CoverPoint[] {
 export function loadWorldNavMesh(worldId: string): NavMesh {
   const baked = bakedNavFor(worldId);
   if (!baked) throw new Error(`no navmesh baked for world '${worldId}' — run pnpm gen:nav`);
-  return NavMesh.load(bakedBytes(baked));
+  return NavMesh.load(bakedBytes(baked), baked.agent.height);
 }

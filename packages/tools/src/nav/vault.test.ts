@@ -85,14 +85,15 @@ describe('vault links on the range (T-3.04)', () => {
     }
   });
 
-  it('gives the 2.4 m walls no link', () => {
-    // By id, not by a height filter: whether a box is vaultable depends on
-    // where the soldier stands (a 1.4 m post is 1.0 m above the 0.4 m slab,
-    // and the controller will vault it from there), so only the controller's
-    // rule decides — these four are over vault height from anywhere.
+  it('gives the 2.4 m walls no usable link from the range mesh', () => {
+    // Elevated sampling can find raw candidates from a nearby narrow post.
+    // These are not usable routes: both ends still have to be on the mesh.
+    // Ground-level starts must continue to refuse the tall walls outright.
     const walls = ['west-wall-a', 'west-wall-b', 'east-wall-a', 'east-wall-b'];
     for (const id of walls) expect(range.boxes.find((b) => b.id === id)!.maxY).toBeGreaterThan(DEFAULT_MOVE_CONFIG.vaultMaxHeight + 0.45);
-    const linked = new Set(vaultLinks(range).map((l) => l.box));
+    const candidates = vaultLinks(range);
+    expect(candidates.filter((l) => walls.includes(l.box) && l.from.y <= DEFAULT_NAV_AGENT.climb)).toEqual([]);
+    const linked = new Set(candidates.filter((l) => onMesh(bare, l.from, DEFAULT_NAV_AGENT.climb) && onMesh(bare, l.to, DEFAULT_NAV_AGENT.climb)).map((l) => l.box));
     for (const id of walls) expect(linked.has(id), id).toBe(false);
   });
 });

@@ -157,3 +157,25 @@ agent dimensions, links and cover inputs. Run `pnpm gen:nav` after changes and
 commit the generated bakes. The three-layer regression is
 `packages/tools/src/nav/stacked.test.ts` (feet y0/y8/y16). Projection, elevated
 links, blockers, cover and command handling remain tracked under U-121–U-123.
+
+### Floor-preserving navigation (U-121)
+
+`NavMesh.resolvePoint(point, horizontalRadius, verticalTolerance?)` widens only
+the horizontal search. The default vertical tolerance is 2 m and can be narrowed
+for authored goals; a hit outside either final tolerance is rejected. `path`
+and avoidance paths use this bounded resolver when given a search radius. A
+goal on a tall, inaccessible wall no longer searches arbitrarily downward for
+a floor. Callers must provide the intended feet height. Desktop/mobile command
+conversion and replicated goals remain under U-123.
+
+Scripted blocker boxes already supply `minY`/`maxY`; navigation now intersects
+them with each polygon's floor-to-standing-head volume. Named-world loaders
+use the baked agent height. A 2D blocker without vertical bounds still blocks
+all intersecting floors, and overlapping blockers retain reference counting.
+
+Vault candidates are sampled from every supported approach layer, including
+elevated decks. A conservative swept standing-body envelope rejects vault/drop
+links that intersect overhead or side obstacles. Intended vault obstacles and
+source supports are exempt. The envelope may reject tight borderline traversals;
+author generous clearance and inspect generated links. Link algorithm and vault
+lip changes invalidate the bake hash: regenerate with `pnpm gen:nav`.
