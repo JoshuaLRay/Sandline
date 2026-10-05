@@ -40,6 +40,7 @@ export * from './sim/classes.ts';
 export * from './sim/scoreboard.ts';
 export * from './sim/progression.ts';
 export * from './sim/orders.ts';
+export * from './sim/orderFeet.ts';
 export * from './sim/suppression.ts';
 export * from './net/vaultWire.ts';
 export * from './ecs/components.ts';

@@ -226,6 +226,7 @@ import type { DownedMate, SquadView } from '../ai/actions/friendly.ts';
 import type { EscortOrder, EscortView } from '../ai/actions/escort.ts';
 import { ESCORT_ARRIVED_M } from '../ai/actions/escort.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
+import { standingY, within } from '../ai/floor.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
 import type { CoverPoint } from '../ai/nav/baked/types.ts';
 import { completePathLength } from '../ai/nav/NavMesh.ts';
@@ -313,8 +314,10 @@ export interface OrderReport {
   tick: number;
 }
 
-/** A move's point is reachable when a path ends this near it, metres (T-3.28). */
+/** A move's point is reachable when a path ends this near it, metres (T-3.28), and on its floor (U-123, `SAME_FLOOR_M`). */
 const ORDER_REACH_M = 1;
+/** U-123: how far across an order's point is snapped onto the mesh, metres; never onto another storey. */
+const ORDER_SNAP_M = 2;
 /** U-018: what the eye must see of a gun on the ground: a point this far over where it lies, metres. */
 const PICKUP_AIM_M = 0.1;
 /** U-010: a lever user that cannot get there is not sent again for this long, seconds. */
@@ -1191,7 +1194,8 @@ export class Session {
         if (!m) return false;
         const path = m.path(from, to);
         const end = path?.points[path.points.length - 1];
-        return !!end && Math.sqrt((end.x - to.x) ** 2 + (end.z - to.z) ** 2) <= ORDER_REACH_M;
+        // U-123: a partial corridor ending on the floor beneath (or above) the goal is no way there.
+        return !!end && within(end, to, ORDER_REACH_M);
       },
       soldier: (netId) => {
         const slot = this.slots.find((sl) => sl.netId === netId);
@@ -2525,7 +2529,8 @@ export class Session {
         let bestD = Infinity;
         for (const slot of this.slots) {
           if (isDead(slot.health)) continue;
-          const d = (slot.state.x - enemy.state.x) ** 2 + (slot.state.z - enemy.state.z) ** 2;
+          // U-123: nearest in three dimensions, so the one on his own floor beats one straight overhead.
+          const d = (slot.state.x - enemy.state.x) ** 2 + (slot.state.y - enemy.state.y) ** 2 + (slot.state.z - enemy.state.z) ** 2;
           if (d < bestD) {
             bestD = d;
             best = slot.state;
@@ -2540,10 +2545,10 @@ export class Session {
    * U-075: an order addressed to the whole squad also reaches the escorted character: hold is stay, move is go to the
    * point, regroup is follow. Others (attack, revive...) mean nothing to an unarmed civilian.
    */
-  private orderEscort(msg: Omit<Extract<Message, { kind: 'Order' }>, 'kind'>): void {
+  private orderEscort(msg: Omit<Extract<Message, { kind: 'Order' }>, 'kind'>, point: OrderPoint | null): void {
     if (msg.address.to !== 'all') return;
     if (msg.order === 'hold') this.escortOrder = { kind: 'stay', point: null };
-    else if (msg.order === 'move' && msg.point) this.escortOrder = { kind: 'go', point: { ...msg.point } };
+    else if (msg.order === 'move' && point) this.escortOrder = { kind: 'go', point: { ...point } };
     else if (msg.order === 'regroup') this.escortOrder = { kind: 'follow', point: null };
   }
 
@@ -3501,28 +3506,33 @@ export class Session {
       return !commanderOnly || this.commanders[i] === from.index ||
         (i === from.index && from.connection !== null && this.spectators.has(from.connection));
     });
-    this.orderEscort(msg);
+    // U-123: the point on the floor it names (`orderGoal`): what every bot, the escort and every client are given.
+    const asked = msg.point ? this.orderGoal(msg.point) : null;
+    this.orderEscort(msg, asked);
     if (bots.length === 0) return;
     this.bumpStat(from.index, 'ordersGiven');
     const destinations: { x: number; y: number; z: number }[] = [];
     for (const i of bots) {
-      let point = msg.point;
-      if (point && msg.address.to !== 'slot') {
+      let point = asked;
+      if (asked && msg.address.to !== 'slot') {
+        let spaced: OrderPoint = asked;
         const gap = Math.max(2 * this.moveConfig.radius + 0.001, (2 * this.moveConfig.radius + 0.1) * SQUAD_CONFIG.spreadScales[this.spreadFor(i)]);
         const offsets = msg.order === 'move' ? [[-1, -1], [1, -1], [-1, -2], [1, -2], [-1, -3], [1, -3]] : [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -2], [0, 2]];
         const centre = bots.reduce((p, index) => ({ x: p.x + this.slots[index]!.state.x / bots.length, z: p.z + this.slots[index]!.state.z / bots.length }), { x: 0, z: 0 });
-        const length = Math.hypot(msg.point!.x - centre.x, msg.point!.z - centre.z);
-        const fx = length > 0.01 ? (msg.point!.x - centre.x) / length : 0;
-        const fz = length > 0.01 ? (msg.point!.z - centre.z) / length : 1;
+        const length = Math.hypot(asked.x - centre.x, asked.z - centre.z);
+        const fx = length > 0.01 ? (asked.x - centre.x) / length : 0;
+        const fz = length > 0.01 ? (asked.z - centre.z) / length : 1;
         for (let n = 0; n < offsets.length; n++) {
           const offset = offsets[(i + n) % offsets.length]!;
           const escort = msg.order === 'move' && this.enemyList.some((e) => e.def.friendly && !e.captive && isAlive(e.health));
           const back = offset[1]! * gap - (escort ? ESCORT_ARRIVED_M : 0);
-          const asked = { x: msg.point!.x + offset[0]! * fz * gap + back * fx, y: point.y, z: msg.point!.z - offset[0]! * fx * gap + back * fz };
-          const projected = this.navMesh?.nearestPoint(asked)?.point ?? asked;
-          if (destinations.every((p) => Math.hypot(p.x - projected.x, p.z - projected.z) >= gap)) { point = projected; break; }
+          // Each place at the goal's height, so it is projected onto the goal's floor only.
+          const place = { x: asked.x + offset[0]! * fz * gap + back * fx, y: asked.y, z: asked.z - offset[0]! * fx * gap + back * fz };
+          const projected = this.navMesh?.nearestPoint(place)?.point ?? place;
+          if (destinations.every((p) => Math.hypot(p.x - projected.x, p.z - projected.z) >= gap)) { spaced = projected; break; }
         }
-        destinations.push(point);
+        destinations.push(spaced);
+        point = spaced;
       }
       // T-3.28: the order it was under, if it had not finished, is replaced; either way it is reported.
       if (this.orders[i]) this.reportOrder(i, this.orderRuns[i]?.status === 'done' ? 'done' : 'replaced', `${msg.order} from slot ${from.index}`);
@@ -3531,6 +3541,21 @@ export class Session {
       this.orderRuns[i] = { status: 'active', anchor: point ? { ...point } : { x: at.x, y: at.y, z: at.z }, xpPlayerId: this.xpPlayer(from.index) };
     }
     this.broadcastOrders();
+  }
+
+  /**
+   * U-123: an order's point on the floor it names. A point already standing on
+   * the mesh there is kept exactly as asked, its feet height and all. One off
+   * it (a crate top nobody can stand on, a foot of wall) is moved to the
+   * nearest place on the mesh within `ORDER_SNAP_M` across — and only within
+   * the mesh's fixed vertical reach, so a basement point never becomes the roof
+   * above it. As asked where there is no mesh near: the bot then finds no way
+   * there and says so.
+   */
+  private orderGoal(p: OrderPoint): OrderPoint {
+    const hit = this.navMesh?.resolvePoint(p, ORDER_SNAP_M);
+    if (!hit || within(hit.point, p, ORDER_REACH_M)) return { x: p.x, y: p.y, z: p.z };
+    return { x: hit.point.x, y: hit.point.y, z: hit.point.z };
   }
 
   /**
@@ -5256,7 +5281,8 @@ export class Session {
         index: s.index,
         human: !s.isBot,
         x: s.state.x,
-        y: s.state.y,
+        // U-123: a vaulting soldier stands on its takeoff floor, so neither its trail nor its arrival is a storey of air.
+        y: standingY(s.state),
         z: s.state.z,
         yaw: s.yaw,
         speed: this.slotSpeed[s.index] ?? 0,

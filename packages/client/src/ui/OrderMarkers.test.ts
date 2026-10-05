@@ -49,6 +49,20 @@ describe('orderMarkers (T-3.29)', () => {
     const { positions } = markerLines(markers);
     expect(positions.length / 6).toBeGreaterThan(markers.length * 17);
   });
+
+  it('keeps identical x/z goals on y0, y8 and y16 apart, with a line from a bot beneath its goal (U-123)', () => {
+    const stacked: MarkerPositions = { slot: () => ({ x: 30, y: 0, z: 270 }), netId: () => null };
+    const orders: BotOrder[] = [0, 8, 16].map((y, i) => ({ slot: i + 1, order: 'move', point: { x: 30, y, z: 270 }, target: null, from: 0 }));
+    const markers = orderMarkers(orders, [], stacked);
+    expect(markers.map((m) => m.at.y)).toEqual([0, 8, 16]);
+    // Ring (16 segments) and pole for each; the line only where the goal is on another floor.
+    const segments = (m: typeof markers) => markerLines(m).positions.length / 6;
+    expect(segments([markers[0]!])).toBe(17);
+    expect(segments([markers[1]!])).toBe(18);
+    expect(segments([markers[2]!])).toBe(18);
+    const line = markerLines([markers[2]!]).positions.slice(17 * 6);
+    expect([line[1], line[4]]).toEqual([0.1, 16.05].map((v) => Math.fround(v)));
+  });
 });
 
 describe('markers come from the broadcast, not from what was sent (T-3.29)', () => {
@@ -69,7 +83,7 @@ describe('markers come from the broadcast, not from what was sent (T-3.29)', () 
     expect(net.slot).toBe(0);
     const draw = () => orderMarkers(net.orders, net.marks, WHERE);
 
-    const aim = { point: { x: 4.5, y: 0, z: 12.25 }, netId: null, enemy: false, downedMate: false };
+    const aim = { point: { x: 4.5, y: 0, z: 12.25 }, feet: { x: 4.5, y: 0, z: 12.25 }, netId: null, enemy: false, downedMate: false };
     net.order(buildOrder('move', { to: 'slot', index: 2 }, aim)!);
     // Sent, and nothing drawn: the host has not answered.
     expect(draw()).toEqual([]);

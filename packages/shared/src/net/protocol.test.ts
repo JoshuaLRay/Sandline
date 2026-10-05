@@ -538,3 +538,37 @@ describe('AiDebug (T-3.09)', () => {
     expect(bytes).toBeLessThan(1200);
   });
 });
+
+describe('stacked-floor order points on the wire (U-123)', () => {
+  const STOREYS = [0, 8, 16];
+  const at = (y: number) => ({ x: 30.3, y, z: 270.7 });
+  /** The wire's position step: 1/64 m, so a decoded point is within half of it. */
+  const STEP = 1 / 64;
+
+  it('keeps identical x/z on y0, y8 and y16 three different points in an Order, the Orders broadcast and a Mark', () => {
+    for (const y of STOREYS) {
+      const order = decodeMessage(encodeMessage({ kind: 'Order', order: 'move', address: { to: 'slot', index: 2 }, point: at(y), target: null }));
+      if (order.kind !== 'Order') throw new Error('expected an Order');
+      expect(Math.abs(order.point!.y - y)).toBeLessThanOrEqual(STEP / 2);
+      expect(Math.abs(order.point!.x - 30.3)).toBeLessThanOrEqual(STEP / 2);
+      const mark = decodeMessage(encodeMessage({ kind: 'Mark', point: at(y), target: null }));
+      if (mark.kind !== 'Mark') throw new Error('expected a Mark');
+      expect(Math.abs(mark.point.y - y)).toBeLessThanOrEqual(STEP / 2);
+    }
+    const orders = decodeMessage(encodeMessage({
+      kind: 'Orders',
+      orders: STOREYS.map((y, i) => ({ slot: i + 1, order: i === 1 ? 'hold' : 'move', point: at(y + 0.05), target: null, from: 0 })),
+    }));
+    if (orders.kind !== 'Orders') throw new Error('expected Orders');
+    expect(orders.orders.map((o) => Math.round(o.point!.y))).toEqual(STOREYS);
+    for (const [i, o] of orders.orders.entries()) expect(Math.abs(o.point!.y - (STOREYS[i]! + 0.05))).toBeLessThanOrEqual(STEP / 2);
+  });
+
+  it('carries a basement below ground and a high bridge within the position range', () => {
+    for (const y of [-6, 40]) {
+      const order = decodeMessage(encodeMessage({ kind: 'Order', order: 'hold', address: { to: 'all' }, point: at(y), target: null }));
+      if (order.kind !== 'Order') throw new Error('expected an Order');
+      expect(Math.abs(order.point!.y - y)).toBeLessThanOrEqual(STEP / 2);
+    }
+  });
+});

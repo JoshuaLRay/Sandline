@@ -391,3 +391,5 @@ Format: `T-<id> — <what changed>`
 - U-121 — Bound nav goal projection vertically, apply blockers at standing-body height, and bake supported elevated vault/drop links with overhead clearance checks and controller traversal regressions.
 
 - U-122 — Bake cover on all supported floors; require complete 3D cover routes and safe firing feet; track crowding/claims by height and refresh cover caches when scripted geometry changes.
+
+- U-123 — Order picks send the floor pointed at; order goals keep their feet height (snapping only within that floor); reachability, bot/escort arrival, revive/kit reach and formation places respect height; real-session, protocol and browser regressions at identical x/z y0/y8/y16; recorded U-124 and U-125.

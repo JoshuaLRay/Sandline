@@ -7,6 +7,7 @@
  * him (`stay`, `go` to a point, or `follow`, the default).
  */
 import type { BrainBody, BrainRegistry } from '../Brain.ts';
+import { within } from '../floor.ts';
 
 export interface EscortOrder {
   kind: 'follow' | 'stay' | 'go';
@@ -31,10 +32,6 @@ export function isEscortBody(body: BrainBody): body is EscortBody {
 /** How near a `go` has to get, metres, before he counts as there. */
 export const ESCORT_ARRIVED_M = 1.5;
 
-function distance(a: { x: number; z: number }, b: { x: number; z: number }): number {
-  return Math.sqrt((a.x - b.x) ** 2 + (a.z - b.z) ** 2);
-}
-
 export function registerEscortLeaves(registry: BrainRegistry): BrainRegistry {
   const idle = (blackboard: { set(key: string, value: unknown): void }): void => {
     blackboard.set('fireAt', null);
@@ -56,7 +53,8 @@ export function registerEscortLeaves(registry: BrainRegistry): BrainRegistry {
       if (!isEscortBody(ctx)) return 'failure';
       const point = ctx.escort.order().point;
       idle(blackboard);
-      if (!point || distance(ctx.state, point) <= ESCORT_ARRIVED_M) {
+      // U-123: there on the point's floor, not beneath or above it.
+      if (!point || within(ctx.state, point, ESCORT_ARRIVED_M)) {
         blackboard.set('intent', null);
         return 'running';
       }
@@ -72,13 +70,13 @@ export function registerEscortLeaves(registry: BrainRegistry): BrainRegistry {
         blackboard.set('intent', null);
         return 'running';
       }
-      const d = distance(ctx.state, lead);
-      if (d <= keep) {
+      // U-123: a squad member on the floor above or below is not near, however close across.
+      if (within(ctx.state, lead, keep)) {
         blackboard.set('intent', null);
         return 'running';
       }
       // Fall behind and he runs to catch up; near, he walks with them.
-      blackboard.set('intent', { goal: { x: lead.x, y: lead.y, z: lead.z }, pace: d > keep + 8 ? 'sprint' : 'walk' });
+      blackboard.set('intent', { goal: { x: lead.x, y: lead.y, z: lead.z }, pace: within(ctx.state, lead, keep + 8) ? 'walk' : 'sprint' });
       return 'running';
     });
 }

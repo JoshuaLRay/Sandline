@@ -10,7 +10,10 @@
  * lead's fireteam's formation offset for that rank laid along the lead's own
  * trail: `back` metres behind it along the way it walked (breadcrumbs), `right`
  * metres square to the trail there (half as far to the side while the lead
- * sprints, `sprintSpreadScale`). A formation turned round the lead would
+ * sprints, `sprintSpreadScale`), at the trail's own height there (U-123: a
+ * place behind a lead who has climbed a stair is on the stair, and a lead on a
+ * deck is followed on the deck, not on the floor beneath it). A formation
+ * turned round the lead would
  * swing its outer places metres at every corner, faster than anyone can run
  * when the lead sprints; laid on the trail, a follower takes the corner where
  * the lead took it. Closed up while the lead is still, and projected onto the
@@ -29,6 +32,7 @@
 import { SQUAD, type SquadConfig, type SquadSpread, fireteamOf } from '@sandline/shared';
 import type { LocomotionIntent } from '../locomotion/followPath.ts';
 import type { NavPoint } from '../nav/NavMesh.ts';
+import { within } from '../floor.ts';
 
 /** A slot as the formation reads it: the session's own, each tick. */
 export interface FormationSlot {
@@ -75,10 +79,12 @@ const TRAIL_M = 40;
 const TANGENT_M = 1.5;
 
 type Flat = { x: number; z: number };
+/** A breadcrumb: where the slot's feet were. Spacing is measured across the ground. */
+type Crumb = { x: number; y: number; z: number };
 
 export class Formation {
   /** Each slot's trail, oldest first; the slot's own position is its unrecorded head. */
-  private readonly trails = new Map<number, Flat[]>();
+  private readonly trails = new Map<number, Crumb[]>();
   /** Each slot's direction before it has walked anywhere: its facing on the first tick seen. */
   private readonly initial = new Map<number, Flat>();
   private slots: readonly FormationSlot[] = [];
@@ -98,12 +104,12 @@ export class Formation {
         this.initial.set(s.index, { x: Math.sin(a), z: Math.cos(a) });
       }
       let trail = this.trails.get(s.index);
-      if (!trail) this.trails.set(s.index, (trail = [{ x: s.x, z: s.z }]));
+      if (!trail) this.trails.set(s.index, (trail = [{ x: s.x, y: s.y, z: s.z }]));
       const last = trail[trail.length - 1]!;
       const d = Math.sqrt((s.x - last.x) ** 2 + (s.z - last.z) ** 2);
       // A jump (a respawn, a test moving a soldier) starts the trail again.
-      if (d > 5) trail.splice(0, trail.length, { x: s.x, z: s.z });
-      else if (d >= CRUMB_M) trail.push({ x: s.x, z: s.z });
+      if (d > 5) trail.splice(0, trail.length, { x: s.x, y: s.y, z: s.z });
+      else if (d >= CRUMB_M) trail.push({ x: s.x, y: s.y, z: s.z });
       let length = 0;
       for (let i = trail.length - 1; i > 0 && length <= TRAIL_M; i--) {
         length += Math.sqrt((trail[i]!.x - trail[i - 1]!.x) ** 2 + (trail[i]!.z - trail[i - 1]!.z) ** 2);
@@ -114,16 +120,19 @@ export class Formation {
 
   /**
    * The point `back` metres behind a slot along the way it came, head first —
-   * past the oldest breadcrumb, straight on back the way the trail began.
+   * past the oldest breadcrumb, straight on back the way the trail began, at
+   * the height the trail had there.
    */
-  private behind(index: number, head: Flat, back: number): Flat {
+  private behind(index: number, head: Crumb, back: number): Crumb {
     const trail = this.trails.get(index) ?? [];
     let from = head;
     let left = back;
     for (let i = trail.length - 1; i >= 0; i--) {
       const to = trail[i]!;
       const len = Math.sqrt((to.x - from.x) ** 2 + (to.z - from.z) ** 2);
-      if (len >= left && len > 1e-9) return { x: from.x + ((to.x - from.x) * left) / len, z: from.z + ((to.z - from.z) * left) / len };
+      if (len >= left && len > 1e-9) {
+        return { x: from.x + ((to.x - from.x) * left) / len, y: from.y + ((to.y - from.y) * left) / len, z: from.z + ((to.z - from.z) * left) / len };
+      }
       left -= len;
       from = to;
     }
@@ -137,7 +146,7 @@ export class Formation {
       const f = this.initial.get(index) ?? { x: 0, z: 1 };
       dir = { x: -f.x, z: -f.z };
     }
-    return { x: from.x + dir.x * left, z: from.z + dir.z * left };
+    return { x: from.x + dir.x * left, y: from.y, z: from.z + dir.z * left };
   }
 
   /** The lead a slot follows (its fireteam's). */
@@ -188,7 +197,7 @@ export class Formation {
     const length = Math.sqrt(offset[0] ** 2 + offset[1] ** 2);
     const scale = Math.max(baseScale, (this.config.minFromLeadM + 0.01) / length);
     const side = sprinting ? this.config.sprintSpreadScale : 1;
-    const head = { x: leader.x, z: leader.z };
+    const head = { x: leader.x, y: leader.y, z: leader.z };
     // Back is measured along the lead's own trail, so a follower takes a
     // corner where the lead took it; right is square to the trail there.
     const at = (r: number, back: number): NavPoint => {
@@ -207,7 +216,7 @@ export class Formation {
         fz = f.z;
       }
       // The controller's frame (see Session.enemyHands): forward (sin, cos), right (−cos, sin).
-      return { x: p.x - fz * r, y: leader.y, z: p.z + fx * r };
+      return { x: p.x - fz * r, y: p.y, z: p.z + fx * r };
     };
     const far = (p: NavPoint) => Math.sqrt((p.x - leader.x) ** 2 + (p.z - leader.z) ** 2) >= this.config.minFromLeadM;
     let goal = this.project(at(offset[0] * scale * side, offset[1] * scale));
@@ -226,9 +235,9 @@ export class Formation {
       if (!alternate) return null;
       goal = alternate;
     }
-    const gap = Math.sqrt((goal.x - me.x) ** 2 + (goal.z - me.z) ** 2);
-    if (still && gap <= this.config.arriveM) return { lead, rank, offset, goal, intent: null };
-    const sprint = sprinting || gap > this.config.catchUpM;
+    // U-123: arrived means on the place's floor; standing beneath a place on the deck above is not.
+    if (still && within(me, goal, this.config.arriveM)) return { lead, rank, offset, goal, intent: null };
+    const sprint = sprinting || !within(me, goal, this.config.catchUpM);
     return { lead, rank, offset, goal, intent: { goal, pace: sprint ? 'sprint' : 'walk' } };
   }
 }

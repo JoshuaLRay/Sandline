@@ -96,7 +96,8 @@ export function markerLines(markers: readonly OrderMarker[]): { positions: Float
       segment({ x: m.at.x + Math.sin(a) * RING_M, y, z: m.at.z + Math.cos(a) * RING_M }, { x: m.at.x + Math.sin(b) * RING_M, y, z: m.at.z + Math.cos(b) * RING_M });
     }
     segment({ x: m.at.x, y, z: m.at.z }, { x: m.at.x, y: m.at.y + POLE_M, z: m.at.z });
-    if (m.bot && (Math.abs(m.bot.x - m.at.x) > 0.3 || Math.abs(m.bot.z - m.at.z) > 0.3)) {
+    // U-123: a bot straight beneath (or above) its goal still gets its line: the goal is on another floor.
+    if (m.bot && (Math.abs(m.bot.x - m.at.x) > 0.3 || Math.abs(m.bot.z - m.at.z) > 0.3 || Math.abs(m.bot.y - m.at.y) > 1)) {
       segment({ x: m.bot.x, y: m.bot.y + 0.1, z: m.bot.z }, { x: m.at.x, y, z: m.at.z });
     }
   }
