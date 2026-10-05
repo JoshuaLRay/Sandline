@@ -34,9 +34,13 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
-| [U-108](docs/backlog/U-108.md) | Height-aware mission areas and enemy spawn zones | Map implementation | P1 | REVIEW | U-107; implementation ready, CI/review tracked on branch PR | [#293](https://github.com/JoshuaLRay/Sandline/pull/293) |
-| [U-109](docs/backlog/U-109.md) | Stacked-floor navigation, cover and command targets | Map implementation | P1 | BLOCKED | U-108 | — |
-| [U-110](docs/backlog/U-110.md) | Authored squad starts and elevated vehicle paths | Map implementation | P1 | BLOCKED | U-108 | — |
+| [U-120](docs/backlog/U-120.md) | Bake solid overhead undersides and enforce basement headroom | Map implementation | P1 | IN_PROGRESS | U-108; leaf of U-109 | `task/U-120-stacked-nav-geometry` |
+| [U-121](docs/backlog/U-121.md) | Preserve floors in nav projection, blockers and traversal links | Map implementation | P1 | BLOCKED | U-120 | — |
+| [U-122](docs/backlog/U-122.md) | Select and bake cover on the intended floor | Map implementation | P1 | BLOCKED | U-121 | — |
+| [U-123](docs/backlog/U-123.md) | Preserve 3D squad/POW command goals and retry positions | Map implementation | P1 | BLOCKED | U-121, U-122 | — |
+| [U-108](docs/backlog/U-108.md) | Height-aware mission areas and enemy spawn zones | Map implementation | P1 | DONE | Merged with owner authorization; all four CI jobs passed | [#293](https://github.com/JoshuaLRay/Sandline/pull/293) |
+| [U-109](docs/backlog/U-109.md) | Stacked-floor navigation, cover and command targets | Map implementation | P1 | BLOCKED | Parent: U-120–U-123 | — |
+| [U-110](docs/backlog/U-110.md) | Authored squad starts and elevated vehicle paths | Map implementation | P1 | READY | U-108 | — |
 | [U-111](docs/backlog/U-111.md) | Fixed guard sockets, patrol bounds and staged reserves | Map implementation | P1 | BLOCKED | U-108, U-109 | — |
 | [U-112](docs/backlog/U-112.md) | Finite projectile, health and ammunition supply caches | Map implementation | P1 | READY | U-107 | — |
 | [U-113](docs/backlog/U-113.md) | Map-revision-aware checkpoint restart and restore | Map implementation | P1 | READY | U-107 | — |

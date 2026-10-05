@@ -143,3 +143,17 @@ This foundation does not yet change squad starts, vehicle paths, fixed member
 sockets, navigation generation, cover selection or command targeting. Those
 prerequisites and the actual map build are tracked in [U-109](backlog/U-109.md)
 through [U-119](backlog/U-119.md). Current playable mission geometry is unchanged.
+
+### Overhead navigation geometry (U-120)
+
+The offline bake includes all six faces of every collision box, including a
+downward-facing underside. A basement below an overhead slab remains walkable
+only when the baked standing agent has sufficient headroom. Slab interiors and
+undersides never become walkable floors. Author actual solid thickness in the
+world geometry; visual ceiling meshes alone do not constrain AI navigation.
+
+Geometry algorithm revisions are part of `navBakeHash`, alongside world boxes,
+agent dimensions, links and cover inputs. Run `pnpm gen:nav` after changes and
+commit the generated bakes. The three-layer regression is
+`packages/tools/src/nav/stacked.test.ts` (feet y0/y8/y16). Projection, elevated
+links, blockers, cover and command handling remain tracked under U-121–U-123.
