@@ -385,3 +385,5 @@ Format: `T-<id> — <what changed>`
 - U-107 — Replaced Mission 1’s rectangular-map brief with a full hidden-insertion, road/ridge/underground-depot construction specification, mission sequence and three coordinate-based diagrams ([PR #292](https://github.com/JoshuaLRay/Sandline/pull/292)); implementation remains follow-up.
 
 - U-108 — Added optional height-bounded mission/encounter/script areas and authored enemy spawn floors, with stacked-floor occupancy and real-session objective/escort regressions; queued U-109–U-119 for the Qalat Road build.
+
+- U-120 — Closed nav bake cuboid undersides so low ceilings reject standing paths; versioned geometry inputs, regenerated world bakes and added basement/surface/bridge regressions.

@@ -65,10 +65,11 @@ export function boxSoup(floor: FloorSize, boxes: readonly SoupBox[]): TriangleSo
       x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1,
       x0, y1, z0, x1, y1, z0, x1, y1, z1, x0, y1, z1,
     );
-    // Top, then the four sides. The bottom face sits on the floor and is never
-    // walked, so it is left out.
+    // Top, downward-facing underside, then four sides. Recast needs the
+    // underside to reject insufficient headroom beneath suspended slabs.
     const faces = [
       [4, 6, 5], [4, 7, 6],
+      [0, 1, 2], [0, 2, 3],
       [0, 5, 1], [0, 4, 5],
       [1, 6, 2], [1, 5, 6],
       [2, 7, 3], [2, 6, 7],
@@ -226,6 +227,8 @@ export function worldSoup(world: World, groundY = DEFAULT_NAV_AGENT.groundY): Tr
  */
 export function navBakeHash(world: World, agent: NavAgent = DEFAULT_NAV_AGENT, eyes: CoverEyes = DEFAULT_COVER_EYES): string {
   const inputs = {
+    // Geometry algorithm changes must invalidate bakes even when boxes stay put.
+    geometry: { closedBoxUndersides: 1 },
     world: {
       id: world.id,
       floorHalfExtent: world.floorHalfExtent,

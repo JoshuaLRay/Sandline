@@ -5,7 +5,7 @@ import type { BakedNav } from './types.ts';
 /** World 'kit-gallery': 89212 bytes of Detour navmesh. */
 export const BAKED: BakedNav = {
   world: 'kit-gallery',
-  hash: '1a690bbe3c67c7d4389739b10963d7960a307f1d73c9db33a1fa27ee409df73e',
+  hash: '587134236d15207641988641176c22749f446e0bed745e0599cadfae86ec77b3',
   agent: {"radius":0.35,"height":1.8,"climb":0.45,"groundY":0,"vaultMaxHeight":1.25,"vaultDistance":1.5,"vaultProbe":0.35},
   // An array joined once at load, not a chain of `+`: two thousand
   // concatenations nest too deep for a parser to walk.

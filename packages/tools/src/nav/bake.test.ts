@@ -12,9 +12,9 @@ import { SPIKE_MESH_BASE64, SPIKE_NODE_PATH_LENGTH } from '../../../server/src/a
 import { DEFAULT_NAV_AGENT, SPIKE_BOXES, SPIKE_FLOOR_HALF_EXTENT, SPIKE_FROM, SPIKE_TO, bakeNavMesh, bakeWorld, boxSoup, navBakeHash, onMesh, worldSoup } from './bake.ts';
 
 describe('navmesh bake (T-3.01)', () => {
-  it('builds a closed soup: floor plus ten triangles per box', () => {
+  it('builds a closed soup: floor plus twelve triangles per box', () => {
     const soup = boxSoup(SPIKE_FLOOR_HALF_EXTENT, SPIKE_BOXES);
-    expect(soup.indices.length / 3).toBe(2 + 10 * SPIKE_BOXES.length);
+    expect(soup.indices.length / 3).toBe(2 + 12 * SPIKE_BOXES.length);
     const vertices = soup.positions.length / 3;
     expect(soup.indices.every((i) => i >= 0 && i < vertices)).toBe(true);
   });
