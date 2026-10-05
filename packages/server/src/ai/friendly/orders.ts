@@ -25,7 +25,7 @@ import { type BtFrame, DAMAGE, DEFAULT_MUZZLE_RIG, type OrderPoint, SQUAD, type 
 import type { BrainBody, BrainMemory, BrainRegistry } from '../Brain.ts';
 import { type CombatBody, isCombatBody, threatEye } from '../actions/combat.ts';
 import { type ActiveOrder, type SquadBody, isSquadBody } from '../actions/friendly.ts';
-import { within } from '../floor.ts';
+import { near, within } from '../floor.ts';
 
 type Frame = BtFrame<BrainBody, BrainMemory>;
 type Body = SquadBody & CombatBody;
@@ -125,13 +125,13 @@ function threatEyes(ctx: Body): Vec3[] {
 }
 
 /**
- * T-5.06: cover within `withinM` of `near` that hides it from every threat,
+ * T-5.06: cover within `withinM` of `at` (U-123: `near`) that hides it from every threat,
  * the one it holds kept while it still does; null when there is none.
  */
-function coverFrom(ctx: Body, near: Vec3, withinM: number, threats: Vec3[]): (Vec3 & { height: 'low' | 'high' }) | null {
+function coverFrom(ctx: Body, at: Vec3, withinM: number, threats: Vec3[]): (Vec3 & { height: 'low' | 'high' }) | null {
   const cover = ctx.combat.cover;
   if (!cover || threats.length === 0) return null;
-  const inReach = (p: Vec3) => within(p, near, withinM);
+  const inReach = (p: Vec3) => near(p, at, withinM);
   const held = cover.heldPoint(ctx.netId);
   if (held && inReach(held) && cover.stillProtects(ctx.netId, threats)) return held;
   return cover.choose(ctx.netId, { from: ctx.state, threats, friends: ctx.combat.friendsOf(ctx.netId, ctx.faction), combat: true, accept: inReach })?.point ?? null;
@@ -160,11 +160,11 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
         let goal: Vec3 = to;
         let low = false;
         if (cover && eye) {
-          // U-123: cover near the point on its own floor, not under or over it.
-          const near = (p: Vec3) => within(p, to, MOVE_COVER_M);
+          // U-123: `near`, so cover a storey above or below the point is not near it.
+          const close = (p: Vec3) => near(p, to, MOVE_COVER_M);
           let held = cover.heldPoint(ctx.netId);
-          if (!held || !near(held) || !cover.stillProtects(ctx.netId, [eye])) {
-            held = cover.choose(ctx.netId, { from: ctx.state, threats: [eye], friends: ctx.combat.friendsOf(ctx.netId, ctx.faction), combat: false, accept: near })?.point ?? null;
+          if (!held || !close(held) || !cover.stillProtects(ctx.netId, [eye])) {
+            held = cover.choose(ctx.netId, { from: ctx.state, threats: [eye], friends: ctx.combat.friendsOf(ctx.netId, ctx.faction), combat: false, accept: close })?.point ?? null;
           }
           if (held) {
             goal = held;
@@ -247,7 +247,7 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
         const target = seenTarget(ctx);
         const eye = threatEye(ctx);
         const held = ctx.combat.cover?.heldPoint(ctx.netId) ?? null;
-        const inRefuge = held !== null && within(held, anchor, SQUAD.bot.underFire.holdCoverM) && within(ctx.state, held, THERE_M * 1.5);
+        const inRefuge = held !== null && near(held, anchor, SQUAD.bot.underFire.holdCoverM) && within(ctx.state, held, THERE_M * 1.5);
         if (!within(ctx.state, anchor, THERE_M * 1.5) && !(inRefuge && underFire(ctx))) {
           hands(frame, { intent: walk(anchor, ctx.state), fireAt: target, lookAt: eye });
           return 'running';

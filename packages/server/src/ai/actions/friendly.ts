@@ -17,7 +17,7 @@
 import { type BotOrder, type OrderPoint, type SquadAggression, SQUAD, DEFAULT_MUZZLE_RIG, formationBand, suppressionLevel } from '@sandline/shared';
 import type { BrainBody, BrainRegistry } from '../Brain.ts';
 import type { FormationPlace } from '../friendly/formation.ts';
-import { within } from '../floor.ts';
+import { near, within } from '../floor.ts';
 import { isCombatBody } from './combat.ts';
 
 /** A downed squadmate a bot could revive (T-3.26). */
@@ -123,7 +123,7 @@ export function registerFriendlyLeaves(registry: BrainRegistry): BrainRegistry {
           const threats = [...ctx.memory.entries.values()].filter((e) => e.threatAt !== null && now - e.threatAt <= SQUAD.bot.underFire.threatSeconds)
             .map((e) => ({ x: e.x, y: e.y + DEFAULT_MUZZLE_RIG.eyeHeight, z: e.z }));
           const refuge = threats.length === 0 ? null : ctx.combat.cover.choose(ctx.netId, { from: ctx.state, threats, friends: ctx.combat.friendsOf(ctx.netId, ctx.faction), combat: false,
-            accept: (p) => !place || within(p, place.goal, formationBand(place.offset)) })?.point;
+            accept: (p) => !place || near(p, place.goal, formationBand(place.offset)) })?.point;
           if (refuge) {
             const there = within(ctx.state, refuge, SQUAD.arriveM);
             blackboard.set('intent', there ? null : { goal: refuge, pace: 'walk' });

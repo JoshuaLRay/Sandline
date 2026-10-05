@@ -226,7 +226,7 @@ import type { DownedMate, SquadView } from '../ai/actions/friendly.ts';
 import type { EscortOrder, EscortView } from '../ai/actions/escort.ts';
 import { ESCORT_ARRIVED_M } from '../ai/actions/escort.ts';
 import { Formation, type FormationPlace } from '../ai/friendly/formation.ts';
-import { within } from '../ai/floor.ts';
+import { standingY, within } from '../ai/floor.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
 import type { CoverPoint } from '../ai/nav/baked/types.ts';
 import { completePathLength } from '../ai/nav/NavMesh.ts';
@@ -3506,7 +3506,7 @@ export class Session {
       return !commanderOnly || this.commanders[i] === from.index ||
         (i === from.index && from.connection !== null && this.spectators.has(from.connection));
     });
-    // U-123: the point as the floor it names, on the mesh: what every bot, the escort and every client are given.
+    // U-123: the point on the floor it names (`orderGoal`): what every bot, the escort and every client are given.
     const asked = msg.point ? this.orderGoal(msg.point) : null;
     this.orderEscort(msg, asked);
     if (bots.length === 0) return;
@@ -5281,7 +5281,8 @@ export class Session {
         index: s.index,
         human: !s.isBot,
         x: s.state.x,
-        y: s.state.y,
+        // U-123: a vaulting soldier stands on its takeoff floor, so neither its trail nor its arrival is a storey of air.
+        y: standingY(s.state),
         z: s.state.z,
         yaw: s.yaw,
         speed: this.slotSpeed[s.index] ?? 0,
