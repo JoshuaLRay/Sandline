@@ -69,6 +69,8 @@ import { initNav } from '../ai/nav/NavMesh.ts';
 import { Identity } from '../identity/Identity.ts';
 import { CampaignDatabase, normalizeCampaignCode } from '../persistence/CampaignDatabase.ts';
 import type { VoiceIntake } from '../voice/intake.ts';
+import type { VoiceReview } from '../voice/review.ts';
+import { REVIEW_UNAVAILABLE } from '../voice/reviewPage.ts';
 
 const TICK_MS = TICK_SECONDS * 1000;
 
@@ -226,6 +228,7 @@ class ConditionedTransport extends BaseTransport {
 export interface SessionHostOptions {
   port: number;
   voiceIntake?: VoiceIntake;
+  voiceReview?: VoiceReview;
   log: Logger;
   /** Link conditioning for every connection. `null` (default) is a raw socket. */
   link?: LinkConditions | null;
@@ -358,7 +361,15 @@ export class SessionHost {
       port: this.options.port,
       onConnection: (transport) => this.accept(transport),
       onRequest: (req, res) => {
-        if (req.url?.startsWith('/voice-submissions') && this.options.voiceIntake) {
+        if (req.url?.startsWith('/voice-review')) {
+          if (this.options.voiceReview) void this.options.voiceReview.handle(req, res);
+          else {
+            res.statusCode = 503;
+            res.setHeader('cache-control', 'no-store');
+            res.setHeader('content-type', 'text/html; charset=utf-8');
+            res.end(REVIEW_UNAVAILABLE);
+          }
+        } else if (req.url?.startsWith('/voice-submissions') && this.options.voiceIntake) {
           void this.options.voiceIntake.handle(req, res);
         } else this.serveHttp(req.url ?? '/', res, req.socket.remoteAddress);
       },

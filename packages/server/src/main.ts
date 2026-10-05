@@ -29,6 +29,7 @@ import { loadConfig } from './config.ts';
 import { createLogger } from './log.ts';
 import { VoiceIntake } from './voice/intake.ts';
 import { githubVoiceNotification } from './voice/githubNotification.ts';
+import { VoiceReview } from './voice/review.ts';
 
 const config = loadConfig();
 const intakeSettings = [process.env['VOICE_INTAKE_DIR'], process.env['VOICE_SITE_ORIGIN']];
@@ -37,6 +38,12 @@ const voiceIntake = process.env['VOICE_INTAKE_DIR'] && process.env['VOICE_SITE_O
   ? new VoiceIntake({ dir: process.env['VOICE_INTAKE_DIR'], inviteKey: 'JRay', origin: process.env['VOICE_SITE_ORIGIN'],
     ...(process.env['VOICE_GITHUB_DISPATCH_TOKEN'] ? { onFinished: githubVoiceNotification(process.env['VOICE_GITHUB_DISPATCH_TOKEN']) } : {}),
   }) : undefined;
+const reviewSettings = [process.env['VOICE_REVIEW_ORIGIN'], process.env['VOICE_GITHUB_CLIENT_ID'], process.env['VOICE_GITHUB_CLIENT_SECRET']];
+if (reviewSettings.some(Boolean) && !reviewSettings.every(Boolean)) throw new Error('Set VOICE_REVIEW_ORIGIN, VOICE_GITHUB_CLIENT_ID and VOICE_GITHUB_CLIENT_SECRET together');
+if (reviewSettings.every(Boolean) && !voiceIntake) throw new Error('Voice review requires configured voice intake');
+const voiceReview = voiceIntake && reviewSettings.every(Boolean)
+  ? new VoiceReview({ intake: voiceIntake, publicOrigin: process.env['VOICE_REVIEW_ORIGIN']!,
+    clientId: process.env['VOICE_GITHUB_CLIENT_ID']!, clientSecret: process.env['VOICE_GITHUB_CLIENT_SECRET']! }) : undefined;
 const log = createLogger(config.logLevel);
 const campaigns = new CampaignDatabase(config.campaignDbPath);
 const identity = new Identity({
@@ -49,6 +56,7 @@ const link = linkFromEnv();
 const fly = flyEnvironment();
 const host = new SessionHost({
   ...(voiceIntake ? { voiceIntake } : {}),
+  ...(voiceReview ? { voiceReview } : {}),
   ...(fly ? { allocator: { instance: fly.instance, region: fly.region, peers: flyPeers({ app: fly.app, region: fly.region, self: fly.instance, port: config.port }) } } : {}),
   port: config.port,
   log,

@@ -84,6 +84,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-012](docs/backlog/U-012.md) | Define voice cues and extend event routing | Audio | P2 | DONE | — | [#148](https://github.com/JoshuaLRay/Sandline/pull/148) |
 | [U-013](docs/backlog/U-013.md) | Supply and process the real voice recordings | Audio | P2 | BLOCKED | U-012; owner recordings or explicit ADR-017 change | — |
 | [U-036](docs/backlog/U-036.md) | Collect friend voice recordings and consent in the game | Audio | P2 | DONE | U-012; deployed private intake configuration | [#163](https://github.com/JoshuaLRay/Sandline/pull/163) |
+| [U-127](docs/backlog/U-127.md) | Review private saved voice recordings in the browser | Audio | P2 | REVIEW | U-036; implementation built, full checks and production OAuth activation pending | `task/U-127-voice-review` |
 | [U-014](docs/backlog/U-014.md) | Play intelligible radio-treated squad dialogue | Audio | P2 | BLOCKED | U-012, U-013 | — |
 | [U-015](docs/backlog/U-015.md) | Add friendly hit, downed and death vocal reactions | Audio | P2 | BLOCKED | U-012, U-013 | — |
 | [U-016](docs/backlog/U-016.md) | Add positional enemy engagement shouts | Audio | P2 | BLOCKED | U-012, U-013 | — |

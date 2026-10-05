@@ -37,6 +37,12 @@ export function showVoiceSubmission(parent: HTMLElement, host: string): void {
   root.setAttribute('aria-label', 'Contribute your voice to Sandline');
   const card = node('main', root);
   node('h1', card, 'Record a voice for Sandline');
+  if (host) {
+    const review = node('a', card, 'Owner: review saved recordings');
+    review.href = `${host.replace(/^ws/, 'http').replace(/\/$/, '')}/voice-review`;
+    review.target = '_blank';
+    review.rel = 'noopener noreferrer';
+  }
   node('p', card, 'Record one section at a time. Say each line three times, with a full second of silence between takes. Choose any sections you want to contribute.');
   const close = node('button', card, 'Back to game');
   close.type = 'button';

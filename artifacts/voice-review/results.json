@@ -1,0 +1,54 @@
+[
+  {
+    "engine": "chromium",
+    "playback": [
+      {
+        "format": "wav",
+        "duration": 3,
+        "error": null,
+        "seek": 1.5
+      },
+      {
+        "format": "webm",
+        "duration": 3.008,
+        "error": null,
+        "seek": 1.5
+      },
+      {
+        "format": "m4a",
+        "duration": 3,
+        "error": null,
+        "seek": 1.5
+      }
+    ],
+    "logout": "revoked",
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "engine": "webkit",
+    "playback": [
+      {
+        "format": "wav",
+        "duration": 3,
+        "error": null,
+        "seek": 1.5
+      },
+      {
+        "format": "webm",
+        "duration": 3.008,
+        "error": null,
+        "seek": 1.5
+      },
+      {
+        "format": "m4a",
+        "duration": 3,
+        "error": null,
+        "seek": 1.5
+      }
+    ],
+    "logout": "revoked",
+    "overflow": false,
+    "pageErrors": []
+  }
+]

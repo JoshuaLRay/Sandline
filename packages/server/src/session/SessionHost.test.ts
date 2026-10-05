@@ -731,6 +731,11 @@ describe('SessionHost — over a real socket', () => {
 
     const missing = await fetch(`http://127.0.0.1:${port}/nope`);
     expect(missing.status).toBe(404);
+
+    const review = await fetch(`http://127.0.0.1:${port}/voice-review`);
+    expect(review.status).toBe(503);
+    expect(await review.text()).toContain('Owner voice review is not configured yet');
+    expect((await fetch(`http://127.0.0.1:${port}/healthz`)).status).toBe(200);
   });
 
   it('refuses the upgrade itself once the connection cap is reached', async () => {
