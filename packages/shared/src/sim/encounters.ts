@@ -29,6 +29,7 @@
  * are; and against the world, so a zone or place that does not exist is a
  * load-time error rather than a group that never comes.
  */
+import { parseAreaHeightBounds } from './areas.ts';
 import { COMMITTED, type CampaignEntry } from './campaignRegistry.ts';
 import { blockedAt } from './world.ts';
 import { MAX_DRIVE_POINTS } from './vehicle.ts';
@@ -112,8 +113,8 @@ function whole(where: string, v: unknown, min: number, max = Infinity): number {
 }
 
 function circle(where: string, v: unknown): GroundArea {
-  const o = obj(where, v, ['x', 'z', 'radius']);
-  return { x: num(`${where}.x`, o['x'], -Infinity), z: num(`${where}.z`, o['z'], -Infinity), radius: num(`${where}.radius`, o['radius'], 1e-3) };
+  const o = obj(where, v, ['x', 'z', 'radius'], ['minY', 'maxY']);
+  return { x: num(`${where}.x`, o['x'], -Infinity), z: num(`${where}.z`, o['z'], -Infinity), radius: num(`${where}.radius`, o['radius'], 1e-3), ...parseAreaHeightBounds(where, o, EncounterDataError) };
 }
 
 /** Parse and check an encounter file against its world. */

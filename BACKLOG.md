@@ -34,7 +34,19 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
-| [U-107](docs/backlog/U-107.md) | Specify full Mission 1 replacement: hidden spawn, ridge and underground depot | Map design | P1 | REVIEW | Design review; replacement implementation remains follow-up | [#292](https://github.com/JoshuaLRay/Sandline/pull/292) |
+| [U-108](docs/backlog/U-108.md) | Height-aware mission areas and enemy spawn zones | Map implementation | P1 | REVIEW | U-107; implementation ready, CI/review tracked on branch PR | [#293](https://github.com/JoshuaLRay/Sandline/pull/293) |
+| [U-109](docs/backlog/U-109.md) | Stacked-floor navigation, cover and command targets | Map implementation | P1 | BLOCKED | U-108 | — |
+| [U-110](docs/backlog/U-110.md) | Authored squad starts and elevated vehicle paths | Map implementation | P1 | BLOCKED | U-108 | — |
+| [U-111](docs/backlog/U-111.md) | Fixed guard sockets, patrol bounds and staged reserves | Map implementation | P1 | BLOCKED | U-108, U-109 | — |
+| [U-112](docs/backlog/U-112.md) | Finite projectile, health and ammunition supply caches | Map implementation | P1 | READY | U-107 | — |
+| [U-113](docs/backlog/U-113.md) | Map-revision-aware checkpoint restart and restore | Map implementation | P1 | READY | U-107 | — |
+| [U-114](docs/backlog/U-114.md) | Build the hidden insertion, road, ridge and tank ingress | Map implementation | P1 | BLOCKED | U-109, U-110 | — |
+| [U-115](docs/backlog/U-115.md) | Build the continuous underground depot and its stairs | Map implementation | P1 | BLOCKED | U-109, U-114 | — |
+| [U-116](docs/backlog/U-116.md) | Build the prisoner outpost and reserve annex | Map implementation | P1 | BLOCKED | U-114, U-115 | — |
+| [U-117](docs/backlog/U-117.md) | Integrate redesigned Mission 1 combat, supplies and objectives | Map implementation | P1 | BLOCKED | U-111, U-112, U-113, U-116 | — |
+| [U-118](docs/backlog/U-118.md) | Finish Qalat terrain, architecture, lighting and presentation | Map implementation | P1 | BLOCKED | U-117 | — |
+| [U-119](docs/backlog/U-119.md) | Verify the complete replacement mission and capture review evidence | Map implementation | P1 | BLOCKED | U-118 | — |
+| [U-107](docs/backlog/U-107.md) | Specify full Mission 1 replacement: hidden spawn, ridge and underground depot | Map design | P1 | DONE | Owner authorized merge/start; merged 2026-10-04 | [#292](https://github.com/JoshuaLRay/Sandline/pull/292) |
 | [U-106](docs/backlog/U-106.md) | Implement Qalat’s distinct assault, support and isolated flank routes | Map design | P1 | REVIEW | U-105; merged blockout superseded by U-107 redesign; no owner quality verdict | [#291](https://github.com/JoshuaLRay/Sandline/pull/291) |
 | [U-105](docs/backlog/U-105.md) | Define distinct campaign lanes and per-map creation records | Map design | P1 | DONE | Accepted and merged 2026-10-04; implementation tracked by U-106 | [#290](https://github.com/JoshuaLRay/Sandline/pull/290) |
 | [U-104](docs/backlog/U-104.md) | Hold Tab to access the mouse | Controls / UI | P1 | REVIEW | Automated checks passed; owner gameplay review pending | [#289](https://github.com/JoshuaLRay/Sandline/pull/289) |

@@ -383,3 +383,5 @@ Format: `T-<id> — <what changed>`
 - U-106 — Implemented physically separated Qalat road/support/flank routes, three C12 stairs, protected firing bays and winding escort pockets; regenerated nav/cover/art and added isolation/shortcut/escort tests. Owner feel review remains pending.
 
 - U-107 — Replaced Mission 1’s rectangular-map brief with a full hidden-insertion, road/ridge/underground-depot construction specification, mission sequence and three coordinate-based diagrams ([PR #292](https://github.com/JoshuaLRay/Sandline/pull/292)); implementation remains follow-up.
+
+- U-108 — Added optional height-bounded mission/encounter/script areas and authored enemy spawn floors, with stacked-floor occupancy and real-session objective/escort regressions; queued U-109–U-119 for the Qalat Road build.

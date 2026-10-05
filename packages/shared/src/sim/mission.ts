@@ -18,6 +18,7 @@
  * The rule itself is the server's (`server/src/session/mission.ts`); what
  * travels is `MissionView`.
  */
+import { parseAreaHeightBounds } from './areas.ts';
 import { COMMITTED, type CampaignEntry } from './campaignRegistry.ts';
 import type { AreaRef, Encounter } from './encounters.ts';
 import type { World } from './world.ts';
@@ -202,12 +203,12 @@ function seconds(where: string, v: unknown, min = 0): number {
 
 function area(where: string, v: unknown): AreaRef {
   if (typeof v === 'string' && v.length > 0) return v;
-  const o = obj(where, v, ['x', 'z', 'radius']);
+  const o = obj(where, v, ['x', 'z', 'radius'], ['minY', 'maxY']);
   for (const k of ['x', 'z', 'radius'] as const) {
     if (typeof o[k] !== 'number' || !Number.isFinite(o[k] as number)) throw new MissionDataError(`${where}.${k} must be a finite number`);
   }
   if ((o['radius'] as number) <= 0) throw new MissionDataError(`${where}.radius must be positive`);
-  return { x: o['x'] as number, z: o['z'] as number, radius: o['radius'] as number };
+  return { x: o['x'] as number, z: o['z'] as number, radius: o['radius'] as number, ...parseAreaHeightBounds(where, o, MissionDataError) };
 }
 
 function point(where: string, v: unknown): MissionPoint {

@@ -12,6 +12,7 @@
  * boxes to collision while active and marks the matching nav polygons
  * unwalkable; the replicated ScriptState carries the same boxes to clients.
  */
+import { parseAreaHeightBounds } from './areas.ts';
 import type { Encounter, AreaRef } from './encounters.ts';
 import type { MissionDef } from './mission.ts';
 import { WEAPON_IDS, getWeapon } from './weapons.ts';
@@ -126,9 +127,9 @@ function area(where: string, value: unknown, encounter: Encounter, _world: World
     if (value !== 'start' && value !== 'objective' && !(value in encounter.areas)) throw new EventDataError(`${where}: no area '${value}'`);
     return value;
   }
-  const o = obj(where, value, ['x', 'z', 'radius']);
+  const o = obj(where, value, ['x', 'z', 'radius'], ['minY', 'maxY']);
   const radius = finite(`${where}.radius`, o['radius'], 1e-3);
-  return { x: finite(`${where}.x`, o['x']), z: finite(`${where}.z`, o['z']), radius };
+  return { x: finite(`${where}.x`, o['x']), z: finite(`${where}.z`, o['z']), radius, ...parseAreaHeightBounds(where, o, EventDataError) };
 }
 
 function box(where: string, value: unknown, blocker: string, index: number): WorldBox {
