@@ -20,7 +20,7 @@ import RAW_VOICES from '../../../shared/src/data/audio/voices.json' with { type:
 import { oscillator } from '../audio/dsp.ts';
 import { toPcm16, wavBytes } from '../audio/render.ts';
 import { formants, integratedLoudness, medianPitch, normaliseLoudness, peakOf, resample, splitTakes, trackPitch } from './analysis.ts';
-import { findSpeakers, nameTakes, renderVoices } from './process.ts';
+import { findSpeakers, nameLineTake, nameTakes, renderVoices } from './process.ts';
 import { pitchMarks, semitones, shiftVoice } from './psola.ts';
 import { VOICE_CUES_FILE, voiceCuesMarkdown } from './cues.ts';
 import { RAW_DIR, VOICE_DIR, VOICE_RENDERS_FILE, type VoiceRendersManifest, sha256, voiceInputsHash } from './renders.ts';
@@ -227,6 +227,31 @@ function speakerDir(root: string, name: string, consent = true): string {
 }
 
 describe('a whole run (T-2.48)', () => {
+  it('renders repeated individual takes in a partial script without assigning them to other lines', () => {
+    const root = temp();
+    const dir = join(root, 'pat');
+    mkdirSync(dir);
+    writeFileSync(join(dir, 'CONSENT.md'), 'I consent to my voice being used in Sandline.');
+    for (let n = 1; n <= 2; n += 1) {
+      const name = `roger-normal-take-${n.toString(16).padStart(32, '0')}.wav`;
+      writeFileSync(join(dir, name), wavBytes(toPcm16(recording([voicedTone({ f0: 120 + n * 20, seconds: .45 })]).samples)));
+    }
+    const config = { ...SMALL, treatments: ['dry'] as const };
+    const run = renderVoices(root, config);
+    expect(run.speakers).toEqual([{ name: 'pat', passes: { 'orders-normal': 2 } }]);
+    expect(run.lines).toHaveLength(2 * config.variants);
+    expect(run.lines.every((line) => line.key.includes('/roger.normal.'))).toBe(true);
+    expect(run.missing.some((line) => line.includes('/copy.normal'))).toBe(true);
+    expect(sha256(run.lines[0]!.wav)).not.toBe(sha256(run.lines[1]!.wav));
+  }, 30_000);
+
+  it('preserves a pause inside one line and rejects an empty individual file', () => {
+    const samples = recording([voicedTone({ f0: 130, seconds: .4 }), voicedTone({ f0: 140, seconds: .4 })]).samples;
+    const take = nameLineTake(samples, SMALL, 'roger.wav');
+    expect(take.samples.length / RATE).toBeGreaterThan(1.3);
+    expect(() => nameLineTake(new Float64Array(RATE), SMALL, 'silent.wav')).toThrow('no audible take');
+  });
+
   it('refuses a speaker without consent, and a file the script does not name', () => {
     const root = temp();
     speakerDir(root, 'noconsent', false);

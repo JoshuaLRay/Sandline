@@ -3,7 +3,7 @@ import { createServer, type Server } from 'node:http';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { VOICE_CONSENT_TEXT } from '@sandline/shared';
+import { VOICE_CONSENT_TEXT, type VoiceContributorSubmission } from '@sandline/shared';
 import { VoiceIntake } from './intake.ts';
 import { VoiceReview } from './review.ts';
 import { SessionHost } from '../session/SessionHost.ts';
@@ -157,6 +157,20 @@ describe('owner voice review', () => {
       const response = await fetch(clip, { headers: { cookie, range } });
       expect(response.status).toBe(416); expect(response.headers.get('content-range')).toBe(`bytes */${wav().length}`);
     }
+  });
+  it('reviews separate line takes with prompts through the existing owner-only streaming route', async () => {
+    const s = await submission(false);
+    const take = 'c'.repeat(32);
+    expect((await fetch(`${url}/voice-submissions/${s.id}/lines/roger-normal/${take}`, { method: 'PUT',
+      headers: { 'x-submission-token': s.token, 'content-type': 'audio/wav' }, body: wav() })).status).toBe(200);
+    const path = `${url}/voice-review/clips/${s.id}/take-${take}`;
+    expect((await fetch(path, { headers: { 'x-submission-token': s.token } })).status).toBe(401);
+    const cookie = await signIn();
+    const listing = await (await fetch(`${url}/voice-review/submissions`, { headers: { cookie } })).json() as { submissions: VoiceContributorSubmission[] };
+    expect(listing.submissions[0]!.clips).toHaveLength(2);
+    expect(listing.submissions[0]!.clips[1]).toMatchObject({ pass: `take-${take}`, line: 'roger-normal', type: 'audio/wav' });
+    expect(Buffer.from(await (await fetch(path, { headers: { cookie } })).arrayBuffer())).toEqual(wav());
+    expect((await (await fetch(`${url}/voice-review/app.js`)).text())).toContain('“Roger!”');
   });
   it('expires sessions, revokes logout and rejects cross-origin requests', async () => {
     const cookie = await signIn();

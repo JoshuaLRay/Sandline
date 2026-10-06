@@ -34,6 +34,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
+| [U-137](docs/backlog/U-137.md) | Submit and replay separate voice takes by line, with saved counts | Audio / contribution UX | P1 | DONE | U-036 (DONE); effective on owner-authorized green merge; engineering evidence and separate live review steps in card | [#309](https://github.com/JoshuaLRay/Sandline/pull/309) |
 | [U-120](docs/backlog/U-120.md) | Bake solid overhead undersides and enforce basement headroom | Map implementation | P1 | DONE | Owner-authorized merge; CI #1691 passed all four jobs | [#294](https://github.com/JoshuaLRay/Sandline/pull/294) |
 | [U-121](docs/backlog/U-121.md) | Preserve floors in nav projection, blockers and traversal links | Map implementation | P1 | DONE | Owner-authorized merge; all four CI #1694 jobs passed | [#295](https://github.com/JoshuaLRay/Sandline/pull/295) |
 | [U-122](docs/backlog/U-122.md) | Select and bake cover on the intended floor | Map implementation | P1 | DONE | Proposed on authorized green merge; verification in PR | [#296](https://github.com/JoshuaLRay/Sandline/pull/296) |
