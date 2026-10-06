@@ -262,8 +262,8 @@ The group's existing `zone`, `posture` and `trigger` remain required for schema
 compatibility. Socket members hold their individual post/facing until normal
 perception alerts them; the group posture does not replace these assignments.
 Use `posture: {"kind":"hold"}` for this leaf. Individual patrols/combat bounds
-are described below (U-130); pre-placed inactive reserves/tanks belong to U-131.
-Only soldier/friendly sockets are supported here; vehicle staging is U-131.
+are described below (U-130); pre-placed inactive reserves and vehicle sockets
+are described in [staged reserves](#staged-reserves-u-131).
 
 Socket groups have exactly one wave and fixed counts. `fixedCount` may be omitted
 or true; false/repeat waves fail validation. Total socket count must fit the
@@ -274,12 +274,12 @@ validation. The navmesh must resolve the named floor within the existing 0.3 m
 spawn tolerance. Its small surface offset is used for validation, while exact
 authored feet are kept; it never relocates a member to a different candidate.
 
-Start-trigger socket groups populate in the first spawn phase, before enemy
-perception, even when a human can see the socket. Map authoring must screen the
+Start-trigger socket groups populate at initialization before players receive
+input, even when a human can see the socket. Map authoring must screen the
 insertion as specified; visibility is not a reason to omit a fixed guard.
-Later triggers retain visibility/occupancy waiting at the one exact socket.
+Later triggers without `staged` retain visibility/occupancy waiting at the one exact socket.
 Other enemies occupying it delay that member independently of other sockets.
-Pre-input reserve staging is owned by U-131. Legacy zone groups keep their
+Legacy zone groups keep their
 candidate selection, visibility checks, count scaling and repeated waves.
 
 Checkpoints carry `spawnId` on living enemies and `socketId` on queued members;
@@ -365,3 +365,68 @@ Reproduce timing, actual stair traversal, combat preemption, bounds and saves:
 ```sh
 corepack pnpm exec vitest run packages/shared/src/sim/navigationRegion.test.ts packages/server/src/ai/actions/authoredPatrol.test.ts packages/tools/src/nav/boundedPatrol.test.ts packages/server/src/ai/group.test.ts
 ```
+
+## Staged reserves (U-131)
+
+Set `staged: true` on a one-wave fixed-socket encounter group. Its members are
+placed at initialization, before input (or at ready-up in a lobby), and count
+toward the encounter cap and Session hard cap while dormant. Start-trigger
+socket groups are also placed before input. All initial sockets must fit;
+startup fails if occupancy, support or a cap would defer one. Legacy groups
+without sockets keep their existing wave pacing and visibility checks.
+
+The group's trigger or the existing `spawn-group` script action now releases
+its already-present survivors. Their positions, health, inventory and wire IDs
+stay intact. Repeated release is a no-op; killed members, including an entire
+pre-destroyed tank group, never respawn. Ordinary hitscan/blast damage and
+replication apply while dormant. Perception, brains, movement, gun use, capture,
+lever jobs and vehicle weapons wait for release. Tank cannon cadence begins
+from release, rather than from its earlier placement.
+
+An infantry socket may add `advance`, a 2–64-point one-way 3D feet route. It
+requires `staged: true`, cannot also have `patrol`, and starts at the exact
+socket. For example, add this to a staged rifleman's socket:
+
+```json
+"advance": [
+  { "x": 28, "y": 8, "z": 440 },
+  { "x": 32, "y": 8, "z": 434 },
+  { "x": 32, "y": 8, "z": 426 },
+  { "x": 20, "y": 8, "z": 426 },
+  { "x": 20, "y": 8, "z": 418 },
+  { "x": 32, "y": 8, "z": 418 },
+  { "x": 32, "y": 8, "z": 412 },
+  { "x": 30, "y": 8, "z": 404 }
+]
+```
+
+Every point needs support/clearance; every forward leg needs a complete real
+nav path inside its optional `combatRegion`. The region must include the
+reserve room, entire release corridor and destination, with legal floor bands
+as described above. Once released, ordinary combat can preempt its advance;
+returning to idle resumes the saved leg and ultimately holds the final point.
+This leaves existing cover/combat behaviour available around the destination.
+
+Tank sockets use exact `feet` and `face`, validated for full hull/turret support,
+clearance, floor bounds and overlap with other socket members. Vehicles use the
+group's existing `path`, validated from every socket rather than its legacy
+zone centre. Include 3D path heights on an elevated road. A tank needs vehicle
+support rather than an infantry nav polygon; infantry `patrol`, `advance` and
+`combatRegion` fields are refused on vehicle sockets.
+
+Checkpoints keep dormant state, per-member advance leg, tank drive progress,
+spawner placement/release and event one-shot flags/pending timers. Restore
+happens before fresh initialization, so retry, host reload and reconnect cannot
+create a second population. Dead remap sentinels are serialized as zero, keeping
+subsequent JSON saves valid. Full mission restart rebuilds all initial members.
+
+Reproduce the 32-guard + four-reserve + tank + POW plan at both budgets, actual
+nav movement, damage, visible release, saves, ready-up and reconnect:
+
+```sh
+corepack pnpm exec vitest run packages/shared/src/sim/stagedEncounter.test.ts packages/server/src/ai/director/stagedSpawner.test.ts packages/tools/src/nav/stagedReserves.test.ts
+```
+
+This engine fixture does not author the replacement production map. Reserve
+screening/positions, final mission script integration and owner map/play quality
+review remain in U-114–U-117/U-119; no production bake inputs changed.

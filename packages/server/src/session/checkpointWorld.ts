@@ -31,6 +31,7 @@ export interface SlotCheckpoint {
 
 /** U-059: a living enemy at a checkpoint. */
 export interface EnemyCheckpoint {
+  inactive?: boolean;
   spawnId?: string;
   captive?: boolean;
   escortOrder?: { kind: 'follow' | 'stay' | 'go'; point: { x: number; y: number; z: number } | null };
@@ -165,6 +166,7 @@ function posture(where: string, v: unknown): EnemyPosture | null {
     route: list(`${where}.route`, o['route'], 64).map((p, i) => drivePoint(`${where}.route[${i}]`, p)),
     area: area === null ? null : { x: num(`${where}.area.x`, area['x']), z: num(`${where}.area.z`, area['z']), radius: num(`${where}.area.radius`, area['radius']) },
     leg: int(`${where}.leg`, o['leg'], 0, 1024),
+    ...(o['advance'] === undefined ? {} : { advance: kind === 'patrol' && patrol ? bool(`${where}.advance`, o['advance']) : fail(`${where}.advance`) }),
     ...(region ? { region } : {}), ...(patrol ? { patrol } : {}),
   };
 }
@@ -274,6 +276,7 @@ export function parseCheckpointWorld(raw: unknown): CheckpointWorld | null {
         return {
           netId: int(`${w}.netId`, x['netId']),
           archetype: str(`${w}.archetype`, x['archetype']),
+          ...(x['inactive'] === undefined ? {} : { inactive: bool(`${w}.inactive`, x['inactive']) }),
           ...(x['spawnId'] === undefined ? {} : { spawnId: memberId(`${w}.spawnId`, x['spawnId']) }),
           faction: int(`${w}.faction`, x['faction'], 0, 255),
           x: num(`${w}.x`, x['x']),
