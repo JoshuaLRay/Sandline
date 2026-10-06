@@ -54,3 +54,5 @@ export * from './ai/memory.ts';
 export * from './sim/tactics.ts';
 
 export * from './sim/vehiclePlacement.ts';
+
+export * from './sim/navigationRegion.ts';

@@ -61,6 +61,9 @@ export interface CombatBody extends BrainBody {
    * T-3.26: where its cover must be — a friendly bot's formation place, and
    * how far from it — or absent/null for an enemy, which may go anywhere.
    */
+  /** Authored guard bounds: cover/interaction goals must have a complete legal route. */
+  canReach?(point: Vec3): boolean;
+  movementCost?(from: Vec3, to: Vec3): number | null;
   coverNear?(): { x: number; z: number; withinM: number } | null;
   /** U-010: the lever the session has sent it to (its feet's goal, and how near counts), or absent/null: no job. */
   leverJob?(): { x: number; y: number; z: number; reachM: number } | null;

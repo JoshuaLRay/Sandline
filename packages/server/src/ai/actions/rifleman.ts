@@ -151,10 +151,10 @@ export function registerRiflemanLeaves(registry: BrainRegistry): BrainRegistry {
         const keep = args['keep'] === true && point !== null;
         // A friendly bot's cover is near its formation place (T-3.26); one it holds that the formation has left behind is given up.
         const near = body.coverNear?.() ?? null;
-        const inReach = (p: { x: number; z: number }) => near === null || Math.sqrt((p.x - near.x) ** 2 + (p.z - near.z) ** 2) <= near.withinM;
+        const inReach = (p: Vec3) => (body.canReach?.(p) ?? true) && (near === null || Math.sqrt((p.x - near.x) ** 2 + (p.z - near.z) ** 2) <= near.withinM);
         if (!point || (!keep && !cover.stillProtects(body.netId, [eye])) || !inReach(point)) {
-          const accept = near ? { accept: inReach } : {};
-          point = cover.choose(body.netId, { from: body.state, threats: [eye], friends: body.combat.friendsOf(body.netId, body.faction), ...accept })?.point ?? null;
+          const accept = near || body.canReach ? { accept: inReach } : {};
+          point = cover.choose(body.netId, { from: body.state, threats: [eye], friends: body.combat.friendsOf(body.netId, body.faction), ...accept, ...(body.movementCost ? { pathCost: body.movementCost } : {}) })?.point ?? null;
         }
         if (!point) return 'failure';
         hands(frame, false, null);
@@ -303,11 +303,12 @@ export function registerRiflemanLeaves(registry: BrainRegistry): BrainRegistry {
         const closest = num(args, 'closestM', 10);
         const query = {
           from: body.state,
+          ...(body.movementCost ? { pathCost: body.movementCost } : {}),
           threats: [eye],
           friends: body.combat.friendsOf(body.netId, body.faction),
           accept: (p: Vec3) => {
             const d = across(p, eye);
-            return d <= now - gain && d >= closest;
+            return d <= now - gain && d >= closest && (body.canReach?.(p) ?? true);
           },
         };
         // Look before letting go of the point it has: choosing releases it.

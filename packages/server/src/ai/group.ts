@@ -87,6 +87,8 @@ export interface GroupMember {
   readonly target: number | null;
   /** T-3.23: the role its archetype is handed first (the MG suppresses), or null. */
   readonly prefers?: GroupRole | null;
+  canReach?(point: NavPoint): boolean;
+  pathWithin?(from: NavPoint, to: NavPoint, pathOf?: PathOf): NavPath | null;
 }
 
 /** What a group plans against: the session's cover, geometry and mesh. */
@@ -310,7 +312,8 @@ export class EnemyGroup {
     const price = (pathOf?: PathOf) => {
       for (const member of [...flankers].sort((a, b) => a.netId - b.netId)) {
         for (const c of candidates) {
-          const route = this.route(member.state, c.point, seen, world, pathOf);
+          if (member.canReach && !member.canReach(c.point)) continue;
+          const route = this.route(member.state, c.point, seen, world, member.pathWithin ? (a, b) => member.pathWithin!(a, b, pathOf) : pathOf);
           if (!route) continue;
           const cost = pricedLength([member.state, ...route], feet, world.boxes, flankExposureCost, this.config.pricedRangeM);
           if (!best || cost < best.cost) best = { member, point: c.point, index: c.index, cost, route };
@@ -334,7 +337,7 @@ export class EnemyGroup {
     this.suppressFrom = this.suppressSpot(suppressor, aim, chosen.index, world);
     this.roles.set(chosen.member.netId, 'flanker');
     this.roles.set(suppressor.netId, 'suppressor');
-    const route = this.refine(chosen.member.state, chosen.route, feet, world);
+    const route = this.refine(chosen.member.state, chosen.route, feet, world, chosen.member.pathWithin ? (a, b) => chosen.member.pathWithin!(a, b) : undefined);
     this.flank = { netId: chosen.member.netId, point: chosen.point, route, waypoint: 0, arrived: false };
   }
 
@@ -350,11 +353,11 @@ export class EnemyGroup {
     const cover = world.cover;
     let best: { index: number; d: number } | null = null;
     cover.points.forEach((p, index) => {
-      if (index === flankIndex || !cover.isUsable(index)) return;
+      if (index === flankIndex || !cover.isUsable(index) || (suppressor.canReach && !suppressor.canReach(p))) return;
       const holder = cover.holder(index);
       if (holder !== null && holder !== suppressor.netId) return;
       if (!clear(eyeAt(p), aim, world.boxes)) return;
-      const d = world.mesh ? completePathLength(world.mesh.path(here, p), here, p)
+      const d = world.mesh ? completePathLength(suppressor.pathWithin ? suppressor.pathWithin(here, p) : world.mesh.path(here, p), here, p)
         : Math.abs(p.y - here.y) <= DEFAULT_MOVE_CONFIG.stepHeight ? Math.hypot(p.x - here.x, p.y - here.y, p.z - here.z) : null;
       if (d === null) return;
       if (!best || d < best.d) best = { index, d };
@@ -398,7 +401,7 @@ export class EnemyGroup {
    * target's sight, are each tried as a stopover, and the cheapest priced
    * route of all wins. Done once, when the flank is handed out.
    */
-  private refine(from: Vec3, route: NavPoint[], feet: Vec3, world: GroupWorld): NavPoint[] {
+  private refine(from: Vec3, route: NavPoint[], feet: Vec3, world: GroupWorld, pathOf?: PathOf): NavPoint[] {
     const mesh = world.mesh;
     if (!mesh || route.length === 0) return route;
     const goal = route[route.length - 1]!;
@@ -417,8 +420,8 @@ export class EnemyGroup {
         if (!near || Math.hypot(near.point.x - x, near.point.z - z) > step / 2) continue;
         const via = near.point;
         if (seesGround(feet, via, world.boxes)) continue;
-        const a = mesh.path(from, via, 4);
-        const b = mesh.path(via, goal, 4);
+        const a = pathOf ? pathOf(from, via, 4) : mesh.path(from, via, 4);
+        const b = pathOf ? pathOf(via, goal, 4) : mesh.path(via, goal, 4);
         if (!a || !b || completePathLength(a, from, via) === null || completePathLength(b, via, goal) === null) continue;
         const candidate = [...a.points.slice(1), ...b.points.slice(1), goal];
         const c = pricedLength([from, ...candidate], feet, world.boxes, cost, this.config.pricedRangeM);

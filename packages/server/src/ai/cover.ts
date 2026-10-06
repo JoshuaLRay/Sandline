@@ -217,6 +217,8 @@ export interface CoverQuery {
   combat?: boolean;
   /** Only points this accepts are candidates (T-3.20: an advance takes only cover nearer the target). */
   accept?: (point: CoverPoint) => boolean;
+  /** Per-member restricted navigation cost, when authored combat bounds apply. */
+  pathCost?: PathCost;
 }
 
 export interface CoverChoice {
@@ -365,7 +367,7 @@ export class CoverSystem {
     for (const { choice, bound } of optimistic) {
       if (out.length >= limit && bound < out[limit - 1]!.score) break;
       this.pathQueries++;
-      const pathM = this.pathCost(query.from, choice.point);
+      const pathM = (query.pathCost ?? this.pathCost)(query.from, choice.point);
       if (pathM === null || !Number.isFinite(pathM) || pathM > maxPathM) continue;
       const scored = { ...choice, pathM, score: choice.score - weights.pathPerM * pathM };
       // Keep `out` sorted, best first, ties to the earlier point.
