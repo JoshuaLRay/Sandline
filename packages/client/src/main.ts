@@ -110,7 +110,7 @@ function taggedRoom(host: string, room: string): string {
 }
 import { type PlacedEmplacement, clampYawToArc, degToWire, emplacementByIndex, emplacementFacing, gunnerPlace } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
-import type { CameraCollider } from './camera/cameraColliders.ts';
+import { createSceneCollider } from './camera/sceneCollider.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { deviceSlotForKey, weaponIndexForKey } from './weapons/weaponKey.ts';
 import { PROJECTILE_ORDER, ThrowQA } from './weapons/ThrowQA.ts';
@@ -266,21 +266,7 @@ scene.add(aiDebug.object);
  */
 const shootable: THREE.Object3D[] = [];
 const cameraScenery: THREE.Object3D[] = [ground];
-const cameraRaycaster = new THREE.Raycaster();
-/** Reused every frame: the cast runs per frame and must not allocate. */
-const cameraRayOrigin = new THREE.Vector3();
-const cameraRayDirection = new THREE.Vector3();
-const cameraCollider: CameraCollider = {
-  cast(origin, direction, maxDistance) {
-    cameraRaycaster.set(
-      cameraRayOrigin.set(origin.x, origin.y, origin.z),
-      cameraRayDirection.set(direction.x, direction.y, direction.z),
-    );
-    cameraRaycaster.near = 0;
-    cameraRaycaster.far = maxDistance;
-    return cameraRaycaster.intersectObjects(cameraScenery, false)[0]?.distance ?? null;
-  },
-};
+const cameraCollider = createSceneCollider(cameraScenery);
 
 const worldMaterials: Record<WorldBoxKind, THREE.Material> = {
   'post-minor': new THREE.MeshStandardMaterial({ color: 0xd8c9a8, roughness: 0.9 }),
