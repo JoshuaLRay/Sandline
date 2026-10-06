@@ -36,6 +36,7 @@ import {
   passLines,
   unitFromSeed,
   voiceFile,
+  voiceRecordingLines,
 } from '@sandline/shared';
 import { biquad, reverb, softClip } from '../audio/dsp.ts';
 import { idSeed, renderSound, toPcm16, wavBytes } from '../audio/render.ts';
@@ -50,6 +51,8 @@ export interface Speaker {
   dir: string;
   /** Pass name → the file it was uploaded as. */
   recordings: Map<string, string>;
+  /** Individual line/style keys → immutable take files, in sorted filename order. */
+  lineRecordings: Map<string, string[]>;
   /** Pass name → take indices to drop before naming. */
   drops: Map<string, number[]>;
 }
@@ -74,6 +77,7 @@ export function scriptPasses(config: VoicesConfig): Map<string, { section: strin
 export function findSpeakers(rawDir: string, config: VoicesConfig): Speaker[] {
   if (!existsSync(rawDir)) return [];
   const passes = scriptPasses(config);
+  const lines = new Set(voiceRecordingLines(config).map((line) => line.id));
   const problems: string[] = [];
   const speakers: Speaker[] = [];
   for (const name of readdirSync(rawDir).sort()) {
@@ -85,12 +89,18 @@ export function findSpeakers(rawDir: string, config: VoicesConfig): Speaker[] {
       continue;
     }
     const recordings = new Map<string, string>();
+    const lineRecordings = new Map<string, string[]>();
     const drops = new Map<string, number[]>();
     for (const file of readdirSync(dir).sort()) {
       if (file === 'CONSENT.md' || file === 'edits.json' || file.startsWith('.')) continue;
       const dot = file.lastIndexOf('.');
       const pass = dot > 0 ? file.slice(0, dot) : file;
       const ext = dot > 0 ? file.slice(dot).toLowerCase() : '';
+      const take = /^(.+)-take-[a-f0-9]{32}$/.exec(pass);
+      if (take && lines.has(take[1]!) && (RAW_EXTENSIONS as readonly string[]).includes(ext)) {
+        lineRecordings.set(take[1]!, [...(lineRecordings.get(take[1]!) ?? []), join(dir, file)]);
+        continue;
+      }
       if (!(RAW_EXTENSIONS as readonly string[]).includes(ext) || !passes.has(pass)) {
         problems.push(`${name}/${file}: not a pass the script names (${[...passes.keys()].slice(0, 3).join(', ')}, …) with a recording's extension`);
         continue;
@@ -114,7 +124,7 @@ export function findSpeakers(rawDir: string, config: VoicesConfig): Speaker[] {
         problems.push(`${name}/edits.json: ${(e as Error).message}`);
       }
     }
-    speakers.push({ name, dir, recordings, drops });
+    speakers.push({ name, dir, recordings, lineRecordings, drops });
   }
   if (problems.length) throw new VoiceInputError(problems.join('\n'));
   return speakers;
@@ -151,6 +161,15 @@ export function nameTakes(samples: Float64Array, lines: readonly string[], confi
     out.set(line, [...(out.get(line) ?? []), named]);
   });
   return out;
+}
+
+/** One file already names one line: preserve pauses inside it and trim only its outside silence. */
+export function nameLineTake(samples: Float64Array, config: VoicesConfig, where: string): NamedTake {
+  const clean = biquad(biquad(Float64Array.from(samples), RUMBLE, RATE), RUMBLE, RATE);
+  const found = splitTakes(clean, config.split, RATE);
+  if (peakOf(clean) === 0 || !found.length) throw new VoiceInputError(`${where}: no audible take found`);
+  const cut = cutTake(clean, { start: found[0]!.start, end: found[found.length - 1]!.end }, RATE);
+  return { samples: cut, marks: pitchMarks(cut, trackPitch(cut, config.pitchRangeHz, RATE), RATE) };
 }
 
 const filter = (kind: FilterDef['kind'], hz: number): FilterDef => ({ kind, hz, q: 0.7071, gainDb: 0, toHz: null, sweepSeconds: 0 });
@@ -245,6 +264,7 @@ export function renderVoices(rawDir: string, config: VoicesConfig, sounds: Sound
   const run: VoiceRun = { lines: [], speakers: [], missing: [] };
   if (speakers.length === 0) return run;
   const passes = scriptPasses(config);
+  const lineKeys = new Map(voiceRecordingLines(config).map((line) => [line.id, line]));
   const problems: string[] = [];
   const takes = speakers.map((speaker) => {
     const byPass = new Map<string, Map<string, NamedTake[]>>();
@@ -259,6 +279,19 @@ export function renderVoices(rawDir: string, config: VoicesConfig, sounds: Sound
       } catch (e) {
         problems.push((e as Error).message);
       }
+    }
+    for (const [key, paths] of speaker.lineRecordings) {
+      const { pass, line } = lineKeys.get(key)!;
+      const named = byPass.get(pass) ?? new Map<string, NamedTake[]>();
+      for (const path of paths) {
+        try {
+          const take = nameLineTake(readRecording(path), config, path);
+          named.set(line, [...(named.get(line) ?? []), take]);
+          counts[pass] = (counts[pass] ?? 0) + 1;
+        } catch (e) { problems.push((e as Error).message); }
+      }
+      byPass.set(pass, named);
+      log(`${speaker.name}/${key}: ${paths.length} individually recorded takes`);
     }
     run.speakers.push({ name: speaker.name, passes: counts });
     return byPass;

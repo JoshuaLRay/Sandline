@@ -25,6 +25,6 @@ jobs:
           fi
           # Retried dispatches must not create a second issue for the same recording.
           if gh issue list --state all --search "Voice submission $SUBMISSION_ID in:title" --json number --jq 'length' | grep -qx 0; then
-            body="$(printf '@JoshuaLRay A contributor finished a voice recording.\n\nSections: %s\nSubmission ID: %s\n\nReview the private audio and contributor details on the Fly host volume. No recording is attached to this issue.' "$CLIPS" "$SUBMISSION_ID")"
+            body="$(printf '@JoshuaLRay A contributor submitted voice recordings.\n\nRecordings saved when notified: %s\nSubmission ID: %s\n\nThe contributor may add more takes to this submission. Review the current count, private audio and contributor details on the Fly voice review page. No recording is attached to this issue.' "$CLIPS" "$SUBMISSION_ID")"
             gh issue create --title "Voice submission $SUBMISSION_ID" --body "$body"
           fi

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createServer, type Server } from 'node:http';
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { vi } from 'vitest';
@@ -29,6 +29,123 @@ async function setup(key = KEY, onFinished?: (submission: { id: string; name: st
 }
 
 describe('private voice intake', () => {
+  async function contributor(url: string): Promise<{ id: string; token: string }> {
+    const response = await fetch(`${url}/voice-submissions`, { method: 'POST', headers: { origin: ORIGIN, 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Mia', invite: KEY, agree: true, consent: VOICE_CONSENT_TEXT }) });
+    return response.json() as Promise<{ id: string; token: string }>;
+  }
+
+  it('immediately saves 24 separate takes, restores counts after restart and makes retries idempotent', async () => {
+    const url = await setup();
+    const { id, token } = await contributor(url);
+    const headers = { origin: ORIGIN, 'x-submission-token': token, 'content-type': 'audio/webm' };
+    const put = (n: number, fill = n) => fetch(`${url}/voice-submissions/${id}/lines/contact-shout/${n.toString(16).padStart(32, '0')}`, {
+      method: 'PUT', headers, body: Buffer.alloc(1400, fill),
+    });
+    for (let n = 1; n <= 24; n += 1) expect((await put(n)).status).toBe(200);
+    expect((await put(1)).status).toBe(200);
+    expect((await put(1, 99)).status).toBe(409);
+    const response = await fetch(`${url}/voice-submissions/${id}`, { headers });
+    expect(response.status).toBe(200);
+    const data = await response.json() as { complete: boolean; clips: { pass: string; line: string }[] };
+    expect(data.complete).toBe(true); // No Finish request.
+    expect(data.clips).toHaveLength(24);
+    expect(data.clips.every((clip) => clip.line === 'contact-shout')).toBe(true);
+    const restored = new VoiceIntake({ dir, inviteKey: KEY, origin: ORIGIN });
+    expect(restored.reviewSubmissions().submissions[0]!.clips).toHaveLength(24);
+    for (let n = 1; n <= 24; n += 1) {
+      const key = `take-${n.toString(16).padStart(32, '0')}`;
+      expect(readFileSync(restored.reviewClip(id, key)!.path)).toEqual(Buffer.alloc(1400, n));
+    }
+  });
+
+  it('retains concurrent takes and automatically notifies without treating notification failures as lost audio', async () => {
+    const notify = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue(undefined);
+    const url = await setup(KEY, notify);
+    const { id, token } = await contributor(url);
+    const headers = { origin: ORIGIN, 'x-submission-token': token, 'content-type': 'audio/wav' };
+    const put = (n: number) => fetch(`${url}/voice-submissions/${id}/lines/pain-grunt-hurt/${n.toString(16).padStart(32, '0')}`, {
+      method: 'PUT', headers, body: Buffer.alloc(1400, n),
+    });
+    expect((await put(1)).status).toBe(200);
+    expect(JSON.parse(readFileSync(join(dir, id, 'submission.json'), 'utf8')).complete).toBe(true);
+    const results = await Promise.all([2, 3, 4, 5, 6].map(put));
+    expect(results.map((response) => response.status)).toEqual([200, 200, 200, 200, 200]);
+    expect((await put(1)).status).toBe(200);
+    const saved = JSON.parse(readFileSync(join(dir, id, 'submission.json'), 'utf8'));
+    expect(Object.keys(saved.clips)).toHaveLength(6);
+    expect(saved.notifiedAt).toBeDefined();
+    expect(notify).toHaveBeenCalledTimes(2);
+  });
+
+  it('restricts contributor metadata and playback to their own token and validates line takes', async () => {
+    const url = await setup();
+    const a = await contributor(url);
+    const b = await contributor(url);
+    const take = '1'.repeat(32);
+    const headers = { origin: ORIGIN, 'x-submission-token': a.token };
+    const put = (line: string, type = 'audio/webm', bytes = 1400) => fetch(`${url}/voice-submissions/${a.id}/lines/${line}/${take}`, {
+      method: 'PUT', headers: { ...headers, 'content-type': type }, body: Buffer.alloc(bytes, 42),
+    });
+    expect((await put('not-a-line')).status).toBe(400);
+    expect((await put('open-fire-normal')).status).toBe(400);
+    expect((await put('contact-shout', 'application/octet-stream')).status).toBe(400);
+    expect((await put('contact-shout', 'audio/webm', 50)).status).toBe(400);
+    expect((await put('contact-shout')).status).toBe(200);
+    expect((await put('contact-left-shout')).status).toBe(409);
+    const clipUrl = `${url}/voice-submissions/${a.id}/clips/take-${take}`;
+    for (const path of [`${url}/voice-submissions/${a.id}`, clipUrl]) {
+      for (const auth of ['', 'forged', b.token]) {
+        expect((await fetch(path, { headers: { origin: ORIGIN, 'x-submission-token': auth } })).status).toBe(404);
+      }
+      expect((await fetch(path, { headers: { ...headers, origin: 'https://evil.example' } })).status).toBe(403);
+    }
+    const listing = await fetch(`${url}/voice-submissions/${a.id}`, { headers });
+    const text = await listing.text();
+    expect(listing.headers.get('access-control-allow-origin')).toBe(ORIGIN);
+    expect(text).not.toContain('tokenHash'); expect(text).not.toContain(a.token); expect(text).not.toContain(dir);
+    const audio = await fetch(clipUrl, { headers });
+    expect(audio.headers.get('content-type')).toBe('audio/webm');
+    expect(audio.headers.get('cache-control')).toBe('no-store');
+    expect(Buffer.from(await audio.arrayBuffer())).toEqual(Buffer.alloc(1400, 42));
+  });
+
+  it('confirms Submit before a slow owner notification finishes and retains later uploads', async () => {
+    let complete!: () => void;
+    const notify = vi.fn(() => new Promise<void>((done) => { complete = done; }));
+    const url = await setup(KEY, notify);
+    const { id, token } = await contributor(url);
+    const headers = { origin: ORIGIN, 'x-submission-token': token, 'content-type': 'audio/webm' };
+    const put = (n: number) => fetch(`${url}/voice-submissions/${id}/lines/contact-shout/${n.toString(16).padStart(32, '0')}`, {
+      method: 'PUT', headers, body: Buffer.alloc(1400, n),
+    });
+    try {
+      expect((await put(1)).status).toBe(200);
+      expect((await put(2)).status).toBe(200);
+      expect(notify).toHaveBeenCalledTimes(1);
+    } finally { complete(); }
+    await vi.waitFor(() => expect(JSON.parse(readFileSync(join(dir, id, 'submission.json'), 'utf8')).notifiedAt).toBeDefined());
+    expect(Object.keys(JSON.parse(readFileSync(join(dir, id, 'submission.json'), 'utf8')).clips)).toHaveLength(2);
+  });
+  it('rejects oversized takes and submission totals while preserving previously saved recordings', async () => {
+    const url = await setup();
+    const { id, token } = await contributor(url);
+    const put = (n: number, size: number) => fetch(`${url}/voice-submissions/${id}/lines/roger-normal/${n.toString(16).padStart(32, '0')}`, {
+      method: 'PUT', headers: { origin: ORIGIN, 'x-submission-token': token, 'content-type': 'audio/webm' }, body: Buffer.alloc(size, 42),
+    });
+    expect((await put(1, 1400)).status).toBe(200);
+    const tooLarge = await put(2, 8 * 1024 * 1024 + 1);
+    expect(tooLarge.status).toBe(413);
+    expect(await tooLarge.json()).toEqual({ error: 'Recording is too large' });
+    const path = join(dir, id, 'submission.json');
+    const s = JSON.parse(readFileSync(path, 'utf8'));
+    s.clips[`take-${'1'.padStart(32, '0')}`].bytes = 100 * 1024 * 1024;
+    writeFileSync(path, JSON.stringify(s));
+    expect((await put(3, 1400)).status).toBe(413);
+    expect(Object.keys(JSON.parse(readFileSync(path, 'utf8')).clips)).toHaveLength(1);
+    expect(readFileSync(join(dir, id, `take-${'1'.padStart(32, '0')}.webm`))).toEqual(Buffer.alloc(1400, 42));
+  });
+
   it('notifies once when finished, persists completion and retries a failed delivery', async () => {
     const notify = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue(undefined);
     const url = await setup(KEY, notify);
