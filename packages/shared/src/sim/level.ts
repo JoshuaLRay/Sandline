@@ -55,13 +55,14 @@ export interface ExpandedLevel {
   generate?: unknown;
   cover: LevelBoxSpec[];
   mission?: unknown;
+  squadStarts?: unknown;
   pieces: PlacedPiece[];
   encounter: string | null;
   /** T-4.29: the level's emplacements, as written; `loadWorld` validates them. */
   emplacements?: unknown;
 }
 
-const LEVEL_KEYS = ['id', 'format', 'floor', 'generate', 'boxes', 'pieces', 'mission', 'encounter', 'emplacements'] as const;
+const LEVEL_KEYS = ['id', 'format', 'floor', 'generate', 'boxes', 'pieces', 'mission', 'encounter', 'emplacements', 'squadStarts'] as const;
 const PIECE_KEYS = ['id', 'piece', 'x', 'y', 'z', 'rot'] as const;
 const TURNS: readonly number[] = [0, 90, 180, 270];
 const INSTANCE_ID = /^[a-z0-9][a-z0-9-]*$/;
@@ -171,6 +172,7 @@ export function expandLevel(raw: unknown, manifest: AssetManifest = ASSET_MANIFE
   if (o['floor'] !== undefined) out.floor = o['floor'];
   if (o['generate'] !== undefined) out.generate = o['generate'];
   if (o['mission'] !== undefined) out.mission = o['mission'];
+  if (o['squadStarts'] !== undefined) out.squadStarts = o['squadStarts'];
   // T-4.29: the emplacements a level places; `loadWorld` validates them as for any world.
   if (o['emplacements'] !== undefined) out.emplacements = o['emplacements'];
   return out;

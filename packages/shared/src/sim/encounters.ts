@@ -31,7 +31,7 @@
  */
 import { parseAreaHeightBounds } from './areas.ts';
 import { COMMITTED, type CampaignEntry } from './campaignRegistry.ts';
-import { blockedAt } from './world.ts';
+import { validateVehiclePath } from './vehiclePlacement.ts';
 import { MAX_DRIVE_POINTS } from './vehicle.ts';
 import { ENEMIES } from './enemies.ts';
 import { type GroundArea, type World, getWorld } from './world.ts';
@@ -67,7 +67,7 @@ export interface EncounterGroup {
    */
   fixedCount?: boolean;
   captive?: boolean;
-  path?: readonly { x: number; z: number }[];
+  path?: readonly { x: number; y?: number; z: number }[];
   waves: { count: number; everySeconds: number; minSeconds: number; maxSeconds: number };
 }
 
@@ -232,16 +232,17 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
     if (fixedCount !== undefined && typeof fixedCount !== 'boolean') throw new EncounterDataError(`${gw}.fixedCount: expected a boolean`);
     const captive = o['captive'];
     if (captive !== undefined && (typeof captive !== 'boolean' || members.some((m) => !ENEMIES[m.archetype]!.friendly))) throw new EncounterDataError(`${gw}.captive: only friendly groups may be captive`);
-    let path: { x: number; z: number }[] | undefined;
+    let path: { x: number; y?: number; z: number }[] | undefined;
     if (o['path'] !== undefined) {
       if (!Array.isArray(o['path']) || o['path'].length === 0 || o['path'].length > MAX_DRIVE_POINTS || members.some((m) => !ENEMIES[m.archetype]!.vehicle)) throw new EncounterDataError(`${gw}.path: expected a vehicle group and a bounded path`);
       path = o['path'].map((p, j) => {
-        const q = obj(`${gw}.path[${j}]`, p, ['x', 'z']);
-        return { x: num(`${gw}.path[${j}].x`, q['x'], -Infinity), z: num(`${gw}.path[${j}].z`, q['z'], -Infinity) };
+        const q = obj(`${gw}.path[${j}]`, p, ['x', 'z'], ['y']);
+        return { x: num(`${gw}.path[${j}].x`, q['x'], -Infinity), z: num(`${gw}.path[${j}].z`, q['z'], -Infinity), ...(q['y'] === undefined ? {} : { y: num(`${gw}.path[${j}].y`, q['y'], -Infinity) }) };
       });
       const start = mission.spawnZones.find((z) => z.id === o['zone'])!;
-      for (const m of members) for (const point of [start, ...path]) {
-        if (blockedAt(point.x, point.z, ENEMIES[m.archetype]!.vehicle!.hull.radius + .1, 0, .45, 2.4, world.boxes)) throw new EncounterDataError(`${gw}.path: vehicle hull does not fit`);
+      if (start.y === undefined && path.some((p) => p.y !== undefined)) throw new EncounterDataError(`${gw}.zone: a 3D vehicle path requires an authored spawn-zone y`);
+      for (const m of members) {
+        try { validateVehiclePath(start, path, ENEMIES[m.archetype]!.vehicle!, world.boxes, gw); } catch (error) { throw new EncounterDataError((error as Error).message); }
       }
     }
     return { id: o['id'], members, zone: o['zone'], posture, trigger, waves, ...(fixedCount === undefined ? {} : { fixedCount: fixedCount as boolean }), ...(captive === undefined ? {} : { captive: captive as boolean }), ...(path ? { path } : {}) };

@@ -15,6 +15,8 @@ import { cos, sin } from '../math/trig.ts';
 export interface DrivePoint {
   x: number;
   z: number;
+  /** Authored feet height; absent inherits the preceding height (legacy paths stay flat). */
+  y?: number;
 }
 
 /** The numbers a tank drives by (`enemies.json` `vehicle`). */
@@ -35,7 +37,7 @@ export interface VehicleDrive {
   /** Hull heading in table units, kept fractional so a slow turn is not lost to rounding. */
   heading: number;
   phase: DrivePhase;
-  /** U-069: where it started, so a withdrawal can drive all the way out. */
+  /** Start of the current route; withdrawal appends the original start before replacing it. */
   origin: DrivePoint | null;
   /** U-069: heading back out along the way it came; it holds its fire and is gone on arriving. */
   withdrawing: boolean;
@@ -47,19 +49,23 @@ export const MAX_DRIVE_POINTS = 64;
 /** A drive that starts at `path[0]`'s direction of travel: it begins facing the wire yaw given (1024 to a turn). */
 export function createDrive(path: readonly DrivePoint[], yawWire: number, origin: DrivePoint | null = null): VehicleDrive {
   if (path.length === 0 || path.length > MAX_DRIVE_POINTS) throw new RangeError(`a drive path has 1–${MAX_DRIVE_POINTS} points, got ${path.length}`);
-  for (const p of path) if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) throw new RangeError('a drive path point is not finite');
-  return { path: path.map((p) => ({ x: p.x, z: p.z })), next: 0, heading: ((yawWire & (WIRE_ANGLE_UNITS - 1)) * ANGLE_UNITS) / WIRE_ANGLE_UNITS, phase: 'driving', origin: origin ? { x: origin.x, z: origin.z } : null, withdrawing: false };
+  for (const p of path) if (!Number.isFinite(p.x) || !Number.isFinite(p.z) || (p.y !== undefined && !Number.isFinite(p.y))) throw new RangeError('a drive path point is not finite');
+  if (origin && (!Number.isFinite(origin.x) || !Number.isFinite(origin.z) || (origin.y !== undefined && !Number.isFinite(origin.y)))) throw new RangeError('a drive origin is not finite');
+  let y = origin?.y;
+  const points = path.map((p) => { y = p.y ?? y; return { x: p.x, z: p.z, ...(y === undefined ? {} : { y }) }; });
+  return { path: points, next: 0, heading: ((yawWire & (WIRE_ANGLE_UNITS - 1)) * ANGLE_UNITS) / WIRE_ANGLE_UNITS, phase: 'driving', origin: origin ? { ...origin } : null, withdrawing: false };
 }
 
 /**
  * U-069: turn the drive about to leave the way it came: the waypoints it has passed, last first, then where it
  * started. A tank that has not moved yet leaves by its start alone. Idempotent: already withdrawing is left as is.
  */
-export function withdrawDrive(drive: VehicleDrive): void {
+export function withdrawDrive(drive: VehicleDrive, at?: DrivePoint): void {
   if (drive.withdrawing) return;
   const back = drive.path.slice(0, Math.min(drive.next, drive.path.length)).reverse();
-  if (drive.origin) back.push({ x: drive.origin.x, z: drive.origin.z });
+  if (drive.origin) back.push({ ...drive.origin });
   drive.path = back;
+  if (at) drive.origin = { ...at };
   drive.next = 0;
   drive.withdrawing = true;
   drive.phase = back.length === 0 ? 'arrived' : 'driving';
@@ -91,7 +97,7 @@ export function stepDrive(
   drive: VehicleDrive,
   config: DriveConfig,
   dt: number,
-  canMove: (x: number, z: number, forward: DrivePoint) => boolean,
+  canMove: (x: number, z: number, forward: DrivePoint, y?: number) => boolean,
 ): DrivePoint {
   if (drive.next >= drive.path.length) {
     drive.phase = 'arrived';
@@ -100,7 +106,7 @@ export function stepDrive(
   // Reach the waypoint (and any the hull has already passed) before steering for the next.
   while (drive.next < drive.path.length) {
     const p = drive.path[drive.next]!;
-    if ((p.x - at.x) ** 2 + (p.z - at.z) ** 2 > config.arriveM * config.arriveM) break;
+    if ((p.x - at.x) ** 2 + (p.z - at.z) ** 2 > config.arriveM * config.arriveM || (p.y !== undefined && at.y !== undefined && Math.abs(p.y - at.y) > .05)) break;
     drive.next++;
   }
   if (drive.next >= drive.path.length) {
@@ -111,6 +117,7 @@ export function stepDrive(
   const dx = target.x - at.x;
   const dz = target.z - at.z;
   const distance = Math.sqrt(dx * dx + dz * dz);
+  if (distance < 1e-9) { drive.phase = 'blocked'; return at; }
   const wantX = dx / distance;
   const wantZ = dz / distance;
 
@@ -119,6 +126,7 @@ export function stepDrive(
   // Yaw grows from +Z toward +X, so the heading turns up when the waypoint is on that side: cross < 0.
   const cross = f.x * wantZ - f.z * wantX;
   const dot = f.x * wantX + f.z * wantZ;
+  const beforeHeading = drive.heading;
   const step = (config.turnDegPerSec / 360) * ANGLE_UNITS * dt;
   if (Math.abs(cross) > DEADBAND || dot < 0) {
     const up = cross < 0 || (cross === 0 && dot < 0);
@@ -127,6 +135,11 @@ export function stepDrive(
 
   // Forward only, and only once it points near enough at the waypoint: a tank pivots on the spot, it does not reverse.
   const aligned = driveForward(drive);
+  if ((drive.origin?.y !== undefined || drive.path.some((p) => p.y !== undefined)) && !canMove(at.x, at.z, aligned, at.y)) {
+    drive.heading = beforeHeading;
+    drive.phase = 'blocked';
+    return at;
+  }
   const ahead = aligned.x * wantX + aligned.z * wantZ > 0 && Math.abs(aligned.x * wantZ - aligned.z * wantX) < DRIVE_ALIGNED;
   if (!ahead) {
     drive.phase = 'driving';
@@ -135,10 +148,16 @@ export function stepDrive(
   const go = Math.min(config.speedMps * dt, distance);
   const nx = at.x + aligned.x * go;
   const nz = at.z + aligned.z * go;
-  if (!canMove(nx, nz, aligned)) {
+  const from = drive.next === 0 ? drive.origin ?? at : drive.path[drive.next - 1]!;
+  const fromY = from.y ?? at.y;
+  const targetY = target.y ?? fromY;
+  const length2 = (target.x - from.x) ** 2 + (target.z - from.z) ** 2;
+  const share = length2 > 0 ? Math.max(0, Math.min(1, ((nx - from.x) * (target.x - from.x) + (nz - from.z) * (target.z - from.z)) / length2)) : 1;
+  const y = fromY === undefined ? undefined : fromY + ((targetY ?? fromY) - fromY) * share;
+  if (!canMove(nx, nz, aligned, y)) {
     drive.phase = 'blocked';
     return at;
   }
   drive.phase = 'driving';
-  return { x: nx, z: nz };
+  return { x: nx, z: nz, ...(y === undefined ? {} : { y }) };
 }

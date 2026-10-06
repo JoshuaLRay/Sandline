@@ -51,7 +51,7 @@ export interface EventHost {
   /** U-052: authored loot on the ground. */
   placeLoot(weapon: string, ammo: number, at: { x: number; y: number; z: number }, yawDeg: number): void;
   /** U-069: a vehicle to drive `path` from where it is put. */
-  spawnVehicle(vehicle: string, at: { x: number; z: number }, yawDeg: number, path: readonly { x: number; z: number }[]): void;
+  spawnVehicle(vehicle: string, at: { x: number; y?: number; z: number }, yawDeg: number, path: readonly { x: number; y?: number; z: number }[]): void;
   /** U-069: every driving vehicle heads out the way it came. */
   withdrawVehicles(): void;
 }
@@ -222,7 +222,7 @@ export class EventRun {
         this.host.placeLoot(action.weapon, action.ammo, { x: action.x, y: action.y, z: action.z }, action.yawDeg);
         break;
       case 'spawn-vehicle':
-        this.host.spawnVehicle(action.vehicle, { x: action.x, z: action.z }, action.yawDeg, action.path);
+        this.host.spawnVehicle(action.vehicle, { x: action.x, z: action.z, ...(action.y === undefined ? {} : { y: action.y }) }, action.yawDeg, action.path);
         break;
       case 'withdraw-vehicles':
         this.host.withdrawVehicles();

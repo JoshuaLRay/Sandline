@@ -140,10 +140,52 @@ Omitting y preserves legacy projection (highest support with navigation; y0
 without navigation). Enemy occupancy only conflicts within 1.8 m vertically and
 1 m horizontally; old callers without y conservatively block either floor.
 
-This foundation does not yet change squad starts, vehicle paths, fixed member
-sockets, navigation generation, cover selection or command targeting. Those
-prerequisites and the actual map build are tracked in [U-109](backlog/U-109.md)
-through [U-119](backlog/U-119.md). Current playable mission geometry is unchanged.
+U-108 supplies area and enemy spawn heights. The following sections describe
+authored squad starts/vehicle paths (U-110) and navigation, cover and commands
+(U-120–U-123). Fixed member sockets and the replacement map build remain tracked
+in [U-111](backlog/U-111.md) and [U-114](backlog/U-114.md) through
+[U-119](backlog/U-119.md).
+
+### Authored squad starts and vehicle height (U-110)
+
+World and level files accept a top-level `squadStarts` array containing exactly
+six `{ x, y, z }` feet positions, in slot order. Each point needs full standing
+clearance and support at its authored height within 0.05 m; overlapping slots,
+non-finite coordinates and placements outside the floor/wire bounds are rejected
+by name. For example, Mission 1's future insertion uses
+`(-6,8,-10), (-2,8,-10), (2,8,-10), (-6,8,-6), (-2,8,-6), (2,8,-6)`.
+Host, local and headless sessions consume this same world data. Fresh starts,
+full restart, retry without a checkpoint and missing checkpoint slots use the
+authored array; saved checkpoint positions take precedence. Full restart faces
+authored slots north. Joining still possesses a bot at its current position.
+Omitting the array retains legacy starts.
+
+`spawn-vehicle` actions and encounter vehicle `path` waypoints accept optional
+`y`. Supply the script spawn height, or the encounter's spawn-zone `y`, to name
+the starting floor. Waypoints without y inherit the preceding height; fully
+2D scripts and paths retain their existing ground-level behavior. An encounter
+path with height requires an explicit spawn-zone height. Vehicles remain upright
+and follow their supported feet height; this is an on-rails drive, not wheel
+physics. An authored 3D route checks the spawn facing, body support and
+hull/turret clearance, and samples segments every 0.5 m. During driving and
+turning it checks collision, support and same-storey soldiers; it waits at an
+obstruction or an unsupported ledge. It never projects onto an overhead bridge.
+Both route/origin heights survive withdrawal, retry and JSON checkpoint restore.
+Old checkpoint paths without y remain accepted.
+
+Run the U-110 fixtures with:
+
+```sh
+pnpm exec vitest run \
+  packages/shared/src/sim/squadStarts.test.ts \
+  packages/shared/src/sim/vehiclePlacement.test.ts \
+  packages/server/src/session/elevatedStarts.test.ts
+```
+
+These fixtures cover six starts and lifecycle fallbacks, a y8 road under a
+y16 bridge, body/muzzle/shell/wire elevation, floor-separated occupancy and
+checkpoint reload. The actual replacement Qalat geometry and insertion array
+are authored in U-114; these fixtures do not claim a map playtest.
 
 ### Overhead navigation geometry (U-120)
 

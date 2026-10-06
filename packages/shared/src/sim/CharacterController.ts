@@ -14,6 +14,7 @@
  * only for Safari and Firefox players — an invisible bug costing a week to find
  * (ADR-014). The lint rule blocks it; this comment explains why it is there.
  */
+import { DEFAULT_MOVE_CONFIG } from './moveDefaults.ts';
 import { type BinAngle, wireToTable } from '../math/angles.ts';
 import { sin, cos } from '../math/trig.ts';
 import { DEFAULT_WORLD, type WorldBox, blockedAt, overlapsFootprint, supportUnder } from './world.ts';
@@ -151,27 +152,8 @@ export interface MoveConfig {
  * Defaults. Parity tests must NOT read these — they declare their own constants
  * in the fixture, so tuning here can never break a parity test (ADR-014, R10).
  */
-export const DEFAULT_MOVE_CONFIG: MoveConfig = {
-  walkSpeed: 4.2,
-  sprintSpeed: 6.8,
-  crouchSpeed: 1.9,
-  gravity: -19.6,
-  jumpSpeed: 6.0,
-  groundY: 0,
-  maxFallSpeed: -55,
-  radius: 0.35,
-  height: 1.8,
-  crouchHeight: 1.2,
-  // Matches DEFAULT_HITBOX's prone capsule (server/net/lagComp.ts): 2 * (0.05 + 0.35).
-  proneHeight: 0.8,
-  proneSpeed: 1.1,
-  stepHeight: 0.45,
-  vaultMaxHeight: 1.25,
-  vaultDistance: 1.5,
-  vaultSeconds: 0.55,
-  vaultProbe: 0.35,
-  vaultLip: 0.15,
-};
+export { DEFAULT_MOVE_CONFIG } from './moveDefaults.ts';
+
 
 /** Clamp a stick axis. Guards against a hostile client sending moveX = 1e9. */
 function axis(v: number): number {
