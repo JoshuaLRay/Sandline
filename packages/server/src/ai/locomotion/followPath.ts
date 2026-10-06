@@ -337,6 +337,7 @@ export class PathFollower {
     private readonly world: readonly WorldBox[],
     private readonly tuning: Readonly<FollowConfig> = DEFAULT_FOLLOW_CONFIG,
     private readonly move: MoveConfig = DEFAULT_MOVE_CONFIG,
+    private readonly pathOf?: (from: NavPoint, to: NavPoint, searchM?: number) => NavPath | null,
   ) {}
 
   /** Paths planned again because the follower stopped making progress. */
@@ -392,7 +393,7 @@ export class PathFollower {
   }
 
   private plan(state: Readonly<MoveState>, yaw: number): boolean {
-    const path = this.goal ? this.mesh.path(state, this.goal, this.tuning.goalSearchMaxM) : null;
+    const path = this.goal ? (this.pathOf ? this.pathOf(state, this.goal, this.tuning.goalSearchMaxM) : this.mesh.path(state, this.goal, this.tuning.goalSearchMaxM)) : null;
     if (!path) {
       this.follow = null;
       this.retryIn = this.tuning.stuckTicks;

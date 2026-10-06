@@ -262,7 +262,7 @@ The group's existing `zone`, `posture` and `trigger` remain required for schema
 compatibility. Socket members hold their individual post/facing until normal
 perception alerts them; the group posture does not replace these assignments.
 Use `posture: {"kind":"hold"}` for this leaf. Individual patrols/combat bounds
-are implemented by U-130, and pre-placed inactive reserves/tanks by U-131.
+are described below (U-130); pre-placed inactive reserves/tanks belong to U-131.
 Only soldier/friendly sockets are supported here; vehicle staging is U-131.
 
 Socket groups have exactly one wave and fixed counts. `fixedCount` may be omitted
@@ -293,4 +293,75 @@ Reproduce the content, Session lifecycle and real baked-nav checks:
 
 ```sh
 corepack pnpm exec vitest run packages/shared/src/sim/encounterSockets.test.ts packages/server/src/session/guardSockets.test.ts packages/tools/src/nav/guardSockets.test.ts packages/server/src/ai/director/spawner.test.ts packages/server/src/session/checkpointWorld.test.ts
+```
+
+## Individual patrols and combat regions (U-130)
+
+Each socket may independently add `patrol` and `combatRegion`. Other members
+keep their own hold/facing assignment. Add up to 64 named `regions` at the
+encounter's top level. Each is a union of 1–32 closed, axis-aligned 3D prisms:
+
+```json
+"regions": {
+  "basement": [{
+    "minX": -30, "maxX": -10,
+    "minY": -0.3, "maxY": 0.3,
+    "minZ": 108, "maxZ": 128
+  }]
+}
+```
+
+A socket in that region may add this assignment:
+
+```json
+"sockets": [{
+  "id": "BG1", "archetype": "rifleman",
+  "feet": { "x": -26, "y": 0, "z": 124 },
+  "face": { "x": -20, "z": 108 },
+  "combatRegion": "basement",
+  "patrol": {
+    "route": [
+      { "x": -26, "y": 0, "z": 124 },
+      { "x": -26, "y": 0, "z": 116 },
+      { "x": -20, "y": 0, "z": 116 }
+    ],
+    "pauseSeconds": 3
+  }
+}]
+```
+
+Routes contain 2–64 exact feet points, starting at the socket; adjacent points
+must differ. Every point needs support and standing clearance. The Session
+checks every leg in both directions against the real navmesh before spawning,
+including the assigned region. Unknown regions, invalid floors, incomplete
+paths and paths leaving the region fail startup. `pauseSeconds` defaults to 3
+(90 simulation ticks at 30 Hz); authored values from 0–60 round to whole ticks.
+The guard pauses at its initial post and each endpoint, reverses at the far
+endpoint, and passes interior points without pausing. Combat preempts patrol;
+returning to idle resumes its phase and remaining pause. Retry and durable
+reload preserve the full 3D route, direction, leg, region and remaining ticks.
+
+Regions describe allowed **feet corridors**, including navmesh surface offsets,
+stairs and vault transitions. Use separate vertical bands for separate floors;
+add explicit volumes covering the entire corridor when a storey transition is
+allowed. An X/Z rectangle alone does not distinguish stacked floors. Geometry
+and nav connectivity still decide reachability: a prism grants no passage
+through walls or to a disconnected bridge. The runtime resolves regions to
+actual ground polygons and verifies every path segment against the exact union.
+It conservatively rejects a native path that cuts across a prism boundary; it
+does not clip that path or search for an alternative inside a partial polygon.
+Author regions around complete traversable corridors and validate both patrol
+directions on the final baked map.
+
+Pursuit, cover reservations/ranking, group flank/suppressor paths, capture,
+lever and gun goals all use the member's legal floor and complete bounded path.
+A final movement check also constrains controller/avoidance/spacing output.
+Members without `combatRegion` retain legacy unbounded navigation. No production
+map sockets, nav bake inputs or generator outputs changed for this engine leaf;
+replacement-map authoring and owner map/play review remain in U-114–U-117.
+
+Reproduce timing, actual stair traversal, combat preemption, bounds and saves:
+
+```sh
+corepack pnpm exec vitest run packages/shared/src/sim/navigationRegion.test.ts packages/server/src/ai/actions/authoredPatrol.test.ts packages/tools/src/nav/boundedPatrol.test.ts packages/server/src/ai/group.test.ts
 ```

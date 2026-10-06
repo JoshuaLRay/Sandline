@@ -339,6 +339,20 @@ export class NavMesh {
     }
   }
 
+  /** Restrict one synchronous query to real floor polygons; restore blocker flags exactly. */
+  within<T>(refs: ReadonlySet<number>, run: () => T): T {
+    const saved: { ref: number; flags: number }[] = [];
+    for (const polygon of this.polygons()) {
+      if (refs.has(polygon.ref)) continue;
+      const flags = this.mesh.getPolyFlags(polygon.ref).flags;
+      if (flags === 0) continue;
+      saved.push({ ref: polygon.ref, flags });
+      this.mesh.setPolyFlags(polygon.ref, 0);
+    }
+    try { return run(); }
+    finally { for (const p of saved) this.mesh.setPolyFlags(p.ref, p.flags); }
+  }
+
   private polygonCache: NavPolygon[] | null = null;
   private avoidFilter: QueryFilter | null = null;
   private readonly blockerRefs = new Map<string, number[]>();

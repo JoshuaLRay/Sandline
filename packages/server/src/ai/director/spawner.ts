@@ -45,7 +45,7 @@ import {
   areaContains,
 } from '@sandline/shared';
 import { spawnGround, SPAWN_ON_MESH_M } from './spawnGround.ts';
-import type { EnemyPosture } from '../actions/posture.ts';
+import { authoredPatrolPauseTicks, type EnemyPosture } from '../actions/posture.ts';
 import { yawToward } from '../locomotion/followPath.ts';
 
 export interface Vec3 {
@@ -67,6 +67,7 @@ export interface SpawnerHost {
   spawn(archetype: string, at: Vec3 & { yaw: number; posture: EnemyPosture; group: number; spawnId?: string; captive?: boolean; authoredHeight?: boolean; path?: readonly { x: number; y?: number; z: number }[] }): number | null;
   /** Snap a point onto the navmesh, or null when it is off it. Absent: every fitting point is ground. */
   ground?(p: Vec3, authoredY?: number): Vec3 | null;
+  validateSocket?(socket: EncounterSocket): void;
 }
 
 /**
@@ -237,6 +238,7 @@ export class Spawner {
     for (const def of encounter.groups) for (const socket of def.sockets ?? []) {
       const ground = host.ground ? host.ground(socket.feet, socket.feet.y) : spawnGround(socket.feet, socket.feet.y, world.boxes, DEFAULT_MOVE_CONFIG);
       if (!ground || Math.abs(ground.y - socket.feet.y) > SPAWN_ON_MESH_M || Math.sqrt((ground.x - socket.feet.x) ** 2 + (ground.z - socket.feet.z) ** 2) > SPAWN_ON_MESH_M || !fits(socket.feet, world.boxes)) throw new Error(`member '${socket.id}': no navigable standing socket on authored floor`);
+      host.validateSocket?.(socket);
     }
     for (const zone of world.mission!.spawnZones) {
       if (!encounter.groups.some((g) => g.zone === zone.id && !g.sockets)) continue;
@@ -476,6 +478,16 @@ export class Spawner {
     return { kind: 'garrison', post: { ...at }, face: { x: start.x, z: start.z }, route: [], area: { ...area }, leg: 0 };
   }
 
+  private socketPosture(socket: EncounterSocket): EnemyPosture {
+    const route = socket.patrol?.route;
+    return {
+      kind: route ? 'patrol' : 'hold', post: { ...socket.feet }, face: { ...socket.face },
+      route: route ? route.slice(1).map((p) => ({ ...p })) : [], area: null, leg: 0,
+      ...(socket.combatRegion ? { region: this.encounter.regions![socket.combatRegion]! } : {}),
+      ...(route ? { patrol: { direction: 1, pauseTicks: 0, pauseTotalTicks: authoredPatrolPauseTicks(socket.patrol!.pauseSeconds), active: false } } : {}),
+    };
+  }
+
   /** Fire triggers, send waves, and place what the cap and the eyes allow. Call once a tick, with seconds since the mission began. */
   step(seconds: number): void {
     this.now = seconds;
@@ -540,8 +552,8 @@ export class Spawner {
         i++;
         continue;
       }
-      const posture: EnemyPosture = socket ? { kind: 'hold', post: { ...point }, face: { ...socket.face }, route: [], area: null, leg: 0 } : this.postureFor(item.run.def, point);
-      const face = posture.kind === 'patrol' ? posture.route[0]! : posture.face;
+      const posture: EnemyPosture = socket ? this.socketPosture(socket) : this.postureFor(item.run.def, point);
+      const face = socket ? socket.face : posture.kind === 'patrol' ? posture.route[0]! : posture.face;
       const yaw = yawToward(face.x - point.x, face.z - point.z);
       const netId = this.host.spawn(item.archetype, { ...point, yaw, posture, group: item.run.sessionGroup, ...(socket ? { spawnId: socket.id } : {}), ...(item.run.def.captive === undefined ? {} : { captive: item.run.def.captive }), ...(item.run.def.path ? { path: item.run.def.path } : {}), ...(vehicle ? { authoredHeight: authoredY !== undefined || !!item.run.def.path?.some((p) => p.y !== undefined) } : {}) });
       if (netId === null) break;

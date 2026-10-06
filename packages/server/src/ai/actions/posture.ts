@@ -14,8 +14,8 @@
  *   low. It also fights from inside the area (`coverNear`, as a friendly
  *   bot's cover is held near its formation place).
  */
-import type { BtFrame, GroundArea } from '@sandline/shared';
-import { DEFAULT_MUZZLE_RIG } from '@sandline/shared';
+import type { BtFrame, GroundArea, NavigationRegion } from '@sandline/shared';
+import { DEFAULT_MUZZLE_RIG, TICK_SECONDS } from '@sandline/shared';
 import type { BrainBody, BrainMemory, BrainRegistry } from '../Brain.ts';
 import { type CombatBody, type Vec3, across, isCombatBody } from './combat.ts';
 
@@ -29,11 +29,14 @@ export interface EnemyPosture {
   /** What it faces standing: a hold's `face`, a garrison's threat. */
   face: { x: number; z: number };
   /** A patrol's points after its post. */
-  route: readonly { x: number; z: number }[];
+  route: readonly { x: number; y?: number; z: number }[];
   /** A garrison's area. */
   area: GroundArea | null;
   /** The patrol point it is walking to: 0 its post, i the route's (i − 1)th. */
   leg: number;
+  region?: NavigationRegion;
+  /** Authored reverse patrol: remaining whole 30 Hz ticks, independent of process clocks. */
+  patrol?: { direction: 1 | -1; pauseTicks: number; pauseTotalTicks: number; active: boolean };
 }
 
 /** A soldier with a posture. */
@@ -71,11 +74,31 @@ function eyeAt(p: { x: number; z: number }, y: number): Vec3 {
 export function patrolPoint(posture: EnemyPosture, leg: number): { x: number; y: number; z: number } {
   if (leg === 0) return posture.post;
   const p = posture.route[leg - 1]!;
-  return { x: p.x, y: posture.post.y, z: p.z };
+  return { x: p.x, y: p.y ?? posture.post.y, z: p.z };
 }
 
+/** Called every locomotion tick only while atEase is the running leaf. */
+export function stepAuthoredPatrol(p: EnemyPosture, state: Vec3): { goal: Vec3; pace: 'walk' } | null {
+  const phase = p.patrol!;
+  if (phase.pauseTicks > 0) { phase.pauseTicks--; return null; }
+  const target = patrolPoint(p, p.leg);
+  const at = Math.hypot(state.x - target.x, state.y - target.y, state.z - target.z) <= .3;
+  if (at) {
+    const endpoint = p.leg === 0 || p.leg === p.route.length;
+    if (endpoint) {
+      phase.direction = p.leg === 0 ? 1 : -1;
+      phase.pauseTicks = Math.max(0, phase.pauseTotalTicks - 1);
+    }
+    p.leg += phase.direction;
+    if (endpoint && phase.pauseTotalTicks > 0) return null;
+  }
+  return { goal: patrolPoint(p, p.leg), pace: 'walk' };
+}
+
+export function authoredPatrolPauseTicks(seconds: number): number { return Math.round(seconds / TICK_SECONDS); }
+
 export function registerPostureLeaves(registry: BrainRegistry): BrainRegistry {
-  return registry.action('atEase', (frame) => {
+  return registry.action('atEase', { tick(frame) {
     const body = frame.ctx;
     // A fight's cover is given up, except a garrison's, which keeps its point.
     if (isCombatBody(body) && !(hasPosture(body) && body.posture!.kind === 'garrison')) body.combat.cover?.release(body.netId);
@@ -98,6 +121,12 @@ export function registerPostureLeaves(registry: BrainRegistry): BrainRegistry {
       idle(frame, face);
       return 'running';
     }
+    if (p.kind === 'patrol' && p.patrol) {
+      p.patrol.active = true;
+      frame.blackboard.set('intent', null);
+      idle(frame, p.patrol.pauseTicks > 0 ? eyeAt(p.face, y) : null);
+      return 'running';
+    }
     if (p.kind === 'patrol') {
       const legs = p.route.length + 1;
       if (across(body.state, patrolPoint(p, p.leg)) <= PATROL_TURN_M) p.leg = (p.leg + 1) % legs;
@@ -112,10 +141,10 @@ export function registerPostureLeaves(registry: BrainRegistry): BrainRegistry {
     let goal: Vec3 = { x: area.x, y, z: area.z };
     let low = false;
     if (cover) {
-      const inside = (q: { x: number; z: number }) => Math.sqrt((q.x - area.x) ** 2 + (q.z - area.z) ** 2) <= area.radius;
+      const inside = (q: Vec3) => Math.sqrt((q.x - area.x) ** 2 + (q.z - area.z) ** 2) <= area.radius && (body.canReach?.(q) ?? true);
       let held = cover.heldPoint(body.netId);
       if (!held || !inside(held)) {
-        held = cover.choose(body.netId, { from: body.state, threats: [threat], friends: body.combat.friendsOf(body.netId, body.faction), combat: false, accept: inside })?.point ?? null;
+        held = cover.choose(body.netId, { from: body.state, threats: [threat], friends: body.combat.friendsOf(body.netId, body.faction), combat: false, accept: inside, ...(body.movementCost ? { pathCost: body.movementCost } : {}) })?.point ?? null;
       }
       if (held) {
         goal = held;
@@ -130,5 +159,7 @@ export function registerPostureLeaves(registry: BrainRegistry): BrainRegistry {
     frame.blackboard.set('intent', null);
     idle(frame, threat, low);
     return 'running';
-  });
+  }, halt({ ctx }) {
+    if (hasPosture(ctx) && ctx.posture!.patrol) ctx.posture!.patrol!.active = false;
+  } });
 }

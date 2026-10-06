@@ -211,3 +211,20 @@ describe('the avoiding path on the mesh (T-3.21)', () => {
   });
 });
 
+describe('authored group movement bounds (U-130)', () => {
+  it('does not assign a flank outside either member’s actual navigable region', async () => {
+    const { BoundedRegion } = await import('./nav/BoundedRegion.ts');
+    const bounds = new BoundedRegion([{ minX: -15, maxX: -1, minY: -.3, maxY: .3, minZ: 8, maxZ: 14 }], mesh);
+    const members = [member(10, { x: -7.5, z: 12 }, false, 0), member(11, { x: -3, z: 12 }, false, 0)].map((m) => ({ ...m, canReach: (p: { x: number; y: number; z: number }) => bounds.path(m.state, p) !== null, pathWithin: (a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) => bounds.path(a, b) }));
+    const world = { cover: new CoverSystem(bakedCoverFor('range'), range.boxes), boxes: range.boxes, mesh };
+    const bounded = new EnemyGroup(50); bounded.think(members, world, 0); bounded.think(members, world, 5);
+    if (bounded.flank) for (const p of bounded.flank.route) expect(bounds.contains(p)).toBe(true);
+    const unbounded = new EnemyGroup(51);
+    const plain = members.map(({ canReach: _reach, pathWithin: _path, ...m }) => m);
+    const other = { ...world, cover: new CoverSystem(bakedCoverFor('range'), range.boxes) };
+    unbounded.think(plain, other, 0); unbounded.think(plain, other, 5);
+    expect(unbounded.flank).not.toBeNull();
+    expect(bounds.contains(unbounded.flank!.point)).toBe(false);
+    expect(bounded.roles.size).toBe(0);
+  });
+});

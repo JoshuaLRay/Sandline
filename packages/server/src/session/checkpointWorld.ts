@@ -6,7 +6,7 @@
  * bounded lists, finite numbers, known shapes. Anything else is refused as a whole (null) and the room falls
  * back to the smaller checkpoint the file always had, rather than failing to load.
  */
-import type { ProjectileState } from '@sandline/shared';
+import { parseNavigationRegion, type ProjectileState } from '@sandline/shared';
 import type { EnemyPosture } from '../ai/actions/posture.ts';
 import type { SpawnerCheckpoint } from '../ai/director/spawner.ts';
 
@@ -143,13 +143,29 @@ function posture(where: string, v: unknown): EnemyPosture | null {
   if (kind !== 'hold' && kind !== 'patrol' && kind !== 'garrison') return fail(`${where}.kind`);
   const post = obj(`${where}.post`, o['post']);
   const area = o['area'] === null ? null : obj(`${where}.area`, o['area']);
+  let region: EnemyPosture['region'];
+  if (o['region'] !== undefined) {
+    try { region = parseNavigationRegion(`${where}.region`, o['region']); } catch { return fail(`${where}.region`); }
+  }
+  let patrol: EnemyPosture['patrol'];
+  if (o['patrol'] !== undefined) {
+    if (kind !== 'patrol') return fail(`${where}.patrol`);
+    const p = obj(`${where}.patrol`, o['patrol']);
+    const direction = num(`${where}.patrol.direction`, p['direction']);
+    if (direction !== 1 && direction !== -1) return fail(`${where}.patrol.direction`);
+    const pauseTotalTicks = int(`${where}.patrol.pauseTotalTicks`, p['pauseTotalTicks'], 0, 1800);
+    patrol = { direction, pauseTotalTicks, pauseTicks: int(`${where}.patrol.pauseTicks`, p['pauseTicks'], 0, pauseTotalTicks), active: false };
+    const route = list(`${where}.route`, o['route'], 64);
+    if (route.length === 0 || int(`${where}.leg`, o['leg']) > route.length) return fail(`${where}.patrol.leg`);
+  }
   return {
     kind,
     post: { x: num(`${where}.post.x`, post['x']), y: num(`${where}.post.y`, post['y']), z: num(`${where}.post.z`, post['z']) },
     face: pt(`${where}.face`, o['face']),
-    route: list(`${where}.route`, o['route'], 64).map((p, i) => pt(`${where}.route[${i}]`, p)),
+    route: list(`${where}.route`, o['route'], 64).map((p, i) => drivePoint(`${where}.route[${i}]`, p)),
     area: area === null ? null : { x: num(`${where}.area.x`, area['x']), z: num(`${where}.area.z`, area['z']), radius: num(`${where}.area.radius`, area['radius']) },
     leg: int(`${where}.leg`, o['leg'], 0, 1024),
+    ...(region ? { region } : {}), ...(patrol ? { patrol } : {}),
   };
 }
 

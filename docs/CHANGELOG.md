@@ -406,3 +406,5 @@ Format: `T-<id> — <what changed>`
 - U-109 — Added integrated stacked-floor evidence for nav/headroom/cover, six-way slab shooting and LOS, screen-picked replicated goals, camera collision, traversal and checkpoint floor retention; extracted the page’s existing Three.js camera query for shared verification.
 
 - U-110 — Add validated six-slot 3D squad starts and supported elevated tank spawns/paths, retaining heights through restart, withdrawal and checkpoint restore with legacy 2D compatibility.
+
+- U-130 — Add per-member reversible 3D patrols with 90-tick endpoint pauses and persistent phase; constrain pursuit, cover, group flanks, interactions and actual movement to authored floor-aware nav regions ([#305](https://github.com/JoshuaLRay/Sandline/pull/305)).

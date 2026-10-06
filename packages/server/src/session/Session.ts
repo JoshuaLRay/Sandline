@@ -153,6 +153,9 @@ import {
   missionFor,
   scriptFor,
   resolveArea,
+  regionContains,
+  regionContainsSegment,
+  type NavigationRegion,
   ENEMY_NET_ID_LIMIT,
   FIRST_ENEMY_NET_ID,
   buildTree,
@@ -206,7 +209,8 @@ import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, lineOfSight, visib
 import { CoverSystem, DEFAULT_COVER_BODY } from '../ai/cover.ts';
 import { EnemyGroup } from '../ai/group.ts';
 import type { ArmourView, CombatWorld } from '../ai/actions/combat.ts';
-import type { EnemyPosture } from '../ai/actions/posture.ts';
+import { stepAuthoredPatrol, type EnemyPosture } from '../ai/actions/posture.ts';
+import { BoundedRegion, type RegionPath } from '../ai/nav/BoundedRegion.ts';
 import { spawnGround, SPAWN_ON_MESH_M } from '../ai/director/spawnGround.ts';
 import { Spawner, type SpawnerCheckpoint, type SpawnerHost } from '../ai/director/spawner.ts';
 import {
@@ -234,7 +238,7 @@ import type { CoverPoint } from '../ai/nav/baked/types.ts';
 import { completePathLength } from '../ai/nav/NavMesh.ts';
 import { type FollowerStatus, PathFollower } from '../ai/locomotion/followPath.ts';
 import { Avoidance, type AvoidanceEntry } from '../ai/locomotion/avoidance.ts';
-import type { NavMesh } from '../ai/nav/NavMesh.ts';
+import type { NavMesh, NavPath, NavPoint } from '../ai/nav/NavMesh.ts';
 import { ClientView } from './relevance.ts';
 
 /**
@@ -734,8 +738,12 @@ export interface EnemyEntity {
   mounted: EmplacementEntity | null;
   /** T-3.23: rounds into the current burst, and when a pause after the last one ends (seconds). */
   burst: { rounds: number; pauseUntil: number };
-  /** T-3.32: what it does with nothing to fight (`actions/posture.ts`), or null to stand down. */
+  /** U-130: per-member legal navigation and cost; null bounds retain legacy movement. */
+  readonly bounds: BoundedRegion | null;
+  canReach(point: NavPoint): boolean;
+  movementCost?: (from: NavPoint, to: NavPoint) => number | null;
   readonly spawnId: string | null;
+  /** T-3.32: what it does with nothing to fight (`actions/posture.ts`), or null to stand down. */
   readonly posture: EnemyPosture | null;
   /** T-3.32: a garrison fights from inside its area; anyone else may take cover anywhere. */
   coverNear(): { x: number; z: number; withinM: number } | null;
@@ -941,6 +949,7 @@ export class Session {
   private joinCount = 0;
   private resumeCount = 0;
   private readonly navMesh: NavMesh | null;
+  private readonly boundedRegions = new Map<string, BoundedRegion>();
   /** U-010: the enemy sent to the running upload's lever, and how long it has held it. */
   private leverUse: { enemy: EnemyEntity; seconds: number } | null = null;
   /** U-010: enemies that could not get to the lever, and until when they are not sent again (seconds). */
@@ -1834,6 +1843,8 @@ export class Session {
     const remap = new Map<number, number>();
     for (const e of saved.enemies ?? []) {
       const group = e.group === null ? undefined : spawner.sessionGroupOf(e.group);
+      const restoredPosture = e.posture ? structuredClone(e.posture) : null;
+      if (restoredPosture?.patrol) restoredPosture.patrol.active = false;
       const netId = this.spawnEnemy(e.archetype, {
         x: e.x,
         y: e.y,
@@ -1842,7 +1853,7 @@ export class Session {
         faction: e.faction,
         ...(e.spawnId === undefined ? {} : { spawnId: e.spawnId }),
         captive: e.captive ?? false,
-        ...(e.posture ? { posture: structuredClone(e.posture) } : {}),
+        ...(restoredPosture ? { posture: restoredPosture } : {}),
         ...(group !== undefined ? { group } : {}),
       });
       if (netId === null) continue;
@@ -2320,6 +2331,22 @@ export class Session {
       spawn: (archetype, at) => this.spawnEnemy(archetype, at),
       ground: (p, authoredY) => spawnGround(p, authoredY, this.collisionBoxes, this.moveConfig,
         this.navMesh ? (point) => this.navMesh!.nearestPoint(point) : undefined),
+      validateSocket: (socket) => {
+        const bounds = socket.combatRegion ? this.boundedRegion(this.encounter!.regions![socket.combatRegion]!) : null;
+        if (bounds && bounds.path(socket.feet, socket.feet) === null) throw new Error(`member '${socket.id}': socket outside navigable region`);
+        const route = socket.patrol?.route;
+        if (!route) return;
+        if (!this.navMesh) throw new Error(`member '${socket.id}': authored patrol requires a navmesh`);
+        for (let i = 0; i < route.length; i++) {
+          const p = route[i]!;
+          if (!spawnGround(p, p.y, this.collisionBoxes, this.moveConfig, (q) => this.navMesh!.nearestPoint(q))) throw new Error(`member '${socket.id}': patrol point off authored nav floor`);
+          if (i === 0) continue;
+          for (const [a, b] of [[route[i - 1]!, p], [p, route[i - 1]!]]) {
+            const path = bounds ? bounds.path(a!, b!) : this.navMesh!.path(a!, b!);
+            if (completePathLength(path, a!, b!) === null) throw new Error(`member '${socket.id}': incomplete or out-of-region patrol leg ${i}`);
+          }
+        }
+      },
     };
   }
 
@@ -2567,6 +2594,25 @@ export class Session {
     else if (msg.order === 'regroup') this.escortOrder = { kind: 'follow', point: null };
   }
 
+  private boundedRegion(volumes: NavigationRegion): BoundedRegion {
+    if (!this.navMesh) throw new Error('authored combat regions require a navmesh');
+    const key = JSON.stringify(volumes);
+    let bounds = this.boundedRegions.get(key);
+    if (!bounds) { bounds = new BoundedRegion(volumes, this.navMesh); this.boundedRegions.set(key, bounds); }
+    return bounds;
+  }
+
+  private enemyInteractionGoal(enemy: EnemyEntity, at: NavPoint): NavPoint | null {
+    if (!enemy.bounds) return at;
+    const near = this.navMesh!.nearestPoint(at);
+    if (!near || Math.hypot(near.point.x - at.x, near.point.z - at.z) > SPAWN_ON_MESH_M) return null;
+    return enemy.canReach(near.point) ? near.point : null;
+  }
+
+  private enemyPath(enemy: EnemyEntity, to: NavPoint, searchM?: number, pathOf?: RegionPath): NavPath | null {
+    return enemy.bounds ? enemy.bounds.path(enemy.state, to, searchM, pathOf) : (pathOf ? pathOf(enemy.state, to, searchM) : this.navMesh?.path(enemy.state, to, searchM) ?? null);
+  }
+
   spawnEnemy(archetype: string, at: EnemySpawn): number | null {
     const def = getEnemy(archetype);
     if (this.enemyList.length >= MAX_ENEMIES || this.nextEnemyNetId >= ENEMY_NET_ID_LIMIT) return null;
@@ -2611,6 +2657,9 @@ export class Session {
       dropped: false,
       mounted: null,
       burst: { rounds: 0, pauseUntil: 0 },
+      bounds: at.posture?.region ? this.boundedRegion(at.posture.region) : null,
+      canReach: (to) => !enemy.bounds || enemy.bounds.path(enemy.state, to) !== null,
+      ...(at.posture?.region ? { movementCost: (from: NavPoint, to: NavPoint) => completePathLength(enemy.bounds!.path(from, to), from, to) } : {}),
       spawnId: at.spawnId ?? null,
       posture: at.posture ?? null,
       coverNear: () => {
@@ -2621,7 +2670,8 @@ export class Session {
       },
       leverJob: () => {
         const lever = this.leverUse?.enemy === enemy ? this.activeLever() : null;
-        return lever ? { ...lever.at, reachM: lever.reachM } : null;
+        const goal = lever ? this.enemyInteractionGoal(enemy, lever.at) : null;
+        return lever && goal ? { ...goal, reachM: lever.reachM } : null;
       },
       captureJob: () => {
         for (const [index, job] of this.captureUse) {
@@ -2783,7 +2833,7 @@ export class Session {
     for (const group of this.groups.values()) {
       const members = group.members.flatMap((id) => {
         const e = this.enemyList.find((x) => x.netId === id);
-        return e ? [{ netId: e.netId, state: e.state, alive: !isDead(e.health), memory: e.memory, target: e.target, prefers: e.def.prefersRole }] : [];
+        return e ? [{ netId: e.netId, state: e.state, alive: !isDead(e.health), memory: e.memory, target: e.target, prefers: e.def.prefersRole, ...(e.bounds ? { canReach: (p: NavPoint) => e.canReach(p), pathWithin: (from: NavPoint, to: NavPoint, pathOf?: RegionPath) => e.bounds!.path(from, to, 4, pathOf) } : {}) }] : [];
       });
       group.think(members, world, nowSeconds);
     }
@@ -3796,7 +3846,7 @@ export class Session {
     for (const enemy of this.enemyList) {
       if (enemy.mounted || isDead(enemy.health) || enemy.state.vault || enemy.def.friendly) continue;
       const gun = this.emptyGunNear(enemy.state, (def) => def.ai.takeWithinM, enemy.def.weapon);
-      if (!gun) continue;
+      if (!gun || !enemy.canReach(gun.place)) continue;
       const targetId = enemy.brain?.fireAt ?? null;
       const target = targetId === null ? null : this.soldier(targetId);
       if (target && !withinArc(gun.facing, tableToWire(aimAngles(gun.muzzle, target.state).yaw), gun.def.traverseDeg)) continue;
@@ -3860,7 +3910,7 @@ export class Session {
         .filter((e) => members.has(e.netId) && !isDead(e.health) && !e.mounted && e.brain && !e.brain.isStopped && !this.leverBarred.has(e.netId))
         .sort((a, b) => Math.hypot(a.state.x - lever.at.x, a.state.z - lever.at.z) - Math.hypot(b.state.x - lever.at.x, b.state.z - lever.at.z));
       for (const e of candidates) {
-        if (this.canWalkTo(e.state, lever.at)) {
+        if (this.enemyInteractionGoal(e, lever.at) && this.canWalkTo(e.state, lever.at)) {
           this.leverUse = { enemy: e, seconds: 0 };
           break;
         }
@@ -3986,7 +4036,7 @@ export class Session {
         .sort((a, b) => dist(a) - dist(b))
         .slice(0, 4);
       for (const e of candidates) {
-        const walk = this.walkDistanceTo(e.state, held.state);
+        const walk = e.bounds ? completePathLength(this.enemyPath(e, held.state), e.state, held.state) : this.walkDistanceTo(e.state, held.state);
         if (walk === null || walk / cfg.approachSpeedMps + cfg.channelSeconds > remaining) continue;
         this.captureUse.set(held.index, { enemy: e, seconds: 0 });
         busy.add(e);
@@ -3997,13 +4047,13 @@ export class Session {
 
   /** U-062: whether an enemy stands close enough over a downed character to hold them. */
   private atHeld(e: EnemyEntity, held: Slot): boolean {
-    if (isDead(e.health) || e.state.vault) return false;
+    if (isDead(e.health) || e.state.vault || !e.canReach(held.state)) return false;
     return Math.hypot(e.state.x - held.state.x, e.state.z - held.state.z) <= DAMAGE.capture.reachM && Math.abs(e.state.y - held.state.y) <= 1.5;
   }
 
   /** U-010: whether an enemy stands at the lever by the terminal's rules: in reach of its eye, and a clear line to it. */
   private atLever(e: EnemyEntity, lever: UploadLever): boolean {
-    if (isDead(e.health) || e.state.vault) return false;
+    if (isDead(e.health) || e.state.vault || !this.enemyInteractionGoal(e, lever.at)) return false;
     const eye = soldierEye(e.state);
     const t = lever.at;
     if ((eye.x - t.x) ** 2 + (eye.y - t.y) ** 2 + (eye.z - t.z) ** 2 > lever.reachM * lever.reachM) return false;
@@ -6135,7 +6185,15 @@ export class Session {
       }
       // T-4.29: a gunner stays on its gun, crouched behind it, whatever its brain's feet want.
       if (enemy.mounted) enemy.input = { ...enemy.input, moveX: 0, moveY: 0, jump: false, sprint: false, crouch: true, prone: false, yaw: enemy.yaw };
-      enemy.state = this.stepSoldier(enemy.netId, enemy.state, enemy.input);
+      const stepped = this.stepSoldier(enemy.netId, enemy.state, enemy.input);
+      const region = enemy.posture?.region;
+      const from = { x: enemy.state.x, y: standingY(enemy.state), z: enemy.state.z };
+      const to = { x: stepped.x, y: standingY(stepped), z: stepped.z };
+      if (!region || (regionContains(region, to) && regionContainsSegment(region, from, to))) enemy.state = stepped;
+      else {
+        enemy.input = { ...enemy.input, moveX: 0, moveY: 0, jump: false };
+        enemy.follower = null; enemy.pathStatus = 'unreachable';
+      }
       if (enemy.mounted) {
         enemy.state.x = enemy.mounted.place.x;
         enemy.state.z = enemy.mounted.place.z;
@@ -6194,10 +6252,11 @@ export class Session {
     const living = this.enemyList.filter((e) => !isDead(e.health));
     const enemyInputs: (MoveInput | null)[] = living.map((enemy) => {
       // T-4.29: a gunner's brain may want to go somewhere; its feet stay on the gun.
-      const intent = enemy.mounted ? null : (enemy.brain?.intent ?? null);
+      const patrol = enemy.posture?.patrol;
+      const intent = enemy.mounted ? null : patrol?.active ? stepAuthoredPatrol(enemy.posture!, enemy.state) : (enemy.brain?.intent ?? null);
       if (!enemy.follower) {
         if (!intent) return null;
-        enemy.follower = new PathFollower(mesh, this.collisionBoxes, undefined, this.moveConfig);
+        enemy.follower = new PathFollower(mesh, this.collisionBoxes, undefined, this.moveConfig, enemy.bounds ? (from, to, searchM) => enemy.bounds!.path(from, to, searchM) : undefined);
       }
       const stepped = enemy.follower.step(enemy.state, intent, enemy.yaw);
       enemy.pathStatus = stepped.status;
