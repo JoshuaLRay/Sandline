@@ -31,7 +31,7 @@
  */
 import { parseAreaHeightBounds } from './areas.ts';
 import { COMMITTED, type CampaignEntry } from './campaignRegistry.ts';
-import { validateVehiclePath } from './vehiclePlacement.ts';
+import { validateVehiclePath, vehicleSupport } from './vehiclePlacement.ts';
 import { MAX_DRIVE_POINTS } from './vehicle.ts';
 import { ENEMIES } from './enemies.ts';
 import { type GroundArea, type World, getWorld, supportUnder, blockedAt } from './world.ts';
@@ -63,6 +63,8 @@ export interface EncounterSocket {
   feet: { x: number; y: number; z: number };
   face: { x: number; z: number };
   patrol?: { route: readonly { x: number; y: number; z: number }[]; pauseSeconds: number };
+  /** U-131: one-way route including the socket; hold its final point after release. */
+  advance?: readonly { x: number; y: number; z: number }[];
   combatRegion?: string;
 }
 
@@ -79,6 +81,8 @@ export interface EncounterGroup {
    * nor later than `maxSeconds` — the bounds the director (T-3.33) paces inside.
    */
   sockets?: readonly EncounterSocket[];
+  /** Already present and damageable before input; the trigger releases survivors. */
+  staged?: boolean;
   fixedCount?: boolean;
   captive?: boolean;
   path?: readonly { x: number; y?: number; z: number }[];
@@ -181,11 +185,13 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
   if (!Array.isArray(top['groups']) || top['groups'].length === 0) throw new EncounterDataError(`${at}.groups: expected a non-empty list`);
   const ids = new Set<string>();
   const socketIds = new Set<string>();
-  const socketFeet: EncounterSocket['feet'][] = [];
+  const socketBodies: { feet: EncounterSocket['feet']; radius: number; height: number }[] = [];
   const zones = new Set(mission.spawnZones.map((z) => z.id));
   const groups: EncounterGroup[] = top['groups'].map((g, i) => {
     const gw = `${at}.groups[${i}]`;
-    const o = obj(gw, g, ['id', 'members', 'zone', 'posture', 'trigger'], ['waves', 'captive', 'path', 'fixedCount', 'sockets']);
+    const o = obj(gw, g, ['id', 'members', 'zone', 'posture', 'trigger'], ['waves', 'captive', 'path', 'fixedCount', 'sockets', 'staged']);
+    if (o['staged'] !== undefined && typeof o['staged'] !== 'boolean') throw new EncounterDataError(`${gw}.staged: expected a boolean`);
+    if (o['staged'] === true && (o['sockets'] === undefined || o['fixedCount'] === false)) throw new EncounterDataError(`${gw}.staged: requires fixed sockets`);
     if (typeof o['id'] !== 'string' || o['id'] === '') throw new EncounterDataError(`${gw}: id must be a name`);
     if (ids.has(o['id'])) throw new EncounterDataError(`${at}.groups: duplicate id '${o['id']}'`);
     ids.add(o['id']);
@@ -264,7 +270,7 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
       if (waves.count !== 1 || o['fixedCount'] === false) throw new EncounterDataError(`${gw}.sockets: require one wave and fixed counts`);
       sockets = o['sockets'].map((v, j) => {
         const w = `${gw}.sockets[${j}]`;
-        const q = obj(w, v, ['id', 'archetype', 'feet', 'face'], ['patrol', 'combatRegion']);
+        const q = obj(w, v, ['id', 'archetype', 'feet', 'face'], ['patrol', 'combatRegion', 'advance']);
         if (typeof q['id'] !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(q['id']) || socketIds.has(q['id'])) throw new EncounterDataError(`${w}.id: expected a unique member name (1–64 characters)`);
         socketIds.add(q['id']);
         if (q['archetype'] !== expected[j]) throw new EncounterDataError(`${w}.archetype: must match member order`);
@@ -276,20 +282,30 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
         const cfg = DEFAULT_MOVE_CONFIG;
         if (Math.abs(feet.x) + cfg.radius > world.floorHalfWidth || Math.abs(feet.z) + cfg.radius > world.floorHalfDepth) throw new EncounterDataError(`${w}.feet: outside floor`);
         const vehicle = ENEMIES[expected[j]!]!.vehicle;
-        if (vehicle) throw new EncounterDataError(`${w}: vehicle sockets are supplied by the staged reserve leaf`);
-        for (const dx of [-cfg.radius, 0, cfg.radius]) for (const dz of [-cfg.radius, 0, cfg.radius]) {
+        const radius = vehicle ? vehicle.hull.radius + .1 + Math.abs(vehicle.hull.to[2] - vehicle.hull.from[2]) / 2 : .5;
+        const height = vehicle ? Math.max(2.4, ...[vehicle.hull, vehicle.turret].map((p) => Math.max(p.from[1], p.to[1]) + p.radius)) : cfg.height;
+        if (Math.abs(feet.x) + radius > world.floorHalfWidth || Math.abs(feet.z) + radius > world.floorHalfDepth) throw new EncounterDataError(`${w}.feet: body outside floor`);
+        if (vehicle) {
+          const dx = face.x - feet.x, dz = face.z - feet.z;
+          const length = Math.sqrt(dx * dx + dz * dz);
+          if (vehicleSupport(feet, { x: dx / length, z: dz / length }, vehicle, world.boxes) === null) throw new EncounterDataError(`${w}.feet: vehicle support or clearance fails`);
+          if (q['patrol'] !== undefined || q['advance'] !== undefined || q['combatRegion'] !== undefined) throw new EncounterDataError(`${w}: vehicles use the group path`);
+        }
+        for (const dx of vehicle ? [] : [-cfg.radius, 0, cfg.radius]) for (const dz of [-cfg.radius, 0, cfg.radius]) {
           if (Math.abs(supportUnder(feet.x + dx, feet.z + dz, 0, feet.y + .05, world.boxes, cfg.groundY) - feet.y) > .05) throw new EncounterDataError(`${w}.feet: no support at authored height`);
         }
-        if (blockedAt(feet.x, feet.z, cfg.radius, feet.y, .05, cfg.height, world.boxes)) throw new EncounterDataError(`${w}.feet: standing clearance obstructed`);
-        if (socketFeet.some((p) => Math.abs(p.y - feet.y) < cfg.height && (p.x - feet.x) ** 2 + (p.z - feet.z) ** 2 < 1)) throw new EncounterDataError(`${w}.feet: overlaps another member`);
-        socketFeet.push(feet);
+        if (!vehicle && blockedAt(feet.x, feet.z, cfg.radius, feet.y, .05, cfg.height, world.boxes)) throw new EncounterDataError(`${w}.feet: standing clearance obstructed`);
+        if (socketBodies.some((b) => feet.y < b.feet.y + b.height && b.feet.y < feet.y + height && (b.feet.x - feet.x) ** 2 + (b.feet.z - feet.z) ** 2 < (radius + b.radius) ** 2)) throw new EncounterDataError(`${w}.feet: overlaps another member`);
+        socketBodies.push({ feet, radius, height });
         const combatRegion = q['combatRegion'];
         if (combatRegion !== undefined && (typeof combatRegion !== 'string' || !Object.hasOwn(regions, combatRegion))) throw new EncounterDataError(`${w}.combatRegion: expected a named navigation region`);
         const bounds = typeof combatRegion === 'string' ? regions[combatRegion]! : null;
         if (bounds && !regionContains(bounds, feet)) throw new EncounterDataError(`${w}.feet: outside combat region`);
         let patrol: EncounterSocket['patrol'];
-        if (q['patrol'] !== undefined) {
-          const pat = obj(`${w}.patrol`, q['patrol'], ['route'], ['pauseSeconds']);
+        let advance: EncounterSocket['advance'];
+        if (q['advance'] !== undefined && (q['patrol'] !== undefined || o['staged'] !== true)) throw new EncounterDataError(`${w}.advance: requires a staged member without patrol`);
+        if (q['patrol'] !== undefined || q['advance'] !== undefined) {
+          const pat = q['advance'] !== undefined ? { route: q['advance'], pauseSeconds: 0 } : obj(`${w}.patrol`, q['patrol'], ['route'], ['pauseSeconds']);
           if (!Array.isArray(pat['route']) || pat['route'].length < 2 || pat['route'].length > 64) throw new EncounterDataError(`${w}.patrol.route: expected 2–64 feet points including the socket`);
           const route = pat['route'].map((v, k) => {
             const pt = obj(`${w}.patrol.route[${k}]`, v, ['x', 'y', 'z']);
@@ -302,9 +318,10 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
           if (route[0]!.x !== feet.x || route[0]!.y !== feet.y || route[0]!.z !== feet.z) throw new EncounterDataError(`${w}.patrol: first point must equal socket feet`);
           if (route.some((p, k) => k > 0 && p.x === route[k - 1]!.x && p.y === route[k - 1]!.y && p.z === route[k - 1]!.z)) throw new EncounterDataError(`${w}.patrol: consecutive points must differ`);
           const pauseSeconds = pat['pauseSeconds'] === undefined ? 3 : num(`${w}.patrol.pauseSeconds`, pat['pauseSeconds'], 0, 60);
-          patrol = { route, pauseSeconds };
+          if (q['advance'] !== undefined) advance = route;
+          else patrol = { route, pauseSeconds };
         }
-        return { id: q['id'], archetype: expected[j]!, feet, face, ...(patrol ? { patrol } : {}), ...(typeof combatRegion === 'string' ? { combatRegion } : {}) };
+        return { id: q['id'], archetype: expected[j]!, feet, face, ...(patrol ? { patrol } : {}), ...(advance ? { advance } : {}), ...(typeof combatRegion === 'string' ? { combatRegion } : {}) };
       });
     }
     const fixedCount = o['fixedCount'];
@@ -319,12 +336,14 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
         return { x: num(`${gw}.path[${j}].x`, q['x'], -Infinity), z: num(`${gw}.path[${j}].z`, q['z'], -Infinity), ...(q['y'] === undefined ? {} : { y: num(`${gw}.path[${j}].y`, q['y'], -Infinity) }) };
       });
       const start = mission.spawnZones.find((z) => z.id === o['zone'])!;
-      if (start.y === undefined && path.some((p) => p.y !== undefined)) throw new EncounterDataError(`${gw}.zone: a 3D vehicle path requires an authored spawn-zone y`);
+      if (!sockets && start.y === undefined && path.some((p) => p.y !== undefined)) throw new EncounterDataError(`${gw}.zone: a 3D vehicle path requires an authored spawn-zone y`);
       for (const m of members) {
-        try { validateVehiclePath(start, path, ENEMIES[m.archetype]!.vehicle!, world.boxes, gw); } catch (error) { throw new EncounterDataError((error as Error).message); }
+        for (const from of sockets?.filter((s) => s.archetype === m.archetype).map((s) => s.feet) ?? [start]) {
+          try { validateVehiclePath(from, path, ENEMIES[m.archetype]!.vehicle!, world.boxes, gw); } catch (error) { throw new EncounterDataError((error as Error).message); }
+        }
       }
     }
-    return { id: o['id'], members, zone: o['zone'], posture, trigger, waves, ...(sockets ? { sockets, fixedCount: true } : fixedCount === undefined ? {} : { fixedCount: fixedCount as boolean }), ...(captive === undefined ? {} : { captive: captive as boolean }), ...(path ? { path } : {}) };
+    return { id: o['id'], members, zone: o['zone'], posture, trigger, waves, ...(o['staged'] === undefined ? {} : { staged: o['staged'] as boolean }), ...(sockets ? { sockets, fixedCount: true } : fixedCount === undefined ? {} : { fixedCount: fixedCount as boolean }), ...(captive === undefined ? {} : { captive: captive as boolean }), ...(path ? { path } : {}) };
   });
   if (groups.reduce((n, g) => n + (g.sockets?.length ?? 0), 0) > aliveCap) throw new EncounterDataError(`${at}: fixed sockets exceed aliveCap`);
   // A `dead` trigger names a group that exists and is not itself.

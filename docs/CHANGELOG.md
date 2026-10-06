@@ -408,3 +408,5 @@ Format: `T-<id> — <what changed>`
 - U-110 — Add validated six-slot 3D squad starts and supported elevated tank spawns/paths, retaining heights through restart, withdrawal and checkpoint restore with legacy 2D compatibility.
 
 - U-130 — Add per-member reversible 3D patrols with 90-tick endpoint pauses and persistent phase; constrain pursuit, cover, group flanks, interactions and actual movement to authored floor-aware nav regions ([#305](https://github.com/JoshuaLRay/Sandline/pull/305)).
+
+- U-131 — Pre-place dormant reserve soldiers/tanks before input, release existing survivors with persistent one-way orders/vehicle paths, and preserve damage, caps, dead identities and one-shot state through retry/reload/reconnect.

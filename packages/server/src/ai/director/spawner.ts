@@ -64,7 +64,9 @@ export interface SpawnerHost {
   enemyFeet(): readonly { x: number; y?: number; z: number }[];
   isAlive(netId: number): boolean;
   /** Spawn one; null when the session refuses (its own hard cap). */
-  spawn(archetype: string, at: Vec3 & { yaw: number; posture: EnemyPosture; group: number; spawnId?: string; captive?: boolean; authoredHeight?: boolean; path?: readonly { x: number; y?: number; z: number }[] }): number | null;
+  spawn(archetype: string, at: Vec3 & { yaw: number; posture: EnemyPosture; group: number; spawnId?: string; inactive?: boolean; captive?: boolean; authoredHeight?: boolean; path?: readonly { x: number; y?: number; z: number }[] }): number | null;
+  /** Release one existing survivor without changing its identity, health or position. */
+  release?(netId: number): void;
   /** Snap a point onto the navmesh, or null when it is off it. Absent: every fitting point is ground. */
   ground?(p: Vec3, authoredY?: number): Vec3 | null;
   validateSocket?(socket: EncounterSocket): void;
@@ -227,6 +229,7 @@ export class Spawner {
     completedGroups: readonly string[] = [],
   ) {
     if (encounter.world !== world.id) throw new Error(`encounter for '${encounter.world}' on world '${world.id}'`);
+    if (encounter.groups.some((g) => g.staged) && !host.release) throw new Error('staged encounters require survivor release');
     this.runs = encounter.groups.map((def, i) => ({ def, sessionGroup: firstGroupId + i, firedAt: null, wavesSent: 0, lastWaveAt: 0, waveTimes: [], spawned: [], stopped: false, stragglingSince: null }));
     for (const id of completedGroups) {
       const run = this.runs.find((r) => r.def.id === id);
@@ -236,6 +239,10 @@ export class Spawner {
       run.lastWaveAt = 0;
     }
     for (const def of encounter.groups) for (const socket of def.sockets ?? []) {
+      if (getEnemy(socket.archetype).vehicle) {
+        if (!this.vehicleFits(def, socket.archetype, socket.feet, socket.face)) throw new Error(`member '${socket.id}': no supported vehicle socket`);
+        continue;
+      }
       const ground = host.ground ? host.ground(socket.feet, socket.feet.y) : spawnGround(socket.feet, socket.feet.y, world.boxes, DEFAULT_MOVE_CONFIG);
       if (!ground || Math.abs(ground.y - socket.feet.y) > SPAWN_ON_MESH_M || Math.sqrt((ground.x - socket.feet.x) ** 2 + (ground.z - socket.feet.z) ** 2) > SPAWN_ON_MESH_M || !fits(socket.feet, world.boxes)) throw new Error(`member '${socket.id}': no navigable standing socket on authored floor`);
       host.validateSocket?.(socket);
@@ -252,21 +259,21 @@ export class Spawner {
       this.candidates.set(zone.id, points);
     }
     for (const group of encounter.groups) for (const member of group.members) {
-      if (!this.candidatesOf(group.zone).some((p) => this.vehicleFits(group, member.archetype, p)) && getEnemy(member.archetype).vehicle && world.mission!.spawnZones.find((z) => z.id === group.zone)!.y !== undefined) {
+      if (!group.sockets && !this.candidatesOf(group.zone).some((p) => this.vehicleFits(group, member.archetype, p)) && getEnemy(member.archetype).vehicle && world.mission!.spawnZones.find((z) => z.id === group.zone)!.y !== undefined) {
         throw new Error(`encounter group '${group.id}': no supported vehicle candidates in spawn zone '${group.zone}'`);
       }
     }
   }
 
   /** U-110: an authored vehicle candidate needs room for its body, not just a soldier. */
-  private vehicleFits(def: EncounterGroup, archetype: string, at: Vec3): boolean {
+  private vehicleFits(def: EncounterGroup, archetype: string, at: Vec3, socketFace?: { x: number; z: number }): boolean {
     const vehicle = getEnemy(archetype).vehicle;
     if (!vehicle) return true;
     const zone = this.world.mission!.spawnZones.find((z) => z.id === def.zone)!;
-    if (zone.y === undefined && !def.path?.some((p) => p.y !== undefined)) return true;
-    const feet = zone.y === undefined ? at : { ...at, y: zone.y };
+    if (!socketFace && zone.y === undefined && !def.path?.some((p) => p.y !== undefined)) return true;
+    const feet = socketFace || zone.y === undefined ? at : { ...at, y: zone.y };
     const posture = this.postureFor(def, feet);
-    const face = posture.kind === 'patrol' ? posture.route[0]! : posture.face;
+    const face = socketFace ?? (posture.kind === 'patrol' ? posture.route[0]! : posture.face);
     const yaw = wireToTable(yawToward(face.x - at.x, face.z - at.z));
     return vehicleSupport(feet, { x: sin(yaw), z: cos(yaw) }, vehicle, this.world.boxes) !== null;
   }
@@ -280,7 +287,8 @@ export class Spawner {
         wavesSent: r.wavesSent,
         lastWaveAt: r.lastWaveAt,
         waveTimes: [...r.waveTimes],
-        spawned: [...r.spawned],
+        // Zero is a durable dead-member sentinel; negative remap IDs are process-local.
+        spawned: r.spawned.map((id) => id < 0 ? 0 : id),
         stopped: r.stopped,
         stragglingSince: r.stragglingSince,
       })),
@@ -385,7 +393,7 @@ export class Spawner {
   /** A group is dead once every member it will send has been placed and none of them lives. */
   dead(groupId: string): boolean {
     const run = this.run(groupId);
-    if (run.firedAt === null || run.wavesSent < run.def.waves.count) return false;
+    if ((!run.def.staged && run.firedAt === null) || run.wavesSent < run.def.waves.count) return false;
     if (this.queue.some((p) => p.run === run)) return false;
     return run.spawned.every((id) => !this.host.isAlive(id));
   }
@@ -427,8 +435,21 @@ export class Spawner {
     const run = this.run(groupId);
     if (run.firedAt !== null) return false;
     run.firedAt = seconds;
-    this.enqueue(run, seconds);
+    if (run.def.staged) {
+      for (const id of run.spawned) if (this.host.isAlive(id)) this.host.release!(id);
+    } else this.enqueue(run, seconds);
     return true;
+  }
+
+  /** Before input, after checkpoint restore: start sockets and dormant reserves already exist. */
+  initialize(): void {
+    for (const run of this.runs) {
+      if (!run.def.sockets || run.wavesSent > 0) continue;
+      if (run.def.staged) this.enqueue(run, 0);
+      else if (run.def.trigger.kind === 'start') this.activate(run.def.id, 0);
+    }
+    this.place(0, true);
+    if (this.queue.some((p) => p.run.def.staged || p.run.def.sockets && p.run.def.trigger.kind === 'start')) throw new Error('initial sockets could not all be placed before input');
   }
 
   private triggered(run: GroupRun, seconds: number): boolean {
@@ -479,12 +500,13 @@ export class Spawner {
   }
 
   private socketPosture(socket: EncounterSocket): EnemyPosture {
-    const route = socket.patrol?.route;
+    const route = socket.advance ?? socket.patrol?.route;
     return {
       kind: route ? 'patrol' : 'hold', post: { ...socket.feet }, face: { ...socket.face },
       route: route ? route.slice(1).map((p) => ({ ...p })) : [], area: null, leg: 0,
       ...(socket.combatRegion ? { region: this.encounter.regions![socket.combatRegion]! } : {}),
-      ...(route ? { patrol: { direction: 1, pauseTicks: 0, pauseTotalTicks: authoredPatrolPauseTicks(socket.patrol!.pauseSeconds), active: false } } : {}),
+      ...(socket.advance ? { advance: true } : {}),
+      ...(route ? { patrol: { direction: 1, pauseTicks: 0, pauseTotalTicks: authoredPatrolPauseTicks(socket.patrol?.pauseSeconds ?? 0), active: false } } : {}),
     };
   }
 
@@ -507,6 +529,10 @@ export class Spawner {
         this.enqueue(run, seconds);
       }
     }
+    this.place(seconds);
+  }
+
+  private place(seconds: number, initialOnly = false): void {
     if (this.queue.length === 0) return;
 
     const eyes = this.host.humanEyes();
@@ -523,6 +549,7 @@ export class Spawner {
     let i = 0;
     for (; i < this.queue.length && alive < cap; ) {
       const item = this.queue[i]!;
+      if (initialOnly && !(item.run.def.sockets && (item.run.def.staged || item.run.def.trigger.kind === 'start'))) { i++; continue; }
       const zone = item.run.def.zone;
       const socket: EncounterSocket | undefined = item.run.def.sockets?.find((s) => s.id === item.socketId);
       if (!socket && full.has(zone)) {
@@ -535,10 +562,10 @@ export class Spawner {
       const authoredY = this.world.mission!.spawnZones.find((z) => z.id === zone)!.y;
       const vehicle = getEnemy(item.archetype).vehicle;
       for (const candidate of socket ? [socket.feet] : this.candidatesOf(zone)) {
-        const c = vehicle && authoredY !== undefined ? { ...candidate, y: authoredY } : candidate;
-        if (!this.vehicleFits(item.run.def, item.archetype, c)) continue;
+        const c = !socket && vehicle && authoredY !== undefined ? { ...candidate, y: authoredY } : candidate;
+        if (!this.vehicleFits(item.run.def, item.archetype, c, socket?.face)) continue;
         if (taken.some((q) => (q.y === undefined || Math.abs(q.y - c.y) < HEADROOM_M) && Math.sqrt((q.x - c.x) ** 2 + (q.z - c.z) ** 2) < OCCUPIED_M)) continue;
-        if (!(socket && item.run.def.trigger.kind === 'start') && seenByAny(c, this.encounter.probes, eyes, this.world.boxes)) {
+        if (!(socket && (item.run.def.staged || item.run.def.trigger.kind === 'start')) && seenByAny(c, this.encounter.probes, eyes, this.world.boxes)) {
           skippedVisible++;
           continue;
         }
@@ -555,7 +582,7 @@ export class Spawner {
       const posture: EnemyPosture = socket ? this.socketPosture(socket) : this.postureFor(item.run.def, point);
       const face = socket ? socket.face : posture.kind === 'patrol' ? posture.route[0]! : posture.face;
       const yaw = yawToward(face.x - point.x, face.z - point.z);
-      const netId = this.host.spawn(item.archetype, { ...point, yaw, posture, group: item.run.sessionGroup, ...(socket ? { spawnId: socket.id } : {}), ...(item.run.def.captive === undefined ? {} : { captive: item.run.def.captive }), ...(item.run.def.path ? { path: item.run.def.path } : {}), ...(vehicle ? { authoredHeight: authoredY !== undefined || !!item.run.def.path?.some((p) => p.y !== undefined) } : {}) });
+      const netId = this.host.spawn(item.archetype, { ...point, yaw, posture, group: item.run.sessionGroup, ...(socket ? { spawnId: socket.id } : {}), ...(item.run.def.staged ? { inactive: item.run.firedAt === null } : {}), ...(item.run.def.captive === undefined ? {} : { captive: item.run.def.captive }), ...(item.run.def.path ? { path: item.run.def.path } : {}), ...(vehicle ? { authoredHeight: !!socket || authoredY !== undefined || !!item.run.def.path?.some((p) => p.y !== undefined) } : {}) });
       if (netId === null) break;
       item.run.spawned.push(netId);
       this.log.push({ seconds, group: item.run.def.id, wave: item.wave, archetype: item.archetype, netId, point: { ...point }, skippedVisible });

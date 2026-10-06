@@ -34,6 +34,8 @@ export interface EnemyPosture {
   area: GroundArea | null;
   /** The patrol point it is walking to: 0 its post, i the route's (i − 1)th. */
   leg: number;
+  /** U-131: traverse once, then hold the last route point. */
+  advance?: boolean;
   region?: NavigationRegion;
   /** Authored reverse patrol: remaining whole 30 Hz ticks, independent of process clocks. */
   patrol?: { direction: 1 | -1; pauseTicks: number; pauseTotalTicks: number; active: boolean };
@@ -84,6 +86,7 @@ export function stepAuthoredPatrol(p: EnemyPosture, state: Vec3): { goal: Vec3; 
   const target = patrolPoint(p, p.leg);
   const at = Math.hypot(state.x - target.x, state.y - target.y, state.z - target.z) <= .3;
   if (at) {
+    if (p.advance && p.leg === p.route.length) return null;
     const endpoint = p.leg === 0 || p.leg === p.route.length;
     if (endpoint) {
       phase.direction = p.leg === 0 ? 1 : -1;

@@ -743,6 +743,8 @@ export interface EnemyEntity {
   canReach(point: NavPoint): boolean;
   movementCost?: (from: NavPoint, to: NavPoint) => number | null;
   readonly spawnId: string | null;
+  /** U-131: visible and damageable, with AI and movement held until release. */
+  inactive: boolean;
   /** T-3.32: what it does with nothing to fight (`actions/posture.ts`), or null to stand down. */
   readonly posture: EnemyPosture | null;
   /** T-3.32: a garrison fights from inside its area; anyone else may take cover anywhere. */
@@ -771,6 +773,7 @@ export interface PickupEntity {
 
 /** Where and how to spawn an enemy. */
 export interface EnemySpawn {
+  inactive?: boolean;
   spawnId?: string;
   captive?: boolean;
   /** Feet position. */
@@ -1362,6 +1365,7 @@ export class Session {
         this.restoreEvents(this.missionCheckpointState, this.restoreCheckpointWorld(this.missionCheckpointState));
       }
     }
+    if (this.roomStarted) this.initializeEncounter();
   }
 
   /** U-110: every fresh-start and fallback path uses the same slot-ordered authored feet. */
@@ -1419,6 +1423,8 @@ export class Session {
     this.directorValue = new Director();
     this.spawnerValue = new Spawner(this.encounter, this.world, this.spawnerHost(), undefined, this.directorValue, true, completedGroups);
   }
+
+  private initializeEncounter(): void { this.spawnerValue?.initialize(); }
 
   /** Evaluate the objective, at the end of a tick, and tell everyone when what they see of it changed. */
   private stepMission(): void {
@@ -1703,6 +1709,7 @@ export class Session {
         .map((e) => ({
           netId: e.netId,
           ...(e.spawnId === null ? {} : { spawnId: e.spawnId }),
+          ...(e.inactive ? { inactive: true } : {}),
           archetype: e.def.id,
           ...(e.def.friendly ? { captive: e.captive ?? false, escortOrder: structuredClone(this.escortOrder) } : {}),
           faction: e.faction,
@@ -1852,6 +1859,7 @@ export class Session {
         yaw: e.yaw,
         faction: e.faction,
         ...(e.spawnId === undefined ? {} : { spawnId: e.spawnId }),
+        inactive: e.inactive ?? false,
         captive: e.captive ?? false,
         ...(restoredPosture ? { posture: restoredPosture } : {}),
         ...(group !== undefined ? { group } : {}),
@@ -2273,6 +2281,7 @@ export class Session {
     this.rescueEscortTarget = null;
     run.retry();
     this.restoreEvents(saved, worldRestored);
+    this.spawnerValue?.initialize();
     this.broadcastMission();
     this.broadcastScriptState();
   }
@@ -2300,6 +2309,7 @@ export class Session {
     this.rescueEscortTarget = null;
     this.missionRun?.reset();
     this.eventRun?.reset();
+    this.spawnerValue?.initialize();
     this.broadcastMission();
     this.broadcastScriptState();
   }
@@ -2323,25 +2333,31 @@ export class Session {
           .filter((s) => !s.isBot && living(s.health))
           .map((s) => eyePosition(s.state.x, s.state.y, s.state.z, DEFAULT_MUZZLE_RIG, eyeStance(false, s.state.prone))),
       squadFeet: () => [...this.slots.filter((s) => living(s.health)).map((s) => ({ x: s.state.x, y: s.state.y, z: s.state.z })), ...this.enemyList.filter((e) => e.def.friendly && !e.captive && living(e.health)).map((e) => ({ x: e.state.x, y: e.state.y, z: e.state.z }))],
-      enemyFeet: () => this.enemyList.filter((e) => living(e.health) && !e.def.friendly).map((e) => ({ x: e.state.x, y: e.state.y, z: e.state.z })),
+      enemyFeet: () => this.enemyList.filter((e) => living(e.health)).map((e) => ({ x: e.state.x, y: e.state.y, z: e.state.z })),
       isAlive: (netId) => {
         const e = this.enemyList.find((x) => x.netId === netId);
         return e !== undefined && living(e.health);
       },
       spawn: (archetype, at) => this.spawnEnemy(archetype, at),
+      release: (netId) => {
+        const enemy = this.enemyList.find((e) => e.netId === netId);
+        if (!enemy || isDead(enemy.health) || !enemy.inactive) return;
+        enemy.inactive = false;
+        if (enemy.def.vehicle) enemy.cannonReadyAt = this.nowMs / 1000 + enemy.def.vehicle.cannon.intervalSeconds / 2;
+      },
       ground: (p, authoredY) => spawnGround(p, authoredY, this.collisionBoxes, this.moveConfig,
         this.navMesh ? (point) => this.navMesh!.nearestPoint(point) : undefined),
       validateSocket: (socket) => {
         const bounds = socket.combatRegion ? this.boundedRegion(this.encounter!.regions![socket.combatRegion]!) : null;
         if (bounds && bounds.path(socket.feet, socket.feet) === null) throw new Error(`member '${socket.id}': socket outside navigable region`);
-        const route = socket.patrol?.route;
+        const route = socket.advance ?? socket.patrol?.route;
         if (!route) return;
         if (!this.navMesh) throw new Error(`member '${socket.id}': authored patrol requires a navmesh`);
         for (let i = 0; i < route.length; i++) {
           const p = route[i]!;
           if (!spawnGround(p, p.y, this.collisionBoxes, this.moveConfig, (q) => this.navMesh!.nearestPoint(q))) throw new Error(`member '${socket.id}': patrol point off authored nav floor`);
           if (i === 0) continue;
-          for (const [a, b] of [[route[i - 1]!, p], [p, route[i - 1]!]]) {
+          for (const [a, b] of socket.advance ? [[route[i - 1]!, p]] : [[route[i - 1]!, p], [p, route[i - 1]!]]) {
             const path = bounds ? bounds.path(a!, b!) : this.navMesh!.path(a!, b!);
             if (completePathLength(path, a!, b!) === null) throw new Error(`member '${socket.id}': incomplete or out-of-region patrol leg ${i}`);
           }
@@ -2621,6 +2637,7 @@ export class Session {
     const authoredHeight = at.authoredHeight ?? (Math.abs(at.y - this.moveConfig.groundY) > SPAWN_ON_MESH_M || at.path?.some((p) => p.y !== undefined) === true);
     const enemy: EnemyEntity = {
       netId: this.nextEnemyNetId++,
+      inactive: at.inactive ?? false,
       captive: at.captive ?? false,
       def,
       archetype: enemyIndex(def.id),
@@ -2833,7 +2850,7 @@ export class Session {
     for (const group of this.groups.values()) {
       const members = group.members.flatMap((id) => {
         const e = this.enemyList.find((x) => x.netId === id);
-        return e ? [{ netId: e.netId, state: e.state, alive: !isDead(e.health), memory: e.memory, target: e.target, prefers: e.def.prefersRole, ...(e.bounds ? { canReach: (p: NavPoint) => e.canReach(p), pathWithin: (from: NavPoint, to: NavPoint, pathOf?: RegionPath) => e.bounds!.path(from, to, 4, pathOf) } : {}) }] : [];
+        return e ? [{ netId: e.netId, state: e.state, alive: !e.inactive && !isDead(e.health), memory: e.memory, target: e.target, prefers: e.def.prefersRole, ...(e.bounds ? { canReach: (p: NavPoint) => e.canReach(p), pathWithin: (from: NavPoint, to: NavPoint, pathOf?: RegionPath) => e.bounds!.path(from, to, 4, pathOf) } : {}) }] : [];
       });
       group.think(members, world, nowSeconds);
     }
@@ -3844,7 +3861,7 @@ export class Session {
       else if (!this.takeOwnCharge(slot) && !this.takePickupAt(slot)) this.startUploadAt(slot);
     }
     for (const enemy of this.enemyList) {
-      if (enemy.mounted || isDead(enemy.health) || enemy.state.vault || enemy.def.friendly) continue;
+      if (enemy.inactive || enemy.mounted || isDead(enemy.health) || enemy.state.vault || enemy.def.friendly) continue;
       const gun = this.emptyGunNear(enemy.state, (def) => def.ai.takeWithinM, enemy.def.weapon);
       if (!gun || !enemy.canReach(gun.place)) continue;
       const targetId = enemy.brain?.fireAt ?? null;
@@ -3907,7 +3924,7 @@ export class Session {
     if (!this.leverUse) {
       const members = new Set(this.spawnerValue?.spawnedBy(lever.group) ?? []);
       const candidates = this.enemyList
-        .filter((e) => members.has(e.netId) && !isDead(e.health) && !e.mounted && e.brain && !e.brain.isStopped && !this.leverBarred.has(e.netId))
+        .filter((e) => members.has(e.netId) && !e.inactive && !isDead(e.health) && !e.mounted && e.brain && !e.brain.isStopped && !this.leverBarred.has(e.netId))
         .sort((a, b) => Math.hypot(a.state.x - lever.at.x, a.state.z - lever.at.z) - Math.hypot(b.state.x - lever.at.x, b.state.z - lever.at.z));
       for (const e of candidates) {
         if (this.enemyInteractionGoal(e, lever.at) && this.canWalkTo(e.state, lever.at)) {
@@ -4028,7 +4045,7 @@ export class Session {
       const candidates = this.enemyList
         .filter(
           (e) =>
-            !busy.has(e) && !isDead(e.health) && !e.mounted && e.brain && !e.brain.isStopped && e.target === null &&
+            !busy.has(e) && !e.inactive && !isDead(e.health) && !e.mounted && e.brain && !e.brain.isStopped && e.target === null &&
             e.faction !== SQUAD && !e.def.friendly && this.leverUse?.enemy !== e && !this.captureBarred.has(e.netId) &&
             // Straight-line lower bound first: one too far to finish in time is not worth a path.
             dist(e) / cfg.approachSpeedMps + cfg.channelSeconds <= remaining,
@@ -4231,6 +4248,7 @@ export class Session {
     // U-060: a resumed campaign starts in the world its checkpoint saved, as a retry does.
     const worldRestored = this.restoreCheckpointWorld(this.missionCheckpointState);
     if (this.missionCheckpointState?.event) this.restoreEvents(this.missionCheckpointState, worldRestored);
+    this.spawnerValue?.initialize();
     // U-025: the campaign starts with every bot under the lowest-numbered human.
     this.reconcileCommanders(true);
     this.broadcastRoster();
@@ -5612,7 +5630,7 @@ export class Session {
         })),
     ];
     for (const enemy of this.enemyList) {
-      if (isDead(enemy.health) || enemy.def.friendly) continue;
+      if (enemy.inactive || isDead(enemy.health) || enemy.def.friendly) continue;
       const eye = eyePosition(enemy.state.x, enemy.state.y, enemy.state.z, DEFAULT_MUZZLE_RIG, eyeStance(false, enemy.state.prone));
       for (const stimulus of squad) if (hears(eye, stimulus)) rememberHeard(enemy.memory, stimulus, nowSeconds);
       if (!enemy.brain?.due(this.currentTick)) continue;
@@ -5699,7 +5717,7 @@ export class Session {
     for (const enemy of this.enemyList) {
       const alive = !isDead(enemy.health);
       this.cover?.track(enemy.netId, enemy.state, alive);
-      if (alive && enemy.brain) this.aiHands(enemy, NO_SLOT, enemy.follower?.onVault ?? false, nowSeconds);
+      if (alive && !enemy.inactive && enemy.brain) this.aiHands(enemy, NO_SLOT, enemy.follower?.onVault ?? false, nowSeconds);
     }
     // T-3.26: friendly bots' hands the same way, when they run a tree that uses them.
     if (!this.botsDriven) return;
@@ -5801,6 +5819,7 @@ export class Session {
     for (const enemy of this.enemyList) {
       const vehicle = enemy.def.vehicle;
       if (!vehicle) continue;
+      if (enemy.inactive) continue;
       if (isDead(enemy.health)) {
         enemy.tell = null;
         continue;
@@ -5940,7 +5959,7 @@ export class Session {
    */
   private fireEnemies(nowSeconds: number): void {
     for (const enemy of this.enemyList) {
-      if (isDead(enemy.health)) continue;
+      if (enemy.inactive || isDead(enemy.health)) continue;
       // U-068: a tank fights with its own turret (`fireTanks`), not a soldier's hands.
       if (enemy.def.vehicle) continue;
       // T-4.29: a mounted gun is deployed by nature, and fires with the gun's numbers from the gun's muzzle.
@@ -6120,7 +6139,7 @@ export class Session {
         if (enemy.brain && !enemy.brain.isStopped) this.killEnemy(enemy);
         continue;
       }
-      if (enemy.brain?.due(this.currentTick)) enemy.brain.think(this.currentTick);
+      if (!enemy.inactive && enemy.brain?.due(this.currentTick)) enemy.brain.think(this.currentTick);
     }
   }
 
@@ -6168,6 +6187,7 @@ export class Session {
         continue;
       }
       enemy.input.downed = false;
+      if (enemy.inactive) { enemy.speed = 0; continue; }
       const fromX = enemy.state.x;
       const fromZ = enemy.state.z;
       // U-067: a tank drives its path; it does not walk on a soldier's controller.
@@ -6251,6 +6271,7 @@ export class Session {
     // corpse is out of the crowd altogether: nobody steers round the dead.
     const living = this.enemyList.filter((e) => !isDead(e.health));
     const enemyInputs: (MoveInput | null)[] = living.map((enemy) => {
+      if (enemy.inactive) return null;
       // T-4.29: a gunner's brain may want to go somewhere; its feet stay on the gun.
       const patrol = enemy.posture?.patrol;
       const intent = enemy.mounted ? null : patrol?.active ? stepAuthoredPatrol(enemy.posture!, enemy.state) : (enemy.brain?.intent ?? null);
