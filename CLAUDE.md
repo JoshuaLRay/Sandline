@@ -13,6 +13,9 @@ This repository uses an ongoing upgrade queue after the vertical slice.
 - **An explicit U-ID**: follow the ongoing workflow for that card; check dependencies.
 - **An explicit legacy T-ID**: use `TASKS.md`, that task's section of `PLAN.md`
   and `docs/LEGACY-TASK-WORKFLOW.md`. Existing human gates remain open.
+- **A next task context transfer text box / new-chat handoff**: use
+  `.agents/skills/next-task-context-transfer-text-box/SKILL.md` to produce a
+  concise, copyable prompt from current repository and PR evidence.
 - **A status/question-only request**: answer from current files/PRs; do not invent
   a feedback task. A repo URL identifies the project, not a new task on its own.
 

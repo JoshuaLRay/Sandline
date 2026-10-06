@@ -410,3 +410,5 @@ Format: `T-<id> — <what changed>`
 - U-130 — Add per-member reversible 3D patrols with 90-tick endpoint pauses and persistent phase; constrain pursuit, cover, group flanks, interactions and actual movement to authored floor-aware nav regions ([#305](https://github.com/JoshuaLRay/Sandline/pull/305)).
 
 - U-131 — Pre-place dormant reserve soldiers/tanks before input, release existing survivors with persistent one-way orders/vehicle paths, and preserve damage, caps, dead identities and one-shot state through retry/reload/reconnect ([#306](https://github.com/JoshuaLRay/Sandline/pull/306)).
+
+- Workflow — Add the repository `next-task-context-transfer-text-box` skill for concise new-chat prompts based on verified merges and the current eligible backlog leaf; route natural-language handoff requests to it.
