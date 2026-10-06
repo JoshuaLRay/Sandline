@@ -120,6 +120,28 @@ After a friend clicks **Finish**, inspect their `submission.json` and listen to 
 
 On completion, the host dispatches a GitHub event using the existing `GH_PAT` credential staged on Fly by the Host workflow. `.github/workflows/voice-notification.yml` creates an issue mentioning `@JoshuaLRay` with the section count and submission ID. No audio, contributor name, or upload token goes to GitHub. Turn on GitHub issue notifications (web or email) for mentions in your account settings. If delivery fails, the recording remains saved and the contributor can tap **Finish** again; the workflow checks for an existing issue with the same ID. The Host workflow requires its existing `GH_PAT` secret to include repository Contents (write) for `repository_dispatch` as well as its existing repository-variable permission.
 
+#### Owner playback in the browser (U-128)
+
+Open the contribution page at `https://joshualray.github.io/Sandline/?record-voice` and choose **Owner: review saved recordings**. It opens `https://sandline-host.fly.dev/voice-review` on the intake host so login and audio playback use first-party cookies. Sign in with the **JoshuaLRay** GitHub account. Submissions show names, consent dates, completion status, sections and audio players; incomplete submissions are visible too. Use **Refresh recordings** after a new upload and **Sign out** when finished. A **Download recording** link is available if the browser does not support a clip's original format. No clip is imported or published by listening.
+
+To enable this page, register a GitHub **OAuth App** at https://github.com/settings/developers with:
+
+- Homepage URL: `https://joshualray.github.io/Sandline/`
+- Authorization callback URL: `https://sandline-host.fly.dev/voice-review/callback`
+
+Set these three Fly runtime settings together (the client secret belongs in Fly secrets, never in GitHub source or the Pages build):
+
+| Setting | Value |
+|---|---|
+| `VOICE_REVIEW_ORIGIN` | `https://sandline-host.fly.dev` |
+| `VOICE_GITHUB_CLIENT_ID` | The OAuth App's client ID |
+| `VOICE_GITHUB_CLIENT_SECRET` | The OAuth App's client secret |
+
+Use Fly's secret-management UI or `fly secrets set --app sandline-host` from an authorized terminal. Existing intake settings and the single persistent volume are required. The notification PAT is separate from this OAuth App. With all three review settings absent, the review URL displays a setup message and uploads/gameplay keep working. Partial configuration fails startup explicitly rather than enabling an incomplete login flow. Owner sessions expire in eight hours, on logout or on host restart; sign in again after a deploy/cold restart. GitHub tokens and private source files are never sent to GitHub Pages.
+
+Deployment acceptance: log in as JoshuaLRay, see the current volume's submissions, play and seek a real recording on Chrome and Safari, and check downloads. Verify a different GitHub account is denied and a signed-out browser cannot retrieve a copied clip URL. This live OAuth/microphone/listening check is pending until the credentials and release are configured. Automated local review uses a mock OAuth provider and synthetic playable clips, not contributor voices. Reproduce those checks with `corepack pnpm exec tsx packages/tools/src/check-voice-review.ts` after installing Chromium/WebKit and FFmpeg/OpenSSL; captures go to `artifacts/voice-review/`.
+
+
 ### One caveat that will matter later
 
 **GitHub Pages cannot set custom HTTP headers**, so it cannot send the

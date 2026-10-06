@@ -1,5 +1,6 @@
 .voice-submit { position: fixed; inset: 0; z-index: 1000; overflow: auto; background: #101820; color: #f4eee0; font: 16px/1.5 system-ui, sans-serif; }
 .voice-submit main { box-sizing: border-box; max-width: 700px; margin: 2rem auto; padding: 1.5rem; background: #203039; border-radius: 8px; }
+.voice-submit a { color: #e4c992; }
 .voice-submit input:not([type=checkbox]), .voice-submit select { display: block; box-sizing: border-box; width: 100%; padding: .65rem; margin: .75rem 0; font: inherit; }
 .voice-submit button { padding: .6rem 1rem; margin: .5rem .6rem .5rem 0; font: inherit; cursor: pointer; }
 .voice-submit button:disabled { cursor: default; opacity: .5; }

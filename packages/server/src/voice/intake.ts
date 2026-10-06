@@ -1,6 +1,6 @@
-/** Private, invite-only intake for consented source recordings. Never serves recordings. */
+/** Private, invite-only intake. Source reads are available only to the separate owner review service. */
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { VOICES, VOICE_CONSENT_TEXT, passFile, passLines } from '@sandline/shared';
@@ -20,6 +20,10 @@ export interface VoiceIntakeOptions {
   onFinished?: (submission: { id: string; name: string; clips: number }) => Promise<void>;
 }
 interface Submission { id: string; tokenHash: string; name: string; agreedAt: string; consent: string; clips: Record<string, { bytes: number; file: string }>; complete: boolean; notifiedAt?: string }
+export interface ReviewSubmission {
+  id: string; name: string; agreedAt: string; complete: boolean;
+  clips: { pass: string; bytes: number; type: string }[];
+}
 
 function equal(a: string, b: string): boolean {
   const aa = createHash('sha256').update(a).digest();
@@ -62,6 +66,48 @@ export class VoiceIntake {
     const temp = `${file}.tmp`;
     writeFileSync(temp, JSON.stringify(s, null, 2), { mode: 0o600 });
     renameSync(temp, file);
+  }
+  /** No secrets or filesystem paths cross the review API. Called only after owner authentication. */
+  reviewSubmissions(offset = 0): { submissions: ReviewSubmission[]; total: number } {
+    const submissions: ReviewSubmission[] = [];
+    for (const id of readdirSync(this.options.dir)) {
+      try {
+        const s = this.reviewRead(id);
+        if (!s) continue;
+        submissions.push({ id, name: s.name, agreedAt: s.agreedAt, complete: s.complete,
+          clips: Object.keys(s.clips).flatMap((pass) => {
+            const clip = this.reviewClip(id, pass);
+            return clip ? [{ pass, bytes: clip.bytes, type: clip.type }] : [];
+          }).sort((a, b) => a.pass.localeCompare(b.pass)),
+        });
+      } catch { /* A missing/corrupt submission must not prevent reviewing the others. */ }
+    }
+    submissions.sort((a, b) => b.agreedAt.localeCompare(a.agreedAt) || a.id.localeCompare(b.id));
+    return { submissions: submissions.slice(offset, offset + 50), total: submissions.length };
+  }
+  private reviewRead(id: string): Submission | null {
+    if (!/^[a-f0-9]{32}$/.test(id)) return null;
+    const dir = this.path(id);
+    if (!existsSync(dir) || !lstatSync(dir).isDirectory()) return null;
+    const file = join(dir, 'submission.json');
+    if (!existsSync(file) || !lstatSync(file).isFile()) return null;
+    const s = this.read(id);
+    if (!s || s.id !== id || typeof s.name !== 'string' || typeof s.agreedAt !== 'string' ||
+      typeof s.complete !== 'boolean' || !s.clips || typeof s.clips !== 'object') return null;
+    return s;
+  }
+  reviewClip(id: string, pass: string): { path: string; bytes: number; type: string } | null {
+    if (!PASSES.has(pass)) return null;
+    const s = this.reviewRead(id);
+    const clip = s?.clips[pass];
+    if (!clip) return null;
+    const format = Object.entries(TYPES).find(([, ext]) => clip.file === `${pass}${ext}`);
+    if (!format) return null;
+    const path = join(this.path(id), clip.file);
+    if (!existsSync(path)) return null;
+    const stat = lstatSync(path);
+    if (!stat.isFile()) return null;
+    return { path, bytes: stat.size, type: format[0] };
   }
   private storedBytes(): number {
     return readdirSync(this.options.dir).reduce((sum, id) => {
