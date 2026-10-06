@@ -57,7 +57,7 @@ describe('asset budgets (T-4.03)', () => {
   });
 
   it('fails a class with no budget; T-4.06 checks aggregate initial bytes by pack', () => {
-    expect(check(asset({ class: 'vehicle' }))[0]).toMatch(/class 'vehicle' has no budget/);
+    expect(check(asset({ class: 'aircraft' }))[0]).toMatch(/class 'aircraft' has no budget/);
     const huge = ASSET_BUDGETS.initialDownloadBytes + 1;
     expect(check(asset({ bytes: huge }))).toEqual([]);
   });

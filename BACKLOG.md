@@ -40,7 +40,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-123](docs/backlog/U-123.md) | Preserve 3D squad/POW command goals and retry positions | Map implementation | P1 | DONE | Owner-authorized merge 2026-10-05 (`63efd0c`); CI #1704 passed all four jobs on merged head `c1497c0`; owner gameplay review steps in card | [#297](https://github.com/JoshuaLRay/Sandline/pull/297) |
 | [U-125](docs/backlog/U-125.md) | Remove walkable nav islands baked inside solid boxes | Map implementation | P1 | DONE | Owner-authorized merge on green 2026-10-05; local verify and sims passed; final-head CI in PR | [#298](https://github.com/JoshuaLRay/Sandline/pull/298) |
 | [U-108](docs/backlog/U-108.md) | Height-aware mission areas and enemy spawn zones | Map implementation | P1 | DONE | Merged with owner authorization; all four CI jobs passed | [#293](https://github.com/JoshuaLRay/Sandline/pull/293) |
-| [U-109](docs/backlog/U-109.md) | Stacked-floor navigation, cover and command targets | Map implementation | P1 | READY | Leaves U-120–U-123, U-125 DONE; integrated evidence pass remains | — |
+| [U-109](docs/backlog/U-109.md) | Stacked-floor navigation, cover and command targets | Map implementation | P1 | REVIEW | Integrated fixture evidence complete; local verify 272 files / 2,890 tests and all four CI #1720 jobs passed (streaming rerun); final-head checks in PR | [#302](https://github.com/JoshuaLRay/Sandline/pull/302) |
 | [U-110](docs/backlog/U-110.md) | Authored squad starts and elevated vehicle paths | Map implementation | P1 | READY | U-108 | — |
 | [U-111](docs/backlog/U-111.md) | Fixed guard sockets, patrol bounds and staged reserves | Map implementation | P1 | BLOCKED | U-108, U-109 | — |
 | [U-112](docs/backlog/U-112.md) | Finite projectile, health and ammunition supply caches | Map implementation | P1 | READY | U-107 | — |
@@ -52,6 +52,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-118](docs/backlog/U-118.md) | Finish Qalat terrain, architecture, lighting and presentation | Map implementation | P1 | BLOCKED | U-117 | — |
 | [U-119](docs/backlog/U-119.md) | Verify the complete replacement mission and capture review evidence | Map implementation | P1 | BLOCKED | U-118 | — |
 | [U-124](docs/backlog/U-124.md) | Bake the kit gallery’s house and roof stair into its navmesh | Map implementation | P2 | READY | Found during U-123; none | — |
+| [U-127](docs/backlog/U-127.md) | Specify Mission 2, The Kestrel Dam: full map and mission construction design | Map design | P2 | REVIEW | Owner authorized merge on green 2026-10-05 (CI #1713 green); owner design decisions OD-1–OD-9 still open | [#301](https://github.com/JoshuaLRay/Sandline/pull/301) |
 | [U-107](docs/backlog/U-107.md) | Specify full Mission 1 replacement: hidden spawn, ridge and underground depot | Map design | P1 | DONE | Owner authorized merge/start; merged 2026-10-04 | [#292](https://github.com/JoshuaLRay/Sandline/pull/292) |
 | [U-106](docs/backlog/U-106.md) | Implement Qalat’s distinct assault, support and isolated flank routes | Map design | P1 | REVIEW | U-105; merged blockout superseded by U-107 redesign; no owner quality verdict | [#291](https://github.com/JoshuaLRay/Sandline/pull/291) |
 | [U-105](docs/backlog/U-105.md) | Define distinct campaign lanes and per-map creation records | Map design | P1 | DONE | Accepted and merged 2026-10-04; implementation tracked by U-106 | [#290](https://github.com/JoshuaLRay/Sandline/pull/290) |
@@ -84,7 +85,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-012](docs/backlog/U-012.md) | Define voice cues and extend event routing | Audio | P2 | DONE | — | [#148](https://github.com/JoshuaLRay/Sandline/pull/148) |
 | [U-013](docs/backlog/U-013.md) | Supply and process the real voice recordings | Audio | P2 | BLOCKED | U-012; owner recordings or explicit ADR-017 change | — |
 | [U-036](docs/backlog/U-036.md) | Collect friend voice recordings and consent in the game | Audio | P2 | DONE | U-012; deployed private intake configuration | [#163](https://github.com/JoshuaLRay/Sandline/pull/163) |
-| [U-127](docs/backlog/U-127.md) | Review private saved voice recordings in the browser | Audio | P2 | REVIEW | U-036; OAuth activation and live owner listening pending | [#299](https://github.com/JoshuaLRay/Sandline/pull/299) |
+| [U-128](docs/backlog/U-128.md) | Review private saved voice recordings in the browser | Audio | P2 | REVIEW | U-036; OAuth activation and live owner listening pending | [#299](https://github.com/JoshuaLRay/Sandline/pull/299) |
 | [U-014](docs/backlog/U-014.md) | Play intelligible radio-treated squad dialogue | Audio | P2 | BLOCKED | U-012, U-013 | — |
 | [U-015](docs/backlog/U-015.md) | Add friendly hit, downed and death vocal reactions | Audio | P2 | BLOCKED | U-012, U-013 | — |
 | [U-016](docs/backlog/U-016.md) | Add positional enemy engagement shouts | Audio | P2 | BLOCKED | U-012, U-013 | — |
@@ -132,6 +133,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-068](docs/backlog/U-068.md) | Tank weapons: cannon and coaxial machine gun | Mission / vehicle combat | P2 | DONE | U-066 | [#237](https://github.com/JoshuaLRay/Sandline/pull/237) |
 | [U-069](docs/backlog/U-069.md) | Mission-01 integration: the upload trigger, retry and the survivor | Mission / vehicle combat | P2 | DONE | U-067, U-068 | [#238](https://github.com/JoshuaLRay/Sandline/pull/238) |
 | [U-070](docs/backlog/U-070.md) | Tank look and HUD: placeholder mesh, tell and arrival warning | Mission / vehicle combat | P2 | DONE | U-066 | [#239](https://github.com/JoshuaLRay/Sandline/pull/239) |
+| [U-126](docs/backlog/U-126.md) | Give the tank a modelled, painted look instead of stacked boxes | Mission / vehicle combat | P1 | REVIEW | U-070 (DONE); owner-authorized merge 2026-10-05; CI #1714 passed all four jobs; owner visual verdict pending | [#300](https://github.com/JoshuaLRay/Sandline/pull/300) |
 | [U-071](docs/backlog/U-071.md) | Campaign design: premise, structure and the mission list (umbrella; [design doc](docs/design/CAMPAIGN.md)) | Campaign design | P2 | DONE | Q1–Q4 accepted 2026-10-01; mission 1 brief approved 2026-10-02 | [#278](https://github.com/JoshuaLRay/Sandline/pull/278); completion becomes effective on green merge |
 | [U-072](docs/backlog/U-072.md) | Campaign flow: campaign and replay runs, mission select and the debrief | Campaign design | P2 | DONE | U-088, U-089, U-090 (the split; umbrella) | — |
 | [U-073](docs/backlog/U-073.md) | Register a mission in one place; checks and the mission sim cover every mission | Campaign design | P2 | DONE | — | [#243](https://github.com/JoshuaLRay/Sandline/pull/243) |

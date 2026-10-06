@@ -396,4 +396,9 @@ Format: `T-<id> — <what changed>`
 
 - U-125 — Mark solid box interiors unwalkable in the nav bake (Recast pipeline with box area marking after erosion); regenerated all worlds (range/kit-gallery bytes unchanged, Qalat 983 → 594 kB) with fixture and committed-bake regressions.
 
-- U-127 — Added GitHub-owner-only browser review of private voice submissions with audio playback, seeking, downloads and logout; production OAuth activation remains an operator step.
+- U-128 — Added GitHub-owner-only browser review of private voice submissions with audio playback, seeking, downloads and logout; production OAuth activation remains an operator step.
+- U-127 — Designed campaign Mission 2, The Kestrel Dam: a full coordinate construction specification (three routes, dam complex, demolition, technicals, prisoners, checks), a mission brief and three generated diagrams ([PR #301](https://github.com/JoshuaLRay/Sandline/pull/301)); implementation and owner review remain.
+
+- U-126 — Replace the tank's box stand-in with a generated, modelled and painted period tank (`vehicle-tank`: road wheels, sagging link tracks, cast dome turret, long gun; one atlas, two draw calls), loaded from the initial pack with the U-070 model as fallback; propose a `vehicle` budget class.
+
+- U-109 — Added integrated stacked-floor evidence for nav/headroom/cover, six-way slab shooting and LOS, screen-picked replicated goals, camera collision, traversal and checkpoint floor retention; extracted the page’s existing Three.js camera query for shared verification.

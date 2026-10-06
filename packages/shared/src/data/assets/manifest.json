@@ -897,6 +897,27 @@
       ]
     },
     {
+      "id": "vehicle-tank",
+      "source": "assets/src/vehicle-tank.glb",
+      "file": "assets/vehicle-tank.glb",
+      "inputHash": "79d1688b47bd47ae3e2b1951e1674842863fb2aec720619254895c3f23cd069e",
+      "hash": "c77c75314bb4ca13be7d79633f18ede37e4db5f18688ced1608420450befd5e3",
+      "bytes": 1230520,
+      "class": "vehicle",
+      "triangles": 5688,
+      "bones": 0,
+      "materials": 1,
+      "textures": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "format": "ktx2"
+        }
+      ],
+      "lods": 1,
+      "collision": []
+    },
+    {
       "id": "wall-broken-2m",
       "source": "assets/src/wall-broken-2m.glb",
       "file": "assets/wall-broken-2m.glb",

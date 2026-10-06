@@ -110,7 +110,7 @@ function taggedRoom(host: string, room: string): string {
 }
 import { type PlacedEmplacement, clampYawToArc, degToWire, emplacementByIndex, emplacementFacing, gunnerPlace } from '@sandline/shared';
 import { createCameraSolve, solveCamera } from './camera/cameraSolve.ts';
-import type { CameraCollider } from './camera/cameraColliders.ts';
+import { createSceneCollider } from './camera/sceneCollider.ts';
 import { CombatQA, WEAPON_ORDER } from './weapons/CombatQA.ts';
 import { deviceSlotForKey, weaponIndexForKey } from './weapons/weaponKey.ts';
 import { PROJECTILE_ORDER, ThrowQA } from './weapons/ThrowQA.ts';
@@ -140,6 +140,7 @@ import { createLocomotionPoseDriver } from './character/locomotionPose.ts';
 import { createFootPlacementDriver } from './character/footPlacement.ts';
 import { RemoteSoldiers } from './character/remoteSoldiers.ts';
 import { TankModels } from './character/tankModel.ts';
+import { loadVehicleAssets } from './character/vehicleAssets.ts';
 import { tankTargetView } from './character/tankLook.ts';
 import { classifyLocomotion, type LocomotionResult } from './character/locomotionState.ts';
 import { AiDebugOverlay } from './ui/AiDebug.ts';
@@ -265,21 +266,7 @@ scene.add(aiDebug.object);
  */
 const shootable: THREE.Object3D[] = [];
 const cameraScenery: THREE.Object3D[] = [ground];
-const cameraRaycaster = new THREE.Raycaster();
-/** Reused every frame: the cast runs per frame and must not allocate. */
-const cameraRayOrigin = new THREE.Vector3();
-const cameraRayDirection = new THREE.Vector3();
-const cameraCollider: CameraCollider = {
-  cast(origin, direction, maxDistance) {
-    cameraRaycaster.set(
-      cameraRayOrigin.set(origin.x, origin.y, origin.z),
-      cameraRayDirection.set(direction.x, direction.y, direction.z),
-    );
-    cameraRaycaster.near = 0;
-    cameraRaycaster.far = maxDistance;
-    return cameraRaycaster.intersectObjects(cameraScenery, false)[0]?.distance ?? null;
-  },
-};
+const cameraCollider = createSceneCollider(cameraScenery);
 
 const worldMaterials: Record<WorldBoxKind, THREE.Material> = {
   'post-minor': new THREE.MeshStandardMaterial({ color: 0xd8c9a8, roughness: 0.9 }),
@@ -491,6 +478,8 @@ const initialPresentationReady = initialPackReady.then(async () => {
   const jobs: Promise<unknown>[] = [];
   // T-4.36: period weapons are already in the initial pack; this cache-hit turns them into runtime models.
   if (!query.has('codeweapons')) jobs.push(loadWeaponAssets(assetLoader));
+  // U-126: the generated tank, also in the initial pack; `?codetank` keeps U-070's stand-in for comparison.
+  if (!query.has('codetank')) jobs.push(loadVehicleAssets(assetLoader));
   if (!greyBox && !query.has('codesoldier')) {
     jobs.push(loadDetailedSkin(assetLoader).then((skin) => {
       if (skin) setSoldierPalette(player, 'local');

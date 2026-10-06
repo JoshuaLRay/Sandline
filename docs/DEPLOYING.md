@@ -120,7 +120,7 @@ After a friend clicks **Finish**, inspect their `submission.json` and listen to 
 
 On completion, the host dispatches a GitHub event using the existing `GH_PAT` credential staged on Fly by the Host workflow. `.github/workflows/voice-notification.yml` creates an issue mentioning `@JoshuaLRay` with the section count and submission ID. No audio, contributor name, or upload token goes to GitHub. Turn on GitHub issue notifications (web or email) for mentions in your account settings. If delivery fails, the recording remains saved and the contributor can tap **Finish** again; the workflow checks for an existing issue with the same ID. The Host workflow requires its existing `GH_PAT` secret to include repository Contents (write) for `repository_dispatch` as well as its existing repository-variable permission.
 
-#### Owner playback in the browser (U-127)
+#### Owner playback in the browser (U-128)
 
 Open the contribution page at `https://joshualray.github.io/Sandline/?record-voice` and choose **Owner: review saved recordings**. It opens `https://sandline-host.fly.dev/voice-review` on the intake host so login and audio playback use first-party cookies. Sign in with the **JoshuaLRay** GitHub account. Submissions show names, consent dates, completion status, sections and audio players; incomplete submissions are visible too. Use **Refresh recordings** after a new upload and **Sign out** when finished. A **Download recording** link is available if the browser does not support a clip's original format. No clip is imported or published by listening.
 

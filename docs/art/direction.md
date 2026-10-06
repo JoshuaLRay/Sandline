@@ -75,6 +75,24 @@ physically based shine, no screen-space effects.
   guns.
 - Budget: 1–3k triangles each, textured from one weapons atlas.
 
+### Vehicles (U-126)
+
+The enemy's tank (`vehicle-tank`, `tools/src/art/vehicles`) is a generic ex-Soviet medium tank of the period, as
+an Afghan armed group of 2001–2002 would field one. It carries no markings or unit numbers.
+- **Modelled, not assembled.** It has:
+  - a sloped glacis and an engine deck of louvres;
+  - fenders carrying fuel tanks, boxes and a tow cable;
+  - five big road wheels a side, an idler and a toothed sprocket;
+  - a track of separate links that sags onto the wheels;
+  - a low cast dome with a cupola, a hatch, a heavy machine gun and a searchlight;
+  - a long gun under a canvas dust cover, with a fume extractor near the muzzle that overhangs the nose.
+- **Painted:** faded olive under dust. It is thickest low on the hull and on the fenders, with rain streaks, chips
+  and a cast texture on the turret. Paint is projected by facing onto three sheets, so wear can be painted by
+  place.
+- **Budget:** about 5,700 triangles, one 1024² atlas, one material. The hull and the turret are two draw calls
+  (the proposed `vehicle` class: 8,000 triangles).
+- **Size:** inside the archetype's hull and turret capsules, the gun aside (`vehicles.test.ts`).
+
 ## Environment (T-4.10 onward)
 
 - **Compounds:** mud-brick qalats, plastered and weathered, with timber
