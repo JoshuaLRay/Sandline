@@ -44,8 +44,8 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-110](docs/backlog/U-110.md) | Authored squad starts and elevated vehicle paths | Map implementation | P1 | DONE | Owner-authorized merge #303 (`1ae7e82`); final-head CI #1726 all four jobs passed | [#303](https://github.com/JoshuaLRay/Sandline/pull/303) |
 | [U-111](docs/backlog/U-111.md) | Fixed guard sockets, patrol bounds and staged reserves | Map implementation | P1 | BLOCKED | U-129, U-130, U-131 (implementation split) | — |
 | [U-129](docs/backlog/U-129.md) | Persistent authored 3D enemy sockets and facing | Map implementation | P1 | DONE | Owner-authorized merge #304 (`118879b`); final-head CI #1729 passed all four jobs | [#304](https://github.com/JoshuaLRay/Sandline/pull/304) |
-| [U-130](docs/backlog/U-130.md) | Individual reversible patrols and bounded combat movement | Map implementation | P1 | REVIEW | U-129 (DONE) | [#305](https://github.com/JoshuaLRay/Sandline/pull/305) |
-| [U-131](docs/backlog/U-131.md) | Pre-place inactive reserves and activate surviving entities | Map implementation | P1 | BLOCKED | U-129, U-130, U-110 | — |
+| [U-130](docs/backlog/U-130.md) | Individual reversible patrols and bounded combat movement | Map implementation | P1 | DONE | Owner-authorized green merge #305; final-head CI and merge evidence in PR | [#305](https://github.com/JoshuaLRay/Sandline/pull/305) |
+| [U-131](docs/backlog/U-131.md) | Pre-place inactive reserves and activate surviving entities | Map implementation | P1 | READY | U-129, U-130, U-110 (DONE) | — |
 | [U-112](docs/backlog/U-112.md) | Finite projectile, health and ammunition supply caches | Map implementation | P1 | READY | U-107 | — |
 | [U-113](docs/backlog/U-113.md) | Map-revision-aware checkpoint restart and restore | Map implementation | P1 | READY | U-107 | — |
 | [U-114](docs/backlog/U-114.md) | Build the hidden insertion, road, ridge and tank ingress | Map implementation | P1 | READY | U-109, U-110 (DONE) | — |
