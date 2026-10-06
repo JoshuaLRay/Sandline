@@ -18,7 +18,10 @@ import type { MissionDef } from './mission.ts';
 import { WEAPON_IDS, getWeapon } from './weapons.ts';
 import { getEnemy, ENEMY_IDS } from './enemies.ts';
 import { MAX_DRIVE_POINTS } from './vehicle.ts';
-import { blockedAt, boxFrom, type BoxSpec, type World, type WorldBox } from './world.ts';
+import { fromRadians } from '../math/angles.ts';
+import { sin, cos } from '../math/trig.ts';
+import { validateVehiclePath } from './vehiclePlacement.ts';
+import { boxFrom, type BoxSpec, type World, type WorldBox } from './world.ts';
 
 export const EVENT_TRIGGER_KINDS = ['objective-start', 'upload-start', 'objective-complete', 'enter', 'time', 'group-dead', 'flag'] as const;
 export type EventTrigger =
@@ -49,7 +52,7 @@ export type EventAction =
    */
   | { kind: 'pickup'; weapon: string; ammo: number; x: number; y: number; z: number; yawDeg: number }
   /** U-069: a tank (an enemy with a `vehicle` block) put where it starts, to drive `path` in order. */
-  | { kind: 'spawn-vehicle'; vehicle: string; x: number; z: number; yawDeg: number; path: readonly { x: number; z: number }[] }
+  | { kind: 'spawn-vehicle'; vehicle: string; x: number; y?: number; z: number; yawDeg: number; path: readonly { x: number; y?: number; z: number }[] }
   /** U-069: every driving vehicle turns for the way it came and leaves; one that is shot to pieces stays a wreck. */
   | { kind: 'withdraw-vehicles' };
 
@@ -147,8 +150,7 @@ function box(where: string, value: unknown, blocker: string, index: number): Wor
 }
 
 /** What a driving vehicle's hull clears (m): the step it rides over and the headroom it needs. The server drives by the same numbers. */
-export const VEHICLE_STEP_M = 0.45;
-export const VEHICLE_CLEARANCE_M = 2.4;
+export { VEHICLE_STEP_M, VEHICLE_CLEARANCE_M } from './vehiclePlacement.ts';
 
 /** Parse and validate an authored event file against its encounter, world and mission. */
 export function parseEventScript(raw: unknown, encounter: Encounter, world: World, mission: MissionDef | null): EventScript {
@@ -288,27 +290,23 @@ export function parseEventScript(raw: unknown, encounter: Encounter, world: Worl
           };
         }
         case 'spawn-vehicle': {
-          const x = obj(aw, a, ['kind', 'vehicle', 'x', 'z', 'path'], ['yawDeg']);
+          const x = obj(aw, a, ['kind', 'vehicle', 'x', 'z', 'path'], ['yawDeg', 'y']);
           const name = x['vehicle'];
           const def = typeof name === 'string' && (ENEMY_IDS as readonly string[]).includes(name) ? getEnemy(name) : null;
           if (!def?.vehicle) throw new EventDataError(`${aw}.vehicle: expected a vehicle archetype`);
-          const from = { x: finite(`${aw}.x`, x['x']), z: finite(`${aw}.z`, x['z']) };
+          const from = { x: finite(`${aw}.x`, x['x']), z: finite(`${aw}.z`, x['z']), ...(x['y'] === undefined ? {} : { y: finite(`${aw}.y`, x['y']) }) };
           const rawPath = x['path'];
           if (!Array.isArray(rawPath) || rawPath.length === 0 || rawPath.length > MAX_DRIVE_POINTS) {
             throw new EventDataError(`${aw}.path: expected 1–${MAX_DRIVE_POINTS} waypoints`);
           }
           const path = rawPath.map((raw, k) => {
-            const w = obj(`${aw}.path[${k}]`, raw, ['x', 'z']);
-            return { x: finite(`${aw}.path[${k}].x`, w['x']), z: finite(`${aw}.path[${k}].z`, w['z']) };
+            const w = obj(`${aw}.path[${k}]`, raw, ['x', 'z'], ['y']);
+            return { x: finite(`${aw}.path[${k}].x`, w['x']), z: finite(`${aw}.path[${k}].z`, w['z']), ...(w['y'] === undefined ? {} : { y: finite(`${aw}.path[${k}].y`, w['y']) }) };
           });
-          // The hull must fit where it starts and at every waypoint: a point in a wall is a route no tank can drive.
-          const half = def.vehicle.hull.radius + 0.1;
-          for (const [k, at] of [from, ...path].entries()) {
-            if (blockedAt(at.x, at.z, half, 0, VEHICLE_STEP_M, VEHICLE_CLEARANCE_M, world.boxes)) {
-              throw new EventDataError(`${aw}.${k === 0 ? 'x/z' : `path[${k - 1}]`}: the ${name}'s hull does not fit at (${at.x}, ${at.z})`);
-            }
-          }
-          return { kind: ak, vehicle: name as string, x: from.x, z: from.z, yawDeg: x['yawDeg'] === undefined ? 0 : finite(`${aw}.yawDeg`, x['yawDeg'], -360, 360), path };
+          const yawDeg = x['yawDeg'] === undefined ? 0 : finite(`${aw}.yawDeg`, x['yawDeg'], -360, 360);
+          const angle = fromRadians(yawDeg * Math.PI / 180);
+          try { validateVehiclePath(from, path, def.vehicle, world.boxes, aw, { x: sin(angle), z: cos(angle) }); } catch (error) { throw new EventDataError((error as Error).message); }
+          return { kind: ak, vehicle: name as string, ...from, yawDeg, path };
         }
         case 'withdraw-vehicles':
           obj(aw, a, ['kind']);

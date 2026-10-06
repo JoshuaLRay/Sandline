@@ -33,6 +33,7 @@
  * this list always was, and the default. A world file is imported statically
  * below rather than read from disk, because this module runs in the page too.
  */
+import { DEFAULT_MOVE_CONFIG } from './moveDefaults.ts';
 import RANGE_WORLD from '../data/worlds/range.json' with { type: 'json' };
 import { COMMITTED, type CampaignEntry } from './campaignRegistry.ts';
 import { POSITION } from '../net/quantize.ts';
@@ -179,6 +180,8 @@ export type GeneratedPiece = (typeof GENERATED_PIECES)[number];
 /** A named world: the one value every consumer of the scenery reads. */
 export interface World {
   id: string;
+  /** U-110: six slot-ordered, authoritative feet positions; absent uses legacy defaults. */
+  squadStarts?: readonly { x: number; y: number; z: number }[];
   boxes: readonly WorldBox[];
   /**
    * Half the side of the square of open ground the world stands on, centred
@@ -401,6 +404,7 @@ export function loadWorld(raw: unknown, level: { pieces: readonly PlacedPiece[];
   return {
     id: file.id,
     boxes,
+    ...((raw as { squadStarts?: unknown }).squadStarts === undefined ? {} : { squadStarts: parseSquadStarts(file.id, (raw as { squadStarts: unknown }).squadStarts, boxes, floorHalfWidth, floorHalfDepth) }),
     floorHalfExtent,
     floorHalfWidth,
     floorHalfDepth,
@@ -740,4 +744,26 @@ export function blockedAt(
 /** True when a square footprint of half-size `half` at (x, z) overlaps the box in the ground plane. */
 export function overlapsFootprint(x: number, z: number, half: number, box: WorldBox): boolean {
   return x + half > box.minX && x - half < box.maxX && z + half > box.minZ && z - half < box.maxZ;
+}
+
+/** U-110: reject unsupported, overlapping or obstructed starts instead of relocating authored slots. */
+export function parseSquadStarts(id: string, raw: unknown, boxes: readonly WorldBox[], halfWidth: number, halfDepth: number): { x: number; y: number; z: number }[] {
+  const at = `world '${id}': squadStarts`;
+  if (!Array.isArray(raw) || raw.length !== 6) throw new Error(`${at}: expected exactly six slot-ordered points`);
+  const cfg = DEFAULT_MOVE_CONFIG;
+  const starts = raw.map((p, i) => {
+    const q = exactKeys(`${at}[${i}]`, p, ['x', 'y', 'z']);
+    if (!finite(q['x']) || !finite(q['y']) || !finite(q['z'])) throw new Error(`${at}[${i}]: coordinates must be finite`);
+    const point = { x: q['x'], y: q['y'], z: q['z'] };
+    if (Math.abs(point.x) + cfg.radius > halfWidth || Math.abs(point.z) + cfg.radius > halfDepth || Object.values(point).some((v) => v < POSITION.min || v > POSITION.max)) throw new Error(`${at}[${i}]: outside floor or wire bounds`);
+    for (const dx of [-cfg.radius, 0, cfg.radius]) for (const dz of [-cfg.radius, 0, cfg.radius]) {
+      if (Math.abs(supportUnder(point.x + dx, point.z + dz, 0, point.y + .05, boxes, cfg.groundY) - point.y) > .05) throw new Error(`${at}[${i}]: no support at authored height`);
+    }
+    if (blockedAt(point.x, point.z, cfg.radius, point.y, .05, cfg.height, boxes)) throw new Error(`${at}[${i}]: standing clearance is obstructed`);
+    return point;
+  });
+  starts.forEach((p, i) => {
+    if (starts.slice(0, i).some((q) => Math.abs(p.y - q.y) < cfg.height && (p.x - q.x) ** 2 + (p.z - q.z) ** 2 < (2 * cfg.radius) ** 2)) throw new Error(`${at}[${i}]: overlaps another slot`);
+  });
+  return starts;
 }

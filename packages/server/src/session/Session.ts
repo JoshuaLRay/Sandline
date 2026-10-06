@@ -103,7 +103,9 @@ import {
   createWeaponState,
   blockedAt,
   createDrive,
+  vehicleSupport,
   VEHICLE_CLEARANCE_M,
+  VEHICLE_STEP_M,
   withdrawDrive,
   driveYawWire,
   stepDrive,
@@ -205,7 +207,7 @@ import { CoverSystem, DEFAULT_COVER_BODY } from '../ai/cover.ts';
 import { EnemyGroup } from '../ai/group.ts';
 import type { ArmourView, CombatWorld } from '../ai/actions/combat.ts';
 import type { EnemyPosture } from '../ai/actions/posture.ts';
-import { spawnGround } from '../ai/director/spawnGround.ts';
+import { spawnGround, SPAWN_ON_MESH_M } from '../ai/director/spawnGround.ts';
 import { Spawner, type SpawnerCheckpoint, type SpawnerHost } from '../ai/director/spawner.ts';
 import {
   CHECKPOINT_WORLD_VERSION,
@@ -779,7 +781,9 @@ export interface EnemySpawn {
   /** T-3.32: the posture it spawns in and returns to (`actions/posture.ts`); none stands down. */
   posture?: EnemyPosture;
   /** U-067: the waypoints a tank drives, in order, from where it stands; without them it stands still. */
-  path?: readonly { x: number; z: number }[];
+  path?: readonly { x: number; y?: number; z: number }[];
+  /** U-110: authored y, distinct from the small automatic navmesh surface offset. */
+  authoredHeight?: boolean;
 }
 
 /** What a session is built with beyond its tuning, room and world. */
@@ -1230,7 +1234,7 @@ export class Session {
         },
         netId: this.nextNetId++,
         isBot: true,
-        state: createMoveState(spawnFor(i).x, spawnFor(i).y, spawnFor(i).z),
+        state: createMoveState(this.squadStart(i).x, this.squadStart(i).y, this.squadStart(i).z),
         yaw: 0,
         input: idleInput(),
         lastProcessedInputTick: -1,
@@ -1338,7 +1342,7 @@ export class Session {
           : {}),
       };
       for (const slot of this.slots) {
-        const point = saved.spawns[slot.index] ?? spawnFor(slot.index);
+        const point = saved.spawns[slot.index] ?? this.squadStart(slot.index);
         slot.state = createMoveState(point.x, point.y, point.z);
       }
       // U-001: a started session's spawner was built before the checkpoint was known.
@@ -1347,6 +1351,11 @@ export class Session {
         this.restoreEvents(this.missionCheckpointState, this.restoreCheckpointWorld(this.missionCheckpointState));
       }
     }
+  }
+
+  /** U-110: every fresh-start and fallback path uses the same slot-ordered authored feet. */
+  private squadStart(index: number): { x: number; y: number; z: number } {
+    return this.world.squadStarts?.[index] ?? spawnFor(index);
   }
 
   /** A fresh brain for a bot slot, starting from the entity as it stands. */
@@ -1697,7 +1706,7 @@ export class Session {
           ...(e.def.vehicle
             ? {
                 vehicle: {
-                  path: e.drive ? e.drive.path.map((p) => ({ x: p.x, z: p.z })) : [],
+                  path: e.drive ? e.drive.path.map((p) => ({ ...p })) : [],
                   next: e.drive?.next ?? 0,
                   heading: e.drive?.heading ?? 0,
                   phase: e.drive?.phase ?? 'arrived',
@@ -2092,7 +2101,7 @@ export class Session {
     for (const slot of this.slots) {
       respawn(slot.health);
       this.applyClassHealth(slot);
-      const point = spawns[slot.index] ?? spawnFor(slot.index);
+      const point = spawns[slot.index] ?? this.squadStart(slot.index);
       slot.state = createMoveState(point.x, point.y, point.z);
       slot.queue.length = 0;
       slot.input = idleInput(slot.yaw);
@@ -2234,8 +2243,9 @@ export class Session {
     const run = this.missionRun;
     if (!run || (run.current.state !== 'failed' && !midMission)) return;
     const saved = this.missionCheckpointState;
+    if (!saved && this.world.squadStarts) for (const slot of this.slots) slot.yaw = 0;
     const spawns = saved?.spawns ?? this.slots.map((slot) => {
-      const point = spawnFor(slot.index);
+      const point = this.squadStart(slot.index);
       return { x: point.x, y: point.y, z: point.z };
     });
     this.resetMissionWorld(spawns, saved?.completedGroups ?? []);
@@ -2262,7 +2272,8 @@ export class Session {
     for (const row of this.slotStats) Object.assign(row, createSlotStats(row.slot));
     this.broadcastStats();
     const spawns = this.slots.map((slot) => {
-      const point = spawnFor(slot.index);
+      if (this.world.squadStarts) slot.yaw = 0;
+      const point = this.squadStart(slot.index);
       return { x: point.x, y: point.y, z: point.z };
     });
     this.missionCheckpointState = null;
@@ -2344,10 +2355,10 @@ export class Session {
         this.placePickupItem((WEAPON_IDS as readonly string[]).indexOf(weapon), ammo, at, degToWire(yawDeg), true);
       },
       spawnVehicle: (vehicle, at, yawDeg, path) => {
-        this.spawnEnemy(vehicle, { x: at.x, y: this.moveConfig.groundY, z: at.z, yaw: degToWire(yawDeg), path });
+        this.spawnEnemy(vehicle, { x: at.x, y: at.y ?? this.moveConfig.groundY, z: at.z, yaw: degToWire(yawDeg), path, authoredHeight: at.y !== undefined || path.some((p) => p.y !== undefined) });
       },
       withdrawVehicles: () => {
-        for (const enemy of this.enemyList) if (enemy.drive && !isDead(enemy.health)) withdrawDrive(enemy.drive);
+        for (const enemy of this.enemyList) if (enemy.drive && !isDead(enemy.health)) withdrawDrive(enemy.drive, enemy.drive.origin?.y !== undefined || enemy.drive.path.some((p) => p.y !== undefined) ? enemy.state : undefined);
       },
     };
   }
@@ -2556,6 +2567,7 @@ export class Session {
     const def = getEnemy(archetype);
     if (this.enemyList.length >= MAX_ENEMIES || this.nextEnemyNetId >= ENEMY_NET_ID_LIMIT) return null;
     const yaw = at.yaw ?? 0;
+    const authoredHeight = at.authoredHeight ?? (Math.abs(at.y - this.moveConfig.groundY) > SPAWN_ON_MESH_M || at.path?.some((p) => p.y !== undefined) === true);
     const enemy: EnemyEntity = {
       netId: this.nextEnemyNetId++,
       captive: at.captive ?? false,
@@ -2566,7 +2578,7 @@ export class Session {
       yaw,
       pitch: 0,
       turretYaw: yaw,
-      drive: def.vehicle && at.path && at.path.length > 0 ? createDrive(at.path, yaw, { x: at.x, z: at.z }) : null,
+      drive: def.vehicle && at.path && at.path.length > 0 ? createDrive(at.path, yaw, { x: at.x, z: at.z, ...(authoredHeight ? { y: at.y } : {}) }) : null,
       // The first shell waits half an interval, so a tank that has just come into view is not already firing.
       cannonReadyAt: this.nowMs / 1000 + (def.vehicle ? def.vehicle.cannon.intervalSeconds / 2 : 0),
       tell: null,
@@ -5317,7 +5329,7 @@ export class Session {
         if (!this.missionRun && !slot.captured && readyToRespawn(slot.health, nowSeconds)) {
           respawn(slot.health, DAMAGE, nowSeconds);
           this.applyClassHealth(slot);
-          const point = spawnFor(slot.index);
+          const point = this.squadStart(slot.index);
           slot.state = createMoveState(point.x, point.y, point.z);
           slot.queue.length = 0;
           slot.input = idleInput(slot.yaw);
@@ -6062,17 +6074,27 @@ export class Session {
    * does not push through or run anyone over.
    */
   private driveTank(enemy: EnemyEntity, drive: VehicleDrive, vehicle: EnemyVehicle): void {
-    const clear = (x: number, z: number, forward: { x: number; z: number }): boolean => {
-      const half = vehicle.hull.radius + 0.1;
-      const reach = Math.abs(vehicle.hull.to[2] - vehicle.hull.from[2]) / 2;
-      for (const along of [0, reach, -reach]) {
-        if (blockedAt(x + forward.x * along, z + forward.z * along, half, enemy.state.y, this.moveConfig.stepHeight, VEHICLE_CLEARANCE_M, this.collisionBoxes)) return false;
+    const heightAware = drive.origin?.y !== undefined || drive.path.some((p) => p.y !== undefined);
+    let supportedY = enemy.state.y;
+    const clear = (x: number, z: number, forward: { x: number; z: number }, intendedY = enemy.state.y): boolean => {
+      let y = enemy.state.y;
+      if (heightAware) {
+        const support = vehicleSupport({ x, y: intendedY, z }, forward, vehicle, this.collisionBoxes, this.moveConfig.groundY, VEHICLE_STEP_M);
+        if (support === null || Math.abs(support - enemy.state.y) > this.moveConfig.stepHeight) return false;
+        y = support;
+      } else {
+        const half = vehicle.hull.radius + .1;
+        const reach = Math.abs(vehicle.hull.to[2] - vehicle.hull.from[2]) / 2;
+        for (const along of [0, reach, -reach]) if (blockedAt(x + forward.x * along, z + forward.z * along, half, y, this.moveConfig.stepHeight, VEHICLE_CLEARANCE_M, this.collisionBoxes)) return false;
       }
       const margin = vehicle.radiusM + 0.4;
-      return !this.slots.some((s) => !isDead(s.health) && (s.state.x - x) ** 2 + (s.state.z - z) ** 2 < margin * margin);
+      const height = Math.max(vehicle.hull.to[1] + vehicle.hull.radius, vehicle.turret.to[1] + vehicle.turret.radius);
+      if (this.slots.some((s) => !isDead(s.health) && s.state.y < y + height && s.state.y + this.moveConfig.height > y && (s.state.x - x) ** 2 + (s.state.z - z) ** 2 < margin * margin)) return false;
+      supportedY = y;
+      return true;
     };
-    const to = stepDrive({ x: enemy.state.x, z: enemy.state.z }, drive, vehicle, TICK_SECONDS, clear);
-    enemy.state = { ...enemy.state, x: to.x, z: to.z };
+    const to = stepDrive({ x: enemy.state.x, y: enemy.state.y, z: enemy.state.z }, drive, vehicle, TICK_SECONDS, clear);
+    enemy.state = { ...enemy.state, x: to.x, y: supportedY, z: to.z };
     enemy.yaw = driveYawWire(drive);
     enemy.input = { ...enemy.input, yaw: enemy.yaw, moveX: 0, moveY: 0 };
   }
@@ -6093,7 +6115,8 @@ export class Session {
       const fromX = enemy.state.x;
       const fromZ = enemy.state.z;
       // U-067: a tank drives its path; it does not walk on a soldier's controller.
-      if (enemy.drive && enemy.def.vehicle) {
+      if (enemy.def.vehicle) {
+        if (!enemy.drive) { enemy.speed = 0; continue; }
         this.driveTank(enemy, enemy.drive, enemy.def.vehicle);
         enemy.speed = Math.sqrt((enemy.state.x - fromX) ** 2 + (enemy.state.z - fromZ) ** 2) / TICK_SECONDS;
         decayBloom(enemy.weapon, enemy.weaponState, TICK_SECONDS);

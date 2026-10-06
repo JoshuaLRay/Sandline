@@ -402,3 +402,5 @@ Format: `T-<id> — <what changed>`
 - U-126 — Replace the tank's box stand-in with a generated, modelled and painted period tank (`vehicle-tank`: road wheels, sagging link tracks, cast dome turret, long gun; one atlas, two draw calls), loaded from the initial pack with the U-070 model as fallback; propose a `vehicle` budget class.
 
 - U-109 — Added integrated stacked-floor evidence for nav/headroom/cover, six-way slab shooting and LOS, screen-picked replicated goals, camera collision, traversal and checkpoint floor retention; extracted the page’s existing Three.js camera query for shared verification.
+
+- U-110 — Add validated six-slot 3D squad starts and supported elevated tank spawns/paths, retaining heights through restart, withdrawal and checkpoint restore with legacy 2D compatibility.

@@ -52,11 +52,11 @@ export interface EnemyCheckpoint {
 
 /** U-069: what a checkpoint keeps of a tank beyond what every enemy has. */
 export interface VehicleCheckpoint {
-  path: { x: number; z: number }[];
+  path: { x: number; y?: number; z: number }[];
   next: number;
   heading: number;
   phase: 'driving' | 'arrived' | 'blocked';
-  origin: { x: number; z: number } | null;
+  origin: { x: number; y?: number; z: number } | null;
   withdrawing: boolean;
   turretYaw: number;
   /** Seconds until the cannon may fire again. */
@@ -146,17 +146,22 @@ function posture(where: string, v: unknown): EnemyPosture | null {
   };
 }
 
+const drivePoint = (where: string, v: unknown): { x: number; y?: number; z: number } => {
+  const o = obj(where, v);
+  return { ...pt(where, v), ...(o['y'] === undefined ? {} : { y: num(`${where}.y`, o['y']) }) };
+};
+
 function vehicle(where: string, v: unknown): VehicleCheckpoint {
   const o = obj(where, v);
   const phase = o['phase'];
   if (phase !== 'driving' && phase !== 'arrived' && phase !== 'blocked') return fail(`${where}.phase`);
-  const path = list(`${where}.path`, o['path'], 64).map((p, i) => pt(`${where}.path[${i}]`, p));
+  const path = list(`${where}.path`, o['path'], 64).map((p, i) => drivePoint(`${where}.path[${i}]`, p));
   return {
     path,
     next: int(`${where}.next`, o['next'], 0, path.length),
     heading: num(`${where}.heading`, o['heading']),
     phase,
-    origin: o['origin'] === null ? null : pt(`${where}.origin`, o['origin']),
+    origin: o['origin'] === null ? null : drivePoint(`${where}.origin`, o['origin']),
     withdrawing: bool(`${where}.withdrawing`, o['withdrawing']),
     turretYaw: int(`${where}.turretYaw`, o['turretYaw'], 0, 1023),
     cannonIn: num(`${where}.cannonIn`, o['cannonIn']),
