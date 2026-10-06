@@ -34,7 +34,9 @@ import { COMMITTED, type CampaignEntry } from './campaignRegistry.ts';
 import { validateVehiclePath } from './vehiclePlacement.ts';
 import { MAX_DRIVE_POINTS } from './vehicle.ts';
 import { ENEMIES } from './enemies.ts';
-import { type GroundArea, type World, getWorld } from './world.ts';
+import { type GroundArea, type World, getWorld, supportUnder, blockedAt } from './world.ts';
+import { DEFAULT_MOVE_CONFIG } from './moveDefaults.ts';
+import { POSITION } from '../net/quantize.ts';
 
 /** A named place (`areas`, or the mission's `start` and `objective`), or a circle. */
 export type AreaRef = string | GroundArea;
@@ -53,6 +55,14 @@ export type Trigger =
   | { kind: 'script' };
 export const TRIGGER_KINDS = ['start', 'time', 'enter', 'dead', 'script'] as const;
 
+/** U-129: slot-ordered, persistent member identity; never a random zone candidate. */
+export interface EncounterSocket {
+  id: string;
+  archetype: string;
+  feet: { x: number; y: number; z: number };
+  face: { x: number; z: number };
+}
+
 export interface EncounterGroup {
   id: string;
   members: readonly { archetype: string; count: number }[];
@@ -65,6 +75,7 @@ export interface EncounterGroup {
    * `everySeconds` after the last as a rule, never sooner than `minSeconds`
    * nor later than `maxSeconds` — the bounds the director (T-3.33) paces inside.
    */
+  sockets?: readonly EncounterSocket[];
   fixedCount?: boolean;
   captive?: boolean;
   path?: readonly { x: number; y?: number; z: number }[];
@@ -153,10 +164,12 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
 
   if (!Array.isArray(top['groups']) || top['groups'].length === 0) throw new EncounterDataError(`${at}.groups: expected a non-empty list`);
   const ids = new Set<string>();
+  const socketIds = new Set<string>();
+  const socketFeet: EncounterSocket['feet'][] = [];
   const zones = new Set(mission.spawnZones.map((z) => z.id));
   const groups: EncounterGroup[] = top['groups'].map((g, i) => {
     const gw = `${at}.groups[${i}]`;
-    const o = obj(gw, g, ['id', 'members', 'zone', 'posture', 'trigger'], ['waves', 'captive', 'path', 'fixedCount']);
+    const o = obj(gw, g, ['id', 'members', 'zone', 'posture', 'trigger'], ['waves', 'captive', 'path', 'fixedCount', 'sockets']);
     if (typeof o['id'] !== 'string' || o['id'] === '') throw new EncounterDataError(`${gw}: id must be a name`);
     if (ids.has(o['id'])) throw new EncounterDataError(`${at}.groups: duplicate id '${o['id']}'`);
     ids.add(o['id']);
@@ -228,6 +241,35 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
         throw new EncounterDataError(`${gw}.waves: needs minSeconds ≤ everySeconds ≤ maxSeconds, got ${waves.minSeconds}, ${waves.everySeconds}, ${waves.maxSeconds}`);
       }
     }
+    let sockets: EncounterSocket[] | undefined;
+    if (o['sockets'] !== undefined) {
+      const expected = members.flatMap((m) => Array<string>(m.count).fill(m.archetype));
+      if (!Array.isArray(o['sockets']) || o['sockets'].length !== expected.length) throw new EncounterDataError(`${gw}.sockets: expected one socket per member in member order`);
+      if (waves.count !== 1 || o['fixedCount'] === false) throw new EncounterDataError(`${gw}.sockets: require one wave and fixed counts`);
+      sockets = o['sockets'].map((v, j) => {
+        const w = `${gw}.sockets[${j}]`;
+        const q = obj(w, v, ['id', 'archetype', 'feet', 'face']);
+        if (typeof q['id'] !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(q['id']) || socketIds.has(q['id'])) throw new EncounterDataError(`${w}.id: expected a unique member name (1–64 characters)`);
+        socketIds.add(q['id']);
+        if (q['archetype'] !== expected[j]) throw new EncounterDataError(`${w}.archetype: must match member order`);
+        const pt = obj(`${w}.feet`, q['feet'], ['x', 'y', 'z']);
+        const feet = { x: num(`${w}.feet.x`, pt['x'], POSITION.min, POSITION.max), y: num(`${w}.feet.y`, pt['y'], POSITION.min, POSITION.max), z: num(`${w}.feet.z`, pt['z'], POSITION.min, POSITION.max) };
+        const f = obj(`${w}.face`, q['face'], ['x', 'z']);
+        const face = { x: num(`${w}.face.x`, f['x'], POSITION.min, POSITION.max), z: num(`${w}.face.z`, f['z'], POSITION.min, POSITION.max) };
+        if (face.x === feet.x && face.z === feet.z) throw new EncounterDataError(`${w}.face: must differ from feet`);
+        const cfg = DEFAULT_MOVE_CONFIG;
+        if (Math.abs(feet.x) + cfg.radius > world.floorHalfWidth || Math.abs(feet.z) + cfg.radius > world.floorHalfDepth) throw new EncounterDataError(`${w}.feet: outside floor`);
+        const vehicle = ENEMIES[expected[j]!]!.vehicle;
+        if (vehicle) throw new EncounterDataError(`${w}: vehicle sockets are supplied by the staged reserve leaf`);
+        for (const dx of [-cfg.radius, 0, cfg.radius]) for (const dz of [-cfg.radius, 0, cfg.radius]) {
+          if (Math.abs(supportUnder(feet.x + dx, feet.z + dz, 0, feet.y + .05, world.boxes, cfg.groundY) - feet.y) > .05) throw new EncounterDataError(`${w}.feet: no support at authored height`);
+        }
+        if (blockedAt(feet.x, feet.z, cfg.radius, feet.y, .05, cfg.height, world.boxes)) throw new EncounterDataError(`${w}.feet: standing clearance obstructed`);
+        if (socketFeet.some((p) => Math.abs(p.y - feet.y) < cfg.height && (p.x - feet.x) ** 2 + (p.z - feet.z) ** 2 < 1)) throw new EncounterDataError(`${w}.feet: overlaps another member`);
+        socketFeet.push(feet);
+        return { id: q['id'], archetype: expected[j]!, feet, face };
+      });
+    }
     const fixedCount = o['fixedCount'];
     if (fixedCount !== undefined && typeof fixedCount !== 'boolean') throw new EncounterDataError(`${gw}.fixedCount: expected a boolean`);
     const captive = o['captive'];
@@ -245,8 +287,9 @@ export function parseEncounter(raw: unknown, worldOf: (id: string) => World | un
         try { validateVehiclePath(start, path, ENEMIES[m.archetype]!.vehicle!, world.boxes, gw); } catch (error) { throw new EncounterDataError((error as Error).message); }
       }
     }
-    return { id: o['id'], members, zone: o['zone'], posture, trigger, waves, ...(fixedCount === undefined ? {} : { fixedCount: fixedCount as boolean }), ...(captive === undefined ? {} : { captive: captive as boolean }), ...(path ? { path } : {}) };
+    return { id: o['id'], members, zone: o['zone'], posture, trigger, waves, ...(sockets ? { sockets, fixedCount: true } : fixedCount === undefined ? {} : { fixedCount: fixedCount as boolean }), ...(captive === undefined ? {} : { captive: captive as boolean }), ...(path ? { path } : {}) };
   });
+  if (groups.reduce((n, g) => n + (g.sockets?.length ?? 0), 0) > aliveCap) throw new EncounterDataError(`${at}: fixed sockets exceed aliveCap`);
   // A `dead` trigger names a group that exists and is not itself.
   for (const g of groups) {
     if (g.trigger.kind !== 'dead') continue;

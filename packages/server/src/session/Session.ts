@@ -735,6 +735,7 @@ export interface EnemyEntity {
   /** T-3.23: rounds into the current burst, and when a pause after the last one ends (seconds). */
   burst: { rounds: number; pauseUntil: number };
   /** T-3.32: what it does with nothing to fight (`actions/posture.ts`), or null to stand down. */
+  readonly spawnId: string | null;
   readonly posture: EnemyPosture | null;
   /** T-3.32: a garrison fights from inside its area; anyone else may take cover anywhere. */
   coverNear(): { x: number; z: number; withinM: number } | null;
@@ -762,6 +763,7 @@ export interface PickupEntity {
 
 /** Where and how to spawn an enemy. */
 export interface EnemySpawn {
+  spawnId?: string;
   captive?: boolean;
   /** Feet position. */
   x: number;
@@ -1691,6 +1693,7 @@ export class Session {
         .filter((e) => !isDead(e.health))
         .map((e) => ({
           netId: e.netId,
+          ...(e.spawnId === null ? {} : { spawnId: e.spawnId }),
           archetype: e.def.id,
           ...(e.def.friendly ? { captive: e.captive ?? false, escortOrder: structuredClone(this.escortOrder) } : {}),
           faction: e.faction,
@@ -1837,6 +1840,7 @@ export class Session {
         z: e.z,
         yaw: e.yaw,
         faction: e.faction,
+        ...(e.spawnId === undefined ? {} : { spawnId: e.spawnId }),
         captive: e.captive ?? false,
         ...(e.posture ? { posture: structuredClone(e.posture) } : {}),
         ...(group !== undefined ? { group } : {}),
@@ -2566,6 +2570,7 @@ export class Session {
   spawnEnemy(archetype: string, at: EnemySpawn): number | null {
     const def = getEnemy(archetype);
     if (this.enemyList.length >= MAX_ENEMIES || this.nextEnemyNetId >= ENEMY_NET_ID_LIMIT) return null;
+    if (at.spawnId !== undefined && this.enemyList.some((e) => e.spawnId === at.spawnId)) throw new Error(`duplicate enemy spawnId '${at.spawnId}'`);
     const yaw = at.yaw ?? 0;
     const authoredHeight = at.authoredHeight ?? (Math.abs(at.y - this.moveConfig.groundY) > SPAWN_ON_MESH_M || at.path?.some((p) => p.y !== undefined) === true);
     const enemy: EnemyEntity = {
@@ -2606,6 +2611,7 @@ export class Session {
       dropped: false,
       mounted: null,
       burst: { rounds: 0, pauseUntil: 0 },
+      spawnId: at.spawnId ?? null,
       posture: at.posture ?? null,
       coverNear: () => {
         // U-011: the lever's user, fired on, takes cover where it is — not back inside its garrison's area, through the fire.

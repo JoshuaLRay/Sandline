@@ -31,6 +31,7 @@ export interface SlotCheckpoint {
 
 /** U-059: a living enemy at a checkpoint. */
 export interface EnemyCheckpoint {
+  spawnId?: string;
   captive?: boolean;
   escortOrder?: { kind: 'follow' | 'stay' | 'go'; point: { x: number; y: number; z: number } | null };
   netId: number;
@@ -129,6 +130,12 @@ const pt = (where: string, v: unknown): { x: number; z: number } => {
   return { x: num(`${where}.x`, o['x']), z: num(`${where}.z`, o['z']) };
 };
 
+function memberId(where: string, v: unknown): string {
+  const id = str(where, v);
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return fail(where);
+  return id;
+}
+
 function posture(where: string, v: unknown): EnemyPosture | null {
   if (v === null) return null;
   const o = obj(where, v);
@@ -190,7 +197,7 @@ function spawner(where: string, v: unknown): SpawnerCheckpoint | null {
     queue: list(`${where}.queue`, o['queue'], MAX_QUEUE).map((q, i) => {
       const w = `${where}.queue[${i}]`;
       const x = obj(w, q);
-      return { group: str(`${w}.group`, x['group']), wave: int(`${w}.wave`, x['wave'], 0, 1024), archetype: str(`${w}.archetype`, x['archetype']) };
+      return { group: str(`${w}.group`, x['group']), wave: int(`${w}.wave`, x['wave'], 0, 1024), archetype: str(`${w}.archetype`, x['archetype']), ...(x['socketId'] === undefined ? {} : { socketId: memberId(`${w}.socketId`, x['socketId']) }) };
     }),
   };
 }
@@ -228,7 +235,7 @@ export function parseCheckpointWorld(raw: unknown): CheckpointWorld | null {
   try {
     const o = obj('world', raw);
     if (o['version'] !== CHECKPOINT_WORLD_VERSION) return fail('version');
-    return {
+    const parsed: CheckpointWorld = {
       version: CHECKPOINT_WORLD_VERSION,
       seconds: num('seconds', o['seconds']),
       slots: list('slots', o['slots'], MAX_SLOTS).map((s, i) => slotCheckpoint(`slots[${i}]`, s)),
@@ -251,6 +258,7 @@ export function parseCheckpointWorld(raw: unknown): CheckpointWorld | null {
         return {
           netId: int(`${w}.netId`, x['netId']),
           archetype: str(`${w}.archetype`, x['archetype']),
+          ...(x['spawnId'] === undefined ? {} : { spawnId: memberId(`${w}.spawnId`, x['spawnId']) }),
           faction: int(`${w}.faction`, x['faction'], 0, 255),
           x: num(`${w}.x`, x['x']),
           y: num(`${w}.y`, x['y']),
@@ -290,6 +298,13 @@ export function parseCheckpointWorld(raw: unknown): CheckpointWorld | null {
         };
       }),
     };
+    const names = new Set<string>();
+    for (const id of [...parsed.enemies.map((e) => e.spawnId), ...(parsed.spawner?.queue.map((q) => q.socketId) ?? [])]) {
+      if (id === undefined) continue;
+      if (names.has(id)) return fail('duplicate member identity');
+      names.add(id);
+    }
+    return parsed;
   } catch (error) {
     if (error instanceof Refused) return null;
     throw error;

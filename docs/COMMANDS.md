@@ -242,3 +242,55 @@ Firing positions need support and standing clearance. Sightline rays retain
 their actual elevations, so visible ridge support fire remains possible.
 `CoverSystem.invalidateGeometry()` clears cached usability and sightlines;
 Session calls it whenever a scripted blocker changes.
+
+## Fixed guard sockets (U-129)
+
+An encounter group may provide `sockets`, ordered like its expanded `members`.
+Each entry names a globally unique persistent member `id` (1–64 ASCII letters,
+digits, `_` or `-`), the matching `archetype`, exact `{x,y,z}` feet and an `{x,z}`
+facing target on its floor. For example, a one-rifleman group adds:
+
+```json
+"sockets": [{
+  "id": "BG1", "archetype": "rifleman",
+  "feet": { "x": -26, "y": 0, "z": 124 },
+  "face": { "x": -20, "z": 108 }
+}]
+```
+
+The group's existing `zone`, `posture` and `trigger` remain required for schema
+compatibility. Socket members hold their individual post/facing until normal
+perception alerts them; the group posture does not replace these assignments.
+Use `posture: {"kind":"hold"}` for this leaf. Individual patrols/combat bounds
+are implemented by U-130, and pre-placed inactive reserves/tanks by U-131.
+Only soldier/friendly sockets are supported here; vehicle staging is U-131.
+
+Socket groups have exactly one wave and fixed counts. `fixedCount` may be omitted
+or true; false/repeat waves fail validation. Total socket count must fit the
+file's `aliveCap`; the runtime cap cannot fall below that count at a low human
+budget. Unknown fields, mismatched counts/archetypes, duplicate identities,
+overlapping members, unsupported feet and standing obstructions fail content
+validation. The navmesh must resolve the named floor within the existing 0.3 m
+spawn tolerance. Its small surface offset is used for validation, while exact
+authored feet are kept; it never relocates a member to a different candidate.
+
+Start-trigger socket groups populate in the first spawn phase, before enemy
+perception, even when a human can see the socket. Map authoring must screen the
+insertion as specified; visibility is not a reason to omit a fixed guard.
+Later triggers retain visibility/occupancy waiting at the one exact socket.
+Other enemies occupying it delay that member independently of other sockets.
+Pre-input reserve staging is owned by U-131. Legacy zone groups keep their
+candidate selection, visibility checks, count scaling and repeated waves.
+
+Checkpoints carry `spawnId` on living enemies and `socketId` on queued members;
+wire net IDs remain ephemeral. Retry/save reload preserves member identity,
+saved position and facing and marks dead members sent, so no guard returns at
+its original socket. Full mission restart rebuilds all members. Legacy saves
+without these optional IDs retain their previous format. Duplicate/malformed
+member IDs are rejected by the durable parser.
+
+Reproduce the content, Session lifecycle and real baked-nav checks:
+
+```sh
+corepack pnpm exec vitest run packages/shared/src/sim/encounterSockets.test.ts packages/server/src/session/guardSockets.test.ts packages/tools/src/nav/guardSockets.test.ts packages/server/src/ai/director/spawner.test.ts packages/server/src/session/checkpointWorld.test.ts
+```
