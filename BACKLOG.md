@@ -47,7 +47,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-130](docs/backlog/U-130.md) | Individual reversible patrols and bounded combat movement | Map implementation | P1 | DONE | Owner-authorized green merge #305; final-head CI and merge evidence in PR | [#305](https://github.com/JoshuaLRay/Sandline/pull/305) |
 | [U-131](docs/backlog/U-131.md) | Pre-place inactive reserves and activate surviving entities | Map implementation | P1 | DONE | U-129, U-130, U-110 (DONE); engineering verification in PR, owner map/play quality separate | [#306](https://github.com/JoshuaLRay/Sandline/pull/306) |
 | [U-112](docs/backlog/U-112.md) | Finite projectile, health and ammunition supply caches | Map implementation | P1 | BLOCKED | Aggregate closure: U-132–U-134; split before implementation | — |
-| [U-132](docs/backlog/U-132.md) | Finite cache data and capacity-safe supply transfers | Map implementation | P1 | IN_PROGRESS | U-107 (DONE); leaf of U-112 | `task/U-132-supply-transfer-contract` |
+| [U-132](docs/backlog/U-132.md) | Finite cache data and capacity-safe supply transfers | Map implementation | P1 | REVIEW | U-107 (DONE); leaf of U-112; local verification passed, latest-head CI in PR | [#307](https://github.com/JoshuaLRay/Sandline/pull/307) |
 | [U-133](docs/backlog/U-133.md) | Authoritative cache use, replication and checkpoint stock | Map implementation | P1 | BLOCKED | U-132 | — |
 | [U-134](docs/backlog/U-134.md) | Cache choice UI, use progress and stock presentation | Map implementation | P1 | BLOCKED | U-133 | — |
 | [U-113](docs/backlog/U-113.md) | Map-revision-aware checkpoint restart and restore | Map implementation | P1 | READY | U-107 | — |
