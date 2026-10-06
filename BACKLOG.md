@@ -41,7 +41,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-125](docs/backlog/U-125.md) | Remove walkable nav islands baked inside solid boxes | Map implementation | P1 | DONE | Owner-authorized merge on green 2026-10-05; local verify and sims passed; final-head CI in PR | [#298](https://github.com/JoshuaLRay/Sandline/pull/298) |
 | [U-108](docs/backlog/U-108.md) | Height-aware mission areas and enemy spawn zones | Map implementation | P1 | DONE | Merged with owner authorization; all four CI jobs passed | [#293](https://github.com/JoshuaLRay/Sandline/pull/293) |
 | [U-109](docs/backlog/U-109.md) | Stacked-floor navigation, cover and command targets | Map implementation | P1 | REVIEW | Integrated fixture evidence complete; local verify 272 files / 2,890 tests and all four CI #1720 jobs passed (streaming rerun); final-head checks in PR | [#302](https://github.com/JoshuaLRay/Sandline/pull/302) |
-| [U-110](docs/backlog/U-110.md) | Authored squad starts and elevated vehicle paths | Map implementation | P1 | READY | U-108 | — |
+| [U-110](docs/backlog/U-110.md) | Authored squad starts and elevated vehicle paths | Map implementation | P1 | IN_PROGRESS | U-108 | `task/U-110-elevated-starts` |
 | [U-111](docs/backlog/U-111.md) | Fixed guard sockets, patrol bounds and staged reserves | Map implementation | P1 | BLOCKED | U-108, U-109 | — |
 | [U-112](docs/backlog/U-112.md) | Finite projectile, health and ammunition supply caches | Map implementation | P1 | READY | U-107 | — |
 | [U-113](docs/backlog/U-113.md) | Map-revision-aware checkpoint restart and restore | Map implementation | P1 | READY | U-107 | — |
