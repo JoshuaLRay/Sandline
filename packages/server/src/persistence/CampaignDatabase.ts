@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import type { RunKind } from '@sandline/shared';
 import { PlayerDirectory, type PlayerRecord } from '../identity/PlayerDirectory.ts';
-import { type SlotCheckpoint, parseSoldierLoadout } from '../session/checkpointWorld.ts';
+import { type SlotCheckpoint, type MissionStartCheckpoint, parseMissionStart, parseSoldierLoadout } from '../session/checkpointWorld.ts';
 
 export type { RunKind };
 
@@ -30,6 +30,10 @@ export interface SoldierSave {
 
 export interface CampaignCheckpoint {
   mission: string;
+  /** U-135: absent means unknown legacy content, never silently revision 1. */
+  mapRevision?: number;
+  /** Original run inventory/prisoners, independent of the checkpoint world. */
+  missionStart?: MissionStartCheckpoint;
   /** U-078: the kind of run it was made in; absent is a campaign run. A checkpoint resumes only its own kind. */
   run?: RunKind;
   objective: number;
@@ -172,6 +176,11 @@ function normalizedState(input: CampaignState): CampaignState {
   if (input.checkpoint !== null) {
     const saved = input.checkpoint;
     if (typeof saved.mission !== 'string' || saved.mission === '') throw new Error('checkpoint mission is required');
+    if (saved.mapRevision !== undefined && (!Number.isSafeInteger(saved.mapRevision) || saved.mapRevision < 1)) {
+      throw new Error('checkpoint mapRevision must be a positive safe integer');
+    }
+    const missionStart = saved.missionStart === undefined ? null : parseMissionStart(saved.missionStart);
+    if (saved.missionStart !== undefined && missionStart === null) throw new Error('checkpoint missionStart must contain six valid loadouts and distinct finite prisoners');
     if (!Number.isInteger(saved.objective) || saved.objective < 0) throw new Error('checkpoint objective must be a non-negative integer');
     if (!Number.isInteger(saved.elapsedTicks) || saved.elapsedTicks < 0) throw new Error('checkpoint elapsedTicks must be a non-negative integer');
     if (!Array.isArray(saved.spawns) || saved.spawns.length !== 6 || saved.spawns.some((p) => !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.z))) {
@@ -188,6 +197,8 @@ function normalizedState(input: CampaignState): CampaignState {
     }
     checkpoint = {
       mission: saved.mission,
+      ...(saved.mapRevision === undefined ? {} : { mapRevision: saved.mapRevision }),
+      ...(missionStart ? { missionStart } : {}),
       ...(saved.run === 'replay' ? { run: 'replay' as const } : {}),
       objective: saved.objective,
       ...(done.length > 0 ? { done: [...done] } : {}),

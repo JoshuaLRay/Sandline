@@ -180,6 +180,8 @@ export type GeneratedPiece = (typeof GENERATED_PIECES)[number];
 /** A named world: the one value every consumer of the scenery reads. */
 export interface World {
   id: string;
+  /** U-135: content revision; omitted by custom/legacy worlds means revision 1. */
+  mapRevision?: number;
   /** U-110: six slot-ordered, authoritative feet positions; absent uses legacy defaults. */
   squadStarts?: readonly { x: number; y: number; z: number }[];
   boxes: readonly WorldBox[];
@@ -361,9 +363,13 @@ const WORLD_ID = /^[a-z][a-z0-9-]{0,31}$/;
  */
 export function loadWorld(raw: unknown, level: { pieces: readonly PlacedPiece[]; encounter: string | null } = { pieces: [], encounter: null }): World {
   if (typeof raw !== 'object' || raw === null) throw new Error('world file: expected an object');
-  const file = raw as { id?: unknown; generate?: unknown };
+  const file = raw as { id?: unknown; generate?: unknown; mapRevision?: unknown };
   if (typeof file.id !== 'string' || !WORLD_ID.test(file.id)) {
     throw new Error(`world file: id must match ${WORLD_ID}, got ${JSON.stringify(file.id)}`);
+  }
+  const mapRevision = file.mapRevision === undefined ? 1 : file.mapRevision;
+  if (typeof mapRevision !== 'number' || !Number.isSafeInteger(mapRevision) || mapRevision < 1) {
+    throw new Error(`world '${file.id}': mapRevision must be a positive safe integer`);
   }
   const generate = file.generate ?? [];
   if (!Array.isArray(generate) || !generate.every((g) => (GENERATED_PIECES as readonly unknown[]).includes(g))) {
@@ -403,6 +409,7 @@ export function loadWorld(raw: unknown, level: { pieces: readonly PlacedPiece[];
   const mission = (raw as { mission?: unknown }).mission;
   return {
     id: file.id,
+    mapRevision,
     boxes,
     ...((raw as { squadStarts?: unknown }).squadStarts === undefined ? {} : { squadStarts: parseSquadStarts(file.id, (raw as { squadStarts: unknown }).squadStarts, boxes, floorHalfWidth, floorHalfDepth) }),
     floorHalfExtent,

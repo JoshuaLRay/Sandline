@@ -412,3 +412,5 @@ Format: `T-<id> — <what changed>`
 - U-131 — Pre-place dormant reserve soldiers/tanks before input, release existing survivors with persistent one-way orders/vehicle paths, and preserve damage, caps, dead identities and one-shot state through retry/reload/reconnect ([#306](https://github.com/JoshuaLRay/Sandline/pull/306)).
 
 - Workflow — Add the repository `next-task-context-transfer-text-box` skill for concise new-chat prompts based on verified merges and the current eligible backlog leaf; route natural-language handoff requests to it.
+
+- U-135 — Add validated map/checkpoint revision provenance and durable original run inventory/prisoners for reload/full restart; split U-113 so incompatible-restore quarantine and restart/select UI remain U-136.
