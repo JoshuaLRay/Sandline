@@ -1,5 +1,7 @@
 # Changelog
 
+- U-129 — Add exact 3D guard sockets, facing and persistent checkpoint identities; split U-111 into sockets, patrol/bounds and staged-reserve leaves ([#304](https://github.com/JoshuaLRay/Sandline/pull/304)).
+
 One line per completed task, newest last. Appended by whoever completes the task
 (standing rule 6 in `PLAN.md` §0.3).
 

@@ -43,12 +43,12 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-109](docs/backlog/U-109.md) | Stacked-floor navigation, cover and command targets | Map implementation | P1 | DONE | Merged #302 (`c426734`); all criteria checked and final-head CI #1721 green; human map-quality review separate | [#302](https://github.com/JoshuaLRay/Sandline/pull/302) |
 | [U-110](docs/backlog/U-110.md) | Authored squad starts and elevated vehicle paths | Map implementation | P1 | DONE | Owner-authorized merge #303 (`1ae7e82`); final-head CI #1726 all four jobs passed | [#303](https://github.com/JoshuaLRay/Sandline/pull/303) |
 | [U-111](docs/backlog/U-111.md) | Fixed guard sockets, patrol bounds and staged reserves | Map implementation | P1 | BLOCKED | U-129, U-130, U-131 (implementation split) | — |
-| [U-129](docs/backlog/U-129.md) | Persistent authored 3D enemy sockets and facing | Map implementation | P1 | IN_PROGRESS | U-108, U-109 (DONE) | `task/U-129-fixed-guard-sockets` |
+| [U-129](docs/backlog/U-129.md) | Persistent authored 3D enemy sockets and facing | Map implementation | P1 | REVIEW | U-108, U-109 (DONE); local verify 279 files / 2,928 tests; final-head CI in PR | [#304](https://github.com/JoshuaLRay/Sandline/pull/304) |
 | [U-130](docs/backlog/U-130.md) | Individual reversible patrols and bounded combat movement | Map implementation | P1 | BLOCKED | U-129 | — |
 | [U-131](docs/backlog/U-131.md) | Pre-place inactive reserves and activate surviving entities | Map implementation | P1 | BLOCKED | U-129, U-130, U-110 | — |
 | [U-112](docs/backlog/U-112.md) | Finite projectile, health and ammunition supply caches | Map implementation | P1 | READY | U-107 | — |
 | [U-113](docs/backlog/U-113.md) | Map-revision-aware checkpoint restart and restore | Map implementation | P1 | READY | U-107 | — |
-| [U-114](docs/backlog/U-114.md) | Build the hidden insertion, road, ridge and tank ingress | Map implementation | P1 | BLOCKED | U-109, U-110 | — |
+| [U-114](docs/backlog/U-114.md) | Build the hidden insertion, road, ridge and tank ingress | Map implementation | P1 | READY | U-109, U-110 (DONE) | — |
 | [U-115](docs/backlog/U-115.md) | Build the continuous underground depot and its stairs | Map implementation | P1 | BLOCKED | U-109, U-114 | — |
 | [U-116](docs/backlog/U-116.md) | Build the prisoner outpost and reserve annex | Map implementation | P1 | BLOCKED | U-114, U-115 | — |
 | [U-117](docs/backlog/U-117.md) | Integrate redesigned Mission 1 combat, supplies and objectives | Map implementation | P1 | BLOCKED | U-111, U-112, U-113, U-116 | — |
