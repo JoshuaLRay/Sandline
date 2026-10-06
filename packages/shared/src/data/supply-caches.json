@@ -1,0 +1,5 @@
+{
+  "$comment": "U-112/U-132: authoritative cache use defaults; stock and placements belong to mission scripts, not weapon pickups.",
+  "useSeconds": 1,
+  "reachM": 2
+}

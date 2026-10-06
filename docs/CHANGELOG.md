@@ -412,3 +412,5 @@ Format: `T-<id> — <what changed>`
 - U-131 — Pre-place dormant reserve soldiers/tanks before input, release existing survivors with persistent one-way orders/vehicle paths, and preserve damage, caps, dead identities and one-shot state through retry/reload/reconnect ([#306](https://github.com/JoshuaLRay/Sandline/pull/306)).
 
 - Workflow — Add the repository `next-task-context-transfer-text-box` skill for concise new-chat prompts based on verified merges and the current eligible backlog leaf; route natural-language handoff requests to it.
+
+- U-132 — Split U-112 into linked leaves; add strict static supply-cache declarations and pure capacity-safe projectile/kit/held-primary transfers with exact integer magazine stock. Authoritative lifecycle and client presentation remain U-133/U-134.
