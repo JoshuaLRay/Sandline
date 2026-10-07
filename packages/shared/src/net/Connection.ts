@@ -358,6 +358,8 @@ export interface ClientConnectionEvents {
   onOrderFailed?: (failed: Extract<Message, { kind: 'OrderFailed' }>) => void;
   /** U-090: the mission is over and the host may choose the next run. */
   onRunOffer?: (offer: Extract<Message, { kind: 'RunOffer' }>) => void;
+  /** U-143: restore waits for a safe host decision (null choice clears it). */
+  onRestoreGate?: (gate: Extract<Message, { kind: 'RestoreGate' }>) => void;
   /** U-090: the host chose; this room is moving to another mission. */
   onHandoff?: (handoff: Extract<Message, { kind: 'Handoff' }>) => void;
   /** U-026: the host moved this client into another soldier. */
@@ -449,6 +451,9 @@ export class ClientConnection {
         break;
       case 'RunOffer':
         this.events.onRunOffer?.(msg);
+        break;
+      case 'RestoreGate':
+        this.events.onRestoreGate?.(msg);
         break;
       case 'Handoff':
         this.events.onHandoff?.(msg);
