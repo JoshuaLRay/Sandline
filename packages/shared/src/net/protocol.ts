@@ -19,9 +19,11 @@ import { PROGRESSION, type SoldierProgress } from '../sim/progression.ts';
 import type { MissionStats } from '../sim/scoreboard.ts';
 import { WEAPON_IDS, WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 import { PROJECTILE_IDS, PROJECTILE_INDEX_BITS } from '../sim/ballistics.ts';
+import type { SupplyCacheDef, SupplyItem, SupplyUseProgress } from '../sim/supplyCaches.ts';
+import { readSupplies, readSupplyProgress, readSupplySelect, writeSupplies, writeSupplyProgress, writeSupplySelect } from './supplyWire.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 65;
+export const PROTOCOL_VERSION = 66;
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -166,8 +168,8 @@ const EXT = { AiDebugRequest: 0, AiDebug: 1, Order: 2, Mark: 3, Orders: 4, Marks
 const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3, Progression: 4, Stats: 5, AssignCommander: 6, Possess: 7 } as const;
 const ROOM_COMMANDS = ['ready', 'start', 'class', 'choose'] as const;
 /** T-4.15: state plus transient message/callout notifications. */
-/** Three bits since U-090 (two held four variants; the run offer and the handoff make six). */
-const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2, OrderFailed: 3, RunOffer: 4, Handoff: 5, Spread: 6, Spreads: 7, Aggression: 8, Aggressions: 9 } as const;
+/** Four bits for the event family; append variants without renumbering existing messages. */
+const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2, OrderFailed: 3, RunOffer: 4, Handoff: 5, Spread: 6, Spreads: 7, Aggression: 8, Aggressions: 9, SupplySelect: 10, Supplies: 11, SupplyProgress: 12 } as const;
 const EXT_BITS = 3;
 const ORDER_KIND_BITS = 3;
 const ADDRESS_TO = ['slot', 'fireteam', 'all'] as const;
@@ -240,6 +242,12 @@ export interface InputFrame {
 export const MAX_PRIOR_INPUTS = 3;
 
 export type Message =
+  /** U-133: a seated client chooses one type; null cancels. Request IDs increase per connection. */
+  | { kind: 'SupplySelect'; requestId: number; cacheId: string; item: SupplyItem | null }
+  /** Full on join/restore, otherwise only changed caches. Empty caches remain in the list. */
+  | { kind: 'Supplies'; full: boolean; caches: readonly SupplyCacheDef[] }
+  /** All accepted choices, including zero-progress selections; empty clears every use. */
+  | { kind: 'SupplyProgress'; uses: readonly SupplyUseProgress[] }
   /**
    * `room` is the code to join, or empty to have the host create a room and
    * say which in the JoinAck. One message for both because the difference is
@@ -915,6 +923,16 @@ export function encodeMessage(msg: Message): Uint8Array {
       }
       break;
     }
+    case 'SupplySelect':
+    case 'Supplies':
+    case 'SupplyProgress':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Events, EXT_BITS);
+      w.writeBits(EVENT_VARIANT[msg.kind], 4);
+      if (msg.kind === 'SupplySelect') writeSupplySelect(w, msg);
+      else if (msg.kind === 'Supplies') writeSupplies(w, msg);
+      else writeSupplyProgress(w, msg);
+      break;
     case 'ScriptState': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Events, EXT_BITS);
@@ -1421,6 +1439,9 @@ export function decodeMessage(bytes: Uint8Array): Message {
           }
           case EXT.Events: {
             const variant = r.readBits(4);
+            if (variant === EVENT_VARIANT.SupplySelect) return readSupplySelect(r);
+            if (variant === EVENT_VARIANT.Supplies) return readSupplies(r);
+            if (variant === EVENT_VARIANT.SupplyProgress) return readSupplyProgress(r);
             if (variant === EVENT_VARIANT.RunOffer) {
               const mission = r.readString();
               const code = r.readBits(2);

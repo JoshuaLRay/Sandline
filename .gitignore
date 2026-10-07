@@ -7,3 +7,5 @@ __screenshots__/
 sandline.sqlite
 sandline.sqlite-*
 perf-frame.json
+artifacts/qalat-insertion/level.json
+artifacts/qalat-insertion/surface.json
