@@ -1320,6 +1320,9 @@ const qaMissionWanted = new URLSearchParams(location.search).has('mission');
 const qaWorld: World =
   getWorld(new URLSearchParams(location.search).get('world') ?? '') ??
   requireWorld(qaMissionWanted ? 'mission-01' : new URLSearchParams(location.search).has('kit') ? 'kit-gallery' : DEFAULT_WORLD_ID);
+// The practice level is already known: overlap its pack with initial assets/nav.
+// prepareLevelAssets still owns blocking progress/readiness and retries a failed preload.
+if (qaMissionWanted) void packLoader.loadLevel(qaWorld.id).catch(() => undefined);
 const qaEncounter = qaMissionWanted ? encounterFor(qaWorld.id) : undefined;
 /**
  * `?squad` (T-3.29): the in-page bots run the committed `friendly` tree, with

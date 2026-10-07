@@ -366,6 +366,61 @@ Reproduce timing, actual stair traversal, combat preemption, bounds and saves:
 corepack pnpm exec vitest run packages/shared/src/sim/navigationRegion.test.ts packages/server/src/ai/actions/authoredPatrol.test.ts packages/tools/src/nav/boundedPatrol.test.ts packages/server/src/ai/group.test.ts
 ```
 
+## Finite supply contract (U-132)
+
+Mission scripts accept an optional top-level `supplyCaches` list (up to 64).
+Declarations are static, separate from event actions and `pickup` weapon IDs:
+
+```json
+"supplyCaches": [{
+  "id": "P-SOUTH",
+  "feet": { "x": 50, "y": 8, "z": 58 },
+  "stock": {
+    "projectiles": { "rocket": 6 },
+    "healthKits": 2,
+    "primaryMagazines": 6
+  }
+}]
+```
+
+IDs are unique, case-sensitive, 1–64 ASCII letters/digits/`_`/`-`, beginning
+with a letter or digit. Feet require all three finite coordinates within the
+shared position range. Unknown fields, missing cache fields, non-carried
+`smokecloud` stock and unknown projectile IDs fail validation. Stock fields are
+optional (default zero); each authored amount is a whole number from 0–65,535.
+This leaf validates content, not physical support or accessibility. Existing
+scripts omitting `supplyCaches` retain their exact shape and behavior.
+
+`transferSupply(stock, inventory, classCapacity, choice)` computes a pure preview
+or completion result for one projectile type, one health-kit charge, or held
+primary ammunition. Projectile transfers fill free class capacity only; slot-5
+equipment must already match, while frag uses slot 4. A cache does not equip
+gear or increase carried capacity. Health charges replenish one kit rather
+than healing. Ammo fills missing whole rounds in the actual held primary
+(including a held second primary), without refilling stowed guns or sidearms.
+Rejected empty/full/incompatible attempts return the unchanged inputs.
+
+Durable/replicated `SupplyStock` uses `primaryAmmoUnits`, where **2,400 integer
+units = one magazine equivalent**. Each round costs `2400 / magSize`; all
+shipped primary sizes divide this denomination. Import validation rejects
+future magazine sizes that cannot be represented exactly. Sub-round remnants
+stay in the cache, available to a compatible larger magazine; no rounding
+creates stock. `parseSupplyStock` validates JSON in this stable denomination.
+Changing the denomination requires a save/protocol migration, not retuning.
+
+The timed-use defaults live in `data/supply-caches.json` (1 s, 2 m). U-133 must
+recompute at completion using the latest host stock and recipient inventory,
+then commit in serialized order. Preview results are never reservations. This
+leaf adds no Session interaction, replication or checkpoint integration; those
+are U-133, and client choice/progress/empty scenery presentation is U-134. The
+five actual production placements and their exhaustive counts remain U-117.
+
+Reproduce content/transfer rules and legacy script compatibility:
+
+```sh
+corepack pnpm exec vitest run packages/shared/src/sim/supplyCaches.test.ts packages/shared/src/sim/areas.test.ts packages/shared/src/sim/campaignRegistry.test.ts
+```
+
 ## Staged reserves (U-131)
 
 Set `staged: true` on a one-wave fixed-socket encounter group. Its members are
@@ -430,3 +485,41 @@ corepack pnpm exec vitest run packages/shared/src/sim/stagedEncounter.test.ts pa
 This engine fixture does not author the replacement production map. Reserve
 screening/positions, final mission script integration and owner map/play quality
 review remain in U-114–U-117/U-119; no production bake inputs changed.
+
+## Checkpoint revisions and original run starts (U-135)
+
+World and level files accept optional `mapRevision`, a positive safe integer.
+Omitting it means content revision **1**, independently of level `format` or
+checkpoint-world `version`. Increment it when geometry, mission objectives,
+encounters or event scripts change in a way that invalidates saved state.
+The replacement Qalat level must author `"mapRevision": 2` when its new content
+lands; the current production level remains revision 1.
+
+New campaign checkpoints save that revision and `missionStart`, containing
+six slot-ordered original loadouts and the original `captured` list of
+`{ slot, at: { x, y, z } }` records. The full checkpoint world still holds
+spent inventory, current 3D positions and placed devices; event data still holds
+fired flags and armed timers. Lobby baseline capture happens at ready-up after
+loadout setup. Retry restores checkpoint inventory, while full restart after
+JSON/SQLite reload restores the original inventory and prisoners. Replay starts
+are kept separately from the campaign's carry-over loadouts and prisoner pool.
+
+These additive fields retain campaign/database format 1. A saved checkpoint
+without `mapRevision` has **unknown** provenance; resaving its existing state
+does not stamp it with the current revision. Another mission/run's checkpoint
+is carried unchanged. Malformed revisions/start snapshots fail durable save
+validation without replacing the last acknowledged state; legacy saves lacking
+these fields remain parseable and retain their existing fallback.
+
+[U-136](backlog/U-136.md) owns incompatible-restore quarantine and the required
+host restart/select message. U-135 supplies data and original-start restoration;
+it does not yet refuse loading an incompatible checkpoint. The complete
+[U-113](backlog/U-113.md) acceptance remains open. Cache stock is U-133, whose
+split exists in unmerged [#307](https://github.com/JoshuaLRay/Sandline/pull/307).
+
+Reproduce shared content validation, real SQLite reopen and Session save/start
+lifecycle regressions:
+
+```sh
+pnpm exec vitest run packages/shared/src/sim/mapRevision.test.ts packages/server/src/persistence/checkpointRevision.test.ts packages/server/src/session/checkpointRevision.test.ts packages/server/src/session/checkpointWorld.test.ts packages/server/src/session/loadoutCarry.test.ts packages/server/src/session/runChoice.test.ts packages/server/src/session/elevatedStarts.test.ts packages/server/src/persistence/CampaignDatabase.test.ts
+```

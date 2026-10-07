@@ -218,9 +218,11 @@ import {
   type CheckpointWorld,
   type EnemyCheckpoint,
   type GroundCheckpoint,
+  type MissionStartCheckpoint,
   type PlacedCheckpoint,
   type SlotCheckpoint,
   parseCheckpointWorld,
+  parseMissionStart,
 } from './checkpointWorld.ts';
 import { Director } from '../ai/director/director.ts';
 import { MissionRun } from './mission.ts';
@@ -1014,6 +1016,8 @@ export class Session {
   private missionStartTick = 0;
   /** T-4.16: state restored when a failed mission retries its latest completed objective. */
   private missionCheckpointState: {
+    /** Preserve restored provenance; never stamp old coordinates with current content. */
+    mapRevision?: number;
     spawns: { x: number; y: number; z: number }[];
     completedGroups: string[];
     event: EventCheckpoint | null;
@@ -1086,6 +1090,7 @@ export class Session {
   private carriedCheckpoint: CampaignState['checkpoint'] = null;
   /** U-077: each soldier's loadout at the start of this run (null: the class's), and what they carried when the mission was won. */
   private startLoadout: (SlotCheckpoint | null)[] = [];
+  private missionStartState: MissionStartCheckpoint | null = null;
   private completionLoadout: SlotCheckpoint[] | null = null;
   private readonly campaignSoldiers: CampaignState['soldiers'];
   private readonly xp: SoldierXp;
@@ -1334,16 +1339,24 @@ export class Session {
     // U-078: a checkpoint is for the kind of run it was made in; another kind's, or another mission's, is carried through untouched.
     const honoured = saved && saved.mission === this.missionId && (saved.run ?? 'campaign') === this.runKind;
     this.carriedCheckpoint = saved && !honoured ? saved : null;
+    const baseline = honoured ? parseMissionStart(saved.missionStart) : null;
+    if (baseline) {
+      this.missionStartState = baseline;
+      this.capturedAtStart = structuredClone(baseline.captured);
+    } else if (this.roomStarted) {
+      this.captureMissionStart();
+    }
     if (saved && honoured && this.missionRun) {
       this.missionRun.restoreCheckpoint(saved.objective, saved.elapsedTicks, saved.done ?? []);
       // U-060: the world the checkpoint saved, if the file has one a session could have written; else the basic checkpoint.
       const world = saved.world == null ? null : parseCheckpointWorld(saved.world);
       if (saved.world != null && world === null) console.warn(`[campaign] the saved checkpoint world for '${saved.mission}' was refused; resuming from the basic checkpoint`);
       this.missionCheckpointState = {
+        ...(saved.mapRevision === undefined ? {} : { mapRevision: saved.mapRevision }),
         spawns: saved.spawns.map((point) => ({ ...point })),
         completedGroups: [...saved.completedGroups],
         event: saved.event as EventCheckpoint | null,
-        captured: this.capturedAtStart.map((c) => ({ slot: c.slot, at: { ...c.at } })),
+        captured: this.capturedList(),
         ...(world
           ? {
               seconds: world.seconds,
@@ -1698,6 +1711,7 @@ export class Session {
       // U-001: a group beaten down to stragglers is as good as dead to a retry: it is not sent again.
       spawner && this.encounter ? this.encounter.groups.filter((g) => spawner.broken(g.id)).map((g) => g.id) : [];
     this.missionCheckpointState = {
+      mapRevision: this.world.mapRevision ?? 1,
       spawns: this.slots.map((s) => ({ x: s.state.x, y: s.state.y, z: s.state.z })),
       completedGroups,
       event: this.eventRun?.checkpoint() ?? null,
@@ -1791,8 +1805,8 @@ export class Session {
    * or a restart returns to that, never to a half-spent state. A replay run starts from the class's, the mission's default.
    */
   private applyStartLoadout(slot: Slot): void {
-    const snap = this.startLoadout[slot.index];
-    if (!snap || this.classLoadouts !== 'class' || this.runKind !== 'campaign') return;
+    const snap = this.missionStartState?.slots[slot.index] ?? this.startLoadout[slot.index];
+    if (!snap || (!this.missionStartState && (this.classLoadouts !== 'class' || this.runKind !== 'campaign'))) return;
     try {
       for (const [id] of snap.ammo) getWeapon(id);
       getWeapon(snap.weapon);
@@ -1800,6 +1814,14 @@ export class Session {
       return;
     }
     this.applySlotLoadout(slot, snap);
+  }
+
+  /** Capture at ready-up after loadout setup, before any checkpoint spends stock. */
+  private captureMissionStart(): void {
+    this.missionStartState = {
+      slots: this.slots.map((slot) => this.checkpointSlot(slot)),
+      captured: structuredClone(this.capturedAtStart),
+    };
   }
 
   /** U-052: a retry puts the world back as the checkpoint saw it: what each soldier carried, and what lay on the ground. */
@@ -1922,6 +1944,8 @@ export class Session {
     const checkpoint = saved && run && this.missionId
       ? {
           mission: this.missionId,
+          ...(saved.mapRevision === undefined ? {} : { mapRevision: saved.mapRevision }),
+          ...(this.missionStartState ? { missionStart: structuredClone(this.missionStartState) } : {}),
           ...(this.runKind === 'replay' ? { run: 'replay' as const } : {}),
           objective: run.checkpoint,
           elapsedTicks: run.checkpointElapsed,
@@ -4239,6 +4263,7 @@ export class Session {
   private startRoom(): void {
     if (this.roomStarted) return;
     this.roomStarted = true;
+    if (!this.missionStartState) this.captureMissionStart();
     for (const slot of this.slots) {
       slot.queue.length = 0;
       slot.input = idleInput(slot.yaw);
