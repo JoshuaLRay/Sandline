@@ -148,6 +148,7 @@ import { FULL_RESTART_KEY, RESTART_KEY, afterActionXp, missionJustEnded, mission
 import { type ClassDef, ESCORT_SPECTATE_SLOT, TICK_SECONDS as MISSION_TICK_SECONDS, type Vitality, afterActionSummary, classById, scoreboardRows } from '@sandline/shared';
 import { createScoreboard } from './ui/scoreboard.ts';
 import { missionMenuModel, runChoiceModel } from './ui/runChoice.ts';
+import { createRestoreChoice, restoreChoiceModel } from './ui/restoreChoice.ts';
 import { createMenu } from './ui/menu/Menu.ts';
 import { type AudioContextLike, AudioEngine } from './audio/engine.ts';
 import { createSoundBoard } from './ui/SoundBoard.ts';
@@ -424,6 +425,7 @@ for (const spec of RANGE_TARGETS) {
 const config: MoveConfig = { ...DEFAULT_MOVE_CONFIG };
 const input = new LocalInput(renderer.domElement, {
   canResumePointerLock: () => live !== null && !mobileMode && menu.mode === 'hidden'
+    && live.net.restoreChoice === null
     && (live.net.mission?.state ?? 'progress') === 'progress',
 });
 
@@ -1745,6 +1747,7 @@ const roomLobby = createRoomLobby({
   link: currentShareLink,
 });
 document.body.appendChild(roomLobby.root);
+const restoreChoice = createRestoreChoice(document.body);
 
 const lobby = createLobby({
   defaultHost: __DEFAULT_HOST__,
@@ -2216,8 +2219,14 @@ function frame(): void {
   last = now;
 
   const net = live?.net ?? null;
+  const restoreModel = net ? restoreChoiceModel(net.restoreChoice, net.runOffer, net.slot,
+    net.restoreChoice ? net.roster[net.restoreChoice.host]?.name ?? '' : '') : null;
+  restoreChoice.set(restoreModel, () => live?.net.restartMission(true),
+    (run, mission) => live?.net.chooseRun(run, mission),
+    () => leaveSession({ text: 'left the room', tone: 'info' }));
+  if (restoreModel && document.pointerLockElement) document.exitPointerLock();
   if (mobileMode) {
-    mobileCommand.root.hidden = !net || menu.mode !== 'hidden';
+    mobileCommand.root.hidden = !net || menu.mode !== 'hidden' || restoreModel !== null;
     if (mobileCommand.root.hidden) mobileCommand.cancelPlacement();
     if (net && net.slot >= 0) {
       const rows = commandRows(net.roster, net.slot).map(row => row.slot === net.slot
@@ -2240,6 +2249,14 @@ function frame(): void {
   for (let i = 0; i < steps; i++) {
     const tickInput = input.sample();
     if (!net || !server) continue;
+    if (net.restoreChoice) {
+      input.consumeTriggerEdge();
+      input.consumeTriggerRelease();
+      input.consumeOrderRelease();
+      input.consumeMarkPress();
+      server.step(now);
+      continue;
+    }
     if (mobileMode) {
       input.consumeTriggerEdge();
       input.consumeTriggerRelease();
@@ -3234,7 +3251,8 @@ function frame(): void {
   if (live && now - squadAt >= 250) {
     squadAt = now;
     squadPanel.update(live.net.roster, live.net.slot, live.net.room, squadStatus(), live.net.spreads, live.net.aggressions);
-    roomLobby.update(live.net.roster, live.net.slot, live.net.room, live.net.roomState);
+    if (live.net.restoreChoice) roomLobby.hide();
+    else roomLobby.update(live.net.roster, live.net.slot, live.net.room, live.net.roomState);
   }
 
   // T-4.07: choose each static placement's LOD from this frame's camera before drawing.
@@ -3315,7 +3333,7 @@ addEventListener('keydown', (e) => {
   // downed state and a mounted gun all take priority over weapon selection.
   const keyContext = {
     orderWheelOpen: input.orderWheel !== null,
-    menuOpen: !live || menu.mode !== 'hidden',
+    menuOpen: !live || menu.mode !== 'hidden' || live.net.restoreChoice !== null,
     textFieldFocused: isTextField(e.target),
     alive: live?.net.vitality === 'alive',
     mounted: mountedGun !== null,

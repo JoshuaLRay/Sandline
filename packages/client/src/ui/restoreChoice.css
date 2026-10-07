@@ -1,0 +1,40 @@
+.restore-choice[hidden] { display: none; }
+.restore-choice {
+  box-sizing: border-box;
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: #000b;
+  color: #f1eee2;
+  font: 15px/1.5 system-ui, sans-serif;
+}
+.restore-choice-panel {
+  box-sizing: border-box;
+  width: min(100%, 34rem);
+  max-height: 90dvh;
+  overflow: auto;
+  padding: 1.25rem;
+  border: 1px solid #8b9178;
+  border-radius: .4rem;
+  background: #20251e;
+}
+.restore-choice h2 { margin-top: 0; font-size: 1.2rem; }
+.restore-choice button, .restore-choice summary {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  margin: .35rem 0;
+  padding: .65rem;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  background: #35412f;
+  border: 1px solid #8b9178;
+  border-radius: .25rem;
+}
+.restore-choice button:disabled { opacity: .5; cursor: default; }
+.restore-choice summary { list-style: none; }
+.restore-choice button:focus-visible, .restore-choice summary:focus-visible { outline: 2px solid #dfca8b; outline-offset: 2px; }

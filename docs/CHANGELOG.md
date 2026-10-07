@@ -423,6 +423,10 @@ Format: `T-<id> — <what changed>`
 
 - U-124 — Extend the kit-gallery floor, add a clear stair landing and regenerate its nav/cover so wire move orders reach the roof and the interior beneath it on their intended floors ([#313](https://github.com/JoshuaLRay/Sandline/pull/313)); owner gallery review pending.
 
+- U-143 — Split U-136 before claiming; quarantine unknown/mismatched restores before world initialization and offer safe host-controlled desktop/mobile restart/select with original or explicit legacy inventory, preserving saves/pools and leaving authored carried-prisoner placement blocked in U-144 ([#312](https://github.com/JoshuaLRay/Sandline/pull/312)).
+
 - U-133 — Add authoritative timed finite-cache transfers, dedicated stock/progress replication and paired squad/cache checkpoint restore; preserve exhausted caches, reconnect stock and full-restart inventory ([#311](https://github.com/JoshuaLRay/Sandline/pull/311)). Client presentation remains U-134.
 
 - U-133 — Record the owner-authorized green merge of #311 at `c0feef7` and unlock U-134; preserve construction, prisoner-placement and human quality gates while integrating #310 with fresh main.
+
+- U-143 — Combine the merged cache and incompatible-restore contracts as protocol 68; withhold cache choices during the gate and verify paired stock/inventory across restart, retry and JSON reload ([#312](https://github.com/JoshuaLRay/Sandline/pull/312)). Owner UI and carried-prisoner placement gates remain open.

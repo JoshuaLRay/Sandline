@@ -159,7 +159,11 @@ describe('original mission-start data stays separate from checkpoint state (U-13
     const restored = play(saved);
     Object.assign(restored.session.slots[0]!.health, { current: 0, diedAt: 0 });
     restored.step();
-    expect(restored.saves.at(-1)!.checkpoint!.mapRevision).toBe(mapRevision);
+    // U-143: provenance is now checked before restore; waiting cannot overwrite the refused save.
+    expect(restored.session.started).toBe(false);
+    expect(restored.saves).toHaveLength(0);
+    const snapshot = (restored.session as unknown as { campaignSnapshot(): CampaignState }).campaignSnapshot();
+    expect(snapshot.checkpoint).toEqual(saved.checkpoint);
   });
 
   it('carries another mission/run checkpoint unchanged and keeps legacy save fallback', () => {
@@ -175,6 +179,9 @@ describe('original mission-start data stays separate from checkpoint state (U-13
     delete saved.checkpoint!.mapRevision;
     const legacy = play(saved);
     legacy.session.restartMission();
+    // This fixture carries prisoners; U-144 must supply authored holding positions before restart is allowed.
+    expect(legacy.session.started).toBe(false);
+    expect(legacy.session.slots[4]!.prisoner).toBeNull();
     expect(legacy.session.slots[1]!.weaponState.ammo).toBe(7);
     expect(legacy.session.slots[1]!.kits).toBe(2);
   });

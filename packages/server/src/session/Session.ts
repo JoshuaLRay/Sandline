@@ -1104,6 +1104,9 @@ export class Session {
   /** U-077: each soldier's loadout at the start of this run (null: the class's), and what they carried when the mission was won. */
   private startLoadout: (SlotCheckpoint | null)[] = [];
   private missionStartState: MissionStartCheckpoint | null = null;
+  /** Refused data stays outside the simulation until the host makes a safe choice. */
+  private incompatibleCampaign: CampaignState | null = null;
+  private lastRestoreGateKey = '';
   private completionLoadout: SlotCheckpoint[] | null = null;
   private readonly campaignSoldiers: CampaignState['soldiers'];
   private readonly xp: SoldierXp;
@@ -1151,6 +1154,12 @@ export class Session {
       this.missionRun = new MissionRun(missionDef, (ref) => resolveArea(ref, encounter, this.world));
     } else {
       this.missionRun = null;
+    }
+    const saved = options.campaign?.checkpoint;
+    const honoured = saved && saved.mission === this.missionId && (saved.run ?? 'campaign') === this.runKind;
+    if (honoured && saved.mapRevision !== (this.world.mapRevision ?? 1)) {
+      this.incompatibleCampaign = structuredClone(options.campaign!);
+      this.roomStarted = false;
     }
     if (this.roomStarted) this.startEncounter();
     const script = options.events ?? this.committedScript(missionDef) ?? { world: this.world.id, blockers: [], events: [] };
@@ -1358,19 +1367,28 @@ export class Session {
       this.runKind === 'replay'
         ? this.replayPoolAtLoad.map((p) => ({ slot: p.slot, at: { ...p.at } }))
         : this.campaignSoldiers.flatMap((soldier, slot) => (soldier.captured === true && soldier.prisoner ? [{ slot, at: { ...soldier.prisoner } }] : []));
-    this.applyCaptured(this.capturedAtStart);
-    const saved = options.campaign?.checkpoint;
+    if (!this.incompatibleCampaign) this.applyCaptured(this.capturedAtStart);
+    else {
+      // Keep roster membership without giving a prisoner any saved or invented holding coordinates.
+      for (const held of this.capturedAtStart) {
+        const slot = this.slots[held.slot]!;
+        slot.captured = true;
+        slot.health.current = 0;
+        slot.health.diedAt = 0;
+      }
+    }
     // U-078: a checkpoint is for the kind of run it was made in; another kind's, or another mission's, is carried through untouched.
-    const honoured = saved && saved.mission === this.missionId && (saved.run ?? 'campaign') === this.runKind;
     this.carriedCheckpoint = saved && !honoured ? saved : null;
     const baseline = honoured ? parseMissionStart(saved.missionStart) : null;
     if (baseline) {
       this.missionStartState = baseline;
       this.capturedAtStart = structuredClone(baseline.captured);
+      // U-143: a newly acknowledged basic start has no spent world yet (notably before lobby ready-up).
+      if (!this.incompatibleCampaign && saved?.world == null) for (const slot of this.slots) this.applyStartLoadout(slot);
     } else if (this.roomStarted) {
       this.captureMissionStart();
     }
-    if (saved && honoured && this.missionRun) {
+    if (saved && honoured && this.missionRun && !this.incompatibleCampaign) {
       this.missionRun.restoreCheckpoint(saved.objective, saved.elapsedTicks, saved.done ?? []);
       // U-060: the world the checkpoint saved, if the file has one a session could have written; else the basic checkpoint.
       const world = saved.world == null ? null : parseCheckpointWorld(saved.world);
@@ -1733,6 +1751,7 @@ export class Session {
 
   /** Remember the squad, cleared encounter groups and script state at a completed objective. */
   private captureMissionCheckpoint(): void {
+    if (this.incompatibleCampaign) return;
     const spawner = this.spawnerValue;
     const completedGroups =
       // U-001: a group beaten down to stragglers is as good as dead to a retry: it is not sent again.
@@ -1971,17 +1990,19 @@ export class Session {
   /** The campaign file as this room would save it now, or null for a room with no campaign. */
   private campaignSnapshot(): CampaignState | null {
     if (!this.campaignSave) return null;
+    // Mission select must retain the refused checkpoint and both pools byte-for-byte as data.
+    if (this.incompatibleCampaign) return structuredClone(this.incompatibleCampaign);
     const saved = this.missionCheckpointState;
     const run = this.missionRun;
-    const checkpoint = saved && run && this.missionId
+    const checkpoint = saved && this.missionId
       ? {
           mission: this.missionId,
           ...(saved.mapRevision === undefined ? {} : { mapRevision: saved.mapRevision }),
           ...(this.missionStartState ? { missionStart: structuredClone(this.missionStartState) } : {}),
           ...(this.runKind === 'replay' ? { run: 'replay' as const } : {}),
-          objective: run.checkpoint,
-          elapsedTicks: run.checkpointElapsed,
-          done: [...run.checkpointDoneList],
+          objective: run?.checkpoint ?? 0,
+          elapsedTicks: run?.checkpointElapsed ?? 0,
+          done: [...(run?.checkpointDoneList ?? [])],
           spawns: saved.spawns.map((point) => ({ ...point })),
           completedGroups: [...saved.completedGroups],
           event: saved.event,
@@ -2027,7 +2048,7 @@ export class Session {
   /** U-090: what the host may choose now (U-078: also while the mission is on), or null in a room with no campaign to move through. */
   private runOffer(): Extract<Message, { kind: 'RunOffer' }> | null {
     const state = this.missionRun?.current.state;
-    if (this.handedOff || !this.campaignSave || !this.missionId || !this.roomStarted || state === undefined) return null;
+    if (this.handedOff || !this.campaignSave || !this.missionId || (!this.roomStarted && !this.incompatibleCampaign) || (state === undefined && !this.incompatibleCampaign)) return null;
     const options = runOptions(this.campaignCompletedMissions, this.campaignDef);
     // U-078: while the mission is on, the offer is the host's way out: the in-mission menu's "choose another mission".
     return { kind: 'RunOffer', mission: this.missionId, result: state === 'complete' ? 'complete' : state === 'failed' ? 'failed' : 'progress', host: Math.max(0, this.hostSlot()), campaign: options.campaign ?? '', replay: options.replay };
@@ -2041,6 +2062,41 @@ export class Session {
     this.lastOfferKey = key;
     if (!offer) return;
     for (const c of this.connections) if (c.state === 'active') c.send(offer);
+  }
+
+  private restoreGate(): Extract<Message, { kind: 'RestoreGate' }> {
+    return { kind: 'RestoreGate', choice: this.incompatibleCampaign && this.missionId ? {
+      mission: this.missionId,
+      host: Math.max(0, this.hostSlot()),
+      restart: this.capturedAtStart.length > 0 ? 'prisoner-placement' : this.missionStartState ? 'original' : 'legacy',
+    } : null };
+  }
+
+  private broadcastRestoreGate(): void {
+    const gate = this.restoreGate();
+    const key = gate.choice ? JSON.stringify(gate.choice) : '';
+    if (key === this.lastRestoreGateKey) return;
+    this.lastRestoreGateKey = key;
+    for (const c of this.connections) if (c.state === 'active') c.send(gate);
+  }
+
+  private restartIncompatibleMission(): void {
+    if (!this.incompatibleCampaign || this.capturedAtStart.length > 0) return;
+    this.incompatibleCampaign = null;
+    this.roomStarted = !this.roomLobbyEnabled;
+    this.restartMission();
+    if (!this.missionStartState) this.captureMissionStart();
+    // A lobby keeps ready-up. Save a current basic start now; fresh encounter initialization waits for ready-up.
+    if (!this.roomStarted) {
+      this.missionCheckpointState = {
+        mapRevision: this.world.mapRevision ?? 1,
+        spawns: this.slots.map((slot) => ({ x: slot.state.x, y: slot.state.y, z: slot.state.z })),
+        completedGroups: [], event: null, captured: [],
+      };
+      this.persistCampaign();
+    } else this.captureMissionCheckpoint();
+    this.broadcastRestoreGate();
+    this.broadcastRoomState();
   }
 
   /**
@@ -2057,6 +2113,7 @@ export class Session {
     const mission = msg.mission ?? '';
     if (!isOffered(run, mission, this.campaignCompletedMissions, this.campaignDef)) return;
     if (mission === this.missionId && run === this.runKind) {
+      if (this.incompatibleCampaign) { this.restartIncompatibleMission(); return; }
       // The mission just failed: the existing retry. While it is on, or after a win: this is where we are.
       if (offer.result === 'failed') this.retryMission();
       return;
@@ -2143,7 +2200,12 @@ export class Session {
   /** A seated human asked to start again: failed missions retry their checkpoint; completed missions start over. */
   private requestRestart(conn: ServerConnection, full = false): void {
     const human = this.humanFor(conn);
-    if (!human || !this.missionRun) return;
+    if (!human) return;
+    if (this.incompatibleCampaign) {
+      if (full && human.index === this.hostSlot()) this.restartIncompatibleMission();
+      return;
+    }
+    if (!this.missionRun) return;
     if (this.missionRun.current.state === 'progress') {
       // U-078: mid-mission, the room's host may go back to the last checkpoint or to the start.
       if (!this.campaignSave || human.index !== this.hostSlot()) return;
@@ -2204,7 +2266,7 @@ export class Session {
     this.sensorMarks.clear();
     this.broadcastOrders();
     this.broadcastMarks();
-    this.startEncounter(completedGroups);
+    if (this.roomStarted) this.startEncounter(completedGroups);
   }
 
   /**
@@ -2322,6 +2384,7 @@ export class Session {
 
   /** Retry a failed mission from the latest completed-objective checkpoint. */
   retryMission(midMission = false): void {
+    if (this.incompatibleCampaign) return;
     const run = this.missionRun;
     if (!run || (run.current.state !== 'failed' && !midMission)) return;
     const saved = this.missionCheckpointState;
@@ -2351,6 +2414,7 @@ export class Session {
    * them, every slot alive on its original spawn point, and objective zero.
    */
   restartMission(): void {
+    if (this.incompatibleCampaign) return;
     this.xp.restart();
     this.broadcastProgression();
     for (const row of this.slotStats) Object.assign(row, createSlotStats(row.slot));
@@ -3483,7 +3547,7 @@ export class Session {
       onSpread: (c, msg) => this.applySpread(c, msg),
       onOrder: (c, msg) => { if (this.roomStarted) this.applyOrder(c, msg); },
       onMark: (c, msg) => { if (this.roomStarted) this.applyMark(c, msg); },
-      onMissionRestart: (c, full) => { if (this.roomStarted) this.requestRestart(c, full); },
+      onMissionRestart: (c, full) => { if (this.roomStarted || this.incompatibleCampaign) this.requestRestart(c, full); },
       onRoomCommand: (c, msg) => this.applyRoomCommand(c, msg),
       onAssignCommander: (c, msg) => this.applyAssignCommander(c, msg),
       onSwitchCharacter: (c, msg) => this.applySwitchCharacter(c, msg),
@@ -3557,6 +3621,8 @@ export class Session {
     this.reconcileCommanders();
     this.broadcastRoster();
     this.broadcastRoomState();
+    this.broadcastRestoreGate();
+    if (this.incompatibleCampaign) this.broadcastRunOffer();
     // T-3.27: a human is nobody's to order, so whatever this slot's bot was told
     // lapses; and the newcomer is shown the squad's orders and marks as they stand.
     if (this.orders[slot.index]) {
@@ -3571,6 +3637,7 @@ export class Session {
     // U-090: someone who joins after the mission has ended is shown what the host may choose.
     const offer = this.runOffer();
     if (offer) conn.send(offer);
+    conn.send(this.restoreGate());
     conn.send({ kind: 'ScriptState', blockers: this.scriptBlockers() });
     if (this.supplyDefs.length) {
       conn.send({ kind: 'Supplies', full: true, caches: this.supplyCaches });
@@ -4345,6 +4412,7 @@ export class Session {
     }
     // U-090: if the mission is over, whoever hosts now is told what they may choose.
     this.broadcastRunOffer();
+    this.broadcastRestoreGate();
     slot.input = idleInput(slot.yaw);
     slot.interactHeld = false;
     // A bot has a gun in hand, not whatever the departed player was holding.
@@ -4420,7 +4488,7 @@ export class Session {
   }
 
   private startRoom(): void {
-    if (this.roomStarted) return;
+    if (this.roomStarted || this.incompatibleCampaign) return;
     this.roomStarted = true;
     if (!this.missionStartState) this.captureMissionStart();
     for (const slot of this.slots) {
@@ -4447,6 +4515,7 @@ export class Session {
       this.applyRunChoice(conn, msg);
       return;
     }
+    if (this.incompatibleCampaign) return;
     if (!this.roomLobbyEnabled || this.roomStarted) return;
     const slot = this.slots.find((candidate) => candidate.connection === conn && !candidate.isBot);
     if (!slot) return;
@@ -5497,7 +5566,7 @@ export class Session {
     // U-025: while paused the session's clock stands still — the wall time
     // it spends paused is taken off every later step, so ticks, timers, the
     // mission clock and the rewind history all resume where they stopped.
-    if (this.lastWallMs !== null && this.paused) this.pausedMs += Math.max(0, wallNow - this.lastWallMs);
+    if (this.lastWallMs !== null && (this.paused || this.incompatibleCampaign)) this.pausedMs += Math.max(0, wallNow - this.lastWallMs);
     this.lastWallMs = wallNow;
     const now = wallNow - this.pausedMs;
     this.nowMs = now;
@@ -5513,6 +5582,11 @@ export class Session {
 
     // U-025: nobody seated to command the bots: nothing moves until someone is.
     if (this.paused) return;
+
+    if (this.incompatibleCampaign) {
+      this.broadcast(this.buildSnapshot());
+      return;
+    }
 
     // T-4.19: while waiting, advance time/ticks and send static snapshots, but run no gameplay.
     // Keeping the tick moving preserves the tick*TICK_MS = room-clock invariant used by rewind.
