@@ -22,8 +22,12 @@ export type SupplyItem =
  */
 export const SUPPLY_AMMO_UNITS_PER_MAGAZINE = 2400;
 const MAX_STOCK = 65535;
-const MAX_CACHES = 64;
+export const MAX_SUPPLY_CACHES = 64;
 const CACHE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+
+export function isSupplyCacheId(id: unknown): id is string {
+  return typeof id === 'string' && CACHE_ID.test(id);
+}
 
 export interface SupplyStock {
   readonly projectiles: Readonly<Partial<Record<SupplyProjectileId, number>>>;
@@ -31,10 +35,43 @@ export interface SupplyStock {
   readonly primaryAmmoUnits: number;
 }
 
-export interface SupplyCacheDef {
+/** Durable stock is keyed by authored identity, never by a weapon pickup ID. */
+export interface SupplyCacheStock {
   readonly id: string;
-  readonly feet: Readonly<{ x: number; y: number; z: number }>;
   readonly stock: SupplyStock;
+}
+
+export interface SupplyCacheDef extends SupplyCacheStock {
+  readonly feet: Readonly<{ x: number; y: number; z: number }>;
+}
+
+/** A server-accepted choice; percent is zero until held use starts. */
+export interface SupplyUseProgress {
+  readonly slot: number;
+  readonly cacheId: string;
+  readonly item: SupplyItem;
+  readonly percent: number;
+}
+
+export function parseSupplyItem(raw: unknown): SupplyItem {
+  const o = obj('supply item', raw, ['kind'], ['projectile']);
+  if (o['kind'] === 'projectile' && PROJECTILE_IDS.some((id) => id !== 'smokecloud' && id === o['projectile'])) {
+    return { kind: 'projectile', projectile: o['projectile'] as SupplyProjectileId };
+  }
+  if ((o['kind'] === 'health-kit' || o['kind'] === 'primary-ammo') && o['projectile'] === undefined) return { kind: o['kind'] };
+  throw new SupplyDataError('supply item: invalid choice');
+}
+
+export function parseSupplyCacheStocks(raw: unknown): SupplyCacheStock[] {
+  if (!Array.isArray(raw) || raw.length > MAX_SUPPLY_CACHES) throw new SupplyDataError('supply cache stock: invalid list');
+  const seen = new Set<string>();
+  return raw.map((row) => {
+    const o = obj('supply cache stock', row, ['id', 'stock']);
+    const id = o['id'];
+    if (!isSupplyCacheId(id) || seen.has(id)) throw new SupplyDataError('supply cache stock: invalid or duplicate id');
+    seen.add(id);
+    return { id, stock: parseSupplyStock(o['stock']) };
+  });
 }
 
 /** A view of existing inventory. Transfers never change its weapon/equipment identities. */
@@ -99,13 +136,13 @@ export function parseSupplyStock(raw: unknown, where = 'supply stock'): SupplySt
  * Physical support/accessibility are checked by the Session consumer (U-133).
  */
 export function parseSupplyCaches(raw: unknown, where = 'supplyCaches'): readonly SupplyCacheDef[] {
-  if (!Array.isArray(raw) || raw.length > MAX_CACHES) throw new SupplyDataError(`${where}: expected a list of at most ${MAX_CACHES} caches`);
+  if (!Array.isArray(raw) || raw.length > MAX_SUPPLY_CACHES) throw new SupplyDataError(`${where}: expected a list of at most ${MAX_SUPPLY_CACHES} caches`);
   const seen = new Set<string>();
   return raw.map((row, i) => {
     const at = `${where}[${i}]`;
     const o = obj(at, row, ['id', 'feet', 'stock']);
     const id = o['id'];
-    if (typeof id !== 'string' || !CACHE_ID.test(id)) throw new SupplyDataError(`${at}.id: expected 1–64 ASCII letters/digits/_/- starting with a letter or digit`);
+    if (!isSupplyCacheId(id)) throw new SupplyDataError(`${at}.id: expected 1–64 ASCII letters/digits/_/- starting with a letter or digit`);
     if (seen.has(id)) throw new SupplyDataError(`${at}.id: duplicate cache '${id}'`);
     seen.add(id);
     const feet = obj(`${at}.feet`, o['feet'], ['x', 'y', 'z']);
