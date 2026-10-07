@@ -1,11 +1,22 @@
 {
   "id": "kit-gallery",
   "format": 1,
-  "$comment": "T-4.10: the kit gallery, `?kit` in the page and 'Kit gallery' in the lobby's Map. Every piece of data/kit.json in a grid (7 a row, 6 m apart, rows at z 8 to 32, north of the spawn line), three turned copies at x 24, and a house at z 44 built from the kit: door, windows and a plain wall round a 4 m square with pillars at the corners, the roof slab at y 3, parapets on three sides at y 3.25, and the stair up the open east side. A paved yard before the door and a road up the west side are ground tiles. No mission and no encounter: it is for walking round.",
+  "$comment": "T-4.10: the kit gallery, `?kit` in the page and 'Kit gallery' in the lobby's Map. Every piece of data/kit.json in a grid (7 a row, 6 m apart, rows at z 8 to 32, north of the spawn line), three turned copies at x 24, and a house at z 44 built from the kit: door, windows and a plain wall round a 4 m square with pillars at the corners, the roof slab at y 3, parapets on three sides at y 3.25, and the stair up the open east side. U-124: the floor extends to z +/-50 to include the house; the stair ends at z 45.1 with a solid landing to z 45.9, leaving standing-agent clearance to turn onto the roof below the north parapet. A paved yard before the door and a road up the west side are ground tiles. No mission and no encounter: it is for walking round.",
   "floor": {
-    "halfExtent": 40
+    "halfWidth": 40,
+    "halfDepth": 50
   },
-  "boxes": [],
+  "boxes": [
+    {
+      "id": "house-landing",
+      "x": 2.85,
+      "y": 0,
+      "z": 45.5,
+      "w": 1.1,
+      "h": 3.25,
+      "d": 0.8
+    }
+  ],
   "pieces": [
     {
       "id": "wall-plaster-4m",
@@ -295,7 +306,7 @@
       "id": "house-stairs",
       "piece": "stairs-3m",
       "x": 2.85,
-      "z": 44.05,
+      "z": 43.15,
       "rot": 0
     },
     {
