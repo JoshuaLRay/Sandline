@@ -419,4 +419,4 @@ Format: `T-<id> — <what changed>`
 
 - U-135 — Add validated map/checkpoint revision provenance and durable original run inventory/prisoners for reload/full restart ([#308](https://github.com/JoshuaLRay/Sandline/pull/308)); split U-113 so incompatible-restore quarantine and restart/select UI remain U-136.
 
-- U-124 — Extend the kit-gallery floor, add a clear stair landing and regenerate its nav/cover so wire move orders reach the roof and the interior beneath it on their intended floors.
+- U-124 — Extend the kit-gallery floor, add a clear stair landing and regenerate its nav/cover so wire move orders reach the roof and the interior beneath it on their intended floors ([#313](https://github.com/JoshuaLRay/Sandline/pull/313)); owner gallery review pending.
