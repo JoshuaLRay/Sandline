@@ -444,6 +444,7 @@ export class NetClient {
   onHandoff: ((handoff: Extract<Message, { kind: 'Handoff' }>) => void) | null = null;
   /** U-090: what the host may choose now, from the host's last `RunOffer`; null while the mission is on. */
   private runOfferValue: Extract<Message, { kind: 'RunOffer' }> | null = null;
+  private restoreChoiceValue: Extract<Message, { kind: 'RestoreGate' }>['choice'] = null;
   private aiDebugWanted = false;
 
   constructor(
@@ -522,6 +523,11 @@ export class NetClient {
     return this.runOfferValue;
   }
 
+  /** U-143: gameplay and prediction wait for the host's explicit safe decision. */
+  get restoreChoice(): Extract<Message, { kind: 'RestoreGate' }>['choice'] {
+    return this.restoreChoiceValue;
+  }
+
   /** U-090: the host's choice of the next run (the host checks it is the host's to make, and was offered). */
   chooseRun(run: RunKind, mission: string): void {
     if (!this.joinedFlag) return;
@@ -538,7 +544,7 @@ export class NetClient {
   get supplyProgress(): readonly SupplyUseProgress[] { return this.supplyProgressValue; }
 
   selectSupply(cacheId: string, item: SupplyItem | null): void {
-    if (!this.joinedFlag) return;
+    if (!this.joinedFlag || this.restoreChoiceValue) return;
     this.transport.send(encodeMessage({ kind: 'SupplySelect', requestId: ++this.supplyRequestId, cacheId, item }), 'reliable');
   }
 
@@ -788,6 +794,7 @@ export class NetClient {
     this.disconnectReasonValue = null;
     this.disconnectCodeValue = null;
     this.runOfferValue = null;
+    this.restoreChoiceValue = null;
     this.roomValue = '';
     this.worldValue = null;
     this.worldBoxesValue.length = 0;
@@ -840,7 +847,7 @@ export class NetClient {
    *  covered by the server's repeat-then-idle rule, and resending stale input
    *  would be worse than dropping it. */
   tick(tickNumber: number, input: MoveInput, pitch: number): void {
-    if (!this.joinedFlag || !this.predictor) return;
+    if (!this.joinedFlag || !this.predictor || this.restoreChoiceValue) return;
     // The server holds a downed or dead soldier still whatever buttons arrive;
     // predict the same, or every tick down is a correction and a dead player
     // appears to run around (T-2.13, B-05).
@@ -887,7 +894,7 @@ export class NetClient {
    * time this client was actually RENDERING — the interpolated past, not now.
    */
   fire(tick: number, yaw: number, pitch: number, weapon: number, ads: boolean): void {
-    if (!this.joinedFlag) return;
+    if (!this.joinedFlag || this.restoreChoiceValue) return;
     this.transport.send(
       encodeMessage({
         kind: 'Fire',
@@ -910,7 +917,7 @@ export class NetClient {
    * Throw message's note — so there is nothing to claim about when we were.
    */
   throwProjectile(tick: number, yaw: number, pitch: number, projectile: number): void {
-    if (!this.joinedFlag) return;
+    if (!this.joinedFlag || this.restoreChoiceValue) return;
     this.transport.send(encodeMessage({ kind: 'Throw', tick, yaw, pitch, projectile }), 'reliable');
   }
 
@@ -920,13 +927,13 @@ export class NetClient {
    * held, and a lost one would leave them watching the wrong weapon.
    */
   equip(item: number): void {
-    if (!this.joinedFlag) return;
+    if (!this.joinedFlag || this.restoreChoiceValue) return;
     this.transport.send(encodeMessage({ kind: 'Equip', item }), 'reliable');
   }
 
   /** U-028: a reload started on the page, for the host to run on its own clock. Reliable, like an Equip. */
   reload(): void {
-    if (!this.joinedFlag) return;
+    if (!this.joinedFlag || this.restoreChoiceValue) return;
     this.transport.send(encodeMessage({ kind: 'Reload' }), 'reliable');
   }
 
@@ -1396,6 +1403,11 @@ export class NetClient {
 
       case 'RunOffer':
         this.runOfferValue = msg;
+        break;
+
+      case 'RestoreGate':
+        this.restoreChoiceValue = msg.choice;
+        this.recentInputs.length = 0;
         break;
 
       case 'Handoff':

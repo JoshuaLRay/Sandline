@@ -23,7 +23,17 @@ import type { SupplyCacheDef, SupplyItem, SupplyUseProgress } from '../sim/suppl
 import { readSupplies, readSupplyProgress, readSupplySelect, writeSupplies, writeSupplyProgress, writeSupplySelect } from './supplyWire.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 66;
+export const PROTOCOL_VERSION = 68;
+
+/** U-143: every client presents the same incompatible-map decision. */
+export const RESTORE_MAP_CHANGED_MESSAGE = 'This mission map has changed. Restart the mission to continue.';
+export const RESTORE_RESTART_KINDS = ['original', 'legacy', 'prisoner-placement'] as const;
+export interface RestoreChoice {
+  mission: string;
+  host: number;
+  /** Original start inventory, explicit legacy fallback, or blocked pending U-144. */
+  restart: (typeof RESTORE_RESTART_KINDS)[number];
+}
 
 /** Input button bits carried on the unreliable input frame. */
 export const INPUT_BUTTONS = Object.freeze({
@@ -169,7 +179,7 @@ const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3, Pr
 const ROOM_COMMANDS = ['ready', 'start', 'class', 'choose'] as const;
 /** T-4.15: state plus transient message/callout notifications. */
 /** Four bits for the event family; append variants without renumbering existing messages. */
-const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2, OrderFailed: 3, RunOffer: 4, Handoff: 5, Spread: 6, Spreads: 7, Aggression: 8, Aggressions: 9, SupplySelect: 10, Supplies: 11, SupplyProgress: 12 } as const;
+const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2, OrderFailed: 3, RunOffer: 4, Handoff: 5, Spread: 6, Spreads: 7, Aggression: 8, Aggressions: 9, SupplySelect: 10, Supplies: 11, SupplyProgress: 12, RestoreGate: 13 } as const;
 const EXT_BITS = 3;
 const ORDER_KIND_BITS = 3;
 const ADDRESS_TO = ['slot', 'fireteam', 'all'] as const;
@@ -551,6 +561,8 @@ export type Message =
    * when the mission ends and to anyone who joins after. Titles, briefings and debriefs are the campaign data's.
    */
   | { kind: 'RunOffer'; mission: string; result: 'complete' | 'failed' | 'progress'; host: number; campaign: string; replay: readonly string[] }
+  /** U-143: null clears the gate after an explicit safe restart. */
+  | { kind: 'RestoreGate'; choice: RestoreChoice | null }
   /** U-090: the host chose; this room is moving to `mission` as a `run`. Rejoin the same code. Host to client. */
   | { kind: 'Handoff'; mission: string; run: RunKind };
 
@@ -987,6 +999,19 @@ export function encodeMessage(msg: Message): Uint8Array {
       for (const id of replay) w.writeString(id);
       break;
     }
+    case 'RestoreGate':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Events, EXT_BITS);
+      w.writeBits(EVENT_VARIANT.RestoreGate, 4);
+      w.writeBool(msg.choice !== null);
+      if (msg.choice) {
+        const { mission, host, restart } = msg.choice;
+        if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(mission) || !Number.isInteger(host) || host < 0 || host > MAX_SLOT_CODE || !RESTORE_RESTART_KINDS.includes(restart)) throw new ProtocolError('invalid restore choice');
+        w.writeString(mission);
+        w.writeBits(host, 3);
+        w.writeBits(RESTORE_RESTART_KINDS.indexOf(restart), 2);
+      }
+      break;
     case 'Handoff':
       w.writeBits(MessageType.Ext, TYPE_BITS);
       w.writeBits(EXT.Events, EXT_BITS);
@@ -1439,6 +1464,14 @@ export function decodeMessage(bytes: Uint8Array): Message {
           }
           case EXT.Events: {
             const variant = r.readBits(4);
+            if (variant === EVENT_VARIANT.RestoreGate) {
+              if (!r.readBool()) return { kind: 'RestoreGate', choice: null };
+              const mission = r.readString();
+              const host = r.readBits(3);
+              const restart = RESTORE_RESTART_KINDS[r.readBits(2)];
+              if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(mission) || host > MAX_SLOT_CODE || !restart) throw new ProtocolError('invalid restore choice');
+              return { kind: 'RestoreGate', choice: { mission, host, restart } };
+            }
             if (variant === EVENT_VARIANT.SupplySelect) return readSupplySelect(r);
             if (variant === EVENT_VARIANT.Supplies) return readSupplies(r);
             if (variant === EVENT_VARIANT.SupplyProgress) return readSupplyProgress(r);
