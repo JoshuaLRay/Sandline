@@ -394,7 +394,7 @@ Reproduce timing, actual stair traversal, combat preemption, bounds and saves:
 corepack pnpm exec vitest run packages/shared/src/sim/navigationRegion.test.ts packages/server/src/ai/actions/authoredPatrol.test.ts packages/tools/src/nav/boundedPatrol.test.ts packages/server/src/ai/group.test.ts
 ```
 
-## Finite supply contract (U-132)
+## Finite supply contract (U-132/U-133)
 
 Mission scripts accept an optional top-level `supplyCaches` list (up to 64).
 Declarations are static, separate from event actions and `pickup` weapon IDs:
@@ -416,8 +416,9 @@ with a letter or digit. Feet require all three finite coordinates within the
 shared position range. Unknown fields, missing cache fields, non-carried
 `smokecloud` stock and unknown projectile IDs fail validation. Stock fields are
 optional (default zero); each authored amount is a whole number from 0–65,535.
-This leaf validates content, not physical support or accessibility. Existing
-scripts omitting `supplyCaches` retain their exact shape and behavior.
+The parser validates content; Session also rejects unsupported/obstructed feet
+and a nav projection onto another floor, retaining the exact authored coordinates.
+Existing scripts omitting `supplyCaches` retain their shape and behavior.
 
 `transferSupply(stock, inventory, classCapacity, choice)` computes a pure preview
 or completion result for one projectile type, one health-kit charge, or held
@@ -436,17 +437,49 @@ stay in the cache, available to a compatible larger magazine; no rounding
 creates stock. `parseSupplyStock` validates JSON in this stable denomination.
 Changing the denomination requires a save/protocol migration, not retuning.
 
-The timed-use defaults live in `data/supply-caches.json` (1 s, 2 m). U-133 must
-recompute at completion using the latest host stock and recipient inventory,
-then commit in serialized order. Preview results are never reservations. This
-leaf adds no Session interaction, replication or checkpoint integration; those
-are U-133, and client choice/progress/empty scenery presentation is U-134. The
-five actual production placements and their exhaustive counts remain U-117.
+The timed-use defaults live in `data/supply-caches.json` (1 s, 2 m). Session
+requires a seated living soldier, an explicit compatible choice, held E, same
+floor, 3D feet distance ≤2 m and eye-to-cache LOS. Its existing input latch
+tolerates gaps up to five ticks; a real release or longer silence cancels use.
+Leaving reach/sight, becoming downed/dead, mounting, spectating, changing seats
+or losing capacity cancels without stock cost. Revive, mounting, charge/weapon
+pickup, upload and rescue retain their interaction priorities. One choice
+finishes once; further held E needs another explicit selection. The Support's
+existing interaction multiplier makes use take **0.8 s (24 ticks)** in class
+sessions; others take **1 s (30 ticks)**. Free QA sessions retain their existing
+capacities and 1× time scale.
+
+Completion recomputes against current host stock and inventory, then commits in
+stable slot order. Preview results are never reservations. Ammo must be in the
+held primary, with no projectile/kit in hand; a sidearm cannot consume the pool.
+
+Protocol 66 adds dedicated reliable messages, separate from pickup IDs:
+
+| Message | Direction | Contract |
+|---|---|---|
+| `SupplySelect` | Client → host | `requestId` increases per connection; `cacheId` and one `item`, or `null` to cancel. Replayed/older IDs are ignored. |
+| `Supplies` | Host → clients | `full` replaces all caches on join/restore; otherwise only changed caches merge by ID. Includes quantized feet and exact integer stock, even when empty. |
+| `SupplyProgress` | Host → clients | All accepted choices, by seated slot, with cache ID, item and whole percent. The clock updates at 10 Hz; choice/cancellation/completion changes are immediate. An empty list clears all holds. |
+
+`NetClient.selectSupply(cacheId, item)` sends a choice; its `supplyCaches` and
+`supplyProgress` getters expose host state without local inventory prediction.
+`resetForRejoin()` clears both; reconnect receives current stock and starts no
+hold. Client choice/progress/empty-scenery presentation remains U-134; the five
+actual production placements and their exhaustive counts remain U-117.
+
+Checkpoint-world format 1 gains optional `caches: [{ id, stock }]`. New worlds
+save all caches and six soldier inventories together, and retry/JSON host reload
+restore that pair. IDs must match the complete authored set and saved stock
+cannot exceed its original pool; this check precedes any soldier restore.
+Repeated restore/script execution does not add stock. Full restart rebuilds
+authored stock and the original mission-start squad inventory. Legacy worlds
+without `caches` remain readable. Map-revision restore quarantine/UI is U-136.
 
 Reproduce content/transfer rules and legacy script compatibility:
 
 ```sh
 corepack pnpm exec vitest run packages/shared/src/sim/supplyCaches.test.ts packages/shared/src/sim/areas.test.ts packages/shared/src/sim/campaignRegistry.test.ts
+corepack pnpm exec vitest run packages/server/src/session/supplyCaches.test.ts packages/shared/src/net/supplyWire.test.ts packages/client/src/net/supplyCaches.test.ts
 ```
 
 ## Staged reserves (U-131)

@@ -6,7 +6,7 @@
  * bounded lists, finite numbers, known shapes. Anything else is refused as a whole (null) and the room falls
  * back to the smaller checkpoint the file always had, rather than failing to load.
  */
-import { parseNavigationRegion, type ProjectileState } from '@sandline/shared';
+import { parseNavigationRegion, parseSupplyCacheStocks, SupplyDataError, type SupplyCacheStock, type ProjectileState } from '@sandline/shared';
 import type { EnemyPosture } from '../ai/actions/posture.ts';
 import type { SpawnerCheckpoint } from '../ai/director/spawner.ts';
 
@@ -94,6 +94,8 @@ export interface CheckpointWorld {
   enemies: EnemyCheckpoint[];
   spawner: SpawnerCheckpoint | null;
   placed: PlacedCheckpoint[];
+  /** U-133: stock and slots are one snapshot. Absent in legacy worlds. */
+  caches?: SupplyCacheStock[];
 }
 
 /** List bounds: generous against the session's own caps (64 enemies, 24 drops, 64 projectiles), tight against abuse. */
@@ -287,6 +289,7 @@ export function parseCheckpointWorld(raw: unknown): CheckpointWorld | null {
     const parsed: CheckpointWorld = {
       version: CHECKPOINT_WORLD_VERSION,
       seconds: num('seconds', o['seconds']),
+      ...(o['caches'] === undefined ? {} : { caches: parseSupplyCacheStocks(o['caches']) }),
       slots: list('slots', o['slots'], MAX_SLOTS).map((s, i) => slotCheckpoint(`slots[${i}]`, s)),
       ground: list('ground', o['ground'], MAX_GROUND).map((g, i) => {
         const w = `ground[${i}]`;
@@ -349,6 +352,7 @@ export function parseCheckpointWorld(raw: unknown): CheckpointWorld | null {
       }),
     };
     const names = new Set<string>();
+    if (parsed.caches !== undefined && parsed.slots.length !== MAX_SLOTS) return fail('paired cache slots');
     for (const id of [...parsed.enemies.map((e) => e.spawnId), ...(parsed.spawner?.queue.map((q) => q.socketId) ?? [])]) {
       if (id === undefined) continue;
       if (names.has(id)) return fail('duplicate member identity');
@@ -356,7 +360,7 @@ export function parseCheckpointWorld(raw: unknown): CheckpointWorld | null {
     }
     return parsed;
   } catch (error) {
-    if (error instanceof Refused) return null;
+    if (error instanceof Refused || error instanceof SupplyDataError) return null;
     throw error;
   }
 }

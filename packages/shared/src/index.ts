@@ -28,6 +28,7 @@ export * from './sim/enemies.ts';
 export * from './sim/vehicle.ts';
 export * from './sim/emplacement.ts';
 export * from './sim/pickups.ts';
+export * from './sim/supplyCaches.ts';
 export * from './sim/regions.ts';
 export * from './audio/sounds.ts';
 export * from './audio/mix.ts';
