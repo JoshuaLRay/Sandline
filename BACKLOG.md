@@ -55,7 +55,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-135](docs/backlog/U-135.md) | Version checkpoint data and preserve original mission-start state | Map implementation | P1 | DONE | Owner-authorized merge 2026-10-07; effective on green merge; final-head CI in PR | [#308](https://github.com/JoshuaLRay/Sandline/pull/308) |
 | [U-136](docs/backlog/U-136.md) | Refuse incompatible restores and offer restart or mission select | Map implementation | P1 | READY | U-135 (DONE) | — |
 | [U-114](docs/backlog/U-114.md) | Build the hidden insertion, road, ridge and tank ingress | Map implementation | P1 | BLOCKED | Aggregate: U-138–U-141; retain full surface acceptance before closure | — |
-| [U-138](docs/backlog/U-138.md) | Construct and prove the hidden S0–D0 insertion | Map implementation | P1 | IN_PROGRESS | U-109, U-110 (DONE) | `task/U-138-hidden-insertion` |
+| [U-138](docs/backlog/U-138.md) | Construct and prove the hidden S0–D0 insertion | Map implementation | P1 | REVIEW | U-109, U-110 (DONE); construction evidence in card; owner quality and merge pending | [#310](https://github.com/JoshuaLRay/Sandline/pull/310) |
 | [U-139](docs/backlog/U-139.md) | Construct the road fights and tank ingress with swept clearance | Map implementation | P1 | BLOCKED | U-138 | — |
 | [U-140](docs/backlog/U-140.md) | Construct the continuous ridge stairs, shelves and service bridge | Map implementation | P1 | BLOCKED | U-139 | — |
 | [U-141](docs/backlog/U-141.md) | Construct support bays/C12 links and verify surface isolation | Map implementation | P1 | BLOCKED | U-139, U-140 | — |

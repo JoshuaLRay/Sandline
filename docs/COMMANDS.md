@@ -54,7 +54,35 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | `pnpm perf:frame` | T-5.04: after building the client, the slice mission with the squad in Chromium — a walk and a firefight — printing frame time (median, p95, worst), draw calls and triangles; asserts ADR-013's 300 draw calls, records frame time (headless is software, not target hardware). `?perf` shows the same numbers live on any machine |
 | `pnpm export:soldier` | write the code-built soldier as `assets/src/soldier.glb`, the pipeline's test asset |
 | `pnpm gen:nav` | re-bake every named world's navmesh; required after editing a world, `MoveConfig` or the hitbox (a test fails until you do) |
+| `pnpm gen:qalat-insertion` | U-138: compile the isolated Juniper Hollow replacement section and its exact collision/render surface, manifest and plan into `artifacts/qalat-insertion/`; production campaign activation remains U-117 |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
+
+## Isolated Juniper Hollow construction (U-138)
+
+This authoring fixture implements the replacement's southern S0–D0 section and
+three continuation sockets. Its geometry source is
+`packages/tools/src/maps/qalat-insertion.json`; its hostile observer coordinates
+are verification probes in `qalat-observers.json`, not a second encounter script.
+The active `qalat-road` campaign remains the earlier map until U-117 integration.
+
+Run `pnpm gen:qalat-insertion`, then
+`pnpm exec tsx packages/tools/src/capture-qalat-insertion.ts`. The latter starts
+its own Vite server and captures five actual WebGL whitebox views under
+`artifacts/qalat-insertion/`, checking the generated geometry hash and <300 draws.
+Streaming CI uploads `qalat-insertion-review`. Commit the compact manifest, plan,
+capture metadata and PNGs; the large generated level/surface JSON stays ignored.
+For interactive review, run `pnpm exec vite --host 127.0.0.1` at the repository
+root and visit `/packages/tools/src/maps/insertion-review.html`; orbit/zoom or use
+Spawn, Decision court and Overview. These are construction views; terrain art,
+D0 landmarks/signage and owner map/play quality remain U-118/U-119 gates.
+
+`pnpm exec vitest run packages/tools/src/maps/qalatInsertion.test.ts packages/tools/src/maps/insertionSurface.test.ts`
+checks production solid-nav baking and controller travel, exact y8 floors/starts,
+width/headroom, perimeter escapes, the approved late-reveal bend and every S0 body
+ray against southern terrain alone. Full patrol/reserve/ridge/tank interpolation
+uses ≤1 m steps; both tank muzzle recipes include eight orientations. The court
+reveal check samples the whole court and legal shoulders, measuring distance to
+the nearest court floor boundary as defined in the construction addendum.
 
 ## Adding a mission (U-073)
 
