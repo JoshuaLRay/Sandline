@@ -65,6 +65,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-118](docs/backlog/U-118.md) | Finish Qalat terrain, architecture, lighting and presentation | Map implementation | P1 | BLOCKED | U-117 | — |
 | [U-119](docs/backlog/U-119.md) | Verify the complete replacement mission and capture review evidence | Map implementation | P1 | BLOCKED | U-118 | — |
 | [U-124](docs/backlog/U-124.md) | Bake the kit gallery’s house and roof stair into its navmesh | Map implementation | P2 | READY | Found during U-123; none | — |
+| [U-142](docs/backlog/U-142.md) | Profile Qalat cold-start load-time overruns | Maintenance | P2 | INBOX | U-138 observation: local/CI exceed 30 s; same-head retry passes; measure bottleneck before scoping | — |
 | [U-127](docs/backlog/U-127.md) | Specify Mission 2, The Kestrel Dam: full map and mission construction design | Map design | P2 | REVIEW | Owner authorized merge on green 2026-10-05 (CI #1713 green); owner design decisions OD-1–OD-9 still open | [#301](https://github.com/JoshuaLRay/Sandline/pull/301) |
 | [U-107](docs/backlog/U-107.md) | Specify full Mission 1 replacement: hidden spawn, ridge and underground depot | Map design | P1 | DONE | Owner authorized merge/start; merged 2026-10-04 | [#292](https://github.com/JoshuaLRay/Sandline/pull/292) |
 | [U-106](docs/backlog/U-106.md) | Implement Qalat’s distinct assault, support and isolated flank routes | Map design | P1 | REVIEW | U-105; merged blockout superseded by U-107 redesign; no owner quality verdict | [#291](https://github.com/JoshuaLRay/Sandline/pull/291) |
