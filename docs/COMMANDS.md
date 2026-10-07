@@ -511,11 +511,11 @@ is carried unchanged. Malformed revisions/start snapshots fail durable save
 validation without replacing the last acknowledged state; legacy saves lacking
 these fields remain parseable and retain their existing fallback.
 
-[U-136](backlog/U-136.md) owns incompatible-restore quarantine and the required
-host restart/select message. U-135 supplies data and original-start restoration;
-it does not yet refuse loading an incompatible checkpoint. The complete
-[U-113](backlog/U-113.md) acceptance remains open. Cache stock is U-133, whose
-split exists in unmerged [#307](https://github.com/JoshuaLRay/Sandline/pull/307).
+[U-136](backlog/U-136.md) retains aggregate incompatible-restore acceptance.
+[U-143](backlog/U-143.md) supplies quarantine and host choices;
+[U-144](backlog/U-144.md) retains the carried-prisoner placement blocker. The
+complete [U-113](backlog/U-113.md) acceptance remains open. Cache checkpoint stock
+is U-133 in unmerged [#311](https://github.com/JoshuaLRay/Sandline/pull/311).
 
 Reproduce shared content validation, real SQLite reopen and Session save/start
 lifecycle regressions:
@@ -523,3 +523,44 @@ lifecycle regressions:
 ```sh
 pnpm exec vitest run packages/shared/src/sim/mapRevision.test.ts packages/server/src/persistence/checkpointRevision.test.ts packages/server/src/session/checkpointRevision.test.ts packages/server/src/session/checkpointWorld.test.ts packages/server/src/session/loadoutCarry.test.ts packages/server/src/session/runChoice.test.ts packages/server/src/session/elevatedStarts.test.ts packages/server/src/persistence/CampaignDatabase.test.ts
 ```
+
+## Incompatible restore choices (U-143)
+
+An active mission/run checkpoint restores only when its explicit `mapRevision`
+matches current content. Missing revisions are unknown. Refused saves stay
+outside the simulation: neither old world state nor a fresh encounter is
+initialized, and ready-up, input, timers, reconnect and host changes cannot
+bypass the decision. This also applies when the encounter/AI runtime is disabled.
+
+The desktop/mobile dialog says **“This mission map has changed. Restart the
+mission to continue.”** The lowest-numbered seated human controls restart or
+mission select under the existing campaign rules. Restart uses current authored
+starts and original inventory; legacy saves explicitly fall back to pre-mission
+carry-over/class inventory. An acknowledged lobby restart writes a current
+basic start and still waits for ready-up, preserving inventory through reload.
+Selecting another run preserves the refused checkpoint, both prisoner pools and
+campaign progress. Other mission/run checkpoints are carried unchanged.
+
+Restart remains unavailable when the original active pool contains prisoners:
+current content has no authored holding-socket contract for carried squad slots.
+The dialog explains this and retains mission select/Leave room; it never installs
+old prisoner coordinates or guesses new holding positions. U-144 must provide
+approved placements before U-136/U-113 can close. Mission 1's seventh escort POW
+is separate from the captured squad pool.
+
+The validated `RestoreGate` contract is protocol **67**, event variant **13**.
+U-133/#311 independently owns version 66 and variants 10–12; integrating both
+branches requires a new protocol bump for that combined layout. No generated
+map, asset, audio or nav inputs changed here.
+
+Reproduce Session/wire/client coverage and the responsive dialog captures:
+
+```sh
+pnpm exec vitest run packages/shared/src/net/restoreWire.test.ts packages/server/src/session/incompatibleRestore.test.ts packages/server/src/session/checkpointRevision.test.ts packages/client/src/net/incompatibleRestore.test.ts packages/client/src/ui/restoreChoice.test.ts
+pnpm exec vitest run --config vitest.browser.config.ts --project assets-browsers packages/client/src/ui/restoreChoice.browser.test.ts
+```
+
+The browser run writes 1280/360 px captures to `docs/backlog/evidence/`.
+Install the pinned Playwright Chromium, or set `CHROMIUM_PATH` to an available
+Chromium executable. Owner desktop/physical-phone UI acceptance remains pending;
+the selected card records review steps and the placement limitation.
