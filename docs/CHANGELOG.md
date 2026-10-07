@@ -430,3 +430,5 @@ Format: `T-<id> — <what changed>`
 - U-133 — Record the owner-authorized green merge of #311 at `c0feef7` and unlock U-134; preserve construction, prisoner-placement and human quality gates while integrating #310 with fresh main.
 
 - U-143 — Combine the merged cache and incompatible-restore contracts as protocol 68; withhold cache choices during the gate and verify paired stock/inventory across restart, retry and JSON reload ([#312](https://github.com/JoshuaLRay/Sandline/pull/312)). Owner UI and carried-prisoner placement gates remain open.
+
+- U-124 — Integrate fresh main after green #311/#310/#312 merges; verify gallery navigation with the combined protocol 68 tree and preserve every pending human review ([#313](https://github.com/JoshuaLRay/Sandline/pull/313)).
