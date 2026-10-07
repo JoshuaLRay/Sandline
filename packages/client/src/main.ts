@@ -86,6 +86,7 @@ import { NO_PRIMARY, NetClient, type RemoteEmplacement, type ServerDetonation, t
 import { type EmplacementModel, createEmplacementModel } from './weapons/emplacementModel.ts';
 import { syncHostPrimary, type PrimarySeen } from './weapons/hostPrimary.ts';
 import { PickupModels, pickupInReach } from './weapons/pickupModels.ts';
+import { SupplyModels } from './weapons/supplyModels.ts';
 import {
   HostUrlError,
   RemoteServer,
@@ -149,6 +150,8 @@ import { type ClassDef, ESCORT_SPECTATE_SLOT, TICK_SECONDS as MISSION_TICK_SECON
 import { createScoreboard } from './ui/scoreboard.ts';
 import { missionMenuModel, runChoiceModel } from './ui/runChoice.ts';
 import { createRestoreChoice, restoreChoiceModel } from './ui/restoreChoice.ts';
+import { createSupplyChoice } from './ui/supplyChoice.ts';
+import { supplyCapacity, supplyChoiceModel, supplyInReach, supplyInventory } from './ui/supplyModel.ts';
 import { createMenu } from './ui/menu/Menu.ts';
 import { type AudioContextLike, AudioEngine } from './audio/engine.ts';
 import { createSoundBoard } from './ui/SoundBoard.ts';
@@ -580,6 +583,7 @@ let unmountedWeaponIndex = 0;
 const emplacementModels = new Map<number, EmplacementModel>();
 /** U-017: dead enemies' weapons, where they fell. */
 const pickupModels = new PickupModels(scene);
+const supplyModels = new SupplyModels(scene);
 
 /** The placed emplacement the host's entity stands for: the one at its place. */
 function placedFor(gun: RemoteEmplacement, world: World | null): PlacedEmplacement | null {
@@ -1601,6 +1605,8 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
   }
   emplacementModels.clear();
   pickupModels.clear();
+  supplyModels.clear();
+  supplyChoice.set(null);
   mountedGun = null;
   input.setViewLimits(null);
   combat.reset();
@@ -1748,6 +1754,7 @@ const roomLobby = createRoomLobby({
 });
 document.body.appendChild(roomLobby.root);
 const restoreChoice = createRestoreChoice(document.body);
+const supplyChoice = createSupplyChoice(document.body, (cacheId, item) => live?.net.selectSupply(cacheId, item));
 
 const lobby = createLobby({
   defaultHost: __DEFAULT_HOST__,
@@ -2692,6 +2699,7 @@ function frame(): void {
   }
   // U-017: the weapons on the ground.
   pickupModels.update(net ? net.pickups() : []);
+  supplyModels.update(net?.supplyCaches ?? []);
 
   // T-3.29: the squad's orders and marks, where the soldiers they name are drawn.
   if (net) {
@@ -2964,6 +2972,20 @@ function frame(): void {
       if (first >= 0) equipGun(first);
     }
   }
+  const supplyWatching = mobileMode || (net?.spectatedSlot ?? -1) >= 0;
+  const supplyFeet = net && net.spectatedSlot >= 0
+    ? net.spectatedSlot === ESCORT_SPECTATE_SLOT
+      ? net.remotes().get(net.escortNetId ?? -1) ?? null
+      : [...net.remotes()].find(([id]) => net.remoteSlot(id) === net.spectatedSlot)?.[1] ?? null
+    : sim;
+  const nearbySupply = net && supplyFeet && menu.mode === 'hidden' && !net.restoreChoice &&
+    (net.mission?.state ?? 'progress') === 'progress' &&
+    (supplyWatching || (net.vitality === 'alive' && !mountedGun && !sim?.vault && net.kitProgress === 0))
+    ? supplyInReach(net.supplyCaches, supplyFeet,
+      eyePosition(supplyFeet.x, supplyFeet.y, supplyFeet.z, DEFAULT_MUZZLE_RIG, eyeStance(supplyFeet.crouched, supplyFeet.prone)), collisionBoxes(),
+      supplyWatching ? undefined : net.supplyProgress.find(use => use.slot === net.slot)?.cacheId) : null;
+  supplyChoice.set(net && nearbySupply ? supplyChoiceModel(nearbySupply, supplyInventory(net, holdingPouch || holdingKit),
+    supplyCapacity(net), net.supplyProgress, net.slot, supplyWatching) : null);
   if (live) {
     const hudNow = clock.tick * TICK_SECONDS + clock.alpha * TICK_SECONDS;
     const hudYaw = Math.atan2(camSolve.forward.x, camSolve.forward.z);

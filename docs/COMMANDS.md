@@ -466,8 +466,9 @@ version 66) with incompatible-restore choices, separate from pickup IDs:
 while no incompatible-restore gate is active; its `supplyCaches` and
 `supplyProgress` getters expose host state without local inventory prediction.
 `resetForRejoin()` clears both; reconnect receives current stock and starts no
-hold. Client choice/progress/empty-scenery presentation remains U-134; the five
-actual production placements and their exhaustive counts remain U-117.
+hold. U-134 presents desktop choice/use and desktop/mobile stock/progress/scenery;
+U-145 retains the mobile-use control decision. The five actual production
+placements and their exhaustive counts remain U-117.
 
 Checkpoint-world format 1 gains optional `caches: [{ id, stock }]`. New worlds
 save all caches and six soldier inventories together, and retry/JSON host reload
@@ -483,6 +484,28 @@ Reproduce content/transfer rules and legacy script compatibility:
 corepack pnpm exec vitest run packages/shared/src/sim/supplyCaches.test.ts packages/shared/src/sim/areas.test.ts packages/shared/src/sim/campaignRegistry.test.ts
 corepack pnpm exec vitest run packages/server/src/session/supplyCaches.test.ts packages/shared/src/net/supplyWire.test.ts packages/client/src/net/supplyCaches.test.ts
 ```
+
+### Cache presentation fixtures (U-134)
+
+The normal gameplay HUD uses Tab mouse access to choose one compatible item,
+then held E to use it. Release E interrupts the host hold; hiding the HUD control
+or leaving reach/LOS cancels the choice. Spectators view stock/progress beside
+the watched soldier; mobile use remains blocked on U-145's approved controls.
+
+`pnpm --filter @sandline/client dev --host 0.0.0.0` serves
+`/supply-review.html` and `/supply-review.html?mobile` for isolated live review.
+The five-cache fixture uses representative Mission 1 stock on the greybox floor,
+not production placements. Its cache buttons reset carried deficits for review
+while keeping spent host stock. The browser tests write thirteen portrait and
+landscape captures, including partial ammo, contention and exhausted boxes:
+
+```sh
+pnpm exec vitest run packages/client/src/ui/supplyModel.test.ts packages/client/src/ui/supplySession.test.ts packages/client/src/net/supplyCaches.test.ts
+pnpm exec vitest run --config vitest.browser.config.ts --project assets-browsers packages/client/src/ui/supplyChoice.browser.test.ts
+```
+
+See [U-134](backlog/U-134.md) for capture links and pending owner review steps.
+No generated asset/audio/nav inputs changed in this presentation leaf.
 
 ## Staged reserves (U-131)
 

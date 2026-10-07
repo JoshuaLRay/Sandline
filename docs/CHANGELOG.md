@@ -432,3 +432,5 @@ Format: `T-<id> — <what changed>`
 - U-143 — Combine the merged cache and incompatible-restore contracts as protocol 68; withhold cache choices during the gate and verify paired stock/inventory across restart, retry and JSON reload ([#312](https://github.com/JoshuaLRay/Sandline/pull/312)). Owner UI and carried-prisoner placement gates remain open.
 
 - U-124 — Integrate fresh main after green #311/#310/#312 merges; verify gallery navigation with the combined protocol 68 tree and preserve every pending human review ([#313](https://github.com/JoshuaLRay/Sandline/pull/313)).
+
+- U-134 — Present desktop cache choice/use and desktop/mobile authoritative stock/progress with persistent exhausted scenery and five reproducible Session/browser fixtures; split mobile use into blocked U-145 and retain owner UI/play review ([#314](https://github.com/JoshuaLRay/Sandline/pull/314)).
