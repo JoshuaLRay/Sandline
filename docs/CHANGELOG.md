@@ -419,4 +419,4 @@ Format: `T-<id> — <what changed>`
 
 - U-135 — Add validated map/checkpoint revision provenance and durable original run inventory/prisoners for reload/full restart ([#308](https://github.com/JoshuaLRay/Sandline/pull/308)); split U-113 so incompatible-restore quarantine and restart/select UI remain U-136.
 
-- U-133 — Add authoritative timed finite-cache transfers, dedicated stock/progress replication and paired squad/cache checkpoint restore; preserve exhausted caches, reconnect stock and full-restart inventory. Client presentation remains U-134.
+- U-133 — Add authoritative timed finite-cache transfers, dedicated stock/progress replication and paired squad/cache checkpoint restore; preserve exhausted caches, reconnect stock and full-restart inventory ([#311](https://github.com/JoshuaLRay/Sandline/pull/311)). Client presentation remains U-134.
