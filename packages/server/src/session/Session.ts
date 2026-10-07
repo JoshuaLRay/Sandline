@@ -43,6 +43,12 @@ import {
   FIRST_PROJECTILE_NET_ID,
   FIRST_PICKUP_NET_ID,
   PICKUPS,
+  SUPPLY_RULES,
+  transferSupply,
+  type SupplyCacheDef,
+  type SupplyCacheStock,
+  type SupplyStock,
+  type SupplyItem,
   PICKUP_AMMO_BITS,
   pickupProjectile,
   PICKUP_NET_ID_LIMIT,
@@ -921,6 +927,12 @@ export class Session {
   /** U-052: the netIds of authored loot: it does not despawn and does not count toward the enemy-drop cap. */
   private readonly authoredPickups = new Set<number>();
   private nextPickupNetId = FIRST_PICKUP_NET_ID;
+  private readonly supplyDefs: readonly SupplyCacheDef[];
+  private readonly supplyStocks = new Map<string, SupplyStock>();
+  private readonly supplyUses = new Map<number, { connection: ServerConnection; cacheId: string; item: SupplyItem; ticks: number }>();
+  private readonly supplyRequestIds = new WeakMap<ServerConnection, number>();
+  private lastSupplyProgress = '';
+  private lastSupplyUsers = '';
   /**
    * Enemies (T-3.10): the second class of entity that comes and goes. Spawned
    * by `spawnEnemy`, despawned by the session when a corpse's time is up.
@@ -1029,6 +1041,7 @@ export class Session {
     enemies?: EnemyCheckpoint[];
     spawner?: SpawnerCheckpoint;
     placed?: PlacedCheckpoint[];
+    caches?: SupplyCacheStock[];
     /** U-061: the slots held prisoner when it was saved (those carried in, and those taken since). */
     captured?: { slot: number; at: { x: number; y: number; z: number } }[];
   } | null = null;
@@ -1140,8 +1153,19 @@ export class Session {
       this.missionRun = null;
     }
     if (this.roomStarted) this.startEncounter();
+    const script = options.events ?? this.committedScript(missionDef) ?? { world: this.world.id, blockers: [], events: [] };
+    this.supplyDefs = script.supplyCaches ?? [];
+    for (const cache of this.supplyDefs) {
+      const p = cache.feet;
+      const supported = spawnGround(p, p.y, this.collisionBoxes, this.moveConfig,
+        this.navMesh ? (point) => this.navMesh!.nearestPoint(point) : undefined);
+      if (!supported || blockedAt(p.x, p.z, this.moveConfig.radius, p.y, .05, this.moveConfig.height, this.collisionBoxes)) {
+        throw new Error(`supply cache '${cache.id}': unsupported or obstructed authored floor`);
+      }
+    }
+    this.resetSupplies();
     this.eventRun = this.encounter
-      ? new EventRun(options.events ?? this.committedScript(missionDef) ?? { world: this.world.id, blockers: [], events: [] }, this.encounter, this.world, this.eventHost())
+      ? new EventRun(script, this.encounter, this.world, this.eventHost())
       : null;
     const mesh = this.navMesh;
     this.cover =
@@ -1364,6 +1388,7 @@ export class Session {
               ground: world.ground,
               enemies: world.enemies,
               placed: world.placed,
+              ...(world.caches === undefined ? {} : { caches: world.caches }),
               ...(world.spawner ? { spawner: world.spawner } : {}),
             }
           : {}),
@@ -1520,6 +1545,7 @@ export class Session {
         return Math.sqrt((eye.x - at.x) ** 2 + (eye.y - at.y) ** 2 + (eye.z - at.z) ** 2) <= reachM && lineOfSight(eye, at, this.collisionBoxes);
       }) : undefined;
       const target = holder ? pow!.netId : null;
+      if (holder) this.supplyUses.delete(holder.index);
       const changed = target !== this.rescueEscortTarget;
       this.rescueEscortTarget = target;
       return { held: 1, holding: holder && !changed ? { scale: this.interactionScale(holder.index) } : null };
@@ -1547,6 +1573,7 @@ export class Session {
       }
     }
     const changed = (target?.index ?? null) !== this.rescueTarget;
+    if (holder) this.supplyUses.delete(holder.index);
     this.rescueTarget = target?.index ?? null;
     return { held: held.length, holding: target && holder && !changed ? { scale: this.interactionScale(holder.index) } : null };
   }
@@ -1756,6 +1783,7 @@ export class Session {
         .map((p) => ({ kind: p.kind, ownerSlot: p.ownerSlot, state: { ...p.state }, ...(p.facing ? { facing: { ...p.facing } } : {}) })),
       slots: this.slots.map((slot) => this.checkpointSlot(slot)),
       ground: this.pickupList.map((p) => ({ weapon: p.weapon, ammo: p.ammo, x: p.x, y: p.y, z: p.z, yaw: p.yaw, authored: this.authoredPickups.has(p.netId) })),
+      caches: this.supplyCaches.map(({ id, stock }) => ({ id, stock })),
     };
     this.persistCampaign();
   }
@@ -1832,8 +1860,11 @@ export class Session {
     enemies?: EnemyCheckpoint[];
     spawner?: SpawnerCheckpoint;
     placed?: PlacedCheckpoint[];
+    caches?: SupplyCacheStock[];
   } | null): boolean {
     if (!saved) return false;
+    // Validate/apply all cache stock before touching any paired soldier inventory.
+    if (saved.caches) this.restoreSupplies(saved.caches);
     for (const [i, snap] of (saved.slots ?? []).entries()) {
       const slot = this.slots[i];
       if (!slot) continue;
@@ -1927,6 +1958,7 @@ export class Session {
       enemies: saved.enemies,
       spawner: saved.spawner ?? null,
       placed: saved.placed,
+      ...(saved.caches === undefined ? {} : { caches: saved.caches }),
     };
   }
 
@@ -2125,6 +2157,7 @@ export class Session {
 
   /** Clear transient mission state and restore a fresh squad at the supplied spawn positions. */
   private resetMissionWorld(spawns: readonly { x: number; y: number; z: number }[], completedGroups: readonly string[]): void {
+    this.resetSupplies();
     for (const enemy of this.enemyList) {
       this.killEnemy(enemy);
       this.hitboxes.forget(enemy.netId);
@@ -2222,6 +2255,7 @@ export class Session {
       from.interactHeld = false;
       if (!from.brain) this.giveBrain(from);
       conn.send({ kind: 'Spectating', slot: ESCORT_SPECTATE_SLOT });
+      if (this.supplyUses.delete(from.index)) this.broadcastSupplyProgress();
       return;
     }
     const to = this.slots[msg.slot];
@@ -2234,6 +2268,7 @@ export class Session {
       from.interactHeld = false;
       if (!from.brain) this.giveBrain(from);
       conn.send({ kind: 'Spectating', slot: to.index });
+      if (this.supplyUses.delete(from.index)) this.broadcastSupplyProgress();
       return;
     }
     if (to === from || !to.isBot || to.captured || (this.spectators.has(conn) ? this.spectators.get(conn) !== to.index : this.commanders[to.index] !== from.index)) return;
@@ -2308,6 +2343,7 @@ export class Session {
     this.spawnerValue?.initialize();
     this.broadcastMission();
     this.broadcastScriptState();
+    this.broadcastSupplies();
   }
 
   /**
@@ -2336,6 +2372,7 @@ export class Session {
     this.spawnerValue?.initialize();
     this.broadcastMission();
     this.broadcastScriptState();
+    this.broadcastSupplies();
   }
 
   /** T-3.33: the director pacing the encounter, when the session was given one. */
@@ -3197,6 +3234,117 @@ export class Session {
     return this.pickupList;
   }
 
+  /** U-133: exhausted caches retain their identity/feet; readers receive detached stock. */
+  get supplyCaches(): readonly SupplyCacheDef[] {
+    return this.supplyDefs.map((def) => ({ ...def, feet: { ...def.feet }, stock: structuredClone(this.supplyStocks.get(def.id)!) }));
+  }
+
+  private resetSupplies(): void {
+    this.supplyUses.clear();
+    this.supplyStocks.clear();
+    for (const def of this.supplyDefs) this.supplyStocks.set(def.id, structuredClone(def.stock));
+  }
+
+  private restoreSupplies(saved: readonly SupplyCacheStock[]): void {
+    const stocks = new Map(saved.map((cache) => [cache.id, cache.stock]));
+    if (saved.length !== this.supplyDefs.length || stocks.size !== saved.length || this.supplyDefs.some((def) => {
+      const stock = stocks.get(def.id);
+      return !stock || stock.healthKits > def.stock.healthKits || stock.primaryAmmoUnits > def.stock.primaryAmmoUnits ||
+        PROJECTILE_IDS.some((id) => id !== 'smokecloud' && (stock.projectiles[id] ?? 0) > (def.stock.projectiles[id] ?? 0));
+    })) throw new Error('checkpoint supply stock does not match authored caches');
+    for (const [id, stock] of stocks) this.supplyStocks.set(id, structuredClone(stock));
+    this.supplyUses.clear();
+  }
+
+  private supplyTransfer(slot: Slot, cache: SupplyCacheDef, item: SupplyItem) {
+    return transferSupply(this.supplyStocks.get(cache.id)!, {
+      primary: slot.primary, secondary: slot.secondary,
+      heldWeapon: slot.heldProjectile < 0 ? slot.weapon.id : '', ammo: slot.weaponState.ammo,
+      equipment: slot.equipment, pouch: slot.pouch, kits: slot.kits,
+    }, { pouch: this.pouchFor(slot.index), healthKits: this.kitsFor(slot.index) }, item);
+  }
+
+  private canUseSupply(slot: Slot, cache: SupplyCacheDef): boolean {
+    if (!this.roomStarted || this.handedOff || (this.missionRun && this.missionRun.current.state !== 'progress') ||
+      slot.isBot || !slot.connection || slot.connection.state !== 'active' || this.spectators.has(slot.connection) ||
+      !isAlive(slot.health) || slot.captured || slot.state.vault || slot.mounted || slot.kitProgress > 0) return false;
+    const p = cache.feet;
+    return within(slot.state, p, SUPPLY_RULES.reachM) &&
+      (slot.state.x - p.x) ** 2 + (slot.state.y - p.y) ** 2 + (slot.state.z - p.z) ** 2 <= SUPPLY_RULES.reachM ** 2 &&
+      lineOfSight(soldierEye(slot.state), { ...p, y: p.y + .5 }, this.collisionBoxes);
+  }
+
+  private applySupplySelect(conn: ServerConnection, msg: Extract<Message, { kind: 'SupplySelect' }>): void {
+    const slot = this.slots[conn.slot];
+    if (!slot || slot.connection !== conn || msg.requestId <= (this.supplyRequestIds.get(conn) ?? -1)) return;
+    this.supplyRequestIds.set(conn, msg.requestId);
+    this.supplyUses.delete(slot.index);
+    const cache = this.supplyDefs.find((cache) => cache.id === msg.cacheId);
+    if (cache && msg.item && this.canUseSupply(slot, cache) && this.supplyTransfer(slot, cache, msg.item).status === 'transferred') {
+      this.supplyUses.set(slot.index, { connection: conn, cacheId: cache.id, item: msg.item, ticks: 0 });
+    }
+    this.broadcastSupplyProgress();
+  }
+
+  private supplyProgress(): Extract<Message, { kind: 'SupplyProgress' }> {
+    return { kind: 'SupplyProgress', uses: this.slots.flatMap((slot) => {
+      const use = this.supplyUses.get(slot.index);
+      return use ? [{ slot: slot.index, cacheId: use.cacheId, item: use.item,
+        percent: Math.min(100, Math.floor(100 * use.ticks * TICK_SECONDS / (SUPPLY_RULES.useSeconds * this.interactionScale(slot.index)))) }] : [];
+    }) };
+  }
+
+  private broadcastSupplyProgress(force = false, timed = false): void {
+    if (this.supplyDefs.length === 0) return;
+    const msg = this.supplyProgress();
+    const key = JSON.stringify(msg.uses);
+    const users = JSON.stringify(msg.uses.map((use) => [use.slot, use.cacheId, use.item]));
+    // 10 Hz for the clock; selections, cancellations and completions travel immediately.
+    if (timed && this.currentTick % 3 !== 0 && users === this.lastSupplyUsers) return;
+    if (!force && key === this.lastSupplyProgress) return;
+    this.lastSupplyProgress = key;
+    this.lastSupplyUsers = users;
+    for (const c of this.connections) if (c.state === 'active') c.send(msg);
+  }
+
+  private broadcastSupplies(): void {
+    if (this.supplyDefs.length === 0) return;
+    const msg = { kind: 'Supplies', full: true, caches: this.supplyCaches } as const;
+    for (const c of this.connections) if (c.state === 'active') c.send(msg);
+    this.broadcastSupplyProgress(true);
+  }
+
+  /** Stable slot order serializes completion. Every preview is recomputed, never reserved. */
+  private updateSupplies(): void {
+    const changed: SupplyCacheDef[] = [];
+    for (const slot of this.slots) {
+      const use = this.supplyUses.get(slot.index);
+      if (!use) continue;
+      const cache = this.supplyDefs.find((cache) => cache.id === use.cacheId)!;
+      const transfer = this.supplyTransfer(slot, cache, use.item);
+      if (slot.connection !== use.connection || !this.canUseSupply(slot, cache) || transfer.status !== 'transferred' ||
+        (!this.holdingInteract(slot) && use.ticks > 0)) {
+        this.supplyUses.delete(slot.index);
+        continue;
+      }
+      if (!this.holdingInteract(slot)) continue;
+      use.ticks++;
+      if (use.ticks * TICK_SECONDS + 1e-9 < SUPPLY_RULES.useSeconds * this.interactionScale(slot.index)) continue;
+      this.supplyStocks.set(cache.id, transfer.stock);
+      slot.pouch = [...transfer.inventory.pouch];
+      slot.kits = transfer.inventory.kits;
+      slot.weaponState.ammo = transfer.inventory.ammo;
+      this.supplyUses.delete(slot.index);
+      // Only the changed caches travel; progress never resends stock or scenery.
+      const prior = changed.findIndex((c) => c.id === cache.id);
+      const state = { ...cache, stock: transfer.stock };
+      if (prior < 0) changed.push(state);
+      else changed[prior] = state;
+    }
+    if (changed.length) for (const c of this.connections) if (c.state === 'active') c.send({ kind: 'Supplies', full: false, caches: changed });
+    this.broadcastSupplyProgress(false, true);
+  }
+
   /** Projectiles in the air right now. The harness HUD reads it (T-2.32). */
   get projectilesInFlight(): number {
     return this.projectiles.length;
@@ -3328,6 +3476,7 @@ export class Session {
       onFire: (c, msg) => { if (this.roomStarted && !this.spectators.has(c)) this.applyFire(c, msg); },
       onThrow: (c, msg) => { if (this.roomStarted && !this.spectators.has(c)) this.applyThrow(c, msg); },
       onEquip: (c, msg) => { if (this.roomStarted && !this.spectators.has(c)) this.applyEquip(c, msg); },
+      onSupplySelect: (c, msg) => { if (this.roomStarted && !this.spectators.has(c)) this.applySupplySelect(c, msg); },
       onReload: (c) => { if (this.roomStarted && !this.spectators.has(c)) this.applyReload(c); },
       onAiDebugRequest: (c, on) => this.applyAiDebugRequest(c, on),
       onAggression: (c, msg) => this.applyAggression(c, msg),
@@ -3423,6 +3572,10 @@ export class Session {
     const offer = this.runOffer();
     if (offer) conn.send(offer);
     conn.send({ kind: 'ScriptState', blockers: this.scriptBlockers() });
+    if (this.supplyDefs.length) {
+      conn.send({ kind: 'Supplies', full: true, caches: this.supplyCaches });
+      conn.send(this.supplyProgress());
+    }
     return true;
   }
 
@@ -3874,15 +4027,19 @@ export class Session {
       slot.interactWasHeld = held;
       if (!pressed) continue;
       if (slot.mounted) {
+        this.supplyUses.delete(slot.index);
         this.dismount(slot);
         continue;
       }
       if (!isAlive(slot.health) || slot.state.vault) continue;
       if (this.slots.some((t) => t.reviveBySlot === slot.index)) continue;
       const gun = this.emptyGunNear(slot.state, (def) => def.mountRangeM);
-      if (gun) this.mount(slot, gun);
+      if (gun) {
+        this.supplyUses.delete(slot.index);
+        this.mount(slot, gun);
+      }
       // U-018: a weapon on the ground within reach; U-009: else the press may be for an upload terminal.
-      else if (!this.takeOwnCharge(slot) && !this.takePickupAt(slot)) this.startUploadAt(slot);
+      else if (this.takeOwnCharge(slot) || this.takePickupAt(slot) || this.startUploadAt(slot)) this.supplyUses.delete(slot.index);
     }
     for (const enemy of this.enemyList) {
       if (enemy.inactive || enemy.mounted || isDead(enemy.health) || enemy.state.vault || enemy.def.friendly) continue;
@@ -4121,17 +4278,19 @@ export class Session {
    * of the newest real input (`updateMounts`), so a held key, a repeat of an
    * old input or a press after the upload finished starts nothing.
    */
-  private startUploadAt(slot: Slot): void {
+  private startUploadAt(slot: Slot): boolean {
     const run = this.missionRun;
     const up = run && this.roomStarted ? run.openUpload() : null;
-    if (!run || !up || up.phase === 'active') return;
+    if (!run || !up || up.phase === 'active') return false;
     const def = up.def;
-    if (!isAlive(slot.health) || slot.state.vault || slot.mounted) return;
+    if (!isAlive(slot.health) || slot.state.vault || slot.mounted) return false;
     const eye = soldierEye(slot.state);
     const t = def.terminal;
-    if ((eye.x - t.x) ** 2 + (eye.y - t.y) ** 2 + (eye.z - t.z) ** 2 > def.reachM * def.reachM) return;
-    if (!lineOfSight(eye, t, this.collisionBoxes)) return;
-    if (run.startUpload()) this.broadcastMission();
+    if ((eye.x - t.x) ** 2 + (eye.y - t.y) ** 2 + (eye.z - t.z) ** 2 > def.reachM * def.reachM) return false;
+    if (!lineOfSight(eye, t, this.collisionBoxes)) return false;
+    const started = run.startUpload();
+    if (started) this.broadcastMission();
+    return started;
   }
 
   /**
@@ -4280,6 +4439,7 @@ export class Session {
     this.broadcastRoomState();
     this.broadcastMission();
     this.broadcastScriptState();
+    this.broadcastSupplies();
   }
 
   private applyRoomCommand(conn: ServerConnection, msg: Extract<Message, { kind: 'RoomCommand' }>): void {
@@ -5614,6 +5774,7 @@ export class Session {
     this.expireMarks();
     this.updateSensors();
     this.stepMission();
+    this.updateSupplies();
     const snapshot = this.buildSnapshot();
     this.broadcast(snapshot);
     this.sendAiDebug();
@@ -6336,6 +6497,7 @@ export class Session {
 
   /** Clear all revive state owned by, or stored on, a reused slot. */
   private clearReviveStateForSlot(slotIndex: number): void {
+    if (this.supplyUses.delete(slotIndex)) this.broadcastSupplyProgress();
     const slot = this.slots[slotIndex];
     if (slot) {
       slot.reviveBySlot = -1;
@@ -6410,6 +6572,7 @@ export class Session {
     // Advance every active interaction and complete it at the configured hold time.
     for (const target of this.slots) {
       if (!isDowned(target.health) || target.reviveBySlot < 0) continue;
+      this.supplyUses.delete(target.reviveBySlot);
       target.reviveProgressSeconds += TICK_SECONDS;
       if (target.reviveProgressSeconds >= this.reviveSeconds(target.reviveBySlot)) {
         this.awardXp(target.reviveBySlot, 'revive');
