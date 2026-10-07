@@ -21,6 +21,7 @@ import { MAX_DRIVE_POINTS } from './vehicle.ts';
 import { fromRadians } from '../math/angles.ts';
 import { sin, cos } from '../math/trig.ts';
 import { validateVehiclePath } from './vehiclePlacement.ts';
+import { parseSupplyCaches, type SupplyCacheDef } from './supplyCaches.ts';
 import { boxFrom, type BoxSpec, type World, type WorldBox } from './world.ts';
 
 export const EVENT_TRIGGER_KINDS = ['objective-start', 'upload-start', 'objective-complete', 'enter', 'time', 'group-dead', 'flag'] as const;
@@ -75,6 +76,8 @@ export interface EventScript {
   world: string;
   blockers: readonly BlockerDef[];
   events: readonly EventDef[];
+  /** U-132: static finite supplies, independent of event one-shots and firearm pickups. */
+  supplyCaches?: readonly SupplyCacheDef[];
 }
 
 /** Full replicated state of one blocker. */
@@ -154,7 +157,7 @@ export { VEHICLE_STEP_M, VEHICLE_CLEARANCE_M } from './vehiclePlacement.ts';
 
 /** Parse and validate an authored event file against its encounter, world and mission. */
 export function parseEventScript(raw: unknown, encounter: Encounter, world: World, mission: MissionDef | null): EventScript {
-  const top = obj('events', raw, ['world', 'blockers', 'events']);
+  const top = obj('events', raw, ['world', 'blockers', 'events'], ['supplyCaches']);
   if (top['world'] !== world.id || encounter.world !== world.id) throw new EventDataError(`events.world must be '${world.id}'`);
   if (!Array.isArray(top['blockers'])) throw new EventDataError('events.blockers: expected a list');
   if (!Array.isArray(top['events'])) throw new EventDataError('events.events: expected a list');
@@ -318,7 +321,7 @@ export function parseEventScript(raw: unknown, encounter: Encounter, world: Worl
     return { id: eventId, trigger, actions, ...(o['delaySeconds'] === undefined ? {} : { delaySeconds: finite(`${where}.delaySeconds`, o['delaySeconds'], 0, 3600) }), ...(o['ifGroupAlive'] === undefined ? {} : { ifGroupAlive: group(`${where}.ifGroupAlive`, o['ifGroupAlive']) }), ...(o['unlessFlag'] === undefined ? {} : { unlessFlag: flag(`${where}.unlessFlag`, o['unlessFlag']) }) };
   });
 
-  return { world: world.id, blockers, events };
+  return { world: world.id, blockers, events, ...(top['supplyCaches'] === undefined ? {} : { supplyCaches: parseSupplyCaches(top['supplyCaches'], 'events.supplyCaches') }) };
 }
 
 /** A typed empty authored script; encounter triggers are still added by the server runner. */

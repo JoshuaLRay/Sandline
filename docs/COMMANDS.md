@@ -366,6 +366,61 @@ Reproduce timing, actual stair traversal, combat preemption, bounds and saves:
 corepack pnpm exec vitest run packages/shared/src/sim/navigationRegion.test.ts packages/server/src/ai/actions/authoredPatrol.test.ts packages/tools/src/nav/boundedPatrol.test.ts packages/server/src/ai/group.test.ts
 ```
 
+## Finite supply contract (U-132)
+
+Mission scripts accept an optional top-level `supplyCaches` list (up to 64).
+Declarations are static, separate from event actions and `pickup` weapon IDs:
+
+```json
+"supplyCaches": [{
+  "id": "P-SOUTH",
+  "feet": { "x": 50, "y": 8, "z": 58 },
+  "stock": {
+    "projectiles": { "rocket": 6 },
+    "healthKits": 2,
+    "primaryMagazines": 6
+  }
+}]
+```
+
+IDs are unique, case-sensitive, 1–64 ASCII letters/digits/`_`/`-`, beginning
+with a letter or digit. Feet require all three finite coordinates within the
+shared position range. Unknown fields, missing cache fields, non-carried
+`smokecloud` stock and unknown projectile IDs fail validation. Stock fields are
+optional (default zero); each authored amount is a whole number from 0–65,535.
+This leaf validates content, not physical support or accessibility. Existing
+scripts omitting `supplyCaches` retain their exact shape and behavior.
+
+`transferSupply(stock, inventory, classCapacity, choice)` computes a pure preview
+or completion result for one projectile type, one health-kit charge, or held
+primary ammunition. Projectile transfers fill free class capacity only; slot-5
+equipment must already match, while frag uses slot 4. A cache does not equip
+gear or increase carried capacity. Health charges replenish one kit rather
+than healing. Ammo fills missing whole rounds in the actual held primary
+(including a held second primary), without refilling stowed guns or sidearms.
+Rejected empty/full/incompatible attempts return the unchanged inputs.
+
+Durable/replicated `SupplyStock` uses `primaryAmmoUnits`, where **2,400 integer
+units = one magazine equivalent**. Each round costs `2400 / magSize`; all
+shipped primary sizes divide this denomination. Import validation rejects
+future magazine sizes that cannot be represented exactly. Sub-round remnants
+stay in the cache, available to a compatible larger magazine; no rounding
+creates stock. `parseSupplyStock` validates JSON in this stable denomination.
+Changing the denomination requires a save/protocol migration, not retuning.
+
+The timed-use defaults live in `data/supply-caches.json` (1 s, 2 m). U-133 must
+recompute at completion using the latest host stock and recipient inventory,
+then commit in serialized order. Preview results are never reservations. This
+leaf adds no Session interaction, replication or checkpoint integration; those
+are U-133, and client choice/progress/empty scenery presentation is U-134. The
+five actual production placements and their exhaustive counts remain U-117.
+
+Reproduce content/transfer rules and legacy script compatibility:
+
+```sh
+corepack pnpm exec vitest run packages/shared/src/sim/supplyCaches.test.ts packages/shared/src/sim/areas.test.ts packages/shared/src/sim/campaignRegistry.test.ts
+```
+
 ## Staged reserves (U-131)
 
 Set `staged: true` on a one-wave fixed-socket encounter group. Its members are
