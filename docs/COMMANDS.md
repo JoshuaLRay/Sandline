@@ -485,3 +485,41 @@ corepack pnpm exec vitest run packages/shared/src/sim/stagedEncounter.test.ts pa
 This engine fixture does not author the replacement production map. Reserve
 screening/positions, final mission script integration and owner map/play quality
 review remain in U-114–U-117/U-119; no production bake inputs changed.
+
+## Checkpoint revisions and original run starts (U-135)
+
+World and level files accept optional `mapRevision`, a positive safe integer.
+Omitting it means content revision **1**, independently of level `format` or
+checkpoint-world `version`. Increment it when geometry, mission objectives,
+encounters or event scripts change in a way that invalidates saved state.
+The replacement Qalat level must author `"mapRevision": 2` when its new content
+lands; the current production level remains revision 1.
+
+New campaign checkpoints save that revision and `missionStart`, containing
+six slot-ordered original loadouts and the original `captured` list of
+`{ slot, at: { x, y, z } }` records. The full checkpoint world still holds
+spent inventory, current 3D positions and placed devices; event data still holds
+fired flags and armed timers. Lobby baseline capture happens at ready-up after
+loadout setup. Retry restores checkpoint inventory, while full restart after
+JSON/SQLite reload restores the original inventory and prisoners. Replay starts
+are kept separately from the campaign's carry-over loadouts and prisoner pool.
+
+These additive fields retain campaign/database format 1. A saved checkpoint
+without `mapRevision` has **unknown** provenance; resaving its existing state
+does not stamp it with the current revision. Another mission/run's checkpoint
+is carried unchanged. Malformed revisions/start snapshots fail durable save
+validation without replacing the last acknowledged state; legacy saves lacking
+these fields remain parseable and retain their existing fallback.
+
+[U-136](backlog/U-136.md) owns incompatible-restore quarantine and the required
+host restart/select message. U-135 supplies data and original-start restoration;
+it does not yet refuse loading an incompatible checkpoint. The complete
+[U-113](backlog/U-113.md) acceptance remains open. Cache stock is U-133, whose
+split exists in unmerged [#307](https://github.com/JoshuaLRay/Sandline/pull/307).
+
+Reproduce shared content validation, real SQLite reopen and Session save/start
+lifecycle regressions:
+
+```sh
+pnpm exec vitest run packages/shared/src/sim/mapRevision.test.ts packages/server/src/persistence/checkpointRevision.test.ts packages/server/src/session/checkpointRevision.test.ts packages/server/src/session/checkpointWorld.test.ts packages/server/src/session/loadoutCarry.test.ts packages/server/src/session/runChoice.test.ts packages/server/src/session/elevatedStarts.test.ts packages/server/src/persistence/CampaignDatabase.test.ts
+```

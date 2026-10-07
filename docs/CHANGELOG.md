@@ -416,3 +416,5 @@ Format: `T-<id> — <what changed>`
 - U-137 — Show every voice line with saved counts, Record/Stop, immediate Submit and per-line playback; retain separate retry-safe takes, restore contributor recordings, and preserve owner review and offline import ([#309](https://github.com/JoshuaLRay/Sandline/pull/309)).
 
 - U-132 — Split U-112 into linked leaves; add strict static supply-cache declarations and pure capacity-safe projectile/kit/held-primary transfers with exact integer magazine stock ([#307](https://github.com/JoshuaLRay/Sandline/pull/307)). Preload the known practice-level pack during startup to address the integration load gate; authoritative lifecycle and client presentation remain U-133/U-134.
+
+- U-135 — Add validated map/checkpoint revision provenance and durable original run inventory/prisoners for reload/full restart ([#308](https://github.com/JoshuaLRay/Sandline/pull/308)); split U-113 so incompatible-restore quarantine and restart/select UI remain U-136.

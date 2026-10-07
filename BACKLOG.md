@@ -51,7 +51,9 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-132](docs/backlog/U-132.md) | Finite cache data and capacity-safe supply transfers | Map implementation | P1 | DONE | Owner-authorized merge 2026-10-07; effective on green merge; final-head CI in PR; leaf of U-112 | [#307](https://github.com/JoshuaLRay/Sandline/pull/307) |
 | [U-133](docs/backlog/U-133.md) | Authoritative cache use, replication and checkpoint stock | Map implementation | P1 | BLOCKED | U-132 | — |
 | [U-134](docs/backlog/U-134.md) | Cache choice UI, use progress and stock presentation | Map implementation | P1 | BLOCKED | U-133 | — |
-| [U-113](docs/backlog/U-113.md) | Map-revision-aware checkpoint restart and restore | Map implementation | P1 | READY | U-107 | — |
+| [U-113](docs/backlog/U-113.md) | Map-revision-aware checkpoint restart and restore | Map implementation | P1 | BLOCKED | Aggregate closure: U-135, U-136; split before implementation | — |
+| [U-135](docs/backlog/U-135.md) | Version checkpoint data and preserve original mission-start state | Map implementation | P1 | DONE | Owner-authorized merge 2026-10-07; effective on green merge; final-head CI in PR | [#308](https://github.com/JoshuaLRay/Sandline/pull/308) |
+| [U-136](docs/backlog/U-136.md) | Refuse incompatible restores and offer restart or mission select | Map implementation | P1 | BLOCKED | U-135 | — |
 | [U-114](docs/backlog/U-114.md) | Build the hidden insertion, road, ridge and tank ingress | Map implementation | P1 | READY | U-109, U-110 (DONE) | — |
 | [U-115](docs/backlog/U-115.md) | Build the continuous underground depot and its stairs | Map implementation | P1 | BLOCKED | U-109, U-114 | — |
 | [U-116](docs/backlog/U-116.md) | Build the prisoner outpost and reserve annex | Map implementation | P1 | BLOCKED | U-114, U-115 | — |

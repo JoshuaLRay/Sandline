@@ -239,6 +239,37 @@ function slotCheckpoint(w: string, s: unknown): SlotCheckpoint {
   };
 }
 
+/** U-135: the original run start, separate from spent checkpoint inventory and later captures. */
+export interface MissionStartCheckpoint {
+  slots: SlotCheckpoint[];
+  captured: { slot: number; at: { x: number; y: number; z: number } }[];
+}
+
+/** Refuse malformed baselines instead of partially replenishing the squad on restart. */
+export function parseMissionStart(raw: unknown): MissionStartCheckpoint | null {
+  try {
+    const o = obj('missionStart', raw);
+    if (Object.keys(o).some((key) => key !== 'slots' && key !== 'captured')) return null;
+    const slots = list('missionStart.slots', o['slots'], MAX_SLOTS);
+    if (slots.length !== MAX_SLOTS) return null;
+    const seen = new Set<number>();
+    const captured = list('missionStart.captured', o['captured'], MAX_SLOTS).map((v, i) => {
+      const where = `missionStart.captured[${i}]`;
+      const p = obj(where, v);
+      if (Object.keys(p).some((key) => key !== 'slot' && key !== 'at')) fail(where);
+      const slot = int(`${where}.slot`, p['slot'], 0, MAX_SLOTS - 1);
+      if (seen.has(slot)) fail(where);
+      seen.add(slot);
+      const at = obj(`${where}.at`, p['at']);
+      if (Object.keys(at).some((key) => key !== 'x' && key !== 'y' && key !== 'z')) fail(where);
+      return { slot, at: { x: num(`${where}.at.x`, at['x']), y: num(`${where}.at.y`, at['y']), z: num(`${where}.at.z`, at['z']) } };
+    });
+    return { slots: slots.map((s, i) => slotCheckpoint(`missionStart.slots[${i}]`, s)), captured };
+  } catch {
+    return null;
+  }
+}
+
 /** U-077: a soldier's saved loadout from its JSON, or null if it is not what a session would have written. */
 export function parseSoldierLoadout(raw: unknown): SlotCheckpoint | null {
   try {
