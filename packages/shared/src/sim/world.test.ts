@@ -260,15 +260,18 @@ describe('a world names its floor (T-3.03)', () => {
   it('may be a rectangle (U-082): half the width across x, half the depth along z', () => {
     const w = loadWorld({ id: 'f', floor: { halfWidth: 60, halfDepth: 240 }, cover });
     expect([w.floorHalfWidth, w.floorHalfDepth, w.floorHalfExtent]).toEqual([60, 240, 240]);
-    // A square keeps all three the same, so every world before U-082 is as it was.
+    // Square authoring keeps all three dimensions the same.
     const sq = loadWorld({ id: 'f', floor: { halfExtent: 30 }, cover });
     expect([sq.floorHalfWidth, sq.floorHalfDepth, sq.floorHalfExtent]).toEqual([30, 30, 30]);
     const derived = loadWorld({ id: 'f', cover });
     expect([derived.floorHalfWidth, derived.floorHalfDepth]).toEqual([13 + FLOOR_MARGIN_M, 13 + FLOOR_MARGIN_M]);
-    for (const id of ['range', 'greybox-01', 'kit-gallery', 'mission-01']) {
+    for (const id of ['range', 'greybox-01', 'mission-01']) {
       const world = requireWorld(id);
       expect([world.floorHalfWidth, world.floorHalfDepth]).toEqual([world.floorHalfExtent, world.floorHalfExtent]);
     }
+    // U-124 extends the gallery's depth to include its house, keeping its width.
+    const gallery = requireWorld('kit-gallery');
+    expect([gallery.floorHalfWidth, gallery.floorHalfDepth, gallery.floorHalfExtent]).toEqual([40, 50, 50]);
   });
   it('comes through a level file too', () => {
     const w = loadLevel({ id: 'lane', format: 1, floor: { halfWidth: 60, halfDepth: 240 }, boxes: [{ id: 'crate', x: 0, y: 0, z: 0, w: 2, h: 1, d: 2 }], pieces: [] });

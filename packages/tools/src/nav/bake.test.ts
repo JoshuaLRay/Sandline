@@ -64,10 +64,14 @@ describe('a rectangular floor (U-082)', () => {
   it('hashes a rectangle differently from a square, and a square as it always has', () => {
     const square = loadWorld({ id: 'lane', floor: { halfExtent: 50 }, cover: [{ id: 'crate', x: 0, y: 0, z: 0, w: 2, h: 1, d: 2 }] });
     expect(navBakeHash(lane)).not.toBe(navBakeHash(square));
-    // The committed worlds' hashes (checked against their committed bakes by the nav tests) do not move.
-    for (const id of ['range', 'greybox-01', 'kit-gallery', 'mission-01']) {
+    // The remaining square worlds still have equal half-sides.
+    for (const id of ['range', 'greybox-01', 'mission-01']) {
       const world = requireWorld(id);
       expect(world.floorHalfWidth).toBe(world.floorHalfDepth);
     }
+    // U-124: the gallery bake must retain its narrower x extent, not grow into a square.
+    const gallery = requireWorld('kit-gallery');
+    expect(worldSoup(gallery, 0).positions.slice(0, 12)).toEqual([-40, 0, -50, 40, 0, -50, 40, 0, 50, -40, 0, 50]);
+    expect(navBakeHash(gallery)).not.toBe(navBakeHash({ ...gallery, floorHalfWidth: 50 }));
   });
 });
