@@ -420,3 +420,5 @@ Format: `T-<id> — <what changed>`
 - U-135 — Add validated map/checkpoint revision provenance and durable original run inventory/prisoners for reload/full restart ([#308](https://github.com/JoshuaLRay/Sandline/pull/308)); split U-113 so incompatible-restore quarantine and restart/select UI remain U-136.
 
 - U-143 — Split U-136 before claiming; quarantine unknown/mismatched restores before world initialization and offer safe host-controlled desktop/mobile restart/select with original or explicit legacy inventory, preserving saves/pools and leaving authored carried-prisoner placement blocked in U-144 ([#312](https://github.com/JoshuaLRay/Sandline/pull/312)).
+
+- U-133 — Add authoritative timed finite-cache transfers, dedicated stock/progress replication and paired squad/cache checkpoint restore; preserve exhausted caches, reconnect stock and full-restart inventory ([#311](https://github.com/JoshuaLRay/Sandline/pull/311)). Client presentation remains U-134.

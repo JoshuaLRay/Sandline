@@ -40,6 +40,7 @@ export interface ServerConnectionEvents {
   onFire?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Fire' }>) => void;
   onThrow?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Throw' }>) => void;
   onEquip?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Equip' }>) => void;
+  onSupplySelect?: (conn: ServerConnection, msg: Extract<Message, { kind: 'SupplySelect' }>) => void;
   /** U-028: the player started a reload on the page. */
   onReload?: (conn: ServerConnection) => void;
   onAck?: (conn: ServerConnection, tick: number) => void;
@@ -244,6 +245,10 @@ export class ServerConnection {
         this.lastActive = now;
         this.events.onEquip?.(this, msg);
         break;
+      case 'SupplySelect':
+        this.lastActive = now;
+        this.events.onSupplySelect?.(this, msg);
+        break;
       case 'AiDebugRequest':
         this.events.onAiDebugRequest?.(this, msg.on);
         break;
@@ -349,6 +354,8 @@ export interface ClientConnectionEvents {
   onMarks?: (marks: Extract<Message, { kind: 'Marks' }>['marks']) => void;
   /** T-3.34: where the mission stands. */
   onMission?: (mission: Extract<Message, { kind: 'Mission' }>) => void;
+  onSupplies?: (supplies: Extract<Message, { kind: 'Supplies' }>) => void;
+  onSupplyProgress?: (progress: Extract<Message, { kind: 'SupplyProgress' }>) => void;
   onProgression?: (progression: Extract<Message, { kind: 'Progression' }>) => void;
   /** T-4.28: the server's scoreboard, whenever a row changes. */
   onStats?: (stats: Extract<Message, { kind: 'Stats' }>) => void;
@@ -439,6 +446,12 @@ export class ClientConnection {
         break;
       case 'Mission':
         this.events.onMission?.(msg);
+        break;
+      case 'Supplies':
+        this.events.onSupplies?.(msg);
+        break;
+      case 'SupplyProgress':
+        this.events.onSupplyProgress?.(msg);
         break;
       case 'RoomState':
         this.events.onRoomState?.(msg);

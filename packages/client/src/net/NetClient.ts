@@ -20,6 +20,9 @@ import {
   type OrderKind,
   type RunKind,
   type MissionView,
+  type SupplyCacheDef,
+  type SupplyItem,
+  type SupplyUseProgress,
   type TargetMark,
   COMPONENT_IDS,
   suppressionFromWire,
@@ -295,6 +298,9 @@ export class NetClient {
   private noPistolValue = false;
   /** U-047: our health kits left, and the percent through applying one, as the host last said. */
   private kitsValue = 0;
+  private readonly suppliesValue = new Map<string, SupplyCacheDef>();
+  private supplyProgressValue: readonly SupplyUseProgress[] = [];
+  private supplyRequestId = 0;
   /** U-048: our slot-5 equipment as the host last said, a PROJECTILE_IDS index, or -1 for none. */
   private equipmentValue = -1;
   private kitProgressValue = 0;
@@ -533,6 +539,15 @@ export class NetClient {
     return this.missionValue;
   }
 
+  /** U-133: state only; choice controls and scenery presentation belong to U-134. */
+  get supplyCaches(): readonly SupplyCacheDef[] { return [...this.suppliesValue.values()]; }
+  get supplyProgress(): readonly SupplyUseProgress[] { return this.supplyProgressValue; }
+
+  selectSupply(cacheId: string, item: SupplyItem | null): void {
+    if (!this.joinedFlag || this.restoreChoiceValue) return;
+    this.transport.send(encodeMessage({ kind: 'SupplySelect', requestId: ++this.supplyRequestId, cacheId, item }), 'reliable');
+  }
+
   get progression(): Readonly<Extract<Message, { kind: 'Progression' }>['soldiers']> {
     return this.progressionValue;
   }
@@ -766,6 +781,9 @@ export class NetClient {
    * a drop wants the trend, not a fresh graph.
    */
   resetForRejoin(): void {
+    this.suppliesValue.clear();
+    this.supplyProgressValue = [];
+    this.supplyRequestId = 0;
     this.store.reset();
     this.predictor = null;
     this.characterSpaces = [];
@@ -1201,6 +1219,13 @@ export class NetClient {
     }
 
     switch (msg.kind) {
+      case 'Supplies':
+        if (msg.full) this.suppliesValue.clear();
+        for (const cache of msg.caches) this.suppliesValue.set(cache.id, cache);
+        break;
+      case 'SupplyProgress':
+        this.supplyProgressValue = msg.uses;
+        break;
       case 'JoinAck': {
         const world = getWorld(msg.world);
         if (!world) {
