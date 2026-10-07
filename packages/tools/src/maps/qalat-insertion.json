@@ -1,0 +1,38 @@
+{
+  "$comment": "U-138 isolated replacement authoring. Mission 1 construction specification revision 2, sections 2-4. Not a campaign registry entry. Future mouths are capped until subsequent leaves extend this build.",
+  "id": "qalat-road-insertion-authoring",
+  "floorY": 8,
+  "bounds": { "minX": -72, "maxX": 72, "minZ": -40, "maxZ": 84 },
+  "pocket": { "minX": -20, "maxX": 18, "minZ": -24, "maxZ": 12 },
+  "court": { "minX": 20, "maxX": 44, "minZ": 53, "maxZ": 75 },
+  "spine": [
+    { "id": "S0", "x": 0, "y": 8, "z": -6 },
+    { "id": "S1", "x": -12, "y": 8, "z": 18 },
+    { "id": "S2", "x": -12, "y": 8, "z": 36 },
+    { "id": "S3", "x": 12, "y": 8, "z": 44 },
+    { "id": "S3a", "x": 48, "y": 8, "z": 46.75 },
+    { "id": "D0", "x": 32, "y": 8, "z": 64 }
+  ],
+  "ribbonWidth": 8,
+  "continuations": [
+    { "id": "road", "x": 32, "y": 8, "z": 80, "width": 20 },
+    { "id": "ridge", "x": 62, "y": 8, "z": 68, "width": 8 },
+    { "id": "depot", "x": 12, "y": 8, "z": 68, "width": 6 }
+  ],
+  "squadStarts": [
+    { "x": -6, "y": 8, "z": -10 }, { "x": -2, "y": 8, "z": -10 }, { "x": 2, "y": 8, "z": -10 },
+    { "x": -6, "y": 8, "z": -6 }, { "x": -2, "y": 8, "z": -6 }, { "x": 2, "y": 8, "z": -6 }
+  ],
+  "overhang": { "id": "hollow-overhang", "x": 5, "y": 13, "z": -3, "w": 26, "h": 1.2, "d": 30 },
+  "masses": [
+    { "id": "T-SW", "top": 32, "polygon": [[-40,-36],[-24,-36],[-24,8],[-20,24],[-20,42],[-42,50],[-64,12]] },
+    { "id": "T-SE", "top": 38, "polygon": [[18,-36],[44,-28],[54,8],[46,30],[20,36],[0,28],[0,12],[18,12]] },
+    { "id": "T-SN", "top": 34, "polygon": [[-20,46],[-18,60],[2,66],[20,60],[18,54],[2,50]] },
+    { "id": "T-S3", "top": 26, "polygon": [[14,40],[26,40],[26,50],[20,53],[14,48]] }
+  ],
+  "rockCores": [
+    { "id": "hook-core", "x": 23, "y": 8, "z": 20.025, "w": 46, "h": 30, "d": 15.95 },
+    { "id": "fold-core", "x": -4, "y": 8, "z": 54, "w": 28, "h": 26, "d": 4 },
+    { "id": "west-core", "x": -32, "y": 8, "z": 0, "w": 16, "h": 24, "d": 48 }
+  ]
+}

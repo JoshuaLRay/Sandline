@@ -102,6 +102,15 @@ jobs:
           name: qalat-map-review
           path: artifacts/map-review/*
           if-no-files-found: error
+      - name: Generate and capture isolated Juniper Hollow construction
+        run: |
+          pnpm gen:qalat-insertion
+          pnpm exec tsx packages/tools/src/capture-qalat-insertion.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qalat-insertion-review
+          path: artifacts/qalat-insertion/*
+          if-no-files-found: error
       - run: pnpm perf:frame
 
   # ADR-014: the transcendental-drift bug is invisible on a V8-to-V8 pairing.

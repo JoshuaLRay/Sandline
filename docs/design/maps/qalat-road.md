@@ -2,6 +2,11 @@
 
 **Revision 2 · 2026-10-04 · U-107 · design for a full replacement map.**
 
+**U-138 construction addendum · 2026-10-07:** the owner approved adding a
+small bend to preserve the late court reveal when the original straight
+S3→D0 connection conflicted with that view requirement. S3a and its rock toe
+below implement that decision; the other route nodes remain fixed.
+
 This is the canonical construction brief for campaign mission 1, world/mission
 `qalat-road`. It replaces the rectangular valley, terrace slots and surface
 riverbed flank delivered by U-106. That implementation remains the current game
@@ -146,7 +151,7 @@ file govern construction. The drawings show no permission to walk between lines.
 ### 3.1 Exhaustive movement graph
 
 ```text
-S0 -- S1 -- S2 -- S3 -- D0
+S0 -- S1 -- S2 -- S3 -- S3a -- D0
                        |\
                        | +-- R0--R1--R2--R3--R4--R5--R6--R7--R7b--R8--R9--east gate
                        |            |           |
@@ -185,6 +190,7 @@ flat connecting apron. Close all gaps beyond authored walking edges with terrain
 | T-SW hollow flank | (-40,-36),(-24,-36),(-24,8),(-20,24),(-20,42),(-42,50),(-64,12) | y=32 throughout; hides insertion from west and blocks perimeter escape |
 | T-SE hooked spur | (18,-36),(44,-28),(54,8),(46,30),(20,36),(0,28),(0,12),(18,12) | y=38; the hook blocks the spawn-to-decision/valley view, including high ridge views |
 | T-SN second fold | (-20,46),(-18,60),(2,66),(20,60),(18,54),(2,50) | y=34; forces the second reveal turn rather than a straight ravine sight line |
+| T-S3 reveal toe (U-138 addendum) | (14,40),(26,40),(26,50),(20,53),(14,48) | y=26; carved by the clear ribbons, screens the late eastward approach to D0 |
 | T-W depot escarpment | (-66,62),(-16,56),(-6,94),(-24,132),(-18,190),(0,214),(4,248),(-18,286),(-32,360),(-58,392),(-76,230) | y=26; ruined depot roofs embedded along east foot; protects buried route from surface fire |
 | T-E ridge body | (46,70),(88,58),(114,116),(122,208),(110,300),(90,364),(54,362),(58,302),(68,252),(70,204),(50,150) | y=20 at z128, 34 at z168, 38 at z210, 34 at z248, 30 at z286; carved walking shelf at R nodes |
 | T-C road spurs | Three masses centred (-12,142), (10,214), (16,292), each 14 × 18 m in plan | y=20,22,20 respectively; truncate the road corridor beyond each battle, carve only road/crossing ribbons |
@@ -210,8 +216,17 @@ Do not reproduce a continuous artificial wall with repeated gun slots.
 | S0 | (0,8,-6) | x=-20..18, z=-24..12 | Gravel pocket, rooted juniper on west ledge, dry channel entering from behind; no enemy, road, outpost or ridge firing position visible |
 | S1 | (-12,8,18) | 8 m ribbon from S0 | Turn left around hooked spur; east face rises to y38 |
 | S2 | (-12,8,36) | 8 m ribbon | Narrow ravine head; first turn still hides S0; see only a broken cart at S3 |
-| S3 | (12,8,44) | 8 m ribbon | Turn right between spur toes, then northeast; rock fold hides the decision court until the final 12 m |
+| S3 | (12,8,44) | 8 m ribbon | Turn right between spur toes, then east around the reveal toe |
+| S3a | (48,8,46.75) | 8 m ribbon, beveled join | Added bend: turn northwest to D0; rock fold hides the decision court until the final 12 m |
 | D0 | (32,8,64) | x=20..44, z=53..75 | Weigh-station court: well at (37,8,61), main road north, ridge stair east, depot loading entrance west |
+
+The late-reveal distance is measured horizontally to the **nearest D0 court
+floor boundary**, rather than to the centre of its 24×22 m floor. Verify standing
+eye rays to the entire court on a 1 m grid from all legal approach floor centres
+on a 0.5 m grid and both ribbon shoulders at ≤0.25 m interpolation. No court point
+may be visible from an approach centre more than 12 m from that boundary. U-138
+records this construction measure; finished landmark/readability and play feel
+remain owner review in U-118/U-119.
 
 Six initial feet positions: slots 0..5 at `(-6,8,-10),(-2,8,-10),(2,8,-10),
 (-6,8,-6),(-2,8,-6),(2,8,-6)`, all facing north. Host/local/headless starts use
@@ -223,7 +238,7 @@ A continuous 1.2 m thick rock overhang projects over x=-8..18, z=-18..12 with
 underside y=13, and merges into T-SE. Its irregular art edge plus the y38 spur
 screens elevated observers; its five metres of headroom keeps the hollow open.
 The exit passes west of it. Sky is visible through the western opening. No roof
-is traversable and no enemy route enters S0–S3 or comes south of the D0 court.
+is traversable and no enemy route enters S0–S3a or comes south of the D0 court.
 
 ### 4.2 Spawn protection is a geometric contract
 
@@ -243,7 +258,7 @@ is. Players can regroup at S0 without being shot through a decorative rock shell
 
 ### 4.3 Route signage and first impressions
 
-At S3, frame the split with the well on the right and the ruined depot loading
+At S3a's turn toward D0, frame the split with the well on the right and the ruined depot loading
 arch left. A pale truck-rut strip leads from D0 north; one stone stair at `(56,8,68)`
 and the ridge skyline make the high route unmistakable; twin timber loading doors,
 fixed open, frame the descending depot stair. The water tower is first glimpsed
@@ -618,7 +633,7 @@ patrol from synchronizing three soldiers into one point.
 All alert bounds use the actual navigation regions, not an x/z disc that also
 selects a basement below. Surface groups do not hunt the squad through floors;
 basement groups cannot use roof polygons as cover. AI may lean/move to legal
-cover inside its region, but never enter S0–S3, jump a route boundary or chase
+cover inside its region, but never enter S0–S3a, jump a route boundary or chase
 through the unchosen route to create a surprise flank outside this plan.
 Implement per-member region/patrol support where current data lacks it (§14).
 
