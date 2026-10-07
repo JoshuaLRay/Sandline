@@ -4,7 +4,6 @@ import {
   parseMission, requireWorld, RESTORE_MAP_CHANGED_MESSAGE, TICK_SECONDS, type Message,
 } from '@sandline/shared';
 import { Session, type SessionOptions } from '@sandline/server/session';
-import type { CheckpointWorld } from '../../../server/src/session/checkpointWorld.ts';
 import { NetClient } from './NetClient.ts';
 import { restoreChoiceModel } from '../ui/restoreChoice.ts';
 
@@ -30,7 +29,7 @@ function room(legacy = false, supplies = false) {
   }
   (initial as unknown as { captureMissionCheckpoint(): void }).captureMissionCheckpoint();
   saved = structuredClone(saved);
-  if (supplies) (saved.checkpoint!.world as CheckpointWorld).caches![0]!.stock.healthKits = 1;
+  if (supplies) (saved.checkpoint!.world as { caches: { stock: { healthKits: number } }[] }).caches[0]!.stock.healthKits = 1;
   saved.checkpoint!.mapRevision = 1;
   if (legacy) delete saved.checkpoint!.missionStart;
   const saves: CampaignState[] = [];

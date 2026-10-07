@@ -16,6 +16,7 @@
     "gen:trig": "tsx packages/tools/src/gen-trig-table.ts",
     "gen:nav-spike": "tsx packages/tools/src/gen-nav-spike.ts",
     "gen:nav": "tsx packages/tools/src/gen-nav.ts",
+    "gen:qalat-insertion": "tsx packages/tools/src/gen-qalat-insertion.ts",
     "gen:audio": "tsx packages/tools/src/gen-audio.ts",
     "gen:voice": "tsx packages/tools/src/gen-voice.ts",
     "import:voice": "tsx packages/tools/src/import-voice-submission.ts",

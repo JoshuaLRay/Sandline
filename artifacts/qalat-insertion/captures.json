@@ -1,0 +1,198 @@
+{
+  "task": "U-138",
+  "kind": "isolated construction whitebox",
+  "activeCampaign": "unchanged; activation belongs to U-117",
+  "sourceHash": "e8c2ff27d1a35a16f01166c59581247ce36727460afa6f88503e24aafd203b89",
+  "levelHash": "e4b0f6d81f3c4529f2f4a8375c251a31f0f5a364432f7d18da5f641656b965f9",
+  "boxCount": 5777,
+  "stratumM": 0.0125,
+  "edgeExpansionM": 0.005,
+  "floorY": 8,
+  "spine": [
+    {
+      "id": "S0",
+      "x": 0,
+      "y": 8,
+      "z": -6
+    },
+    {
+      "id": "S1",
+      "x": -12,
+      "y": 8,
+      "z": 18
+    },
+    {
+      "id": "S2",
+      "x": -12,
+      "y": 8,
+      "z": 36
+    },
+    {
+      "id": "S3",
+      "x": 12,
+      "y": 8,
+      "z": 44
+    },
+    {
+      "id": "S3a",
+      "x": 48,
+      "y": 8,
+      "z": 46.75
+    },
+    {
+      "id": "D0",
+      "x": 32,
+      "y": 8,
+      "z": 64
+    }
+  ],
+  "continuations": [
+    {
+      "id": "road",
+      "x": 32,
+      "y": 8,
+      "z": 80,
+      "width": 20
+    },
+    {
+      "id": "ridge",
+      "x": 62,
+      "y": 8,
+      "z": 68,
+      "width": 8
+    },
+    {
+      "id": "depot",
+      "x": 12,
+      "y": 8,
+      "z": 68,
+      "width": 6
+    }
+  ],
+  "squadStarts": [
+    {
+      "x": -6,
+      "y": 8,
+      "z": -10
+    },
+    {
+      "x": -2,
+      "y": 8,
+      "z": -10
+    },
+    {
+      "x": 2,
+      "y": 8,
+      "z": -10
+    },
+    {
+      "x": -6,
+      "y": 8,
+      "z": -6
+    },
+    {
+      "x": -2,
+      "y": 8,
+      "z": -6
+    },
+    {
+      "x": 2,
+      "y": 8,
+      "z": -6
+    }
+  ],
+  "ownerQualityVerdict": "pending",
+  "renderer": "Three WebGL whitebox; exact generated boxes",
+  "antialias": true,
+  "viewport": [
+    1440,
+    1000
+  ],
+  "views": [
+    {
+      "name": "spawn-north",
+      "position": [
+        -2,
+        9.55,
+        -6
+      ],
+      "target": [
+        -12,
+        9.55,
+        18
+      ],
+      "calls": 2,
+      "triangles": 61182,
+      "boxCount": 5777,
+      "levelHash": "e4b0f6d81f3c4529f2f4a8375c251a31f0f5a364432f7d18da5f641656b965f9"
+    },
+    {
+      "name": "western-sky",
+      "position": [
+        -16,
+        9.55,
+        -6
+      ],
+      "target": [
+        0,
+        17,
+        -2
+      ],
+      "calls": 2,
+      "triangles": 61182,
+      "boxCount": 5777,
+      "levelHash": "e4b0f6d81f3c4529f2f4a8375c251a31f0f5a364432f7d18da5f641656b965f9"
+    },
+    {
+      "name": "second-bend",
+      "position": [
+        -12,
+        9.55,
+        36
+      ],
+      "target": [
+        12,
+        9.55,
+        44
+      ],
+      "calls": 1,
+      "triangles": 60318,
+      "boxCount": 5777,
+      "levelHash": "e4b0f6d81f3c4529f2f4a8375c251a31f0f5a364432f7d18da5f641656b965f9"
+    },
+    {
+      "name": "decision-court",
+      "position": [
+        28,
+        9.55,
+        58
+      ],
+      "target": [
+        40,
+        9.55,
+        68
+      ],
+      "calls": 1,
+      "triangles": 60318,
+      "boxCount": 5777,
+      "levelHash": "e4b0f6d81f3c4529f2f4a8375c251a31f0f5a364432f7d18da5f641656b965f9"
+    },
+    {
+      "name": "overview",
+      "position": [
+        -74,
+        126,
+        -100
+      ],
+      "target": [
+        0,
+        8,
+        25
+      ],
+      "calls": 2,
+      "triangles": 61182,
+      "boxCount": 5777,
+      "levelHash": "e4b0f6d81f3c4529f2f4a8375c251a31f0f5a364432f7d18da5f641656b965f9"
+    }
+  ]
+}

@@ -54,7 +54,35 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | `pnpm perf:frame` | T-5.04: after building the client, the slice mission with the squad in Chromium — a walk and a firefight — printing frame time (median, p95, worst), draw calls and triangles; asserts ADR-013's 300 draw calls, records frame time (headless is software, not target hardware). `?perf` shows the same numbers live on any machine |
 | `pnpm export:soldier` | write the code-built soldier as `assets/src/soldier.glb`, the pipeline's test asset |
 | `pnpm gen:nav` | re-bake every named world's navmesh; required after editing a world, `MoveConfig` or the hitbox (a test fails until you do) |
+| `pnpm gen:qalat-insertion` | U-138: compile the isolated Juniper Hollow replacement section and its exact collision/render surface, manifest and plan into `artifacts/qalat-insertion/`; production campaign activation remains U-117 |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
+
+## Isolated Juniper Hollow construction (U-138)
+
+This authoring fixture implements the replacement's southern S0–D0 section and
+three continuation sockets. Its geometry source is
+`packages/tools/src/maps/qalat-insertion.json`; its hostile observer coordinates
+are verification probes in `qalat-observers.json`, not a second encounter script.
+The active `qalat-road` campaign remains the earlier map until U-117 integration.
+
+Run `pnpm gen:qalat-insertion`, then
+`pnpm exec tsx packages/tools/src/capture-qalat-insertion.ts`. The latter starts
+its own Vite server and captures five actual WebGL whitebox views under
+`artifacts/qalat-insertion/`, checking the generated geometry hash and <300 draws.
+Streaming CI uploads `qalat-insertion-review`. Commit the compact manifest, plan,
+capture metadata and PNGs; the large generated level/surface JSON stays ignored.
+For interactive review, run `pnpm exec vite --host 127.0.0.1` at the repository
+root and visit `/packages/tools/src/maps/insertion-review.html`; orbit/zoom or use
+Spawn, Decision court and Overview. These are construction views; terrain art,
+D0 landmarks/signage and owner map/play quality remain U-118/U-119 gates.
+
+`pnpm exec vitest run packages/tools/src/maps/qalatInsertion.test.ts packages/tools/src/maps/insertionSurface.test.ts`
+checks production solid-nav baking and controller travel, exact y8 floors/starts,
+width/headroom, perimeter escapes, the approved late-reveal bend and every S0 body
+ray against southern terrain alone. Full patrol/reserve/ridge/tank interpolation
+uses ≤1 m steps; both tank muzzle recipes include eight orientations. The court
+reveal check samples the whole court and legal shoulders, measuring distance to
+the nearest court floor boundary as defined in the construction addendum.
 
 ## Adding a mission (U-073)
 
@@ -425,7 +453,8 @@ Completion recomputes against current host stock and inventory, then commits in
 stable slot order. Preview results are never reservations. Ammo must be in the
 held primary, with no projectile/kit in hand; a sidearm cannot consume the pool.
 
-Protocol 66 adds dedicated reliable messages, separate from pickup IDs:
+Protocol 68 combines the dedicated reliable supply messages (introduced in
+version 66) with incompatible-restore choices, separate from pickup IDs:
 
 | Message | Direction | Contract |
 |---|---|---|
@@ -433,7 +462,8 @@ Protocol 66 adds dedicated reliable messages, separate from pickup IDs:
 | `Supplies` | Host → clients | `full` replaces all caches on join/restore; otherwise only changed caches merge by ID. Includes quantized feet and exact integer stock, even when empty. |
 | `SupplyProgress` | Host → clients | All accepted choices, by seated slot, with cache ID, item and whole percent. The clock updates at 10 Hz; choice/cancellation/completion changes are immediate. An empty list clears all holds. |
 
-`NetClient.selectSupply(cacheId, item)` sends a choice; its `supplyCaches` and
+`NetClient.selectSupply(cacheId, item)` sends a choice only after joining and
+while no incompatible-restore gate is active; its `supplyCaches` and
 `supplyProgress` getters expose host state without local inventory prediction.
 `resetForRejoin()` clears both; reconnect receives current stock and starts no
 hold. Client choice/progress/empty-scenery presentation remains U-134; the five
@@ -581,10 +611,10 @@ old prisoner coordinates or guesses new holding positions. U-144 must provide
 approved placements before U-136/U-113 can close. Mission 1's seventh escort POW
 is separate from the captured squad pool.
 
-The validated `RestoreGate` contract is protocol **67**, event variant **13**.
-U-133/#311 independently owns version 66 and variants 10–12; integrating both
-branches requires a new protocol bump for that combined layout. No generated
-map, asset, audio or nav inputs changed here.
+The validated combined contract is protocol **68**: U-133's supply messages use
+event variants **10–12** and `RestoreGate` uses variant **13**. The older separate
+cache/restore layouts used versions 66/67 and are rejected by the version gate.
+No generated map, asset, audio or nav inputs changed here.
 
 Reproduce Session/wire/client coverage and the responsive dialog captures:
 
