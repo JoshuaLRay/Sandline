@@ -34,6 +34,7 @@ export * from './audio/mix.ts';
 export * from './audio/weaponSounds.ts';
 export * from './audio/worldSounds.ts';
 export * from './audio/voices.ts';
+export * from './audio/voiceScript.ts';
 export * from './audio/callouts.ts';
 export * from './sim/squad.ts';
 export * from './sim/classes.ts';

@@ -3,7 +3,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { VOICES, VOICE_CONSENT_TEXT, passFile, passLines } from '@sandline/shared';
+import { VOICES, VOICE_CONSENT_TEXT, VOICE_RECORDING_LINES, passFile, passLines, type VoiceContributorSubmission } from '@sandline/shared';
 
 const PASSES = new Set(VOICES.sections.flatMap((s) => (['normal', 'shout', 'hurt'] as const)
   .filter((style) => passLines(s, style).length > 0).map((style) => passFile(s.id, style))));
@@ -14,16 +14,14 @@ const MAX_CLIP = 8 * 1024 * 1024;
 const MAX_TOTAL = 100 * 1024 * 1024;
 const MAX_STORED = 256 * 1024 * 1024;
 const CONSENT = VOICE_CONSENT_TEXT;
+const LINES = new Set(VOICE_RECORDING_LINES.map((line) => line.id));
 
 export interface VoiceIntakeOptions {
   dir: string; inviteKey: string; origin: string;
   onFinished?: (submission: { id: string; name: string; clips: number }) => Promise<void>;
 }
-interface Submission { id: string; tokenHash: string; name: string; agreedAt: string; consent: string; clips: Record<string, { bytes: number; file: string }>; complete: boolean; notifiedAt?: string }
-export interface ReviewSubmission {
-  id: string; name: string; agreedAt: string; complete: boolean;
-  clips: { pass: string; bytes: number; type: string }[];
-}
+interface Submission { id: string; tokenHash: string; name: string; agreedAt: string; consent: string; clips: Record<string, { bytes: number; file: string; line?: string; savedAt?: string }>; complete: boolean; notifiedAt?: string }
+export type ReviewSubmission = VoiceContributorSubmission;
 
 function equal(a: string, b: string): boolean {
   const aa = createHash('sha256').update(a).digest();
@@ -42,15 +40,17 @@ async function body(req: IncomingMessage, limit: number): Promise<Buffer> {
   for await (const piece of req) {
     const chunk = Buffer.from(piece as Buffer);
     size += chunk.length;
-    if (size > limit) throw new Error('Recording is too large');
-    chunks.push(chunk);
+    // Drain an oversized request without keeping its bytes, so the caller receives a useful 413.
+    if (size <= limit) chunks.push(chunk);
   }
+  if (size > limit) throw new Error('Recording is too large');
   return Buffer.concat(chunks);
 }
 
 /** Configured only on the dedicated intake host, backed by its persistent private volume. */
 export class VoiceIntake {
   private readonly starts = new Map<string, { count: number; since: number }>();
+  private readonly notifications = new Map<string, Promise<boolean>>();
   constructor(private readonly options: VoiceIntakeOptions) {
     if (!options.dir || !options.inviteKey || !/^https?:\/\/[^/]+$/.test(options.origin)) throw new Error('Voice intake needs a directory, invite key and a site origin');
     mkdirSync(options.dir, { recursive: true, mode: 0o700 });
@@ -67,6 +67,38 @@ export class VoiceIntake {
     writeFileSync(temp, JSON.stringify(s, null, 2), { mode: 0o600 });
     renameSync(temp, file);
   }
+  private authorized(req: IncomingMessage, id: string): Submission | null {
+    const s = this.reviewRead(id);
+    const token = req.headers['x-submission-token'];
+    return s && typeof token === 'string' && equal(createHash('sha256').update(token).digest('hex'), s.tokenHash) ? s : null;
+  }
+  private metadata(s: Submission): ReviewSubmission {
+    return { id: s.id, name: s.name, agreedAt: s.agreedAt, complete: s.complete,
+      clips: Object.entries(s.clips).flatMap(([pass, stored]) => {
+        const clip = this.reviewClip(s.id, pass);
+        return clip ? [{ pass, bytes: clip.bytes, type: clip.type,
+          ...(stored.line ? { line: stored.line } : {}), ...(stored.savedAt ? { savedAt: stored.savedAt } : {}) }] : [];
+      }).sort((a, b) => (a.savedAt ?? '').localeCompare(b.savedAt ?? '') || a.pass.localeCompare(b.pass)),
+    };
+  }
+  /** Notification is secondary to durable audio; concurrent takes share one dispatch. */
+  private async notify(s: Submission): Promise<boolean> {
+    if (!this.options.onFinished || s.notifiedAt) return true;
+    const pending = this.notifications.get(s.id);
+    if (pending) return pending;
+    const delivery = (async () => {
+      try {
+        await this.options.onFinished!({ id: s.id, name: s.name, clips: Object.keys(s.clips).length });
+        // Another take may have arrived while the dispatch was in flight.
+        const latest = this.read(s.id)!;
+        latest.notifiedAt = new Date().toISOString();
+        this.save(latest);
+        return true;
+      } catch { return false; }
+    })();
+    this.notifications.set(s.id, delivery);
+    try { return await delivery; } finally { this.notifications.delete(s.id); }
+  }
   /** No secrets or filesystem paths cross the review API. Called only after owner authentication. */
   reviewSubmissions(offset = 0): { submissions: ReviewSubmission[]; total: number } {
     const submissions: ReviewSubmission[] = [];
@@ -74,12 +106,7 @@ export class VoiceIntake {
       try {
         const s = this.reviewRead(id);
         if (!s) continue;
-        submissions.push({ id, name: s.name, agreedAt: s.agreedAt, complete: s.complete,
-          clips: Object.keys(s.clips).flatMap((pass) => {
-            const clip = this.reviewClip(id, pass);
-            return clip ? [{ pass, bytes: clip.bytes, type: clip.type }] : [];
-          }).sort((a, b) => a.pass.localeCompare(b.pass)),
-        });
+        submissions.push(this.metadata(s));
       } catch { /* A missing/corrupt submission must not prevent reviewing the others. */ }
     }
     submissions.sort((a, b) => b.agreedAt.localeCompare(a.agreedAt) || a.id.localeCompare(b.id));
@@ -97,10 +124,11 @@ export class VoiceIntake {
     return s;
   }
   reviewClip(id: string, pass: string): { path: string; bytes: number; type: string } | null {
-    if (!PASSES.has(pass)) return null;
+    if (!PASSES.has(pass) && !/^take-[a-f0-9]{32}$/.test(pass)) return null;
     const s = this.reviewRead(id);
     const clip = s?.clips[pass];
     if (!clip) return null;
+    if (pass.startsWith('take-') && (!clip.line || !LINES.has(clip.line))) return null;
     const format = Object.entries(TYPES).find(([, ext]) => clip.file === `${pass}${ext}`);
     if (!format) return null;
     const path = join(this.path(id), clip.file);
@@ -115,13 +143,13 @@ export class VoiceIntake {
       return sum + readdirSync(this.path(id)).reduce((clips, file) => clips + statSync(join(this.path(id), file)).size, 0);
     }, 0);
   }
-  /** Handles OPTIONS/POST/PUT only. No public reads of private source audio. */
+  /** Contributor reads require their own submission token. There is no public listing. */
   async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     res.setHeader('cache-control', 'no-store');
     res.setHeader('vary', 'Origin');
     if (req.headers.origin === this.options.origin) {
       res.setHeader('access-control-allow-origin', this.options.origin);
-      res.setHeader('access-control-allow-methods', 'POST, PUT, OPTIONS');
+      res.setHeader('access-control-allow-methods', 'GET, POST, PUT, OPTIONS');
       res.setHeader('access-control-allow-headers', 'Content-Type, X-Submission-Token');
     } else if (req.headers.origin) { json(res, 403, { error: 'Origin is not permitted' }); return; }
     if (req.method === 'OPTIONS') { res.statusCode = 204; res.end(); return; }
@@ -144,6 +172,59 @@ export class VoiceIntake {
         mkdirSync(this.path(id), { mode: 0o700 });
         this.save(s);
         json(res, 201, { id, token });
+        return;
+      }
+      const listing = /^\/voice-submissions\/([a-f0-9]{32})$/.exec(req.url ?? '');
+      if (req.method === 'GET' && listing) {
+        const s = this.authorized(req, listing[1]!);
+        if (!s) { json(res, 404, { error: 'Submission not found' }); return; }
+        json(res, 200, this.metadata(s)); return;
+      }
+      const playback = /^\/voice-submissions\/([a-f0-9]{32})\/clips\/(take-[a-f0-9]{32})$/.exec(req.url ?? '');
+      if (req.method === 'GET' && playback) {
+        const s = this.authorized(req, playback[1]!);
+        const clip = s && this.reviewClip(s.id, playback[2]!);
+        if (!clip) { json(res, 404, { error: 'Recording not found' }); return; }
+        res.setHeader('content-type', clip.type);
+        res.setHeader('content-length', clip.bytes);
+        res.end(readFileSync(clip.path)); return;
+      }
+      const take = /^\/voice-submissions\/([a-f0-9]{32})\/lines\/([a-z][a-z0-9-]*)\/([a-f0-9]{32})$/.exec(req.url ?? '');
+      if (req.method === 'PUT' && take) {
+        const id = take[1]!;
+        if (!this.authorized(req, id)) { json(res, 404, { error: 'Submission not found' }); return; }
+        const line = take[2]!;
+        const key = `take-${take[3]!}`;
+        const mime = (req.headers['content-type'] ?? '').split(';')[0]!.trim();
+        const ext = TYPES[mime];
+        if (!LINES.has(line) || !ext) { json(res, 400, { error: 'Unknown script line or audio format' }); return; }
+        const bytes = await body(req, MAX_CLIP);
+        if (bytes.length < 1000) { json(res, 400, { error: 'Recording is empty or too short' }); return; }
+        // Re-read after the asynchronous body: overlapping uploads must not lose each other's metadata.
+        const s = this.authorized(req, id);
+        if (!s) { json(res, 404, { error: 'Submission not found' }); return; }
+        const file = `${key}${ext}`;
+        const existing = s.clips[key];
+        if (existing) {
+          const source = this.reviewClip(id, key);
+          if (existing.line !== line || existing.file !== file || !source || !readFileSync(source.path).equals(bytes)) {
+            json(res, 409, { error: 'This take is already saved; record a new take instead' }); return;
+          }
+        } else {
+          const total = Object.values(s.clips).reduce((sum, clip) => sum + clip.bytes, bytes.length);
+          if (total > MAX_TOTAL) { json(res, 413, { error: 'Submission exceeds size limit' }); return; }
+          if (this.storedBytes() + bytes.length > MAX_STORED) { json(res, 507, { error: 'Voice intake is full; contact the owner' }); return; }
+          const temp = join(this.path(id), `${file}.tmp`);
+          writeFileSync(temp, bytes, { mode: 0o600 });
+          renameSync(temp, join(this.path(id), file));
+          s.clips[key] = { bytes: bytes.length, file, line, savedAt: new Date().toISOString() };
+          s.complete = true; // A single Submit is the complete delivery action.
+          this.save(s);
+        }
+        const stored = s.clips[key]!;
+        json(res, 200, { clip: { pass: key, line, bytes: stored.bytes, type: mime, savedAt: stored.savedAt } });
+        // Confirm the durable save immediately; an external notification must not delay Submit.
+        void this.notify(s);
         return;
       }
       const upload = /^\/voice-submissions\/([a-f0-9]{32})\/([a-z][a-z0-9-]*)$/.exec(req.url ?? '');
@@ -184,15 +265,9 @@ export class VoiceIntake {
         }
         // The completed recording is durable before delivery. A failed dispatch
         // can be retried by Finish without uploading the audio again.
-        if (this.options.onFinished && !s.notifiedAt) {
-          try {
-            await this.options.onFinished({ id: s.id, name: s.name, clips: count });
-            s.notifiedAt = new Date().toISOString();
-            this.save(s);
-          } catch {
-            json(res, 503, { error: 'Recording saved, but notification failed. Tap Finish again to retry.' });
-            return;
-          }
+        if (!await this.notify(s)) {
+          json(res, 503, { error: 'Recording saved, but notification failed. Tap Finish again to retry.' });
+          return;
         }
         json(res, 200, { received: count });
         return;

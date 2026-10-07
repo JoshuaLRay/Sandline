@@ -132,6 +132,12 @@ The owner reviews a submission and explicitly imports it with `pnpm import:voice
 
 The intake is disabled without `VOICE_INTAKE_DIR` and `VOICE_SITE_ORIGIN`. The Fly deployment config uses its persistent volume for `VOICE_INTAKE_DIR` and the exact deployed game origin for CORS. The owner chose `JRay` as the case-insensitive invitation code; the code is public and short, so the existing request and storage limits matter. It is distinct from the multiplayer join key.
 
+## Owner addendum — line contributions and contributor playback (2026-10-06)
+
+The owner requests a list of every line with the contributor's recording count, a quoted prompt and parenthetical direction, Record/Stop and Submit controls, and a scrollable playback list. Submit must save directly on Fly without another Upload or Finish action. Multiple recordings for a line are retained separately. This replaces the section-based contribution UI while preserving old source submissions and explicit owner import.
+
+To restore a contributor's saved counts and listen to their own takes, the intake now permits metadata and audio reads authenticated by that submission's private token, stored in the contributing browser. The invitation code and display name never authorize reads. A contributor cannot enumerate or read other submissions. This narrowly supersedes the write-only contributor API requirement above; only the authenticated owner can review everyone's recordings. Listening is disabled during recording. Notification failure cannot turn a durable save into a failed submission. The source, consent and offline review/publishing decisions remain unchanged.
+
 ## Owner addendum — private browser review (2026-10-05)
 
 The owner authorized a browser review page linked from the contribution page, with GitHub login restricted to JoshuaLRay (stable account ID 127329846). The intake host may serve source clips **only after owner authentication**. The contribution API remains write-only; invitation codes and contributor upload tokens never authorize review reads. Existing public-source and offline-import decisions are unchanged.

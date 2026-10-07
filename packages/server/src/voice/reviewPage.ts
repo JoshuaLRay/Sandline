@@ -1,3 +1,5 @@
+import { VOICE_RECORDING_LINES } from '@sandline/shared';
+
 /** Served by the intake host so OAuth cookies and native audio remain first-party. */
 export const REVIEW_HTML = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -27,6 +29,7 @@ article{padding:22px;margin:20px 0;background:#203039;border:1px solid #40525b;b
 `;
 
 export const REVIEW_SCRIPT = `
+const prompts=${JSON.stringify(Object.fromEntries(VOICE_RECORDING_LINES.map((line) => [line.id, `“${line.text}” (${line.direction})`])))};
 const login=document.querySelector('#login'),refresh=document.querySelector('#refresh'),logout=document.querySelector('#logout');
 const status=document.querySelector('#status'),list=document.querySelector('#submissions'),pagination=document.querySelector('#pagination');
 let offset=0,loading=false;
@@ -46,17 +49,20 @@ async function load(){
   status.textContent=data.total===0?'No voice submissions have been saved yet.':data.total+' saved submission'+(data.total===1?'':'s')+'.';
   for(const submission of data.submissions){
    const card=element('article',list);element('h2',card,submission.name);
-   const date=new Date(submission.agreedAt);element('p',card,(submission.complete?'Finished':'In progress')+' · '+(Number.isNaN(date.getTime())?'Date unavailable':date.toLocaleString())+' · '+submission.clips.length+' sections').className='meta';
+   const date=new Date(submission.agreedAt);element('p',card,(submission.complete?'Saved':'In progress')+' · '+(Number.isNaN(date.getTime())?'Date unavailable':date.toLocaleString())+' · '+submission.clips.length+' recordings').className='meta';
    element('p',card,'Submission '+submission.id).className='id';
-   if(!submission.clips.length)element('p',card,'No sections uploaded yet.');
+   if(!submission.clips.length)element('p',card,'No recordings submitted yet.');
+   const counts={};
    for(const clip of submission.clips){
-    const row=element('div',card);row.className='clip';element('h3',row,clip.pass.split('-').join(' '));
+    const row=element('div',card);row.className='clip';
+    const count=counts[clip.line]=(counts[clip.line]||0)+1;
+    element('h3',row,clip.line?(prompts[clip.line]||clip.line)+' · take '+count:clip.pass.split('-').join(' '));
     const url='/voice-review/clips/'+submission.id+'/'+clip.pass;
     const audio=element('audio',row);audio.controls=true;audio.preload='none';audio.src=url;audio.setAttribute('aria-label',submission.name+' — '+clip.pass);
     audio.addEventListener('play',()=>{for(const other of list.querySelectorAll('audio'))if(other!==audio)other.pause();});
     const fallback=element('p',row);fallback.hidden=true;fallback.className='error';
     audio.addEventListener('error',()=>{fallback.hidden=false;fallback.textContent='Playback failed. Your session may have expired, or this browser may not support this recording. Sign in again or download the clip.';});
-    const download=element('a',row,'Download recording');download.href=url;download.download=clip.pass+'.'+({'audio/webm':'webm','audio/mp4':'m4a','audio/ogg':'ogg','audio/wav':'wav','audio/x-wav':'wav'}[clip.type]||'audio');
+    const download=element('a',row,'Download recording');download.href=url;download.download=(clip.line?clip.line+'-':'')+clip.pass+'.'+({'audio/webm':'webm','audio/mp4':'m4a','audio/ogg':'ogg','audio/wav':'wav','audio/x-wav':'wav'}[clip.type]||'audio');
     element('span',row,' · '+Math.ceil(clip.bytes/1024)+' KB');
    }
   }

@@ -1,0 +1,10 @@
+{
+  "recordings": 4,
+  "realMediaRecorder": true,
+  "realIntake": true,
+  "playbackAfterReload": true,
+  "playbackBlockedDuringRecording": true,
+  "desktop": "1100×900",
+  "mobile": "390×844",
+  "errors": []
+}

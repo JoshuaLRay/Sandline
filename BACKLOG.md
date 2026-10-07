@@ -34,6 +34,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
+| [U-137](docs/backlog/U-137.md) | Submit and replay separate voice takes by line, with saved counts | Audio / contribution UX | P1 | DONE | U-036 (DONE); effective on owner-authorized green merge; engineering evidence and separate live review steps in card | [#309](https://github.com/JoshuaLRay/Sandline/pull/309) |
 | [U-120](docs/backlog/U-120.md) | Bake solid overhead undersides and enforce basement headroom | Map implementation | P1 | DONE | Owner-authorized merge; CI #1691 passed all four jobs | [#294](https://github.com/JoshuaLRay/Sandline/pull/294) |
 | [U-121](docs/backlog/U-121.md) | Preserve floors in nav projection, blockers and traversal links | Map implementation | P1 | DONE | Owner-authorized merge; all four CI #1694 jobs passed | [#295](https://github.com/JoshuaLRay/Sandline/pull/295) |
 | [U-122](docs/backlog/U-122.md) | Select and bake cover on the intended floor | Map implementation | P1 | DONE | Proposed on authorized green merge; verification in PR | [#296](https://github.com/JoshuaLRay/Sandline/pull/296) |
@@ -47,7 +48,7 @@ GitHub Issue, task card or `PLAN.md`. PRs link to the canonical card.
 | [U-130](docs/backlog/U-130.md) | Individual reversible patrols and bounded combat movement | Map implementation | P1 | DONE | Owner-authorized green merge #305; final-head CI and merge evidence in PR | [#305](https://github.com/JoshuaLRay/Sandline/pull/305) |
 | [U-131](docs/backlog/U-131.md) | Pre-place inactive reserves and activate surviving entities | Map implementation | P1 | DONE | U-129, U-130, U-110 (DONE); engineering verification in PR, owner map/play quality separate | [#306](https://github.com/JoshuaLRay/Sandline/pull/306) |
 | [U-112](docs/backlog/U-112.md) | Finite projectile, health and ammunition supply caches | Map implementation | P1 | BLOCKED | Aggregate closure: U-132–U-134; split before implementation | — |
-| [U-132](docs/backlog/U-132.md) | Finite cache data and capacity-safe supply transfers | Map implementation | P1 | REVIEW | U-107 (DONE); leaf of U-112; local verification passed, latest-head CI in PR | [#307](https://github.com/JoshuaLRay/Sandline/pull/307) |
+| [U-132](docs/backlog/U-132.md) | Finite cache data and capacity-safe supply transfers | Map implementation | P1 | DONE | Owner-authorized merge 2026-10-07; effective on green merge; final-head CI in PR; leaf of U-112 | [#307](https://github.com/JoshuaLRay/Sandline/pull/307) |
 | [U-133](docs/backlog/U-133.md) | Authoritative cache use, replication and checkpoint stock | Map implementation | P1 | BLOCKED | U-132 | — |
 | [U-134](docs/backlog/U-134.md) | Cache choice UI, use progress and stock presentation | Map implementation | P1 | BLOCKED | U-133 | — |
 | [U-113](docs/backlog/U-113.md) | Map-revision-aware checkpoint restart and restore | Map implementation | P1 | READY | U-107 | — |
