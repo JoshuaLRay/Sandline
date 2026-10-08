@@ -467,8 +467,9 @@ while no incompatible-restore gate is active; its `supplyCaches` and
 `supplyProgress` getters expose host state without local inventory prediction.
 `resetForRejoin()` clears both; reconnect receives current stock and starts no
 hold. U-134 presents desktop choice/use and desktop/mobile stock/progress/scenery;
-U-145 retains the mobile-use control decision. The five actual production
-placements and their exhaustive counts remain U-117.
+U-145 retains implementation and acceptance of owner-approved commander
+resupply. The five actual production placements and their exhaustive counts
+remain U-117.
 
 Checkpoint-world format 1 gains optional `caches: [{ id, stock }]`. New worlds
 save all caches and six soldier inventories together, and retry/JSON host reload
@@ -490,7 +491,8 @@ corepack pnpm exec vitest run packages/server/src/session/supplyCaches.test.ts p
 The normal gameplay HUD uses Tab mouse access to choose one compatible item,
 then held E to use it. Release E interrupts the host hold; hiding the HUD control
 or leaving reach/LOS cancels the choice. Spectators view stock/progress beside
-the watched soldier; mobile use remains blocked on U-145's approved controls.
+the watched soldier; U-145's commander resupply is approved but remains
+unimplemented and blocked on U-134's owner acceptance.
 
 `pnpm --filter @sandline/client dev --host 0.0.0.0` serves
 `/supply-review.html` and `/supply-review.html?mobile` for isolated live review.
