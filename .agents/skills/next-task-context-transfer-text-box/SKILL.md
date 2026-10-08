@@ -9,14 +9,28 @@ Give the owner one fenced `text` block they can paste into a new chat. Keep it
 self-contained and about 100–180 words. This skill prepares a handoff; creating
 the box does not claim or implement the next task.
 
+## Merge when green
+
+The owner's standing instruction (2026-10-08) is to merge the task being
+completed when green. Carry that authorization into every generated text box
+for the one task the next chat completes. Include this sentence verbatim:
+
+"Complete the selected task and merge its verified head when all four required latest-head CI jobs are green."
+
+Respect branch protections and explicit pre-merge gates. Record remaining human
+acceptance honestly: a task merged before its owner quality verdict stays in
+REVIEW until that verdict is supplied; only accepted and merged work is DONE.
+Follow any later explicit owner instruction that changes this delivery policy.
+
 ## Refresh the evidence
 
 1. Read `AGENTS.md`, `CLAUDE.md`, `.claude/commands/next-task.md`, `BACKLOG.md`
    and the candidate task card. Fetch current remote state while preserving
    unrelated work; check open PRs and the repository's default branch.
-2. If the owner requested a merge, finish the authorized task workflow first:
-   check acceptance and every required CI job on the final head, merge that
-   verified head, and confirm the merge and task status on the target branch.
+2. Finish the task being completed under the merge-when-green instruction:
+   check applicable acceptance gates and every required CI job on the final
+   head, merge that verified head, and confirm the merge and task status on the
+   target branch. Preserve any remaining human acceptance as REVIEW.
    Do not report an unmerged PR as merged. If blocked, state the real blocker
    and make the handoff about resuming it, rather than starting dependent work.
 3. Select the first eligible READY **leaf** in backlog order with dependencies
@@ -37,9 +51,9 @@ Include:
 - Node >=22, pinned pnpm, `pnpm verify`, applicable budgets/generators and all
   four required latest-head CI jobs (`verify`, `streaming`, `parity-non-v8`,
   `mission`). Preserve any task-specific human acceptance gates.
-- Delivery as a green PR in REVIEW unless the owner explicitly authorized the
-  next task's merge. A request to merge the previous PR is not standing merge
-  permission for future tasks.
+- The explicit merge-when-green sentence above in every text box. It authorizes
+  the one task being completed; verify its merge on the default branch and
+  retain REVIEW wherever human acceptance remains pending.
 - This skill's repository path, so the new chat can produce the next box.
 
 Keep logs, historical summaries, credentials, session IDs and machine-specific
