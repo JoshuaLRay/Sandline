@@ -929,8 +929,9 @@ export class Session {
   private nextPickupNetId = FIRST_PICKUP_NET_ID;
   private readonly supplyDefs: readonly SupplyCacheDef[];
   private readonly supplyStocks = new Map<string, SupplyStock>();
-  private readonly supplyUses = new Map<number, { connection: ServerConnection; cacheId: string; item: SupplyItem; ticks: number }>();
+  private readonly supplyUses = new Map<number, { mode: 'self' | 'commander'; connection: ServerConnection; cacheId: string; item: SupplyItem; ticks: number }>();
   private readonly supplyRequestIds = new WeakMap<ServerConnection, number>();
+  private readonly commanderSupplyRequestIds = new WeakMap<ServerConnection, number>();
   private lastSupplyProgress = '';
   private lastSupplyUsers = '';
   /**
@@ -1884,6 +1885,7 @@ export class Session {
     if (!saved) return false;
     // Validate/apply all cache stock before touching any paired soldier inventory.
     if (saved.caches) this.restoreSupplies(saved.caches);
+    else this.supplyUses.clear(); // Legacy checkpoints still cancel transient self/commander uses.
     for (const [i, snap] of (saved.slots ?? []).entries()) {
       const slot = this.slots[i];
       if (!slot) continue;
@@ -2310,6 +2312,7 @@ export class Session {
     if (from && msg.spectate && msg.slot === ESCORT_SPECTATE_SLOT && this.roomStarted && !this.paused) {
       // U-091: the escorted character is watched, not a slot: no takeover, no command, nothing changes about the seat.
       if (!this.escort()) return;
+      this.cancelCommanderSupplies(conn);
       this.spectators.set(conn, ESCORT_SPECTATE_SLOT);
       if (from.mounted) this.dismount(from);
       from.input = idleInput(from.yaw);
@@ -2323,6 +2326,7 @@ export class Session {
     const to = this.slots[msg.slot];
     if (!from || !to || !this.roomStarted || this.paused) return;
     if (msg.spectate) {
+      this.cancelCommanderSupplies(conn);
       this.spectators.set(conn, to.index);
       if (from.mounted) this.dismount(from);
       from.input = idleInput(from.yaw);
@@ -2335,6 +2339,7 @@ export class Session {
     }
     if (to === from || !to.isBot || to.captured || (this.spectators.has(conn) ? this.spectators.get(conn) !== to.index : this.commanders[to.index] !== from.index)) return;
     if (to.reservedUntilMs > 0 && to.reservedUntilMs >= this.nowMs) return;
+    this.cancelCommanderSupplies(conn);
 
     // The soldier left behind: a bot again, as on a leave, but claimed by nobody.
     this.clearReviveStateForSlot(from.index);
@@ -3328,9 +3333,9 @@ export class Session {
     }, { pouch: this.pouchFor(slot.index), healthKits: this.kitsFor(slot.index) }, item);
   }
 
-  private canUseSupply(slot: Slot, cache: SupplyCacheDef): boolean {
-    if (!this.roomStarted || this.handedOff || (this.missionRun && this.missionRun.current.state !== 'progress') ||
-      slot.isBot || !slot.connection || slot.connection.state !== 'active' || this.spectators.has(slot.connection) ||
+  private canUseSupply(slot: Slot, cache: SupplyCacheDef, commander = false): boolean {
+    if (!this.roomStarted || this.paused || this.incompatibleCampaign || this.handedOff || (this.missionRun && this.missionRun.current.state !== 'progress') ||
+      (!commander && (slot.isBot || !slot.connection || slot.connection.state !== 'active' || this.spectators.has(slot.connection))) ||
       !isAlive(slot.health) || slot.captured || slot.state.vault || slot.mounted || slot.kitProgress > 0) return false;
     const p = cache.feet;
     return within(slot.state, p, SUPPLY_RULES.reachM) &&
@@ -3345,7 +3350,51 @@ export class Session {
     this.supplyUses.delete(slot.index);
     const cache = this.supplyDefs.find((cache) => cache.id === msg.cacheId);
     if (cache && msg.item && this.canUseSupply(slot, cache) && this.supplyTransfer(slot, cache, msg.item).status === 'transferred') {
-      this.supplyUses.set(slot.index, { connection: conn, cacheId: cache.id, item: msg.item, ticks: 0 });
+      this.supplyUses.set(slot.index, { mode: 'self', connection: conn, cacheId: cache.id, item: msg.item, ticks: 0 });
+    }
+    this.broadcastSupplyProgress();
+  }
+
+  /** Command authority follows the seated issuer, never the soldier being watched. */
+  private canCommandSupply(conn: ServerConnection, slot: Slot): boolean {
+    const from = this.humanFor(conn);
+    return conn.state === 'active' && from !== null && this.autonomous(slot) &&
+      orderReach(this.classSlots[from.index] ?? '', from.index, [slot.index], SQUAD_CONFIG.fireteams).includes(slot.index) &&
+      (this.commanders[slot.index] === from.index || (slot === from && this.spectators.has(conn)));
+  }
+
+  private commanderUsingSupply(slot: Slot): boolean {
+    return this.supplyUses.get(slot.index)?.mode === 'commander';
+  }
+
+  /** A connection's commands lapse on controller/view changes and disconnect, not on reconnect. */
+  private cancelCommanderSupplies(conn: ServerConnection): void {
+    let changed = false;
+    for (const [index, use] of this.supplyUses) {
+      if (use.mode === 'commander' && use.connection === conn) {
+        this.supplyUses.delete(index);
+        changed = true;
+      }
+    }
+    if (changed) this.broadcastSupplyProgress();
+  }
+
+  private applyCommanderSupplySelect(conn: ServerConnection, msg: Extract<Message, { kind: 'CommanderSupplySelect' }>): void {
+    if (!this.humanFor(conn) || conn.state !== 'active' || msg.requestId <= (this.commanderSupplyRequestIds.get(conn) ?? -1)) return;
+    this.commanderSupplyRequestIds.set(conn, msg.requestId);
+    const slot = this.slots[msg.slot];
+    const prior = this.supplyUses.get(msg.slot);
+    // A stale commander may cancel its own request, but cannot touch a new owner's use.
+    if (prior?.mode === 'commander' && prior.connection === conn) this.supplyUses.delete(msg.slot);
+    const cache = this.supplyDefs.find((cache) => cache.id === msg.cacheId);
+    if (slot && cache && msg.item && this.canCommandSupply(conn, slot) && this.canUseSupply(slot, cache, true) &&
+      this.supplyTransfer(slot, cache, msg.item).status === 'transferred') {
+      this.endOrder(slot.index, 'replaced', 'commander supply request');
+      // Nearby collection owns the soldier's hands and feet. No client input or
+      // generic revive/upload interact is synthesized; distant travel is U-147.
+      this.giveBrain(slot);
+      slot.input = idleInput(slot.yaw);
+      this.supplyUses.set(slot.index, { mode: 'commander', connection: conn, cacheId: cache.id, item: msg.item, ticks: 0 });
     }
     this.broadcastSupplyProgress();
   }
@@ -3386,12 +3435,14 @@ export class Session {
       if (!use) continue;
       const cache = this.supplyDefs.find((cache) => cache.id === use.cacheId)!;
       const transfer = this.supplyTransfer(slot, cache, use.item);
-      if (slot.connection !== use.connection || !this.canUseSupply(slot, cache) || transfer.status !== 'transferred' ||
-        (!this.holdingInteract(slot) && use.ticks > 0)) {
+      const commander = use.mode === 'commander';
+      const authorized = commander ? this.canCommandSupply(use.connection, slot) : slot.connection === use.connection;
+      if (!authorized || !this.canUseSupply(slot, cache, commander) || transfer.status !== 'transferred' ||
+        (!commander && !this.holdingInteract(slot) && use.ticks > 0)) {
         this.supplyUses.delete(slot.index);
         continue;
       }
-      if (!this.holdingInteract(slot)) continue;
+      if (!commander && !this.holdingInteract(slot)) continue;
       use.ticks++;
       if (use.ticks * TICK_SECONDS + 1e-9 < SUPPLY_RULES.useSeconds * this.interactionScale(slot.index)) continue;
       this.supplyStocks.set(cache.id, transfer.stock);
@@ -3476,6 +3527,10 @@ export class Session {
         changed = true;
       }
     }
+    for (const [index, use] of this.supplyUses) {
+      if (use.mode === 'commander' && !this.canCommandSupply(use.connection, this.slots[index]!)) this.supplyUses.delete(index);
+    }
+    this.broadcastSupplyProgress();
     return changed;
   }
 
@@ -3497,6 +3552,11 @@ export class Session {
     }
     if (this.commanders[bot.index] === commander.index) return;
     this.commanders[bot.index] = commander.index;
+    const use = this.supplyUses.get(bot.index);
+    if (use?.mode === 'commander' && !this.canCommandSupply(use.connection, bot)) {
+      this.supplyUses.delete(bot.index);
+      this.broadcastSupplyProgress();
+    }
     this.broadcastRoster();
   }
 
@@ -3541,6 +3601,7 @@ export class Session {
       onThrow: (c, msg) => { if (this.roomStarted && !this.spectators.has(c)) this.applyThrow(c, msg); },
       onEquip: (c, msg) => { if (this.roomStarted && !this.spectators.has(c)) this.applyEquip(c, msg); },
       onSupplySelect: (c, msg) => { if (this.roomStarted && !this.spectators.has(c)) this.applySupplySelect(c, msg); },
+      onCommanderSupplySelect: (c, msg) => this.applyCommanderSupplySelect(c, msg),
       onReload: (c) => { if (this.roomStarted && !this.spectators.has(c)) this.applyReload(c); },
       onAiDebugRequest: (c, on) => this.applyAiDebugRequest(c, on),
       onAggression: (c, msg) => this.applyAggression(c, msg),
@@ -3842,6 +3903,7 @@ export class Session {
     this.bumpStat(from.index, 'ordersGiven');
     const destinations: { x: number; y: number; z: number }[] = [];
     for (const i of bots) {
+      if (this.commanderUsingSupply(this.slots[i]!)) this.supplyUses.delete(i);
       let point = asked;
       if (asked && msg.address.to !== 'slot') {
         let spaced: OrderPoint = asked;
@@ -3869,6 +3931,7 @@ export class Session {
       const at = this.slots[i]!.state;
       this.orderRuns[i] = { status: 'active', anchor: point ? { ...point } : { x: at.x, y: at.y, z: at.z }, xpPlayerId: this.xpPlayer(from.index) };
     }
+    this.broadcastSupplyProgress();
     this.broadcastOrders();
   }
 
@@ -4390,6 +4453,7 @@ export class Session {
   }
 
   private releaseSlot(conn: ServerConnection, reason = ''): void {
+    this.cancelCommanderSupplies(conn);
     this.connections.delete(conn);
     this.aiDebugClients.delete(conn);
     this.spectators.delete(conn);
@@ -4961,7 +5025,7 @@ export class Session {
       const damaged = slot.health.current < slot.kitHealth;
       slot.kitHealth = slot.health.current;
       // A bot's brain asks for the use itself (U-053) and takes the kit out to do it; a human holds the trigger with it drawn.
-      const botWants = this.autonomous(slot) && (slot.brain?.read('useKit') ?? false);
+      const botWants = this.autonomous(slot) && !this.commanderUsingSupply(slot) && (slot.brain?.read('useKit') ?? false);
       if (botWants) slot.heldProjectile = KIT_HELD;
       else if (this.autonomous(slot) && slot.heldProjectile === KIT_HELD) slot.heldProjectile = -1;
       const using =
@@ -5985,7 +6049,7 @@ export class Session {
       if (!this.autonomous(slot)) continue;
       const able = isAlive(slot.health);
       this.cover?.track(slot.netId, slot.state, able);
-      if (able && slot.brain) this.aiHands(slot, slot.index, this.followers[slot.index]?.onVault ?? false, nowSeconds);
+      if (able && slot.brain && !this.commanderUsingSupply(slot)) this.aiHands(slot, slot.index, this.followers[slot.index]?.onVault ?? false, nowSeconds);
     }
   }
 
@@ -6228,7 +6292,7 @@ export class Session {
     // T-3.26: friendly bots fire by the same path, holding fire while a squadmate is on the line.
     if (!this.botsDriven) return;
     for (const slot of this.slots) {
-      if (!this.autonomous(slot) || !slot.brain || !isAlive(slot.health)) continue;
+      if (!this.autonomous(slot) || !slot.brain || !isAlive(slot.health) || this.commanderUsingSupply(slot)) continue;
       if (this.canBotEngage(slot.index, slot.brain.fireAt ?? slot.target) && this.aiShoot(slot, BOT_ARCHETYPE.accuracy, true, true, nowSeconds)) this.lastFiredTick[slot.index] = this.currentTick;
     }
   }
@@ -6386,6 +6450,7 @@ export class Session {
    */
   private thinkBrains(): void {
     for (const slot of this.slots) {
+      if (this.commanderUsingSupply(slot)) continue;
       if (slot.brain?.due(this.currentTick)) {
         // U-053: holding a kit's use is asked afresh each think, so a branch that pre-empts the heal lets go of it.
         slot.brain.take('useKit');
@@ -6517,6 +6582,11 @@ export class Session {
     for (const slot of this.slots) {
       const brain = slot.brain;
       if (!this.autonomous(slot) || !brain) continue;
+      if (this.commanderUsingSupply(slot)) {
+        slot.input = idleInput(slot.yaw);
+        this.followers[slot.index] = null;
+        continue;
+      }
       const intent = brain.intent;
       let follower = this.followers[slot.index] ?? null;
       if (!follower) {
@@ -6665,6 +6735,7 @@ export class Session {
    * and timer a human's held E gets.
    */
   private holdingInteract(slot: Slot): boolean {
+    if (this.commanderUsingSupply(slot)) return false;
     if (this.autonomous(slot)) return slot.brain?.read('interact') ?? false;
     return slot.interactHeld && slot.staleTicks <= MAX_INPUT_REPEAT;
   }

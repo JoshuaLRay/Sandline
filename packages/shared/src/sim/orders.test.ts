@@ -23,7 +23,7 @@ describe('orders on the wire (T-3.27)', () => {
     // U-024's pouch counts on the Weapon component are 36; U-028's Reload and magazine count are 37; U-009's upload objective and its phase are 38; U-010's lever pull on an enemy's Health is 39; U-017's pickups (the Pickup component, the pickup netId band) are 40; U-018's primary on the Weapon component is 41.
     // The knife is a new wire weapon and moves the pouch indexes (42); spectator requests and acknowledgements are 43.
     // 68 combines U-133's finite-cache messages and U-143's incompatible-restore gate.
-    expect(PROTOCOL_VERSION).toBe(68);
+    expect(PROTOCOL_VERSION).toBe(69);
   });
 
   it('round-trips every order kind to every kind of addressee', () => {

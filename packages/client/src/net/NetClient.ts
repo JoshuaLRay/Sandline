@@ -301,6 +301,7 @@ export class NetClient {
   private readonly suppliesValue = new Map<string, SupplyCacheDef>();
   private supplyProgressValue: readonly SupplyUseProgress[] = [];
   private supplyRequestId = 0;
+  private commanderSupplyRequestId = 0;
   /** U-048: our slot-5 equipment as the host last said, a PROJECTILE_IDS index, or -1 for none. */
   private equipmentValue = -1;
   private kitProgressValue = 0;
@@ -548,6 +549,12 @@ export class NetClient {
     this.transport.send(encodeMessage({ kind: 'SupplySelect', requestId: ++this.supplyRequestId, cacheId, item }), 'reliable');
   }
 
+  /** U-146: a commander requests nearby bot use; the host validates the target and owns the hold. */
+  selectCommanderSupply(slot: number, cacheId: string, item: SupplyItem | null): void {
+    if (!this.joinedFlag || this.restoreChoiceValue) return;
+    this.transport.send(encodeMessage({ kind: 'CommanderSupplySelect', requestId: ++this.commanderSupplyRequestId, slot, cacheId, item }), 'reliable');
+  }
+
   get progression(): Readonly<Extract<Message, { kind: 'Progression' }>['soldiers']> {
     return this.progressionValue;
   }
@@ -784,6 +791,7 @@ export class NetClient {
     this.suppliesValue.clear();
     this.supplyProgressValue = [];
     this.supplyRequestId = 0;
+    this.commanderSupplyRequestId = 0;
     this.store.reset();
     this.predictor = null;
     this.characterSpaces = [];
