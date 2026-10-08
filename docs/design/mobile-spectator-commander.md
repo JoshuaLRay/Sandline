@@ -47,3 +47,18 @@ menu-first placement requirements above while preserving spectator/commander sco
 - Squad menu retains assignments, independent recipient selection and leaving.
   A brief message reports local submission or invalid placement; it does not
   claim authoritative execution. Owner real-device feel review remains pending.
+
+## U-145 commander resupply decision (2026-10-08)
+
+The owner approved commander resupply within the existing spectator/commander
+scope. A mobile participant selects one eligible bot they command and one
+compatible supply type, then orders that bot to collect it from a cache while
+staying in commander view. The host validates bot authority and cache use and
+owns stock, progress and transfers. Watching a human grants no resupply authority;
+manual walking, aiming and firing remain excluded by ADR-002.
+
+Implementation, safe interruption and physical-phone acceptance belong to
+[U-145](../backlog/U-145.md), which remains blocked on
+[U-134](../backlog/U-134.md)'s desktop/physical-phone UI/play review. This decision
+does not change the current read-only mobile stock panel or the pending U-102
+real-device review. Split the protocol/AI/UI work before claiming if oversized.

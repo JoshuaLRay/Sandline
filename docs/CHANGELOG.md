@@ -436,3 +436,5 @@ Format: `T-<id> — <what changed>`
 - U-134 — Present desktop cache choice/use and desktop/mobile authoritative stock/progress with persistent exhausted scenery and five reproducible Session/browser fixtures; split mobile use into blocked U-145 and retain owner UI/play review ([#314](https://github.com/JoshuaLRay/Sandline/pull/314)).
 
 - U-134 — Record the owner-authorized merge of [#314](https://github.com/JoshuaLRay/Sandline/pull/314) at `0f9301c`, final-head CI #1768 and main CI #1769 passing all four jobs; keep desktop/physical-phone UI/play acceptance pending and U-145 blocked.
+
+- U-145 — Record the owner's 2026-10-08 approval of commander resupply with host-validated authority over eligible commanded bots; preserve U-134's pending desktop/physical-phone acceptance, U-145's implementation/review gates and spectator/commander scope.
