@@ -69,6 +69,21 @@ export function readSupplySelect(r: BitReader): Extract<Message, { kind: 'Supply
   return { kind: 'SupplySelect', requestId: r.readBits(32), cacheId: checkedId(r.readString()), item: readItem(r) };
 }
 
+export function writeCommanderSupplySelect(w: BitWriter, msg: Extract<Message, { kind: 'CommanderSupplySelect' }>): void {
+  if (!Number.isInteger(msg.slot) || msg.slot < 0 || msg.slot > 5) throw new RangeError('invalid commander supply slot');
+  if (!Number.isInteger(msg.requestId) || msg.requestId < 0 || msg.requestId > 0xffffffff) throw new RangeError('invalid supply request id');
+  w.writeBits(msg.requestId, 32);
+  w.writeBits(msg.slot, 3);
+  w.writeString(checkedId(msg.cacheId));
+  writeItem(w, msg.item);
+}
+export function readCommanderSupplySelect(r: BitReader): Extract<Message, { kind: 'CommanderSupplySelect' }> {
+  const requestId = r.readBits(32);
+  const slot = r.readBits(3);
+  if (slot > 5) throw new RangeError('invalid commander supply slot');
+  return { kind: 'CommanderSupplySelect', requestId, slot, cacheId: checkedId(r.readString()), item: readItem(r) };
+}
+
 export function writeSupplies(w: BitWriter, msg: Extract<Message, { kind: 'Supplies' }>): void {
   parseSupplyCacheStocks(msg.caches.map(({ id, stock }) => ({ id, stock })));
   w.writeBool(msg.full);

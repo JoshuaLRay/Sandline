@@ -62,3 +62,38 @@ describe('ServerConnection activity and age', () => {
     expect(conn.isExpired(2011, 2000)).toBe(true);
   });
 });
+
+describe('commander supply connection routing (U-146)', () => {
+  it('routes a reliable decoded command once, independently from desktop use, and counts activity', () => {
+    const pair = createLoopbackPair();
+    const commander: Message[] = [];
+    const desktop: Message[] = [];
+    const conn = new ServerConnection(pair.a, {
+      onCommanderSupplySelect: (sender, msg) => { expect(sender).toBe(conn); commander.push(msg); },
+      onSupplySelect: (_sender, msg) => desktop.push(msg),
+    }, 0);
+    pair.b.send(encodeMessage({ kind: 'Join', version: PROTOCOL_VERSION, name: 'p', room: '' }), 'reliable');
+    pair.settle();
+    conn.setNow(4500);
+    const command: Message = { kind: 'CommanderSupplySelect', requestId: 1, slot: 5, cacheId: 'cache', item: { kind: 'health-kit' } };
+    pair.b.send(encodeMessage(command), 'reliable');
+    pair.settle();
+    expect(commander).toEqual([command]);
+    expect(desktop).toEqual([]);
+    expect(conn.isIdle(5000, 4000)).toBe(false);
+    pair.b.send(encodeMessage({ kind: 'SupplySelect', requestId: 1, cacheId: 'cache', item: null }), 'reliable');
+    pair.settle();
+    expect(commander).toEqual([command]);
+    expect(desktop).toHaveLength(1);
+  });
+
+  it('never dispatches a commander request before the handshake', () => {
+    const pair = createLoopbackPair();
+    let calls = 0;
+    const conn = new ServerConnection(pair.a, { onCommanderSupplySelect: () => calls++ }, 0);
+    pair.b.send(encodeMessage({ kind: 'CommanderSupplySelect', requestId: 1, slot: 0, cacheId: 'cache', item: null }), 'reliable');
+    pair.settle();
+    expect(calls).toBe(0);
+    expect(conn.state).toBe('closed');
+  });
+});

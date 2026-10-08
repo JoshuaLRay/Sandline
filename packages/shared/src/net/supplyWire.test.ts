@@ -79,3 +79,39 @@ describe('dedicated cache wire (U-133)', () => {
     ] as const) expect(() => decodeMessage(encodeMessage(msg).slice(0, -1))).toThrow(ProtocolError);
   });
 });
+
+describe('commander cache wire (U-146)', () => {
+  it('round-trips every recipient, supply type and cancellation with full-width request IDs', () => {
+    const rng = new Sfc32(146);
+    for (let slot = 0; slot < 6; slot++) {
+      for (const item of [null, ...items]) {
+        for (const requestId of [0, rng.nextUint32(), 0xffffffff]) {
+          const msg: Message = { kind: 'CommanderSupplySelect', requestId, slot, cacheId: 'c'.repeat(64), item };
+          expect(decodeMessage(encodeMessage(msg))).toEqual(msg);
+        }
+      }
+    }
+  });
+
+  it('rejects invalid recipients, requests, cache IDs and choices before sending', () => {
+    const valid: Extract<Message, { kind: 'CommanderSupplySelect' }> = { kind: 'CommanderSupplySelect', requestId: 1, slot: 0, cacheId: 'cache', item: items[0]! };
+    for (const slot of [-1, 6, 7, 1.5, Number.NaN]) expect(() => encodeMessage({ ...valid, slot })).toThrow();
+    for (const requestId of [-1, 1.5, 0x100000000, Number.NaN]) expect(() => encodeMessage({ ...valid, requestId })).toThrow();
+    for (const cacheId of ['', 'bad/id', '__proto__', 'é', 'x'.repeat(65)]) expect(() => encodeMessage({ ...valid, cacheId })).toThrow();
+    expect(() => encodeMessage({ ...valid, item: { kind: 'projectile', projectile: 'smokecloud' } as unknown as SupplyItem })).toThrow();
+  });
+
+  it('rejects forged out-of-squad slots, unsafe cache IDs, invalid item codes and truncation', () => {
+    const forged = (slot: number, cacheId: string, item: number): Uint8Array => {
+      const w = new BitWriter();
+      w.writeBits(15, 4); w.writeBits(7, 3); w.writeBits(14, 4);
+      w.writeBits(1, 32); w.writeBits(slot, 3); w.writeString(cacheId); w.writeBits(item, 4);
+      return w.toUint8Array();
+    };
+    for (const slot of [6, 7]) expect(() => decodeMessage(forged(slot, 'cache', 1))).toThrow(ProtocolError);
+    for (const cacheId of ['', '__proto__', 'é', 'x'.repeat(65)]) expect(() => decodeMessage(forged(0, cacheId, 1))).toThrow(ProtocolError);
+    expect(() => decodeMessage(forged(0, 'cache', 15))).toThrow(ProtocolError);
+    const bytes = encodeMessage({ kind: 'CommanderSupplySelect', requestId: 1, slot: 5, cacheId: 'cache', item: null });
+    for (let length = 0; length < bytes.length; length++) expect(() => decodeMessage(bytes.slice(0, length))).toThrow(ProtocolError);
+  });
+});

@@ -41,6 +41,7 @@ export interface ServerConnectionEvents {
   onThrow?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Throw' }>) => void;
   onEquip?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Equip' }>) => void;
   onSupplySelect?: (conn: ServerConnection, msg: Extract<Message, { kind: 'SupplySelect' }>) => void;
+  onCommanderSupplySelect?: (conn: ServerConnection, msg: Extract<Message, { kind: 'CommanderSupplySelect' }>) => void;
   /** U-028: the player started a reload on the page. */
   onReload?: (conn: ServerConnection) => void;
   onAck?: (conn: ServerConnection, tick: number) => void;
@@ -248,6 +249,10 @@ export class ServerConnection {
       case 'SupplySelect':
         this.lastActive = now;
         this.events.onSupplySelect?.(this, msg);
+        break;
+      case 'CommanderSupplySelect':
+        this.lastActive = now;
+        this.events.onCommanderSupplySelect?.(this, msg);
         break;
       case 'AiDebugRequest':
         this.events.onAiDebugRequest?.(this, msg.on);

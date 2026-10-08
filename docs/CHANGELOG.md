@@ -438,3 +438,7 @@ Format: `T-<id> — <what changed>`
 - U-134 — Record the owner-authorized merge of [#314](https://github.com/JoshuaLRay/Sandline/pull/314) at `0f9301c`, final-head CI #1768 and main CI #1769 passing all four jobs; keep desktop/physical-phone UI/play acceptance pending and U-145 blocked.
 
 - U-145 — Record the owner's 2026-10-08 approval of commander resupply with host-validated authority over eligible commanded bots; preserve U-134's pending desktop/physical-phone acceptance, U-145's implementation/review gates and spectator/commander scope.
+
+- U-134 — Record the owner's 2026-10-08 acceptance of both desktop and physical-phone UI/play reviews; mark the merged leaf DONE and split approved commander resupply into U-146 host authority, U-147 collection travel and U-148 mobile controls/review before claiming implementation.
+
+- U-146 — Add protocol-69 commander supply requests and host-validated nearby autonomous collection, preserving class/fireteam authority, timed finite transfers, desktop held-E use and safe interruption/save lifecycle; travel and phone controls remain U-147/U-148.

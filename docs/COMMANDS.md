@@ -453,23 +453,29 @@ Completion recomputes against current host stock and inventory, then commits in
 stable slot order. Preview results are never reservations. Ammo must be in the
 held primary, with no projectile/kit in hand; a sidearm cannot consume the pool.
 
-Protocol 68 combines the dedicated reliable supply messages (introduced in
-version 66) with incompatible-restore choices, separate from pickup IDs:
+Protocol 69 adds commander supply requests to the dedicated reliable supply
+messages (introduced in version 66) and incompatible-restore choices (version
+68), separate from pickup IDs:
 
 | Message | Direction | Contract |
 |---|---|---|
 | `SupplySelect` | Client → host | `requestId` increases per connection; `cacheId` and one `item`, or `null` to cancel. Replayed/older IDs are ignored. |
+| `CommanderSupplySelect` | Client → host | A separate increasing `requestId`, recipient `slot` 0–5, `cacheId`, and one `item`, or `null` to cancel. The host enforces autonomous command authority, class/fireteam reach and nearby use; travel and mobile controls remain U-147/U-148. |
 | `Supplies` | Host → clients | `full` replaces all caches on join/restore; otherwise only changed caches merge by ID. Includes quantized feet and exact integer stock, even when empty. |
 | `SupplyProgress` | Host → clients | All accepted choices, by seated slot, with cache ID, item and whole percent. The clock updates at 10 Hz; choice/cancellation/completion changes are immediate. An empty list clears all holds. |
 
 `NetClient.selectSupply(cacheId, item)` sends a choice only after joining and
 while no incompatible-restore gate is active; its `supplyCaches` and
 `supplyProgress` getters expose host state without local inventory prediction.
-`resetForRejoin()` clears both; reconnect receives current stock and starts no
-hold. U-134 presents desktop choice/use and desktop/mobile stock/progress/scenery;
-U-145 retains implementation and acceptance of owner-approved commander
-resupply. The five actual production placements and their exhaustive counts
-remain U-117.
+`NetClient.selectCommanderSupply(slot, cacheId, item)` sends the commander
+request under the same join/restore gates, with its own request counter.
+`resetForRejoin()` clears cache/progress state and both counters; reconnect
+receives current stock and starts no hold. U-134 presents accepted desktop
+choice/use and desktop/mobile stock/progress/scenery. U-146 supplies host use
+for an eligible autonomous recipient already beside a cache; it requires no
+synthetic commander E input. Bot travel and the owner's future mobile-use
+review remain U-147/U-148/U-145. The five actual production placements and their
+exhaustive counts remain U-117.
 
 Checkpoint-world format 1 gains optional `caches: [{ id, stock }]`. New worlds
 save all caches and six soldier inventories together, and retry/JSON host reload
@@ -491,8 +497,8 @@ corepack pnpm exec vitest run packages/server/src/session/supplyCaches.test.ts p
 The normal gameplay HUD uses Tab mouse access to choose one compatible item,
 then held E to use it. Release E interrupts the host hold; hiding the HUD control
 or leaving reach/LOS cancels the choice. Spectators view stock/progress beside
-the watched soldier; U-145's commander resupply is approved but remains
-unimplemented and blocked on U-134's owner acceptance.
+the watched soldier; U-145's commander resupply is approved and U-134's review
+accepted. U-146–U-148 retain command authority, collection travel and mobile use.
 
 `pnpm --filter @sandline/client dev --host 0.0.0.0` serves
 `/supply-review.html` and `/supply-review.html?mobile` for isolated live review.
