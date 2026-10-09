@@ -9,7 +9,7 @@ with the legacy `mission-01` world.
 | World / missions | Record | Scope |
 |---|---|---|
 | `qalat-road` / campaign mission 1 | [The Qalat Road](qalat-road.md) | U-107 complete replacement specification: hidden spawn, road, ridge and underground depot; U-106 remains the live map until implemented |
-| `kestrel-dam` / campaign mission 2 | [The Kestrel Dam](kestrel-dam.md) | U-127 full construction specification: concealed gravel-bar insertion, gorge road, canal overlook, west-bank flank and the dam complex; proposed, not built |
+| `kestrel-dam` / campaign mission 2 | [The Kestrel Dam](kestrel-dam.md) | U-127 full construction specification: concealed gravel-bar insertion, gorge road, canal overlook, west-bank flank and the dam complex; design approved 2026-10-09, not built |
 | Campaign missions 3–10 | Create one record per map from the template when each mission is designed | Not yet designed; the shared standard applies to all |
 
 `mission-01` is the preserved clear-and-hold QA slice, `greybox-01` its layout

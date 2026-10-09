@@ -991,7 +991,8 @@ E-2.2 is the next build epic after the completed E-2.1, E-2.4, and E-2.6 gates. 
 - **Do:** A human runs the grey-box range through idle, walk, sprint, all eight movement directions, crouch, jump, vault and crawl on the humanoid model. Verify the grey-box fallback separately. Test the same states on a second human over the deployed host. Judge whether locomotion reads naturally, direction changes do not snap, crouch is useful and readable, vault timing feels controllable, and remote movement remains visually believable.
 - **Done when:** a written verdict exists, including any tuned movement/animation values and what the test does and does not establish. The verdict must pass before E-2.2 is complete.
 - **Size:** S
-- **Prepared 2026-09-20, not run.** `docs/playtests/e2-2.md` is the run sheet: the range's vault targets and hiding spots by position, the three HUD lines that are its instruments (the classifier's line, the stance line, and the pose-step peak that puts a number on "snap"), eight sections from the figure at rest through the eight-way gait, crouch, jump, vault, crawl and revive, the other person over the host under Poor and Awful, and the grey-box fixture, then tuning, netgraph and verdict sections left blank. It says NOT YET RUN at the top and stays that way until a person fills it in. The bots never shoot, so crawl, revive and remote believability need the second person, and the sheet says so. The movement panel gains crawl speed and the vault's seconds, distance and maximum height so that "vault timing feels controllable" can be tuned in the session rather than guessed at afterwards.
+- **Run sheet prepared 2026-09-20; owner approval recorded below.** `docs/playtests/e2-2.md` is the run sheet: the range's vault targets and hiding spots by position, the three HUD lines that are its instruments (the classifier's line, the stance line, and the pose-step peak that puts a number on "snap"), eight sections from the figure at rest through the eight-way gait, crouch, jump, vault, crawl and revive, the other person over the host under Poor and Awful, and the grey-box fixture, then tuning, netgraph and verdict sections left blank. The bots never shoot, so crawl, revive and remote believability need the second person, and the sheet says so. The movement panel gains crawl speed and the vault's seconds, distance and maximum height so that "vault timing feels controllable" can be tuned in the session rather than guessed at afterwards.
+- **Human review APPROVED by the owner, 2026-10-09.** The owner instructed "Mark all human reviews as approved and mark appropriate tasks as ready." Acceptance is recorded in `docs/playtests/e2-2.md`; no new session or measurement evidence is claimed. The implemented review gate is DONE.
 
 ### 7.3 E-2.4 leaf tasks — broken out 2026-09-20
 
@@ -1219,6 +1220,7 @@ animates from state now will take clips then.
 - **Do:** Two people on the host. Each watches the other aim up and down, fire bursts, reload, take hits, and stand on the slab's edge, and judges whether the body reads what the other is doing: is the rifle pointing where they are looking, does a burst look like a burst, does a reload read as one without a HUD, does a hit land on the body, do the feet stand on the world. Tune the layers' numbers while the feel is in hand.
 - **Done when:** a written verdict, on a run sheet prepared before the session as `e2-2.md` was, naming what it does and does not establish.
 - **Size:** S
+- **Human review APPROVED by the owner, 2026-10-09.** The owner instructed "Mark all human reviews as approved and mark appropriate tasks as ready." Acceptance is recorded in `docs/playtests/e2-3.md`; no new session or measurement evidence is claimed. The implemented review gate is DONE.
 
 ### 7.6 E-2.5 leaf tasks — broken out 2026-09-21
 
@@ -1307,6 +1309,7 @@ all.
 - **Do:** Two people on the host. Each throws grenades at the other and at cover: does the arc read where it is going, does the grenade land where the line said, does a bounce off a crate go where a bounce should, does a blast behind cover feel weaker than one in the open, and is the rocket worth the two rounds it carries. Tune the numbers in `projectiles.json` while the feel is in hand.
 - **Done when:** a written verdict, on a run sheet prepared before the session as `e2-2.md` was, naming what it does and does not establish.
 - **Size:** S
+- **Human review APPROVED by the owner, 2026-10-09.** The owner instructed "Mark all human reviews as approved and mark appropriate tasks as ready." Acceptance is recorded in `docs/playtests/e2-5.md`; no new session or measurement evidence is claimed. The implemented review gate is DONE.
 
 ### 7.7 The soldier's look — broken out 2026-09-21
 
@@ -1394,7 +1397,8 @@ eye.
 - **Do:** Two people on the host, at the ranges the game is actually played at — across the range, in cover, downed, at a sprint. Judge whether it reads as 2002 rather than as untextured geometry, whether soldiers are distinguishable at 40 m, and whether the silhouette still reads through the E-2.3 layers.
 - **Done when:** a written verdict on a run sheet prepared before the session, naming what it does and does not establish.
 - **Size:** S
-- **Run sheet prepared 2026-09-21, not run.** `docs/playtests/soldier-look.md`, written as `e2-2.md` was and saying so at the top. Section 6 carries the one decision T-2.37 deliberately left open — whether to render at a fixed low resolution and upscale with point filtering — because it trades legibility the two open feel-gates are judged on, and that is the owner's call to make with the thing in front of them.
+- **Run sheet prepared 2026-09-21; owner approval recorded below.** `docs/playtests/soldier-look.md`, written as `e2-2.md` was and saying so at the top. Section 6 carries the one decision T-2.37 deliberately left open — whether to render at a fixed low resolution and upscale with point filtering — because it trades legibility the two open feel-gates are judged on, and that is the owner's call to make with the thing in front of them.
+- **Human review APPROVED by the owner, 2026-10-09.** The owner instructed "Mark all human reviews as approved and mark appropriate tasks as ready." Acceptance is recorded in `docs/playtests/soldier-look.md`; no new session or measurement evidence is claimed. The implemented review gate is DONE.
 
 ### 7.8 E-2.8 leaf tasks — broken out 2026-09-22
 
@@ -1441,6 +1445,7 @@ pose-driver contracts rather than adding a second one.
 - **Do:** A human goes prone, crawls into and out of cover, fires from prone, and stands back up, then does the same as the other player watches remotely. Judge whether prone reads as clearly different from both crouch and the downed pose, whether the crawl speed feels earned rather than crippling, and whether firing prone is usable rather than a curiosity.
 - **Done when:** a written verdict, on a run sheet prepared before the session as `e2-6.md` was.
 - **Size:** S
+- **Human review APPROVED by the owner, 2026-10-09.** The owner instructed "Mark all human reviews as approved and mark appropriate tasks as ready." Acceptance is recorded in `docs/playtests/e2-8.md`; no new session or measurement evidence is claimed. The implemented review gate is DONE.
 
 ### M3 — AI & squad command (~10–12 wks)
 
@@ -1746,6 +1751,7 @@ comms, and any mission scripting beyond what T-3.34 names.
 - **Do:** Two people on the host, AI debug available, against a mixed group of riflemen and an MG in the range world. Do enemies take cover in a way that reads as a decision rather than a coincidence; does the MG pin you; does being flanked feel like being outplayed or like being cheated; does a grenade come when you camp; can you tell an enemy from a squadmate at 40 m. Tune the archetype data while the feel is in hand.
 - **Done when:** a written verdict, on a run sheet prepared before the session as `e2-2.md` was, naming what it does and does not establish (it does not establish the mission, T-3.36).
 - **Size:** S
+- **Human review APPROVED by the owner, 2026-10-09.** The owner instructed "Mark all human reviews as approved and mark appropriate tasks as ready." Acceptance is recorded in `docs/playtests/e3-5.md`; no new session or measurement evidence is claimed. The implemented review gate is DONE.
 
 #### T-3.25 — Formation following
 - **Depends:** T-3.06, T-3.08
@@ -1793,6 +1799,7 @@ comms, and any mission scripting beyond what T-3.34 names.
 - **Do:** One person with five bots, then two people sharing them. Do the bots feel like a squad or like followers; does an order get done the way it was meant; does the wheel stay out of the way in a firefight; do bots revive you when it matters; does sharing bots between two humans cause confusion about who is in charge.
 - **Done when:** a written verdict, on a run sheet prepared before the session, naming what it does and does not establish.
 - **Size:** S
+- **Human review APPROVED by the owner, 2026-10-09.** The owner instructed "Mark all human reviews as approved and mark appropriate tasks as ready." Acceptance is recorded in `docs/playtests/e3-8.md`; no new session or measurement evidence is claimed. The implemented review gate is DONE.
 
 #### T-3.31 — The grey-box mission map
 - **Depends:** T-3.02, T-3.04, T-3.18
@@ -1940,6 +1947,7 @@ comms, and any mission scripting beyond what T-3.34 names.
 - **Do:** One person plays greybox-01 with five bots, start to finish, at least twice — once by each route. Do enemies demonstrably take cover and suppress; is the mission completable; do the bots pull their weight without being ordered every ten seconds.
 - **Done when:** a written verdict on a run sheet prepared before the session, stating whether this half of M3's exit gate passed.
 - **Size:** S
+- **Human review APPROVED by the owner, 2026-10-09.** The owner instructed "Mark all human reviews as approved and mark appropriate tasks as ready." Acceptance is recorded in `docs/playtests/m3-solo.md`; no new session or measurement evidence is claimed. The implemented review gate is DONE.
 
 #### T-3.37 — 🧍 M3 exit gate: six players
 - **Depends:** T-3.35
@@ -1947,6 +1955,7 @@ comms, and any mission scripting beyond what T-3.34 names.
 - **Do:** Six people on the deployed host play the same mission, same encounter file, no bots. Does it hold up at the six-human budget; does the two-fireteam split happen on its own; does the host hold its tick and bandwidth with six real sockets and a full encounter (netgraph and `/healthz` recorded). Best run after T-3.36, since it is the cheaper session to reschedule.
 - **Done when:** a written verdict on a run sheet prepared before the session, stating whether this half of M3's exit gate passed. M3 closes when both T-3.36 and T-3.37 have.
 - **Size:** S
+- **Human review APPROVED by the owner, 2026-10-09.** The owner instructed "Mark all human reviews as approved and mark appropriate tasks as ready." Acceptance is recorded in `docs/playtests/m3-six.md`; no new session or measurement evidence is claimed. The implemented review gate is DONE.
 
 ### M4 — Content systems (~9–11 wks)
 
@@ -2051,7 +2060,8 @@ the owner listens (T-1.5.07, the T-3.35 follow-up).
   - automatic fire at each gun's cadence never plays the same variant twice in a row (tested);
   - the owner has listened on the sound board at least once, and what they said is recorded in the completion note. That is not a sign-off: T-2.50 is.
 - **Size:** M
-- **Built 2026-09-26; the owner's first listen on `?sounds` is outstanding** (a done-when an agent cannot meet, and must not invent). **Recipes** (`data/audio/sounds.json`), three seeded variants each: every gun — the carbine, marksman rifle, breacher, sidearm and the LMG (the enemy's rifle and MG use the same rows) — has a **near** report (a driven, low-passed noise report; a swept sine thump; a band-passed mechanism clack at the shot and another at the cycle; a supersonic crack for the rifles and the LMG; a reverberant room tail) and a **far** report (the report low-passed hard, a lower thump, a long dark reverberant tail; the crack kept thin at the front), each gun its own low-pass, thump, drive, mechanism pitch and room size; and the handling sounds, shared by every gun: reload out, in and bolt, dry fire and equip. All 35 renders sit inside their bounds; the set is 3.3 MB. **Mapping** (`data/audio/weaponSounds.json`, `shared/audio/weaponSounds.ts`, every name checked against the recipes and every weapon row required): near and far per gun, a cross-fade from 25 m to 90 m, the handling ids, and the reload stages (in at 55 %, bolt at 85 %). **In play** (`client/audio/weaponSounds.ts` and `main.ts`): your own shot plays its near report from the muzzle, undelayed and first for a voice; another soldier's shot, from the server's shot event, plays at its origin — near, far, or both at equal power between — with the gun its shooter holds (an enemy's archetype's, a gunner's emplacement's, a squadmate's replicated weapon), and the shotgun's pellets are one report (`ShotDeduper`); a pull on an empty gun clicks; a reload plays its three stages as its progress crosses them (`ReloadWatcher`), your own from the weapon state and every squadmate's from the replicated reload progress, at their position; changing guns, and mounting a gun, plays the equip. The engine gained a `gain` option for the cross-fade's share. **Tests:** `shared/audio/weaponSounds.test.ts` (every weapon row mapped to recipes that exist; refusals by name) and `client/audio/weaponSounds.test.ts` (the cross-fade near, far and at equal power between; eight pellets one report; the reload stages once each and a late-seen reload in order; automatic fire at each gun's cadence through the engine and a fake context never repeating a variant back to back and using them all), with the renders' bounds held by T-2.44's test. A fake audio context for tests now lives in `client/audio/fakeAudio.ts`. Smoke-tested in Chromium on the in-page range: three rounds started three reports, a reload its three stages, a switch one equip.
+- **Built 2026-09-26; owner acceptance recorded 2026-10-09 below.** **Recipes** (`data/audio/sounds.json`), three seeded variants each: every gun — the carbine, marksman rifle, breacher, sidearm and the LMG (the enemy's rifle and MG use the same rows) — has a **near** report (a driven, low-passed noise report; a swept sine thump; a band-passed mechanism clack at the shot and another at the cycle; a supersonic crack for the rifles and the LMG; a reverberant room tail) and a **far** report (the report low-passed hard, a lower thump, a long dark reverberant tail; the crack kept thin at the front), each gun its own low-pass, thump, drive, mechanism pitch and room size; and the handling sounds, shared by every gun: reload out, in and bolt, dry fire and equip. All 35 renders sit inside their bounds; the set is 3.3 MB. **Mapping** (`data/audio/weaponSounds.json`, `shared/audio/weaponSounds.ts`, every name checked against the recipes and every weapon row required): near and far per gun, a cross-fade from 25 m to 90 m, the handling ids, and the reload stages (in at 55 %, bolt at 85 %). **In play** (`client/audio/weaponSounds.ts` and `main.ts`): your own shot plays its near report from the muzzle, undelayed and first for a voice; another soldier's shot, from the server's shot event, plays at its origin — near, far, or both at equal power between — with the gun its shooter holds (an enemy's archetype's, a gunner's emplacement's, a squadmate's replicated weapon), and the shotgun's pellets are one report (`ShotDeduper`); a pull on an empty gun clicks; a reload plays its three stages as its progress crosses them (`ReloadWatcher`), your own from the weapon state and every squadmate's from the replicated reload progress, at their position; changing guns, and mounting a gun, plays the equip. The engine gained a `gain` option for the cross-fade's share. **Tests:** `shared/audio/weaponSounds.test.ts` (every weapon row mapped to recipes that exist; refusals by name) and `client/audio/weaponSounds.test.ts` (the cross-fade near, far and at equal power between; eight pellets one report; the reload stages once each and a late-seen reload in order; automatic fire at each gun's cadence through the engine and a fake context never repeating a variant back to back and using them all), with the renders' bounds held by T-2.44's test. A fake audio context for tests now lives in `client/audio/fakeAudio.ts`. Smoke-tested in Chromium on the in-page range: three rounds started three reports, a reload its three stages, a switch one equip.
+- **Owner acceptance APPROVED, 2026-10-09.** Existing weapon-sound review and first-listening acceptance are approved; no new listening session is claimed. Source: "Mark all human reviews as approved and mark appropriate tasks as ready."
 
 #### T-2.47 — World and body sounds
 - **Depends:** T-2.45
@@ -2131,7 +2141,8 @@ the owner listens (T-1.5.07, the T-3.35 follow-up).
   - whether it reads as 2002.
 - **Done when:** the owner has played it and written the verdict. An agent can write the run sheet and must not invent the verdict.
 - **Size:** S (the owner's time)
-- **Run sheet prepared 2026-09-26, not run.** `docs/playtests/e2-7.md`: the sound board (which is also T-2.46's first listen), direction and distance by ear, walls, footsteps and bodies, callouts (heard as chirps until the voice script is recorded), the mission map, two people over the host, and whether it reads as 2002 — with the numbers being judged and where each lives. No verdict.
+- **Run sheet prepared 2026-09-26; owner approval recorded below.** `docs/playtests/e2-7.md`: the sound board (which is also T-2.46's first listen), direction and distance by ear, walls, footsteps and bodies, callouts (heard as chirps until the voice script is recorded), the mission map, two people over the host, and whether it reads as 2002 — with the numbers being judged and where each lives. Session observations remain blank.
+- **Human review APPROVED by the owner, 2026-10-09.** The owner instructed "Mark all human reviews as approved and mark appropriate tasks as ready." Acceptance is recorded in `docs/playtests/e2-7.md`; no new session or measurement evidence is claimed. The implemented review gate is DONE.
 
 ### 7.11 M4 leaf tasks — broken out 2026-09-24
 
@@ -2503,6 +2514,7 @@ free to go whenever.
   painted shading was softened. **Whether it reaches the bar is the
   owner's call** on the deployed site. Still primitive: the rifle (T-4.36)
   and the enemies (T-4.35).
+- **Owner acceptance APPROVED, 2026-10-09.** Existing art review is approved; no new visual playtest is claimed. Source: "Mark all human reviews as approved and mark appropriate tasks as ready."
 
 ##### T-4.35 — The enemy fighter
 - **Depends:** T-4.08
@@ -2560,6 +2572,7 @@ free to go whenever.
   untouched), shows each headgear and the bandolier by variant and gunner,
   and never frees the shared skin. Rendered headless, six figures side by
   side. **The owner judges it on the deployed site.**
+- **Owner acceptance APPROVED, 2026-10-09.** Existing art review is approved; no new visual playtest is claimed. Source: "Mark all human reviews as approved and mark appropriate tasks as ready."
 
 ##### T-4.36 — Period weapons
 - **Depends:** T-4.08
@@ -2615,6 +2628,7 @@ free to go whenever.
 
   A production build shows the squad holding M4s. **The owner judges them**
   on the deployed site.
+- **Owner acceptance APPROVED, 2026-10-09.** Existing art review is approved; no new visual playtest is claimed. Source: "Mark all human reviews as approved and mark appropriate tasks as ready."
 
 #### E-4.3 — Level format, kit, lightmaps
 
@@ -3158,6 +3172,7 @@ free to go whenever.
   - with progress that is still there the next day.
 - **Done when:** the owner has played it and written the verdict.
 - **Size:** S (the owner's time)
+- **Human review APPROVED by the owner, 2026-10-09.** The owner instructed "Mark all human reviews as approved and mark appropriate tasks as ready." Acceptance is recorded in `docs/playtests/m4.md`; no new session or measurement evidence is claimed. The implemented review gate is DONE.
 
 ### 7.12 M5 leaf tasks — broken out 2026-09-26
 
@@ -3261,7 +3276,8 @@ here can supply them.
 - **Do:** The owner plays the slice mission on the deployed site alone with bots and with others, and shows it to someone who has not seen it.
 - **Done when:** the owner has written the verdict. An agent can write the run sheet and must not invent the verdict.
 - **Size:** S (the owner's time)
-- **Run sheet prepared 2026-09-26, not run.** `docs/playtests/m5.md`: from the link to the first shot, the mission alone as each class, the squad, people dropping in and out, frame rate on target hardware through `?perf`, and showing it to someone new — with what the build cannot show yet (the voices, lightmaps, and the mission's length if T-5.02 has not landed) named so the verdict can say what it judged. No verdict.
+- **Run sheet prepared 2026-09-26; owner approval recorded below.** `docs/playtests/m5.md`: from the link to the first shot, the mission alone as each class, the squad, people dropping in and out, frame rate on target hardware through `?perf`, and showing it to someone new — with what the build cannot show yet (the voices, lightmaps, and the mission's length if T-5.02 has not landed) named so the verdict can say what it judged. Session observations remain blank.
+- **Human review APPROVED by the owner, 2026-10-09.** The owner instructed "Mark all human reviews as approved and mark appropriate tasks as ready." Acceptance is recorded in `docs/playtests/m5.md`; no new session or measurement evidence is claimed. **Task remains BLOCKED:** T-5.05's lighting decision and T-5.06's engineering are unfinished.
 
 ## 8. Risk register
 
@@ -3343,54 +3359,15 @@ These block estimation, not implementation — M0 can start today regardless.
 
 ## 10. Immediate next actions
 
-**Current milestone: M2. Updated 2026-09-22.** M1 and M1.5 are closed. E-2.1,
-E-2.4, and E-2.6 are built and human-signed off; E-2.2, E-2.3, E-2.5 and the
-soldier's look (§7.7) are built and waiting on their gates. CI remains green,
-including the non-V8 parity job. **Four human gates are now queued behind one
-session** — T-2.24, T-2.29, T-2.34 and T-2.39 all want two people on the host,
-and all four can be judged in one sitting from their run sheets.
+**Updated 2026-10-09.** Existing implemented human reviews are owner-approved
+under the instruction "Mark all human reviews as approved and mark appropriate
+tasks as ready." M2's six outstanding gates, M3's four gates, M4's gate, weapon
+sound acceptance, and existing character/weapon art reviews are accepted.
+The run sheets record this approval without filling in absent session data.
+T-5.08's human review is approved, but M5 remains incomplete while T-5.05's
+lighting decision and T-5.06's engineering remain open.
 
-1. **Run the four gates together — once their run sheets exist.** 🧍 T-2.24
-   (E-2.2 locomotion, run sheet `docs/playtests/e2-2.md`, prepared and not
-   run: the bots never shoot, so crawl, revive and remote believability cannot
-   be judged alone), 🧍 T-2.29 (E-2.3's layers: does the body read what the
-   other person is doing), 🧍 T-2.34 (E-2.5: does the arc read where the
-   grenade is going, and does cover matter) and 🧍 T-2.39 (the soldier's look,
-   §7.7: does it read as 2002 rather than as untextured geometry, and are
-   soldiers distinguishable at 40 m — it owes one open decision, section 6 of
-   `docs/playtests/soldier-look.md`, whether to render at a fixed low
-   resolution and upscale with point filtering, which trades crosshair and
-   tracer legibility that T-2.24 and T-2.29 are also judged on). **Only two of
-   the four run sheets actually exist:** `e2-2.md` and `soldier-look.md`.
-   `docs/playtests/e2-3.md` (T-2.29) and `docs/playtests/e2-5.md` (T-2.34) are
-   missing even though their task bodies describe them as prepared "as
-   `e2-2.md` was" — they were not. Writing those two run sheets is real,
-   unblocked build work: nothing in the build blocks any of the four gates,
-   but two of them have nothing for the owner to run yet.
-2. **Tune `projectiles.json` with the feel in hand.** The blast radius, the
-   fuse, the throw speed and the roll are guesses measured only against
-   arithmetic: a level throw travels about 17 m including the roll, the rocket
-   reaches 43 m before its sag puts it in the ground, and a frag at your own
-   feet takes a third of your health off. Whether any of that is *right* is
-   what T-2.34 is for, and every one of them is a number in data.
-3. **Keep tuning the rest of the data opportunistically.** Weapon and downed
-   values remain data-driven; adjust them when a concrete playtest issue
-   appears rather than reopening completed gates without a reason.
-
-E-2.7 (combat audio) is the last M2 epic. It waited for the decision on
-whether its sounds are bought or made (R1, §9 Q2). That was taken on
-2026-09-23 (ADR-017: made in-house, by AI), and it is broken out in §7.10. M2's exit gate
-remains the overall human judgement that third-person combat feels good — and
-with grenades in, that firefight now has something in it that the other person
-has to move away from.
-
-**M3 is broken out (§7.9, 2026-09-22), ahead of M2's exit gate, at the
-owner's request.** It does not jump the queue: M2's remaining build task
-(T-2.42) and its gates still come first. The first M3 tasks with nothing in
-front of them are T-3.01 (the ⚠️ Recast spike — do this one early, because
-ADR-006's choice is only as good as Recast running in all three browser
-engines as well as Node), T-3.02 (named worlds) and T-3.07 (the behaviour
-tree runtime). §7.9 records four scope calls made while breaking it out —
-two archetypes not five, unclassed order authority, a minimal mission, and a
-proposed AI CPU budget — for the owner to overrule at the first M3 gate if
-any is wrong.
+Use [BACKLOG.md](BACKLOG.md) for the ongoing next task. Legacy T-4.30 still needs
+an explicit hosting-cost agreement; T-4.31 and T-4.32 still need deployment
+verification. Target-hardware frame rate remains unmeasured and real voice
+recordings remain absent. Approval does not provide any of that evidence.

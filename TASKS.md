@@ -2,7 +2,7 @@
 
 > **Ongoing work after the slice:** [BACKLOG.md](BACKLOG.md) is now the default
 > queue for “complete the next task”. This file retains legacy T-ID status and
-> outstanding human gates; request an explicit T-ID to use its old workflow.
+> legacy acceptance records; request an explicit T-ID to use its old workflow.
 > The ordering below applies to legacy milestone work only. No gate is closed by
 > this routing change.
 
@@ -16,102 +16,34 @@ risk spike (failure is an acceptable, written-up outcome — PLAN.md §0.2).
 
 ---
 
-## Open now
+## Owner acceptance and open work — 2026-10-09
 
-| Task | What | Run sheet | Depends | PLAN.md § |
-|---|---|---|---|---|
-| 🧍 T-2.24 | E-2.2 sign-off (locomotion) | `docs/playtests/e2-2.md` — exists, prepared, not run | T-2.17..T-2.23 (all done) | §7.2 |
-| 🧍 T-2.29 | E-2.3 sign-off (animation layers) | `docs/playtests/e2-3.md` — exists, prepared, not run | T-2.25..T-2.28 (all done) | §7.5 |
-| 🧍 T-2.34 | E-2.5 sign-off (projectiles) | `docs/playtests/e2-5.md` — exists, prepared, not run | T-2.30..T-2.33 (all done) | §7.6 |
-| 🧍 T-2.39 | Soldier's-look sign-off | `docs/playtests/soldier-look.md` — exists, prepared, not run | T-2.35..T-2.38 (all done) | §7.7 |
-| 🧍 T-2.43 | E-2.8 sign-off (prone) | `docs/playtests/e2-8.md` — exists, prepared, not run | T-2.40..T-2.42 (all done) | §7.8 |
-| 🧍 T-2.50 | E-2.7 sign-off (combat audio) | `docs/playtests/e2-7.md` — exists, prepared, not run | T-2.46, T-2.47, T-2.49 (all built) | §7.10 |
+The owner instructed: "Mark all human reviews as approved and mark appropriate
+tasks as ready" and "Merge when green and create context transfer for the next
+task." This is the acceptance source for existing implemented human review gates.
+The approval records below do not claim a new playtest, listening session,
+hardware measurement, deployment, or supplied voice recordings.
 
-All six gates' build dependencies are satisfied. All six need the owner in
-the room with another human — an agent cannot close any of them, and must
-never fabricate a verdict or simulate the playtest to get one.
+M2's six remaining gates, M3's four gates, M4's gate, the existing character and
+weapon art reviews, and T-2.46's weapon-sound acceptance are approved. Their run
+sheets retain the blank session and measurement fields; previously completed
+human gates retain their original verdicts. T-5.08's human review is also
+approved, while the task stays blocked by unfinished dependencies.
 
-**If nothing here is actionable** (no human available): E-2.8's build tasks
-are done (T-2.42 landed 2026-09-22), so its gate T-2.43 is open too; its
-run sheet `e2-8.md` is prepared. Every gate's run sheet now exists
-(`e2-3.md`, `e2-5.md`, `e2-7.md`, `e3-5.md`, `e3-8.md`, `m3-solo.md`,
-`m3-six.md` and `m4.md` were written 2026-09-26); none has been run, and
-none may be filled in by an agent. **E-2.7** (combat audio) is broken out (PLAN.md §7.10, ADR-017: made
-in-house by AI). Its first task, **T-2.44** (the synthesiser and render
-pipeline, `pnpm gen:audio`), is done, and so is T-2.45 (positional playback,
-and the sound board at `?sounds`); the weapon sounds (T-2.46) are built and wait on
-the owner's first listen; the world and body sounds (T-2.47) are done; so is the
-voice pipeline (T-2.48, `pnpm gen:voice`), with nothing to process until someone
-records; and callouts (T-2.49), which play the radio chirp until then. E-2.7's
-gate (T-2.50) has its run sheet, `e2-7.md`, prepared and not run. The owner can record the voice lines any
-time, from `docs/audio/voice-script.md`.
+Remaining legacy work:
 
-**M3 is broken out** (PLAN.md §7.9). E-3.1's navmesh pipeline is done:
-T-3.01 (the Recast spike), T-3.02 (named worlds), T-3.03 (the range baked
-and committed, with a staleness hash) and T-3.04 (vault links); E-3.2 is
-done too — path following (T-3.05) and local avoidance (T-3.06), and so is
-the behaviour tree runtime (T-3.07), and brains tick on the session
-(T-3.08), with an AI debug view on B (T-3.09), and enemies exist as
-entities (T-3.10) drawn in the page (T-3.11, `?enemies` for eyes), and
-each client is sent only what is within 120 m of it (T-3.12), and
-perception exists as pure functions (T-3.13), wired on the session into
-hearing, memory and target choice (T-3.14), and a brain can shoot through the
-human fire path (T-3.15), and rounds going past suppress every soldier (T-3.16), which the page shows
-(T-3.17, `?suppress` for eyes), and cover points are baked beside the navmesh
-(T-3.18) and queried and reserved (T-3.19), and the rifleman fights from it
-(T-3.20, `pnpm sim-run --scenario cover-duel`), and groups suppress and flank a
-pinned target (T-3.21, `--scenario pinned`), and throw grenades at a target
-gone still in cover (T-3.22), and the slice's two archetypes exist — the
-rifleman and an MG that deploys, suppresses first and relocates rarely
-(T-3.23, `--scenario mg`), and friendly bots follow their fireteam's lead in
-formation (T-3.25, the `friendly` tree) and fight and revive beside it
-(T-3.26, `--scenario squad`), and players can order bots and mark targets
-over the wire (T-3.27, protocol 21), which the bots carry out and report on
-(T-3.28), from an order wheel on Q and a mark on F in the page, drawn in the
-world from the host's broadcast (T-3.29, `?squad` for eyes). E-3.8's build
-tasks are done; its sign-off (🧍 T-3.30) and the combat AI sign-off (🧍
-T-3.24) wait on the owner; their run sheets are prepared. E-3.9 has begun: the grey-box mission map
-is a second named world with an overwatch and an assault route, spawn zones
-and its bake (T-3.31, `WORLD=greybox-01`, `?world=greybox-01` for eyes), and
-an encounter file per world spawns its groups on their triggers, out of every
-human's sight and under an alive cap, in the posture each group is given
-(T-3.32), paced by a director from the fight's intensity and sized by the
-humans seated, not the squad (T-3.33), toward one objective — clear the
-compound and hold it — evaluated on the server, broadcast, shown on the HUD,
-and restartable (T-3.34, protocol 22, `?mission` for eyes), and played
-headless by six bots at both budgets with the exit gate's claims as numbers
-(T-3.35, `pnpm sim-run --scenario mission`; the bots lose most fights —
-docs/BUGS.md B-11). M3's build tasks are done; its gates (🧍 T-3.24, T-3.30,
-T-3.36, T-3.37) wait on people; their run sheets are prepared.
+| Task | State | Remaining requirement |
+|---|---|---|
+| T-4.30 | BLOCKED | Explicit agreement to regional hosting cost |
+| T-4.31 | BLOCKED | Two-region deployment and WebSocket replay verification |
+| T-4.32 | BLOCKED | Staging drain/deploy run |
+| 🧍 T-5.05 | OPEN | Select the existing lighting fallback or lightmaps |
+| T-5.06 | OPEN | Finish close-quarters bounding and meet the scenario floors |
+| 🧍 T-5.08 | BLOCKED | Human review approved; T-5.05 and T-5.06 remain open |
 
-**M4 is broken out** (PLAN.md §7.11), behind everything above in scan
-order. The asset pipeline is done (T-4.02, `pnpm gen:assets`) with its budgets
-in CI (T-4.03, `pnpm check:assets`) and the loader (T-4.05, `?assets` for
-eyes); streaming/load-screen gating (T-4.06, `pnpm check:packs`) and LOD/instancing (T-4.07) are done, beside
-the level format (T-4.09), the mission's objective types (T-4.14), scripted
-events (T-4.15), checkpoints/retry (T-4.16) and every-mission CI (T-4.17)
-all done; the room before the mission T-4.19 and the player HUD T-4.25, menus T-4.26, classes T-4.27 and the scoreboard T-4.28 are done; the mounted MG (T-4.29) and observability (T-4.33) are done; the
-regions addendum (T-4.30) is written and its build tasks are in — region
-selection (T-4.20) done, the allocator (T-4.31) and drain (T-4.32) built
-and tested, their deploys and the cost agreement the owner's — and two
-owner decisions gate the rest. Art sourcing is decided (🧍 T-4.01, ADR-018: authored as code,
-with procedural animation): the generator library and its first kit piece
-are done (T-4.04, `pnpm gen:art`, the wall on `?assets`), and the characters
-from assets (T-4.08) are open, and with the level format done (T-4.09,
-`data/levels/`, greybox-01 the first level) the kit (T-4.10) and level
-validation (T-4.11) are open. The slice kit is done (T-4.10: 25 code-authored
-pieces, `data/kit.json`, `?kit` for the walkable gallery), and the baked-lighting
-spike is done (T-4.12): the fallback keeps the sun + hemisphere and adds
-per-piece baked vertex AO without breaking instancing. **The setting is Afghanistan, winter 2001–2002**
-(ADR-020; the brief is `docs/art/direction.md`). The squad now wears the
-detailed desert-camouflage soldier (T-4.08) and carries period weapons
-(T-4.36; enemies hold the AK, PKM and RPG-7), and every enemy is the
-irregular fighter (T-4.35). Where progress lives is decided
-too (🧍 T-4.21, ADR-019: on the host, per campaign), and player identity
-is done (T-4.22: host-signed anonymous IDs, `IDENTITY_SECRET`), and campaign saves
-are durable in SQLite on the Fly volume (T-4.23). Soldiers now earn data-driven
-XP and ranks from human play, saved with the campaign and shown at mission end
-(T-4.24, protocol 29); bots earn nothing.
+The ongoing queue and its READY status remain in [BACKLOG.md](BACKLOG.md).
+General review approval does not select a new lighting architecture, authorize
+hosting spend, or complete missing engineering and deployment evidence.
 
 ---
 
@@ -190,7 +122,7 @@ XP and ranks from human play, saved with the campaign and shown at mission end
 | T-2.06 | DONE | T-2.05 |
 | 🧍 T-2.07 | DONE | T-2.01..T-2.06 |
 
-### E-2.2 — Locomotion & character presentation (§7.2) — awaiting T-2.24
+### E-2.2 — Locomotion & character presentation (§7.2) — owner approved 2026-10-09
 
 | Task | Status | Depends |
 |---|---|---|
@@ -201,7 +133,7 @@ XP and ranks from human play, saved with the campaign and shown at mission end
 | T-2.21 | DONE | T-2.20 |
 | T-2.22 | DONE | T-2.19 |
 | T-2.23 | DONE | T-2.21 |
-| 🧍 T-2.24 | OPEN | T-2.17..T-2.23 |
+| 🧍 T-2.24 | DONE — owner approved 2026-10-09 | T-2.17..T-2.23 |
 
 ### E-2.4 — Weapon feel (§7.3) — closed, T-2.12 passed
 
@@ -222,7 +154,7 @@ XP and ranks from human play, saved with the campaign and shown at mission end
 | T-2.15 | DONE | T-2.13 |
 | 🧍 T-2.16 | DONE | T-2.13, T-2.14, T-2.15 |
 
-### E-2.3 — Animation system (§7.5) — awaiting T-2.29
+### E-2.3 — Animation system (§7.5) — owner approved 2026-10-09
 
 | Task | Status | Depends |
 |---|---|---|
@@ -230,9 +162,9 @@ XP and ranks from human play, saved with the campaign and shown at mission end
 | T-2.26 | DONE | T-2.25 |
 | T-2.27 | DONE | T-2.25 |
 | T-2.28 | DONE | T-2.25 |
-| 🧍 T-2.29 | OPEN — run sheet `e2-3.md` prepared, not run | T-2.25..T-2.28 |
+| 🧍 T-2.29 | DONE — owner approved 2026-10-09 | T-2.25..T-2.28 |
 
-### E-2.5 — Projectile weapons (§7.6) — awaiting T-2.34
+### E-2.5 — Projectile weapons (§7.6) — owner approved 2026-10-09
 
 | Task | Status | Depends |
 |---|---|---|
@@ -240,9 +172,9 @@ XP and ranks from human play, saved with the campaign and shown at mission end
 | T-2.31 | DONE | T-2.30 |
 | T-2.32 | DONE | T-2.31 |
 | T-2.33 | DONE | T-2.32 |
-| 🧍 T-2.34 | OPEN — run sheet `e2-5.md` prepared, not run | T-2.30..T-2.33 |
+| 🧍 T-2.34 | DONE — owner approved 2026-10-09 | T-2.30..T-2.33 |
 
-### The soldier's look (§7.7) — awaiting T-2.39
+### The soldier's look (§7.7) — owner approved 2026-10-09
 
 | Task | Status | Depends |
 |---|---|---|
@@ -250,7 +182,7 @@ XP and ranks from human play, saved with the campaign and shown at mission end
 | T-2.36 | DONE | T-2.35 |
 | T-2.37 | DONE | T-2.35 |
 | T-2.38 | DONE | T-2.35 |
-| 🧍 T-2.39 | OPEN | T-2.35..T-2.38 |
+| 🧍 T-2.39 | DONE — owner approved 2026-10-09 | T-2.35..T-2.38 |
 
 ### E-2.7 — Combat audio (§7.10) — broken out 2026-09-23
 
@@ -263,13 +195,13 @@ on the deployed site's sound board (`?sounds`, T-2.45).
 |---|---|---|
 | T-2.44 | DONE | — |
 | T-2.45 | DONE | T-2.44 |
-| T-2.46 | BLOCKED — built and tested; the owner's first listen on `?sounds` (its done-when) is outstanding | T-2.45 |
+| T-2.46 | DONE — existing weapon-sound review and first-listening acceptance approved by owner 2026-10-09 | T-2.45 |
 | T-2.47 | DONE | T-2.45 |
 | T-2.48 | DONE — the pipeline is built and tested on generated signals; no recordings are uploaded yet (`docs/audio/voice-script.md`), so no lines are committed | T-2.44 |
 | T-2.49 | DONE — heard as the radio chirp until recordings arrive | T-2.45, T-2.48 |
-| 🧍 T-2.50 | OPEN — run sheet `e2-7.md` prepared, not run | T-2.46, T-2.47, T-2.49 |
+| 🧍 T-2.50 | DONE — owner approved 2026-10-09; voice recordings remain absent | T-2.46, T-2.47, T-2.49 |
 
-### E-2.8 — Prone stance & voluntary crawl (§7.8) — awaiting T-2.43 (run sheet ready)
+### E-2.8 — Prone stance & voluntary crawl (§7.8) — owner approved 2026-10-09
 
 Reopens ADR-002's prone exclusion; see `docs/adr/016-prone-stance.md`. Not
 the downed crawl B-05 removed (that stays removed) — a voluntary stance for
@@ -281,7 +213,7 @@ a standing, alive soldier, built on the crouch (T-2.20) and crawl-gait
 | T-2.40 | DONE | T-2.20, T-2.13 |
 | T-2.41 | DONE | T-2.40, T-2.06 |
 | T-2.42 | DONE | T-2.40, T-2.41 |
-| 🧍 T-2.43 | OPEN — run sheet `e2-8.md` prepared, not run | T-2.40..T-2.42 |
+| 🧍 T-2.43 | DONE — owner approved 2026-10-09 | T-2.40..T-2.42 |
 
 ---
 
@@ -348,7 +280,7 @@ once before the first M3 task — it is short and every task leans on it.
 | Task | Status | Depends |
 |---|---|---|
 | T-3.23 | DONE | T-3.21, T-3.22 |
-| 🧍 T-3.24 | OPEN — run sheet `e3-5.md` prepared, not run | T-3.11, T-3.17, T-3.23 |
+| 🧍 T-3.24 | DONE — owner approved 2026-10-09 | T-3.11, T-3.17, T-3.23 |
 
 ### E-3.7 — Friendly bot
 
@@ -364,7 +296,7 @@ once before the first M3 task — it is short and every task leans on it.
 | T-3.27 | DONE | T-3.08 |
 | T-3.28 | DONE | T-3.27, T-3.26, T-3.19 |
 | T-3.29 | DONE | T-3.27 |
-| 🧍 T-3.30 | OPEN — run sheet `e3-8.md` prepared, not run | T-3.11, T-3.25, T-3.26, T-3.28, T-3.29 |
+| 🧍 T-3.30 | DONE — owner approved 2026-10-09 | T-3.11, T-3.25, T-3.26, T-3.28, T-3.29 |
 
 ### E-3.9 — AI director and the grey-box mission
 
@@ -375,8 +307,8 @@ once before the first M3 task — it is short and every task leans on it.
 | T-3.33 | DONE | T-3.32, T-3.14 |
 | T-3.34 | DONE | T-3.31, T-3.32 |
 | T-3.35 | DONE | T-3.23, T-3.28, T-3.33, T-3.34 |
-| 🧍 T-3.36 | BLOCKED — run sheet `m3-solo.md` prepared, not run; after T-3.24 and T-3.30 | T-3.24, T-3.30, T-3.35 |
-| 🧍 T-3.37 | OPEN — run sheet `m3-six.md` prepared, not run; needs six people | T-3.35 |
+| 🧍 T-3.36 | DONE — owner approved 2026-10-09 | T-3.24, T-3.30, T-3.35 |
+| 🧍 T-3.37 | DONE — owner approved 2026-10-09; no new six-person measurements claimed | T-3.35 |
 
 ---
 
@@ -408,9 +340,9 @@ the owner may still overrule before T-4.23.
 | T-4.05 | DONE | T-4.02 |
 | T-4.06 | DONE | T-4.05 |
 | T-4.07 | DONE | T-4.05 |
-| T-4.08 | DONE — re-scoped by the owner: the detailed soldier (ADR-020) | T-4.01, T-4.05 |
-| T-4.35 | DONE — the enemy fighter; the owner judges it on the deployed site | T-4.08 |
-| T-4.36 | DONE — period weapons | T-4.08 |
+| T-4.08 | DONE — the detailed soldier (ADR-020); owner review approved 2026-10-09 | T-4.01, T-4.05 |
+| T-4.35 | DONE — the enemy fighter; owner review approved 2026-10-09 | T-4.08 |
+| T-4.36 | DONE — period weapons; owner review approved 2026-10-09 | T-4.08 |
 
 ### E-4.3 — Level format, kit, lightmaps
 
@@ -476,7 +408,7 @@ the owner may still overrule before T-4.23.
 
 | Task | Status | Depends |
 |---|---|---|
-| 🧍 T-4.34 | BLOCKED — run sheet `m4.md` prepared, not run; after M3's gate | T-4.13, T-4.17, T-4.23, T-4.25, T-4.26, T-4.27, T-4.29 |
+| 🧍 T-4.34 | DONE — owner approved 2026-10-09 | T-4.13, T-4.17, T-4.23, T-4.25, T-4.26, T-4.27, T-4.29 |
 
 ---
 
@@ -495,4 +427,4 @@ T-4.34 is passed.
 | 🧍 T-5.05 | OPEN — the owner's decision (T-4.12's fallback or lightmaps) | — |
 | T-5.06 | OPEN — cover under fire landed (60% / 20% with the clearing leader); bounding and the walk-in floors remain | B-11 |
 | T-5.07 | DONE | T-5.03 |
-| 🧍 T-5.08 | BLOCKED — after T-4.34; run sheet `m5.md` prepared, not run | T-5.01..T-5.07, T-4.34 |
+| 🧍 T-5.08 | BLOCKED — human review owner-approved 2026-10-09; T-5.05 lighting decision and T-5.06 engineering remain open | T-5.01..T-5.07, T-4.34 |

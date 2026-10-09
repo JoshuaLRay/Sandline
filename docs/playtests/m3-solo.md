@@ -1,12 +1,12 @@
 # M3 exit gate, one player and five bots — T-3.36
 
-## Status: NOT YET RUN
+## Status: APPROVED — owner acceptance, 2026-10-09
 
-This file is the run sheet for the first half of M3's exit gate, written
-before the session so that the judgements get recorded while they are
-fresh. **Until the Verdict section at the bottom is filled in by a person,
-this task is open and M3 is not closed** (it closes when this and T-3.37,
-`m3-six.md`, both have verdicts). Nothing in this file is a result.
+The owner approved this existing human review on 2026-10-09 with the
+instruction: "Mark all human reviews as approved and mark appropriate
+tasks as ready." This records owner acceptance of the implemented work.
+No new session, participant details, observations, or measurements were
+provided; the blank run-sheet fields remain available for future runs.
 
 - **Date:**
 - **Build:** (the commit in the HUD's title bar, also the browser tab's title: `SANDLINE <sha>`)
@@ -245,7 +245,10 @@ triangles
 
 ## Verdict
 
-**PASS / FAIL:**
+**APPROVED — owner acceptance, 2026-10-09.**
+
+Approval source: the owner instruction quoted above. The remaining prompts
+and blank fields are preserved for future session records.
 
 One paragraph, in your own words: with five bots, do enemies demonstrably
 take cover and suppress, is the mission completable, and do the bots pull

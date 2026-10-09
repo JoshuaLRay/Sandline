@@ -22,12 +22,12 @@ Use [Map and mission creation](MAP-MISSION-CREATION.md) for the shared rules and
 the U-105/U-106 rectangular lane plan: hidden ravine insertion, winding road,
 climbing ridge and wholly underground depot approach, enemies on all routes,
 exact construction dimensions and mission behaviour. U-106 is merged but the
-owner requests this further redesign; U-107 is documentation, with implementation
-and quality review still pending. Its basement chambers are intentionally large,
-with narrower circulation aisles. [Mission 2, The Kestrel Dam](MISSION-02.md), now has a
-proposed full design (U-127, [specification](maps/kestrel-dam.md)) awaiting owner
-review. Missions 3–10 remain undesigned and are built one at a time under the
-shared standard.
+owner requests this further redesign; U-107 is documentation. Replacement
+implementation and its future whole-map quality review remain pending. Its basement chambers are intentionally large,
+with narrower circulation aisles. [Mission 2, The Kestrel Dam](MISSION-02.md) has
+an owner-approved design (U-127, [specification](maps/kestrel-dam.md), 2026-10-09).
+Missions 3–10 remain undesigned and are built one at a time under the shared
+standard.
 
 ## 1. What exists today (verified 2026-10-01)
 
@@ -96,8 +96,8 @@ The first season is ten missions. A row is one mission; each becomes a design br
 
 | # | Working title | What it is | Status |
 |---|---|---|---|
-| 1 | [The Qalat Road](MISSION-01.md) | **A rescue and escort.** The squad frees an **unarmed POW** from the compound he is held in; he joins the squad as a seventh member who can be **commanded** (go / stay / follow) and **spectated** but not controlled. On the way back out a **tank rides in along the route home**: the squad must destroy it, then reach the extraction point **with all seven alive**. | Original mission implemented; U-107 replacement design specified; [U-065 review owed](../backlog/U-065.md) |
-| 2 | [The Kestrel Dam](MISSION-02.md) | **Demolition and a crossing.** A through-mission: insert at a concealed gravel bar, reach a Soviet-era dam by the gorge road, a high irrigation canal or the west bank, destroy **two anti-aircraft guns on opposite abutments** with mission-supplied charges (the guns, not the dam), free any captured squad members, defeat **two technicals** sent across the crest, and extract by helicopter with the whole squad standing. | Full design proposed ([U-127](../backlog/U-127.md)); owner review owed; build follows Mission 1's playtest unless the owner decides otherwise |
+| 1 | [The Qalat Road](MISSION-01.md) | **A rescue and escort.** The squad frees an **unarmed POW** from the compound he is held in; he joins the squad as a seventh member who can be **commanded** (go / stay / follow) and **spectated** but not controlled. On the way back out a **tank rides in along the route home**: the squad must destroy it, then reach the extraction point **with all seven alive**. | Original mission implemented; U-107 replacement design specified; [U-065 technical completion pending](../backlog/U-065.md) |
+| 2 | [The Kestrel Dam](MISSION-02.md) | **Demolition and a crossing.** A through-mission: insert at a concealed gravel bar, reach a Soviet-era dam by the gorge road, a high irrigation canal or the west bank, destroy **two anti-aircraft guns on opposite abutments** with mission-supplied charges (the guns, not the dam), free any captured squad members, defeat **two technicals** sent across the crest, and extract by helicopter with the whole squad standing. | Design review approved 2026-10-09 ([U-127](../backlog/U-127.md)); build still depends on unfinished Mission 1 capabilities and scoped construction tasks |
 | 3–10 | — | Not yet designed. One at a time, in order. | Open |
 
 The existing `mission-01` (clear and hold the qalat) is the vertical slice. **Approved in the mission 1 brief (2026-10-02):** it stays playable as the test and QA mission outside the season. The Qalat Road is the campaign opener.
@@ -140,7 +140,7 @@ One short document per mission, in this folder, written before any level is buil
 
 ## 5. Order of work
 
-Current checkpoint (2026-10-03): campaign decisions and mission 1 design are delivered. Its level, encounter, mission and verification are implemented. U-065 still owes the owner playtest and headless completion (current bots complete 0/20 at both budgets). The sequence below is retained as the design order; it does not reopen completed dependencies.
+Current checkpoint (2026-10-03): campaign decisions and mission 1 design are delivered. Its level, encounter, mission and verification are implemented. The owner approved U-065’s existing playtest review on 2026-10-09; headless completion (recorded 0/20 at both budgets) and the U-107 replacement integration remain open. The sequence below is retained as the design order; it does not reopen completed dependencies.
 
 1. **Decide Q1 to Q4** (this page). They block the escort (U-075) and the flow (U-072).
 2. **Ready now, content-independent:** U-073 (register a mission in one place), U-074 (objectives in any order) and
