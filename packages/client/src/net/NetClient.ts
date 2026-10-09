@@ -14,6 +14,7 @@ import {
   type BotOrder,
   type SquadSpread,
   type SquadAggression,
+  type SquadStance,
   type OrderAddress,
   type CharacterSpace,
   DEFAULT_MOVE_CONFIG,
@@ -375,6 +376,11 @@ export class NetClient {
   private aggressionsValue: readonly SquadAggression[] = Array.from({ length: 6 }, () => 'aggressive');
   get aggressions(): readonly SquadAggression[] { return this.aggressionsValue; }
   aggression(aggression: SquadAggression, address: OrderAddress): void { if (this.joinedFlag) this.transport.send(encodeMessage({ kind: 'Aggression', aggression, address }), 'reliable'); }
+
+  /** U-153: every slot's stance setting, as the host last broadcast it. */
+  private stancesValue: readonly SquadStance[] = Array.from({ length: 6 }, () => 'auto');
+  get stances(): readonly SquadStance[] { return this.stancesValue; }
+  stance(stance: SquadStance, address: OrderAddress): void { if (this.joinedFlag) this.transport.send(encodeMessage({ kind: 'Stance', stance, address }), 'reliable'); }
 
   private spreadsValue: readonly SquadSpread[] = Array.from({ length: 6 }, () => 'standard');
   get spreads(): readonly SquadSpread[] { return this.spreadsValue; }
@@ -862,6 +868,7 @@ export class NetClient {
     this.remoteGoneAt.clear();
     this.aggressionsValue = Array.from({ length: 6 }, () => 'aggressive');
     this.spreadsValue = Array.from({ length: 6 }, () => 'standard');
+    this.stancesValue = Array.from({ length: 6 }, () => 'auto');
     this.ordersValue = [];
     this.marksValue = [];
     this.missionValue = null;
@@ -986,7 +993,8 @@ export class NetClient {
    * squad that never moved. The host decides whether it stands and says so
    * in `Orders`.
    */
-  order(msg: Extract<Message, { kind: 'Order' }>): void {
+  /** An order from the wheel or the mobile command — or (U-153) a stance the wheel holds bots in. */
+  order(msg: Extract<Message, { kind: 'Order' | 'Stance' }>): void {
     if (!this.joinedFlag) return;
     this.transport.send(encodeMessage(msg), 'reliable');
   }
@@ -1376,6 +1384,9 @@ export class NetClient {
         break;
       case 'Spreads':
         this.spreadsValue = msg.spreads;
+        break;
+      case 'Stances':
+        this.stancesValue = msg.stances;
         break;
       case 'Orders':
         this.ordersValue = msg.orders;

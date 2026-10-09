@@ -172,10 +172,12 @@ import {
   orderProblem,
   type BotOrder,
   SPREAD_KINDS,
+  STANCE_KINDS,
   AGGRESSION_KINDS,
   MEMORY,
   type SquadAggression,
   type SquadSpread,
+  type SquadStance,
   type OrderKind,
   type OrderPoint,
   type TargetMark,
@@ -245,7 +247,7 @@ import { standingY, within } from '../ai/floor.ts';
 import { type StillWatch, createStillWatch, throwEye, throwLaunch, watchStill } from '../ai/throw.ts';
 import type { CoverPoint } from '../ai/nav/baked/types.ts';
 import { completePathLength } from '../ai/nav/NavMesh.ts';
-import { type FollowerStatus, PathFollower } from '../ai/locomotion/followPath.ts';
+import { type FollowIntent, type FollowerStatus, PathFollower } from '../ai/locomotion/followPath.ts';
 import { Avoidance, type AvoidanceEntry } from '../ai/locomotion/avoidance.ts';
 import type { NavMesh, NavPath, NavPoint } from '../ai/nav/NavMesh.ts';
 import { ClientView } from './relevance.ts';
@@ -3681,6 +3683,7 @@ export class Session {
       onAiDebugRequest: (c, on) => this.applyAiDebugRequest(c, on),
       onAggression: (c, msg) => this.applyAggression(c, msg),
       onSpread: (c, msg) => this.applySpread(c, msg),
+      onStance: (c, msg) => this.applyStance(c, msg),
       onOrder: (c, msg) => { if (this.roomStarted) this.applyOrder(c, msg); },
       onMark: (c, msg) => { if (this.roomStarted) this.applyMark(c, msg); },
       onMissionRestart: (c, full) => { if (this.roomStarted || this.incompatibleCampaign) this.requestRestart(c, full); },
@@ -3768,6 +3771,7 @@ export class Session {
     }
     conn.send({ kind: 'Aggressions', aggressions: this.aggressions });
     conn.send({ kind: 'Spreads', spreads: this.spreads });
+    conn.send({ kind: 'Stances', stances: this.stances });
     conn.send({ kind: 'Marks', marks: [...this.marks] });
     if (this.missionRun && this.roomStarted) conn.send({ kind: 'Mission', ...this.missionRun.current });
     // U-090: someone who joins after the mission has ended is shown what the host may choose.
@@ -3815,6 +3819,63 @@ export class Session {
       slot.brain?.take('fireAt'); slot.brain?.take('suppressAt'); slot.brain?.take('throwAt'); slot.brain?.take('detonate'); slot.brain?.take('intent'); slot.brain?.take('phase');
     }
     for (const c of this.connections) if (c.state === 'active') c.send({ kind: 'Aggressions', aggressions: this.aggressions });
+  }
+
+  /**
+   * U-153: the stance each slot's bot is held in — a character's setting, like its aggression (U-101): it stays with
+   * the slot through join, leave, switch, reconnect and retry, and moves only a bot (`holdStances`).
+   */
+  private readonly stances: SquadStance[] = Array.from({ length: MAX_SLOTS }, () => 'auto');
+  stanceFor(slot: number): SquadStance { return this.stances[slot] ?? 'auto'; }
+
+  /** U-153: a player holding the bots they command (and their own character, for when it is a bot) in a stance. */
+  private applyStance(conn: ServerConnection, msg: Extract<Message, { kind: 'Stance' }>): void {
+    const from = this.humanFor(conn);
+    if (!from || !STANCE_KINDS.includes(msg.stance)) return;
+    const a = msg.address;
+    const addressed = a.to === 'all' ? this.slots.map((s) => s.index) : a.to === 'fireteam' ? SQUAD_CONFIG.fireteams[a.index]?.slots ?? [] : [a.index];
+    for (const i of addressed) {
+      const slot = this.slots[i];
+      if (!slot || (i !== from.index && (!this.autonomous(slot) || this.commanders[i] !== from.index))) continue;
+      const was = this.stanceFor(i);
+      this.stances[i] = msg.stance;
+      // A bot standing idle keeps its last input: let go of a held stance; `holdStances` sets the new one.
+      if (was !== 'auto' && this.autonomous(slot)) slot.input = { ...slot.input, crouch: false, prone: false };
+    }
+    for (const c of this.connections) if (c.state === 'active') c.send({ kind: 'Stances', stances: this.stances });
+  }
+
+  /**
+   * U-153: whether a bot must be up whatever stance it is held in — its brain is off to revive or heal a squadmate
+   * or use a kit, or it is collecting from a supply cache for its commander. A vault is the controller's: the
+   * path follower walks a vault leg standing (`holdStances`).
+   */
+  private mustRise(slot: Slot): boolean {
+    return (slot.brain?.read('rise') ?? false) || this.supplyUses.get(slot.index)?.mode === 'commander';
+  }
+
+  /** U-153: the pace a bot walks its brain's intent at, in the stance it is held in. */
+  private heldPace(slot: Slot, intent: FollowIntent | null): FollowIntent | null {
+    const stance = this.stanceFor(slot.index);
+    if (!intent || stance === 'auto' || this.mustRise(slot)) return intent;
+    return { goal: intent.goal, pace: stance };
+  }
+
+  /**
+   * U-153: every bot held in Crouch or Prone keeps that stance on its input, after its brain's hands (`aiHands`)
+   * and before it steps — holding, moving or firing. Not on a vault leg or mid-vault (the controller vaults only a
+   * standing soldier), not a prisoner, not on a gun (`pinGunner`), not while it must rise (`mustRise`); a human is
+   * never moved.
+   */
+  private holdStances(): void {
+    for (const slot of this.slots) {
+      const stance = this.stanceFor(slot.index);
+      if (stance === 'auto' || !this.autonomous(slot) || !isAlive(slot.health) || slot.captured || slot.mounted || this.mustRise(slot)) continue;
+      if (slot.state.vault || this.followers[slot.index]?.onVault) continue;
+      slot.input.prone = stance === 'prone';
+      slot.input.crouch = stance === 'crouch';
+      slot.input.sprint = false;
+    }
   }
 
   private readonly spreads: SquadSpread[] = Array.from({ length: MAX_SLOTS }, () => 'standard');
@@ -5778,6 +5839,7 @@ export class Session {
     this.thinkBrains();
     this.driveBots();
     this.enemyHands(nowSeconds);
+    this.holdStances();
     if (this.profileAi) this.aiMs += performance.now() - aiFrom;
 
     for (const slot of this.slots) {
@@ -6530,6 +6592,8 @@ export class Session {
       if (slot.brain?.due(this.currentTick)) {
         // U-053: holding a kit's use is asked afresh each think, so a branch that pre-empts the heal lets go of it.
         slot.brain.take('useKit');
+        // U-153: and rising from a held stance, so a branch that pre-empts a revive or heal lies down again.
+        slot.brain.take('rise');
         slot.brain.think(this.currentTick);
       }
     }
@@ -6684,7 +6748,7 @@ export class Session {
         if (!intent) continue;
         follower = this.followers[slot.index] = new PathFollower(mesh, this.collisionBoxes, undefined, this.moveConfig);
       }
-      inputs[slot.index] = follower.step(slot.state, intent, slot.yaw).input;
+      inputs[slot.index] = follower.step(slot.state, this.heldPace(slot, intent), slot.yaw).input;
       // Stood still again: its input is the idle one just made, and stays so.
       if (!intent) this.followers[slot.index] = null;
     }

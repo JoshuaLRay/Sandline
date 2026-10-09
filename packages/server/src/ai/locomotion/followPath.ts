@@ -49,10 +49,17 @@ import RAW_FOLLOW from './follow.json' with { type: 'json' };
 
 /** How ordinary legs are walked. Vault legs are always walked standing. */
 export type LocomotionPace = 'walk' | 'sprint' | 'crouch';
+/** What the follower walks at: a brain's pace, or a crawl for a bot a player holds prone (U-153). */
+export type FollowPace = LocomotionPace | 'prone';
+
+/** What the follower is asked to walk: where to, and how. */
+export interface FollowIntent {
+  goal: NavPoint;
+  pace: FollowPace;
+}
 
 /** What a brain asks of locomotion: where to go, and how. */
-export interface LocomotionIntent {
-  goal: NavPoint;
+export interface LocomotionIntent extends FollowIntent {
   pace: LocomotionPace;
 }
 
@@ -177,7 +184,7 @@ export function yawToward(dx: number, dz: number): number {
   return ((wire % WIRE_ANGLE_UNITS) + WIRE_ANGLE_UNITS) % WIRE_ANGLE_UNITS;
 }
 
-function inputOf(moveY: number, yaw: number, pace: LocomotionPace): MoveInput {
+function inputOf(moveY: number, yaw: number, pace: FollowPace): MoveInput {
   return {
     moveX: 0,
     moveY,
@@ -185,14 +192,14 @@ function inputOf(moveY: number, yaw: number, pace: LocomotionPace): MoveInput {
     jump: false,
     sprint: pace === 'sprint',
     crouch: pace === 'crouch',
-    prone: false,
+    prone: pace === 'prone',
     interact: false,
     firing: false,
   };
 }
 
-function paceSpeed(pace: LocomotionPace, move: MoveConfig): number {
-  return pace === 'sprint' ? move.sprintSpeed : pace === 'crouch' ? move.crouchSpeed : move.walkSpeed;
+function paceSpeed(pace: FollowPace, move: MoveConfig): number {
+  return pace === 'sprint' ? move.sprintSpeed : pace === 'crouch' ? move.crouchSpeed : pace === 'prone' ? move.proneSpeed : move.walkSpeed;
 }
 
 /** The leg ending at `leg` is a vault not yet crossed. */
@@ -239,7 +246,7 @@ export function startFollow(path: NavPath, yaw: number): FollowState {
 export function followPath(
   follow: Readonly<FollowState>,
   state: Readonly<MoveState>,
-  intent: Readonly<LocomotionIntent>,
+  intent: Readonly<FollowIntent>,
   world: readonly WorldBox[],
   tuning: Readonly<FollowConfig> = DEFAULT_FOLLOW_CONFIG,
   move: MoveConfig = DEFAULT_MOVE_CONFIG,
@@ -362,7 +369,7 @@ export class PathFollower {
    * The input for this tick. `yaw` is the soldier's current facing, kept
    * while there is nowhere to turn; `intent` null stands the soldier still.
    */
-  step(state: Readonly<MoveState>, intent: Readonly<LocomotionIntent> | null, yaw: number): { input: MoveInput; status: FollowerStatus } {
+  step(state: Readonly<MoveState>, intent: Readonly<FollowIntent> | null, yaw: number): { input: MoveInput; status: FollowerStatus } {
     if (!intent) {
       this.follow = null;
       this.goal = null;

@@ -68,7 +68,7 @@ describe('commander supply network requests (U-146)', () => {
     r.settle();
     expect(r.host.server.state).toBe('active');
     expect(r.net.joined).toBe(true);
-    expect(PROTOCOL_VERSION).toBe(69);
+    expect(PROTOCOL_VERSION).toBe(70);
     r.net.selectCommanderSupply(1, 'medical', KIT); r.settle();
     expect(r.host.commander).toEqual([{ kind: 'CommanderSupplySelect', requestId: 1, slot: 1, cacheId: 'medical', item: KIT }]);
   });

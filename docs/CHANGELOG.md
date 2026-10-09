@@ -453,4 +453,6 @@ Format: `T-<id> — <what changed>`
 
 - Docs — Agent workflow for Claude Code and Codex: `AGENTS.md` is the single shared brief (`CLAUDE.md` imports it), procedures are tool-neutral skills in `.agents/skills/`, ADR-021 makes the Conflict series the gameplay reference, and `docs/VISION.md`, `docs/design/CONFLICT-PARITY.md` and `docs/CODEMAP.md` give the goal, the gaps and the code map; 122 DONE backlog rows archived; merged-but-unreviewed work no longer blocks dependents; every owner decision blocker carries a recommended default; parity tasks U-153–U-155 queued between the Mission 1 map leaves.
 
+- U-153 — Squad stance orders: the order wheel holds a soldier, fireteam or the squad in Auto, Crouch or Prone; bots keep it while holding, moving and firing and rise only to vault, revive, heal or use a cache for their commander; the squad HUD shows a held stance; PROTOCOL_VERSION 70 ([#324](https://github.com/JoshuaLRay/Sandline/pull/324)).
+
 - U-156 — Qalat Road back inside ADR-013's 30 s first-playable budget: the tank model moves to a new deferred asset pack fetched once play can start (its stand-in draws any earlier tank); `check:packs` keeps every vehicle in a pack ([#325](https://github.com/JoshuaLRay/Sandline/pull/325)).

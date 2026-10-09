@@ -34,7 +34,7 @@ facts come from the DS1 manual and contemporary reviews (sources at the end);
 | CP-06 | Follow, hold, move to a point | Yes, per soldier or all | Regroup, hold, move; per soldier, fireteam or all | ✅ |
 | CP-07 | Move order sets facing | Place marker, then set facing | Move has no facing; queued as U-154 | ❌ |
 | CP-08 | Fire discipline | Fire at will / stand down | Hold fire / defensive / aggressive (U-101) | ✅ |
-| CP-09 | One-press whole-squad toggles | Follow↔hold, prone↔stand; DS II "hit the dirt", "form up" | Wheel can address all; stance orders queued as U-153 | 🟡 |
+| CP-09 | One-press whole-squad toggles | Follow↔hold, prone↔stand; DS II "hit the dirt", "form up" | One wheel flick to all: hold, regroup, Auto/Crouch/Prone (U-153) | ✅ adapted |
 | CP-10 | Attack a target, marks | Not in DS1 orders | Attack order and marks (T-3.27) | ✅ beyond the series |
 | CP-11 | Context orders (revive, heal, use, man a gun, plant a charge) | Player performs these via prompts | Revive order; bots heal on their own (U-053); commanded cache use (U-146, U-147); no mount or plant order | 🟡 |
 | CP-12 | Bounding, covering and focus fire | Not in the series (reviewers asked for better AI) | U-087 deferred; T-5.06 open | ⏸ |
@@ -112,7 +112,7 @@ Mission 1 build (owner direction, 2026-10-09) and marked **Queued** below.
 
 | # | Gap | Rows | Size | Why now |
 |---|---|---|---|---|
-| G-1 | Whole-squad stance order ("hit the dirt"), form-up, and facing on move orders | CP-07, CP-09 | S | **Queued: U-153, U-154** |
+| G-1 | Whole-squad stance order ("hit the dirt"), form-up, and facing on move orders | CP-07, CP-09 | S | Stance done (U-153); **Queued: U-154** |
 | G-2 | RPG enemy archetype | CP-41 | M | **Queued: U-155** |
 | G-3 | Alarm state, unaware sentries, suppressed weapons | CP-19, CP-42 | M | Stealth openings and the "sentry" play of the series |
 | G-4 | Order a soldier to man a gun or plant/detonate a charge | CP-11 | M | Bots must do what humans do (VISION adaptation 2) |

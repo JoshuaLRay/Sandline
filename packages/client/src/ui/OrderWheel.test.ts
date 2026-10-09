@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { ORDER_KINDS, SQUAD, boxFrom, orderProblem } from '@sandline/shared';
+import { ORDER_KINDS, SQUAD, STANCE_KINDS, boxFrom, decodeMessage, encodeMessage, orderProblem } from '@sandline/shared';
 import {
   ORDER_WHEEL,
   WHEEL_DEADZONE_PX,
@@ -16,6 +16,7 @@ import {
   moveWheelPointer,
   orderFromRelease,
   wheelChoice,
+  wheelLabel,
 } from './OrderWheel.ts';
 import { pickFeet } from './orderPick.ts';
 
@@ -28,24 +29,28 @@ function at(deg: number, r = 80): { dx: number; dy: number } {
 }
 
 describe('the wheel’s direction-to-order mapping', () => {
-  it('has every order once, clockwise from the top', () => {
-    expect([...ORDER_WHEEL].sort()).toEqual([...ORDER_KINDS].sort());
-    expect(ORDER_WHEEL).toEqual(['move', 'attack', 'hold', 'regroup', 'revive']);
+  it('has every order once, then every stance once (U-153), clockwise from the top', () => {
+    expect([...ORDER_WHEEL].sort()).toEqual([...ORDER_KINDS, ...STANCE_KINDS].sort());
+    expect(ORDER_WHEEL).toEqual(['move', 'attack', 'hold', 'regroup', 'revive', 'auto', 'crouch', 'prone']);
+    expect(ORDER_WHEEL.map(wheelLabel)).toEqual(['move', 'attack', 'hold', 'regroup', 'revive', 'auto stance', 'crouch', 'prone']);
   });
 
-  it('picks the sector the mouse went towards: up, upper right, lower right, lower left, upper left', () => {
+  it('picks the sector the mouse went towards, eight of them clockwise from up', () => {
     expect(wheelChoice({ dx: 0, dy: -60 })).toBe('move');
-    expect(wheelChoice(at(72))).toBe('attack');
-    expect(wheelChoice(at(144))).toBe('hold');
-    expect(wheelChoice(at(216))).toBe('regroup');
-    expect(wheelChoice(at(288))).toBe('revive');
-    // Each sector spans 36° either side of its centre.
-    expect(wheelChoice(at(35))).toBe('move');
-    expect(wheelChoice(at(37))).toBe('attack');
-    expect(wheelChoice(at(-35))).toBe('move');
-    expect(wheelChoice(at(-37))).toBe('revive');
-    expect(wheelChoice(at(179))).toBe('hold');
-    expect(wheelChoice(at(181))).toBe('regroup');
+    expect(wheelChoice(at(45))).toBe('attack');
+    expect(wheelChoice(at(90))).toBe('hold');
+    expect(wheelChoice(at(135))).toBe('regroup');
+    expect(wheelChoice(at(180))).toBe('revive');
+    expect(wheelChoice(at(225))).toBe('auto');
+    expect(wheelChoice(at(270))).toBe('crouch');
+    expect(wheelChoice(at(315))).toBe('prone');
+    // Each sector spans 22.5° either side of its centre.
+    expect(wheelChoice(at(22))).toBe('move');
+    expect(wheelChoice(at(23))).toBe('attack');
+    expect(wheelChoice(at(-22))).toBe('move');
+    expect(wheelChoice(at(-23))).toBe('prone');
+    expect(wheelChoice(at(157))).toBe('regroup');
+    expect(wheelChoice(at(158))).toBe('revive');
   });
 
   it('cancels inside the deadzone, whatever the direction', () => {
@@ -57,7 +62,7 @@ describe('the wheel’s direction-to-order mapping', () => {
     let p = { dx: 0, dy: 0 };
     p = moveWheelPointer(p, 4000, 0);
     expect(Math.hypot(p.dx, p.dy)).toBeCloseTo(WHEEL_RADIUS_PX, 6);
-    expect(wheelChoice(p)).toBe('attack');
+    expect(wheelChoice(p)).toBe('hold');
     // Straight up from there: the full radius back across, and the top wins.
     p = moveWheelPointer(p, -WHEEL_RADIUS_PX, -WHEEL_RADIUS_PX * 2);
     expect(wheelChoice(p)).toBe('move');
@@ -132,8 +137,17 @@ describe('the order it builds', () => {
   });
 
   it('from a release: the sector it was left on, to whom the digits said; none inside the deadzone', () => {
-    expect(orderFromRelease({ pointer: at(144), address: { to: 'slot', index: 3 } }, NOTHING)).toMatchObject({ order: 'hold', address: { to: 'slot', index: 3 } });
+    expect(orderFromRelease({ pointer: at(90), address: { to: 'slot', index: 3 } }, NOTHING)).toMatchObject({ order: 'hold', address: { to: 'slot', index: 3 } });
     expect(orderFromRelease({ pointer: { dx: 3, dy: 2 }, address: { to: 'all' } }, NOTHING)).toBeNull();
+  });
+
+  it('a stance (U-153) goes to the same addressee with nothing under the crosshair, and survives the wire', () => {
+    const cases = [[225, 'auto', { to: 'all' }], [270, 'crouch', { to: 'fireteam', index: 1 }], [315, 'prone', { to: 'slot', index: 4 }]] as const;
+    for (const [deg, stance, address] of cases) {
+      const sent = orderFromRelease({ pointer: at(deg), address }, NOTHING);
+      expect(sent).toEqual({ kind: 'Stance', address, stance });
+      expect(decodeMessage(encodeMessage(sent!))).toEqual(sent);
+    }
   });
 
   it('marks the enemy under the crosshair, else the point', () => {

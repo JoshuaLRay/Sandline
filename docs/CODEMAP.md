@@ -59,6 +59,7 @@ The in-page practice mode runs the same `Session` through
 | Commanders and switching | `Session.ts` `commanderOf`/`applyAssignCommander`/`applySwitchCharacter`, `client/src/ui/menu/commandModel.ts` | — | `commanders.test.ts`, `switch.test.ts` |
 | Orders (move, attack, hold, regroup, revive) | `shared/src/sim/orders.ts`, `orderFeet.ts`, `Session.ts` `orderFrom`/`applyOrder`, `server/src/ai/friendly/orders.ts` | `orders.json`, `trees/friendly.json` | `orders.test.ts` (shared, server, friendly) |
 | Spread, fire discipline (aggression), marks | `shared/src/sim/tactics.ts`, `Session.ts` `applySpread`/`applyAggression`/`applyMark` | `squad.json` `spreadScales`, `orders.json` | `spread.test.ts`, `aggression.test.ts` |
+| Held squad stance (U-153) | `shared/src/sim/tactics.ts` `STANCE_KINDS`, `Session.ts` `applyStance`/`holdStances`/`heldPace` | — | `stance.test.ts` |
 | Fireteams, formation, bot fighting | `shared/src/sim/squad.ts`, `server/src/ai/friendly/formation.ts`, `server/src/ai/actions/friendly.ts` | `squad.json` | `formation.test.ts`, `fight.test.ts`, `attackCover.test.ts` |
 | Escorted POW | `server/src/ai/actions/escort.ts`, `Session.ts` `orderEscort` | `trees/escort.json`, `enemies.json` `pow` | `escort.test.ts` |
 

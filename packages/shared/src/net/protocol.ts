@@ -6,7 +6,7 @@
  * a clear reason rather than silently misreading every subsequent snapshot,
  * which is precisely the corrupt-state failure ADR-009 warns about.
  */
-import { AGGRESSION_KINDS, type SquadAggression, SPREAD_KINDS, type SquadSpread } from '../sim/tactics.ts';
+import { AGGRESSION_KINDS, type SquadAggression, SPREAD_KINDS, type SquadSpread, STANCE_KINDS, type SquadStance } from '../sim/tactics.ts';
 import { BitReader, BitWriter } from './BitStream.ts';
 import { HEALTH, POSITION, dequantize, quantize } from './quantize.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
@@ -23,7 +23,7 @@ import type { SupplyCacheDef, SupplyItem, SupplyUseProgress } from '../sim/suppl
 import { readCommanderSupplySelect, readSupplies, readSupplyProgress, readSupplySelect, writeCommanderSupplySelect, writeSupplies, writeSupplyProgress, writeSupplySelect } from './supplyWire.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 69;
+export const PROTOCOL_VERSION = 70;
 
 /** U-143: every client presents the same incompatible-map decision. */
 export const RESTORE_MAP_CHANGED_MESSAGE = 'This mission map has changed. Restart the mission to continue.';
@@ -179,7 +179,9 @@ const MISSION_VARIANT = { State: 0, Restart: 1, RoomState: 2, RoomCommand: 3, Pr
 const ROOM_COMMANDS = ['ready', 'start', 'class', 'choose'] as const;
 /** T-4.15: state plus transient message/callout notifications. */
 /** Four bits for the event family; append variants without renumbering existing messages. */
-const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2, OrderFailed: 3, RunOffer: 4, Handoff: 5, Spread: 6, Spreads: 7, Aggression: 8, Aggressions: 9, SupplySelect: 10, Supplies: 11, SupplyProgress: 12, RestoreGate: 13, CommanderSupplySelect: 14 } as const;
+const EVENT_VARIANT = { State: 0, Message: 1, Callout: 2, OrderFailed: 3, RunOffer: 4, Handoff: 5, Spread: 6, Spreads: 7, Aggression: 8, Aggressions: 9, SupplySelect: 10, Supplies: 11, SupplyProgress: 12, RestoreGate: 13, CommanderSupplySelect: 14, More: 15 } as const;
+/** U-153: the event family's last variant opens four more bits, so the family keeps room to grow. */
+const EVENT_MORE = { Stance: 0, Stances: 1 } as const;
 const EXT_BITS = 3;
 const ORDER_KIND_BITS = 3;
 const ADDRESS_TO = ['slot', 'fireteam', 'all'] as const;
@@ -520,6 +522,10 @@ export type Message =
   | { kind: 'Aggressions'; aggressions: readonly SquadAggression[] }
   | { kind: 'Spread'; address: OrderAddress; spread: SquadSpread }
   | { kind: 'Spreads'; spreads: readonly SquadSpread[] }
+  /** U-153: a player holding bots in a stance — slot, fireteam or all. Client to host; the host checks command. */
+  | { kind: 'Stance'; address: OrderAddress; stance: SquadStance }
+  /** U-153: every slot's stance setting, whole, whenever one changes and on seating. Host to client. */
+  | { kind: 'Stances'; stances: readonly SquadStance[] }
   | { kind: 'Orders'; orders: readonly BotOrder[] }
   /** T-3.27: every standing mark, whole, whenever one is made or expires and on seating. Host to client. */
   | { kind: 'Marks'; marks: readonly TargetMark[] }
@@ -788,6 +794,23 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(EVENT_VARIANT.Spreads, 4);
       if (msg.spreads.length !== 6) throw new ProtocolError('expected six spread settings');
       for (const spread of msg.spreads) w.writeBits(SPREAD_KINDS.indexOf(spread), 2);
+      break;
+    case 'Stance':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Events, EXT_BITS);
+      w.writeBits(EVENT_VARIANT.More, 4);
+      w.writeBits(EVENT_MORE.Stance, 4);
+      w.writeBits(ADDRESS_TO.indexOf(msg.address.to), 2);
+      w.writeBits(msg.address.to === 'all' ? 0 : msg.address.index, 3);
+      w.writeBits(STANCE_KINDS.indexOf(msg.stance), 2);
+      break;
+    case 'Stances':
+      w.writeBits(MessageType.Ext, TYPE_BITS);
+      w.writeBits(EXT.Events, EXT_BITS);
+      w.writeBits(EVENT_VARIANT.More, 4);
+      w.writeBits(EVENT_MORE.Stances, 4);
+      if (msg.stances.length !== 6) throw new ProtocolError('expected six stance settings');
+      for (const stance of msg.stances) w.writeBits(STANCE_KINDS.indexOf(stance), 2);
       break;
     case 'Orders': {
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -1527,6 +1550,24 @@ export function decodeMessage(bytes: Uint8Array): Message {
                 spreads.push(spread);
               }
               return { kind: 'Spreads', spreads };
+            }
+            if (variant === EVENT_VARIANT.More) {
+              const more = r.readBits(4);
+              if (more === EVENT_MORE.Stance) {
+                const to = ADDRESS_TO[r.readBits(2)];
+                const index = r.readBits(3);
+                const stance = STANCE_KINDS[r.readBits(2)];
+                if (!to || !stance || (to !== 'all' && index > 5)) throw new ProtocolError('invalid stance command');
+                return { kind: 'Stance', address: to === 'all' ? { to } : { to, index }, stance };
+              }
+              if (more !== EVENT_MORE.Stances) throw new ProtocolError(`unknown event message 15.${more}`);
+              const stances: SquadStance[] = [];
+              for (let i = 0; i < 6; i++) {
+                const stance = STANCE_KINDS[r.readBits(2)];
+                if (!stance) throw new ProtocolError('invalid stance setting');
+                stances.push(stance);
+              }
+              return { kind: 'Stances', stances };
             }
             if (variant === EVENT_VARIANT.OrderFailed) return { kind: 'OrderFailed', slot: r.readBits(3), order: readOrderKind(r) };
             if (variant !== EVENT_VARIANT.State) throw new ProtocolError(`unknown event message ${variant}`);

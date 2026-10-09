@@ -83,14 +83,14 @@ describe('the squad rows (T-4.25)', () => {
     const vitality = (slot: number) => (slot === 0 ? 'alive' : slot === 1 ? 'downed' : slot === 2 ? 'dead' : slot === 3 ? 'alive' : null);
     const rows = squadRows(roster, 2, vitality, orders);
     expect(rows).toHaveLength(6);
-    expect(rows[0]).toEqual({ slot: 0, label: 'kai', human: true, you: false, state: 'alive', taken: false, order: '', classShort: 'PRC', commander: '', mine: false });
-    expect(rows[1]).toEqual({ slot: 1, label: 'Bot', human: false, you: false, state: 'downed', taken: false, order: 'move', classShort: 'BRN', commander: 'kai', mine: false });
-    expect(rows[2]).toEqual({ slot: 2, label: 'rae', human: true, you: true, state: 'dead', taken: false, order: '', classShort: 'HOL', commander: '', mine: false });
+    expect(rows[0]).toEqual({ slot: 0, label: 'kai', human: true, you: false, state: 'alive', taken: false, order: '', stance: '', classShort: 'PRC', commander: '', mine: false });
+    expect(rows[1]).toEqual({ slot: 1, label: 'Bot', human: false, you: false, state: 'downed', taken: false, order: 'move', stance: '', classShort: 'BRN', commander: 'kai', mine: false });
+    expect(rows[2]).toEqual({ slot: 2, label: 'rae', human: true, you: true, state: 'dead', taken: false, order: '', stance: '', classShort: 'HOL', commander: '', mine: false });
     expect(rows[3]?.state).toBe('alive');
     // U-025: the bot rae commands reads "you" on rae's screen.
     expect(rows[3]).toMatchObject({ commander: 'you', mine: true });
     expect(rows[4]?.state).toBe('unknown');
-    expect(rows[5]).toEqual({ slot: 5, label: 'Bot', human: false, you: false, state: 'unknown', taken: false, order: '', classShort: 'VAN', commander: 'kai', mine: false });
+    expect(rows[5]).toEqual({ slot: 5, label: 'Bot', human: false, you: false, state: 'unknown', taken: false, order: '', stance: '', classShort: 'VAN', commander: 'kai', mine: false });
   });
   it('marks a prisoner over whatever the host says of their body, and a character being taken (U-064)', () => {
     const held = roster.map((r, i) => (i === 1 ? { ...r, captured: true } : i === 4 ? { ...r, takenBy: 77 } : r));
@@ -98,6 +98,11 @@ describe('the squad rows (T-4.25)', () => {
     expect(rows[1]).toMatchObject({ state: 'captured', taken: false });
     expect(rows[4]).toMatchObject({ state: 'downed', taken: true });
     expect(rows.filter((r) => r.taken || r.state === 'captured')).toHaveLength(2);
+  });
+  it('shows the stance a bot is held in, Crouch or Prone, and nothing for Auto or for a human (U-153)', () => {
+    const rows = squadRows(roster, 2, () => 'alive', [], ['prone', 'crouch', 'prone', 'prone', 'auto', 'crouch']);
+    expect(rows.map((r) => r.stance)).toEqual(['', 'crouch', '', 'prone', '', 'crouch']);
+    expect(squadRows(roster, 2, () => 'alive', []).every((r) => r.stance === '')).toBe(true);
   });
   it('is six rows of bots before the roster arrives', () => {
     const rows = squadRows([], -1, () => null, []);
