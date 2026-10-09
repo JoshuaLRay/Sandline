@@ -1,11 +1,12 @@
 # Soldier look sign-off — T-2.39
 
-## Status: NOT YET RUN
+## Status: APPROVED — owner acceptance, 2026-10-09
 
-This file is the run sheet for the sign-off, written before the session so
-that the judgements get recorded while they are fresh. **Until the Verdict
-section at the bottom is filled in by a person, this task is open and the
-soldier's look is not signed off.** Nothing in this file is a result.
+The owner approved this existing human review on 2026-10-09 with the
+instruction: "Mark all human reviews as approved and mark appropriate
+tasks as ready." This records owner acceptance of the implemented work.
+No new session, participant details, observations, or measurements were
+provided; the blank run-sheet fields remain available for future runs.
 
 - **Date:**
 - **Build:** (the commit shown top-left of the HUD)
@@ -152,7 +153,10 @@ Anything else you changed (file, what, why):
 
 ## Verdict
 
-**PASS / FAIL:**
+**APPROVED — owner acceptance, 2026-10-09.**
+
+Approval source: the owner instruction quoted above. The remaining prompts
+and blank fields are preserved for future session records.
 
 One paragraph, in your own words: does the soldier read as an early-2000s
 console squad shooter character, is the squad legible at the ranges the game

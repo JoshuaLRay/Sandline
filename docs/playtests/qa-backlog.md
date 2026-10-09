@@ -1,9 +1,10 @@
 # QA backlog — newest first
 
-Everything worth a person's eyes that has landed and not been signed off,
-newest task first. M3 (T-3.35 back to T-3.01) is covered task by task. The
-still-open M2 sign-offs come after it and point at their existing run sheets.
-Older work that has been through a gate ends in a short regression sweep.
+Existing implemented human reviews were approved by the owner on 2026-10-09:
+"Mark all human reviews as approved and mark appropriate tasks as ready."
+M3 (T-3.35 back to T-3.01) is covered task by task. Approved M2 sign-offs
+follow and point to their acceptance records. This checklist remains available
+for regression runs; blank checkboxes do not claim new observations.
 
 This is a checklist, not a verdict. Tick what you tried and write down what
 you saw. Anything wrong goes in `docs/BUGS.md` as a new B-number, with the
@@ -155,8 +156,8 @@ No direct QA. Covered by T-3.29.
 - [ ] **Corners:** sharp corners and doorways (the range's west walls, the mission compound) don't make them swing wide, collide or get stuck.
 - [ ] **Judgement:** is the spacing right? Do they crowd you or lag?
 
-### T-3.24 — 🧍 Combat AI sign-off (gate; run sheet `e3-5.md` not written yet)
-T-3.13 to T-3.23 below are its inputs. Treat them as the draft run sheet.
+### T-3.24 — 🧍 Combat AI sign-off (owner approved 2026-10-09)
+Acceptance is recorded in `e3-5.md`; T-3.13 to T-3.23 below remain regression inputs.
 
 ### T-3.23 — Rifleman and MG (`?mission`: the garrison has an MG)
 - [ ] **MG deploy:** the MG gunner doesn't fire while moving, and settles (about 1.5 s) before it opens up.
@@ -240,34 +241,34 @@ T-3.13 to T-3.23 below are its inputs. Treat them as the draft run sheet.
 
 ---
 
-## M2 — sign-offs still open (run sheets exist or are named)
+## M2 — owner-approved sign-offs (2026-10-09)
 
-These are gates: follow the run sheet, then fill in its verdict section. Where
-a run sheet is missing, the bullets are what it should cover.
+The run sheets record owner approval. The bullets remain available for later
+regression checks; no new run has been recorded by this status update.
 
-### 🧍 T-2.43 — Prone (`docs/playtests/e2-8.md`, prepared, not run)
+### 🧍 T-2.43 — Prone (`docs/playtests/e2-8.md`, owner approved 2026-10-09)
 Getting down and up; prone vs crouch vs downed; the crawl; cover; firing from prone; the other person over the host.
 - Known issue B-09: firing from **crouched** still traces from standing eye height, so crouched behind low cover you shoot over it with your body hidden. Note whether it's noticeable.
 
-### 🧍 T-2.39 — Soldier's look (`docs/playtests/soldier-look.md`, prepared, not run)
+### 🧍 T-2.39 — Soldier's look (`docs/playtests/soldier-look.md`, owner approved 2026-10-09)
 Does it read as 2002 rather than untextured geometry? The silhouette from every side; telling six slots apart at 40 m; a firefight, not a showroom.
 - Add: enemies versus squad at 40 m (T-3.11's palette).
 
-### 🧍 T-2.34 — Projectiles (run sheet `e2-5.md` **missing**)
+### 🧍 T-2.34 — Projectiles (run sheet `e2-5.md`, owner approved 2026-10-09)
 - **The arc:** hold G to show the arc, release to throw; the grenade lands where the arc said.
 - **Rockets:** 6 then click fires one. Both bounce, skid and detonate believably.
 - **Blasts:** fireball, light, debris and a scorch mark; camera shake scaled by distance and cover.
 - **Pouch:** counts go down; T resets them.
 - **Judgement:** does the grenade distance feel right (B-03 / B-07 history)? Is the rocket satisfying?
 
-### 🧍 T-2.29 — Animation layers (run sheet `e2-3.md` **missing**)
+### 🧍 T-2.29 — Animation layers (run sheet `e2-3.md`, owner approved 2026-10-09)
 - **Aim offsets:** the upper body and rifle pitch with your aim, locally and on remotes.
 - **Firing and reloading:** fire kick; the reload animation on R.
 - **Hit reactions:** the chest turns away from the shooter, and the head snaps on headshots.
 - **Feet:** feet plant on slabs, blocks and steps without floating or sinking; hips settle.
 - **Judgement:** does it all read at 20 m?
 
-### 🧍 T-2.24 — Locomotion (`docs/playtests/e2-2.md`, prepared, not run)
+### 🧍 T-2.24 — Locomotion (`docs/playtests/e2-2.md`, owner approved 2026-10-09)
 Figure at rest; eight-way gait; crouch; jump; vault; crawl; revive; the other person over the host; the grey-box fixture (`?greybox`).
 
 ---

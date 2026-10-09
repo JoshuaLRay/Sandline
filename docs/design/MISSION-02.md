@@ -1,9 +1,10 @@
 # Mission 2 — The Kestrel Dam
 
-**Proposed design: U-127, 2026-10-05.** The owner asked for Mission 2 to be
+**Owner-approved design: U-127, 2026-10-09 (written 2026-10-05).** The owner asked for Mission 2 to be
 designed in full detail, beyond Mission 1, with a creative new map and mission.
-This brief summarises that design. Nothing is built or playtested, and every
-choice marked as a proposal waits for the owner (specification §20).
+This brief summarises that design. The owner approved the existing design review
+on 2026-10-09; specification §20 records the accepted proposals and preserved
+extraction contract. Nothing is built or playtested.
 
 The **[complete map and mission construction specification](maps/kestrel-dam.md)**
 is authoritative for geometry, coordinates, construction, enemy sockets, events,

@@ -43,7 +43,7 @@ Companions: [mission brief](../MISSION-02.md), [shared creation standard](../MAP
 17. [Engineering prerequisites and data contract](#17-engineering-prerequisites-and-data-contract)
 18. [Construction order and tolerances](#18-construction-order-and-tolerances)
 19. [Verification and review](#19-verification-and-review)
-20. [Open decisions for the owner](#20-open-decisions-for-the-owner)
+20. [Owner design acceptance](#20-owner-design-acceptance--2026-10-09)
 
 ## 1. Experience and fiction
 
@@ -1896,10 +1896,14 @@ squads. It judges whether the following work as intended:
 
 No screenshot, green CI or this document is an owner quality verdict.
 
-## 20. Open decisions for the owner
+## 20. Owner design acceptance — 2026-10-09
 
-Each row is a proposal this document adopts so it is complete. The owner may
-accept or change any of them. None is presented as decided.
+The owner instructed that all existing human reviews be approved on 2026-10-09.
+This accepts the concrete design proposals OD-1–OD-7 and the existing sequential
+work policy in OD-8. OD-9 preserves Mission 1’s current all-six-free/standing plus
+standing POW extraction requirement (§13.3); no alternate extraction rule was
+requested. This records design acceptance, not implementation or a playtest of
+the future mission. The table retains the reviewed wording as provenance.
 
 | # | Decision | Proposal |
 |---|---|---|
