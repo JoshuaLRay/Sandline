@@ -1,0 +1,2 @@
+# Append-only log: keep both sides when merging main into a task branch.
+docs/CHANGELOG.md merge=union

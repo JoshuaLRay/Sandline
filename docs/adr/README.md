@@ -12,7 +12,7 @@ since measured or hit changes the reasoning behind it. The Status column counts
 them, so a reader can tell at a glance which decisions have been revisited
 without opening every file.
 
-**If you are an agent working a task from `PLAN.md`:** read the ADRs your task
+**If you are an agent working any task:** read the ADRs your task
 touches before you start. A decision marked 🔒 in the plan is not yours to
 re-open. If one looks wrong, stop and say so — do not silently substitute a
 different choice.
@@ -39,6 +39,7 @@ different choice.
 | [018](018-art-sourcing.md) | Art made in-house as code: generated meshes and atlases, procedural animation | Accepted · 1 addendum |
 | [019](019-persistence.md) | Campaign progress lives on the host: per-campaign squads, anonymous IDs, SQLite on a Fly volume | Accepted · 1 addendum |
 | [020](020-setting.md) | The setting: Afghanistan, winter 2001–2002, US infantry in desert camouflage | Accepted |
+| [021](021-conflict-gameplay-reference.md) | The Conflict series is the gameplay reference; unspecified details default to it, adapted to six | Accepted |
 
 ## Template
 

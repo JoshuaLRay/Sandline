@@ -37,17 +37,20 @@ the account-side environment still needs to be saved in Codex's UI.
 
 ## Project instructions and prompts
 
-`AGENTS.md` directs Codex to the existing repository workflow. Keep
-`CLAUDE.md` as the shared engineering brief rather than maintaining two copies
-of the task rules.
+Codex loads the root `AGENTS.md` automatically, plus any nested `AGENTS.md` on
+the path to the directory it works in (for example `packages/shared/AGENTS.md`).
+That file is the single shared brief; `CLAUDE.md` only imports it for Claude
+Code, so there is one copy of the rules. Codex does not read `CLAUDE.md`.
 
-For the newly requested squad controls:
+The procedures are skills in `.agents/skills/` (`next-task`, `report-feedback`,
+`next-task-context-transfer-text-box`), which Codex discovers by their
+descriptions. Plain prompts route to them; see the prompt table in
+[WORKFLOW.md](WORKFLOW.md):
 
-> Complete U-099 for JoshuaLRay/Sandline. Preserve existing collision and
-> prediction rules, verify the character-separation edge cases, and deliver a
-> tested PR. Do not merge it.
+> Complete the next task for JoshuaLRay/Sandline.
 
-Then complete U-100 (spread), followed by U-101 (aggression) once their
-dependencies are merged. These controls are separate from U-087's bounding
-and focus-fire experiments. The owner approved Hold fire, Defensive and
-Aggressive aggression presets on 2026-10-03.
+> Queue the next Conflict parity gap.
+
+Codex's whole instruction budget is 32 KiB across all `AGENTS.md` files, so keep
+`AGENTS.md` short and put depth in linked documents. If a Codex cloud task cannot
+watch CI or merge, it stops at a locally verified PR and says what remains.

@@ -8,7 +8,7 @@
 
 Status tracker for every leaf task in `PLAN.md`. One line each. This file is
 the answer to legacy milestone status — read it for T-IDs, then only the one `PLAN.md`
-section a task names. See `/CLAUDE.md` for the full routing rules.
+section a task names. See `/AGENTS.md` for the full routing rules.
 
 Legend: **DONE** · **OPEN** (deps satisfied, not started) · **BLOCKED** (deps
 unsatisfied) · 🧍 = real acceptance criterion is human feel, not a test · ⚠️ =

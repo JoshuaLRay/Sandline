@@ -103,6 +103,11 @@ magnitude, not commitments.
 
 ## 1. Product definition 🔒
 
+> **Current product definition: [docs/VISION.md](docs/VISION.md)** (2026-10-09).
+> This section is the original 2026-09-16 plan. Its class list (§1.3), retained
+> mechanics (§1.4) and exclusions (§1.5) have since been changed by ADR-001's
+> addenda, ADR-016, ADR-021 and the six-character roster; read VISION.md instead.
+
 ### 1.1 The pillar and the problem
 
 The source genre's core loop is *one player commanding three AI squadmates,

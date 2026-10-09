@@ -34,6 +34,6 @@ Status: **OPEN** (not investigated/fixed) · **IN PROGRESS** · **FIXED**
 
 ## New reports
 
-Use [the feedback workflow](../.claude/commands/report-feedback.md) and
+Use [the feedback workflow](../.agents/skills/report-feedback/SKILL.md) and
 [the task template](backlog/TEMPLATE.md). This historical table is no longer the
 intake destination; existing rows and their evidence remain available.
