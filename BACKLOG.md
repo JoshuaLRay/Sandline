@@ -74,7 +74,11 @@ canonical when this documentation PR merges.
 | [U-144](docs/backlog/U-144.md) | Restart incompatible saves with authored carried-prisoner placement | Map implementation | P1 | BLOCKED | U-143; approved current-map holding sockets/lifecycle for carried squad prisoners | — |
 | [U-114](docs/backlog/U-114.md) | Build the hidden insertion, road, ridge and tank ingress | Map implementation | P1 | BLOCKED | Aggregate: U-138–U-141; retain full surface acceptance before closure | [#310](https://github.com/JoshuaLRay/Sandline/pull/310) |
 | [U-138](docs/backlog/U-138.md) | Construct and prove the hidden S0–D0 insertion | Map implementation | P1 | DONE | Merged #310; owner accepted existing review 2026-10-09 | [#310](https://github.com/JoshuaLRay/Sandline/pull/310) |
-| [U-139](docs/backlog/U-139.md) | Construct the road fights and tank ingress with swept clearance | Map implementation | P1 | READY | U-138 (DONE); dependency and owner acceptance verified | — |
+| [U-139](docs/backlog/U-139.md) | Construct the road fights and tank ingress with swept clearance | Map implementation | P1 | BLOCKED | Aggregate: U-149–U-152; retain new map/play acceptance and full swept-clearance contract | — |
+| [U-149](docs/backlog/U-149.md) | Construct continuous y8 road supports, shoulders and turning aprons | Map implementation | P1 | REVIEW | U-138 (DONE); implementation verified locally; new road map/play acceptance remains pending after authorized green merge | `task/U-149-road-supports` |
+| [U-150](docs/backlog/U-150.md) | Build and screen the three road fights with fixed cover and landmarks | Map implementation | P1 | BLOCKED | U-149 | — |
+| [U-151](docs/backlog/U-151.md) | Construct screened X ingress and prove the rotating tank sweep | Map implementation | P1 | BLOCKED | U-150 | — |
+| [U-152](docs/backlog/U-152.md) | Build return shelters and prove rocket clearance and blast protection | Map implementation | P1 | BLOCKED | U-150, U-151 | — |
 | [U-140](docs/backlog/U-140.md) | Construct the continuous ridge stairs, shelves and service bridge | Map implementation | P1 | BLOCKED | U-139 | — |
 | [U-141](docs/backlog/U-141.md) | Construct support bays/C12 links and verify surface isolation | Map implementation | P1 | BLOCKED | U-139, U-140 | — |
 | [U-115](docs/backlog/U-115.md) | Build the continuous underground depot and its stairs | Map implementation | P1 | BLOCKED | U-109, U-114 | — |

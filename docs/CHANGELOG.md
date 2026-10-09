@@ -448,3 +448,5 @@ Format: `T-<id> — <what changed>`
 - U-147 — Route commanded bots to supply caches on the authored floor; collect only after valid reach/LOS and cancel stale or unsafe travel without spending stock ([#320](https://github.com/JoshuaLRay/Sandline/pull/320)).
 
 - U-148 — Add mobile commander bot/cache/item choices, host-confirmed recipient inventory, stock and progress, safe cancellation and real Session/browser review fixtures; retain the new physical-phone acceptance in REVIEW ([#321](https://github.com/JoshuaLRay/Sandline/pull/321)).
+
+- U-149 — Split U-139 into road support, fight geometry, tank ingress/sweep and return-protection leaves; construct exact y8 road shoulders/aprons with reserved basement/bridge volumes, real six-start nav/controller travel and seven reproducible captures; retain new map/play acceptance in REVIEW.

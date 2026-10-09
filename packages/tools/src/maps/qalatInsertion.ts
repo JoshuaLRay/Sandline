@@ -91,9 +91,9 @@ export function onInsertionFloor(p: Point, margin = 0): boolean {
   });
 }
 
-export function buildInsertionLevel(source = INSERTION) {
+export function buildInsertionLevel(source = INSERTION, continuationFloors: readonly Polygon[] = []) {
   const { bounds, floorY, masses, overhang, rockCores } = source;
-  const floors = insertionFloors(source);
+  const floors = [...insertionFloors(source), ...continuationFloors];
   const massPolys = masses.map((m) => ({ ...m, polygon: m.polygon.map(([x, z]) => ({ x: x!, z: z! })) }));
   const boxes: BoxSpec[] = [{ id: 'insertion-foundation', x: (bounds.minX + bounds.maxX) / 2, y: 0, z: (bounds.minZ + bounds.maxZ) / 2,
     w: bounds.maxX - bounds.minX, d: bounds.maxZ - bounds.minZ, h: floorY }];

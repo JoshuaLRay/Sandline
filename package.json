@@ -17,6 +17,7 @@
     "gen:nav-spike": "tsx packages/tools/src/gen-nav-spike.ts",
     "gen:nav": "tsx packages/tools/src/gen-nav.ts",
     "gen:qalat-insertion": "tsx packages/tools/src/gen-qalat-insertion.ts",
+    "gen:qalat-road-supports": "tsx packages/tools/src/gen-qalat-road-supports.ts",
     "gen:audio": "tsx packages/tools/src/gen-audio.ts",
     "gen:voice": "tsx packages/tools/src/gen-voice.ts",
     "import:voice": "tsx packages/tools/src/import-voice-submission.ts",

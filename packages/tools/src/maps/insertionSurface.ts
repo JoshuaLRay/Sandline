@@ -36,7 +36,7 @@ export function insertionSurface(specs: readonly BoxSpec[]) {
     }
     for (const f of faces) {
       const start = positions.length / 3;
-      const colour = boxes[i]!.id === 'insertion-foundation' ? [.51, .45, .35] : boxes[i]!.id === 'hollow-overhang' ? [.24, .26, .21] : [.32, .34, .27];
+      const colour = boxes[i]!.id === 'insertion-foundation' || boxes[i]!.id.startsWith('road-support-') ? [.51, .45, .35] : boxes[i]!.id === 'hollow-overhang' ? [.24, .26, .21] : [.32, .34, .27];
       for (const [a, b] of [[f.loU, f.loV], [f.hiU, f.loV], [f.hiU, f.hiV], [f.loU, f.hiV]]) {
         const p = [0, 0, 0], n = [0, 0, 0];
         p[axis] = plane; p[u] = a!; p[v] = b!; n[axis] = sign;

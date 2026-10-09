@@ -9,3 +9,5 @@ sandline.sqlite-*
 perf-frame.json
 artifacts/qalat-insertion/level.json
 artifacts/qalat-insertion/surface.json
+artifacts/qalat-road-supports/level.json
+artifacts/qalat-road-supports/surface.json

@@ -1,0 +1,120 @@
+{
+  "task": "U-149",
+  "parent": "U-139",
+  "kind": "isolated road support whitebox",
+  "activeCampaign": "unchanged; activation belongs to U-117",
+  "sourceHash": "e22d3307ecbc4bf6d15073b60c817d673fc9034b5c43575ef6c95722a95d8909",
+  "levelHash": "9f2b8b3a6af5a71f8e65d2a9e9756537f58031f363f4fb85842776c19805f86e",
+  "boxCount": 16647,
+  "stratumM": 0.025,
+  "edgeExpansionM": 0.005,
+  "circleSides": 512,
+  "floorY": 8,
+  "supportBottomY": 5.5,
+  "ribbonWidth": 20,
+  "carriagewayWidth": 12,
+  "shoulderWidth": 4,
+  "apronDiameter": 36,
+  "spine": [
+    {
+      "id": "A0",
+      "x": 32,
+      "y": 8,
+      "z": 64
+    },
+    {
+      "id": "A1",
+      "x": 32,
+      "y": 8,
+      "z": 98
+    },
+    {
+      "id": "A2",
+      "x": 12,
+      "y": 8,
+      "z": 128
+    },
+    {
+      "id": "A3",
+      "x": -4,
+      "y": 8,
+      "z": 166
+    },
+    {
+      "id": "A4",
+      "x": -4,
+      "y": 8,
+      "z": 200
+    },
+    {
+      "id": "A5",
+      "x": 26,
+      "y": 8,
+      "z": 232
+    },
+    {
+      "id": "A6",
+      "x": 30,
+      "y": 8,
+      "z": 270
+    },
+    {
+      "id": "A7",
+      "x": 8,
+      "y": 8,
+      "z": 304
+    },
+    {
+      "id": "A8",
+      "x": 16,
+      "y": 8,
+      "z": 332
+    },
+    {
+      "id": "A9",
+      "x": 32,
+      "y": 8,
+      "z": 350
+    },
+    {
+      "id": "south-gate",
+      "x": 32,
+      "y": 8,
+      "z": 356
+    }
+  ],
+  "apronNodes": [
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "A5",
+    "A6",
+    "A7",
+    "A8"
+  ],
+  "reservedBridge": {
+    "minX": 66,
+    "maxX": 74,
+    "minZ": 330,
+    "maxZ": 342,
+    "undersideY": 14,
+    "deckY": 16
+  },
+  "reservedVault": {
+    "minX": 16,
+    "maxX": 44,
+    "minZ": 252,
+    "maxZ": 288,
+    "floorY": 0,
+    "ceilingY": 5.5
+  },
+  "ownerQualityVerdict": "pending",
+  "unfinished": [
+    "road fight geology/cover/shells: U-150",
+    "X ingress/tank sweep: U-151",
+    "return shelters/blast protection: U-152",
+    "ridge/bridge: U-140",
+    "basement: U-115"
+  ]
+}

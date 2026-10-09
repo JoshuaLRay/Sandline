@@ -55,6 +55,7 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | `pnpm export:soldier` | write the code-built soldier as `assets/src/soldier.glb`, the pipeline's test asset |
 | `pnpm gen:nav` | re-bake every named world's navmesh; required after editing a world, `MoveConfig` or the hitbox (a test fails until you do) |
 | `pnpm gen:qalat-insertion` | U-138: compile the isolated Juniper Hollow replacement section and its exact collision/render surface, manifest and plan into `artifacts/qalat-insertion/`; production campaign activation remains U-117 |
+| `pnpm gen:qalat-road-supports` | U-149: extend the isolated insertion with the approved y8 road/shoulder/apron supports and reserve basement/bridge voids; exact collision/render scene and review plan in `artifacts/qalat-road-supports/` |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
 
 ## Isolated Juniper Hollow construction (U-138)
@@ -83,6 +84,29 @@ ray against southern terrain alone. Full patrol/reserve/ridge/tank interpolation
 uses ≤1 m steps; both tank muzzle recipes include eight orientations. The court
 reveal check samples the whole court and legal shoulders, measuring distance to
 the nearest court floor boundary as defined in the construction addendum.
+
+## Isolated road support construction (U-149)
+
+`pnpm gen:qalat-road-supports` extends the accepted insertion into the exact
+A0–A9 road and south-gate run. New supports occupy y5.5..8 only, reserving future
+basement space. The new source is `packages/tools/src/maps/qalat-road-supports.json`.
+U-150 owns unfinished road edges/fights/cover; U-151 owns X ingress and tank sweep.
+This is a traversal fixture, outside the production campaign.
+
+Run `pnpm exec tsx packages/tools/src/capture-qalat-road-supports.ts` after
+generation for seven 1440×1000 exact-scene views and geometry/draw measurements.
+Streaming CI uploads `qalat-road-support-review`. Commit manifest, plan,
+capture metadata and PNGs; large level/surface JSON stays ignored. For orbit
+review run `pnpm exec vite --host 127.0.0.1` from the repository root and open
+`/packages/tools/src/maps/road-support-review.html`. The capsule is a scale probe.
+Eye-height and free-camera captures are construction evidence, not human acceptance.
+
+`pnpm exec vitest run packages/tools/src/maps/qalatRoadSupports.test.ts`
+checks approved coordinates and full widths/aprons, actual solid-nav/controller
+traversal for all six starts in both directions, backing-floor disconnection,
+reserved basement/bridge volumes and inherited southern occlusion. The existing
+U-138 suite retains its dense S0/court screening proof. New owner road map/play
+acceptance remains pending; later leaves retain full combat/sweep acceptance.
 
 ## Mobile commander supply review (U-148)
 
