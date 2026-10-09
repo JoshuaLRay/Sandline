@@ -30,4 +30,13 @@ describe('asset packs (T-4.06)', () => {
     expect(() => parseAssetPacks({ initial: ['a', 'a'], levels: { range: [] } }, manifest)).toThrow(/appears twice/);
     expect(() => parseAssetPacks({ initial: ['a'], levels: { range: ['b', 1] } }, manifest)).toThrow(AssetPackError);
   });
+
+  it('keeps the tank off the first-playable path in the deferred pack, and refuses an asset in both (U-156)', () => {
+    expect(ASSET_PACKS.deferred).toContain('vehicle-tank');
+    expect(ASSET_PACKS.initial).not.toContain('vehicle-tank');
+    expect(parseAssetPacks({ initial: ['a'], levels: { range: [] } }, manifest).deferred).toEqual([]);
+    expect(parseAssetPacks({ initial: ['a'], deferred: ['b'], levels: { range: [] } }, manifest).deferred).toEqual(['b']);
+    expect(() => parseAssetPacks({ initial: ['a'], deferred: ['a'], levels: { range: [] } }, manifest)).toThrow(/also in the initial pack/);
+    expect(() => parseAssetPacks({ initial: ['a'], later: ['b'], levels: { range: [] } }, manifest)).toThrow(/unknown key 'later'/);
+  });
 });

@@ -59,6 +59,7 @@ canonical when this documentation PR merges.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
+| [U-156](docs/backlog/U-156.md) | Qalat Road first playable frame back inside the 30 s budget | Streaming and load time | P1 | DONE | — | [#325](https://github.com/JoshuaLRay/Sandline/pull/325) |
 | [U-112](docs/backlog/U-112.md) | Finite projectile, health and ammunition supply caches | Map implementation | P1 | BLOCKED | Aggregate: U-132–U-134 DONE; U-145/U-148 new physical-phone acceptance remains open | — |
 | [U-145](docs/backlog/U-145.md) | Use supply caches through approved mobile controls | Map implementation | P1 | BLOCKED | Aggregate: U-146/U-147 DONE; U-148 REVIEW in #321; new physical-phone mobile-use acceptance remains open | — |
 | [U-148](docs/backlog/U-148.md) | Mobile commander cache choice, cancellation and authoritative progress | Map implementation | P1 | REVIEW | U-146/U-147 DONE; implementation in #321; new physical-phone presentation/play acceptance remains pending after authorized green merge | [#321](https://github.com/JoshuaLRay/Sandline/pull/321) |
