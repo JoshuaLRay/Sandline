@@ -14,8 +14,11 @@ import {
   INTERPOLATION_DELAY_MS,
   type Message,
   POSITION,
+  PROJECTILE_IDS,
+  NO_SECONDARY,
   TICK_SECONDS,
   VELOCITY,
+  WEAPON_IDS,
   type WorldSnapshot,
   createLoopbackPair,
   decodeMessage,
@@ -29,6 +32,117 @@ import { NetClient, type ServerDetonation, type ServerShot } from './NetClient.t
 const TICK_MS = TICK_SECONDS * 1000;
 const T = COMPONENT_IDS.Transform;
 const V = COMPONENT_IDS.Velocity;
+
+describe('confirmed commander recipient inventory (U-148)', () => {
+  function recipient(netId: number, slot: number, kits: number, equipment = -1, heldProjectile = -1) {
+    const pouch = PROJECTILE_IDS.map((_, i) => i === equipment ? 1 : 0);
+    return {
+      ...soldierEntity(netId),
+      components: {
+        ...soldierEntity(netId).components,
+        [COMPONENT_IDS.PlayerSlot]: [slot, 1],
+        [COMPONENT_IDS.Health]: [80, 100, 0, 0, 0, 0],
+        [COMPONENT_IDS.Weapon]: [WEAPON_IDS.indexOf('carbine'), 0, heldProjectile + 1,
+          ...pouch, 7, WEAPON_IDS.indexOf('carbine'), NO_SECONDARY, 0, kits, 0, equipment + 1],
+      },
+    };
+  }
+
+  function rig() {
+    const pair = createLoopbackPair();
+    const net = new NetClient(pair.b, 'commander');
+    const send = (message: Message) => { pair.a.send(encodeMessage(message)); pair.settle(); };
+    const join = () => send({ kind: 'JoinAck', netId: 7, slot: 0, serverTick: 0, room: '', world: 'range', resume: '', resumed: false, identity: '' });
+    const snapshot = (tick: number, entities: WorldSnapshot['entities'], baseline: WorldSnapshot | null = null) => {
+      const value = { tick, entities };
+      const writer = new BitWriter(); writeDelta(writer, value, baseline);
+      send({ kind: 'Delta', tick, baselineTick: baseline?.tick ?? null, lastProcessedInputTick: -1, payload: writer.toUint8Array() });
+      return value;
+    };
+    return { net, send, join, snapshot };
+  }
+
+  it('waits for complete inventory and keeps own and remote seats separate while spectating', () => {
+    const r = rig(); r.join();
+    expect(r.net.recipientSupplyInventory(0)).toBeNull();
+    expect(r.net.recipientSupplyVitality(0)).toBeNull();
+    r.send({ kind: 'Spectating', slot: 1 });
+    const rocket = PROJECTILE_IDS.indexOf('rocket');
+    r.snapshot(1, [recipient(7, 0, 3), recipient(8, 1, 0, rocket, rocket)]);
+    expect(r.net.recipientSupplyInventory(0)).toEqual({ primary: 'carbine', secondary: null, heldWeapon: 'carbine', ammo: 7,
+      equipment: -1, pouch: PROJECTILE_IDS.map(() => 0), kits: 3 });
+    expect(r.net.recipientSupplyInventory(1)).toEqual({ primary: 'carbine', secondary: null, heldWeapon: '', ammo: 7,
+      equipment: rocket, pouch: PROJECTILE_IDS.map((_, i) => i === rocket ? 1 : 0), kits: 0 });
+    expect(r.net.recipientSupplyVitality(0)).toBe('alive');
+    expect(r.net.recipientSupplyInventory(5)).toBeNull();
+  });
+
+  it('reads reconstructed unchanged fields and updates only after the host snapshot confirms a transfer', () => {
+    const r = rig(); r.join();
+    const before = r.snapshot(10, [recipient(8, 1, 0)]);
+    r.net.selectCommanderSupply(1, 'medical', { kind: 'health-kit' });
+    r.send({ kind: 'SupplyProgress', uses: [{ slot: 1, cacheId: 'medical', item: { kind: 'health-kit' }, percent: 96 }] });
+    expect(r.net.recipientSupplyInventory(1)?.kits).toBe(0);
+    const after = recipient(8, 1, 1);
+    r.snapshot(11, [after], before);
+    expect(r.net.recipientSupplyInventory(1)).toEqual({ primary: 'carbine', secondary: null, heldWeapon: 'carbine', ammo: 7,
+      equipment: -1, pouch: PROJECTILE_IDS.map(() => 0), kits: 1 });
+    expect(r.net.supplyProgress[0]?.percent).toBe(96);
+  });
+
+  it('makes a recipient unavailable immediately when absent, despite its remaining interpolation buffer', () => {
+    const r = rig(); r.join();
+    r.snapshot(10, [recipient(8, 1, 0)]);
+    expect(r.net.remotesHeld).toBe(1);
+    r.snapshot(11, []);
+    expect(r.net.remotesHeld).toBe(1);
+    expect(r.net.recipientSupplyInventory(1)).toBeNull();
+    expect(r.net.recipientSupplyVitality(1)).toBeNull();
+    r.snapshot(9, [recipient(8, 1, 2)]);
+    expect(r.net.recipientSupplyInventory(1)).toBeNull();
+  });
+
+  it('does not roll confirmed capacity back when an older snapshot arrives late', () => {
+    const r = rig(); r.join();
+    r.snapshot(11, [recipient(8, 1, 2)]);
+    r.snapshot(10, [recipient(8, 1, 0)]);
+    expect(r.net.recipientSupplyInventory(1)?.kits).toBe(2);
+  });
+
+  it('reports vitality changes and absent primaries from the confirmed soldier, independently of our seat', () => {
+    const r = rig(); r.join();
+    const target = recipient(8, 1, 0);
+    target.components[COMPONENT_IDS.Health][2] = 1;
+    target.components[COMPONENT_IDS.Weapon][4 + PROJECTILE_IDS.length] = NO_SECONDARY;
+    r.snapshot(1, [recipient(7, 0, 3), target]);
+    expect(r.net.vitality).toBe('alive');
+    expect(r.net.recipientSupplyVitality(1)).toBe('downed');
+    expect(r.net.recipientSupplyInventory(1)?.primary).toBeNull();
+  });
+
+  it('withholds confirmed inventory through restore choice and clears it on rejoin without replay', () => {
+    const r = rig(); r.join(); r.snapshot(10, [recipient(8, 1, 2)]);
+    r.send({ kind: 'RestoreGate', choice: { mission: 'range', host: 0, restart: 'original' } });
+    expect(r.net.recipientSupplyInventory(1)).toBeNull();
+    expect(r.net.recipientSupplyVitality(1)).toBeNull();
+    r.send({ kind: 'RestoreGate', choice: null });
+    expect(r.net.recipientSupplyInventory(1)?.kits).toBe(2);
+    r.net.resetForRejoin(); r.join();
+    expect(r.net.recipientSupplyInventory(1)).toBeNull();
+    expect(r.net.recipientSupplyVitality(1)).toBeNull();
+    r.snapshot(1, [recipient(8, 1, 0)]);
+    expect(r.net.recipientSupplyInventory(1)?.kits).toBe(0);
+  });
+
+  it('withholds recipient state as soon as the host disconnects or the client leaves', () => {
+    const disconnected = rig(); disconnected.join(); disconnected.snapshot(1, [recipient(8, 1, 2)]);
+    disconnected.send({ kind: 'Disconnect', code: 'left', reason: 'left' });
+    expect(disconnected.net.recipientSupplyInventory(1)).toBeNull();
+    expect(disconnected.net.recipientSupplyVitality(1)).toBeNull();
+    const left = rig(); left.join(); left.snapshot(1, [recipient(8, 1, 2)]); left.net.leave();
+    expect(left.net.recipientSupplyInventory(1)).toBeNull();
+  });
+});
 
 it('keeps the host’s private progression for the after-action display', () => {
   const pair = createLoopbackPair();

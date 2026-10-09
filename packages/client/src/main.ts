@@ -151,6 +151,8 @@ import { createScoreboard } from './ui/scoreboard.ts';
 import { missionMenuModel, runChoiceModel } from './ui/runChoice.ts';
 import { createRestoreChoice, restoreChoiceModel } from './ui/restoreChoice.ts';
 import { createSupplyChoice } from './ui/supplyChoice.ts';
+import { createMobileSupplyChoice } from './ui/mobileSupplyChoice.ts';
+import { mobileSupplyState } from './ui/mobileSupplyState.ts';
 import { supplyCapacity, supplyChoiceModel, supplyInReach, supplyInventory } from './ui/supplyModel.ts';
 import { createMenu } from './ui/menu/Menu.ts';
 import { type AudioContextLike, AudioEngine } from './audio/engine.ts';
@@ -1418,6 +1420,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
     localLoadout = classById(localClassSeen);
   };
   net.onSpectating = () => {
+    mobileSupplies.cancel();
     mobileSpectateRequested = false;
     spectatorYaw = input.yaw;
     spectatorPitch = input.pitchWire;
@@ -1462,6 +1465,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
       // The token survives the reset (T-4.18): offered back, it takes our own
       // slot and soldier again within the host's grace time.
       const resume = net.resumeToken;
+      mobileSupplies.set(null);
       net.resetForRejoin();
       // U-012: nothing heard before the drop is called out again, or late.
       resetCallouts();
@@ -1584,6 +1588,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
  * here who is not" confusion the whole milestone exists to remove.
  */
 function leaveSession(message: { text: string; tone: 'info' | 'error' } | null): void {
+  mobileSupplies.set(null);
   const gone = live;
   live = null;
   mobileSpectateRequested = false;
@@ -1874,7 +1879,7 @@ const menu = createMenu({
 });
 document.body.appendChild(menu.root);
 const mobileCommand = createMobileCommand(document.body, {
-  settings: () => { mobileCommand.cancelPlacement(); menu.showPause(); menu.select('settings'); },
+  settings: () => { mobileSupplies.cancel(); mobileCommand.cancelPlacement(); menu.showPause(); menu.select('settings'); },
   recenter: () => { mobileCommand.cancelPlacement(); lastMobileTap = null; mobileLookYaw = 0; mobileLookPitch = MOBILE_ORBIT_PITCH; spectatorCameraYaw = null; },
   watch: (slot) => live?.net.spectate(slot),
   assign: (bot, commander) => live?.net.assignCommander(bot, commander),
@@ -1903,6 +1908,13 @@ const mobileCommand = createMobileCommand(document.body, {
   },
   leave: () => leaveSession({ text: 'left the session', tone: 'info' }),
 });
+const mobileSupplies = createMobileSupplyChoice(document.body, {
+  select: (slot, cacheId, item) => live?.net.selectCommanderSupply(slot, cacheId, item),
+  onOpen: () => { mobileCommand.closeMenus(); lastMobileTap = null; },
+});
+// A command-control gesture dismisses collection before any replacement order or assignment.
+mobileCommand.root.addEventListener('pointerdown', () => { mobileSupplies.cancel(); lastMobileTap = null; });
+mobileCommand.root.addEventListener('click', () => { mobileSupplies.cancel(); lastMobileTap = null; });
 /** The last heading the local body had while alive; a downed or dead body holds it (U-030). */
 let localBodyYaw = 0;
 let mobileLookYaw = 0;
@@ -2250,6 +2262,9 @@ function frame(): void {
       }
     }
   }
+  mobileSupplies.set(mobileMode && net?.joined && net.spectatedSlot >= 0 &&
+    (!live?.remote || live.remote.status.phase === 'joined') && menu.mode === 'hidden' &&
+    !restoreModel && (net.mission?.state ?? 'progress') === 'progress' ? mobileSupplyState(net) : null);
   const server = live?.server ?? null;
   const sparring = live?.sparring ?? null;
 
@@ -2984,7 +2999,7 @@ function frame(): void {
     ? supplyInReach(net.supplyCaches, supplyFeet,
       eyePosition(supplyFeet.x, supplyFeet.y, supplyFeet.z, DEFAULT_MUZZLE_RIG, eyeStance(supplyFeet.crouched, supplyFeet.prone)), collisionBoxes(),
       supplyWatching ? undefined : net.supplyProgress.find(use => use.slot === net.slot)?.cacheId) : null;
-  supplyChoice.set(net && nearbySupply ? supplyChoiceModel(nearbySupply, supplyInventory(net, holdingPouch || holdingKit),
+  supplyChoice.set(!mobileMode && net && nearbySupply ? supplyChoiceModel(nearbySupply, supplyInventory(net, holdingPouch || holdingKit),
     supplyCapacity(net), net.supplyProgress, net.slot, supplyWatching) : null);
   if (live) {
     const hudNow = clock.tick * TICK_SECONDS + clock.alpha * TICK_SECONDS;
