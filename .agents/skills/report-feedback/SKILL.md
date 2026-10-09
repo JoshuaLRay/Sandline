@@ -26,7 +26,9 @@ it does not authorize gameplay changes, completion claims or merges.
    at the new card.
 5. Add rows to `BACKLOG.md` with priority, order, dependencies and status: READY
    only with bounded scope and observable acceptance; INBOX if it still needs
-   decomposition; BLOCKED for a concrete missing asset/decision/dependency.
+   decomposition; BLOCKED for a concrete missing asset/decision/dependency. A
+   decision blocker gets a "Decision needed" section with options and a
+   recommended default, and the row says `Decision: … — default: …`.
    Label small reversible defaults as proposals; never silently decide a
    conflicting ADR, recording source, purchase or skill.
 6. Save before asking. Push a `feedback/<short-name>` branch and open a docs-only

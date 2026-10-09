@@ -35,7 +35,7 @@ when the chat is already attached to the repository.
 | Record a bug or idea, then decide | `https://github.com/JoshuaLRay/Sandline The AR reload goes silent after a checkpoint retry.` |
 | Record and fix in one go | `… Fix that reload problem now.` |
 | Move toward Conflict | `Queue the next Conflict parity gap.` or `Build the RPG enemy from the parity tracker.` |
-| Decide something an agent asked about | `Decision for U-144: <your answer>. Record it and continue.` |
+| Decide something an agent asked about | `U-144: agree with the default.` or `Decision for U-144: <your answer>.` |
 | Give a human verdict | `I played the road section: U-149 road layout approved.` / `…rejected because <reason>.` |
 | Reorder | `Move U-142 ahead of U-150.` |
 | Pause merging | `Hold merges until I say otherwise.` |
@@ -55,8 +55,10 @@ supply, and the queue says so instead of guessing:
    review), so a pending verdict no longer stops the next construction task.
    When you review, tell the agent the verdict; it records it.
 2. **Owner decisions** that neither an ADR nor the Conflict reference answers
-   (ADR-021). Agents resolve the rest themselves and mark them
-   `Conflict default: …` in the card so you can overrule them cheaply.
+   (ADR-021). Each one arrives with two or three options and a **recommended
+   default**; reply "agree" or pick another. Agents resolve everything else
+   themselves and mark it `Conflict default: …` in the card so you can overrule
+   it cheaply.
 3. **Assets that must be real**, such as voice recordings (ADR-017) or spending
    money (regional hosting, T-4.30).
 

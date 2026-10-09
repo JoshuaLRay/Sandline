@@ -8,7 +8,8 @@ description: Complete one Sandline backlog task end to end — select the first 
 The task is the U-ID the user named (Claude passes it as `$ARGUMENTS`);
 otherwise the first eligible row in `BACKLOG.md`. Rules and the delivery policy
 are in `AGENTS.md`; this is the procedure. Keep moving: stop only for a real
-missing owner decision, asset, permission or inaccessible dependency.
+missing owner decision, asset, permission or inaccessible dependency — and a
+decision always comes with options and a recommended default.
 
 ## 1. Select (≈5 minutes, not an investigation)
 
@@ -20,11 +21,13 @@ missing owner decision, asset, permission or inaccessible dependency.
    holds. Promote a BLOCKED row to READY when its only blockers were
    dependencies that are now satisfied; a missing decision or asset stays
    BLOCKED. An explicit ID overrides order, not dependencies: if it is blocked,
-   say exactly by what and stop.
+   say exactly by what and stop; if the blocker is an owner decision, present
+   it with options and a recommended default (`AGENTS.md`, delivery policy).
 3. **Nothing eligible?** Say so in one line, list each blocker in a short table,
    and propose at most three next steps — the top unqueued gaps in
    `docs/design/CONFLICT-PARITY.md`, or scoping an INBOX/BLOCKED row — and ask
-   which to queue. Do not invent work or mark a human gate passed.
+   which to queue, with your recommended default. Do not invent work or mark a
+   human gate passed.
 
 ## 2. Scope
 

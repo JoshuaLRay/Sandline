@@ -19,6 +19,12 @@ and how it adapts to six soldiers and online co-op.>
 Split only when one PR would exceed size L or mix unrelated subsystems; never
 split just to isolate a human review. Separate content supply from code.>
 
+## Decision needed (delete unless blocked on the owner)
+
+<Question in plain language, for someone new to game development.
+Options: A — one-line player-facing trade-off; B — …; (C — …).
+**Recommended default: A**, because <reason>. Reply "agree" or pick another.>
+
 ## Read first
 
 <The exact files, ADRs and spec sections (§ numbers) an agent needs — nothing

@@ -32,9 +32,9 @@ facts come from the DS1 manual and contemporary reviews (sources at the end);
 | ID | Feature | Series | Sandline | Status |
 |---|---|---|---|---|
 | CP-06 | Follow, hold, move to a point | Yes, per soldier or all | Regroup, hold, move; per soldier, fireteam or all | ✅ |
-| CP-07 | Move order sets facing | Place marker, then set facing | Move has no facing | ❌ |
+| CP-07 | Move order sets facing | Place marker, then set facing | Move has no facing; queued as U-154 | ❌ |
 | CP-08 | Fire discipline | Fire at will / stand down | Hold fire / defensive / aggressive (U-101) | ✅ |
-| CP-09 | One-press whole-squad toggles | Follow↔hold, prone↔stand; DS II "hit the dirt", "form up" | Wheel can address all; no stance order | 🟡 |
+| CP-09 | One-press whole-squad toggles | Follow↔hold, prone↔stand; DS II "hit the dirt", "form up" | Wheel can address all; stance orders queued as U-153 | 🟡 |
 | CP-10 | Attack a target, marks | Not in DS1 orders | Attack order and marks (T-3.27) | ✅ beyond the series |
 | CP-11 | Context orders (revive, heal, use, man a gun, plant a charge) | Player performs these via prompts | Revive order; bots heal on their own (U-053); commanded cache use (U-146, U-147); no mount or plant order | 🟡 |
 | CP-12 | Bounding, covering and focus fire | Not in the series (reviewers asked for better AI) | U-087 deferred; T-5.06 open | ⏸ |
@@ -96,7 +96,7 @@ facts come from the DS1 manual and contemporary reviews (sources at the end);
 
 | ID | Feature | Series | Sandline | Status |
 |---|---|---|---|---|
-| CP-41 | Enemy archetypes | Riflemen, PKM gunners, RPG troops; snipers and officers *unverified* | Rifleman, MG; `rpg`, `sniper`, `officer` reserved, not built | 🟡 |
+| CP-41 | Enemy archetypes | Riflemen, PKM gunners, RPG troops; snipers and officers *unverified* | Rifleman, MG; RPG queued as U-155; `sniper`, `officer` reserved, not built | 🟡 |
 | CP-42 | Alarm and reinforcement | Being seen raises a base alarm; everyone comes | Sight, sound and memory perception; staged reserves (U-131); no alarm state | 🟡 |
 | CP-43 | Enemies use cover, suppress and flank | Weak in the series | Yes (T-3.20–T-3.23, U-086) | ✅ better |
 | CP-44 | Per-soldier HUD panels | Health, order, fire-at-will, controlled soldier, radio flash | Six squad rows with state and current order | ✅ |
@@ -107,13 +107,13 @@ facts come from the DS1 manual and contemporary reviews (sources at the end);
 ## Recommended gap order
 
 Ordered by pillar weight, then by value for cost. Sizes are rough (S/M/L as in
-the card template). None is queued; the owner queues them. Mission 1's
-replacement build (the current queue) stays first unless the owner reorders.
+the card template). The owner queues them; queued gaps are interleaved with the
+Mission 1 build (owner direction, 2026-10-09) and marked **Queued** below.
 
 | # | Gap | Rows | Size | Why now |
 |---|---|---|---|---|
-| G-1 | Whole-squad stance order ("hit the dirt"), form-up, and facing on move orders | CP-07, CP-09 | S | Pure P2 command parity; cheap; every mission benefits |
-| G-2 | RPG enemy archetype | CP-41 | M | Completes ADR-020's enemy list; makes cover and rockets matter |
+| G-1 | Whole-squad stance order ("hit the dirt"), form-up, and facing on move orders | CP-07, CP-09 | S | **Queued: U-153, U-154** |
+| G-2 | RPG enemy archetype | CP-41 | M | **Queued: U-155** |
 | G-3 | Alarm state, unaware sentries, suppressed weapons | CP-19, CP-42 | M | Stealth openings and the "sentry" play of the series |
 | G-4 | Order a soldier to man a gun or plant/detonate a charge | CP-11 | M | Bots must do what humans do (VISION adaptation 2) |
 | G-5 | Ammo transfer between soldiers | CP-04 | S | Series "Give"; scarcity without supply caches everywhere |

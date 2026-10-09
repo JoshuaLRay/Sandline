@@ -70,6 +70,15 @@ run sheets. For any file over ~300 lines, grep or read a range.
 - **Human verdicts are batched** on the epic's verification card (e.g. the
   mission's final review), not on every leaf. Never invent a verdict, playtest
   or listening result; a green test is not one.
+- **Every owner decision comes with a default.** When a blocker truly needs a
+  human decision (nothing in an owner decision, ADR or ADR-021's Conflict
+  default answers it), write it so the owner can reply with one word: the
+  question in plain language, two or three options with a one-line trade-off
+  each, and **one recommended default** with the reason. Put it in the card's
+  "Decision needed" section and in the BACKLOG row (`Decision: … — default: …`).
+  Wait for "agree" or another choice before acting on it, and keep working on
+  other READY rows meanwhile. The owner is new to game development: explain the
+  consequence for players, not the implementation.
 - **One task per PR, one task per request.** "Next task" means one; do more only
   when asked ("the next three tasks").
 - Cannot watch CI or merge from your environment (e.g. Codex cloud)? Stop at an

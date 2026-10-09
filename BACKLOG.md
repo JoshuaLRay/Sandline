@@ -20,7 +20,9 @@ in an Issue, card or `PLAN.md`; PRs link to the card.
   DONE, archived, or REVIEW with its code merged on main (unless the dependent
   card needs that verdict first). Skip rows another worker's branch or PR holds.
 - Promote a BLOCKED row to READY when its only blockers were dependencies that are
-  now satisfied. A missing asset, decision or scope stays BLOCKED. Never infer
+  now satisfied. A missing asset, decision or scope stays BLOCKED; a decision
+  blocker states its recommended default (`Decision: … — default: …`) so the
+  owner can answer "agree". Never infer
   completion from a PR title — check the merge.
 - An explicit task ID overrides order, not dependencies. Resume an existing task
   branch/PR when appropriate; never create a competing implementation.
@@ -34,6 +36,12 @@ in an Issue, card or `PLAN.md`; PRs link to the card.
   to have. Priority describes impact; table order decides execution.
 - Nothing eligible: report the blockers and propose up to three parity gaps or
   scoping steps (next-task skill, step 1.3) for the owner to queue.
+
+## Owner direction — interleave parity work (2026-10-09)
+
+The owner agreed to mix small Conflict-parity tasks into the Mission 1
+construction stream so the queue never waits on one line of work. Parity rows
+(U-153–U-155) sit between the map leaves; keep alternating when adding work.
 
 ## Owner acceptance — 2026-10-09
 
@@ -60,9 +68,12 @@ canonical when this documentation PR merges.
 | [U-114](docs/backlog/U-114.md) | Build the hidden insertion, road, ridge and tank ingress | Map implementation | P1 | BLOCKED | Aggregate: U-138–U-141; retain full surface acceptance before closure | [#310](https://github.com/JoshuaLRay/Sandline/pull/310) |
 | [U-139](docs/backlog/U-139.md) | Construct the road fights and tank ingress with swept clearance | Map implementation | P1 | BLOCKED | Aggregate: U-149–U-152; retain new map/play acceptance and full swept-clearance contract | — |
 | [U-149](docs/backlog/U-149.md) | Construct continuous y8 road supports, shoulders and turning aprons | Map implementation | P1 | REVIEW | U-138 (DONE); implementation in #322; new road map/play acceptance remains pending after authorized green merge | [#322](https://github.com/JoshuaLRay/Sandline/pull/322) |
-| [U-150](docs/backlog/U-150.md) | Build and screen the three road fights with fixed cover and landmarks | Map implementation | P1 | BLOCKED | U-149 | — |
+| [U-150](docs/backlog/U-150.md) | Build and screen the three road fights with fixed cover and landmarks | Map implementation | P1 | BLOCKED | U-149 — Decision: accept U-149 as the road foundation now and judge the road's look and play once its fights exist (U-139)? — default: agree | — |
+| [U-153](docs/backlog/U-153.md) | Squad stance orders: stay low and hit the dirt | Squad command (Conflict parity) | P1 | READY | — | — |
 | [U-151](docs/backlog/U-151.md) | Construct screened X ingress and prove the rotating tank sweep | Map implementation | P1 | BLOCKED | U-150 | — |
+| [U-154](docs/backlog/U-154.md) | Move and hold orders keep a facing | Squad command (Conflict parity) | P2 | READY | — | — |
 | [U-152](docs/backlog/U-152.md) | Build return shelters and prove rocket clearance and blast protection | Map implementation | P1 | BLOCKED | U-150, U-151 | — |
+| [U-155](docs/backlog/U-155.md) | RPG gunner enemy | Enemy AI (Conflict parity) | P2 | READY | — | — |
 | [U-140](docs/backlog/U-140.md) | Construct the continuous ridge stairs, shelves and service bridge | Map implementation | P1 | BLOCKED | U-139 | — |
 | [U-141](docs/backlog/U-141.md) | Construct support bays/C12 links and verify surface isolation | Map implementation | P1 | BLOCKED | U-139, U-140 | — |
 | [U-115](docs/backlog/U-115.md) | Build the continuous underground depot and its stairs | Map implementation | P1 | BLOCKED | U-109, U-114 | — |

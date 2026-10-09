@@ -35,4 +35,4 @@ Include:
 
 Keep logs, history, credentials, session IDs and machine paths out. If nothing
 is eligible, name the real blocker and the owner decision that would unblock
-it, instead of inventing a task.
+it, with a recommended default, instead of inventing a task.
