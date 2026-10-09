@@ -59,6 +59,14 @@ manual walking, aiming and firing remain excluded by ADR-002.
 
 Implementation, safe interruption and physical-phone acceptance belong to
 [U-145](../backlog/U-145.md), split into U-146–U-148 after the owner accepted
-[U-134](../backlog/U-134.md)'s desktop/physical-phone UI/play review. This decision
-does not change the current read-only mobile stock panel or the pending U-102
-real-device review. Split the protocol/AI/UI work before claiming if oversized.
+[U-134](../backlog/U-134.md)'s desktop/physical-phone UI/play review.
+
+U-148 adds a **Supplies** control beside the camera controls. Its scrollable panel
+chooses exactly one commanded bot, cache and item; it displays the recipient's
+confirmed capacity, host stock and host collection progress. Closing the panel,
+changing its recipient/cache, using another command control, losing focus or
+entering a menu cancels collection. Opening Supplies disarms order placement.
+Without an eligible recipient, stock remains observable. A request without host
+confirmation is cancelled after five seconds; accepted travel has no local clock.
+The new physical-phone presentation/play acceptance remains open in U-148;
+earlier delivered-UI approvals do not cover this interaction.

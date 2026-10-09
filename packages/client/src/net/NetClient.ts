@@ -21,6 +21,7 @@ import {
   type RunKind,
   type MissionView,
   type SupplyCacheDef,
+  type SupplyInventory,
   type SupplyItem,
   type SupplyUseProgress,
   type TargetMark,
@@ -60,6 +61,7 @@ import {
   getWorld,
   NO_SECONDARY,
   PROJECTILE_IDS,
+  WEAPON_IDS,
 } from '@sandline/shared';
 
 const T = COMPONENT_IDS.Transform;
@@ -302,6 +304,9 @@ export class NetClient {
   private supplyProgressValue: readonly SupplyUseProgress[] = [];
   private supplyRequestId = 0;
   private commanderSupplyRequestId = 0;
+  /** U-148: current confirmed soldier inventory, separate from interpolation/prediction. */
+  private readonly recipientSupplies = new Map<number, { slot: number; inventory: SupplyInventory; vitality: Vitality }>();
+  private recipientSuppliesTick = -1;
   /** U-048: our slot-5 equipment as the host last said, a PROJECTILE_IDS index, or -1 for none. */
   private equipmentValue = -1;
   private kitProgressValue = 0;
@@ -544,12 +549,26 @@ export class NetClient {
   get supplyCaches(): readonly SupplyCacheDef[] { return [...this.suppliesValue.values()]; }
   get supplyProgress(): readonly SupplyUseProgress[] { return this.supplyProgressValue; }
 
+  /** Confirmed recipient inventory only; an absent soldier is unavailable immediately. */
+  recipientSupplyInventory(slot: number): SupplyInventory | null {
+    if (!this.joinedFlag || this.restoreChoiceValue) return null;
+    for (const state of this.recipientSupplies.values()) if (state.slot === slot) return state.inventory;
+    return null;
+  }
+
+  /** Confirmed current-snapshot vitality, including our autonomous spectator-driven seat. */
+  recipientSupplyVitality(slot: number): Vitality | null {
+    if (!this.joinedFlag || this.restoreChoiceValue) return null;
+    for (const state of this.recipientSupplies.values()) if (state.slot === slot) return state.vitality;
+    return null;
+  }
+
   selectSupply(cacheId: string, item: SupplyItem | null): void {
     if (!this.joinedFlag || this.restoreChoiceValue) return;
     this.transport.send(encodeMessage({ kind: 'SupplySelect', requestId: ++this.supplyRequestId, cacheId, item }), 'reliable');
   }
 
-  /** U-146: a commander requests nearby bot use; the host validates the target and owns the hold. */
+  /** U-146/U-147: request bot travel/use; the host validates the target and owns all progress. */
   selectCommanderSupply(slot: number, cacheId: string, item: SupplyItem | null): void {
     if (!this.joinedFlag || this.restoreChoiceValue) return;
     this.transport.send(encodeMessage({ kind: 'CommanderSupplySelect', requestId: ++this.commanderSupplyRequestId, slot, cacheId, item }), 'reliable');
@@ -792,6 +811,8 @@ export class NetClient {
     this.supplyProgressValue = [];
     this.supplyRequestId = 0;
     this.commanderSupplyRequestId = 0;
+    this.recipientSupplies.clear();
+    this.recipientSuppliesTick = -1;
     this.store.reset();
     this.predictor = null;
     this.characterSpaces = [];
@@ -1490,6 +1511,33 @@ export class NetClient {
     serverMs: number,
     lastProcessedInputTick: number,
   ): void {
+    // The snapshot store has reconstructed every unchanged field. A late older
+    // packet must not roll recipient capacity back or revive an absent soldier.
+    if (tick > this.recipientSuppliesTick) {
+      this.recipientSuppliesTick = tick;
+      this.recipientSupplies.clear();
+      for (const entity of entities) {
+        const slot = entity.components[COMPONENT_IDS.PlayerSlot]?.[0];
+        const health = entity.components[H];
+        const weapon = entity.components[COMPONENT_IDS.Weapon];
+        if (slot === undefined || !health || !weapon || weapon.length <= 9 + PROJECTILE_IDS.length) continue;
+        const primary = weapon[4 + PROJECTILE_IDS.length];
+        const secondary = weapon[5 + PROJECTILE_IDS.length];
+        this.recipientSupplies.set(entity.netId, {
+          slot,
+          vitality: vitalityFromCode(health[2] ?? 0),
+          inventory: {
+            primary: WEAPON_IDS[primary ?? -1] ?? null,
+            secondary: WEAPON_IDS[secondary ?? -1] ?? null,
+            heldWeapon: weapon[2] === 0 ? WEAPON_IDS[weapon[0] ?? -1] ?? '' : '',
+            ammo: weapon[3 + PROJECTILE_IDS.length] ?? 0,
+            equipment: (weapon[9 + PROJECTILE_IDS.length] ?? 0) - 1,
+            pouch: PROJECTILE_IDS.map((_, i) => weapon[3 + i] ?? 0),
+            kits: weapon[7 + PROJECTILE_IDS.length] ?? 0,
+          },
+        });
+      }
+    }
     const projectilesSeen = new Set<number>();
     const characterConfig = this.moveConfig ?? DEFAULT_MOVE_CONFIG;
     this.characterSpaces = entities.flatMap((entity) => {

@@ -318,6 +318,7 @@ export function createMobileCommand(parent: HTMLElement, actions: {
   return {
     root,
     cancelPlacement,
+    closeMenus() { cancelPlacement(); open = null; render(); },
     issueAt(x: number, y: number): boolean {
       cancelPlacement();
       render();

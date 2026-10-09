@@ -84,6 +84,30 @@ uses ≤1 m steps; both tank muzzle recipes include eight orientations. The cour
 reveal check samples the whole court and legal shoulders, measuring distance to
 the nearest court floor boundary as defined in the construction addendum.
 
+## Mobile commander supply review (U-148)
+
+Run `pnpm --filter @sandline/client dev` and open `/mobile-supply-review.html`
+on the same server. This isolated authored-floor fixture uses the production
+phone controls, Session, wire codec, confirmed inventory and mobile adapter.
+Placement and the 30 Hz clock are controlled; distant navigation remains covered
+by U-147's tests. The current production-map placement remains U-117.
+
+Open **Supplies**, explicitly choose one commanded bot and cache, then one item.
+Watch host collection/stock, cancel it, change recipient/cache, or use **Review
+setup** for last-kit contention with a desktop hold and a commander reconnect.
+Reload resets this fixture's stock. Watching the active human never makes that
+human selectable. Test portrait/landscape, scroll to stock/progress/cancel, and
+check safe areas on a physical phone; these steps do not record owner acceptance.
+
+`pnpm exec vitest run --config vitest.browser.config.ts --project assets-browsers
+src/ui/mobileSupplyChoice.browser.test.ts src/ui/mobileSupplySession.browser.test.ts`
+runs the Session/browser regressions and writes U-148 PNGs under
+`docs/backlog/evidence/`. After a client build,
+`pnpm exec tsx packages/tools/src/capture-mobile-supplies.ts` checks the actual
+production entry at both orientations, unavailable caches, order disarming and
+settings dismissal. Set `CHROMIUM_PATH` only when using a preinstalled Chromium.
+Automated captures do not replace the new physical-phone presentation/play verdict.
+
 ## Adding a mission (U-073)
 
 Before authoring data, write the mission brief and a per-map record using the

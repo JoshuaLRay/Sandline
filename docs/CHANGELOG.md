@@ -446,3 +446,5 @@ Format: `T-<id> — <what changed>`
 - U-111 / U-065 / U-080 / U-096–U-106 / U-124 / U-126–U-128 / U-138 / U-143 — Record the owner's 2026-10-09 approval of existing human reviews and Mission 2 design; reconcile verified merged work and legacy human gates, close U-111 from integrated Session/nav evidence, promote U-139 to READY and confirm U-147 eligibility; retain missing implementation, assets, deployment/configuration, placement and deferred-work blockers.
 
 - U-147 — Route commanded bots to supply caches on the authored floor; collect only after valid reach/LOS and cancel stale or unsafe travel without spending stock ([#320](https://github.com/JoshuaLRay/Sandline/pull/320)).
+
+- U-148 — Add mobile commander bot/cache/item choices, host-confirmed recipient inventory, stock and progress, safe cancellation and real Session/browser review fixtures; retain the new physical-phone acceptance in REVIEW ([#321](https://github.com/JoshuaLRay/Sandline/pull/321)).
