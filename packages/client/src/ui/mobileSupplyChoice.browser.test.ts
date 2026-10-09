@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { page } from '@vitest/browser/context';
-import { createMoveState, type SupplyUseProgress } from '@sandline/shared';
+import { createMoveState, PROJECTILE_IDS, type SupplyUseProgress } from '@sandline/shared';
 import { createMobileSupplyChoice } from './mobileSupplyChoice.ts';
 import { mobileSupplyChoiceModel } from './mobileSupplyModel.ts';
 import { createMobileCommand } from './MobileCommand.ts';
@@ -105,6 +105,11 @@ describe('mobile commander supplies in a real browser (U-148)', () => {
   it.each([[360, 800], [820, 360]])('fits and scrolls with camera and command controls at %s × %s', async (width, height) => {
     await page.viewport(width, height);
     const f = setup(); f.chooseBot();
+    // Exercise scrolling with every supported type, independent of installed font metrics.
+    f.source.caches = [{ ...SUPPLY_FIXTURES[0]!, stock: { ...SUPPLY_FIXTURES[0]!.stock,
+      projectiles: Object.fromEntries(PROJECTILE_IDS.map(id => [id, 1])),
+    } }, ...SUPPLY_FIXTURES.slice(1)];
+    f.refresh();
     const command = createMobileCommand(document.body, {
       watch: vi.fn(), assign: vi.fn(), aggression: vi.fn(), order: vi.fn(() => true), settings: vi.fn(), leave: vi.fn(), recenter: vi.fn(),
     });
