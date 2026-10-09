@@ -453,4 +453,4 @@ Format: `T-<id> — <what changed>`
 
 - Docs — Agent workflow for Claude Code and Codex: `AGENTS.md` is the single shared brief (`CLAUDE.md` imports it), procedures are tool-neutral skills in `.agents/skills/`, ADR-021 makes the Conflict series the gameplay reference, and `docs/VISION.md`, `docs/design/CONFLICT-PARITY.md` and `docs/CODEMAP.md` give the goal, the gaps and the code map; 122 DONE backlog rows archived; merged-but-unreviewed work no longer blocks dependents; every owner decision blocker carries a recommended default; parity tasks U-153–U-155 queued between the Mission 1 map leaves.
 
-- U-156 — Qalat Road back inside ADR-013's 30 s first-playable budget: the tank model moves to a new deferred asset pack fetched once play can start (its stand-in draws any earlier tank); `check:packs` keeps every vehicle in a pack.
+- U-156 — Qalat Road back inside ADR-013's 30 s first-playable budget: the tank model moves to a new deferred asset pack fetched once play can start (its stand-in draws any earlier tank); `check:packs` keeps every vehicle in a pack ([#325](https://github.com/JoshuaLRay/Sandline/pull/325)).
