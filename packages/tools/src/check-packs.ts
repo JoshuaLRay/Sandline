@@ -20,9 +20,13 @@ if (initialBytes >= ASSET_BUDGETS.initialDownloadBytes) {
   errors.push(`initial pack: ${initialBytes} bytes, budget requires less than ${ASSET_BUDGETS.initialDownloadBytes}`);
 }
 if (!initial.has('soldier-dcu')) errors.push("initial pack: missing playable soldier 'soldier-dcu'");
+const deferred = new Set(ASSET_PACKS.deferred ?? []);
 for (const asset of ASSET_MANIFEST.assets) {
   if (asset.class === 'weapon' && !initial.has(asset.id)) errors.push(`initial pack: missing weapon '${asset.id}'`);
+  // U-156: a vehicle may wait until play starts (its stand-in draws it meanwhile), but it is always fetched.
+  if (asset.class === 'vehicle' && !initial.has(asset.id) && !deferred.has(asset.id)) errors.push(`vehicle '${asset.id}' is in neither the initial nor the deferred pack`);
 }
+console.log(`deferred pack: ${bytes([...deferred])} bytes over ${deferred.size} assets, fetched once play can start`);
 
 for (const worldId of WORLD_IDS) {
   const ids = ASSET_PACKS.levels[worldId];
