@@ -1,7 +1,9 @@
 /**
  * Asset pack data (T-4.06). The initial pack is fetched with the menu and
  * contains the playable soldier plus every weapon. A level pack is fetched
- * after that level is chosen and before its first playable frame.
+ * after that level is chosen and before its first playable frame. The deferred
+ * pack (U-156) is fetched once play can start: assets drawn by a code-built
+ * stand-in until they arrive, kept off the first-playable path.
  *
  * Pure data validation belongs in shared so CI/tools and the browser consume
  * exactly the same grouping without either platform reading files at runtime.
@@ -12,6 +14,8 @@ import { ASSET_MANIFEST, type AssetManifest } from './assets.ts';
 export interface AssetPacks {
   readonly initial: readonly string[];
   readonly levels: Readonly<Record<string, readonly string[]>>;
+  /** U-156: fetched after the first playable frame; none when absent. */
+  readonly deferred?: readonly string[];
 }
 
 export class AssetPackError extends Error {}
@@ -23,11 +27,11 @@ function object(where: string, value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function exactKeys(where: string, value: Record<string, unknown>, allowed: readonly string[]): void {
+function exactKeys(where: string, value: Record<string, unknown>, required: readonly string[], optional: readonly string[] = []): void {
   for (const key of Object.keys(value)) {
-    if (key !== '$comment' && !allowed.includes(key)) throw new AssetPackError(`${where}: unknown key '${key}'`);
+    if (key !== '$comment' && !required.includes(key) && !optional.includes(key)) throw new AssetPackError(`${where}: unknown key '${key}'`);
   }
-  for (const key of allowed) if (!(key in value)) throw new AssetPackError(`${where}: missing '${key}'`);
+  for (const key of required) if (!(key in value)) throw new AssetPackError(`${where}: missing '${key}'`);
 }
 
 function ids(where: string, value: unknown, manifest: AssetManifest): readonly string[] {
@@ -45,7 +49,7 @@ function ids(where: string, value: unknown, manifest: AssetManifest): readonly s
 
 export function parseAssetPacks(raw: unknown, manifest: AssetManifest = ASSET_MANIFEST): AssetPacks {
   const top = object('asset packs', raw);
-  exactKeys('asset packs', top, ['initial', 'levels']);
+  exactKeys('asset packs', top, ['initial', 'levels'], ['deferred']);
   const levelsRaw = object('asset packs.levels', top['levels']);
   const levels: Record<string, readonly string[]> = {};
   for (const [world, value] of Object.entries(levelsRaw)) {
@@ -54,9 +58,14 @@ export function parseAssetPacks(raw: unknown, manifest: AssetManifest = ASSET_MA
     levels[world] = ids(`asset packs.levels.${world}`, value, manifest);
   }
   if (Object.keys(levels).length === 0) throw new AssetPackError('asset packs.levels: no level packs');
+  const initial = ids('asset packs.initial', top['initial'], manifest);
+  const deferred = 'deferred' in top ? ids('asset packs.deferred', top['deferred'], manifest) : Object.freeze([]);
+  // Deferred means off the first-playable path: an asset the initial pack already fetches is not deferred.
+  for (const id of deferred) if (initial.includes(id)) throw new AssetPackError(`asset packs.deferred: '${id}' is also in the initial pack`);
   return Object.freeze({
-    initial: ids('asset packs.initial', top['initial'], manifest),
+    initial,
     levels: Object.freeze(levels),
+    deferred,
   });
 }
 

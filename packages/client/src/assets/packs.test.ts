@@ -40,4 +40,17 @@ describe('PackLoader (T-4.06)', () => {
     expect(seen[0]).toMatchObject({ loadedAssets: 0, totalAssets: 2, loadedBytes: 0, totalBytes: 100 });
     expect(seen.at(-1)).toMatchObject({ loadedAssets: 2, totalAssets: 2, loadedBytes: 100, totalBytes: 100 });
   });
+
+  it('fetches the deferred pack only when asked, once, apart from the initial pack (U-156)', async () => {
+    const loader = fakeLoader();
+    const packs = new PackLoader(loader, { initial: ['soldier'], levels: { range: [] }, deferred: ['wall'] });
+    await packs.loadInitial();
+    await packs.loadLevel('range');
+    expect(loader.loads.has('wall')).toBe(false);
+    await Promise.all([packs.loadDeferred(), packs.loadDeferred()]);
+    expect(loader.loads.get('wall')).toBe(1);
+    expect(packs.isLoaded('deferred')).toBe(true);
+    // No deferred pack at all is nothing to fetch.
+    await new PackLoader(loader, { initial: [], levels: { range: [] } }).loadDeferred();
+  });
 });

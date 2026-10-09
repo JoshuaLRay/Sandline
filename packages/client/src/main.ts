@@ -485,8 +485,6 @@ const initialPresentationReady = initialPackReady.then(async () => {
   const jobs: Promise<unknown>[] = [];
   // T-4.36: period weapons are already in the initial pack; this cache-hit turns them into runtime models.
   if (!query.has('codeweapons')) jobs.push(loadWeaponAssets(assetLoader));
-  // U-126: the generated tank, also in the initial pack; `?codetank` keeps U-070's stand-in for comparison.
-  if (!query.has('codetank')) jobs.push(loadVehicleAssets(assetLoader));
   if (!greyBox && !query.has('codesoldier')) {
     jobs.push(loadDetailedSkin(assetLoader).then((skin) => {
       if (skin) setSoldierPalette(player, 'local');
@@ -496,6 +494,20 @@ const initialPresentationReady = initialPackReady.then(async () => {
   loadScreen.hide();
 });
 let fighterPresentationReady: Promise<unknown> | null = null;
+
+/**
+ * U-156: the deferred pack, fetched once play can start so it never competes with a level's first playable frame —
+ * the generated tank (U-126), whose code-built stand-in draws any tank until it arrives and is then redrawn
+ * (`vehicleAssetsVersion`). `?codetank` keeps U-070's stand-in for comparison.
+ */
+let deferredAssetsRequested = false;
+function loadDeferredAssets(): void {
+  if (deferredAssetsRequested) return;
+  deferredAssetsRequested = true;
+  void packLoader.loadDeferred()
+    .then(() => (query.has('codetank') ? 0 : loadVehicleAssets(assetLoader)))
+    .catch((error: unknown) => console.warn('deferred assets did not load; stand-ins stay', error));
+}
 
 /** Fetch one level's pack and finish its shared character presentation before play. */
 async function prepareLevelAssets(worldId: string): Promise<void> {
@@ -3320,6 +3332,8 @@ function frame(): void {
     playablePending = null;
     // U-043: the game can start, so the sounds may now have the link to themselves.
     audio.releaseBackground();
+    // U-156: and the tank's model, off the path to this frame.
+    loadDeferredAssets();
   }
   aiDebug.render(camera, innerWidth, innerHeight);
   orderMarkerOverlay.render(camera, innerWidth, innerHeight);

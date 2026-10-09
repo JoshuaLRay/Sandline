@@ -1,5 +1,5 @@
 {
-  "$comment": "T-4.06 asset streaming. The app/menu code ships in the page bundle; this file groups manifest assets fetched around it. Initial is the soldier, every weapon and the tank (U-126: a mission script can bring it into any world). Each world has a level pack loaded before its first playable frame. Assets may appear in more than one pack; the client pack loader retains loaded packs so the underlying AssetLoader fetches each manifest id only once.",
+  "$comment": "T-4.06 asset streaming. The app/menu code ships in the page bundle; this file groups manifest assets fetched around it. Initial is the soldier and every weapon. Each world has a level pack loaded before its first playable frame. Deferred (U-156) is fetched once play can start: assets with a code-built stand-in that holds until they arrive — the tank (U-126: a mission script can bring it into any world), whose 1.2 MB kept Qalat Road over ADR-013's 30 s first-playable budget. Assets may appear in more than one pack; the client pack loader retains loaded packs so the underlying AssetLoader fetches each manifest id only once.",
   "initial": [
     "soldier-dcu",
     "weapon-ak",
@@ -15,7 +15,9 @@
     "weapon-rpg7",
     "weapon-shotgun",
     "weapon-smg",
-    "weapon-sniper",
+    "weapon-sniper"
+  ],
+  "deferred": [
     "vehicle-tank"
   ],
   "levels": {

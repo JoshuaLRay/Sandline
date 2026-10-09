@@ -39,6 +39,11 @@ export class PackLoader {
     return this.loadPack(`level:${worldId}`, ids, progress);
   }
 
+  /** U-156: the assets kept off the first-playable path, once play can start. */
+  loadDeferred(progress?: (state: PackProgress) => void): Promise<void> {
+    return this.loadPack('deferred', this.packs.deferred ?? [], progress);
+  }
+
   isLoaded(pack: string): boolean {
     return this.held.has(pack);
   }
