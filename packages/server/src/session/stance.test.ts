@@ -42,12 +42,9 @@ beforeAll(async () => {
 
 /** A session, the lead seated in slot 0, the bots where `at` puts them; more players may join. */
 function squad(at: Record<number, { x: number; z: number }> = {}, options: SessionOptions = {}, world = 'range') {
-  const session = new Session(undefined, '', world === 'range' ? 'range' : requireWorld(world), {
-    navMesh: mesh,
-    cover: bakedCoverFor('range'),
-    brainTree: buildTree('friendly', createBrainRegistry()),
-    ...options,
-  });
+  // The range comes with its bake and the friendly tree; another world plays as its options say.
+  const base: SessionOptions = world === 'range' ? { navMesh: mesh, cover: bakedCoverFor('range'), brainTree: buildTree('friendly', createBrainRegistry()) } : {};
+  const session = new Session(undefined, '', world === 'range' ? 'range' : requireWorld(world), { ...base, ...options });
   let now = 0;
   const seats: { stand(): void }[] = [];
   function join(name: string, resume = '') {
@@ -338,7 +335,7 @@ describe('a stance is the character’s (U-153)', () => {
       groups: [{ id: 'a', members: [{ archetype: 'rifleman', count: 1 }], zone: 'behind-objective', posture: { kind: 'garrison', at: 'objective' }, trigger: { kind: 'start' } }],
     });
     const mission: MissionDef = { id: 'test', world: 'greybox-01', respawn: false, objectives: [{ type: 'survive', label: 'the night', seconds: 600 }] };
-    const sq = squad({}, { navMesh: undefined, cover: undefined, brainTree: undefined, encounter, mission, testHumanCount: 1 }, 'greybox-01');
+    const sq = squad({}, { encounter, mission, testHumanCount: 1 }, 'greybox-01');
     const { session } = sq;
     sq.lead.say(stance({ to: 'all' }, 'prone'));
     sq.run(10);

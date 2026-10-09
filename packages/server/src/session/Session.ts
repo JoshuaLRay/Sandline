@@ -3837,9 +3837,10 @@ export class Session {
     for (const i of addressed) {
       const slot = this.slots[i];
       if (!slot || (i !== from.index && (!this.autonomous(slot) || this.commanders[i] !== from.index))) continue;
+      const was = this.stanceFor(i);
       this.stances[i] = msg.stance;
-      // A bot standing idle keeps its last input: let go of the old stance; `holdStances` sets the new one.
-      if (this.autonomous(slot)) slot.input = { ...slot.input, crouch: false, prone: false };
+      // A bot standing idle keeps its last input: let go of a held stance; `holdStances` sets the new one.
+      if (was !== 'auto' && this.autonomous(slot)) slot.input = { ...slot.input, crouch: false, prone: false };
     }
     for (const c of this.connections) if (c.state === 'active') c.send({ kind: 'Stances', stances: this.stances });
   }
@@ -3863,12 +3864,13 @@ export class Session {
   /**
    * U-153: every bot held in Crouch or Prone keeps that stance on its input, after its brain's hands (`aiHands`)
    * and before it steps — holding, moving or firing. Not on a vault leg or mid-vault (the controller vaults only a
-   * standing soldier), not on a gun (`pinGunner`), not while it must rise (`mustRise`); a human is never moved.
+   * standing soldier), not a prisoner, not on a gun (`pinGunner`), not while it must rise (`mustRise`); a human is
+   * never moved.
    */
   private holdStances(): void {
     for (const slot of this.slots) {
       const stance = this.stanceFor(slot.index);
-      if (stance === 'auto' || !this.autonomous(slot) || !isAlive(slot.health) || slot.mounted || this.mustRise(slot)) continue;
+      if (stance === 'auto' || !this.autonomous(slot) || !isAlive(slot.health) || slot.captured || slot.mounted || this.mustRise(slot)) continue;
       if (slot.state.vault || this.followers[slot.index]?.onVault) continue;
       slot.input.prone = stance === 'prone';
       slot.input.crouch = stance === 'crouch';
