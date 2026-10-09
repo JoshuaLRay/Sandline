@@ -213,6 +213,7 @@ import { BRAIN_PERIOD_TICKS, Brain, type BrainTree, createBrainRegistry, default
 import { type AiDebugSource, buildAiDebug } from '../ai/debug.ts';
 import { aimAngles, aimConeDeg, aimError, aimPoints, aimSeed, lineOfSight, visibleAimPoint } from '../ai/aim.ts';
 import { CoverSystem, DEFAULT_COVER_BODY } from '../ai/cover.ts';
+import { ARMOUR, shellDanger } from '../ai/armour.ts';
 import { EnemyGroup } from '../ai/group.ts';
 import type { ArmourView, CombatWorld } from '../ai/actions/combat.ts';
 import { stepAuthoredPatrol, type EnemyPosture } from '../ai/actions/posture.ts';
@@ -929,7 +930,7 @@ export class Session {
   private nextPickupNetId = FIRST_PICKUP_NET_ID;
   private readonly supplyDefs: readonly SupplyCacheDef[];
   private readonly supplyStocks = new Map<string, SupplyStock>();
-  private readonly supplyUses = new Map<number, { mode: 'self' | 'commander'; connection: ServerConnection; cacheId: string; item: SupplyItem; ticks: number }>();
+  private readonly supplyUses = new Map<number, { mode: 'self' | 'commander'; phase: 'approach' | 'collect'; connection: ServerConnection; cacheId: string; item: SupplyItem; ticks: number }>();
   private readonly supplyRequestIds = new WeakMap<ServerConnection, number>();
   private readonly commanderSupplyRequestIds = new WeakMap<ServerConnection, number>();
   private lastSupplyProgress = '';
@@ -1564,7 +1565,7 @@ export class Session {
         return Math.sqrt((eye.x - at.x) ** 2 + (eye.y - at.y) ** 2 + (eye.z - at.z) ** 2) <= reachM && lineOfSight(eye, at, this.collisionBoxes);
       }) : undefined;
       const target = holder ? pow!.netId : null;
-      if (holder) this.supplyUses.delete(holder.index);
+      if (holder) this.clearSupplyUse(holder.index);
       const changed = target !== this.rescueEscortTarget;
       this.rescueEscortTarget = target;
       return { held: 1, holding: holder && !changed ? { scale: this.interactionScale(holder.index) } : null };
@@ -1592,7 +1593,7 @@ export class Session {
       }
     }
     const changed = (target?.index ?? null) !== this.rescueTarget;
-    if (holder) this.supplyUses.delete(holder.index);
+    if (holder) this.clearSupplyUse(holder.index);
     this.rescueTarget = target?.index ?? null;
     return { held: held.length, holding: target && holder && !changed ? { scale: this.interactionScale(holder.index) } : null };
   }
@@ -1885,7 +1886,7 @@ export class Session {
     if (!saved) return false;
     // Validate/apply all cache stock before touching any paired soldier inventory.
     if (saved.caches) this.restoreSupplies(saved.caches);
-    else this.supplyUses.clear(); // Legacy checkpoints still cancel transient self/commander uses.
+    else this.clearSupplyUses(); // Legacy checkpoints still cancel transient self/commander uses.
     for (const [i, snap] of (saved.slots ?? []).entries()) {
       const slot = this.slots[i];
       if (!slot) continue;
@@ -2320,7 +2321,7 @@ export class Session {
       from.interactHeld = false;
       if (!from.brain) this.giveBrain(from);
       conn.send({ kind: 'Spectating', slot: ESCORT_SPECTATE_SLOT });
-      if (this.supplyUses.delete(from.index)) this.broadcastSupplyProgress();
+      if (this.clearSupplyUse(from.index)) this.broadcastSupplyProgress();
       return;
     }
     const to = this.slots[msg.slot];
@@ -2334,7 +2335,7 @@ export class Session {
       from.interactHeld = false;
       if (!from.brain) this.giveBrain(from);
       conn.send({ kind: 'Spectating', slot: to.index });
-      if (this.supplyUses.delete(from.index)) this.broadcastSupplyProgress();
+      if (this.clearSupplyUse(from.index)) this.broadcastSupplyProgress();
       return;
     }
     if (to === from || !to.isBot || to.captured || (this.spectators.has(conn) ? this.spectators.get(conn) !== to.index : this.commanders[to.index] !== from.index)) return;
@@ -3309,7 +3310,7 @@ export class Session {
   }
 
   private resetSupplies(): void {
-    this.supplyUses.clear();
+    this.clearSupplyUses();
     this.supplyStocks.clear();
     for (const def of this.supplyDefs) this.supplyStocks.set(def.id, structuredClone(def.stock));
   }
@@ -3322,7 +3323,7 @@ export class Session {
         PROJECTILE_IDS.some((id) => id !== 'smokecloud' && (stock.projectiles[id] ?? 0) > (def.stock.projectiles[id] ?? 0));
     })) throw new Error('checkpoint supply stock does not match authored caches');
     for (const [id, stock] of stocks) this.supplyStocks.set(id, structuredClone(stock));
-    this.supplyUses.clear();
+    this.clearSupplyUses();
   }
 
   private supplyTransfer(slot: Slot, cache: SupplyCacheDef, item: SupplyItem) {
@@ -3333,24 +3334,85 @@ export class Session {
     }, { pouch: this.pouchFor(slot.index), healthKits: this.kitsFor(slot.index) }, item);
   }
 
+  /** Availability is separate from arrival: a legitimate route may be mid-vault. */
+  private supplyAvailable(slot: Slot, commander = false): boolean {
+    return this.roomStarted && !this.paused && !this.incompatibleCampaign && !this.handedOff &&
+      (!this.missionRun || this.missionRun.current.state === 'progress') &&
+      (commander || (!slot.isBot && !!slot.connection && slot.connection.state === 'active' && !this.spectators.has(slot.connection))) &&
+      isAlive(slot.health) && !slot.captured && !slot.mounted && slot.kitProgress === 0;
+  }
+
   private canUseSupply(slot: Slot, cache: SupplyCacheDef, commander = false): boolean {
-    if (!this.roomStarted || this.paused || this.incompatibleCampaign || this.handedOff || (this.missionRun && this.missionRun.current.state !== 'progress') ||
-      (!commander && (slot.isBot || !slot.connection || slot.connection.state !== 'active' || this.spectators.has(slot.connection))) ||
-      !isAlive(slot.health) || slot.captured || slot.state.vault || slot.mounted || slot.kitProgress > 0) return false;
+    if (!this.supplyAvailable(slot, commander) || slot.state.vault) return false;
     const p = cache.feet;
     return within(slot.state, p, SUPPLY_RULES.reachM) &&
       (slot.state.x - p.x) ** 2 + (slot.state.y - p.y) ** 2 + (slot.state.z - p.z) ** 2 <= SUPPLY_RULES.reachM ** 2 &&
       lineOfSight(soldierEye(slot.state), { ...p, y: p.y + .5 }, this.collisionBoxes);
   }
 
+  /** Do not suspend shell evasion, under-fire defense or a traveller's needed healing. */
+  private supplyUnsafe(slot: Slot, travelling: boolean): boolean {
+    const now = this.nowMs / 1000;
+    const dodge = slot.brain?.read('dodge');
+    return suppressionLevel(slot.suppression, now) >= SQUAD_CONFIG.bot.underFire.suppression ||
+      now - slot.lastDamagedAt < SQUAD_CONFIG.bot.underFire.hurtSeconds ||
+      (!!dodge && now < dodge.until + ARMOUR.dodgeHoldSeconds) ||
+      this.armourViews().some((view) => view.tell && now < view.tell.until && shellDanger(view, this.collisionBoxes)?.(slot.state)) ||
+      (travelling && slot.kits > 0 && slot.health.current < slot.health.max * SQUAD_CONFIG.bot.kitBelowFraction);
+  }
+
+  /** Every exit releases the owned locomotion, including cancellation between brain ticks. */
+  private clearSupplyUse(index: number): boolean {
+    const use = this.supplyUses.get(index);
+    if (use?.mode === 'commander') {
+      this.followers[index] = null;
+      const slot = this.slots[index]!;
+      slot.input = idleInput(slot.yaw);
+    }
+    return this.supplyUses.delete(index);
+  }
+
+  private clearSupplyUses(): void {
+    for (const index of this.supplyUses.keys()) this.clearSupplyUse(index);
+  }
+
+  /** Reuse the existing navigation failure cue; no ordinary move order is installed. */
+  private failCommanderSupply(slot: Slot, reason: string): void {
+    this.clearSupplyUse(slot.index);
+    this.orderReports.push({ slot: slot.index, order: 'move', outcome: 'failed', reason: `supply: ${reason}`, tick: this.currentTick });
+    if (this.orderReports.length > 64) this.orderReports.shift();
+    for (const c of this.connections) if (c.state === 'active') c.send({ kind: 'OrderFailed', slot: slot.index, order: 'move' });
+  }
+
+  /** Cache feet already passed authored support checks; never accept a snapped/partial endpoint. */
+  private supplyPath(from: NavPoint, to: NavPoint): NavPath | null {
+    const path = this.navMesh?.path(from, to);
+    const end = path?.points.at(-1);
+    return end && Math.hypot(end.x - to.x, end.y - to.y, end.z - to.z) <= SPAWN_ON_MESH_M ? path! : null;
+  }
+
+  /** Run before brains/movement so a failed request yields to defensive AI on this tick. */
+  private validateCommanderSupplies(): void {
+    let changed = false;
+    for (const slot of this.slots) {
+      const use = this.supplyUses.get(slot.index);
+      if (use?.mode !== 'commander') continue;
+      const cache = this.supplyDefs.find((c) => c.id === use.cacheId)!;
+      if (!this.canCommandSupply(use.connection, slot) || !this.supplyAvailable(slot, true) ||
+        this.supplyTransfer(slot, cache, use.item).status !== 'transferred' || this.supplyUnsafe(slot, use.phase === 'approach') ||
+        (use.phase === 'collect' && !this.canUseSupply(slot, cache, true))) changed = this.clearSupplyUse(slot.index) || changed;
+    }
+    if (changed) this.broadcastSupplyProgress();
+  }
+
   private applySupplySelect(conn: ServerConnection, msg: Extract<Message, { kind: 'SupplySelect' }>): void {
     const slot = this.slots[conn.slot];
     if (!slot || slot.connection !== conn || msg.requestId <= (this.supplyRequestIds.get(conn) ?? -1)) return;
     this.supplyRequestIds.set(conn, msg.requestId);
-    this.supplyUses.delete(slot.index);
+    this.clearSupplyUse(slot.index);
     const cache = this.supplyDefs.find((cache) => cache.id === msg.cacheId);
     if (cache && msg.item && this.canUseSupply(slot, cache) && this.supplyTransfer(slot, cache, msg.item).status === 'transferred') {
-      this.supplyUses.set(slot.index, { mode: 'self', connection: conn, cacheId: cache.id, item: msg.item, ticks: 0 });
+      this.supplyUses.set(slot.index, { mode: 'self', phase: 'collect', connection: conn, cacheId: cache.id, item: msg.item, ticks: 0 });
     }
     this.broadcastSupplyProgress();
   }
@@ -3372,7 +3434,7 @@ export class Session {
     let changed = false;
     for (const [index, use] of this.supplyUses) {
       if (use.mode === 'commander' && use.connection === conn) {
-        this.supplyUses.delete(index);
+        this.clearSupplyUse(index);
         changed = true;
       }
     }
@@ -3385,16 +3447,21 @@ export class Session {
     const slot = this.slots[msg.slot];
     const prior = this.supplyUses.get(msg.slot);
     // A stale commander may cancel its own request, but cannot touch a new owner's use.
-    if (prior?.mode === 'commander' && prior.connection === conn) this.supplyUses.delete(msg.slot);
+    if (prior?.mode === 'commander' && prior.connection === conn) this.clearSupplyUse(msg.slot);
     const cache = this.supplyDefs.find((cache) => cache.id === msg.cacheId);
-    if (slot && cache && msg.item && this.canCommandSupply(conn, slot) && this.canUseSupply(slot, cache, true) &&
+    if (slot && cache && msg.item && this.canCommandSupply(conn, slot) && this.supplyAvailable(slot, true) && !slot.state.vault &&
       this.supplyTransfer(slot, cache, msg.item).status === 'transferred') {
-      this.endOrder(slot.index, 'replaced', 'commander supply request');
-      // Nearby collection owns the soldier's hands and feet. No client input or
-      // generic revive/upload interact is synthesized; distant travel is U-147.
-      this.giveBrain(slot);
-      slot.input = idleInput(slot.yaw);
-      this.supplyUses.set(slot.index, { mode: 'commander', connection: conn, cacheId: cache.id, item: msg.item, ticks: 0 });
+      const phase = this.canUseSupply(slot, cache, true) ? 'collect' : 'approach';
+      if (!this.supplyUnsafe(slot, phase === 'approach')) {
+        if (phase === 'approach' && !this.supplyPath(slot.state, cache.feet)) this.failCommanderSupply(slot, 'unreachable cache');
+        else {
+          this.endOrder(slot.index, 'replaced', 'commander supply request');
+          // The request owns hands and feet; no generic revive/upload press is synthesized.
+          this.giveBrain(slot);
+          slot.input = idleInput(slot.yaw);
+          this.supplyUses.set(slot.index, { mode: 'commander', phase, connection: conn, cacheId: cache.id, item: msg.item, ticks: 0 });
+        }
+      }
     }
     this.broadcastSupplyProgress();
   }
@@ -3437,11 +3504,19 @@ export class Session {
       const transfer = this.supplyTransfer(slot, cache, use.item);
       const commander = use.mode === 'commander';
       const authorized = commander ? this.canCommandSupply(use.connection, slot) : slot.connection === use.connection;
-      if (!authorized || !this.canUseSupply(slot, cache, commander) || transfer.status !== 'transferred' ||
+      if (!authorized || !this.supplyAvailable(slot, commander) || transfer.status !== 'transferred' ||
+        (commander && this.supplyUnsafe(slot, use.phase === 'approach')) ||
         (!commander && !this.holdingInteract(slot) && use.ticks > 0)) {
-        this.supplyUses.delete(slot.index);
+        this.clearSupplyUse(slot.index);
         continue;
       }
+      if (use.phase === 'approach') {
+        if (!this.canUseSupply(slot, cache, true)) continue;
+        use.phase = 'collect';
+        slot.input = idleInput(slot.yaw);
+        this.followers[slot.index] = null;
+      }
+      if (!this.canUseSupply(slot, cache, commander)) { this.clearSupplyUse(slot.index); continue; }
       if (!commander && !this.holdingInteract(slot)) continue;
       use.ticks++;
       if (use.ticks * TICK_SECONDS + 1e-9 < SUPPLY_RULES.useSeconds * this.interactionScale(slot.index)) continue;
@@ -3449,7 +3524,7 @@ export class Session {
       slot.pouch = [...transfer.inventory.pouch];
       slot.kits = transfer.inventory.kits;
       slot.weaponState.ammo = transfer.inventory.ammo;
-      this.supplyUses.delete(slot.index);
+      this.clearSupplyUse(slot.index);
       // Only the changed caches travel; progress never resends stock or scenery.
       const prior = changed.findIndex((c) => c.id === cache.id);
       const state = { ...cache, stock: transfer.stock };
@@ -3528,7 +3603,7 @@ export class Session {
       }
     }
     for (const [index, use] of this.supplyUses) {
-      if (use.mode === 'commander' && !this.canCommandSupply(use.connection, this.slots[index]!)) this.supplyUses.delete(index);
+      if (use.mode === 'commander' && !this.canCommandSupply(use.connection, this.slots[index]!)) this.clearSupplyUse(index);
     }
     this.broadcastSupplyProgress();
     return changed;
@@ -3554,7 +3629,7 @@ export class Session {
     this.commanders[bot.index] = commander.index;
     const use = this.supplyUses.get(bot.index);
     if (use?.mode === 'commander' && !this.canCommandSupply(use.connection, bot)) {
-      this.supplyUses.delete(bot.index);
+      this.clearSupplyUse(bot.index);
       this.broadcastSupplyProgress();
     }
     this.broadcastRoster();
@@ -3903,7 +3978,7 @@ export class Session {
     this.bumpStat(from.index, 'ordersGiven');
     const destinations: { x: number; y: number; z: number }[] = [];
     for (const i of bots) {
-      if (this.commanderUsingSupply(this.slots[i]!)) this.supplyUses.delete(i);
+      if (this.commanderUsingSupply(this.slots[i]!)) this.clearSupplyUse(i);
       let point = asked;
       if (asked && msg.address.to !== 'slot') {
         let spaced: OrderPoint = asked;
@@ -4157,7 +4232,7 @@ export class Session {
       slot.interactWasHeld = held;
       if (!pressed) continue;
       if (slot.mounted) {
-        this.supplyUses.delete(slot.index);
+        this.clearSupplyUse(slot.index);
         this.dismount(slot);
         continue;
       }
@@ -4165,11 +4240,11 @@ export class Session {
       if (this.slots.some((t) => t.reviveBySlot === slot.index)) continue;
       const gun = this.emptyGunNear(slot.state, (def) => def.mountRangeM);
       if (gun) {
-        this.supplyUses.delete(slot.index);
+        this.clearSupplyUse(slot.index);
         this.mount(slot, gun);
       }
       // U-018: a weapon on the ground within reach; U-009: else the press may be for an upload terminal.
-      else if (this.takeOwnCharge(slot) || this.takePickupAt(slot) || this.startUploadAt(slot)) this.supplyUses.delete(slot.index);
+      else if (this.takeOwnCharge(slot) || this.takePickupAt(slot) || this.startUploadAt(slot)) this.clearSupplyUse(slot.index);
     }
     for (const enemy of this.enemyList) {
       if (enemy.inactive || enemy.mounted || isDead(enemy.health) || enemy.state.vault || enemy.def.friendly) continue;
@@ -5699,6 +5774,7 @@ export class Session {
         spread: this.spreadFor(s.index),
       })),
     );
+    this.validateCommanderSupplies();
     this.thinkBrains();
     this.driveBots();
     this.enemyHands(nowSeconds);
@@ -6582,9 +6658,24 @@ export class Session {
     for (const slot of this.slots) {
       const brain = slot.brain;
       if (!this.autonomous(slot) || !brain) continue;
-      if (this.commanderUsingSupply(slot)) {
-        slot.input = idleInput(slot.yaw);
-        this.followers[slot.index] = null;
+      const use = this.supplyUses.get(slot.index);
+      if (use?.mode === 'commander') {
+        const cache = this.supplyDefs.find((c) => c.id === use.cacheId)!;
+        if (use.phase === 'collect' || this.canUseSupply(slot, cache, true)) {
+          use.phase = 'collect';
+          slot.input = idleInput(slot.yaw);
+          this.followers[slot.index] = null;
+          continue;
+        }
+        const follower = this.followers[slot.index] ??= new PathFollower(mesh, this.collisionBoxes, undefined, this.moveConfig,
+          (from, to) => this.supplyPath(from, to));
+        const step = follower.step(slot.state, { goal: cache.feet, pace: 'walk' }, slot.yaw);
+        // Arrival is only a path result, never permission to collect through a slab/wall.
+        if (step.status === 'unreachable' || step.status === 'arrived' || follower.repaths >= 2) {
+          this.failCommanderSupply(slot, 'unreachable cache');
+          continue;
+        }
+        inputs[slot.index] = step.input;
         continue;
       }
       const intent = brain.intent;
@@ -6641,7 +6732,7 @@ export class Session {
 
   /** Clear all revive state owned by, or stored on, a reused slot. */
   private clearReviveStateForSlot(slotIndex: number): void {
-    if (this.supplyUses.delete(slotIndex)) this.broadcastSupplyProgress();
+    if (this.clearSupplyUse(slotIndex)) this.broadcastSupplyProgress();
     const slot = this.slots[slotIndex];
     if (slot) {
       slot.reviveBySlot = -1;
@@ -6716,7 +6807,7 @@ export class Session {
     // Advance every active interaction and complete it at the configured hold time.
     for (const target of this.slots) {
       if (!isDowned(target.health) || target.reviveBySlot < 0) continue;
-      this.supplyUses.delete(target.reviveBySlot);
+      this.clearSupplyUse(target.reviveBySlot);
       target.reviveProgressSeconds += TICK_SECONDS;
       if (target.reviveProgressSeconds >= this.reviveSeconds(target.reviveBySlot)) {
         this.awardXp(target.reviveBySlot, 'revive');
