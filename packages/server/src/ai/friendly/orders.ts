@@ -48,7 +48,7 @@ function orderOf(ctx: Body, kind: ActiveOrder['order']): ActiveOrder | null {
 }
 
 /** Every hand an order leaf owns, set: nothing it did not choose is left from another leaf. */
-function hands(frame: Frame, h: { intent?: { goal: Vec3; pace: 'walk' | 'sprint' } | null; fireAt?: number | null; crouch?: boolean; lookAt?: Vec3 | null; interact?: boolean }): void {
+function hands(frame: Frame, h: { intent?: { goal: Vec3; pace: 'walk' | 'sprint' } | null; fireAt?: number | null; crouch?: boolean; lookAt?: Vec3 | null; interact?: boolean; rise?: boolean }): void {
   const bb = frame.blackboard;
   bb.set('intent', h.intent ?? null);
   bb.set('fireAt', h.fireAt ?? null);
@@ -57,6 +57,7 @@ function hands(frame: Frame, h: { intent?: { goal: Vec3; pace: 'walk' | 'sprint'
   bb.set('crouch', h.crouch ?? false);
   bb.set('lookAt', h.lookAt ?? null);
   bb.set('interact', h.interact ?? false);
+  bb.set('rise', h.rise ?? false);
   bb.set('phase', null);
 }
 
@@ -320,11 +321,11 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
         const reach = DAMAGE.downed.reviveRangeM * SQUAD.bot.reviveReachFraction;
         // U-123: beside it on its floor; kneeling beneath a squadmate on the deck above revives nobody.
         if (!within(ctx.state, at, reach)) {
-          hands(frame, { intent: walk(at, ctx.state) });
+          hands(frame, { intent: walk(at, ctx.state), rise: true });
           return 'running';
         }
-        // Beside it: kneel and hold interact, as a human would.
-        hands(frame, { crouch: true, interact: true });
+        // Beside it: kneel and hold interact, as a human would — up from a held stance (U-153).
+        hands(frame, { crouch: true, interact: true, rise: true });
         return 'running';
       })
   );

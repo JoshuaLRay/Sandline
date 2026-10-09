@@ -277,8 +277,8 @@ export function registerRiflemanLeaves(registry: BrainRegistry): BrainRegistry {
           if (full) return 'success';
           // Down first, then the hands: the reload waits until it is on its
           // point and, behind low cover, until the crouch has taken, so it
-          // never starts with the head up.
-          const concealed = home && (point?.height !== 'low' || body.state.crouched);
+          // never starts with the head up. U-153: prone, lower still, is down too.
+          const concealed = home && (point?.height !== 'low' || body.state.crouched || body.state.prone);
           frame.blackboard.set('reload', concealed);
           return 'running';
         },

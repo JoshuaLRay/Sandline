@@ -1,7 +1,8 @@
 /**
  * The order wheel and the mark (T-3.29).
  *
- * Hold Q: a radial wheel of the five orders opens and the view stops turning;
+ * Hold Q: a radial wheel of the five orders and (U-153) the three stances a
+ * player holds bots in opens, and the view stops turning;
  * the mouse's motion while it is held picks a sector by direction. Release Q:
  * the order in that sector is sent, at the point under the converged aim —
  * the point the crosshair's own raycast found (`main.ts`), which is what the
@@ -9,17 +10,33 @@
  * move while it is open; a move or hold, at the feet on the floor there
  * (U-123, `orderPick.ts`). Released inside the deadzone, nothing is sent.
  * Number keys while Q is held choose who hears it: 1–6 a slot, 7 and 8 a
- * fireteam, 0 everyone (the default). A tap of F marks what is under the
- * crosshair: the enemy, if it is one, else the point.
+ * fireteam, 0 everyone (the default). A stance — Auto, Crouch, Prone — goes
+ * to the same addressee and needs nothing under the crosshair: hold Q, flick
+ * to prone, release, and the squad hits the dirt (U-153). A tap of F marks
+ * what is under the crosshair: the enemy, if it is one, else the point.
  *
  * Everything here that decides something is a pure function of its inputs,
  * so the tests can hold the mapping and the message to account without a
  * page. `OrderWheelView` is only the picture of `wheelChoice`.
  */
-import { ORDER_KINDS, type Message, type OrderAddress, type OrderKind, SQUAD } from '@sandline/shared';
+import { ORDER_KINDS, STANCE_KINDS, type Message, type OrderAddress, type OrderKind, SQUAD, type SquadStance } from '@sandline/shared';
 
-/** The wheel, clockwise from the top: one sector of 72° each, centred on its direction. */
-export const ORDER_WHEEL: readonly OrderKind[] = ORDER_KINDS;
+/** What a wheel sector gives: an order, or (U-153) a stance to hold bots in. The two name sets do not overlap. */
+export type WheelItem = OrderKind | SquadStance;
+/** What a release sends: an Order, or a Stance. */
+export type WheelCommand = Extract<Message, { kind: 'Order' | 'Stance' }>;
+
+/** The wheel, clockwise from the top: the orders, then the stances, one sector of 45° each, centred on its direction. */
+export const ORDER_WHEEL: readonly WheelItem[] = [...ORDER_KINDS, ...STANCE_KINDS];
+
+function isStance(item: WheelItem): item is SquadStance {
+  return (STANCE_KINDS as readonly string[]).includes(item);
+}
+
+/** How the wheel names a sector: a stance says it is one. */
+export function wheelLabel(item: WheelItem): string {
+  return item === 'auto' ? 'auto stance' : item;
+}
 /** Mouse travel, in pixels, before the wheel picks anything. Released inside it: cancelled. */
 export const WHEEL_DEADZONE_PX = 24;
 /**
@@ -57,8 +74,8 @@ export function wheelSector(p: WheelPointer): number {
   return Math.floor(turned / SECTOR_DEG) % ORDER_WHEEL.length;
 }
 
-/** The order under the pointer, or null inside the deadzone. */
-export function wheelChoice(p: WheelPointer): OrderKind | null {
+/** The order or stance under the pointer, or null inside the deadzone. */
+export function wheelChoice(p: WheelPointer): WheelItem | null {
   const sector = wheelSector(p);
   return sector < 0 ? null : ORDER_WHEEL[sector]!;
 }
@@ -125,10 +142,14 @@ export function buildOrder(kind: OrderKind, address: OrderAddress, aim: AimSubje
   }
 }
 
-/** The order the wheel was released on, built; null if it was cancelled or has nothing to act on. */
-export function orderFromRelease(release: WheelRelease, aim: AimSubject): Extract<Message, { kind: 'Order' }> | null {
-  const kind = wheelChoice(release.pointer);
-  return kind === null ? null : buildOrder(kind, release.address, aim);
+/**
+ * The order the wheel was released on, built — or the stance, which needs no aim; null if it was cancelled or has
+ * nothing to act on.
+ */
+export function orderFromRelease(release: WheelRelease, aim: AimSubject): WheelCommand | null {
+  const item = wheelChoice(release.pointer);
+  if (item === null) return null;
+  return isStance(item) ? { kind: 'Stance', address: release.address, stance: item } : buildOrder(item, release.address, aim);
 }
 
 /** The Mark message for a tap of F: the enemy under the crosshair, else the point. */
@@ -136,7 +157,7 @@ export function buildMark(aim: AimSubject): Extract<Message, { kind: 'Mark' }> {
   return { kind: 'Mark', point: { x: aim.point.x, y: aim.point.y, z: aim.point.z }, target: aim.enemy ? aim.netId : null };
 }
 
-/** The picture of the wheel: five labels round a centre that names the addressee. */
+/** The picture of the wheel: eight labels round a centre that names the addressee. */
 export class OrderWheelView {
   private readonly root: HTMLDivElement;
   private readonly items: HTMLDivElement[] = [];
@@ -149,9 +170,10 @@ export class OrderWheelView {
     ORDER_WHEEL.forEach((kind, i) => {
       const el = document.createElement('div');
       el.className = 'order-wheel-item';
-      el.textContent = kind;
+      el.textContent = wheelLabel(kind);
+      if (isStance(kind)) el.classList.add('stance');
       const rad = (i * SECTOR_DEG * Math.PI) / 180;
-      el.style.transform = `translate(-50%, -50%) translate(${Math.sin(rad) * 84}px, ${-Math.cos(rad) * 84}px)`;
+      el.style.transform = `translate(-50%, -50%) translate(${Math.sin(rad) * 96}px, ${-Math.cos(rad) * 96}px)`;
       this.root.append(el);
       this.items.push(el);
     });
@@ -167,6 +189,6 @@ export class OrderWheelView {
     if (!open) return;
     const sector = wheelSector(open.pointer);
     this.items.forEach((el, i) => el.classList.toggle('active', i === sector));
-    this.centre.textContent = `${sector < 0 ? 'cancel' : ORDER_WHEEL[sector]} → ${addressLabel(open.address)}`;
+    this.centre.textContent = `${sector < 0 ? 'cancel' : wheelLabel(ORDER_WHEEL[sector]!)} → ${addressLabel(open.address)}`;
   }
 }

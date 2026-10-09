@@ -50,6 +50,8 @@ export interface ServerConnectionEvents {
   /** T-3.27: a player's order to bots, and a mark — untrusted; the session checks both. */
   onAggression?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Aggression' }>) => void;
   onSpread?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Spread' }>) => void;
+  /** U-153: a player holding bots in a stance — untrusted; the session checks command. */
+  onStance?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Stance' }>) => void;
   onOrder?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Order' }>) => void;
   onMark?: (conn: ServerConnection, msg: Extract<Message, { kind: 'Mark' }>) => void;
   /** T-3.34: a seated player asking for the mission to start again. */
@@ -265,6 +267,10 @@ export class ServerConnection {
         this.lastActive = now;
         this.events.onSpread?.(this, msg);
         break;
+      case 'Stance':
+        this.lastActive = now;
+        this.events.onStance?.(this, msg);
+        break;
       case 'Order':
         this.lastActive = now;
         this.events.onOrder?.(this, msg);
@@ -355,6 +361,8 @@ export interface ClientConnectionEvents {
   /** T-3.27: every bot's current order, and every standing mark, as the host last sent them. */
   onAggressions?: (aggressions: Extract<Message, { kind: 'Aggressions' }>['aggressions']) => void;
   onSpreads?: (spreads: Extract<Message, { kind: 'Spreads' }>['spreads']) => void;
+  /** U-153: every slot's stance setting, as the host last sent it. */
+  onStances?: (stances: Extract<Message, { kind: 'Stances' }>['stances']) => void;
   onOrders?: (orders: Extract<Message, { kind: 'Orders' }>['orders']) => void;
   onMarks?: (marks: Extract<Message, { kind: 'Marks' }>['marks']) => void;
   /** T-3.34: where the mission stands. */
@@ -436,6 +444,9 @@ export class ClientConnection {
         break;
       case 'Spreads':
         this.events.onSpreads?.(msg.spreads);
+        break;
+      case 'Stances':
+        this.events.onStances?.(msg.stances);
         break;
       case 'Orders':
         this.events.onOrders?.(msg.orders);

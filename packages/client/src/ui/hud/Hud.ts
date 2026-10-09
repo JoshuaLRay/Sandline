@@ -104,15 +104,17 @@ export function createHud(parent: HTMLElement): PlayerHud {
 
   // -- Left: the squad. --
   const squad = el('ol', 'phud-squad', root);
-  const squadRowNodes: { root: HTMLElement; name: HTMLElement; cls: HTMLElement; order: HTMLElement; cmd: HTMLElement }[] = [];
+  const squadRowNodes: { root: HTMLElement; name: HTMLElement; cls: HTMLElement; order: HTMLElement; stance: HTMLElement; cmd: HTMLElement }[] = [];
   for (let i = 0; i < MAX_SLOTS; i += 1) {
     const row = el('li', 'phud-squad-row', squad);
     const name = el('span', 'phud-squad-name', row);
     const cls = el('span', 'phud-squad-class', row);
     const order = el('span', 'phud-squad-order', row);
+    // U-153: the stance a player holds this bot in, when not Auto.
+    const stance = el('span', 'phud-squad-stance', row);
     // U-025: who commands this bot.
     const cmd = el('span', 'phud-squad-cmd', row);
-    squadRowNodes.push({ root: row, name, cls, order, cmd });
+    squadRowNodes.push({ root: row, name, cls, order, stance, cmd });
   }
 
   // -- Centre: the hit marker and the damage arcs around the reticle. --
@@ -238,6 +240,7 @@ export function createHud(parent: HTMLElement): PlayerHud {
         setText(node.cls, row.classShort);
         // U-064: a prisoner and a capture under way say so where an order would be.
         setText(node.order, row.state === 'captured' ? 'captured' : row.taken ? 'being taken' : row.order);
+        setText(node.stance, row.stance);
         setText(node.cmd, row.commander ? `→ ${row.commander}` : '');
         setData(node.root, 'mine', row.mine ? 'yes' : 'no');
         setData(node.root, 'state', row.state);

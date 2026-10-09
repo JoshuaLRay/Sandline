@@ -144,6 +144,8 @@ export function registerFriendlyLeaves(registry: BrainRegistry): BrainRegistry {
       blackboard.set('reload', false);
       blackboard.set('lookAt', null);
       blackboard.set('interact', false);
+      // U-153: up from a held stance, to the mate and beside it.
+      blackboard.set('rise', true);
       const reach = mate.reachM * SQUAD.bot.reviveReachFraction;
       // U-123: beside the mate on its floor, not beneath it.
       if (!within(ctx.state, mate, reach)) {
@@ -177,6 +179,7 @@ export function registerFriendlyLeaves(registry: BrainRegistry): BrainRegistry {
       blackboard.set('interact', false);
       blackboard.set('crouch', false);
       blackboard.set('useKit', true);
+      blackboard.set('rise', true);
       return 'running';
     })
     .condition('downedMate', ({ ctx }) => isSquadBody(ctx) && ctx.squad.downedNear(ctx.index) !== null)
@@ -189,6 +192,7 @@ export function registerFriendlyLeaves(registry: BrainRegistry): BrainRegistry {
       blackboard.set('suppressAt', null);
       blackboard.set('reload', false);
       blackboard.set('lookAt', null);
+      blackboard.set('rise', true);
       const reach = mate.reachM * SQUAD.bot.reviveReachFraction;
       // U-123: beside the mate on its floor, not beneath it.
       if (!within(ctx.state, mate, reach)) {

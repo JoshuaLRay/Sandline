@@ -231,6 +231,9 @@
 .phud-squad-name { min-width: 92px; }
 .phud-squad-class { min-width: 20px; color: var(--amber, #f0b429); opacity: 0.85; font-size: 10px; letter-spacing: 0.1em; }
 .phud-squad-order { opacity: 0.8; text-transform: uppercase; font-size: 10px; letter-spacing: 0.1em; }
+/* U-153: a held stance (Crouch, Prone) — absent for Auto. */
+.phud-squad-stance { opacity: 0.8; text-transform: uppercase; font-size: 10px; letter-spacing: 0.1em; color: #9fd8a0; }
+.phud-squad-stance:empty { display: none; }
 /* U-025: who commands a bot; brighter for the bots you command. */
 .phud-squad-cmd { opacity: 0.6; font-size: 10px; }
 .phud-squad-row[data-mine='yes'] .phud-squad-cmd { opacity: 1; }

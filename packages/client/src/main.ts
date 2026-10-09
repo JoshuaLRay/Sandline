@@ -3046,7 +3046,7 @@ function frame(): void {
         grounded: sim?.grounded ?? true,
       }),
       objective: missionLine(net?.mission ?? null, net?.leverPull() ?? 0),
-      squad: squadRows(net?.roster ?? [], net?.slot ?? -1, vitalityOfSlot, net?.orders ?? []),
+      squad: squadRows(net?.roster ?? [], net?.slot ?? -1, vitalityOfSlot, net?.orders ?? [], net?.stances ?? []),
       compass: compassView(hudYaw, { x: rx, z: rz }, compassMarkers),
       hitMarker: hitMarkerOpacity(lastHitAt, hudNow),
       damage: damageDirectionView(damageHits, hudYaw, hudNow),

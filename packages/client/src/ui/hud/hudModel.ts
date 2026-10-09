@@ -13,7 +13,7 @@
  * compass reads that as north = +Z, east = -X, and a heading that grows as
  * the player turns right.
  */
-import { MAX_SLOTS, type BotOrder, type RosterEntry, type Vitality, classById } from '@sandline/shared';
+import { MAX_SLOTS, type BotOrder, type RosterEntry, type SquadStance, type Vitality, classById } from '@sandline/shared';
 import type { MarkerKind } from '../OrderMarkers.ts';
 
 // -- Vitals --------------------------------------------------------------
@@ -177,6 +177,8 @@ export interface SquadRow {
   taken: boolean;
   /** The order the bot is under, or '' (a human is under none). */
   order: string;
+  /** U-153: the stance a player holds the bot in, or '' for Auto (and for a human, who keeps their own). */
+  stance: '' | 'crouch' | 'prone';
   /** The class's two letters (T-4.27), '' before the host has assigned one. */
   classShort: string;
   /** U-025: for a bot, who commands it — "you", or their name; '' for a human, or a bot nobody commands. */
@@ -195,6 +197,7 @@ export function squadRows(
   mySlot: number,
   vitalityOf: (slot: number) => Vitality | null,
   orders: readonly BotOrder[],
+  stances: readonly SquadStance[] = [],
 ): SquadRow[] {
   const rows: SquadRow[] = [];
   for (let slot = 0; slot < MAX_SLOTS; slot += 1) {
@@ -210,6 +213,7 @@ export function squadRows(
       state: entry?.captured ? 'captured' : (vitalityOf(slot) ?? 'unknown'),
       taken: (entry?.takenBy ?? -1) >= 0,
       order: order?.order ?? '',
+      stance: human || (stances[slot] ?? 'auto') === 'auto' ? '' : (stances[slot] as 'crouch' | 'prone'),
       classShort: classById(entry?.classId ?? '')?.short ?? '',
       commander: by < 0 ? '' : by === mySlot ? 'you' : roster[by]?.name || `Player ${by + 1}`,
       mine: by >= 0 && by === mySlot,

@@ -30,10 +30,11 @@ import { Session, type Slot } from '../../session/Session.ts';
 import {
   DEFAULT_FOLLOW_CONFIG,
   type FollowConfig,
+  type FollowIntent,
+  type FollowPace,
   type FollowState,
   type FollowStatus,
   type LocomotionIntent,
-  type LocomotionPace,
   PathFollower,
   followPath,
   parseFollowConfig,
@@ -121,12 +122,12 @@ interface Walk {
 function walk(
   follow: FollowState,
   start: MoveState,
-  pace: LocomotionPace,
+  pace: FollowPace,
   world: typeof LOW,
   maxTicks = 600,
   tuning: FollowConfig = DEFAULT_FOLLOW_CONFIG,
 ): Walk {
-  const intent: LocomotionIntent = { goal: follow.path.points.at(-1)!, pace };
+  const intent: FollowIntent = { goal: follow.path.points.at(-1)!, pace };
   const states: MoveState[] = [];
   const inputs: MoveInput[] = [];
   const statuses: FollowStatus[] = [];
@@ -173,6 +174,19 @@ describe('followPath over a fixture (T-3.05)', () => {
     // vault on the tick crouch is let go, and a held jump then hops.
     expect(w.states[first - 1]!.crouched).toBe(false);
     expect(w.states.at(-1)!.crouched).toBe(true);
+  });
+
+  it('crawls the ordinary legs prone (U-153), stands for the vault, and goes back to ground after it', () => {
+    const w = walk(startFollow(OVER, 0), createMoveState(0, 0, -4), 'prone', LOW, 1200);
+    expect(w.arrived).toBe(true);
+    expect(vaultStarts(w.start, w.states)).toBe(1);
+    expect(hops(w.states)).toBe(0);
+    const first = w.states.findIndex((s) => s.vault);
+    expect(w.states.slice(0, first - 2).every((s) => s.prone)).toBe(true);
+    expect(w.states[first - 1]!.prone).toBe(false);
+    expect(w.states.at(-1)!.prone).toBe(true);
+    // Never faster than a crawl off the wall.
+    for (let i = 1; i < first - 2; i++) expect(across(w.states[i - 1]!, w.states[i]!)).toBeLessThanOrEqual(DEFAULT_MOVE_CONFIG.proneSpeed * TICK_SECONDS + 1e-9);
   });
 
   it('leaves the vault leg when the vault lands, wherever it lands', () => {
