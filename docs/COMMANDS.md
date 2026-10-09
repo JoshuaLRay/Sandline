@@ -1,6 +1,6 @@
 # Development and QA commands
 
-On-demand reference moved from `CLAUDE.md`; consult only relevant rows.
+On-demand reference for `AGENTS.md`; consult only relevant rows (grep for the U-ID or command).
 Paths in command descriptions such as `client/`, `tools/` and `data/` are
 package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data`).
 

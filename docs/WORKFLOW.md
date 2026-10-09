@@ -1,86 +1,84 @@
-# Working with Claude Code on Sandline
+# Driving Sandline with AI agents
 
-The repository is the durable project memory. Keep the short routing rules in
-`CLAUDE.md`, the ordered queue in `BACKLOG.md`, and each task's scope/evidence in
-one `docs/backlog/U-NNN.md` file. Claude reads one card and the relevant code;
-it does not need the full historical `PLAN.md` or every past conversation.
+This guide is for the owner. Sandline is built only by AI coding agents (Claude
+Code and ChatGPT Codex), so the repository is the project's memory: agents start
+every chat with no recollection of the last one and rebuild context from these
+files. The structure below keeps that rebuild small and keeps every agent
+pointed at the same game: **Conflict: Desert Storm, with a squad of six**.
 
-## One-time setup
+## How the files fit together
 
-1. Use a current clone of `https://github.com/JoshuaLRay/Sandline/` with these
-   workflow files merged, then launch Claude Code in that checkout (or select this
-   repository in a hosted Claude Code session). A URL alone in an unrelated
-   working directory does not automatically load this repository's instructions.
-2. Give that environment normal GitHub read/write/PR access; use GitHub CLI (`gh`)
-   or an available GitHub integration for PRs/checks. Install Node >=22 and use
-   the pnpm version pinned in `package.json`; run `pnpm install --frozen-lockfile`.
-3. Confirm Claude sees the root `CLAUDE.md` using its context display or by asking
-   it to state this repo's task-routing rules. Follow normal tool permissions;
-   this setup requires no permission bypass or external issue-tracking service.
-
-These are repository instructions, not a background service or a guarantee that
-an agent cannot make a mistake. Evidence, checks and explicit statuses make its
-work reviewable. No custom plugin is required for either natural-language prompt.
+| File | Owns | Who reads it |
+|---|---|---|
+| `AGENTS.md` | Goal, request routing, read budget, delivery policy, engineering rules, traps | Every agent, automatically (Claude via `CLAUDE.md`) |
+| `CLAUDE.md` | `@AGENTS.md` plus a few Claude-only notes | Claude Code, automatically |
+| `docs/VISION.md` | What the game is: pillars P1–P7, six-for-four mapping, deliberate differences | Agents making design or priority choices |
+| `docs/design/CONFLICT-PARITY.md` | Feature-by-feature: the series vs Sandline, and the gaps in order | Agents choosing or scoping new work; you |
+| `docs/adr/021-conflict-gameplay-reference.md` | The rule: unspecified detail → do what Conflict did, adapted to six | Agents settling details without asking you |
+| `BACKLOG.md` | The ordered queue and every task's status (active rows only) | Every task |
+| `docs/backlog/U-NNN.md` | One task's scope, acceptance and evidence | The agent doing that task |
+| `docs/CODEMAP.md` | Where each system lives in the code | Agents before searching |
+| `.agents/skills/*/SKILL.md` | Procedures: next task, record feedback, handoff box | Codex natively; Claude via `/next-task` etc. |
+| `docs/COMMANDS.md` | Every dev/QA/generator command | On demand |
+| `TASKS.md`, `PLAN.md`, `docs/BUGS.md`, `docs/backlog/archive/` | History | Only for an explicit legacy ID or a dependency check |
 
 ## Prompts
 
-| You say | Claude should do |
+These work the same in Claude Code and Codex. The repository URL is optional
+when the chat is already attached to the repository.
+
+| You want | Say |
 |---|---|
-| `Complete the next task for https://github.com/JoshuaLRay/Sandline/` | Refresh work/PR state, select the first eligible READY leaf, implement, test, create a PR and follow its latest CI to green. |
-| `https://github.com/JoshuaLRay/Sandline/ The AR reload goes silent after retrying a checkpoint.` | Save/extend a task and its acceptance criteria first, then ask whether you want it completed now. |
-| `https://github.com/JoshuaLRay/Sandline/ Fix that reload problem now.` | Record the report, then implement its task without a redundant confirmation. |
-| `Complete U-005 and merge when all checks pass.` | Execute that unblocked task, verify current checks/acceptance, then merge; never merge a stale head. |
-| `Move U-019 ahead of the audio work.` | Reorder the queue; preserve task IDs and dependencies. |
-| `Work on T-5.06.` | Use the legacy milestone task and its existing acceptance criteria. |
+| The next task, merged when green | `Complete the next task for https://github.com/JoshuaLRay/Sandline` |
+| A specific task | `Complete U-150.` |
+| Several in a row (one PR each) | `Complete the next three tasks.` |
+| Record a bug or idea, then decide | `https://github.com/JoshuaLRay/Sandline The AR reload goes silent after a checkpoint retry.` |
+| Record and fix in one go | `… Fix that reload problem now.` |
+| Move toward Conflict | `Queue the next Conflict parity gap.` or `Build the RPG enemy from the parity tracker.` |
+| Decide something an agent asked about | `Decision for U-144: <your answer>. Record it and continue.` |
+| Give a human verdict | `I played the road section: U-149 road layout approved.` / `…rejected because <reason>.` |
+| Reorder | `Move U-142 ahead of U-150.` |
+| Pause merging | `Hold merges until I say otherwise.` |
+| Hand over to a fresh chat | `Give me a next task context transfer text box.` |
+| Status only | `What is blocked and why?` |
 
-Default delivery is a verified PR in REVIEW. If you want “complete the next
-task” to include merging every time, explicitly give Claude that standing
-instruction. Once given, it persists for that session; to make it apply across
-fresh sessions, record the approved policy here/`CLAUDE.md`. This setup does not
-assume an approval that was not given. A merge never substitutes for a pending
-human quality or design verdict.
+Start a **new chat for each task** (or each small batch). Long chats carry stale
+context and cost more per step; the handoff box makes the switch cheap.
 
-## Why this structure
+## What still needs you
 
-| File | Owns |
-|---|---|
-| `CLAUDE.md` | Short routing, engineering rules, where to read next |
-| `BACKLOG.md` | One authoritative priority/order/status/dependency index |
-| `docs/backlog/U-NNN.md` | Problem, focused scope, verified code entry points, acceptance, tests and handoff |
-| `.claude/commands/next-task.md` | Selection, implementation, CI, PR and completion procedure |
-| `.claude/commands/report-feedback.md` | Record-first intake and the implementation question |
-| `docs/COMMANDS.md` | Detailed commands loaded only as needed |
-| `TASKS.md`, `PLAN.md`, `docs/BUGS.md` | Preserved legacy milestone/bug history; explicit links to ongoing work |
+Agents can do all engineering, testing and merging. Three things they cannot
+supply, and the queue says so instead of guessing:
 
-Issues/Projects can be added later for multi-person assignment and dashboards.
-Do not mirror the entire backlog into another editable system: duplicate statuses
-cost context and drift. Use PRs for implementation evidence and review now.
+1. **Human verdicts** on how something plays, looks or sounds. These are now
+   batched on each epic's verification card (for example the mission's final
+   review), so a pending verdict no longer stops the next construction task.
+   When you review, tell the agent the verdict; it records it.
+2. **Owner decisions** that neither an ADR nor the Conflict reference answers
+   (ADR-021). Agents resolve the rest themselves and mark them
+   `Conflict default: …` in the card so you can overrule them cheaply.
+3. **Assets that must be real**, such as voice recordings (ADR-017) or spending
+   money (regional hosting, T-4.30).
 
-## Initial triage
+## Policies in force
 
-First: U-001, the intermittent mission enemy-spawn/pressure failure. Then firing
-origins, tracer/flash alignment, AR sights, direct weapon keys, reload animation,
-reload sound and local gun panning. Interaction-driven missions, loot and the
-six-character squad are split into dependent tasks. The order is a recommendation,
-not a claim about defects already reproduced.
+- **Merge when green** (your instruction of 2026-10-08): a task's PR merges once
+  all four required CI jobs pass on its latest head. Say "hold merges" to stop.
+- **Dependencies on merged work don't wait for your verdict** (adopted
+  2026-10-09 with this guide): a merged task awaiting review (REVIEW) satisfies
+  its dependents unless a card says otherwise. If you reject it later, the fix
+  is a new task. Revert this line in `AGENTS.md` if you prefer strict gating.
+- **One focused task per PR**, its evidence in its card, one line in
+  `docs/CHANGELOG.md`.
 
-Two real content/design constraints are visible in the queue:
+## Codex specifics
 
-- ADR-017's current voice approach needs actual recordings. Claude can extend and
-  run the processing/routing code, but this setup does not promise usable voices
-  from the existing empty voice library. Supply recordings or explicitly change
-  the sourcing decision; radio chirps are not completed dialogue.
-- The six roles are specified; names and individual skills are not. U-019 asks
-  Claude to produce a concrete proposal for approval, then U-023 breaks those
-  skills into focused implementation tasks. Support's speed amount and secondary
-  weapon/control details stay explicit rather than becoming accidental defaults.
-
-Visual/audio work keeps objective engineering checks separate from your judgement
-of the result. Pending feedback never blocks unrelated READY tasks. Existing
-milestone gates remain honest; having a playable slice is not a fabricated sign-off.
+[docs/CODEX.md](CODEX.md) has the environment setup. Codex cloud tasks may not
+be able to watch CI or merge; the agent then stops at a verified PR and says so,
+and you (or a Claude session) merge it.
 
 ## References
 
-Claude Code's official documentation describes [project instructions and their
-loading](https://code.claude.com/docs/en/memory) and recommends [concise instructions
-and explicit verification](https://code.claude.com/docs/en/best-practices).
+Claude Code: [project memory and imports](https://code.claude.com/docs/en/memory),
+[skills](https://code.claude.com/docs/en/skills). Codex: AGENTS.md discovery and
+skills in [the openai/codex repository](https://github.com/openai/codex).

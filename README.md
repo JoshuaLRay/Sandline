@@ -1,16 +1,20 @@
 # SANDLINE
 
-Browser-based 6-player co-op squad shooter. The playable vertical slice is built;
-ongoing upgrades and bugs live in [BACKLOG.md](BACKLOG.md). Legacy milestone
-history and outstanding human acceptance gates remain in [TASKS.md](TASKS.md)
-and [PLAN.md](PLAN.md); architecture decisions are in [docs/adr/](docs/adr/).
+*Conflict: Desert Storm* with a squad of six: a browser-based co-op squad
+shooter where one to six players lead, command and switch between six specialist
+soldiers, with bots in the empty slots. Afghanistan 2001–02, original IP.
+[What the game is](docs/VISION.md) · [how close it is to the series](docs/design/CONFLICT-PARITY.md).
 
-**Working with Claude Code:** start with [the workflow guide](docs/WORKFLOW.md).
-Agents read [CLAUDE.md](CLAUDE.md), then the ongoing queue and one task card.
-The hosted QA endpoint is `wss://sandline-host.fly.dev`.
+The playable vertical slice is built; ongoing upgrades and bugs live in
+[BACKLOG.md](BACKLOG.md). Legacy milestone history and outstanding human
+acceptance gates remain in [TASKS.md](TASKS.md) and [PLAN.md](PLAN.md);
+architecture decisions are in [docs/adr/](docs/adr/).
 
-**Working with Codex (including iOS):** see [the environment setup guide](docs/CODEX.md).
-Codex loads [AGENTS.md](AGENTS.md), which points to the same repository rules.
+**Working with AI agents (Claude Code or Codex, including iOS):** start with
+[the workflow guide](docs/WORKFLOW.md). Every agent reads [AGENTS.md](AGENTS.md)
+(Claude through [CLAUDE.md](CLAUDE.md)), then the queue and one task card.
+Codex environment setup: [docs/CODEX.md](docs/CODEX.md). The hosted QA endpoint
+is `wss://sandline-host.fly.dev`.
 
 ## Quick start
 

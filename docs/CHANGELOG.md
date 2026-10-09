@@ -450,3 +450,5 @@ Format: `T-<id> — <what changed>`
 - U-148 — Add mobile commander bot/cache/item choices, host-confirmed recipient inventory, stock and progress, safe cancellation and real Session/browser review fixtures; retain the new physical-phone acceptance in REVIEW ([#321](https://github.com/JoshuaLRay/Sandline/pull/321)).
 
 - U-149 — Split U-139 into road support, fight geometry, tank ingress/sweep and return-protection leaves; construct exact y8 road shoulders/aprons with reserved basement/bridge volumes, real six-start nav/controller travel and seven reproducible captures; retain new map/play acceptance in REVIEW ([#322](https://github.com/JoshuaLRay/Sandline/pull/322)).
+
+- Docs — Agent workflow for Claude Code and Codex: `AGENTS.md` is the single shared brief (`CLAUDE.md` imports it), procedures are tool-neutral skills in `.agents/skills/`, ADR-021 makes the Conflict series the gameplay reference, and `docs/VISION.md`, `docs/design/CONFLICT-PARITY.md` and `docs/CODEMAP.md` give the goal, the gaps and the code map; 122 DONE backlog rows archived; merged-but-unreviewed work no longer blocks dependents.

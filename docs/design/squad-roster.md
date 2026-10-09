@@ -69,7 +69,7 @@ The six IDs are unique, lowercase and stable. They are what saves, the wire and 
 
 The owner deferred skills on 2026-09-29 ("they can come in a later version of the game, maybe"). Nothing below is approved or scheduled, and no task builds it.
 
-Each skill is **bounded**: one effect, a duration, a cooldown, and a range where it has one. It is data-driven, as weapons and classes are (CLAUDE.md rule 3), and usable by a bot through the same path as a human (ADR-001: the squad plays the same with any number of humans). The numbers are starting points for a playtest, not tuning.
+Each skill is **bounded**: one effect, a duration, a cooldown, and a range where it has one. It is data-driven, as weapons and classes are (AGENTS.md rule 3), and usable by a bot through the same path as a human (ADR-001: the squad plays the same with any number of humans). The numbers are starting points for a playtest, not tuning.
 
 | ID | Skill *(proposal)* | Effect | Duration | Cooldown | Bot use |
 |---|---|---|---|---|---|
