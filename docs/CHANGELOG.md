@@ -456,3 +456,5 @@ Format: `T-<id> — <what changed>`
 - U-153 — Squad stance orders: the order wheel holds a soldier, fireteam or the squad in Auto, Crouch or Prone; bots keep it while holding, moving and firing and rise only to vault, revive, heal or use a cache for their commander; the squad HUD shows a held stance; PROTOCOL_VERSION 70 ([#324](https://github.com/JoshuaLRay/Sandline/pull/324)).
 
 - U-156 — Qalat Road back inside ADR-013's 30 s first-playable budget: the tank model moves to a new deferred asset pack fetched once play can start (its stand-in draws any earlier tank); `check:packs` keeps every vehicle in a pack ([#325](https://github.com/JoshuaLRay/Sandline/pull/325)).
+
+- U-154 — Move and hold orders keep a facing: the order carries the way the ordering player was looking, and a bot there with no threat watches that way and keeps it while holding; threats, fire discipline and attack orders still win, faceless orders are unchanged, and the order marker draws an arrow; PROTOCOL_VERSION 71 ([#326](https://github.com/JoshuaLRay/Sandline/pull/326)).

@@ -72,7 +72,7 @@ canonical when this documentation PR merges.
 | [U-150](docs/backlog/U-150.md) | Build and screen the three road fights with fixed cover and landmarks | Map implementation | P1 | BLOCKED | U-149 — Decision: accept U-149 as the road foundation now and judge the road's look and play once its fights exist (U-139)? — default: agree | — |
 | [U-153](docs/backlog/U-153.md) | Squad stance orders: stay low and hit the dirt | Squad command (Conflict parity) | P1 | DONE | — | [#324](https://github.com/JoshuaLRay/Sandline/pull/324) |
 | [U-151](docs/backlog/U-151.md) | Construct screened X ingress and prove the rotating tank sweep | Map implementation | P1 | BLOCKED | U-150 | — |
-| [U-154](docs/backlog/U-154.md) | Move and hold orders keep a facing | Squad command (Conflict parity) | P2 | READY | — | — |
+| [U-154](docs/backlog/U-154.md) | Move and hold orders keep a facing | Squad command (Conflict parity) | P2 | DONE | — | [#326](https://github.com/JoshuaLRay/Sandline/pull/326) |
 | [U-152](docs/backlog/U-152.md) | Build return shelters and prove rocket clearance and blast protection | Map implementation | P1 | BLOCKED | U-150, U-151 | — |
 | [U-155](docs/backlog/U-155.md) | RPG gunner enemy | Enemy AI (Conflict parity) | P2 | READY | — | — |
 | [U-140](docs/backlog/U-140.md) | Construct the continuous ridge stairs, shelves and service bridge | Map implementation | P1 | BLOCKED | U-139 | — |
