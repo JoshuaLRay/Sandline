@@ -24,7 +24,7 @@ describe('orders on the wire (T-3.27)', () => {
     // The knife is a new wire weapon and moves the pouch indexes (42); spectator requests and acknowledgements are 43.
     // 68 combines U-133's finite-cache messages and U-143's incompatible-restore gate. U-153's squad stance orders are 70.
     // U-154's order facing (on an Order and on each of the Orders broadcast) is 71.
-    expect(PROTOCOL_VERSION).toBe(71);
+    expect(PROTOCOL_VERSION).toBe(72);
   });
 
   it('round-trips every order kind to every kind of addressee', () => {

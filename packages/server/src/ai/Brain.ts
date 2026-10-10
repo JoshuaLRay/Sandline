@@ -24,6 +24,7 @@ import { registerPostureLeaves } from './actions/posture.ts';
 import { registerCaptureLeaves } from './actions/capture.ts';
 import { registerLeverLeaves } from './actions/lever.ts';
 import { registerArmourLeaves } from './actions/armour.ts';
+import { registerRpgLeaves } from './actions/rpg.ts';
 import { registerEscortLeaves } from './actions/escort.ts';
 
 /** Ticks between a brain's thoughts: 30 Hz sim, 10 Hz brains. */
@@ -84,6 +85,17 @@ export interface BrainMemory {
   rise: boolean;
   /** U-011: an enemy sent to a lever stays off it until this (seconds) once it has come under fire: time to reach cover. */
   leverBackOffUntil: number;
+  /** U-157: a launcher carrier (the RPG gunner) has its rifle in its hands rather than its launcher. */
+  rifle: boolean;
+  /**
+   * U-157: its rocket's wind-up — standing on a point locked until `until` (seconds), at the aim it will launch with
+   * (table units) — or null. The session replicates it as `aiming`; the launch itself is a `throwAt`.
+   */
+  rocketTell: { until: number; point: NavPoint; yaw: number; pitch: number } | null;
+  /** U-157: the earliest it searches for a rocket shot again, seconds. */
+  rocketNextAt: number;
+  /** U-157: where it last fired a rocket from, until it has moved to other cover; null when it has. */
+  firedFrom: NavPoint | null;
   /** T-3.20: a leaf's own step through a manoeuvre (a peek's out, fire, back), and the tick it began. */
   phase: string | null;
   phaseAt: number;
@@ -91,7 +103,7 @@ export interface BrainMemory {
 
 /** A blackboard as every brain starts it. */
 export function freshMemory(): BrainMemory {
-  return { intent: null, fireAt: null, crouch: false, reload: false, lookAt: null, suppressAt: null, throwAt: null, detonate: null, dodge: null, throwNextAt: 0, flankedAt: null, relocatedAt: -Infinity, interact: false, useKit: false, rise: false, leverBackOffUntil: 0, phase: null, phaseAt: 0 };
+  return { intent: null, fireAt: null, crouch: false, reload: false, lookAt: null, suppressAt: null, throwAt: null, detonate: null, dodge: null, throwNextAt: 0, flankedAt: null, relocatedAt: -Infinity, interact: false, useKit: false, rise: false, leverBackOffUntil: 0, rifle: false, rocketTell: null, rocketNextAt: 0, firedFrom: null, phase: null, phaseAt: 0 };
 }
 
 /** The entity a brain drives, read live: the session's own slot, never a copy. */
@@ -115,14 +127,15 @@ export function brainPhase(netId: number): number {
  * the rifleman's fight (T-3.20, `actions/rifleman.ts`) and its grenades
  * (T-3.22, `actions/grenade.ts`), which fail on a body that is not a fighter;
  * the friendly bot's `follow` and revive (T-3.25/26, `actions/friendly.ts`)
- * and its orders (T-3.28, `friendly/orders.ts`); an enemy's lever (U-010, `actions/lever.ts`).
+ * and its orders (T-3.28, `friendly/orders.ts`); an enemy's lever (U-010, `actions/lever.ts`); the RPG gunner's
+ * launcher (U-157, `actions/rpg.ts`).
  */
 export function createBrainRegistry(): BrainRegistry {
   const registry = new BtRegistry<BrainBody, BrainMemory>().action('idle', ({ blackboard }) => {
     blackboard.set('intent', null);
     return 'running';
   });
-  return registerEscortLeaves(registerArmourLeaves(registerCaptureLeaves(registerLeverLeaves(registerPostureLeaves(registerOrderLeaves(registerFriendlyLeaves(registerGrenadeLeaves(registerRiflemanLeaves(registry)))))))));
+  return registerRpgLeaves(registerEscortLeaves(registerArmourLeaves(registerCaptureLeaves(registerLeverLeaves(registerPostureLeaves(registerOrderLeaves(registerFriendlyLeaves(registerGrenadeLeaves(registerRiflemanLeaves(registry))))))))));
 }
 
 let idleTree: BrainTree | null = null;

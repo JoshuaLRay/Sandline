@@ -87,6 +87,8 @@ export interface GroupMember {
   readonly target: number | null;
   /** T-3.23: the role its archetype is handed first (the MG suppresses), or null. */
   readonly prefers?: GroupRole | null;
+  /** U-157: false for an archetype whose tree takes no role (the RPG gunner fights with its launcher): never handed one. */
+  readonly takesRoles?: boolean;
   canReach?(point: NavPoint): boolean;
   pathWithin?(from: NavPoint, to: NavPoint, pathOf?: PathOf): NavPath | null;
 }
@@ -277,12 +279,15 @@ export class EnemyGroup {
    * can. T-3.23: a member that prefers to suppress (the MG) is never the
    * flanker, and of the rest is the suppressor if any is; a group of nothing
    * but such members gets no roles. Nothing is assigned when no flank point exists — a suppressor alone
-   * pins nobody the group can then kill.
+   * pins nobody the group can then kill. U-157: a member that takes no role (the RPG gunner) is neither, and
+   * two of the rest are needed.
    */
   private assign(living: readonly GroupMember[], world: GroupWorld): void {
     const feet = this.targetFeet;
     const cover = world.cover;
     if (!feet || !cover) return;
+    const able = living.filter((m) => m.takesRoles !== false);
+    if (able.length < 2) return;
     const { flankMinM, flankMaxM, flankExposureCost } = this.config;
     const candidates = cover.points
       .map((point, index) => ({ point, index }))
@@ -299,7 +304,7 @@ export class EnemyGroup {
     let best = null as { member: GroupMember; point: CoverPoint; index: number; cost: number; route: NavPoint[] } | null;
     // A member that would rather suppress (the MG) is not sent round, while anyone else can be.
     const rather = (m: GroupMember) => m.prefers === 'suppressor';
-    const flankers = living.some((m) => !rather(m)) ? living.filter((m) => !rather(m)) : [];
+    const flankers = able.some((m) => !rather(m)) ? able.filter((m) => !rather(m)) : [];
     // U-083: a flank's goal is one of the cover points nearest a flanker (a long way round costs more than a short one,
     // so the cheapest is among them), not every point in the ring round the target: pricing each took a ray per half
     // metre of its route, hundreds of points at a time.
@@ -325,7 +330,7 @@ export class EnemyGroup {
     if (!best) return;
     const chosen = best;
     const aim = this.suppressPoint()!;
-    const others = living.filter((m) => m.netId !== chosen.member.netId);
+    const others = able.filter((m) => m.netId !== chosen.member.netId);
     const near = (m: GroupMember) => Math.hypot(m.state.x - feet.x, m.state.z - feet.z);
     // One whose archetype suppresses first, if there is one (T-3.23); of those, one that sees the spot.
     const preferred = others.filter((m) => m.prefers === 'suppressor');

@@ -10,7 +10,7 @@
  * slot, a test's bare body) is simply not a fighter, and the fighting leaves
  * fail on it rather than throw.
  */
-import { DEFAULT_MUZZLE_RIG, type ProjectileDef, type ProjectileWorld, type SuppressionState, type TargetMemory, type WeaponDef, type WeaponState, type WorldBox } from '@sandline/shared';
+import { DEFAULT_MUZZLE_RIG, type EnemyLauncher, type ProjectileDef, type ProjectileWorld, type SuppressionState, type TargetMemory, type WeaponDef, type WeaponState, type WorldBox } from '@sandline/shared';
 import type { BrainBody } from '../Brain.ts';
 import type { CoverSystem } from '../cover.ts';
 import type { EnemyGroup } from '../group.ts';
@@ -69,6 +69,8 @@ export interface CombatBody extends BrainBody {
   leverJob?(): { x: number; y: number; z: number; reachM: number } | null;
   /** U-062: the downed character the session has sent it to take prisoner (where they lie, and how near counts), or absent/null: no job. */
   captureJob?(): { x: number; y: number; z: number; reachM: number } | null;
+  /** U-157: its archetype's row, for the launcher an RPG gunner carries; absent on a body with no archetype (a bot). */
+  readonly def?: { readonly launcher: EnemyLauncher | null };
 }
 
 export function isCombatBody(body: BrainBody): body is CombatBody {

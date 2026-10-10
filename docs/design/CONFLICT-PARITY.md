@@ -96,7 +96,7 @@ facts come from the DS1 manual and contemporary reviews (sources at the end);
 
 | ID | Feature | Series | Sandline | Status |
 |---|---|---|---|---|
-| CP-41 | Enemy archetypes | Riflemen, PKM gunners, RPG troops; snipers and officers *unverified* | Rifleman, MG; RPG queued as U-155; `sniper`, `officer` reserved, not built | 🟡 |
+| CP-41 | Enemy archetypes | Riflemen, PKM gunners, RPG troops; snipers and officers *unverified* | Rifleman, MG; RPG gunner fights (U-157), its drawing queued (U-158); `sniper`, `officer` reserved, not built | 🟡 |
 | CP-42 | Alarm and reinforcement | Being seen raises a base alarm; everyone comes | Sight, sound and memory perception; staged reserves (U-131); no alarm state | 🟡 |
 | CP-43 | Enemies use cover, suppress and flank | Weak in the series | Yes (T-3.20–T-3.23, U-086) | ✅ better |
 | CP-44 | Per-soldier HUD panels | Health, order, fire-at-will, controlled soldier, radio flash | Six squad rows with state and current order | ✅ |
@@ -113,7 +113,7 @@ Mission 1 build (owner direction, 2026-10-09) and marked **Queued** below.
 | # | Gap | Rows | Size | Why now |
 |---|---|---|---|---|
 | G-1 | Whole-squad stance order ("hit the dirt"), form-up, and facing on move orders | CP-07, CP-09 | S | Done: stance (U-153), facing (U-154) |
-| G-2 | RPG enemy archetype | CP-41 | M | **Queued: U-155** |
+| G-2 | RPG enemy archetype | CP-41 | M | **U-155: U-157 done; U-158 (presentation) queued** |
 | G-3 | Alarm state, unaware sentries, suppressed weapons | CP-19, CP-42 | M | Stealth openings and the "sentry" play of the series |
 | G-4 | Order a soldier to man a gun or plant/detonate a charge | CP-11 | M | Bots must do what humans do (VISION adaptation 2) |
 | G-5 | Ammo transfer between soldiers | CP-04 | S | Series "Give"; scarcity without supply caches everywhere |

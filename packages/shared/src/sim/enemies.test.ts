@@ -64,11 +64,31 @@ const PARSED_EXTRAS = { friendly: false, prefersRole: null, deploy: null, launch
 
 const table = (row: Record<string, unknown>) => ({ rifleman: row });
 
+/** A valid launcher block of our own (U-157). */
+const LAUNCHER = {
+  projectile: 'rocket',
+  rockets: 3,
+  minRangeM: 10,
+  maxRangeM: 50,
+  rifleHysteresisM: 2,
+  stillSeconds: 1,
+  knownSeconds: 2,
+  tellSeconds: 1,
+  reloadSeconds: 8,
+  groupMin: 2,
+  groupFraction: 0.7,
+  coverNearM: 3,
+  reachFraction: 0.5,
+  safetyMarginM: 1,
+  relocateM: 5,
+  retrySeconds: 1,
+};
+
 /** One row of each of the five shapes (T-3.23): the rifleman's none, and each of the others' own block. */
 const SHAPED: Record<string, Record<string, unknown>> = {
   rifleman: ROW,
   mg: { ...ROW, id: 'mg', prefersRole: 'suppressor', deploy: { seconds: 1.5, movingSpeedMps: 0.2 } },
-  rpg: { ...ROW, id: 'rpg', launcher: { projectile: 'rocket' } },
+  rpg: { ...ROW, id: 'rpg', launcher: LAUNCHER },
   sniper: { ...ROW, id: 'sniper', weapon: 'marksman', scope: { aimSeconds: 2 } },
   officer: { ...ROW, id: 'officer', weapon: 'sidearm', prefersRole: 'flanker', command: { radiusM: 30 } },
   tank: {
@@ -97,14 +117,19 @@ describe('enemy archetypes (T-3.10)', () => {
     expect(parseEnemyTable(table(ROW))['rifleman']).toEqual({ ...ROW, ...PARSED_EXTRAS });
   });
 
-  it('validates the committed data: the two slice archetypes (ADR-015), the tank (U-066) and the escorted character (U-075), none downable', () => {
-    expect(Object.keys(ENEMIES)).toEqual(['rifleman', 'mg', 'tank', 'pow']);
+  it('validates the committed data: the two slice archetypes (ADR-015), the RPG (U-157), the tank (U-066) and the escorted character (U-075), none downable', () => {
+    expect(Object.keys(ENEMIES)).toEqual(['rifleman', 'mg', 'rpg', 'tank', 'pow']);
     expect(ENEMY_IDS.slice(0, 2)).toEqual(['rifleman', 'mg']);
     expect(getEnemy('rifleman').tree).toBe('rifleman');
     expect(getEnemy('mg').tree).toBe('mg');
     expect(getEnemy('mg').weapon).toBe('lmg');
     expect(getEnemy('mg').prefersRole).toBe('suppressor');
     expect(getEnemy('mg').deploy?.seconds).toBeGreaterThan(0);
+    // The RPG: its own tree, the enemy rifle for close range, and the squad's rocket in its launcher.
+    expect(getEnemy('rpg').tree).toBe('rpg');
+    expect(getEnemy('rpg').weapon).toBe('carbine');
+    expect(getEnemy('rpg').launcher?.projectile).toBe('rocket');
+    expect(getEnemy('rpg').launcher!.reloadSeconds).toBeGreaterThan(getEnemy('rpg').launcher!.tellSeconds);
     for (const id of Object.keys(ENEMIES)) {
       const def = getEnemy(id);
       expect(def.downable).toBe(false);
@@ -114,7 +139,7 @@ describe('enemy archetypes (T-3.10)', () => {
     expect(ENEMY_IDS.length).toBeLessThanOrEqual(1 << ENEMY_ARCHETYPE_BITS);
     expect(enemyByIndex(ENEMY_IDS.length)).toBeNull();
     // In the wire order, absent from the data: an index nothing is built for.
-    expect(enemyByIndex(enemyIndex('rpg'))).toBeNull();
+    expect(enemyByIndex(enemyIndex('sniper'))).toBeNull();
     expect(() => getEnemy('sniper')).toThrow(/sniper/);
     expect(() => getEnemy('nobody')).toThrow(/nobody/);
   });
@@ -186,7 +211,15 @@ describe('the five archetype shapes (T-3.23)', () => {
     ['an officer with no command', 'officer', { command: undefined }, /needs a "command"/],
     ['a rifleman that deploys', 'rifleman', { deploy: { seconds: 1, movingSpeedMps: 0.2 } }, /"deploy" is not a rifleman's/],
     ['an MG with a scope', 'mg', { scope: { aimSeconds: 1 } }, /"scope" is not a mg's/],
-    ['an RPG firing something that is not a projectile', 'rpg', { launcher: { projectile: 'brick' } }, /brick/],
+    ['an RPG firing something that is not a projectile', 'rpg', { launcher: { ...LAUNCHER, projectile: 'brick' } }, /brick/],
+    ['an RPG firing a grenade', 'rpg', { launcher: { ...LAUNCHER, projectile: 'frag' } }, /not a rocket/],
+    ['an RPG with no rockets', 'rpg', { launcher: { ...LAUNCHER, rockets: 0 } }, /rockets/],
+    ['an RPG whose band is upside down', 'rpg', { launcher: { ...LAUNCHER, maxRangeM: 8 } }, /maxRangeM is not above/],
+    ['an RPG that fires inside its own blast', 'rpg', { launcher: { ...LAUNCHER, minRangeM: 6 } }, /inside the blast radius/],
+    ['an RPG for which one soldier is a group', 'rpg', { launcher: { ...LAUNCHER, groupMin: 1 } }, /groupMin/],
+    ['an RPG whose burst may land past its blast', 'rpg', { launcher: { ...LAUNCHER, reachFraction: 1.5 } }, /reachFraction/],
+    ['a launcher block with an unknown key', 'rpg', { launcher: { ...LAUNCHER, scope: 4 } }, /scope/],
+    ['a launcher block missing a number', 'rpg', { launcher: { ...LAUNCHER, tellSeconds: undefined } }, /tellSeconds/],
     ['a deploy block with an unknown key', 'mg', { deploy: { seconds: 1, movingSpeedMps: 0.2, tripod: true } }, /tripod/],
     ['a negative deploy time', 'mg', { deploy: { seconds: -1, movingSpeedMps: 0.2 } }, /seconds/],
     ['a role nobody hands out', 'mg', { prefersRole: 'cook' }, /prefersRole/],

@@ -105,8 +105,10 @@ export interface RemoteEnemy {
   faction: number;
   /** U-066: a tank's turret yaw, wire units, apart from its hull's (0 for a soldier). A delta carries it only while it turns. */
   turretYaw: number;
-  /** U-068: a tank's cannon is locked on a point and about to fire. */
+  /** U-068: a tank's cannon is locked on a point and about to fire; U-157: an RPG gunner is winding up. */
   aiming: boolean;
+  /** U-157: an RPG gunner's launcher, not its rifle, is in its hands. */
+  launcher: boolean;
 }
 
 /** A weapon emplacement as this client sees it (T-4.29): where, whose, how hot, and the way it is laid. */
@@ -1725,6 +1727,7 @@ export class NetClient {
           faction: (enemy[1] as number | undefined) ?? 0,
           turretYaw: ((enemy[2] as number | undefined) ?? 0) & 0x3ff,
           aiming: ((enemy[3] as number | undefined) ?? 0) === 1,
+          launcher: ((enemy[4] as number | undefined) ?? 0) === 1,
         });
       }
       let buffer = this.buffers.get(entity.netId);

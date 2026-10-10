@@ -185,6 +185,7 @@ import {
   type Stimulus,
   type TargetMemory,
   type EnemyAccuracy,
+  type EnemyLauncher,
   beginThink,
   chooseTarget,
   createTargetMemory,
@@ -690,8 +691,10 @@ export interface EnemyEntity {
   departed: boolean;
   /** U-068: when a tank's cannon may next begin a tell, seconds. */
   cannonReadyAt: number;
-  /** U-068: a tank's cannon locked on a point and about to fire at it, or null: the replicated `aiming`. */
+  /** U-068: a tank's cannon locked on a point and about to fire at it, or null: the replicated `aiming`. U-157: an RPG gunner's wind-up. */
   tell: { until: number; netId: number; point: { x: number; y: number; z: number } } | null;
+  /** U-157: an RPG gunner's launcher, not its rifle, is in its hands: the replicated `launcher`. False for every other archetype. */
+  launcherInHand: boolean;
   input: MoveInput;
   health: HealthState;
   /** U-075: what an escorted character's leaves read (the squad, and his order); absent for every other archetype. */
@@ -2685,6 +2688,13 @@ export class Session {
     return classById(this.classSlots[slot] ?? '')?.healthKits ?? 3;
   }
 
+  /** U-157: an enemy's pouch: this session's full load-out, with an RPG gunner's rockets its launcher row's count. */
+  private enemyPouch(def: EnemyDef): number[] {
+    const pouch = this.fullPouch();
+    if (def.launcher) pouch[(PROJECTILE_IDS as readonly string[]).indexOf(def.launcher.projectile)] = def.launcher.rockets;
+    return pouch;
+  }
+
   private fullPouch(): number[] {
     return this.projectileDefs.map((def) => def.carried);
   }
@@ -2783,6 +2793,7 @@ export class Session {
       // The first shell waits half an interval, so a tank that has just come into view is not already firing.
       cannonReadyAt: this.nowMs / 1000 + (def.vehicle ? def.vehicle.cannon.intervalSeconds / 2 : 0),
       tell: null,
+      launcherInHand: def.launcher !== null,
       departed: false,
       input: idleInput(yaw),
       health: { current: def.health, max: def.health, downedAt: null, diedAt: null },
@@ -2800,7 +2811,7 @@ export class Session {
       lastDamagedAt: -Infinity,
       combat: this.combatWorld,
       group: at.group === undefined ? null : this.groupFor(at.group),
-      pouch: this.fullPouch(),
+      pouch: this.enemyPouch(def),
       nextThrowAt: 0,
       still: createStillWatch(),
       deployedAt: null,
@@ -2983,7 +2994,7 @@ export class Session {
     for (const group of this.groups.values()) {
       const members = group.members.flatMap((id) => {
         const e = this.enemyList.find((x) => x.netId === id);
-        return e ? [{ netId: e.netId, state: e.state, alive: !e.inactive && !isDead(e.health), memory: e.memory, target: e.target, prefers: e.def.prefersRole, ...(e.bounds ? { canReach: (p: NavPoint) => e.canReach(p), pathWithin: (from: NavPoint, to: NavPoint, pathOf?: RegionPath) => e.bounds!.path(from, to, 4, pathOf) } : {}) }] : [];
+        return e ? [{ netId: e.netId, state: e.state, alive: !e.inactive && !isDead(e.health), memory: e.memory, target: e.target, prefers: e.def.prefersRole, takesRoles: e.def.launcher === null, ...(e.bounds ? { canReach: (p: NavPoint) => e.canReach(p), pathWithin: (from: NavPoint, to: NavPoint, pathOf?: RegionPath) => e.bounds!.path(from, to, 4, pathOf) } : {}) }] : [];
       });
       group.think(members, world, nowSeconds);
     }
@@ -6180,7 +6191,9 @@ export class Session {
     for (const enemy of this.enemyList) {
       const alive = !isDead(enemy.health);
       this.cover?.track(enemy.netId, enemy.state, alive);
-      if (alive && !enemy.inactive && enemy.brain) this.aiHands(enemy, NO_SLOT, enemy.follower?.onVault ?? false, nowSeconds);
+      const thinking = alive && !enemy.inactive && enemy.brain !== null;
+      if (enemy.def.launcher) this.launcherHands(enemy, enemy.def.launcher, thinking, nowSeconds);
+      if (thinking) this.aiHands(enemy, NO_SLOT, enemy.follower?.onVault ?? false, nowSeconds);
     }
     // T-3.26: friendly bots' hands the same way, when they run a tree that uses them.
     if (!this.botsDriven) return;
@@ -6190,6 +6203,37 @@ export class Session {
       this.cover?.track(slot.netId, slot.state, able);
       if (able && slot.brain && !this.commanderUsingSupply(slot)) this.aiHands(slot, slot.index, this.followers[slot.index]?.onVault ?? false, nowSeconds);
     }
+  }
+
+  /**
+   * U-157: an RPG gunner's launcher, each tick. Its wind-up (the brain's `rocketTell`) is its `tell`, replicated as
+   * `aiming` as the tank's lock is, and what is in its hands is the launcher unless the brain has the rifle out or no
+   * rocket is left. The rocket it asks for (a `throwAt` of the launcher's projectile) goes through the throw path —
+   * the pouch, the launch from its eye — and then the launcher is empty for `reloadSeconds`. A launch is heard and
+   * seen as a shot. Nothing is held up or wound up by a gunner that is dead, held back or brainless.
+   */
+  private launcherHands(enemy: EnemyEntity, launcher: EnemyLauncher, thinking: boolean, nowSeconds: number): void {
+    const brain = enemy.brain;
+    if (!thinking || !brain) {
+      enemy.tell = null;
+      return;
+    }
+    const index = (PROJECTILE_IDS as readonly string[]).indexOf(launcher.projectile);
+    const loaded = () => (enemy.pouch[index] ?? 0) > 0 && !brain.read('rifle');
+    const tell = brain.read('rocketTell');
+    enemy.tell = tell ? { until: tell.until, netId: enemy.target ?? -1, point: { ...tell.point } } : null;
+    enemy.launcherInHand = loaded();
+    const toss = brain.read('throwAt');
+    if (!toss || toss.projectile !== index) return;
+    brain.take('throwAt');
+    if (enemy.state.vault || !this.launch(enemy, NO_SLOT, index, toss.yaw, toss.pitch)) return;
+    enemy.yaw = tableToWire(toss.yaw);
+    enemy.input.yaw = enemy.yaw;
+    enemy.pitch = tableToWire(toss.pitch);
+    enemy.nextThrowAt = nowSeconds + launcher.reloadSeconds;
+    enemy.launcherInHand = loaded();
+    this.enemyFiredTick.set(enemy.netId, this.currentTick);
+    this.stimuli.push({ kind: 'shot', at: throwEye(enemy.state), sourceNetId: enemy.netId });
   }
 
   /** One AI soldier's stance, reload, throw and gaze onto its input (`enemyHands`). */
@@ -6425,6 +6469,11 @@ export class Session {
       if (enemy.inactive || isDead(enemy.health)) continue;
       // U-068: a tank fights with its own turret (`fireTanks`), not a soldier's hands.
       if (enemy.def.vehicle) continue;
+      // U-157: nor does a rifle fire from hands holding a launcher.
+      if (enemy.launcherInHand) {
+        enemy.aim = null;
+        continue;
+      }
       // T-4.29: a mounted gun is deployed by nature, and fires with the gun's numbers from the gun's muzzle.
       if (this.aiShoot(enemy, enemy.def.accuracy, enemy.mounted !== null || this.deployed(enemy, nowSeconds), false, nowSeconds, enemy.mounted)) this.enemyFiredTick.set(enemy.netId, this.currentTick);
     }
@@ -6995,7 +7044,7 @@ export class Session {
           ],
           [C]: [e.state.crouched ? 1 : 0, e.state.prone ? 1 : 0],
           // U-066: a tank's turret faces its own way; a soldier's is 0. U-068: and 1 while its cannon is locked on a point.
-          [COMPONENT_IDS.Enemy]: [e.archetype, e.faction, e.def.vehicle ? e.turretYaw & 0x3ff : 0, e.tell ? 1 : 0],
+          [COMPONENT_IDS.Enemy]: [e.archetype, e.faction, e.def.vehicle ? e.turretYaw & 0x3ff : 0, e.tell ? 1 : 0, e.launcherInHand ? 1 : 0],
         },
       });
     }

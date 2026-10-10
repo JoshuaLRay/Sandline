@@ -86,6 +86,65 @@
       "movingSpeedMps": 0.2
     }
   },
+  "rpg": {
+    "id": "rpg",
+    "name": "RPG gunner",
+    "health": 100,
+    "weapon": "carbine",
+    "tree": "rpg",
+    "downable": false,
+    "corpseSeconds": 10,
+    "perception": {
+      "visionRangeM": 90,
+      "fovDeg": 110,
+      "detectAt": 0.7,
+      "nearRatePerSec": 3.5,
+      "farRatePerSec": 0.25,
+      "maxRatePerSec": 3,
+      "decayPerSec": 0.2,
+      "crouchFactor": 0.6,
+      "proneFactor": 0.25,
+      "movingSpeedMps": 0.5,
+      "movingFactor": 1.5,
+      "firingFactor": 3,
+      "edgeFactor": 0.3
+    },
+    "accuracy": {
+      "baseConeDeg": 1.6,
+      "distanceDoublingM": 35,
+      "speedFactorPerMps": 0.15,
+      "suppressionFactor": 1.5,
+      "acquireFactor": 3,
+      "settleSeconds": 1.5,
+      "maxConeDeg": 11,
+      "holdBloomDeg": 1.0,
+      "burstRounds": 4,
+      "burstPauseSeconds": 0.35,
+      "hitBand": {
+        "rangeM": 20,
+        "min": 0.35,
+        "max": 0.75
+      }
+    },
+    "launcher": {
+      "projectile": "rocket",
+      "rockets": 4,
+      "minRangeM": 12,
+      "maxRangeM": 60,
+      "rifleHysteresisM": 3,
+      "stillSeconds": 1,
+      "knownSeconds": 2,
+      "tellSeconds": 1.2,
+      "reloadSeconds": 9,
+      "groupMin": 2,
+      "groupFraction": 0.7,
+      "coverNearM": 3,
+      "reachFraction": 0.5,
+      "safetyMarginM": 1.5,
+      "relocateM": 6,
+      "retrySeconds": 1
+    }
+  },
   "tank": {
     "id": "tank",
     "name": "Tank",

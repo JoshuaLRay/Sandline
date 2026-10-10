@@ -99,7 +99,7 @@ import {
 } from './net/RemoteServer.ts';
 import { forgetIdentity, readIdentity, storeIdentity } from './net/identity.ts';
 import { SparringPartner } from './net/SparringPartner.ts';
-import { QaEnemies, QaSuppressor } from './net/qaEnemies.ts';
+import { QaEnemies, QaSuppressor, qaStandingArchetype } from './net/qaEnemies.ts';
 import { SOUNDS } from '@sandline/shared';
 import { DEFAULT_WORLD_ID, buildTree, encounterFor, getWorld, type World, type WorldBox, type WorldBoxKind, boxCentre, requireWorld, supportUnder, surfaceAt } from '@sandline/shared';
 import { regionForHost, tagCode } from '@sandline/shared';
@@ -1318,7 +1318,7 @@ const navReady = initNav();
 
 /**
  * `?enemies` (T-3.11): three riflemen downrange in the in-page session, two
- * of them patrolling — see `qaEnemies.ts`. Walking needs the range's navmesh
+ * of them patrolling — see `qaEnemies.ts`. `?enemies=rpg` (U-157): the standing one an RPG gunner. Walking needs the range's navmesh
  * in the session, and the bake is a few hundred kB, so it is imported here,
  * on demand, and nowhere else in the page.
  */
@@ -1389,7 +1389,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
   const local = choice.kind === 'local' ? new LocalServer(link, config, { ...(qaNav ? { navMesh: qaNav } : {}), ...squad, world: qaWorld, ...(qaEncounter ? { encounter: qaEncounter } : {}) }) : null;
   // The projectile panel's rows, as they stand, for this session from its first throw.
   if (local) PROJECTILE_ORDER.forEach((_, i) => local.tuneProjectile(i, throws.defOf(i)));
-  const qaEnemies = local && qaNav && qaEnemiesWanted ? new QaEnemies(local) : null;
+  const qaEnemies = local && qaNav && qaEnemiesWanted ? new QaEnemies(local, qaStandingArchetype(new URLSearchParams(location.search).get('enemies'))) : null;
   // Slot netIds are 1..6 in slot order, so slot 1's soldier is netId 2.
   const qaSuppressor = local && qaSuppressWanted ? new QaSuppressor(local, 2) : null;
   // T-4.31: the code rides the socket URL too, so the host's allocator can send the upgrade to the machine that holds it.

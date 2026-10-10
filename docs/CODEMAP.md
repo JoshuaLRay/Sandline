@@ -69,6 +69,7 @@ The in-page practice mode runs the same `Session` through
 |---|---|---|---|
 | Behaviour trees, Brain, debug | `shared/src/ai/bt.ts`, `blackboard.ts`, `server/src/ai/Brain.ts`, `server/src/ai/debug.ts` | `trees/*.json` | `bt.test.ts`, `Brain.test.ts` |
 | Enemy actions, aim, grenades, group flank | `server/src/ai/actions/rifleman.ts`, `combat.ts`, `grenade.ts`, `server/src/ai/aim.ts`, `group.ts` | `enemies.json`, `server/src/ai/group.json` | `rifleman.test.ts`, `mg.test.ts`, `group.test.ts` |
+| RPG gunner (launcher, wind-up, rockets) | `server/src/ai/actions/rpg.ts`, `Session.ts` `launcherHands` | `enemies.json` `rpg` (`launcher`), `trees/rpg.json` | `rpg.test.ts`, `tools/src/scenarios/rpg.test.ts` |
 | Director and spawner | `shared/src/sim/director.ts`, `server/src/ai/director/director.ts`, `spawner.ts` | `director.json` | `director.test.ts`, `spawner.test.ts`, `encounterPressure.test.ts` |
 | Encounters, sockets, patrols, reserves | `shared/src/sim/encounters.ts`, `navigationRegion.ts`, `server/src/ai/nav/BoundedRegion.ts` | `encounters/*.json` | `encounterSockets.test.ts`, `stagedEncounter.test.ts`, `guardSockets.test.ts` |
 | Perception (sight, sound, memory) | `shared/src/ai/perception.ts`, `stimuli.ts`, `memory.ts`, `Session.ts` `perceive` | `stimuli.json`, `memory.json` | `perception.test.ts`, `hearing.test.ts` |
