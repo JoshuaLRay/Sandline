@@ -44,7 +44,7 @@ import {
 } from '@sandline/shared';
 import { type NavMesh, initNav } from '../ai/nav/NavMesh.ts';
 import { loadWorldNavMesh } from '../ai/nav/bakedNav.ts';
-import { type BrainTree, createBrainRegistry } from '../ai/Brain.ts';
+import { type BrainMemory, type BrainTree, createBrainRegistry } from '../ai/Brain.ts';
 import { DEFAULT_HITBOX } from '../net/lagComp.ts';
 import { MAX_ENEMIES, Session } from './Session.ts';
 
@@ -198,7 +198,7 @@ describe('an enemy on the wire (T-3.10)', () => {
     // side, and no PlayerSlot — nothing that would put it in the squad.
     const first = seen(client.store.current, id);
     expect(first).not.toBeNull();
-    expect(first?.enemy).toEqual([RIFLEMAN_INDEX, 1, 0, 0]);
+    expect(first?.enemy).toEqual([RIFLEMAN_INDEX, 1, 0, 0, 0]);
     expect(first?.slot).toBeUndefined();
     expect(first?.health?.slice(0, 3)).toEqual([RIFLEMAN.health, RIFLEMAN.health, 0]);
     expect(first?.x).toBeCloseTo(start.x, 1);
@@ -287,6 +287,30 @@ describe('an enemy on the wire (T-3.10)', () => {
     const moved = Math.abs(enemy.state.x - view.x);
     console.log(`[T-3.10] head shot at ${distance.toFixed(2)} m, 75 ms each way: enemy moved ${moved.toFixed(2)} m since the render time, ${hit!.damage.toFixed(1)} damage`);
     expect(moved).toBeGreaterThan(2 * DEFAULT_HITBOX.radius);
+  });
+});
+
+describe('an RPG gunner on the wire (U-157)', () => {
+  it('replicates its archetype, its launcher in hand or its rifle, and its wind-up', () => {
+    const session = new Session(undefined, '', 'range', { navMesh: mesh });
+    const client = connect(session);
+    client.run(3);
+    let want: Partial<BrainMemory> = {};
+    const registry = createBrainRegistry().action('want', ({ blackboard }) => {
+      for (const [k, v] of Object.entries(want)) blackboard.set(k as keyof BrainMemory, v as never);
+      return 'running';
+    });
+    const tree = buildTree(parseTreeDef({ id: 'test-want', root: { type: 'action', name: 'want' } }), registry);
+    const id = session.spawnEnemy('rpg', { x: 0, y: 0, z: 30, tree }) as number;
+    client.run(4);
+    // The launcher in its hands, nothing wound up.
+    expect(seen(client.store.current, id)?.enemy).toEqual([ENEMY_IDS.indexOf('rpg'), 0, 0, 0, 1]);
+    want = { rocketTell: { until: 99, point: { x: 0, y: 1, z: 0 }, yaw: 2048, pitch: 0 } };
+    client.run(4);
+    expect(seen(client.store.current, id)?.enemy).toEqual([ENEMY_IDS.indexOf('rpg'), 0, 0, 1, 1]);
+    want = { rocketTell: null, rifle: true };
+    client.run(4);
+    expect(seen(client.store.current, id)?.enemy).toEqual([ENEMY_IDS.indexOf('rpg'), 0, 0, 0, 0]);
   });
 });
 

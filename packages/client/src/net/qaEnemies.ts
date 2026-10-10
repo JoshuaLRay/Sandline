@@ -14,6 +14,10 @@
  * two points and knows nothing else. Real trees are T-3.14 onward. It needs
  * the range's navmesh in the session, which is why `?enemies` is also the one
  * page that loads the bake.
+ *
+ * U-157: `?enemies=rpg` makes the standing one an RPG gunner on its committed
+ * tree, so the launcher, the wind-up and the rocket can be seen from the
+ * spawn line (it fires at a soldier behind cover, or two together).
  */
 import { BtRegistry, buildTree, parseTreeDef } from '@sandline/shared';
 import type { BrainBody, BrainMemory, BrainTree } from '@sandline/server/brain';
@@ -59,10 +63,19 @@ export function patrolTree(a: Point, b: Point): BrainTree {
   return buildTree(parseTreeDef({ id: 'qa-patrol', root: { type: 'action', name: 'patrol' } }), registry);
 }
 
+/** The archetype `?enemies=<value>` asks for at the standing placement: the RPG gunner by name, else the rifleman. */
+export function qaStandingArchetype(value: string | null): 'rifleman' | 'rpg' {
+  return value === 'rpg' ? 'rpg' : 'rifleman';
+}
+
 export class QaEnemies {
   private readonly netIds: (number | null)[] = QA_ENEMY_PLACEMENTS.map(() => null);
 
-  constructor(private readonly server: LocalServer) {
+  constructor(
+    private readonly server: LocalServer,
+    /** U-157: what stands at the first placement (the patrols are riflemen whatever this is). */
+    private readonly standing: 'rifleman' | 'rpg' = 'rifleman',
+  ) {
     this.step();
   }
 
@@ -73,7 +86,7 @@ export class QaEnemies {
       const current = this.netIds[i];
       if (current != null && live.includes(current)) return;
       const { at, to, yaw } = placement;
-      this.netIds[i] = this.server.spawnEnemy('rifleman', {
+      this.netIds[i] = this.server.spawnEnemy(to ? 'rifleman' : this.standing, {
         ...at,
         yaw,
         ...(to ? { tree: patrolTree(at, to) } : {}),

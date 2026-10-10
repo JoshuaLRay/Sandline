@@ -1,0 +1,12 @@
+{
+  "$comment": "U-157 thresholds, asserted over `seeds` runs by `pnpm sim-run --scenario rpg` and its test. The `squad` fight (a human lead at the low wall who never advances, five bots on the committed `friendly` tree) against one group of `riflemen` riflemen and `gunners` RPG gunners on their committed trees. Over `fightSeconds`: the squad kills at least `minRiflemanKillShare` of every rifleman spawned, across all runs, and hurts or kills a gunner in at least `minRunsGunnerHit` of runs (a gunner fighting from cover in its band outlives a squad that never advances: that is the archetype, not a failure); the gunners fire rockets in at least `minRunsWithRockets` of runs; no rocket goes off with one of their own side within its blast radius, in any run; no slot's round hurts a slot; and no more than `maxBotsDeadPerRun` bots die a run on average.",
+  "seeds": 10,
+  "fightSeconds": 120,
+  "riflemen": 2,
+  "gunners": 2,
+  "minRiflemanKillShare": 0.75,
+  "minRunsGunnerHit": 0.7,
+  "minRunsWithRockets": 0.8,
+  "maxFriendlyHits": 0,
+  "maxBotsDeadPerRun": 1
+}

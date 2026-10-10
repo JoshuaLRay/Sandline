@@ -38,7 +38,7 @@ function tank(netId: number, opts: { x?: number; z?: number; yaw?: number; turre
       [COMPONENT_IDS.Transform]: [quantize(opts.x ?? 0, POSITION), quantize(0, POSITION), quantize(opts.z ?? 0, POSITION), opts.yaw ?? 0, 0],
       [COMPONENT_IDS.Health]: [dead ? 0 : (opts.health ?? 1000), 1000, vitalityCode(dead ? 'dead' : 'alive'), dead ? 10 : 0, 0, 0],
       [COMPONENT_IDS.Crouch]: [0, 0],
-      [COMPONENT_IDS.Enemy]: [TANK, 0, opts.turret ?? 0, opts.aiming ? 1 : 0],
+      [COMPONENT_IDS.Enemy]: [TANK, 0, opts.turret ?? 0, opts.aiming ? 1 : 0, 0],
     },
   };
 }
@@ -50,7 +50,7 @@ function rifleman(netId: number): Entity {
       [COMPONENT_IDS.Transform]: [quantize(3, POSITION), quantize(0, POSITION), quantize(3, POSITION), 0, 0],
       [COMPONENT_IDS.Health]: [100, 100, 0, 0, 0, 0],
       [COMPONENT_IDS.Crouch]: [0, 0],
-      [COMPONENT_IDS.Enemy]: [RIFLEMAN, 0, 0, 0],
+      [COMPONENT_IDS.Enemy]: [RIFLEMAN, 0, 0, 0, 0],
     },
   };
 }

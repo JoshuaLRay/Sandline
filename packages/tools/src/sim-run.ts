@@ -30,6 +30,11 @@
  *
  *   pnpm sim-run --scenario squad
  *
+ * `rpg` (U-157): the `squad` fight with RPG gunners among the riflemen, over
+ * `scenarios/rpg.json`.
+ *
+ *   pnpm sim-run --scenario rpg
+ *
  * `mission` (T-3.35, T-4.13): six friendly bots play mission-01 against its encounter
  * at the director's one-human and six-human budgets, over `--seeds` seeds
  * (`scenarios/mission.json`'s by default), and the AI's cost at forty
@@ -100,6 +105,18 @@ if (scenarioName === 'squad') {
   process.exit(0);
 }
 
+if (scenarioName === 'rpg') {
+  const { reportRpg, summariseRpg } = await import('./scenarios/rpg.ts');
+  const summary = await summariseRpg();
+  console.log(reportRpg(summary));
+  if (summary.failures.length > 0) {
+    for (const f of summary.failures) console.error(`FAIL: ${f}`);
+    process.exit(1);
+  }
+  console.log('OK: every threshold met');
+  process.exit(0);
+}
+
 if (scenarioName === 'mg') {
   const { reportMg, summariseMg } = await import('./scenarios/mg.ts');
   const summary = await summariseMg();
@@ -135,7 +152,7 @@ const SCENARIOS: Record<string, (sim: Simulation) => void> = {
 
 const build = SCENARIOS[scenarioName];
 if (!build) {
-  console.error(`unknown scenario '${scenarioName}'. available: ${[...Object.keys(SCENARIOS), 'cover-duel', 'pinned', 'mg', 'squad', 'mission'].join(', ')}`);
+  console.error(`unknown scenario '${scenarioName}'. available: ${[...Object.keys(SCENARIOS), 'cover-duel', 'pinned', 'mg', 'squad', 'rpg', 'mission'].join(', ')}`);
   process.exit(1);
 }
 

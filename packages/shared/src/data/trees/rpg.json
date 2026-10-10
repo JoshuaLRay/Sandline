@@ -1,0 +1,271 @@
+{
+  "$comment": "U-157. The RPG gunner: a rifleman's body with a launcher, tuned by its archetype's `launcher` block (enemies.json). With a threat known: inside the near edge of its band, or with no rockets left, the rifle is in its hands and it fights as a rifleman does from cover (relocate when flanked; in cover, reload when low, peek and fire a burst unless pressured, else stay down; else take cover; with none, fight in the open). Otherwise the launcher is in its hands: first, moving to other cover in its band after a shot; then a rocket at a target it knows has stood still, in its band, behind cover or with others about it, searched clear of every friend and itself, after a wind-up on a locked point; else new cover in its band when flanked, stay down in cover (reloading), or take cover in its band (never inside its near edge); with none, its rifle in the open. It takes no group role and throws no grenade. Nothing known: at ease, launcher in hand. U-010: first of all, a lever job the session gave it, as the MG's tree.",
+  "id": "rpg",
+  "root": {
+    "type": "selector",
+    "reactive": true,
+    "children": [
+      {
+        "type": "sequence",
+        "reactive": true,
+        "children": [
+          {
+            "type": "condition",
+            "name": "hasLeverJob"
+          },
+          {
+            "type": "condition",
+            "name": "leverCalm",
+            "args": {
+              "suppression": 0.25,
+              "hurtSeconds": 2,
+              "backOffSeconds": 6
+            }
+          },
+          {
+            "type": "action",
+            "name": "useLever"
+          }
+        ]
+      },
+      {
+        "type": "sequence",
+        "reactive": true,
+        "children": [
+          {
+            "type": "condition",
+            "name": "hasThreat"
+          },
+          {
+            "type": "selector",
+            "reactive": true,
+            "children": [
+              {
+                "type": "sequence",
+                "reactive": true,
+                "children": [
+                  {
+                    "type": "condition",
+                    "name": "useRifle"
+                  },
+                  {
+                    "type": "action",
+                    "name": "rifleInHand"
+                  },
+                  {
+                    "type": "selector",
+                    "reactive": true,
+                    "children": [
+                      {
+                        "type": "sequence",
+                        "reactive": true,
+                        "children": [
+                          {
+                            "type": "condition",
+                            "name": "flanked"
+                          },
+                          {
+                            "type": "action",
+                            "name": "takeCover"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "sequence",
+                        "reactive": true,
+                        "children": [
+                          {
+                            "type": "condition",
+                            "name": "inCover"
+                          },
+                          {
+                            "type": "selector",
+                            "reactive": true,
+                            "children": [
+                              {
+                                "type": "sequence",
+                                "reactive": true,
+                                "children": [
+                                  {
+                                    "type": "condition",
+                                    "name": "lowAmmo",
+                                    "args": {
+                                      "fraction": 0.3
+                                    }
+                                  },
+                                  {
+                                    "type": "action",
+                                    "name": "reload"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "cooldown",
+                                "ticks": 45,
+                                "child": {
+                                  "type": "sequence",
+                                  "reactive": true,
+                                  "children": [
+                                    {
+                                      "type": "inverter",
+                                      "child": {
+                                        "type": "condition",
+                                        "name": "pressured",
+                                        "args": {
+                                          "suppression": 0.35,
+                                          "hurtSeconds": 1.5
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "action",
+                                      "name": "peek",
+                                      "args": {
+                                        "burstSeconds": 1.0,
+                                        "reserve": 0.3
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "type": "action",
+                                "name": "hide"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "action",
+                        "name": "takeCover"
+                      },
+                      {
+                        "type": "action",
+                        "name": "engageOpen"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "sequence",
+                "reactive": true,
+                "children": [
+                  {
+                    "type": "condition",
+                    "name": "mustRelocate"
+                  },
+                  {
+                    "type": "action",
+                    "name": "launcherInHand"
+                  },
+                  {
+                    "type": "action",
+                    "name": "relocate"
+                  }
+                ]
+              },
+              {
+                "type": "sequence",
+                "reactive": true,
+                "children": [
+                  {
+                    "type": "condition",
+                    "name": "rocketTarget"
+                  },
+                  {
+                    "type": "action",
+                    "name": "launcherInHand"
+                  },
+                  {
+                    "type": "action",
+                    "name": "fireRocket"
+                  }
+                ]
+              },
+              {
+                "type": "sequence",
+                "reactive": true,
+                "children": [
+                  {
+                    "type": "condition",
+                    "name": "flanked"
+                  },
+                  {
+                    "type": "action",
+                    "name": "launcherInHand"
+                  },
+                  {
+                    "type": "action",
+                    "name": "launcherCover"
+                  }
+                ]
+              },
+              {
+                "type": "sequence",
+                "reactive": true,
+                "children": [
+                  {
+                    "type": "condition",
+                    "name": "inCover"
+                  },
+                  {
+                    "type": "action",
+                    "name": "launcherInHand"
+                  },
+                  {
+                    "type": "action",
+                    "name": "hide"
+                  }
+                ]
+              },
+              {
+                "type": "sequence",
+                "reactive": true,
+                "children": [
+                  {
+                    "type": "action",
+                    "name": "launcherInHand"
+                  },
+                  {
+                    "type": "action",
+                    "name": "launcherCover"
+                  }
+                ]
+              },
+              {
+                "type": "sequence",
+                "reactive": true,
+                "children": [
+                  {
+                    "type": "action",
+                    "name": "rifleInHand"
+                  },
+                  {
+                    "type": "action",
+                    "name": "engageOpen"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "sequence",
+        "reactive": true,
+        "children": [
+          {
+            "type": "action",
+            "name": "launcherInHand"
+          },
+          {
+            "type": "action",
+            "name": "atEase"
+          }
+        ]
+      }
+    ]
+  }
+}

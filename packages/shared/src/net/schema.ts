@@ -154,7 +154,8 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     // U-066: and `turretYaw` (wire units), a tank's turret facing apart from its hull's (the Transform's); 0 for a soldier.
     // It rides this component, not one of its own, so no entity pays another bit of the presence mask.
     // U-068: and `aiming`, 1 while a tank's cannon is locked on a point and about to fire: the warning and the muzzle flash.
-    fields: [uint('archetype', ENEMY_ARCHETYPE_BITS), uint('faction', ENEMY_FACTION_BITS), uint('turretYaw', ANGLE_BITS_WIRE), uint('aiming', 1)],
+    // U-157: an RPG gunner's wind-up is `aiming` too; and `launcher`, 1 while its launcher (not its rifle) is in its hands.
+    fields: [uint('archetype', ENEMY_ARCHETYPE_BITS), uint('faction', ENEMY_FACTION_BITS), uint('turretYaw', ANGLE_BITS_WIRE), uint('aiming', 1), uint('launcher', 1)],
   },
   {
     id: COMPONENT_IDS.Suppression,

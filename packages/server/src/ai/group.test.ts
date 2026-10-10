@@ -154,6 +154,30 @@ describe('pinning and roles (T-3.21)', () => {
     expect(allMg.roles.size).toBe(0);
   });
 
+  it('never hands a role to a member that takes none (the RPG gunner, U-157)', () => {
+    const world = { cover: new CoverSystem(bakedCoverFor('range'), range.boxes), boxes: range.boxes, mesh };
+    const at = (now: number, visible: boolean) => [
+      member(10, { x: -7.5, z: 12 }, visible, now),
+      { ...member(11, { x: -3, z: 12 }, false, now), takesRoles: false },
+    ];
+    const t = GROUP.pinSeconds + 0.1;
+    // With a rifleman and an RPG gunner pinning, there is only one to hand a role to: no roles at all.
+    const pair = new EnemyGroup(4);
+    pair.think(at(0, true), world, 0);
+    pair.think(at(0.1, false), world, 0.1);
+    pair.think(at(t, false), world, t);
+    expect(pair.pinned(t)).toBe(true);
+    expect(pair.roles.size).toBe(0);
+    // Add a second rifleman and the two riflemen take them, the gunner neither.
+    const three = new EnemyGroup(5);
+    const more = (now: number, visible: boolean) => [...at(now, visible), member(12, { x: -1, z: 14 }, false, now)];
+    three.think(more(0, true), world, 0);
+    three.think(more(0.1, false), world, 0.1);
+    three.think(more(t, false), world, t);
+    expect(three.roles.size).toBe(2);
+    expect(three.role(11)).toBeNull();
+  });
+
   it('hands out nothing with one member, and ends the flank when the flanker dies', () => {
     const cover = new CoverSystem(bakedCoverFor('range'), range.boxes);
     const world = { cover, boxes: range.boxes, mesh };

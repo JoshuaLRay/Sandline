@@ -120,7 +120,7 @@ function firingAt(netId: number): BrainTree {
 
 describe('the stance wire (U-153)', () => {
   it('round-trips each stance to each addressee and the whole squad’s settings, and rejects what is not one', () => {
-    expect(PROTOCOL_VERSION).toBe(71);
+    expect(PROTOCOL_VERSION).toBe(72);
     for (const to of STANCE_KINDS) {
       for (const address of [{ to: 'slot', index: 5 }, { to: 'fireteam', index: 1 }, { to: 'all' }] as const) {
         const command: Message = { kind: 'Stance', address, stance: to };

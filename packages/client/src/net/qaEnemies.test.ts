@@ -6,7 +6,7 @@
  */
 import { beforeAll, describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { DEFAULT_MOVE_CONFIG, DEFAULT_WORLD_ID, TICK_SECONDS } from '@sandline/shared';
+import { DEFAULT_MOVE_CONFIG, DEFAULT_WORLD_ID, ENEMY_IDS, TICK_SECONDS } from '@sandline/shared';
 import { type NavMesh, initNav } from '@sandline/server/nav';
 import { loadWorldNavMesh } from '@sandline/server/nav/baked';
 import { createHumanoidSoldier, soldierSkin } from '../character/humanoidSoldier.ts';
@@ -14,7 +14,7 @@ import { RemoteSoldiers } from '../character/remoteSoldiers.ts';
 import { soldierAtlas } from '../character/soldierTexture.ts';
 import { LocalServer } from './LocalServer.ts';
 import { NetClient } from './NetClient.ts';
-import { QA_ENEMY_PLACEMENTS, QaEnemies, QaSuppressor } from './qaEnemies.ts';
+import { QA_ENEMY_PLACEMENTS, QaEnemies, QaSuppressor, qaStandingArchetype } from './qaEnemies.ts';
 
 const TICK_MS = TICK_SECONDS * 1000;
 const LAN = { latencyMs: 0, jitterMs: 0, lossRate: 0 };
@@ -86,6 +86,26 @@ describe('enemies on the in-page range (T-3.11)', () => {
     // The squad is still six, and no enemy has a slot to be listed under.
     expect(net.roster).toHaveLength(6);
     for (const id of enemyIds) expect(net.remoteSlot(id)).toBe(-1);
+  });
+});
+
+describe('?enemies=rpg (U-157)', () => {
+  it('stands an RPG gunner where the first rifleman stood, launcher in hand, as a client decodes it', () => {
+    expect(qaStandingArchetype('rpg')).toBe('rpg');
+    expect(qaStandingArchetype('')).toBe('rifleman');
+    expect(qaStandingArchetype(null)).toBe('rifleman');
+    const server = new LocalServer(LAN, DEFAULT_MOVE_CONFIG, { navMesh });
+    const qa = new QaEnemies(server, 'rpg');
+    const net = new NetClient(server.transport, 'qa', DEFAULT_MOVE_CONFIG);
+    net.join();
+    for (let i = 0; i < 20; i += 1) {
+      qa.step();
+      server.step(server.tick * TICK_MS);
+      net.advanceClock(TICK_MS);
+    }
+    const [gunner, ...patrols] = server.enemyNetIds;
+    expect(net.remoteEnemy(gunner!)).toMatchObject({ archetype: ENEMY_IDS.indexOf('rpg'), launcher: true, aiming: false });
+    for (const id of patrols) expect(net.remoteEnemy(id)).toMatchObject({ archetype: ENEMY_IDS.indexOf('rifleman'), launcher: false });
   });
 });
 

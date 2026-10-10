@@ -14,8 +14,9 @@
  * T-3.23: five archetypes have a place in the wire order, and each has a
  * SHAPE — the block of its own it must carry and no other archetype may: the
  * MG's `deploy`, the RPG's `launcher`, the sniper's `scope`, the officer's
- * `command`; the rifleman has none. The data holds two (ADR-015: rifleman and
- * MG); the other three are valid rows the schema accepts, waiting for their art.
+ * `command`; the rifleman has none. The data holds the rifleman and MG
+ * (ADR-015) and, since U-157, the RPG; the sniper and officer are valid rows the
+ * schema accepts, waiting for their work.
  *
  * SHARED because the client names an archetype off the `Enemy` component's
  * index (T-3.11) and the server builds one from the same row.
@@ -104,9 +105,42 @@ export interface EnemyDeploy {
   movingSpeedMps: number;
 }
 
-/** The RPG's: what it fires, a `PROJECTILE_IDS` entry. Not built (ADR-015). */
+/**
+ * The RPG's (U-157): what it fires and how it fights with it. Read by `server/src/ai/actions/rpg.ts` and the
+ * session's launch. Between `minRangeM` and `maxRangeM` it holds the launcher and fires at a target it has known to
+ * be still, behind cover or with others about it; inside the band, or with no rockets left, its rifle is in its hands.
+ */
 export interface EnemyLauncher {
+  /** A `PROJECTILE_IDS` entry of kind `rocket`. */
   projectile: string;
+  /** Rockets it carries: its pouch of that projectile on spawn. */
+  rockets: number;
+  /** The band it fires in, metres across the ground to its target. Inside the near edge its rifle comes out. */
+  minRangeM: number;
+  maxRangeM: number;
+  /** Metres past `minRangeM` a target must go before the launcher comes back out, so it does not swap on the line. */
+  rifleHysteresisM: number;
+  /** Seconds its target must be known still before a rocket goes at it: a rocket is slow. */
+  stillSeconds: number;
+  /** Seconds since its target's position was last learnt, at most, for a rocket at it. */
+  knownSeconds: number;
+  /** The wind-up: seconds it stands on a locked point, launcher shouldered, before the rocket leaves. */
+  tellSeconds: number;
+  /** Seconds from a launch to the next rocket loaded. */
+  reloadSeconds: number;
+  /** A group: this many squad soldiers it knows of (the target among them) within `groupFraction` of the blast radius of the burst. */
+  groupMin: number;
+  groupFraction: number;
+  /** A target is in cover when the line to its lower body stops on something within this many metres of it. */
+  coverNearM: number;
+  /** The burst must land within this fraction of the blast radius of its target's middle. */
+  reachFraction: number;
+  /** Every friend, and itself, farther than the blast radius and this from the burst, and none on the flight. */
+  safetyMarginM: number;
+  /** After a shot it moves to cover at least this far from where it fired. */
+  relocateM: number;
+  /** A search that found no shot is not made again for this long, seconds. */
+  retrySeconds: number;
 }
 
 /** The sniper's: how long it holds a sight picture before it fires. Not built (ADR-015). */
@@ -225,9 +259,9 @@ export interface EnemyDef {
  * Wire order for archetypes, as `PROJECTILE_IDS` is for projectiles: the index
  * is the `Enemy` component's `archetype` field, so reordering this is a
  * PROTOCOL_VERSION bump (appending is not: an old client names an index it
- * has no row for as nothing). Three bits on the wire hold the five archetypes
- * the schema is written for; ADR-015 builds the first two, so the data holds
- * rows for those alone and `enemyByIndex` is null for the rest.
+ * has no row for as nothing). Three bits on the wire hold the archetypes the
+ * schema is written for; `enemyByIndex` is null for one the data has no row for
+ * (the sniper and the officer).
  */
 export const ENEMY_IDS = ['rifleman', 'mg', 'rpg', 'sniper', 'officer', 'tank', 'pow'] as const;
 export type EnemyId = (typeof ENEMY_IDS)[number];
@@ -402,12 +436,61 @@ function parseDeploy(raw: unknown, where: string): EnemyDeploy {
   return { seconds: num(row, 'seconds', where, 0, 30), movingSpeedMps: num(row, 'movingSpeedMps', where, 0, 10) };
 }
 
+const LAUNCHER_KEYS = [
+  'projectile',
+  'rockets',
+  'minRangeM',
+  'maxRangeM',
+  'rifleHysteresisM',
+  'stillSeconds',
+  'knownSeconds',
+  'tellSeconds',
+  'reloadSeconds',
+  'groupMin',
+  'groupFraction',
+  'coverNearM',
+  'reachFraction',
+  'safetyMarginM',
+  'relocateM',
+  'retrySeconds',
+] as const;
+
 function parseLauncher(raw: unknown, where: string): EnemyLauncher {
   const row = obj(raw, where);
-  only(row, ['projectile'], where);
+  only(row, LAUNCHER_KEYS, where);
   const projectile = str(row, 'projectile', where);
   if (!(PROJECTILE_IDS as readonly string[]).includes(projectile)) throw new EnemyDataError(`${where}.projectile: unknown projectile "${projectile}"`);
-  return { projectile };
+  // A rocket flies and bursts on what it meets, as the tank's shell does: not a grenade that bounces and waits.
+  const def = PROJECTILES[projectile]!;
+  if (def.kind !== 'rocket') throw new EnemyDataError(`${where}.projectile: "${projectile}" is not a rocket`);
+  const out: EnemyLauncher = {
+    projectile,
+    // Whole rockets, inside a pouch count.
+    rockets: Math.round(num(row, 'rockets', where, 1, 20)),
+    minRangeM: num(row, 'minRangeM', where, 1, 500),
+    maxRangeM: num(row, 'maxRangeM', where, 1, 500),
+    rifleHysteresisM: num(row, 'rifleHysteresisM', where, 0, 20),
+    stillSeconds: num(row, 'stillSeconds', where, 0, 30),
+    knownSeconds: num(row, 'knownSeconds', where, 0, 30),
+    // Long enough to see and react to; short of the reload it sits inside.
+    tellSeconds: num(row, 'tellSeconds', where, 0.2, 10),
+    reloadSeconds: num(row, 'reloadSeconds', where, 1, 120),
+    // At least two: one soldier is not a group.
+    groupMin: Math.round(num(row, 'groupMin', where, 2, 6)),
+    groupFraction: num(row, 'groupFraction', where, 0.1, 1),
+    coverNearM: num(row, 'coverNearM', where, 0.1, 20),
+    // At most 1: a burst past the blast radius cannot reach the target at all.
+    reachFraction: num(row, 'reachFraction', where, 0.05, 1),
+    safetyMarginM: num(row, 'safetyMarginM', where, 0, 20),
+    relocateM: num(row, 'relocateM', where, 0, 100),
+    retrySeconds: num(row, 'retrySeconds', where, 0.1, 30),
+  };
+  if (out.maxRangeM <= out.minRangeM) throw new EnemyDataError(`${where}: maxRangeM is not above minRangeM`);
+  // Its near edge clear of its own blast, with the margin: it never fires a rocket that could reach itself.
+  if (out.minRangeM <= def.blastRadiusM + out.safetyMarginM) {
+    throw new EnemyDataError(`${where}: minRangeM is inside the blast radius of "${projectile}" plus safetyMarginM`);
+  }
+  return out;
 }
 
 function parseScope(raw: unknown, where: string): EnemyScope {

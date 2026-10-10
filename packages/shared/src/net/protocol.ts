@@ -23,7 +23,7 @@ import type { SupplyCacheDef, SupplyItem, SupplyUseProgress } from '../sim/suppl
 import { readCommanderSupplySelect, readSupplies, readSupplyProgress, readSupplySelect, writeCommanderSupplySelect, writeSupplies, writeSupplyProgress, writeSupplySelect } from './supplyWire.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 71;
+export const PROTOCOL_VERSION = 72;
 
 /** U-143: every client presents the same incompatible-map decision. */
 export const RESTORE_MAP_CHANGED_MESSAGE = 'This mission map has changed. Restart the mission to continue.';

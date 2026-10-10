@@ -180,6 +180,11 @@ export function firingPosition(
   return null;
 }
 
+/** U-157: whether a standing soldier fits at `feet`: on a supported layer, its footprint clear of every box. */
+export function standsClear(feet: Vec3, boxes: readonly WorldBox[]): boolean {
+  return supported(feet, boxes) && !footprintBlocked(feet, boxes);
+}
+
 /** Keep firing feet on a real supported layer, including nav voxel offsets. */
 function supported(feet: Vec3, boxes: readonly WorldBox[]): boolean {
   const y = supportUnder(feet.x, feet.z, DEFAULT_MOVE_CONFIG.radius, feet.y + DEFAULT_MOVE_CONFIG.stepHeight, boxes, DEFAULT_MOVE_CONFIG.groundY);
