@@ -1,4 +1,4 @@
-/** U-149 support-only construction view of the exact generated box union. */
+/** U-149 support-only construction view of the exact generated box union (bent by U-159). */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
@@ -41,6 +41,7 @@ type View = { position: number[]; target: number[]; label: string; probe?: boole
 const views = {
   capD: { position: [28, 9.55, 58], target: [32, 9.55, 72], label: 'Court approach · legal U-138 anchor; canonical CAP-D lies inside accepted reveal-toe rock' },
   capA: { position: [32, 9.55, 100], target: [12, 9.55, 128], label: 'CAP-A · actual standing eye height y9.55' },
+  a3: { position: [-37, 9.55, 142], target: [-28, 9.55, 210], label: 'A3 · U-159 west leg toward A4 · actual standing eye height y9.55' },
   a5: { position: [26, 9.55, 232], target: [30, 9.55, 270], label: 'A5 · actual standing eye height y9.55' },
   capX: { position: [16, 9.55, 332], target: [32, 9.55, 350], label: 'CAP-X · forecourt road only · actual standing eye height y9.55' },
   topDown: { position: [12, 370, 169.99], target: [12, 8, 170], label: 'Top-down · north up · support extents and unchanged natural insertion' },

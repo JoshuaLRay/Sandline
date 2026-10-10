@@ -11,23 +11,28 @@ import { bakeSolidNavMesh } from '../nav/solidBake.ts';
 import { INSERTION, buildInsertionWorld, onInsertionFloor } from './qalatInsertion.ts';
 import { between, insertionObservers, rayOccluded, sampleRoute } from './insertionScreening.ts';
 import {
-  ROAD_SUPPORTS, buildRoadSupportWorld, onRoadSupportFloor,
-  roadSupportManifest, roadSupportPlanSvg,
+  ROAD_SUPPORTS, buildRoadSupportWorld, fightSeparation, onRoadSupportFloor,
+  roadSightPieces, roadSightReport, roadSupportManifest, roadSupportPlanSvg,
 } from './qalatRoadSupports.ts';
+import { longestSegment } from './roadSightLines.ts';
 
-// Independent transcription of the approved §5 coordinates. Sampling the
-// authoring data alone would also pass if a node or a width silently moved.
+// Independent transcription of the approved §5 coordinates with the U-159
+// addendum's bent A3, A4 and A7. Sampling the authoring data alone would also
+// pass if a node or a width silently moved.
 const APPROVED_SPINE = [
   { id: 'A0', x: 32, y: 8, z: 64 }, { id: 'A1', x: 32, y: 8, z: 98 },
-  { id: 'A2', x: 12, y: 8, z: 128 }, { id: 'A3', x: -4, y: 8, z: 166 },
-  { id: 'A4', x: -4, y: 8, z: 200 }, { id: 'A5', x: 26, y: 8, z: 232 },
-  { id: 'A6', x: 30, y: 8, z: 270 }, { id: 'A7', x: 8, y: 8, z: 304 },
+  { id: 'A2', x: 12, y: 8, z: 128 }, { id: 'A3', x: -37, y: 8, z: 142 },
+  { id: 'A4', x: -28, y: 8, z: 210 }, { id: 'A5', x: 26, y: 8, z: 232 },
+  { id: 'A6', x: 30, y: 8, z: 270 }, { id: 'A7', x: -18, y: 8, z: 302 },
   { id: 'A8', x: 16, y: 8, z: 332 }, { id: 'A9', x: 32, y: 8, z: 350 },
 ];
 const SOUTH_GATE = { id: 'south-gate', x: 32, y: 8, z: 356 };
 const ROAD_STOPS = [...APPROVED_SPINE, SOUTH_GATE];
 const APRON_IDS = ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'];
 type Point = { x: number; z: number };
+// The straighter road U-149 built, which could not hold three separate fights.
+const U149_MOVES: Record<string, Point> = { A3: { x: -4, z: 166 }, A4: { x: -4, z: 200 }, A7: { x: 8, z: 304 } };
+const U149_SPINE = ROAD_STOPS.map((p) => ({ ...p, ...U149_MOVES[p.id] }));
 // §2.2's bevel at the final changing tangent, where there is no large apron.
 // These are the four approved 10 m shoulder endpoints at A9, in perimeter order.
 const A9_BEVEL: Point[] = [
@@ -58,7 +63,7 @@ function clearSupport(p: Point, half = .001): void {
 
 const world = buildRoadSupportWorld();
 let nav: NavMesh;
-describe('U-149 isolated A0–A9 primary road supports', () => {
+describe('U-149 isolated A0–A9 primary road supports, bent by U-159', () => {
   beforeAll(async () => {
     await initNav();
     // Use the production solid/headroom rasterizer and the standing agent.
@@ -225,17 +230,56 @@ describe('U-149 isolated A0–A9 primary road supports', () => {
     expect(rays).toBeGreaterThan(1000);
   }, 90_000);
 
-  it('keeps generated construction, plan and seven actual-scene captures current', () => {
+  it('U-159: no straight view inside the 12 m tank lane exceeds 90 m', () => {
+    const { lane } = roadSightPieces();
+    const view = longestSegment(lane);
+    expect(view.length).toBeLessThanOrEqual(ROAD_SUPPORTS.sightLines.maxLaneViewM);
+    expect(view.length).toBeCloseTo(86.74, 2);
+    expect(roadSightReport().longestLaneView.length).toBeCloseTo(view.length, 2);
+    // Negative control: the same measure on U-149's road finds the rejected
+    // view from the A4 bend down the lane to the court.
+    const before = longestSegment(roadSightPieces(U149_SPINE).lane);
+    expect(before.length).toBeGreaterThan(144);
+    expect(before.to.z).toBeGreaterThan(195);
+    expect(before.from.z).toBeLessThan(70);
+  }, 60_000);
+
+  it('U-159: no straight view on the walking surface joins two of the three fights', () => {
+    const pairs = fightSeparation();
+    // toll A2 · frontage A4/A5 · forecourt A8: every cross-fight node pair.
+    expect(pairs.map((p) => p.nodes.join('-'))).toEqual(['A2-A4', 'A2-A5', 'A2-A8', 'A4-A8', 'A5-A8']);
+    for (const p of pairs) expect(p.separated, `${p.nodes.join('-')} ${JSON.stringify(p.witness)}`).toBe(true);
+    expect(roadSightReport().separatedFights).toEqual(pairs.map((p) => p.nodes.join('-')));
+    // On U-149's road the toll bend saw straight into the frontage fight.
+    const before = fightSeparation(U149_SPINE).find((p) => p.nodes.join('-') === 'A2-A4')!;
+    expect(before.separated).toBe(false);
+    expect(before.witness!.length).toBeGreaterThan(100);
+  }, 60_000);
+
+  it('U-159: records the longest bare-surface view from each fight for U-150 cover', () => {
+    const views = roadSightReport().longestFightViews;
+    expect(Object.keys(views)).toEqual(['A2', 'A4', 'A5', 'A8']);
+    for (const [id, view] of Object.entries(views)) {
+      const node = APPROVED_SPINE.find((p) => p.id === id)!;
+      expect(Math.hypot(view.from.x - node.x, view.from.z - node.z), id).toBeLessThanOrEqual(18.3);
+      expect(Math.hypot(view.to.x - view.from.x, view.to.z - view.from.z)).toBeCloseTo(view.length, 0);
+    }
+    // Views longer than the lane's leave the lane, so U-150 can still cut them.
+    expect(views['A2']!.length).toBeLessThanOrEqual(90);
+    expect(views['A8']!.length).toBeLessThanOrEqual(90);
+  }, 60_000);
+
+  it('keeps generated construction, plan and eight actual-scene captures current', () => {
     const manifest = roadSupportManifest();
     expect(JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/construction.json', import.meta.url), 'utf8'))).toEqual(manifest);
     expect(readFileSync(new URL('../../../../artifacts/qalat-road-supports/plan.svg', import.meta.url), 'utf8')).toBe(roadSupportPlanSvg());
     const captures = JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/captures.json', import.meta.url), 'utf8'));
     expect(captures).toMatchObject(manifest);
     expect(captures.viewport).toEqual([1440, 1000]);
-    expect(captures.views).toHaveLength(7);
-    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(7);
-    const standingViews = captures.views.slice(0, 4) as { name: string; position: number[] }[];
-    expect(standingViews.map((view) => view.name)).toEqual(['cap-d', 'cap-a', 'a5', 'cap-x-forecourt-road']);
+    expect(captures.views).toHaveLength(8);
+    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(8);
+    const standingViews = captures.views.slice(0, 5) as { name: string; position: number[] }[];
+    expect(standingViews.map((view) => view.name)).toEqual(['cap-d', 'cap-a', 'a3-west-leg', 'a5', 'cap-x-forecourt-road']);
     for (const view of standingViews) {
       const feet = { x: view.position[0]!, y: view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, z: view.position[2]! };
       expect(feet.y, `${view.name} standing eye`).toBeCloseTo(8);

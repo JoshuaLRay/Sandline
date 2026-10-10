@@ -1,4 +1,4 @@
-/** Reproducible actual WebGL captures of U-149's isolated road support build. */
+/** Reproducible actual WebGL captures of U-149's isolated road support build, bent by U-159. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { blockedAt, loadLevel, supportUnder } from '@sandline/shared';
 import { chromium } from 'playwright';
@@ -9,6 +9,7 @@ const manifest = roadSupportManifest();
 const views = [
   { name: 'cap-d', position: [28, 9.55, 58], target: [32, 9.55, 72], label: 'Court approach · legal U-138 anchor; canonical CAP-D lies inside accepted reveal-toe rock', probe: false },
   { name: 'cap-a', position: [32, 9.55, 100], target: [12, 9.55, 128], label: 'CAP-A · actual standing eye height y9.55', probe: false },
+  { name: 'a3-west-leg', position: [-37, 9.55, 142], target: [-28, 9.55, 210], label: 'A3 · U-159 west leg toward A4 · actual standing eye height y9.55', probe: false },
   { name: 'a5', position: [26, 9.55, 232], target: [30, 9.55, 270], label: 'A5 · actual standing eye height y9.55', probe: false },
   { name: 'cap-x-forecourt-road', position: [16, 9.55, 332], target: [32, 9.55, 350], label: 'CAP-X · forecourt road only · actual standing eye height y9.55', probe: false },
   { name: 'top-down', position: [12, 370, 169.99], target: [12, 8, 170], label: 'Top-down · north up · support extents and unchanged natural insertion', probe: false },
@@ -19,7 +20,7 @@ const output = new URL('../../../artifacts/qalat-road-supports/', import.meta.ur
 const world = loadLevel(JSON.parse(await readFile(new URL('level.json', output), 'utf8')));
 // Eye-height evidence must represent a soldier who can actually stand there.
 // Keep canonical camera exceptions explicit rather than moving accepted rocks.
-for (const v of views.slice(0, 4)) {
+for (const v of views.slice(0, 5)) {
   const [x, , z] = v.position, feetY = 8;
   if (blockedAt(x!, z!, .35, feetY, 0, 1.8, world.boxes)) throw new Error(`${v.name}: standing-eye anchor is inside collision geometry`);
   if (supportUnder(x!, z!, .35, feetY + .05, world.boxes, 0) !== feetY) throw new Error(`${v.name}: standing-eye anchor is unsupported at intended feet y${feetY}`);
@@ -47,7 +48,7 @@ try {
     if (stats.calls >= 300 || stats.levelHash !== manifest.levelHash) throw new Error(`${v.name}: stale geometry or draw budget overrun`);
     await page.screenshot({ path: new URL(`${v.name}.png`, output).pathname });
     measurements.push({ ...v, ...stats });
-    console.log(`U-149 ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles`);
+    console.log(`U-159 ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles`);
   }
   if (errors.length) throw new Error(errors.join('\n'));
   await writeFile(new URL('captures.json', output), JSON.stringify({
