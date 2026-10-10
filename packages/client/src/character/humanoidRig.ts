@@ -206,6 +206,12 @@ export interface WeaponHold {
   kickUp?: number;
   /** 0..1 through a reload; 0 or absent when none is in progress. */
   reload?: number;
+  /**
+   * U-158: 0..1, how far the weapon is lowered from the aim: an RPG gunner's
+   * launcher carried low until its wind-up brings it onto the shoulder. 0 or
+   * absent: aimed. Dips the muzzle only; the head and spine keep the aim.
+   */
+  lower?: number;
 }
 
 const RIGS = new WeakMap<THREE.Object3D, HumanoidRig>();

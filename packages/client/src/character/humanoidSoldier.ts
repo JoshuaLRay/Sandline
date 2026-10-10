@@ -280,6 +280,8 @@ const X_AXIS = new THREE.Vector3(1, 0, 0);
  */
 const KICK_SPINE_SHARE = 0.3;
 const RELOAD_DIP = 0.35;
+/** U-158: radians the muzzle dips at `lower` 1: an RPG gunner's launcher in its low carry, pointed at the ground ahead. */
+export const LOWER_DIP = 0.5;
 /**
  * The hit reaction's shares (T-2.27). The chest carries the turn and the
  * tilt; on a head-zone hit the head snaps this much of them again on top, so
@@ -621,7 +623,8 @@ export function createHumanoidSoldier(variant: SoldierVariant): THREE.Mesh {
     // The rifle turns about the shoulder by what the spine did not take, so
     // its pitch in the body's frame is exactly the aim's.
     // The kick lifts the muzzle further; a reload dips it.
-    const dip = RELOAD_DIP * plateau(reload, 0, 0.25, 0.75, 1);
+    const lower = Number.isFinite(state.lower) ? Math.max(0, Math.min(1, state.lower as number)) : 0;
+    const dip = RELOAD_DIP * plateau(reload, 0, 0.25, 0.75, 1) + LOWER_DIP * lower;
     const rifleTurn = -(p - spineLean) - kickUp + dip;
     // A zero turn is the rest itself, not a rotation by negative zero:
     // the snapshot a test compares must be the build-time bits.

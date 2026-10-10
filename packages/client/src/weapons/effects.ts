@@ -280,7 +280,7 @@ const PLANE_FACING = new THREE.Vector3(0, 0, 1);
  * flat square — unnoticed metres away in third person, and a lit tile over
  * the sights in first. Built once, in code, 64 texels square.
  */
-function flashTexture(): THREE.DataTexture {
+export function flashTexture(): THREE.DataTexture {
   const size = 64;
   const data = new Uint8Array(size * size * 4);
   for (let y = 0; y < size; y += 1) {

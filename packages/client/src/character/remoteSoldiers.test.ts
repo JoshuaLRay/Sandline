@@ -57,7 +57,7 @@ function slotEntity(netId: number, slot: number, x = 1): Entity {
 }
 
 /** An enemy as T-3.10's session sends it: Transform, Health, Crouch, Enemy — no PlayerSlot, no Weapon. */
-function enemyEntity(netId: number, x: number, z: number, vitality: 'alive' | 'dead' = 'alive'): Entity {
+function enemyEntity(netId: number, x: number, z: number, vitality: 'alive' | 'dead' = 'alive', archetype = RIFLEMAN, aiming = 0, launcher = 0): Entity {
   const dead = vitality === 'dead';
   return {
     netId,
@@ -65,9 +65,15 @@ function enemyEntity(netId: number, x: number, z: number, vitality: 'alive' | 'd
       [T]: transform(x, z),
       [H]: [dead ? 0 : 100, 100, vitalityCode(vitality), dead ? 10 : 0, 0, 0],
       [COMPONENT_IDS.Crouch]: [0, 0],
-      [COMPONENT_IDS.Enemy]: [RIFLEMAN, 0, 0, 0, 0],
+      [COMPONENT_IDS.Enemy]: [archetype, 0, 0, aiming, launcher],
     },
   };
+}
+
+const RPG = ENEMY_IDS.indexOf('rpg');
+/** U-158: an RPG gunner, its `launcher` bit (what is in its hands) and `aiming` (its wind-up) as U-157's session sends them. */
+function rpgEntity(netId: number, x: number, z: number, hands: { launcher: boolean; aiming?: boolean }, vitality: 'alive' | 'dead' = 'alive'): Entity {
+  return enemyEntity(netId, x, z, vitality, RPG, hands.aiming ? 1 : 0, hands.launcher ? 1 : 0);
 }
 
 /** A client fed raw snapshots and a renderer drawing from it into a scene of its own. */
@@ -225,5 +231,79 @@ describe('enemies in the page (T-3.11)', () => {
     expect(h.remotes.size).toBe(0);
     expect(h.scene.children).toHaveLength(0);
     expect(h.shootable).toHaveLength(0);
+  });
+});
+
+describe('the RPG gunner (U-158)', () => {
+  it('holds its rifle until the launcher bit is set, then the launcher, and the rifle again when it is cleared', () => {
+    const h = harness();
+    let tick = 10;
+    for (; tick < 16; tick += 1) h.frame(tick, [rpgEntity(3000, 0, 30, { launcher: false })]);
+    const rig = requireRig(h.remotes.get(3000)!);
+    expect(rig.held).toBe(getEnemy('rpg').weapon);
+    expect(remoteSoldierState(h.net, 3000).launcher).toBeUndefined();
+    for (const end = tick + 6; tick < end; tick += 1) h.frame(tick, [rpgEntity(3000, 0, 30, { launcher: true })]);
+    expect(rig.held).toBe(getEnemy('rpg').launcher!.projectile);
+    expect(remoteSoldierState(h.net, 3000)).toMatchObject({ held: 'rocket', launcher: { aiming: false } });
+    for (const end = tick + 6; tick < end; tick += 1) h.frame(tick, [rpgEntity(3000, 0, 30, { launcher: false })]);
+    expect(rig.held).toBe(getEnemy('rpg').weapon);
+  });
+
+  it('never gives a launcher to an archetype without one, whatever the bit says', () => {
+    const h = harness();
+    for (let tick = 10; tick < 16; tick += 1) h.frame(tick, [enemyEntity(2000, -5, 40, 'alive', RIFLEMAN, 1, 1)]);
+    expect(requireRig(h.remotes.get(2000)!).held).toBe(getEnemy('rifleman').weapon);
+    expect(remoteSoldierState(h.net, 2000).launcher).toBeUndefined();
+  });
+
+  it('carries the launcher low, shoulders it with a glint for the wind-up, and puts the glint out when it ends', () => {
+    const h = harness();
+    let tick = 10;
+    for (; tick < 20; tick += 1) h.frame(tick, [rpgEntity(3000, 0, 30, { launcher: true })]);
+    const rig = requireRig(h.remotes.get(3000)!);
+    const cue = h.remotes.windUpCue(3000)!;
+    expect(cue).not.toBeNull();
+    expect(cue.parent).toBe(rig.aim);
+    expect(cue.visible).toBe(false);
+    // The muzzle down at the ground ahead in the carry.
+    const muzzleDown = (): number => new THREE.Vector3(0, 0, 1).applyQuaternion(rig.aim.quaternion).y;
+    const carried = muzzleDown();
+    expect(carried).toBeLessThan(-0.3);
+    for (const end = tick + 20; tick < end; tick += 1) h.frame(tick, [rpgEntity(3000, 0, 30, { launcher: true, aiming: true })]);
+    expect(cue.visible).toBe(true);
+    expect(muzzleDown()).toBeGreaterThan(carried + 0.3);
+    for (const end = tick + 3; tick < end; tick += 1) h.frame(tick, [rpgEntity(3000, 0, 30, { launcher: true })]);
+    expect(cue.visible).toBe(false);
+  });
+
+  it('is found as the launcher a new rocket beside it left, with its drawn muzzle and the way the tube points', () => {
+    const h = harness();
+    let tick = 10;
+    for (; tick < 20; tick += 1) h.frame(tick, [rpgEntity(3000, 0, 30, { launcher: true, aiming: true }), enemyEntity(2000, 3, 30)]);
+    const out = { muzzle: new THREE.Vector3(), forward: new THREE.Vector3() };
+    const body = h.remotes.get(3000)!;
+    expect(h.remotes.launcherNear({ x: 0.2, y: 1.6, z: 31.5 }, out)).toBe(3000);
+    expect(out.muzzle.distanceTo(body.position)).toBeLessThan(1.5);
+    expect(out.forward.length()).toBeCloseTo(1, 6);
+    // Nobody with a launcher near the rocket: nothing to flash (the rifleman beside it holds a rifle).
+    expect(h.remotes.launcherNear({ x: 0, y: 1.6, z: 60 }, out)).toBeNull();
+    // The last rocket puts the rifle back in its hands on the tick it leaves: still its launch, for a moment.
+    for (const end = tick + 2; tick < end; tick += 1) h.frame(tick, [rpgEntity(3000, 0, 30, { launcher: false }), enemyEntity(2000, 3, 30)]);
+    expect(requireRig(body).held).toBe(getEnemy('rpg').weapon);
+    expect(h.remotes.launcherNear({ x: 0.2, y: 1.6, z: 31.5 }, out)).toBe(3000);
+    for (const end = tick + 30; tick < end; tick += 1) h.frame(tick, [rpgEntity(3000, 0, 30, { launcher: false }), enemyEntity(2000, 3, 30)]);
+    expect(h.remotes.launcherNear({ x: 0.2, y: 1.6, z: 31.5 }, out)).toBeNull();
+  });
+
+  it('frees its glint with the rest of it when it despawns', () => {
+    const h = harness();
+    let tick = 10;
+    for (; tick < 16; tick += 1) h.frame(tick, [rpgEntity(3000, 0, 30, { launcher: true, aiming: true })]);
+    const cue = h.remotes.windUpCue(3000)!;
+    let disposed = false;
+    cue.material.addEventListener('dispose', () => (disposed = true));
+    for (const end = tick + 20; tick < end; tick += 1) h.frame(tick, []);
+    expect(h.remotes.has(3000)).toBe(false);
+    expect(disposed).toBe(true);
   });
 });

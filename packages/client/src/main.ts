@@ -122,6 +122,7 @@ import { weaponMuzzle } from './weapons/weaponModels.ts';
 import { ScopeOverlay, scopedFov, scopedLookScale } from './ui/scopeOverlay.ts';
 import { applyKick, createRecoil, recoverRecoil } from './weapons/recoil.ts';
 import { FIRST_PERSON_FLASH_SCALE, SCORCH_REACH_M, WeaponEffects } from './weapons/effects.ts';
+import { RocketEffects } from './weapons/rocketFx.ts';
 import { addImpulse, addShake, applyShake, blastShake, createShake, decayShake, suppressionJolt } from './camera/cameraShake.ts';
 import { SuppressionOverlay } from './ui/suppressionLook.ts';
 import { crosshairGapPx } from './ui/crosshair.ts';
@@ -815,12 +816,29 @@ function pointAlong(mesh: THREE.Mesh, vx: number, vy: number, vz: number): void 
   mesh.quaternion.setFromUnitVectors(UP, projectileHeading);
 }
 
+/** U-158: lay a drawn rocket's smoke from its motor, a little behind where the rocket is drawn. */
+const rocketTail = new THREE.Vector3();
+function followRocket(key: string, mesh: THREE.Mesh, vx: number, vy: number, vz: number, now: number): void {
+  const speed = Math.hypot(vx, vy, vz);
+  rocketTail.copy(mesh.position);
+  if (speed >= 1e-3) rocketTail.addScaledVector(projectileHeading.set(vx, vy, vz), -ROCKET_TAIL_M / speed);
+  rocketFx.follow(key, rocketTail, now);
+}
+
 const combat = new CombatQA(scene, shootable);
 /**
  * Muzzle flash and shells (T-2.10): pooled once here, never allocated on a
  * shot. Cosmetic, from the VISUAL muzzle, like the tracers.
  */
 const effects = new WeaponEffects(scene);
+/** U-158: every rocket's smoke trail and the flash of a launcher firing, pooled the same way. */
+const rocketFx = new RocketEffects(scene);
+/** U-158: the replicated rockets whose launch has been drawn (or found to be our own), by netId. */
+const launchesSeen = new Set<number>();
+const launchFrom = { muzzle: new THREE.Vector3(), forward: new THREE.Vector3() };
+const ROCKET_KIND = PROJECTILE_IDS.indexOf('rocket');
+/** U-158: metres behind a drawn rocket's centre its motor is, where the smoke comes from. */
+const ROCKET_TAIL_M = 0.25;
 /**
  * Recoil (T-2.08): a view offset the trigger kicks and every frame recovers.
  * Applied on the tick a shot resolves, so the NEXT shot fires along the
@@ -1631,6 +1649,8 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
   damageHits = [];
   compassMarkers = [];
   effects.reset();
+  rocketFx.reset();
+  launchesSeen.clear();
   playerRig.setPose('standing');
   localPoseDriver.reset();
   playerRig.aimAt(0, 0);
@@ -2789,14 +2809,27 @@ function frame(): void {
   const liveProjectiles = net?.projectiles() ?? [];
   throws.bind(liveProjectiles, net?.slot ?? -1);
   for (const id of throws.takeRetired()) dropProjectileMesh(`g${id}`);
+  const fxNow = clock.tick * TICK_SECONDS + clock.alpha * TICK_SECONDS;
+  const liveLaunches = new Set<number>();
   for (const projectile of liveProjectiles) {
+    const rocket = projectile.kind === ROCKET_KIND;
+    if (rocket) liveLaunches.add(projectile.netId);
+    // U-158: someone else's rocket, the first frame it is drawn: the flash on the launcher it left, if that is drawn.
+    if (rocket && !launchesSeen.has(projectile.netId)) {
+      launchesSeen.add(projectile.netId);
+      if (projectile.ownerSlot !== net?.slot && remotes.launcherNear(projectile, launchFrom) !== null) {
+        rocketFx.launch(launchFrom.muzzle, launchFrom.forward, fxNow);
+      }
+    }
     if (throws.isGhosted(projectile.netId)) continue;
     const key = `p${projectile.netId}`;
     seenProjectiles.add(key);
     const mesh = projectileMesh(key, projectile.kind);
     mesh.position.set(projectile.x, projectile.y, projectile.z);
     pointAlong(mesh, projectile.vx, projectile.vy, projectile.vz);
+    if (rocket) followRocket(key, mesh, projectile.vx, projectile.vy, projectile.vz, fxNow);
   }
+  for (const netId of launchesSeen) if (!liveLaunches.has(netId)) launchesSeen.delete(netId);
   for (const ghost of throws.ghosts) {
     const key = `g${ghost.id}`;
     seenProjectiles.add(key);
@@ -2810,6 +2843,7 @@ function frame(): void {
       ghost.prev.z + (ghost.state.z - ghost.prev.z) * a,
     );
     pointAlong(mesh, ghost.state.vx, ghost.state.vy, ghost.state.vz);
+    if (ghost.kind === ROCKET_KIND) followRocket(key, mesh, ghost.state.vx, ghost.state.vy, ghost.state.vz, fxNow);
   }
   for (const key of [...projectileMeshes.keys()]) {
     if (!seenProjectiles.has(key)) dropProjectileMesh(key);
@@ -3236,6 +3270,7 @@ function frame(): void {
         `${throws.readout(clock.tick * TICK_SECONDS)}` +
         `${lastBlast ? `\nlast blast ${lastBlast.name}  ${lastBlast.damage.toFixed(0)} dmg on ${lastBlast.targets}` : ''}\n` +
         `${effects.readout()}\n` +
+        `${rocketFx.readout()}  wind-ups ${remotes.windingUp}\n` +
         `${audio.readout()}\n` +
         `\n${netReadout()}`;
     }
@@ -3300,6 +3335,7 @@ function frame(): void {
   }
   pendingShotCount = 0;
   effects.update(effectsNow);
+  rocketFx.update(effectsNow);
   netgraph.sample();
   if (live && now - squadAt >= 250) {
     squadAt = now;
@@ -3375,7 +3411,9 @@ addEventListener('keydown', (e) => {
     localPoseDriver.resetPeak();
     localFeet.resetPeak();
     combat.reset();
-  effects.reset();
+    effects.reset();
+    rocketFx.reset();
+    launchesSeen.clear();
     // The pouch is the server's (U-024). On the in-page range T asks that server to
     // give the grenades back; a hosted room's pouch is never the page's to refill.
     for (const id of throws.takeRetired()) dropProjectileMesh(`g${id}`);
