@@ -13,6 +13,7 @@ import {
   createMoveState,
   getEnemy,
   getProjectile,
+  parseEncounter,
   parseTreeDef,
   rememberSeen,
   requireWorld,
@@ -208,6 +209,26 @@ describe('the RPG archetype on the session (U-157)', () => {
     const rifle = spawn(session, 'rpg', { x: 2, z: 14 }, wants(() => ({ fireAt: session.slots[0]!.netId, rifle: true })));
     step(3 * 30, () => hold(session, 0, rifle));
     expect(rifle.weaponState.shotIndex).toBeGreaterThan(0);
+  });
+
+  it('spawns from an encounter group, on its own tree, holding its post with the launcher', async () => {
+    const encounter = parseEncounter({
+      world: 'greybox-01',
+      aliveCap: 10,
+      probes: [0.3, 1.0, 1.7],
+      areas: {},
+      groups: [{ id: 'rockets', members: [{ archetype: 'rpg', count: 1 }], zone: 'assault-flank', posture: { kind: 'hold', face: 'start' }, trigger: { kind: 'start' } }],
+    });
+    const session = new Session(undefined, '', requireWorld('greybox-01'), { navMesh: loadWorldNavMesh('greybox-01'), cover: bakedCoverFor('greybox-01'), encounter });
+    // The squad out of every enemy's sight, as the spawner's own posture test has it.
+    for (const s of session.slots) s.state = { ...s.state, x: 95, z: -95 };
+    for (let t = 1; t <= 30; t++) session.step(t * TICK_MS);
+    const [id] = session.spawner!.spawnedBy('rockets');
+    const gunner = session.enemies.find((e) => e.netId === id)!;
+    expect(gunner.def.id).toBe('rpg');
+    expect(gunner.brain!.tree.runningPath().at(-1)).toMatch(/action:atEase$/);
+    expect(gunner.launcherInHand).toBe(true);
+    expect(gunner.pouch[ROCKET_INDEX]).toBe(LAUNCHER.rockets);
   });
 
   it('puts the launcher away for good once its rockets are spent', () => {

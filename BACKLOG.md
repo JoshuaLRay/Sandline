@@ -74,9 +74,9 @@ canonical when this documentation PR merges.
 | [U-151](docs/backlog/U-151.md) | Construct screened X ingress and prove the rotating tank sweep | Map implementation | P1 | BLOCKED | U-150 | — |
 | [U-154](docs/backlog/U-154.md) | Move and hold orders keep a facing | Squad command (Conflict parity) | P2 | DONE | — | [#326](https://github.com/JoshuaLRay/Sandline/pull/326) |
 | [U-152](docs/backlog/U-152.md) | Build return shelters and prove rocket clearance and blast protection | Map implementation | P1 | BLOCKED | U-150, U-151 | — |
-| [U-155](docs/backlog/U-155.md) | RPG gunner enemy | Enemy AI (Conflict parity) | P2 | BLOCKED | Aggregate: U-157, U-158 | — |
-| [U-157](docs/backlog/U-157.md) | RPG gunner: data, brain and authoritative rockets | Enemy AI (Conflict parity) | P2 | IN_PROGRESS | — | branch `claude/rpg-gunner-enemy-k2m4ts` |
-| [U-158](docs/backlog/U-158.md) | RPG gunner: RPG-7 in hand, wind-up, launch and trail | Enemy AI (Conflict parity) | P2 | BLOCKED | U-157 | — |
+| [U-155](docs/backlog/U-155.md) | RPG gunner enemy | Enemy AI (Conflict parity) | P2 | BLOCKED | Aggregate: U-157 DONE; U-158 remains | — |
+| [U-157](docs/backlog/U-157.md) | RPG gunner: data, brain and authoritative rockets | Enemy AI (Conflict parity) | P2 | DONE | — | [#327](https://github.com/JoshuaLRay/Sandline/pull/327) |
+| [U-158](docs/backlog/U-158.md) | RPG gunner: RPG-7 in hand, wind-up, launch and trail | Enemy AI (Conflict parity) | P2 | READY | U-157 (DONE) | — |
 | [U-140](docs/backlog/U-140.md) | Construct the continuous ridge stairs, shelves and service bridge | Map implementation | P1 | BLOCKED | U-139 | — |
 | [U-141](docs/backlog/U-141.md) | Construct support bays/C12 links and verify surface isolation | Map implementation | P1 | BLOCKED | U-139, U-140 | — |
 | [U-115](docs/backlog/U-115.md) | Build the continuous underground depot and its stairs | Map implementation | P1 | BLOCKED | U-109, U-114 | — |
