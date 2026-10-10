@@ -7,6 +7,18 @@ small bend to preserve the late court reveal when the original straight
 S3→D0 connection conflicted with that view requirement. S3a and its rock toe
 below implement that decision; the other route nodes remain fixed.
 
+**U-159 road-bend addendum · 2026-10-10:** the owner chose to bend the road at
+the fight boundaries (U-150 option A) because the straight road let a soldier at
+A4 see 145 m down the tank's own 12 m lane, where nothing may stand. A3, A4 and
+A7 move (§5.1); A0–A2, A5, A6, A8, A9, the gate, both ridge crossings and the
+buried vault stay. On the bare road the longest straight view inside the tank
+lane is now 86.7 m, and no straight view on the walking surface joins two of the
+three fights. Every point off that surface must be solid rock above head height
+at the separating bends (A3 and A7 inside corners); neither may be a drop. Cover,
+landmarks and sockets the bend displaced are listed after §5.2 and §9.1; U-150
+re-places them under §15. The surface diagram predates this addendum; the
+[bent road plan](../../../artifacts/qalat-road-supports/plan.svg) shows the road.
+
 This is the canonical construction brief for campaign mission 1, world/mission
 `qalat-road`. It replaces the rectangular valley, terrace slots and surface
 riverbed flank delivered by U-106. That implementation remains the current game
@@ -281,11 +293,11 @@ visual only. No bridge demolition, doors, mines or required lever gates.
 | A0 / D0 | (32,8,64) | Decision court; road leaves north |
 | A1 | (32,8,98) | Rock-cut throat; outpost tower appears over bend; no direct long shot into the outpost |
 | A2 | (12,8,128) | **Toll bend**: abandoned weighing office, disabled truck off carriageway, first road patrol; lower ridge crossing starts here |
-| A3 | (-4,8,166) | **Orchard shelf**: four bare almond trees on west shoulder; view back to lower overlook, view forward cut by rock |
-| A4 | (-4,8,200) | **Broken depot frontage**: recessed loading bays on west; road MG occupies a shallow west-side emplacement |
+| A3 | (-37,8,142) | **Orchard shelf** (U-159 bend): road turns north up the west leg; four bare almond trees on its west shoulder; view back to lower overlook, view forward cut by rock |
+| A4 | (-28,8,210) | **Broken depot frontage** (U-159 bend): head of the west leg; recessed loading bays on its west side; road MG covers the leg from a shallow emplacement |
 | A5 | (26,8,232) | **Switchback court**: widened bend around a limestone spur; upper ridge crossing starts here |
 | A6 | (30,8,270) | **Vault roof causeway**: buried great hall below; cracked stone parapets show the depot's buried scale |
-| A7 | (8,8,304) | **Last fold**: low orchard wall and rock shoulder; no view of the prisoner room |
+| A7 | (-18,8,302) | **Last fold** (U-159 bend): low orchard wall and rock shoulder; no view of the prisoner room |
 | A8 | (16,8,332) | **Forecourt bend**: main road meets tank service ingress; outpost south gate first fully revealed |
 | A9 | (32,8,350) | Final 6 m open run to the 8 m south gate at (32,8,356) |
 
@@ -294,6 +306,11 @@ frontage A4/A5, then forecourt A8. T-C spurs cut longitudinal firing lines. Betw
 fights, show the next objective landmark briefly rather than exposing the whole
 corridor. No straight hostile firing lane exceeds 90 m except deliberate ridge
 views specified in §6. Keep 4–8 m spaces behind cover free for regrouping.
+U-159 proves the road's share of this on the bare supports: the 12 m lane holds
+no straight view over 90 m, so any longer view crosses a shoulder or apron where
+cover can cut it, and the fights' 36 m aprons cannot see one another without
+leaving the walking surface. The longest remaining bare-surface view from each
+fight is recorded in its construction manifest for U-150.
 
 ### 5.2 Road cover and landmarks
 
@@ -316,6 +333,10 @@ Visual truck geometry uses the listed solid box proxy and cannot be entered.
 | A-C10 | (-6,8,306) | 6×1.2×2.2, along-road rock | Covered preparation for final gate approach |
 | A-C11 | (2,8,336) | 4×0.8×1.1, across-road orchard wall | Lower tank firing position |
 | A-C12 | (44,8,344) | 4×1.2×2.2, along-road rock | Upper tank firing position and forecourt protection |
+
+U-159 bend: A-C04, A-C05, A-C07, A-C08 and A-C12 now lie off the walking surface
+and A-C10 lies in the tank lane; the orchard trees and the depot façades no longer
+line the road. U-150 re-places them beside the bent road and updates this table.
 
 If a rotated footprint touches a turning apron, preserve the 12 m swept corridor
 by trimming the apron shoulder **around the listed cover**, not by moving cover
@@ -394,7 +415,7 @@ rock ledge; the wide rear opens back onto the ridge.
 |---|---|---|---|
 | V1 lower saddle | (58,20,128) | Truck patrol cover (-4,8,126); eastern road wall (24,8,138) | A4 nest at (-18,8,200), screened by rock fin F1 at (36,8,150) |
 | V2 Eagle shelf | (88,30,210) | MG nest (-18,8,200); crossing approach (26,8,232) | Toll bend behind lower spur; compound interior behind upper ridge shoulder |
-| V3 survey post | (66,26,286) | A7 road at (8,8,304); A8 at (16,8,332); south-gate gun at (38,8,360) | Prisoner and radio rooms, west service gate and basement |
+| V3 survey post | (66,26,286) | A7 road at (-18,8,302); A8 at (16,8,332); south-gate gun at (38,8,360) | Prisoner and radio rooms, west service gate and basement |
 
 The terrain mass polygons are envelopes, not permission to obstruct these views.
 Excavate each bay's road-facing view fan through T-E: in plan, take the convex
@@ -594,8 +615,8 @@ number is a persistent entity/spawn ID, used by saves and acceptance tests.
 | Group | Members: ID, archetype, feet position | Initial facing target |
 |---|---|---|
 | road-toll | AT1 R (6,8,122); AT2 R (16,8,130); AT3 R (8,8,138) | (32,98) |
-| road-frontage | AF1 M (-16,8,202); AF2 R (-8,8,194); AF3 R (4,8,208); AF4 R (18,8,224) | (-4,166) |
-| road-forecourt | AG1 R (10,8,322); AG2 R (24,8,338); AG3 R (34,8,346) | (8,304) |
+| road-frontage | AF1 M (-16,8,202); AF2 R (-8,8,194); AF3 R (4,8,208); AF4 R (18,8,224) | (-37,142) |
+| road-forecourt | AG1 R (10,8,322); AG2 R (24,8,338); AG3 R (34,8,346) | (-18,302) |
 | ridge-lower | RL1 R (76,26,164); RL2 R (82,26,172); RL3 R (78,26,178) | (64,128) |
 | ridge-upper | RU1 R (82,30,244); RU2 R (88,30,252); RU3 R (72,26,282) | (94,210) |
 | basement-grain | BG1 R (-26,0,124); BG2 R (-16,0,128); BG3 R (-24,0,128) | (-20,108) |
@@ -603,6 +624,9 @@ number is a persistent entity/spawn ID, used by saves and acceptance tests.
 | basement-vault | BV1 R (24,0,282); BV2 R (36,0,280); BV3 R (30,0,284) | (30,254) |
 | garrison | OG1 M (38,8,361); OG2 R (18,8,368); OG3 R (48,8,378); OG4 R (18,8,390); OG5 R (28,8,402); OG6 R (36,8,386) | OG1/2 (32,350); OG3 (56,374); OG4 (22,392); OG5/6 (32,376) |
 | radio-operator | OR1 R (50,8,402) | (42,396) |
+
+U-159 bend: the road groups face their approach node (A3, A7). AF2 and AF3 now
+stand off the walking surface; U-150 moves them onto the frontage with its cover.
 
 The generic `garrison` group comprises five riflemen and one MG. Its members use
 individual sockets and local assignments, not a random common spawn disc. OG1

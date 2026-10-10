@@ -1,5 +1,5 @@
 {
-  "$comment": "U-149 isolated road support leaf of U-139. Approved construction specification sections 2, 5.1 and 11.1. Combat shells, geology, cover and X ingress are later leaves; this is not a campaign registry entry.",
+  "$comment": "U-149 isolated road support leaf of U-139, bent by U-159 (owner option A, 2026-10-10): A3, A4 and A7 moved so each fight sits round a corner; A0-A2, A5, A6, A8, A9 and the gate are unchanged. Construction specification sections 2, 5.1 and 11.1 plus the U-159 addendum. Combat shells, geology, cover and X ingress are later leaves; this is not a campaign registry entry.",
   "id": "qalat-road-support-authoring",
   "floorY": 8,
   "supportBottomY": 5.5,
@@ -12,15 +12,24 @@
     { "id": "A0", "x": 32, "y": 8, "z": 64 },
     { "id": "A1", "x": 32, "y": 8, "z": 98 },
     { "id": "A2", "x": 12, "y": 8, "z": 128 },
-    { "id": "A3", "x": -4, "y": 8, "z": 166 },
-    { "id": "A4", "x": -4, "y": 8, "z": 200 },
+    { "id": "A3", "x": -37, "y": 8, "z": 142 },
+    { "id": "A4", "x": -28, "y": 8, "z": 210 },
     { "id": "A5", "x": 26, "y": 8, "z": 232 },
     { "id": "A6", "x": 30, "y": 8, "z": 270 },
-    { "id": "A7", "x": 8, "y": 8, "z": 304 },
+    { "id": "A7", "x": -18, "y": 8, "z": 302 },
     { "id": "A8", "x": 16, "y": 8, "z": 332 },
     { "id": "A9", "x": 32, "y": 8, "z": 350 },
     { "id": "south-gate", "x": 32, "y": 8, "z": 356 }
   ],
+  "sightLines": {
+    "maxLaneViewM": 90,
+    "proofMarginM": 0.25,
+    "fights": [
+      { "id": "toll", "nodes": ["A2"] },
+      { "id": "frontage", "nodes": ["A4", "A5"] },
+      { "id": "forecourt", "nodes": ["A8"] }
+    ]
+  },
   "reservedBridge": { "minX": 66, "maxX": 74, "minZ": 330, "maxZ": 342, "undersideY": 14, "deckY": 16 },
   "reservedVault": { "minX": 16, "maxX": 44, "minZ": 252, "maxZ": 288, "floorY": 0, "ceilingY": 5.5 }
 }

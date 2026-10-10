@@ -1,11 +1,12 @@
 {
-  "task": "U-149",
+  "task": "U-159",
+  "foundation": "U-149",
   "parent": "U-139",
   "kind": "isolated road support whitebox",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "e22d3307ecbc4bf6d15073b60c817d673fc9034b5c43575ef6c95722a95d8909",
-  "levelHash": "9f2b8b3a6af5a71f8e65d2a9e9756537f58031f363f4fb85842776c19805f86e",
-  "boxCount": 16647,
+  "sourceHash": "501f9ca238a39eeba493d1b85fbc7b3a31f85c0eb4808abc3b320a09200f9d68",
+  "levelHash": "9347a155ffa088e293c44bade8da8d5173e034ed7adb1eeb76242f32fd7c6a6a",
+  "boxCount": 17542,
   "stratumM": 0.025,
   "edgeExpansionM": 0.005,
   "circleSides": 512,
@@ -36,15 +37,15 @@
     },
     {
       "id": "A3",
-      "x": -4,
+      "x": -37,
       "y": 8,
-      "z": 166
+      "z": 142
     },
     {
       "id": "A4",
-      "x": -4,
+      "x": -28,
       "y": 8,
-      "z": 200
+      "z": 210
     },
     {
       "id": "A5",
@@ -60,9 +61,9 @@
     },
     {
       "id": "A7",
-      "x": 8,
+      "x": -18,
       "y": 8,
-      "z": 304
+      "z": 302
     },
     {
       "id": "A8",
@@ -109,7 +110,75 @@
     "floorY": 0,
     "ceilingY": 5.5
   },
-  "ownerQualityVerdict": "pending",
+  "sightLines": {
+    "maxLaneViewM": 90,
+    "proofMarginM": 0.25,
+    "longestLaneView": {
+      "length": 86.74,
+      "from": {
+        "x": 32.51,
+        "z": 108.05
+      },
+      "to": {
+        "x": -41.57,
+        "z": 153.17
+      }
+    },
+    "separatedFights": [
+      "A2-A4",
+      "A2-A5",
+      "A2-A8",
+      "A4-A8",
+      "A5-A8"
+    ],
+    "longestFightViews": {
+      "A2": {
+        "length": 89.2,
+        "from": {
+          "x": 4.5,
+          "z": 144.64
+        },
+        "to": {
+          "x": 42.21,
+          "z": 63.75
+        }
+      },
+      "A4": {
+        "length": 116.2,
+        "from": {
+          "x": -33.2,
+          "z": 192.51
+        },
+        "to": {
+          "x": 47.06,
+          "z": 276.49
+        }
+      },
+      "A5": {
+        "length": 128.9,
+        "from": {
+          "x": 18.91,
+          "z": 248.82
+        },
+        "to": {
+          "x": -55.2,
+          "z": 143.37
+        }
+      },
+      "A8": {
+        "length": 81.8,
+        "from": {
+          "x": 29.73,
+          "z": 344.03
+        },
+        "to": {
+          "x": -31.67,
+          "z": 289.9
+        }
+      }
+    }
+  },
+  "ownerQualityVerdict": "road look/play batched in U-139",
   "unfinished": [
     "road fight geology/cover/shells: U-150",
     "X ingress/tank sweep: U-151",
