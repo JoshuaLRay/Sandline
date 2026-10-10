@@ -126,12 +126,14 @@ export interface Visibility { visible: boolean; lines: number; witness?: Segment
 interface Sampling { marginM?: number; stepDeg?: number; stepM?: number }
 
 /** Every sampled line crossing all the discs (grown by the margin), with the
- * intervals the grown pieces cover on it. Any real segment of at most `reach`
- * metres lies within (reach/2)·sin(stepDeg/2) + stepM/2 ≤ marginM of one of
- * these lines, so it shows up as part of a covered interval. */
+ * intervals the grown pieces cover on it. Turning a real segment of at most
+ * `reach` metres by up to stepDeg/2 about its midpoint and shifting it by up to
+ * stepM/2 lands it on a sampled line, moving no point by more than
+ * reach·sin(stepDeg/4) + stepM/2 ≤ marginM, so it shows up inside a covered
+ * interval of the grown pieces. */
 function* sampledLines(pieces: Pieces, discs: readonly Disc[], reach: number,
   { marginM = .25, stepDeg = .05, stepM = .1 }: Sampling) {
-  const slack = reach / 2 * Math.sin(stepDeg * Math.PI / 360) + stepM / 2;
+  const slack = reach * Math.sin(stepDeg * Math.PI / 720) + stepM / 2;
   if (slack > marginM) throw new Error(`sampling slack ${slack} m exceeds the ${marginM} m margin`);
   for (let k = 0; k * stepDeg < 180; k++) {
     const angle = k * stepDeg * Math.PI / 180, d = { x: Math.cos(angle), z: Math.sin(angle) };

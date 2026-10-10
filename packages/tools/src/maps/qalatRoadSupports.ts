@@ -19,18 +19,17 @@ const STRATUM_M = .025;
 const EDGE_M = .005;
 const CIRCLE_SIDES = 512;
 
-/** The larger aprons contain every changing-tangent join, including its bevel. */
 // Circumscribed polygon keeps all points on the specified 18 m radius
 // supported. Its <0.0004 m expansion is included in the construction tolerance.
 const APRON_RADIUS = ROAD_SUPPORTS.apronDiameter / 2 / Math.cos(Math.PI / CIRCLE_SIDES);
 
+/** The larger aprons contain every changing-tangent join, including its bevel. */
 export function roadSupportFloors(): readonly Polygon[] {
   const { spine, ribbonWidth, apronNodes } = ROAD_SUPPORTS;
-  const radius = APRON_RADIUS;
   const aprons = spine.filter((p) => apronNodes.includes(p.id)).map((p) =>
     Array.from({ length: CIRCLE_SIDES }, (_, i) => ({
-      x: p.x + radius * Math.cos(2 * Math.PI * i / CIRCLE_SIDES),
-      z: p.z + radius * Math.sin(2 * Math.PI * i / CIRCLE_SIDES),
+      x: p.x + APRON_RADIUS * Math.cos(2 * Math.PI * i / CIRCLE_SIDES),
+      z: p.z + APRON_RADIUS * Math.sin(2 * Math.PI * i / CIRCLE_SIDES),
     })));
   return [...ribbonPieces(spine, ribbonWidth), ...aprons];
 }
