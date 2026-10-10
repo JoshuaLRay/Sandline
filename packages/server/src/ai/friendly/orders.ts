@@ -17,11 +17,16 @@
  * - **hold** — stays at its anchor (the order's point, else where it stood
  *   when told), standing to fire at what it sees; nothing moves it but a new
  *   order. It never finishes.
+ * - U-154: a move or a hold given with a facing — the way its giver was
+ *   looking — watches along it once there, while it has no threat to face; a
+ *   threat it knows of, seen or remembered, still turns it. The facing only
+ *   steers the gaze: what it may fire at is untouched, so fire discipline
+ *   holds as before, and an attack order replaces the move or hold outright.
  * - **regroup** — back to its formation place; done once inside its band.
  * - **revive** — to the named squadmate and hold interact, through the
  *   human's revive path. Up: done. Dead, or nobody: failed.
  */
-import { type BtFrame, DAMAGE, DEFAULT_MUZZLE_RIG, type OrderPoint, SQUAD, type WorldBox, formationBand, rayWorld, suppressionLevel } from '@sandline/shared';
+import { type BtFrame, DAMAGE, DEFAULT_MUZZLE_RIG, type OrderPoint, SQUAD, type WorldBox, alongFacing, formationBand, rayWorld, suppressionLevel } from '@sandline/shared';
 import type { BrainBody, BrainMemory, BrainRegistry } from '../Brain.ts';
 import { type CombatBody, isCombatBody, threatEye } from '../actions/combat.ts';
 import { type ActiveOrder, type SquadBody, isSquadBody } from '../actions/friendly.ts';
@@ -37,6 +42,8 @@ export const MOVE_COVER_M = 6;
 const THERE_M = 0.4;
 /** Beyond this, a bot under orders runs. */
 const SPRINT_BEYOND_M = 3;
+/** U-154: how far out along its facing a bot looks: any distance gives the bearing; this keeps it well clear of its own feet. */
+const FACING_LOOK_M = 10;
 
 function isBody(ctx: BrainBody): ctx is Body {
   return isSquadBody(ctx) && isCombatBody(ctx);
@@ -94,6 +101,16 @@ function clearLine(from: Vec3, to: Vec3, boxes: readonly WorldBox[]): boolean {
 
 function point(p: OrderPoint): Vec3 {
   return { x: p.x, y: p.y, z: p.z };
+}
+
+/**
+ * U-154: where a bot that is there looks — the threat, when it has one; else
+ * along its order's facing, from its eye; else nowhere in particular (null:
+ * as before facings, where it last turned).
+ */
+function watch(ctx: Body, order: ActiveOrder, threat: Vec3 | null): Vec3 | null {
+  if (threat) return threat;
+  return order.facing === undefined ? null : alongFacing(eyeOf(ctx.state), order.facing, FACING_LOOK_M);
 }
 
 /**
@@ -187,9 +204,9 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
           hands(frame, { intent: walk(goal, ctx.state), fireAt: seenTarget(ctx), lookAt: far(ctx.state, goal) ? null : eye });
           return 'running';
         }
-        // There: down behind it, facing the threat, firing at what shows.
+        // There: down behind it, facing the threat (else the way it was told to watch, U-154), firing at what shows.
         const target = seenTarget(ctx);
-        hands(frame, { crouch: low && target === null, lookAt: eye, fireAt: target });
+        hands(frame, { crouch: low && target === null, lookAt: watch(ctx, order, eye), fireAt: target });
         if (order.status === 'active') ctx.squad.report(ctx.index, 'done', goal === to ? 'at the point' : 'in cover at the point');
         return 'running';
       })
@@ -263,12 +280,13 @@ export function registerOrderLeaves(registry: BrainRegistry): BrainRegistry {
             return 'running';
           }
         }
-        // Holding: standing to fire at what it sees, facing the threat; contact does not move it.
+        // Holding: standing to fire at what it sees, facing the threat (else the way it was told to watch, U-154);
+        // contact does not move it.
         // U-011: held at an upload's terminal while it waits, it starts it — hands on the panel, as a player's E.
         const terminal = ctx.squad.terminal?.() ?? null;
         const e = eyeOf(ctx.state);
         const press = terminal !== null && Math.hypot(e.x - terminal.x, e.y - terminal.y, e.z - terminal.z) <= terminal.reachM;
-        hands(frame, { fireAt: press ? null : target, lookAt: press ? terminal : eye, interact: press });
+        hands(frame, { fireAt: press ? null : target, lookAt: press ? terminal : watch(ctx, order, eye), interact: press });
         return 'running';
       })
 

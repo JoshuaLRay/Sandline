@@ -149,6 +149,26 @@ describe('orders (T-3.27)', () => {
     expect(c.orders).toEqual([standing]);
   });
 
+  it('U-154: a move or a hold carries its giver’s facing to every bot it reaches and every client; an attack with one is refused', () => {
+    const session = new Session();
+    const a = human(session, 'a');
+    a.send({ kind: 'Order', order: 'hold', address: { to: 'fireteam', index: 0 }, point: { x: 4, y: 0, z: 4 }, target: null, facing: 300 });
+    // Every addressee watches the one way, wherever its spaced place is.
+    expect([1, 2].map((i) => session.orderFor(i)?.facing)).toEqual([300, 300]);
+    expect(a.orders!.map((o) => [o.slot, o.order, o.facing])).toEqual([[1, 'hold', 300], [2, 'hold', 300]]);
+    a.send({ kind: 'Order', order: 'move', address: { to: 'slot', index: 3 }, point: { x: 5, y: 0, z: 5 }, target: null, facing: 0 });
+    expect(session.orderFor(3)).toEqual({ slot: 3, order: 'move', point: { x: 5, y: 0, z: 5 }, target: null, from: 0, facing: 0 });
+    // Without one, an order is as it always was.
+    a.send({ kind: 'Order', order: 'move', address: { to: 'slot', index: 4 }, point: { x: 6, y: 0, z: 6 }, target: null });
+    expect(session.orderFor(4)).toEqual({ slot: 4, order: 'move', point: { x: 6, y: 0, z: 6 }, target: null, from: 0 });
+    expect(a.orders!.find((o) => o.slot === 4)).not.toHaveProperty('facing');
+    // Only a move or a hold takes one: the wire carries it on anything, the session refuses it.
+    const enemy = session.spawnEnemy('rifleman', { x: 0, y: 0, z: 30, tree: buildTree('idle', createBrainRegistry()) }) as number;
+    a.send({ kind: 'Order', order: 'attack', address: { to: 'slot', index: 5 }, point: null, target: enemy, facing: 10 });
+    a.send({ kind: 'Order', order: 'regroup', address: { to: 'slot', index: 5 }, point: null, target: null, facing: 10 });
+    expect(session.orderFor(5)).toBeNull();
+  });
+
   it('refuses what the session cannot honour: a bot’s own order, no such target, a malformed order', () => {
     const session = new Session();
     const a = human(session, 'a');

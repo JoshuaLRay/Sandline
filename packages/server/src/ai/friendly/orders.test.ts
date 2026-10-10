@@ -328,3 +328,113 @@ describe('an order over another (T-3.28)', () => {
     expect(sq.session.orderFor(1)?.order).toBe('hold');
   });
 });
+
+describe('a faced order (U-154)', () => {
+  /** Wire units between two wire yaws, the short way round. */
+  const off = (a: number, b: number) => {
+    const d = (((a - b) % 1024) + 1024) % 1024;
+    return Math.min(d, 1024 - d);
+  };
+  /** The wire yaw from one point to another, as a soldier faces (forward (sin, cos) in x/z). */
+  const bearing = (from: { x: number; z: number }, to: { x: number; z: number }) =>
+    ((Math.round((Math.atan2(to.x - from.x, to.z - from.z) / (Math.PI * 2)) * 1024) % 1024) + 1024) % 1024;
+  /** West: the way back along the path a bot walking east to its point has come. */
+  const WEST = 768;
+
+  /** A move east to an open point with nothing about: where it ends up facing, and how far that wandered while it stayed. */
+  const arrive = (facing: number | null) => {
+    const sq = squad({ 1: { x: -3, z: -8 } });
+    const { session } = sq;
+    const bot = session.slots[1]!;
+    const point = { x: 7, y: 0, z: -5.5 };
+    sq.say({ kind: 'Order', order: 'move', address: { to: 'slot', index: 1 }, point, target: null, ...(facing === null ? {} : { facing }) });
+    let doneAt: number | null = null;
+    sq.run(30 * 10, (t) => {
+      if (doneAt === null && sq.reports(1).some((r) => r.outcome === 'done')) doneAt = t;
+    });
+    const settled = bot.yaw;
+    let drift = 0;
+    sq.run(30 * 3, () => {
+      drift = Math.max(drift, off(bot.yaw, settled));
+    });
+    return { session, bot, doneAt, yaw: bot.yaw, drift, at: Math.hypot(bot.state.x - point.x, bot.state.z - point.z) };
+  };
+
+  it('a move with a facing arrives, turns to watch the way it was given, and keeps it', () => {
+    const faced = arrive(WEST);
+    console.log(`faced move: done after ${faced.doneAt === null ? 'never' : `${(faced.doneAt / 30).toFixed(1)} s`}, yaw ${faced.yaw} for facing ${WEST}, drift ${faced.drift} while staying`);
+    expect(faced.doneAt).not.toBeNull();
+    expect(faced.at).toBeLessThanOrEqual(0.5);
+    expect(faced.session.orderFor(1)).toMatchObject({ order: 'move', facing: WEST });
+    expect(off(faced.yaw, WEST)).toBeLessThanOrEqual(2);
+    expect(faced.drift).toBeLessThanOrEqual(2);
+  });
+
+  it('a move without one behaves as before: it carries no facing and stops looking the way it walked', () => {
+    const plain = arrive(null);
+    console.log(`faceless move: yaw ${plain.yaw} on arrival (it walked east, bearing ~${bearing({ x: -3, z: -8 }, { x: 7, z: -5.5 })})`);
+    expect(plain.doneAt).not.toBeNull();
+    expect(plain.session.orderFor(1)).not.toHaveProperty('facing');
+    // Nothing turned it round: still roughly the way it walked, nowhere near the west a facing would have made it watch.
+    expect(off(plain.yaw, WEST)).toBeGreaterThan(256);
+  });
+
+  it('a hold with a facing and no point turns where it stands and watches that way while it holds', () => {
+    const sq = squad({ 1: { x: 16, z: 0 } });
+    const { session } = sq;
+    const bot = session.slots[1]!;
+    const facing = 256 + 128;
+    sq.say({ kind: 'Order', order: 'hold', address: { to: 'slot', index: 1 }, point: null, target: null, facing });
+    sq.run(30);
+    let worst = 0;
+    sq.run(30 * 5, () => {
+      worst = Math.max(worst, off(bot.yaw, facing));
+    });
+    console.log(`faced hold: within ${worst} wire units of its facing over 5 s, ${Math.hypot(bot.state.x - 16, bot.state.z).toFixed(2)} m from where it was told`);
+    expect(worst).toBeLessThanOrEqual(2);
+    expect(Math.hypot(bot.state.x - 16, bot.state.z)).toBeLessThan(0.6);
+    expect(session.orderFor(1)).toMatchObject({ order: 'hold', facing });
+  });
+
+  /** A faced hold watching north while a rifleman south of it fires on it, under `aggression`. */
+  const contact = (aggression: 'aggressive' | 'hold-fire') => {
+    const sq = squad({ 1: { x: 16, z: 0 } });
+    const { session } = sq;
+    const bot = session.slots[1]!;
+    const foe = session.spawnEnemy('rifleman', { x: 16, y: 0, z: -18, yaw: 0, tree: firingAt(bot.netId) }) as number;
+    if (aggression !== 'aggressive') sq.say({ kind: 'Aggression', address: { to: 'slot', index: 1 }, aggression });
+    sq.say({ kind: 'Order', order: 'hold', address: { to: 'slot', index: 1 }, point: null, target: null, facing: 0 });
+    const from = bot.weaponState.shotIndex;
+    sq.run(30 * 6, () => {
+      heal(session, [1]);
+      Object.assign(enemy(session, foe).health, { current: 100, downedAt: null, diedAt: null });
+    });
+    return { sq, session, bot, foe, fired: bot.weaponState.shotIndex - from, towardFoe: off(bot.yaw, bearing(bot.state, { x: 16, z: -18 })) };
+  };
+
+  it('a threat still wins: a faced hold under fire turns on the shooter and fires back', () => {
+    const { session, fired, towardFoe, bot } = contact('aggressive');
+    console.log(`faced hold in contact: ${fired} rounds back, ${towardFoe} wire units off the shooter, ${off(bot.yaw, 0)} off its facing`);
+    expect(fired).toBeGreaterThan(0);
+    expect(towardFoe).toBeLessThanOrEqual(32);
+    expect(session.orderFor(1)).toMatchObject({ order: 'hold', facing: 0 });
+  });
+
+  it('fire discipline still wins: on hold fire, a faced hold under fire fires nothing', () => {
+    const { session, fired } = contact('hold-fire');
+    expect(session.aggressionFor(1)).toBe('hold-fire');
+    expect(fired).toBe(0);
+  });
+
+  it('an attack order still wins: it replaces the faced hold, facing and all, and the bot goes for its target', () => {
+    const { sq, session, bot, foe } = contact('aggressive');
+    sq.say({ kind: 'Order', order: 'attack', address: { to: 'slot', index: 1 }, point: null, target: foe });
+    expect(session.orderFor(1)).toEqual({ slot: 1, order: 'attack', point: null, target: foe, from: 0 });
+    sq.run(30 * 2, () => {
+      heal(session, [1]);
+      Object.assign(enemy(session, foe).health, { current: 100, downedAt: null, diedAt: null });
+    });
+    expect(session.orderFor(1)?.order).toBe('attack');
+    expect(off(bot.yaw, bearing(bot.state, enemy(session, foe).state))).toBeLessThanOrEqual(32);
+  });
+});

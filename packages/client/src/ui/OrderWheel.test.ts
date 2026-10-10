@@ -18,9 +18,9 @@ import {
   wheelChoice,
   wheelLabel,
 } from './OrderWheel.ts';
-import { pickFeet } from './orderPick.ts';
+import { pickFeet, viewFacing } from './orderPick.ts';
 
-const NOTHING: AimSubject = { point: { x: 3, y: 0, z: 17 }, feet: { x: 3, y: 0, z: 17 }, netId: null, enemy: false, downedMate: false };
+const NOTHING: AimSubject = { point: { x: 3, y: 0, z: 17 }, feet: { x: 3, y: 0, z: 17 }, netId: null, enemy: false, downedMate: false, facing: null };
 
 /** A pointer `r` pixels out at `deg` clockwise from the top of the screen. */
 function at(deg: number, r = 80): { dx: number; dy: number } {
@@ -94,7 +94,7 @@ describe('the order it builds', () => {
     const aim: AimSubject = {
       point: { x: hit!.point.x, y: hit!.point.y, z: hit!.point.z },
       feet: pickFeet(hit!.point, ray.ray.origin, ray.ray.direction, { boxes, groundY: 0 }),
-      netId: null, enemy: false, downedMate: false,
+      netId: null, enemy: false, downedMate: false, facing: null,
     };
     for (const kind of ['move', 'hold'] as const) {
       const order = buildOrder(kind, { to: 'all' }, aim)!;
@@ -134,6 +134,36 @@ describe('the order it builds', () => {
     // Everything it builds is well formed.
     const any = { ...NOTHING, netId: 5, enemy: true, downedMate: true };
     for (const kind of ORDER_KINDS) expect(orderProblem(buildOrder(kind, { to: 'all' }, any)!, SQUAD.fireteams.length)).toBeNull();
+  });
+
+  it('U-154: a move or a hold carries the way the view looks, nothing else does, and a view with no bearing sends none', () => {
+    const facing = viewFacing({ x: -1, z: 0 })!;
+    expect(facing).toBe(768);
+    const faced = { ...NOTHING, netId: 5, enemy: true, downedMate: true, facing };
+    for (const kind of ['move', 'hold'] as const) {
+      const order = buildOrder(kind, { to: 'all' }, faced)!;
+      expect(order.facing).toBe(768);
+      expect(orderProblem(order, SQUAD.fireteams.length)).toBeNull();
+      expect(decodeMessage(encodeMessage(order))).toEqual(order);
+      expect(buildOrder(kind, { to: 'all' }, NOTHING)).not.toHaveProperty('facing');
+    }
+    for (const kind of ['attack', 'regroup', 'revive'] as const) expect(buildOrder(kind, { to: 'all' }, faced)).not.toHaveProperty('facing');
+  });
+
+  it('U-154: the view’s facing is its bearing as a soldier’s wire yaw — 0 down +z, a quarter turn down +x — whatever its pitch', () => {
+    expect(viewFacing({ x: 0, z: 1 })).toBe(0);
+    expect(viewFacing({ x: 1, z: 0 })).toBe(256);
+    expect(viewFacing({ x: 0, z: -1 })).toBe(512);
+    expect(viewFacing({ x: -1, z: 0 })).toBe(768);
+    // Just short of a whole turn rounds to its nearest wire yaw, never to 1024.
+    expect(viewFacing({ x: -0.001, z: 1 })).toBe(0);
+    expect(viewFacing({ x: -Math.sin(Math.PI / 512), z: Math.cos(Math.PI / 512) })).toBe(1023);
+    // Pitched down at the ground ahead, still the same bearing.
+    const down = new THREE.Vector3(1, -3, 1).normalize();
+    expect(viewFacing(down)).toBe(128);
+    // Straight down or up has no bearing.
+    expect(viewFacing({ x: 0, z: 0 })).toBeNull();
+    expect(viewFacing({ x: 1e-5, z: -1e-5 })).toBeNull();
   });
 
   it('from a release: the sector it was left on, to whom the digits said; none inside the deadzone', () => {

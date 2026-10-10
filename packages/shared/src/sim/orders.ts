@@ -11,9 +11,15 @@
  *
  * Marks are points (optionally on a target) a player puts on the world for
  * everyone to see; they stand for `markSeconds` (`data/orders.json`).
+ *
+ * U-154: a move or a hold may also carry a facing — the way the player who gave
+ * it was looking — which the bot watches along once it is there with nothing to
+ * fight (Conflict's "advance to position" sets where the soldier looks).
  */
 import RAW_ORDERS from '../data/orders.json' with { type: 'json' };
 import { MAX_SLOTS } from '../net/Connection.ts';
+import { WIRE_ANGLE_UNITS, wireToTable } from '../math/angles.ts';
+import { cos, sin } from '../math/trig.ts';
 
 /** The order kinds, in wire order: reordering them is a PROTOCOL_VERSION bump. */
 export const ORDER_KINDS = ['move', 'attack', 'hold', 'regroup', 'revive'] as const;
@@ -34,6 +40,13 @@ export interface OrderSpec {
   address: OrderAddress;
   point: OrderPoint | null;
   target: number | null;
+  /**
+   * U-154: the way the giver was looking, a wire yaw (1/`WIRE_ANGLE_UNITS` turn,
+   * forward `(sin, cos)` in x/z as a soldier's yaw): where a move or a hold
+   * leaves the bot watching. Absent: no facing, and the bot looks where it
+   * always has.
+   */
+  facing?: number;
 }
 
 /** An order a bot is under, as the session broadcasts it. */
@@ -45,6 +58,8 @@ export interface BotOrder {
   target: number | null;
   /** The slot index of the human who gave it. */
   from: number;
+  /** U-154: the facing it was given with (`OrderSpec.facing`), if any. */
+  facing?: number;
 }
 
 /** A mark on the world, as the session broadcasts it. */
@@ -59,13 +74,13 @@ export interface TargetMark {
   expiresTick: number;
 }
 
-/** What each kind needs: a point, a target, or neither — and nothing it does not use. */
-const NEEDS: Readonly<Record<OrderKind, { point: 'required' | 'optional' | 'none'; target: 'required' | 'none' }>> = {
-  move: { point: 'required', target: 'none' },
-  attack: { point: 'none', target: 'required' },
-  hold: { point: 'optional', target: 'none' },
-  regroup: { point: 'none', target: 'none' },
-  revive: { point: 'none', target: 'required' },
+/** What each kind needs: a point, a target, or neither — and nothing it does not use. Only a move or a hold takes a facing (U-154). */
+const NEEDS: Readonly<Record<OrderKind, { point: 'required' | 'optional' | 'none'; target: 'required' | 'none'; facing: 'optional' | 'none' }>> = {
+  move: { point: 'required', target: 'none', facing: 'optional' },
+  attack: { point: 'none', target: 'required', facing: 'none' },
+  hold: { point: 'optional', target: 'none', facing: 'optional' },
+  regroup: { point: 'none', target: 'none', facing: 'none' },
+  revive: { point: 'none', target: 'required', facing: 'none' },
 };
 
 /**
@@ -86,7 +101,20 @@ export function orderProblem(spec: OrderSpec, fireteams: number): string | null 
   if (needs.target === 'required' && spec.target === null) return `${spec.order} needs a target`;
   if (needs.target === 'none' && spec.target !== null) return `${spec.order} takes no target`;
   if (spec.target !== null && !(Number.isInteger(spec.target) && spec.target > 0)) return `target ${spec.target} is not a netId`;
+  if (spec.facing !== undefined) {
+    if (needs.facing === 'none') return `${spec.order} takes no facing`;
+    if (!(Number.isInteger(spec.facing) && spec.facing >= 0 && spec.facing < WIRE_ANGLE_UNITS)) return `facing ${spec.facing} is not a wire yaw`;
+  }
   return null;
+}
+
+/**
+ * U-154: a point `distanceM` along a wire-yaw facing from `from`, at its height:
+ * what a bot looks at to face that way. Table trig, so every engine agrees.
+ */
+export function alongFacing(from: OrderPoint, facing: number, distanceM: number): OrderPoint {
+  const a = wireToTable(facing);
+  return { x: from.x + sin(a) * distanceM, y: from.y, z: from.z + cos(a) * distanceM };
 }
 
 /**

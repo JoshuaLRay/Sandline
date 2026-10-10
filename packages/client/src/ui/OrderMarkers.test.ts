@@ -65,6 +65,35 @@ describe('orderMarkers (T-3.29)', () => {
   });
 });
 
+describe('a faced order’s marker (U-154)', () => {
+  it('carries the facing a move or hold was given, and draws an arrow out of its ring that way; a faceless one draws none', () => {
+    const orders: BotOrder[] = [
+      { slot: 1, order: 'move', point: { x: 5, y: 0, z: 9 }, target: null, from: 0, facing: 256 },
+      { slot: 3, order: 'hold', point: null, target: null, from: 0, facing: 512 },
+      { slot: 4, order: 'move', point: { x: 1, y: 0, z: 1 }, target: null, from: 0 },
+    ];
+    const markers = orderMarkers(orders, [{ id: 7, from: 0, point: { x: 1, y: 0, z: 39 }, target: null, expiresTick: 600 }], WHERE);
+    expect(markers.map((m) => [m.key, m.facing])).toEqual([['o1', 256], ['o3', 512], ['o4', null], ['m7', null]]);
+    const segments = (m: (typeof markers)[number]) => markerLines([m]).positions;
+    // Ring, pole and the line from its bot; a facing adds a shaft and two barbs.
+    const faceless = segments({ ...markers[0]!, facing: null });
+    const faced = segments(markers[0]!);
+    expect(faced.length / 6 - faceless.length / 6).toBe(3);
+    // The shaft runs east (+x) from the ring's edge, flat on the ground.
+    const shaft = faced.slice(faceless.length, faceless.length + 6);
+    expect(shaft[0]).toBeCloseTo(5.5, 5);
+    expect(shaft[2]).toBeCloseTo(9, 5);
+    expect(shaft[3]).toBeGreaterThan(shaft[0]! + 1);
+    expect(shaft[5]).toBeCloseTo(9, 5);
+    expect(shaft[1]).toBe(shaft[4]);
+    // A hold on its bot points the way it was given too: south (−z), from the bot's feet.
+    const hold = segments(markers[1]!);
+    const holdShaft = hold.slice(hold.length - 18, hold.length - 12);
+    expect(holdShaft[0]).toBeCloseTo(3, 5);
+    expect(holdShaft[5]).toBeLessThan(-1);
+  });
+});
+
 describe('markers come from the broadcast, not from what was sent (T-3.29)', () => {
   beforeAll(() => initNav());
 
@@ -83,7 +112,7 @@ describe('markers come from the broadcast, not from what was sent (T-3.29)', () 
     expect(net.slot).toBe(0);
     const draw = () => orderMarkers(net.orders, net.marks, WHERE);
 
-    const aim = { point: { x: 4.5, y: 0, z: 12.25 }, feet: { x: 4.5, y: 0, z: 12.25 }, netId: null, enemy: false, downedMate: false };
+    const aim = { point: { x: 4.5, y: 0, z: 12.25 }, feet: { x: 4.5, y: 0, z: 12.25 }, netId: null, enemy: false, downedMate: false, facing: null };
     net.order(buildOrder('move', { to: 'slot', index: 2 }, aim)!);
     // Sent, and nothing drawn: the host has not answered.
     expect(draw()).toEqual([]);
