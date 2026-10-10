@@ -1,4 +1,4 @@
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import {
   type InterpResult,
   type MoveConfig,
@@ -19,6 +19,8 @@ import { type LocomotionPoseDriver, createLocomotionPoseDriver } from './locomot
 import { type LocomotionState, classifyLocomotion } from './locomotionState.ts';
 import { type PaletteName, paletteFor } from './soldierTexture.ts';
 import { type KickState, createKick, decayKick } from './weaponKick.ts';
+import { LauncherFx, WIND_UP_CUE_FORWARD_M, applyWindUpCue, createWindUpCue } from './launcherLook.ts';
+import { type WeaponSide, weaponMuzzle } from '../weapons/weaponModels.ts';
 
 /**
  * Every soldier-shaped thing the server owns, drawn (T-1.16 onward; pulled
@@ -72,6 +74,11 @@ export interface RemoteSoldierState {
   reload: number;
   /** T-4.35: an enemy's fighter variant and whether it carries the MG; absent for the squad. */
   look?: FighterLook;
+  /**
+   * U-158: an RPG gunner with its launcher (not its rifle) in hand, and whether it is winding up (U-157's `aiming`):
+   * carried low, then shouldered with a glint on the warhead. Absent for everyone else, whose launcher is aimed.
+   */
+  launcher?: { aiming: boolean };
 }
 
 /**
@@ -81,7 +88,7 @@ export interface RemoteSoldierState {
  */
 export interface RemoteView {
   remotes(): ReadonlyMap<number, InterpResult>;
-  remoteEnemy(netId: number): { archetype: number } | null;
+  remoteEnemy(netId: number): { archetype: number; aiming?: boolean; launcher?: boolean } | null;
   remoteSlot(netId: number): number;
   readonly roster: readonly { human: boolean }[];
   remoteVitality(netId: number): Vitality;
@@ -103,12 +110,16 @@ export function remoteSoldierState(view: RemoteView, netId: number): RemoteSoldi
     return { palette: paletteFor({ prisoner: true }), vitality, held: 'knife', reload: 0 };
   }
   if (enemy) {
+    const def = enemyByIndex(enemy.archetype);
+    // U-158: the launcher while the `launcher` bit says it is in hand (U-157), the archetype's rifle otherwise.
+    const launcher = enemy.launcher === true && def?.launcher ? def.launcher : null;
     return {
       palette: paletteFor({ enemy: true }),
       vitality,
-      held: enemyByIndex(enemy.archetype)?.weapon ?? WEAPON_IDS[0],
+      held: launcher ? launcher.projectile : def?.weapon ?? WEAPON_IDS[0],
       reload: 0,
-      look: { variant: fighterVariantFor(netId), gunner: enemyByIndex(enemy.archetype)?.weapon === 'lmg' },
+      look: { variant: fighterVariantFor(netId), gunner: def?.weapon === 'lmg' },
+      ...(launcher ? { launcher: { aiming: enemy.aiming === true } } : {}),
     };
   }
   const slot = view.remoteSlot(netId);
@@ -127,7 +138,19 @@ interface Entry {
   feet: FootPlacementDriver;
   kick: KickState;
   prev: { x: number; z: number } | null;
+  /** U-158: the launcher's carry and wind-up. */
+  launcher: LauncherFx;
+  /** U-158: the wind-up's glint on the warhead, made the first time a launcher is held. */
+  cue: THREE.Sprite | null;
+  /** U-158: seconds since a launcher was last in its hands (0 while one is); a rocket seen this soon after is its. */
+  sinceLauncher: number;
 }
+
+/** U-158: metres from a soldier a newly seen rocket may be and still be the one its launcher just fired. */
+export const LAUNCH_MATCH_M = 4;
+/** U-158: seconds a launcher counts as just held: the last rocket puts the rifle back in hand on the tick it leaves. */
+export const LAUNCH_MATCH_SECONDS = 0.6;
+const LAUNCHER = 'rocket';
 
 /** A signed wire angle (1024 per turn) in radians. */
 function wireToRadians(wire: number): number {
@@ -184,6 +207,9 @@ export class RemoteSoldiers {
         feet: createFootPlacementDriver(mesh, { world: this.options.world, config: this.options.config }),
         kick: createKick(),
         prev: null,
+        launcher: new LauncherFx(),
+        cue: null,
+        sinceLauncher: Infinity,
       };
       this.entries.set(netId, entry);
     }
@@ -204,6 +230,46 @@ export class RemoteSoldiers {
       this.draw(netId, sample, remoteSoldierState(view!, netId), dt);
     }
     this.retain(seen);
+  }
+
+  /**
+   * U-158: the launcher a rocket first seen at `at` just left — the soldier drawn nearest it, within
+   * `LAUNCH_MATCH_M`, with a launcher in hand now or a moment ago — and where that launcher's muzzle is drawn and
+   * which way it points, world space, into `out`. Null when no drawn soldier fired it (the rocket is our own, or its
+   * firer is not drawn), so a flash is never drawn on the wrong body.
+   */
+  launcherNear(at: { x: number; y: number; z: number }, out: { muzzle: THREE.Vector3; forward: THREE.Vector3 }): number | null {
+    let best: { netId: number; entry: Entry } | null = null;
+    let bestD = LAUNCH_MATCH_M;
+    for (const [netId, entry] of this.entries) {
+      if (entry.sinceLauncher > LAUNCH_MATCH_SECONDS) continue;
+      const p = entry.mesh.position;
+      const d = Math.hypot(at.x - p.x, at.y - p.y, at.z - p.z);
+      if (d <= bestD) {
+        bestD = d;
+        best = { netId, entry };
+      }
+    }
+    if (!best) return null;
+    const aim = requireRig(best.entry.mesh).aim;
+    const side = (best.entry.mesh.userData['side'] as WeaponSide | undefined) ?? 'squad';
+    const tip = weaponMuzzle(LAUNCHER, side);
+    aim.updateWorldMatrix(true, false);
+    aim.localToWorld(out.muzzle.set(tip[0], tip[1], tip[2]));
+    out.forward.set(0, 0, 1).transformDirection(aim.matrixWorld);
+    return best.netId;
+  }
+
+  /** U-158: how many soldiers are showing a wind-up this frame (the QA readout). */
+  get windingUp(): number {
+    let n = 0;
+    for (const entry of this.entries.values()) if (entry.cue?.visible) n += 1;
+    return n;
+  }
+
+  /** U-158: the wind-up glint on a soldier, if one has been made (tests and capture). */
+  windUpCue(netId: number): THREE.Sprite | null {
+    return this.entries.get(netId)?.cue ?? null;
   }
 
   /** Add one fire-layer kick, from the server's shot event (T-2.26). */
@@ -234,6 +300,7 @@ export class RemoteSoldiers {
     const velocityZ = entry.prev && dt > 0 ? (sample.z - entry.prev.z) / dt : 0;
     const lying = state.vitality !== 'alive';
     const rig = requireRig(mesh);
+    const frame = entry.launcher.update({ launcher: state.launcher !== undefined, aiming: state.launcher?.aiming ?? false, vitality: state.vitality }, dt);
     if (lying) {
       rig.setPose(state.vitality === 'dead' ? 'dead' : 'downed');
       entry.pose.reset();
@@ -266,8 +333,18 @@ export class RemoteSoldiers {
         kickBack: entry.kick.back,
         kickUp: entry.kick.up,
         reload: state.reload,
+        lower: frame.lower,
       });
     }
+    // U-158: a soldier with a launcher in hand (or one a moment ago) is who a new rocket near them came from.
+    entry.sinceLauncher = !lying && rig.held === LAUNCHER ? 0 : entry.sinceLauncher + Math.max(0, dt);
+    if (state.launcher && !entry.cue) {
+      entry.cue = createWindUpCue();
+      const tip = weaponMuzzle(LAUNCHER, 'enemy');
+      entry.cue.position.set(tip[0], tip[1], tip[2] + WIND_UP_CUE_FORWARD_M);
+      rig.aim.add(entry.cue);
+    }
+    if (entry.cue) applyWindUpCue(entry.cue, frame);
     // Their feet stand on what is under them (T-2.28). The mesh is already
     // at its interpolated place; a vaulting or lying soldier gets none.
     entry.feet.update({ feetY: sample.y, active: !lying && entry.pose.vaultWeight === 0 }, dt);
@@ -286,6 +363,7 @@ export class RemoteSoldiers {
     this.options.scene.remove(entry.mesh);
     const at = this.options.shootable.indexOf(entry.mesh);
     if (at >= 0) this.options.shootable.splice(at, 1);
+    if (entry.cue) (entry.cue.material as THREE.SpriteMaterial).dispose();
     disposeSoldier(entry.mesh);
   }
 

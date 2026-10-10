@@ -128,8 +128,8 @@ pin it exactly (`grep -rn "PROTOCOL_VERSION).toBe" packages`).
 | Lobby, menus, briefing | `client/src/ui/Lobby.ts`, `RoomLobby.ts`, `client/src/ui/menu/Menu.ts`, `client/src/ui/onboarding/Briefing.ts` | `menu.browser.test.ts` |
 | Mobile spectator-commander | `client/src/ui/MobileCommand.ts`, `mobileSpectate.ts` | `MobileCommand.browser.test.ts` |
 | Audio, callouts, voices (data in `audio/*.json`) | `client/src/audio/engine.ts`, `callouts.ts`, `shared/src/audio/` | `callouts.test.ts`, `voiceCues.test.ts` |
-| Soldiers and tank rendering | `client/src/character/humanoidSoldier.ts`, `assetSoldier.ts`, `remoteSoldiers.ts`, `tankModel.ts` | `humanoidSoldier.test.ts` |
-| Weapon feel (recoil, reload, effects) | `client/src/weapons/recoil.ts`, `reloadPose.ts`, `effects.ts` | `recoil.test.ts` |
+| Soldiers and tank rendering | `client/src/character/humanoidSoldier.ts`, `assetSoldier.ts`, `remoteSoldiers.ts`, `tankModel.ts`, `launcherLook.ts` (RPG gunner's carry and wind-up) | `humanoidSoldier.test.ts`, `remoteSoldiers.test.ts` |
+| Weapon feel (recoil, reload, effects) | `client/src/weapons/recoil.ts`, `reloadPose.ts`, `effects.ts`, `rocketFx.ts` (rocket trail, launch flash) | `recoil.test.ts`, `rocketFx.test.ts` |
 | QA panels (`?qa`) | `client/src/ui/TuningPanel.ts`, `WeaponPanel.ts`, `Netgraph.ts` | `qaMode.test.ts` |
 
 ## Tools and QA
