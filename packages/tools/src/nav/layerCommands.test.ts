@@ -209,7 +209,7 @@ describe('integrated stacked-floor contract (U-109)', () => {
           const ray = screenRay(camera, { left: 10, top: 20, width: 400, height: 300 }, 210, 170, 300);
           const pick = pickOrder(ray, scene.objects, undefined, { boxes: world.boxes, groundY: 0 });
           const order = buildOrder(kind, { to: 'slot', index: 1 },
-            { point: pick.point, feet: pick.feet, netId: null, enemy: false, downedMate: false });
+            { point: pick.point, feet: pick.feet, netId: null, enemy: false, downedMate: false, facing: null });
           expect(order).not.toBeNull();
           sq.say(order!);
           expect(sq.orders.find((o) => o.slot === 1)?.point).toMatchObject({ y });

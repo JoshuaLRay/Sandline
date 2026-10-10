@@ -4063,7 +4063,8 @@ export class Session {
       }
       // T-3.28: the order it was under, if it had not finished, is replaced; either way it is reported.
       if (this.orders[i]) this.reportOrder(i, this.orderRuns[i]?.status === 'done' ? 'done' : 'replaced', `${msg.order} from slot ${from.index}`);
-      this.orders[i] = { slot: i, order: msg.order, point: point ? { ...point } : null, target: msg.target, from: from.index };
+      // U-154: every addressee watches the one way the giver was looking, wherever its spaced place is.
+      this.orders[i] = { slot: i, order: msg.order, point: point ? { ...point } : null, target: msg.target, from: from.index, ...(msg.facing !== undefined ? { facing: msg.facing } : {}) };
       const at = this.slots[i]!.state;
       this.orderRuns[i] = { status: 'active', anchor: point ? { ...point } : { x: at.x, y: at.y, z: at.z }, xpPlayerId: this.xpPlayer(from.index) };
     }

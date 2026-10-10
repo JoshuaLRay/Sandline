@@ -6,7 +6,7 @@
  * all the way to the host.
  */
 import * as THREE from 'three';
-import { type WorldBox, orderFeet, supportUnder } from '@sandline/shared';
+import { WIRE_ANGLE_UNITS, type WorldBox, orderFeet, supportUnder } from '@sandline/shared';
 
 type Vec3 = { x: number; y: number; z: number };
 
@@ -33,6 +33,17 @@ export function pickFeet(hit: Vec3 | null, origin: Vec3, direction: Vec3, world:
   const z = origin.z + direction.z * along;
   const below = Math.min(origin.y + direction.y * along, origin.y);
   return { x, y: supportUnder(x, z, 0, below, world.boxes, world.groundY), z };
+}
+
+/**
+ * U-154: the facing a move or hold carries — the way the view looks, as a wire
+ * yaw (1/1024 turn, forward `(sin, cos)` in x/z like a soldier's) — or null
+ * for a view straight up or down, which has no bearing.
+ */
+export function viewFacing(direction: { x: number; z: number }): number | null {
+  if (Math.hypot(direction.x, direction.z) < 1e-3) return null;
+  const turns = Math.atan2(direction.x, direction.z) / (Math.PI * 2);
+  return ((Math.round(turns * WIRE_ANGLE_UNITS) % WIRE_ANGLE_UNITS) + WIRE_ANGLE_UNITS) % WIRE_ANGLE_UNITS;
 }
 
 /** The pick ray from `camera` through a screen point (client pixels) of the canvas at `rect`, reaching `far` metres. */

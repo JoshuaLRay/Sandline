@@ -8,7 +8,7 @@
  */
 import { AGGRESSION_KINDS, type SquadAggression, SPREAD_KINDS, type SquadSpread, STANCE_KINDS, type SquadStance } from '../sim/tactics.ts';
 import { BitReader, BitWriter } from './BitStream.ts';
-import { HEALTH, POSITION, dequantize, quantize } from './quantize.ts';
+import { ANGLE_BITS_WIRE, HEALTH, POSITION, dequantize, quantize, quantizeAngle } from './quantize.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { isJoinCode } from './roomCode.ts';
 import { MAX_MARKS, ORDER_KINDS, type BotOrder, type OrderAddress, type OrderKind, type OrderPoint, type TargetMark } from '../sim/orders.ts';
@@ -23,7 +23,7 @@ import type { SupplyCacheDef, SupplyItem, SupplyUseProgress } from '../sim/suppl
 import { readCommanderSupplySelect, readSupplies, readSupplyProgress, readSupplySelect, writeCommanderSupplySelect, writeSupplies, writeSupplyProgress, writeSupplySelect } from './supplyWire.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 70;
+export const PROTOCOL_VERSION = 71;
 
 /** U-143: every client presents the same incompatible-map decision. */
 export const RESTORE_MAP_CHANGED_MESSAGE = 'This mission map has changed. Restart the mission to continue.';
@@ -512,9 +512,10 @@ export type Message =
   /**
    * T-3.27: a player's order to bots — a kind, whom it is for, and the point
    * or target it needs (`sim/orders.ts`). Client to host; the host checks
-   * everything the wire cannot.
+   * everything the wire cannot. U-154: a move or hold may carry the giver's
+   * facing, a wire yaw (10 bits).
    */
-  | { kind: 'Order'; order: OrderKind; address: OrderAddress; point: OrderPoint | null; target: number | null }
+  | { kind: 'Order'; order: OrderKind; address: OrderAddress; point: OrderPoint | null; target: number | null; facing?: number }
   /** T-3.27: a player marking a point, or a target at it, for the squad. Client to host. */
   | { kind: 'Mark'; point: OrderPoint; target: number | null }
   /** T-3.27: every bot's current order, whole, whenever one changes and on seating. Host to client. */
@@ -758,6 +759,7 @@ export function encodeMessage(msg: Message): Uint8Array {
       w.writeBits(msg.address.to === 'all' ? 0 : msg.address.index & 0x7, 3);
       writeOptionalPoint(w, msg.point);
       writeOptionalTarget(w, msg.target);
+      writeOptionalFacing(w, msg.facing);
       break;
     case 'Mark':
       w.writeBits(MessageType.Ext, TYPE_BITS);
@@ -824,6 +826,7 @@ export function encodeMessage(msg: Message): Uint8Array {
         w.writeBits(o.from & 0x7, 3);
         writeOptionalPoint(w, o.point);
         writeOptionalTarget(w, o.target);
+        writeOptionalFacing(w, o.facing);
       }
       break;
     }
@@ -1089,6 +1092,17 @@ function writeOptionalTarget(w: BitWriter, target: number | null): void {
 
 function readOptionalTarget(r: BitReader): number | null {
   return r.readBool() ? r.readVarUint() : null;
+}
+
+/** U-154: an order's facing, a wire yaw in `ANGLE_BITS_WIRE` bits, or nothing. */
+function writeOptionalFacing(w: BitWriter, facing: number | undefined): void {
+  w.writeBool(facing !== undefined);
+  if (facing !== undefined) w.writeBits(quantizeAngle(facing), ANGLE_BITS_WIRE);
+}
+
+/** An order's facing off the wire, as a field to spread: absent when it had none, so a faceless order reads back as it was written. */
+function readOptionalFacing(r: BitReader): { facing?: number } {
+  return r.readBool() ? { facing: r.readBits(ANGLE_BITS_WIRE) } : {};
 }
 
 /** An order kind off the wire, refused past the last one. */
@@ -1361,7 +1375,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
             if (to === undefined) throw new ProtocolError('unknown order addressee');
             const index = r.readBits(3);
             const address: OrderAddress = to === 'all' ? { to } : { to, index };
-            return { kind: 'Order', order, address, point: readOptionalPoint(r), target: readOptionalTarget(r) };
+            return { kind: 'Order', order, address, point: readOptionalPoint(r), target: readOptionalTarget(r), ...readOptionalFacing(r) };
           }
           case EXT.Mark:
             return { kind: 'Mark', point: readPoint(r), target: readOptionalTarget(r) };
@@ -1371,7 +1385,7 @@ export function decodeMessage(bytes: Uint8Array): Message {
               const slot = r.readBits(3);
               const order = readOrderKind(r);
               const from = r.readBits(3);
-              orders.push({ slot, order, from, point: readOptionalPoint(r), target: readOptionalTarget(r) });
+              orders.push({ slot, order, from, point: readOptionalPoint(r), target: readOptionalTarget(r), ...readOptionalFacing(r) });
             }
             return { kind: 'Orders', orders };
           }

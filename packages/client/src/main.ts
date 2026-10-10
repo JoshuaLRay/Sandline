@@ -176,7 +176,7 @@ import {
 } from './ui/hud/hudModel.ts';
 import { type AimSubject, OrderWheelView, buildMark, orderFromRelease } from './ui/OrderWheel.ts';
 import { buildOrder } from './ui/OrderWheel.ts';
-import { pickFeet, pickOrder, screenRay } from './ui/orderPick.ts';
+import { pickFeet, pickOrder, screenRay, viewFacing } from './ui/orderPick.ts';
 import { mobileOrbit, MOBILE_ORBIT_PITCH, MOBILE_ORBIT_MIN_PITCH, MOBILE_ORBIT_MAX_PITCH } from './camera/mobileOrbit.ts';
 import { createMobileCommand } from './ui/MobileCommand.ts';
 import { initialMobileSpectateSlot } from './ui/mobileSpectate.ts';
@@ -1912,6 +1912,8 @@ const mobileCommand = createMobileCommand(document.body, {
       netId: id,
       enemy: enemy && vitality !== 'dead',
       downedMate: id !== null && !enemy && vitality === 'downed',
+      // U-154: the orbit camera's bearing, not the tap ray's: the way the player is looking, wherever they tapped.
+      facing: viewFacing(camera.getWorldDirection(new THREE.Vector3())),
     });
     if (!order) return false;
     live.net.order(order);
@@ -2088,6 +2090,8 @@ function aimSubject(net: NetClient): AimSubject {
     netId: id,
     enemy: enemy && vitality !== 'dead',
     downedMate: id !== null && !enemy && vitality === 'downed',
+    // U-154: the crosshair's ray is the view's own: its bearing is the way the player is looking.
+    facing: viewFacing(direction),
   };
 }
 /** What the crosshair is on, for the stats: who an attack, a revive or a mark would name. */
@@ -2744,7 +2748,7 @@ function frame(): void {
     // U-064: whoever is taking a squadmate prisoner, marked where they are drawn for as long as the hold lasts.
     net.roster.forEach((entry, slot) => {
       const at = entry.takenBy >= 0 ? drawn.get(entry.takenBy) : undefined;
-      if (at) shownMarkers.push({ key: `c${slot}`, kind: 'mark', at, bot: null, label: 'Capturer' });
+      if (at) shownMarkers.push({ key: `c${slot}`, kind: 'mark', at, bot: null, label: 'Capturer', facing: null });
     });
     orderMarkerOverlay.show(shownMarkers);
     // The same markers on the compass (T-4.25), by bearing from where we are drawn.

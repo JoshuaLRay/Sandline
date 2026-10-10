@@ -8,7 +8,8 @@
  * the point the crosshair's own raycast found (`main.ts`), which is what the
  * player was looking at when they opened the wheel, since the view does not
  * move while it is open; a move or hold, at the feet on the floor there
- * (U-123, `orderPick.ts`). Released inside the deadzone, nothing is sent.
+ * (U-123, `orderPick.ts`), facing the way the view looks (U-154). Released
+ * inside the deadzone, nothing is sent.
  * Number keys while Q is held choose who hears it: 1–6 a slot, 7 and 8 a
  * fireteam, 0 everyone (the default). A stance — Auto, Crouch, Prone — goes
  * to the same addressee and needs nothing under the crosshair: hold Q, flick
@@ -118,13 +119,18 @@ export interface AimSubject {
   enemy: boolean;
   /** That soldier is a downed squadmate: someone to revive. */
   downedMate: boolean;
+  /**
+   * U-154: the way the player is looking (`viewFacing`), a wire yaw: where a
+   * move or hold leaves its bots watching. Null: no bearing, no facing sent.
+   */
+  facing: number | null;
 }
 
 /**
  * The Order message for `kind` to `address` at what is under the crosshair,
  * or null when there is nothing to give it to: an attack needs a living enemy
  * under the crosshair, a revive a downed squadmate. Move and hold take the
- * aim's feet (U-123); regroup takes nothing. What the session refuses anyway
+ * aim's feet (U-123) and the view's facing (U-154); regroup takes nothing. What the session refuses anyway
  * (`orderProblem`) is never built here.
  */
 export function buildOrder(kind: OrderKind, address: OrderAddress, aim: AimSubject): Extract<Message, { kind: 'Order' }> | null {
@@ -132,7 +138,7 @@ export function buildOrder(kind: OrderKind, address: OrderAddress, aim: AimSubje
   switch (kind) {
     case 'move':
     case 'hold':
-      return { kind: 'Order', order: kind, address, point, target: null };
+      return { kind: 'Order', order: kind, address, point, target: null, ...(aim.facing !== null ? { facing: aim.facing } : {}) };
     case 'regroup':
       return { kind: 'Order', order: kind, address, point: null, target: null };
     case 'attack':

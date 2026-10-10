@@ -53,7 +53,7 @@ function page(camera: THREE.PerspectiveCamera) {
     watch: vi.fn(), assign: vi.fn(), aggression: vi.fn(), settings: vi.fn(), leave: vi.fn(), recenter: vi.fn(),
     order: (kind, address, x, y) => {
       const pick = pickOrder(screenRay(camera, canvas.getBoundingClientRect(), x, y, 300), scene, undefined, world);
-      const order = buildOrder(kind, address, { point: pick.point, feet: pick.feet, netId: null, enemy: false, downedMate: false });
+      const order = buildOrder(kind, address, { point: pick.point, feet: pick.feet, netId: null, enemy: false, downedMate: false, facing: null });
       if (!order) return false;
       // What the host receives: the bytes, decoded.
       sent.push(decodeMessage(encodeMessage(order)) as Extract<Message, { kind: 'Order' }>);

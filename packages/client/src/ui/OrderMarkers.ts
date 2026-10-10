@@ -12,10 +12,12 @@
  * A move or a hold stands on its point (a hold without one, on the bot); an
  * attack or a revive on its target, followed as it moves; a regroup on the
  * bot. Each order also draws a line from its bot to its marker. A mark stands
- * on its enemy while that enemy is drawn, else on its point.
+ * on its enemy while that enemy is drawn, else on its point. U-154: a move or
+ * hold given with a facing draws an arrow out of its ring, the way the bot
+ * will watch.
  */
 import * as THREE from 'three';
-import type { BotOrder, OrderKind, TargetMark } from '@sandline/shared';
+import { type BotOrder, type OrderKind, type TargetMark, WIRE_ANGLE_UNITS } from '@sandline/shared';
 
 export interface MarkerVec {
   x: number;
@@ -34,6 +36,8 @@ export interface OrderMarker {
   /** The ordered bot's feet, for the line to its marker; null for a mark. */
   bot: MarkerVec | null;
   label: string;
+  /** U-154: the way a faced move or hold has its bot watch, a wire yaw; null for none. */
+  facing: number | null;
 }
 
 /** Where a soldier is drawn this frame, by slot and by netId; null if it is not drawn. */
@@ -65,11 +69,11 @@ export function orderMarkers(orders: readonly BotOrder[], marks: readonly Target
     else if (order.order === 'regroup') at = bot;
     else at = order.point ?? bot;
     if (!at) continue;
-    out.push({ key: `o${order.slot}`, kind: order.order, at: copy(at), bot: bot ? copy(bot) : null, label: `${order.slot + 1} · ${order.order}` });
+    out.push({ key: `o${order.slot}`, kind: order.order, at: copy(at), bot: bot ? copy(bot) : null, label: `${order.slot + 1} · ${order.order}`, facing: order.facing ?? null });
   }
   for (const mark of marks) {
     const on = mark.target === null ? null : where.netId(mark.target);
-    out.push({ key: `m${mark.id}`, kind: 'mark', at: copy(on ?? mark.point), bot: null, label: `mark · ${mark.from + 1}` });
+    out.push({ key: `m${mark.id}`, kind: 'mark', at: copy(on ?? mark.point), bot: null, label: `mark · ${mark.from + 1}`, facing: null });
   }
   return out;
 }
@@ -77,8 +81,11 @@ export function orderMarkers(orders: readonly BotOrder[], marks: readonly Target
 const RING_SEGMENTS = 16;
 const RING_M = 0.5;
 const POLE_M = 2.2;
+/** U-154: a facing's arrow, from the ring's edge outward, and its head's barbs, metres. */
+const ARROW_M = 1.2;
+const BARB_M = 0.35;
 
-/** The markers as `LineSegments` attributes: a ring and a pole each, and each order's line from its bot. */
+/** The markers as `LineSegments` attributes: a ring and a pole each, each order's line from its bot, and a faced order's arrow. */
 export function markerLines(markers: readonly OrderMarker[]): { positions: Float32Array; colours: Float32Array } {
   const positions: number[] = [];
   const colours: number[] = [];
@@ -99,6 +106,14 @@ export function markerLines(markers: readonly OrderMarker[]): { positions: Float
     // U-123: a bot straight beneath (or above) its goal still gets its line: the goal is on another floor.
     if (m.bot && (Math.abs(m.bot.x - m.at.x) > 0.3 || Math.abs(m.bot.z - m.at.z) > 0.3 || Math.abs(m.bot.y - m.at.y) > 1)) {
       segment({ x: m.bot.x, y: m.bot.y + 0.1, z: m.bot.z }, { x: m.at.x, y, z: m.at.z });
+    }
+    if (m.facing !== null) {
+      const a = (m.facing / WIRE_ANGLE_UNITS) * Math.PI * 2;
+      const fx = Math.sin(a);
+      const fz = Math.cos(a);
+      const tip = { x: m.at.x + fx * (RING_M + ARROW_M), y, z: m.at.z + fz * (RING_M + ARROW_M) };
+      segment({ x: m.at.x + fx * RING_M, y, z: m.at.z + fz * RING_M }, tip);
+      for (const side of [-1, 1]) segment(tip, { x: tip.x - fx * BARB_M + side * fz * BARB_M, y, z: tip.z - fz * BARB_M - side * fx * BARB_M });
     }
   }
   return { positions: new Float32Array(positions), colours: new Float32Array(colours) };
