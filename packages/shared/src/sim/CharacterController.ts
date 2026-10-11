@@ -19,6 +19,19 @@ import { type BinAngle, wireToTable } from '../math/angles.ts';
 import { sin, cos } from '../math/trig.ts';
 import { DEFAULT_WORLD, type WorldBox, blockedAt, overlapsFootprint, supportUnder } from './world.ts';
 
+/** Preserve face +/- radius unless reconstituting the footprint rounds it
+ * inside the contacted face. Only that cancellation needs an outward ulp;
+ * otherwise the next axis could depenetrate along adjoining wall rows.
+ */
+function resolvedContact(face: number, half: number, movingPositive: boolean): number {
+  const position = movingPositive ? face - half : face + half;
+  const footprint = movingPositive ? position + half : position - half;
+  const roundedInside = movingPositive ? footprint > face : footprint < face;
+  if (!roundedInside) return position;
+  const correction = Number.EPSILON * Math.max(1, Math.abs(position));
+  return movingPositive ? position - correction : position + correction;
+}
+
 export interface MoveState {
   x: number;
   y: number;
@@ -270,14 +283,14 @@ export function stepCharacter(
   if (worldX !== 0) {
     for (const box of world) {
       if (!blocks(box) || !overlapsFootprint(x, state.z, half, box)) continue;
-      x = worldX > 0 ? box.minX - half : box.maxX + half;
+      x = resolvedContact(worldX > 0 ? box.minX : box.maxX, half, worldX > 0);
     }
   }
   let z = state.z + worldZ * dt;
   if (worldZ !== 0) {
     for (const box of world) {
       if (!blocks(box) || !overlapsFootprint(x, z, half, box)) continue;
-      z = worldZ > 0 ? box.minZ - half : box.maxZ + half;
+      z = resolvedContact(worldZ > 0 ? box.minZ : box.maxZ, half, worldZ > 0);
     }
   }
 

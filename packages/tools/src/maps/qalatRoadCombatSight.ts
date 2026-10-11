@@ -5,6 +5,9 @@
  * Growing the open surface and eye areas, while eroding certified solid cover
  * by that displacement, therefore retains EVERY real clear segment. The
  * longest sampled interval is an upper bound, rather than a sampled verdict.
+ * Standing endpoints may additionally exclude the exact controller-square
+ * Minkowski sum of a certified solid. Eroding that exclusion by the same
+ * displacement retains every mapped valid endpoint; ray interiors stay air.
  */
 import type { BoxSpec } from '@sandline/shared';
 import { sweep, union, type Interval } from './planStrata.ts';
@@ -17,17 +20,47 @@ export interface CombatSightOptions {
   marginM?: number;
   /** U-160's row-swept rock stands back from the exact floor by <0.12 m. */
   surfaceExpansionM?: number;
+  /** Shared controller footprints are axis-aligned squares of half-size .35 m.
+   * This removes invalid actor endpoints only, never clear ray interiors. */
+  endpointHalfSizeM?: number;
 }
 interface Edge { nx: number; nz: number; offset: number }
 const prepare = (poly: Polygon): Edge[] => {
+  if (poly.length < 3 || poly.some((p) => !Number.isFinite(p.x) || !Number.isFinite(p.z))) {
+    throw new Error('combat sight requires finite nondegenerate convex polygons');
+  }
   const c = { x: poly.reduce((s, p) => s + p.x, 0) / poly.length, z: poly.reduce((s, p) => s + p.z, 0) / poly.length };
-  return poly.map((a, i) => {
+  const edges = poly.map((a, i) => {
     const b = poly[(i + 1) % poly.length]!, l = Math.hypot(b.x - a.x, b.z - a.z);
     let nx = -(b.z - a.z) / l, nz = (b.x - a.x) / l;
     if (nx * (c.x - a.x) + nz * (c.z - a.z) < 0) { nx = -nx; nz = -nz; }
     return { nx, nz, offset: nx * a.x + nz * a.z };
   }).filter((e) => Number.isFinite(e.nx));
+  const area2 = poly.reduce((sum, p, i) => {
+    const q = poly[(i + 1) % poly.length]!; return sum + p.x * q.z - q.x * p.z;
+  }, 0);
+  if (edges.length < 3 || Math.abs(area2) < 1e-8 || edges.some(({ nx, nz, offset }) =>
+    poly.some((p) => nx * p.x + nz * p.z < offset - 1e-8))) {
+    throw new Error('combat sight requires nondegenerate convex polygons');
+  }
+  return edges;
 };
+
+/** Exact polygon Minkowski sum with the controller's axis-aligned square. */
+function squareHull(poly: Polygon, halfSize: number): Polygon {
+  const points = poly.flatMap((p) => [-1, 1].flatMap((x) => [-1, 1].map((z) =>
+    ({ x: p.x + x * halfSize, z: p.z + z * halfSize })))).sort((a, b) => a.x - b.x || a.z - b.z);
+  const cross = (a: Point, b: Point, c: Point) => (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x);
+  const half = (ps: Point[]) => {
+    const out: Point[] = [];
+    for (const p of ps) {
+      while (out.length >= 2 && cross(out[out.length - 2]!, out[out.length - 1]!, p) <= 0) out.pop();
+      out.push(p);
+    }
+    return out.slice(0, -1);
+  };
+  return [...half(points), ...half([...points].reverse())];
+}
 
 function clip(edges: readonly Edge[], o: Point, d: Point, grow: number): Interval | null {
   let lo = -Infinity, hi = Infinity;
@@ -69,21 +102,43 @@ const ceil = (n: number) => Math.ceil(n * 1000) / 1000;
  * An omitted eye disc asks for the longest view anywhere on the road. */
 export function conservativeCombatView(surface: Pieces, blockers: readonly Polygon[], area?: Disc,
   options: CombatSightOptions = {}) {
-  const { reachM = 400, stepDeg = .1, stepM = .2, marginM = .3, surfaceExpansionM = .12 } = options;
+  const { reachM = 400, stepDeg = .1, stepM = .2, marginM = .3, surfaceExpansionM = .12,
+    endpointHalfSizeM = 0 } = options;
   const displacementM = reachM * Math.sin(stepDeg * Math.PI / 720) + stepM / 2;
-  if (!(stepDeg > 0 && stepDeg <= 180 && stepM > 0 && reachM > 0 && marginM >= 0 && surfaceExpansionM >= 0)) {
+  if (![reachM, stepDeg, stepM, marginM, surfaceExpansionM, endpointHalfSizeM].every(Number.isFinite) ||
+    !(stepDeg > 0 && stepDeg <= 180 && stepM > 0 && reachM > 0 && marginM >= 0 && surfaceExpansionM >= 0 && endpointHalfSizeM >= 0)) {
     throw new Error('invalid combat sight proof spacing or margin');
   }
   if (displacementM > marginM) throw new Error(`sampling displacement ${displacementM} exceeds margin ${marginM}`);
+  const discs = [...surface.discs, ...(area ? [area] : [])];
+  if ((!surface.polygons.length && !surface.discs.length) ||
+    discs.some((c) => ![c.x, c.z, c.r].every(Number.isFinite) || c.r < 0)) {
+    throw new Error('combat sight requires a nonempty finite surface and finite eye discs');
+  }
   const polygons = surface.polygons.map(prepare), solid = blockers.map(prepare);
+  const endpointPolygons = endpointHalfSizeM > 0 ? blockers.map((p) => squareHull(p, endpointHalfSizeM)) : [];
+  const endpointSolid = endpointPolygons.map(prepare);
   const grow = marginM + surfaceExpansionM;
   const bounds = surface.polygons.flat().concat(surface.discs.flatMap((c) => [
     { x: c.x - c.r, z: c.z - c.r }, { x: c.x - c.r, z: c.z + c.r },
     { x: c.x + c.r, z: c.z - c.r }, { x: c.x + c.r, z: c.z + c.r },
   ]));
+  const physicalReachM = Math.hypot(Math.max(...bounds.map((p) => p.x)) - Math.min(...bounds.map((p) => p.x)),
+    Math.max(...bounds.map((p) => p.z)) - Math.min(...bounds.map((p) => p.z))) + 2 * surfaceExpansionM;
+  if (physicalReachM > reachM) throw new Error(`physical surface reach ${physicalReachM} exceeds certified ${reachM} m reach`);
   let best: Segment = { length: 0, from: area ?? bounds[0]!, to: area ?? bounds[0]! }, lines = 0;
   for (let k = 0; k * stepDeg < 180; k++) {
     const a = k * stepDeg * Math.PI / 180, d = { x: Math.cos(a), z: Math.sin(a) }, n = { x: -d.z, z: d.x };
+    // Most lines miss a small cover piece. Projection rejection is exact and
+    // avoids traversing every trunk's 32 edges on every global-road line.
+    const candidates = solid.map((edges, i) => {
+      const u = blockers[i]!.map((p) => p.x * n.x + p.z * n.z);
+      return { edges, lo: Math.min(...u), hi: Math.max(...u) };
+    });
+    const endpointCandidates = endpointSolid.map((edges, i) => {
+      const u = endpointPolygons[i]!.map((p) => p.x * n.x + p.z * n.z);
+      return { edges, lo: Math.min(...u), hi: Math.max(...u) };
+    });
     const centre = area ? area.x * n.x + area.z * n.z : 0;
     const projections = area ? [] : bounds.map((p) => p.x * n.x + p.z * n.z);
     const lo = area ? centre - area.r - marginM : Math.min(...projections) - grow;
@@ -94,21 +149,33 @@ export function conservativeCombatView(surface: Pieces, blockers: readonly Polyg
       const spans = union([
         ...polygons.map((p) => clip(p, o, d, grow)), ...surface.discs.map((c) => discClip(c, o, d, grow)),
       ].filter((s): s is Interval => s !== null));
-      const blocked = union(solid.map((p) => clip(p, o, d, -marginM)).filter((s): s is Interval => s !== null));
+      const blocked = union(candidates.filter((p) => offset >= p.lo && offset <= p.hi)
+        .map((p) => clip(p.edges, o, d, -marginM)).filter((s): s is Interval => s !== null));
       lines++;
+      let invalidEndpoints: Interval[] | undefined;
       for (const [s, e] of subtract(spans, blocked)) {
         if (chord && (e < chord[0] || s > chord[1])) continue;
-        const from = chord ? Math.max(s, chord[0]) : s, to = chord ? Math.min(e, chord[1]) : e;
-        if (e - from > best.length) best = along(o, d, from, e);
-        if (chord && to - s > best.length) {
-          const v = along(o, d, s, to); best = { length: v.length, from: v.to, to: v.from };
+        const potential = chord ? Math.max(e - Math.max(s, chord[0]), Math.min(e, chord[1]) - s) : e - s;
+        if (potential <= best.length) continue;
+        invalidEndpoints ??= union(endpointCandidates.filter((p) => offset >= p.lo && offset <= p.hi)
+          .map((p) => clip(p.edges, o, d, -marginM)).filter((v): v is Interval => v !== null));
+        const valid = subtract([[s, e]], invalidEndpoints);
+        if (!valid.length) continue;
+        const first = valid[0]![0], last = valid[valid.length - 1]![1];
+        for (const [a, b] of valid) {
+          if (chord && (b < chord[0] || a > chord[1])) continue;
+          const from = chord ? Math.max(a, chord[0]) : a, to = chord ? Math.min(b, chord[1]) : b;
+          if (last - from > best.length) best = along(o, d, from, last);
+          if (chord && to - first > best.length) {
+            const v = along(o, d, first, to); best = { length: v.length, from: v.to, to: v.from };
+          }
         }
       }
     }
   }
   if (best.length > reachM) throw new Error(`${best.length} m view exceeds certified ${reachM} m reach`);
   return { upperBoundM: ceil(best.length), witness: best, sampledLines: lines, displacementM: ceil(displacementM),
-    marginM, surfaceExpansionM, stepDeg, stepM, reachM };
+    marginM, surfaceExpansionM, endpointHalfSizeM, stepDeg, stepM, reachM };
 }
 
 /** Exact containment of each inner occluder in the UNION of actual high boxes.
@@ -139,9 +206,13 @@ export function certifySightBlockers(blockers: readonly Polygon[], boxes: readon
   return { occluders: blockers.length, checkedBands: bands, floorY, headHeightM };
 }
 
-export function combatSightReport(surface: Pieces, areas: readonly (Disc & { id: string })[], blockers: readonly Polygon[]) {
-  const views = areas.map((area) => [area.id, conservativeCombatView(surface, blockers, area)] as const);
-  return { method: 'rigid line-family superset; expanded surface and whole apron eyes; eroded certified high solids',
+export function combatSightReport(surface: Pieces, areas: readonly (Disc & { id: string })[], blockers: readonly Polygon[],
+  { includeWholeRoadView = true }: { includeWholeRoadView?: boolean } = {}) {
+  const options = { marginM: .14, stepDeg: .05, stepM: .1, endpointHalfSizeM: .35 };
+  const views = areas.map((area) => [area.id, conservativeCombatView(surface, blockers, area, options)] as const);
+  return { method: 'rigid line-family superset; expanded surface and whole apron eyes; eroded certified high solids; exact controller-square endpoint exclusion',
+    ordinaryEyeDomain: areas.map(({ id, x, z, r }) => ({ id, x, z, radiusM: r })),
     maxOrdinaryLaneM: 90, longestFightViews: Object.fromEntries(views),
-    longestRoadView: conservativeCombatView(surface, blockers) };
+    endpointDomain: 'whole road and office; all valid controller-square standing endpoints; ray interiors unchanged',
+    ...(includeWholeRoadView ? { longestRoadView: conservativeCombatView(surface, blockers, undefined, options) } : {}) };
 }

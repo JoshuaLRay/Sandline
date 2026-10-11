@@ -331,39 +331,91 @@ on another's in the built scene.
 ### 5.2 Road cover and landmarks
 
 Box dimensions below are **length × depth × height**, on the local floor.
-For `along-road`, long axis follows the route segment at the nearest node;
-`across-road` is perpendicular. Boxes stay on the shoulders/outside swept volume.
-Visual truck geometry uses the listed solid box proxy and cannot be entered.
+Each row names its route segment: `along` follows that segment and `across` is
+perpendicular. The world accepts axis-aligned boxes only, so diagonal footprints
+use conservative 0.025 m stepped box rows rather than an oversized bounding box.
+Cover stays on the shoulders/outside the central 12 m corridor. The truck uses
+the listed solid proxy and cannot be entered.
 
 | ID | Centre feet | Size / orientation | Use |
 |---|---|---|---|
-| A-C01 | (45,8,106) | 4×1.2×2.2, along-road rock | Player's first protected observation of A2 |
-| A-C02 | (-4,8,126) | 6×2.6×2.4, along-road disabled truck | First patrol cover; cab faces north, wheels buried, no explosive barrel |
-| A-C03 | (24,8,138) | 5×0.8×1.1, across-road stone wall | Alternative player firing side; visible from lower overlook |
-| A-C04 | (-18,8,170) | 6×0.8×1.1, along-road orchard wall | Mid-route recovery point |
-| A-C05 | (10,8,184) | 4×1.2×2.2, along-road rock | Prevent a single road MG lane reaching A2 |
-| A-C06 | (-22,8,222) | 6×0.8×1.1, along-road (A4→A5) sandbag breastwork | Road MG nest at the head of the west leg; gun has frontage, not 360-degree protection (U-160 moved it from (-18,8,200)) |
-| A-C07 | (8,8,212) | 4×1.2×2.2, along-road masonry pier | Covered advance toward switchback |
-| A-C08 | (12,8,244) | 6×0.8×1.1, along-road loading plinth | Withdrawal staging below upper crossing |
-| A-C09 | (43,8,270) | 6×0.8×1.1, along-road broken parapet | Road-side flank of great vault; no holes into basement |
-| A-C10 | (-6,8,306) | 6×1.2×2.2, along-road rock | Covered preparation for final gate approach |
-| A-C11 | (2,8,336) | 4×0.8×1.1, across-road orchard wall | Lower tank firing position |
-| A-C12 | (44,8,344) | 4×1.2×2.2, along-road rock | Upper tank firing position and forecourt protection |
+| A-C01 | (45,8,106) | 4×1.2×2.2, along A1→A2 rock | Player's first protected observation of A2 |
+| A-C02 | (-4.1,8,124.9) | 6×2.6×2.4, along A2→A3 disabled-truck solid proxy | First patrol cover; north-facing cab is later art detail, wheels buried, no explosive barrel |
+| A-C03 | (24,8,138) | 5×0.8×1.1, across A2→A3 stone wall | Alternative player firing side; visible from lower overlook |
+| A-C04 | (-42,8,170) | 6×0.8×1.1, along A3→A4 orchard wall | Mid-route recovery point |
+| A-C05 | (-23,8,184) | 4×1.2×2.2, along A3→A4 rock | Prevent a single road MG lane reaching A2 |
+| A-C06 | (-22,8,222) | 6×0.8×1.1, along A4→A5 sandbag breastwork | Road MG nest at the head of the west leg; gun has frontage, not 360-degree protection (U-160 moved it from (-18,8,200)) |
+| A-C07 | (2,8,214) | 4×1.2×2.2, along A4→A5 masonry pier | Covered advance toward switchback |
+| A-C08 | (16,8,219) | 6×0.8×1.1, along A4→A5 loading plinth | Withdrawal staging below upper crossing |
+| A-C09 | (43,8,270) | 6×0.8×1.1, along A5→A6 broken parapet | Road-side flank of great vault; no holes into basement |
+| A-C10 | (-4,8,325) | 6×1.2×2.2, along A7→A8 rock | Covered preparation for final gate approach |
+| A-C11 | (2,8,336) | 4×0.8×1.1, across A7→A8 orchard wall | Lower tank firing position |
+| A-C12 | (31.2,8,336.3) | 4×1.2×2.2, along A8→A9 rock | Upper tank firing position and forecourt protection |
 
-U-159 bend: A-C04, A-C05, A-C07, A-C08 and A-C12 now lie off the walking surface
-and A-C10 lies in the tank lane; the orchard trees and the depot façades no longer
-line the road. U-161 re-places them beside the bent road and updates this table.
+A-C02 moves 1.10 m from (-4,8,126) to preserve the central 12 m corridor
+beside the toll office. Its solid proxy follows A2→A3; the north-facing cab is
+an art detail. V1's terrain fan retains its nominal feet target (-4,8,126),
+which lies inside the moved truck footprint. A separate full-scene ray to the
+actual moved truck's upper surface checks the finished cover view; the
+terrain-only fan clearance does not imply a clear ray through the truck.
+The full scene also checks V2's view to AF1's head at (-23,9.8,222.8), behind
+A-C06 at the moved MG nest.
+
+U-161 re-places A-C04, A-C05, A-C07, A-C08, A-C10 and A-C12, the orchard trees
+and the depot façades beside U-159's bent road. Every cover has a free 4×4 m
+regroup pad behind it; their exact centres are `combat.regroupPads` in the
+[construction manifest](../../../artifacts/qalat-road-supports/construction.json).
+The continuous 12 m central corridor also supplies the ≥4 m infantry through
+passage. The toll doorway has a separate 4 m clear passage to the apron.
+
+Twenty-five high rock polygons on the shoulders and turning aprons break the
+remaining long views. They are 2.2 m tall, with A-S03, A-S12, A-S13 and the
+A-S14 pieces raised to 3.5 m. Their exact convex footprints and heights are
+`combat.screens` in the construction manifest; they stay outside the central
+12 m corridor and leave the named cover, closed façades and regroup pads
+exposed. Notches beside A-C01 and A-C05 preserve those cover bays. The physical
+sight proof in `combatSightLines` covers valid standing endpoints over the
+whole road walking surface and toll office, each fight's complete 18 m-radius
+apron and the three frontage soldier sockets. It expands the open surface by
+0.12 m for the rock skin's clearance, then expands the line family and erodes
+only solids certified to block every height from road feet to a standing head.
+The controller's 0.35 m square half-width excludes endpoints where a standing
+body would intersect a certified solid; ray interiors retain their full
+clearance. A 0.14 m margin covers the sampling displacement, rounded up to
+0.138 m, from the 0.05° angle and 0.1 m offset spacing. The whole-road upper
+bound is **89.943 m**, including unsampled views; the A4 apron bound is
+**89.405 m** and the A5 apron bound is **89.051 m**.
+
+Standing on a low wall raises a player's head to y10.9. A separate actual-scene
+test checks rays from supported, clear y9.55 hostile eyes on a 1 m road grid to
+the six low-cover footprints expanded by the controller's 0.35 m square
+half-width projected onto the cover's local axes. Targets use ≤0.5 m spacing
+including footprint bounds and vertices; every sampled ray longer than 90 m
+must be blocked. This finite regression supplements the continuous
+ground-height proof.
+
+Low cover must not become a step out of the road. `terrain.climbGuards` records
+local y12 guards on the existing outer rock skin beside A-C03, A-C04, A-C06,
+A-C08 and A-C11; their bounds are in the construction manifest and each guard
+retains the protected fan clearance. The temporary C12-L mouth cap reaches y20
+through its edge skin until U-141 opens the crossing.
 
 If a rotated footprint touches a turning apron, preserve the 12 m swept corridor
 by trimming the apron shoulder **around the listed cover**, not by moving cover
-into the carriageway. Exact tank capsule sweep is a construction gate (§16).
+into the carriageway. U-151 owns the final swept-tank construction gate (§16).
 
 Toll office shell: inside x=-8..0,z=114..122, floor 8, ceiling 11.5; open east
-wall doorway z116..120, no north window, roof 12.3 nonwalkable. Four orchard trees
-at `(-20,8,158),(-24,8,168),(-24,8,178),(-20,8,186)` have 0.35 m radius trunk
-collision; branches never stop projectiles. Ruined loading façades along
-x=-24..-20,z184..216 visually merge into the buried depot escarpment; closed
-recesses are 1 m deep, not extra passages.
+wall doorway z116..120, no north window, roof 12.3 nonwalkable. Add its y8 floor
+and wall footprint to the terrain's open surface so the enclosing rock does not
+fill the room. Four orchard trees at
+`(-43.8,8,158),(-43.5,8,162),(-41,8,178),(-39.8,8,186)` have nominal 0.35 m
+radius trunk collision: circumscribed 32-sided footprints use 0.025 m box rows,
+with radius excess below 0.027 m; branches never stop projectiles. Two ruined
+loading façades centred at `(-38.5,8,200.4),(-37.6,8,207)` follow A3→A4 on the
+west side of the west leg. Each is a 6×1.2×3.8 m shell with a closed 1 m recess,
+visually merging into the buried depot escarpment without an extra passage.
+The two centres preserve their shoulder offset while clearing the new rock cuts.
+The owner road look/play verdict remains batched in U-139.
 
 ## 6. Ridge route
 
@@ -429,7 +481,7 @@ rock ledge; the wide rear opens back onto the ridge.
 
 | Bay | Standing feet anchor | Mandatory visible target(s), target feet y8 | Deliberate blind spot |
 |---|---|---|---|
-| V1 lower saddle | (58,20,128) | Truck patrol cover (-4,8,126); eastern road wall (24,8,138) | A4 nest at (-22,8,222), screened by rock fin F1 at (36,8,150) |
+| V1 lower saddle | (58,20,128) | Nominal truck fan target (-4,8,126); eastern road wall (24,8,138) | A4 nest at (-22,8,222), screened by rock fin F1 at (36,8,150) |
 | V2 Eagle shelf | (88,30,210) | MG nest (-22,8,222); crossing approach (26,8,232) | Toll bend behind lower spur; compound interior behind upper ridge shoulder |
 | V3 survey post | (66,26,286) | A7 road at (-18,8,302); A8 at (16,8,332); south-gate gun at (38,8,360) | Prisoner and radio rooms, west service gate and basement |
 
@@ -631,7 +683,7 @@ number is a persistent entity/spawn ID, used by saves and acceptance tests.
 | Group | Members: ID, archetype, feet position | Initial facing target |
 |---|---|---|
 | road-toll | AT1 R (6,8,122); AT2 R (16,8,130); AT3 R (8,8,138) | (32,98) |
-| road-frontage | AF1 M (-23,8,224); AF2 R (-8,8,194); AF3 R (4,8,208); AF4 R (18,8,224) | (-37,142) |
+| road-frontage | AF1 M (-23,8,222.8); AF2 R (-34,8,198); AF3 R (-12,8,222); AF4 R (18,8,224) | (-37,142) |
 | road-forecourt | AG1 R (10,8,322); AG2 R (24,8,338); AG3 R (34,8,346) | (-18,302) |
 | ridge-lower | RL1 R (76,26,164); RL2 R (82,26,172); RL3 R (78,26,178) | (64,128) |
 | ridge-upper | RU1 R (82,30,244); RU2 R (88,30,252); RU3 R (72,26,282) | (94,210) |
@@ -641,9 +693,12 @@ number is a persistent entity/spawn ID, used by saves and acceptance tests.
 | garrison | OG1 M (38,8,361); OG2 R (18,8,368); OG3 R (48,8,378); OG4 R (18,8,390); OG5 R (28,8,402); OG6 R (36,8,386) | OG1/2 (32,350); OG3 (56,374); OG4 (22,392); OG5/6 (32,376) |
 | radio-operator | OR1 R (50,8,402) | (42,396) |
 
-U-159 bend: the road groups face their approach node (A3, A7). AF2 and AF3 now
-stand off the walking surface; U-161 moves them onto the frontage with its cover.
-U-160 moved AF1 with A-C06 to the head of the west leg (addendum above).
+U-159 bend: the road groups face their approach node (A3, A7). U-161 moves AF2
+and AF3 onto the frontage's y8 walking surface beside its cover. U-160 moved AF1
+to (-23,8,224) with A-C06 at the head of the west leg. U-161 shifts only the
+gunner's socket 1.2 m south to (-23,8,222.8), retaining the breastwork centre
+(-22,8,222). Conflict default: keep the gunner behind the breastwork in clear
+body space while the rock behind it cuts the remaining long west-leg view.
 
 The generic `garrison` group comprises five riflemen and one MG. Its members use
 individual sockets and local assignments, not a random common spawn disc. OG1

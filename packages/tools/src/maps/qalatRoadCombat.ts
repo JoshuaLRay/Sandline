@@ -65,10 +65,11 @@ function combatSolids(): Solid[] {
     // Both portals face east toward the west leg. The closed panel is one
     // metre behind the jamb fronts, on the existing shoulder, with no opening
     // through the escarpment and no new through passage.
-    add('south-jamb', -(f.length - f.jambM) / 2, 0, f.jambM, f.depth, f.y, f.recessHeightM);
-    add('north-jamb', (f.length - f.jambM) / 2, 0, f.jambM, f.depth, f.y, f.recessHeightM);
-    add('lintel', 0, 0, f.length, f.depth, f.y + f.recessHeightM, f.height - f.recessHeightM);
-    add('closed-panel', 0, f.depth / 2 + .1, f.length, .2, f.y, f.recessHeightM);
+    const recessCentre = -(f.depth - f.recessDepthM) / 2;
+    add('south-jamb', -(f.length - f.jambM) / 2, recessCentre, f.jambM, f.recessDepthM, f.y, f.recessHeightM);
+    add('north-jamb', (f.length - f.jambM) / 2, recessCentre, f.jambM, f.recessDepthM, f.y, f.recessHeightM);
+    add('lintel', 0, recessCentre, f.length, f.recessDepthM, f.y + f.recessHeightM, f.height - f.recessHeightM);
+    add('closed-panel', 0, f.depth / 2 - .1, f.length, .2, f.y, f.recessHeightM);
   }
   return solids;
 }

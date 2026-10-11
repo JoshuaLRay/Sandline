@@ -109,7 +109,7 @@ describe('movement directions (T-1.12)', () => {
 
 /* -- World collision (T-1.12) ---------------------------------------------- */
 
-import { type WorldBox, boxFrom } from './world.ts';
+import { type WorldBox, boxFrom, overlapsFootprint } from './world.ts';
 
 const wall = (id: string, x: number, z: number, w: number, h: number, d: number, y = 0): WorldBox =>
   boxFrom({ id, x, y, z, w, h, d }, 'cover');
@@ -139,6 +139,62 @@ describe('world collision (T-1.12)', () => {
     expect(s.z).toBeCloseTo(4.85 - cfg.radius, 9);
     // The X component kept going for the whole walk: 4.2 m/s * 3 s * 0.707.
     expect(s.x).toBeGreaterThan(8);
+  });
+
+  it('slides beside adjacent wall rows when a resolved face rounds a footprint inward', () => {
+    const maxX = -1.8451462314871827;
+    // This authored face exposes cancellation at the shared .35 m radius:
+    // snapping the centre to maxX+radius leaves one ulp of false overlap.
+    expect((maxX + cfg.radius) - cfg.radius).toBeLessThan(maxX);
+    const rows: WorldBox[] = [0, 1, 2].map((row) => ({
+      id: `row-${row}`, kind: 'blocker', minX: -5, maxX, minY: 5.5, maxY: 12,
+      minZ: 334 + row * .5, maxZ: 334.5 + row * .5,
+    }));
+    const start = { ...createMoveState(maxX + cfg.radius + .05, 8, 334.14), grounded: true };
+    const state = stepCharacter(start, input({ moveY: 1, yaw: 736, sprint: true }),
+      TICK_SECONDS, { ...cfg, groundY: 8 }, rows);
+    const expectedZ = start.z + cos(wireToTable(736)) * cfg.sprintSpeed * TICK_SECONDS;
+    expect(state.z).toBeCloseTo(expectedZ, 9);
+    expect(state.x - cfg.radius).toBeGreaterThanOrEqual(maxX);
+    expect(state.x - (maxX + cfg.radius)).toBeGreaterThan(0);
+    expect(state.x - (maxX + cfg.radius)).toBeLessThan(1e-14);
+    expect(state.x - cfg.radius - maxX).toBeGreaterThanOrEqual(0);
+    expect(state.x - cfg.radius - maxX).toBeLessThan(1e-14);
+    expect(rows.some((row) => overlapsFootprint(state.x, state.z, cfg.radius, row))).toBe(false);
+    expect(state.y).toBe(8);
+  });
+
+  it('preserves ordinary contacts and repairs cancellation on either face of both axes', () => {
+    for (const magnitude of [1, 1.8451462314871827]) {
+      for (const axis of ['x', 'z'] as const) for (const direction of [-1, 1] as const) {
+        const face = direction * magnitude;
+        const obstacle: WorldBox = {
+          id: `${axis}-${direction}-${magnitude}`, kind: 'blocker', minY: 0, maxY: 2.4,
+          minX: axis === 'x' ? direction > 0 ? face : -5 : -5,
+          maxX: axis === 'x' ? direction > 0 ? 5 : face : 5,
+          minZ: axis === 'z' ? direction > 0 ? face : -5 : -5,
+          maxZ: axis === 'z' ? direction > 0 ? 5 : face : 5,
+        };
+        const rawContact = face - direction * cfg.radius;
+        const start = rawContact - direction * .05;
+        const yaw = axis === 'x' ? direction > 0 ? 256 : 768 : direction > 0 ? 0 : 512;
+        const state = stepCharacter(createMoveState(axis === 'x' ? start : 0, 0, axis === 'z' ? start : 0),
+          input({ moveY: 1, yaw, sprint: true }), TICK_SECONDS, cfg, [obstacle]);
+        const gap = direction * (face - (state[axis] + direction * cfg.radius));
+        if (magnitude === 1) {
+          expect(rawContact + direction * cfg.radius).toBe(face);
+          expect(state[axis]).toBe(rawContact);
+          expect(Math.abs(gap)).toBe(0);
+        } else {
+          expect(direction * (rawContact + direction * cfg.radius - face)).toBeGreaterThan(0);
+          expect(direction * (rawContact - state[axis])).toBeGreaterThan(0);
+          expect(direction * (rawContact - state[axis])).toBeLessThan(1e-14);
+          expect(gap).toBeGreaterThanOrEqual(0);
+          expect(gap).toBeLessThan(1e-14);
+        }
+        expect(overlapsFootprint(state.x, state.z, cfg.radius, obstacle)).toBe(false);
+      }
+    }
   });
 
   it('steps onto a ledge no higher than stepHeight and is blocked by a taller one', () => {

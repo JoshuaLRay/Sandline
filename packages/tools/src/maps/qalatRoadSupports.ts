@@ -135,6 +135,7 @@ export function roadCombatReport() {
   combatReport = {
     ...combatSightReport({ ...surface, polygons: [...surface.polygons, ...combatOpenFloors()] },
       [...ROAD_SUPPORTS.sightLines.fights.flatMap((f) => f.nodes).map((id) => ({ id, ...fightArea(ROAD_SUPPORTS.spine, id) })),
+        { id: ROAD_COMBAT.frontageMG.id, x: ROAD_COMBAT.frontageMG.x, z: ROAD_COMBAT.frontageMG.z, r: .35 },
         ...ROAD_COMBAT.frontageRiflemen.map((p) => ({ id: p.id, x: p.x, z: p.z, r: .35 }))], blockers),
     certification: certifySightBlockers(blockers, buildRoadCombat()),
   };
@@ -192,7 +193,8 @@ export function roadSupportPlanSvg(): string {
     `<polygon points="${points(combatFootprint(c))}"/><text x="${c.x + 1}" y="${-c.z - 1}" fill="#3f2517" stroke="none">${c.id}</text>`).join('\n');
   const trees = ROAD_COMBAT.orchard.trees.map((c) => `<circle cx="${c.x}" cy="${-c.z}" r=".35"/>`).join('\n');
   const regroup = ROAD_COMBAT.regroupPads.map((c) => `<rect x="${c.x - c.w / 2}" y="${-c.z - c.d / 2}" width="${c.w}" height="${c.d}"/>`).join('\n');
-  const riflemen = ROAD_COMBAT.frontageRiflemen.map((c) => `<circle cx="${c.x}" cy="${-c.z}" r=".6"/><text x="${c.x + 1}" y="${-c.z}">${c.id}</text>`).join('\n');
+  const frontage = [ROAD_COMBAT.frontageMG, ...ROAD_COMBAT.frontageRiflemen].map((c) => `<circle cx="${c.x}" cy="${-c.z}" r=".6"/><text x="${c.x + 1}" y="${-c.z}">${c.id}</text>`).join('\n');
+  const office = combatOpenFloors().map((c) => `<polygon points="${points(c)}"/>`).join('\n');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="770" height="1698" viewBox="-74 -412 166 366">
 <rect x="-74" y="-412" width="166" height="366" fill="#b7c6ca"/>
 <polygon points="${points(region)}" fill="#8d917f"/>
@@ -202,7 +204,9 @@ export function roadSupportPlanSvg(): string {
 <g fill="#d8ccb6" stroke="#766a54" stroke-width=".1">${polygons}</g>
 <g fill="none" stroke="#2b7c61" stroke-width=".25">${regroup}</g>
 <g fill="#a8804c" stroke="#3f2517" stroke-width=".15" font-family="sans-serif" font-size="1.8">${cover}${trees}</g>
-<g fill="#993434" font-family="sans-serif" font-size="2">${riflemen}</g>
+<g fill="#a8804c" fill-opacity=".7" stroke="#3f2517" stroke-width=".15">${office}</g>
+<text x="-8" y="-118" fill="#3f2517" font-family="sans-serif" font-size="1.8">toll office</text>
+<g fill="#993434" font-family="sans-serif" font-size="2">${frontage}</g>
 <rect x="16" y="-288" width="28" height="36" fill="none" stroke="#5b6d86" stroke-dasharray="1 1"/>
 <rect x="66" y="-342" width="8" height="12" fill="none" stroke="#5b6d86" stroke-dasharray="1 1"/>
 <g fill="none" stroke="#5d3a7a" stroke-width=".25" stroke-dasharray="1.5 .8" font-family="sans-serif" font-size="2.5">${fans}</g>

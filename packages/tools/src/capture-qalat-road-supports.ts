@@ -17,10 +17,10 @@ const views = [
   { name: 'top-down', position: [12, 370, 169.99], target: [12, 8, 170], label: 'Top-down · north up; 3D shows spec +x (east) on the left, mirrored from plan.svg · road, rock and unchanged insertion', probe: false },
   { name: 'overview', position: [-155, 280, -110], target: [12, 8, 145], label: 'Free overview · road, U-160 rock and unchanged natural insertion', probe: false },
   { name: 'cap-a-standing-probe', position: [38, 11.2, 91], target: [32, 9.2, 101], label: 'CAP-A · standing capsule probe · unfinished soldier presentation', probe: true },
-  { name: 'v2-eye-to-mg-nest', position: [88, 31.55, 210], target: [-22, 8, 222], label: 'V2 bay standing eye (unbuilt ridge) · fan kept 0.3 m under the ray to the moved MG nest', probe: false },
+  { name: 'v2-eye-to-mg-nest', position: [88, 31.55, 210], target: [-22, 9.15, 222], label: 'V2 bay standing eye (unbuilt ridge) · visible MG breastwork; original feet fan kept 0.3 m above rock', probe: false },
   { name: 'toll-office', position: [-4, 9.55, 118], target: [12, 9.55, 128], label: 'Toll office interior · open 4 m east door, closed north wall · standing eye y9.55', probe: false },
-  { name: 'frontage-mg', position: [-23, 9.55, 224], target: [-28, 9.55, 180], label: 'AF1 MG nest · A-C06 at the head of the west leg · standing eye y9.55', probe: false },
-  { name: 'depot-frontage', position: [-35, 9.55, 199], target: [-42, 9.55, 204], label: 'West-leg depot frontage · closed loading recesses · standing eye y9.55', probe: false },
+  { name: 'frontage-mg', position: [-23, 9.55, 222.8], target: [-28, 9.55, 180], label: 'AF1 MG nest · A-C06 at the head of the west leg · standing eye y9.55', probe: false },
+  { name: 'depot-frontage', position: [-35, 9.55, 199], target: [-38.5, 9.55, 200.4], label: 'West-leg depot frontage · closed loading recesses · standing eye y9.55', probe: false },
 ];
 const output = new URL('../../../artifacts/qalat-road-supports/', import.meta.url);
 const world = loadLevel(JSON.parse(await readFile(new URL('level.json', output), 'utf8')));

@@ -190,10 +190,13 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     }
   }, 180_000);
 
-  it('keeps a direct gate command on connected y8 floors and rejects backing-plane routes', async () => {
+  it('keeps a direct gate command untruncated on connected y8 floors and rejects backing-plane routes', async () => {
     const start = INSERTION.squadStarts[0]!;
     const path = nav.path(start, SOUTH_GATE)!;
-    expect(completePathLength(path, start, SOUTH_GATE)).toBeGreaterThan(390);
+    // U-161's finer combat contours need 272 polygons. A 256-polygon output
+    // buffer stopped this otherwise connected command near A7, short of gate.
+    expect(path.corridor.length).toBeGreaterThan(256);
+    expect(completePathLength(path, start, SOUTH_GATE), 'single command must reach the gate').toBeGreaterThan(390);
     expect(path.vaults).toEqual([]);
     for (const p of sampleRoute(path.points.map((p) => [p.x, p.y, p.z]), .5)) {
       expect(Math.abs(p.y - 8)).toBeLessThan(.11);
