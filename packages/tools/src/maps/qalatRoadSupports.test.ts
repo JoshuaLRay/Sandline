@@ -10,7 +10,7 @@ import { INSERTION, buildInsertionWorld, onInsertionFloor } from './qalatInserti
 import { between, insertionObservers, rayOccluded, sampleRoute } from './insertionScreening.ts';
 import {
   ROAD_SUPPORTS, buildRoadSupportLevel, buildRoadSupportWorld, fightSeparation, onRoadSupportFloor,
-  roadSightPieces, roadSightReport, roadSupportManifest, roadSupportPlanSvg, roadTankSweepReport,
+  roadCombatReport, roadSightPieces, roadSightReport, roadSupportManifest, roadSupportPlanSvg, roadTankSweepReport,
 } from './qalatRoadSupports.ts';
 import { longestSegment } from './roadSightLines.ts';
 import { onTankIngressFloor } from './qalatTankIngress.ts';
@@ -309,6 +309,15 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     expect(roadTankSweepReport(level)).toBe(report);
     // Flush the completed proof test before the independent sight/manifest
     // comparison, so Vitest's reporting RPC is not starved by both together.
+    await yieldWorker();
+  }, 60_000);
+
+  it('keeps the independently computed combat sight and physical blocker report current', async () => {
+    const report = roadCombatReport();
+    const generated = JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/construction.json', import.meta.url), 'utf8'));
+    expect(report).toEqual(generated.combatSightLines);
+    // Let the reporting RPC flush this asserted sight proof before the
+    // complete manifest and capture comparison reuses the same source cache.
     await yieldWorker();
   }, 60_000);
 

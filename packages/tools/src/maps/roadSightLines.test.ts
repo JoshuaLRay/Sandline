@@ -15,7 +15,13 @@ describe('U-159 plan-view sight-line measures', () => {
     let sampled = 0;
     for (let k = 0; k < 1800; k++) {
       const a = k * Math.PI / 1800, d = { x: Math.cos(a), z: Math.sin(a) };
+      // Both bars lie in [0,10]². Its projection onto the line normal
+      // encloses every possibly nonempty offset; keep the original grid and
+      // skip only lines outside it, with slack for floating-point roundoff.
+      const minU = Math.min(0, -10 * d.z) + Math.min(0, 10 * d.x);
+      const maxU = Math.max(0, -10 * d.z) + Math.max(0, 10 * d.x);
       for (let u = -12; u <= 12; u += .05) {
+        if (u < minU - 1e-9 || u > maxU + 1e-9) continue;
         const o = { x: -d.z * u, z: d.x * u };
         const inside = (t: number) => {
           const x = o.x + d.x * t, z = o.z + d.z * t;
