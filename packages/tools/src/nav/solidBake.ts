@@ -55,6 +55,9 @@ import {
 import type { SoloNavMeshGeneratorConfig } from '@recast-navigation/generators';
 import type { SoupBox, TriangleSoup } from './bake.ts';
 
+/** rcCompactCell::index is a 24-bit field. */
+export const MAX_COMPACT_SPANS = 1 << 24;
+
 /** The world-space corners of a soup's triangles. */
 function bounds(soup: TriangleSoup): { min: [number, number, number]; max: [number, number, number] } {
   const min: [number, number, number] = [Infinity, Infinity, Infinity];
@@ -118,6 +121,11 @@ export async function bakeSolidNavMesh(
     filterLedgeSpans(context, rc.walkableHeight, rc.walkableClimb, heightfield);
     filterWalkableLowHeightSpans(context, rc.walkableHeight, heightfield);
     if (!buildCompactHeightfield(context, rc.walkableHeight, rc.walkableClimb, heightfield, compact)) throw new Error('could not build compact heightfield');
+    // Recast indexes compact spans in 24 bits and does not check: past that
+    // every later stage silently corrupts (U-160 found it as an empty mesh).
+    if (compact.spanCount() >= MAX_COMPACT_SPANS) {
+      throw new Error(`${compact.spanCount()} spans exceed Recast's ${MAX_COMPACT_SPANS} compact-span limit; bake a smaller area or tile the mesh`);
+    }
     if (!erodeWalkableArea(context, rc.walkableRadius, compact)) throw new Error('could not erode walkable area');
 
     // U-125: the inside of every solid box is no one's ground.

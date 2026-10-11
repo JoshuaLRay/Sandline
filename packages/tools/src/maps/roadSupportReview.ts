@@ -1,4 +1,4 @@
-/** U-149 support-only construction view of the exact generated box union (bent by U-159). */
+/** U-149 road construction view of the exact generated box union (bent by U-159, closed by U-160's rock). */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
@@ -8,7 +8,7 @@ const surface = await (await fetch('/artifacts/qalat-road-supports/surface.json'
 };
 const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(level)));
 const levelHash = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
-if (surface.levelHash !== levelHash) throw new Error('Stale road support render surface; run pnpm gen:qalat-road-supports');
+if (surface.levelHash !== levelHash) throw new Error('Stale road render surface; run pnpm gen:qalat-road-supports');
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
@@ -44,9 +44,12 @@ const views = {
   a3: { position: [-37, 9.55, 142], target: [-28, 9.55, 210], label: 'A3 · U-159 west leg toward A4 · actual standing eye height y9.55' },
   a5: { position: [26, 9.55, 232], target: [30, 9.55, 270], label: 'A5 · actual standing eye height y9.55' },
   capX: { position: [16, 9.55, 332], target: [32, 9.55, 350], label: 'CAP-X · forecourt road only · actual standing eye height y9.55' },
-  topDown: { position: [12, 370, 169.99], target: [12, 8, 170], label: 'Top-down · north up · support extents and unchanged natural insertion' },
-  overview: { position: [-155, 280, -110], target: [12, 8, 145], label: 'Free overview · support extents and unchanged natural insertion' },
+  a2: { position: [12, 9.55, 128], target: [-37, 9.55, 142], label: 'A2 · U-160 A3 inside corner closes the toll fight · standing eye y9.55' },
+  a6: { position: [30, 9.55, 270], target: [-18, 9.55, 302], label: 'A6 · U-160 A7 inside corner closes the frontage fight · standing eye y9.55' },
+  topDown: { position: [12, 370, 169.99], target: [12, 8, 170], label: 'Top-down · north up; 3D shows spec +x (east) on the left, mirrored from plan.svg · road, rock and unchanged insertion' },
+  overview: { position: [-155, 280, -110], target: [12, 8, 145], label: 'Free overview · road, U-160 rock and unchanged natural insertion' },
   probe: { position: [38, 11.2, 91], target: [32, 9.2, 101], label: 'CAP-A · standing capsule probe · unfinished soldier presentation', probe: true },
+  v2: { position: [88, 31.55, 210], target: [-22, 8, 222], label: 'V2 bay standing eye (unbuilt ridge) · fan kept 0.3 m under the ray to the moved MG nest' },
 } satisfies Record<string, View>;
 
 function view(v: View) {

@@ -1,0 +1,50 @@
+{
+  "$comment": "U-160, first leaf of U-150: road-facing rock that closes every edge of the bent road from the accepted insertion (z84) to the south gate. Everything off the walking surface is solid from y5.5 (future basement rooms below stay open) to at least 2.2 m above the road, then to its side's crest. Construction specification sections 3.2, 5.1, 6.2 and the U-159/U-160 addenda. Cover, landmarks and shells are U-161; X ingress U-151; ridge, bays and C12 stairs U-140/U-141.",
+  "id": "qalat-road-terrain",
+  "floorY": 8,
+  "bottomY": 5.5,
+  "edgeMinHeightM": 2.2,
+  "minX": -72,
+  "minZ": 84,
+  "maxZ": 358,
+  "eastBandM": 8,
+  "eastEdge": [[46, 70], [50, 150], [70, 204], [68, 252], [58, 302], [54, 362]],
+  "sideTops": { "left": 26, "right": 20 },
+  "spurs": [
+    { "id": "T-C-A3", "top": 20, "polygon": [[12, 128], [-37, 142], [-28, 210], [26, 232]] },
+    { "id": "T-C-A5", "top": 22, "polygon": [[-28, 210], [26, 232], [30, 270], [-18, 302]] },
+    { "id": "T-C-A7", "top": 20, "polygon": [[30, 270], [-18, 302], [16, 332]] }
+  ],
+  "fins": [
+    { "id": "F1", "minX": 33, "maxX": 39, "minZ": 146, "maxZ": 154, "top": 26 },
+    { "id": "F2", "minX": 49, "maxX": 55, "minZ": 168, "maxZ": 176, "top": 32 }
+  ],
+  "viewFans": {
+    "rayClearanceM": 0.3,
+    "expandM": 1,
+    "bayEdgeBackM": 0.8,
+    "bayHalfLengthM": 4,
+    "bays": [
+      { "id": "V1", "anchor": { "x": 58, "y": 20, "z": 128 }, "targets": [
+        { "id": "A-C02 truck patrol cover", "x": -4, "z": 126 },
+        { "id": "A-C03 eastern road wall", "x": 24, "z": 138 }] },
+      { "id": "V2", "anchor": { "x": 88, "y": 30, "z": 210 }, "targets": [
+        { "id": "A-C06 MG nest", "x": -22, "z": 222 },
+        { "id": "C12-U crossing approach", "x": 26, "z": 232 }] },
+      { "id": "V3", "anchor": { "x": 66, "y": 26, "z": 286 }, "targets": [
+        { "id": "A7 road", "x": -18, "z": 302 },
+        { "id": "A8", "x": 16, "z": 332 },
+        { "id": "south-gate gun", "x": 38, "z": 360 }] }
+    ]
+  },
+  "standingPads": [
+    { "id": "south-gate", "minX": 31.6, "maxX": 32.4, "minZ": 356, "maxZ": 356.4,
+      "why": "standing room at the exact gate node: a 0.35 m soldier centred on (32,356) needs air past the road end until the outpost opens it" }
+  ],
+  "temporaryCaps": [
+    { "id": "C12-L-mouth", "for": "U-141", "minX": 24, "maxX": 36, "minZ": 130, "maxZ": 142, "top": 20,
+      "why": "V1's fan reaches the A2 apron's north-east edge only 0.65-2.2 m above the road beside the C12-L stair mouth; U-141 opens the stair here and must keep that edge nontraversable" },
+    { "id": "south-gate", "for": "U-116", "minX": 20, "maxX": 48, "minZ": 346, "maxZ": 358, "top": 20,
+      "why": "seals the road end until the outpost exists; V3's south-gate gun ray crosses here and is blocked by the outpost's own south wall as specified" }
+  ]
+}

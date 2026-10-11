@@ -19,6 +19,20 @@ landmarks and sockets the bend displaced are listed after §5.2 and §9.1; U-150
 re-places them under §15. The surface diagram predates this addendum; the
 [bent road plan](../../../artifacts/qalat-road-supports/plan.svg) shows the road.
 
+**U-160 road-rock addendum · 2026-10-11:** every point off the road's walking
+surface from z84 to the south gate is rock, solid from y5.5 (basement rooms stay
+open) to at least 2.2 m above the road: the T-W escarpment west of the road
+(y26), the T-C inside-corner spurs (A3 y20, A5 y22, A7 y20) and the T-E foot
+(y20) east of it, with fins F1/F2. §6.2's fans cap that rock 0.3 m under each
+listed ray. With the bend, V2's view of the MG nest at (-18,200) crossed the A3
+inside corner 0.9 m above the road, so (Conflict default: the MG at the head of
+the road it covers, flanked from the high ground) A-C06 moves to (-22,8,222) and
+AF1 to (-23,8,224). Two temporary caps stand where later leaves open the road:
+the C12-L mouth (U-141: V1's fan reaches the A2 apron edge only 0.65–2.2 m above
+the road just north of the stair mouth) and the south gate (U-116). V3's south-
+gate gun (38,360) lies 4 m behind the outpost's own south wall (§8.1): its ray
+crosses the wall line at x≈39.5, 1.1 m above y8, so U-116 must resolve that view.
+
 This is the canonical construction brief for campaign mission 1, world/mission
 `qalat-road`. It replaces the rectangular valley, terrace slots and surface
 riverbed flank delivered by U-106. That implementation remains the current game
@@ -205,7 +219,7 @@ flat connecting apron. Close all gaps beyond authored walking edges with terrain
 | T-S3 reveal toe (U-138 addendum) | (14,40),(26,40),(26,50),(20,53),(14,48) | y=26; carved by the clear ribbons, screens the late eastward approach to D0 |
 | T-W depot escarpment | (-66,62),(-16,56),(-6,94),(-24,132),(-18,190),(0,214),(4,248),(-18,286),(-32,360),(-58,392),(-76,230) | y=26; ruined depot roofs embedded along east foot; protects buried route from surface fire |
 | T-E ridge body | (46,70),(88,58),(114,116),(122,208),(110,300),(90,364),(54,362),(58,302),(68,252),(70,204),(50,150) | y=20 at z128, 34 at z168, 38 at z210, 34 at z248, 30 at z286; carved walking shelf at R nodes |
-| T-C road spurs | Three masses centred (-12,142), (10,214), (16,292), each 14 × 18 m in plan | y=20,22,20 respectively; truncate the road corridor beyond each battle, carve only road/crossing ribbons |
+| T-C road spurs | U-160 (bent road): the inside corners bounded by the legs A2–A3–A4–A5, A4–A5–A6–A7 and A6–A7–A8 (was three 14 × 18 m masses at (-12,142), (10,214), (16,292)) | y=20 (A3), 22 (A5), 20 (A7), capped under §6.2 fans; truncate the road corridor beyond each battle, carve only road/crossing ribbons |
 | T-N outpost shoulder | (-22,398),(-4,444),(36,464),(94,460),(140,430),(136,372),(112,344),(90,370),(64,418),(4,418) | y=34; encloses reserve doglegs, creates outpost backdrop, seals north perimeter |
 
 Where a mass meets a playable edge, use rock strata, broken scree and retaining
@@ -310,7 +324,9 @@ U-159 proves the road's share of this on the bare supports: the 12 m lane holds
 no straight view over 90 m, so any longer view crosses a shoulder or apron where
 cover can cut it, and the fights' 36 m aprons cannot see one another without
 leaving the walking surface. The longest remaining bare-surface view from each
-fight is recorded in its construction manifest for U-150.
+fight is recorded in its construction manifest for U-161's cover. U-160's rock
+makes the separation physical: no standing eye on one fight's apron sees a head
+on another's in the built scene.
 
 ### 5.2 Road cover and landmarks
 
@@ -326,7 +342,7 @@ Visual truck geometry uses the listed solid box proxy and cannot be entered.
 | A-C03 | (24,8,138) | 5×0.8×1.1, across-road stone wall | Alternative player firing side; visible from lower overlook |
 | A-C04 | (-18,8,170) | 6×0.8×1.1, along-road orchard wall | Mid-route recovery point |
 | A-C05 | (10,8,184) | 4×1.2×2.2, along-road rock | Prevent a single road MG lane reaching A2 |
-| A-C06 | (-18,8,200) | 6×0.8×1.1, along-road sandbag breastwork | Road MG nest; gun has frontage, not 360-degree protection |
+| A-C06 | (-22,8,222) | 6×0.8×1.1, along-road (A4→A5) sandbag breastwork | Road MG nest at the head of the west leg; gun has frontage, not 360-degree protection (U-160 moved it from (-18,8,200)) |
 | A-C07 | (8,8,212) | 4×1.2×2.2, along-road masonry pier | Covered advance toward switchback |
 | A-C08 | (12,8,244) | 6×0.8×1.1, along-road loading plinth | Withdrawal staging below upper crossing |
 | A-C09 | (43,8,270) | 6×0.8×1.1, along-road broken parapet | Road-side flank of great vault; no holes into basement |
@@ -336,7 +352,7 @@ Visual truck geometry uses the listed solid box proxy and cannot be entered.
 
 U-159 bend: A-C04, A-C05, A-C07, A-C08 and A-C12 now lie off the walking surface
 and A-C10 lies in the tank lane; the orchard trees and the depot façades no longer
-line the road. U-150 re-places them beside the bent road and updates this table.
+line the road. U-161 re-places them beside the bent road and updates this table.
 
 If a rotated footprint touches a turning apron, preserve the 12 m swept corridor
 by trimming the apron shoulder **around the listed cover**, not by moving cover
@@ -413,8 +429,8 @@ rock ledge; the wide rear opens back onto the ridge.
 
 | Bay | Standing feet anchor | Mandatory visible target(s), target feet y8 | Deliberate blind spot |
 |---|---|---|---|
-| V1 lower saddle | (58,20,128) | Truck patrol cover (-4,8,126); eastern road wall (24,8,138) | A4 nest at (-18,8,200), screened by rock fin F1 at (36,8,150) |
-| V2 Eagle shelf | (88,30,210) | MG nest (-18,8,200); crossing approach (26,8,232) | Toll bend behind lower spur; compound interior behind upper ridge shoulder |
+| V1 lower saddle | (58,20,128) | Truck patrol cover (-4,8,126); eastern road wall (24,8,138) | A4 nest at (-22,8,222), screened by rock fin F1 at (36,8,150) |
+| V2 Eagle shelf | (88,30,210) | MG nest (-22,8,222); crossing approach (26,8,232) | Toll bend behind lower spur; compound interior behind upper ridge shoulder |
 | V3 survey post | (66,26,286) | A7 road at (-18,8,302); A8 at (16,8,332); south-gate gun at (38,8,360) | Prisoner and radio rooms, west service gate and basement |
 
 The terrain mass polygons are envelopes, not permission to obstruct these views.
@@ -615,7 +631,7 @@ number is a persistent entity/spawn ID, used by saves and acceptance tests.
 | Group | Members: ID, archetype, feet position | Initial facing target |
 |---|---|---|
 | road-toll | AT1 R (6,8,122); AT2 R (16,8,130); AT3 R (8,8,138) | (32,98) |
-| road-frontage | AF1 M (-16,8,202); AF2 R (-8,8,194); AF3 R (4,8,208); AF4 R (18,8,224) | (-37,142) |
+| road-frontage | AF1 M (-23,8,224); AF2 R (-8,8,194); AF3 R (4,8,208); AF4 R (18,8,224) | (-37,142) |
 | road-forecourt | AG1 R (10,8,322); AG2 R (24,8,338); AG3 R (34,8,346) | (-18,302) |
 | ridge-lower | RL1 R (76,26,164); RL2 R (82,26,172); RL3 R (78,26,178) | (64,128) |
 | ridge-upper | RU1 R (82,30,244); RU2 R (88,30,252); RU3 R (72,26,282) | (94,210) |
@@ -626,7 +642,8 @@ number is a persistent entity/spawn ID, used by saves and acceptance tests.
 | radio-operator | OR1 R (50,8,402) | (42,396) |
 
 U-159 bend: the road groups face their approach node (A3, A7). AF2 and AF3 now
-stand off the walking surface; U-150 moves them onto the frontage with its cover.
+stand off the walking surface; U-161 moves them onto the frontage with its cover.
+U-160 moved AF1 with A-C06 to the head of the west leg (addendum above).
 
 The generic `garrison` group comprises five riflemen and one MG. Its members use
 individual sockets and local assignments, not a random common spawn disc. OG1

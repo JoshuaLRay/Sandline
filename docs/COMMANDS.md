@@ -56,7 +56,7 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | `pnpm export:soldier` | write the code-built soldier as `assets/src/soldier.glb`, the pipeline's test asset |
 | `pnpm gen:nav` | re-bake every named world's navmesh; required after editing a world, `MoveConfig` or the hitbox (a test fails until you do) |
 | `pnpm gen:qalat-insertion` | U-138: compile the isolated Juniper Hollow replacement section and its exact collision/render surface, manifest and plan into `artifacts/qalat-insertion/`; production campaign activation remains U-117 |
-| `pnpm gen:qalat-road-supports` | U-149, bent by U-159: extend the isolated insertion with the approved y8 road/shoulder/apron supports and reserve basement/bridge voids; exact collision/render scene, sight-line proofs and review plan in `artifacts/qalat-road-supports/` |
+| `pnpm gen:qalat-road-supports` | U-149, bent by U-159, closed by U-160's rock: extend the isolated insertion with the approved y8 road/shoulder/apron supports and the road-facing rock, reserving basement/bridge voids and ridge view fans; exact collision/render scene, sight-line and ray-clearance proofs and review plan in `artifacts/qalat-road-supports/` |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
 
 ## Isolated Juniper Hollow construction (U-138)
@@ -95,11 +95,15 @@ y5.5..8 only, reserving future basement space. The source is
 records U-159's plan-view proofs (`roadSightLines.ts`): the longest straight view
 inside the 12 m tank lane, the separated fight pairs and each fight's longest
 bare-surface view; the plan draws the fights and that lane view.
-U-150 owns unfinished road edges/fights/cover; U-151 owns X ingress and tank sweep.
-This is a traversal fixture, outside the production campaign.
+U-160's rock (`qalatRoadTerrain.ts`, `qalat-road-terrain.json`) fills everything
+off the walking surface from z84 to the gate, y5.5 up to at least 2.2 m above the
+road, capped under the V1–V3 fans; the manifest's `terrain.rays` records each
+bay ray's clearance and the temporary caps it crosses. U-161 owns cover and
+landmarks; U-151 owns X ingress and tank sweep. This is a traversal fixture,
+outside the production campaign.
 
 Run `pnpm exec tsx packages/tools/src/capture-qalat-road-supports.ts` after
-generation for eight 1440×1000 exact-scene views and geometry/draw measurements.
+generation for eleven 1440×1000 exact-scene views and geometry/draw measurements.
 Streaming CI uploads `qalat-road-support-review`. Commit manifest, plan,
 capture metadata and PNGs; large level/surface JSON stays ignored. For orbit
 review run `pnpm exec vite --host 127.0.0.1` from the repository root and open
@@ -108,10 +112,15 @@ Eye-height and free-camera captures are construction evidence, not human accepta
 
 `pnpm exec vitest run packages/tools/src/maps/qalatRoadSupports.test.ts`
 checks approved coordinates and full widths/aprons, actual solid-nav/controller
-traversal for all six starts in both directions, backing-floor disconnection,
-reserved basement/bridge volumes and inherited southern occlusion. The existing
-U-138 suite retains its dense S0/court screening proof. New owner road map/play
-acceptance remains pending; later leaves retain full combat/sweep acceptance.
+traversal for all six starts in both directions, backing-floor and rock-top
+disconnection, reserved basement/bridge volumes and inherited southern occlusion.
+Its nav bake keeps the backing plane only under the built content: Recast's
+compact heightfield indexes spans in 24 bits (`MAX_COMPACT_SPANS`, 16.8 M) and
+`bakeSolidNavMesh` now refuses a bake past it instead of returning an empty mesh.
+`qalatRoadTerrain.test.ts` proves U-160's rock: off the road, every edge closed,
+inside corners solid, bay rays and fans clear, 3D fight separation and escape
+attempts. The existing U-138 suite retains its dense S0/court screening proof. New
+owner road map/play acceptance remains pending in U-139.
 
 ## Mobile commander supply review (U-148)
 
