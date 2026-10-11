@@ -11,6 +11,7 @@ import { ROAD_COMBAT, buildRoadCombat, combatFootprint, combatOpenFloors, combat
 import { certifySightBlockers, combatSightReport } from './qalatRoadCombatSight.ts';
 import { INSERTION, buildInsertionLevel } from './qalatInsertion.ts';
 import { ROAD_TERRAIN, TERRAIN_SPURS, VIEW_FANS, buildRoadTerrain, roadTerrainManifest } from './qalatRoadTerrain.ts';
+import { TANK_INGRESS, tankIngressFloors, buildTankIngressShelter } from './qalatTankIngress.ts';
 import { scan, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
 import {
   discsSeeEachOther, farthestView, longestSegment, ribbonPieces, type Disc, type Segment,
@@ -37,7 +38,8 @@ export function roadSupportFloors(): readonly Polygon[] {
 }
 
 const bareFloors = roadSupportFloors();
-const floors = [...bareFloors, ...combatOpenFloors()];
+const floors = [...bareFloors, ...combatOpenFloors(), ...tankIngressFloors()];
+export function tankReturnRoute() { return [...TANK_INGRESS.spine, ...ROAD_SUPPORTS.spine.slice(1, 8).reverse()]; }
 export function onRoadSupportFloor(p: Point, margin = 0): boolean {
   return floors.some((poly) => {
     const span = scan(poly, p.z);
@@ -63,17 +65,17 @@ export function buildRoadSupportLevel() {
     const next = new Map<string, BoxSpec>();
     for (const [lo, hi] of spans) {
       const key = `${lo},${hi}`, old = previous.get(key);
-      if (old) { old.d = z1 - (old.z - old.d / 2); old.z = z1 - old.d / 2; next.set(key, old); }
+      if (old) { old.d = z1 + EDGE_M - (old.z - old.d / 2); old.z = z1 + EDGE_M - old.d / 2; next.set(key, old); }
       else {
         const b = { id: `road-support-${boxes.length}`, x: (lo + hi) / 2, y: ROAD_SUPPORTS.supportBottomY,
-          z: (z0 + z1) / 2, w: hi - lo, h: ROAD_SUPPORTS.floorY - ROAD_SUPPORTS.supportBottomY, d: z1 - z0 };
+          z: (z0 + z1) / 2, w: hi - lo, h: ROAD_SUPPORTS.floorY - ROAD_SUPPORTS.supportBottomY, d: z1 - z0 + 2 * EDGE_M };
         boxes.push(b); next.set(key, b);
       }
     }
     previous = next;
   }
-  return { ...insertion, id: ROAD_SUPPORTS.id, floor: { halfWidth: 80, halfDepth: 370 },
-    boxes: [...insertion.boxes, ...boxes, ...buildRoadTerrain(floors, ROAD_SUPPORTS.spine), ...buildRoadCombat()] };
+  return { ...insertion, id: ROAD_SUPPORTS.id, floor: { halfWidth: 150, halfDepth: 470 },
+    boxes: [...insertion.boxes, ...boxes, ...buildRoadTerrain(floors, ROAD_SUPPORTS.spine, TANK_INGRESS.terrainMaxZ), ...buildRoadCombat(), ...buildTankIngressShelter()] };
 }
 
 export function buildRoadSupportWorld() { return loadLevel(buildRoadSupportLevel()); }
@@ -144,10 +146,10 @@ export function roadCombatReport() {
 
 export function roadSupportManifest() {
   const level = buildRoadSupportLevel();
-  return { task: 'U-161', parent: 'U-150', foundation: 'U-149', bend: 'U-159', rock: 'U-160',
-    kind: 'isolated road whitebox: supports, rock, cover and landmarks',
+  return { task: 'U-151', parent: 'U-139', foundation: 'U-149', bend: 'U-159', rock: 'U-160',
+    kind: 'isolated road whitebox: road fights and screened tank ingress',
     activeCampaign: 'unchanged; activation belongs to U-117',
-    sourceHash: createHash('sha256').update(JSON.stringify({ insertion: INSERTION, road: ROAD_SUPPORTS, terrain: ROAD_TERRAIN, combat: ROAD_COMBAT })).digest('hex'),
+    sourceHash: createHash('sha256').update(JSON.stringify({ insertion: INSERTION, road: ROAD_SUPPORTS, terrain: ROAD_TERRAIN, combat: ROAD_COMBAT, ingress: TANK_INGRESS })).digest('hex'),
     levelHash: createHash('sha256').update(JSON.stringify(level)).digest('hex'), boxCount: level.boxes.length,
     stratumM: STRATUM_M, edgeExpansionM: EDGE_M, circleSides: CIRCLE_SIDES,
     floorY: ROAD_SUPPORTS.floorY, supportBottomY: ROAD_SUPPORTS.supportBottomY,
@@ -158,10 +160,10 @@ export function roadSupportManifest() {
     sightLines: roadSightReport(),
     terrain: roadTerrainManifest(level.boxes),
     combat: ROAD_COMBAT,
+    ingress: TANK_INGRESS,
     combatSightLines: roadCombatReport(),
     ownerQualityVerdict: 'road look/play batched in U-139',
-    unfinished: ['X ingress/tank sweep: U-151',
-      'return shelters/blast protection: U-152', 'ridge/bridge: U-140', 'support bays/C12 stairs: U-141',
+    unfinished: ['return shelters/blast protection: U-152', 'ridge/bridge: U-140', 'support bays/C12 stairs: U-141',
       'outpost: U-116', 'basement: U-115'],
   };
 }
@@ -170,7 +172,7 @@ export function roadSupportPlanSvg(): string {
   const p = (n: number) => n.toFixed(3);
   const points = (poly: Polygon) => poly.map((v) => `${p(v.x)},${p(-v.z)}`).join(' ');
   const polygons = floors.map((poly) => `<polygon points="${points(poly)}"/>`).join('\n');
-  const labels = ROAD_SUPPORTS.spine.map((s) => `<circle cx="${s.x}" cy="${-s.z}" r="1"/><text x="${s.x + 2}" y="${-s.z - 2}">${s.id} · y8</text>`).join('\n');
+  const labels = [...ROAD_SUPPORTS.spine, ...TANK_INGRESS.spine].map((s) => `<circle cx="${s.x}" cy="${-s.z}" r="1"/><text x="${s.x + 2}" y="${-s.z - 2}">${s.id} · y8</text>`).join('\n');
   const sight = roadSightReport(), lane = sight.longestLaneView;
   const fights = ROAD_SUPPORTS.sightLines.fights.map((f) => f.nodes.map((id) => {
     const a = fightArea(ROAD_SUPPORTS.spine, id);
@@ -179,12 +181,12 @@ export function roadSupportPlanSvg(): string {
   // U-160: the rock's outline traced from the generated boxes in 1 m bands,
   // its zones and reservations.
   const t = ROAD_TERRAIN, rock = buildRoadSupportLevel().boxes.filter((b) => b.id.startsWith('road-rock') || b.id.startsWith('road-cap-'));
-  const east = Array.from({ length: t.maxZ - t.minZ }, (_, i) => {
+  const east = Array.from({ length: TANK_INGRESS.terrainMaxZ - t.minZ }, (_, i) => {
     const z0 = t.minZ + i, band = rock.filter((b) => b.z + b.d / 2 > z0 && b.z - b.d / 2 < z0 + 1);
     const x = Math.max(...band.map((b) => b.x + b.w / 2));
     return [{ x, z: z0 }, { x, z: z0 + 1 }];
   }).flat();
-  const region = [{ x: t.minX, z: t.minZ }, { x: t.minX, z: t.maxZ }, ...east.reverse()];
+  const region = [{ x: t.minX, z: t.minZ }, { x: t.minX, z: TANK_INGRESS.terrainMaxZ }, ...east.reverse()];
   const spurs = TERRAIN_SPURS.map((s) => `<polygon points="${points(s.polygon)}" stroke-dasharray=".6 .6"/><text x="${s.polygon.reduce((a, v) => a + v.x, 0) / s.polygon.length - 6}" y="${-s.polygon.reduce((a, v) => a + v.z, 0) / s.polygon.length}" stroke="none" fill="#3c3f33">${s.id} y${s.top}</text>`).join('\n');
   const fins = t.fins.map((f) => `<rect x="${f.minX}" y="${-f.maxZ}" width="${f.maxX - f.minX}" height="${f.maxZ - f.minZ}"/><text x="${f.maxX + 1}" y="${-f.minZ}" fill="#3c3f33">${f.id} y${f.top}</text>`).join('\n');
   const caps = t.temporaryCaps.map((c) => `<rect x="${c.minX}" y="${-c.maxZ}" width="${c.maxX - c.minX}" height="${c.maxZ - c.minZ}"/>`).join('\n');
@@ -195,8 +197,8 @@ export function roadSupportPlanSvg(): string {
   const regroup = ROAD_COMBAT.regroupPads.map((c) => `<rect x="${c.x - c.w / 2}" y="${-c.z - c.d / 2}" width="${c.w}" height="${c.d}"/>`).join('\n');
   const frontage = [ROAD_COMBAT.frontageMG, ...ROAD_COMBAT.frontageRiflemen].map((c) => `<circle cx="${c.x}" cy="${-c.z}" r=".6"/><text x="${c.x + 1}" y="${-c.z}">${c.id}</text>`).join('\n');
   const office = combatOpenFloors().map((c) => `<polygon points="${points(c)}"/>`).join('\n');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="770" height="1698" viewBox="-74 -412 166 366">
-<rect x="-74" y="-412" width="166" height="366" fill="#b7c6ca"/>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1900" viewBox="-74 -516 216 470">
+<rect x="-74" y="-516" width="216" height="470" fill="#b7c6ca"/>
 <polygon points="${points(region)}" fill="#8d917f"/>
 <g fill="none" stroke="#3c3f33" stroke-width=".2" font-family="sans-serif" font-size="2.5">${spurs}</g>
 <g fill="#5e6152" font-family="sans-serif" font-size="2.5">${fins}</g>
@@ -213,13 +215,13 @@ export function roadSupportPlanSvg(): string {
 <g fill="none" stroke="#8a2f1d" stroke-width=".35" stroke-dasharray="2 1" font-family="sans-serif" font-size="3">${fights}</g>
 <line x1="${lane.from.x}" y1="${-lane.from.z}" x2="${lane.to.x}" y2="${-lane.to.z}" stroke="#c0392b" stroke-width=".6"/>
 <g fill="#162e35" font-family="sans-serif" font-size="2.5">${labels}
-<text x="-69" y="-405" font-size="3.5">U-161 · bent road fights: cover and landmarks · north ↑</text>
-<text x="-69" y="-399">20 m ribbon / 12 m carriageway / 36 m aprons; grey: rock from y5.5, ≥${t.edgeMinHeightM} m above the road</text>
-<text x="-69" y="-394">West T-W crest y${t.sideTops.left}; east T-C/T-E foot y${t.sideTops.right}; dotted: inside-corner spur zones (off-road part)</text>
-<text x="-69" y="-389">Purple: ridge bay fans and target rays; rock stays ${t.viewFans.rayClearanceM} m under them</text>
-<text x="-69" y="-384">Blue-grey: temporary caps (C12-L mouth for U-141, south gate for U-116)</text>
-<text x="-69" y="-379">Dashed red: the three fights. Solid red: longest tank-lane view ${lane.length.toFixed(1)} m (limit ${sight.maxLaneViewM} m)</text>
-<text x="-69" y="-374">Dashed blue: future B6 vault and ridge bridge; reserved.</text>
-<text x="-69" y="-50">Isolated whitebox; tank ingress (U-151) unfinished. Road look/play verdict: U-139.</text></g>
+<text x="-69" y="-507" font-size="3.5">U-151 · screened tank ingress and bent road fights · north ↑</text>
+<text x="-69" y="-501">20 m ribbon / 12 m carriageway / 36 m aprons; grey: rock from y5.5, ≥${t.edgeMinHeightM} m above the road</text>
+<text x="-69" y="-496">West T-W crest y${t.sideTops.left}; east T-C/T-E foot y${t.sideTops.right}; dotted: inside-corner spur zones (off-road part)</text>
+<text x="-69" y="-491">Purple: ridge bay fans and target rays; rock stays ${t.viewFans.rayClearanceM} m under them</text>
+<text x="-69" y="-486">Blue-grey: temporary caps (C12-L mouth for U-141, south gate for U-116)</text>
+<text x="-69" y="-481">Dashed red: the three fights. Solid red: longest tank-lane view ${lane.length.toFixed(1)} m (limit ${sight.maxLaneViewM} m)</text>
+<text x="-69" y="-476">Dashed blue: future B6 vault and ridge bridge; reserved.</text>
+<text x="-69" y="-50">Isolated whitebox; X0–X6 built, bridge reserved for U-140. Road look/play verdict: U-139.</text></g>
 </svg>\n`;
 }

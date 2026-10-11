@@ -74,7 +74,7 @@ canonical when this documentation PR merges.
 | [U-160](docs/backlog/U-160.md) | Close the bent road with rock: road-facing landforms and the A3/A7 inside corners | Map implementation | P1 | DONE | U-159 (DONE); road look/play verdict batched in U-139 | [#331](https://github.com/JoshuaLRay/Sandline/pull/331) |
 | [U-161](docs/backlog/U-161.md) | Place the road's cover, landmarks and frontage riflemen on the bent road | Map implementation | P1 | DONE | U-160 DONE; road look/play verdict batched in U-139 | [#332](https://github.com/JoshuaLRay/Sandline/pull/332) |
 | [U-153](docs/backlog/U-153.md) | Squad stance orders: stay low and hit the dirt | Squad command (Conflict parity) | P1 | DONE | — | [#324](https://github.com/JoshuaLRay/Sandline/pull/324) |
-| [U-151](docs/backlog/U-151.md) | Construct screened X ingress and prove the rotating tank sweep | Map implementation | P1 | READY | U-150 DONE; road look/play verdict batched in U-139 | — |
+| [U-151](docs/backlog/U-151.md) | Construct screened X ingress and prove the rotating tank sweep | Map implementation | P1 | IN_PROGRESS | U-150 DONE; road look/play verdict batched in U-139 | — |
 | [U-154](docs/backlog/U-154.md) | Move and hold orders keep a facing | Squad command (Conflict parity) | P2 | DONE | — | [#326](https://github.com/JoshuaLRay/Sandline/pull/326) |
 | [U-152](docs/backlog/U-152.md) | Build return shelters and prove rocket clearance and blast protection | Map implementation | P1 | BLOCKED | U-150, U-151 | — |
 | [U-155](docs/backlog/U-155.md) | RPG gunner enemy | Enemy AI (Conflict parity) | P2 | DONE | — (aggregate of U-157, U-158) | [#327](https://github.com/JoshuaLRay/Sandline/pull/327), [#328](https://github.com/JoshuaLRay/Sandline/pull/328) |

@@ -6,8 +6,6 @@ import {
 } from '@sandline/shared';
 import { NavMesh, completePathLength, initNav } from '../../../server/src/ai/nav/NavMesh.ts';
 import { PathFollower } from '../../../server/src/ai/locomotion/followPath.ts';
-import { DEFAULT_NAV_AGENT, navConfigFor, worldSolids, worldSoup } from '../nav/bake.ts';
-import { bakeSolidNavMesh } from '../nav/solidBake.ts';
 import { INSERTION, buildInsertionWorld, onInsertionFloor } from './qalatInsertion.ts';
 import { between, insertionObservers, rayOccluded, sampleRoute } from './insertionScreening.ts';
 import {
@@ -15,7 +13,9 @@ import {
   roadSightPieces, roadSightReport, roadSupportManifest, roadSupportPlanSvg,
 } from './qalatRoadSupports.ts';
 import { longestSegment } from './roadSightLines.ts';
+import { onTankIngressFloor } from './qalatTankIngress.ts';
 import { buildRoadCombat } from './qalatRoadCombat.ts';
+import { bakeRoadSupportNav } from './qalatRoadNav.ts';
 
 // Independent transcription of the approved §5 coordinates with the U-159
 // addendum's bent A3, A4 and A7. Sampling the authoring data alone would also
@@ -68,21 +68,13 @@ function clearSupport(p: Point, half = .001, allowCombat = false): void {
 const world = buildRoadSupportWorld();
 const combatIds = new Set(buildRoadCombat().map((b) => b.id));
 const combatBoxes = world.boxes.filter((b) => combatIds.has(b.id));
-/** Recast indexes compact spans in 24 bits (16.8M) and the 740 m backing
- * plane alone fills 11.8M columns, so the isolated bake keeps the plane only
- * under the built content. Nothing beyond it is reachable either way. */
-function contentSoup() {
-  const soup = worldSoup(world);
-  soup.positions.splice(0, 12, -74, 0, -45, 74, 0, -45, 74, 0, 362, -74, 0, 362);
-  return soup;
-}
 let nav: NavMesh;
 describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed by U-160 rock', () => {
   beforeAll(async () => {
     await initNav();
     // Use the production solid/headroom rasterizer and the standing agent.
     // These same-height slabs need neither vault links nor a fake route mesh.
-    nav = NavMesh.load(await bakeSolidNavMesh(contentSoup(), worldSolids(world), navConfigFor(DEFAULT_NAV_AGENT)));
+    nav = NavMesh.load(await bakeRoadSupportNav(world));
   }, 180_000);
   afterAll(() => nav?.destroy());
 
@@ -149,7 +141,7 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
       for (const x of [box.minX, box.maxX]) for (const z of [box.minZ, box.maxZ]) {
         // The only new open floor is the enclosing toll-office footprint.
         const tollFloor = x >= -8.65 && x <= .65 && z >= 113.35 && z <= 122.65;
-        expect(approvedRoadFootprint({ x, z }, .05) || tollFloor, `support expansion at ${JSON.stringify({ x, z })}`).toBe(true);
+        expect(approvedRoadFootprint({ x, z }, .05) || onTankIngressFloor({ x, z }, .05) || tollFloor, `support expansion at ${JSON.stringify({ x, z })}`).toBe(true);
       }
       if (supports % 256 === 0) await yieldWorker();
     }
@@ -162,7 +154,7 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     expect(northern.every((b) => b.minY >= 5.5)).toBe(true);
     expect(northern.some((b) => b.minY === 5.5 && b.maxY === 8)).toBe(true);
     const bridge = { minX: 66, maxX: 74, minZ: 330, maxZ: 342 };
-    expect(world.boxes.filter((b) => b.maxX > bridge.minX && b.minX < bridge.maxX && b.maxZ > bridge.minZ && b.minZ < bridge.maxZ)).toEqual([]);
+    expect(world.boxes.filter((b) => b.maxX > bridge.minX && b.minX < bridge.maxX && b.maxZ > bridge.minZ && b.minZ < bridge.maxZ && b.maxY > 8)).toEqual([]);
     expect(supportUnder(30, 270, .001, 5.49, world.boxes, 0)).toBe(0);
     expect(blockedAt(30, 270, .35, 0, 0, 5.49, world.boxes)).toBe(false);
   });
@@ -303,24 +295,25 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     expect(views['A8']!.length).toBeLessThanOrEqual(90);
   }, 60_000);
 
-  it('keeps generated construction, plan and fourteen actual-scene captures current', () => {
+  it('keeps generated construction, plan and nineteen actual-scene captures current', () => {
     const manifest = roadSupportManifest();
     expect(JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/construction.json', import.meta.url), 'utf8'))).toEqual(manifest);
     expect(readFileSync(new URL('../../../../artifacts/qalat-road-supports/plan.svg', import.meta.url), 'utf8')).toBe(roadSupportPlanSvg());
     const captures = JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/captures.json', import.meta.url), 'utf8'));
     expect(captures).toMatchObject(manifest);
     expect(captures.viewport).toEqual([1440, 1000]);
-    expect(captures.views).toHaveLength(14);
-    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(14);
+    expect(captures.views).toHaveLength(19);
+    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(19);
     const standingViews = captures.views.slice(0, 7) as { name: string; position: number[] }[];
     expect(standingViews.map((view) => view.name)).toEqual(['cap-d', 'cap-a', 'a3-west-leg', 'a5', 'cap-x-forecourt-road', 'a2-toward-a3', 'a6-toward-a7']);
-    const combatViews = captures.views.slice(11) as { name: string; position: number[] }[];
+    const combatViews = captures.views.slice(11, 14) as { name: string; position: number[] }[];
     expect(combatViews.map((view) => view.name)).toEqual(['toll-office', 'frontage-mg', 'depot-frontage']);
-    for (const view of [...standingViews, ...combatViews]) {
+    const ingressViews = captures.views.slice(14, 18) as { name: string; position: number[] }[];
+    for (const view of [...standingViews, ...combatViews, ...ingressViews]) {
       const feet = { x: view.position[0]!, y: view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, z: view.position[2]! };
       expect(feet.y, `${view.name} standing eye`).toBeCloseTo(8);
       clearSupport(feet, DEFAULT_MOVE_CONFIG.radius);
-      expect(onInsertionFloor(feet, .001) || approvedRoadFootprint(feet, .001) || (view.name === 'toll-office' && feet.x >= -8 && feet.x <= 0 && feet.z >= 114 && feet.z <= 122), `${view.name} legal standing floor`).toBe(true);
+      expect(onInsertionFloor(feet, .001) || approvedRoadFootprint(feet, .001) || onTankIngressFloor(feet, .001) || (view.name === 'toll-office' && feet.x >= -8 && feet.x <= 0 && feet.z >= 114 && feet.z <= 122), `${view.name} legal standing floor`).toBe(true);
     }
     for (const view of captures.views as { name: string; levelHash: string; calls: number; boxCount: number }[]) {
       expect(view.levelHash).toBe(manifest.levelHash);
