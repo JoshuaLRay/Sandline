@@ -7,6 +7,8 @@
 import { createHash } from 'node:crypto';
 import { loadLevel, type BoxSpec } from '@sandline/shared';
 import source from './qalat-road-supports.json' with { type: 'json' };
+import { ROAD_COMBAT, buildRoadCombat, combatFootprint, combatOpenFloors, combatSightBlockers } from './qalatRoadCombat.ts';
+import { certifySightBlockers, combatSightReport } from './qalatRoadCombatSight.ts';
 import { INSERTION, buildInsertionLevel } from './qalatInsertion.ts';
 import { ROAD_TERRAIN, TERRAIN_SPURS, VIEW_FANS, buildRoadTerrain, roadTerrainManifest } from './qalatRoadTerrain.ts';
 import { scan, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
@@ -34,7 +36,8 @@ export function roadSupportFloors(): readonly Polygon[] {
   return [...ribbonPieces(spine, ribbonWidth), ...aprons];
 }
 
-const floors = roadSupportFloors();
+const bareFloors = roadSupportFloors();
+const floors = [...bareFloors, ...combatOpenFloors()];
 export function onRoadSupportFloor(p: Point, margin = 0): boolean {
   return floors.some((poly) => {
     const span = scan(poly, p.z);
@@ -70,7 +73,7 @@ export function buildRoadSupportLevel() {
     previous = next;
   }
   return { ...insertion, id: ROAD_SUPPORTS.id, floor: { halfWidth: 80, halfDepth: 370 },
-    boxes: [...insertion.boxes, ...boxes, ...buildRoadTerrain(floors, ROAD_SUPPORTS.spine)] };
+    boxes: [...insertion.boxes, ...boxes, ...buildRoadTerrain(floors, ROAD_SUPPORTS.spine), ...buildRoadCombat()] };
 }
 
 export function buildRoadSupportWorld() { return loadLevel(buildRoadSupportLevel()); }
@@ -124,12 +127,26 @@ function sightReport() {
 /** The committed sight-line evidence for the current road (computed once). */
 export function roadSightReport() { return report ??= sightReport(); }
 
+let combatReport: ReturnType<typeof combatSightReport> & { certification: ReturnType<typeof certifySightBlockers> };
+export function roadCombatReport() {
+  if (combatReport) return combatReport;
+  const surface = roadSightPieces().surface;
+  const blockers = combatSightBlockers();
+  combatReport = {
+    ...combatSightReport({ ...surface, polygons: [...surface.polygons, ...combatOpenFloors()] },
+      [...ROAD_SUPPORTS.sightLines.fights.flatMap((f) => f.nodes).map((id) => ({ id, ...fightArea(ROAD_SUPPORTS.spine, id) })),
+        ...ROAD_COMBAT.frontageRiflemen.map((p) => ({ id: p.id, x: p.x, z: p.z, r: .35 }))], blockers),
+    certification: certifySightBlockers(blockers, buildRoadCombat()),
+  };
+  return combatReport;
+}
+
 export function roadSupportManifest() {
   const level = buildRoadSupportLevel();
-  return { task: 'U-160', parent: 'U-150', foundation: 'U-149', bend: 'U-159',
-    kind: 'isolated road whitebox: supports and road-facing rock',
+  return { task: 'U-161', parent: 'U-150', foundation: 'U-149', bend: 'U-159', rock: 'U-160',
+    kind: 'isolated road whitebox: supports, rock, cover and landmarks',
     activeCampaign: 'unchanged; activation belongs to U-117',
-    sourceHash: createHash('sha256').update(JSON.stringify({ insertion: INSERTION, road: ROAD_SUPPORTS, terrain: ROAD_TERRAIN })).digest('hex'),
+    sourceHash: createHash('sha256').update(JSON.stringify({ insertion: INSERTION, road: ROAD_SUPPORTS, terrain: ROAD_TERRAIN, combat: ROAD_COMBAT })).digest('hex'),
     levelHash: createHash('sha256').update(JSON.stringify(level)).digest('hex'), boxCount: level.boxes.length,
     stratumM: STRATUM_M, edgeExpansionM: EDGE_M, circleSides: CIRCLE_SIDES,
     floorY: ROAD_SUPPORTS.floorY, supportBottomY: ROAD_SUPPORTS.supportBottomY,
@@ -139,8 +156,10 @@ export function roadSupportManifest() {
     reservedBridge: ROAD_SUPPORTS.reservedBridge, reservedVault: ROAD_SUPPORTS.reservedVault,
     sightLines: roadSightReport(),
     terrain: roadTerrainManifest(level.boxes),
+    combat: ROAD_COMBAT,
+    combatSightLines: roadCombatReport(),
     ownerQualityVerdict: 'road look/play batched in U-139',
-    unfinished: ['road cover, landmarks and shells: U-161', 'X ingress/tank sweep: U-151',
+    unfinished: ['X ingress/tank sweep: U-151',
       'return shelters/blast protection: U-152', 'ridge/bridge: U-140', 'support bays/C12 stairs: U-141',
       'outpost: U-116', 'basement: U-115'],
   };
@@ -169,6 +188,11 @@ export function roadSupportPlanSvg(): string {
   const fins = t.fins.map((f) => `<rect x="${f.minX}" y="${-f.maxZ}" width="${f.maxX - f.minX}" height="${f.maxZ - f.minZ}"/><text x="${f.maxX + 1}" y="${-f.minZ}" fill="#3c3f33">${f.id} y${f.top}</text>`).join('\n');
   const caps = t.temporaryCaps.map((c) => `<rect x="${c.minX}" y="${-c.maxZ}" width="${c.maxX - c.minX}" height="${c.maxZ - c.minZ}"/>`).join('\n');
   const fans = VIEW_FANS.map((f) => `<polygon points="${points(f.hull)}"/>${f.rays.map((r) => `<line x1="${f.eye.x}" y1="${-f.eye.z}" x2="${r.to.x}" y2="${-r.to.z}"/>`).join('')}<text x="${f.eye.x - 9}" y="${-f.eye.z - 2}" stroke="none" fill="#5d3a7a">${f.id}</text>`).join('\n');
+  const cover = [...ROAD_COMBAT.cover, ...ROAD_COMBAT.screens, ...ROAD_COMBAT.facades].map((c) =>
+    `<polygon points="${points(combatFootprint(c))}"/><text x="${c.x + 1}" y="${-c.z - 1}" fill="#3f2517" stroke="none">${c.id}</text>`).join('\n');
+  const trees = ROAD_COMBAT.orchard.trees.map((c) => `<circle cx="${c.x}" cy="${-c.z}" r=".35"/>`).join('\n');
+  const regroup = ROAD_COMBAT.regroupPads.map((c) => `<rect x="${c.x - c.w / 2}" y="${-c.z - c.d / 2}" width="${c.w}" height="${c.d}"/>`).join('\n');
+  const riflemen = ROAD_COMBAT.frontageRiflemen.map((c) => `<circle cx="${c.x}" cy="${-c.z}" r=".6"/><text x="${c.x + 1}" y="${-c.z}">${c.id}</text>`).join('\n');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="770" height="1698" viewBox="-74 -412 166 366">
 <rect x="-74" y="-412" width="166" height="366" fill="#b7c6ca"/>
 <polygon points="${points(region)}" fill="#8d917f"/>
@@ -176,19 +200,22 @@ export function roadSupportPlanSvg(): string {
 <g fill="#5e6152" font-family="sans-serif" font-size="2.5">${fins}</g>
 <g fill="#5c6b80" fill-opacity=".85">${caps}</g>
 <g fill="#d8ccb6" stroke="#766a54" stroke-width=".1">${polygons}</g>
+<g fill="none" stroke="#2b7c61" stroke-width=".25">${regroup}</g>
+<g fill="#a8804c" stroke="#3f2517" stroke-width=".15" font-family="sans-serif" font-size="1.8">${cover}${trees}</g>
+<g fill="#993434" font-family="sans-serif" font-size="2">${riflemen}</g>
 <rect x="16" y="-288" width="28" height="36" fill="none" stroke="#5b6d86" stroke-dasharray="1 1"/>
 <rect x="66" y="-342" width="8" height="12" fill="none" stroke="#5b6d86" stroke-dasharray="1 1"/>
 <g fill="none" stroke="#5d3a7a" stroke-width=".25" stroke-dasharray="1.5 .8" font-family="sans-serif" font-size="2.5">${fans}</g>
 <g fill="none" stroke="#8a2f1d" stroke-width=".35" stroke-dasharray="2 1" font-family="sans-serif" font-size="3">${fights}</g>
 <line x1="${lane.from.x}" y1="${-lane.from.z}" x2="${lane.to.x}" y2="${-lane.to.z}" stroke="#c0392b" stroke-width=".6"/>
 <g fill="#162e35" font-family="sans-serif" font-size="2.5">${labels}
-<text x="-69" y="-405" font-size="3.5">U-160 · bent road closed by rock · north ↑</text>
+<text x="-69" y="-405" font-size="3.5">U-161 · bent road fights: cover and landmarks · north ↑</text>
 <text x="-69" y="-399">20 m ribbon / 12 m carriageway / 36 m aprons; grey: rock from y5.5, ≥${t.edgeMinHeightM} m above the road</text>
 <text x="-69" y="-394">West T-W crest y${t.sideTops.left}; east T-C/T-E foot y${t.sideTops.right}; dotted: inside-corner spur zones (off-road part)</text>
 <text x="-69" y="-389">Purple: ridge bay fans and target rays; rock stays ${t.viewFans.rayClearanceM} m under them</text>
 <text x="-69" y="-384">Blue-grey: temporary caps (C12-L mouth for U-141, south gate for U-116)</text>
 <text x="-69" y="-379">Dashed red: the three fights. Solid red: longest tank-lane view ${lane.length.toFixed(1)} m (limit ${sight.maxLaneViewM} m)</text>
 <text x="-69" y="-374">Dashed blue: future B6 vault and ridge bridge; reserved.</text>
-<text x="-69" y="-50">Isolated whitebox; cover, landmarks (U-161) and tank ingress (U-151) unfinished.</text></g>
+<text x="-69" y="-50">Isolated whitebox; tank ingress (U-151) unfinished. Road look/play verdict: U-139.</text></g>
 </svg>\n`;
 }

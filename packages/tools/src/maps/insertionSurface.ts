@@ -38,6 +38,11 @@ function colourOf(id: string): number[] {
   if (id === 'insertion-foundation' || id.startsWith('road-support-')) return [.51, .45, .35];
   if (id === 'hollow-overhang') return [.24, .26, .21];
   if (id.startsWith('road-cap-')) return [.36, .42, .5];
+  if (id.startsWith('road-combat-orchard-')) return [.24, .15, .08];
+  if (id.startsWith('road-combat-toll-office-') || id.startsWith('road-combat-depot-facade-')) return [.52, .39, .25];
+  if (id.startsWith('road-combat-A-C02-')) return [.27, .3, .22];
+  if (id.startsWith('road-combat-A-C06-')) return [.5, .43, .28];
+  if (id.startsWith('road-combat-A-C')) return [.43, .39, .3];
   return [.32, .34, .27];
 }
 

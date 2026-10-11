@@ -27,6 +27,8 @@ const BAYS = [
 const MG_NEST = { x: -22, z: 222 };
 const FINS = [{ id: 'F1', minX: 33, maxX: 39, minZ: 146, maxZ: 154, top: 26 }, { id: 'F2', minX: 49, maxX: 55, minZ: 168, maxZ: 176, top: 32 }];
 const EDGE_TOP = 10.2; // 2.2 m: above the 1.8 m head and the 1.37 m a soldier can climb
+// U-161's one enclosed floor carved from the outside rock, not a new route.
+const inTollFloor = (p: Point, margin = 0) => p.x >= -8.6 - margin && p.x <= .6 + margin && p.z >= 113.4 - margin && p.z <= 122.6 + margin;
 const yieldWorker = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 const level = buildRoadSupportLevel();
@@ -154,7 +156,7 @@ describe('U-160 road-facing rock on the bent road', () => {
   it('closes every road edge with solid rock from below the road to at least 2.2 m above it', async () => {
     let probes = 0, lowest = Infinity;
     const probe = (p: Point) => {
-      if (p.z < 84 || onRoad(p, .25)) return;
+      if (p.z < 84 || onRoad(p, .25) || inTollFloor(p, .15)) return;
       const top = solidTop(p.x, p.z);
       expect(top, `open edge at ${JSON.stringify(p)}`).toBeGreaterThanOrEqual(EDGE_TOP - 1e-9);
       lowest = Math.min(lowest, top); probes++;
@@ -211,8 +213,12 @@ describe('U-160 road-facing rock on the bent road', () => {
       // The ray to the target's feet, lowered 0.3 m, misses all permanent rock.
       const lowered = between({ ...bay.eye, y: bay.eye.y - .3 }, { ...t, y: 8 - .3 });
       expect(rayWorld(lowered, permanent), `${bay.id} → ${JSON.stringify(t)}`).toBeNull();
-      // Over the whole built scene, the bay sees a target standing there unless a temporary cap stands in the way.
-      const view = between(bay.eye, { ...t, y: 8.05 });
+      // U-161 places solid cover at these fan anchors. Preserve the original
+      // rock-to-feet contract above; in the full scene see the actual cover
+      // top rather than asking a ray to pass through its collision proxy.
+      const targetY = bay.id === 'V1' && t.x === -4 ? 10.45
+        : (bay.id === 'V1' && t.x === 24) || (bay.id === 'V2' && t.x === -22) ? 9.15 : 8.05;
+      const view = between(bay.eye, { ...t, y: targetY });
       if (rayWorld(view, caps) !== null) crossings.push(`${bay.id}→${t.x},${t.z}`);
       else expect(rayWorld(view, world.boxes), `${bay.id} → ${JSON.stringify(t)}`).toBeNull();
     }
@@ -303,7 +309,7 @@ describe('U-160 road-facing rock on the bent road', () => {
         for (let settle = 0; settle < 30; settle++) state = stepCharacter(state, { moveX: 0, moveY: 0, yaw, sprint: false, jump: false, crouch: false, prone: false }, TICK_SECONDS, DEFAULT_MOVE_CONFIG, boxes);
         expect(state.vault).toBeNull();
         expect(state.y, `${stance} at ${JSON.stringify(start)}`).toBeCloseTo(8);
-        expect(onRoad(state, .05), `${stance} left the road at ${JSON.stringify(start)}`).toBe(true);
+        expect(onRoad(state, .05) || inTollFloor(state, .05), `${stance} left the constructed floor at ${JSON.stringify(start)}`).toBe(true);
         attempts++;
       }
     };

@@ -1,0 +1,57 @@
+{
+  "$comment": "U-161 isolated road combat authoring. Nominal lengths, depths and heights are local-floor metres. Along/across axes refer to the explicitly named bent-road segment. Rotated footprints are represented by conservative 0.025 m box rows, never one oversized axis-aligned bounding box. This is outside the campaign until U-117.",
+  "id": "qalat-road-combat",
+  "floorY": 8,
+  "stratumM": 0.025,
+  "cover": [
+    { "id": "A-C01", "x": 45, "y": 8, "z": 106, "length": 4, "depth": 1.2, "height": 2.2, "orientation": "along-road", "segment": ["A1", "A2"], "kind": "rock" },
+    { "id": "A-C02", "x": -4.1, "y": 8, "z": 124.9, "length": 6, "depth": 2.6, "height": 2.4, "orientation": "along-road", "segment": ["A2", "A3"], "kind": "disabled-truck", "why": "Conflict default: disabled truck pulled onto the outer shoulder. The old centre (-4,126) left its 2.6 m proxy inside the hard 12 m lane. Cab faces north in the art pass; the solid proxy follows the road and cannot be entered." },
+    { "id": "A-C03", "x": 24, "y": 8, "z": 138, "length": 5, "depth": 0.8, "height": 1.1, "orientation": "across-road", "segment": ["A2", "A3"], "kind": "stone-wall" },
+    { "id": "A-C04", "x": -42, "y": 8, "z": 170, "length": 6, "depth": 0.8, "height": 1.1, "orientation": "along-road", "segment": ["A3", "A4"], "kind": "orchard-wall" },
+    { "id": "A-C05", "x": -23, "y": 8, "z": 184, "length": 4, "depth": 1.2, "height": 2.2, "orientation": "along-road", "segment": ["A3", "A4"], "kind": "rock" },
+    { "id": "A-C06", "x": -22, "y": 8, "z": 222, "length": 6, "depth": 0.8, "height": 1.1, "orientation": "along-road", "segment": ["A4", "A5"], "kind": "sandbag-breastwork" },
+    { "id": "A-C07", "x": -8, "y": 8, "z": 226, "length": 4, "depth": 1.2, "height": 2.2, "orientation": "along-road", "segment": ["A4", "A5"], "kind": "masonry-pier" },
+    { "id": "A-C08", "x": 15, "y": 8, "z": 241, "length": 6, "depth": 0.8, "height": 1.1, "orientation": "along-road", "segment": ["A4", "A5"], "kind": "loading-plinth" },
+    { "id": "A-C09", "x": 43, "y": 8, "z": 270, "length": 6, "depth": 0.8, "height": 1.1, "orientation": "along-road", "segment": ["A5", "A6"], "kind": "broken-parapet" },
+    { "id": "A-C10", "x": -4, "y": 8, "z": 325, "length": 6, "depth": 1.2, "height": 2.2, "orientation": "along-road", "segment": ["A7", "A8"], "kind": "rock" },
+    { "id": "A-C11", "x": 2, "y": 8, "z": 336, "length": 4, "depth": 0.8, "height": 1.1, "orientation": "across-road", "segment": ["A7", "A8"], "kind": "orchard-wall" },
+    { "id": "A-C12", "x": 31.2, "y": 8, "z": 336.3, "length": 4, "depth": 1.2, "height": 2.2, "orientation": "along-road", "segment": ["A8", "A9"], "kind": "rock" }
+  ],
+  "tollOffice": { "id": "toll-office", "minX": -8, "maxX": 0, "minZ": 114, "maxZ": 122, "floorY": 8, "ceilingY": 11.5, "roofTopY": 12.3, "wallM": 0.6, "doorMinZ": 116, "doorMaxZ": 120, "doorTopY": 11, "roofWalkable": false, "northWindow": false },
+  "orchard": {
+    "trunkRadiusM": 0.35,
+    "trunkHeightM": 3.8,
+    "circleSides": 32,
+    "collision": "Circumscribed 32-sided 0.35 m-radius trunk, conservatively filled in 0.025 m box rows. Radius excess is below 0.027 m; branches have no collision.",
+    "trees": [
+      { "id": "orchard-1", "x": -43.8, "y": 8, "z": 158 },
+      { "id": "orchard-2", "x": -43.5, "y": 8, "z": 162 },
+      { "id": "orchard-3", "x": -41, "y": 8, "z": 178 },
+      { "id": "orchard-4", "x": -39.8, "y": 8, "z": 186 }
+    ]
+  },
+  "facades": [
+    { "id": "depot-facade-1", "x": -39.3, "y": 8, "z": 194.2, "length": 6, "depth": 1, "height": 3.8, "orientation": "along-road", "segment": ["A3", "A4"], "jambM": 0.6, "recessHeightM": 2.8, "closed": true },
+    { "id": "depot-facade-2", "x": -38, "y": 8, "z": 204.2, "length": 6, "depth": 1, "height": 3.8, "orientation": "along-road", "segment": ["A3", "A4"], "jambM": 0.6, "recessHeightM": 2.8, "closed": true }
+  ],
+  "frontageRiflemen": [
+    { "id": "AF2", "archetype": "rifleman", "x": -34, "y": 8, "z": 198, "face": { "x": -37, "z": 142 } },
+    { "id": "AF3", "archetype": "rifleman", "x": -12, "y": 8, "z": 223, "face": { "x": -37, "z": 142 } }
+  ],
+  "regroupPads": [
+    { "cover": "A-C01", "x": 43, "z": 99, "w": 4, "d": 4 },
+    { "cover": "A-C02", "x": -5.8, "z": 117, "w": 4, "d": 4 },
+    { "cover": "A-C03", "x": 24, "z": 132, "w": 4, "d": 4 },
+    { "cover": "A-C04", "x": -41, "z": 160, "w": 4, "d": 4 },
+    { "cover": "A-C05", "x": -25, "z": 176, "w": 4, "d": 4 },
+    { "cover": "A-C06", "x": -27, "z": 219, "w": 4, "d": 4 },
+    { "cover": "A-C07", "x": -15, "z": 221, "w": 4, "d": 4 },
+    { "cover": "A-C08", "x": 12, "z": 235, "w": 4, "d": 4 },
+    { "cover": "A-C09", "x": 42, "z": 262, "w": 4, "d": 4 },
+    { "cover": "A-C10", "x": -9, "z": 318, "w": 4, "d": 4 },
+    { "cover": "A-C11", "x": 2, "z": 330, "w": 4, "d": 4 },
+    { "cover": "A-C12", "x": 29, "z": 332, "w": 4, "d": 4 }
+  ],
+  "screens": [],
+  "passages": { "infantryMinM": 4, "carriagewayMinM": 12, "tollDoorM": 4, "note": "The continuous 12 m swept corridor doubles as the infantry through passage. Cover clips only its shoulder/apron footprint; the 4 m toll doorway joins the apron without a neck." }
+}

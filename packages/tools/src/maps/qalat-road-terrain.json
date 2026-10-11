@@ -26,7 +26,7 @@
     "bayHalfLengthM": 4,
     "bays": [
       { "id": "V1", "anchor": { "x": 58, "y": 20, "z": 128 }, "targets": [
-        { "id": "A-C02 truck patrol cover", "x": -4, "z": 126 },
+        { "id": "A-C02 nominal truck fan target", "x": -4, "z": 126 },
         { "id": "A-C03 eastern road wall", "x": 24, "z": 138 }] },
       { "id": "V2", "anchor": { "x": 88, "y": 30, "z": 210 }, "targets": [
         { "id": "A-C06 MG nest", "x": -22, "z": 222 },

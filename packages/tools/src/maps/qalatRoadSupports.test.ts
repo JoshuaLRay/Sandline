@@ -15,6 +15,7 @@ import {
   roadSightPieces, roadSightReport, roadSupportManifest, roadSupportPlanSvg,
 } from './qalatRoadSupports.ts';
 import { longestSegment } from './roadSightLines.ts';
+import { buildRoadCombat } from './qalatRoadCombat.ts';
 
 // Independent transcription of the approved §5 coordinates with the U-159
 // addendum's bent A3, A4 and A7. Sampling the authoring data alone would also
@@ -56,12 +57,17 @@ function approvedRoadFootprint(p: Point, margin = 0): boolean {
   });
 }
 
-function clearSupport(p: Point, half = .001): void {
+function clearSupport(p: Point, half = .001, allowCombat = false): void {
   expect(supportUnder(p.x, p.z, half, 8.45, world.boxes, 0), `unsupported ${JSON.stringify(p)}`).toBe(8);
-  expect(blockedAt(p.x, p.z, half, 8, 0, DEFAULT_MOVE_CONFIG.height, world.boxes), `blocked ${JSON.stringify(p)}`).toBe(false);
+  // U-161 clips shoulders/aprons around named combat solids; all other
+  // geometry must still leave the original foundation clear and supported.
+  const expected = allowCombat && blockedAt(p.x, p.z, half, 8, 0, DEFAULT_MOVE_CONFIG.height, combatBoxes);
+  expect(blockedAt(p.x, p.z, half, 8, 0, DEFAULT_MOVE_CONFIG.height, world.boxes), `blocked ${JSON.stringify(p)}`).toBe(expected);
 }
 
 const world = buildRoadSupportWorld();
+const combatIds = new Set(buildRoadCombat().map((b) => b.id));
+const combatBoxes = world.boxes.filter((b) => combatIds.has(b.id));
 /** Recast indexes compact spans in 24 bits (16.8M) and the 740 m backing
  * plane alone fills 11.8M columns, so the isolated bake keeps the plane only
  * under the built content. Nothing beyond it is reachable either way. */
@@ -99,7 +105,7 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
       const steps = Math.ceil(length);
       for (let n = 0; n <= steps; n++) for (const offset of [-10, -8, -6, 0, 6, 8, 10]) {
         const p = { x: a.x + dx * n / steps - dz / length * offset, z: a.z + dz * n / steps + dx / length * offset };
-        clearSupport(p);
+        clearSupport(p, .001, Math.abs(offset) > 6);
         expect(onRoadSupportFloor(p, .001)).toBe(true);
         probes++;
       }
@@ -122,7 +128,7 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
       for (const radius of [0, 6, 12, 17.99]) for (let degrees = 0; degrees < 360; degrees += 5) {
         const angle = degrees * Math.PI / 180;
         const p = { x: node.x + Math.cos(angle) * radius, z: node.z + Math.sin(angle) * radius };
-        clearSupport(p);
+        clearSupport(p, .001, true);
         expect(onRoadSupportFloor(p)).toBe(true);
       }
       await yieldWorker();
@@ -141,7 +147,9 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
       if (box.minY !== 5.5 || box.maxY !== 8) continue;
       supports++;
       for (const x of [box.minX, box.maxX]) for (const z of [box.minZ, box.maxZ]) {
-        expect(approvedRoadFootprint({ x, z }, .05), `support expansion at ${JSON.stringify({ x, z })}`).toBe(true);
+        // The only new open floor is the enclosing toll-office footprint.
+        const tollFloor = x >= -8.65 && x <= .65 && z >= 113.35 && z <= 122.65;
+        expect(approvedRoadFootprint({ x, z }, .05) || tollFloor, `support expansion at ${JSON.stringify({ x, z })}`).toBe(true);
       }
       if (supports % 256 === 0) await yieldWorker();
     }
@@ -292,22 +300,24 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     expect(views['A8']!.length).toBeLessThanOrEqual(90);
   }, 60_000);
 
-  it('keeps generated construction, plan and eleven actual-scene captures current', () => {
+  it('keeps generated construction, plan and fourteen actual-scene captures current', () => {
     const manifest = roadSupportManifest();
     expect(JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/construction.json', import.meta.url), 'utf8'))).toEqual(manifest);
     expect(readFileSync(new URL('../../../../artifacts/qalat-road-supports/plan.svg', import.meta.url), 'utf8')).toBe(roadSupportPlanSvg());
     const captures = JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/captures.json', import.meta.url), 'utf8'));
     expect(captures).toMatchObject(manifest);
     expect(captures.viewport).toEqual([1440, 1000]);
-    expect(captures.views).toHaveLength(11);
-    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(11);
+    expect(captures.views).toHaveLength(14);
+    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(14);
     const standingViews = captures.views.slice(0, 7) as { name: string; position: number[] }[];
     expect(standingViews.map((view) => view.name)).toEqual(['cap-d', 'cap-a', 'a3-west-leg', 'a5', 'cap-x-forecourt-road', 'a2-toward-a3', 'a6-toward-a7']);
-    for (const view of standingViews) {
+    const combatViews = captures.views.slice(11) as { name: string; position: number[] }[];
+    expect(combatViews.map((view) => view.name)).toEqual(['toll-office', 'frontage-mg', 'depot-frontage']);
+    for (const view of [...standingViews, ...combatViews]) {
       const feet = { x: view.position[0]!, y: view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, z: view.position[2]! };
       expect(feet.y, `${view.name} standing eye`).toBeCloseTo(8);
       clearSupport(feet, DEFAULT_MOVE_CONFIG.radius);
-      expect(onInsertionFloor(feet, .001) || approvedRoadFootprint(feet, .001), `${view.name} legal standing floor`).toBe(true);
+      expect(onInsertionFloor(feet, .001) || approvedRoadFootprint(feet, .001) || (view.name === 'toll-office' && feet.x >= -8 && feet.x <= 0 && feet.z >= 114 && feet.z <= 122), `${view.name} legal standing floor`).toBe(true);
     }
     for (const view of captures.views as { name: string; levelHash: string; calls: number; boxCount: number }[]) {
       expect(view.levelHash).toBe(manifest.levelHash);

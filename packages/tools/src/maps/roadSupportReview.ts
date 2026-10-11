@@ -1,4 +1,4 @@
-/** U-149 road construction view of the exact generated box union (bent by U-159, closed by U-160's rock). */
+/** U-149 road construction view of the exact generated box union (bent by U-159, closed by U-160's rock, furnished by U-161). */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
@@ -49,6 +49,9 @@ const views = {
   topDown: { position: [12, 370, 169.99], target: [12, 8, 170], label: 'Top-down · north up; 3D shows spec +x (east) on the left, mirrored from plan.svg · road, rock and unchanged insertion' },
   overview: { position: [-155, 280, -110], target: [12, 8, 145], label: 'Free overview · road, U-160 rock and unchanged natural insertion' },
   probe: { position: [38, 11.2, 91], target: [32, 9.2, 101], label: 'CAP-A · standing capsule probe · unfinished soldier presentation', probe: true },
+  toll: { position: [-4, 9.55, 118], target: [12, 9.55, 128], label: 'Toll office interior · open 4 m east door' },
+  mg: { position: [-23, 9.55, 224], target: [-28, 9.55, 180], label: 'AF1 MG nest · A-C06 at the head of the west leg' },
+  depot: { position: [-35, 9.55, 199], target: [-42, 9.55, 204], label: 'West-leg depot frontage · closed loading recesses' },
   v2: { position: [88, 31.55, 210], target: [-22, 8, 222], label: 'V2 bay standing eye (unbuilt ridge) · fan kept 0.3 m under the ray to the moved MG nest' },
 } satisfies Record<string, View>;
 
