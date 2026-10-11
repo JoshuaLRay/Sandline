@@ -26,7 +26,7 @@
     "bayHalfLengthM": 4,
     "bays": [
       { "id": "V1", "anchor": { "x": 58, "y": 20, "z": 128 }, "targets": [
-        { "id": "A-C02 truck patrol cover", "x": -4, "z": 126 },
+        { "id": "A-C02 nominal truck fan target", "x": -4, "z": 126 },
         { "id": "A-C03 eastern road wall", "x": 24, "z": 138 }] },
       { "id": "V2", "anchor": { "x": 88, "y": 30, "z": 210 }, "targets": [
         { "id": "A-C06 MG nest", "x": -22, "z": 222 },
@@ -40,6 +40,18 @@
   "standingPads": [
     { "id": "south-gate", "minX": 31.6, "maxX": 32.4, "minZ": 356, "maxZ": 356.4,
       "why": "standing room at the exact gate node: a 0.35 m soldier centred on (32,356) needs air past the road end until the outpost opens it" }
+  ],
+  "climbGuards": [
+    { "id": "A-C03-edge", "minX": 14, "maxX": 20, "minZ": 142, "maxZ": 148, "top": 12,
+      "why": "U-161: close the low wall's jump approach onto permanent rock outside the C12-L cap" },
+    { "id": "A-C04-edge", "minX": -48, "maxX": -36, "minZ": 164, "maxZ": 180, "top": 12,
+      "why": "U-161: the low orchard wall must not give a 1.1 m vault onto the fine edge skin; only existing off-road rock is raised" },
+    { "id": "A-C06-edge", "minX": -23, "maxX": -16, "minZ": 223.5, "maxZ": 229, "top": 12,
+      "why": "U-161: close the breastwork's jump approach onto the adjacent fine edge skin" },
+    { "id": "A-C08-edge", "minX": -4, "maxX": 27, "minZ": 207, "maxZ": 220, "top": 12,
+      "why": "U-161: close the moved loading plinth's jump approaches onto the southern shoulder rock" },
+    { "id": "A-C11-edge", "minX": -5, "maxX": 4, "minZ": 329, "maxZ": 344, "top": 12,
+      "why": "U-161: close the forecourt wall's jump approach onto the western fine edge skin" }
   ],
   "temporaryCaps": [
     { "id": "C12-L-mouth", "for": "U-141", "minX": 24, "maxX": 36, "minZ": 130, "maxZ": 142, "top": 20,

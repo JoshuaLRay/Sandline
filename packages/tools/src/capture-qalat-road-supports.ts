@@ -1,4 +1,4 @@
-/** Reproducible actual WebGL captures of U-149's isolated road support build, bent by U-159 and closed by U-160's rock. */
+/** Reproducible actual WebGL captures of U-149's isolated road support build, bent by U-159 and closed by U-160's rock, furnished by U-161. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { blockedAt, loadLevel, supportUnder } from '@sandline/shared';
 import { chromium } from 'playwright';
@@ -17,13 +17,16 @@ const views = [
   { name: 'top-down', position: [12, 370, 169.99], target: [12, 8, 170], label: 'Top-down · north up; 3D shows spec +x (east) on the left, mirrored from plan.svg · road, rock and unchanged insertion', probe: false },
   { name: 'overview', position: [-155, 280, -110], target: [12, 8, 145], label: 'Free overview · road, U-160 rock and unchanged natural insertion', probe: false },
   { name: 'cap-a-standing-probe', position: [38, 11.2, 91], target: [32, 9.2, 101], label: 'CAP-A · standing capsule probe · unfinished soldier presentation', probe: true },
-  { name: 'v2-eye-to-mg-nest', position: [88, 31.55, 210], target: [-22, 8, 222], label: 'V2 bay standing eye (unbuilt ridge) · fan kept 0.3 m under the ray to the moved MG nest', probe: false },
+  { name: 'v2-eye-to-mg-nest', position: [88, 31.55, 210], target: [-22, 9.15, 222], label: 'V2 bay standing eye (unbuilt ridge) · visible MG breastwork; original feet fan kept 0.3 m above rock', probe: false },
+  { name: 'toll-office', position: [-4, 9.55, 118], target: [12, 9.55, 128], label: 'Toll office interior · open 4 m east door, closed north wall · standing eye y9.55', probe: false },
+  { name: 'frontage-mg', position: [-23, 9.55, 222.8], target: [-28, 9.55, 180], label: 'AF1 MG nest · A-C06 at the head of the west leg · standing eye y9.55', probe: false },
+  { name: 'depot-frontage', position: [-35, 9.55, 199], target: [-38.5, 9.55, 200.4], label: 'West-leg depot frontage · closed loading recesses · standing eye y9.55', probe: false },
 ];
 const output = new URL('../../../artifacts/qalat-road-supports/', import.meta.url);
 const world = loadLevel(JSON.parse(await readFile(new URL('level.json', output), 'utf8')));
 // Eye-height evidence must represent a soldier who can actually stand there.
 // Keep canonical camera exceptions explicit rather than moving accepted rocks.
-for (const v of views.slice(0, 7)) {
+for (const v of [...views.slice(0, 7), ...views.slice(11)]) {
   const [x, , z] = v.position, feetY = 8;
   if (blockedAt(x!, z!, .35, feetY, 0, 1.8, world.boxes)) throw new Error(`${v.name}: standing-eye anchor is inside collision geometry`);
   if (supportUnder(x!, z!, .35, feetY + .05, world.boxes, 0) !== feetY) throw new Error(`${v.name}: standing-eye anchor is unsupported at intended feet y${feetY}`);
@@ -51,7 +54,7 @@ try {
     if (stats.calls >= 300 || stats.levelHash !== manifest.levelHash) throw new Error(`${v.name}: stale geometry or draw budget overrun`);
     await page.screenshot({ path: new URL(`${v.name}.png`, output).pathname });
     measurements.push({ ...v, ...stats });
-    console.log(`U-160 ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles`);
+    console.log(`U-161 ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles`);
   }
   if (errors.length) throw new Error(errors.join('\n'));
   await writeFile(new URL('captures.json', output), JSON.stringify({

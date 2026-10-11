@@ -1,13 +1,14 @@
 {
-  "task": "U-160",
+  "task": "U-161",
   "parent": "U-150",
   "foundation": "U-149",
   "bend": "U-159",
-  "kind": "isolated road whitebox: supports and road-facing rock",
+  "rock": "U-160",
+  "kind": "isolated road whitebox: supports, rock, cover and landmarks",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "880abbb62d3d9a9192ac1096a22a8de864ad9f3eabc52795324c52c824960ae4",
-  "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f",
-  "boxCount": 30273,
+  "sourceHash": "c227900aff902373e86f4131fd556eae3dc5324f25200aaf4d47a7d70c49241a",
+  "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec",
+  "boxCount": 41833,
   "stratumM": 0.025,
   "edgeExpansionM": 0.005,
   "circleSides": 512,
@@ -315,7 +316,7 @@
           },
           "targets": [
             {
-              "id": "A-C02 truck patrol cover",
+              "id": "A-C02 nominal truck fan target",
               "x": -4,
               "z": 126
             },
@@ -383,6 +384,53 @@
         "why": "standing room at the exact gate node: a 0.35 m soldier centred on (32,356) needs air past the road end until the outpost opens it"
       }
     ],
+    "climbGuards": [
+      {
+        "id": "A-C03-edge",
+        "minX": 14,
+        "maxX": 20,
+        "minZ": 142,
+        "maxZ": 148,
+        "top": 12,
+        "why": "U-161: close the low wall's jump approach onto permanent rock outside the C12-L cap"
+      },
+      {
+        "id": "A-C04-edge",
+        "minX": -48,
+        "maxX": -36,
+        "minZ": 164,
+        "maxZ": 180,
+        "top": 12,
+        "why": "U-161: the low orchard wall must not give a 1.1 m vault onto the fine edge skin; only existing off-road rock is raised"
+      },
+      {
+        "id": "A-C06-edge",
+        "minX": -23,
+        "maxX": -16,
+        "minZ": 223.5,
+        "maxZ": 229,
+        "top": 12,
+        "why": "U-161: close the breastwork's jump approach onto the adjacent fine edge skin"
+      },
+      {
+        "id": "A-C08-edge",
+        "minX": -4,
+        "maxX": 27,
+        "minZ": 207,
+        "maxZ": 220,
+        "top": 12,
+        "why": "U-161: close the moved loading plinth's jump approaches onto the southern shoulder rock"
+      },
+      {
+        "id": "A-C11-edge",
+        "minX": -5,
+        "maxX": 4,
+        "minZ": 329,
+        "maxZ": 344,
+        "top": 12,
+        "why": "U-161: close the forecourt wall's jump approach onto the western fine edge skin"
+      }
+    ],
     "temporaryCaps": [
       {
         "id": "C12-L-mouth",
@@ -410,12 +458,12 @@
     "massRowM": 0.5,
     "fanCellM": 1,
     "eyeHeightM": 1.55,
-    "rockBoxes": 12731,
+    "rockBoxes": 12766,
     "temporaryCapBoxes": 405,
     "rays": [
       {
         "bay": "V1",
-        "target": "A-C02 truck patrol cover",
+        "target": "A-C02 nominal truck fan target",
         "to": {
           "x": -4,
           "z": 126
@@ -496,9 +544,1538 @@
       }
     ]
   },
+  "combat": {
+    "$comment": "U-161 isolated road combat authoring. Nominal lengths, depths and heights are local-floor metres. Along/across axes refer to the explicitly named bent-road segment. Rotated footprints are represented by conservative 0.025 m box rows, never one oversized axis-aligned bounding box. This is outside the campaign until U-117.",
+    "id": "qalat-road-combat",
+    "floorY": 8,
+    "stratumM": 0.025,
+    "cover": [
+      {
+        "id": "A-C01",
+        "x": 45,
+        "y": 8,
+        "z": 106,
+        "length": 4,
+        "depth": 1.2,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A1",
+          "A2"
+        ],
+        "kind": "rock"
+      },
+      {
+        "id": "A-C02",
+        "x": -4.1,
+        "y": 8,
+        "z": 124.9,
+        "length": 6,
+        "depth": 2.6,
+        "height": 2.4,
+        "orientation": "along-road",
+        "segment": [
+          "A2",
+          "A3"
+        ],
+        "kind": "disabled-truck",
+        "why": "Conflict default: disabled truck pulled onto the outer shoulder. The old centre (-4,126) left its 2.6 m proxy inside the hard 12 m lane. Cab faces north in the art pass; the solid proxy follows the road and cannot be entered."
+      },
+      {
+        "id": "A-C03",
+        "x": 24,
+        "y": 8,
+        "z": 138,
+        "length": 5,
+        "depth": 0.8,
+        "height": 1.1,
+        "orientation": "across-road",
+        "segment": [
+          "A2",
+          "A3"
+        ],
+        "kind": "stone-wall"
+      },
+      {
+        "id": "A-C04",
+        "x": -42,
+        "y": 8,
+        "z": 170,
+        "length": 6,
+        "depth": 0.8,
+        "height": 1.1,
+        "orientation": "along-road",
+        "segment": [
+          "A3",
+          "A4"
+        ],
+        "kind": "orchard-wall"
+      },
+      {
+        "id": "A-C05",
+        "x": -23,
+        "y": 8,
+        "z": 184,
+        "length": 4,
+        "depth": 1.2,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A3",
+          "A4"
+        ],
+        "kind": "rock"
+      },
+      {
+        "id": "A-C06",
+        "x": -22,
+        "y": 8,
+        "z": 222,
+        "length": 6,
+        "depth": 0.8,
+        "height": 1.1,
+        "orientation": "along-road",
+        "segment": [
+          "A4",
+          "A5"
+        ],
+        "kind": "sandbag-breastwork"
+      },
+      {
+        "id": "A-C07",
+        "x": 2,
+        "y": 8,
+        "z": 214,
+        "length": 4,
+        "depth": 1.2,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A4",
+          "A5"
+        ],
+        "kind": "masonry-pier"
+      },
+      {
+        "id": "A-C08",
+        "x": 16,
+        "y": 8,
+        "z": 219,
+        "length": 6,
+        "depth": 0.8,
+        "height": 1.1,
+        "orientation": "along-road",
+        "segment": [
+          "A4",
+          "A5"
+        ],
+        "kind": "loading-plinth"
+      },
+      {
+        "id": "A-C09",
+        "x": 43,
+        "y": 8,
+        "z": 270,
+        "length": 6,
+        "depth": 0.8,
+        "height": 1.1,
+        "orientation": "along-road",
+        "segment": [
+          "A5",
+          "A6"
+        ],
+        "kind": "broken-parapet"
+      },
+      {
+        "id": "A-C10",
+        "x": -4,
+        "y": 8,
+        "z": 325,
+        "length": 6,
+        "depth": 1.2,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A7",
+          "A8"
+        ],
+        "kind": "rock"
+      },
+      {
+        "id": "A-C11",
+        "x": 2,
+        "y": 8,
+        "z": 336,
+        "length": 4,
+        "depth": 0.8,
+        "height": 1.1,
+        "orientation": "across-road",
+        "segment": [
+          "A7",
+          "A8"
+        ],
+        "kind": "orchard-wall"
+      },
+      {
+        "id": "A-C12",
+        "x": 31.2,
+        "y": 8,
+        "z": 336.3,
+        "length": 4,
+        "depth": 1.2,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A8",
+          "A9"
+        ],
+        "kind": "rock"
+      }
+    ],
+    "tollOffice": {
+      "id": "toll-office",
+      "minX": -8,
+      "maxX": 0,
+      "minZ": 114,
+      "maxZ": 122,
+      "floorY": 8,
+      "ceilingY": 11.5,
+      "roofTopY": 12.3,
+      "wallM": 0.6,
+      "doorMinZ": 116,
+      "doorMaxZ": 120,
+      "doorTopY": 11,
+      "roofWalkable": false,
+      "northWindow": false
+    },
+    "orchard": {
+      "trunkRadiusM": 0.35,
+      "trunkHeightM": 3.8,
+      "circleSides": 32,
+      "collision": "Circumscribed 32-sided 0.35 m-radius trunk, conservatively filled in 0.025 m box rows. Radius excess is below 0.027 m; branches have no collision.",
+      "trees": [
+        {
+          "id": "orchard-1",
+          "x": -43.8,
+          "y": 8,
+          "z": 158
+        },
+        {
+          "id": "orchard-2",
+          "x": -43.5,
+          "y": 8,
+          "z": 162
+        },
+        {
+          "id": "orchard-3",
+          "x": -41,
+          "y": 8,
+          "z": 178
+        },
+        {
+          "id": "orchard-4",
+          "x": -39.8,
+          "y": 8,
+          "z": 186
+        }
+      ]
+    },
+    "facades": [
+      {
+        "id": "depot-facade-1",
+        "x": -38.5,
+        "y": 8,
+        "z": 200.4,
+        "length": 6,
+        "depth": 1.2,
+        "recessDepthM": 1,
+        "height": 3.8,
+        "orientation": "along-road",
+        "segment": [
+          "A3",
+          "A4"
+        ],
+        "jambM": 0.6,
+        "recessHeightM": 2.8,
+        "closed": true
+      },
+      {
+        "id": "depot-facade-2",
+        "x": -37.6,
+        "y": 8,
+        "z": 207,
+        "length": 6,
+        "depth": 1.2,
+        "recessDepthM": 1,
+        "height": 3.8,
+        "orientation": "along-road",
+        "segment": [
+          "A3",
+          "A4"
+        ],
+        "jambM": 0.6,
+        "recessHeightM": 2.8,
+        "closed": true
+      }
+    ],
+    "frontageMG": {
+      "id": "AF1",
+      "archetype": "machine-gunner",
+      "x": -23,
+      "y": 8,
+      "z": 222.8,
+      "cover": "A-C06",
+      "face": {
+        "x": -37,
+        "z": 142
+      },
+      "why": "Conflict default: the gunner stands 1.2 m south of the old stand socket to keep its body clear of the northern frontage screen. The fixed nest and A-C06 breastwork remain centred at (-22,222)."
+    },
+    "frontageRiflemen": [
+      {
+        "id": "AF2",
+        "archetype": "rifleman",
+        "x": -34,
+        "y": 8,
+        "z": 198,
+        "face": {
+          "x": -37,
+          "z": 142
+        }
+      },
+      {
+        "id": "AF3",
+        "archetype": "rifleman",
+        "x": -12,
+        "y": 8,
+        "z": 222,
+        "face": {
+          "x": -37,
+          "z": 142
+        }
+      }
+    ],
+    "regroupPads": [
+      {
+        "cover": "A-C01",
+        "x": 42,
+        "z": 103.4,
+        "w": 4,
+        "d": 4
+      },
+      {
+        "cover": "A-C02",
+        "x": -5.8,
+        "z": 117,
+        "w": 4,
+        "d": 4
+      },
+      {
+        "cover": "A-C03",
+        "x": 24,
+        "z": 132,
+        "w": 4,
+        "d": 4
+      },
+      {
+        "cover": "A-C04",
+        "x": -41,
+        "z": 160,
+        "w": 4,
+        "d": 4
+      },
+      {
+        "cover": "A-C05",
+        "x": -30,
+        "z": 176,
+        "w": 4,
+        "d": 4
+      },
+      {
+        "cover": "A-C06",
+        "x": -20,
+        "z": 216,
+        "w": 4,
+        "d": 4
+      },
+      {
+        "cover": "A-C07",
+        "x": -3,
+        "z": 214,
+        "w": 4,
+        "d": 4
+      },
+      {
+        "cover": "A-C08",
+        "x": 13,
+        "z": 223,
+        "w": 4,
+        "d": 4
+      },
+      {
+        "cover": "A-C09",
+        "x": 42,
+        "z": 262,
+        "w": 4,
+        "d": 4
+      },
+      {
+        "cover": "A-C10",
+        "x": -9,
+        "z": 318,
+        "w": 4,
+        "d": 4
+      },
+      {
+        "cover": "A-C11",
+        "x": 2,
+        "z": 330,
+        "w": 4,
+        "d": 4
+      },
+      {
+        "cover": "A-C12",
+        "x": 29,
+        "z": 332,
+        "w": 4,
+        "d": 4
+      }
+    ],
+    "screens": [
+      {
+        "id": "A-S01",
+        "x": -23.5,
+        "y": 8,
+        "z": 288.4,
+        "length": 16.80000000000001,
+        "depth": 27,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A6",
+          "A7"
+        ],
+        "kind": "rock-screen",
+        "region": "A7-south-apron",
+        "polygon": [
+          [
+            -37,
+            280
+          ],
+          [
+            -10,
+            280
+          ],
+          [
+            -10,
+            289.419508602984
+          ],
+          [
+            -21.070737095523953,
+            296.8
+          ],
+          [
+            -37,
+            296.8
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S02",
+        "x": -50,
+        "y": 8,
+        "z": 143,
+        "length": 26,
+        "depth": 12,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A2",
+          "A3"
+        ],
+        "kind": "rock-screen",
+        "region": "A3-west-apron",
+        "polygon": [
+          [
+            -56,
+            130
+          ],
+          [
+            -44,
+            130
+          ],
+          [
+            -44,
+            156
+          ],
+          [
+            -56,
+            156
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S03",
+        "x": -22.681782969391957,
+        "y": 8,
+        "z": 150.99279018802582,
+        "length": 18.014419623948356,
+        "depth": 15.363565938783914,
+        "height": 3.5,
+        "orientation": "along-road",
+        "segment": [
+          "A2",
+          "A3"
+        ],
+        "kind": "rock-screen",
+        "region": "A3-northeast-apron",
+        "polygon": [
+          [
+            -15,
+            141.98558037605164
+          ],
+          [
+            -15,
+            160
+          ],
+          [
+            -28.560279700526273,
+            160
+          ],
+          [
+            -30.363565938783914,
+            146.3751706442756
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S04-south",
+        "x": 44.55,
+        "y": 8,
+        "z": 90.5,
+        "length": 21,
+        "depth": 12.899999999999999,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A0",
+          "A1"
+        ],
+        "kind": "rock-screen",
+        "region": "A1-east-apron",
+        "polygon": [
+          [
+            38.1,
+            80
+          ],
+          [
+            51,
+            80
+          ],
+          [
+            51,
+            101
+          ],
+          [
+            38.1,
+            101
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane. Readability bay keeps named cover and its regroup approach open."
+      },
+      {
+        "id": "A-S04-north",
+        "x": 44.55,
+        "y": 8,
+        "z": 113.25,
+        "length": 5.5,
+        "depth": 12.899999999999999,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A0",
+          "A1"
+        ],
+        "kind": "rock-screen",
+        "region": "A1-east-apron",
+        "polygon": [
+          [
+            51,
+            110.5
+          ],
+          [
+            51,
+            116
+          ],
+          [
+            38.1,
+            116
+          ],
+          [
+            38.1,
+            110.5
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane. Readability bay keeps named cover and its regroup approach open."
+      },
+      {
+        "id": "A-S05",
+        "x": 13.209754301492024,
+        "y": 8,
+        "z": 114.57863838340275,
+        "length": 17.157276766805495,
+        "depth": 12.419508602984049,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A1",
+          "A2"
+        ],
+        "kind": "rock-screen",
+        "region": "A2-southwest-apron",
+        "polygon": [
+          [
+            7,
+            106
+          ],
+          [
+            19.41950860298405,
+            106
+          ],
+          [
+            8.212223878081653,
+            122.8109270873536
+          ],
+          [
+            7,
+            123.1572767668055
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S06",
+        "x": -40,
+        "y": 8,
+        "z": 131.43578124054562,
+        "length": 18.871562481091217,
+        "depth": 30,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A2",
+          "A3"
+        ],
+        "kind": "rock-screen",
+        "region": "A3-south-apron",
+        "polygon": [
+          [
+            -55,
+            122
+          ],
+          [
+            -25,
+            122
+          ],
+          [
+            -25,
+            132.30013390966263
+          ],
+          [
+            -55,
+            140.87156248109122
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S07",
+        "x": 39.5,
+        "y": 8,
+        "z": 241.3,
+        "length": 36.60000000000002,
+        "depth": 13,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A5",
+          "A6"
+        ],
+        "kind": "rock-screen",
+        "region": "A5-east-apron",
+        "polygon": [
+          [
+            33,
+            223
+          ],
+          [
+            46,
+            223
+          ],
+          [
+            46,
+            259.6
+          ],
+          [
+            34.96857832855227,
+            259.6
+          ],
+          [
+            33,
+            240.89850587875347
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S08",
+        "x": -39.888977796795686,
+        "y": 8,
+        "z": 193.5,
+        "length": 7,
+        "depth": 8.222044406408628,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A3",
+          "A4"
+        ],
+        "kind": "rock-screen",
+        "region": "A4-loading-shoulder",
+        "polygon": [
+          [
+            -44,
+            190
+          ],
+          [
+            -36.70442618182666,
+            190
+          ],
+          [
+            -35.77795559359137,
+            197
+          ],
+          [
+            -44,
+            197
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S09",
+        "x": 5.915710835723866,
+        "y": 8,
+        "z": 237.5,
+        "length": 25,
+        "depth": 31.831421671447732,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A4",
+          "A5"
+        ],
+        "kind": "rock-screen",
+        "region": "A5-northwest-apron",
+        "polygon": [
+          [
+            -10,
+            225
+          ],
+          [
+            -7.1639272390532565,
+            225
+          ],
+          [
+            20.38111143933169,
+            236.22205279489756
+          ],
+          [
+            21.831421671447732,
+            250
+          ],
+          [
+            -10,
+            250
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S10-west",
+        "x": -26.103669262027843,
+        "y": 8,
+        "z": 178.56105664643258,
+        "length": 9.12211329286518,
+        "depth": 1.207338524055686,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A3",
+          "A4"
+        ],
+        "kind": "rock-screen",
+        "region": "A4-east-shoulder",
+        "polygon": [
+          [
+            -26.707338524055686,
+            174
+          ],
+          [
+            -25.5,
+            174
+          ],
+          [
+            -25.5,
+            183.12211329286518
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane. Readability bay keeps named cover and its regroup approach open."
+      },
+      {
+        "id": "A-S10-east",
+        "x": -14.25,
+        "y": 8,
+        "z": 192.8184592661188,
+        "length": 37.63691853223756,
+        "depth": 12.5,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A3",
+          "A4"
+        ],
+        "kind": "rock-screen",
+        "region": "A4-east-shoulder",
+        "polygon": [
+          [
+            -20.5,
+            174
+          ],
+          [
+            -8,
+            174
+          ],
+          [
+            -8,
+            211.63691853223756
+          ],
+          [
+            -20.5,
+            206.54432593964495
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane. Readability bay keeps named cover and its regroup approach open."
+      },
+      {
+        "id": "A-S10-south",
+        "x": -23,
+        "y": 8,
+        "z": 177,
+        "length": 6,
+        "depth": 5,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A3",
+          "A4"
+        ],
+        "kind": "rock-screen",
+        "region": "A4-east-shoulder",
+        "polygon": [
+          [
+            -25.5,
+            174
+          ],
+          [
+            -20.5,
+            174
+          ],
+          [
+            -20.5,
+            180
+          ],
+          [
+            -25.5,
+            180
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane. Readability bay keeps named cover and its regroup approach open."
+      },
+      {
+        "id": "A-S10-north",
+        "x": -22.67719867379255,
+        "y": 8,
+        "z": 197.2721629698225,
+        "length": 18.54432593964495,
+        "depth": 4.354397347585099,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A3",
+          "A4"
+        ],
+        "kind": "rock-screen",
+        "region": "A4-east-shoulder",
+        "polygon": [
+          [
+            -20.5,
+            188
+          ],
+          [
+            -20.5,
+            206.54432593964495
+          ],
+          [
+            -22.508291495010084,
+            205.72613310834456
+          ],
+          [
+            -24.8543973475851,
+            188
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane. Readability bay keeps named cover and its regroup approach open."
+      },
+      {
+        "id": "A-S11",
+        "x": 14.310722023692009,
+        "y": 8,
+        "z": 264.709754301492,
+        "length": 29.419508602984024,
+        "depth": 18.621444047384017,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A6",
+          "A7"
+        ],
+        "kind": "rock-screen",
+        "region": "A6-west-apron",
+        "polygon": [
+          [
+            5,
+            250
+          ],
+          [
+            21.831421671447735,
+            250
+          ],
+          [
+            23.621444047384017,
+            267.0052125713947
+          ],
+          [
+            5,
+            279.419508602984
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S12",
+        "x": -37,
+        "y": 8,
+        "z": 222.5,
+        "length": 13,
+        "depth": 22,
+        "height": 3.5,
+        "orientation": "along-road",
+        "segment": [
+          "A3",
+          "A4"
+        ],
+        "kind": "rock-screen",
+        "region": "A4-northwest-upper",
+        "polygon": [
+          [
+            -48,
+            216
+          ],
+          [
+            -29.254836329962345,
+            216
+          ],
+          [
+            -26,
+            217.3260444307254
+          ],
+          [
+            -26,
+            229
+          ],
+          [
+            -48,
+            229
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S13",
+        "x": -40.565448385030976,
+        "y": 8,
+        "z": 212.6815407338812,
+        "length": 8.636918532237559,
+        "depth": 14.869103229938041,
+        "height": 3.5,
+        "orientation": "along-road",
+        "segment": [
+          "A3",
+          "A4"
+        ],
+        "kind": "rock-screen",
+        "region": "A4-northwest-lower",
+        "polygon": [
+          [
+            -33.491708504989916,
+            214.27386689165544
+          ],
+          [
+            -33.13089677006196,
+            217
+          ],
+          [
+            -48,
+            217
+          ],
+          [
+            -48,
+            208.36308146776244
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S15",
+        "x": -29.515,
+        "y": 8,
+        "z": 302.5,
+        "length": 37,
+        "depth": 14.969999999999999,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A6",
+          "A7"
+        ],
+        "kind": "rock-screen",
+        "polygon": [
+          [
+            -37,
+            284
+          ],
+          [
+            -22.03,
+            284
+          ],
+          [
+            -22.03,
+            321
+          ],
+          [
+            -37,
+            321
+          ]
+        ],
+        "region": "A7-west-apron",
+        "why": "Axis-aligned west apron cap cuts the final global shoulder view, outside both adjoining12m lane ribbons."
+      },
+      {
+        "id": "A-S16",
+        "x": -42.502948385030976,
+        "y": 8,
+        "z": 152.75,
+        "length": 9.5,
+        "depth": 2.994103229938041,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A2",
+          "A3"
+        ],
+        "kind": "rock-screen",
+        "region": "A3-northwest-shoulder",
+        "polygon": [
+          [
+            -44,
+            148
+          ],
+          [
+            -42.26324971123843,
+            148
+          ],
+          [
+            -41.00589677006196,
+            157.5
+          ],
+          [
+            -44,
+            157.5
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S17",
+        "x": 35.25691236517464,
+        "y": 8,
+        "z": 108.15,
+        "length": 4.700000000000003,
+        "depth": 8.686175269650715,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A1",
+          "A2"
+        ],
+        "kind": "rock-screen",
+        "region": "A1-bay-view-fin",
+        "polygon": [
+          [
+            34.04715806368262,
+            105.8
+          ],
+          [
+            39.6,
+            105.8
+          ],
+          [
+            39.6,
+            110.5
+          ],
+          [
+            30.913824730349287,
+            110.5
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S18",
+        "x": 3.5,
+        "y": 8,
+        "z": 123.90363838340275,
+        "length": 2.5072767668054894,
+        "depth": 7,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A1",
+          "A2"
+        ],
+        "kind": "rock-screen",
+        "region": "A2-southwest-corner",
+        "polygon": [
+          [
+            0,
+            122.65
+          ],
+          [
+            7,
+            122.65
+          ],
+          [
+            7,
+            123.1572767668055
+          ],
+          [
+            0,
+            125.1572767668055
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S14-0",
+        "x": -12.6722186655389,
+        "y": 8,
+        "z": 225.30349649336773,
+        "length": 3.8069929867354233,
+        "depth": 9.344437331077799,
+        "height": 3.5,
+        "orientation": "along-road",
+        "segment": [
+          "A4",
+          "A5"
+        ],
+        "kind": "rock-screen",
+        "region": "A4-north-apron",
+        "polygon": [
+          [
+            -17.3444373310778,
+            223.4
+          ],
+          [
+            -11.09119996632597,
+            223.4
+          ],
+          [
+            -8,
+            224.65937776405875
+          ],
+          [
+            -8,
+            227.20699298673543
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S14-1",
+        "x": -14.773822889053081,
+        "y": 8,
+        "z": 226.2,
+        "length": 5.599999999999994,
+        "depth": 13.547645778106162,
+        "height": 3.5,
+        "orientation": "along-road",
+        "segment": [
+          "A4",
+          "A5"
+        ],
+        "kind": "rock-screen",
+        "region": "A4-north-apron",
+        "polygon": [
+          [
+            -19.266164296624698,
+            223.4
+          ],
+          [
+            -11.09119996632597,
+            223.4
+          ],
+          [
+            -8,
+            224.65937776405875
+          ],
+          [
+            -8,
+            229
+          ],
+          [
+            -21.547645778106162,
+            229
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S14-2",
+        "x": -17.5,
+        "y": 8,
+        "z": 226.2,
+        "length": 5.599999999999994,
+        "depth": 19,
+        "height": 3.5,
+        "orientation": "along-road",
+        "segment": [
+          "A4",
+          "A5"
+        ],
+        "kind": "rock-screen",
+        "region": "A4-north-apron",
+        "polygon": [
+          [
+            -27,
+            223.4
+          ],
+          [
+            -19.782835396194933,
+            223.4
+          ],
+          [
+            -8,
+            228.20041442067205
+          ],
+          [
+            -8,
+            229
+          ],
+          [
+            -27,
+            229
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      },
+      {
+        "id": "A-S14-3",
+        "x": -26.437288222058022,
+        "y": 8,
+        "z": 224.7812016367667,
+        "length": 2.76240327353338,
+        "depth": 1.125423555883959,
+        "height": 3.5,
+        "orientation": "along-road",
+        "segment": [
+          "A4",
+          "A5"
+        ],
+        "kind": "rock-screen",
+        "region": "A4-north-apron",
+        "polygon": [
+          [
+            -27,
+            223.4
+          ],
+          [
+            -25.87457644411604,
+            223.4
+          ],
+          [
+            -27,
+            226.16240327353339
+          ]
+        ],
+        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+      }
+    ],
+    "passages": {
+      "infantryMinM": 4,
+      "carriagewayMinM": 12,
+      "tollDoorM": 4,
+      "note": "The continuous 12 m swept corridor doubles as the infantry through passage. Cover clips only its shoulder/apron footprint; the 4 m toll doorway joins the apron without a neck."
+    }
+  },
+  "combatSightLines": {
+    "method": "rigid line-family superset; expanded surface and whole apron eyes; eroded certified high solids; exact controller-square endpoint exclusion",
+    "ordinaryEyeDomain": [
+      {
+        "id": "A2",
+        "x": 12,
+        "z": 128,
+        "radiusM": 18
+      },
+      {
+        "id": "A4",
+        "x": -28,
+        "z": 210,
+        "radiusM": 18
+      },
+      {
+        "id": "A5",
+        "x": 26,
+        "z": 232,
+        "radiusM": 18
+      },
+      {
+        "id": "A8",
+        "x": 16,
+        "z": 332,
+        "radiusM": 18
+      },
+      {
+        "id": "AF1",
+        "x": -23,
+        "z": 222.8,
+        "radiusM": 0.35
+      },
+      {
+        "id": "AF2",
+        "x": -34,
+        "z": 198,
+        "radiusM": 0.35
+      },
+      {
+        "id": "AF3",
+        "x": -12,
+        "z": 222,
+        "radiusM": 0.35
+      }
+    ],
+    "maxOrdinaryLaneM": 90,
+    "longestFightViews": {
+      "A2": {
+        "upperBoundM": 89.164,
+        "witness": {
+          "length": 89.16396053055536,
+          "from": {
+            "x": 4.4280764880637875,
+            "z": 144.48410065273166
+          },
+          "to": {
+            "x": 42.25137707481814,
+            "z": 63.74
+          }
+        },
+        "sampledLines": 1306027,
+        "displacementM": 0.138,
+        "marginM": 0.14,
+        "surfaceExpansionM": 0.12,
+        "endpointHalfSizeM": 0.35,
+        "stepDeg": 0.05,
+        "stepM": 0.1,
+        "reachM": 400
+      },
+      "A4": {
+        "upperBoundM": 89.405,
+        "witness": {
+          "length": 89.40467681794021,
+          "from": {
+            "x": -20.14016102795476,
+            "z": 223.19
+          },
+          "to": {
+            "x": -31.809813059664826,
+            "z": 134.55019258606694
+          }
+        },
+        "sampledLines": 1306028,
+        "displacementM": 0.138,
+        "marginM": 0.14,
+        "surfaceExpansionM": 0.12,
+        "endpointHalfSizeM": 0.35,
+        "stepDeg": 0.05,
+        "stepM": 0.1,
+        "reachM": 400
+      },
+      "A5": {
+        "upperBoundM": 89.051,
+        "witness": {
+          "length": 89.05049536043094,
+          "from": {
+            "x": 41.62667257690616,
+            "z": 222.78768736015934
+          },
+          "to": {
+            "x": -45.918468924406056,
+            "z": 206.48311979602698
+          }
+        },
+        "sampledLines": 1306069,
+        "displacementM": 0.138,
+        "marginM": 0.14,
+        "surfaceExpansionM": 0.12,
+        "endpointHalfSizeM": 0.35,
+        "stepDeg": 0.05,
+        "stepM": 0.1,
+        "reachM": 400
+      },
+      "A8": {
+        "upperBoundM": 72.297,
+        "witness": {
+          "length": 72.29610467252539,
+          "from": {
+            "x": 21.971693039454394,
+            "z": 349.1288786043496
+          },
+          "to": {
+            "x": -9.720833274223736,
+            "z": 284.14957015406236
+          }
+        },
+        "sampledLines": 1306069,
+        "displacementM": 0.138,
+        "marginM": 0.14,
+        "surfaceExpansionM": 0.12,
+        "endpointHalfSizeM": 0.35,
+        "stepDeg": 0.05,
+        "stepM": 0.1,
+        "reachM": 400
+      },
+      "AF1": {
+        "upperBoundM": 89.174,
+        "witness": {
+          "length": 89.17369396904553,
+          "from": {
+            "x": -22.728948784135564,
+            "z": 223.19
+          },
+          "to": {
+            "x": -31.430776423870004,
+            "z": 134.44189640441132
+          }
+        },
+        "sampledLines": 35269,
+        "displacementM": 0.138,
+        "marginM": 0.14,
+        "surfaceExpansionM": 0.12,
+        "endpointHalfSizeM": 0.35,
+        "stepDeg": 0.05,
+        "stepM": 0.1,
+        "reachM": 400
+      },
+      "AF2": {
+        "upperBoundM": 82.812,
+        "witness": {
+          "length": 82.81174628193348,
+          "from": {
+            "x": -34.389517289916625,
+            "z": 197.70271851578497
+          },
+          "to": {
+            "x": 33.23799597941591,
+            "z": 245.49711956098665
+          }
+        },
+        "sampledLines": 35297,
+        "displacementM": 0.138,
+        "marginM": 0.14,
+        "surfaceExpansionM": 0.12,
+        "endpointHalfSizeM": 0.35,
+        "stepDeg": 0.05,
+        "stepM": 0.1,
+        "reachM": 400
+      },
+      "AF3": {
+        "upperBoundM": 60.681,
+        "witness": {
+          "length": 60.680519694699655,
+          "from": {
+            "x": -12.346759908818953,
+            "z": 222.3462045141801
+          },
+          "to": {
+            "x": -43.5995379569187,
+            "z": 170.33284724227303
+          }
+        },
+        "sampledLines": 35296,
+        "displacementM": 0.138,
+        "marginM": 0.14,
+        "surfaceExpansionM": 0.12,
+        "endpointHalfSizeM": 0.35,
+        "stepDeg": 0.05,
+        "stepM": 0.1,
+        "reachM": 400
+      }
+    },
+    "endpointDomain": "whole road and office; all valid controller-square standing endpoints; ray interiors unchanged",
+    "longestRoadView": {
+      "upperBoundM": 89.943,
+      "witness": {
+        "length": 89.94222012349863,
+        "from": {
+          "x": 45.17742520664952,
+          "z": 259.8468852532556
+        },
+        "to": {
+          "x": -21.819999999999993,
+          "z": 319.854784536794
+        }
+      },
+      "sampledLines": 8033175,
+      "displacementM": 0.138,
+      "marginM": 0.14,
+      "surfaceExpansionM": 0.12,
+      "endpointHalfSizeM": 0.35,
+      "stepDeg": 0.05,
+      "stepM": 0.1,
+      "reachM": 400
+    },
+    "certification": {
+      "occluders": 46,
+      "checkedBands": 23739,
+      "floorY": 8,
+      "headHeightM": 1.8
+    }
+  },
   "ownerQualityVerdict": "road look/play batched in U-139",
   "unfinished": [
-    "road cover, landmarks and shells: U-161",
     "X ingress/tank sweep: U-151",
     "return shelters/blast protection: U-152",
     "ridge/bridge: U-140",
@@ -528,9 +2105,9 @@
       "label": "Court approach · legal U-138 anchor; canonical CAP-D lies inside accepted reveal-toe rock",
       "probe": false,
       "calls": 1,
-      "triangles": 309036,
-      "boxCount": 30273,
-      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
+      "triangles": 441872,
+      "boxCount": 41833,
+      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
     },
     {
       "name": "cap-a",
@@ -547,9 +2124,9 @@
       "label": "CAP-A · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 309036,
-      "boxCount": 30273,
-      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
+      "triangles": 441872,
+      "boxCount": 41833,
+      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
     },
     {
       "name": "a3-west-leg",
@@ -566,9 +2143,9 @@
       "label": "A3 · U-159 west leg toward A4 · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 309036,
-      "boxCount": 30273,
-      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
+      "triangles": 441872,
+      "boxCount": 41833,
+      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
     },
     {
       "name": "a5",
@@ -585,9 +2162,9 @@
       "label": "A5 · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 309036,
-      "boxCount": 30273,
-      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
+      "triangles": 441872,
+      "boxCount": 41833,
+      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
     },
     {
       "name": "cap-x-forecourt-road",
@@ -604,9 +2181,9 @@
       "label": "CAP-X · forecourt road only · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 309036,
-      "boxCount": 30273,
-      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
+      "triangles": 441872,
+      "boxCount": 41833,
+      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
     },
     {
       "name": "a2-toward-a3",
@@ -623,9 +2200,9 @@
       "label": "A2 · U-160 A3 inside corner closes the toll fight · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 309036,
-      "boxCount": 30273,
-      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
+      "triangles": 441872,
+      "boxCount": 41833,
+      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
     },
     {
       "name": "a6-toward-a7",
@@ -642,9 +2219,9 @@
       "label": "A6 · U-160 A7 inside corner closes the frontage fight · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 309036,
-      "boxCount": 30273,
-      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
+      "triangles": 441872,
+      "boxCount": 41833,
+      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
     },
     {
       "name": "top-down",
@@ -661,9 +2238,9 @@
       "label": "Top-down · north up; 3D shows spec +x (east) on the left, mirrored from plan.svg · road, rock and unchanged insertion",
       "probe": false,
       "calls": 1,
-      "triangles": 309036,
-      "boxCount": 30273,
-      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
+      "triangles": 441872,
+      "boxCount": 41833,
+      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
     },
     {
       "name": "overview",
@@ -680,9 +2257,9 @@
       "label": "Free overview · road, U-160 rock and unchanged natural insertion",
       "probe": false,
       "calls": 1,
-      "triangles": 309036,
-      "boxCount": 30273,
-      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
+      "triangles": 441872,
+      "boxCount": 41833,
+      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
     },
     {
       "name": "cap-a-standing-probe",
@@ -699,9 +2276,9 @@
       "label": "CAP-A · standing capsule probe · unfinished soldier presentation",
       "probe": true,
       "calls": 2,
-      "triangles": 309180,
-      "boxCount": 30273,
-      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
+      "triangles": 442016,
+      "boxCount": 41833,
+      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
     },
     {
       "name": "v2-eye-to-mg-nest",
@@ -712,15 +2289,72 @@
       ],
       "target": [
         -22,
-        8,
+        9.15,
         222
       ],
-      "label": "V2 bay standing eye (unbuilt ridge) · fan kept 0.3 m under the ray to the moved MG nest",
+      "label": "V2 bay standing eye (unbuilt ridge) · visible MG breastwork; original feet fan kept 0.3 m above rock",
       "probe": false,
       "calls": 1,
-      "triangles": 309036,
-      "boxCount": 30273,
-      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
+      "triangles": 441872,
+      "boxCount": 41833,
+      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+    },
+    {
+      "name": "toll-office",
+      "position": [
+        -4,
+        9.55,
+        118
+      ],
+      "target": [
+        12,
+        9.55,
+        128
+      ],
+      "label": "Toll office interior · open 4 m east door, closed north wall · standing eye y9.55",
+      "probe": false,
+      "calls": 1,
+      "triangles": 441872,
+      "boxCount": 41833,
+      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+    },
+    {
+      "name": "frontage-mg",
+      "position": [
+        -23,
+        9.55,
+        222.8
+      ],
+      "target": [
+        -28,
+        9.55,
+        180
+      ],
+      "label": "AF1 MG nest · A-C06 at the head of the west leg · standing eye y9.55",
+      "probe": false,
+      "calls": 1,
+      "triangles": 441872,
+      "boxCount": 41833,
+      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+    },
+    {
+      "name": "depot-frontage",
+      "position": [
+        -35,
+        9.55,
+        199
+      ],
+      "target": [
+        -38.5,
+        9.55,
+        200.4
+      ],
+      "label": "West-leg depot frontage · closed loading recesses · standing eye y9.55",
+      "probe": false,
+      "calls": 1,
+      "triangles": 441872,
+      "boxCount": 41833,
+      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
     }
   ]
 }

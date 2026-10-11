@@ -142,6 +142,8 @@ function cutAt(spans: Interval[], cuts: number[]): Interval[] {
 
 const capCuts = (z0: number, z1: number) => ROAD_TERRAIN.temporaryCaps
   .filter((c) => c.minZ < z1 && c.maxZ > z0).flatMap((c) => [c.minX, c.maxX]);
+const guardCuts = (z0: number, z1: number) => ROAD_TERRAIN.climbGuards
+  .filter((c) => c.minZ < z1 && c.maxZ > z0).flatMap((c) => [c.minX, c.maxX]);
 
 /** Crest of the rock at a plan point, before any view-fan cap. */
 function crest(r: Rect, spine: Spine): number {
@@ -179,12 +181,17 @@ export function buildRoadTerrain(floors: readonly Polygon[], spine: Spine): BoxS
   // Skin: y5.5 to 2.2 m above the road in fine rows, cut only where a
   // temporary cap starts. The fans must allow it everywhere else.
   const skin = strata('skin', (maxZ - minZ) * SKIN_ROWS_PER_M, (r) => (minZ * SKIN_ROWS_PER_M + r) / SKIN_ROWS_PER_M, bottomY,
-    (z0, z1) => cutAt(rockSpans(floors, z0, z1), capCuts(z0, z1)).map(([lo, hi]) => {
+    (z0, z1) => cutAt(rockSpans(floors, z0, z1), [...capCuts(z0, z1), ...guardCuts(z0, z1)]).map(([lo, hi]) => {
       const r = { minX: lo, maxX: hi, minZ: z0, maxZ: z1 };
-      if (!temporaryCapAt(r) && fanCap(r) < SKIN_TOP) {
-        throw new Error(`View fan needs rock below the ${SKIN_TOP} m edge at x${lo}..${hi} z${z0}..${z1}`);
+      // U-161: low cover revealed a climb onto the fine skin before the
+      // coarser crest begins. Raise only the recorded adjacent rock. A
+      // temporary cap reaches its own crest all the way to its road edge.
+      const cap = temporaryCapAt(r), guard = ROAD_TERRAIN.climbGuards.find((c) => within(r, c));
+      const top = cap?.top ?? Math.max(SKIN_TOP, guard?.top ?? SKIN_TOP);
+      if (!cap && fanCap(r) < top) {
+        throw new Error(`View fan needs rock below the ${top} m edge at x${lo}..${hi} z${z0}..${z1}`);
       }
-      return { lo, hi, top: SKIN_TOP, id: kind(r) };
+      return { lo, hi, top, id: kind(r) };
     }));
   // Mass: from the skin to the crest in coarse rows, cut at every zone
   // boundary and into 1 m cells wherever a view fan shapes the surface.
