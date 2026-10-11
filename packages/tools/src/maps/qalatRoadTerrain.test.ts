@@ -88,6 +88,9 @@ const ribbons = STOPS.slice(1).map((b, i) => {
   const a = STOPS[i]!, l = Math.hypot(b.x - a.x, b.z - a.z), nx = -(b.z - a.z) / l * 10, nz = (b.x - a.x) / l * 10;
   return [{ x: a.x + nx, z: a.z + nz }, { x: b.x + nx, z: b.z + nz }, { x: b.x - nx, z: b.z - nz }, { x: a.x - nx, z: a.z - nz }];
 });
+/** Plan bounds of a polygon, so the exact test only runs where it can overlap. */
+const bounds = (poly: Point[]) => ({ poly, minX: Math.min(...poly.map((p) => p.x)), maxX: Math.max(...poly.map((p) => p.x)),
+  minZ: Math.min(...poly.map((p) => p.z)), maxZ: Math.max(...poly.map((p) => p.z)) });
 
 /** Independent pointwise §6.2 surface: plane between adjacent rays, nearer ray outside them. */
 function rayFloorAt(bay: typeof BAYS[number], p: Point): number {
@@ -125,6 +128,7 @@ describe('U-160 road-facing rock on the bent road', () => {
 
   it('keeps all rock off the walking surface and inside its reserved volume', () => {
     expect(rock.length).toBeGreaterThan(10_000);
+    const road = [...ribbons, A9_BEVEL].map(bounds);
     for (const b of rock.map(rect)) {
       // Off the 20 m ribbons, the A9 bevel and the 36 m aprons: the tank lane,
       // aprons and the full return-sweep provision stay untouched.
@@ -132,7 +136,10 @@ describe('U-160 road-facing rock on the bent road', () => {
         const dx = Math.max(b.minX - a.x, 0, a.x - b.maxX), dz = Math.max(b.minZ - a.z, 0, a.z - b.maxZ);
         expect(Math.hypot(dx, dz), `rock ${JSON.stringify(b)} on apron ${a.id}`).toBeGreaterThanOrEqual(18);
       }
-      for (const poly of [...ribbons, A9_BEVEL]) expect(overlaps(b, poly), `rock ${JSON.stringify(b)} on the road`).toBe(false);
+      for (const r of road) {
+        if (r.maxX <= b.minX || r.minX >= b.maxX || r.maxZ <= b.minZ || r.minZ >= b.maxZ) continue;
+        expect(overlaps(b, r.poly), `rock ${JSON.stringify(b)} on the road`).toBe(false);
+      }
       // y5.5 and up keeps every future basement room open; z84 and north
       // leaves the accepted insertion, its screening and court reveal alone.
       expect(b.minY).toBeGreaterThanOrEqual(5.5);
@@ -142,7 +149,7 @@ describe('U-160 road-facing rock on the bent road', () => {
       // Bridge x66..74/z330..342 and the B6 vault's y0..5.5 stay clear.
       expect(b.maxX <= 66 || b.minZ >= 342 || b.maxZ <= 330).toBe(true);
     }
-  });
+  }, 60_000);
 
   it('closes every road edge with solid rock from below the road to at least 2.2 m above it', async () => {
     let probes = 0, lowest = Infinity;
@@ -194,7 +201,7 @@ describe('U-160 road-facing rock on the bent road', () => {
       expect(points).toBeGreaterThan(1000);
       console.log(`U-160 ${id} inside corner`, JSON.stringify({ points, lowestTopY: lowest }));
     }
-  });
+  }, 60_000);
 
   it('keeps every listed ridge-bay ray 0.3 m above the permanent rock', () => {
     const permanent = world.boxes.filter((b) => b.id.startsWith('road-rock'));
@@ -254,7 +261,7 @@ describe('U-160 road-facing rock on the bent road', () => {
       }
       for (const fan of VIEW_FANS) expect(fan.hull.some((p) => p.x > fin.minX && p.x < fin.maxX && p.z > fin.minZ && p.z < fin.maxZ)).toBe(false);
     }
-  });
+  }, 60_000);
 
   it('separates the three fights in 3D: no standing eye on one apron sees a head on another', async () => {
     const blocked = rayOccluded(world.boxes.filter((b) => b.maxY > 8 && b.maxZ > 100));

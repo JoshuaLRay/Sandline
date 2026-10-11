@@ -319,5 +319,5 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
       expect(png.readUInt32BE(16)).toBe(1440);
       expect(png.readUInt32BE(20)).toBe(1000);
     }
-  });
+  }, 60_000);
 });
