@@ -316,5 +316,6 @@ describe('U-160 road-facing rock on the bent road', () => {
       await yieldWorker();
     }
     expect(attempts).toBeGreaterThan(600);
+    console.log('U-160 escape attempts', JSON.stringify({ attempts, stances: ['walk', 'sprint-jump', 'crouch', 'prone'], ticks: 60 }));
   }, 120_000);
 });
