@@ -9,8 +9,8 @@ import { PathFollower } from '../../../server/src/ai/locomotion/followPath.ts';
 import { INSERTION, buildInsertionWorld, onInsertionFloor } from './qalatInsertion.ts';
 import { between, insertionObservers, rayOccluded, sampleRoute } from './insertionScreening.ts';
 import {
-  ROAD_SUPPORTS, buildRoadSupportWorld, fightSeparation, onRoadSupportFloor,
-  roadSightPieces, roadSightReport, roadSupportManifest, roadSupportPlanSvg,
+  ROAD_SUPPORTS, buildRoadSupportLevel, buildRoadSupportWorld, fightSeparation, onRoadSupportFloor,
+  roadSightPieces, roadSightReport, roadSupportManifest, roadSupportPlanSvg, roadTankSweepReport,
 } from './qalatRoadSupports.ts';
 import { longestSegment } from './roadSightLines.ts';
 import { onTankIngressFloor } from './qalatTankIngress.ts';
@@ -294,6 +294,22 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     // Views longer than the lane's leave the lane, so U-150 can still cut them.
     expect(views['A2']!.length).toBeLessThanOrEqual(90);
     expect(views['A8']!.length).toBeLessThanOrEqual(90);
+  }, 60_000);
+
+  it('keeps the independently computed tank sweep and controller travel report current', async () => {
+    const level = buildRoadSupportLevel(), report = roadTankSweepReport(level);
+    const generated = JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/construction.json', import.meta.url), 'utf8'));
+    expect(report).toEqual(generated.tankSweep);
+    expect(report.levelHash).toBe(generated.levelHash);
+    expect(roadTankSweepReport(level)).toBe(report);
+    // A warm cache must never certify altered geometry under the old hash.
+    const blocked = { ...level, boxes: [...level.boxes,
+      { id: 'tank-report-cache-obstacle', x: 96, y: 8, z: 444, w: 12, h: 4, d: 12 }] };
+    expect(() => roadTankSweepReport(blocked)).toThrow(/blocked/);
+    expect(roadTankSweepReport(level)).toBe(report);
+    // Flush the completed proof test before the independent sight/manifest
+    // comparison, so Vitest's reporting RPC is not starved by both together.
+    await yieldWorker();
   }, 60_000);
 
   it('keeps generated construction, plan and nineteen actual-scene captures current', () => {

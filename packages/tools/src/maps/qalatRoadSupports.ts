@@ -146,10 +146,24 @@ export function roadCombatReport() {
 }
 
 let tankReport: ReturnType<typeof tankSweepReport> & { levelHash: string };
+let tankReportInputHash: string;
+/** Independently verifiable expensive evidence, shared with the complete
+ * manifest. The current generated level selects this cache; committed report
+ * contents never populate it. */
+export function roadTankSweepReport(level = buildRoadSupportLevel()) {
+  const levelHash = createHash('sha256').update(JSON.stringify(level)).digest('hex');
+  const route = tankReturnRoute();
+  const inputHash = createHash('sha256').update(JSON.stringify({ levelHash, route })).digest('hex');
+  if (tankReportInputHash !== inputHash) {
+    tankReport = { levelHash, ...tankSweepReport(loadLevel(level).boxes, route) };
+    tankReportInputHash = inputHash;
+  }
+  return tankReport;
+}
+
 export function roadSupportManifest() {
   const level = buildRoadSupportLevel();
   const levelHash = createHash('sha256').update(JSON.stringify(level)).digest('hex');
-  if (tankReport?.levelHash !== levelHash) tankReport = { levelHash, ...tankSweepReport(loadLevel(level).boxes, tankReturnRoute()) };
   return { task: 'U-151', parent: 'U-139', foundation: 'U-149', bend: 'U-159', rock: 'U-160',
     kind: 'isolated road whitebox: road fights and screened tank ingress',
     activeCampaign: 'unchanged; activation belongs to U-117',
@@ -165,7 +179,7 @@ export function roadSupportManifest() {
     terrain: roadTerrainManifest(level.boxes),
     combat: ROAD_COMBAT,
     ingress: TANK_INGRESS,
-    tankSweep: tankReport,
+    tankSweep: roadTankSweepReport(level),
     combatSightLines: roadCombatReport(),
     ownerQualityVerdict: 'road look/play batched in U-139',
     unfinished: ['return shelters/blast protection: U-152', 'ridge/bridge: U-140', 'support bays/C12 stairs: U-141',
