@@ -1,14 +1,14 @@
 {
-  "task": "U-161",
-  "parent": "U-150",
+  "task": "U-151",
+  "parent": "U-139",
   "foundation": "U-149",
   "bend": "U-159",
   "rock": "U-160",
-  "kind": "isolated road whitebox: supports, rock, cover and landmarks",
+  "kind": "isolated road whitebox: road fights and screened tank ingress",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "c227900aff902373e86f4131fd556eae3dc5324f25200aaf4d47a7d70c49241a",
-  "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec",
-  "boxCount": 41833,
+  "sourceHash": "fd78c76652519c8499a8ac13e08d79b4db394d926f9a62c55bb4501628770ab9",
+  "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9",
+  "boxCount": 52594,
   "stratumM": 0.025,
   "edgeExpansionM": 0.005,
   "circleSides": 512,
@@ -371,6 +371,22 @@
               "z": 360
             }
           ]
+        },
+        {
+          "id": "V3-X5",
+          "anchor": {
+            "x": 66,
+            "y": 26,
+            "z": 286
+          },
+          "targets": [
+            {
+              "id": "X5 tank turret silhouette",
+              "x": 54,
+              "y": 11.2,
+              "z": 334
+            }
+          ]
         }
       ]
     },
@@ -448,7 +464,7 @@
         "minX": 20,
         "maxX": 48,
         "minZ": 346,
-        "maxZ": 358,
+        "maxZ": 362,
         "top": 20,
         "why": "seals the road end until the outpost exists; V3's south-gate gun ray crosses here and is blocked by the outpost's own south wall as specified"
       }
@@ -458,18 +474,19 @@
     "massRowM": 0.5,
     "fanCellM": 1,
     "eyeHeightM": 1.55,
-    "rockBoxes": 12766,
-    "temporaryCapBoxes": 405,
+    "rockBoxes": 18671,
+    "temporaryCapBoxes": 746,
     "rays": [
       {
         "bay": "V1",
         "target": "A-C02 nominal truck fan target",
         "to": {
           "x": -4,
+          "y": 8,
           "z": 126
         },
         "lengthM": 62.03,
-        "clearanceM": 0.336,
+        "clearanceM": 0.332,
         "blockedOnlyByTemporaryCaps": []
       },
       {
@@ -477,10 +494,11 @@
         "target": "A-C03 eastern road wall",
         "to": {
           "x": 24,
+          "y": 8,
           "z": 138
         },
         "lengthM": 35.44,
-        "clearanceM": 0.312,
+        "clearanceM": 0.319,
         "blockedOnlyByTemporaryCaps": [
           "C12-L-mouth"
         ]
@@ -490,6 +508,7 @@
         "target": "A-C06 MG nest",
         "to": {
           "x": -22,
+          "y": 8,
           "z": 222
         },
         "lengthM": 110.65,
@@ -501,6 +520,7 @@
         "target": "C12-U crossing approach",
         "to": {
           "x": 26,
+          "y": 8,
           "z": 232
         },
         "lengthM": 65.79,
@@ -512,6 +532,7 @@
         "target": "A7 road",
         "to": {
           "x": -18,
+          "y": 8,
           "z": 302
         },
         "lengthM": 85.51,
@@ -523,6 +544,7 @@
         "target": "A8",
         "to": {
           "x": 16,
+          "y": 8,
           "z": 332
         },
         "lengthM": 67.94,
@@ -534,6 +556,7 @@
         "target": "south-gate gun",
         "to": {
           "x": 38,
+          "y": 8,
           "z": 360
         },
         "lengthM": 79.12,
@@ -541,6 +564,18 @@
         "blockedOnlyByTemporaryCaps": [
           "south-gate"
         ]
+      },
+      {
+        "bay": "V3-X5",
+        "target": "X5 tank turret silhouette",
+        "to": {
+          "x": 54,
+          "y": 11.2,
+          "z": 334
+        },
+        "lengthM": 49.48,
+        "clearanceM": 0.317,
+        "blockedOnlyByTemporaryCaps": []
       }
     ]
   },
@@ -718,9 +753,9 @@
       },
       {
         "id": "A-C12",
-        "x": 31.2,
+        "x": 36.36,
         "y": 8,
-        "z": 336.3,
+        "z": 342.1,
         "length": 4,
         "depth": 1.2,
         "height": 2.2,
@@ -935,8 +970,8 @@
       },
       {
         "cover": "A-C12",
-        "x": 29,
-        "z": 332,
+        "x": 34.16,
+        "z": 336.7,
         "w": 4,
         "d": 4
       }
@@ -1841,6 +1876,378 @@
       "note": "The continuous 12 m swept corridor doubles as the infantry through passage. Cover clips only its shoulder/apron footprint; the 4 m toll doorway joins the apron without a neck."
     }
   },
+  "ingress": {
+    "$comment": "U-151 isolated y8 service spur, construction specification sections 3.2 and 11.1. Only A8 gives infantry access; campaign activation remains U-117.",
+    "carriagewayWidth": 12,
+    "apronDiameter": 36,
+    "apronNodes": [
+      "X1",
+      "X2",
+      "X3",
+      "X4"
+    ],
+    "spine": [
+      {
+        "id": "X0",
+        "x": 96,
+        "y": 8,
+        "z": 444
+      },
+      {
+        "id": "X1",
+        "x": 114,
+        "y": 8,
+        "z": 432
+      },
+      {
+        "id": "X2",
+        "x": 112,
+        "y": 8,
+        "z": 386
+      },
+      {
+        "id": "X3",
+        "x": 104,
+        "y": 8,
+        "z": 350
+      },
+      {
+        "id": "X4",
+        "x": 84,
+        "y": 8,
+        "z": 338
+      },
+      {
+        "id": "X5",
+        "x": 54,
+        "y": 8,
+        "z": 334
+      },
+      {
+        "id": "X6",
+        "x": 16,
+        "y": 8,
+        "z": 332
+      }
+    ],
+    "motorPool": {
+      "minX": 86,
+      "maxX": 106,
+      "minZ": 434,
+      "maxZ": 454,
+      "undersideY": 14,
+      "thicknessM": 2
+    },
+    "returns": [
+      {
+        "id": "X-return-north",
+        "x": 105,
+        "y": 8,
+        "z": 451,
+        "w": 8,
+        "h": 6,
+        "d": 2
+      },
+      {
+        "id": "X-return-south",
+        "x": 104.5,
+        "y": 8,
+        "z": 410,
+        "w": 4,
+        "h": 6,
+        "d": 2
+      }
+    ],
+    "terrainMaxZ": 464,
+    "terrainEastBandM": 8,
+    "northShoulder": {
+      "topY": 34,
+      "polygon": [
+        [
+          -22,
+          398
+        ],
+        [
+          -4,
+          444
+        ],
+        [
+          36,
+          464
+        ],
+        [
+          94,
+          460
+        ],
+        [
+          140,
+          430
+        ],
+        [
+          136,
+          372
+        ],
+        [
+          112,
+          344
+        ],
+        [
+          90,
+          370
+        ],
+        [
+          64,
+          418
+        ],
+        [
+          4,
+          418
+        ]
+      ]
+    },
+    "eastRidge": {
+      "topY": 30,
+      "polygon": [
+        [
+          46,
+          70
+        ],
+        [
+          88,
+          58
+        ],
+        [
+          114,
+          116
+        ],
+        [
+          122,
+          208
+        ],
+        [
+          110,
+          300
+        ],
+        [
+          90,
+          364
+        ],
+        [
+          54,
+          362
+        ],
+        [
+          58,
+          302
+        ],
+        [
+          68,
+          252
+        ],
+        [
+          70,
+          204
+        ],
+        [
+          50,
+          150
+        ]
+      ]
+    },
+    "terrainOuterEastX": 140,
+    "terrainOuterEastStartZ": 320
+  },
+  "tankSweep": {
+    "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9",
+    "route": {
+      "method": "closed interval disk tubes; complete support prism slab union",
+      "radiusM": 3.31058907144937,
+      "capsuleRadiusM": 2.9000000000000004,
+      "bodyHeightM": 3.1999999999999997,
+      "allHullAndTurretYaws": true,
+      "endpointsAndStops": true,
+      "intervals": 1110,
+      "slabChecks": 616687,
+      "lengthM": 551.3575443141006,
+      "floorY": 8
+    },
+    "realController": {
+      "withoutTarget": {
+        "seconds": 354.56666666666666,
+        "ticks": 10637,
+        "blockedSeconds": 0,
+        "contactSeconds": 0,
+        "firedShells": 0,
+        "aimingTicks": 0,
+        "waypointTimesSeconds": {
+          "X0": 0,
+          "X1": 16.066666666666666,
+          "X2": 45.63333333333333,
+          "X3": 68.66666666666667,
+          "X4": 83.76666666666667,
+          "X5": 102.7,
+          "X6": 126.46666666666667,
+          "A7": 155.2,
+          "A6": 192.86666666666667,
+          "A5": 217.6,
+          "A4": 254.9,
+          "A3": 298.6,
+          "A2": 331.6333333333333,
+          "A1": 354.56666666666666
+        },
+        "endpoint": {
+          "x": 31.17392828958479,
+          "y": 8,
+          "z": 99.24120374748115
+        },
+        "stopYaw": 415
+      },
+      "safetyRadiusTargetContact": {
+        "seconds": 364.56666666666666,
+        "ticks": 10937,
+        "blockedSeconds": 10,
+        "contactSeconds": 10,
+        "firedShells": 2,
+        "aimingTicks": 60,
+        "waypointTimesSeconds": {
+          "X0": 0,
+          "X1": 16.066666666666666,
+          "X2": 45.63333333333333,
+          "X3": 68.66666666666667,
+          "X4": 83.76666666666667,
+          "X5": 102.7,
+          "X6": 136.46666666666667,
+          "A7": 165.2,
+          "A6": 202.86666666666667,
+          "A5": 227.6,
+          "A4": 264.9,
+          "A3": 308.6,
+          "A2": 341.6333333333333,
+          "A1": 364.56666666666666
+        },
+        "endpoint": {
+          "x": 31.17392828958479,
+          "y": 8,
+          "z": 99.24120374748115
+        },
+        "stopYaw": 415
+      },
+      "withoutTargetSweep": {
+        "method": "closed interval disk tubes; complete support prism slab union",
+        "radiusM": 3.31058907144937,
+        "capsuleRadiusM": 2.9000000000000004,
+        "bodyHeightM": 3.1999999999999997,
+        "allHullAndTurretYaws": true,
+        "endpointsAndStops": true,
+        "intervals": 10181,
+        "slabChecks": 5430071,
+        "lengthM": 542.9866666667086,
+        "floorY": 8
+      },
+      "contactSweep": {
+        "method": "closed interval disk tubes; complete support prism slab union",
+        "radiusM": 3.31058907144937,
+        "capsuleRadiusM": 2.9000000000000004,
+        "bodyHeightM": 3.1999999999999997,
+        "allHullAndTurretYaws": true,
+        "endpointsAndStops": true,
+        "intervals": 10181,
+        "slabChecks": 5430071,
+        "lengthM": 542.9866666667086,
+        "floorY": 8
+      },
+      "X5WaypointAfterPrisonerReleaseSeconds": {
+        "radioAlive": 107.7,
+        "radioDead": 122.7
+      },
+      "finalA1AfterPrisonerReleaseSeconds": {
+        "radioAlive": 359.56666666666666,
+        "radioDead": 374.56666666666666
+      },
+      "contactMethod": "standing visible target held 2.3 m ahead near X5 for 10 seconds; actual Session drive and fire ticks",
+      "behavior": "current controller stops for the soldier safety radius; visibility alone does not hold its drive",
+      "measurementScope": "actual Session drive and fire ticks; projectiles and wider encounter are not advanced; authored final facing belongs to activation",
+      "finalSouthwestOrientationCovered": true
+    },
+    "reservedBridge": {
+      "minX": 66,
+      "maxX": 74,
+      "minZ": 330,
+      "maxZ": 342,
+      "undersideY": 14,
+      "deckY": 16,
+      "minimumBodyClearanceM": 2.8000000000000003,
+      "constructed": false
+    },
+    "sharedVehicle": {
+      "radiusM": 2,
+      "speedMps": 1.6,
+      "turnDegPerSec": 30,
+      "arriveM": 1.5,
+      "turretTurnDegPerSec": 45,
+      "fireMaxSpeedMps": 0.5,
+      "cannon": {
+        "projectile": "rocket",
+        "intervalSeconds": 6,
+        "tellSeconds": 1,
+        "rangeM": 90,
+        "alignDeg": 3,
+        "speedMPerSec": 28,
+        "blastDamage": 140,
+        "blastRadiusM": 4.5,
+        "muzzle": [
+          0,
+          2.2,
+          3
+        ]
+      },
+      "machineGun": {
+        "rangeM": 60,
+        "alignDeg": 6,
+        "muzzle": [
+          0,
+          2.1,
+          2.2
+        ]
+      },
+      "hull": {
+        "from": [
+          0,
+          1,
+          -1.6
+        ],
+        "to": [
+          0,
+          1,
+          1.6
+        ],
+        "radius": 1.3
+      },
+      "turret": {
+        "from": [
+          0,
+          2,
+          0
+        ],
+        "to": [
+          0,
+          2.3,
+          0
+        ],
+        "radius": 0.9
+      },
+      "armour": {
+        "bullet": 0.1,
+        "blast": {
+          "frag": 0.1,
+          "rocket": 1,
+          "c4": 1,
+          "claymore": 1
+        },
+        "blastDefault": 0.1
+      }
+    }
+  },
   "combatSightLines": {
     "method": "rigid line-family superset; expanded surface and whole apron eyes; eroded certified high solids; exact controller-square endpoint exclusion",
     "ordinaryEyeDomain": [
@@ -2076,7 +2483,6 @@
   },
   "ownerQualityVerdict": "road look/play batched in U-139",
   "unfinished": [
-    "X ingress/tank sweep: U-151",
     "return shelters/blast protection: U-152",
     "ridge/bridge: U-140",
     "support bays/C12 stairs: U-141",
@@ -2105,9 +2511,9 @@
       "label": "Court approach · legal U-138 anchor; canonical CAP-D lies inside accepted reveal-toe rock",
       "probe": false,
       "calls": 1,
-      "triangles": 441872,
-      "boxCount": 41833,
-      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
     },
     {
       "name": "cap-a",
@@ -2124,9 +2530,9 @@
       "label": "CAP-A · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 441872,
-      "boxCount": 41833,
-      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
     },
     {
       "name": "a3-west-leg",
@@ -2143,9 +2549,9 @@
       "label": "A3 · U-159 west leg toward A4 · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 441872,
-      "boxCount": 41833,
-      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
     },
     {
       "name": "a5",
@@ -2162,9 +2568,9 @@
       "label": "A5 · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 441872,
-      "boxCount": 41833,
-      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
     },
     {
       "name": "cap-x-forecourt-road",
@@ -2181,9 +2587,9 @@
       "label": "CAP-X · forecourt road only · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 441872,
-      "boxCount": 41833,
-      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
     },
     {
       "name": "a2-toward-a3",
@@ -2200,9 +2606,9 @@
       "label": "A2 · U-160 A3 inside corner closes the toll fight · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 441872,
-      "boxCount": 41833,
-      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
     },
     {
       "name": "a6-toward-a7",
@@ -2219,47 +2625,47 @@
       "label": "A6 · U-160 A7 inside corner closes the frontage fight · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 441872,
-      "boxCount": 41833,
-      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
     },
     {
       "name": "top-down",
       "position": [
-        12,
-        370,
-        169.99
+        34,
+        500,
+        214.99
       ],
       "target": [
-        12,
+        34,
         8,
-        170
+        215
       ],
       "label": "Top-down · north up; 3D shows spec +x (east) on the left, mirrored from plan.svg · road, rock and unchanged insertion",
       "probe": false,
       "calls": 1,
-      "triangles": 441872,
-      "boxCount": 41833,
-      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
     },
     {
       "name": "overview",
       "position": [
-        -155,
-        280,
+        -230,
+        350,
         -110
       ],
       "target": [
-        12,
+        34,
         8,
-        145
+        215
       ],
       "label": "Free overview · road, U-160 rock and unchanged natural insertion",
       "probe": false,
       "calls": 1,
-      "triangles": 441872,
-      "boxCount": 41833,
-      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
     },
     {
       "name": "cap-a-standing-probe",
@@ -2276,9 +2682,9 @@
       "label": "CAP-A · standing capsule probe · unfinished soldier presentation",
       "probe": true,
       "calls": 2,
-      "triangles": 442016,
-      "boxCount": 41833,
-      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+      "triangles": 615170,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
     },
     {
       "name": "v2-eye-to-mg-nest",
@@ -2295,9 +2701,9 @@
       "label": "V2 bay standing eye (unbuilt ridge) · visible MG breastwork; original feet fan kept 0.3 m above rock",
       "probe": false,
       "calls": 1,
-      "triangles": 441872,
-      "boxCount": 41833,
-      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
     },
     {
       "name": "toll-office",
@@ -2314,9 +2720,9 @@
       "label": "Toll office interior · open 4 m east door, closed north wall · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 441872,
-      "boxCount": 41833,
-      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
     },
     {
       "name": "frontage-mg",
@@ -2333,9 +2739,9 @@
       "label": "AF1 MG nest · A-C06 at the head of the west leg · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 441872,
-      "boxCount": 41833,
-      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
     },
     {
       "name": "depot-frontage",
@@ -2352,9 +2758,104 @@
       "label": "West-leg depot frontage · closed loading recesses · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 441872,
-      "boxCount": 41833,
-      "levelHash": "e81255afc17572b759e21287eb7fa0d8cac7e3a244bab039267dec08271080ec"
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
+    },
+    {
+      "name": "cap-x-ingress",
+      "position": [
+        16,
+        9.55,
+        332
+      ],
+      "target": [
+        70,
+        9.55,
+        336
+      ],
+      "label": "CAP-X · y8 service road under reserved bridge; bridge remains U-140",
+      "probe": false,
+      "calls": 1,
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
+    },
+    {
+      "name": "x0-motor-pool",
+      "position": [
+        96,
+        9.55,
+        444
+      ],
+      "target": [
+        114,
+        9.55,
+        432
+      ],
+      "label": "X0 · exact motor pool, y14 rock canopy and offset six-metre returns · standing eye y9.55",
+      "probe": false,
+      "calls": 1,
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
+    },
+    {
+      "name": "x1-retaining-turn",
+      "position": [
+        114,
+        9.55,
+        432
+      ],
+      "target": [
+        96,
+        9.55,
+        444
+      ],
+      "label": "X1 · screened return through the retaining dogleg · standing eye y9.55",
+      "probe": false,
+      "calls": 1,
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
+    },
+    {
+      "name": "x-bridge-reservation",
+      "position": [
+        70,
+        9.55,
+        336
+      ],
+      "target": [
+        84,
+        9.55,
+        338
+      ],
+      "label": "Service road y8 · exact x66..74/z330..342 bridge void, underside y14 reserved; deck unbuilt",
+      "probe": false,
+      "calls": 1,
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
+    },
+    {
+      "name": "v3-x5-silhouette",
+      "position": [
+        66,
+        27.55,
+        286
+      ],
+      "target": [
+        54,
+        11.2,
+        334
+      ],
+      "label": "V3 eye probe on unbuilt shelf · X5 turret-height silhouette opening; X0 remains hidden",
+      "probe": false,
+      "calls": 1,
+      "triangles": 615026,
+      "boxCount": 52594,
+      "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9"
     }
   ]
 }

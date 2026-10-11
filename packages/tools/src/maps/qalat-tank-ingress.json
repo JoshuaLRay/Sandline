@@ -1,0 +1,83 @@
+{
+  "$comment": "U-151 isolated y8 service spur, construction specification sections 3.2 and 11.1. Only A8 gives infantry access; campaign activation remains U-117.",
+  "carriagewayWidth": 12,
+  "apronDiameter": 36,
+  "apronNodes": [
+    "X1",
+    "X2",
+    "X3",
+    "X4"
+  ],
+  "spine": [
+    { "id": "X0", "x": 96, "y": 8, "z": 444 },
+    { "id": "X1", "x": 114, "y": 8, "z": 432 },
+    { "id": "X2", "x": 112, "y": 8, "z": 386 },
+    { "id": "X3", "x": 104, "y": 8, "z": 350 },
+    { "id": "X4", "x": 84, "y": 8, "z": 338 },
+    { "id": "X5", "x": 54, "y": 8, "z": 334 },
+    { "id": "X6", "x": 16, "y": 8, "z": 332 }
+  ],
+  "motorPool": {
+    "minX": 86,
+    "maxX": 106,
+    "minZ": 434,
+    "maxZ": 454,
+    "undersideY": 14,
+    "thicknessM": 2
+  },
+  "returns": [
+    {
+      "id": "X-return-north",
+      "x": 105,
+      "y": 8,
+      "z": 451,
+      "w": 8,
+      "h": 6,
+      "d": 2
+    },
+    {
+      "id": "X-return-south",
+      "x": 104.5,
+      "y": 8,
+      "z": 410,
+      "w": 4,
+      "h": 6,
+      "d": 2
+    }
+  ],
+  "terrainMaxZ": 464,
+  "terrainEastBandM": 8,
+  "northShoulder": {
+    "topY": 34,
+    "polygon": [
+      [-22, 398],
+      [-4, 444],
+      [36, 464],
+      [94, 460],
+      [140, 430],
+      [136, 372],
+      [112, 344],
+      [90, 370],
+      [64, 418],
+      [4, 418]
+    ]
+  },
+  "eastRidge": {
+    "topY": 30,
+    "polygon": [
+      [46, 70],
+      [88, 58],
+      [114, 116],
+      [122, 208],
+      [110, 300],
+      [90, 364],
+      [54, 362],
+      [58, 302],
+      [68, 252],
+      [70, 204],
+      [50, 150]
+    ]
+  },
+  "terrainOuterEastX": 140,
+  "terrainOuterEastStartZ": 320
+}

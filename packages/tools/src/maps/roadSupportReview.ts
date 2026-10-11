@@ -46,13 +46,18 @@ const views = {
   capX: { position: [16, 9.55, 332], target: [32, 9.55, 350], label: 'CAP-X · forecourt road only · actual standing eye height y9.55' },
   a2: { position: [12, 9.55, 128], target: [-37, 9.55, 142], label: 'A2 · U-160 A3 inside corner closes the toll fight · standing eye y9.55' },
   a6: { position: [30, 9.55, 270], target: [-18, 9.55, 302], label: 'A6 · U-160 A7 inside corner closes the frontage fight · standing eye y9.55' },
-  topDown: { position: [12, 370, 169.99], target: [12, 8, 170], label: 'Top-down · north up; 3D shows spec +x (east) on the left, mirrored from plan.svg · road, rock and unchanged insertion' },
-  overview: { position: [-155, 280, -110], target: [12, 8, 145], label: 'Free overview · road, U-160 rock and unchanged natural insertion' },
+  topDown: { position: [34, 500, 214.99], target: [34, 8, 215], label: 'Top-down · north up; 3D shows spec +x (east) on the left, mirrored from plan.svg · road, rock and unchanged insertion' },
+  overview: { position: [-230, 350, -110], target: [34, 8, 215], label: 'Free overview · road, U-160 rock and unchanged natural insertion' },
   probe: { position: [38, 11.2, 91], target: [32, 9.2, 101], label: 'CAP-A · standing capsule probe · unfinished soldier presentation', probe: true },
   toll: { position: [-4, 9.55, 118], target: [12, 9.55, 128], label: 'Toll office interior · open 4 m east door' },
   mg: { position: [-23, 9.55, 222.8], target: [-28, 9.55, 180], label: 'AF1 MG nest · A-C06 at the head of the west leg' },
   depot: { position: [-35, 9.55, 199], target: [-38.5, 9.55, 200.4], label: 'West-leg depot frontage · closed loading recesses' },
   v2: { position: [88, 31.55, 210], target: [-22, 9.15, 222], label: 'V2 bay standing eye (unbuilt ridge) · visible MG breastwork; original feet fan kept 0.3 m above rock' },
+  ingress: { position: [16, 9.55, 332], target: [70, 9.55, 336], label: 'CAP-X · y8 service road; bridge reserved for U-140' },
+  pool: { position: [96, 9.55, 444], target: [114, 9.55, 432], label: 'X0 · motor pool canopy and screened retaining dogleg' },
+  turn: { position: [114, 9.55, 432], target: [96, 9.55, 444], label: 'X1 · screened return into motor pool' },
+  bridge: { position: [70, 9.55, 336], target: [84, 9.55, 338], label: 'y8 service road below exact reserved bridge void' },
+  v3: { position: [66, 27.55, 286], target: [54, 11.2, 334], label: 'V3 eye probe · X5 silhouette opening; shelf unbuilt' },
 } satisfies Record<string, View>;
 
 function view(v: View) {

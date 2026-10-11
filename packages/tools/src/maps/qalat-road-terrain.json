@@ -34,7 +34,9 @@
       { "id": "V3", "anchor": { "x": 66, "y": 26, "z": 286 }, "targets": [
         { "id": "A7 road", "x": -18, "z": 302 },
         { "id": "A8", "x": 16, "z": 332 },
-        { "id": "south-gate gun", "x": 38, "z": 360 }] }
+        { "id": "south-gate gun", "x": 38, "z": 360 }] },
+      { "id": "V3-X5", "anchor": { "x": 66, "y": 26, "z": 286 }, "targets": [
+        { "id": "X5 tank turret silhouette", "x": 54, "y": 11.2, "z": 334 }] }
     ]
   },
   "standingPads": [
@@ -56,7 +58,7 @@
   "temporaryCaps": [
     { "id": "C12-L-mouth", "for": "U-141", "minX": 24, "maxX": 36, "minZ": 130, "maxZ": 142, "top": 20,
       "why": "V1's fan reaches the A2 apron's north-east edge only 0.65-2.2 m above the road beside the C12-L stair mouth; U-141 opens the stair here and must keep that edge nontraversable" },
-    { "id": "south-gate", "for": "U-116", "minX": 20, "maxX": 48, "minZ": 346, "maxZ": 358, "top": 20,
+    { "id": "south-gate", "for": "U-116", "minX": 20, "maxX": 48, "minZ": 346, "maxZ": 362, "top": 20,
       "why": "seals the road end until the outpost exists; V3's south-gate gun ray crosses here and is blocked by the outpost's own south wall as specified" }
   ]
 }

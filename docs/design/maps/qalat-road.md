@@ -33,6 +33,17 @@ the road just north of the stair mouth) and the south gate (U-116). V3's south-
 gate gun (38,360) lies 4 m behind the outpost's own south wall (§8.1): its ray
 crosses the wall line at x≈39.5, 1.1 m above y8, so U-116 must resolve that view.
 
+**U-151 ingress clearance addendum · 2026-10-11:** X0–X6 use the exact §11.1
+coordinates. A-C12 moves along its A8→A9 shoulder to (36.36,8,342.1), with its
+4 m regroup pad at (34.16,336.7), to clear the new X5→X6 carriageway and every
+rotating hull orientation. Its dimensions/axis and all road sight/escape gates
+remain. The existing seven bay-to-feet rays stay; a separate narrow V3→X5
+fan caps rock 0.3 m below the shared tank's y11.2 turret silhouette. It creates
+no ridge floor or extra route. The two 6 m retaining returns bracket the motor
+pool/first-bend exit outside the 12 m lanes and 36 m X aprons. Full scene and
+measured current-controller timing are in the regenerated construction manifest;
+road look/play remains U-139, runtime mission integration U-117.
+
 This is the canonical construction brief for campaign mission 1, world/mission
 `qalat-road`. It replaces the rectangular valley, terrace slots and surface
 riverbed flank delivered by U-106. That implementation remains the current game
@@ -350,7 +361,7 @@ the listed solid proxy and cannot be entered.
 | A-C09 | (43,8,270) | 6×0.8×1.1, along A5→A6 broken parapet | Road-side flank of great vault; no holes into basement |
 | A-C10 | (-4,8,325) | 6×1.2×2.2, along A7→A8 rock | Covered preparation for final gate approach |
 | A-C11 | (2,8,336) | 4×0.8×1.1, across A7→A8 orchard wall | Lower tank firing position |
-| A-C12 | (31.2,8,336.3) | 4×1.2×2.2, along A8→A9 rock | Upper tank firing position and forecourt protection |
+| A-C12 | (36.36,8,342.1) | 4×1.2×2.2, along A8→A9 rock | Upper tank firing position and forecourt protection |
 
 A-C02 moves 1.10 m from (-4,8,126) to preserve the central 12 m corridor
 beside the toll office. Its solid proxy follows A2→A3; the north-facing cab is

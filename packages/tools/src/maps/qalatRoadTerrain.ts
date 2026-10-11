@@ -8,6 +8,7 @@
  * leaves open the road. Collision and rendering use the same boxes.
  */
 import { DEFAULT_MUZZLE_RIG, type BoxSpec } from '@sandline/shared';
+import { TANK_INGRESS } from './qalatTankIngress.ts';
 import source from './qalat-road-terrain.json' with { type: 'json' };
 import { convexHull } from './roadSightLines.ts';
 import {
@@ -30,6 +31,17 @@ export const SKIN_TOP = ROAD_TERRAIN.floorY + ROAD_TERRAIN.edgeMinHeightM;
 const polygon = (points: readonly (readonly number[])[]): Polygon => points.map(([x, z]) => ({ x: x!, z: z! }));
 export const TERRAIN_SPURS = ROAD_TERRAIN.spurs.map((s) => ({ ...s, polygon: polygon(s.polygon) }));
 const EAST_EDGE = polygon(ROAD_TERRAIN.eastEdge);
+const INGRESS_RIDGE = polygon(TANK_INGRESS.eastRidge.polygon);
+const INGRESS_NORTH = polygon(TANK_INGRESS.northShoulder.polygon);
+// The registered mass is concave; use a crossing test, not a convex hull.
+function inMass(poly: Polygon, p: Point): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i]!, b = poly[j]!;
+    if ((a.z > p.z) !== (b.z > p.z) && p.x < (b.x - a.x) * (p.z - a.z) / (b.z - a.z) + a.x) inside = !inside;
+  }
+  return inside;
+}
 
 /** Which side of the road a plan point lies on, travelling from the insertion
  * to the gate. At a bend both segments sharing the nearest vertex agree. */
@@ -53,7 +65,7 @@ export interface ViewFan {
   id: string;
   eye: { x: number; y: number; z: number };
   hull: Polygon;
-  rays: { id: string; to: Point; length: number }[];
+  rays: { id: string; to: Point & { y: number }; length: number }[];
   sectors: { wedge: Polygon; height: (p: Point) => number }[];
 }
 
@@ -68,11 +80,11 @@ function viewFan(bay: typeof ROAD_TERRAIN.viewFans.bays[number]): ViewFan {
   // Angles are measured from due west (the bays face west): south negative.
   const angle = (p: Point) => Math.atan2(p.z - eye.z, eye.x - p.x);
   const dir = (a: number) => ({ x: eye.x - 1000 * Math.cos(a), z: eye.z + 1000 * Math.sin(a) });
-  const rays = bay.targets.map((t) => ({ id: t.id, to: { x: t.x, z: t.z }, length: Math.hypot(t.x - eye.x, t.z - eye.z), angle: angle(t) }))
+  const rays = bay.targets.map((t) => ({ id: t.id, to: { x: t.x, y: 'y' in t ? t.y as number : floorY, z: t.z }, length: Math.hypot(t.x - eye.x, t.z - eye.z), angle: angle(t) }))
     .sort((a, b) => a.angle - b.angle);
-  const along = (r: typeof rays[number]) => (p: Point) => eye.y + (floorY - eye.y) * Math.hypot(p.x - eye.x, p.z - eye.z) / r.length;
+  const along = (r: typeof rays[number]) => (p: Point) => eye.y + (r.to.y - eye.y) * Math.hypot(p.x - eye.x, p.z - eye.z) / r.length;
   const plane = (r: typeof rays[number], s: typeof rays[number]) => {
-    const u = [r.to.x - eye.x, floorY - eye.y, r.to.z - eye.z], v = [s.to.x - eye.x, floorY - eye.y, s.to.z - eye.z];
+    const u = [r.to.x - eye.x, r.to.y - eye.y, r.to.z - eye.z], v = [s.to.x - eye.x, s.to.y - eye.y, s.to.z - eye.z];
     const n = [u[1]! * v[2]! - u[2]! * v[1]!, u[2]! * v[0]! - u[0]! * v[2]!, u[0]! * v[1]! - u[1]! * v[0]!];
     return (p: Point) => eye.y - (n[0]! * (p.x - eye.x) + n[2]! * (p.z - eye.z)) / n[1]!;
   };
@@ -95,7 +107,7 @@ export function fanRayFloor(r: Rect): number {
     // Closed sets: a rectangle touching the fan only along an edge is capped too.
     const inside = clipConvex(rectPolygon({ minX: r.minX - 1e-6, maxX: r.maxX + 1e-6, minZ: r.minZ - 1e-6, maxZ: r.maxZ + 1e-6 }), fan.hull);
     if (!inside.length) continue;
-    if (r.maxX > fan.eye.x - 1) throw new Error(`${fan.id}: rock at x${r.maxX} reaches the bay`);
+    if (inside.some((p) => p.x > fan.eye.x - 1)) throw new Error(`${fan.id}: rock at x${r.maxX} reaches the bay`);
     for (const s of fan.sectors) for (const v of clipConvex(inside, s.wedge)) min = Math.min(min, s.height(v));
   }
   return min;
@@ -112,7 +124,11 @@ export const temporaryCapAt = (r: Rect) => ROAD_TERRAIN.temporaryCaps.find((c) =
 
 function eastBound(z0: number, z1: number, open: Interval[]): number {
   const edge = sweep([...EAST_EDGE, { x: -1e4, z: EAST_EDGE.at(-1)!.z }, { x: -1e4, z: EAST_EDGE[0]!.z }], z0, z1);
-  return Math.max(edge ? edge[1] : -Infinity, ...open.map((s) => s[1] + ROAD_TERRAIN.eastBandM));
+  // U-151: extend the northern T-E body and T-N shoulder around X. The
+  // unbuilt V3 shelf south of z300 stays under U-140's construction contract.
+  const ridge = z0 >= 300 ? sweep(INGRESS_RIDGE, z0, z1) : null;
+  const north = sweep(INGRESS_NORTH, z0, z1);
+  return Math.max(edge ? edge[1] : -Infinity, ridge?.[1] ?? -Infinity, north?.[1] ?? -Infinity, z0 >= TANK_INGRESS.terrainOuterEastStartZ ? TANK_INGRESS.terrainOuterEastX : -Infinity, ...open.map((s) => s[1] + ROAD_TERRAIN.eastBandM));
 }
 
 /** Rock intervals of one row: the complement of the conservatively swept,
@@ -135,7 +151,7 @@ function rockSpans(floors: readonly Polygon[], z0: number, z1: number): Interval
 /** Split spans at the given x cut points. */
 function cutAt(spans: Interval[], cuts: number[]): Interval[] {
   return spans.flatMap(([a, b]) => {
-    const xs = [a, ...cuts.filter((x) => x > a + 1e-9 && x < b - 1e-9).sort((p, q) => p - q), b];
+    const xs = [a, ...[...new Set(cuts.filter((x) => x > a + 1e-9 && x < b - 1e-9))].sort((p, q) => p - q), b];
     return xs.slice(1).map((x, i) => [xs[i]!, x] as Interval);
   });
 }
@@ -153,6 +169,9 @@ function crest(r: Rect, spine: Spine): number {
   if (fin) return fin.top;
   const mid = { x: (r.minX + r.maxX) / 2, z: (r.minZ + r.maxZ) / 2 };
   const spur = TERRAIN_SPURS.find((s) => inConvex(s.polygon, mid));
+  // T-N encloses the motor pool; the outer T-E gully stays closed east of the ridge.
+  if (mid.z >= 358) return TANK_INGRESS.northShoulder.topY;
+  if (mid.z >= 286 && inMass(INGRESS_RIDGE, mid)) return TANK_INGRESS.eastRidge.topY;
   return spur ? spur.top : ROAD_TERRAIN.sideTops[roadSide(mid, spine)];
 }
 
@@ -175,8 +194,8 @@ function strata(prefix: string, rows: number, rowZ: (row: number) => number, bot
 }
 
 /** All U-160 rock for the given walking surface (the bent road's floors). */
-export function buildRoadTerrain(floors: readonly Polygon[], spine: Spine): BoxSpec[] {
-  const { minZ, maxZ, bottomY } = ROAD_TERRAIN;
+export function buildRoadTerrain(floors: readonly Polygon[], spine: Spine, maxZ = ROAD_TERRAIN.maxZ): BoxSpec[] {
+  const { minZ, bottomY } = ROAD_TERRAIN;
   const kind = (r: Rect) => temporaryCapAt(r) ? `road-cap-${temporaryCapAt(r)!.id}` : 'road-rock';
   // Skin: y5.5 to 2.2 m above the road in fine rows, cut only where a
   // temporary cap starts. The fans must allow it everywhere else.
@@ -195,14 +214,17 @@ export function buildRoadTerrain(floors: readonly Polygon[], spine: Spine): BoxS
     }));
   // Mass: from the skin to the crest in coarse rows, cut at every zone
   // boundary and into 1 m cells wherever a view fan shapes the surface.
-  const zones = [...TERRAIN_SPURS.map((s) => s.polygon), ...VIEW_FANS.map((f) => f.hull)];
+  const zones = [...TERRAIN_SPURS.map((s) => s.polygon), ...VIEW_FANS.map((f) => f.hull), INGRESS_RIDGE];
   const mass = strata('mass', (maxZ - minZ) * MASS_ROWS_PER_M, (r) => (minZ * MASS_ROWS_PER_M + r) / MASS_ROWS_PER_M, SKIN_TOP,
     (z0, z1) => {
       const fins = ROAD_TERRAIN.fins.filter((f) => f.minZ < z1 && f.maxZ > z0).flatMap((f) => [f.minX, f.maxX]);
       const zoneCuts = zones.map((p) => sweep(p, z0, z1)).filter((s): s is Interval => s !== null);
       const fanSpans = VIEW_FANS.map((f) => sweep(f.hull, z0, z1)).filter((s): s is Interval => s !== null);
       return cutAt(rockSpans(floors, z0, z1), [...capCuts(z0, z1), ...fins, ...zoneCuts.flat()]).flatMap(([lo, hi]) => {
-        const shaped = fanSpans.some(([a, b]) => lo < b && hi > a);
+        // fanCap includes closed-set contacts and expands its clip by 1 µm.
+        // Subdivide those contacts too, so a low fan boundary can cap only
+        // its adjacent cell instead of an entire exterior rock span.
+        const shaped = fanSpans.some(([a, b]) => lo <= b + 1e-6 && hi >= a - 1e-6);
         const cells = shaped ? Math.ceil((hi - lo) / FAN_CELL_M - 1e-9) : 1;
         return Array.from({ length: cells }, (_, i) => {
           const a = lo + (hi - lo) * i / cells, b = i === cells - 1 ? hi : lo + (hi - lo) * (i + 1) / cells;
@@ -232,7 +254,7 @@ export function rayClearances(boxes: readonly BoxSpec[]) {
         t0 = Math.max(t0, Math.min(a, c)); t1 = Math.min(t1, Math.max(a, c));
       }
       if (t1 < t0) continue;
-      const height = fan.eye.y + (ROAD_TERRAIN.floorY - fan.eye.y) * t1;
+      const height = fan.eye.y + (ray.to.y - fan.eye.y) * t1;
       const cap = ROAD_TERRAIN.temporaryCaps.find((c) => b.id.startsWith(`road-cap-${c.id}-`));
       if (cap) { if (b.y + b.h > height) caps.add(cap.id); continue; }
       clearanceM = Math.min(clearanceM, height - (b.y + b.h));

@@ -14,6 +14,9 @@
  */
 import {
   type OffMeshConnectionParams,
+  type UnsignedCharArray,
+  type Vector3Tuple,
+  Detour,
   Recast,
   RecastBuildContext,
   TriangleAreasArray,
@@ -48,11 +51,18 @@ import {
   markBoxArea,
   markWalkableTriangles,
   NavMesh,
+  NavMeshParams,
   NavMeshCreateParams,
   rasterizeTriangles,
   recastConfigDefaults,
+  statusFailed,
 } from '@recast-navigation/core';
-import type { SoloNavMeshGeneratorConfig } from '@recast-navigation/generators';
+import {
+  buildTiledNavMeshRcConfig,
+  tiledNavMeshGeneratorConfigDefaults,
+  type SoloNavMeshGeneratorConfig,
+  type TiledNavMeshGeneratorConfig,
+} from '@recast-navigation/generators';
 import type { SoupBox, TriangleSoup } from './bake.ts';
 
 /** rcCompactCell::index is a 24-bit field. */
@@ -84,13 +94,76 @@ export async function bakeSolidNavMesh(
   generatorConfig: Partial<SoloNavMeshGeneratorConfig> & { offMeshConnections?: OffMeshConnectionParams[] },
 ): Promise<Uint8Array> {
   await init();
+  const data = solidNavMeshData(soup, solids, generatorConfig);
+  if (!data) throw new Error('could not create an empty solo navmesh');
+  const navMesh = new NavMesh();
+  try {
+    if (!navMesh.initSolo(data)) {
+      data.destroy();
+      throw new Error('could not initialise solo navmesh');
+    }
+    return exportNavMesh(navMesh);
+  } finally { navMesh.destroy(); }
+}
+
+/**
+ * Opt-in tiled bake for an isolated map that exceeds Recast's 24-bit span
+ * budget. Each tile runs the same solid/headroom pipeline as the solo bake,
+ * including neighbouring geometry in the erosion border. Detour joins the
+ * resulting edges; this does not add route links or change the agent size.
+ */
+export async function bakeSolidTiledNavMesh(
+  soup: TriangleSoup,
+  solids: readonly SoupBox[],
+  generatorConfig: Partial<TiledNavMeshGeneratorConfig>,
+): Promise<Uint8Array> {
+  await init();
+  const config = { ...tiledNavMeshGeneratorConfigDefaults, ...generatorConfig };
+  if (!Number.isInteger(config.tileSize) || config.tileSize <= 0) throw new Error('tileSize must be a positive integer');
+  const extent = bounds(soup);
+  const [min, max] = config.bounds ?? [extent.min, extent.max];
+  const tiled = buildTiledNavMeshRcConfig({ recastConfig: config, navMeshBounds: [min, max] });
+  const mesh = new NavMesh();
+  const params = NavMeshParams.create({
+    orig: tiled.orig, tileWidth: tiled.tcs, tileHeight: tiled.tcs,
+    maxTiles: tiled.maxTiles, maxPolys: tiled.maxPolysPerTile,
+  });
+  try {
+    if (!mesh.initTiled(params)) throw new Error('could not initialise tiled navmesh');
+    const padding = tiled.config.borderSize * config.cs;
+    for (let z = 0; z < tiled.tileHeight; z++) for (let x = 0; x < tiled.tileWidth; x++) {
+      const lo: Vector3Tuple = [min[0] + x * tiled.tcs - padding, min[1], min[2] + z * tiled.tcs - padding];
+      const hi: Vector3Tuple = [min[0] + (x + 1) * tiled.tcs + padding, max[1], min[2] + (z + 1) * tiled.tcs + padding];
+      const data = solidNavMeshData(soup, solids, { ...config, bounds: [lo, hi], borderSize: tiled.config.borderSize }, { x, z });
+      // A full map may take over a minute under a busy test runner. Yield
+      // between tiles so progress messages and worker RPCs can be serviced.
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      if (!data) continue;
+      const added = mesh.addTile(data, Detour.DT_TILE_FREE_DATA, 0);
+      if (statusFailed(added.status)) {
+        data.destroy();
+        throw new Error(`could not add navmesh tile ${x},${z}: ${added.status}`);
+      }
+    }
+    return exportNavMesh(mesh);
+  } finally { mesh.destroy(); }
+}
+
+/** The shared rasterizer; tiles only change bounds and reserve erosion padding. */
+function solidNavMeshData(
+  soup: TriangleSoup,
+  solids: readonly SoupBox[],
+  generatorConfig: Partial<SoloNavMeshGeneratorConfig>,
+  tile?: { x: number; z: number },
+): UnsignedCharArray | undefined {
   const config = { ...recastConfigDefaults, buildBvTree: true, ...generatorConfig };
   const rc = createRcConfig(config);
   rc.minRegionArea = rc.minRegionArea * rc.minRegionArea;
   rc.mergeRegionArea = rc.mergeRegionArea * rc.mergeRegionArea;
   rc.detailSampleDist = rc.detailSampleDist < 0.9 ? 0 : rc.cs * rc.detailSampleDist;
   rc.detailSampleMaxError = rc.ch * rc.detailSampleMaxError;
-  const { min, max } = bounds(soup);
+  const extent = bounds(soup);
+  const [min, max] = generatorConfig.bounds ?? [extent.min, extent.max];
   const grid = calcGridSize(min, max, rc.cs);
   rc.width = grid.width;
   rc.height = grid.height;
@@ -137,6 +210,7 @@ export async function bakeSolidNavMesh(
     if (!buildDistanceField(context, compact)) throw new Error('could not build distance field');
     if (!buildRegions(context, compact, rc.borderSize, rc.minRegionArea, rc.mergeRegionArea)) throw new Error('could not build regions');
     if (!buildContours(context, compact, rc.maxSimplificationError, rc.maxEdgeLen, contours, Recast.RC_CONTOUR_TESS_WALL_EDGES)) throw new Error('could not build contours');
+    if (tile && contours.nconts() === 0) return undefined;
     if (!buildPolyMesh(context, contours, rc.maxVertsPerPoly, polyMesh)) throw new Error('could not triangulate contours');
     if (!buildPolyMeshDetail(context, polyMesh, compact, rc.detailSampleDist, rc.detailSampleMaxError, detail)) throw new Error('could not build detail mesh');
 
@@ -155,16 +229,13 @@ export async function bakeSolidNavMesh(
     params.setCellHeight(rc.ch);
     params.setBuildBvTree(config.buildBvTree);
     if (generatorConfig.offMeshConnections) params.setOffMeshConnections(generatorConfig.offMeshConnections);
+    if (tile) {
+      params.setTileX(tile.x);
+      params.setTileY(tile.z);
+    }
     const created = createNavMeshData(params);
     if (!created.success) throw new Error('could not create Detour navmesh data');
-    const navMesh = new NavMesh();
-    if (!navMesh.initSolo(created.navMeshData)) {
-      created.navMeshData.destroy();
-      throw new Error('could not initialise solo navmesh');
-    }
-    const bytes = exportNavMesh(navMesh);
-    navMesh.destroy();
-    return bytes;
+    return created.navMeshData;
   } finally {
     freeHeightfield(heightfield);
     freeCompactHeightfield(compact);

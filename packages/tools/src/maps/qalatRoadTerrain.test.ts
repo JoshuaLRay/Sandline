@@ -5,6 +5,7 @@ import {
 import { between, rayOccluded } from './insertionScreening.ts';
 import { ROAD_SUPPORTS, buildRoadSupportLevel, buildRoadSupportWorld } from './qalatRoadSupports.ts';
 import { ROAD_TERRAIN, SKIN_TOP, TERRAIN_SPURS, VIEW_FANS, rayClearances, roadTerrainManifest } from './qalatRoadTerrain.ts';
+import { onTankIngressFloor, TANK_INGRESS } from './qalatTankIngress.ts';
 import { ROAD_COMBAT, combatFootprint } from './qalatRoadCombat.ts';
 
 type Point = { x: number; z: number };
@@ -24,6 +25,7 @@ const BAYS = [
   { id: 'V1', eye: { x: 58, y: 20 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 128 }, targets: [{ x: -4, z: 126 }, { x: 24, z: 138 }] },
   { id: 'V2', eye: { x: 88, y: 30 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 210 }, targets: [{ x: -22, z: 222 }, { x: 26, z: 232 }] },
   { id: 'V3', eye: { x: 66, y: 26 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 286 }, targets: [{ x: -18, z: 302 }, { x: 16, z: 332 }, { x: 38, z: 360 }] },
+  { id: 'V3-X5', eye: { x: 66, y: 26 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 286 }, targets: [{ x: 54, z: 334 }] },
 ];
 const MG_NEST = { x: -22, z: 222 };
 const FINS = [{ id: 'F1', minX: 33, maxX: 39, minZ: 146, maxZ: 154, top: 26 }, { id: 'F2', minX: 49, maxX: 55, minZ: 168, maxZ: 176, top: 32 }];
@@ -62,6 +64,7 @@ function solidTop(x: number, z: number): number {
 
 /** Exact walking surface: 20 m ribbons, the A9 bevel and 18 m aprons. */
 function onRoad(p: Point, margin = 0): boolean {
+  if (onTankIngressFloor(p, margin)) return true;
   if (APRONS.some((a) => Math.hypot(p.x - a.x, p.z - a.z) <= 18 + margin)) return true;
   if (A9_BEVEL.every((a, i) => {
     const b = A9_BEVEL[(i + 1) % A9_BEVEL.length]!, dx = b.x - a.x, dz = b.z - a.z;
@@ -100,14 +103,16 @@ function rayFloorAt(bay: typeof BAYS[number], p: Point): number {
   const { eye } = bay, angle = (q: Point) => Math.atan2(q.z - eye.z, eye.x - q.x);
   const rays = bay.targets.map((t) => ({ t, a: angle(t), l: Math.hypot(t.x - eye.x, t.z - eye.z) })).sort((u, v) => u.a - v.a);
   const a = angle(p), d = Math.hypot(p.x - eye.x, p.z - eye.z);
-  const along = (r: typeof rays[number]) => eye.y + (8 - eye.y) * d / r.l;
+  const targetY = (p: Point) => bay.id === 'V3-X5' && p.x === 54 && p.z === 334 ? 11.2 : 8;
+  const along = (r: typeof rays[number]) => eye.y + (targetY(r.t) - eye.y) * d / r.l;
   if (a <= rays[0]!.a) return along(rays[0]!);
   if (a >= rays.at(-1)!.a) return along(rays.at(-1)!);
   const i = rays.findIndex((r, k) => k > 0 && a <= r.a), r0 = rays[i - 1]!, r1 = rays[i]!;
   // The eye's barycentric weight in the plan triangle eye–r0–r1; both feet are y8.
   const den = (r0.t.z - r1.t.z) * (eye.x - r1.t.x) + (r1.t.x - r0.t.x) * (eye.z - r1.t.z);
   const we = ((r0.t.z - r1.t.z) * (p.x - r1.t.x) + (r1.t.x - r0.t.x) * (p.z - r1.t.z)) / den;
-  return we * eye.y + (1 - we) * 8;
+  const w0 = ((r1.t.z - eye.z) * (p.x - r1.t.x) + (eye.x - r1.t.x) * (p.z - r1.t.z)) / den;
+  return we * eye.y + w0 * targetY(r0.t) + (1 - we - w0) * targetY(r1.t);
 }
 
 describe('U-160 road-facing rock on the bent road', () => {
@@ -147,10 +152,13 @@ describe('U-160 road-facing rock on the bent road', () => {
       // leaves the accepted insertion, its screening and court reveal alone.
       expect(b.minY).toBeGreaterThanOrEqual(5.5);
       expect(b.minZ).toBeGreaterThanOrEqual(84);
-      expect(b.maxZ).toBeLessThanOrEqual(358);
+      expect(b.maxZ).toBeLessThanOrEqual(TANK_INGRESS.terrainMaxZ);
       expect(b.minX).toBeGreaterThanOrEqual(-72);
-      // Bridge x66..74/z330..342 and the B6 vault's y0..5.5 stay clear.
-      expect(b.maxX <= 66 || b.minZ >= 342 || b.maxZ <= 330).toBe(true);
+      // The future bridge's exact deck volume (underside14, top16) and
+      // the B6 vault's y0..5.5 stay clear. Rock below the underside can
+      // remain beside the carriageway; the full tank sweep tests that gap.
+      expect(b.maxX <= 66 || b.minX >= 74 || b.minZ >= 342 || b.maxZ <= 330
+        || b.maxY <= 14 || b.minY >= 16).toBe(true);
     }
   }, 60_000);
 
@@ -212,13 +220,13 @@ describe('U-160 road-facing rock on the bent road', () => {
     const crossings: string[] = [];
     for (const bay of BAYS) for (const t of bay.targets) {
       // The ray to the target's feet, lowered 0.3 m, misses all permanent rock.
-      const lowered = between({ ...bay.eye, y: bay.eye.y - .3 }, { ...t, y: 8 - .3 });
+      const lowered = between({ ...bay.eye, y: bay.eye.y - .3 }, { ...t, y: (bay.id === 'V3-X5' && t.x === 54 && t.z === 334 ? 11.2 : 8) - .3 });
       expect(rayWorld(lowered, permanent), `${bay.id} → ${JSON.stringify(t)}`).toBeNull();
       // U-161 places solid cover at these fan anchors. Preserve the original
       // rock-to-feet contract above; in the full scene see the actual cover
       // top rather than asking a ray to pass through its collision proxy.
       const targetY = bay.id === 'V1' && t.x === -4 ? 10.45
-        : (bay.id === 'V1' && t.x === 24) || (bay.id === 'V2' && t.x === -22) ? 9.15 : 8.05;
+        : (bay.id === 'V1' && t.x === 24) || (bay.id === 'V2' && t.x === -22) ? 9.15 : bay.id === 'V3-X5' ? 11.2 : 8.05;
       const view = between(bay.eye, { ...t, y: targetY });
       if (rayWorld(view, caps) !== null) crossings.push(`${bay.id}→${t.x},${t.z}`);
       else expect(rayWorld(view, world.boxes), `${bay.id} → ${JSON.stringify(t)}`).toBeNull();
@@ -227,7 +235,7 @@ describe('U-160 road-facing rock on the bent road', () => {
     expect(crossings).toEqual(['V1→24,138', 'V3→38,360']);
     expect(rayWorld(between(BAYS[1]!.eye, { x: -23, y: 9.8, z: 222.8 }), world.boxes), 'V2 sees the actual frontage MG head').toBeNull();
     const clearances = rayClearances(level.boxes);
-    expect(clearances.map((r) => r.blockedOnlyByTemporaryCaps)).toEqual([[], ['C12-L-mouth'], [], [], [], [], ['south-gate']]);
+    expect(clearances.map((r) => r.blockedOnlyByTemporaryCaps)).toEqual([[], ['C12-L-mouth'], [], [], [], [], ['south-gate'], []]);
     for (const r of clearances) expect(r.clearanceM).toBeGreaterThanOrEqual(.3);
     expect(roadTerrainManifest(level.boxes).rays).toEqual(clearances);
   }, 60_000);
