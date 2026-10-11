@@ -55,19 +55,20 @@ describe('U-151 exact service-spur construction', () => {
     for (let x = 86; x <= 106; x += .5) for (let z = 434; z <= 454; z += .5) floor({ x, z });
   });
 
-  it('supports the full perpendicular 12 m lane and every 36 m turning apron at y8', () => {
+  it('supports and clears the full perpendicular 12 m lane and every 36 m turning apron at y8', () => {
     const returns = world.boxes.filter((b) => b.id.startsWith('X-return-'));
+    const clear = (p: Point) => { floor(p); expect(column(p).some((b) => b.maxY > 8 && b.minY < 14), `solid in 12 m lane/apron ${JSON.stringify(p)}`).toBe(false); };
     for (let i = 1; i < X.length; i++) {
       const a = X[i - 1]!, b = X[i]!, dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz);
       for (let s = 0; s <= l; s += .25) {
         const p = { x: a.x + dx / l * s, z: a.z + dz / l * s };
-        for (let off = -6; off <= 6; off += .5) floor({ x: p.x - dz / l * off, z: p.z + dx / l * off });
+        for (let off = -6; off <= 6; off += .5) clear({ x: p.x - dz / l * off, z: p.z + dx / l * off });
         for (const r of returns) expect(Math.hypot(Math.max(r.minX - p.x, 0, p.x - r.maxX),
-          Math.max(r.minZ - p.z, 0, p.z - r.maxZ)), `return crosses central sweep ${r.id}`).toBeGreaterThan(Math.hypot(3, 1.4));
+          Math.max(r.minZ - p.z, 0, p.z - r.maxZ)), `return crosses central sweep ${r.id}`).toBeGreaterThanOrEqual(6);
       }
     }
     for (const a of X.slice(1, 5)) for (let degrees = 0; degrees < 360; degrees += 2) for (let r = 0; r <= 18; r += 1)
-      floor({ x: a.x + r * Math.cos(degrees * Math.PI / 180), z: a.z + r * Math.sin(degrees * Math.PI / 180) });
+      clear({ x: a.x + r * Math.cos(degrees * Math.PI / 180), z: a.z + r * Math.sin(degrees * Math.PI / 180) });
   });
 
   it('encloses the spur edges with head-height rock, leaving its A8 mouth as the only approach', () => {

@@ -154,8 +154,11 @@ describe('U-160 road-facing rock on the bent road', () => {
       expect(b.minZ).toBeGreaterThanOrEqual(84);
       expect(b.maxZ).toBeLessThanOrEqual(TANK_INGRESS.terrainMaxZ);
       expect(b.minX).toBeGreaterThanOrEqual(-72);
-      // Bridge x66..74/z330..342 and the B6 vault's y0..5.5 stay clear.
-      expect(b.maxX <= 66 || b.minX >= 74 || b.minZ >= 342 || b.maxZ <= 330).toBe(true);
+      // The future bridge's exact deck volume (underside14, top16) and
+      // the B6 vault's y0..5.5 stay clear. Rock below the underside can
+      // remain beside the carriageway; the full tank sweep tests that gap.
+      expect(b.maxX <= 66 || b.minX >= 74 || b.minZ >= 342 || b.maxZ <= 330
+        || b.maxY <= 14 || b.minY >= 16).toBe(true);
     }
   }, 60_000);
 

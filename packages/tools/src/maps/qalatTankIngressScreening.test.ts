@@ -45,6 +45,21 @@ function body(at: Point): Point[] {
 }
 
 describe('U-151 service ingress screening', () => {
+  it('retains the high T-E screening mass beyond closed-set contacts with the narrow X5 fan', () => {
+    // These exterior points share a row with the narrow fan but lie well east
+    // of it. Capping the whole touching span previously lowered both to about
+    // y20 and exposed the low side of X2 from V3.
+    for (const point of [{ x: 76, z: 307 }, { x: 80, z: 314 }]) {
+      const mass = world.boxes.filter((box) => box.id.startsWith('road-rock-mass-') &&
+        box.minX <= point.x && box.maxX >= point.x && box.minZ <= point.z && box.maxZ >= point.z);
+      expect(Math.max(...mass.map((box) => box.maxY))).toBe(TANK_INGRESS.eastRidge.topY);
+    }
+    const ray = between({ x: 66, y: 26 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 286 },
+      { x: 113.3, y: 9, z: 384.4 });
+    expect(rayWorld(ray, world.boxes)).not.toBeNull();
+    expect(blocked(ray)).toBe(true);
+  });
+
   it('screens the X0 rotating body and both muzzles from V3 and the entire future outpost footprint', async () => {
     const targets = [...body(TANK_INGRESS.spine[0]!), ...muzzles(TANK_INGRESS.spine[0]!)];
     const observers: Point[] = heights.map((height) => ({ x: 66, y: 26 + height, z: 286 }));

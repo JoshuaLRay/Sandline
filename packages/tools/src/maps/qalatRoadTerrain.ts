@@ -128,7 +128,7 @@ function eastBound(z0: number, z1: number, open: Interval[]): number {
   // unbuilt V3 shelf south of z300 stays under U-140's construction contract.
   const ridge = z0 >= 300 ? sweep(INGRESS_RIDGE, z0, z1) : null;
   const north = sweep(INGRESS_NORTH, z0, z1);
-  return Math.max(edge ? edge[1] : -Infinity, ridge?.[1] ?? -Infinity, north?.[1] ?? -Infinity, z0 >= 320 ? 140 : -Infinity, ...open.map((s) => s[1] + ROAD_TERRAIN.eastBandM));
+  return Math.max(edge ? edge[1] : -Infinity, ridge?.[1] ?? -Infinity, north?.[1] ?? -Infinity, z0 >= TANK_INGRESS.terrainOuterEastStartZ ? TANK_INGRESS.terrainOuterEastX : -Infinity, ...open.map((s) => s[1] + ROAD_TERRAIN.eastBandM));
 }
 
 /** Rock intervals of one row: the complement of the conservatively swept,
@@ -221,7 +221,10 @@ export function buildRoadTerrain(floors: readonly Polygon[], spine: Spine, maxZ 
       const zoneCuts = zones.map((p) => sweep(p, z0, z1)).filter((s): s is Interval => s !== null);
       const fanSpans = VIEW_FANS.map((f) => sweep(f.hull, z0, z1)).filter((s): s is Interval => s !== null);
       return cutAt(rockSpans(floors, z0, z1), [...capCuts(z0, z1), ...fins, ...zoneCuts.flat()]).flatMap(([lo, hi]) => {
-        const shaped = fanSpans.some(([a, b]) => lo < b && hi > a);
+        // fanCap includes closed-set contacts and expands its clip by 1 µm.
+        // Subdivide those contacts too, so a low fan boundary can cap only
+        // its adjacent cell instead of an entire exterior rock span.
+        const shaped = fanSpans.some(([a, b]) => lo <= b + 1e-6 && hi >= a - 1e-6);
         const cells = shaped ? Math.ceil((hi - lo) / FAN_CELL_M - 1e-9) : 1;
         return Array.from({ length: cells }, (_, i) => {
           const a = lo + (hi - lo) * i / cells, b = i === cells - 1 ? hi : lo + (hi - lo) * (i + 1) / cells;

@@ -148,13 +148,14 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     expect(supports).toBeGreaterThan(1000);
   }, 60_000);
 
-  it('reserves the future basement volume and exact service-bridge footprint', () => {
+  it('reserves the future basement volume and exact service-bridge deck volume', () => {
     const northern = world.boxes.filter((b) => b.maxZ > 84);
     expect(northern.length).toBeGreaterThan(0);
     expect(northern.every((b) => b.minY >= 5.5)).toBe(true);
     expect(northern.some((b) => b.minY === 5.5 && b.maxY === 8)).toBe(true);
     const bridge = { minX: 66, maxX: 74, minZ: 330, maxZ: 342 };
-    expect(world.boxes.filter((b) => b.maxX > bridge.minX && b.minX < bridge.maxX && b.maxZ > bridge.minZ && b.minZ < bridge.maxZ && b.maxY > 8)).toEqual([]);
+    expect(world.boxes.filter((b) => b.maxX > bridge.minX && b.minX < bridge.maxX
+      && b.maxZ > bridge.minZ && b.minZ < bridge.maxZ && b.minY < 16 && b.maxY > 14)).toEqual([]);
     expect(supportUnder(30, 270, .001, 5.49, world.boxes, 0)).toBe(0);
     expect(blockedAt(30, 270, .35, 0, 0, 5.49, world.boxes)).toBe(false);
   });

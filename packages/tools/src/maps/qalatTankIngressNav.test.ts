@@ -29,7 +29,7 @@ describe('U-151 actual infantry service-spur travel', () => {
     // sides retain their actual floors, terrain, shelter and standing mesh.
     // If any fourth approach exists, the complete path still succeeds.
     sealed = NavMesh.load(await bakeRoadSupportNav({ ...world, boxes: [...world.boxes, {
-      id: 'test-seal-X-mouth', minX: 37, maxX: 39, minY: 5.5, maxY: 38, minZ: 314, maxZ: 358,
+      id: 'test-seal-X-mouth', kind: 'cover', minX: 37, maxX: 39, minY: 5.5, maxY: 38, minZ: 314, maxZ: 358,
     }] }));
   }, 180_000);
   afterAll(() => { nav?.destroy(); sealed?.destroy(); });

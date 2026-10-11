@@ -56,7 +56,7 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | `pnpm export:soldier` | write the code-built soldier as `assets/src/soldier.glb`, the pipeline's test asset |
 | `pnpm gen:nav` | re-bake every named world's navmesh; required after editing a world, `MoveConfig` or the hitbox (a test fails until you do) |
 | `pnpm gen:qalat-insertion` | U-138: compile the isolated Juniper Hollow replacement section and its exact collision/render surface, manifest and plan into `artifacts/qalat-insertion/`; production campaign activation remains U-117 |
-| `pnpm gen:qalat-road-supports` | U-149/U-159/U-160/U-161: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard and loading façades; reserve basement/bridge voids, the 12 m vehicle corridor and ridge views; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
+| `pnpm gen:qalat-road-supports` | U-149/U-159–U-161/U-151: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard and loading façades; reserve basement/bridge voids, the 12 m vehicle corridor, ridge views and screened X ingress; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
 
 ## Isolated Juniper Hollow construction (U-138)
@@ -109,12 +109,20 @@ road and office surface, each complete fight apron and the three frontage
 sockets. It expands the surface for rock skin clearance, erodes high blockers
 by a proven bound on sampling displacement and excludes endpoints that would
 put the controller's square body inside a solid. Low walls never count as high
-blockers. The whole-road upper bound is 89.943 m. U-151 owns
-X ingress and the final tank sweep. This remains an isolated construction fixture.
+blockers. U-151 adds the exact X0–X6 motor pool/service spur, its 12 m lanes,
+36 m aprons, T-N/T-E rock, y14 canopy and retaining returns. A-C12 moves along
+its shoulder to clear the ingress. The separate V3→X5 turret-height fan preserves
+all seven original feet rays. `tankSweep` certifies continuous shared rotating
+hull/turret clearance, full floor support and the real controller traces, including
+an exact reserved-deck fixture (2.8 m overhead). The bridge is not constructed.
+The manifest records travel without target contact and with a controlled ten-second
+standing target in the safety radius; drive/fire ticks run, the wider encounter and
+projectile flight do not. Current visibility alone does not stop drive, and authored
+final facing remains U-117 integration. This remains an isolated construction fixture.
 
 Run `pnpm exec tsx packages/tools/src/capture-qalat-road-supports.ts` after
-generation for fourteen 1440×1000 exact-scene views and geometry/draw measurements,
-including the toll office interior, frontage MG nest and closed depot frontage.
+generation for nineteen 1440×1000 exact-scene views and geometry/draw measurements,
+including the road fights, motor pool/retaining turns, bridge void and V3→X5 opening.
 Streaming CI uploads `qalat-road-support-review`. Commit manifest, plan,
 capture metadata and PNGs; large level/surface JSON stays ignored. For orbit
 review run `pnpm exec vite --host 127.0.0.1` from the repository root and open
@@ -127,7 +135,13 @@ traversal for all six starts in both directions, backing-floor and rock-top
 disconnection, reserved basement/bridge volumes and inherited southern occlusion.
 Its nav bake keeps the backing plane only under the built content: Recast's
 compact heightfield indexes spans in 24 bits (`MAX_COMPACT_SPANS`, 16.8 M) and
-`bakeSolidNavMesh` now refuses a bake past it instead of returning an empty mesh.
+the solid rasterizer refuses a bake past it. `bakeRoadSupportNav` tiles the full
+A/X content at unchanged 0.1/0.05 m resolution, with erosion padding and no new
+links; production registered-world bakes remain unchanged. `qalatTankIngressNav`
+walks A8↔X0 and proves closing only the A8 throat removes every other approach.
+`qalatTankIngress` pins geometry/clear widths/aprons/voids, `qalatTankSweep` tests
+continuous certificates and actual controller timing, and `qalatTankIngressScreening`
+checks actual hull/turret/body/muzzle rays, including insertion over the full route.
 `qalatRoadTerrain.test.ts` proves U-160's rock: off the road, every edge closed,
 inside corners solid, bay rays and fans clear, 3D fight separation and escape
 attempts. `qalatRoadCombat.test.ts` checks the conservative physical-cover sight

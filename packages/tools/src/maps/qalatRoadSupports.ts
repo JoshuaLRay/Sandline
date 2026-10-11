@@ -11,6 +11,7 @@ import { ROAD_COMBAT, buildRoadCombat, combatFootprint, combatOpenFloors, combat
 import { certifySightBlockers, combatSightReport } from './qalatRoadCombatSight.ts';
 import { INSERTION, buildInsertionLevel } from './qalatInsertion.ts';
 import { ROAD_TERRAIN, TERRAIN_SPURS, VIEW_FANS, buildRoadTerrain, roadTerrainManifest } from './qalatRoadTerrain.ts';
+import { tankSweepReport } from './qalatTankSweep.ts';
 import { TANK_INGRESS, tankIngressFloors, buildTankIngressShelter } from './qalatTankIngress.ts';
 import { scan, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
 import {
@@ -144,13 +145,16 @@ export function roadCombatReport() {
   return combatReport;
 }
 
+let tankReport: ReturnType<typeof tankSweepReport> & { levelHash: string };
 export function roadSupportManifest() {
   const level = buildRoadSupportLevel();
+  const levelHash = createHash('sha256').update(JSON.stringify(level)).digest('hex');
+  if (tankReport?.levelHash !== levelHash) tankReport = { levelHash, ...tankSweepReport(loadLevel(level).boxes, tankReturnRoute()) };
   return { task: 'U-151', parent: 'U-139', foundation: 'U-149', bend: 'U-159', rock: 'U-160',
     kind: 'isolated road whitebox: road fights and screened tank ingress',
     activeCampaign: 'unchanged; activation belongs to U-117',
     sourceHash: createHash('sha256').update(JSON.stringify({ insertion: INSERTION, road: ROAD_SUPPORTS, terrain: ROAD_TERRAIN, combat: ROAD_COMBAT, ingress: TANK_INGRESS })).digest('hex'),
-    levelHash: createHash('sha256').update(JSON.stringify(level)).digest('hex'), boxCount: level.boxes.length,
+    levelHash, boxCount: level.boxes.length,
     stratumM: STRATUM_M, edgeExpansionM: EDGE_M, circleSides: CIRCLE_SIDES,
     floorY: ROAD_SUPPORTS.floorY, supportBottomY: ROAD_SUPPORTS.supportBottomY,
     ribbonWidth: ROAD_SUPPORTS.ribbonWidth, carriagewayWidth: ROAD_SUPPORTS.carriagewayWidth,
@@ -161,6 +165,7 @@ export function roadSupportManifest() {
     terrain: roadTerrainManifest(level.boxes),
     combat: ROAD_COMBAT,
     ingress: TANK_INGRESS,
+    tankSweep: tankReport,
     combatSightLines: roadCombatReport(),
     ownerQualityVerdict: 'road look/play batched in U-139',
     unfinished: ['return shelters/blast protection: U-152', 'ridge/bridge: U-140', 'support bays/C12 stairs: U-141',
