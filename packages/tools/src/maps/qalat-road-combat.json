@@ -51,7 +51,7 @@
     {"cover": "A-C09", "x": 42, "z": 262, "w": 4, "d": 4},
     {"cover": "A-C10", "x": -9, "z": 318, "w": 4, "d": 4},
     {"cover": "A-C11", "x": 2, "z": 330, "w": 4, "d": 4},
-    {"cover": "A-C12", "x": 34.16, "z": 337.8, "w": 4, "d": 4}
+    {"cover": "A-C12", "x": 34.16, "z": 336.7, "w": 4, "d": 4}
   ],
   "screens": [
     {"id": "A-S01", "x": -23.5, "y": 8, "z": 288.4, "length": 16.80000000000001, "depth": 27, "height": 2.2, "orientation": "along-road", "segment": ["A6", "A7"], "kind": "rock-screen", "region": "A7-south-apron", "polygon": [[-37, 280], [-10, 280], [-10, 289.419508602984], [-21.070737095523953, 296.8], [-37, 296.8]], "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."},

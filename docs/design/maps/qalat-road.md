@@ -35,7 +35,7 @@ crosses the wall line at x≈39.5, 1.1 m above y8, so U-116 must resolve that vi
 
 **U-151 ingress clearance addendum · 2026-10-11:** X0–X6 use the exact §11.1
 coordinates. A-C12 moves along its A8→A9 shoulder to (36.36,8,342.1), with its
-4 m regroup pad at (34.16,337.8), to clear the new X5→X6 carriageway and every
+4 m regroup pad at (34.16,336.7), to clear the new X5→X6 carriageway and every
 rotating hull orientation. Its dimensions/axis and all road sight/escape gates
 remain. The existing seven bay-to-feet rays stay; a separate narrow V3→X5
 fan caps rock 0.3 m below the shared tank's y11.2 turret silhouette. It creates

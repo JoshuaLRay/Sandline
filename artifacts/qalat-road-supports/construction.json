@@ -6,7 +6,7 @@
   "rock": "U-160",
   "kind": "isolated road whitebox: road fights and screened tank ingress",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "39a91afd5fed0ddccdf42a2fc028d1fa3c15e7ab75ac5e9cb9f09f273562b999",
+  "sourceHash": "fd78c76652519c8499a8ac13e08d79b4db394d926f9a62c55bb4501628770ab9",
   "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9",
   "boxCount": 52594,
   "stratumM": 0.025,
@@ -971,7 +971,7 @@
       {
         "cover": "A-C12",
         "x": 34.16,
-        "z": 337.8,
+        "z": 336.7,
         "w": 4,
         "d": 4
       }
