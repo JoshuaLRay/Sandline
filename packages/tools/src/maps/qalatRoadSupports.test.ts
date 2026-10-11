@@ -62,14 +62,22 @@ function clearSupport(p: Point, half = .001): void {
 }
 
 const world = buildRoadSupportWorld();
+/** Recast indexes compact spans in 24 bits (16.8M) and the 740 m backing
+ * plane alone fills 11.8M columns, so the isolated bake keeps the plane only
+ * under the built content. Nothing beyond it is reachable either way. */
+function contentSoup() {
+  const soup = worldSoup(world);
+  soup.positions.splice(0, 12, -74, 0, -45, 74, 0, -45, 74, 0, 362, -74, 0, 362);
+  return soup;
+}
 let nav: NavMesh;
-describe('U-149 isolated A0–A9 primary road supports, bent by U-159', () => {
+describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed by U-160 rock', () => {
   beforeAll(async () => {
     await initNav();
     // Use the production solid/headroom rasterizer and the standing agent.
     // These same-height slabs need neither vault links nor a fake route mesh.
-    nav = NavMesh.load(await bakeSolidNavMesh(worldSoup(world), worldSolids(world), navConfigFor(DEFAULT_NAV_AGENT)));
-  }, 120_000);
+    nav = NavMesh.load(await bakeSolidNavMesh(contentSoup(), worldSolids(world), navConfigFor(DEFAULT_NAV_AGENT)));
+  }, 180_000);
   afterAll(() => nav?.destroy());
 
   it('preserves approved coordinates, both shoulder widths and every return-tangent apron', () => {
@@ -200,6 +208,21 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159', () => {
     for (const from of [start, APPROVED_SPINE[5]!, SOUTH_GATE]) {
       expect(completePathLength(nav.path(from, backing), from, backing)).toBeNull();
     }
+    // U-160: every rock top is an island. Left escarpment, A3/A7 inside
+    // corners, the T-E foot, a fin, a fan-shaped slope and a temporary cap.
+    const tops = [{ x: -60, y: 26, z: 200 }, { x: -12, y: 20, z: 175 }, { x: 4, y: 20, z: 308 },
+      { x: 45, y: 20, z: 190 }, { x: 36, y: 26, z: 150 }, { x: 40, y: 14, z: 214 }, { x: 33, y: 20, z: 140 }];
+    for (const at of tops) {
+      // Query at the rock's actual crest; fan-shaped slopes sit below the zone's.
+      const top = { ...at, y: Math.max(...world.boxes.filter((b) => at.x >= b.minX && at.x <= b.maxX && at.z >= b.minZ && at.z <= b.maxZ).map((b) => b.maxY)) };
+      const hit = nav.nearestPoint(top, { x: .5, y: .5, z: .5 });
+      expect(hit, `no rock-top mesh near ${JSON.stringify(top)}`).not.toBeNull();
+      const island = hit!.point;
+      expect(island.y, JSON.stringify(top)).toBeGreaterThan(10.1);
+      for (const from of [start, APPROVED_SPINE[2]!, APPROVED_SPINE[5]!, SOUTH_GATE]) {
+        expect(completePathLength(nav.path(from, island), from, island), JSON.stringify(top)).toBeNull();
+      }
+    }
   }, 90_000);
 
   it('inherits the accepted southern screening solids and occludes every observer group at the starts', async () => {
@@ -269,17 +292,17 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159', () => {
     expect(views['A8']!.length).toBeLessThanOrEqual(90);
   }, 60_000);
 
-  it('keeps generated construction, plan and eight actual-scene captures current', () => {
+  it('keeps generated construction, plan and eleven actual-scene captures current', () => {
     const manifest = roadSupportManifest();
     expect(JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/construction.json', import.meta.url), 'utf8'))).toEqual(manifest);
     expect(readFileSync(new URL('../../../../artifacts/qalat-road-supports/plan.svg', import.meta.url), 'utf8')).toBe(roadSupportPlanSvg());
     const captures = JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/captures.json', import.meta.url), 'utf8'));
     expect(captures).toMatchObject(manifest);
     expect(captures.viewport).toEqual([1440, 1000]);
-    expect(captures.views).toHaveLength(8);
-    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(8);
-    const standingViews = captures.views.slice(0, 5) as { name: string; position: number[] }[];
-    expect(standingViews.map((view) => view.name)).toEqual(['cap-d', 'cap-a', 'a3-west-leg', 'a5', 'cap-x-forecourt-road']);
+    expect(captures.views).toHaveLength(11);
+    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(11);
+    const standingViews = captures.views.slice(0, 7) as { name: string; position: number[] }[];
+    expect(standingViews.map((view) => view.name)).toEqual(['cap-d', 'cap-a', 'a3-west-leg', 'a5', 'cap-x-forecourt-road', 'a2-toward-a3', 'a6-toward-a7']);
     for (const view of standingViews) {
       const feet = { x: view.position[0]!, y: view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, z: view.position[2]! };
       expect(feet.y, `${view.name} standing eye`).toBeCloseTo(8);
@@ -296,5 +319,5 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159', () => {
       expect(png.readUInt32BE(16)).toBe(1440);
       expect(png.readUInt32BE(20)).toBe(1000);
     }
-  });
+  }, 60_000);
 });

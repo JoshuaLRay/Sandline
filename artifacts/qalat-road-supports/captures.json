@@ -1,12 +1,13 @@
 {
-  "task": "U-159",
+  "task": "U-160",
+  "parent": "U-150",
   "foundation": "U-149",
-  "parent": "U-139",
-  "kind": "isolated road support whitebox",
+  "bend": "U-159",
+  "kind": "isolated road whitebox: supports and road-facing rock",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "501f9ca238a39eeba493d1b85fbc7b3a31f85c0eb4808abc3b320a09200f9d68",
-  "levelHash": "9347a155ffa088e293c44bade8da8d5173e034ed7adb1eeb76242f32fd7c6a6a",
-  "boxCount": 17542,
+  "sourceHash": "880abbb62d3d9a9192ac1096a22a8de864ad9f3eabc52795324c52c824960ae4",
+  "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f",
+  "boxCount": 30273,
   "stratumM": 0.025,
   "edgeExpansionM": 0.005,
   "circleSides": 512,
@@ -178,12 +179,331 @@
       }
     }
   },
+  "terrain": {
+    "id": "qalat-road-terrain",
+    "floorY": 8,
+    "bottomY": 5.5,
+    "edgeMinHeightM": 2.2,
+    "minX": -72,
+    "minZ": 84,
+    "maxZ": 358,
+    "eastBandM": 8,
+    "eastEdge": [
+      [
+        46,
+        70
+      ],
+      [
+        50,
+        150
+      ],
+      [
+        70,
+        204
+      ],
+      [
+        68,
+        252
+      ],
+      [
+        58,
+        302
+      ],
+      [
+        54,
+        362
+      ]
+    ],
+    "sideTops": {
+      "left": 26,
+      "right": 20
+    },
+    "spurs": [
+      {
+        "id": "T-C-A3",
+        "top": 20,
+        "polygon": [
+          [
+            12,
+            128
+          ],
+          [
+            -37,
+            142
+          ],
+          [
+            -28,
+            210
+          ],
+          [
+            26,
+            232
+          ]
+        ]
+      },
+      {
+        "id": "T-C-A5",
+        "top": 22,
+        "polygon": [
+          [
+            -28,
+            210
+          ],
+          [
+            26,
+            232
+          ],
+          [
+            30,
+            270
+          ],
+          [
+            -18,
+            302
+          ]
+        ]
+      },
+      {
+        "id": "T-C-A7",
+        "top": 20,
+        "polygon": [
+          [
+            30,
+            270
+          ],
+          [
+            -18,
+            302
+          ],
+          [
+            16,
+            332
+          ]
+        ]
+      }
+    ],
+    "fins": [
+      {
+        "id": "F1",
+        "minX": 33,
+        "maxX": 39,
+        "minZ": 146,
+        "maxZ": 154,
+        "top": 26
+      },
+      {
+        "id": "F2",
+        "minX": 49,
+        "maxX": 55,
+        "minZ": 168,
+        "maxZ": 176,
+        "top": 32
+      }
+    ],
+    "viewFans": {
+      "rayClearanceM": 0.3,
+      "expandM": 1,
+      "bayEdgeBackM": 0.8,
+      "bayHalfLengthM": 4,
+      "bays": [
+        {
+          "id": "V1",
+          "anchor": {
+            "x": 58,
+            "y": 20,
+            "z": 128
+          },
+          "targets": [
+            {
+              "id": "A-C02 truck patrol cover",
+              "x": -4,
+              "z": 126
+            },
+            {
+              "id": "A-C03 eastern road wall",
+              "x": 24,
+              "z": 138
+            }
+          ]
+        },
+        {
+          "id": "V2",
+          "anchor": {
+            "x": 88,
+            "y": 30,
+            "z": 210
+          },
+          "targets": [
+            {
+              "id": "A-C06 MG nest",
+              "x": -22,
+              "z": 222
+            },
+            {
+              "id": "C12-U crossing approach",
+              "x": 26,
+              "z": 232
+            }
+          ]
+        },
+        {
+          "id": "V3",
+          "anchor": {
+            "x": 66,
+            "y": 26,
+            "z": 286
+          },
+          "targets": [
+            {
+              "id": "A7 road",
+              "x": -18,
+              "z": 302
+            },
+            {
+              "id": "A8",
+              "x": 16,
+              "z": 332
+            },
+            {
+              "id": "south-gate gun",
+              "x": 38,
+              "z": 360
+            }
+          ]
+        }
+      ]
+    },
+    "standingPads": [
+      {
+        "id": "south-gate",
+        "minX": 31.6,
+        "maxX": 32.4,
+        "minZ": 356,
+        "maxZ": 356.4,
+        "why": "standing room at the exact gate node: a 0.35 m soldier centred on (32,356) needs air past the road end until the outpost opens it"
+      }
+    ],
+    "temporaryCaps": [
+      {
+        "id": "C12-L-mouth",
+        "for": "U-141",
+        "minX": 24,
+        "maxX": 36,
+        "minZ": 130,
+        "maxZ": 142,
+        "top": 20,
+        "why": "V1's fan reaches the A2 apron's north-east edge only 0.65-2.2 m above the road beside the C12-L stair mouth; U-141 opens the stair here and must keep that edge nontraversable"
+      },
+      {
+        "id": "south-gate",
+        "for": "U-116",
+        "minX": 20,
+        "maxX": 48,
+        "minZ": 346,
+        "maxZ": 358,
+        "top": 20,
+        "why": "seals the road end until the outpost exists; V3's south-gate gun ray crosses here and is blocked by the outpost's own south wall as specified"
+      }
+    ],
+    "skinTopY": 10.2,
+    "skinRowM": 0.1,
+    "massRowM": 0.5,
+    "fanCellM": 1,
+    "eyeHeightM": 1.55,
+    "rockBoxes": 12731,
+    "temporaryCapBoxes": 405,
+    "rays": [
+      {
+        "bay": "V1",
+        "target": "A-C02 truck patrol cover",
+        "to": {
+          "x": -4,
+          "z": 126
+        },
+        "lengthM": 62.03,
+        "clearanceM": 0.336,
+        "blockedOnlyByTemporaryCaps": []
+      },
+      {
+        "bay": "V1",
+        "target": "A-C03 eastern road wall",
+        "to": {
+          "x": 24,
+          "z": 138
+        },
+        "lengthM": 35.44,
+        "clearanceM": 0.312,
+        "blockedOnlyByTemporaryCaps": [
+          "C12-L-mouth"
+        ]
+      },
+      {
+        "bay": "V2",
+        "target": "A-C06 MG nest",
+        "to": {
+          "x": -22,
+          "z": 222
+        },
+        "lengthM": 110.65,
+        "clearanceM": 0.395,
+        "blockedOnlyByTemporaryCaps": []
+      },
+      {
+        "bay": "V2",
+        "target": "C12-U crossing approach",
+        "to": {
+          "x": 26,
+          "z": 232
+        },
+        "lengthM": 65.79,
+        "clearanceM": 0.325,
+        "blockedOnlyByTemporaryCaps": []
+      },
+      {
+        "bay": "V3",
+        "target": "A7 road",
+        "to": {
+          "x": -18,
+          "z": 302
+        },
+        "lengthM": 85.51,
+        "clearanceM": 0.315,
+        "blockedOnlyByTemporaryCaps": []
+      },
+      {
+        "bay": "V3",
+        "target": "A8",
+        "to": {
+          "x": 16,
+          "z": 332
+        },
+        "lengthM": 67.94,
+        "clearanceM": 0.303,
+        "blockedOnlyByTemporaryCaps": []
+      },
+      {
+        "bay": "V3",
+        "target": "south-gate gun",
+        "to": {
+          "x": 38,
+          "z": 360
+        },
+        "lengthM": 79.12,
+        "clearanceM": 0.356,
+        "blockedOnlyByTemporaryCaps": [
+          "south-gate"
+        ]
+      }
+    ]
+  },
   "ownerQualityVerdict": "road look/play batched in U-139",
   "unfinished": [
-    "road fight geology/cover/shells: U-150",
+    "road cover, landmarks and shells: U-161",
     "X ingress/tank sweep: U-151",
     "return shelters/blast protection: U-152",
     "ridge/bridge: U-140",
+    "support bays/C12 stairs: U-141",
+    "outpost: U-116",
     "basement: U-115"
   ],
   "renderer": "Three WebGL whitebox; exact generated boxes",
@@ -208,9 +528,9 @@
       "label": "Court approach · legal U-138 anchor; canonical CAP-D lies inside accepted reveal-toe rock",
       "probe": false,
       "calls": 1,
-      "triangles": 200244,
-      "boxCount": 17542,
-      "levelHash": "9347a155ffa088e293c44bade8da8d5173e034ed7adb1eeb76242f32fd7c6a6a"
+      "triangles": 309036,
+      "boxCount": 30273,
+      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
     },
     {
       "name": "cap-a",
@@ -227,9 +547,9 @@
       "label": "CAP-A · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 200244,
-      "boxCount": 17542,
-      "levelHash": "9347a155ffa088e293c44bade8da8d5173e034ed7adb1eeb76242f32fd7c6a6a"
+      "triangles": 309036,
+      "boxCount": 30273,
+      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
     },
     {
       "name": "a3-west-leg",
@@ -246,9 +566,9 @@
       "label": "A3 · U-159 west leg toward A4 · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 200244,
-      "boxCount": 17542,
-      "levelHash": "9347a155ffa088e293c44bade8da8d5173e034ed7adb1eeb76242f32fd7c6a6a"
+      "triangles": 309036,
+      "boxCount": 30273,
+      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
     },
     {
       "name": "a5",
@@ -265,9 +585,9 @@
       "label": "A5 · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 200244,
-      "boxCount": 17542,
-      "levelHash": "9347a155ffa088e293c44bade8da8d5173e034ed7adb1eeb76242f32fd7c6a6a"
+      "triangles": 309036,
+      "boxCount": 30273,
+      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
     },
     {
       "name": "cap-x-forecourt-road",
@@ -284,9 +604,47 @@
       "label": "CAP-X · forecourt road only · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 200244,
-      "boxCount": 17542,
-      "levelHash": "9347a155ffa088e293c44bade8da8d5173e034ed7adb1eeb76242f32fd7c6a6a"
+      "triangles": 309036,
+      "boxCount": 30273,
+      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
+    },
+    {
+      "name": "a2-toward-a3",
+      "position": [
+        12,
+        9.55,
+        128
+      ],
+      "target": [
+        -37,
+        9.55,
+        142
+      ],
+      "label": "A2 · U-160 A3 inside corner closes the toll fight · standing eye y9.55",
+      "probe": false,
+      "calls": 1,
+      "triangles": 309036,
+      "boxCount": 30273,
+      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
+    },
+    {
+      "name": "a6-toward-a7",
+      "position": [
+        30,
+        9.55,
+        270
+      ],
+      "target": [
+        -18,
+        9.55,
+        302
+      ],
+      "label": "A6 · U-160 A7 inside corner closes the frontage fight · standing eye y9.55",
+      "probe": false,
+      "calls": 1,
+      "triangles": 309036,
+      "boxCount": 30273,
+      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
     },
     {
       "name": "top-down",
@@ -300,12 +658,12 @@
         8,
         170
       ],
-      "label": "Top-down · north up · support extents and unchanged natural insertion",
+      "label": "Top-down · north up; 3D shows spec +x (east) on the left, mirrored from plan.svg · road, rock and unchanged insertion",
       "probe": false,
       "calls": 1,
-      "triangles": 200244,
-      "boxCount": 17542,
-      "levelHash": "9347a155ffa088e293c44bade8da8d5173e034ed7adb1eeb76242f32fd7c6a6a"
+      "triangles": 309036,
+      "boxCount": 30273,
+      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
     },
     {
       "name": "overview",
@@ -319,12 +677,12 @@
         8,
         145
       ],
-      "label": "Free overview · support extents and unchanged natural insertion",
+      "label": "Free overview · road, U-160 rock and unchanged natural insertion",
       "probe": false,
       "calls": 1,
-      "triangles": 200244,
-      "boxCount": 17542,
-      "levelHash": "9347a155ffa088e293c44bade8da8d5173e034ed7adb1eeb76242f32fd7c6a6a"
+      "triangles": 309036,
+      "boxCount": 30273,
+      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
     },
     {
       "name": "cap-a-standing-probe",
@@ -341,9 +699,28 @@
       "label": "CAP-A · standing capsule probe · unfinished soldier presentation",
       "probe": true,
       "calls": 2,
-      "triangles": 200388,
-      "boxCount": 17542,
-      "levelHash": "9347a155ffa088e293c44bade8da8d5173e034ed7adb1eeb76242f32fd7c6a6a"
+      "triangles": 309180,
+      "boxCount": 30273,
+      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
+    },
+    {
+      "name": "v2-eye-to-mg-nest",
+      "position": [
+        88,
+        31.55,
+        210
+      ],
+      "target": [
+        -22,
+        8,
+        222
+      ],
+      "label": "V2 bay standing eye (unbuilt ridge) · fan kept 0.3 m under the ray to the moved MG nest",
+      "probe": false,
+      "calls": 1,
+      "triangles": 309036,
+      "boxCount": 30273,
+      "levelHash": "be09e13471c80e5b7c8b84935a9a119b5da6a281b8002631978dff961367d99f"
     }
   ]
 }
