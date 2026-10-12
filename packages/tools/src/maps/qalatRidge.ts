@@ -104,16 +104,6 @@ export function ridgeCarve(): readonly Polygon[] {
   return FLOORS.map((f) => convexHull(f.polygon.flatMap((p) => [-e, e].flatMap((dx) => [-e, e].map((dz) => ({ x: p.x + dx, z: p.z + dz }))))));
 }
 
-/** The designed floor height at a plan point (the highest shelf piece there), or null off the shelf. */
-export function ridgeFloorY(p: Point, margin = 0): number | null {
-  let y: number | null = null;
-  for (const f of FLOORS) {
-    const s = sweep(f.polygon, p.z - margin, p.z + margin);
-    if (s && p.x >= s[0] - margin && p.x <= s[1] + margin) y = Math.max(y ?? -Infinity, f.height(p));
-  }
-  return y;
-}
-
 /** Constant-height pieces of one row, highest shelf wins where pieces overlap. */
 function floorSpans(z0: number, z1: number): { lo: number; hi: number; y: number }[] {
   const zm = (z0 + z1) / 2, raw: { lo: number; hi: number; y: number }[] = [];
@@ -245,6 +235,7 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
   };
   const lastRow = Math.ceil((Math.max(...zs) + reach) * MASS_ROWS_PER_M);
   for (let row = MASS.minZ * MASS_ROWS_PER_M; row < lastRow; row++) {
+    // mass.maxZ (z300) is where the road terrain's eastBound starts filling T-E itself.
     const Z0 = row / MASS_ROWS_PER_M, Z1 = (row + 1) / MASS_ROWS_PER_M, inBody = Z1 <= MASS.maxZ + 1e-9;
     const body = inBody ? sweep(MASS.polygon, Z0, Z1) : null;
     if (inBody && !body) { coarse.row(); continue; }
