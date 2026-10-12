@@ -1,5 +1,5 @@
 {
-  "$comment": "U-151 isolated y8 service spur, construction specification sections 3.2 and 11.1. Only A8 gives infantry access; campaign activation remains U-117.",
+  "$comment": "U-151 exact named X0-X6 y8 service spur with U-162's screened bridge approach between X4 and X5. The J1-J3 connecting detail retains the mandated X1-X4 36 m aprons; 12 m square connecting pads and a 7 m X5 track patch support the full rotating hull without opening a sight gap around the fin. The fin and y14 opaque canopy reveal the tank at the west-of-bridge X5 mouth. Only A8 gives infantry access; campaign activation remains U-117.",
   "carriagewayWidth": 12,
   "apronDiameter": 36,
   "apronNodes": [
@@ -16,6 +16,40 @@
     { "id": "X4", "x": 84, "y": 8, "z": 338 },
     { "id": "X5", "x": 54, "y": 8, "z": 334 },
     { "id": "X6", "x": 16, "y": 8, "z": 332 }
+  ],
+  "approach": [
+    {"id": "X4", "x": 84, "y": 8, "z": 338},
+    {"id": "J1", "x": 70, "y": 8, "z": 336},
+    {"id": "J2", "x": 70, "y": 8, "z": 349},
+    {"id": "J3", "x": 58, "y": 8, "z": 349},
+    {"id": "X5", "x": 54, "y": 8, "z": 334}
+  ],
+  "exit": [
+    {"id": "X5", "x": 54, "y": 8, "z": 334},
+    {"id": "J4", "x": 40, "y": 8, "z": 320},
+    {"id": "X6", "x": 16, "y": 8, "z": 332}
+  ],
+  "firingLink": [
+    {"x": 34.16, "z": 336.7},
+    {"x": 54, "z": 334}
+  ],
+  "firingPad": {"minX": 32.16, "maxX": 36.16, "minZ": 334.7, "maxZ": 338.7},
+  "lowerFiringLink": [
+    {"x": 16, "z": 332},
+    {"x": 54, "z": 334}
+  ],
+  "turnPads": [
+    {"id": "J1", "minX": 64, "maxX": 76, "minZ": 330, "maxZ": 342},
+    {"id": "J2", "minX": 64, "maxX": 76, "minZ": 343, "maxZ": 355},
+    {"id": "J3", "minX": 52, "maxX": 64, "minZ": 343, "maxZ": 355},
+    {"id": "J4", "minX": 34, "maxX": 46, "minZ": 314, "maxZ": 326},
+    {"id": "X5", "minX": 50.5, "maxX": 57.5, "minZ": 330.5, "maxZ": 337.5}
+  ],
+  "forecourtScreens": [
+    {"id": "X-forecourt-screen", "x": 63.2, "y": 8, "z": 337.45, "w": 0.6, "h": 6, "d": 10.9},
+    {"id": "X-forecourt-canopy", "x": 56, "y": 14, "z": 340.5, "w": 8, "h": 2, "d": 29},
+    {"id": "X5-canopy-fin-key", "x": 61.45, "y": 14, "z": 337.5, "w": 2.9, "h": 2, "d": 9},
+    {"id": "X5-canopy-south-tongue", "x": 58.2, "y": 14, "z": 325.5, "w": 3.6, "h": 2, "d": 1}
   ],
   "motorPool": {
     "minX": 86,

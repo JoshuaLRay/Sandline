@@ -41,7 +41,12 @@ describe('U-151 continuous full rotating tank construction certificate', () => {
     expect(path[0]).toEqual({ id: 'X0', x: 96, y: 8, z: 444 });
     expect(path.at(-1)).toEqual({ id: 'A1', x: 32, y: 8, z: 98 });
     const bridge = boxFrom({ id: 'future-bridge', x: 70, y: 14, z: 336, w: 8, h: 2, d: 12 }, 'cover');
-    expect(certifyTankRoute([...world.boxes, bridge], path).lengthM).toBeGreaterThan(500);
+    // The dogleg also passes under R8's exact y12 landing. A 0.6 m slab is
+    // a clearance fixture, not delivered ridge geometry; U-140 must repeat
+    // the sweep against its completed stairs, landing and supports.
+    const r8 = boxFrom({ id: 'future-R8-landing', x: 70, y: 11.4, z: 350, w: 8, h: .6, d: 4 }, 'cover');
+    expect(certifyTankRoute([...world.boxes, bridge, r8], path).lengthM).toBeGreaterThan(500);
+    expect(() => certifyTankRoute([...world.boxes, bridge, { ...r8, minY: 11.19 }], path)).toThrow(/turret/);
     const free = measureTankTravel(world.boxes, path), contact = measureTankTravel(world.boxes, path, 10);
     expect(free.blockedSeconds).toBe(0);
     expect(contact.blockedSeconds).toBeCloseTo(10, 5);
@@ -49,7 +54,7 @@ describe('U-151 continuous full rotating tank construction certificate', () => {
     expect(contact.aimingTicks).toBeGreaterThan(0);
     expect(contact.firedShells).toBeGreaterThan(0);
     for (const result of [free, contact]) {
-      expect(certifyTankRoute([...world.boxes, bridge], result.trace).allHullAndTurretYaws).toBe(true);
+      expect(certifyTankRoute([...world.boxes, bridge, r8], result.trace).allHullAndTurretYaws).toBe(true);
       expect(Math.hypot(result.endpoint.x - 32, result.endpoint.z - 98)).toBeLessThanOrEqual(getEnemy('tank').vehicle!.arriveM);
       expect(result.endpoint.y).toBe(8);
     }

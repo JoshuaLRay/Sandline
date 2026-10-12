@@ -17,6 +17,9 @@ const APPROVED_X = [
   { id: 'X4', x: 84, y: 8, z: 338 }, { id: 'X5', x: 54, y: 8, z: 334 },
   { id: 'X6', x: 16, y: 8, z: 332 },
 ];
+const APPROVED_PATH = [...APPROVED_X.slice(0, 5),
+  { id: 'J1', x: 70, y: 8, z: 336 }, { id: 'J2', x: 70, y: 8, z: 349 },
+  { id: 'J3', x: 58, y: 8, z: 349 }, APPROVED_X[5]!, { id: 'J4', x: 40, y: 8, z: 320 }, APPROVED_X[6]!];
 const world = buildRoadSupportWorld();
 const yieldWorker = () => new Promise<void>((resolve) => setImmediate(resolve));
 let nav: NavMesh, sealed: NavMesh;
@@ -40,7 +43,7 @@ describe('U-151 actual infantry service-spur travel', () => {
   });
 
   for (const outward of [true, false]) it(`walks every X bend ${outward ? 'from A8 to X0' : 'back to A8'}`, async () => {
-    const stops = outward ? [...APPROVED_X].reverse() : APPROVED_X;
+    const stops = outward ? [...APPROVED_PATH].reverse() : APPROVED_PATH;
     let state = createMoveState(stops[0]!.x, 8, stops[0]!.z);
     const follower = new PathFollower(nav, world.boxes);
     for (const goal of stops.slice(1)) {

@@ -9,7 +9,6 @@ export type Polygon = readonly Point[];
 export interface Disc { x: number; z: number; r: number }
 export interface Pieces { polygons: readonly Polygon[]; discs: readonly Disc[] }
 export interface Segment { length: number; from: Point; to: Point }
-type Spine = readonly { id: string; x: number; z: number }[];
 
 function ribbon(a: Point, b: Point, width: number): Polygon {
   const dx = b.x - a.x, dz = b.z - a.z, length = Math.hypot(dx, dz);
@@ -33,7 +32,7 @@ export function convexHull(points: readonly Point[]): Polygon {
 }
 
 /** §2.2 ribbons of one width plus the convex bevel at every corner. */
-export function ribbonPieces(spine: Spine, width: number): Polygon[] {
+export function ribbonPieces(spine: readonly Point[], width: number): Polygon[] {
   const ribbons = spine.slice(1).map((p, i) => ribbon(spine[i]!, p, width));
   const bevels = spine.slice(1, -1).map((_, i) => convexHull([
     ribbons[i]![1]!, ribbons[i]![2]!, ribbons[i + 1]![0]!, ribbons[i + 1]![3]!,

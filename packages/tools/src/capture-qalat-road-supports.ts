@@ -1,4 +1,4 @@
-/** Reproducible WebGL captures of the isolated road build including U-152's D0 store. */
+/** Exact-scene road captures including U-162's first-X5 production capsule probes. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { blockedAt, loadLevel, supportUnder } from '@sandline/shared';
 import { chromium } from 'playwright';
@@ -35,6 +35,18 @@ const views = [
   { name: 'rocket-ac08', position: [13, 9.55, 223], target: [26, 10.8, 232], label: 'A-C08 switchback choice · real swept rocket reaches A5 · standing eye y9.55', probe: false },
   { name: 'rocket-ac11', position: [2, 9.55, 330], target: [54, 10.8, 334], label: 'A-C11 forecourt choice · real swept rocket reaches X5 and A8 · standing eye y9.55', probe: false },
   { name: 'rocket-ac12', position: [34.16, 9.55, 336.7], target: [54, 10.8, 334], label: 'A-C12 forecourt choice · real swept rocket reaches X5 and A8 · standing eye y9.55', probe: false },
+  ...[
+    { name: 'ac11', position: [2, 9.55, 330] },
+    { name: 'ac12', position: [34.16, 9.55, 336.7] },
+    { name: 'v3', position: [66, 27.55, 286] },
+  ].flatMap((eye) => [
+    { name: `${eye.name}-x4-hidden`, position: eye.position, target: [84, 9.55, 338],
+      label: `${eye.name} · X4 production hull/turret probe hidden by built solids`, probe: false,
+      tank: { x: 84, y: 8, z: 338, yaw: 0 }, expectedTankVisible: false },
+    { name: `${eye.name}-x5-visible`, position: eye.position, target: [54, 9.55, 334],
+      label: `${eye.name} · X5 production hull/turret probe visible at the western mouth`, probe: false,
+      tank: { x: 54, y: 8, z: 334, yaw: 0 }, expectedTankVisible: true },
+  ]),
 ];
 const output = new URL('../../../artifacts/qalat-road-supports/', import.meta.url);
 const world = loadLevel(JSON.parse(await readFile(new URL('level.json', output), 'utf8')));
@@ -61,14 +73,17 @@ try {
   const measurements = [];
   for (const v of views) {
     const stats = await page.evaluate((v) => (globalThis as unknown as {
-      __roadSupportReview: (v: { position: number[]; target: number[]; label: string; probe: boolean }) => {
-        calls: number; triangles: number; boxCount: number; levelHash: string;
+      __roadSupportReview: (v: { position: number[]; target: number[]; label: string; probe: boolean;
+        tank?: { x: number; y: number; z: number; yaw: number } }) => {
+        calls: number; triangles: number; boxCount: number; levelHash: string; tankPixels?: number;
       };
     }).__roadSupportReview(v), v);
     if (stats.calls >= 300 || stats.levelHash !== manifest.levelHash) throw new Error(`${v.name}: stale geometry or draw budget overrun`);
+    if ('expectedTankVisible' in v && (v.expectedTankVisible ? (stats.tankPixels ?? 0) < 10 : stats.tankPixels !== 0))
+      throw new Error(`${v.name}: unexpected hull/turret visibility (${stats.tankPixels} changed pixels)`);
     await page.screenshot({ path: new URL(`${v.name}.png`, output).pathname });
     measurements.push({ ...v, ...stats });
-    console.log(`U-152 ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles`);
+    console.log(`U-162 ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles`);
   }
   if (errors.length) throw new Error(errors.join('\n'));
   await writeFile(new URL('captures.json', output), JSON.stringify({

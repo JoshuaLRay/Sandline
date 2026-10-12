@@ -56,7 +56,7 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | `pnpm export:soldier` | write the code-built soldier as `assets/src/soldier.glb`, the pipeline's test asset |
 | `pnpm gen:nav` | re-bake every named world's navmesh; required after editing a world, `MoveConfig` or the hitbox (a test fails until you do) |
 | `pnpm gen:qalat-insertion` | U-138: compile the isolated Juniper Hollow replacement section and its exact collision/render surface, manifest and plan into `artifacts/qalat-insertion/`; production campaign activation remains U-117 |
-| `pnpm gen:qalat-road-supports` | U-149/U-159–U-161/U-151/U-152: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard, loading façades and D0 return store; reserve basement/bridge voids, the 12 m vehicle corridor, ridge views and screened X ingress; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
+| `pnpm gen:qalat-road-supports` | U-149/U-159–U-161/U-151/U-152/U-162: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard, loading façades, D0 return store and first-X5 ingress dogleg/screens; reserve basement/bridge voids, the 12 m vehicle corridor and ridge views; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
 
 ## Isolated Juniper Hollow construction (U-138)
@@ -120,6 +120,37 @@ standing target in the safety radius; drive/fire ticks run, the wider encounter 
 projectile flight do not. Current visibility alone does not stop drive, and authored
 final facing remains U-117 integration. This remains an isolated construction fixture.
 
+U-162 retains all named X origins and replaces the local X4→X5→X6 links with
+the J1/J2/J3/X5/J4 dogleg in §11.1, 12×12 m junction pads, a 7×7 m X5 track
+patch and opaque forecourt fin/canopy/key/tongue. The entire carriageway remains
+12 m clear; two 4 m firing/infantry channels retain A8→X5 and the fixed
+A-C12 pad→X5. Sealing the sole A8 throat must still disconnect every approach.
+The canopy/key clear the future 8 m ridge footprints; a separate exact R8
+y12 landing fixture x66..74/z348..352 uses a 0.6 m slab at underside y11.4,
+with 0.2 m turret clearance. U-140 must repeat the sweep against its completed
+stairs, landing and supports; this fixture supplies no built ridge geometry.
+`qalatForecourtScreening.test.ts` checks production hull/turret/muzzle targets
+at sixteen yaws from both complete A-C11/A-C12 pads on a ≤0.5 m grid and V3,
+at prone/crouch/standing eye and body heights. It removes future outpost interior
+rock from blockers, checks the pads remain supported and clear, hides listed
+X0–X4, exposes X5 at the three firing centres, and records first visible targets
+on every ≤1 m approach station. Every visible approach target must come from a
+producing yaw whose actual capsule contacts the fixed X5 mouth x48..60/z328..340,
+using exact capsule-axis/rectangle distance. The secondary 8.9 m origin bound
+is its required 6 m half-width plus actual capsule plan reach (2.9 m); sampling
+adds no acceptance allowance. The log records the finite first-transition
+interval and does not claim an exact continuous visibility boundary. This regression supplements
+the continuous tank sweep; retained road bounds do not prove spur screening.
+Run `pnpm exec vitest run packages/tools/src/maps/qalatForecourtScreening.test.ts`
+for the focused first-X5 measurements, and retain the ingress screening/sweep/nav
+and return rocket/blast suites below.
+The current local 4/4 first-X5 proof checks 1,933,995 listed-node and 69,868,652
+approach semantic rays (1,141 observers, 339 targets, 16 yaws, 187 stations).
+Earliest A-C11/A-C12 origin is (55.75,8,340.5625), 6.791826 m before X5;
+V3 is (55.5,8,339.625), 5.821566 m before X5. Their production capsule is
+already in the fixed mouth; the finite transition interval is approximately
+0.9703 m. This local result does not replace the inherited suite or CI gates.
+
 U-152's `qalat-return-shelters.json` adds D0's exact 8×8 m clear store, y8 floor,
 y12 ceiling, 0.6 m outward walls and 4 m west door/connector. The holding socket
 is (50,8,58). Its floor carves the shell out of the insertion rock; the normal
@@ -130,9 +161,12 @@ terrain, with exposed controls. Ridge/outpost/basement proofs remain on
 U-140/U-141/U-116/U-119 until those structures exist.
 
 Run `pnpm exec tsx packages/tools/src/capture-qalat-road-supports.ts` after
-generation for twenty-eight 1440×1000 exact-scene views and geometry/draw measurements,
+generation for thirty-four 1440×1000 exact-scene views and geometry/draw measurements,
 including the road fights, motor pool/retaining turns, bridge void, V3→X5 opening,
 CAP-RETURN, store door/holding socket and the six road rocket firing choices.
+The six added A-C11/A-C12/V3 X4-hidden/X5-visible views display production
+hull/turret capsules; pixel-difference assertions require zero tank pixels at
+X4 and a visible body at X5. They retain the preceding twenty-eight views.
 Streaming CI uploads `qalat-road-support-review`. Commit manifest, plan,
 capture metadata and PNGs; large level/surface JSON stays ignored. For orbit
 review run `pnpm exec vite --host 127.0.0.1` from the repository root and open

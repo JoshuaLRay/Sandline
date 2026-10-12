@@ -12,7 +12,7 @@ import { certifySightBlockers, combatSightReport } from './qalatRoadCombatSight.
 import { INSERTION, buildInsertionLevel } from './qalatInsertion.ts';
 import { ROAD_TERRAIN, TERRAIN_SPURS, VIEW_FANS, buildRoadTerrain, roadTerrainManifest } from './qalatRoadTerrain.ts';
 import { tankSweepReport } from './qalatTankSweep.ts';
-import { TANK_INGRESS, tankIngressFloors, buildTankIngressShelter } from './qalatTankIngress.ts';
+import { TANK_INGRESS, tankIngressPath, tankIngressFloors, buildTankIngressShelter } from './qalatTankIngress.ts';
 import { RETURN_SHELTERS, returnShelterFloors, buildReturnShelters } from './qalatReturnShelters.ts';
 import { scan, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
 import {
@@ -41,7 +41,7 @@ export function roadSupportFloors(): readonly Polygon[] {
 
 const bareFloors = roadSupportFloors();
 const floors = [...bareFloors, ...combatOpenFloors(), ...tankIngressFloors(), ...returnShelterFloors()];
-export function tankReturnRoute() { return [...TANK_INGRESS.spine, ...ROAD_SUPPORTS.spine.slice(1, 8).reverse()]; }
+export function tankReturnRoute() { return [...tankIngressPath(), ...ROAD_SUPPORTS.spine.slice(1, 8).reverse()]; }
 export function onRoadSupportFloor(p: Point, margin = 0): boolean {
   return floors.some((poly) => {
     const span = scan(poly, p.z);
@@ -193,7 +193,7 @@ export function roadSupportPlanSvg(): string {
   const p = (n: number) => n.toFixed(3);
   const points = (poly: Polygon) => poly.map((v) => `${p(v.x)},${p(-v.z)}`).join(' ');
   const polygons = floors.map((poly) => `<polygon points="${points(poly)}"/>`).join('\n');
-  const labels = [...ROAD_SUPPORTS.spine, ...TANK_INGRESS.spine].map((s) => `<circle cx="${s.x}" cy="${-s.z}" r="1"/><text x="${s.x + 2}" y="${-s.z - 2}">${s.id} · y8</text>`).join('\n');
+  const labels = [...ROAD_SUPPORTS.spine, ...tankIngressPath()].map((s) => `<circle cx="${s.x}" cy="${-s.z}" r="1"/><text x="${s.x + 2}" y="${-s.z - 2}">${s.id} · y8</text>`).join('\n');
   const sight = roadSightReport(), lane = sight.longestLaneView;
   const fights = ROAD_SUPPORTS.sightLines.fights.map((f) => f.nodes.map((id) => {
     const a = fightArea(ROAD_SUPPORTS.spine, id);
@@ -216,6 +216,8 @@ export function roadSupportPlanSvg(): string {
     `<polygon points="${points(combatFootprint(c))}"/><text x="${c.x + 1}" y="${-c.z - 1}" fill="#3f2517" stroke="none">${c.id}</text>`).join('\n');
   const trees = ROAD_COMBAT.orchard.trees.map((c) => `<circle cx="${c.x}" cy="${-c.z}" r=".35"/>`).join('\n');
   const regroup = ROAD_COMBAT.regroupPads.map((c) => `<rect x="${c.x - c.w / 2}" y="${-c.z - c.d / 2}" width="${c.w}" height="${c.d}"/>`).join('\n');
+  const ingressScreens = TANK_INGRESS.forecourtScreens.map((c) =>
+    `<rect x="${c.x - c.w / 2}" y="${-c.z - c.d / 2}" width="${c.w}" height="${c.d}"/>`).join('\n');
   const frontage = [ROAD_COMBAT.frontageMG, ...ROAD_COMBAT.frontageRiflemen].map((c) => `<circle cx="${c.x}" cy="${-c.z}" r=".6"/><text x="${c.x + 1}" y="${-c.z}">${c.id}</text>`).join('\n');
   const office = combatOpenFloors().map((c) => `<polygon points="${points(c)}"/>`).join('\n');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1900" viewBox="-74 -516 216 470">
@@ -227,6 +229,7 @@ export function roadSupportPlanSvg(): string {
 <g fill="#d8ccb6" stroke="#766a54" stroke-width=".1">${polygons}</g>
 <g fill="none" stroke="#2b7c61" stroke-width=".25">${regroup}</g>
 <g fill="#a8804c" stroke="#3f2517" stroke-width=".15" font-family="sans-serif" font-size="1.8">${cover}${trees}</g>
+<g fill="#5e6152" fill-opacity=".65" stroke="#3c3f33" stroke-width=".2">${ingressScreens}</g>
 <g fill="#a8804c" fill-opacity=".7" stroke="#3f2517" stroke-width=".15">${office}</g>
 <rect x="45.4" y="-62.6" width="9.2" height="9.2" fill="#a8804c" stroke="#3f2517" stroke-width=".2"/>
 <rect x="44" y="-60" width="6" height="4" fill="#d8ccb6"/>
@@ -240,7 +243,7 @@ export function roadSupportPlanSvg(): string {
 <g fill="none" stroke="#8a2f1d" stroke-width=".35" stroke-dasharray="2 1" font-family="sans-serif" font-size="3">${fights}</g>
 <line x1="${lane.from.x}" y1="${-lane.from.z}" x2="${lane.to.x}" y2="${-lane.to.z}" stroke="#c0392b" stroke-width=".6"/>
 <g fill="#162e35" font-family="sans-serif" font-size="2.5">${labels}
-<text x="-69" y="-507" font-size="3.5">U-152 · D0 return store, screened tank ingress and road fights · north ↑</text>
+<text x="-69" y="-507" font-size="3.5">U-162 · first-X5 mouth, D0 return store and road fights · north ↑</text>
 <text x="-69" y="-501">20 m ribbon / 12 m carriageway / 36 m aprons; grey: rock from y5.5, ≥${t.edgeMinHeightM} m above the road</text>
 <text x="-69" y="-496">West T-W crest y${t.sideTops.left}; east T-C/T-E foot y${t.sideTops.right}; dotted: inside-corner spur zones (off-road part)</text>
 <text x="-69" y="-491">Purple: ridge bay fans and target rays; rock stays ${t.viewFans.rayClearanceM} m under them</text>
