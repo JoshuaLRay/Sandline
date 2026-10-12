@@ -58,6 +58,15 @@ const views = {
   turn: { position: [114, 9.55, 432], target: [96, 9.55, 444], label: 'X1 · screened return into motor pool' },
   bridge: { position: [70, 9.55, 336], target: [84, 9.55, 338], label: 'y8 service road below exact reserved bridge void' },
   v3: { position: [66, 27.55, 286], target: [54, 11.2, 334], label: 'V3 eye probe · X5 silhouette opening; shelf unbuilt' },
+  returnCourt: { position: [44, 9.55, 58], target: [32, 9.55, 98], label: 'CAP-RETURN · court edge toward tank stop; store entrance beside retreat' },
+  storeDoor: { position: [40, 9.55, 58], target: [50, 9.55, 58], label: 'D0 court toward store · 4 m connector and west door · y8 floor / y12 ceiling' },
+  storeHolding: { position: [50, 9.55, 58], target: [44, 9.55, 58], label: 'D0 holding socket toward west exit · north/east stone walls screen X-stop · ordinary blast attenuation' },
+  rocket01: { position: [42, 9.55, 103.4], target: [32, 10.8, 98], label: 'A-C01 · verified swept rocket toward X-stop' },
+  rocket02: { position: [-6, 9.55, 121], target: [32, 10.8, 98], label: 'A-C02 · verified rocket through toll-office doorway toward X-stop' },
+  rocket07: { position: [-3, 9.55, 214], target: [26, 10.8, 232], label: 'A-C07 · verified swept rocket toward A5' },
+  rocket08: { position: [13, 9.55, 223], target: [26, 10.8, 232], label: 'A-C08 · verified swept rocket toward A5' },
+  rocket11: { position: [2, 9.55, 330], target: [54, 10.8, 334], label: 'A-C11 · verified swept rockets toward X5 and A8' },
+  rocket12: { position: [34.16, 9.55, 336.7], target: [54, 10.8, 334], label: 'A-C12 · verified swept rockets toward X5 and A8' },
 } satisfies Record<string, View>;
 
 function view(v: View) {

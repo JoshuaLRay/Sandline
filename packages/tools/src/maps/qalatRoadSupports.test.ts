@@ -139,9 +139,11 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
       if (box.minY !== 5.5 || box.maxY !== 8) continue;
       supports++;
       for (const x of [box.minX, box.maxX]) for (const z of [box.minZ, box.maxZ]) {
-        // The only new open floor is the enclosing toll-office footprint.
+        // Independently specified building footprints and the 4 m store connector.
         const tollFloor = x >= -8.65 && x <= .65 && z >= 113.35 && z <= 122.65;
-        expect(approvedRoadFootprint({ x, z }, .05) || onTankIngressFloor({ x, z }, .05) || tollFloor, `support expansion at ${JSON.stringify({ x, z })}`).toBe(true);
+        const storeFloor = x >= 45.35 && x <= 54.65 && z >= 53.35 && z <= 62.65;
+        const storeConnector = x >= 43.95 && x <= 46.05 && z >= 55.95 && z <= 60.05;
+        expect(approvedRoadFootprint({ x, z }, .05) || onTankIngressFloor({ x, z }, .05) || tollFloor || storeFloor || storeConnector, `support expansion at ${JSON.stringify({ x, z })}`).toBe(true);
       }
       if (supports % 256 === 0) await yieldWorker();
     }
@@ -235,11 +237,60 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     // from below y8 and are screened by its real solid underside/volume.
     const southern = (boxes: readonly WorldBox[]) => boxes.filter((b) => b.minZ < 60)
       .map((b) => ({ ...b, maxZ: Math.min(60, b.maxZ) }));
-    // North-cap carving can change generated numeric IDs. The inherited proof
-    // depends on identical solid volumes and materials, rather than their IDs.
-    const volumes = (boxes: readonly WorldBox[]) => southern(boxes).map((b) =>
-      JSON.stringify([b.kind, b.minX, b.maxX, b.minY, b.maxY, b.minZ, b.maxZ])).sort();
-    expect(volumes(world.boxes)).toEqual(volumes(accepted.boxes));
+    // Store carving changes the box decomposition and adds overlapping support
+    // slabs. Compare solid unions at every y/z boundary, by material, rather
+    // than requiring each compiler to split the identical volume into the same
+    // boxes. The sole exception is the independent §11.2 shell/connector
+    // envelope, including the existing 0.05 m construction tolerance.
+    const clean = (n: number) => Math.round(n * 1e8) / 1e8;
+    const normalize = (boxes: readonly WorldBox[]) => southern(boxes).map((b) => ({ ...b,
+      minX: clean(b.minX), maxX: clean(b.maxX), minY: clean(b.minY), maxY: clean(b.maxY),
+      minZ: clean(b.minZ), maxZ: clean(b.maxZ),
+    }));
+    const built = normalize(world.boxes), original = normalize(accepted.boxes);
+    const all = [...built, ...original];
+    const ys = [...new Set(all.flatMap((b) => [b.minY, b.maxY]))].sort((a, b) => a - b);
+    const kinds = [...new Set(all.map((b) => b.kind))];
+    const spans = (boxes: Iterable<WorldBox>, carve: boolean): [number, number][] => {
+      const pieces: [number, number][] = [];
+      for (const b of boxes) {
+        if (!carve || b.maxX <= 43.95 || b.minX >= 54.65) pieces.push([b.minX, b.maxX]);
+        else {
+          if (b.minX < 43.95) pieces.push([b.minX, 43.95]);
+          if (b.maxX > 54.65) pieces.push([54.65, b.maxX]);
+        }
+      }
+      const merged: [number, number][] = [];
+      for (const p of pieces.sort((a, b) => a[0] - b[0] || a[1] - b[1])) {
+        const last = merged.at(-1);
+        if (last && p[0] <= last[1]) last[1] = Math.max(last[1], p[1]);
+        else merged.push([...p]);
+      }
+      return merged;
+    };
+    let bands = 0;
+    for (const kind of kinds) for (let y = 1; y < ys.length; y++) {
+      const y0 = ys[y - 1]!, y1 = ys[y]!;
+      const layers = [built, original].map((boxes) => boxes.filter((b) => b.kind === kind && b.minY <= y0 && b.maxY >= y1));
+      const events = layers.flatMap((boxes, side) => boxes.flatMap((b) => [
+        { z: b.minZ, side, b, add: true }, { z: b.maxZ, side, b, add: false },
+      ])).sort((a, b) => a.z - b.z);
+      const zs = [...new Set([53.35, 62.65, ...events.map((e) => e.z)])].sort((a, b) => a - b);
+      const active = [new Set<WorldBox>(), new Set<WorldBox>()];
+      let nextEvent = 0;
+      for (let row = 1; row < zs.length; row++) {
+        const z0 = zs[row - 1]!, z1 = zs[row]!;
+        while (nextEvent < events.length && events[nextEvent]!.z <= z0) {
+          const e = events[nextEvent++]!;
+          if (e.add) active[e.side]!.add(e.b); else active[e.side]!.delete(e.b);
+        }
+        const carve = z0 >= 53.35 && z1 <= 62.65;
+        expect(spans(active[0]!, carve), `${kind} changed outside store at y${y0}..${y1}/z${z0}..${z1}`)
+          .toEqual(spans(active[1]!, carve));
+        bands++;
+      }
+    }
+    expect(bands).toBeGreaterThan(10_000);
     const blocked = rayOccluded(southern(world.boxes));
     let rays = 0;
     for (const group of insertionObservers()) {
@@ -321,20 +372,37 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     await yieldWorker();
   }, 60_000);
 
-  it('keeps generated construction, plan and nineteen actual-scene captures current', () => {
+  it('keeps generated construction, plan and actual-scene captures current', () => {
     const manifest = roadSupportManifest();
     expect(JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/construction.json', import.meta.url), 'utf8'))).toEqual(manifest);
     expect(readFileSync(new URL('../../../../artifacts/qalat-road-supports/plan.svg', import.meta.url), 'utf8')).toBe(roadSupportPlanSvg());
     const captures = JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/captures.json', import.meta.url), 'utf8'));
     expect(captures).toMatchObject(manifest);
     expect(captures.viewport).toEqual([1440, 1000]);
-    expect(captures.views).toHaveLength(19);
-    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(19);
+    expect(captures.views).toHaveLength(28);
+    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(28);
     const standingViews = captures.views.slice(0, 7) as { name: string; position: number[] }[];
     expect(standingViews.map((view) => view.name)).toEqual(['cap-d', 'cap-a', 'a3-west-leg', 'a5', 'cap-x-forecourt-road', 'a2-toward-a3', 'a6-toward-a7']);
     const combatViews = captures.views.slice(11, 14) as { name: string; position: number[] }[];
     expect(combatViews.map((view) => view.name)).toEqual(['toll-office', 'frontage-mg', 'depot-frontage']);
     const ingressViews = captures.views.slice(14, 18) as { name: string; position: number[] }[];
+    const returnViews = captures.views.slice(19, 22) as { name: string; position: number[] }[];
+    expect(returnViews.map((view) => view.name)).toEqual(['cap-return', 'weigh-station-door', 'weigh-station-holding']);
+    expect(returnViews.map((view) => view.position)).toEqual([[44, 9.55, 58], [40, 9.55, 58], [50, 9.55, 58]]);
+    for (const view of returnViews) {
+      const feet = { x: view.position[0]!, y: view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, z: view.position[2]! };
+      expect(feet.y).toBeCloseTo(8);
+      clearSupport(feet, DEFAULT_MOVE_CONFIG.radius);
+      expect(feet.x >= 40 && feet.x <= 54 && feet.z >= 54 && feet.z <= 62).toBe(true);
+    }
+    const firingViews = captures.views.slice(22) as { name: string; position: number[] }[];
+    expect(firingViews.map((view) => view.name)).toEqual(['rocket-ac01', 'rocket-ac02', 'rocket-ac07', 'rocket-ac08', 'rocket-ac11', 'rocket-ac12']);
+    for (const view of firingViews) {
+      const feet = { x: view.position[0]!, y: view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, z: view.position[2]! };
+      expect(feet.y).toBeCloseTo(8);
+      clearSupport(feet, DEFAULT_MOVE_CONFIG.radius);
+      expect(approvedRoadFootprint(feet) || (feet.x >= -8 && feet.x <= 0 && feet.z >= 114 && feet.z <= 122)).toBe(true);
+    }
     for (const view of [...standingViews, ...combatViews, ...ingressViews]) {
       const feet = { x: view.position[0]!, y: view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, z: view.position[2]! };
       expect(feet.y, `${view.name} standing eye`).toBeCloseTo(8);

@@ -40,6 +40,7 @@ function colourOf(id: string): number[] {
   if (id.startsWith('road-cap-')) return [.36, .42, .5];
   if (id.startsWith('road-combat-orchard-')) return [.24, .15, .08];
   if (id.startsWith('road-combat-toll-office-') || id.startsWith('road-combat-depot-facade-')) return [.52, .39, .25];
+  if (id.startsWith('D0-weigh-station-store-')) return [.52, .46, .36];
   if (id.startsWith('road-combat-A-C02-')) return [.27, .3, .22];
   if (id.startsWith('road-combat-A-C06-')) return [.5, .43, .28];
   if (id.startsWith('road-combat-A-C')) return [.43, .39, .3];

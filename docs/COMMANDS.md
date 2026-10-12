@@ -56,7 +56,7 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | `pnpm export:soldier` | write the code-built soldier as `assets/src/soldier.glb`, the pipeline's test asset |
 | `pnpm gen:nav` | re-bake every named world's navmesh; required after editing a world, `MoveConfig` or the hitbox (a test fails until you do) |
 | `pnpm gen:qalat-insertion` | U-138: compile the isolated Juniper Hollow replacement section and its exact collision/render surface, manifest and plan into `artifacts/qalat-insertion/`; production campaign activation remains U-117 |
-| `pnpm gen:qalat-road-supports` | U-149/U-159–U-161/U-151: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard and loading façades; reserve basement/bridge voids, the 12 m vehicle corridor, ridge views and screened X ingress; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
+| `pnpm gen:qalat-road-supports` | U-149/U-159–U-161/U-151/U-152: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard, loading façades and D0 return store; reserve basement/bridge voids, the 12 m vehicle corridor, ridge views and screened X ingress; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
 
 ## Isolated Juniper Hollow construction (U-138)
@@ -120,9 +120,19 @@ standing target in the safety radius; drive/fire ticks run, the wider encounter 
 projectile flight do not. Current visibility alone does not stop drive, and authored
 final facing remains U-117 integration. This remains an isolated construction fixture.
 
+U-152's `qalat-return-shelters.json` adds D0's exact 8×8 m clear store, y8 floor,
+y12 ceiling, 0.6 m outward walls and 4 m west door/connector. The holding socket
+is (50,8,58). Its floor carves the shell out of the insertion rock; the normal
+tiled standing nav still preserves the D0→S3 and depot connections. The return
+combat regression launches real rockets from six supported road firing choices
+and applies ordinary blast damage to actors behind road/store cover and insertion
+terrain, with exposed controls. Ridge/outpost/basement proofs remain on
+U-140/U-141/U-116/U-119 until those structures exist.
+
 Run `pnpm exec tsx packages/tools/src/capture-qalat-road-supports.ts` after
-generation for nineteen 1440×1000 exact-scene views and geometry/draw measurements,
-including the road fights, motor pool/retaining turns, bridge void and V3→X5 opening.
+generation for twenty-eight 1440×1000 exact-scene views and geometry/draw measurements,
+including the road fights, motor pool/retaining turns, bridge void, V3→X5 opening,
+CAP-RETURN, store door/holding socket and the six road rocket firing choices.
 Streaming CI uploads `qalat-road-support-review`. Commit manifest, plan,
 capture metadata and PNGs; large level/surface JSON stays ignored. For orbit
 review run `pnpm exec vite --host 127.0.0.1` from the repository root and open
@@ -157,6 +167,9 @@ target footprints expanded by the projected controller square and sampled at
 Every sampled ray longer than 90 m must meet a solid. This finite regression
 supplements the continuous ground-height proof.
 The existing U-138 suite retains its dense S0/court screening proof.
+`pnpm exec vitest run packages/tools/src/maps/qalatReturnShelters.test.ts packages/tools/src/maps/qalatReturnSheltersNav.test.ts packages/tools/src/maps/qalatReturnCombat.test.ts`
+checks the exact store shell, clear floor/door, screened holding samples, roof
+isolation, bidirectional store/S3/depot travel and the real rocket/actor blast proofs.
 Owner road map/play acceptance remains pending in U-139; the final swept tank
 construction gate remains U-151.
 

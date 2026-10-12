@@ -10,4 +10,4 @@ const surface = insertionSurface(level.boxes);
 await writeFile(new URL('surface.json', output), JSON.stringify({ levelHash: manifest.levelHash, ...surface }) + '\n');
 await writeFile(new URL('construction.json', output), JSON.stringify(manifest, null, 2) + '\n');
 await writeFile(new URL('plan.svg', output), roadSupportPlanSvg());
-console.log(`U-151: road fights and screened tank ingress generated (${manifest.boxCount} boxes, ${surface.indices.length / 3} exposed triangles)`);
+console.log(`U-152: road fights, screened tank ingress and D0 return store generated (${manifest.boxCount} boxes, ${surface.indices.length / 3} exposed triangles)`);

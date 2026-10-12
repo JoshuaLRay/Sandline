@@ -1,4 +1,4 @@
-/** Reproducible actual WebGL captures of U-149's isolated road support build, bent by U-159 and closed by U-160's rock, furnished by U-161. */
+/** Reproducible WebGL captures of the isolated road build including U-152's D0 store. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { blockedAt, loadLevel, supportUnder } from '@sandline/shared';
 import { chromium } from 'playwright';
@@ -26,6 +26,15 @@ const views = [
   { name: 'x1-retaining-turn', position: [114, 9.55, 432], target: [96, 9.55, 444], label: 'X1 · screened return through the retaining dogleg · standing eye y9.55', probe: false },
   { name: 'x-bridge-reservation', position: [70, 9.55, 336], target: [84, 9.55, 338], label: 'Service road y8 · exact x66..74/z330..342 bridge void, underside y14 reserved; deck unbuilt', probe: false },
   { name: 'v3-x5-silhouette', position: [66, 27.55, 286], target: [54, 11.2, 334], label: 'V3 eye probe on unbuilt shelf · X5 turret-height silhouette opening; X0 remains hidden', probe: false },
+  { name: 'cap-return', position: [44, 9.55, 58], target: [32, 9.55, 98], label: 'CAP-RETURN · court edge and tank stop · store entrance beside the retreat · standing eye y9.55', probe: false },
+  { name: 'weigh-station-door', position: [40, 9.55, 58], target: [50, 9.55, 58], label: 'D0 court toward store · 4 m connector and west door · y8 floor / y12 ceiling · standing eye y9.55', probe: false },
+  { name: 'weigh-station-holding', position: [50, 9.55, 58], target: [44, 9.55, 58], label: 'D0 holding socket toward west exit · north/east stone walls screen X-stop · ordinary blast attenuation · standing eye y9.55', probe: false },
+  { name: 'rocket-ac01', position: [42, 9.55, 103.4], target: [32, 10.8, 98], label: 'A-C01 southern firing choice · real swept rocket reaches X-stop · standing eye y9.55', probe: false },
+  { name: 'rocket-ac02', position: [-6, 9.55, 121], target: [32, 10.8, 98], label: 'A-C02 southern choice beside truck in toll office · rocket clears doorway and fin to X-stop · standing eye y9.55', probe: false },
+  { name: 'rocket-ac07', position: [-3, 9.55, 214], target: [26, 10.8, 232], label: 'A-C07 switchback choice · real swept rocket reaches A5 · standing eye y9.55', probe: false },
+  { name: 'rocket-ac08', position: [13, 9.55, 223], target: [26, 10.8, 232], label: 'A-C08 switchback choice · real swept rocket reaches A5 · standing eye y9.55', probe: false },
+  { name: 'rocket-ac11', position: [2, 9.55, 330], target: [54, 10.8, 334], label: 'A-C11 forecourt choice · real swept rocket reaches X5 and A8 · standing eye y9.55', probe: false },
+  { name: 'rocket-ac12', position: [34.16, 9.55, 336.7], target: [54, 10.8, 334], label: 'A-C12 forecourt choice · real swept rocket reaches X5 and A8 · standing eye y9.55', probe: false },
 ];
 const output = new URL('../../../artifacts/qalat-road-supports/', import.meta.url);
 const world = loadLevel(JSON.parse(await readFile(new URL('level.json', output), 'utf8')));
@@ -59,7 +68,7 @@ try {
     if (stats.calls >= 300 || stats.levelHash !== manifest.levelHash) throw new Error(`${v.name}: stale geometry or draw budget overrun`);
     await page.screenshot({ path: new URL(`${v.name}.png`, output).pathname });
     measurements.push({ ...v, ...stats });
-    console.log(`U-151 ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles`);
+    console.log(`U-152 ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles`);
   }
   if (errors.length) throw new Error(errors.join('\n'));
   await writeFile(new URL('captures.json', output), JSON.stringify({
