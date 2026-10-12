@@ -148,8 +148,10 @@ function strata(name: string) {
     boxes,
     add(id: string, lo: number, hi: number, z0: number, z1: number, bottom: number, top: number) {
       const key = `${id},${lo},${hi},${bottom},${top}`, old = previous.get(key);
-      if (old) { old.d = z1 - (old.z - old.d / 2); old.z = z1 - old.d / 2; next.set(key, old); return; }
-      const box = { id: `${id}-${name}-${boxes.length}`, x: (lo + hi) / 2, y: bottom, z: (z0 + z1) / 2, w: hi - lo, h: top - bottom, d: z1 - z0 };
+      if (old) { old.d = z1 + TOUCH_M - (old.z - old.d / 2); old.z = z1 + TOUCH_M - old.d / 2; next.set(key, old); return; }
+      // Weld row endpoints through centre/size rounding. This sub-micron
+      // overlap also closes real controller and ingress boundary queries.
+      const box = { id: `${id}-${name}-${boxes.length}`, x: (lo + hi) / 2, y: bottom, z: (z0 + z1) / 2, w: hi - lo, h: top - bottom, d: z1 - z0 + 2 * TOUCH_M };
       boxes.push(box); next.set(key, box);
     },
     row() { previous = next; next = new Map(); },

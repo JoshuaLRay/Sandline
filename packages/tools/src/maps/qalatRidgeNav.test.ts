@@ -37,6 +37,7 @@ function onShelf(p: Point, margin = 0): boolean {
 }
 
 const world = buildRoadSupportWorld();
+const shelfFloors = world.boxes.filter((b) => /^ridge-(floor|slab|bridge-deck)/.test(b.id) || b.id === 'insertion-foundation');
 const near = (p: Point, r: number) => world.boxes.filter((b) => b.maxX > p.x - r && b.minX < p.x + r && b.maxZ > p.z - r && b.minZ < p.z + r);
 const yieldWorker = () => new Promise<void>((resolve) => setImmediate(resolve));
 let nav: NavMesh, sealed: NavMesh;
@@ -92,7 +93,9 @@ describe('U-164 completed ridge travel on the actual tiled standing nav bake', (
     // The occupied bridge and the road below stay separate; only D0 joins them.
     for (const node of NODES.slice(7)) for (const road of [X0, ...ROAD_UNDER_BRIDGE]) {
       const viaCourt = nav.path(node, road)!;
-      expect(completePathLength(viaCourt, node, road), `${node.id} → road shortcuts the ridge`).toBeGreaterThan(600);
+      const length = completePathLength(viaCourt, node, road);
+      expect(length, `${node.id} → ${JSON.stringify(road)} incomplete at ${JSON.stringify(viaCourt?.points.at(-1))}`).not.toBeNull();
+      expect(length, `${node.id} → road shortcuts the ridge`).toBeGreaterThan(600);
       expect(viaCourt.points.some((p) => Math.hypot(p.x - D0.x, p.z - D0.z) < 14), `${node.id} → road bypasses D0`).toBe(true);
     }
     for (const node of NODES.slice(1)) for (const from of [start, A1, A8, X0, ...ROAD_UNDER_BRIDGE])
@@ -131,8 +134,10 @@ describe('U-164 completed ridge travel on the actual tiled standing nav bake', (
         for (let settle = 0; settle < 30; settle++) state = stepCharacter(state, { moveX: 0, moveY: 0, yaw, sprint: false, jump: false, crouch: false, prone: false }, TICK_SECONDS, DEFAULT_MOVE_CONFIG, boxes);
         expect(state.vault).toBeNull();
         expect(onShelf(state, .05) || onInsertionFloor(state, .05), `${stance} left the ridge from ${JSON.stringify(inside)} to ${JSON.stringify(state)}`).toBe(true);
-        // Sliding along a wall may change treads, never storeys.
-        expect(Math.abs(state.y - y), `${stance} changed level from ${JSON.stringify(inside)} to ${JSON.stringify(state)}`).toBeLessThan(2);
+        // Sliding along the .30 m-tread approaches can climb several metres;
+        // require the highest ridge floor, never the road beneath it.
+        expect(supportUnder(state.x, state.z, DEFAULT_MOVE_CONFIG.radius, 31, shelfFloors, 0),
+          `${stance} changed storeys from ${JSON.stringify(inside)} to ${JSON.stringify(state)}`).toBeCloseTo(state.y, 6);
         expect(supportUnder(state.x, state.z, DEFAULT_MOVE_CONFIG.radius, state.y + .01, boxes, 0)).toBeCloseTo(state.y, 6);
         attempts++;
       }
@@ -155,6 +160,12 @@ describe('U-164 completed ridge travel on the actual tiled standing nav bake', (
       const before = attempts;
       tryEscape({ x: 70 + side * 3.4, z }, { x: side, z: 0 });
       expect(attempts - before, `untested bridge edge at z${z}, side${side}`).toBe(4);
+    }
+    const descent = segments.at(-1)!;
+    for (const t of [8, 10, 12, 14, 16, 18, 20]) for (const side of [-1, 1]) {
+      const out = { x: -descent.u.z * side, z: descent.u.x * side }, before = attempts;
+      tryEscape({ x: 70 + descent.u.x * t + out.x * 3.4, z: 350 + descent.u.z * t + out.z * 3.4 }, out);
+      expect(attempts - before, `untested R8→R9 edge at t${t}, side${side}`).toBe(4);
     }
     for (const x of [53, 56, 59]) {
       const before = attempts;

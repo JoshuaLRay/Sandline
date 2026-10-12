@@ -42,7 +42,7 @@ export function roadSupportFloors(): readonly Polygon[] {
 
 const bareFloors = roadSupportFloors();
 const floors = [...bareFloors, ...combatOpenFloors(), ...tankIngressFloors(), ...returnShelterFloors()];
-// U-163: the raised ridge shelf is carved out of the insertion and road rock
+// U-164: the raised ridge shelf is carved out of the insertion and road rock
 // but carries its own supports and barrier ring; it is never a y8 road floor.
 const ridge = ridgeFloors(), ridgeRing = ridgeCarve();
 export function tankReturnRoute() { return [...tankIngressPath(), ...ROAD_SUPPORTS.spine.slice(1, 8).reverse()]; }
@@ -170,8 +170,8 @@ export function roadTankSweepReport(level = buildRoadSupportLevel()) {
 export function roadSupportManifest() {
   const level = buildRoadSupportLevel();
   const levelHash = createHash('sha256').update(JSON.stringify(level)).digest('hex');
-  return { task: 'U-163', parent: 'U-140', foundation: 'U-149', bend: 'U-159', rock: 'U-160', road: 'U-139',
-    kind: 'isolated surface whitebox: road fights, screened tank ingress, D0 return store and R0–R7 ridge shelf',
+  return { task: 'U-164', parent: 'U-140', foundation: 'U-149', bend: 'U-159', rock: 'U-160', road: 'U-139',
+    kind: 'isolated surface whitebox: road fights, screened tank ingress, D0 return store and R0–R9 ridge with service bridge',
     activeCampaign: 'unchanged; activation belongs to U-117',
     sourceHash: createHash('sha256').update(JSON.stringify({ insertion: INSERTION, road: ROAD_SUPPORTS, terrain: ROAD_TERRAIN, combat: ROAD_COMBAT, ingress: TANK_INGRESS, shelters: RETURN_SHELTERS, ridge: RIDGE })).digest('hex'),
     levelHash, boxCount: level.boxes.length,
@@ -180,7 +180,7 @@ export function roadSupportManifest() {
     ribbonWidth: ROAD_SUPPORTS.ribbonWidth, carriagewayWidth: ROAD_SUPPORTS.carriagewayWidth,
     shoulderWidth: ROAD_SUPPORTS.shoulderWidth, apronDiameter: ROAD_SUPPORTS.apronDiameter,
     spine: ROAD_SUPPORTS.spine, apronNodes: ROAD_SUPPORTS.apronNodes,
-    reservedBridge: ROAD_SUPPORTS.reservedBridge, reservedVault: ROAD_SUPPORTS.reservedVault,
+    builtBridge: { ...ROAD_SUPPORTS.reservedBridge, constructed: true }, reservedVault: ROAD_SUPPORTS.reservedVault,
     sightLines: roadSightReport(),
     terrain: roadTerrainManifest(level.boxes),
     combat: ROAD_COMBAT,
@@ -190,7 +190,7 @@ export function roadSupportManifest() {
     tankSweep: roadTankSweepReport(level),
     combatSightLines: roadCombatReport(),
     ownerQualityVerdict: 'road look/play batched in U-139; ridge look/play batched in U-140',
-    unfinished: ['R7b bridge and R8/R9 descent: U-164', 'ridge huts, cover and R5 hold: U-165',
+    unfinished: ['ridge huts, cover and R5 hold: U-165',
       'support bays/C12 stairs: U-141', 'outpost: U-116', 'basement: U-115'],
   };
 }
@@ -226,7 +226,7 @@ export function roadSupportPlanSvg(): string {
     `<rect x="${c.x - c.w / 2}" y="${-c.z - c.d / 2}" width="${c.w}" height="${c.d}"/>`).join('\n');
   const frontage = [ROAD_COMBAT.frontageMG, ...ROAD_COMBAT.frontageRiflemen].map((c) => `<circle cx="${c.x}" cy="${-c.z}" r=".6"/><text x="${c.x + 1}" y="${-c.z}">${c.id}</text>`).join('\n');
   const office = combatOpenFloors().map((c) => `<polygon points="${points(c)}"/>`).join('\n');
-  // U-163: the ridge shelf, its node floors and the temporary caps for U-141/U-164.
+  // U-164: the ridge through R9, its service bridge and remaining temporary caps.
   const shelf = ridge.map((c) => `<polygon points="${points(c)}"/>`).join('\n');
   const ridgeNodes = RIDGE.spine.map((n) => `<circle cx="${n.x}" cy="${-n.z}" r="1"/><text x="${n.x + 2}" y="${-n.z + 1}">${n.id} · y${n.y}</text>`).join('\n');
   const ridgeCaps = RIDGE.temporaryCaps.map((c) => `<rect x="${c.minX}" y="${-c.maxZ}" width="${c.maxX - c.minX}" height="${c.maxZ - c.minZ}"/>`).join('\n');
@@ -251,19 +251,19 @@ export function roadSupportPlanSvg(): string {
 <text x="-8" y="-118" fill="#3f2517" font-family="sans-serif" font-size="1.8">toll office</text>
 <g fill="#993434" font-family="sans-serif" font-size="2">${frontage}</g>
 <rect x="16" y="-288" width="28" height="36" fill="none" stroke="#5b6d86" stroke-dasharray="1 1"/>
-<rect x="66" y="-342" width="8" height="12" fill="none" stroke="#5b6d86" stroke-dasharray="1 1"/>
+<rect x="66" y="-342" width="8" height="12" fill="#e6dcc4" stroke="#8a6a3a" stroke-width=".3"/>
 <g fill="none" stroke="#5d3a7a" stroke-width=".25" stroke-dasharray="1.5 .8" font-family="sans-serif" font-size="2.5">${fans}</g>
 <g fill="none" stroke="#8a2f1d" stroke-width=".35" stroke-dasharray="2 1" font-family="sans-serif" font-size="3">${fights}</g>
 <line x1="${lane.from.x}" y1="${-lane.from.z}" x2="${lane.to.x}" y2="${-lane.to.z}" stroke="#c0392b" stroke-width=".6"/>
 <g fill="#162e35" font-family="sans-serif" font-size="2.5">${labels}
-<text x="-69" y="-507" font-size="3.5">U-163 · R0–R7 ridge shelf, first-X5 mouth, D0 return store and road fights · north ↑</text>
+<text x="-69" y="-507" font-size="3.5">U-164 · R0–R9 ridge, R7b service bridge, first-X5 mouth and road fights · north ↑</text>
 <text x="-69" y="-501">20 m ribbon / 12 m carriageway / 36 m aprons; grey: rock from y5.5, ≥${t.edgeMinHeightM} m above the road</text>
 <text x="-69" y="-496">West T-W crest y${t.sideTops.left}; east T-C/T-E foot y${t.sideTops.right}; dotted: inside-corner spur zones (off-road part)</text>
 <text x="-69" y="-491">Purple: ridge bay fans and target rays; rock stays ${t.viewFans.rayClearanceM} m under them</text>
-<text x="-69" y="-486">Blue-grey: temporary caps (C12-L mouth and V1–V3 bay fronts for U-141, R7 bridge mouth for U-164, south gate for U-116)</text>
+<text x="-69" y="-486">Blue-grey: temporary caps (C12-L mouth and V1–V3 bay fronts for U-141; road and ridge gate approaches for U-116)</text>
 <text x="-69" y="-481">Dashed red: the three fights. Solid red: longest tank-lane view ${lane.length.toFixed(1)} m (limit ${sight.maxLaneViewM} m)</text>
-<text x="-69" y="-476">Dashed blue: future B6 vault and ridge bridge; reserved.</text>
+<text x="-69" y="-476">Dashed blue: future B6 vault. R7b bridge built: flat y16 deck, underside y14; R8 landing y12 clears tank at y11.4.</text>
 <text x="-69" y="-471" fill="#5a3d1c">Pale: 8 m ridge shelf, 0.20 m risers in 10-riser flights on 0.40 m treads, ≥2 m rest landings, rock ≥2.2 m above every edge</text>
-<text x="-69" y="-50">Isolated whitebox; X0–X6 and R0–R7 built, bridge reserved for U-164. Road look/play: U-139; ridge look/play: U-140.</text></g>
+<text x="-69" y="-50">Isolated whitebox; X0–X6 and R0–R9 built; 0.30 m bridge treads, capped east gate. Road look/play: U-139; ridge look/play: U-140.</text></g>
 </svg>\n`;
 }

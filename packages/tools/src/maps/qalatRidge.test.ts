@@ -14,7 +14,7 @@ const NODES = ([['R0', 62, 8, 68], ['R1', 78, 14, 96], ['R2', 64, 20, 128], ['R3
 const RISERS = [30, 30, 30, 20, 0, 20, 30];
 const LANDINGS = Object.entries({
   R1: [72, 84, 90, 102, 14], R2: [58, 70, 122, 134, 20], R3: [74, 86, 158, 182, 26], R4: [88, 100, 204, 216, 30],
-  R5: [80, 92, 242, 254, 30], R6: [66, 78, 280, 292, 26], R7: [66, 74, 320, 324, 20],
+  R5: [80, 92, 242, 254, 30], R6: [66, 78, 280, 292, 26], R7: [66, 74, 320, 322, 20],
 }).map(([id, [minX, maxX, minZ, maxZ, y]]) => ({ id, minX: minX!, maxX: maxX!, minZ: minZ!, maxZ: maxZ!, y: y! }));
 const BAYS = [
   { id: 'V1', y: 20, x: 58, z: 128, targets: [{ x: -4, y: 8, z: 126 }, { x: 24, y: 8, z: 138 }] },
@@ -63,6 +63,8 @@ const inLanding = (p: Point, margin = 0) => LANDINGS.find((l) =>
 /** A superset of the designed shelf: 8 m ribbons, their corner bevels (inside
  * a 4 m disc at each turning node; R7 ends the shelf) and the flat landings. */
 function onShelf(p: Point, margin = 0): boolean {
+  // U-164 opens R7's north edge onto its full-width bridge approach.
+  if (p.x >= 66 - margin && p.x <= 74 + margin && p.z >= 322 - margin && p.z <= 350 + margin) return true;
   if (inLanding(p, margin) || NODES.slice(0, -1).some((n) => Math.hypot(p.x - n.x, p.z - n.z) <= HALF + margin)) return true;
   return segments.some((s) => {
     const t = (p.x - s.a.x) * s.u.x + (p.z - s.a.z) * s.u.z, across = Math.abs((p.x - s.a.x) * s.u.z - (p.z - s.a.z) * s.u.x);
@@ -74,12 +76,12 @@ const wallTop = (p: Point, y: number) => Math.max(-Infinity, ...column(p).filter
 
 describe('U-163 continuous R0–R7 ridge shelf', () => {
   it('transcribes §6.1: nodes, riser counts, landings, 8 m width and the barrier', () => {
-    expect(RIDGE.spine).toEqual(NODES);
-    expect(RIDGE.risers).toEqual(RISERS);
-    expect(RIDGE.landings).toEqual(LANDINGS.map(({ y: _, ...l }) => l));
+    expect(RIDGE.spine.slice(0, 8)).toEqual(NODES);
+    expect(RIDGE.risers.slice(0, 7)).toEqual(RISERS);
+    expect(RIDGE.landings.slice(0, 7)).toEqual(LANDINGS.map(({ y: _, ...l }) => l));
     expect(RIDGE).toMatchObject({ shelfWidth: 8, riserM: .2, treadM: .4, flightRisers: 10, restLandingM: 2, barrierM: BARRIER, bottomY: 5.5 });
     expect(RIDGE.temporaryCaps.map((c) => [c.id, c.for])).toEqual([
-      ['V1-bay', 'U-141'], ['V2-bay', 'U-141'], ['V3-bay', 'U-141'], ['R7-north', 'U-164'], ['R7-east', 'U-164']]);
+      ['V1-bay', 'U-141'], ['V2-bay', 'U-141'], ['V3-bay', 'U-141'], ['east-gate', 'U-116']]);
     for (const [i, s] of segments.entries()) expect(Math.abs(s.b.y - s.a.y)).toBeCloseTo(RISERS[i]! * .2, 9);
   });
 
@@ -119,7 +121,7 @@ describe('U-163 continuous R0–R7 ridge shelf', () => {
           lastRest: +(entry - steps.at(-1)!).toFixed(2), minRest: +Math.min(...spacing.filter((_, k) => !((k + 1) % 10)), Infinity).toFixed(2) });
       }
     }
-    expect(FLIGHTS.map((f) => f.risers.length)).toEqual(RISERS);
+    expect(FLIGHTS.slice(0, 7).map((f) => f.risers.length)).toEqual(RISERS);
     console.log('U-163 stair flights', JSON.stringify(report));
   });
 
@@ -220,14 +222,14 @@ describe('U-163 continuous R0–R7 ridge shelf', () => {
     expect(samples).toBeGreaterThan(100);
   }, 60_000);
 
-  it('only overhangs the X4 apron with slabs and hanging caps above the clear y8..14 volume', () => {
-    const ridge = world.boxes.filter((b) => b.id.startsWith('ridge-'));
+  it('retains the R0–R7 shelf apron slabs above the clear y8..14 volume', () => {
+    const ridge = world.boxes.filter((b) => b.id.startsWith('ridge-') && b.maxZ <= 322);
     expect(ridge.length).toBeGreaterThan(5000);
     for (const b of ridge) {
       expect(b.minY).toBeGreaterThanOrEqual(5.5);
       expect(b.minZ, b.id).toBeGreaterThanOrEqual(60);
       const apron = Math.hypot(Math.max(b.minX - X4.x, 0, X4.x - b.maxX), Math.max(b.minZ - X4.z, 0, X4.z - b.maxZ)) < 18;
-      if (b.id.startsWith('ridge-slab') || b.id.startsWith('ridge-cap-R7')) expect(b.minY, b.id).toBeGreaterThanOrEqual(14);
+      if (b.id.startsWith('ridge-slab')) expect(b.minY, b.id).toBeGreaterThanOrEqual(14);
       else expect(apron, `${b.id} reaches the X4 apron`).toBe(false);
     }
     expect(ridge.filter((b) => b.id.startsWith('ridge-slab')).every((b) => b.maxY === 20)).toBe(true);

@@ -1,4 +1,4 @@
-/** U-149 road construction view of the exact generated box union (bent by U-159, closed by U-160's rock, furnished by U-161, with U-163's ridge shelf). */
+/** U-149 road construction view of the exact generated box union (bent by U-159, closed by U-160's rock, furnished by U-161, with U-164's R0–R9 ridge and service bridge). */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { ENEMIES, type BoxSpec } from '@sandline/shared';
@@ -96,15 +96,15 @@ const views = {
   mg: { position: [-23, 9.55, 222.8], target: [-28, 9.55, 180], label: 'AF1 MG nest · A-C06 at the head of the west leg' },
   depot: { position: [-35, 9.55, 199], target: [-38.5, 9.55, 200.4], label: 'West-leg depot frontage · closed loading recesses' },
   v2: { position: [88, 31.55, 210], target: [-22, 9.15, 222], label: 'V2 bay standing eye · visible MG breastwork; temporary bay cap hidden until U-141', permanent: true },
-  ingress: { position: [16, 9.55, 332], target: [70, 9.55, 336], label: 'CAP-X · y8 service road; bridge reserved for U-140' },
+  ingress: { position: [16, 9.55, 332], target: [70, 9.55, 336], label: 'CAP-X · y8 service road under built R7b bridge; deck y16 / underside y14' },
   pool: { position: [96, 9.55, 444], target: [114, 9.55, 432], label: 'X0 · motor pool canopy and screened retaining dogleg' },
   turn: { position: [114, 9.55, 432], target: [96, 9.55, 444], label: 'X1 · screened return into motor pool' },
-  bridge: { position: [70, 9.55, 336], target: [84, 9.55, 338], label: 'y8 service road below exact reserved bridge void' },
+  bridge: { position: [70, 9.55, 336], target: [84, 9.55, 338], label: 'y8 service road below built bridge; exact x66..74/z330..342 deck y16 / underside y14' },
   v3: { position: [66, 27.55, 286], target: [54, 11.2, 334], label: 'V3 eye probe · X5 silhouette opening; temporary bay cap hidden until U-141', permanent: true },
   ridgeR0: { position: [46, 9.55, 65.9], target: [78, 15.55, 96], label: 'D0→R0 · ridge stair mouth and first flights' },
   ridgeR3: { position: [80, 27.55, 168], target: [94, 31.55, 210], label: 'R3 combat shelf y26 · final climb to the Eagle shelf' },
   ridgeR6: { position: [72, 27.55, 286], target: [70, 21.55, 322], label: 'R6 y26 · descent to R7; V3 bay front capped for U-141' },
-  ridgeOverview: { position: [190, 150, 110], target: [76, 20, 200], label: 'Free overview · U-163 R0–R7 ridge shelf, barrier rock and temporary caps' },
+  ridgeOverview: { position: [190, 150, 110], target: [76, 20, 200], label: 'Free overview · U-164 R0–R9 ridge and service bridge; bay/gate caps remain' },
   returnCourt: { position: [44, 9.55, 58], target: [32, 9.55, 98], label: 'CAP-RETURN · court edge toward tank stop; store entrance beside retreat' },
   storeDoor: { position: [40, 9.55, 58], target: [50, 9.55, 58], label: 'D0 court toward store · 4 m connector and west door · y8 floor / y12 ceiling' },
   storeHolding: { position: [50, 9.55, 58], target: [44, 9.55, 58], label: 'D0 holding socket toward west exit · north/east stone walls screen X-stop · ordinary blast attenuation' },

@@ -150,14 +150,19 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     expect(supports).toBeGreaterThan(1000);
   }, 60_000);
 
-  it('reserves the future basement volume and exact service-bridge deck volume', () => {
+  it('reserves the basement volume and builds the exact y16 bridge deck above the y8 road', () => {
     const northern = world.boxes.filter((b) => b.maxZ > 84);
     expect(northern.length).toBeGreaterThan(0);
     expect(northern.every((b) => b.minY >= 5.5)).toBe(true);
     expect(northern.some((b) => b.minY === 5.5 && b.maxY === 8)).toBe(true);
-    const bridge = { minX: 66, maxX: 74, minZ: 330, maxZ: 342 };
-    expect(world.boxes.filter((b) => b.maxX > bridge.minX && b.minX < bridge.maxX
-      && b.maxZ > bridge.minZ && b.minZ < bridge.maxZ && b.minY < 16 && b.maxY > 14)).toEqual([]);
+    expect(world.boxes.find((b) => b.id === 'ridge-bridge-deck')).toMatchObject({
+      minX: 66, maxX: 74, minZ: 330, maxZ: 342, minY: 14, maxY: 16,
+    });
+    for (const x of [66.35, 70, 73.65]) for (const z of [330.35, 336, 341.65]) {
+      expect(supportUnder(x, z, DEFAULT_MOVE_CONFIG.radius, 16.05, world.boxes, 0)).toBe(16);
+      expect(blockedAt(x, z, DEFAULT_MOVE_CONFIG.radius, 16, 0, DEFAULT_MOVE_CONFIG.height, world.boxes)).toBe(false);
+    }
+    clearSupport({ x: 70, z: 336 }, DEFAULT_MOVE_CONFIG.radius);
     expect(supportUnder(30, 270, .001, 5.49, world.boxes, 0)).toBe(0);
     expect(blockedAt(30, 270, .35, 0, 0, 5.49, world.boxes)).toBe(false);
   });
@@ -380,13 +385,15 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     const captures = JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/captures.json', import.meta.url), 'utf8'));
     expect(captures).toMatchObject(manifest);
     expect(captures.viewport).toEqual([1440, 1000]);
-    expect(captures.views).toHaveLength(43);
-    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(43);
+    expect(captures.views).toHaveLength(49);
+    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(49);
     const standingViews = captures.views.slice(0, 7) as { name: string; position: number[] }[];
     expect(standingViews.map((view) => view.name)).toEqual(['cap-d', 'cap-a', 'a3-west-leg', 'a5', 'cap-x-forecourt-road', 'a2-toward-a3', 'a6-toward-a7']);
     const combatViews = captures.views.slice(11, 14) as { name: string; position: number[] }[];
     expect(combatViews.map((view) => view.name)).toEqual(['toll-office', 'frontage-mg', 'depot-frontage']);
     const ingressViews = captures.views.slice(14, 18) as { name: string; position: number[] }[];
+    expect(captures.views[14]).toMatchObject({ name: 'cap-x-ingress', position: [16, 9.55, 332],
+      tank: { x: 70, y: 8, z: 336, yaw: 0 } });
     const returnViews = captures.views.slice(19, 22) as { name: string; position: number[] }[];
     expect(returnViews.map((view) => view.name)).toEqual(['cap-return', 'weigh-station-door', 'weigh-station-holding']);
     expect(returnViews.map((view) => view.position)).toEqual([[44, 9.55, 58], [40, 9.55, 58], [50, 9.55, 58]]);
@@ -427,17 +434,28 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
       if (view.expectedTankVisible) expect(view.tankPixels, `${view.name} tank pixels`).toBeGreaterThanOrEqual(10);
       else expect(view.tankPixels, `${view.name} tank pixels`).toBe(0);
     }
-    // U-163: a standing eye on each ridge node's floor, then two free views.
-    const ridgeViews = captures.views.slice(34) as { name: string; position: number[]; feetY?: number }[];
+    // U-164: legal standing eyes through R9, free views, and occupied underside evidence.
+    const ridgeViews = captures.views.slice(34, 47) as { name: string; position: number[]; feetY?: number }[];
     expect(ridgeViews.map((view) => view.name)).toEqual(['ridge-r0-mouth', 'ridge-r1-landing', 'ridge-r2-saddle', 'ridge-r3-shelf',
-      'ridge-r4-eagle', 'ridge-r5-saddle', 'ridge-r6-survey', 'ridge-r7-mouth', 'ridge-overview']);
-    const ridgeFeet = [[46, 8, 65.9], [78, 14, 96], [64, 20, 128], [80, 26, 168], [94, 30, 210], [86, 30, 248], [72, 26, 286]];
-    expect(ridgeViews.slice(0, 7).map((view) => [view.position[0], view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, view.position[2]]
+      'ridge-r4-eagle', 'ridge-r5-saddle', 'ridge-r6-survey', 'ridge-r7-landing', 'ridge-r7b-deck', 'ridge-r8-landing',
+      'ridge-r9-gate', 'ridge-r7-mouth', 'ridge-overview']);
+    const ridgeFeet = [[46, 8, 65.9], [78, 14, 96], [64, 20, 128], [80, 26, 168], [94, 30, 210], [86, 30, 248],
+      [72, 26, 286], [70, 20, 321.5], [70, 16, 336], [70, 12, 350], [56, 8, 370]];
+    expect(ridgeViews.slice(0, 11).map((view) => [view.position[0], view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, view.position[2]]
       .map((n) => Math.round(n! * 100) / 100))).toEqual(ridgeFeet);
     for (const [x, y, z] of ridgeFeet) {
-      expect(supportUnder(x!, z!, DEFAULT_MOVE_CONFIG.radius, y! + .05, world.boxes, 0)).toBe(y);
+      for (const dx of [-DEFAULT_MOVE_CONFIG.radius, 0, DEFAULT_MOVE_CONFIG.radius])
+        for (const dz of [-DEFAULT_MOVE_CONFIG.radius, 0, DEFAULT_MOVE_CONFIG.radius])
+          expect(supportUnder(x! + dx, z! + dz, .001, y! + .05, world.boxes, 0)).toBe(y);
       expect(blockedAt(x!, z!, DEFAULT_MOVE_CONFIG.radius, y!, 0, DEFAULT_MOVE_CONFIG.height, world.boxes)).toBe(false);
     }
+    const undersideViews = captures.views.slice(47) as { name: string; position: number[] }[];
+    expect(undersideViews.map((view) => [view.name, view.position])).toEqual([
+      ['bridge-under-tank', [72, 9.55, 327]], ['r8-underside', [77, 9.55, 349]],
+    ]);
+    expect(captures.views[47]).toMatchObject({ tank: { x: 70, y: 8, z: 336, yaw: 0 }, expectedTankVisible: true });
+    expect(captures.views[47].tankPixels).toBeGreaterThanOrEqual(10);
+    for (const view of undersideViews) clearSupport({ x: view.position[0]!, z: view.position[2]! }, DEFAULT_MOVE_CONFIG.radius);
     for (const view of [...standingViews, ...combatViews, ...ingressViews]) {
       const feet = { x: view.position[0]!, y: view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, z: view.position[2]! };
       expect(feet.y, `${view.name} standing eye`).toBeCloseTo(8);

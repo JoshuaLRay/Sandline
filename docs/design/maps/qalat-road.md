@@ -515,6 +515,18 @@ them outside the tank corridor or above its envelope. The fixed ridge coordinate
 and full 8 m walking width remain required. The new fin/canopy/key may not
 obstruct those future ridge footprints.
 
+U-164 construction detail: the bridge-specific approach overrides R7's generic
+north half; its retained y20 pad is x66..74/z320..322. The north approach has
+twenty 0.20 m descents at z322.3..328 on 0.30 m treads, then a 2 m y16 landing
+to z330. The south approach descends at z342.3..348, then joins the exact
+y12 R8 slab x66..74/z348..352. Each approach uses the specified bridge
+exception (twenty continuous risers and a terminal landing). R8→R9 stays y12
+until the full 8 m cross-section's first riser is north of z355.06, clearing
+the J2/J3 pads and their support skin; its twenty ordinary 0.40 m-tread risers
+form two ten-riser flights with ≥2 m intermediate and final rests. This
+clearance constraint takes precedence over equal rest spacing. R9 has a y8
+gate approach x52..60/z368..374, temporarily capped at z374 for U-116.
+
 ### 6.2 Support bays and limits
 
 Bays extend west from their ridge node, at the node's floor y. Each is 8 m long
