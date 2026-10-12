@@ -44,6 +44,39 @@ pool/first-bend exit outside the 12 m lanes and 36 m X aprons. Full scene and
 measured current-controller timing are in the regenerated construction manifest;
 road look/play remains U-139, runtime mission integration U-117.
 
+**U-162 first-X5 addendum · 2026-10-12:** the owner requested the focused fix
+for U-139's unpassed forecourt screening criterion. The straight X4→X5 lane
+exposed X4's low hull from A-C12; the 51.143837 m ray lies entirely inside the
+protected carriageway, so a wall in that lane would violate its width. Retain
+all named X origins, y8, the 12 m carriageway, 36 m X1–X4 aprons, X0 shelter and
+warning/tuning, and the exact bridge reservation. The local X4→X5→X6 connection
+follows the dogleg listed in §11.1, with 12×12 m pads at J1/J2/J3/J4 and a
+7×7 m X5 track patch; the full 12 m carriageway remains clear. Retain 4 m
+firing/infantry channels A8→X5 and fixed A-C12 pad→X5, including its complete
+4×4 m pad at (34.16,336.7). An opaque 6 m rock fin x62.9..63.5/z332..342.9
+and underside-y14/thickness-2 m canopy x52..60/z326..355, joined by an overhead
+key x60..62.9/z333..342 and south tongue x56.4..60/z325..326 at y14..16,
+screen the approach without occupying the lane. These solids clear the future
+8 m ridge footprints; the closest canopy-to-R8→R9 plan margin is 1.325 m.
+The dogleg passes below R8's exact future y12 landing x66..74/z348..352; a
+0.6 m slab fixture at underside y11.4 leaves 0.2 m above the shared tank's
+y11.2 turret. That fixture does not build the ridge: U-140 must continuously
+certify its actual stairs, landing and supports against the tank sweep.
+Construction must pass full rotating hull/turret support/clearance and the inherited sight,
+cover, escape, insertion, travel and rocket/blast gates. First-X5 means that the
+producing yaw's actual hull/turret capsule physically contacts the fixed 12 m
+mouth x48..60/z328..340 at every visible approach sample. X5 is its centre
+anchor; the moving tank's origin may remain outside the opening. Check exact
+capsule-axis/rectangle distance; the secondary 8.9 m origin bound is its 6 m
+half-width plus actual capsule reach (2.9 m). Route sampling grants no extra
+acceptance allowance. Screen listed X0–X4 and the full preceding approach from V3 and the
+complete A-C11/A-C12 pads at all stance/body heights; show X5 visible from all
+three firing centres. Visibility measurements disclose their finite ≤1 m route
+and ≤0.5 m pad samples and the interval around the first transition, without
+claiming an exact continuous visibility boundary; the tank sweep remains
+continuously certified. This
+addendum does not supply U-139's pending human road look/play verdict.
+
 This is the canonical construction brief for campaign mission 1, world/mission
 `qalat-road`. It replaces the rectangular valley, terrace slots and surface
 riverbed flank delivered by U-106. That implementation remains the current game
@@ -473,6 +506,15 @@ landing), preserving 8 m width. Tank road passes under it at y8; six metres clea
 under the deck. Abutments are outside the tank's swept corridor. Parapets/rock
 returns reject drops off the bridge; it is not a third road↔ridge crossing.
 
+U-162's screened local tank connection also crosses below R8's exact landing
+x66..74/z348..352, floor y12. Its 0.6 m slab fixture (underside y11.4) reserves
+0.2 m above the full rotating turret envelope; it is no delivered ridge floor
+or support. U-140 must repeat the continuous authored/controller sweep against
+the completed bridge approaches, R8 stairs/landing and every support, keeping
+them outside the tank corridor or above its envelope. The fixed ridge coordinates
+and full 8 m walking width remain required. The new fin/canopy/key may not
+obstruct those future ridge footprints.
+
 ### 6.2 Support bays and limits
 
 Bays extend west from their ridge node, at the node's floor y. Each is 8 m long
@@ -877,6 +919,28 @@ full rotating hull, not just a point along the centreline.
 | X6 / A8 | (16,8,332) | Merges onto assault road southbound; never drives into courtyard |
 | Main return | A7 → A6 → A5 → A4 → A3 → A2 → A1 | Same listed coordinates, descending z, y8 throughout |
 | X-stop / A1 | (32,8,98) | Stop, face southwest toward D0; do not continue through S bends or into spawn |
+
+U-162 replaces the direct X4→X5→X6 links with the following ordered local
+connection. The named X coordinates above remain fixed; intermediate junctions
+carry 12×12 m y8 support pads instead of enlarging the required X1–X4 aprons.
+The 12 m clear carriageway follows every segment, including the joined pads;
+the 7×7 m X5 patch supplements the overlapping lane floors and does not reduce
+that width. Keep the independent 12 m X5 reveal mouth x48..60/z328..340 fixed.
+
+| Local node | Feet/vehicle origin (x,y,z) | Support / detail |
+|---|---|---|
+| X4 | (84,8,338) | Retain its 36 m apron and exact reserved bridge crossing |
+| J1 | (70,8,336) | Pad x64..76/z330..342; turns south on the east side of the fin |
+| J2 | (70,8,349) | Pad x64..76/z343..355; turns west behind the fin |
+| J3 | (58,8,349) | Pad x52..64/z343..355; approaches X5 beneath the local canopy |
+| X5 | (54,8,334) | Track patch x50.5..57.5/z330.5..337.5; fixed 12 m reveal mouth |
+| J4 | (40,8,320) | Pad x34..46/z314..326; turns west toward the original merge |
+| X6 / A8 | (16,8,332) | Fixed assault-road merge and sole infantry approach |
+
+Two 4 m wide firing/infantry channels retain the supported forecourt choices:
+A8 (16,332)→X5 and A-C12 pad centre (34.16,336.7)→X5. Keep A-C12's complete
+pad x32.16..36.16/z334.7..338.7 supported and clear. They remain within the
+same A8 service-spur access; neither creates a further approach or ridge link.
 
 The motor pool and X road are bounded by T-N/T-E geology; its only infantry
 access is walking north along X from A8. This is an out-and-back service spur,

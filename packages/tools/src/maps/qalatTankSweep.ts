@@ -128,9 +128,10 @@ export function measureTankTravel(boxes: readonly WorldBox[], route: readonly Ta
   let ticks = 0, blockedTicks = 0, contactTicks = 0, firedShells = 0, aimingTicks = 0, unexpectedBlockedTicks = 0;
   const waypointTimesSeconds: Record<string, number> = { [start.id ?? '0']: 0 };
   let contactStarted = false;
+  const contactWaypoint = route.findIndex((point) => point.id === 'X5');
   const target = session.slots[0]!;
   while (enemy.drive!.phase !== 'arrived' && ticks < 30 * 600) {
-    if (contactSeconds > 0 && !contactStarted && enemy.drive!.next >= 5) {
+    if (contactSeconds > 0 && !contactStarted && enemy.drive!.next >= contactWaypoint) {
       const f = driveForward(enemy.drive!);
       target.state = { ...target.state, x: enemy.state.x + f.x * 2.3, y: 8, z: enemy.state.z + f.z * 2.3 };
       contactStarted = true; contactTicks = Math.round(contactSeconds / TICK_SECONDS);
@@ -163,7 +164,8 @@ export function measureTankTravel(boxes: readonly WorldBox[], route: readonly Ta
  * only. U-140 owns its eventual construction and off-corridor abutments. */
 export function tankSweepReport(boxes: readonly WorldBox[], route: readonly TankRoutePoint[]) {
   const bridge = boxFrom({ id: 'reserved-bridge-proof', x: 70, y: 14, z: 336, w: 8, h: 2, d: 12 }, 'cover');
-  const reservedWorld = [...boxes, bridge];
+  const r8 = boxFrom({ id: 'reserved-R8-proof', x: 70, y: 11.4, z: 350, w: 8, h: .6, d: 4 }, 'cover');
+  const reservedWorld = [...boxes, bridge, r8];
   const clear = measureTankTravel(reservedWorld, route), contact = measureTankTravel(reservedWorld, route, 10);
   const summary = ({ trace: _trace, ...result }: ReturnType<typeof measureTankTravel>) => result;
   return { route: certifyTankRoute(reservedWorld, route), realController: {
@@ -178,5 +180,8 @@ export function tankSweepReport(boxes: readonly WorldBox[], route: readonly Tank
     finalSouthwestOrientationCovered: true,
   }, reservedBridge: { minX: 66, maxX: 74, minZ: 330, maxZ: 342, undersideY: 14, deckY: 16,
     minimumBodyClearanceM: 14 - 8 - TANK_BODY_HEIGHT_M, constructed: false },
+  reservedR8Landing: { minX: 66, maxX: 74, minZ: 348, maxZ: 352, floorY: 12,
+    fixtureUndersideY: 11.4, minimumBodyClearanceM: 11.4 - 8 - TANK_BODY_HEIGHT_M,
+    constructed: false, obligation: 'U-140 must certify completed R8 stairs/landing/supports against the tank route' },
   sharedVehicle: vehicle };
 }

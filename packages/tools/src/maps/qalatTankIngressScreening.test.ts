@@ -6,7 +6,7 @@ import { bodyParts, vehicleHitbox } from '../../../server/src/net/lagComp.ts';
 import { between, insertionBodySamples, rayOccluded, sampleRoute } from './insertionScreening.ts';
 import { INSERTION } from './qalatInsertion.ts';
 import { ROAD_COMBAT } from './qalatRoadCombat.ts';
-import { ROAD_SUPPORTS, buildRoadSupportWorld } from './qalatRoadSupports.ts';
+import { ROAD_SUPPORTS, buildRoadSupportWorld, tankReturnRoute } from './qalatRoadSupports.ts';
 import { TANK_INGRESS } from './qalatTankIngress.ts';
 
 type Point = { x: number; y: number; z: number };
@@ -107,8 +107,7 @@ describe('U-151 service ingress screening', () => {
   });
 
   it('retains GEO-07 against both muzzles along the complete new X0→A1 path and turning orientations', async () => {
-    const mainReturn = ROAD_SUPPORTS.spine.filter((node) => /^A[1-7]$/.test(node.id)).reverse();
-    const route = sampleRoute([...TANK_INGRESS.spine, ...mainReturn].map((node) => [node.x, node.y, node.z]));
+    const route = sampleRoute(tankReturnRoute().map((node) => [node.x, node.y, node.z]));
     // Require the southern insertion landform itself to block the shot: later
     // road cover, X rock and future outpost walls cannot mask an insertion leak.
     const southern = world.boxes.filter((box) => box.minZ < 60)

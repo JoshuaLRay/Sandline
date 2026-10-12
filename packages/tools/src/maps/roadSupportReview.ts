@@ -1,6 +1,8 @@
 /** U-149 road construction view of the exact generated box union (bent by U-159, closed by U-160's rock, furnished by U-161). */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { ENEMIES } from '@sandline/shared';
+import { bodyParts, vehicleHitbox } from '../../../server/src/net/lagComp.ts';
 
 const level = await (await fetch('/artifacts/qalat-road-supports/level.json')).json() as { boxes: unknown[] };
 const surface = await (await fetch('/artifacts/qalat-road-supports/surface.json')).json() as {
@@ -37,7 +39,29 @@ const probe = new THREE.Mesh(new THREE.CapsuleGeometry(.35, 1.1, 4, 8),
 probe.position.set(32, 8.9, 100);
 scene.add(probe);
 
-type View = { position: number[]; target: number[]; label: string; probe?: boolean };
+type View = { position: number[]; target: number[]; label: string; probe?: boolean;
+  tank?: { x: number; y: number; z: number; yaw: number } };
+// Diagnostic meshes are the production hit capsules, not finished vehicle art.
+const tankProbe = new THREE.Group();
+scene.add(tankProbe);
+const tankMaterial = new THREE.MeshLambertMaterial({ color: '#a94b35' });
+function placeTank(at: NonNullable<View['tank']>) {
+  for (const child of [...tankProbe.children]) {
+    (child as THREE.Mesh).geometry.dispose(); tankProbe.remove(child);
+  }
+  for (const part of bodyParts(vehicleHitbox(ENEMIES['tank']!.vehicle!), 'standing', at, at.yaw)) {
+    const a = new THREE.Vector3(part.a.x, part.a.y, part.a.z), b = new THREE.Vector3(part.b.x, part.b.y, part.b.z);
+    const mesh = new THREE.Mesh(new THREE.CapsuleGeometry(part.radius, a.distanceTo(b), 8, 24), tankMaterial);
+    mesh.position.copy(a).add(b).multiplyScalar(.5);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+    tankProbe.add(mesh);
+  }
+}
+function pixels() {
+  const gl = renderer.getContext(), result = new Uint8Array(renderer.domElement.width * renderer.domElement.height * 4);
+  gl.readPixels(0, 0, renderer.domElement.width, renderer.domElement.height, gl.RGBA, gl.UNSIGNED_BYTE, result);
+  return result;
+}
 const views = {
   capD: { position: [28, 9.55, 58], target: [32, 9.55, 72], label: 'Court approach · legal U-138 anchor; canonical CAP-D lies inside accepted reveal-toe rock' },
   capA: { position: [32, 9.55, 100], target: [12, 9.55, 128], label: 'CAP-A · actual standing eye height y9.55' },
@@ -71,13 +95,22 @@ const views = {
 
 function view(v: View) {
   probe.visible = v.probe ?? false;
+  tankProbe.visible = false;
   document.querySelector<HTMLParagraphElement>('#view-label')!.textContent = v.label;
   camera.position.fromArray(v.position);
   controls.target.fromArray(v.target);
   controls.update();
   renderer.render(scene, camera);
+  let tankPixels: number | undefined;
+  if (v.tank) {
+    const base = pixels(); placeTank(v.tank); tankProbe.visible = true;
+    renderer.render(scene, camera);
+    const shown = pixels(); tankPixels = 0;
+    for (let i = 0; i < base.length; i += 4)
+      if (base[i] !== shown[i] || base[i + 1] !== shown[i + 1] || base[i + 2] !== shown[i + 2]) tankPixels++;
+  }
   return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles,
-    boxCount: level.boxes.length, levelHash };
+    boxCount: level.boxes.length, levelHash, tankPixels };
 }
 document.querySelectorAll<HTMLButtonElement>('button[data-view]').forEach((b) => {
   b.onclick = () => view(views[b.dataset['view'] as keyof typeof views]);
