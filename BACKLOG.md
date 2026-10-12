@@ -81,7 +81,10 @@ canonical when this documentation PR merges.
 | [U-155](docs/backlog/U-155.md) | RPG gunner enemy | Enemy AI (Conflict parity) | P2 | DONE | — (aggregate of U-157, U-158) | [#327](https://github.com/JoshuaLRay/Sandline/pull/327), [#328](https://github.com/JoshuaLRay/Sandline/pull/328) |
 | [U-157](docs/backlog/U-157.md) | RPG gunner: data, brain and authoritative rockets | Enemy AI (Conflict parity) | P2 | DONE | — | [#327](https://github.com/JoshuaLRay/Sandline/pull/327) |
 | [U-158](docs/backlog/U-158.md) | RPG gunner: RPG-7 in hand, wind-up, launch and trail | Enemy AI (Conflict parity) | P2 | DONE | — | [#328](https://github.com/JoshuaLRay/Sandline/pull/328) |
-| [U-140](docs/backlog/U-140.md) | Construct the continuous ridge stairs, shelves and service bridge | Map implementation | P1 | READY | U-139 (REVIEW, code merged); carries U-162's R8 tank-clearance and U-152's ridge shelter proofs | — |
+| [U-140](docs/backlog/U-140.md) | Construct the continuous ridge stairs, shelves and service bridge | Map implementation | P1 | BLOCKED | Aggregate: U-163–U-165; owner ridge look/play verdict batched here | — |
+| [U-163](docs/backlog/U-163.md) | Cut the continuous R0–R7 ridge shelf with its stairs, landings and barrier rock | Map implementation | P1 | IN_PROGRESS | U-139 (REVIEW, code merged); ridge look/play verdict batched in U-140 | `task/U-163-ridge-shelf` |
+| [U-164](docs/backlog/U-164.md) | Build the R7b service bridge and the R8/R9 descent over the tank road | Map implementation | P1 | BLOCKED | U-163; carries U-162's R8 tank-clearance proof; ridge look/play verdict batched in U-140 | — |
+| [U-165](docs/backlog/U-165.md) | Furnish the ridge: shepherd hut, survey post, ridge cover and the R5 hold | Map implementation | P1 | BLOCKED | U-163; carries U-152's R5 hold proof; ridge look/play verdict batched in U-140 | — |
 | [U-141](docs/backlog/U-141.md) | Construct support bays/C12 links and verify surface isolation | Map implementation | P1 | BLOCKED | U-139, U-140 | — |
 | [U-115](docs/backlog/U-115.md) | Build the continuous underground depot and its stairs | Map implementation | P1 | BLOCKED | U-109, U-114 | — |
 | [U-116](docs/backlog/U-116.md) | Build the prisoner outpost and reserve annex | Map implementation | P1 | BLOCKED | U-114, U-115 | — |

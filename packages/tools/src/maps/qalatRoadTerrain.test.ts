@@ -7,6 +7,7 @@ import { ROAD_SUPPORTS, buildRoadSupportLevel, buildRoadSupportWorld } from './q
 import { ROAD_TERRAIN, SKIN_TOP, TERRAIN_SPURS, VIEW_FANS, rayClearances, roadTerrainManifest } from './qalatRoadTerrain.ts';
 import { onTankIngressFloor, TANK_INGRESS } from './qalatTankIngress.ts';
 import { ROAD_COMBAT, combatFootprint } from './qalatRoadCombat.ts';
+import { isTemporaryRidgeCap } from './qalatRidge.ts';
 
 type Point = { x: number; z: number };
 // Independent transcriptions: the bent road (U-159), §6.2's bays with U-160's
@@ -217,6 +218,7 @@ describe('U-160 road-facing rock on the bent road', () => {
   it('keeps every listed ridge-bay ray 0.3 m above the permanent rock', () => {
     const permanent = world.boxes.filter((b) => b.id.startsWith('road-rock'));
     const caps = world.boxes.filter((b) => b.id.startsWith('road-cap-'));
+    const permanentScene = world.boxes.filter((b) => !isTemporaryRidgeCap(b.id));
     const crossings: string[] = [];
     for (const bay of BAYS) for (const t of bay.targets) {
       // The ray to the target's feet, lowered 0.3 m, misses all permanent rock.
@@ -229,11 +231,12 @@ describe('U-160 road-facing rock on the bent road', () => {
         : (bay.id === 'V1' && t.x === 24) || (bay.id === 'V2' && t.x === -22) ? 9.15 : bay.id === 'V3-X5' ? 11.2 : 8.05;
       const view = between(bay.eye, { ...t, y: targetY });
       if (rayWorld(view, caps) !== null) crossings.push(`${bay.id}→${t.x},${t.z}`);
-      else expect(rayWorld(view, world.boxes), `${bay.id} → ${JSON.stringify(t)}`).toBeNull();
+      // U-163's temporary ridge bay caps close every bay until U-141 opens it (asserted in qalatRidge.test.ts).
+      else expect(rayWorld(view, permanentScene), `${bay.id} → ${JSON.stringify(t)}`).toBeNull();
     }
     // Only the two recorded temporary caps block a listed view.
     expect(crossings).toEqual(['V1→24,138', 'V3→38,360']);
-    expect(rayWorld(between(BAYS[1]!.eye, { x: -23, y: 9.8, z: 222.8 }), world.boxes), 'V2 sees the actual frontage MG head').toBeNull();
+    expect(rayWorld(between(BAYS[1]!.eye, { x: -23, y: 9.8, z: 222.8 }), permanentScene), 'V2 sees the actual frontage MG head').toBeNull();
     const clearances = rayClearances(level.boxes);
     expect(clearances.map((r) => r.blockedOnlyByTemporaryCaps)).toEqual([[], ['C12-L-mouth'], [], [], [], [], ['south-gate'], []]);
     for (const r of clearances) expect(r.clearanceM).toBeGreaterThanOrEqual(.3);

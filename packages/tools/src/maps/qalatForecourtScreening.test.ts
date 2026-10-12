@@ -8,6 +8,7 @@ import { between, sampleRoute } from './insertionScreening.ts';
 import { ROAD_COMBAT } from './qalatRoadCombat.ts';
 import { ROAD_SUPPORTS, buildRoadSupportWorld } from './qalatRoadSupports.ts';
 import { TANK_INGRESS, tankIngressPath } from './qalatTankIngress.ts';
+import { isTemporaryRidgeCap } from './qalatRidge.ts';
 
 type Point = { x: number; y: number; z: number };
 type Target = Point & { kind: string; yaws: number[] };
@@ -122,7 +123,8 @@ function cachedOcclusion(boxes: readonly WorldBox[]): (ray: WorldRay) => boolean
     return test(root, ray);
   };
 }
-const blocked = cachedOcclusion(outsideFutureOutpost(world.boxes.filter((box) => box.maxY > ROAD_SUPPORTS.floorY)));
+// U-163: temporary ridge caps close the unbuilt V3 bay; screening counts permanent solids only.
+const blocked = cachedOcclusion(outsideFutureOutpost(world.boxes.filter((box) => box.maxY > ROAD_SUPPORTS.floorY && !isTemporaryRidgeCap(box.id))));
 
 /** Production capsules at their nose, rear and midsection surface extremes,
  * and production turret muzzle transforms at sixteen turning orientations.

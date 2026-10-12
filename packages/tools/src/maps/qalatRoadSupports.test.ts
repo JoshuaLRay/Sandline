@@ -380,8 +380,8 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     const captures = JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/captures.json', import.meta.url), 'utf8'));
     expect(captures).toMatchObject(manifest);
     expect(captures.viewport).toEqual([1440, 1000]);
-    expect(captures.views).toHaveLength(34);
-    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(34);
+    expect(captures.views).toHaveLength(43);
+    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(43);
     const standingViews = captures.views.slice(0, 7) as { name: string; position: number[] }[];
     expect(standingViews.map((view) => view.name)).toEqual(['cap-d', 'cap-a', 'a3-west-leg', 'a5', 'cap-x-forecourt-road', 'a2-toward-a3', 'a6-toward-a7']);
     const combatViews = captures.views.slice(11, 14) as { name: string; position: number[] }[];
@@ -411,10 +411,12 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     }
     // U-162: production hull/turret probes at X4 (screened) and X5 (revealed)
     // from the two forecourt firing eyes above and V3's eye.
-    const revealViews = captures.views.slice(28) as {
+    const revealViews = captures.views.slice(28, 34) as {
       name: string; position: number[]; tank: { x: number; y: number; z: number; yaw: number };
-      expectedTankVisible: boolean; tankPixels: number;
+      expectedTankVisible: boolean; tankPixels: number; permanent: boolean;
     }[];
+    // U-163: rendered on permanent solids, as the screening proofs count them.
+    expect(revealViews.every((view) => view.permanent)).toBe(true);
     const revealEyes = [['ac11', [2, 9.55, 330]], ['ac12', [34.16, 9.55, 336.7]], ['v3', [66, 27.55, 286]]] as const;
     expect(revealViews.map((view) => [view.name, view.position, view.tank, view.expectedTankVisible])).toEqual(
       revealEyes.flatMap(([eye, position]) => [
@@ -424,6 +426,17 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     for (const view of revealViews) {
       if (view.expectedTankVisible) expect(view.tankPixels, `${view.name} tank pixels`).toBeGreaterThanOrEqual(10);
       else expect(view.tankPixels, `${view.name} tank pixels`).toBe(0);
+    }
+    // U-163: a standing eye on each ridge node's floor, then two free views.
+    const ridgeViews = captures.views.slice(34) as { name: string; position: number[]; feetY?: number }[];
+    expect(ridgeViews.map((view) => view.name)).toEqual(['ridge-r0-mouth', 'ridge-r1-landing', 'ridge-r2-saddle', 'ridge-r3-shelf',
+      'ridge-r4-eagle', 'ridge-r5-saddle', 'ridge-r6-survey', 'ridge-r7-mouth', 'ridge-overview']);
+    const ridgeFeet = [[46, 8, 65.9], [78, 14, 96], [64, 20, 128], [80, 26, 168], [94, 30, 210], [86, 30, 248], [72, 26, 286]];
+    expect(ridgeViews.slice(0, 7).map((view) => [view.position[0], view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, view.position[2]]
+      .map((n) => Math.round(n! * 100) / 100))).toEqual(ridgeFeet);
+    for (const [x, y, z] of ridgeFeet) {
+      expect(supportUnder(x!, z!, DEFAULT_MOVE_CONFIG.radius, y! + .05, world.boxes, 0)).toBe(y);
+      expect(blockedAt(x!, z!, DEFAULT_MOVE_CONFIG.radius, y!, 0, DEFAULT_MOVE_CONFIG.height, world.boxes)).toBe(false);
     }
     for (const view of [...standingViews, ...combatViews, ...ingressViews]) {
       const feet = { x: view.position[0]!, y: view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, z: view.position[2]! };

@@ -32,12 +32,14 @@ function neighbours(boxes: readonly { minX: number; maxX: number; minZ: number; 
   return (i: number) => [...new Set(cells(boxes[i]!).flatMap((k) => grid.get(k)!))].sort((a, b) => a - b);
 }
 
-/** Walking floors are sand, rock is grey-green; U-160's temporary caps read
- * blue-grey so a reviewer can tell them from permanent rock. */
+/** Walking floors (U-163's ridge shelf included) are sand, rock is grey-green;
+ * U-160/U-163 temporary caps read blue-grey so a reviewer can tell them from
+ * permanent rock. */
 function colourOf(id: string): number[] {
   if (id === 'insertion-foundation' || id.startsWith('road-support-')) return [.51, .45, .35];
   if (id === 'hollow-overhang') return [.24, .26, .21];
-  if (id.startsWith('road-cap-')) return [.36, .42, .5];
+  if (id.startsWith('road-cap-') || id.startsWith('ridge-cap-')) return [.36, .42, .5];
+  if (id.startsWith('ridge-floor-') || id.startsWith('ridge-slab-')) return [.51, .45, .35];
   if (id.startsWith('road-combat-orchard-')) return [.24, .15, .08];
   if (id.startsWith('road-combat-toll-office-') || id.startsWith('road-combat-depot-facade-')) return [.52, .39, .25];
   if (id.startsWith('D0-weigh-station-store-')) return [.52, .46, .36];
