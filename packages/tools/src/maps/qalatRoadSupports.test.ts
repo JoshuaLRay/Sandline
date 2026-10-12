@@ -380,8 +380,8 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     const captures = JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/captures.json', import.meta.url), 'utf8'));
     expect(captures).toMatchObject(manifest);
     expect(captures.viewport).toEqual([1440, 1000]);
-    expect(captures.views).toHaveLength(28);
-    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(28);
+    expect(captures.views).toHaveLength(34);
+    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(34);
     const standingViews = captures.views.slice(0, 7) as { name: string; position: number[] }[];
     expect(standingViews.map((view) => view.name)).toEqual(['cap-d', 'cap-a', 'a3-west-leg', 'a5', 'cap-x-forecourt-road', 'a2-toward-a3', 'a6-toward-a7']);
     const combatViews = captures.views.slice(11, 14) as { name: string; position: number[] }[];
@@ -396,7 +396,7 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
       clearSupport(feet, DEFAULT_MOVE_CONFIG.radius);
       expect(feet.x >= 40 && feet.x <= 54 && feet.z >= 54 && feet.z <= 62).toBe(true);
     }
-    const firingViews = captures.views.slice(22) as { name: string; position: number[] }[];
+    const firingViews = captures.views.slice(22, 28) as { name: string; position: number[] }[];
     expect(firingViews.map((view) => view.name)).toEqual(['rocket-ac01', 'rocket-ac02', 'rocket-ac07', 'rocket-ac08', 'rocket-ac11', 'rocket-ac12']);
     expect(firingViews.map((view) => view.position)).toEqual([
       [42, 9.55, 103.4], [-6, 9.55, 121], [-3, 9.55, 214],
@@ -408,6 +408,22 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
       clearSupport(feet, DEFAULT_MOVE_CONFIG.radius);
       const acceptedC12Pad = view.name === 'rocket-ac12' && feet.x >= 32.16 && feet.x <= 36.16 && feet.z >= 334.7 && feet.z <= 338.7;
       expect(approvedRoadFootprint(feet) || (feet.x >= -8 && feet.x <= 0 && feet.z >= 114 && feet.z <= 122) || acceptedC12Pad, `${view.name} legal firing floor`).toBe(true);
+    }
+    // U-162: production hull/turret probes at X4 (screened) and X5 (revealed)
+    // from the two forecourt firing eyes above and V3's eye.
+    const revealViews = captures.views.slice(28) as {
+      name: string; position: number[]; tank: { x: number; y: number; z: number; yaw: number };
+      expectedTankVisible: boolean; tankPixels: number;
+    }[];
+    const revealEyes = [['ac11', [2, 9.55, 330]], ['ac12', [34.16, 9.55, 336.7]], ['v3', [66, 27.55, 286]]] as const;
+    expect(revealViews.map((view) => [view.name, view.position, view.tank, view.expectedTankVisible])).toEqual(
+      revealEyes.flatMap(([eye, position]) => [
+        [`${eye}-x4-hidden`, position, { x: 84, y: 8, z: 338, yaw: 0 }, false],
+        [`${eye}-x5-visible`, position, { x: 54, y: 8, z: 334, yaw: 0 }, true],
+      ]));
+    for (const view of revealViews) {
+      if (view.expectedTankVisible) expect(view.tankPixels, `${view.name} tank pixels`).toBeGreaterThanOrEqual(10);
+      else expect(view.tankPixels, `${view.name} tank pixels`).toBe(0);
     }
     for (const view of [...standingViews, ...combatViews, ...ingressViews]) {
       const feet = { x: view.position[0]!, y: view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, z: view.position[2]! };

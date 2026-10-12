@@ -9,7 +9,6 @@ export type Polygon = readonly Point[];
 export interface Disc { x: number; z: number; r: number }
 export interface Pieces { polygons: readonly Polygon[]; discs: readonly Disc[] }
 export interface Segment { length: number; from: Point; to: Point }
-type Spine = readonly { id: string; x: number; z: number }[];
 
 function ribbon(a: Point, b: Point, width: number): Polygon {
   const dx = b.x - a.x, dz = b.z - a.z, length = Math.hypot(dx, dz);
