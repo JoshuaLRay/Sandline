@@ -56,7 +56,7 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | `pnpm export:soldier` | write the code-built soldier as `assets/src/soldier.glb`, the pipeline's test asset |
 | `pnpm gen:nav` | re-bake every named world's navmesh; required after editing a world, `MoveConfig` or the hitbox (a test fails until you do) |
 | `pnpm gen:qalat-insertion` | U-138: compile the isolated Juniper Hollow replacement section and its exact collision/render surface, manifest and plan into `artifacts/qalat-insertion/`; production campaign activation remains U-117 |
-| `pnpm gen:qalat-road-supports` | U-149/U-159–U-161/U-151/U-152/U-162: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard, loading façades, D0 return store and first-X5 ingress dogleg/screens; reserve basement/bridge voids, the 12 m vehicle corridor and ridge views; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
+| `pnpm gen:qalat-road-supports` | U-149/U-159–U-161/U-151/U-152/U-162/U-163: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard, loading façades, D0 return store, first-X5 ingress dogleg/screens and the R0–R7 ridge shelf; reserve basement/bridge voids, the 12 m vehicle corridor and ridge views; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
 
 ## Isolated Juniper Hollow construction (U-138)
@@ -160,13 +160,26 @@ and applies ordinary blast damage to actors behind road/store cover and insertio
 terrain, with exposed controls. Ridge/outpost/basement proofs remain on
 U-140/U-141/U-116/U-119 until those structures exist.
 
+U-163's `qalat-ridge.json`/`qalatRidge.ts` cut the continuous R0–R7 ridge
+shelf: 8 m stepped ribbons on 0.05 m rows (≤5 cm edge/riser rasterization),
+§6.1's landings and R3 shelf, ten-riser flights of 0.20 m risers on 0.40 m treads
+spaced evenly with ≥2 m rest landings. The T-E body and a 1 m barrier ring stand
+≥2.2 m above every adjacent floor; north of z300 the road rock stands back by
+that ring. Temporary caps close the V1–V3 bay fronts (U-141) and R7's bridge mouth
+(U-164, hanging above the clear X4 apron). Screening proofs and the six U-162
+reveal captures count permanent solids only (`isTemporaryRidgeCap`). Run
+`pnpm exec vitest run packages/tools/src/maps/qalatRidge.test.ts packages/tools/src/maps/qalatRidgeNav.test.ts`
+for the stair recipe, edge, fan, travel, mouth, island and escape proofs.
+
 Run `pnpm exec tsx packages/tools/src/capture-qalat-road-supports.ts` after
-generation for thirty-four 1440×1000 exact-scene views and geometry/draw measurements,
+generation for forty-three 1440×1000 exact-scene views and geometry/draw measurements,
 including the road fights, motor pool/retaining turns, bridge void, V3→X5 opening,
 CAP-RETURN, store door/holding socket and the six road rocket firing choices.
 The six added A-C11/A-C12/V3 X4-hidden/X5-visible views display production
 hull/turret capsules; pixel-difference assertions require zero tank pixels at
 X4 and a visible body at X5. They retain the preceding twenty-eight views.
+U-163 adds standing eyes on R0–R6, a free R7 bridge-mouth view and a ridge overview;
+the V2/V3 bay-eye and reveal views render permanent solids (temporary caps hidden).
 Streaming CI uploads `qalat-road-support-review`. Commit manifest, plan,
 capture metadata and PNGs; large level/surface JSON stays ignored. For orbit
 review run `pnpm exec vite --host 127.0.0.1` from the repository root and open

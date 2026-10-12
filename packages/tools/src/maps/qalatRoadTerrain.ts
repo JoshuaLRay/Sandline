@@ -131,14 +131,25 @@ function eastBound(z0: number, z1: number, open: Interval[]): number {
   return Math.max(edge ? edge[1] : -Infinity, ridge?.[1] ?? -Infinity, north?.[1] ?? -Infinity, z0 >= TANK_INGRESS.terrainOuterEastStartZ ? TANK_INGRESS.terrainOuterEastX : -Infinity, ...open.map((s) => s[1] + ROAD_TERRAIN.eastBandM));
 }
 
+function openSpans(floors: readonly Polygon[], z0: number, z1: number, pads = true): Interval[] {
+  const stand = pads ? ROAD_TERRAIN.standingPads.filter((p) => p.minZ < z1 && p.maxZ > z0).map((p) => [p.minX, p.maxX] as Interval) : [];
+  return union([...floors.map((p) => sweep(p, z0 - EDGE_M, z1 + EDGE_M)).filter((s): s is Interval => s !== null)
+    .map(([a, b]) => [a - EDGE_M, b + EDGE_M] as Interval), ...stand]);
+}
+
+/** U-163: the road rock's east edge in one row, where the ridge body begins. */
+export function rockEastBound(floors: readonly Polygon[], z0: number, z1: number): number {
+  return eastBound(z0, z1, openSpans(floors, z0, z1));
+}
+
 /** Rock intervals of one row: the complement of the conservatively swept,
  * skin-expanded walking surface and the standing pads, between the west
- * bound and the T-E foot. */
-function rockSpans(floors: readonly Polygon[], z0: number, z1: number): Interval[] {
-  const pads = ROAD_TERRAIN.standingPads.filter((p) => p.minZ < z1 && p.maxZ > z0).map((p) => [p.minX, p.maxX] as Interval);
-  const open = union([...floors.map((p) => sweep(p, z0 - EDGE_M, z1 + EDGE_M)).filter((s): s is Interval => s !== null)
-    .map(([a, b]) => [a - EDGE_M, b + EDGE_M] as Interval), ...pads]);
-  const east = eastBound(z0, z1, open), out: Interval[] = [];
+ * bound and the T-E foot. Carved floors (U-163's ridge shelf) are removed
+ * without moving that bound. */
+function rockSpans(floors: readonly Polygon[], z0: number, z1: number, carve: readonly Polygon[] = []): Interval[] {
+  const walk = openSpans(floors, z0, z1);
+  const east = eastBound(z0, z1, walk), out: Interval[] = [];
+  const open = carve.length ? union([...walk, ...openSpans(carve, z0, z1, false)]) : walk;
   let x = ROAD_TERRAIN.minX;
   for (const [a, b] of open) {
     if (a > x) out.push([x, Math.min(a, east)]);
@@ -193,14 +204,15 @@ function strata(prefix: string, rows: number, rowZ: (row: number) => number, bot
   return boxes;
 }
 
-/** All U-160 rock for the given walking surface (the bent road's floors). */
-export function buildRoadTerrain(floors: readonly Polygon[], spine: Spine, maxZ = ROAD_TERRAIN.maxZ): BoxSpec[] {
+/** All U-160 rock for the given walking surface (the bent road's floors),
+ * with `carve` (raised floors that keep their own supports) removed. */
+export function buildRoadTerrain(floors: readonly Polygon[], spine: Spine, maxZ = ROAD_TERRAIN.maxZ, carve: readonly Polygon[] = []): BoxSpec[] {
   const { minZ, bottomY } = ROAD_TERRAIN;
   const kind = (r: Rect) => temporaryCapAt(r) ? `road-cap-${temporaryCapAt(r)!.id}` : 'road-rock';
   // Skin: y5.5 to 2.2 m above the road in fine rows, cut only where a
   // temporary cap starts. The fans must allow it everywhere else.
   const skin = strata('skin', (maxZ - minZ) * SKIN_ROWS_PER_M, (r) => (minZ * SKIN_ROWS_PER_M + r) / SKIN_ROWS_PER_M, bottomY,
-    (z0, z1) => cutAt(rockSpans(floors, z0, z1), [...capCuts(z0, z1), ...guardCuts(z0, z1)]).map(([lo, hi]) => {
+    (z0, z1) => cutAt(rockSpans(floors, z0, z1, carve), [...capCuts(z0, z1), ...guardCuts(z0, z1)]).map(([lo, hi]) => {
       const r = { minX: lo, maxX: hi, minZ: z0, maxZ: z1 };
       // U-161: low cover revealed a climb onto the fine skin before the
       // coarser crest begins. Raise only the recorded adjacent rock. A
@@ -220,7 +232,7 @@ export function buildRoadTerrain(floors: readonly Polygon[], spine: Spine, maxZ 
       const fins = ROAD_TERRAIN.fins.filter((f) => f.minZ < z1 && f.maxZ > z0).flatMap((f) => [f.minX, f.maxX]);
       const zoneCuts = zones.map((p) => sweep(p, z0, z1)).filter((s): s is Interval => s !== null);
       const fanSpans = VIEW_FANS.map((f) => sweep(f.hull, z0, z1)).filter((s): s is Interval => s !== null);
-      return cutAt(rockSpans(floors, z0, z1), [...capCuts(z0, z1), ...fins, ...zoneCuts.flat()]).flatMap(([lo, hi]) => {
+      return cutAt(rockSpans(floors, z0, z1, carve), [...capCuts(z0, z1), ...fins, ...zoneCuts.flat()]).flatMap(([lo, hi]) => {
         // fanCap includes closed-set contacts and expands its clip by 1 µm.
         // Subdivide those contacts too, so a low fan boundary can cap only
         // its adjacent cell instead of an entire exterior rock span.

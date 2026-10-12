@@ -8,11 +8,13 @@ import { INSERTION } from './qalatInsertion.ts';
 import { ROAD_COMBAT } from './qalatRoadCombat.ts';
 import { ROAD_SUPPORTS, buildRoadSupportWorld, tankReturnRoute } from './qalatRoadSupports.ts';
 import { TANK_INGRESS } from './qalatTankIngress.ts';
+import { isTemporaryRidgeCap } from './qalatRidge.ts';
 
 type Point = { x: number; y: number; z: number };
 const tank = ENEMIES['tank']!.vehicle!;
 const world = buildRoadSupportWorld();
-const blocked = rayOccluded(world.boxes.filter((box) => box.maxY > ROAD_SUPPORTS.floorY));
+// U-163: temporary ridge caps close the unbuilt V3 bay; screening counts permanent solids only.
+const blocked = rayOccluded(world.boxes.filter((box) => box.maxY > ROAD_SUPPORTS.floorY && !isTemporaryRidgeCap(box.id)));
 const yaws = Array.from({ length: 16 }, (_, i) => i * 64);
 const heights = [...new Set([.05, DEFAULT_MUZZLE_RIG.proneEyeHeight, DEFAULT_MOVE_CONFIG.proneHeight,
   DEFAULT_MUZZLE_RIG.crouchEyeHeight, DEFAULT_MOVE_CONFIG.crouchHeight,

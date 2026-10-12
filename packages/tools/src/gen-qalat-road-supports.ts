@@ -1,4 +1,4 @@
-/** Generate the U-149 isolated road supports, bent by U-159 and closed by U-160's rock, furnished by U-161, without altering production data. */
+/** Generate the U-149 isolated road supports, bent by U-159 and closed by U-160's rock, furnished by U-161, with U-163's ridge shelf, without altering production data. */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buildRoadSupportLevel, roadSupportManifest, roadSupportPlanSvg } from './maps/qalatRoadSupports.ts';
 import { insertionSurface } from './maps/insertionSurface.ts';
@@ -10,4 +10,4 @@ const surface = insertionSurface(level.boxes);
 await writeFile(new URL('surface.json', output), JSON.stringify({ levelHash: manifest.levelHash, ...surface }) + '\n');
 await writeFile(new URL('construction.json', output), JSON.stringify(manifest, null, 2) + '\n');
 await writeFile(new URL('plan.svg', output), roadSupportPlanSvg());
-console.log(`U-162: first-X5 ingress, road fights and D0 return store generated (${manifest.boxCount} boxes, ${surface.indices.length / 3} exposed triangles)`);
+console.log(`U-163: R0–R7 ridge shelf, first-X5 ingress, road fights and D0 return store generated (${manifest.boxCount} boxes, ${surface.indices.length / 3} exposed triangles)`);

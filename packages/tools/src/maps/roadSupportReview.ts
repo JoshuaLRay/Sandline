@@ -1,10 +1,11 @@
-/** U-149 road construction view of the exact generated box union (bent by U-159, closed by U-160's rock, furnished by U-161). */
+/** U-149 road construction view of the exact generated box union (bent by U-159, closed by U-160's rock, furnished by U-161, with U-163's ridge shelf). */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { ENEMIES } from '@sandline/shared';
+import { ENEMIES, type BoxSpec } from '@sandline/shared';
 import { bodyParts, vehicleHitbox } from '../../../server/src/net/lagComp.ts';
+import { insertionSurface } from './insertionSurface.ts';
 
-const level = await (await fetch('/artifacts/qalat-road-supports/level.json')).json() as { boxes: unknown[] };
+const level = await (await fetch('/artifacts/qalat-road-supports/level.json')).json() as { boxes: BoxSpec[] };
 const surface = await (await fetch('/artifacts/qalat-road-supports/surface.json')).json() as {
   levelHash: string; positions: number[]; normals: number[]; colours: number[]; indices: number[];
 };
@@ -30,7 +31,25 @@ geometry.setAttribute('position', new THREE.Float32BufferAttribute(surface.posit
 geometry.setAttribute('normal', new THREE.Float32BufferAttribute(surface.normals, 3));
 geometry.setAttribute('color', new THREE.Float32BufferAttribute(surface.colours, 3));
 geometry.setIndex(surface.indices);
-scene.add(new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ vertexColors: true })));
+const material = new THREE.MeshLambertMaterial({ vertexColors: true });
+const full = new THREE.Mesh(geometry, material);
+scene.add(full);
+// U-163: the permanent scene without the temporary ridge caps (qalatRidge's
+// isTemporaryRidgeCap), built on first use. U-162's reveal proofs are defined on
+// permanent solids; the V3 eye stands 5 mm from its bay cap, inside the near plane.
+let permanent: THREE.Mesh | undefined;
+function permanentScene() {
+  if (permanent) return permanent;
+  const s = insertionSurface(level.boxes.filter((b) => !b.id.startsWith('ridge-cap-')));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(s.positions, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(s.normals, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(s.colours, 3));
+  g.setIndex(s.indices);
+  permanent = new THREE.Mesh(g, material);
+  scene.add(permanent);
+  return permanent;
+}
 
 // A standing 1.8 m capsule measures human scale; this is an unfinished probe.
 // It is hidden for eye-height evidence to avoid covering the CAP-A camera.
@@ -39,7 +58,7 @@ const probe = new THREE.Mesh(new THREE.CapsuleGeometry(.35, 1.1, 4, 8),
 probe.position.set(32, 8.9, 100);
 scene.add(probe);
 
-type View = { position: number[]; target: number[]; label: string; probe?: boolean;
+type View = { position: number[]; target: number[]; label: string; probe?: boolean; permanent?: boolean;
   tank?: { x: number; y: number; z: number; yaw: number } };
 // Diagnostic meshes are the production hit capsules, not finished vehicle art.
 const tankProbe = new THREE.Group();
@@ -76,12 +95,16 @@ const views = {
   toll: { position: [-4, 9.55, 118], target: [12, 9.55, 128], label: 'Toll office interior · open 4 m east door' },
   mg: { position: [-23, 9.55, 222.8], target: [-28, 9.55, 180], label: 'AF1 MG nest · A-C06 at the head of the west leg' },
   depot: { position: [-35, 9.55, 199], target: [-38.5, 9.55, 200.4], label: 'West-leg depot frontage · closed loading recesses' },
-  v2: { position: [88, 31.55, 210], target: [-22, 9.15, 222], label: 'V2 bay standing eye (unbuilt ridge) · visible MG breastwork; original feet fan kept 0.3 m above rock' },
+  v2: { position: [88, 31.55, 210], target: [-22, 9.15, 222], label: 'V2 bay standing eye · visible MG breastwork; temporary bay cap hidden until U-141', permanent: true },
   ingress: { position: [16, 9.55, 332], target: [70, 9.55, 336], label: 'CAP-X · y8 service road; bridge reserved for U-140' },
   pool: { position: [96, 9.55, 444], target: [114, 9.55, 432], label: 'X0 · motor pool canopy and screened retaining dogleg' },
   turn: { position: [114, 9.55, 432], target: [96, 9.55, 444], label: 'X1 · screened return into motor pool' },
   bridge: { position: [70, 9.55, 336], target: [84, 9.55, 338], label: 'y8 service road below exact reserved bridge void' },
-  v3: { position: [66, 27.55, 286], target: [54, 11.2, 334], label: 'V3 eye probe · X5 silhouette opening; shelf unbuilt' },
+  v3: { position: [66, 27.55, 286], target: [54, 11.2, 334], label: 'V3 eye probe · X5 silhouette opening; temporary bay cap hidden until U-141', permanent: true },
+  ridgeR0: { position: [46, 9.55, 65.9], target: [78, 15.55, 96], label: 'D0→R0 · ridge stair mouth and first flights' },
+  ridgeR3: { position: [80, 27.55, 168], target: [94, 31.55, 210], label: 'R3 combat shelf y26 · final climb to the Eagle shelf' },
+  ridgeR6: { position: [72, 27.55, 286], target: [70, 21.55, 322], label: 'R6 y26 · descent to R7; V3 bay front capped for U-141' },
+  ridgeOverview: { position: [190, 150, 110], target: [76, 20, 200], label: 'Free overview · U-163 R0–R7 ridge shelf, barrier rock and temporary caps' },
   returnCourt: { position: [44, 9.55, 58], target: [32, 9.55, 98], label: 'CAP-RETURN · court edge toward tank stop; store entrance beside retreat' },
   storeDoor: { position: [40, 9.55, 58], target: [50, 9.55, 58], label: 'D0 court toward store · 4 m connector and west door · y8 floor / y12 ceiling' },
   storeHolding: { position: [50, 9.55, 58], target: [44, 9.55, 58], label: 'D0 holding socket toward west exit · north/east stone walls screen X-stop · ordinary blast attenuation' },
@@ -95,6 +118,9 @@ const views = {
 
 function view(v: View) {
   probe.visible = v.probe ?? false;
+  if (v.permanent) permanentScene().visible = true;
+  else if (permanent) permanent.visible = false;
+  full.visible = !v.permanent;
   tankProbe.visible = false;
   document.querySelector<HTMLParagraphElement>('#view-label')!.textContent = v.label;
   camera.position.fromArray(v.position);
