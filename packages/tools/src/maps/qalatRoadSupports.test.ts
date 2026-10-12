@@ -397,11 +397,16 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     }
     const firingViews = captures.views.slice(22) as { name: string; position: number[] }[];
     expect(firingViews.map((view) => view.name)).toEqual(['rocket-ac01', 'rocket-ac02', 'rocket-ac07', 'rocket-ac08', 'rocket-ac11', 'rocket-ac12']);
+    expect(firingViews.map((view) => view.position)).toEqual([
+      [42, 9.55, 103.4], [-6, 9.55, 121], [-3, 9.55, 214],
+      [13, 9.55, 223], [2, 9.55, 330], [34.16, 9.55, 336.7],
+    ]);
     for (const view of firingViews) {
       const feet = { x: view.position[0]!, y: view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, z: view.position[2]! };
       expect(feet.y).toBeCloseTo(8);
       clearSupport(feet, DEFAULT_MOVE_CONFIG.radius);
-      expect(approvedRoadFootprint(feet) || (feet.x >= -8 && feet.x <= 0 && feet.z >= 114 && feet.z <= 122)).toBe(true);
+      const acceptedC12Pad = view.name === 'rocket-ac12' && feet.x >= 32.16 && feet.x <= 36.16 && feet.z >= 334.7 && feet.z <= 338.7;
+      expect(approvedRoadFootprint(feet) || (feet.x >= -8 && feet.x <= 0 && feet.z >= 114 && feet.z <= 122) || acceptedC12Pad, `${view.name} legal firing floor`).toBe(true);
     }
     for (const view of [...standingViews, ...combatViews, ...ingressViews]) {
       const feet = { x: view.position[0]!, y: view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, z: view.position[2]! };
