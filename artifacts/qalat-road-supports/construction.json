@@ -1,14 +1,14 @@
 {
-  "task": "U-151",
+  "task": "U-152",
   "parent": "U-139",
   "foundation": "U-149",
   "bend": "U-159",
   "rock": "U-160",
-  "kind": "isolated road whitebox: road fights and screened tank ingress",
+  "kind": "isolated road whitebox: road fights, screened tank ingress and D0 return store",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "fd78c76652519c8499a8ac13e08d79b4db394d926f9a62c55bb4501628770ab9",
-  "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9",
-  "boxCount": 52594,
+  "sourceHash": "caf0e15b9bc6184344e13fc0595d8103ba3ed80a9fb4f837452dd4699d02969f",
+  "levelHash": "db192eaeba385087c0f8ec9fd0fbacad222fe1edd814aa93577dc747b15384bc",
+  "boxCount": 52292,
   "stratumM": 0.025,
   "edgeExpansionM": 0.005,
   "circleSides": 512,
@@ -2057,8 +2057,36 @@
     "terrainOuterEastX": 140,
     "terrainOuterEastStartZ": 320
   },
+  "returnShelters": {
+    "$comment": "U-152 isolated return construction, Mission 1 specification section 11.2. Interior dimensions remain clear; all stone walls expand outward. No supplies or campaign activation.",
+    "store": {
+      "id": "D0-weigh-station-store",
+      "minX": 46,
+      "maxX": 54,
+      "minZ": 54,
+      "maxZ": 62,
+      "floorY": 8,
+      "ceilingY": 12,
+      "wallM": 0.6,
+      "roofTopY": 12.6,
+      "doorMinZ": 56,
+      "doorMaxZ": 60,
+      "doorTopY": 11,
+      "connector": {
+        "minX": 44,
+        "maxX": 46,
+        "minZ": 56,
+        "maxZ": 60
+      },
+      "holding": {
+        "x": 50,
+        "y": 8,
+        "z": 58
+      }
+    }
+  },
   "tankSweep": {
-    "levelHash": "17fe9c73cf945daf2529e8e0f0e009c52637ba90bb3ba28370d093472b319ba9",
+    "levelHash": "db192eaeba385087c0f8ec9fd0fbacad222fe1edd814aa93577dc747b15384bc",
     "route": {
       "method": "closed interval disk tubes; complete support prism slab union",
       "radiusM": 3.31058907144937,
@@ -2067,7 +2095,7 @@
       "allHullAndTurretYaws": true,
       "endpointsAndStops": true,
       "intervals": 1110,
-      "slabChecks": 616687,
+      "slabChecks": 616686,
       "lengthM": 551.3575443141006,
       "floorY": 8
     },
@@ -2140,7 +2168,7 @@
         "allHullAndTurretYaws": true,
         "endpointsAndStops": true,
         "intervals": 10181,
-        "slabChecks": 5430071,
+        "slabChecks": 5430079,
         "lengthM": 542.9866666667086,
         "floorY": 8
       },
@@ -2152,7 +2180,7 @@
         "allHullAndTurretYaws": true,
         "endpointsAndStops": true,
         "intervals": 10181,
-        "slabChecks": 5430071,
+        "slabChecks": 5430079,
         "lengthM": 542.9866666667086,
         "floorY": 8
       },
@@ -2483,8 +2511,7 @@
   },
   "ownerQualityVerdict": "road look/play batched in U-139",
   "unfinished": [
-    "return shelters/blast protection: U-152",
-    "ridge/bridge: U-140",
+    "ridge shelters/bridge: U-140",
     "support bays/C12 stairs: U-141",
     "outpost: U-116",
     "basement: U-115"

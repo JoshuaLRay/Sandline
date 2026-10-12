@@ -1,0 +1,19 @@
+{
+  "$comment": "U-152 isolated return construction, Mission 1 specification section 11.2. Interior dimensions remain clear; all stone walls expand outward. No supplies or campaign activation.",
+  "store": {
+    "id": "D0-weigh-station-store",
+    "minX": 46,
+    "maxX": 54,
+    "minZ": 54,
+    "maxZ": 62,
+    "floorY": 8,
+    "ceilingY": 12,
+    "wallM": 0.6,
+    "roofTopY": 12.6,
+    "doorMinZ": 56,
+    "doorMaxZ": 60,
+    "doorTopY": 11,
+    "connector": { "minX": 44, "maxX": 46, "minZ": 56, "maxZ": 60 },
+    "holding": { "x": 50, "y": 8, "z": 58 }
+  }
+}

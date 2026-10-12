@@ -13,6 +13,7 @@ import { INSERTION, buildInsertionLevel } from './qalatInsertion.ts';
 import { ROAD_TERRAIN, TERRAIN_SPURS, VIEW_FANS, buildRoadTerrain, roadTerrainManifest } from './qalatRoadTerrain.ts';
 import { tankSweepReport } from './qalatTankSweep.ts';
 import { TANK_INGRESS, tankIngressFloors, buildTankIngressShelter } from './qalatTankIngress.ts';
+import { RETURN_SHELTERS, returnShelterFloors, buildReturnShelters } from './qalatReturnShelters.ts';
 import { scan, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
 import {
   discsSeeEachOther, farthestView, longestSegment, ribbonPieces, type Disc, type Segment,
@@ -39,7 +40,7 @@ export function roadSupportFloors(): readonly Polygon[] {
 }
 
 const bareFloors = roadSupportFloors();
-const floors = [...bareFloors, ...combatOpenFloors(), ...tankIngressFloors()];
+const floors = [...bareFloors, ...combatOpenFloors(), ...tankIngressFloors(), ...returnShelterFloors()];
 export function tankReturnRoute() { return [...TANK_INGRESS.spine, ...ROAD_SUPPORTS.spine.slice(1, 8).reverse()]; }
 export function onRoadSupportFloor(p: Point, margin = 0): boolean {
   return floors.some((poly) => {
@@ -76,7 +77,7 @@ export function buildRoadSupportLevel() {
     previous = next;
   }
   return { ...insertion, id: ROAD_SUPPORTS.id, floor: { halfWidth: 150, halfDepth: 470 },
-    boxes: [...insertion.boxes, ...boxes, ...buildRoadTerrain(floors, ROAD_SUPPORTS.spine, TANK_INGRESS.terrainMaxZ), ...buildRoadCombat(), ...buildTankIngressShelter()] };
+    boxes: [...insertion.boxes, ...boxes, ...buildRoadTerrain(floors, ROAD_SUPPORTS.spine, TANK_INGRESS.terrainMaxZ), ...buildRoadCombat(), ...buildTankIngressShelter(), ...buildReturnShelters()] };
 }
 
 export function buildRoadSupportWorld() { return loadLevel(buildRoadSupportLevel()); }
@@ -164,10 +165,10 @@ export function roadTankSweepReport(level = buildRoadSupportLevel()) {
 export function roadSupportManifest() {
   const level = buildRoadSupportLevel();
   const levelHash = createHash('sha256').update(JSON.stringify(level)).digest('hex');
-  return { task: 'U-151', parent: 'U-139', foundation: 'U-149', bend: 'U-159', rock: 'U-160',
-    kind: 'isolated road whitebox: road fights and screened tank ingress',
+  return { task: 'U-152', parent: 'U-139', foundation: 'U-149', bend: 'U-159', rock: 'U-160',
+    kind: 'isolated road whitebox: road fights, screened tank ingress and D0 return store',
     activeCampaign: 'unchanged; activation belongs to U-117',
-    sourceHash: createHash('sha256').update(JSON.stringify({ insertion: INSERTION, road: ROAD_SUPPORTS, terrain: ROAD_TERRAIN, combat: ROAD_COMBAT, ingress: TANK_INGRESS })).digest('hex'),
+    sourceHash: createHash('sha256').update(JSON.stringify({ insertion: INSERTION, road: ROAD_SUPPORTS, terrain: ROAD_TERRAIN, combat: ROAD_COMBAT, ingress: TANK_INGRESS, shelters: RETURN_SHELTERS })).digest('hex'),
     levelHash, boxCount: level.boxes.length,
     stratumM: STRATUM_M, edgeExpansionM: EDGE_M, circleSides: CIRCLE_SIDES,
     floorY: ROAD_SUPPORTS.floorY, supportBottomY: ROAD_SUPPORTS.supportBottomY,
@@ -179,10 +180,11 @@ export function roadSupportManifest() {
     terrain: roadTerrainManifest(level.boxes),
     combat: ROAD_COMBAT,
     ingress: TANK_INGRESS,
+    returnShelters: RETURN_SHELTERS,
     tankSweep: roadTankSweepReport(level),
     combatSightLines: roadCombatReport(),
     ownerQualityVerdict: 'road look/play batched in U-139',
-    unfinished: ['return shelters/blast protection: U-152', 'ridge/bridge: U-140', 'support bays/C12 stairs: U-141',
+    unfinished: ['ridge shelters/bridge: U-140', 'support bays/C12 stairs: U-141',
       'outpost: U-116', 'basement: U-115'],
   };
 }
@@ -226,6 +228,10 @@ export function roadSupportPlanSvg(): string {
 <g fill="none" stroke="#2b7c61" stroke-width=".25">${regroup}</g>
 <g fill="#a8804c" stroke="#3f2517" stroke-width=".15" font-family="sans-serif" font-size="1.8">${cover}${trees}</g>
 <g fill="#a8804c" fill-opacity=".7" stroke="#3f2517" stroke-width=".15">${office}</g>
+<rect x="45.4" y="-62.6" width="9.2" height="9.2" fill="#a8804c" stroke="#3f2517" stroke-width=".2"/>
+<rect x="44" y="-60" width="6" height="4" fill="#d8ccb6"/>
+<circle cx="50" cy="-58" r=".5" fill="#2b7c61"/>
+<text x="55" y="-58" fill="#3f2517" font-family="sans-serif" font-size="1.8">D0 store · y8/12</text>
 <text x="-8" y="-118" fill="#3f2517" font-family="sans-serif" font-size="1.8">toll office</text>
 <g fill="#993434" font-family="sans-serif" font-size="2">${frontage}</g>
 <rect x="16" y="-288" width="28" height="36" fill="none" stroke="#5b6d86" stroke-dasharray="1 1"/>
@@ -234,7 +240,7 @@ export function roadSupportPlanSvg(): string {
 <g fill="none" stroke="#8a2f1d" stroke-width=".35" stroke-dasharray="2 1" font-family="sans-serif" font-size="3">${fights}</g>
 <line x1="${lane.from.x}" y1="${-lane.from.z}" x2="${lane.to.x}" y2="${-lane.to.z}" stroke="#c0392b" stroke-width=".6"/>
 <g fill="#162e35" font-family="sans-serif" font-size="2.5">${labels}
-<text x="-69" y="-507" font-size="3.5">U-151 · screened tank ingress and bent road fights · north ↑</text>
+<text x="-69" y="-507" font-size="3.5">U-152 · D0 return store, screened tank ingress and road fights · north ↑</text>
 <text x="-69" y="-501">20 m ribbon / 12 m carriageway / 36 m aprons; grey: rock from y5.5, ≥${t.edgeMinHeightM} m above the road</text>
 <text x="-69" y="-496">West T-W crest y${t.sideTops.left}; east T-C/T-E foot y${t.sideTops.right}; dotted: inside-corner spur zones (off-road part)</text>
 <text x="-69" y="-491">Purple: ridge bay fans and target rays; rock stays ${t.viewFans.rayClearanceM} m under them</text>
