@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { type WorldBox } from '@sandline/shared';
 import { buildRoadSupportWorld, ROAD_SUPPORTS } from './qalatRoadSupports.ts';
 import { TANK_INGRESS, tankIngressPath } from './qalatTankIngress.ts';
+import { TANK_BODY_HEIGHT_M } from './qalatTankSweep.ts';
 
 type Point = { x: number; z: number };
 // Independent §11.1 transcription; changing authoring data cannot move the test.
@@ -66,9 +67,18 @@ describe('U-151 exact service-spur construction', () => {
     for (let x = 86; x <= 106; x += .5) for (let z = 434; z <= 454; z += .5) floor({ x, z });
   });
 
-  it('supports and clears the full perpendicular 12 m lane and every 36 m turning apron at y8', () => {
+  it('supports the full 12 m lane and 36 m aprons with infantry and built-slab turret clearance', () => {
     const returns = world.boxes.filter((b) => b.id.startsWith('X-return-'));
-    const clear = (p: Point) => { floor(p); expect(column(p).some((b) => b.maxY > 8 && b.minY < 14), `solid in 12 m lane/apron ${JSON.stringify(p)}`).toBe(false); };
+    const builtOverhead = (b: WorldBox) => b.id === 'ridge-bridge-deck' || /^ridge-(slab|parapet)-/.test(b.id);
+    const clear = (p: Point) => {
+      floor(p);
+      const solids = column(p).filter((b) => b.maxY > 8);
+      expect(solids.some((b) => b.minY < 10.2), `head-height solid in lane/apron ${JSON.stringify(p)}`).toBe(false);
+      // The finished ridge's identified overhead members clear the full turret;
+      // all other lane/apron solids retain U-151's stronger six-metre headroom.
+      expect(solids.some((b) => b.minY < (builtOverhead(b) ? 8 + TANK_BODY_HEIGHT_M : 14)),
+        `solid in 12 m lane/apron ${JSON.stringify(p)}`).toBe(false);
+    };
     for (let i = 1; i < PATH.length; i++) {
       const a = PATH[i - 1]!, b = PATH[i]!, dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz);
       for (let s = 0; s <= l; s += .25) {
@@ -110,13 +120,15 @@ describe('U-151 exact service-spur construction', () => {
     expect(probes).toBeGreaterThan(1500);
   });
 
-  it('leaves basement rooms below y5.5 and the exact future bridge deck volume empty', () => {
+  it('keeps the road shell out of the basement and exact built bridge deck reservation', () => {
     expect(ROAD_SUPPORTS.reservedBridge).toEqual({ minX: 66, maxX: 74, minZ: 330, maxZ: 342, undersideY: 14, deckY: 16 });
     for (const b of world.boxes.filter((b) => /^(road-support|road-rock|road-cap|X)/.test(b.id))) {
       expect(b.minY).toBeGreaterThanOrEqual(5.5);
       expect(b.maxX <= 66 || b.minX >= 74 || b.maxZ <= 330 || b.minZ >= 342 || b.maxY <= 14 || b.minY >= 16,
         `occupies future bridge deck: ${b.id}`).toBe(true);
     }
-    expect(world.boxes.some((b) => b.id.includes('bridge'))).toBe(false);
+    expect(world.boxes.find((b) => b.id === 'ridge-bridge-deck')).toMatchObject({
+      minX: 66, maxX: 74, minZ: 330, maxZ: 342, minY: 14, maxY: 16,
+    });
   });
 });

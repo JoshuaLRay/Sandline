@@ -56,7 +56,7 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | `pnpm export:soldier` | write the code-built soldier as `assets/src/soldier.glb`, the pipeline's test asset |
 | `pnpm gen:nav` | re-bake every named world's navmesh; required after editing a world, `MoveConfig` or the hitbox (a test fails until you do) |
 | `pnpm gen:qalat-insertion` | U-138: compile the isolated Juniper Hollow replacement section and its exact collision/render surface, manifest and plan into `artifacts/qalat-insertion/`; production campaign activation remains U-117 |
-| `pnpm gen:qalat-road-supports` | U-149/U-159–U-161/U-151/U-152/U-162/U-163: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard, loading façades, D0 return store, first-X5 ingress dogleg/screens and the R0–R7 ridge shelf; reserve basement/bridge voids, the 12 m vehicle corridor and ridge views; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
+| `pnpm gen:qalat-road-supports` | U-149/U-159–U-164/U-151/U-152: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard, loading façades, D0 return store, first-X5 ingress dogleg/screens and the R0–R9 ridge shelf/service bridge; preserve basement voids, the 12 m vehicle corridor and ridge views; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
 
 ## Isolated Juniper Hollow construction (U-138)
@@ -114,7 +114,7 @@ blockers. U-151 adds the exact X0–X6 motor pool/service spur, its 12 m lanes,
 its shoulder to clear the ingress. The separate V3→X5 turret-height fan preserves
 all seven original feet rays. `tankSweep` certifies continuous shared rotating
 hull/turret clearance, full floor support and the real controller traces, including
-an exact reserved-deck fixture (2.8 m overhead). The bridge is not constructed.
+the built bridge deck (2.8 m overhead), approaches, R8 landing/stairs and supports.
 The manifest records travel without target contact and with a controlled ten-second
 standing target in the safety radius; drive/fire ticks run, the wider encounter and
 projectile flight do not. Current visibility alone does not stop drive, and authored
@@ -125,10 +125,11 @@ the J1/J2/J3/X5/J4 dogleg in §11.1, 12×12 m junction pads, a 7×7 m X5 track
 patch and opaque forecourt fin/canopy/key/tongue. The entire carriageway remains
 12 m clear; two 4 m firing/infantry channels retain A8→X5 and the fixed
 A-C12 pad→X5. Sealing the sole A8 throat must still disconnect every approach.
-The canopy/key clear the future 8 m ridge footprints; a separate exact R8
-y12 landing fixture x66..74/z348..352 uses a 0.6 m slab at underside y11.4,
-with 0.2 m turret clearance. U-140 must repeat the sweep against its completed
-stairs, landing and supports; this fixture supplies no built ridge geometry.
+The canopy/key clear the 8 m ridge footprints. U-164 replaces the separate R8
+clearance fixture with the built y12 landing x66..74/z348..352: its 0.6 m slab
+has underside y11.4 and 0.2 m turret clearance. The full authored and both
+controller traces certify the completed bridge, stairs, landing and supports;
+lowering the actual landing underside to y11.19 must fail.
 `qalatForecourtScreening.test.ts` checks production hull/turret/muzzle targets
 at sixteen yaws from both complete A-C11/A-C12 pads on a ≤0.5 m grid and V3,
 at prone/crouch/standing eye and body heights. It removes future outpost interior
@@ -165,11 +166,19 @@ shelf: 8 m stepped ribbons on 0.05 m rows (≤5 cm edge/riser rasterization),
 §6.1's landings and R3 shelf, ten-riser flights of 0.20 m risers on 0.40 m treads
 spaced evenly with ≥2 m rest landings. The T-E body and a 1 m barrier ring stand
 ≥2.2 m above every adjacent floor; north of z300 the road rock stands back by
-that ring. Temporary caps close the V1–V3 bay fronts (U-141) and R7's bridge mouth
-(U-164, hanging above the clear X4 apron). Screening proofs and the six U-162
+that ring. Temporary caps close the V1–V3 bay fronts (U-141). U-164 replaces
+the R7 mouth caps with the bridge/descent and caps the east gate for U-116.
+Screening proofs and the six U-162
 reveal captures count permanent solids only (`isTemporaryRidgeCap`). Run
 `pnpm exec vitest run packages/tools/src/maps/qalatRidge.test.ts packages/tools/src/maps/qalatRidgeNav.test.ts`
 for the stair recipe, edge, fan, travel, mouth, island and escape proofs.
+
+U-164 adds the exact y16 service deck x66..74/z330..342, underside y14,
+two 8 m approaches with twenty 0.20/0.30 m steps and a 2 m landing each,
+the exact R8 landing and twenty 0.20/0.40 m risers toward R9. The final
+descent remains at y12 until its full width clears the tank-road junction pads.
+Parapets and rock returns reject drops onto the road; nav/controller travel
+reaches R9 in both directions without a new road↔ridge crossing.
 
 Run `pnpm exec tsx packages/tools/src/capture-qalat-road-supports.ts` after
 generation for forty-three 1440×1000 exact-scene views and geometry/draw measurements,

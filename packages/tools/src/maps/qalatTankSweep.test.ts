@@ -5,6 +5,7 @@ import { certifyTankRoute, measureTankTravel, TANK_BODY_HEIGHT_M, TANK_SWEEP_RAD
 
 const road = boxFrom({ id: 'road', x: 0, y: 5.5, z: 5, w: 40, h: 2.5, d: 50 }, 'cover');
 const route = [{ x: 0, y: 8, z: 0 }, { x: 0, y: 8, z: 10 }];
+const world = buildRoadSupportWorld();
 
 describe('U-151 continuous full rotating tank construction certificate', () => {
   it('encloses the real shared capsules, every yaw and the larger controller track corners', () => {
@@ -28,25 +29,27 @@ describe('U-151 continuous full rotating tank construction certificate', () => {
     expect(() => certifyTankRoute([road], route.map((p) => ({ ...p, y: 0 })))).toThrow(/y8/);
   });
 
-  it('tests turret clearance beneath the exact reserved bridge without constructing it', () => {
-    const bridge = boxFrom({ id: 'future-bridge', x: 70, y: 14, z: 336, w: 8, h: 2, d: 12 }, 'cover');
-    const floor = { ...road, minX: 50, maxX: 90, minZ: 310, maxZ: 360 };
-    const path = [{ x: 84, y: 8, z: 338 }, { x: 54, y: 8, z: 334 }];
-    expect(certifyTankRoute([floor, bridge], path).floorY).toBe(8);
-    expect(() => certifyTankRoute([floor, { ...bridge, minY: 11.19 }], path)).toThrow(/turret/);
+  it('tests turret clearance beneath the exact built R7b deck', () => {
+    const bridge = world.boxes.find((b) => b.id === 'ridge-bridge-deck')!;
+    expect(bridge).toMatchObject({ minX: 66, maxX: 74, minZ: 330, maxZ: 342, minY: 14, maxY: 16 });
+    const path = [{ x: 70, y: 8, z: 336 }, { x: 70, y: 8, z: 338 }];
+    expect(certifyTankRoute(world.boxes, path).floorY).toBe(8);
+    expect(() => certifyTankRoute(world.boxes.map((b) => b === bridge ? { ...b, minY: 11.19 } : b), path)).toThrow(/turret/);
   });
 
   it('certifies all generated X0→A1 intervals and the real controller trajectory, including ten seconds of target contact', () => {
-    const world = buildRoadSupportWorld(), path = tankReturnRoute();
+    const path = tankReturnRoute();
     expect(path[0]).toEqual({ id: 'X0', x: 96, y: 8, z: 444 });
     expect(path.at(-1)).toEqual({ id: 'A1', x: 32, y: 8, z: 98 });
-    const bridge = boxFrom({ id: 'future-bridge', x: 70, y: 14, z: 336, w: 8, h: 2, d: 12 }, 'cover');
-    // The dogleg also passes under R8's exact y12 landing. A 0.6 m slab is
-    // a clearance fixture, not delivered ridge geometry; U-140 must repeat
-    // the sweep against its completed stairs, landing and supports.
-    const r8 = boxFrom({ id: 'future-R8-landing', x: 70, y: 11.4, z: 350, w: 8, h: .6, d: 4 }, 'cover');
-    expect(certifyTankRoute([...world.boxes, bridge, r8], path).lengthM).toBeGreaterThan(500);
-    expect(() => certifyTankRoute([...world.boxes, bridge, { ...r8, minY: 11.19 }], path)).toThrow(/turret/);
+    const r8 = world.boxes.filter((b) => b.id.startsWith('ridge-slab-') && b.maxY === 12
+      && b.maxX > 66 && b.minX < 74 && b.maxZ > 348 && b.minZ < 352);
+    expect(r8.length).toBeGreaterThan(0);
+    expect(Math.min(...r8.map((b) => b.minY))).toBeCloseTo(11.4, 8);
+    // Lower the built slabs themselves: no reserved clearance fixture can hide
+    // a bridge, stair, foundation or landing collision in the finished world.
+    const lowered = world.boxes.map((b) => r8.includes(b) ? { ...b, minY: 11.19 } : b);
+    expect(certifyTankRoute(world.boxes, path).lengthM).toBeGreaterThan(500);
+    expect(() => certifyTankRoute(lowered, path)).toThrow(/turret/);
     const free = measureTankTravel(world.boxes, path), contact = measureTankTravel(world.boxes, path, 10);
     expect(free.blockedSeconds).toBe(0);
     expect(contact.blockedSeconds).toBeCloseTo(10, 5);
@@ -54,7 +57,8 @@ describe('U-151 continuous full rotating tank construction certificate', () => {
     expect(contact.aimingTicks).toBeGreaterThan(0);
     expect(contact.firedShells).toBeGreaterThan(0);
     for (const result of [free, contact]) {
-      expect(certifyTankRoute([...world.boxes, bridge, r8], result.trace).allHullAndTurretYaws).toBe(true);
+      expect(certifyTankRoute(world.boxes, result.trace).allHullAndTurretYaws).toBe(true);
+      expect(() => certifyTankRoute(lowered, result.trace)).toThrow(/turret/);
       expect(Math.hypot(result.endpoint.x - 32, result.endpoint.z - 98)).toBeLessThanOrEqual(getEnemy('tank').vehicle!.arriveM);
       expect(result.endpoint.y).toBe(8);
     }

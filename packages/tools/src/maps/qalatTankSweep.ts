@@ -2,7 +2,7 @@
  * sampling. A disk encloses every yaw of both shared capsules and the larger
  * controller track footprint. Every supporting slab boundary is checked. */
 import { Session } from '@sandline/server/session';
-import { TICK_SECONDS, boxFrom, driveForward, getEnemy, type WorldBox } from '@sandline/shared';
+import { TICK_SECONDS, driveForward, getEnemy, type WorldBox } from '@sandline/shared';
 import { union, type Interval } from './planStrata.ts';
 
 export interface TankRoutePoint { id?: string; x: number; y: number; z: number }
@@ -160,28 +160,41 @@ export function measureTankTravel(boxes: readonly WorldBox[], route: readonly Ta
     stopYaw: enemy.yaw, trace };
 }
 
-/** Compact reproducible generator evidence; the deck is a verification fixture
- * only. U-140 owns its eventual construction and off-corridor abutments. */
+/** Compact generator evidence against the completed ridge, including every
+ * bridge approach, stair, landing, parapet and foundation in the world. */
 export function tankSweepReport(boxes: readonly WorldBox[], route: readonly TankRoutePoint[]) {
-  const bridge = boxFrom({ id: 'reserved-bridge-proof', x: 70, y: 14, z: 336, w: 8, h: 2, d: 12 }, 'cover');
-  const r8 = boxFrom({ id: 'reserved-R8-proof', x: 70, y: 11.4, z: 350, w: 8, h: .6, d: 4 }, 'cover');
-  const reservedWorld = [...boxes, bridge, r8];
-  const clear = measureTankTravel(reservedWorld, route), contact = measureTankTravel(reservedWorld, route, 10);
+  const bridge = boxes.find((b) => b.id === 'ridge-bridge-deck');
+  if (!bridge) throw new Error('built R7b bridge deck is missing');
+  const r8 = { minX: 66, maxX: 74, minZ: 348, maxZ: 352 };
+  const landing = boxes.filter((b) => b.id.startsWith('ridge-slab-') && Math.abs(b.maxY - 12) < EPS
+    && b.maxX > r8.minX && b.minX < r8.maxX && b.maxZ > r8.minZ && b.minZ < r8.maxZ);
+  let coveredZ = r8.minZ;
+  for (const slab of supportSlabs(landing, 12)) {
+    if (slab.maxZ <= coveredZ) continue;
+    if (slab.minZ > coveredZ + EPS || !slab.spans.some(([a, b]) => a <= r8.minX + EPS && b >= r8.maxX - EPS))
+      throw new Error('built R8 landing has an unsupported footprint');
+    coveredZ = slab.maxZ;
+    if (coveredZ >= r8.maxZ - EPS) break;
+  }
+  if (coveredZ < r8.maxZ - EPS) throw new Error('built R8 landing is missing');
+  const undersideY = Math.min(...landing.map((b) => b.minY));
+  const clear = measureTankTravel(boxes, route), contact = measureTankTravel(boxes, route, 10);
   const summary = ({ trace: _trace, ...result }: ReturnType<typeof measureTankTravel>) => result;
-  return { route: certifyTankRoute(reservedWorld, route), realController: {
+  return { route: certifyTankRoute(boxes, route), realController: {
     withoutTarget: summary(clear), safetyRadiusTargetContact: summary(contact),
-    withoutTargetSweep: certifyTankRoute(reservedWorld, clear.trace),
-    contactSweep: certifyTankRoute(reservedWorld, contact.trace),
+    withoutTargetSweep: certifyTankRoute(boxes, clear.trace),
+    contactSweep: certifyTankRoute(boxes, contact.trace),
     X5WaypointAfterPrisonerReleaseSeconds: { radioAlive: 5 + clear.waypointTimesSeconds['X5']!, radioDead: 20 + clear.waypointTimesSeconds['X5']! },
     finalA1AfterPrisonerReleaseSeconds: { radioAlive: 5 + clear.seconds, radioDead: 20 + clear.seconds },
     contactMethod: 'standing visible target held 2.3 m ahead near X5 for 10 seconds; actual Session drive and fire ticks',
     behavior: 'current controller stops for the soldier safety radius; visibility alone does not hold its drive',
     measurementScope: 'actual Session drive and fire ticks; projectiles and wider encounter are not advanced; authored final facing belongs to activation',
     finalSouthwestOrientationCovered: true,
-  }, reservedBridge: { minX: 66, maxX: 74, minZ: 330, maxZ: 342, undersideY: 14, deckY: 16,
-    minimumBodyClearanceM: 14 - 8 - TANK_BODY_HEIGHT_M, constructed: false },
-  reservedR8Landing: { minX: 66, maxX: 74, minZ: 348, maxZ: 352, floorY: 12,
-    fixtureUndersideY: 11.4, minimumBodyClearanceM: 11.4 - 8 - TANK_BODY_HEIGHT_M,
-    constructed: false, obligation: 'U-140 must certify completed R8 stairs/landing/supports against the tank route' },
+  }, builtBridge: { minX: bridge.minX, maxX: bridge.maxX, minZ: bridge.minZ, maxZ: bridge.maxZ,
+    undersideY: bridge.minY, deckY: bridge.maxY,
+    minimumBodyClearanceM: bridge.minY - 8 - TANK_BODY_HEIGHT_M, constructed: true },
+  builtR8Landing: { ...r8, floorY: 12, minimumUndersideY: undersideY,
+    minimumBodyClearanceM: undersideY - 8 - TANK_BODY_HEIGHT_M, slabBoxes: landing.length,
+    constructed: true, obligation: 'completed bridge approaches, R8 stairs/landing and every support certified against authored and both controller traces' },
   sharedVehicle: vehicle };
 }

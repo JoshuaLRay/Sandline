@@ -13,11 +13,15 @@ type Point = { x: number; z: number };
 const D0: { id: string; x: number; y: number; z: number } = { id: 'D0', x: 32, y: 8, z: 64 };
 type Node = { id: string; x: number; y: number; z: number };
 const NODES: Node[] = ([['R0', 62, 8, 68], ['R1', 78, 14, 96], ['R2', 64, 20, 128], ['R3', 80, 26, 168],
-  ['R4', 94, 30, 210], ['R5', 86, 30, 248], ['R6', 72, 26, 286], ['R7', 70, 20, 322]] as const)
+  ['R4', 94, 30, 210], ['R5', 86, 30, 248], ['R6', 72, 26, 286], ['R7', 70, 20, 322],
+  ['R7b', 70, 16, 336], ['R8', 70, 12, 350], ['R9', 56, 8, 370]] as const)
   .map(([id, x, y, z]) => ({ id, x, y, z }));
 const LANDINGS = [[72, 84, 90, 102], [58, 70, 122, 134], [74, 86, 158, 182], [88, 100, 204, 216],
-  [80, 92, 242, 254], [66, 78, 280, 292], [66, 74, 320, 324]].map(([minX, maxX, minZ, maxZ]) => ({ minX: minX!, maxX: maxX!, minZ: minZ!, maxZ: maxZ! }));
+  [80, 92, 242, 254], [66, 78, 280, 292], [66, 74, 320, 322], [66, 74, 330, 342],
+  [66, 74, 348, 352], [52, 60, 368, 374]].map(([minX, maxX, minZ, maxZ]) => ({ minX: minX!, maxX: maxX!, minZ: minZ!, maxZ: maxZ! }));
 const X0 = { x: 96, y: 8, z: 444 }, A1 = { x: 32, y: 8, z: 98 }, A8 = { x: 16, y: 8, z: 332 };
+const ROAD_UNDER_BRIDGE = [{ x: 84, y: 8, z: 338 }, { x: 70, y: 8, z: 336 },
+  { x: 70, y: 8, z: 349 }, { x: 54, y: 8, z: 334 }];
 const segments = NODES.slice(1).map((b, i) => {
   const a = NODES[i]!, length = Math.hypot(b.x - a.x, b.z - a.z);
   return { a, b, length, u: { x: (b.x - a.x) / length, z: (b.z - a.z) / length } };
@@ -37,7 +41,7 @@ const near = (p: Point, r: number) => world.boxes.filter((b) => b.maxX > p.x - r
 const yieldWorker = () => new Promise<void>((resolve) => setImmediate(resolve));
 let nav: NavMesh, sealed: NavMesh;
 
-describe('U-163 ridge travel on the actual tiled standing nav bake', () => {
+describe('U-164 completed ridge travel on the actual tiled standing nav bake', () => {
   beforeAll(async () => {
     await initNav();
     nav = NavMesh.load(await bakeRoadSupportNav(world));
@@ -52,7 +56,7 @@ describe('U-163 ridge travel on the actual tiled standing nav bake', () => {
     expect(nav.links()).toEqual([]);
   });
 
-  for (const outward of [true, false]) it(`walks D0 → R0 … R7 ${outward ? 'up the ridge' : 'and back down'} on the real controller`, async () => {
+  for (const outward of [true, false]) it(`walks D0 → R0 … R9 ${outward ? 'up the ridge' : 'and back down'} on the real controller`, async () => {
     const stops = outward ? [D0, ...NODES] : [...NODES].reverse().concat(D0);
     let state = createMoveState(stops[0]!.x, stops[0]!.y, stops[0]!.z);
     state = { ...state, grounded: true };
@@ -65,8 +69,10 @@ describe('U-163 ridge travel on the actual tiled standing nav bake', () => {
       for (let tick = 0; tick < 1500; tick++) {
         const { input, status } = follower.step(state, { goal, pace: 'walk' }, 0);
         if (status === 'arrived') { arrived = true; break; }
+        const previousY = state.y;
         state = stepCharacter(state, input, TICK_SECONDS, DEFAULT_MOVE_CONFIG, world.boxes);
         expect(state.vault).toBeNull();
+        expect(Math.abs(state.y - previousY), `${from.id}→${goal.id} changed storeys`).toBeLessThan(.3);
         // Never below the lower landing (no drop) and never above the higher one (no rock top).
         expect(state.y, `${from.id}→${goal.id} at ${JSON.stringify(state)}`).toBeGreaterThanOrEqual(low);
         expect(state.y, `${from.id}→${goal.id} at ${JSON.stringify(state)}`).toBeLessThanOrEqual(high);
@@ -76,25 +82,29 @@ describe('U-163 ridge travel on the actual tiled standing nav bake', () => {
       expect(arrived, `stalled at ${JSON.stringify(state)} toward ${goal.id}`).toBe(true);
       expect(Math.abs(state.y - goal.y), `${goal.id} floor`).toBeLessThan(.05);
     }
-    console.log(`U-163 ridge walk ${outward ? 'up' : 'down'}`, JSON.stringify({ ticks, seconds: ticks * TICK_SECONDS }));
+    console.log(`U-164 ridge walk ${outward ? 'up' : 'down'}`, JSON.stringify({ ticks, seconds: ticks * TICK_SECONDS }));
   }, 120_000);
 
   it('joins the ridge to the road and start only through the D0 court mouth', () => {
-    const start = INSERTION.squadStarts[0]!, r4 = NODES[4]!, r7 = NODES.at(-1)!;
-    expect(completePathLength(nav.path(start, r7), start, r7)).toBeGreaterThan(300);
-    expect(completePathLength(nav.path(r7, A8), r7, A8)).toBeGreaterThan(300);
-    // R7's bridge mouth is closed until U-164: the X spur is reached only back through D0 and A8.
-    const viaCourt = nav.path(r7, X0)!;
-    expect(completePathLength(viaCourt, r7, X0)).toBeGreaterThan(600);
-    expect(viaCourt.points.some((p) => Math.hypot(p.x - D0.x, p.z - D0.z) < 14), 'R7 → X0 bypasses the D0 court').toBe(true);
-    for (const node of NODES.slice(1)) for (const from of [start, A1, A8, X0])
+    const start = INSERTION.squadStarts[0]!, r4 = NODES[4]!, r9 = NODES.at(-1)!;
+    expect(completePathLength(nav.path(start, r9), start, r9)).toBeGreaterThan(350);
+    expect(completePathLength(nav.path(r9, A8), r9, A8)).toBeGreaterThan(350);
+    // The occupied bridge and the road below stay separate; only D0 joins them.
+    for (const node of NODES.slice(7)) for (const road of [X0, ...ROAD_UNDER_BRIDGE]) {
+      const viaCourt = nav.path(node, road)!;
+      expect(completePathLength(viaCourt, node, road), `${node.id} → road shortcuts the ridge`).toBeGreaterThan(600);
+      expect(viaCourt.points.some((p) => Math.hypot(p.x - D0.x, p.z - D0.z) < 14), `${node.id} → road bypasses D0`).toBe(true);
+    }
+    for (const node of NODES.slice(1)) for (const from of [start, A1, A8, X0, ...ROAD_UNDER_BRIDGE])
       expect(completePathLength(sealed.path(from, node), from, node), `${node.id} reachable past the sealed mouth from ${JSON.stringify(from)}`).toBeNull();
-    expect(completePathLength(sealed.path(r4, r7), r4, r7)).not.toBeNull();
+    expect(completePathLength(sealed.path(r4, r9), r4, r9)).not.toBeNull();
+    expect(completePathLength(sealed.path(r9, r4), r9, r4)).not.toBeNull();
   });
 
   it('leaves the ridge rock, its barrier ring and every temporary cap an unreachable island', () => {
     const tops = [{ x: 106, z: 210 }, { x: 98, z: 140 }, { x: 55, z: 128 }, { x: 85, z: 210 }, { x: 63, z: 286 },
-      { x: 73.5, z: 170 }, { x: 92.6, z: 248 }, { x: 52, z: 112 }];
+      { x: 73.5, z: 170 }, { x: 92.6, z: 248 }, { x: 52, z: 112 },
+      { x: 65.5, z: 336 }, { x: 74.5, z: 336 }, { x: 65.5, z: 344 }, { x: 74.5, z: 344 }, { x: 56, z: 374.3 }];
     for (const at of tops) {
       const top = { ...at, y: Math.max(...world.boxes.filter((b) => at.x >= b.minX && at.x <= b.maxX && at.z >= b.minZ && at.z <= b.maxZ).map((b) => b.maxY)) };
       const hit = nav.nearestPoint(top, { x: .6, y: .5, z: .6 });
@@ -139,7 +149,19 @@ describe('U-163 ridge travel on the actual tiled standing nav bake', () => {
       for (let z = l.minZ + 1; z < l.maxZ; z += 2) for (const [x, dx] of [[l.minX + .6, -1], [l.maxX - .6, 1]] as const) tryEscape({ x, z }, { x: dx, z: 0 });
       await yieldWorker();
     }
+    // Require both parapets at every bridge/approach phase to exercise all four
+    // stances; the generic sampler must not silently skip these occupied edges.
+    for (const z of [323, 326, 329, 331, 336, 341, 344, 347]) for (const side of [-1, 1]) {
+      const before = attempts;
+      tryEscape({ x: 70 + side * 3.4, z }, { x: side, z: 0 });
+      expect(attempts - before, `untested bridge edge at z${z}, side${side}`).toBe(4);
+    }
+    for (const x of [53, 56, 59]) {
+      const before = attempts;
+      tryEscape({ x, z: 373.4 }, { x: 0, z: 1 });
+      expect(attempts - before, `untested east-gate cap at x${x}`).toBe(4);
+    }
     expect(attempts).toBeGreaterThan(1000);
-    console.log('U-163 ridge escape attempts', JSON.stringify({ attempts, stances: ['walk', 'sprint-jump', 'crouch', 'prone'], ticks: 45 }));
+    console.log('U-164 ridge escape attempts', JSON.stringify({ attempts, stances: ['walk', 'sprint-jump', 'crouch', 'prone'], ticks: 45 }));
   }, 180_000);
 });
