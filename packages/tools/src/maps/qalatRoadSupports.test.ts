@@ -251,12 +251,12 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     const all = [...built, ...original];
     const ys = [...new Set(all.flatMap((b) => [b.minY, b.maxY]))].sort((a, b) => a - b);
     const kinds = [...new Set(all.map((b) => b.kind))];
-    const spans = (boxes: Iterable<WorldBox>, carve: boolean): [number, number][] => {
+    const spans = (boxes: Iterable<WorldBox>, carveLo: number | undefined): [number, number][] => {
       const pieces: [number, number][] = [];
       for (const b of boxes) {
-        if (!carve || b.maxX <= 43.95 || b.minX >= 54.65) pieces.push([b.minX, b.maxX]);
+        if (carveLo === undefined || b.maxX <= carveLo || b.minX >= 54.65) pieces.push([b.minX, b.maxX]);
         else {
-          if (b.minX < 43.95) pieces.push([b.minX, 43.95]);
+          if (b.minX < carveLo) pieces.push([b.minX, carveLo]);
           if (b.maxX > 54.65) pieces.push([54.65, b.maxX]);
         }
       }
@@ -275,7 +275,7 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
       const events = layers.flatMap((boxes, side) => boxes.flatMap((b) => [
         { z: b.minZ, side, b, add: true }, { z: b.maxZ, side, b, add: false },
       ])).sort((a, b) => a.z - b.z);
-      const zs = [...new Set([53.35, 62.65, ...events.map((e) => e.z)])].sort((a, b) => a - b);
+      const zs = [...new Set([53.35, 55.95, 60.05, 62.65, ...events.map((e) => e.z)])].sort((a, b) => a - b);
       const active = [new Set<WorldBox>(), new Set<WorldBox>()];
       let nextEvent = 0;
       for (let row = 1; row < zs.length; row++) {
@@ -284,9 +284,10 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
           const e = events[nextEvent++]!;
           if (e.add) active[e.side]!.add(e.b); else active[e.side]!.delete(e.b);
         }
-        const carve = z0 >= 53.35 && z1 <= 62.65;
-        expect(spans(active[0]!, carve), `${kind} changed outside store at y${y0}..${y1}/z${z0}..${z1}`)
-          .toEqual(spans(active[1]!, carve));
+        const carveLo = z0 >= 53.35 && z1 <= 62.65
+          ? (z0 >= 55.95 && z1 <= 60.05 ? 43.95 : 45.35) : undefined;
+        expect(spans(active[0]!, carveLo), `${kind} changed outside store at y${y0}..${y1}/z${z0}..${z1}`)
+          .toEqual(spans(active[1]!, carveLo));
         bands++;
       }
     }
