@@ -54,6 +54,13 @@ run sheets. For any file over ~300 lines, grep or read a range.
 
 ## Delivery policy
 
+- **Commit and push continuously.** Push each meaningful small checkpoint
+  promptly; do not leave more than 15 minutes of active edits only on your
+  machine. If a step is still unfinished, push a clearly labelled WIP commit
+  and keep the card's handoff current with branch/PR, completed work, checks
+  run (including failures or unrun checks), and the next action. Checkpoint
+  before long-running checks, a pause or a handoff so another bot can resume
+  after usage limits. WIP pushes do not satisfy the verification or merge gates.
 - **Merge when green — standing owner authorization (2026-10-08).** When you
   complete a task, merge its verified head once all four required CI jobs
   (`verify`, `streaming`, `parity-non-v8`, `mission`) pass on the latest pushed

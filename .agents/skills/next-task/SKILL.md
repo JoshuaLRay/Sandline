@@ -49,7 +49,13 @@ decision always comes with options and a recommended default.
    hypothesis, add a failing regression test, then fix the cause. If it won't
    reproduce, record the attempts and stop; never ship a speculative fix.
 8. Implement only the card's scope. Record adjacent problems as new cards
-   (report-feedback), don't absorb them.
+   (report-feedback), don't absorb them. Commit and push each meaningful small
+   checkpoint promptly, at least every 15 minutes of active edits. If unfinished,
+   push a labelled WIP commit and update the card's handoff (≤15 lines) with the
+   branch/PR, progress, checks run or still unrun, and next action. Checkpoint
+   before long checks, pauses or handoffs; never keep resumable work only local.
+   Intermediate WIP commits may have incomplete checks; label that honestly and
+   satisfy every final verification gate before merging.
 9. Run focused tests, then `pnpm verify`, then whatever the change affects:
    generators (`pnpm gen:*`), `pnpm gen:nav` for world edits,
    `pnpm sim-run --scenario mission --all-missions --seeds 3` for AI/mission
