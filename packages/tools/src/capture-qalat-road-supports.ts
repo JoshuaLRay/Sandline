@@ -69,6 +69,8 @@ const views = [
     { name: 'ridge-survey-interior', feet: [82, 26, 286], target: [80, 29.3, 281], label: 'Broken survey post y26 · missing west wall and two beams above standing clearance' },
     { name: 'ridge-r3-cover', feet: [80, 26, 174], target: [84, 26.8, 170], label: 'R3 low rock · exact 4 m north-south cover beside the full-width route' },
     { name: 'ridge-r6-cover', feet: [72, 26, 288], target: [76, 26.8, 286], label: 'R6 low wall · exact 5 m north-south cover beside the full-width route' },
+    { name: 'ridge-r5-hold', feet: [95.8, 30, 238], target: [94, 31.2, 238], label: 'R5 inland escorted hold · built high rock stops the shell and attenuates ordinary blast damage' },
+    { name: 'ridge-r5-exposed', feet: [91, 30, 238], target: [94, 31.2, 238], label: 'R5 outside cover · ordinary tank blast danger remains when leaving the hold' },
     { name: 'ridge-r7-cover', feet: [70, 20, 321.5], target: [82, 21.5, 320], label: 'R7 high rock · exact 4 m north-south cover in its inland recess' },
   ].map((v) => ({ name: v.name, position: [v.feet[0]!, v.feet[1]! + 1.55, v.feet[2]!], target: v.target,
     label: `${v.label} · standing eye`, probe: false, feetY: v.feet[1]! })),
