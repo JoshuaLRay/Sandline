@@ -43,9 +43,14 @@ const FURNITURE_FLOORS = [
 const inFurnitureFloor = (p: Point, margin: number) => FURNITURE_FLOORS.some(([x0, x1, z0, z1]) =>
   p.x >= x0 - margin && p.x <= x1 + margin && p.z >= z0 - margin && p.z <= z1 + margin);
 
-/** A superset of the designed shelf (8 m ribbons, turning bevels, landings). */
+// U-167 §6.2: the three 8×8 m bay floors west of their anchors.
+const BAYS = [[58, 128], [88, 210], [66, 286]] as const;
+const inBay = (p: Point, margin: number) => BAYS.some(([x, z]) =>
+  p.x >= x - .8 - margin && p.x <= x + 7.2 + margin && p.z >= z - 4 - margin && p.z <= z + 4 + margin);
+
+/** A superset of the designed shelf (8 m ribbons, turning bevels, landings, bays). */
 function onShelf(p: Point, margin = 0): boolean {
-  if (inFurnitureFloor(p, margin) || inApron(p, margin)) return true;
+  if (inFurnitureFloor(p, margin) || inApron(p, margin) || inBay(p, margin)) return true;
   if (LANDINGS.some((l) => p.x >= l.minX - margin && p.x <= l.maxX + margin && p.z >= l.minZ - margin && p.z <= l.maxZ + margin)) return true;
   if (NODES.slice(0, -1).some((n) => Math.hypot(p.x - n.x, p.z - n.z) <= 4 + margin)) return true;
   return segments.some((s) => {
@@ -124,11 +129,14 @@ describe('U-164 completed ridge travel on the actual tiled standing nav bake', (
     expect(completePathLength(sealed.path(r9, r4), r9, r4)).not.toBeNull();
   });
 
-  it('leaves the ridge rock, its barrier ring and every temporary cap an unreachable island', () => {
+  it('leaves the ridge rock, its barrier ring, bay frames and every temporary cap an unreachable island', () => {
     const tops = [{ x: 106, z: 210 }, { x: 98, z: 140 }, { x: 55, z: 128 }, { x: 85, z: 210 }, { x: 63, z: 286 },
       { x: 73.5, z: 170 }, { x: 98.6, z: 248 }, { x: 94, z: 238 }, { x: 82, z: 320 },
       { x: 90.3, z: 102 }, { x: 86.3, z: 284 }, { x: 80, z: 279.35 }, { x: 84.4, z: 286 }, { x: 52, z: 112 },
-      { x: 65.5, z: 336 }, { x: 74.5, z: 336 }, { x: 65.5, z: 344 }, { x: 74.5, z: 344 }, { x: 56, z: 374.3 }];
+      { x: 65.5, z: 336 }, { x: 74.5, z: 336 }, { x: 65.5, z: 344 }, { x: 74.5, z: 344 }, { x: 56, z: 374.3 },
+      // U-167 lips, canopies and side returns.
+      ...BAYS.flatMap(([x, z]) => [{ x: x - .7, z }, { x: x - .3, z }, { x: x - .4, z: z - 4.5 }, { x: x - .4, z: z + 4.5 }]),
+      { x: 65.3, z: 287.5 }, { x: 65.3, z: 289 }];
     for (const at of tops) {
       const top = { ...at, y: Math.max(...world.boxes.filter((b) => at.x >= b.minX && at.x <= b.maxX && at.z >= b.minZ && at.z <= b.maxZ).map((b) => b.maxY)) };
       const hit = nav.nearestPoint(top, { x: .6, y: .5, z: .6 });

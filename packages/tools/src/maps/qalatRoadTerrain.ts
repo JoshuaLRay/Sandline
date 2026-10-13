@@ -113,10 +113,14 @@ export function fanRayFloor(r: Rect): number {
   return min;
 }
 
+/** The quantized rock top kept 0.3 m under a ray surface height. */
+export function capUnder(floor: number): number {
+  return floor === Infinity ? floor : Math.floor((floor - ROAD_TERRAIN.viewFans.rayClearanceM - 1e-6) / QUANTUM_M) * QUANTUM_M;
+}
+
 /** The rock top the view fans allow over a rectangle (Infinity if none). */
 export function fanCap(r: Rect): number {
-  const floor = fanRayFloor(r);
-  return floor === Infinity ? floor : Math.floor((floor - ROAD_TERRAIN.viewFans.rayClearanceM - 1e-6) / QUANTUM_M) * QUANTUM_M;
+  return capUnder(fanRayFloor(r));
 }
 
 const within = (r: Rect, c: Rect) => r.minX >= c.minX && r.maxX <= c.maxX && r.minZ >= c.minZ && r.maxZ <= c.maxZ;

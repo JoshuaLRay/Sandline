@@ -4,7 +4,7 @@ import { between } from './insertionScreening.ts';
 import { onInsertionFloor } from './qalatInsertion.ts';
 import { buildRoadSupportLevel, buildRoadSupportWorld } from './qalatRoadSupports.ts';
 import { VIEW_FANS } from './qalatRoadTerrain.ts';
-import { FLIGHTS, RIDGE, ridgeManifest, ridgeRayClearances } from './qalatRidge.ts';
+import { FLIGHTS, RIDGE, isTemporaryRidgeCap, ridgeManifest, ridgeRayClearances } from './qalatRidge.ts';
 
 import { inConvex } from './planStrata.ts';
 import { convexHull, ribbonPieces } from './roadSightLines.ts';
@@ -45,6 +45,9 @@ const OCCUPIED = [[83.6, 84.4, 168, 172], [75.6, 76.4, 283.5, 288.5],
   [79.4, 86.6, 277.4, 278], [78, 86.6, 288, 288.6], [86, 86.6, 278, 288]] as const;
 const furnishingAt = (p: Point, radius: number) => OCCUPIED.some(([x0, x1, z0, z1]) =>
   p.x + radius > x0 && p.x - radius < x1 && p.z + radius > z0 && p.z - radius < z1);
+// U-167 §6.2: each 8×8 m bay floor, x=anchor.x-0.8..+7.2, z=anchor.z±4.
+const inBay = (p: Point, margin: number) => BAYS.slice(0, 3).some((b) =>
+  p.x >= b.x - .8 - margin && p.x <= b.x + 7.2 + margin && p.z >= b.z - 4 - margin && p.z <= b.z + 4 + margin);
 const underlying = (b: WorldBox) => !/^(ridge-cover-|ridge-hut-|ridge-survey-)/.test(b.id);
 const HALF = 4, BARRIER = 2.2, X4 = { x: 84, z: 338 };
 
@@ -87,7 +90,7 @@ const inLanding = (p: Point, margin = 0) => LANDINGS.find((l) =>
 /** A superset of the designed shelf: 8 m ribbons, their corner bevels (inside
  * a 4 m disc at each turning node; R7 ends the shelf) and the flat landings. */
 function onShelf(p: Point, margin = 0): boolean {
-  if (inFurnitureFloor(p, margin) || inApron(p, margin)) return true;
+  if (inFurnitureFloor(p, margin) || inApron(p, margin) || inBay(p, margin)) return true;
   // U-164 opens R7's north edge onto its full-width bridge approach.
   if (p.x >= 66 - margin && p.x <= 74 + margin && p.z >= 322 - margin && p.z <= 350 + margin) return true;
   if (inLanding(p, margin) || NODES.slice(0, -1).some((n) => Math.hypot(p.x - n.x, p.z - n.z) <= HALF + margin)) return true;
@@ -105,8 +108,8 @@ describe('U-163 continuous R0–R7 ridge shelf', () => {
     expect(RIDGE.risers.slice(0, 7)).toEqual(RISERS);
     expect(RIDGE.landings.slice(0, 7)).toEqual(LANDINGS.map(({ y: _, ...l }) => l));
     expect(RIDGE).toMatchObject({ shelfWidth: 8, riserM: .2, treadM: .4, flightRisers: 10, restLandingM: 2, barrierM: BARRIER, bottomY: 5.5 });
-    expect(RIDGE.temporaryCaps.map((c) => [c.id, c.for])).toEqual([
-      ['V1-bay', 'U-141'], ['V2-bay', 'U-141'], ['V3-bay', 'U-141'], ['east-gate', 'U-116']]);
+    // U-167 replaced the three bay caps with built bays.
+    expect(RIDGE.temporaryCaps.map((c) => [c.id, c.for])).toEqual([['east-gate', 'U-116']]);
     for (const [i, s] of segments.entries()) expect(Math.abs(s.b.y - s.a.y)).toBeCloseTo(RISERS[i]! * .2, 9);
   });
 
@@ -207,22 +210,22 @@ describe('U-163 continuous R0–R7 ridge shelf', () => {
     console.log('U-163 ridge edges', JSON.stringify({ probes, lowestBarrierM: lowest }));
   }, 60_000);
 
-  it('caps permanent ridge rock 0.3 m under every bay fan and records the temporary bay caps', () => {
+  it('caps permanent ridge rock 0.3 m under every bay fan and leaves every listed ray open through the built bays', () => {
     const permanent = world.boxes.filter((b) => b.id.startsWith('ridge-rock'));
-    const caps = world.boxes.filter((b) => b.id.startsWith('ridge-cap-'));
+    const ridge = world.boxes.filter((b) => b.id.startsWith('ridge-') && !isTemporaryRidgeCap(b.id));
     for (const bay of BAYS) {
       const eye = { x: bay.x, y: bay.y + DEFAULT_MUZZLE_RIG.eyeHeight, z: bay.z };
       for (const t of bay.targets) {
         expect(rayWorld(between({ ...eye, y: eye.y - .3 }, { ...t, y: t.y - .3 }), permanent), `${bay.id} → ${JSON.stringify(t)}`).toBeNull();
-        // Until U-141 opens the bay, only its own recorded cap closes the view.
-        const blocking = caps.filter((c) => rayWorld(between(eye, t), [c]) !== null).map((c) => c.id.replace(/-(ring|mass)-\d+$/, ''));
-        expect([...new Set(blocking)]).toEqual([`ridge-cap-${bay.id === 'V3-X5' ? 'V3' : bay.id}-bay`]);
+        // U-167: the whole built ridge, lip and canopy included, leaves the standing-eye ray open.
+        expect(rayWorld(between(eye, t), ridge), `${bay.id} frame → ${JSON.stringify(t)}`).toBeNull();
       }
     }
     const clearances = ridgeRayClearances(level.boxes);
     for (const r of clearances) {
       if (r.clearanceM !== null) expect(r.clearanceM).toBeGreaterThanOrEqual(.3);
-      expect(r.blockedOnlyByTemporaryCaps).toEqual([`${r.bay.split('-')[0]}-bay`]);
+      expect(r.frameGapM, `${r.bay} ${r.target} frame`).toBeGreaterThanOrEqual(.15);
+      expect(r.blockedOnlyByTemporaryCaps).toEqual([]);
     }
     expect(ridgeManifest(level.boxes).rays).toEqual(clearances);
     // Rock in a fan stays under its ray surface everywhere, not only on the rays.
