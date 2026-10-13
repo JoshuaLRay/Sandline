@@ -44,8 +44,8 @@
       "why": "standing room at the exact gate node: a 0.35 m soldier centred on (32,356) needs air past the road end until the outpost opens it" }
   ],
   "viewGuards": [
-    { "id": "A2-apron", "minX": 24, "maxX": 36, "minZ": 130, "maxZ": 142, "openingM": 0.7, "canopyTop": 20,
-      "why": "U-168: the permanent lip and canopy replace the C12-L mouth cap only beside the road apron; their 0.70 m opening passes V1's low fan but rejects the 0.80 m prone body" }
+    { "id": "A2-apron", "minX": 24, "maxX": 36, "minZ": 130, "maxZ": 142, "top": 12, "openingM": 0.7, "canopyTop": 20,
+      "why": "U-168: the permanent lip and canopy replace the C12-L mouth cap only beside the road apron; their 0.70 m opening passes V1's low fan but rejects the 0.80 m prone body. Outside the fan the rock rises to y12, closing A-C03's sprint-jump approach as the cap and U-161's A-C03-edge guard do" }
   ],
   "climbGuards": [
     { "id": "A-C03-edge", "minX": 14, "maxX": 20, "minZ": 142, "maxZ": 148, "top": 12,

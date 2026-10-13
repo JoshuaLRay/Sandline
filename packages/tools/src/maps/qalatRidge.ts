@@ -168,7 +168,7 @@ export function ridgeCarve(): readonly Polygon[] {
 }
 
 /** Constant-height pieces of one row, highest shelf wins where pieces overlap. */
-function floorSpans(z0: number, z1: number): { lo: number; hi: number; y: number }[] {
+export function ridgeFloorSpans(z0: number, z1: number): { lo: number; hi: number; y: number }[] {
   const zm = (z0 + z1) / 2, raw: { lo: number; hi: number; y: number }[] = [];
   for (const f of FLOORS) {
     const s = sweep(f.polygon, z0 + TOUCH_M, z1 - TOUCH_M);
@@ -279,7 +279,7 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
     const z0 = row / ROWS_PER_M, z1 = (row + 1) / ROWS_PER_M;
     const below = union(ground.map((p) => sweep(p, z0 - EDGE_M, z1 + EDGE_M)).filter((s): s is Interval => s !== null)
       .map(([a, b]) => [a - EDGE_M, b + EDGE_M]));
-    for (const { lo, hi, y } of floorSpans(z0, z1)) {
+    for (const { lo, hi, y } of ridgeFloorSpans(z0, z1)) {
       const band = index.get(Math.floor(z0)) ?? [];
       band.push({ lo, hi, z0, z1, y }); index.set(Math.floor(z0), band);
       const cuts = [...below.flat(), ...(z1 <= RIDGE.insertionBounds.maxZ + 1e-9 ? [RIDGE.insertionBounds.maxX] : [])];

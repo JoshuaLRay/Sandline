@@ -225,8 +225,10 @@ export function buildRoadTerrain(floors: readonly Polygon[], spine: Spine, maxZ 
       // coarser crest begins. Raise only the recorded adjacent rock. A
       // temporary cap reaches its own crest all the way to its road edge.
       const cap = temporaryCapAt(r), guard = ROAD_TERRAIN.climbGuards.find((c) => within(r, c));
-      let top = cap?.top ?? Math.max(SKIN_TOP, guard?.top ?? SKIN_TOP);
       const fanTop = fanCap(r), viewGuard = ROAD_TERRAIN.viewGuards.find((c) => within(r, c));
+      // U-168: outside the fan a view guard is also a climb guard, so the
+      // opened mouth closes low cover's jump approach as the cap did.
+      let top = cap?.top ?? Math.max(SKIN_TOP, guard?.top ?? SKIN_TOP, viewGuard?.top ?? SKIN_TOP);
       if (!cap && fanTop < top && viewGuard) {
         top = fanTop;
         if (top < ROAD_TERRAIN.floorY + .5 - 1e-9) throw new Error(`${viewGuard.id}: lip below the unsteppable 0.50 m minimum`);

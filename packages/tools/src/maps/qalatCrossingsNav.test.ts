@@ -136,8 +136,11 @@ describe('U-168 both reversible road–ridge stairs on the actual standing nav a
             Math.hypot(b.state.x - pow.state.x, b.state.y - pow.state.y, b.state.z - pow.state.z))[0]!.state },
       };
       const escort = new Brain(escortBody, buildTree('escort', createBrainRegistry()));
+      // Followers start on the legal road apron or ridge lane and fall in up
+      // to 1.5 × 12 m behind the lead; no other road–ridge route lies within
+      // 20 m of either crossing's ends, and `visited` proves each stair leg.
       const allowed = [...footprint(c.spine), ...ribbonPieces([endpoint, after], outward ? 8 : 12),
-        rectPolygon({ minX: start.x - 3, maxX: start.x + 3, minZ: start.z - 3, maxZ: start.z + 3 }),
+        rectPolygon({ minX: start.x - 20, maxX: start.x + 20, minZ: start.z - 20, maxZ: start.z + 20 }),
         rectPolygon({ minX: after.x - 6, maxX: after.x + 6, minZ: after.z - 6, maxZ: after.z + 6 })];
       const dest = ribbonPieces([endpoint, after], outward ? 8 : 12);
       const visited = actors.map(() => new Set<number>()), spreads = new Set<number>();

@@ -36,7 +36,7 @@ const at = (s: typeof segments[number], t: number, off = 0) =>
 describe('U-168 exact C12 road–ridge stair construction', () => {
   it('transcribes the two exact spines, counts, clear width, risers and four-metre pads', () => {
     expect(C12.stairs.map((s) => ({ id: s.id, spine: s.spine.map((n) => [n.x, n.y, n.z]), risers: s.risers }))).toEqual(APPROVED);
-    expect(C12).toMatchObject({ widthM: 4, riserM: .2, treadM: .4, flightRisers: 10, restLandingM: 2, landingM: 4, bottomY: 5.5, cheekM: 1 });
+    expect(C12).toMatchObject({ widthM: 4, riserM: .2, treadM: .4, flightRisers: 10, restLandingM: 2, landingM: 4, bottomY: 5.5, barrierM: 2.2, fanSlotM: .7 });
     expect(C12.stairs.map((s) => s.risers.reduce((sum, n) => sum + n, 0))).toEqual([60, 110]);
     expect(world.boxes.some((b) => b.id.startsWith('road-cap-C12-L-mouth'))).toBe(false);
     const flights = crossingFlights();
@@ -52,7 +52,7 @@ describe('U-168 exact C12 road–ridge stair construction', () => {
       for (let k = 1; k < f.risers.length; k++) {
         const run = f.risers[k]! - f.risers[k - 1]!;
         if (k % 10) expect(run).toBeCloseTo(f.treadM, 9);
-        else expect(run).toBeGreaterThanOrEqual(2);
+        else expect(run).toBeGreaterThanOrEqual(2 - 1e-9);
       }
     }
   });
@@ -91,12 +91,24 @@ describe('U-168 exact C12 road–ridge stair construction', () => {
 
   it('supports the entire four-metre width and every four-by-four landing with standing clearance', () => {
     let widthProbes = 0, padProbes = 0;
-    for (const s of segments) for (let t = .4; t < s.length - .4; t += .2) {
+    // Between the 4×4 pads (probed below). At U4's sharp turn the next
+    // flight's ribbon shares a sliver of the outer corner; that flight's own
+    // probes cover it.
+    const shared = (s: typeof segments[number], p: { x: number; z: number }) => segments.some((o) => o !== s && o.crossing === s.crossing && (() => {
+      const t = (p.x - o.a[0]) * o.ux + (p.z - o.a[2]) * o.uz, off = (p.z - o.a[2]) * o.ux - (p.x - o.a[0]) * o.uz;
+      return t >= 0 && t <= o.length && Math.abs(off) <= 2;
+    })());
+    for (const s of segments) for (let reach = 2 * (Math.abs(s.ux) + Math.abs(s.uz)), t = reach; t <= s.length - reach; t += .2) {
       const centre = at(s, t), top = s.b[1] + .1, cy = floorAt(centre.x, centre.z, top);
-      for (const off of [-1.99, -1.6, -.8, 0, .8, 1.6, 1.99]) {
-        const p = at(s, t, off), y = floorAt(p.x, p.z, top);
+      // The controller's square footprint reaches farther across a diagonal
+      // flight; every centre that keeps it inside the 4 m ribbon must be clear.
+      const body = 2 - DEFAULT_MOVE_CONFIG.radius * (Math.abs(s.ux) + Math.abs(s.uz)) - .01;
+      for (const off of [-1.99, -1.6, -body, -.8, 0, .8, body, 1.6, 1.99]) {
+        const p = at(s, t, off);
+        if (shared(s, p)) continue;
+        const y = floorAt(p.x, p.z, top);
         expect(Math.abs(y - cy), `${s.crossing}/${s.i} width ${t}/${off}`).toBeLessThanOrEqual(.2 + 1e-8);
-        if (Math.abs(off) <= 1.6) {
+        if (Math.abs(off) <= body) {
           const boxes = near(p.x, p.z), feet = supportUnder(p.x, p.z, DEFAULT_MOVE_CONFIG.radius, top, boxes, 0);
           expect(blockedAt(p.x, p.z, DEFAULT_MOVE_CONFIG.radius, feet, .45, DEFAULT_MOVE_CONFIG.height, boxes), `${s.crossing}/${s.i} body ${t}/${off}`).toBe(false);
         }

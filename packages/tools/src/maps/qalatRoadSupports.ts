@@ -14,7 +14,7 @@ import { ROAD_TERRAIN, TERRAIN_SPURS, VIEW_FANS, buildRoadTerrain, roadTerrainMa
 import { tankSweepReport } from './qalatTankSweep.ts';
 import { TANK_INGRESS, tankIngressPath, tankIngressFloors, buildTankIngressShelter } from './qalatTankIngress.ts';
 import { RETURN_SHELTERS, returnShelterFloors, buildReturnShelters } from './qalatReturnShelters.ts';
-import { RIDGE, buildRidge, ridgeCarve, ridgeFloors, ridgeManifest } from './qalatRidge.ts';
+import { RIDGE, buildRidge, ridgeCarve, ridgeFloorSpans, ridgeFloors, ridgeManifest } from './qalatRidge.ts';
 import { C12, buildCrossings, crossingCarve, crossingFloors, crossingManifest } from './qalatC12.ts';
 import { scan, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
 import {
@@ -83,7 +83,7 @@ export function buildRoadSupportLevel() {
   }
   return { ...insertion, id: ROAD_SUPPORTS.id, floor: { halfWidth: 150, halfDepth: 470 },
     boxes: [...insertion.boxes, ...boxes, ...buildRoadTerrain(floors, ROAD_SUPPORTS.spine, TANK_INGRESS.terrainMaxZ, [...ridgeRing, ...crossingRing]),
-      ...buildRoadCombat(), ...buildTankIngressShelter(), ...buildReturnShelters(), ...buildRidge(floors), ...buildCrossings(floors, ridge)] };
+      ...buildRoadCombat(), ...buildTankIngressShelter(), ...buildReturnShelters(), ...buildRidge(floors), ...buildCrossings(floors, ridge, ridgeFloorSpans)] };
 }
 
 export function buildRoadSupportWorld() { return loadLevel(buildRoadSupportLevel()); }

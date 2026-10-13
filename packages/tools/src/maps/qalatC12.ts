@@ -3,10 +3,20 @@
 import type { BoxSpec } from '@sandline/shared';
 import source from './qalat-c12.json' with { type: 'json' };
 import { convexHull, ribbonPieces } from './roadSightLines.ts';
-import { inConvex, rectPolygon, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
+import { clipConvex, inConvex, rectPolygon, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
+import { VIEW_FANS, capUnder } from './qalatRoadTerrain.ts';
 
 export const C12 = source;
 const ROWS_PER_M = 20, EDGE_M = .005, TOUCH_M = 1e-7;
+// The road and ridge mass rows (0.5 m, ±0.01 m) are the coarsest rows that
+// carve `crossingCarve`. The barrier fills each whole carved row: no seam.
+const CARVE_ROWS_PER_M = 2, CARVE_MARGIN_M = 2 * EDGE_M;
+// Every floor this close sets the barrier height: a carved row plus the band.
+const NEAR_M = 1.1;
+// A fan slot piece is split until its listed rays stay this far under the canopy.
+const SLOT_CLEAR_M = .05, SLOT_MIN_PIECE_M = .02;
+type Span = { lo: number; hi: number; y: number };
+type Rect = { minX: number; maxX: number; minZ: number; maxZ: number };
 type Node = typeof C12.stairs[number]['spine'][number];
 export interface CrossingFlight {
   crossing: string; from: string; to: string; length: number; t0: number; t1: number;
@@ -53,9 +63,9 @@ export function onCrossingFloor(p: Point, margin = 0): boolean {
     ? inConvex(convexHull(poly.flatMap((v) => [-margin, margin].flatMap((dx) => [-margin, margin].map((dz) => ({ x: v.x + dx, z: v.z + dz }))))), p)
     : [-margin, margin].flatMap((dx) => [-margin, margin].map((dz) => ({ x: p.x + dx, z: p.z + dz }))).every((v) => inConvex(poly, v)));
 }
-/** Leave room for the outward cheek and its adjoining unwalkable rock. */
+/** Leave room for the barrier band; the road and ridge rock stand back by this much. */
 export function crossingCarve(): readonly Polygon[] {
-  const e = 2 * C12.cheekWidthM + EDGE_M * 2;
+  const e = C12.barrierWidthM + EDGE_M * 2;
   return crossingFloors().map((poly) => convexHull(poly.flatMap((v) => [-e, e].flatMap((dx) => [-e, e].map((dz) => ({ x: v.x + dx, z: v.z + dz }))))));
 }
 
@@ -103,12 +113,76 @@ export function crossingMouthSpans(z0: number, z1: number): Interval[] {
   return union(crossingFloorSpans(z0, z1).map(({ lo, hi }) => [lo, hi]));
 }
 
-export function buildCrossings(ground: readonly Polygon[] = [], ridge: readonly Polygon[] = []): BoxSpec[] {
+const nearest = (poly: readonly Point[], p: Point): Point => {
+  if (inConvex(poly, p)) return p;
+  let best = poly[0]!, distance = Infinity;
+  poly.forEach((a, i) => {
+    const b = poly[(i + 1) % poly.length]!, dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
+    const t = l2 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / l2)) : 0;
+    const q = { x: a.x + dx * t, z: a.z + dz * t }, d = Math.hypot(q.x - p.x, q.z - p.z);
+    if (d < distance) { distance = d; best = q; }
+  });
+  return best;
+};
+
+/** Lowest and highest §6.2 ray surface over a plan cell (±Infinity outside
+ * every fan). The surface descends away from each eye: planar sectors are
+ * extreme at clip vertices, and a ray-following sector peaks nearest the eye. */
+export function crossingFanRange(r: Rect): { min: number; max: number } {
+  let min = Infinity, max = -Infinity;
+  const cell = rectPolygon({ minX: r.minX - 1e-6, maxX: r.maxX + 1e-6, minZ: r.minZ - 1e-6, maxZ: r.maxZ + 1e-6 });
+  for (const fan of VIEW_FANS) {
+    const inside = clipConvex(cell, fan.hull);
+    if (!inside.length) continue;
+    for (const s of fan.sectors) {
+      const piece = clipConvex(inside, s.wedge);
+      if (!piece.length) continue;
+      for (const v of [...piece, nearest(piece, fan.eye)]) { const h = s.height(v); min = Math.min(min, h); max = Math.max(max, h); }
+    }
+  }
+  return { min, max };
+}
+
+interface Piece { lo: number; hi: number; bottom: number; top: number; kind: 'crossing-rock' | 'crossing-lip' | 'crossing-canopy' }
+/** One barrier interval: plain rock outside the fans; inside one, a lip
+ * 0.3 m under the lowest listed ray and a canopy above a 0.7 m slot that
+ * passes every listed ray (split until it does) but no controller stance. */
+function barrier(lo: number, hi: number, z0: number, z1: number, floor: number): Piece[] {
+  const top = floor + C12.barrierM, range = crossingFanRange({ minX: lo, maxX: hi, minZ: z0, maxZ: z1 });
+  const cap = capUnder(range.min);
+  if (cap >= top) return [{ lo, hi, bottom: C12.bottomY, top, kind: 'crossing-rock' }];
+  if (range.max > cap + C12.fanSlotM - SLOT_CLEAR_M) {
+    if (hi - lo < SLOT_MIN_PIECE_M) throw new Error(`C12 fan slot at x${lo} z${z0}: ray ${range.max} above ${cap} + ${C12.fanSlotM}`);
+    const mid = (lo + hi) / 2;
+    return [...barrier(lo, mid, z0, z1, floor), ...barrier(mid, hi, z0, z1, floor)];
+  }
+  // Whether or not a body can step onto the lip, the canopy leaves less
+  // than the 0.8 m prone height above it and above any lower floor beside it.
+  return [{ lo, hi, bottom: C12.bottomY, top: cap, kind: 'crossing-lip' },
+    { lo, hi, bottom: cap + C12.fanSlotM, top: Math.max(top, cap + C12.fanSlotM + C12.fanCanopyMinM), kind: 'crossing-canopy' }];
+}
+
+/** Floors, then the barrier band. `ridgeSpans` gives the adjoining ridge
+ * floor heights: a barrier stands 2.2 m above the higher side. */
+export function buildCrossings(ground: readonly Polygon[] = [], ridge: readonly Polygon[] = [],
+  ridgeSpans: (z0: number, z1: number) => Span[] = () => []): BoxSpec[] {
   // Validate before emitting any partial geometry.
   crossingFlights();
-  const polys = crossingFloors(), zs = polys.flatMap((p) => p.map((v) => v.z));
-  const first = Math.floor(Math.min(...zs) * ROWS_PER_M), last = Math.ceil(Math.max(...zs) * ROWS_PER_M);
-  const boxes: BoxSpec[] = [], outer = crossingCarve();
+  const outer = crossingCarve(), zs = outer.flatMap((p) => p.map((v) => v.z));
+  const first = Math.floor(Math.min(...zs) * CARVE_ROWS_PER_M) * ROWS_PER_M / CARVE_ROWS_PER_M;
+  const last = Math.ceil(Math.max(...zs) * CARVE_ROWS_PER_M) * ROWS_PER_M / CARVE_ROWS_PER_M;
+  const reach = Math.ceil(NEAR_M * ROWS_PER_M), heights = new Map<number, Span[]>(), crossingRows = new Map<number, Span[]>();
+  const rowSpans = (row: number) => {
+    let spans = crossingRows.get(row);
+    if (!spans) crossingRows.set(row, spans = crossingFloorSpans(row / ROWS_PER_M, (row + 1) / ROWS_PER_M));
+    return spans;
+  };
+  const near = (row: number) => {
+    let spans = heights.get(row);
+    if (!spans) heights.set(row, spans = [...rowSpans(row), ...ridgeSpans(row / ROWS_PER_M, (row + 1) / ROWS_PER_M)]);
+    return spans;
+  };
+  const boxes: BoxSpec[] = [];
   const span = (polys: readonly Polygon[], z0: number, z1: number) => union(polys.map((p) => sweep(p, z0, z1)).filter((s): s is Interval => s !== null));
   const subtract = (a: number, b: number, cuts: Interval[]): Interval[] => {
     const out: Interval[] = []; let x = a;
@@ -117,39 +191,28 @@ export function buildCrossings(ground: readonly Polygon[] = [], ridge: readonly 
     return out.filter(([lo, hi]) => hi > lo + 1e-9);
   };
   let previous = new Map<string, BoxSpec>();
-  let previousWalls = new Map<string, BoxSpec>();
   for (let row = first; row < last; row++) {
     const z0 = row / ROWS_PER_M, z1 = (row + 1) / ROWS_PER_M, next = new Map<string, BoxSpec>();
-    const rowFloors = crossingFloorSpans(z0, z1);
-    for (const { lo, hi, y } of rowFloors) {
-      const key = `${lo},${hi},${y}`, old = previous.get(key);
-      if (old) { old.d = z1 + TOUCH_M - (old.z - old.d / 2); old.z = z1 + TOUCH_M - old.d / 2; next.set(key, old); continue; }
-      const box = { id: `crossing-floor-${boxes.length}`, x: (lo + hi) / 2, y: C12.bottomY,
-        z: (z0 + z1) / 2, w: hi - lo, h: y - C12.bottomY, d: z1 - z0 + 2 * TOUCH_M };
+    const extend = (key: string, piece: { lo: number; hi: number; bottom: number; top: number }, id: string) => {
+      const old = previous.get(key);
+      if (old) { old.d = z1 + TOUCH_M - (old.z - old.d / 2); old.z = z1 + TOUCH_M - old.d / 2; next.set(key, old); return; }
+      const box = { id: `${id}-${boxes.length}`, x: (piece.lo + piece.hi) / 2, y: piece.bottom, z: (z0 + z1) / 2,
+        w: piece.hi - piece.lo, h: piece.top - piece.bottom, d: z1 - z0 + 2 * TOUCH_M };
       boxes.push(box); next.set(key, box);
+    };
+    const rowFloors = rowSpans(row);
+    for (const { lo, hi, y } of rowFloors) extend(`floor,${lo},${hi},${y}`, { lo, hi, bottom: C12.bottomY, top: y }, 'crossing-floor');
+    const exclusions = union([...rowFloors.map(({ lo, hi }): Interval => [lo, hi]),
+      ...span(ground, z0 - EDGE_M, z1 + EDGE_M), ...span(ridge, z0 - EDGE_M, z1 + EDGE_M)]);
+    const Z0 = Math.floor(z0 * CARVE_ROWS_PER_M + 1e-9) / CARVE_ROWS_PER_M, Z1 = Z0 + 1 / CARVE_ROWS_PER_M;
+    const fill = union(span(outer, Z0 - CARVE_MARGIN_M, Z1 + CARVE_MARGIN_M).map(([a, b]): Interval => [a - 2 * EDGE_M, b + 2 * EDGE_M]));
+    const floors = Array.from({ length: 2 * reach + 1 }, (_, k) => near(row - reach + k)).flat();
+    for (const [a, b] of fill.flatMap(([a, b]) => subtract(a, b, exclusions))) {
+      const floor = Math.max(...floors.filter((f) => f.hi >= a - NEAR_M && f.lo <= b + NEAR_M).map((f) => f.y));
+      if (!Number.isFinite(floor)) throw new Error(`C12 barrier at x${a}..${b} z${z0} has no adjoining floor`);
+      for (const p of barrier(a, b, z0, z1, floor)) extend(`${p.kind},${p.lo},${p.hi},${p.bottom},${p.top}`, p, p.kind);
     }
     previous = next;
-    const exclusions = union([...rowFloors.map(({ lo, hi }): Interval => [lo, hi]), ...span(ground, z0 - EDGE_M, z1 + EDGE_M), ...span(ridge, z0 - EDGE_M, z1 + EDGE_M)]);
-    const nearFloors = crossingFloorSpans(z0 - .5, z1 + .5), nextWalls = new Map<string, BoxSpec>();
-    for (const [a, b] of span(outer, z0 + TOUCH_M, z1 - TOUCH_M).flatMap(([a, b]) => subtract(a, b, exclusions))) {
-      const y = Math.max(...nearFloors.filter((f) => f.hi >= a - .5 && f.lo <= b + .5).map((f) => f.y));
-      if (!Number.isFinite(y)) continue;
-      // A quarter-metre cheek cannot support a 0.7 m body beside the
-      // adjoining 2.2 m rock. The taller outer half closes jump/vault/drop.
-      const inner = rowFloors.flatMap(({ lo, hi }) => [lo - C12.cheekWidthM, hi + C12.cheekWidthM]);
-      const xs = [a, ...inner.filter((x) => x > a && x < b).sort((p, q) => p - q), b];
-      for (let i = 1; i < xs.length; i++) {
-        const lo = xs[i - 1]!, hi = xs[i]!, middle = (lo + hi) / 2;
-        const cheek = rowFloors.some((f) => middle >= f.lo - C12.cheekWidthM && middle <= f.hi + C12.cheekWidthM);
-        const top = y + (cheek ? C12.cheekM : C12.barrierM), kind = cheek ? 'crossing-cheek' : 'crossing-rock';
-        const key = `${kind},${lo},${hi},${top}`, old = previousWalls.get(key);
-        if (old) { old.d = z1 + TOUCH_M - (old.z - old.d / 2); old.z = z1 + TOUCH_M - old.d / 2; nextWalls.set(key, old); continue; }
-        const box = { id: `${kind}-${boxes.length}`, x: middle, y: C12.bottomY, z: (z0 + z1) / 2,
-          w: hi - lo, h: top - C12.bottomY, d: z1 - z0 + 2 * TOUCH_M };
-        boxes.push(box); nextWalls.set(key, box);
-      }
-    }
-    previousWalls = nextWalls;
   }
   return boxes;
 }
@@ -158,6 +221,5 @@ export function crossingManifest(boxes: readonly BoxSpec[]) {
   const { $comment: _, ...data } = C12;
   return { ...data, rowM: 1 / ROWS_PER_M,
     flights: crossingFlights().map((f) => ({ ...f, risers: f.risers.length, firstRiserM: f.risers[0] ?? null, lastRiserM: f.risers.at(-1) ?? null })),
-    boxes: { floor: boxes.filter((b) => b.id.startsWith('crossing-floor-')).length,
-      cheek: boxes.filter((b) => b.id.startsWith('crossing-cheek-')).length, rock: boxes.filter((b) => b.id.startsWith('crossing-rock-')).length } };
+    boxes: Object.fromEntries(['floor', 'rock', 'lip', 'canopy'].map((k) => [k, boxes.filter((b) => b.id.startsWith(`crossing-${k}-`)).length])) };
 }

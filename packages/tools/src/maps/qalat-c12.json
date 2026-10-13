@@ -1,5 +1,5 @@
 {
-  "$comment": "U-168: exactly two bidirectional road-ridge crossings from construction specification section 6.3. Four-metre ribbons and 4x4 m waypoint landings are carved through the road and ridge rock; lower terminal mouths cut only their stair footprint into existing ridge landings.",
+  "$comment": "U-168: exactly two bidirectional road-ridge crossings from construction specification section 6.3. Four-metre ribbons and 4x4 m waypoint landings are carved through the road and ridge rock; lower terminal mouths cut only their stair footprint into existing ridge landings. A half-metre rock barrier stands 2.2 m above the highest adjacent floor; inside a ridge-bay view fan it becomes a lip at the fan cap under a canopy, leaving a 0.7 m slot that passes the listed rays but no body.",
   "id": "qalat-c12",
   "widthM": 4,
   "landingM": 4,
@@ -8,9 +8,10 @@
   "flightRisers": 10,
   "restLandingM": 2,
   "bottomY": 5.5,
-  "cheekM": 1,
-  "cheekWidthM": 0.25,
   "barrierM": 2.2,
+  "barrierWidthM": 0.5,
+  "fanSlotM": 0.7,
+  "fanCanopyMinM": 0.5,
   "compactTreads": [
     { "crossing": "C12-L", "from": "L1", "to": "L2", "treadM": 0.3, "why": "the twenty-riser run between two 4x4 m pads cannot fit 0.40 m treads and its 2 m rest" },
     { "crossing": "C12-L", "from": "L3", "to": "R2", "treadM": 0.3, "why": "finish the rise before the mouth reaches the full eight-metre R2 ridge lane" },
