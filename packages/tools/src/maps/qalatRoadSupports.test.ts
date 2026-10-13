@@ -395,8 +395,8 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     const captures = JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/captures.json', import.meta.url), 'utf8'));
     expect(captures).toMatchObject(manifest);
     expect(captures.viewport).toEqual([1440, 1000]);
-    expect(captures.views).toHaveLength(49);
-    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(49);
+    expect(captures.views).toHaveLength(57);
+    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(57);
     const standingViews = captures.views.slice(0, 7) as { name: string; position: number[] }[];
     expect(standingViews.map((view) => view.name)).toEqual(['cap-d', 'cap-a', 'a3-west-leg', 'a5', 'cap-x-forecourt-road', 'a2-toward-a3', 'a6-toward-a7']);
     const combatViews = captures.views.slice(11, 14) as { name: string; position: number[] }[];
@@ -459,13 +459,29 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
           expect(supportUnder(x! + dx, z! + dz, .001, y! + .05, world.boxes, 0)).toBe(y);
       expect(blockedAt(x!, z!, DEFAULT_MOVE_CONFIG.radius, y!, 0, DEFAULT_MOVE_CONFIG.height, world.boxes)).toBe(false);
     }
-    const undersideViews = captures.views.slice(47) as { name: string; position: number[] }[];
+    const undersideViews = captures.views.slice(47, 49) as { name: string; position: number[] }[];
     expect(undersideViews.map((view) => [view.name, view.position])).toEqual([
       ['bridge-under-tank', [72, 9.55, 327]], ['r8-underside', [77, 9.55, 349]],
     ]);
     expect(captures.views[47]).toMatchObject({ tank: { x: 70, y: 8, z: 336, yaw: 0 }, expectedTankVisible: true });
     expect(captures.views[47].tankPixels).toBeGreaterThanOrEqual(10);
     for (const view of undersideViews) clearSupport({ x: view.position[0]!, z: view.position[2]! }, DEFAULT_MOVE_CONFIG.radius);
+    // U-165: exact furniture/hold standing eyes, appended to all 49 retained views.
+    const furnitureViews = captures.views.slice(49) as { name: string; position: number[]; feetY: number }[];
+    expect(furnitureViews.map((v) => [v.name, v.position[0], v.feetY, v.position[2]])).toEqual([
+      ['ridge-hut-interior', 86, 14, 102], ['ridge-hut-spur', 81, 14, 100],
+      ['ridge-survey-interior', 82, 26, 286], ['ridge-r3-cover', 80, 26, 174],
+      ['ridge-r6-cover', 72, 26, 288], ['ridge-r5-hold', 95.8, 30, 238],
+      ['ridge-r5-exposed', 91, 30, 238], ['ridge-r7-cover', 70, 20, 321.5],
+    ]);
+    for (const view of furnitureViews) {
+      const [x, eyeY, z] = view.position;
+      expect(eyeY! - view.feetY).toBeCloseTo(DEFAULT_MUZZLE_RIG.eyeHeight);
+      expect(blockedAt(x!, z!, DEFAULT_MOVE_CONFIG.radius, view.feetY, 0, DEFAULT_MOVE_CONFIG.height, world.boxes)).toBe(false);
+      for (const dx of [-DEFAULT_MOVE_CONFIG.radius, 0, DEFAULT_MOVE_CONFIG.radius])
+        for (const dz of [-DEFAULT_MOVE_CONFIG.radius, 0, DEFAULT_MOVE_CONFIG.radius])
+          expect(supportUnder(x! + dx, z! + dz, .001, view.feetY + .05, world.boxes, 0)).toBe(view.feetY);
+    }
     for (const view of [...standingViews, ...combatViews, ...ingressViews]) {
       const feet = { x: view.position[0]!, y: view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, z: view.position[2]! };
       expect(feet.y, `${view.name} standing eye`).toBeCloseTo(8);

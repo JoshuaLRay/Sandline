@@ -63,6 +63,10 @@ const views = [
     { name: 'ridge-r9-gate', feet: [56, 8, 370], target: [56, 9.55, 374], label: 'R9 y8 · east-gate approach capped until U-116' },
   ].map((v) => ({ name: v.name, position: [v.feet[0]!, v.feet[1]! + 1.55, v.feet[2]!], target: v.target,
     label: `${v.label} · standing eye`, probe: false, feetY: v.feet[1]! })),
+  { name: 'ridge-r7-mouth', position: [98, 56, 300], target: [70, 16, 336], label: 'Free view · R7 landing, built R7b bridge and R8/R9 descent over the tank road', probe: false },
+  { name: 'ridge-overview', position: [190, 150, 110], target: [76, 20, 230], label: 'Free overview · furnished R0–R9 ridge and service bridge; V1–V3 and east-gate caps remain', probe: false },
+  { name: 'bridge-under-tank', position: [72, 9.55, 327], target: [70, 10.5, 336], label: 'Tank road standing eye · production hull/turret at (70,8,336) beneath the built bridge', probe: false, tank: { x: 70, y: 8, z: 336, yaw: 0 }, expectedTankVisible: true },
+  { name: 'r8-underside', position: [77, 9.55, 349], target: [70, 11.4, 350], label: 'Tank road standing eye · R8 landing floor y12 / underside y11.4, 0.2 m above full turret envelope', probe: false },
   ...[
     { name: 'ridge-hut-interior', feet: [86, 14, 102], target: [89.5, 15, 102], label: 'Shepherd hut y14 · four sacks against east wall, open west face and no roof walkway' },
     { name: 'ridge-hut-spur', feet: [81, 14, 100], target: [87, 15.55, 102], label: 'R1 landing · 4 m flat spur to the shepherd hut west opening' },
@@ -74,10 +78,6 @@ const views = [
     { name: 'ridge-r7-cover', feet: [70, 20, 321.5], target: [82, 21.5, 320], label: 'R7 high rock · exact 4 m north-south cover in its inland recess' },
   ].map((v) => ({ name: v.name, position: [v.feet[0]!, v.feet[1]! + 1.55, v.feet[2]!], target: v.target,
     label: `${v.label} · standing eye`, probe: false, feetY: v.feet[1]! })),
-  { name: 'ridge-r7-mouth', position: [98, 56, 300], target: [70, 16, 336], label: 'Free view · R7 landing, built R7b bridge and R8/R9 descent over the tank road', probe: false },
-  { name: 'ridge-overview', position: [190, 150, 110], target: [76, 20, 230], label: 'Free overview · furnished R0–R9 ridge and service bridge; V1–V3 and east-gate caps remain', probe: false },
-  { name: 'bridge-under-tank', position: [72, 9.55, 327], target: [70, 10.5, 336], label: 'Tank road standing eye · production hull/turret at (70,8,336) beneath the built bridge', probe: false, tank: { x: 70, y: 8, z: 336, yaw: 0 }, expectedTankVisible: true },
-  { name: 'r8-underside', position: [77, 9.55, 349], target: [70, 11.4, 350], label: 'Tank road standing eye · R8 landing floor y12 / underside y11.4, 0.2 m above full turret envelope', probe: false },
 ];
 const output = new URL('../../../artifacts/qalat-road-supports/', import.meta.url);
 const world = loadLevel(JSON.parse(await readFile(new URL('level.json', output), 'utf8')));

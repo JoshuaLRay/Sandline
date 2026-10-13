@@ -32,8 +32,10 @@ const segments = NODES.slice(1).map((b, i) => {
 // Independent local R6 clearance bevel; exact stairs/nodes remain unchanged.
 const APRON = ribbonPieces([{ x: 75.86842105263158, z: 275.5 }, { x: 71.5, z: 281.9 },
   { x: 71.5, z: 290 }, { x: 71.5, z: 295 }], 8);
-const inApron = (p: Point, margin: number) => APRON.some((poly) => inConvex(convexHull(poly.flatMap((v) =>
-  [-margin, margin].flatMap((dx) => [-margin, margin].map((dz) => ({ x: v.x + dx, z: v.z + dz }))))), p));
+const inApron = (p: Point, margin: number) => APRON.some((poly) => margin < 0
+  ? [-margin, margin].flatMap((dx) => [-margin, margin].map((dz) => ({ x: p.x + dx, z: p.z + dz }))).every((v) => inConvex(poly, v))
+  : inConvex(convexHull(poly.flatMap((v) => [-margin, margin].flatMap((dx) =>
+    [-margin, margin].map((dz) => ({ x: v.x + dx, z: v.z + dz }))))), p));
 const FURNITURE_FLOORS = [
   [81.6, 90.6, 97.4, 106.6], [80, 82, 98, 102], [77.6, 86.6, 277.4, 288.6],
   [90, 98, 235, 251], [78, 85, 317.4, 323], [74, 78, 318, 322],
