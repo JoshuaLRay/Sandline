@@ -223,12 +223,15 @@ U-168 appends nine standing eyes at the two C12 mouths and their interior
 waypoint landings, plus two free stair overviews. Its exact four-metre ribbons
 and 4×4 m waypoint pads use 0.20 m risers and 2 m intermediate rests; the
 owner-approved compact treads on constrained flights preserve the named spines
-and eight-metre ridge route. The construction manifest records every flight.
+and eight-metre ridge route. A 0.5 m rock band 2.2 m above the higher adjacent
+floor lines both stairs; inside V1's fan it is a lip under a canopy (0.7 m slot).
+The construction manifest records every flight and the rock/lip/canopy counts.
 `qalatC12.test.ts` measures actual risers and full widths; `qalatCrossingsNav.test.ts`
 walks both spines each way and all twelve Tight/Standard/Wide seven-body trips
 using the ordinary Formation, POW escort Brain, PathFollower and body separation.
-`qalatCrossingsEscape.test.ts` checks stair-edge/landing escape attempts. The
-inherited ridge nav isolation test now seals D0, C12-L and C12-U together.
+`qalatCrossingsEscape.test.ts` checks stair-edge/landing escape attempts and the
+A2 apron edge. The inherited ridge nav isolation test now seals D0, C12-L and
+C12-U together; ridge, bay and terrain proofs exempt only the R2/R5 open mouths.
 CAP-X ingress now shows the built deck with a production tank capsule at J1.
 Streaming CI uploads `qalat-road-support-review`. Commit manifest, plan,
 capture metadata and PNGs; large level/surface JSON stays ignored. For orbit

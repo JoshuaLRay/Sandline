@@ -56,10 +56,15 @@ const yieldWorker = () => new Promise<void>((resolve) => setImmediate(resolve));
 let nav: NavMesh;
 
 function assertOrdinaryStep(before: MoveState, after: MoveState, label: string): void {
+  const at = `${JSON.stringify(before)} → ${JSON.stringify(after)}`;
   expect(after.vault, label).toBeNull();
-  expect(Math.abs(after.y - before.y), `${label}: dropped or snapped to a roof`).toBeLessThan(.3);
-  expect(blockedAt(after.x, after.z, DEFAULT_MOVE_CONFIG.radius, after.y, .05,
-    DEFAULT_MOVE_CONFIG.height, nearby(after)), `${label}: standing inside rock`).toBe(false);
+  // One ordinary controller step (two risers across a raster corner, or the
+  // open mouth beside a ridge landing) — never a drop or a roof snap.
+  expect(Math.abs(after.y - before.y), `${label}: dropped or snapped to a roof ${at}`).toBeLessThanOrEqual(DEFAULT_MOVE_CONFIG.stepHeight);
+  // The controller's own rule: a footprint may overlap the next tread up
+  // (a body landing beside a riser), never anything beyond a step.
+  expect(blockedAt(after.x, after.z, DEFAULT_MOVE_CONFIG.radius, after.y, DEFAULT_MOVE_CONFIG.stepHeight,
+    DEFAULT_MOVE_CONFIG.height, nearby(after)), `${label}: standing inside rock ${at}`).toBe(false);
 }
 
 describe('U-168 both reversible road–ridge stairs on the actual standing nav and controller', () => {
@@ -142,11 +147,19 @@ describe('U-168 both reversible road–ridge stairs on the actual standing nav a
       // Followers start on the legal road apron or ridge lane and fall in up
       // to 1.5 × 12 m behind the lead; no other road–ridge route lies within
       // 20 m of either crossing's ends, and `visited` proves each stair leg.
-      const allowed = [...footprint(c.spine), ...ribbonPieces([endpoint, after], outward ? 8 : 12),
+      // They regroup on the arrival node's own floor: its 12×12 m ridge
+      // landing or the road's 18 m turning apron. A wide wedge holds
+      // followers 4.5 m beside the lead, onto the ridge lane's bevels.
+      const apron = Array.from({ length: 48 }, (_, k) => ({ x: endpoint.x + 18 * Math.cos(k * Math.PI / 24), z: endpoint.z + 18 * Math.sin(k * Math.PI / 24) }));
+      const allowed = [...footprint(c.spine), ...ribbonPieces([endpoint, after], outward ? 10 : 12),
         rectPolygon({ minX: start.x - 20, maxX: start.x + 20, minZ: start.z - 20, maxZ: start.z + 20 }),
-        rectPolygon({ minX: after.x - 6, maxX: after.x + 6, minZ: after.z - 6, maxZ: after.z + 6 })];
+        outward ? rectPolygon({ minX: endpoint.x - 6, maxX: endpoint.x + 6, minZ: endpoint.z - 6, maxZ: endpoint.z + 6 }) : apron,
+        rectPolygon({ minX: after.x - 8, maxX: after.x + 8, minZ: after.z - 8, maxZ: after.z + 8 })];
       const dest = ribbonPieces([endpoint, after], outward ? 8 : 12);
       const visited = actors.map(() => new Set<number>()), spreads = new Set<number>();
+      // A flat y8 leg lies across the road's turning apron (A2→L1): wedge
+      // followers may cross it beside its centreline. Every stair leg counts.
+      const legs = spine.slice(0, -1).flatMap((from, i) => from.y === 8 && spine[i + 1]!.y === 8 ? [] : [i]);
       let leg = 0, ticks = 0, allAcross = false;
       for (; ticks < 3600; ticks++) {
         const leader = actors[0]!;
@@ -180,12 +193,12 @@ describe('U-168 both reversible road–ridge stairs on the actual standing nav a
                 a.state.y >= Math.min(from.y, to.y) - .05 && a.state.y <= Math.max(from.y, to.y) + .05) visited[a.index]!.add(i);
           }
         }
-        allAcross = leg === route.length && actors.every((a) => visited[a.index]!.size === spine.length - 1 && contains(dest, a.state, .1));
+        allAcross = leg === route.length && actors.every((a) => legs.every((i) => visited[a.index]!.has(i)) && contains(dest, a.state, .1));
         if (allAcross) break;
         if (ticks % 128 === 0) await yieldWorker();
       }
       expect(spreads).toEqual(new Set([1, 2, 3, 4, 5]));
       expect(allAcross, `${c.id}/${spread} stranded group after ${ticks} ticks: ${JSON.stringify(actors.map((a) => ({ actor: a.index, state: a.state, visited: [...visited[a.index]!] })))}`).toBe(true);
-      console.log(`U-168 ${c.id} ${outward ? 'up' : 'down'} ${spread} seven bodies`, JSON.stringify({ ticks, seconds: ticks * TICK_SECONDS, legsPerActor: visited.map((v) => v.size) }));
+      console.log(`U-168 ${c.id} ${outward ? 'up' : 'down'} ${spread} seven bodies`, JSON.stringify({ ticks, seconds: ticks * TICK_SECONDS, stairLegs: legs.length, legsPerActor: visited.map((v) => v.size) }));
     }, 120_000);
 });
