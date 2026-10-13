@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_MOVE_CONFIG, blockedAt, supportUnder, type WorldBox } from '@sandline/shared';
 import { C12, crossingFlights } from './qalatC12.ts';
 import { buildRoadSupportWorld } from './qalatRoadSupports.ts';
+import { inConvex } from './planStrata.ts';
+import { convexHull } from './roadSightLines.ts';
 
 // Independent §6.3 coordinates and counts: moving a waypoint or dropping a
 // flight must fail even if the generated world agrees with its authoring JSON.
@@ -43,8 +45,9 @@ describe('U-168 exact C12 road–ridge stair construction', () => {
       expect(f.risers).toHaveLength(s.risers);
       expect(f.length).toBeCloseTo(s.length, 9);
       expect(f.fromY).toBe(s.a[1]); expect(f.toY).toBe(s.b[1]);
-      // The §2.2 default stays strict until an owner-approved exception is recorded.
-      expect(f.treadM).toBe(.4);
+      // Owner-approved compact treads on the constrained §6.3 segments;
+      // every other segment retains the standard construction dimension.
+      expect(f.treadM).toBe((s.crossing === 'C12-L' && [1, 3].includes(s.i)) || (s.crossing === 'C12-U' && [2, 4].includes(s.i)) ? .3 : .4);
       if (s.risers) expect(f.restLandingM).toBeGreaterThanOrEqual(2);
       for (let k = 1; k < f.risers.length; k++) {
         const run = f.risers[k]! - f.risers[k - 1]!;
@@ -109,5 +112,32 @@ describe('U-168 exact C12 road–ridge stair construction', () => {
       }
     expect(widthProbes).toBeGreaterThan(5_000); expect(padProbes).toBe(2_800);
     console.log('U-168 C12 clearance', JSON.stringify({ widthProbes, padProbes }));
+  }, 60_000);
+
+  it('preserves the full eight-metre ridge lane and its turning bevel through both crossing mouths', () => {
+    let probes = 0;
+    for (const [node, neighbours] of [
+      [[64, 20, 128], [[78, 96], [80, 168]]], [[86, 30, 248], [[94, 210], [72, 286]]],
+    ] as const) {
+      const [x, y, z] = node, corners: { x: number; z: number }[] = [];
+      const probe = (px: number, pz: number, body = false) => {
+        expect(floorAt(px, pz, y + .1), `ridge lane at ${px}/${pz}`).toBe(y);
+        if (body) expect(blockedAt(px, pz, DEFAULT_MOVE_CONFIG.radius, y, 0, DEFAULT_MOVE_CONFIG.height, near(px, pz))).toBe(false);
+        probes++;
+      };
+      for (const [nx, nz] of neighbours) {
+        const length = Math.hypot(nx - x, nz - z), ux = (nx - x) / length, uz = (nz - z) / length;
+        corners.push(...[-4, 4].map((off) => ({ x: x - uz * off, z: z + ux * off })));
+        for (let t = 0; t <= 4; t += .2) for (let off = -3.99; off <= 3.99; off += .2) {
+          const body = Math.abs(off) <= 4 - DEFAULT_MOVE_CONFIG.radius * (Math.abs(ux) + Math.abs(uz));
+          probe(x + ux * t - uz * off, z + uz * t + ux * off, body);
+        }
+      }
+      const bevel = convexHull(corners);
+      for (let px = x - 4; px <= x + 4; px += .1) for (let pz = z - 4; pz <= z + 4; pz += .1)
+        if (inConvex(bevel, { x: px, z: pz })) probe(px, pz);
+    }
+    expect(probes).toBeGreaterThan(5_000);
+    console.log('U-168 retained eight-metre ridge junctions', JSON.stringify({ probes }));
   }, 60_000);
 });

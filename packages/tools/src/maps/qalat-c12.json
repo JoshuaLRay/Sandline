@@ -11,6 +11,12 @@
   "cheekM": 1,
   "cheekWidthM": 0.25,
   "barrierM": 2.2,
+  "compactTreads": [
+    { "crossing": "C12-L", "from": "L1", "to": "L2", "treadM": 0.3, "why": "the twenty-riser run between two 4x4 m pads cannot fit 0.40 m treads and its 2 m rest" },
+    { "crossing": "C12-L", "from": "L3", "to": "R2", "treadM": 0.3, "why": "finish the rise before the mouth reaches the full eight-metre R2 ridge lane" },
+    { "crossing": "C12-U", "from": "U2", "to": "U3", "treadM": 0.3, "why": "the thirty-riser run between two 4x4 m pads cannot fit 0.40 m treads and its two 2 m rests" },
+    { "crossing": "C12-U", "from": "U4", "to": "R5", "treadM": 0.3, "why": "finish the rise before the mouth reaches the full eight-metre R5 ridge lane" }
+  ],
   "stairs": [
     { "id": "C12-L", "spine": [
       { "id": "A2", "x": 12, "y": 8, "z": 128 },

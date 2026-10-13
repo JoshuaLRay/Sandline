@@ -95,7 +95,7 @@ const views = [
     { name: 'c12-l-landing-3', feet: [54, 16, 140], target: [64, 21.55, 128], label: 'C12-L upper landing y16 · carved west-side join to R2' },
     { name: 'c12-u-road-mouth', feet: [26, 8, 232], target: [40, 9.55, 218], label: 'C12-U road mouth · four-metre quarry stair toward R5' },
     { name: 'c12-u-landing-1', feet: [40, 8, 218], target: [62, 15.55, 216], label: 'C12-U first 4×4 m landing · ascent through carved road rock' },
-    { name: 'c12-u-landing-2', feet: [62, 14, 216], target: [78, 21.55, 224], label: 'C12-U landing y14 · standard flights, level rests and stone cheeks' },
+    { name: 'c12-u-landing-2', feet: [62, 14, 216], target: [78, 21.55, 224], label: 'C12-U landing y14 · ten-riser flights, level rests and stone cheeks' },
     { name: 'c12-u-landing-3', feet: [78, 20, 224], target: [66, 25.55, 244], label: 'C12-U landing y20 · protected stair turn below the ridge' },
     { name: 'c12-u-landing-4', feet: [66, 24, 244], target: [86, 31.55, 248], label: 'C12-U upper landing y24 · carved west-side join to R5' },
   ].map((v) => ({ name: v.name, position: [v.feet[0]!, v.feet[1]! + 1.55, v.feet[2]!], target: v.target,

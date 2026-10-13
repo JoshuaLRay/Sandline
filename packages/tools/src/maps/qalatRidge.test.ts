@@ -8,6 +8,7 @@ import { FLIGHTS, RIDGE, isTemporaryRidgeCap, ridgeManifest, ridgeRayClearances 
 
 import { inConvex } from './planStrata.ts';
 import { convexHull, ribbonPieces } from './roadSightLines.ts';
+import { onCrossingFloor } from './qalatC12.ts';
 
 type Point = { x: number; z: number };
 // Independent §6.1 transcription: nodes, riser counts and flat landings.
@@ -192,7 +193,7 @@ describe('U-163 continuous R0–R7 ridge shelf', () => {
       for (const d of [.15, .6]) {
         const p = { x: inside.x + out.x * d, z: inside.z + out.z * d };
         // The rasterized floor may overshoot a designed edge by <0.05 m (§15).
-        if (onShelf(p, .05) || onInsertionFloor(p, .2)) continue;
+        if (onShelf(p, .05) || onInsertionFloor(p, .2) || onCrossingFloor(p, .05)) continue;
         const wall = wallTop(p, y);
         expect(wall, `open ridge edge at ${JSON.stringify(p)} beside y${y}`).toBeGreaterThanOrEqual(y + BARRIER - 1e-9);
         lowest = Math.min(lowest, wall - y); probes++;

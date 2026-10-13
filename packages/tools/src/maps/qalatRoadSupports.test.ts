@@ -16,6 +16,7 @@ import { longestSegment } from './roadSightLines.ts';
 import { onTankIngressFloor } from './qalatTankIngress.ts';
 import { buildRoadCombat } from './qalatRoadCombat.ts';
 import { bakeRoadSupportNav } from './qalatRoadNav.ts';
+import { onCrossingFloor } from './qalatC12.ts';
 
 // Independent transcription of the approved §5 coordinates with the U-159
 // addendum's bent A3, A4 and A7. Sampling the authoring data alone would also
@@ -153,7 +154,8 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
         const storeFloor = x >= 45.35 && x <= 54.65 && z >= 53.35 && z <= 62.65;
         const storeConnector = x >= 43.95 && x <= 46.05 && z >= 55.95 && z <= 60.05;
         const ridgeFloor = box.id.startsWith('ridge-floor-') && approvedFinalRidgeFootprint({ x, z }, .05);
-        expect(approvedRoadFootprint({ x, z }, .05) || onTankIngressFloor({ x, z }, .05) || tollFloor || storeFloor || storeConnector || ridgeFloor, `support expansion at ${JSON.stringify({ x, z })}`).toBe(true);
+        const crossingFloor = box.id.startsWith('crossing-floor-') && onCrossingFloor({ x, z }, .05);
+        expect(approvedRoadFootprint({ x, z }, .05) || onTankIngressFloor({ x, z }, .05) || tollFloor || storeFloor || storeConnector || ridgeFloor || crossingFloor, `support expansion at ${JSON.stringify({ x, z })}`).toBe(true);
       }
       if (supports % 256 === 0) await yieldWorker();
     }
@@ -395,8 +397,8 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     const captures = JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/captures.json', import.meta.url), 'utf8'));
     expect(captures).toMatchObject(manifest);
     expect(captures.viewport).toEqual([1440, 1000]);
-    expect(captures.views).toHaveLength(63);
-    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(63);
+    expect(captures.views).toHaveLength(74);
+    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(74);
     const standingViews = captures.views.slice(0, 7) as { name: string; position: number[] }[];
     expect(standingViews.map((view) => view.name)).toEqual(['cap-d', 'cap-a', 'a3-west-leg', 'a5', 'cap-x-forecourt-road', 'a2-toward-a3', 'a6-toward-a7']);
     const combatViews = captures.views.slice(11, 14) as { name: string; position: number[] }[];
@@ -483,12 +485,27 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
           expect(supportUnder(x! + dx, z! + dz, .001, view.feetY + .05, world.boxes, 0)).toBe(view.feetY);
     }
     // U-167: each bay's standing anchor and rear, then a free F3 view.
-    const bayViews = captures.views.slice(57) as { name: string; position: number[]; feetY?: number }[];
+    const bayViews = captures.views.slice(57, 63) as { name: string; position: number[]; feetY?: number }[];
     expect(bayViews.map((v) => [v.name, v.position[0], v.feetY, v.position[2]])).toEqual([
       ['bay-v1-anchor', 58, 20, 128], ['bay-v1-rear', 63, 20, 128], ['bay-v2-anchor', 88, 30, 210],
       ['bay-v3-anchor', 66, 26, 286], ['bay-v3-rear', 71, 26, 286], ['bay-f3-fin', 100, undefined, 228],
     ]);
     for (const view of bayViews.slice(0, 5)) {
+      const [x, eyeY, z] = view.position;
+      expect(eyeY! - view.feetY!).toBeCloseTo(DEFAULT_MUZZLE_RIG.eyeHeight);
+      expect(blockedAt(x!, z!, DEFAULT_MOVE_CONFIG.radius, view.feetY!, 0, DEFAULT_MOVE_CONFIG.height, world.boxes)).toBe(false);
+      for (const dx of [-DEFAULT_MOVE_CONFIG.radius, 0, DEFAULT_MOVE_CONFIG.radius])
+        for (const dz of [-DEFAULT_MOVE_CONFIG.radius, 0, DEFAULT_MOVE_CONFIG.radius])
+          expect(supportUnder(x! + dx, z! + dz, .001, view.feetY! + .05, world.boxes, 0)).toBe(view.feetY);
+    }
+    const crossingViews = captures.views.slice(63) as { name: string; position: number[]; feetY?: number }[];
+    expect(crossingViews.map((v) => [v.name, v.position[0], v.feetY, v.position[2]])).toEqual([
+      ['c12-l-road-mouth', 12, 8, 128], ['c12-l-landing-1', 28, 8, 134], ['c12-l-landing-2', 40, 12, 140],
+      ['c12-l-landing-3', 54, 16, 140], ['c12-u-road-mouth', 26, 8, 232], ['c12-u-landing-1', 40, 8, 218],
+      ['c12-u-landing-2', 62, 14, 216], ['c12-u-landing-3', 78, 20, 224], ['c12-u-landing-4', 66, 24, 244],
+      ['c12-l-overview', 12, undefined, 165], ['c12-u-overview', 20, undefined, 260],
+    ]);
+    for (const view of crossingViews.slice(0, 9)) {
       const [x, eyeY, z] = view.position;
       expect(eyeY! - view.feetY!).toBeCloseTo(DEFAULT_MUZZLE_RIG.eyeHeight);
       expect(blockedAt(x!, z!, DEFAULT_MOVE_CONFIG.radius, view.feetY!, 0, DEFAULT_MOVE_CONFIG.height, world.boxes)).toBe(false);

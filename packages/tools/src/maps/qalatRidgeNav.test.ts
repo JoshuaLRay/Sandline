@@ -75,7 +75,7 @@ describe('U-164 completed ridge travel on the actual tiled standing nav bake', (
     // courtyard is still capped; no intermediate basement junction exists.
     const seals: WorldBox[] = [
       { id: 'test-seal-R0-mouth', kind: 'cover', minX: 50, maxX: 52, minY: 8, maxY: 38, minZ: 56, maxZ: 76 },
-      { id: 'test-seal-C12-L', kind: 'cover', minX: 26, maxX: 30, minY: 8, maxY: 38, minZ: 130, maxZ: 138 },
+      { id: 'test-seal-C12-L', kind: 'cover', minX: 32, maxX: 34, minY: 8, maxY: 38, minZ: 132, maxZ: 142 },
       { id: 'test-seal-C12-U', kind: 'cover', minX: 38, maxX: 42, minY: 8, maxY: 38, minZ: 214, maxZ: 222 },
     ];
     sealed = NavMesh.load(await bakeRoadSupportNav({ ...world, boxes: [...world.boxes, ...seals] }));

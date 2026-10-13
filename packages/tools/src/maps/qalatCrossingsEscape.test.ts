@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_MOVE_CONFIG, TICK_SECONDS, blockedAt, createMoveState, stepCharacter, supportUnder } from '@sandline/shared';
-import { buildRoadSupportWorld } from './qalatRoadSupports.ts';
+import { buildRoadSupportWorld, onRoadSupportFloor } from './qalatRoadSupports.ts';
 import { inConvex, rectPolygon, type Point, type Polygon } from './planStrata.ts';
 import { convexHull, ribbonPieces } from './roadSightLines.ts';
 
@@ -33,17 +33,28 @@ describe('U-168 GEO-05 C12 stair balustrades and landings reject unlisted route 
       if (endpoints.some((n) => Math.hypot(inside.x - n.x, inside.z - n.z) < 6)) return;
       if (contains(polygons, { x: inside.x + out.x, z: inside.z + out.z })) return;
       const boxes = nearby(inside), y = supportUnder(inside.x, inside.z, DEFAULT_MOVE_CONFIG.radius, highY + .3, boxes, 0);
+      // A y8 piece already inside the road's turning apron is the lawful
+      // shared mouth, not a balustrade separating two routes. Elevated
+      // stair edges above that apron remain subject to the drop proof.
+      if (Math.abs(y - 8) < .05 && onRoadSupportFloor(inside)) return;
       if (y < 7.9 || blockedAt(inside.x, inside.z, DEFAULT_MOVE_CONFIG.radius, y, .05, DEFAULT_MOVE_CONFIG.height, boxes)) return;
       expect(supportUnder(inside.x, inside.z, DEFAULT_MOVE_CONFIG.radius, y + .01, crossingFloors, 0), `${label} did not start on a crossing`).toBeCloseTo(y, 6);
       const yaw = ((Math.round(Math.atan2(out.x, out.z) / (2 * Math.PI) * 1024) % 1024) + 1024) % 1024;
       for (const stance of ['walk', 'jump', 'crouch', 'prone']) {
+        const assertTrace = (state: ReturnType<typeof createMoveState>) => {
+          expect(state.vault, `${label}/${stance} started a vault`).toBeNull();
+          if (!state.grounded) return;
+          expect(contains(allowed, state), `${label}/${stance} reached an unlisted grounded footprint: ${JSON.stringify(state)}`).toBe(true);
+          expect(supportUnder(state.x, state.z, DEFAULT_MOVE_CONFIG.radius, state.y + .01, crossingFloors, 0),
+            `${label}/${stance} landed on a cheek/rock top from ${JSON.stringify(inside)} at ${JSON.stringify(state)}`).toBeCloseTo(state.y, 6);
+        };
         let state = { ...createMoveState(inside.x, y, inside.z), grounded: true };
-        for (let tick = 0; tick < 60; tick++) state = stepCharacter(state, {
+        for (let tick = 0; tick < 60; tick++) { state = stepCharacter(state, {
           moveX: 0, moveY: 1, yaw, sprint: stance !== 'walk', jump: stance === 'jump', crouch: stance === 'crouch', prone: stance === 'prone',
-        }, TICK_SECONDS, DEFAULT_MOVE_CONFIG, boxes);
-        for (let tick = 0; tick < 45; tick++) state = stepCharacter(state, {
+        }, TICK_SECONDS, DEFAULT_MOVE_CONFIG, boxes); assertTrace(state); }
+        for (let tick = 0; tick < 45; tick++) { state = stepCharacter(state, {
           moveX: 0, moveY: 0, yaw, sprint: false, jump: false, crouch: false, prone: false,
-        }, TICK_SECONDS, DEFAULT_MOVE_CONFIG, boxes);
+        }, TICK_SECONDS, DEFAULT_MOVE_CONFIG, boxes); assertTrace(state); }
         expect(state.vault, `${label}/${stance} ended in a vault`).toBeNull();
         expect(contains(allowed, state), `${label}/${stance} crossed the balustrade from ${JSON.stringify(inside)} to ${JSON.stringify(state)}`).toBe(true);
         expect(state.y, `${label}/${stance} dropped beneath the legal floor`).toBeGreaterThanOrEqual(7.9);
@@ -72,8 +83,45 @@ describe('U-168 GEO-05 C12 stair balustrades and landings reject unlisted route 
     // from quietly skipping an entire ascending flight or all interior pads.
     for (let i = 1; i < c.spine.length - 1; i++) for (const side of [-1, 1])
       expect(attemptCounts.get(`segment${i}/side${side}`), `untested flight ${i}, side ${side}`).toBeGreaterThanOrEqual(4);
-    expect([...attemptCounts.keys()].some((label) => label.startsWith('landing'))).toBe(true);
+    for (let i = 0; i < c.spine.length - 2; i++)
+      expect([...attemptCounts].filter(([label]) => label.startsWith(`landing${i}/`)).reduce((sum, [, count]) => sum + count, 0),
+        `untested interior landing ${i}`).toBeGreaterThanOrEqual(4);
     expect(attempts).toBeGreaterThan(120);
     console.log(`U-168 ${c.id} stair escapes`, JSON.stringify({ attempts, stances: ['walk', 'sprint-jump/vault', 'crouch', 'prone'], pushTicks: 60, settleTicks: 45 }));
   }, 120_000);
+
+  it('keeps V1’s low A2 apron edge closed north of the opened C12-L mouth in every stance', async () => {
+    // U-141/U-168 carried hazard: V1's fan grazes the road's north-east
+    // apron at only 0.65–2.2 m above y8. These independent polar samples
+    // face that edge, outside the C12-L ribbon and waypoint pad. Every
+    // starting body must be occupiable; none may be silently skipped.
+    let attempts = 0;
+    for (const degrees of [30, 35, 40, 45, 50, 55]) {
+      const angle = degrees * Math.PI / 180, out = { x: Math.cos(angle), z: Math.sin(angle) };
+      const start = { x: 12 + out.x * 16.9, z: 128 + out.z * 16.9 }, boxes = nearby(start);
+      expect(onRoadSupportFloor(start), `A2/${degrees} must start inside the apron`).toBe(true);
+      expect(supportUnder(start.x, start.z, DEFAULT_MOVE_CONFIG.radius, 8.3, boxes, 0)).toBeCloseTo(8, 6);
+      expect(blockedAt(start.x, start.z, DEFAULT_MOVE_CONFIG.radius, 8, .05, DEFAULT_MOVE_CONFIG.height, boxes),
+        `A2/${degrees} starts inside collision`).toBe(false);
+      const yaw = ((Math.round(Math.atan2(out.x, out.z) / (2 * Math.PI) * 1024) % 1024) + 1024) % 1024;
+      for (const stance of ['walk', 'jump', 'crouch', 'prone']) {
+        let state = { ...createMoveState(start.x, 8, start.z), grounded: true };
+        for (let tick = 0; tick < 105; tick++) {
+          state = stepCharacter(state, { moveX: 0, moveY: tick < 60 ? 1 : 0, yaw, sprint: tick < 60 && stance !== 'walk',
+            jump: tick < 60 && stance === 'jump', crouch: tick < 60 && stance === 'crouch', prone: tick < 60 && stance === 'prone',
+          }, TICK_SECONDS, DEFAULT_MOVE_CONFIG, boxes);
+          expect(state.vault, `A2/${degrees}/${stance} started a vault`).toBeNull();
+          if (state.grounded) {
+            expect(onRoadSupportFloor(state, .06), `A2/${degrees}/${stance} left the road: ${JSON.stringify(state)}`).toBe(true);
+            expect(state.y, `A2/${degrees}/${stance} reached rock, cheek or a different storey`).toBeCloseTo(8, 6);
+          }
+        }
+        expect(state.grounded, `A2/${degrees}/${stance} never returned to its legal floor`).toBe(true);
+        attempts++;
+      }
+      await yieldWorker();
+    }
+    expect(attempts).toBe(24);
+    console.log('U-168 mandatory A2 low-fan edge escapes', JSON.stringify({ attempts, degrees: [30, 35, 40, 45, 50, 55] }));
+  });
 });

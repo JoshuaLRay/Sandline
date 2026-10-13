@@ -16,6 +16,7 @@ import { insertionFloors } from './qalatInsertion.ts';
 import { VIEW_FANS, capUnder, rockEastBound } from './qalatRoadTerrain.ts';
 import { clipConvex, rectPolygon, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
 import { convexHull, ribbonPieces } from './roadSightLines.ts';
+import { crossingCarve, crossingFloorSpans } from './qalatC12.ts';
 
 export const RIDGE = source;
 type Rect = { minX: number; maxX: number; minZ: number; maxZ: number };
@@ -183,7 +184,11 @@ function floorSpans(z0: number, z1: number): { lo: number; hi: number; y: number
     const last = out.at(-1);
     if (last && last.hi === lo && last.y === y) last.hi = hi; else out.push({ lo, hi, y });
   }
-  return out;
+  // A lower terminal stair replaces only overlapping ridge columns. Once
+  // it reaches the node elevation the original landing stays intact.
+  const mouths = crossingFloorSpans(z0, z1);
+  return out.flatMap(({ lo, hi, y }) => subtract(lo, hi, union(mouths.filter((m) => m.y < y - 1e-9)
+    .map((m): Interval => [m.lo, m.hi]))).map(([lo, hi]) => ({ lo, hi, y })));
 }
 
 /** Merges equal pieces of consecutive rows into one box. */
@@ -266,6 +271,7 @@ export function buildRidgeFurniture(): BoxSpec[] {
  * existing y8 floor), the T-E body around them and the temporary caps.
  * `ground` is every built y8 walking floor (road, X ingress, D0 store). */
 export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
+  const crossings = crossingCarve();
   const zs = FLOORS.flatMap((f) => f.polygon.map((p) => p.z));
   const first = Math.floor(Math.min(...zs) * ROWS_PER_M) - 1, last = Math.ceil(Math.max(...zs) * ROWS_PER_M) + 1;
   const floor = strata('shelf'), index = new Map<number, { lo: number; hi: number; z0: number; z1: number; y: number }[]>();
@@ -328,8 +334,10 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
     if (inBody && !body) { coarse.row(); continue; }
     const west = !body ? -Infinity : Z1 <= RIDGE.insertionBounds.maxZ ? Math.max(RIDGE.insertionBounds.maxX, body[0]) : rockEastBound(ground, Z0, Z1);
     const east = body ? body[1] : Infinity;
-    const open = union(FLOORS.map((f) => sweep(f.polygon, Z0 - reach, Z1 + reach)).filter((s): s is Interval => s !== null)
-      .map(([a, b]) => [a - reach, b + reach]));
+    const ridgeOpen = FLOORS.map((f) => sweep(f.polygon, Z0 - reach, Z1 + reach)).filter((s): s is Interval => s !== null)
+      .map(([a, b]): Interval => [a - reach, b + reach]);
+    const open = union([...ridgeOpen,
+      ...crossings.map((p) => sweep(p, Z0 - CARVE_MARGIN_M, Z1 + CARVE_MARGIN_M)).filter((s): s is Interval => s !== null)]);
     const fans = fanSpans(Z0, Z1);
     if (body) for (const [lo, hi] of cutAt(subtract(west, east, open), [...capCuts(Z0, Z1), ...fans.flat()])) {
       const shaped = fans.some(([a, b]) => lo <= b + 1e-6 && hi >= a - 1e-6);
@@ -354,7 +362,8 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
       const excludedGround = z0 < 322 ? below.flatMap(([a, b]) => subtract(a, b, furnitureRing)) : [];
       const shelf = union([...FLOORS.map((f) => sweep(f.polygon, z0 + TOUCH_M, z1 - TOUCH_M)).filter((s): s is Interval => s !== null)
         .map(([a, b]): Interval => [a - EDGE_M, b + EDGE_M]), ...excludedGround]);
-      const spans = open.flatMap(([a, b]) => subtract(Math.max(a, west), Math.min(b, east), shelf));
+      const crossingCuts = crossings.map((p) => sweep(p, z0 - CARVE_MARGIN_M, z1 + CARVE_MARGIN_M)).filter((s): s is Interval => s !== null);
+      const spans = union(ridgeOpen).flatMap(([a, b]) => subtract(Math.max(a, west), Math.min(b, east), union([...shelf, ...crossingCuts])));
       const frameCuts = BAYS.flatMap((b) => [b.floor.minX, b.x]);
       for (const [lo, hi] of cutAt(spans, [...capCuts(z0, z1), ...frameCuts, ...below.flat()])) {
         const r = { minX: lo, maxX: hi, minZ: z0, maxZ: z1 }, bay = frameOf(r);

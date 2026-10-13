@@ -43,6 +43,10 @@
     { "id": "south-gate", "minX": 31.6, "maxX": 32.4, "minZ": 356, "maxZ": 356.4,
       "why": "standing room at the exact gate node: a 0.35 m soldier centred on (32,356) needs air past the road end until the outpost opens it" }
   ],
+  "viewGuards": [
+    { "id": "A2-apron", "minX": 24, "maxX": 36, "minZ": 130, "maxZ": 142, "openingM": 0.7, "canopyTop": 20,
+      "why": "U-168: the permanent lip and canopy replace the C12-L mouth cap only beside the road apron; their 0.70 m opening passes V1's low fan but rejects the 0.80 m prone body" }
+  ],
   "climbGuards": [
     { "id": "A-C03-edge", "minX": 14, "maxX": 20, "minZ": 142, "maxZ": 148, "top": 12,
       "why": "U-161: close the low wall's jump approach onto permanent rock outside the C12-L cap" },
@@ -56,8 +60,6 @@
       "why": "U-161: close the forecourt wall's jump approach onto the western fine edge skin" }
   ],
   "temporaryCaps": [
-    { "id": "C12-L-mouth", "for": "U-141", "minX": 24, "maxX": 36, "minZ": 130, "maxZ": 142, "top": 20,
-      "why": "V1's fan reaches the A2 apron's north-east edge only 0.65-2.2 m above the road beside the C12-L stair mouth; U-141 opens the stair here and must keep that edge nontraversable" },
     { "id": "south-gate", "for": "U-116", "minX": 20, "maxX": 48, "minZ": 346, "maxZ": 362, "top": 20,
       "why": "seals the road end until the outpost exists; V3's south-gate gun ray crosses here and is blocked by the outpost's own south wall as specified" }
   ]

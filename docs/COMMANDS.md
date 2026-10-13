@@ -56,7 +56,7 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | `pnpm export:soldier` | write the code-built soldier as `assets/src/soldier.glb`, the pipeline's test asset |
 | `pnpm gen:nav` | re-bake every named world's navmesh; required after editing a world, `MoveConfig` or the hitbox (a test fails until you do) |
 | `pnpm gen:qalat-insertion` | U-138: compile the isolated Juniper Hollow replacement section and its exact collision/render surface, manifest and plan into `artifacts/qalat-insertion/`; production campaign activation remains U-117 |
-| `pnpm gen:qalat-road-supports` | U-149/U-159–U-165/U-167/U-151/U-152: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard, loading façades, D0 return store, first-X5 ingress dogleg/screens and the furnished R0–R9 ridge shelf/service bridge with its V1–V3 support bays and F3; preserve basement voids, the 12 m vehicle corridor and ridge views; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
+| `pnpm gen:qalat-road-supports` | U-149/U-159–U-165/U-167/U-168/U-151/U-152: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard, loading façades, D0 return store, first-X5 ingress dogleg/screens and the furnished R0–R9 ridge shelf/service bridge with its V1–V3 support bays, F3 and two C12 road↔ridge stairs; preserve basement voids, the 12 m vehicle corridor and ridge views; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
 
 ## Isolated Juniper Hollow construction (U-138)
@@ -206,7 +206,7 @@ y36 fin. `qalatRidgeBays.test.ts` checks construction, target rays from each
 anchor's standing eye, F1/F2/F3 blind spots and four-stance escape attempts.
 
 Run `pnpm exec tsx packages/tools/src/capture-qalat-road-supports.ts` after
-generation for sixty-three 1440×1000 exact-scene views and geometry/draw measurements,
+generation for seventy-four 1440×1000 exact-scene views and geometry/draw measurements,
 including the road fights, motor pool/retaining turns, occupied bridge, V3→X5 opening,
 CAP-RETURN, store door/holding socket and the six road rocket firing choices.
 The six added A-C11/A-C12/V3 X4-hidden/X5-visible views display production
@@ -219,6 +219,16 @@ U-165 appends eight standing-eye views of the hut/spur, survey interior, four
 cover choices and sheltered/exposed R5 hold positions, retaining all 49 prior views.
 U-167 appends five bay standing eyes (V1/V3 anchors and rears, V2 anchor) and a
 free F3 view; with the bays built, every view renders the whole scene.
+U-168 appends nine standing eyes at the two C12 mouths and their interior
+waypoint landings, plus two free stair overviews. Its exact four-metre ribbons
+and 4×4 m waypoint pads use 0.20 m risers and 2 m intermediate rests; the
+owner-approved compact treads on constrained flights preserve the named spines
+and eight-metre ridge route. The construction manifest records every flight.
+`qalatC12.test.ts` measures actual risers and full widths; `qalatCrossingsNav.test.ts`
+walks both spines each way and all twelve Tight/Standard/Wide seven-body trips
+using the ordinary Formation, POW escort Brain, PathFollower and body separation.
+`qalatCrossingsEscape.test.ts` checks stair-edge/landing escape attempts. The
+inherited ridge nav isolation test now seals D0, C12-L and C12-U together.
 CAP-X ingress now shows the built deck with a production tank capsule at J1.
 Streaming CI uploads `qalat-road-support-review`. Commit manifest, plan,
 capture metadata and PNGs; large level/surface JSON stays ignored. For orbit

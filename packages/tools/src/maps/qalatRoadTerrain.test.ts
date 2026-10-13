@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULT_MOVE_CONFIG, DEFAULT_MUZZLE_RIG, TICK_SECONDS, blockedAt, createMoveState, rayWorld, stepCharacter, type BoxSpec, type WorldBox,
+  DEFAULT_MOVE_CONFIG, DEFAULT_MUZZLE_RIG, TICK_SECONDS, blockedAt, createMoveState, rayWorld, stepCharacter, supportUnder, type BoxSpec, type WorldBox,
 } from '@sandline/shared';
 import { between, rayOccluded } from './insertionScreening.ts';
 import { ROAD_SUPPORTS, buildRoadSupportLevel, buildRoadSupportWorld } from './qalatRoadSupports.ts';
@@ -8,10 +8,11 @@ import { ROAD_TERRAIN, SKIN_TOP, TERRAIN_SPURS, VIEW_FANS, rayClearances, roadTe
 import { onTankIngressFloor, TANK_INGRESS } from './qalatTankIngress.ts';
 import { ROAD_COMBAT, combatFootprint } from './qalatRoadCombat.ts';
 import { isTemporaryRidgeCap } from './qalatRidge.ts';
+import { onCrossingFloor } from './qalatC12.ts';
 
 type Point = { x: number; z: number };
 // Independent transcriptions: the bent road (U-159), §6.2's bays with U-160's
-// moved MG nest, its blind-spot fins and the two temporary caps.
+// moved MG nest, its blind-spot fins and the retained south-gate cap.
 const STOPS = [
   { id: 'A0', x: 32, z: 64 }, { id: 'A1', x: 32, z: 98 }, { id: 'A2', x: 12, z: 128 }, { id: 'A3', x: -37, z: 142 },
   { id: 'A4', x: -28, z: 210 }, { id: 'A5', x: 26, z: 232 }, { id: 'A6', x: 30, z: 270 }, { id: 'A7', x: -18, z: 302 },
@@ -127,7 +128,7 @@ describe('U-160 road-facing rock on the bent road', () => {
     expect(ROAD_TERRAIN.bottomY).toBe(5.5);
     expect(ROAD_TERRAIN.sideTops).toEqual({ left: 26, right: 20 });
     expect(TERRAIN_SPURS.map((s) => [s.id, s.top])).toEqual([['T-C-A3', 20], ['T-C-A5', 22], ['T-C-A7', 20]]);
-    expect(ROAD_TERRAIN.temporaryCaps.map((c) => [c.id, c.for])).toEqual([['C12-L-mouth', 'U-141'], ['south-gate', 'U-116']]);
+    expect(ROAD_TERRAIN.temporaryCaps.map((c) => [c.id, c.for])).toEqual([['south-gate', 'U-116']]);
     // The moved nest stands on the A4 bend, off the 12 m lane of both legs.
     const a4 = STOPS[4]!, lane = (a: Point, b: Point) => Math.abs((MG_NEST.x - a.x) * (b.z - a.z) - (MG_NEST.z - a.z) * (b.x - a.x)) / Math.hypot(b.x - a.x, b.z - a.z);
     expect(Math.hypot(MG_NEST.x - a4.x, MG_NEST.z - a4.z)).toBeLessThan(14);
@@ -166,7 +167,7 @@ describe('U-160 road-facing rock on the bent road', () => {
   it('closes every road edge with solid rock from below the road to at least 2.2 m above it', async () => {
     let probes = 0, lowest = Infinity;
     const probe = (p: Point) => {
-      if (p.z < 84 || onRoad(p, .25) || inTollFloor(p, .15)) return;
+      if (p.z < 84 || onRoad(p, .25) || inTollFloor(p, .15) || onCrossingFloor(p, .25)) return;
       const top = solidTop(p.x, p.z);
       expect(top, `open edge at ${JSON.stringify(p)}`).toBeGreaterThanOrEqual(EDGE_TOP - 1e-9);
       lowest = Math.min(lowest, top); probes++;
@@ -234,11 +235,11 @@ describe('U-160 road-facing rock on the bent road', () => {
       // U-167's built bays leave every listed view open (asserted in qalatRidge*.test.ts).
       else expect(rayWorld(view, permanentScene), `${bay.id} → ${JSON.stringify(t)}`).toBeNull();
     }
-    // Only the two recorded temporary caps block a listed view.
-    expect(crossings).toEqual(['V1→24,138', 'V3→38,360']);
+    // U-168 opens C12-L's cap, retaining the V1 eastern road-wall ray.
+    expect(crossings).toEqual(['V3→38,360']);
     expect(rayWorld(between(BAYS[1]!.eye, { x: -23, y: 9.8, z: 222.8 }), permanentScene), 'V2 sees the actual frontage MG head').toBeNull();
     const clearances = rayClearances(level.boxes);
-    expect(clearances.map((r) => r.blockedOnlyByTemporaryCaps)).toEqual([[], ['C12-L-mouth'], [], [], [], [], ['south-gate'], []]);
+    expect(clearances.map((r) => r.blockedOnlyByTemporaryCaps)).toEqual([[], [], [], [], [], [], ['south-gate'], []]);
     for (const r of clearances) expect(r.clearanceM).toBeGreaterThanOrEqual(.3);
     expect(roadTerrainManifest(level.boxes).rays).toEqual(clearances);
   }, 60_000);
@@ -311,6 +312,7 @@ describe('U-160 road-facing rock on the bent road', () => {
     // Low road walls are legitimate landings; select them once, not per attempt.
     const lowCover = world.boxes.filter((b) => ['A-C03', 'A-C04', 'A-C06', 'A-C08', 'A-C09', 'A-C11']
       .some((id) => b.id.startsWith(`road-combat-${id}-`)));
+    const stairs = world.boxes.filter((b) => b.id.startsWith('crossing-floor-'));
     const tryEscape = (p: Point, out: Point) => {
       const start = { x: p.x - out.x * .6, z: p.z - out.z * .6 };
       if (!onRoad(start, -.45) || start.z < 84) return;
@@ -333,8 +335,10 @@ describe('U-160 road-facing rock on the bent road', () => {
         const onLowCover = lowCover.some((b) => Math.abs(state.y - b.maxY) < .01
           && state.x + DEFAULT_MOVE_CONFIG.radius > b.minX && state.x - DEFAULT_MOVE_CONFIG.radius < b.maxX
           && state.z + DEFAULT_MOVE_CONFIG.radius > b.minZ && state.z - DEFAULT_MOVE_CONFIG.radius < b.maxZ);
-        expect(Math.abs(state.y - 8) < .01 || onLowCover, `${stance} landed off the road/low cover at ${JSON.stringify(state)}`).toBe(true);
-        expect(onRoad(state, .05) || inTollFloor(state, .05), `${stance} left the constructed floor at ${JSON.stringify(start)}`).toBe(true);
+        const onStair = onCrossingFloor(state, .05) && state.grounded
+          && Math.abs(supportUnder(state.x, state.z, DEFAULT_MOVE_CONFIG.radius, state.y + .01, stairs, 0) - state.y) < .01;
+        expect(Math.abs(state.y - 8) < .01 || onLowCover || onStair, `${stance} landed off the road/low cover/stair at ${JSON.stringify(state)}`).toBe(true);
+        expect(onRoad(state, .05) || inTollFloor(state, .05) || onStair, `${stance} left the constructed floor at ${JSON.stringify(start)}`).toBe(true);
         attempts++;
       }
     };
