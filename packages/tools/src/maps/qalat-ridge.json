@@ -41,9 +41,14 @@
   "furniture": {
     "wallM": 0.6,
     "wallHeightM": 3,
+    "routeApron": {
+      "id": "R6-furniture-turn",
+      "y": 26, "widthM": 8,
+      "spine": [{"x": 75.86842105263158, "z": 275.5}, {"x": 71.5, "z": 281.9}, {"x": 71.5, "z": 290}, {"x": 71.5, "z": 295}]
+    },
     "shells": [
-      {"id": "hut", "minX": 82, "maxX": 90, "minZ": 98, "maxZ": 106, "y": 14},
-      {"id": "survey", "minX": 78, "maxX": 86, "minZ": 278, "maxZ": 288, "y": 26}
+      {"id": "hut", "minX": 82, "maxX": 90, "minZ": 98, "maxZ": 106, "y": 14, "southWestBreakM": 0},
+      {"id": "survey", "minX": 78, "maxX": 86, "minZ": 278, "maxZ": 288, "y": 26, "southWestBreakM": 1.4}
     ],
     "recesses": [
       {"id": "hut", "minX": 81.6, "maxX": 90.6, "minZ": 97.4, "maxZ": 106.6, "y": 14},

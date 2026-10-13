@@ -30,7 +30,9 @@ describe('U-165 exact inland ridge furnishings', () => {
       ['hut', 82, 90, 98, 106, 14], ['survey', 78, 86, 278, 288, 26],
     ] as const) {
       expect(byId(`ridge-${id}-east`)).toMatchObject({ minX: maxX, maxX: maxX + .6, minZ, maxZ, minY: y, maxY: y + 3 });
-      expect(byId(`ridge-${id}-south`)).toMatchObject({ minX, minZ: minZ - .6, maxZ: minZ, minY: y, maxY: y + 3 });
+      // The broken survey post's 1.4 m southwest return is absent; the
+      // exact interior bounds and its wholly open west face remain intact.
+      expect(byId(`ridge-${id}-south`)).toMatchObject({ minX: minX + (id === 'survey' ? 1.4 : 0), minZ: minZ - .6, maxZ: minZ, minY: y, maxY: y + 3 });
       expect(byId(`ridge-${id}-north`)).toMatchObject({ minX, minZ: maxZ, maxZ: maxZ + .6, minY: y, maxY: y + 3 });
       // Test each clear interior, including its entrance. The sacks occupy
       // only the hut's eastern metre; beams are wholly above this body.

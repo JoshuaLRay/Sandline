@@ -8,6 +8,9 @@ import { INSERTION, onInsertionFloor } from './qalatInsertion.ts';
 import { bakeRoadSupportNav } from './qalatRoadNav.ts';
 import { buildRoadSupportWorld } from './qalatRoadSupports.ts';
 
+import { inConvex } from './planStrata.ts';
+import { convexHull, ribbonPieces } from './roadSightLines.ts';
+
 type Point = { x: number; z: number };
 // Independent §6.1 transcription; the D0 court is the ridge's only mouth.
 const D0: { id: string; x: number; y: number; z: number } = { id: 'D0', x: 32, y: 8, z: 64 };
@@ -26,6 +29,11 @@ const segments = NODES.slice(1).map((b, i) => {
   const a = NODES[i]!, length = Math.hypot(b.x - a.x, b.z - a.z);
   return { a, b, length, u: { x: (b.x - a.x) / length, z: (b.z - a.z) / length } };
 });
+// Independent local R6 clearance bevel; exact stairs/nodes remain unchanged.
+const APRON = ribbonPieces([{ x: 75.86842105263158, z: 275.5 }, { x: 71.5, z: 281.9 },
+  { x: 71.5, z: 290 }, { x: 71.5, z: 295 }], 8);
+const inApron = (p: Point, margin: number) => APRON.some((poly) => inConvex(convexHull(poly.flatMap((v) =>
+  [-margin, margin].flatMap((dx) => [-margin, margin].map((dz) => ({ x: v.x + dx, z: v.z + dz }))))), p));
 const FURNITURE_FLOORS = [
   [81.6, 90.6, 97.4, 106.6], [80, 82, 98, 102], [77.6, 86.6, 277.4, 288.6],
   [90, 98, 235, 251], [78, 85, 317.4, 323], [74, 78, 318, 322],
@@ -35,7 +43,7 @@ const inFurnitureFloor = (p: Point, margin: number) => FURNITURE_FLOORS.some(([x
 
 /** A superset of the designed shelf (8 m ribbons, turning bevels, landings). */
 function onShelf(p: Point, margin = 0): boolean {
-  if (inFurnitureFloor(p, margin)) return true;
+  if (inFurnitureFloor(p, margin) || inApron(p, margin)) return true;
   if (LANDINGS.some((l) => p.x >= l.minX - margin && p.x <= l.maxX + margin && p.z >= l.minZ - margin && p.z <= l.maxZ + margin)) return true;
   if (NODES.slice(0, -1).some((n) => Math.hypot(p.x - n.x, p.z - n.z) <= 4 + margin)) return true;
   return segments.some((s) => {
@@ -61,7 +69,9 @@ describe('U-164 completed ridge travel on the actual tiled standing nav bake', (
   afterAll(() => { nav?.destroy(); sealed?.destroy(); });
 
   it('projects every ridge node to its floor and adds no synthetic links', () => {
-    for (const n of NODES) expect(nav.nearestPoint(n)?.point.y, n.id).toBeCloseTo(n.y + .05, 1);
+    // Recast cell height is 5 cm; polygon interpolation at a stair/pad seam
+    // may land on either side of the exact floor, rather than always +5 cm.
+    for (const n of NODES) expect(Math.abs(nav.nearestPoint(n)!.point.y - n.y), n.id).toBeLessThanOrEqual(.05002);
     expect(nav.links()).toEqual([]);
   });
 
@@ -114,7 +124,8 @@ describe('U-164 completed ridge travel on the actual tiled standing nav bake', (
 
   it('leaves the ridge rock, its barrier ring and every temporary cap an unreachable island', () => {
     const tops = [{ x: 106, z: 210 }, { x: 98, z: 140 }, { x: 55, z: 128 }, { x: 85, z: 210 }, { x: 63, z: 286 },
-      { x: 73.5, z: 170 }, { x: 92.6, z: 248 }, { x: 52, z: 112 },
+      { x: 73.5, z: 170 }, { x: 98.6, z: 248 }, { x: 94, z: 238 }, { x: 82, z: 320 },
+      { x: 90.3, z: 102 }, { x: 86.3, z: 284 }, { x: 80, z: 279.35 }, { x: 84.4, z: 286 }, { x: 52, z: 112 },
       { x: 65.5, z: 336 }, { x: 74.5, z: 336 }, { x: 65.5, z: 344 }, { x: 74.5, z: 344 }, { x: 56, z: 374.3 }];
     for (const at of tops) {
       const top = { ...at, y: Math.max(...world.boxes.filter((b) => at.x >= b.minX && at.x <= b.maxX && at.z >= b.minZ && at.z <= b.maxZ).map((b) => b.maxY)) };

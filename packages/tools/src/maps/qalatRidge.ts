@@ -103,6 +103,7 @@ function stair(i: number): Floor {
 }
 
 function floors(): Floor[] {
+  const apron = RIDGE.furniture.routeApron;
   return [
     ...RIDGE.spine.slice(0, -1).map((_, i) => stair(i)),
     ...RIDGE.spine.flatMap((n, i) => { const b = bevelAt(i); return b ? [flat(`${n.id}-bevel`, b, n.y)] : []; }),
@@ -110,6 +111,11 @@ function floors(): Floor[] {
     // Dead-end inland furniture recesses join the existing pads. The named
     // spine, stair ribbons and landing elevations remain unchanged.
     ...RIDGE.furniture.recesses.map((r) => flat(`furniture-${r.id}`, rectPolygon(r), r.y)),
+    // The exact R6 wall narrows the inner corner. A bounded outer bevel on
+    // the existing y26 rest keeps eight metres clear beside the survey
+    // post's broken southwest return. Its extra area lies after the final
+    // incoming riser and before the first outgoing one; every stair stays.
+    ...ribbonPieces(apron.spine, apron.widthM).map((polygon, i) => flat(`${apron.id}-${i}`, polygon, apron.y)),
   ];
 }
 const FLOORS = floors();
@@ -207,7 +213,7 @@ export function buildRidgeFurniture(): BoxSpec[] {
   const { wallM: t, wallHeightM: h, shells, cover, sacks, beams } = RIDGE.furniture;
   return [
     ...shells.flatMap((s): BoxSpec[] => [
-      { id: `ridge-${s.id}-south`, x: (s.minX + s.maxX + t) / 2, y: s.y, z: s.minZ - t / 2, w: s.maxX - s.minX + t, h, d: t },
+      { id: `ridge-${s.id}-south`, x: (s.minX + s.southWestBreakM + s.maxX + t) / 2, y: s.y, z: s.minZ - t / 2, w: s.maxX - s.minX - s.southWestBreakM + t, h, d: t },
       { id: `ridge-${s.id}-north`, x: (s.minX + s.maxX + t) / 2, y: s.y, z: s.maxZ + t / 2, w: s.maxX - s.minX + t, h, d: t },
       { id: `ridge-${s.id}-east`, x: s.maxX + t / 2, y: s.y, z: (s.minZ + s.maxZ) / 2, w: t, h, d: s.maxZ - s.minZ },
     ]),

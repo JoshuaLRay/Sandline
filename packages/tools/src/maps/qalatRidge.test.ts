@@ -6,6 +6,9 @@ import { buildRoadSupportLevel, buildRoadSupportWorld } from './qalatRoadSupport
 import { VIEW_FANS } from './qalatRoadTerrain.ts';
 import { FLIGHTS, RIDGE, ridgeManifest, ridgeRayClearances } from './qalatRidge.ts';
 
+import { inConvex } from './planStrata.ts';
+import { convexHull, ribbonPieces } from './roadSightLines.ts';
+
 type Point = { x: number; z: number };
 // Independent §6.1 transcription: nodes, riser counts and flat landings.
 const NODES = ([['R0', 62, 8, 68], ['R1', 78, 14, 96], ['R2', 64, 20, 128], ['R3', 80, 26, 168],
@@ -22,6 +25,11 @@ const BAYS = [
   { id: 'V3', y: 26, x: 66, z: 286, targets: [{ x: -18, y: 8, z: 302 }, { x: 16, y: 8, z: 332 }, { x: 38, y: 8, z: 360 }] },
   { id: 'V3-X5', y: 26, x: 66, z: 286, targets: [{ x: 54, y: 11.2, z: 334 }] },
 ];
+// Independent local R6 clearance bevel; exact stairs/nodes remain unchanged.
+const APRON = ribbonPieces([{ x: 75.86842105263158, z: 275.5 }, { x: 71.5, z: 281.9 },
+  { x: 71.5, z: 290 }, { x: 71.5, z: 295 }], 8);
+const inApron = (p: Point, margin: number) => APRON.some((poly) => inConvex(convexHull(poly.flatMap((v) =>
+  [-margin, margin].flatMap((dx) => [-margin, margin].map((dz) => ({ x: v.x + dx, z: v.z + dz }))))), p));
 const FURNITURE_FLOORS = [
   [81.6, 90.6, 97.4, 106.6], [80, 82, 98, 102], [77.6, 86.6, 277.4, 288.6],
   [90, 98, 235, 251], [78, 85, 317.4, 323], [74, 78, 318, 322],
@@ -32,7 +40,7 @@ const inFurnitureFloor = (p: Point, margin: number) => FURNITURE_FLOORS.some(([x
 // qalatRidgeClearance independently proves the continuous 8 m route beside it.
 const OCCUPIED = [[83.6, 84.4, 168, 172], [75.6, 76.4, 283.5, 288.5],
   [82, 90.6, 97.4, 98], [82, 90.6, 106, 106.6], [90, 90.6, 98, 106],
-  [78, 86.6, 277.4, 278], [78, 86.6, 288, 288.6], [86, 86.6, 278, 288]] as const;
+  [79.4, 86.6, 277.4, 278], [78, 86.6, 288, 288.6], [86, 86.6, 278, 288]] as const;
 const furnishingAt = (p: Point, radius: number) => OCCUPIED.some(([x0, x1, z0, z1]) =>
   p.x + radius > x0 && p.x - radius < x1 && p.z + radius > z0 && p.z - radius < z1);
 const underlying = (b: WorldBox) => !/^(ridge-cover-|ridge-hut-|ridge-survey-)/.test(b.id);
@@ -77,7 +85,7 @@ const inLanding = (p: Point, margin = 0) => LANDINGS.find((l) =>
 /** A superset of the designed shelf: 8 m ribbons, their corner bevels (inside
  * a 4 m disc at each turning node; R7 ends the shelf) and the flat landings. */
 function onShelf(p: Point, margin = 0): boolean {
-  if (inFurnitureFloor(p, margin)) return true;
+  if (inFurnitureFloor(p, margin) || inApron(p, margin)) return true;
   // U-164 opens R7's north edge onto its full-width bridge approach.
   if (p.x >= 66 - margin && p.x <= 74 + margin && p.z >= 322 - margin && p.z <= 350 + margin) return true;
   if (inLanding(p, margin) || NODES.slice(0, -1).some((n) => Math.hypot(p.x - n.x, p.z - n.z) <= HALF + margin)) return true;
