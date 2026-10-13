@@ -50,6 +50,15 @@ const furnishingAt = (p: Point, radius: number) => OCCUPIED.some(([x0, x1, z0, z
 const inBay = (p: Point, margin: number) => BAYS.slice(0, 3).some((b) =>
   p.x >= b.x - .8 - margin && p.x <= b.x + 7.2 + margin && p.z >= b.z - 4 - margin && p.z <= b.z + 4 + margin);
 const underlying = (b: WorldBox) => !/^(ridge-cover-|ridge-hut-|ridge-survey-)/.test(b.id);
+// U-168 (§6.3): C12-L's and C12-U's last flights end inside the R2 and R5
+// landings. Their bounded open mouths replace only the 4 m stair footprint;
+// there the floor is the stair's own (risers proved in qalatC12.test.ts).
+const MOUTHS = [[{ x: 54, z: 140 }, { x: 64, z: 128 }, 16, 20], [{ x: 66, z: 244 }, { x: 86, z: 248 }, 24, 30]] as const;
+const inMouth = (p: Point, margin: number) => MOUTHS.some(([a, b]) => {
+  const l = Math.hypot(b.x - a.x, b.z - a.z), ux = (b.x - a.x) / l, uz = (b.z - a.z) / l;
+  const t = (p.x - a.x) * ux + (p.z - a.z) * uz, off = (p.z - a.z) * ux - (p.x - a.x) * uz;
+  return t >= -margin && t <= l + margin && Math.abs(off) <= 2 + margin;
+});
 const HALF = 4, BARRIER = 2.2, X4 = { x: 84, z: 338 };
 
 /** Independent pointwise §6.2 surface: plane between adjacent rays, nearer ray outside them. */
@@ -175,8 +184,16 @@ describe('U-163 continuous R0–R7 ridge shelf', () => {
         }
       }
     }
+    let mouth = 0;
     for (const l of LANDINGS) for (let x = l.minX + .35; x <= l.maxX - .35 + 1e-9; x += .5) for (let z = l.minZ + .35; z <= l.maxZ - .35 + 1e-9; z += .5) {
       const p = { x, z };
+      if (inMouth(p, .05)) {
+        const [, , low, high] = MOUTHS.find(([, b]) => Math.hypot(b.x - p.x, b.z - p.z) < 20)!, y = floorAt(p, l.y + .1);
+        expect(y, `${l.id} mouth at ${JSON.stringify(p)}`).toBeGreaterThanOrEqual(low);
+        expect(y, `${l.id} mouth at ${JSON.stringify(p)}`).toBeLessThanOrEqual(high);
+        mouth++;
+        continue;
+      }
       expect(floorAt(p, l.y + .1), `${l.id} flat at ${JSON.stringify(p)}`).toBe(l.y);
       if (furnishingAt(p, .35)) continue;
       // Fixed broken survey beams stay above standing head clearance.
@@ -184,6 +201,9 @@ describe('U-163 continuous R0–R7 ridge shelf', () => {
       probes++;
     }
     expect(probes).toBeGreaterThan(15_000);
+    expect(mouth).toBeGreaterThan(0);
+    // Two 4 m flights' last few metres: about 54 m² of the 288 m² of landings.
+    expect(mouth, 'the mouths stay a bounded corner of their landings').toBeLessThan(260);
   }, 60_000);
 
   it('stands every shelf edge against rock at least 2.2 m above the adjacent floor', () => {

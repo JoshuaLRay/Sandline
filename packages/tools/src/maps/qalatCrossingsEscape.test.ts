@@ -13,6 +13,8 @@ const CROSSINGS = [
 ];
 const world = buildRoadSupportWorld();
 const crossingFloors = world.boxes.filter((b) => b.id.startsWith('crossing-floor-'));
+const ridgeFloors = world.boxes.filter((b) => /^ridge-(floor|slab)/.test(b.id));
+const wall = world.boxes.filter((b) => b.id.startsWith('road-combat-A-C03-'));
 const nearby = (p: Point) => world.boxes.filter((b) => b.maxX >= p.x - 12 && b.minX <= p.x + 12 && b.maxZ >= p.z - 12 && b.minZ <= p.z + 12);
 const yieldWorker = () => new Promise<void>((resolve) => setImmediate(resolve));
 const expanded = (polys: Polygon[], margin: number) => polys.map((poly) => convexHull(poly.flatMap((p) => [-margin, margin].flatMap((dx) =>
@@ -24,14 +26,19 @@ describe('U-168 GEO-05 C12 stair balustrades and landings reject unlisted route 
     const polygons = [...ribbonPieces(c.spine, 4), ...c.spine.slice(1, -1).map((n) =>
       rectPolygon({ minX: n.x - 2, maxX: n.x + 2, minZ: n.z - 2, maxZ: n.z + 2 }))];
     const allowed = expanded(polygons, .06);
-    const endpoints = [c.spine[0]!, c.spine.at(-1)!];
+    const endpoints = [c.spine[0]!, c.spine.at(-1)!], top = c.spine.at(-1)!;
     const attemptCounts = new Map<string, number>();
-    let attempts = 0;
+    let attempts = 0, mouth = 0;
     const attempt = (inside: Point, out: Point, highY: number, label: string) => {
       // Open junctions, another stair ribbon and shared corner bevels are
       // lawful movement. Sample only edges whose other side is rock/cheek.
       if (endpoints.some((n) => Math.hypot(inside.x - n.x, inside.z - n.z) < 6)) return;
       if (contains(polygons, { x: inside.x + out.x, z: inside.z + out.z })) return;
+      // The last flight ends inside the ridge landing (U-168's bounded open
+      // mouth): beside it lies that landing's own floor, never another route.
+      const beyond = { x: inside.x + out.x, z: inside.z + out.z };
+      if (label.startsWith(`segment${c.spine.length - 2}/`)
+        && Math.abs(supportUnder(beyond.x, beyond.z, .001, top.y + .01, ridgeFloors, 0) - top.y) < 1e-6) { mouth++; return; }
       const boxes = nearby(inside), y = supportUnder(inside.x, inside.z, DEFAULT_MOVE_CONFIG.radius, highY + .3, boxes, 0);
       // A y8 piece already inside the road's turning apron is the lawful
       // shared mouth, not a balustrade separating two routes. Elevated
@@ -83,22 +90,33 @@ describe('U-168 GEO-05 C12 stair balustrades and landings reject unlisted route 
     // from quietly skipping an entire ascending flight or all interior pads.
     for (let i = 1; i < c.spine.length - 1; i++) for (const side of [-1, 1])
       expect(attemptCounts.get(`segment${i}/side${side}`), `untested flight ${i}, side ${side}`).toBeGreaterThanOrEqual(4);
-    for (let i = 0; i < c.spine.length - 2; i++)
+    // L1 lies inside A2's y8 turning apron: its sides are that apron or the
+    // next flight. The A2 apron test below closes the corner north of it.
+    for (let i = 0; i < c.spine.length - 2; i++) if (!(c.spine[i + 1]!.y === 8 && onRoadSupportFloor(c.spine[i + 1]!)))
       expect([...attemptCounts].filter(([label]) => label.startsWith(`landing${i}/`)).reduce((sum, [, count]) => sum + count, 0),
         `untested interior landing ${i}`).toBeGreaterThanOrEqual(4);
+    expect(c.spine.slice(1, -1).filter((n) => n.y === 8 && onRoadSupportFloor(n)).length, 'only L1 is an apron landing').toBe(c.id === 'C12-L' ? 1 : 0);
     expect(attempts).toBeGreaterThan(120);
-    console.log(`U-168 ${c.id} stair escapes`, JSON.stringify({ attempts, stances: ['walk', 'sprint-jump/vault', 'crouch', 'prone'], pushTicks: 60, settleTicks: 45 }));
+    expect(mouth, 'the open mouth is bounded to a few terminal samples').toBeLessThanOrEqual(6);
+    console.log(`U-168 ${c.id} stair escapes`, JSON.stringify({ attempts, openMouthSamples: mouth, stances: ['walk', 'sprint-jump/vault', 'crouch', 'prone'], pushTicks: 60, settleTicks: 45 }));
   }, 120_000);
 
   it('keeps V1’s low A2 apron edge closed north of the opened C12-L mouth in every stance', async () => {
     // U-141/U-168 carried hazard: V1's fan grazes the road's north-east
     // apron at only 0.65–2.2 m above y8. These independent polar samples
-    // face that edge, outside the C12-L ribbon and waypoint pad. Every
-    // starting body must be occupiable; none may be silently skipped.
+    // face that edge from the outermost occupiable start 0.4–2 m inside it
+    // (A-C03 stands at 34°–46°), outside the C12-L ribbon and waypoint pad.
+    // Every angle must find one; none may be silently skipped. That low
+    // wall's own top is U-161's legal landing, not rock.
     let attempts = 0;
     for (const degrees of [30, 35, 40, 45, 50, 55]) {
       const angle = degrees * Math.PI / 180, out = { x: Math.cos(angle), z: Math.sin(angle) };
-      const start = { x: 12 + out.x * 16.9, z: 128 + out.z * 16.9 }, boxes = nearby(start);
+      const clear = (r: number) => {
+        const p = { x: 12 + out.x * r, z: 128 + out.z * r };
+        return !blockedAt(p.x, p.z, DEFAULT_MOVE_CONFIG.radius, 8, .05, DEFAULT_MOVE_CONFIG.height, nearby(p));
+      };
+      const radius = [17.6, 17.45, 17.3, 17.15, 17, 16.9, 16.6, 16.3, 16].find(clear) ?? 16;
+      const start = { x: 12 + out.x * radius, z: 128 + out.z * radius }, boxes = nearby(start);
       expect(onRoadSupportFloor(start), `A2/${degrees} must start inside the apron`).toBe(true);
       expect(supportUnder(start.x, start.z, DEFAULT_MOVE_CONFIG.radius, 8.3, boxes, 0)).toBeCloseTo(8, 6);
       expect(blockedAt(start.x, start.z, DEFAULT_MOVE_CONFIG.radius, 8, .05, DEFAULT_MOVE_CONFIG.height, boxes),
@@ -113,7 +131,8 @@ describe('U-168 GEO-05 C12 stair balustrades and landings reject unlisted route 
           expect(state.vault, `A2/${degrees}/${stance} started a vault`).toBeNull();
           if (state.grounded) {
             expect(onRoadSupportFloor(state, .06), `A2/${degrees}/${stance} left the road: ${JSON.stringify(state)}`).toBe(true);
-            expect(state.y, `A2/${degrees}/${stance} reached rock, cheek or a different storey`).toBeCloseTo(8, 6);
+            const onWall = Math.abs(supportUnder(state.x, state.z, DEFAULT_MOVE_CONFIG.radius, state.y + .01, wall, 0) - state.y) < 1e-6;
+            if (!onWall) expect(state.y, `A2/${degrees}/${stance} reached rock, cheek or a different storey`).toBeCloseTo(8, 6);
           }
         }
         expect(state.grounded, `A2/${degrees}/${stance} never returned to its legal floor`).toBe(true);

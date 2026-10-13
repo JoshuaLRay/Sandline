@@ -202,8 +202,10 @@ export function buildCrossings(ground: readonly Polygon[] = [], ridge: readonly 
     };
     const rowFloors = rowSpans(row);
     for (const { lo, hi, y } of rowFloors) extend(`floor,${lo},${hi},${y}`, { lo, hi, bottom: C12.bottomY, top: y }, 'crossing-floor');
-    const exclusions = union([...rowFloors.map(({ lo, hi }): Interval => [lo, hi]),
-      ...span(ground, z0 - EDGE_M, z1 + EDGE_M), ...span(ridge, z0 - EDGE_M, z1 + EDGE_M)]);
+    // Exactly the floors built in this row: the road's conservative rows and
+    // the ridge's rows, which keep only pieces a polygon strictly enters.
+    const exclusions = union([...rowFloors.map(({ lo, hi }): Interval => [lo, hi]), ...span(ground, z0 - EDGE_M, z1 + EDGE_M),
+      ...span(ridge, z0 + TOUCH_M, z1 - TOUCH_M).map(([a, b]): Interval => [a - EDGE_M, b + EDGE_M])]);
     const Z0 = Math.floor(z0 * CARVE_ROWS_PER_M + 1e-9) / CARVE_ROWS_PER_M, Z1 = Z0 + 1 / CARVE_ROWS_PER_M;
     const fill = union(span(outer, Z0 - CARVE_MARGIN_M, Z1 + CARVE_MARGIN_M).map(([a, b]): Interval => [a - 2 * EDGE_M, b + 2 * EDGE_M]));
     const floors = Array.from({ length: 2 * reach + 1 }, (_, k) => near(row - reach + k)).flat();

@@ -54,14 +54,23 @@ const boxesAt = (x: number, z: number) => (grid.get(`${Math.floor(x / CELL)},${M
 const near = (x: number, z: number, r: number) => world.boxes.filter((b) => b.maxX > x - r && b.minX < x + r && b.maxZ > z - r && b.minZ < z + r);
 
 /** Top of the solid column that contains y7.9 (just below the road) at a plan point, or -Infinity. */
-function solidTop(x: number, z: number): number {
+function solidTop(x: number, z: number, from = 7.9): number {
   const column = boxesAt(x, z).sort((a, b) => a.minY - b.minY);
-  let y = 7.9, found = false;
+  let y = from, found = false;
   for (const b of column) {
     if (b.minY > y + 1e-9) { if (found) break; continue; }
     if (b.maxY > y) { y = b.maxY; found = true; }
   }
   return found ? y : -Infinity;
+}
+const PRONE_SLOT = .7; // below the 0.8 m prone body
+/** A §6.2 fan slot counts as closed rock: a lip at least 0.5 m above the road
+ * under a canopy whose underside leaves less than the prone height. */
+function closedTop(x: number, z: number): number {
+  const lip = solidTop(x, z);
+  if (lip >= EDGE_TOP - 1e-9 || lip < 8.5 - 1e-9) return lip;
+  const canopy = boxesAt(x, z).filter((b) => b.minY > lip + 1e-9 && b.minY <= lip + PRONE_SLOT + 1e-9).sort((a, b) => a.minY - b.minY)[0];
+  return canopy ? solidTop(x, z, canopy.minY) : lip;
 }
 
 /** Exact walking surface: 20 m ribbons, the A9 bevel and 18 m aprons. */
@@ -166,26 +175,35 @@ describe('U-160 road-facing rock on the bent road', () => {
 
   it('closes every road edge with solid rock from below the road to at least 2.2 m above it', async () => {
     let probes = 0, lowest = Infinity;
-    const probe = (p: Point) => {
+    const probe = (p: Point, inward: Point) => {
       if (p.z < 84 || onRoad(p, .25) || inTollFloor(p, .15) || onCrossingFloor(p, .25)) return;
-      const top = solidTop(p.x, p.z);
+      let top = closedTop(p.x, p.z);
+      // U-168: a fan lip lowered behind the A2 apron guard's road-facing
+      // canopy strip is closed by that strip: the straight way back to the
+      // road must cross a closed column. Holes and low rock still fail.
+      for (let k = 1; top >= 8.5 - 1e-9 && top < EDGE_TOP - 1e-9 && k <= 30; k++) {
+        const q = { x: p.x + inward.x * k * .05, z: p.z + inward.z * k * .05 };
+        if (onRoad(q)) break;
+        top = Math.max(top, closedTop(q.x, q.z));
+      }
       expect(top, `open edge at ${JSON.stringify(p)}`).toBeGreaterThanOrEqual(EDGE_TOP - 1e-9);
       lowest = Math.min(lowest, top); probes++;
     };
     for (let i = 1; i < STOPS.length; i++) {
       const a = STOPS[i - 1]!, b = STOPS[i]!, dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz);
       for (let s = 0; s <= l; s += .25) for (const side of [-1, 1]) for (const off of [10.3, 11]) {
-        probe({ x: a.x + dx * s / l - dz / l * off * side, z: a.z + dz * s / l + dx / l * off * side });
+        probe({ x: a.x + dx * s / l - dz / l * off * side, z: a.z + dz * s / l + dx / l * off * side }, { x: dz / l * side, z: -dx / l * side });
       }
       await yieldWorker();
     }
     for (const a of APRONS) for (let deg = 0; deg < 360; deg += .5) for (const r of [18.3, 19]) {
-      probe({ x: a.x + r * Math.cos(deg * Math.PI / 180), z: a.z + r * Math.sin(deg * Math.PI / 180) });
+      probe({ x: a.x + r * Math.cos(deg * Math.PI / 180), z: a.z + r * Math.sin(deg * Math.PI / 180) },
+        { x: -Math.cos(deg * Math.PI / 180), z: -Math.sin(deg * Math.PI / 180) });
     }
     // The road's north end, except the standing pad at the exact gate node.
     const pad = ROAD_TERRAIN.standingPads[0]!;
     expect(pad).toMatchObject({ minX: 31.6, maxX: 32.4, minZ: 356, maxZ: 356.4 });
-    for (let x = 20; x <= 44; x += .25) if (x < pad.minX || x > pad.maxX) probe({ x, z: 356.3 });
+    for (let x = 20; x <= 44; x += .25) if (x < pad.minX || x > pad.maxX) probe({ x, z: 356.3 }, { x: 0, z: -1 });
     expect(solidTop(32, 356.3)).toBe(-Infinity);
     expect(solidTop(32, 356.5)).toBeGreaterThanOrEqual(EDGE_TOP);
     expect(probes).toBeGreaterThan(8000);
@@ -230,7 +248,13 @@ describe('U-160 road-facing rock on the bent road', () => {
       // top rather than asking a ray to pass through its collision proxy.
       const targetY = bay.id === 'V1' && t.x === -4 ? 10.45
         : (bay.id === 'V1' && t.x === 24) || (bay.id === 'V2' && t.x === -22) ? 9.15 : bay.id === 'V3-X5' ? 11.2 : 8.05;
-      const view = between(bay.eye, { ...t, y: targetY });
+      // U-168 opens C12-L's cap. V1's road-wall view now passes 0.7 m fan
+      // slots at the A2 apron edge and the stair barrier, which close that
+      // edge to every stance (a canopy over a lip only 0.5–1.4 m above the
+      // floor). The slots pass the listed feet ray, not the 1.1 m wall's top:
+      // check that ray in the full scene up to 1 m short of its cover.
+      const slot = bay.id === 'V1' && t.x === 24, feet = between(bay.eye, { ...t, y: 8 });
+      const view = slot ? { ...feet, maxDistance: feet.maxDistance - 1 } : between(bay.eye, { ...t, y: targetY });
       if (rayWorld(view, caps) !== null) crossings.push(`${bay.id}→${t.x},${t.z}`);
       // U-167's built bays leave every listed view open (asserted in qalatRidge*.test.ts).
       else expect(rayWorld(view, permanentScene), `${bay.id} → ${JSON.stringify(t)}`).toBeNull();

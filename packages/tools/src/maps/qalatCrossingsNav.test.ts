@@ -71,10 +71,13 @@ describe('U-168 both reversible road–ridge stairs on the actual standing nav a
 
   it('projects the exact crossing nodes onto supported floors without synthetic links', () => {
     expect(nav.links()).toEqual([]);
-    for (const c of CROSSINGS) for (const node of c.spine) {
+    for (const c of CROSSINGS) for (const [i, node] of c.spine.entries()) {
       const point = nav.nearestPoint(node)?.point;
       expect(point, `${c.id}/${node.id}`).toBeDefined();
-      expect(Math.abs(point!.y - node.y), `${c.id}/${node.id}`).toBeLessThanOrEqual(.05002);
+      // An interior pad's detail triangles may borrow a flight's first tread
+      // at a sharp turn (U4); half a riser still names the pad's own storey.
+      const interior = i > 0 && i < c.spine.length - 1;
+      expect(Math.abs(point!.y - node.y), `${c.id}/${node.id}`).toBeLessThanOrEqual(interior ? .1 : .05002);
       expect(supportUnder(node.x, node.z, DEFAULT_MOVE_CONFIG.radius, node.y + .3, nearby(node), 0)).toBeCloseTo(node.y, 6);
       expect(blockedAt(node.x, node.z, DEFAULT_MOVE_CONFIG.radius, node.y, .05, DEFAULT_MOVE_CONFIG.height, nearby(node))).toBe(false);
     }
