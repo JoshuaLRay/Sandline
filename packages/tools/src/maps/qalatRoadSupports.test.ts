@@ -57,6 +57,15 @@ function approvedRoadFootprint(p: Point, margin = 0): boolean {
   });
 }
 
+/** U-164's independent 8 m R8→R9 ribbon and the capped east-gate approach. */
+function approvedFinalRidgeFootprint(p: Point, margin: number): boolean {
+  if (p.x >= 52 - margin && p.x <= 60 + margin && p.z >= 368 - margin && p.z <= 374 + margin) return true;
+  const dx = -14, dz = 20, length = Math.hypot(dx, dz);
+  const along = ((p.x - 70) * dx + (p.z - 350) * dz) / length;
+  const across = Math.abs((p.x - 70) * dz - (p.z - 350) * dx) / length;
+  return along >= -margin && along <= length + margin && across <= 4 + margin;
+}
+
 function clearSupport(p: Point, half = .001, allowCombat = false): void {
   expect(supportUnder(p.x, p.z, half, 8.45, world.boxes, 0), `unsupported ${JSON.stringify(p)}`).toBe(8);
   // U-161 clips shoulders/aprons around named combat solids; all other
@@ -143,7 +152,8 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
         const tollFloor = x >= -8.65 && x <= .65 && z >= 113.35 && z <= 122.65;
         const storeFloor = x >= 45.35 && x <= 54.65 && z >= 53.35 && z <= 62.65;
         const storeConnector = x >= 43.95 && x <= 46.05 && z >= 55.95 && z <= 60.05;
-        expect(approvedRoadFootprint({ x, z }, .05) || onTankIngressFloor({ x, z }, .05) || tollFloor || storeFloor || storeConnector, `support expansion at ${JSON.stringify({ x, z })}`).toBe(true);
+        const ridgeFloor = box.id.startsWith('ridge-floor-') && approvedFinalRidgeFootprint({ x, z }, .05);
+        expect(approvedRoadFootprint({ x, z }, .05) || onTankIngressFloor({ x, z }, .05) || tollFloor || storeFloor || storeConnector || ridgeFloor, `support expansion at ${JSON.stringify({ x, z })}`).toBe(true);
       }
       if (supports % 256 === 0) await yieldWorker();
     }
