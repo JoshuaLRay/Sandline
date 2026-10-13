@@ -7,12 +7,13 @@ import { PathFollower } from '../../../server/src/ai/locomotion/followPath.ts';
 import { INSERTION, onInsertionFloor } from './qalatInsertion.ts';
 import { bakeRoadSupportNav } from './qalatRoadNav.ts';
 import { buildRoadSupportWorld } from './qalatRoadSupports.ts';
+import { crossingFloors } from './qalatC12.ts';
 
 import { inConvex } from './planStrata.ts';
 import { convexHull, ribbonPieces } from './roadSightLines.ts';
 
 type Point = { x: number; z: number };
-// Independent §6.1 transcription; the D0 court is the ridge's only mouth.
+// Independent §§3.1/6.1 transcription: D0 and the two §6.3 stairs are the legal mouths.
 const D0: { id: string; x: number; y: number; z: number } = { id: 'D0', x: 32, y: 8, z: 64 };
 type Node = { id: string; x: number; y: number; z: number };
 const NODES: Node[] = ([['R0', 62, 8, 68], ['R1', 78, 14, 96], ['R2', 64, 20, 128], ['R3', 80, 26, 168],
@@ -60,7 +61,8 @@ function onShelf(p: Point, margin = 0): boolean {
 }
 
 const world = buildRoadSupportWorld();
-const shelfFloors = world.boxes.filter((b) => /^ridge-(floor|slab|bridge-deck)/.test(b.id) || b.id === 'insertion-foundation');
+const shelfFloors = world.boxes.filter((b) => /^ridge-(floor|slab|bridge-deck)/.test(b.id) || b.id.startsWith('crossing-floor-') || b.id === 'insertion-foundation');
+const onCrossing = (p: Point) => crossingFloors().some((poly) => inConvex(poly, p));
 const near = (p: Point, r: number) => world.boxes.filter((b) => b.maxX > p.x - r && b.minX < p.x + r && b.maxZ > p.z - r && b.minZ < p.z + r);
 const yieldWorker = () => new Promise<void>((resolve) => setImmediate(resolve));
 let nav: NavMesh, sealed: NavMesh;
@@ -69,9 +71,14 @@ describe('U-164 completed ridge travel on the actual tiled standing nav bake', (
   beforeAll(async () => {
     await initNav();
     nav = NavMesh.load(await bakeRoadSupportNav(world));
-    // Close only the insertion's D0→R0 ridge mouth, west of R0's stair.
-    const seal: WorldBox = { id: 'test-seal-R0-mouth', kind: 'cover', minX: 50, maxX: 52, minY: 8, maxY: 38, minZ: 56, maxZ: 76 };
-    sealed = NavMesh.load(await bakeRoadSupportNav({ ...world, boxes: [...world.boxes, seal] }));
+    // Remove exactly the three built junctions from §3.1. U-116's outpost
+    // courtyard is still capped; no intermediate basement junction exists.
+    const seals: WorldBox[] = [
+      { id: 'test-seal-R0-mouth', kind: 'cover', minX: 50, maxX: 52, minY: 8, maxY: 38, minZ: 56, maxZ: 76 },
+      { id: 'test-seal-C12-L', kind: 'cover', minX: 32, maxX: 34, minY: 8, maxY: 38, minZ: 132, maxZ: 142 },
+      { id: 'test-seal-C12-U', kind: 'cover', minX: 38, maxX: 42, minY: 8, maxY: 38, minZ: 214, maxZ: 222 },
+    ];
+    sealed = NavMesh.load(await bakeRoadSupportNav({ ...world, boxes: [...world.boxes, ...seals] }));
   }, 240_000);
   afterAll(() => { nav?.destroy(); sealed?.destroy(); });
 
@@ -111,20 +118,21 @@ describe('U-164 completed ridge travel on the actual tiled standing nav bake', (
     console.log(`U-164 ridge walk ${outward ? 'up' : 'down'}`, JSON.stringify({ ticks, seconds: ticks * TICK_SECONDS }));
   }, 120_000);
 
-  it('joins the ridge to the road and start only through the D0 court mouth', () => {
+  it('joins the ridge through D0 or the two C12 stairs and keeps the occupied bridge separate from its road', () => {
     const start = INSERTION.squadStarts[0]!, r4 = NODES[4]!, r9 = NODES.at(-1)!;
-    expect(completePathLength(nav.path(start, r9), start, r9)).toBeGreaterThan(350);
-    expect(completePathLength(nav.path(r9, A8), r9, A8)).toBeGreaterThan(350);
-    // The occupied bridge and the road below stay separate; only D0 joins them.
+    for (const [from, goal] of [[start, r9], [r9, A8]] as const)
+      expect(completePathLength(nav.path(from, goal), from, goal)).not.toBeNull();
+    const junctions = [D0, { x: 28, z: 134 }, { x: 40, z: 218 }];
     for (const node of NODES.slice(7)) for (const road of [X0, ...ROAD_UNDER_BRIDGE]) {
-      const viaCourt = nav.path(node, road)!;
-      const length = completePathLength(viaCourt, node, road);
-      expect(length, `${node.id} → ${JSON.stringify(road)} incomplete at ${JSON.stringify(viaCourt?.points.at(-1))}`).not.toBeNull();
-      expect(length, `${node.id} → road shortcuts the ridge`).toBeGreaterThan(600);
-      expect(viaCourt.points.some((p) => Math.hypot(p.x - D0.x, p.z - D0.z) < 14), `${node.id} → road bypasses D0`).toBe(true);
+      const path = nav.path(node, road)!;
+      const length = completePathLength(path, node, road);
+      expect(length, `${node.id} → ${JSON.stringify(road)} incomplete at ${JSON.stringify(path?.points.at(-1))}`).not.toBeNull();
+      expect(length, `${node.id} → road drops directly off the bridge`).toBeGreaterThan(180);
+      expect(path.points.some((p) => junctions.some((j) => Math.hypot(p.x - j.x, p.z - j.z) < 8)),
+        `${node.id} → road bypasses all registered junctions`).toBe(true);
     }
     for (const node of NODES.slice(1)) for (const from of [start, A1, A8, X0, ...ROAD_UNDER_BRIDGE])
-      expect(completePathLength(sealed.path(from, node), from, node), `${node.id} reachable past the sealed mouth from ${JSON.stringify(from)}`).toBeNull();
+      expect(completePathLength(sealed.path(from, node), from, node), `${node.id} reachable with all legal junctions sealed from ${JSON.stringify(from)}`).toBeNull();
     expect(completePathLength(sealed.path(r4, r9), r4, r9)).not.toBeNull();
     expect(completePathLength(sealed.path(r9, r4), r9, r4)).not.toBeNull();
   });
@@ -150,7 +158,8 @@ describe('U-164 completed ridge travel on the actual tiled standing nav bake', (
     let attempts = 0;
     const tryEscape = (inside: Point, out: Point) => {
       // Only edges that face rock: a landing edge opening onto a stair is the route.
-      if (onShelf({ x: inside.x + out.x, z: inside.z + out.z }) || onInsertionFloor({ x: inside.x + out.x, z: inside.z + out.z })) return;
+      if (onCrossing(inside) || onCrossing({ x: inside.x + out.x, z: inside.z + out.z }) ||
+        onShelf({ x: inside.x + out.x, z: inside.z + out.z }) || onInsertionFloor({ x: inside.x + out.x, z: inside.z + out.z })) return;
       if (!onShelf(inside, -.45) && !LANDINGS.some((l) => inside.x > l.minX + .4 && inside.x < l.maxX - .4 && inside.z > l.minZ + .4 && inside.z < l.maxZ - .4)) return;
       const boxes = near(inside, 10), y = supportUnder(inside.x, inside.z, DEFAULT_MOVE_CONFIG.radius, 31, boxes, 0);
       if (y < 7.9 || blockedAt(inside.x, inside.z, DEFAULT_MOVE_CONFIG.radius, y, 0, DEFAULT_MOVE_CONFIG.height, boxes)) return;

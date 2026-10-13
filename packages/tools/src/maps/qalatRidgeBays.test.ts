@@ -31,6 +31,13 @@ const permanent = world.boxes.filter((b) => !temporary(b));
 const near = (p: Point, r: number) => world.boxes.filter((b) => b.maxX > p.x - r && b.minX < p.x + r && b.maxZ > p.z - r && b.minZ < p.z + r);
 const column = (p: Point) => world.boxes.filter((b) => p.x > b.minX && p.x < b.maxX && p.z > b.minZ && p.z < b.maxZ);
 const floors = world.boxes.filter((b) => /^ridge-(floor|slab)/.test(b.id));
+const stairs = world.boxes.filter((b) => b.id.startsWith('crossing-floor-'));
+// U-168 (§6.3): C12-L's last flight, L3 (54,16,140) → R2 (64,20,128), 4 m
+// wide, ends across V1's north-east floor corner: there the floor is the stair.
+const inMouth = (x: number, z: number) => {
+  const l = Math.hypot(10, 12), t = ((x - 54) * 10 + (z - 140) * -12) / l, off = ((z - 140) * 10 - (x - 54) * -12) / l;
+  return t >= 0 && t <= l && Math.abs(off) <= 2.05;
+};
 const yaw = (x: number, z: number) => Math.round(Math.atan2(x, z) / (2 * Math.PI) * 1024 + 1024) % 1024;
 const eyeOf = (b: typeof BAYS[number]) => ({ x: b.x, y: b.y + DEFAULT_MUZZLE_RIG.eyeHeight, z: b.z });
 
@@ -55,10 +62,23 @@ describe('U-167 V1–V3 support bays', () => {
     for (const bay of BAYS) {
       const west = bay.x - .8;
       // The full 8×8 m floor is supported at the node's y, lip strip included.
+      let mouth = 0;
       for (let x = west + .01; x <= bay.x + 7.2 - .01; x += .2) for (let z = bay.z - 4 + .01; z <= bay.z + 4 - .01; z += .5) {
+        if (bay.id === 'V1' && inMouth(x, z)) {
+          const y = supportUnder(x, z, .001, bay.y + .01, [...floors, ...stairs], 0);
+          expect(y, `${bay.id} mouth ${x}/${z}`).toBeGreaterThanOrEqual(18.8);
+          expect(y, `${bay.id} mouth ${x}/${z}`).toBeLessThanOrEqual(bay.y);
+          mouth++;
+          continue;
+        }
         expect(supportUnder(x, z, .001, bay.y + .01, floors, 0), `${bay.id} floor ${x}/${z}`).toBeCloseTo(bay.y, 9);
         probes++;
       }
+      // The corner (about 20 m² of the 64 m² floor) stays clear of the lip
+      // strip and the anchor: bounded, never the view.
+      expect(mouth, `${bay.id} mouth samples`).toBeLessThan(bay.id === 'V1' ? 250 : 1);
+      for (let z = bay.z - 4; z <= bay.z + 4; z += .1) expect(inMouth(west + LIP_DEPTH + .35, z), `${bay.id} lip strip ${z}`).toBe(false);
+      expect(inMouth(bay.x, bay.z)).toBe(false);
       for (const [minZ, maxZ, lip, canopy, from, to] of bay.strata) {
         expect(canopy - lip).toBeCloseTo(OPENING, 9);
         // The innermost lip, the only one a body can touch, is a wall, not a step.
@@ -86,7 +106,9 @@ describe('U-167 V1–V3 support bays', () => {
         probes++;
       }
       // Full-height side returns close both ends of the strip west of the landing.
+      // V1's north end meets C12-L's open mouth east of x57.6 (U-168).
       for (const z of [bay.z - 4.5, bay.z + 4.5]) for (let x = west + .05; x < bay.x; x += .1) {
+        if (bay.id === 'V1' && inMouth(x, z)) { expect(x).toBeGreaterThan(57.55); continue; }
         expect(blockedAt(x, z, .001, bay.y, 0, CANOPY_HIGH + .5, near({ x, z }, 1)), `${bay.id} return ${x}/${z}`).toBe(true);
         probes++;
       }
@@ -142,7 +164,7 @@ describe('U-167 V1–V3 support bays', () => {
   }, 60_000);
 
   it('rejects walking, sprint-jumping, crouching and crawling over every lip and side return', () => {
-    let attempts = 0;
+    let attempts = 0, stairExits = 0;
     for (const bay of BAYS) {
       const west = bay.x - .8, boxes = near({ x: bay.x, z: bay.z }, 14);
       const starts: { from: Point; out: Point }[] = [];
@@ -158,6 +180,10 @@ describe('U-167 V1–V3 support bays', () => {
         const where = `${bay.id} ${stance} from ${JSON.stringify(from)} toward ${JSON.stringify(out)}: ${JSON.stringify(state)}`;
         expect(state.vault, where).toBeNull();
         expect(state.grounded, where).toBe(true);
+        // East of V1's anchor the bay is R2's landing, whose north-east corner
+        // is C12-L's open mouth (U-168): walking down that stair is the route.
+        if (bay.id === 'V1' && from.x >= bay.x && Math.abs(supportUnder(state.x, state.z, DEFAULT_MOVE_CONFIG.radius,
+          state.y + .01, stairs, 0) - state.y) < 1e-6) { stairExits++; attempts++; continue; }
         expect(state.y, where).toBeCloseTo(bay.y, 6);
         // Still on the bay or its landing: east of the lip, inside the bay's ends.
         expect(state.x - DEFAULT_MOVE_CONFIG.radius, where).toBeGreaterThanOrEqual(west + LIP_DEPTH - 1e-6);
@@ -166,6 +192,7 @@ describe('U-167 V1–V3 support bays', () => {
       }
     }
     expect(attempts).toBe(596);
-    console.log('U-167 bay escape attempts', JSON.stringify({ attempts, stances: ['walk', 'sprint-jump', 'crouch', 'prone'], ticks: 90 }));
+    expect(stairExits, 'only the few starts beside the mouth').toBeLessThanOrEqual(12);
+    console.log('U-167 bay escape attempts', JSON.stringify({ attempts, c12MouthExits: stairExits, stances: ['walk', 'sprint-jump', 'crouch', 'prone'], ticks: 90 }));
   }, 120_000);
 });

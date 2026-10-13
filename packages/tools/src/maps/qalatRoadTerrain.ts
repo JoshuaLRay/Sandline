@@ -175,6 +175,8 @@ const capCuts = (z0: number, z1: number) => ROAD_TERRAIN.temporaryCaps
   .filter((c) => c.minZ < z1 && c.maxZ > z0).flatMap((c) => [c.minX, c.maxX]);
 const guardCuts = (z0: number, z1: number) => ROAD_TERRAIN.climbGuards
   .filter((c) => c.minZ < z1 && c.maxZ > z0).flatMap((c) => [c.minX, c.maxX]);
+const viewGuardCuts = (z0: number, z1: number) => ROAD_TERRAIN.viewGuards
+  .filter((c) => c.minZ < z1 && c.maxZ > z0).flatMap((c) => [c.minX, c.maxX]);
 
 /** Crest of the rock at a plan point, before any view-fan cap. */
 function crest(r: Rect, spine: Spine): number {
@@ -212,18 +214,30 @@ function strata(prefix: string, rows: number, rowZ: (row: number) => number, bot
  * with `carve` (raised floors that keep their own supports) removed. */
 export function buildRoadTerrain(floors: readonly Polygon[], spine: Spine, maxZ = ROAD_TERRAIN.maxZ, carve: readonly Polygon[] = []): BoxSpec[] {
   const { minZ, bottomY } = ROAD_TERRAIN;
+  const viewFrames: BoxSpec[] = [];
   const kind = (r: Rect) => temporaryCapAt(r) ? `road-cap-${temporaryCapAt(r)!.id}` : 'road-rock';
   // Skin: y5.5 to 2.2 m above the road in fine rows, cut only where a
   // temporary cap starts. The fans must allow it everywhere else.
   const skin = strata('skin', (maxZ - minZ) * SKIN_ROWS_PER_M, (r) => (minZ * SKIN_ROWS_PER_M + r) / SKIN_ROWS_PER_M, bottomY,
-    (z0, z1) => cutAt(rockSpans(floors, z0, z1, carve), [...capCuts(z0, z1), ...guardCuts(z0, z1)]).map(([lo, hi]) => {
+    (z0, z1) => cutAt(rockSpans(floors, z0, z1, carve), [...capCuts(z0, z1), ...guardCuts(z0, z1), ...viewGuardCuts(z0, z1)]).map(([lo, hi]) => {
       const r = { minX: lo, maxX: hi, minZ: z0, maxZ: z1 };
       // U-161: low cover revealed a climb onto the fine skin before the
       // coarser crest begins. Raise only the recorded adjacent rock. A
       // temporary cap reaches its own crest all the way to its road edge.
       const cap = temporaryCapAt(r), guard = ROAD_TERRAIN.climbGuards.find((c) => within(r, c));
-      const top = cap?.top ?? Math.max(SKIN_TOP, guard?.top ?? SKIN_TOP);
-      if (!cap && fanCap(r) < top) {
+      const fanTop = fanCap(r), viewGuard = ROAD_TERRAIN.viewGuards.find((c) => within(r, c));
+      // U-168: outside the fan a view guard is also a climb guard, so the
+      // opened mouth closes low cover's jump approach as the cap did.
+      let top = cap?.top ?? Math.max(SKIN_TOP, guard?.top ?? SKIN_TOP, viewGuard?.top ?? SKIN_TOP);
+      if (!cap && fanTop < top && viewGuard) {
+        top = fanTop;
+        if (top < ROAD_TERRAIN.floorY + .5 - 1e-9) throw new Error(`${viewGuard.id}: lip below the unsteppable 0.50 m minimum`);
+        // The thin canopy lies only above the lip at the road-facing edge.
+        // A ray passes through the 0.70 m gap; no controller stance fits it.
+        viewFrames.push({ id: `road-view-guard-${viewGuard.id}-${viewFrames.length}`,
+          x: lo + .125, y: top + viewGuard.openingM, z: (z0 + z1) / 2,
+          w: .25, h: viewGuard.canopyTop - top - viewGuard.openingM, d: z1 - z0 + 2e-7 });
+      } else if (!cap && fanTop < top) {
         throw new Error(`View fan needs rock below the ${top} m edge at x${lo}..${hi} z${z0}..${z1}`);
       }
       return { lo, hi, top, id: kind(r) };
@@ -250,7 +264,7 @@ export function buildRoadTerrain(floors: readonly Polygon[], spine: Spine, maxZ 
         });
       }).filter((p) => p.top > SKIN_TOP + 1e-9);
     });
-  return [...skin, ...mass];
+  return [...skin, ...mass, ...viewFrames];
 }
 
 /** Exact clearance of every listed bay ray (standing eye to target feet) over

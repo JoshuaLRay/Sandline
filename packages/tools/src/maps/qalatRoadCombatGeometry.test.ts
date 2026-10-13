@@ -7,6 +7,7 @@ import {
 } from './qalatRoadCombat.ts';
 import { ROAD_SUPPORTS, buildRoadSupportWorld, roadSightPieces } from './qalatRoadSupports.ts';
 import { scan, union, type Polygon } from './planStrata.ts';
+import { onCrossingFloor } from './qalatC12.ts';
 
 const world = buildRoadSupportWorld(), combat = buildRoadCombat();
 const screenIds = ROAD_COMBAT.screens.map((s: { id: string }) => s.id);
@@ -193,7 +194,10 @@ describe('U-161 built road combat geometry', () => {
           screenIds.some((id) => b.id.startsWith(`road-combat-${id}-`)) && Math.abs(b.maxY - state.y) < .01 &&
           b.maxX > state.x - DEFAULT_MOVE_CONFIG.radius && b.minX < state.x + DEFAULT_MOVE_CONFIG.radius &&
           b.maxZ > state.z - DEFAULT_MOVE_CONFIG.radius && b.minZ < state.z + DEFAULT_MOVE_CONFIG.radius);
-        if (onRock || onScreen || !onFloor) escapes.push({ cover: c.id, side, x: state.x, y: state.y, z: state.z });
+        // U-168: A-C03 stands at C12-L's road mouth; its stair floor is lawful.
+        const onStair = state.grounded && onCrossingFloor(state, .05) && Math.abs(supportUnder(state.x, state.z, DEFAULT_MOVE_CONFIG.radius,
+          state.y + .01, nearby(state.x, state.z, 1).filter((b) => b.id.startsWith('crossing-floor-')), 0) - state.y) < .01;
+        if (onRock || onScreen || (!onFloor && !onStair)) escapes.push({ cover: c.id, side, x: state.x, y: state.y, z: state.z });
       }
     }
     expect(escapes, 'low-cover sprint-jump or vault escape endpoints').toEqual([]);

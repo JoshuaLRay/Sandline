@@ -1,4 +1,4 @@
-/** Exact-scene road captures including U-165 ridge furniture, the escorted R5 hold and U-167's support bays. */
+/** Exact-scene road captures including U-165 ridge furniture, the escorted R5 hold and U-168's two road↔ridge stairs. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { blockedAt, loadLevel, supportUnder } from '@sandline/shared';
 import { chromium } from 'playwright';
@@ -88,6 +88,20 @@ const views = [
   ].map((v) => ({ name: v.name, position: [v.feet[0]!, v.feet[1]! + 1.55, v.feet[2]!], target: v.target,
     label: `${v.label} · standing eye`, probe: false, feetY: v.feet[1]! })),
   { name: 'bay-f3-fin', position: [100, 44, 228], target: [69, 30, 267], label: 'Free view · F3 blind-spot fin to y36 between V2 and the compound', probe: false },
+  ...[
+    { name: 'c12-l-road-mouth', feet: [12, 8, 128], target: [28, 9.55, 134], label: 'C12-L road mouth · removed cap, four-metre shepherd stair toward R2' },
+    { name: 'c12-l-landing-1', feet: [28, 8, 134], target: [40, 13.55, 140], label: 'C12-L first 4×4 m landing · ascent through carved road rock' },
+    { name: 'c12-l-landing-2', feet: [40, 12, 140], target: [54, 17.55, 140], label: 'C12-L middle landing y12 · ten-riser flights and rest landings' },
+    { name: 'c12-l-landing-3', feet: [54, 16, 140], target: [64, 21.55, 128], label: 'C12-L upper landing y16 · carved west-side join to R2' },
+    { name: 'c12-u-road-mouth', feet: [26, 8, 232], target: [40, 9.55, 218], label: 'C12-U road mouth · four-metre quarry stair toward R5' },
+    { name: 'c12-u-landing-1', feet: [40, 8, 218], target: [62, 15.55, 216], label: 'C12-U first 4×4 m landing · ascent through carved road rock' },
+    { name: 'c12-u-landing-2', feet: [62, 14, 216], target: [78, 21.55, 224], label: 'C12-U landing y14 · ten-riser flights, level rests and 2.2 m rock walls' },
+    { name: 'c12-u-landing-3', feet: [78, 20, 224], target: [66, 25.55, 244], label: 'C12-U landing y20 · protected stair turn below the ridge' },
+    { name: 'c12-u-landing-4', feet: [66, 24, 244], target: [86, 31.55, 248], label: 'C12-U upper landing y24 · carved west-side join to R5' },
+  ].map((v) => ({ name: v.name, position: [v.feet[0]!, v.feet[1]! + 1.55, v.feet[2]!], target: v.target,
+    label: `${v.label} · standing eye`, probe: false, feetY: v.feet[1]! })),
+  { name: 'c12-l-overview', position: [12, 70, 165], target: [40, 14, 137], label: 'Free view · exact C12-L spine, landings and carved road↔R2 connection', probe: false },
+  { name: 'c12-u-overview', position: [20, 85, 260], target: [62, 20, 230], label: 'Free view · exact C12-U spine, landings and carved road↔R5 connection', probe: false },
 ];
 const output = new URL('../../../artifacts/qalat-road-supports/', import.meta.url);
 const world = loadLevel(JSON.parse(await readFile(new URL('level.json', output), 'utf8')));
@@ -126,7 +140,7 @@ try {
       throw new Error(`${v.name}: unexpected hull/turret visibility (${stats.tankPixels} changed pixels)`);
     await page.screenshot({ path: new URL(`${v.name}.png`, output).pathname });
     measurements.push({ ...v, ...stats });
-    console.log(`U-167 ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles`);
+    console.log(`U-168 ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles`);
   }
   if (errors.length) throw new Error(errors.join('\n'));
   await writeFile(new URL('captures.json', output), JSON.stringify({

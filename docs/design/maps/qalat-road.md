@@ -77,6 +77,20 @@ claiming an exact continuous visibility boundary; the tank sweep remains
 continuously certified. This
 addendum does not supply U-139's pending human road look/play verdict.
 
+**U-168 C12 construction addendum · 2026-10-13:** C12-L and C12-U follow the
+exact §6.3 spines with the owner-approved compact treads. Both are cut through
+rock, so (Conflict default, as U-163's ridge stairs) their cheek walls are the
+cut's rock face: a 0.5 m band 2.2 m above the higher adjacent floor; a 1.0 m
+cheek under 2.2 m rock let a soldier climb out in two jumps. Inside V1's fan
+that band, and the A2 apron edge where the C12-L mouth cap stood, become a lip
+at the fan cap under a canopy with a 0.70 m slot: the listed feet rays pass,
+no stance fits. The slot hides the top of A-C03's 1.1 m wall from V1 while its
+feet ray stays clear; outside the fan the former cap area rises to y12, closing
+A-C03's jump approach. The last flights end inside the R2 and R5 landings (and
+V1's north-east floor corner): those bounded open mouths replace only the 4 m
+stair footprint. A-S07's south-west corner is clipped along x+z=261, 0.12 m
+outside the C12-U A5→U1 ribbon. Ridge look/play stays batched in U-140.
+
 This is the canonical construction brief for campaign mission 1, world/mission
 `qalat-road`. It replaces the rectangular valley, terrace slots and surface
 riverbed flank delivered by U-106. That implementation remains the current game
@@ -586,7 +600,13 @@ required: use the riflemen specified below.
 
 These crossings are exposed to their adjacent route enemies, not spawn points.
 Use 4×4 m landings at interior waypoints; the standard extra landings still apply
-within flights. No door, unlock, one-way drop, third shortcut or link to basement.
+within flights. **U-168 owner-approved exception (2026-10-13):** use 0.30 m
+treads on constrained C12 flights where 0.40 m cannot fit those pads/rests or
+retain the ridge's 8 m clear route at the terminal mouths. The owner approved
+this compact-tread option rather than moving the specified spines. Keep the
+exact coordinates, elevations, 4 m widths, 0.20 m risers, 60/110 total counts,
+4×4 m waypoint pads and at least 2 m intermediate rests; other flights retain
+0.40 m treads. No door, unlock, one-way drop, third shortcut or link to basement.
 Route changes use these paths or D0/outpost, regardless of alert or mission stage.
 
 ## 7. Underground depot

@@ -14,7 +14,8 @@ import { ROAD_TERRAIN, TERRAIN_SPURS, VIEW_FANS, buildRoadTerrain, roadTerrainMa
 import { tankSweepReport } from './qalatTankSweep.ts';
 import { TANK_INGRESS, tankIngressPath, tankIngressFloors, buildTankIngressShelter } from './qalatTankIngress.ts';
 import { RETURN_SHELTERS, returnShelterFloors, buildReturnShelters } from './qalatReturnShelters.ts';
-import { RIDGE, buildRidge, ridgeCarve, ridgeFloors, ridgeManifest } from './qalatRidge.ts';
+import { RIDGE, buildRidge, ridgeCarve, ridgeFloorSpans, ridgeFloors, ridgeManifest } from './qalatRidge.ts';
+import { C12, buildCrossings, crossingCarve, crossingFloors, crossingManifest } from './qalatC12.ts';
 import { scan, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
 import {
   discsSeeEachOther, farthestView, longestSegment, ribbonPieces, type Disc, type Segment,
@@ -44,7 +45,7 @@ const bareFloors = roadSupportFloors();
 const floors = [...bareFloors, ...combatOpenFloors(), ...tankIngressFloors(), ...returnShelterFloors()];
 // U-164: the raised ridge shelf is carved out of the insertion and road rock
 // but carries its own supports and barrier ring; it is never a y8 road floor.
-const ridge = ridgeFloors(), ridgeRing = ridgeCarve();
+const ridge = ridgeFloors(), ridgeRing = ridgeCarve(), crossings = crossingFloors(), crossingRing = crossingCarve();
 export function tankReturnRoute() { return [...tankIngressPath(), ...ROAD_SUPPORTS.spine.slice(1, 8).reverse()]; }
 export function onRoadSupportFloor(p: Point, margin = 0): boolean {
   return floors.some((poly) => {
@@ -57,7 +58,7 @@ export function buildRoadSupportLevel() {
   const roadMouth = ROAD_SUPPORTS.spine[1]!;
   const insertion = buildInsertionLevel({ ...INSERTION,
     continuations: INSERTION.continuations.map((p) => p.id === 'road' ? { ...p, x: roadMouth.x, z: roadMouth.z } : p),
-  }, [...floors, ...ridge]);
+  }, [...floors, ...ridge, ...crossings]);
   const boxes: BoxSpec[] = [];
   const minZ = Math.min(...floors.flatMap((p) => p.map((v) => v.z)));
   const maxZ = Math.max(...floors.flatMap((p) => p.map((v) => v.z)));
@@ -81,8 +82,8 @@ export function buildRoadSupportLevel() {
     previous = next;
   }
   return { ...insertion, id: ROAD_SUPPORTS.id, floor: { halfWidth: 150, halfDepth: 470 },
-    boxes: [...insertion.boxes, ...boxes, ...buildRoadTerrain(floors, ROAD_SUPPORTS.spine, TANK_INGRESS.terrainMaxZ, ridgeRing),
-      ...buildRoadCombat(), ...buildTankIngressShelter(), ...buildReturnShelters(), ...buildRidge(floors)] };
+    boxes: [...insertion.boxes, ...boxes, ...buildRoadTerrain(floors, ROAD_SUPPORTS.spine, TANK_INGRESS.terrainMaxZ, [...ridgeRing, ...crossingRing]),
+      ...buildRoadCombat(), ...buildTankIngressShelter(), ...buildReturnShelters(), ...buildRidge(floors), ...buildCrossings(floors, ridge, ridgeFloorSpans)] };
 }
 
 export function buildRoadSupportWorld() { return loadLevel(buildRoadSupportLevel()); }
@@ -170,10 +171,10 @@ export function roadTankSweepReport(level = buildRoadSupportLevel()) {
 export function roadSupportManifest() {
   const level = buildRoadSupportLevel();
   const levelHash = createHash('sha256').update(JSON.stringify(level)).digest('hex');
-  return { task: 'U-167', parent: 'U-141', foundation: 'U-149', bend: 'U-159', rock: 'U-160', road: 'U-139',
-    kind: 'isolated surface whitebox: road fights, screened tank ingress, D0 return store and furnished R0–R9 ridge with V1–V3 support bays and service bridge',
+  return { task: 'U-168', parent: 'U-141', foundation: 'U-149', bend: 'U-159', rock: 'U-160', road: 'U-139',
+    kind: 'isolated surface whitebox: road fights, screened tank ingress, D0 return store and furnished ridge with support bays, service bridge and C12-L/C12-U stairs',
     activeCampaign: 'unchanged; activation belongs to U-117',
-    sourceHash: createHash('sha256').update(JSON.stringify({ insertion: INSERTION, road: ROAD_SUPPORTS, terrain: ROAD_TERRAIN, combat: ROAD_COMBAT, ingress: TANK_INGRESS, shelters: RETURN_SHELTERS, ridge: RIDGE })).digest('hex'),
+    sourceHash: createHash('sha256').update(JSON.stringify({ insertion: INSERTION, road: ROAD_SUPPORTS, terrain: ROAD_TERRAIN, combat: ROAD_COMBAT, ingress: TANK_INGRESS, shelters: RETURN_SHELTERS, ridge: RIDGE, crossings: C12 })).digest('hex'),
     levelHash, boxCount: level.boxes.length,
     stratumM: STRATUM_M, edgeExpansionM: EDGE_M, circleSides: CIRCLE_SIDES,
     floorY: ROAD_SUPPORTS.floorY, supportBottomY: ROAD_SUPPORTS.supportBottomY,
@@ -187,10 +188,11 @@ export function roadSupportManifest() {
     ingress: TANK_INGRESS,
     returnShelters: RETURN_SHELTERS,
     ridge: ridgeManifest(level.boxes),
+    crossings: crossingManifest(level.boxes),
     tankSweep: roadTankSweepReport(level),
     combatSightLines: roadCombatReport(),
     ownerQualityVerdict: 'road look/play batched in U-139; ridge look/play batched in U-140',
-    unfinished: ['C12 stairs: U-168', 'integrated surface proofs: U-169', 'outpost: U-116', 'basement: U-115'],
+    unfinished: ['integrated surface proofs: U-169', 'outpost: U-116', 'basement: U-115'],
   };
 }
 
