@@ -1,5 +1,5 @@
-/** U-163/U-164: the continuous R0–R9 ridge shelf (§§2.2, 3.2,
- * 6.1), outside the campaign until U-117. An 8 m stepped shelf with its exact
+/** U-163/U-164/U-165: the continuous R0–R9 ridge shelf (§§2.2, 3.2,
+ * 6.1–6.2), outside the campaign until U-117. An 8 m stepped shelf with its exact
  * flat landings, cut into the T-E ridge body. Every edge stands against rock at
  * least 2.2 m above the adjacent floor; recorded temporary caps close the
  * unbuilt V1–V3 bay fronts (U-141) and east gate (U-116). Collision and
@@ -103,10 +103,19 @@ function stair(i: number): Floor {
 }
 
 function floors(): Floor[] {
+  const apron = RIDGE.furniture.routeApron;
   return [
     ...RIDGE.spine.slice(0, -1).map((_, i) => stair(i)),
     ...RIDGE.spine.flatMap((n, i) => { const b = bevelAt(i); return b ? [flat(`${n.id}-bevel`, b, n.y)] : []; }),
     ...RIDGE.landings.map((l) => flat(l.id, rectPolygon(l), RIDGE.spine.find((n) => n.id === l.id)!.y)),
+    // Dead-end inland furniture recesses join the existing pads. The named
+    // spine, stair ribbons and landing elevations remain unchanged.
+    ...RIDGE.furniture.recesses.map((r) => flat(`furniture-${r.id}`, rectPolygon(r), r.y)),
+    // The exact R6 wall narrows the inner corner. A bounded outer bevel on
+    // the existing y26 rest keeps eight metres clear beside the survey
+    // post's broken southwest return. Its extra area lies after the final
+    // incoming riser and before the first outgoing one; every stair stays.
+    ...ribbonPieces(apron.spine, apron.widthM).map((polygon, i) => flat(`${apron.id}-${i}`, polygon, apron.y)),
   ];
 }
 const FLOORS = floors();
@@ -148,9 +157,11 @@ function strata(name: string) {
     boxes,
     add(id: string, lo: number, hi: number, z0: number, z1: number, bottom: number, top: number) {
       const key = `${id},${lo},${hi},${bottom},${top}`, old = previous.get(key);
-      // Preserve accepted R0–R7 rows exactly. Only the new bridge/descent
-      // rows need a sub-micron weld for strict ingress boundary queries.
-      const weld = z0 >= 322 ? TOUCH_M : 0;
+      // Preserve accepted bare R0–R7 rows. Bridge/descent and newly
+      // furnished rows need a sub-micron weld: a centre/size round trip
+      // must not open a point-query seam between two full-height supports.
+      const furnished = RIDGE.furniture.recesses.some((r) => z0 >= r.minZ && z0 < r.maxZ && lo < r.maxX && hi > r.minX);
+      const weld = z0 >= 322 || furnished ? TOUCH_M : 0;
       if (old) { old.d = z1 + weld - (old.z - old.d / 2); old.z = z1 + weld - old.d / 2; next.set(key, old); return; }
       const box = { id: `${id}-${name}-${boxes.length}`, x: (lo + hi) / 2, y: bottom, z: (z0 + z1) / 2, w: hi - lo, h: top - bottom, d: z1 - z0 + 2 * weld };
       boxes.push(box); next.set(key, box);
@@ -197,7 +208,24 @@ export function ridgeCrest(z: number): number {
 
 const insideInsertion = (x: number, z1: number) => x <= RIDGE.insertionBounds.maxX + 1e-9 && z1 <= RIDGE.insertionBounds.maxZ + 1e-9;
 
-/** All U-163 boxes: shelf floors (columns, or slabs where they overhang an
+/** Outward walls preserve the spec's clear inside bounds. Both west faces
+ * are wholly open; the hut has no roof and the survey post has only two
+ * separated broken beams above standing/camera clearance. */
+export function buildRidgeFurniture(): BoxSpec[] {
+  const { wallM: t, wallHeightM: h, shells, cover, sacks, beams } = RIDGE.furniture;
+  return [
+    ...shells.flatMap((s): BoxSpec[] => [
+      { id: `ridge-${s.id}-south`, x: (s.minX + s.southWestBreakM + s.maxX + t) / 2, y: s.y, z: s.minZ - t / 2, w: s.maxX - s.minX - s.southWestBreakM + t, h, d: t },
+      { id: `ridge-${s.id}-north`, x: (s.minX + s.maxX + t) / 2, y: s.y, z: s.maxZ + t / 2, w: s.maxX - s.minX + t, h, d: t },
+      { id: `ridge-${s.id}-east`, x: s.maxX + t / 2, y: s.y, z: (s.minZ + s.maxZ) / 2, w: t, h, d: s.maxZ - s.minZ },
+    ]),
+    ...cover.map((c) => ({ ...c, id: `ridge-cover-${c.id}` })),
+    ...sacks.zs.map((z, i) => ({ id: `ridge-hut-sack-${i + 1}`, x: sacks.x, y: sacks.y, z, w: sacks.w, h: sacks.h, d: sacks.d })),
+    ...beams.map((b) => ({ ...b, id: `ridge-survey-beam-${b.id}` })),
+  ];
+}
+
+/** All ridge boxes: shelf floors (columns, or slabs where they overhang an
  * existing y8 floor), the T-E body around them and the temporary caps.
  * `ground` is every built y8 walking floor (road, X ingress, D0 store). */
 export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
@@ -281,8 +309,14 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
       const k = row * ROWS_PER_M / MASS_ROWS_PER_M + fine, z0 = k / ROWS_PER_M, z1 = (k + 1) / ROWS_PER_M;
       const below = union(ground.map((p) => sweep(p, z0 - EDGE_M, z1 + EDGE_M)).filter((s): s is Interval => s !== null)
         .map(([a, b]): Interval => [a - EDGE_M, b + EDGE_M]));
+      // The R7 inland recess reaches over a road apron before z322. That
+      // apron must stay open below, while its raised recess still needs a
+      // hanging outer barrier. Retain the older ground exclusion elsewhere.
+      const furnitureRing = union(RIDGE.furniture.recesses.map((r) => sweep(rectPolygon(r), z0 - reach, z1 + reach))
+        .filter((s): s is Interval => s !== null).map(([a, b]): Interval => [a - reach, b + reach]));
+      const excludedGround = z0 < 322 ? below.flatMap(([a, b]) => subtract(a, b, furnitureRing)) : [];
       const shelf = union([...FLOORS.map((f) => sweep(f.polygon, z0 + TOUCH_M, z1 - TOUCH_M)).filter((s): s is Interval => s !== null)
-        .map(([a, b]): Interval => [a - EDGE_M, b + EDGE_M]), ...(z0 < 322 ? below : [])]);
+        .map(([a, b]): Interval => [a - EDGE_M, b + EDGE_M]), ...excludedGround]);
       const spans = open.flatMap(([a, b]) => subtract(Math.max(a, west), Math.min(b, east), shelf));
       for (const [lo, hi] of cutAt(spans, [...capCuts(z0, z1), ...below.flat()])) {
         const { id, top, bottom } = barrier({ minX: lo, maxX: hi, minZ: z0, maxZ: z1 }, inBody);
@@ -299,7 +333,7 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
   const gate = RIDGE.temporaryCaps.find((c) => c.id === 'east-gate')!;
   const gateCap = { id: 'ridge-cap-east-gate', x: (gate.minX + gate.maxX) / 2, y: gate.bottomY, z: (gate.minZ + gate.maxZ) / 2,
     w: gate.maxX - gate.minX, h: gate.top - gate.bottomY, d: gate.maxZ - gate.minZ };
-  return [...floor.boxes, deck, ...coarse.boxes, ...ring.boxes, gateCap];
+  return [...floor.boxes, deck, ...coarse.boxes, ...ring.boxes, gateCap, ...buildRidgeFurniture()];
 }
 
 /** Screening proofs count permanent solids only. The temporary ridge caps
@@ -343,6 +377,7 @@ export function ridgeManifest(boxes: readonly BoxSpec[]) {
     flights: FLIGHTS.map((f) => ({ from: f.from, to: f.to, fromY: f.fromY, toY: f.toY, lengthM: r(f.length),
       stairStartM: r(f.t0), stairEndM: r(f.t1), risers: f.risers.length, restLandingM: r(f.restLandingM),
       firstRiserM: f.risers.length ? r(f.risers[0]!) : null, lastRiserM: f.risers.length ? r(f.risers.at(-1)!) : null })),
-    boxes: { floor: count('ridge-floor'), slab: count('ridge-slab'), bridge: count('ridge-bridge'), parapet: count('ridge-parapet'), rock: count('ridge-rock'), caps: count('ridge-cap-') },
+    boxes: { floor: count('ridge-floor'), slab: count('ridge-slab'), bridge: count('ridge-bridge'), parapet: count('ridge-parapet'), rock: count('ridge-rock'), caps: count('ridge-cap-'),
+      cover: count('ridge-cover-'), hut: count('ridge-hut-'), survey: count('ridge-survey-') },
     rays: ridgeRayClearances(boxes) };
 }

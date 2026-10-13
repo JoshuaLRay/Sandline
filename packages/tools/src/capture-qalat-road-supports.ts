@@ -1,4 +1,4 @@
-/** Exact-scene road captures including the occupied U-164 bridge and R8/R9 descent. */
+/** Exact-scene road captures including U-165 ridge furniture and the escorted R5 hold. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { blockedAt, loadLevel, supportUnder } from '@sandline/shared';
 import { chromium } from 'playwright';
@@ -51,7 +51,7 @@ const views = [
   // Standing eyes at each ridge node, followed by free views and underside proofs.
   ...[
     { name: 'ridge-r0-mouth', feet: [46, 8, 65.9], target: [78, 15.55, 96], label: 'D0→R0 · the ridge stair mouth beside the court and its first flights' },
-    { name: 'ridge-r1-landing', feet: [78, 14, 96], target: [64, 21.55, 128], label: 'R1 landing y14 · climb to the R2 saddle; hut site rock until U-165' },
+    { name: 'ridge-r1-landing', feet: [78, 14, 96], target: [64, 21.55, 128], label: 'R1 landing y14 · climb to the R2 saddle beside the open shepherd hut' },
     { name: 'ridge-r2-saddle', feet: [64, 20, 128], target: [80, 27.55, 168], label: 'R2 lower saddle y20 · climb behind the shelf edge; V1 bay front capped for U-141' },
     { name: 'ridge-r3-shelf', feet: [80, 26, 168], target: [94, 31.55, 210], label: 'R3 combat shelf y26 · final climb to the Eagle shelf' },
     { name: 'ridge-r4-eagle', feet: [94, 30, 210], target: [86, 31.55, 248], label: 'R4 Eagle shelf y30 · level saddle to R5; V2 bay front capped for U-141' },
@@ -64,9 +64,20 @@ const views = [
   ].map((v) => ({ name: v.name, position: [v.feet[0]!, v.feet[1]! + 1.55, v.feet[2]!], target: v.target,
     label: `${v.label} · standing eye`, probe: false, feetY: v.feet[1]! })),
   { name: 'ridge-r7-mouth', position: [98, 56, 300], target: [70, 16, 336], label: 'Free view · R7 landing, built R7b bridge and R8/R9 descent over the tank road', probe: false },
-  { name: 'ridge-overview', position: [190, 150, 110], target: [76, 20, 230], label: 'Free overview · U-164 R0–R9 ridge and service bridge; V1–V3 and east-gate caps remain', probe: false },
+  { name: 'ridge-overview', position: [190, 150, 110], target: [76, 20, 230], label: 'Free overview · furnished R0–R9 ridge and service bridge; V1–V3 and east-gate caps remain', probe: false },
   { name: 'bridge-under-tank', position: [72, 9.55, 327], target: [70, 10.5, 336], label: 'Tank road standing eye · production hull/turret at (70,8,336) beneath the built bridge', probe: false, tank: { x: 70, y: 8, z: 336, yaw: 0 }, expectedTankVisible: true },
   { name: 'r8-underside', position: [77, 9.55, 349], target: [70, 11.4, 350], label: 'Tank road standing eye · R8 landing floor y12 / underside y11.4, 0.2 m above full turret envelope', probe: false },
+  ...[
+    { name: 'ridge-hut-interior', feet: [86, 14, 102], target: [89.5, 15, 102], label: 'Shepherd hut y14 · four sacks against east wall, open west face and no roof walkway' },
+    { name: 'ridge-hut-spur', feet: [81, 14, 100], target: [87, 15.55, 102], label: 'R1 landing · 4 m flat spur to the shepherd hut west opening' },
+    { name: 'ridge-survey-interior', feet: [82, 26, 286], target: [80, 29.3, 281], label: 'Broken survey post y26 · missing west wall and two beams above standing clearance' },
+    { name: 'ridge-r3-cover', feet: [80, 26, 174], target: [84, 26.8, 170], label: 'R3 low rock · exact 4 m north-south cover beside the full-width route' },
+    { name: 'ridge-r6-cover', feet: [72, 26, 288], target: [76, 26.8, 286], label: 'R6 low wall · exact 5 m north-south cover beside the full-width route' },
+    { name: 'ridge-r5-hold', feet: [95.8, 30, 238], target: [94, 31.2, 238], label: 'R5 inland escorted hold · built high rock stops the shell and attenuates ordinary blast damage' },
+    { name: 'ridge-r5-exposed', feet: [91, 30, 238], target: [94, 31.2, 238], label: 'R5 outside cover · ordinary tank blast danger remains when leaving the hold' },
+    { name: 'ridge-r7-cover', feet: [70, 20, 321.5], target: [82, 21.5, 320], label: 'R7 high rock · exact 4 m north-south cover in its inland recess' },
+  ].map((v) => ({ name: v.name, position: [v.feet[0]!, v.feet[1]! + 1.55, v.feet[2]!], target: v.target,
+    label: `${v.label} · standing eye`, probe: false, feetY: v.feet[1]! })),
 ];
 const output = new URL('../../../artifacts/qalat-road-supports/', import.meta.url);
 const world = loadLevel(JSON.parse(await readFile(new URL('level.json', output), 'utf8')));
@@ -105,7 +116,7 @@ try {
       throw new Error(`${v.name}: unexpected hull/turret visibility (${stats.tankPixels} changed pixels)`);
     await page.screenshot({ path: new URL(`${v.name}.png`, output).pathname });
     measurements.push({ ...v, ...stats });
-    console.log(`U-164 ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles`);
+    console.log(`U-165 ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles`);
   }
   if (errors.length) throw new Error(errors.join('\n'));
   await writeFile(new URL('captures.json', output), JSON.stringify({

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_MOVE_CONFIG, ENEMIES, TICK_SECONDS, applyDamage, blastDamageOn, blastExposure, blockedAt,
-  createHealth, createProjectileState, getProjectile, stepProjectile, supportUnder, type ProjectileDef, type WorldBox,
+  createHealth, createMoveState, createProjectileState, getProjectile, stepCharacter, stepProjectile, supportUnder,
+  type MoveState, type ProjectileDef, type WorldBox,
 } from '@sandline/shared';
 import { LAUNCH_AHEAD_M, throwEye, throwLaunch } from '../../../server/src/ai/throw.ts';
 import { DEFAULT_HITBOX, bodyParts, rayBody, vehicleHitbox } from '../../../server/src/net/lagComp.ts';
@@ -36,7 +37,7 @@ const shots = [
 ];
 
 function expectSupportedActor(feet: Point, height: number) {
-  expect(supportUnder(feet.x, feet.z, DEFAULT_MOVE_CONFIG.radius, 8.45, world.boxes, 0)).toBe(8);
+  expect(supportUnder(feet.x, feet.z, DEFAULT_MOVE_CONFIG.radius, feet.y + .45, world.boxes, 0)).toBe(feet.y);
   expect(blockedAt(feet.x, feet.z, DEFAULT_MOVE_CONFIG.radius, feet.y, 0, height, world.boxes)).toBe(false);
 }
 
@@ -163,4 +164,128 @@ describe('U-152 return rocket launch clearance and actor blast protection', () =
     expectShelteredActor(rocket, roofBlast, feet, standingHeight, (box) => box.id === 'hollow-overhang');
     expect(damageActor(cannon, roofBlast, feet, standingHeight, world.boxes).applied).toBe(0);
   });
+});
+
+// Independent §6.2/§11.2 coordinates. The hold occupies the inland side of
+// the authored R5 high rock; its approach starts at the exact §6.3 C12-U
+// endpoint on the already built R5 landing. U-141 still owns that crossing
+// and its rocket firing clearance; this test does not supply either.
+const R5 = { x: 86, y: 30, z: 248 };
+const RIDGE_HOLD = { x: 95.8, y: 30, z: 238 };
+const RIDGE_EXPOSED = { x: 91, y: 30, z: 238 };
+const RIDGE_OUTSIDE_BLAST = { x: 93.2, y: 30.9, z: 238 };
+const ridgeShelter = (box: WorldBox) => box.id.startsWith('ridge-cover-R5-high-rock');
+
+/** Local shell impact fixture, with Session.fireShell's ordinary cannon
+ * definition and gravity-compensated velocity. This exercises protection at
+ * the cover itself, independently of U-141's unbuilt C12-U firing geometry.
+ * Session.stepProjectiles checks the real actor's capsules on exactly this
+ * scenery-truncated chord before selecting the blast centre.
+ */
+function shellTowardRidgeActor(feet: Point, boxes: readonly WorldBox[],
+  origin = { x: 91.5, y: 30 + standingHeight / 2, z: 238 }) {
+  const target = { ...feet, y: feet.y + standingHeight / 2 };
+  const dx = target.x - origin.x, dz = target.z - origin.z;
+  const seconds = Math.hypot(dx, dz) / cannon.speedMPerSec;
+  const dy = target.y + .5 * cannon.gravity * seconds * seconds - origin.y;
+  const scale = cannon.speedMPerSec / Math.hypot(dx, dy, dz);
+  let state = createProjectileState(origin, { x: dx * scale, y: dy * scale, z: dz * scale });
+  const parts = bodyParts(DEFAULT_HITBOX, 'standing', feet, 0);
+  expect(blockedAt(origin.x, origin.z, cannon.radiusM, origin.y - cannon.radiusM,
+    0, cannon.radiusM * 2, boxes), 'shell must begin in clear air').toBe(false);
+  for (let tick = 0; tick < Math.ceil(cannon.maxLifeSeconds / TICK_SECONDS); tick++) {
+    const step = stepProjectile(cannon, state, TICK_SECONDS, { ...projectileWorld, boxes });
+    state = step.state;
+    const delta = { x: step.to.x - step.from.x, y: step.to.y - step.from.y, z: step.to.z - step.from.z };
+    const length = Math.hypot(delta.x, delta.y, delta.z);
+    const direction = length > 0 ? { x: delta.x / length, y: delta.y / length, z: delta.z / length } : null;
+    const body = direction ? rayBody({ origin: step.from, direction, maxDistance: length }, parts) : null;
+    if (body && direction) return { bodyHit: true, box: null, centre: {
+      x: step.from.x + direction.x * body.distance,
+      y: step.from.y + direction.y * body.distance,
+      z: step.from.z + direction.z * body.distance,
+    } };
+    if (step.detonation) return { bodyHit: false, box: step.impact?.box ?? null, centre: step.detonation.point };
+  }
+  throw new Error('ordinary cannon shell never reached the ridge cover or actor');
+}
+
+/** Actual standing controller travel on the already built y30 shelf/pocket.
+ * Waypoints follow the open ends of the cover, without a jump, vault or link.
+ */
+function walkRidgeHold(stops: readonly Point[], initial?: MoveState) {
+  let state: MoveState = initial ?? { ...createMoveState(stops[0]!.x, stops[0]!.y, stops[0]!.z), grounded: true };
+  expectSupportedActor(state, standingHeight);
+  for (const goal of stops.slice(1)) {
+    expectSupportedActor(goal, standingHeight);
+    let arrived = false;
+    for (let tick = 0; tick < 600; tick++) {
+      if (Math.hypot(state.x - goal.x, state.z - goal.z) < .15) { arrived = true; break; }
+      const yaw = Math.round(Math.atan2(goal.x - state.x, goal.z - state.z) / (2 * Math.PI) * 1024 + 1024) % 1024;
+      state = stepCharacter(state, { moveX: 0, moveY: 1, yaw, sprint: false, jump: false,
+        crouch: false, prone: false }, TICK_SECONDS, DEFAULT_MOVE_CONFIG, world.boxes);
+      expect(state.y, `left the R5 floor approaching ${JSON.stringify(goal)}`).toBeCloseTo(30, 6);
+      expect(state.vault).toBeNull();
+    }
+    expect(arrived, `R5 actor stalled at ${JSON.stringify(state)} toward ${JSON.stringify(goal)}`).toBe(true);
+  }
+  return state;
+}
+
+describe('U-165 R5 inland escorted hold with actual actor/projectile/blast rules', () => {
+  it('stops the ordinary swept cannon shell at built high rock and attenuates real actor health damage', () => {
+    expectSupportedActor(RIDGE_HOLD, standingHeight);
+    expect(world.boxes.filter(ridgeShelter).length).toBeGreaterThan(0);
+    const protectedFlight = shellTowardRidgeActor(RIDGE_HOLD, world.boxes);
+    expect(protectedFlight.bodyHit, 'shell penetrated the built cover to the actor').toBe(false);
+    expect(protectedFlight.box?.id).toMatch(/^ridge-cover-R5-high-rock/);
+    expect(protectedFlight.centre.x).toBeCloseTo(93.4, 8);
+    expect(blastExposure(protectedFlight.centre, RIDGE_HOLD, standingHeight, world.boxes)).toBe(0);
+
+    // Removing only that rock makes the identical shot reach the actual body,
+    // retaining the shelf and every other rock/shell. This checks collision
+    // causality, rather than passing because some unrelated terrain stops it.
+    const withoutCover = world.boxes.filter((box) => !ridgeShelter(box));
+    expect(blastExposure(protectedFlight.centre, RIDGE_HOLD, standingHeight, withoutCover)).toBe(1);
+    const unprotectedFlight = shellTowardRidgeActor(RIDGE_HOLD, withoutCover);
+    expect(unprotectedFlight.bodyHit, 'control shell did not reach the actual actor').toBe(true);
+    const protectedActor = damageActor(cannon, protectedFlight.centre, RIDGE_HOLD, standingHeight, world.boxes);
+    const sameImpactUncovered = damageActor(cannon, protectedFlight.centre, RIDGE_HOLD, standingHeight, withoutCover);
+    const uncoveredActor = damageActor(cannon, unprotectedFlight.centre, RIDGE_HOLD, standingHeight, withoutCover);
+    expect(protectedActor.applied).toBeGreaterThan(0);
+    expect(protectedActor.damage).toBeCloseTo(sameImpactUncovered.damage * cannon.blastCoverFraction, 8);
+    expect(protectedActor.applied).toBeLessThan(uncoveredActor.applied);
+    expect(protectedActor.health.current).toBeGreaterThan(uncoveredActor.health.current);
+    console.log('U-165 R5 ordinary cannon actor proof', JSON.stringify({ impact: protectedFlight.centre,
+      solid: protectedFlight.box?.id, shelteredDamage: protectedActor.applied, uncoveredDamage: uncoveredActor.applied }));
+  });
+
+  it('reaches the inland hold from the ridge/C12-U landing and keeps ordinary danger after leaving cover', () => {
+    const arrived = walkRidgeHold([R5, { x: 95.8, y: 30, z: 248 }, RIDGE_HOLD]);
+    expect(Math.hypot(arrived.x - RIDGE_HOLD.x, arrived.z - RIDGE_HOLD.z)).toBeLessThan(.15);
+    // Return around the north end into ordinary open exposure on the original
+    // shelf. The standing actor is neither teleported nor given immunity.
+    const left = walkRidgeHold([RIDGE_HOLD, { x: 95.8, y: 30, z: 243 },
+      { x: 91, y: 30, z: 243 }, RIDGE_EXPOSED], arrived);
+    // As in the inherited U-152 exterior-impact fixtures, start this blast in
+    // clear air immediately outside the cover. The exact projectile collision
+    // face is covered above; rayWorld treats an origin on that solid face as
+    // blocked in every direction, so it cannot prove the open-side control.
+    expectShelteredActor(cannon, RIDGE_OUTSIDE_BLAST, RIDGE_HOLD, standingHeight, ridgeShelter);
+    expect(blastExposure(RIDGE_OUTSIDE_BLAST, left, standingHeight, world.boxes)).toBe(1);
+    const sheltered = damageActor(cannon, RIDGE_OUTSIDE_BLAST, RIDGE_HOLD, standingHeight, world.boxes);
+    const exposed = damageActor(cannon, RIDGE_OUTSIDE_BLAST, left, standingHeight, world.boxes);
+    expect(exposed.applied).toBeGreaterThan(50);
+    expect(exposed.applied).toBeGreaterThan(sheltered.applied);
+    expect(exposed.health.current).toBeLessThan(sheltered.health.current);
+    const directFlight = shellTowardRidgeActor(left, world.boxes,
+      { x: 88.5, y: left.y + standingHeight / 2, z: left.z });
+    expect(directFlight.bodyHit, 'ordinary shell failed to reach the actor after leaving cover').toBe(true);
+    expect(blastExposure(directFlight.centre, left, standingHeight, world.boxes)).toBe(1);
+    const directHit = damageActor(cannon, directFlight.centre, left, standingHeight, world.boxes);
+    expect(directHit.applied).toBeGreaterThan(50);
+    expect(directHit.health.current).toBeLessThan(sheltered.health.current);
+    const returned = walkRidgeHold([RIDGE_EXPOSED, { x: 91, y: 30, z: 248 }, R5], left);
+    expect(Math.hypot(returned.x - R5.x, returned.z - R5.z)).toBeLessThan(.15);
+  }, 30_000);
 });

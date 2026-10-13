@@ -158,11 +158,24 @@
 <polygon points="66.000,-320.000 74.000,-320.000 74.000,-322.000 66.000,-322.000"/>
 <polygon points="66.000,-330.000 74.000,-330.000 74.000,-342.000 66.000,-342.000"/>
 <polygon points="66.000,-348.000 74.000,-348.000 74.000,-352.000 66.000,-352.000"/>
-<polygon points="52.000,-368.000 60.000,-368.000 60.000,-374.000 52.000,-374.000"/></g>
+<polygon points="52.000,-368.000 60.000,-368.000 60.000,-374.000 52.000,-374.000"/>
+<polygon points="81.600,-97.400 90.600,-97.400 90.600,-106.600 81.600,-106.600"/>
+<polygon points="80.000,-98.000 82.000,-98.000 82.000,-102.000 80.000,-102.000"/>
+<polygon points="77.600,-277.400 86.600,-277.400 86.600,-288.600 77.600,-288.600"/>
+<polygon points="90.000,-235.000 98.000,-235.000 98.000,-251.000 90.000,-251.000"/>
+<polygon points="78.000,-317.400 85.000,-317.400 85.000,-323.000 78.000,-323.000"/>
+<polygon points="74.000,-318.000 78.000,-318.000 78.000,-322.000 74.000,-322.000"/>
+<polygon points="72.565,-273.245 68.196,-279.645 74.804,-284.155 79.172,-277.755"/>
+<polygon points="67.500,-281.900 67.500,-290.000 75.500,-290.000 75.500,-281.900"/>
+<polygon points="67.500,-290.000 67.500,-295.000 75.500,-295.000 75.500,-290.000"/>
+<polygon points="67.500,-281.900 68.196,-279.645 75.500,-281.900 74.804,-284.155"/>
+<polygon points="67.500,-290.000 75.500,-290.000"/></g>
 <g fill="#5c6b80" fill-opacity=".85"><rect x="54" y="-136" width="4" height="16"/>
 <rect x="83" y="-218" width="5" height="16"/>
 <rect x="61" y="-300" width="7" height="22"/>
 <rect x="52" y="-374.6" width="8" height="0.6000000000000227"/></g>
+<g fill="#a88051" stroke="#5a3d1c" stroke-width=".12"><rect x="82.000" y="-98.000" width="8.600" height="0.600"/><rect x="82.000" y="-106.600" width="8.600" height="0.600"/><rect x="90.000" y="-106.000" width="0.600" height="8.000"/><rect x="79.400" y="-278.000" width="7.200" height="0.600"/><rect x="78.000" y="-288.600" width="8.600" height="0.600"/><rect x="86.000" y="-288.000" width="0.600" height="10.000"/><rect x="83.600" y="-172.000" width="0.800" height="4.000"/><rect x="93.400" y="-240.000" width="1.200" height="4.000"/><rect x="75.600" y="-288.500" width="0.800" height="5.000"/><rect x="81.400" y="-322.000" width="1.200" height="4.000"/><rect x="89.100" y="-99.500" width="0.900" height="1.000"/><rect x="89.100" y="-101.500" width="0.900" height="1.000"/><rect x="89.100" y="-103.500" width="0.900" height="1.000"/><rect x="89.100" y="-105.500" width="0.900" height="1.000"/><rect x="79.850" y="-281.000" width="0.300" height="3.300"/><rect x="82.650" y="-286.150" width="3.500" height="0.300"/></g>
+<g fill="#5a3d1c" font-family="sans-serif" font-size="2"><text x="88" y="-102">hut · y14</text><text x="84" y="-286">survey · y26</text><text x="86" y="-170">R3 low</text><text x="96" y="-238">R5 high</text><text x="78" y="-286">R6 low</text><text x="84" y="-320">R7 high</text></g>
 <g fill="#5a3d1c" font-family="sans-serif" font-size="2.5"><circle cx="62" cy="-68" r="1"/><text x="64" y="-67">R0 · y8</text>
 <circle cx="78" cy="-96" r="1"/><text x="80" y="-95">R1 · y14</text>
 <circle cx="64" cy="-128" r="1"/><text x="66" y="-127">R2 · y20</text>
@@ -215,7 +228,7 @@
 <circle cx="54" cy="-334" r="1"/><text x="56" y="-336">X5 · y8</text>
 <circle cx="40" cy="-320" r="1"/><text x="42" y="-322">J4 · y8</text>
 <circle cx="16" cy="-332" r="1"/><text x="18" y="-334">X6 · y8</text>
-<text x="-69" y="-507" font-size="3.5">U-164 · R0–R9 ridge, R7b service bridge, first-X5 mouth and road fights · north ↑</text>
+<text x="-69" y="-507" font-size="3.5">U-165 · furnished R0–R9 ridge, R7b service bridge, first-X5 mouth and road fights · north ↑</text>
 <text x="-69" y="-501">20 m ribbon / 12 m carriageway / 36 m aprons; grey: rock from y5.5, ≥2.2 m above the road</text>
 <text x="-69" y="-496">West T-W crest y26; east T-C/T-E foot y20; dotted: inside-corner spur zones (off-road part)</text>
 <text x="-69" y="-491">Purple: ridge bay fans and target rays; rock stays 0.3 m under them</text>

@@ -1,15 +1,15 @@
 {
-  "task": "U-164",
+  "task": "U-165",
   "parent": "U-140",
   "foundation": "U-149",
   "bend": "U-159",
   "rock": "U-160",
   "road": "U-139",
-  "kind": "isolated surface whitebox: road fights, screened tank ingress, D0 return store and R0–R9 ridge with service bridge",
+  "kind": "isolated surface whitebox: road fights, screened tank ingress, D0 return store and furnished R0–R9 ridge with service bridge",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "827de316e48b01e51e274240c7ab2d3407f9608a6fee2066951b76c909064bd9",
-  "levelHash": "015b465568c77abb2835421c83c131347070316553e8f71b691d927c7a835b05",
-  "boxCount": 79213,
+  "sourceHash": "106717bd83e393e6079b2240987a79262bb34e9bb3bf6f0f9b2e3af1c1bd4a13",
+  "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b",
+  "boxCount": 79130,
   "stratumM": 0.025,
   "edgeExpansionM": 0.005,
   "circleSides": 512,
@@ -476,7 +476,7 @@
     "massRowM": 0.5,
     "fanCellM": 1,
     "eyeHeightM": 1.55,
-    "rockBoxes": 17043,
+    "rockBoxes": 17021,
     "temporaryCapBoxes": 746,
     "rays": [
       {
@@ -2413,6 +2413,174 @@
       "maxX": 72,
       "maxZ": 84
     },
+    "furniture": {
+      "wallM": 0.6,
+      "wallHeightM": 3,
+      "routeApron": {
+        "id": "R6-furniture-turn",
+        "y": 26,
+        "widthM": 8,
+        "spine": [
+          {
+            "x": 75.86842105263158,
+            "z": 275.5
+          },
+          {
+            "x": 71.5,
+            "z": 281.9
+          },
+          {
+            "x": 71.5,
+            "z": 290
+          },
+          {
+            "x": 71.5,
+            "z": 295
+          }
+        ]
+      },
+      "shells": [
+        {
+          "id": "hut",
+          "minX": 82,
+          "maxX": 90,
+          "minZ": 98,
+          "maxZ": 106,
+          "y": 14,
+          "southWestBreakM": 0
+        },
+        {
+          "id": "survey",
+          "minX": 78,
+          "maxX": 86,
+          "minZ": 278,
+          "maxZ": 288,
+          "y": 26,
+          "southWestBreakM": 1.4
+        }
+      ],
+      "recesses": [
+        {
+          "id": "hut",
+          "minX": 81.6,
+          "maxX": 90.6,
+          "minZ": 97.4,
+          "maxZ": 106.6,
+          "y": 14
+        },
+        {
+          "id": "hut-spur",
+          "minX": 80,
+          "maxX": 82,
+          "minZ": 98,
+          "maxZ": 102,
+          "y": 14
+        },
+        {
+          "id": "survey",
+          "minX": 77.6,
+          "maxX": 86.6,
+          "minZ": 277.4,
+          "maxZ": 288.6,
+          "y": 26
+        },
+        {
+          "id": "R5-hold",
+          "minX": 90,
+          "maxX": 98,
+          "minZ": 235,
+          "maxZ": 251,
+          "y": 30
+        },
+        {
+          "id": "R7-cover",
+          "minX": 78,
+          "maxX": 85,
+          "minZ": 317.4,
+          "maxZ": 323,
+          "y": 20
+        },
+        {
+          "id": "R7-cover-mouth",
+          "minX": 74,
+          "maxX": 78,
+          "minZ": 318,
+          "maxZ": 322,
+          "y": 20
+        }
+      ],
+      "cover": [
+        {
+          "id": "R3-low-rock",
+          "x": 84,
+          "y": 26,
+          "z": 170,
+          "w": 0.8,
+          "h": 1.1,
+          "d": 4
+        },
+        {
+          "id": "R5-high-rock",
+          "x": 94,
+          "y": 30,
+          "z": 238,
+          "w": 1.2,
+          "h": 2.2,
+          "d": 4
+        },
+        {
+          "id": "R6-low-wall",
+          "x": 76,
+          "y": 26,
+          "z": 286,
+          "w": 0.8,
+          "h": 1.1,
+          "d": 5
+        },
+        {
+          "id": "R7-high-rock",
+          "x": 82,
+          "y": 20,
+          "z": 320,
+          "w": 1.2,
+          "h": 2.2,
+          "d": 4
+        }
+      ],
+      "sacks": {
+        "x": 89.55,
+        "y": 14,
+        "zs": [
+          99,
+          101,
+          103,
+          105
+        ],
+        "w": 0.9,
+        "h": 0.7,
+        "d": 1
+      },
+      "beams": [
+        {
+          "id": "1",
+          "x": 80,
+          "y": 29,
+          "z": 279.35,
+          "w": 0.3,
+          "h": 0.3,
+          "d": 3.3
+        },
+        {
+          "id": "2",
+          "x": 84.4,
+          "y": 29,
+          "z": 286,
+          "w": 3.5,
+          "h": 0.3,
+          "d": 0.3
+        }
+      ]
+    },
     "mass": {
       "minZ": 60,
       "maxZ": 300,
@@ -2680,12 +2848,15 @@
       }
     ],
     "boxes": {
-      "floor": 14774,
-      "slab": 288,
+      "floor": 14754,
+      "slab": 330,
       "bridge": 1,
-      "parapet": 320,
-      "rock": 10141,
-      "caps": 491
+      "parapet": 332,
+      "rock": 10082,
+      "caps": 439,
+      "cover": 4,
+      "hut": 7,
+      "survey": 5
     },
     "rays": [
       {
@@ -2755,7 +2926,7 @@
     ]
   },
   "tankSweep": {
-    "levelHash": "015b465568c77abb2835421c83c131347070316553e8f71b691d927c7a835b05",
+    "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b",
     "route": {
       "method": "closed interval disk tubes; complete support prism slab union",
       "radiusM": 3.31058907144937,
@@ -3200,7 +3371,6 @@
   },
   "ownerQualityVerdict": "road look/play batched in U-139; ridge look/play batched in U-140",
   "unfinished": [
-    "ridge huts, cover and R5 hold: U-165",
     "support bays/C12 stairs: U-141",
     "outpost: U-116",
     "basement: U-115"
