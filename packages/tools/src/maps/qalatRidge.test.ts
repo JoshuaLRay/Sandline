@@ -27,7 +27,7 @@ const BAYS = [
 ];
 // Independent local R6 clearance bevel; exact stairs/nodes remain unchanged.
 const APRON = ribbonPieces([{ x: 75.86842105263158, z: 275.5 }, { x: 71.5, z: 281.9 },
-  { x: 71.5, z: 290 }, { x: 71.5, z: 295 }], 8);
+  { x: 71.5, z: 290 }, { x: 71.5, z: 295 }], 8).filter((poly) => poly.length >= 3);
 const inApron = (p: Point, margin: number) => APRON.some((poly) => margin < 0
   ? [-margin, margin].flatMap((dx) => [-margin, margin].map((dz) => ({ x: p.x + dx, z: p.z + dz }))).every((v) => inConvex(poly, v))
   : inConvex(convexHull(poly.flatMap((v) => [-margin, margin].flatMap((dx) =>

@@ -157,9 +157,11 @@ function strata(name: string) {
     boxes,
     add(id: string, lo: number, hi: number, z0: number, z1: number, bottom: number, top: number) {
       const key = `${id},${lo},${hi},${bottom},${top}`, old = previous.get(key);
-      // Preserve accepted R0–R7 rows exactly. Only the new bridge/descent
-      // rows need a sub-micron weld for strict ingress boundary queries.
-      const weld = z0 >= 322 ? TOUCH_M : 0;
+      // Preserve accepted bare R0–R7 rows. Bridge/descent and newly
+      // furnished rows need a sub-micron weld: a centre/size round trip
+      // must not open a point-query seam between two full-height supports.
+      const furnished = RIDGE.furniture.recesses.some((r) => z0 >= r.minZ && z0 < r.maxZ && lo < r.maxX && hi > r.minX);
+      const weld = z0 >= 322 || furnished ? TOUCH_M : 0;
       if (old) { old.d = z1 + weld - (old.z - old.d / 2); old.z = z1 + weld - old.d / 2; next.set(key, old); return; }
       const box = { id: `${id}-${name}-${boxes.length}`, x: (lo + hi) / 2, y: bottom, z: (z0 + z1) / 2, w: hi - lo, h: top - bottom, d: z1 - z0 + 2 * weld };
       boxes.push(box); next.set(key, box);

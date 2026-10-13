@@ -206,7 +206,7 @@ U-163 adds standing eyes on R0–R6, a free R7 bridge-mouth view and a ridge ove
 U-164 adds standing eyes on R7/R7b/R8/R9 (R7's capture sits 0.5 m south of
 its node on the retained pad), a tank under the bridge and the R8 underside.
 U-165 appends eight standing-eye views of the hut/spur, survey interior, four
-cover choices and sheltered/exposed R5 actors, retaining all 49 prior views.
+cover choices and sheltered/exposed R5 hold positions, retaining all 49 prior views.
 CAP-X ingress now shows the built deck with a production tank capsule at J1.
 the V2/V3 bay-eye and reveal views render permanent solids (temporary caps hidden).
 Streaming CI uploads `qalat-road-support-review`. Commit manifest, plan,
