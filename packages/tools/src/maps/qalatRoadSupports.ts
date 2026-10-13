@@ -170,8 +170,8 @@ export function roadTankSweepReport(level = buildRoadSupportLevel()) {
 export function roadSupportManifest() {
   const level = buildRoadSupportLevel();
   const levelHash = createHash('sha256').update(JSON.stringify(level)).digest('hex');
-  return { task: 'U-164', parent: 'U-140', foundation: 'U-149', bend: 'U-159', rock: 'U-160', road: 'U-139',
-    kind: 'isolated surface whitebox: road fights, screened tank ingress, D0 return store and R0–R9 ridge with service bridge',
+  return { task: 'U-165', parent: 'U-140', foundation: 'U-149', bend: 'U-159', rock: 'U-160', road: 'U-139',
+    kind: 'isolated surface whitebox: road fights, screened tank ingress, D0 return store and furnished R0–R9 ridge with service bridge',
     activeCampaign: 'unchanged; activation belongs to U-117',
     sourceHash: createHash('sha256').update(JSON.stringify({ insertion: INSERTION, road: ROAD_SUPPORTS, terrain: ROAD_TERRAIN, combat: ROAD_COMBAT, ingress: TANK_INGRESS, shelters: RETURN_SHELTERS, ridge: RIDGE })).digest('hex'),
     levelHash, boxCount: level.boxes.length,
@@ -190,8 +190,7 @@ export function roadSupportManifest() {
     tankSweep: roadTankSweepReport(level),
     combatSightLines: roadCombatReport(),
     ownerQualityVerdict: 'road look/play batched in U-139; ridge look/play batched in U-140',
-    unfinished: ['ridge huts, cover and R5 hold: U-165',
-      'support bays/C12 stairs: U-141', 'outpost: U-116', 'basement: U-115'],
+    unfinished: ['support bays/C12 stairs: U-141', 'outpost: U-116', 'basement: U-115'],
   };
 }
 
@@ -229,6 +228,11 @@ export function roadSupportPlanSvg(): string {
   // U-164: the ridge through R9, its service bridge and remaining temporary caps.
   const shelf = ridge.map((c) => `<polygon points="${points(c)}"/>`).join('\n');
   const ridgeNodes = RIDGE.spine.map((n) => `<circle cx="${n.x}" cy="${-n.z}" r="1"/><text x="${n.x + 2}" y="${-n.z + 1}">${n.id} · y${n.y}</text>`).join('\n');
+  const furniture = buildRoadSupportLevel().boxes.filter((b) => /^(ridge-cover-|ridge-hut-|ridge-survey-)/.test(b.id))
+    .map((b) => `<rect x="${p(b.x - b.w / 2)}" y="${p(-b.z - b.d / 2)}" width="${p(b.w)}" height="${p(b.d)}"/>`).join('');
+  const furnitureLabels = [[86, 102, 'hut · y14'], [82, 286, 'survey · y26'], [84, 170, 'R3 low'],
+    [94, 238, 'R5 high'], [76, 286, 'R6 low'], [82, 320, 'R7 high']] as const;
+  const furnitureText = furnitureLabels.map(([x, z, label]) => `<text x="${x + 2}" y="${-z}">${label}</text>`).join('');
   const ridgeCaps = RIDGE.temporaryCaps.map((c) => `<rect x="${c.minX}" y="${-c.maxZ}" width="${c.maxX - c.minX}" height="${c.maxZ - c.minZ}"/>`).join('\n');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1900" viewBox="-74 -516 216 470">
 <rect x="-74" y="-516" width="216" height="470" fill="#b7c6ca"/>
@@ -243,6 +247,8 @@ export function roadSupportPlanSvg(): string {
 <g fill="#a8804c" fill-opacity=".7" stroke="#3f2517" stroke-width=".15">${office}</g>
 <g fill="#e6dcc4" stroke="#8a6a3a" stroke-width=".12">${shelf}</g>
 <g fill="#5c6b80" fill-opacity=".85">${ridgeCaps}</g>
+<g fill="#a88051" stroke="#5a3d1c" stroke-width=".12">${furniture}</g>
+<g fill="#5a3d1c" font-family="sans-serif" font-size="2">${furnitureText}</g>
 <g fill="#5a3d1c" font-family="sans-serif" font-size="2.5">${ridgeNodes}</g>
 <rect x="45.4" y="-62.6" width="9.2" height="9.2" fill="#a8804c" stroke="#3f2517" stroke-width=".2"/>
 <rect x="44" y="-60" width="6" height="4" fill="#d8ccb6"/>
@@ -256,7 +262,7 @@ export function roadSupportPlanSvg(): string {
 <g fill="none" stroke="#8a2f1d" stroke-width=".35" stroke-dasharray="2 1" font-family="sans-serif" font-size="3">${fights}</g>
 <line x1="${lane.from.x}" y1="${-lane.from.z}" x2="${lane.to.x}" y2="${-lane.to.z}" stroke="#c0392b" stroke-width=".6"/>
 <g fill="#162e35" font-family="sans-serif" font-size="2.5">${labels}
-<text x="-69" y="-507" font-size="3.5">U-164 · R0–R9 ridge, R7b service bridge, first-X5 mouth and road fights · north ↑</text>
+<text x="-69" y="-507" font-size="3.5">U-165 · furnished R0–R9 ridge, R7b service bridge, first-X5 mouth and road fights · north ↑</text>
 <text x="-69" y="-501">20 m ribbon / 12 m carriageway / 36 m aprons; grey: rock from y5.5, ≥${t.edgeMinHeightM} m above the road</text>
 <text x="-69" y="-496">West T-W crest y${t.sideTops.left}; east T-C/T-E foot y${t.sideTops.right}; dotted: inside-corner spur zones (off-road part)</text>
 <text x="-69" y="-491">Purple: ridge bay fans and target rays; rock stays ${t.viewFans.rayClearanceM} m under them</text>
