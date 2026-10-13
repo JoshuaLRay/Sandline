@@ -231,7 +231,7 @@ describe('U-160 road-facing rock on the bent road', () => {
         : (bay.id === 'V1' && t.x === 24) || (bay.id === 'V2' && t.x === -22) ? 9.15 : bay.id === 'V3-X5' ? 11.2 : 8.05;
       const view = between(bay.eye, { ...t, y: targetY });
       if (rayWorld(view, caps) !== null) crossings.push(`${bay.id}→${t.x},${t.z}`);
-      // U-163's temporary ridge bay caps close every bay until U-141 opens it (asserted in qalatRidge.test.ts).
+      // U-167's built bays leave every listed view open (asserted in qalatRidge*.test.ts).
       else expect(rayWorld(view, permanentScene), `${bay.id} → ${JSON.stringify(t)}`).toBeNull();
     }
     // Only the two recorded temporary caps block a listed view.

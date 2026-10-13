@@ -9,12 +9,14 @@ import { VIEW_FANS } from './qalatRoadTerrain.ts';
 
 type Point = { x: number; z: number };
 // Independent §6.2 transcription. Feet anchors, targets (feet y8; §11.1's X5
-// turret top y11.2) and U-167's V3 lip strata [minZ, maxZ, lip, canopy].
+// turret top y11.2) and U-167's lip strata [minZ, maxZ, lip, canopy] across
+// [x from, x to] metres of the 0.25 m strip from its west edge; V3's lowest
+// stratum adds an outer ledge beyond a lip higher than the 0.45 m step.
 const BAYS = [
-  { id: 'V1', x: 58, y: 20, z: 128, targets: [{ x: -4, y: 8, z: 126 }, { x: 24, y: 8, z: 138 }], strata: [[124, 132, 1, 1.7]] },
-  { id: 'V2', x: 88, y: 30, z: 210, targets: [{ x: -22, y: 8, z: 222 }, { x: 26, y: 8, z: 232 }], strata: [[206, 214, 1, 1.7]] },
+  { id: 'V1', x: 58, y: 20, z: 128, targets: [{ x: -4, y: 8, z: 126 }, { x: 24, y: 8, z: 138 }], strata: [[124, 132, 1, 1.7, 0, .25]] },
+  { id: 'V2', x: 88, y: 30, z: 210, targets: [{ x: -22, y: 8, z: 222 }, { x: 26, y: 8, z: 232 }], strata: [[206, 214, 1, 1.7, 0, .25]] },
   { id: 'V3', x: 66, y: 26, z: 286, targets: [{ x: -18, y: 8, z: 302 }, { x: 16, y: 8, z: 332 }, { x: 38, y: 8, z: 360 }, { x: 54, y: 11.2, z: 334 }],
-    strata: [[282, 287, 1, 1.7], [287, 288.15, .75, 1.45], [288.15, 290, .25, .95]] },
+    strata: [[282, 287, 1, 1.7, 0, .25], [287, 288.15, .75, 1.45, 0, .25], [288.15, 290, .5, 1.2, .15, .25], [288.15, 290, .3, 1, 0, .15]] },
 ] as const;
 const LIP_DEPTH = .25, CANOPY_HIGH = 3, OPENING = .7;
 const A4_NEST = { x: -22, z: 222 }, A2 = { x: 12, z: 128 };
@@ -57,9 +59,11 @@ describe('U-167 V1–V3 support bays', () => {
         expect(supportUnder(x, z, .001, bay.y + .01, floors, 0), `${bay.id} floor ${x}/${z}`).toBeCloseTo(bay.y, 9);
         probes++;
       }
-      for (const [minZ, maxZ, lip, canopy] of bay.strata) {
+      for (const [minZ, maxZ, lip, canopy, from, to] of bay.strata) {
         expect(canopy - lip).toBeCloseTo(OPENING, 9);
-        for (let x = west + .02; x < west + LIP_DEPTH; x += .05) for (let z = minZ + .02; z < maxZ; z += .25) {
+        // The innermost lip, the only one a body can touch, is a wall, not a step.
+        if (to === LIP_DEPTH) expect(lip).toBeGreaterThan(DEFAULT_MOVE_CONFIG.stepHeight);
+        for (let x = west + from + .02; x < west + to; x += .05) for (let z = minZ + .02; z < maxZ; z += .25) {
           const boxes = column({ x, z });
           // Solid lip from the floor, a wholly open band, then the canopy.
           expect(Math.max(...boxes.filter((b) => b.minY <= bay.y + 1e-6).map((b) => b.maxY)), `${bay.id} lip ${x}/${z}`).toBeCloseTo(bay.y + lip, 9);
@@ -87,8 +91,8 @@ describe('U-167 V1–V3 support bays', () => {
         probes++;
       }
       // No stance fits on any lip top.
-      for (const [minZ, maxZ, lip] of bay.strata) for (const h of [DEFAULT_MOVE_CONFIG.height, DEFAULT_MOVE_CONFIG.crouchHeight, DEFAULT_MOVE_CONFIG.proneHeight])
-        expect(blockedAt(west + LIP_DEPTH / 2, (minZ + maxZ) / 2, .1, bay.y + lip, 0, h, near({ x: west, z: minZ }, 2)), `${bay.id} lip top body ${h}`).toBe(true);
+      for (const [minZ, maxZ, lip, , from, to] of bay.strata) for (const h of [DEFAULT_MOVE_CONFIG.height, DEFAULT_MOVE_CONFIG.crouchHeight, DEFAULT_MOVE_CONFIG.proneHeight])
+        expect(blockedAt(west + (from + to) / 2, (minZ + maxZ) / 2, .05, bay.y + lip, 0, h, near({ x: west, z: minZ }, 2)), `${bay.id} lip top body ${h}`).toBe(true);
     }
     console.log('U-167 bay construction', JSON.stringify({ probes, openingM: OPENING, proneHeightM: DEFAULT_MOVE_CONFIG.proneHeight }));
   });
@@ -142,7 +146,7 @@ describe('U-167 V1–V3 support bays', () => {
     for (const bay of BAYS) {
       const west = bay.x - .8, boxes = near({ x: bay.x, z: bay.z }, 14);
       const starts: { from: Point; out: Point }[] = [];
-      for (let z = bay.z - 3.5; z <= bay.z + 3.5; z += 1) for (const out of [{ x: -1, z: 0 }, { x: -1, z: -1 }, { x: -1, z: 1 }])
+      for (let z = bay.z - 3.5; z <= bay.z + 3.5 + 1e-9; z += .5) for (const out of [{ x: -1, z: 0 }, { x: -1, z: -1 }, { x: -1, z: 1 }])
         starts.push({ from: { x: west + LIP_DEPTH + .4, z }, out });
       for (let x = west + .4; x <= bay.x + .4; x += .4) for (const dz of [-1, 1])
         starts.push({ from: { x, z: bay.z + dz * 3.6 }, out: { x: -.3, z: dz } });
@@ -161,7 +165,7 @@ describe('U-167 V1–V3 support bays', () => {
         attempts++;
       }
     }
-    expect(attempts).toBeGreaterThan(500);
+    expect(attempts).toBeGreaterThanOrEqual(600);
     console.log('U-167 bay escape attempts', JSON.stringify({ attempts, stances: ['walk', 'sprint-jump', 'crouch', 'prone'], ticks: 90 }));
   }, 120_000);
 });

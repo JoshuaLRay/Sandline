@@ -51,7 +51,6 @@ export const BAYS = RIDGE.bays.list.map((b) => {
   return { ...b, floor, frame, lipMaxX: floor.minX + lipDepthM, strata };
 });
 const frameOf = (r: Rect) => BAYS.find((b) => r.minX < b.frame.maxX && r.maxX > b.frame.minX && r.minZ < b.frame.maxZ && r.maxZ > b.frame.minZ);
-const FINS = RIDGE.fins;
 /** The ridge's view-fan cap (§6.2): rock stays 0.3 m under the lowest ray
  * surface over the cell. Exact for the same reason as `fanRayFloor`; unlike
  * the road's guard it accepts rock east of a bay's eye-1 m line, which only
@@ -64,14 +63,6 @@ function ridgeFanCap(r: Rect): number {
     if (inside.length) for (const s of fan.sectors) for (const v of clipConvex(inside, s.wedge)) min = Math.min(min, s.height(v));
   }
   return capUnder(min);
-}
-const finCuts = (z0: number, z1: number) => FINS.filter((f) => f.minZ < z1 && f.maxZ > z0).flatMap((f) => [f.minX, f.maxX]);
-/** §6.2's blind-spot fins rise above the ridge rock; none may enter a fan. */
-function finTop(r: Rect, top: number): number {
-  const fin = FINS.find((f) => r.minX >= f.minX - 1e-9 && r.maxX <= f.maxX + 1e-9 && r.minZ >= f.minZ - 1e-9 && r.maxZ <= f.maxZ + 1e-9);
-  if (!fin || fin.top <= top) return top;
-  if (ridgeFanCap(r) < fin.top) throw new Error(`${fin.id} enters a view fan at x${r.minX} z${r.minZ}`);
-  return fin.top;
 }
 
 /** One segment's stair layout along its centreline parameter t (metres from the lower-index node). */
@@ -340,13 +331,13 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
     const open = union(FLOORS.map((f) => sweep(f.polygon, Z0 - reach, Z1 + reach)).filter((s): s is Interval => s !== null)
       .map(([a, b]) => [a - reach, b + reach]));
     const fans = fanSpans(Z0, Z1);
-    if (body) for (const [lo, hi] of cutAt(subtract(west, east, open), [...capCuts(Z0, Z1), ...finCuts(Z0, Z1), ...fans.flat()])) {
+    if (body) for (const [lo, hi] of cutAt(subtract(west, east, open), [...capCuts(Z0, Z1), ...fans.flat()])) {
       const shaped = fans.some(([a, b]) => lo <= b + 1e-6 && hi >= a - 1e-6);
       const cells = shaped ? Math.ceil((hi - lo) / FAN_CELL_M - 1e-9) : 1;
       for (let i = 0; i < cells; i++) {
         const a = lo + (hi - lo) * i / cells, b = i === cells - 1 ? hi : lo + (hi - lo) * (i + 1) / cells;
         const r = { minX: a, maxX: b, minZ: Z0, maxZ: Z1 }, cap = capAt(r);
-        const top = cap ? cap.top : finTop(r, Math.min(ridgeCrest((Z0 + Z1) / 2), ridgeFanCap(r)));
+        const top = cap ? cap.top : Math.min(ridgeCrest((Z0 + Z1) / 2), ridgeFanCap(r));
         if (top > RIDGE.bottomY + 1e-9) coarse.add(cap ? `ridge-cap-${cap.id}` : 'ridge-rock', a, b, Z0, Z1, cap?.bottomY ?? RIDGE.bottomY, top);
       }
     }
@@ -365,7 +356,7 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
         .map(([a, b]): Interval => [a - EDGE_M, b + EDGE_M]), ...excludedGround]);
       const spans = open.flatMap(([a, b]) => subtract(Math.max(a, west), Math.min(b, east), shelf));
       const frameCuts = BAYS.flatMap((b) => [b.floor.minX, b.x]);
-      for (const [lo, hi] of cutAt(spans, [...capCuts(z0, z1), ...finCuts(z0, z1), ...frameCuts, ...below.flat()])) {
+      for (const [lo, hi] of cutAt(spans, [...capCuts(z0, z1), ...frameCuts, ...below.flat()])) {
         const r = { minX: lo, maxX: hi, minZ: z0, maxZ: z1 }, bay = frameOf(r);
         if (bay) {
           // U-167: west of the bay floor the hillside stays under the fan;
@@ -376,8 +367,7 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
           if (top > RIDGE.bottomY + 1e-9) ring.add(west ? 'ridge-rock' : `ridge-bay-${bay.id}-return`, lo, hi, z0, z1, RIDGE.bottomY, top);
           continue;
         }
-        const barrierTop = barrier(r, inBody);
-        const { id, bottom } = barrierTop, top = finTop(r, barrierTop.top);
+        const { id, top, bottom } = barrier(r, inBody);
         const overRoad = below.some(([a, b]) => (lo + hi) / 2 >= a && (lo + hi) / 2 <= b);
         const hangingBottom = Math.max(RIDGE.bridge.minTurretUndersideY, near({ minX: lo, maxX: hi, minZ: z0, maxZ: z1 }, .06) - RIDGE.slabM);
         if (top > bottom + 1e-9) ring.add(overRoad ? 'ridge-parapet' : id, lo, hi, z0, z1, overRoad ? hangingBottom : bottom, top);
@@ -391,7 +381,7 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
   const gate = RIDGE.temporaryCaps.find((c) => c.id === 'east-gate')!;
   const gateCap = { id: 'ridge-cap-east-gate', x: (gate.minX + gate.maxX) / 2, y: gate.bottomY, z: (gate.minZ + gate.maxZ) / 2,
     w: gate.maxX - gate.minX, h: gate.top - gate.bottomY, d: gate.maxZ - gate.minZ };
-  return [...floor.boxes, deck, ...coarse.boxes, ...ring.boxes, gateCap, ...buildRidgeFurniture(), ...buildBayFrames()];
+  return [...floor.boxes, deck, ...coarse.boxes, ...ring.boxes, gateCap, ...buildRidgeFurniture(), ...buildBayFrames(), ...buildRidgeFins()];
 }
 
 /** §6.2's lip on each bay's westernmost strip, the canopy's low edge over
@@ -402,12 +392,27 @@ export function buildBayFrames(): BoxSpec[] {
   const box = (id: string, minX: number, maxX: number, minZ: number, maxZ: number, y0: number, y1: number): BoxSpec =>
     ({ id, x: (minX + maxX) / 2, y: y0, z: (minZ + maxZ) / 2, w: maxX - minX, h: y1 - y0, d: maxZ - minZ });
   return BAYS.flatMap((b) => [
-    ...b.strata.flatMap((s, i) => [
-      box(`ridge-bay-${b.id}-lip-${i}`, b.floor.minX, b.lipMaxX, s.minZ, s.maxZ, b.y, b.y + s.lipM),
-      box(`ridge-bay-${b.id}-canopy-${i}`, b.floor.minX, b.lipMaxX, s.minZ, s.maxZ, b.y + s.canopyM, b.y + frameTopM),
-    ]),
+    ...b.strata.flatMap((s, i) => {
+      // An optional lower outer ledge lies wholly beyond the inner lip, which
+      // stays above the controller's step height wherever a body can reach.
+      const split = 'outer' in s ? b.floor.minX + s.outer.depthM : b.floor.minX;
+      return [
+        box(`ridge-bay-${b.id}-lip-${i}`, split, b.lipMaxX, s.minZ, s.maxZ, b.y, b.y + s.lipM),
+        box(`ridge-bay-${b.id}-canopy-${i}`, split, b.lipMaxX, s.minZ, s.maxZ, b.y + s.canopyM, b.y + frameTopM),
+        ...'outer' in s ? [
+          box(`ridge-bay-${b.id}-ledge-${i}`, b.floor.minX, split, s.minZ, s.maxZ, b.y, b.y + s.outer.lipM),
+          box(`ridge-bay-${b.id}-ledge-canopy-${i}`, b.floor.minX, split, s.minZ, s.maxZ, b.y + s.outer.canopyM, b.y + frameTopM),
+        ] : [],
+      ];
+    }),
     box(`ridge-bay-${b.id}-canopy`, b.lipMaxX, b.x, b.floor.minZ, b.floor.maxZ, b.y + canopyHighM, b.y + frameTopM),
   ]);
+}
+
+/** §6.2's blind-spot fin F3, solid from the ridge bottom; F1/F2 stand in the road rock. */
+export function buildRidgeFins(): BoxSpec[] {
+  return RIDGE.fins.map((f) => ({ id: `ridge-fin-${f.id}`, x: (f.minX + f.maxX) / 2, y: f.bottomY, z: (f.minZ + f.maxZ) / 2,
+    w: f.maxX - f.minX, h: f.top - f.bottomY, d: f.maxZ - f.minZ }));
 }
 
 /** Screening proofs count permanent solids only. The temporary east-gate cap
