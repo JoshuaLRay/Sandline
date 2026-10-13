@@ -1,5 +1,5 @@
 {
-  "$comment": "U-163, first leaf of U-140: the continuous R0-R7 ridge shelf of construction specification sections 2.2, 3.2 and 6.1. An 8 m stepped shelf cut into the T-E ridge body, its exact flat landings and R3 combat shelf, with barrier rock on both sides. Temporary caps close the unbuilt V1-V3 bay fronts (U-141) and R7's bridge mouth (U-164). The R7b bridge, R8/R9 descent, huts, survey post and ridge cover are U-164/U-165; this is not a campaign registry entry.",
+  "$comment": "U-163/U-164: continuous R0-R9 ridge shelf, exact R7b service bridge and descent. Temporary caps close unbuilt V1-V3 bay fronts (U-141) and the east gate approach (U-116). Bridge approaches override R7 generic landing north extent; R8 keeps its exact landing. Ridge furnishings remain U-165; not a campaign registry entry.",
   "id": "qalat-ridge",
   "shelfWidth": 8,
   "riserM": 0.2,
@@ -10,45 +10,40 @@
   "barrierM": 2.2,
   "slabM": 0.6,
   "minSlabUndersideY": 14,
-  "approach": { "id": "D0", "x": 32, "y": 8, "z": 64 },
+  "approach": {"id": "D0", "x": 32, "y": 8, "z": 64},
   "spine": [
-    { "id": "R0", "x": 62, "y": 8, "z": 68 },
-    { "id": "R1", "x": 78, "y": 14, "z": 96 },
-    { "id": "R2", "x": 64, "y": 20, "z": 128 },
-    { "id": "R3", "x": 80, "y": 26, "z": 168 },
-    { "id": "R4", "x": 94, "y": 30, "z": 210 },
-    { "id": "R5", "x": 86, "y": 30, "z": 248 },
-    { "id": "R6", "x": 72, "y": 26, "z": 286 },
-    { "id": "R7", "x": 70, "y": 20, "z": 322 }
+    {"id": "R0", "x": 62, "y": 8, "z": 68},
+    {"id": "R1", "x": 78, "y": 14, "z": 96},
+    {"id": "R2", "x": 64, "y": 20, "z": 128},
+    {"id": "R3", "x": 80, "y": 26, "z": 168},
+    {"id": "R4", "x": 94, "y": 30, "z": 210},
+    {"id": "R5", "x": 86, "y": 30, "z": 248},
+    {"id": "R6", "x": 72, "y": 26, "z": 286},
+    {"id": "R7", "x": 70, "y": 20, "z": 322},
+    {"id": "R7b", "x": 70, "y": 16, "z": 336},
+    {"id": "R8", "x": 70, "y": 12, "z": 350},
+    {"id": "R9", "x": 56, "y": 8, "z": 370}
   ],
-  "risers": [30, 30, 30, 20, 0, 20, 30],
+  "risers": [30, 30, 30, 20, 0, 20, 30, 20, 20, 20],
   "landings": [
-    { "id": "R1", "minX": 72, "maxX": 84, "minZ": 90, "maxZ": 102 },
-    { "id": "R2", "minX": 58, "maxX": 70, "minZ": 122, "maxZ": 134 },
-    { "id": "R3", "minX": 74, "maxX": 86, "minZ": 158, "maxZ": 182 },
-    { "id": "R4", "minX": 88, "maxX": 100, "minZ": 204, "maxZ": 216 },
-    { "id": "R5", "minX": 80, "maxX": 92, "minZ": 242, "maxZ": 254 },
-    { "id": "R6", "minX": 66, "maxX": 78, "minZ": 280, "maxZ": 292 },
-    { "id": "R7", "minX": 66, "maxX": 74, "minZ": 320, "maxZ": 324 }
+    {"id": "R1", "minX": 72, "maxX": 84, "minZ": 90, "maxZ": 102},
+    {"id": "R2", "minX": 58, "maxX": 70, "minZ": 122, "maxZ": 134},
+    {"id": "R3", "minX": 74, "maxX": 86, "minZ": 158, "maxZ": 182},
+    {"id": "R4", "minX": 88, "maxX": 100, "minZ": 204, "maxZ": 216},
+    {"id": "R5", "minX": 80, "maxX": 92, "minZ": 242, "maxZ": 254},
+    {"id": "R6", "minX": 66, "maxX": 78, "minZ": 280, "maxZ": 292},
+    {"id": "R7", "minX": 66, "maxX": 74, "minZ": 320, "maxZ": 322},
+    {"id": "R7b", "minX": 66, "maxX": 74, "minZ": 330, "maxZ": 342},
+    {"id": "R8", "minX": 66, "maxX": 74, "minZ": 348, "maxZ": 352},
+    {"id": "R9", "minX": 52, "maxX": 60, "minZ": 368, "maxZ": 374}
   ],
-  "insertionBounds": { "maxX": 72, "maxZ": 84 },
-  "mass": {
-    "minZ": 60,
-    "maxZ": 300,
-    "ringM": 1,
-    "polygon": [[46, 70], [88, 58], [114, 116], [122, 208], [110, 300], [90, 364], [54, 362], [58, 302], [68, 252], [70, 204], [50, 150]],
-    "crest": [[128, 20], [168, 34], [210, 38], [248, 34], [286, 30]]
-  },
+  "insertionBounds": {"maxX": 72, "maxZ": 84},
+  "mass": {"minZ": 60, "maxZ": 300, "ringM": 1, "polygon": [[46, 70], [88, 58], [114, 116], [122, 208], [110, 300], [90, 364], [54, 362], [58, 302], [68, 252], [70, 204], [50, 150]], "crest": [[128, 20], [168, 34], [210, 38], [248, 34], [286, 30]]},
   "temporaryCaps": [
-    { "id": "V1-bay", "for": "U-141", "minX": 54, "maxX": 58, "minZ": 120, "maxZ": 136, "bottomY": 5.5, "top": 24,
-      "why": "V1's fan reaches the R2 landing's west edge; until U-141 builds the bay lip and canopy, rock stands at full barrier height across the bay front" },
-    { "id": "V2-bay", "for": "U-141", "minX": 83, "maxX": 88, "minZ": 202, "maxZ": 218, "bottomY": 5.5, "top": 34,
-      "why": "V2's fan reaches the R4 landing's west edge; closed at barrier height until U-141 builds the bay" },
-    { "id": "V3-bay", "for": "U-141", "minX": 61, "maxX": 68, "minZ": 278, "maxZ": 300, "bottomY": 5.5, "top": 30,
-      "why": "V3's fans reach the R6 landing and the R6-R7 stair's west edge; closed at barrier height until U-141 builds the bay" },
-    { "id": "R7-north", "for": "U-164", "minX": 66, "maxX": 74.6, "minZ": 324, "maxZ": 325, "bottomY": 19.4, "top": 24, "hanging": true,
-      "why": "R7's north edge is the future bridge approach; over the X4 apron the wall hangs above y14 so the 36 m apron stays clear" },
-    { "id": "R7-east", "for": "U-164", "minX": 74.005, "maxX": 74.6, "minZ": 322.5, "maxZ": 324, "bottomY": 19.4, "top": 24, "hanging": true,
-      "why": "the R7 landing's north-east corner overhangs the X4 apron, which reaches its east edge north of z322.5; a hanging wall closes that drop until the bridge exists" }
-  ]
+    {"id": "V1-bay", "for": "U-141", "minX": 54, "maxX": 58, "minZ": 120, "maxZ": 136, "bottomY": 5.5, "top": 24, "why": "V1's fan reaches the R2 landing's west edge; until U-141 builds the bay lip and canopy, rock stands at full barrier height across the bay front"},
+    {"id": "V2-bay", "for": "U-141", "minX": 83, "maxX": 88, "minZ": 202, "maxZ": 218, "bottomY": 5.5, "top": 34, "why": "V2's fan reaches the R4 landing's west edge; closed at barrier height until U-141 builds the bay"},
+    {"id": "V3-bay", "for": "U-141", "minX": 61, "maxX": 68, "minZ": 278, "maxZ": 300, "bottomY": 5.5, "top": 30, "why": "V3's fans reach the R6 landing and the R6-R7 stair's west edge; closed at barrier height until U-141 builds the bay"},
+    {"id": "east-gate", "for": "U-116", "minX": 52, "maxX": 60, "minZ": 374, "maxZ": 374.6, "bottomY": 5.5, "top": 10.2, "why": "The y8 R9 approach stops at the named outpost east gate; U-116 builds and opens its shell."}
+  ],
+  "bridge": {"minX": 66, "maxX": 74, "minZ": 330, "maxZ": 342, "undersideY": 14, "deckY": 16, "approachTreadM": 0.3, "approachRunM": 8, "minTurretUndersideY": 11.4, "finalStairFirstMinZ": 355.06}
 }

@@ -1,4 +1,4 @@
-/** Exact-scene road captures including U-162's first-X5 production capsule probes and U-163's ridge shelf. */
+/** Exact-scene road captures including the occupied U-164 bridge and R8/R9 descent. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { blockedAt, loadLevel, supportUnder } from '@sandline/shared';
 import { chromium } from 'playwright';
@@ -21,10 +21,10 @@ const views = [
   { name: 'toll-office', position: [-4, 9.55, 118], target: [12, 9.55, 128], label: 'Toll office interior · open 4 m east door, closed north wall · standing eye y9.55', probe: false },
   { name: 'frontage-mg', position: [-23, 9.55, 222.8], target: [-28, 9.55, 180], label: 'AF1 MG nest · A-C06 at the head of the west leg · standing eye y9.55', probe: false },
   { name: 'depot-frontage', position: [-35, 9.55, 199], target: [-38.5, 9.55, 200.4], label: 'West-leg depot frontage · closed loading recesses · standing eye y9.55', probe: false },
-  { name: 'cap-x-ingress', position: [16, 9.55, 332], target: [70, 9.55, 336], label: 'CAP-X · y8 service road under reserved bridge; bridge remains U-140', probe: false },
+  { name: 'cap-x-ingress', position: [16, 9.55, 332], target: [70, 9.55, 336], label: 'CAP-X · production tank at (70,8,336) under occupied R7b bridge; ridge deck y16 / underside y14', probe: false, tank: { x: 70, y: 8, z: 336, yaw: 0 } },
   { name: 'x0-motor-pool', position: [96, 9.55, 444], target: [114, 9.55, 432], label: 'X0 · exact motor pool, y14 rock canopy and offset six-metre returns · standing eye y9.55', probe: false },
   { name: 'x1-retaining-turn', position: [114, 9.55, 432], target: [96, 9.55, 444], label: 'X1 · screened return through the retaining dogleg · standing eye y9.55', probe: false },
-  { name: 'x-bridge-reservation', position: [70, 9.55, 336], target: [84, 9.55, 338], label: 'Service road y8 · exact x66..74/z330..342 bridge void, underside y14 reserved; deck unbuilt', probe: false },
+  { name: 'x-bridge-reservation', position: [70, 9.55, 336], target: [84, 9.55, 338], label: 'Service road y8 · built x66..74/z330..342 bridge overhead, flat deck y16 / underside y14', probe: false },
   { name: 'v3-x5-silhouette', position: [66, 27.55, 286], target: [54, 11.2, 334], label: 'V3 eye probe · X5 turret-height silhouette opening; X0 remains hidden · permanent solids, temporary bay cap hidden until U-141', probe: false, permanent: true },
   { name: 'cap-return', position: [44, 9.55, 58], target: [32, 9.55, 98], label: 'CAP-RETURN · court edge and tank stop · store entrance beside the retreat · standing eye y9.55', probe: false },
   { name: 'weigh-station-door', position: [40, 9.55, 58], target: [50, 9.55, 58], label: 'D0 court toward store · 4 m connector and west door · y8 floor / y12 ceiling · standing eye y9.55', probe: false },
@@ -48,7 +48,7 @@ const views = [
       label: `${eye.name} · X5 production hull/turret probe visible at the western mouth (temporary ridge caps hidden; U-141 opens V3)`, probe: false,
       tank: { x: 54, y: 8, z: 334, yaw: 0 }, expectedTankVisible: true, permanent: true },
   ]),
-  // U-163: standing eyes at each ridge node toward the next, and a free overview.
+  // Standing eyes at each ridge node, followed by free views and underside proofs.
   ...[
     { name: 'ridge-r0-mouth', feet: [46, 8, 65.9], target: [78, 15.55, 96], label: 'D0→R0 · the ridge stair mouth beside the court and its first flights' },
     { name: 'ridge-r1-landing', feet: [78, 14, 96], target: [64, 21.55, 128], label: 'R1 landing y14 · climb to the R2 saddle; hut site rock until U-165' },
@@ -57,10 +57,16 @@ const views = [
     { name: 'ridge-r4-eagle', feet: [94, 30, 210], target: [86, 31.55, 248], label: 'R4 Eagle shelf y30 · level saddle to R5; V2 bay front capped for U-141' },
     { name: 'ridge-r5-saddle', feet: [86, 30, 248], target: [72, 27.55, 286], label: 'R5 saddle y30 · descent to the R6 survey post' },
     { name: 'ridge-r6-survey', feet: [72, 26, 286], target: [70, 21.55, 322], label: 'R6 y26 · descent to R7; V3 bay front capped for U-141' },
+    { name: 'ridge-r7-landing', feet: [70, 20, 321.5], target: [70, 17.55, 336], label: 'R7 landing y20 · eye 0.5 m south of named node for full-foot support; 0.30 m treads descend to bridge' },
+    { name: 'ridge-r7b-deck', feet: [70, 16, 336], target: [70, 13.55, 350], label: 'R7b bridge deck y16 · full 8 m width between parapets; R8 descent beyond the flat deck' },
+    { name: 'ridge-r8-landing', feet: [70, 12, 350], target: [56, 9.55, 370], label: 'R8 landing y12 · sheltered 8×4 m pad, final 20 risers to R9' },
+    { name: 'ridge-r9-gate', feet: [56, 8, 370], target: [56, 9.55, 374], label: 'R9 y8 · east-gate approach capped until U-116' },
   ].map((v) => ({ name: v.name, position: [v.feet[0]!, v.feet[1]! + 1.55, v.feet[2]!], target: v.target,
     label: `${v.label} · standing eye`, probe: false, feetY: v.feet[1]! })),
-  { name: 'ridge-r7-mouth', position: [98, 56, 300], target: [70, 16, 326], label: 'Free view · R7 landing y20 over the X4 apron; hanging caps close the bridge mouth until U-164', probe: false },
-  { name: 'ridge-overview', position: [190, 150, 110], target: [76, 20, 200], label: 'Free overview · U-163 R0–R7 ridge shelf, barrier rock and temporary caps', probe: false },
+  { name: 'ridge-r7-mouth', position: [98, 56, 300], target: [70, 16, 336], label: 'Free view · R7 landing, built R7b bridge and R8/R9 descent over the tank road', probe: false },
+  { name: 'ridge-overview', position: [190, 150, 110], target: [76, 20, 230], label: 'Free overview · U-164 R0–R9 ridge and service bridge; V1–V3 and east-gate caps remain', probe: false },
+  { name: 'bridge-under-tank', position: [72, 9.55, 327], target: [70, 10.5, 336], label: 'Tank road standing eye · production hull/turret at (70,8,336) beneath the built bridge', probe: false, tank: { x: 70, y: 8, z: 336, yaw: 0 }, expectedTankVisible: true },
+  { name: 'r8-underside', position: [77, 9.55, 349], target: [70, 11.4, 350], label: 'Tank road standing eye · R8 landing floor y12 / underside y11.4, 0.2 m above full turret envelope', probe: false },
 ];
 const output = new URL('../../../artifacts/qalat-road-supports/', import.meta.url);
 const world = loadLevel(JSON.parse(await readFile(new URL('level.json', output), 'utf8')));
@@ -69,7 +75,9 @@ const world = loadLevel(JSON.parse(await readFile(new URL('level.json', output),
 for (const v of views.filter((v) => v.position[1] === 9.55 || 'feetY' in v)) {
   const [x, , z] = v.position, feetY = 'feetY' in v ? v.feetY : 8;
   if (blockedAt(x!, z!, .35, feetY, 0, 1.8, world.boxes)) throw new Error(`${v.name}: standing-eye anchor is inside collision geometry`);
-  if (supportUnder(x!, z!, .35, feetY + .05, world.boxes, 0) !== feetY) throw new Error(`${v.name}: standing-eye anchor is unsupported at intended feet y${feetY}`);
+  for (const dx of [-.35, 0, .35]) for (const dz of [-.35, 0, .35])
+    if (supportUnder(x! + dx, z! + dz, .001, feetY + .05, world.boxes, 0) !== feetY)
+      throw new Error(`${v.name}: standing-eye footprint is unsupported at intended feet y${feetY}`);
 }
 const server = await createServer({ root: new URL('../../../', import.meta.url).pathname,
   configFile: false, server: { host: '127.0.0.1', port: 4175, strictPort: true } });
@@ -97,7 +105,7 @@ try {
       throw new Error(`${v.name}: unexpected hull/turret visibility (${stats.tankPixels} changed pixels)`);
     await page.screenshot({ path: new URL(`${v.name}.png`, output).pathname });
     measurements.push({ ...v, ...stats });
-    console.log(`U-163 ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles`);
+    console.log(`U-164 ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles`);
   }
   if (errors.length) throw new Error(errors.join('\n'));
   await writeFile(new URL('captures.json', output), JSON.stringify({

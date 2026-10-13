@@ -1,8 +1,8 @@
-/** U-163, first leaf of U-140: the continuous R0–R7 ridge shelf (§§2.2, 3.2,
+/** U-163/U-164: the continuous R0–R9 ridge shelf (§§2.2, 3.2,
  * 6.1), outside the campaign until U-117. An 8 m stepped shelf with its exact
  * flat landings, cut into the T-E ridge body. Every edge stands against rock at
  * least 2.2 m above the adjacent floor; recorded temporary caps close the
- * unbuilt V1–V3 bay fronts (U-141) and R7's bridge mouth (U-164). Collision and
+ * unbuilt V1–V3 bay fronts (U-141) and east gate (U-116). Collision and
  * rendering use the same boxes.
  *
  * Stair recipe (Conflict default for §2.2's "distribute risers evenly"): each
@@ -60,14 +60,30 @@ function layout(i: number): Flight {
   const t0 = Math.max(...reach(flatZones(i)).flat()), t1 = Math.min(...reach(flatZones(i + 1)).flat());
   const n = RIDGE.risers[i]!, rise = b.y - a.y;
   if (Math.abs(Math.abs(rise) - n * RIDGE.riserM) > 1e-9 || n % RIDGE.flightRisers) throw new Error(`${a.id}→${b.id}: ${n} risers cannot climb ${rise} m`);
+  // Bridge approaches override R7's north pad extent, retaining its old
+  // south edge and R6→R7 stairs. Twenty 0.30 m treads plus a 2 m landing.
+  if (a.id === 'R7' || a.id === 'R7b') {
+    const start = a.id === 'R7' ? 0 : RIDGE.bridge.maxZ - a.z;
+    return { from: a.id, to: b.id, length, t0: start, t1: start + RIDGE.bridge.approachRunM,
+      risers: Array.from({ length: n }, (_, k) => start + (k + 1) * RIDGE.bridge.approachTreadM),
+      restLandingM: 2, fromY: a.y, toY: b.y };
+  }
   const flights = n / RIDGE.flightRisers, run = (RIDGE.flightRisers - 1) * RIDGE.treadM;
   const gap = flights ? (t1 - t0 - flights * run) / (flights + 1) : t1 - t0;
   if (flights && gap < RIDGE.restLandingM) throw new Error(`${a.id}→${b.id}: rest landings ${gap} m < ${RIDGE.restLandingM} m`);
+  // Conflict default: keep the entire R8→R9 cross-section y12 until its
+  // first riser clears J2/J3 road pads plus skin, then fit the ordinary
+  // ten-riser flights with >=2 m rests. Full road clearance takes precedence
+  // over equal rest spacing; every lower stair foundation is off the lane.
+  const firstGap = a.id === 'R8' ? Math.max(gap,
+    (RIDGE.bridge.finalStairFirstMinZ - a.z + Math.abs(ux) * RIDGE.shelfWidth / 2) / uz - t0) : gap;
+  const laterGap = flights ? (t1 - t0 - flights * run - firstGap) / flights : gap;
+  if (flights && laterGap < RIDGE.restLandingM) throw new Error(`${a.id}→${b.id}: clearance leaves ${laterGap} m rests`);
   const risers = Array.from({ length: n }, (_, k) => {
     const f = Math.floor(k / RIDGE.flightRisers), j = k % RIDGE.flightRisers;
-    return t0 + gap * (f + 1) + f * run + j * RIDGE.treadM;
+    return t0 + firstGap + f * laterGap + f * run + j * RIDGE.treadM;
   });
-  return { from: a.id, to: b.id, length, t0, t1, risers, restLandingM: gap, fromY: a.y, toY: b.y };
+  return { from: a.id, to: b.id, length, t0, t1, risers, restLandingM: Math.min(firstGap, laterGap), fromY: a.y, toY: b.y };
 }
 export const FLIGHTS = RIDGE.spine.slice(0, -1).map((_, i) => layout(i));
 
@@ -132,8 +148,11 @@ function strata(name: string) {
     boxes,
     add(id: string, lo: number, hi: number, z0: number, z1: number, bottom: number, top: number) {
       const key = `${id},${lo},${hi},${bottom},${top}`, old = previous.get(key);
-      if (old) { old.d = z1 - (old.z - old.d / 2); old.z = z1 - old.d / 2; next.set(key, old); return; }
-      const box = { id: `${id}-${name}-${boxes.length}`, x: (lo + hi) / 2, y: bottom, z: (z0 + z1) / 2, w: hi - lo, h: top - bottom, d: z1 - z0 };
+      // Preserve accepted R0–R7 rows exactly. Only the new bridge/descent
+      // rows need a sub-micron weld for strict ingress boundary queries.
+      const weld = z0 >= 322 ? TOUCH_M : 0;
+      if (old) { old.d = z1 + weld - (old.z - old.d / 2); old.z = z1 + weld - old.d / 2; next.set(key, old); return; }
+      const box = { id: `${id}-${name}-${boxes.length}`, x: (lo + hi) / 2, y: bottom, z: (z0 + z1) / 2, w: hi - lo, h: top - bottom, d: z1 - z0 + 2 * weld };
       boxes.push(box); next.set(key, box);
     },
     row() { previous = next; next = new Map(); },
@@ -161,7 +180,7 @@ function subtract(lo: number, hi: number, open: Interval[]): Interval[] {
   return out.filter(([a, b]) => b - a > 1e-9);
 }
 const within = (r: Rect, c: Rect) => r.minX >= c.minX - 1e-9 && r.maxX <= c.maxX + 1e-9 && r.minZ >= c.minZ - 1e-9 && r.maxZ <= c.maxZ + 1e-9;
-const groundCaps = RIDGE.temporaryCaps.filter((c) => !('hanging' in c));
+const groundCaps = RIDGE.temporaryCaps;
 const capAt = (r: Rect) => groundCaps.find((c) => within(r, c));
 const capCuts = (z0: number, z1: number) => groundCaps.filter((c) => c.minZ < z1 && c.maxZ > z0).flatMap((c) => [c.minX, c.maxX]);
 
@@ -197,8 +216,11 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
         const x = (a + b) / 2;
         if (below.some(([p, q]) => x >= p && x <= q)) {
           // Overhanging a road or apron: a slab high enough to leave it clear.
-          if (y - RIDGE.slabM < RIDGE.minSlabUndersideY) throw new Error(`ridge floor y${y} overhangs a y8 floor at x${x} z${z0}`);
-          floor.add('ridge-slab', a, b, z0, z1, y - RIDGE.slabM, y);
+          const minimum = z0 >= 322 ? RIDGE.bridge.minTurretUndersideY : RIDGE.minSlabUndersideY;
+          if (y - RIDGE.slabM < minimum - 1e-9) throw new Error(`ridge floor y${y} overhangs a y8 floor at x${x} z${z0}`);
+          // A single exact y14..16 box builds the flat structural bridge deck.
+          if (!(z0 >= RIDGE.bridge.minZ && z1 <= RIDGE.bridge.maxZ && y === RIDGE.bridge.deckY))
+            floor.add('ridge-slab', a, b, z0, z1, y - RIDGE.slabM, y);
         } else if (insideInsertion(x, z1)) {
           if (y > RIDGE.approach.y + 1e-9) floor.add('ridge-floor', a, b, z0, z1, RIDGE.approach.y, y);
         } else floor.add('ridge-floor', a, b, z0, z1, RIDGE.bottomY, y);
@@ -257,26 +279,31 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
     coarse.row();
     for (let fine = 0; fine < ROWS_PER_M / MASS_ROWS_PER_M; fine++) {
       const k = row * ROWS_PER_M / MASS_ROWS_PER_M + fine, z0 = k / ROWS_PER_M, z1 = (k + 1) / ROWS_PER_M;
+      const below = union(ground.map((p) => sweep(p, z0 - EDGE_M, z1 + EDGE_M)).filter((s): s is Interval => s !== null)
+        .map(([a, b]): Interval => [a - EDGE_M, b + EDGE_M]));
       const shelf = union([...FLOORS.map((f) => sweep(f.polygon, z0 + TOUCH_M, z1 - TOUCH_M)).filter((s): s is Interval => s !== null)
-        .map(([a, b]): Interval => [a - EDGE_M, b + EDGE_M]),
-      ...ground.map((p) => sweep(p, z0 - EDGE_M, z1 + EDGE_M)).filter((s): s is Interval => s !== null)
-        .map(([a, b]): Interval => [a - EDGE_M, b + EDGE_M])]);
+        .map(([a, b]): Interval => [a - EDGE_M, b + EDGE_M]), ...(z0 < 322 ? below : [])]);
       const spans = open.flatMap(([a, b]) => subtract(Math.max(a, west), Math.min(b, east), shelf));
-      for (const [lo, hi] of cutAt(spans, capCuts(z0, z1))) {
+      for (const [lo, hi] of cutAt(spans, [...capCuts(z0, z1), ...below.flat()])) {
         const { id, top, bottom } = barrier({ minX: lo, maxX: hi, minZ: z0, maxZ: z1 }, inBody);
-        if (top > bottom + 1e-9) ring.add(id, lo, hi, z0, z1, bottom, top);
+        const overRoad = below.some(([a, b]) => (lo + hi) / 2 >= a && (lo + hi) / 2 <= b);
+        const hangingBottom = Math.max(RIDGE.bridge.minTurretUndersideY, near({ minX: lo, maxX: hi, minZ: z0, maxZ: z1 }, .06) - RIDGE.slabM);
+        if (top > bottom + 1e-9) ring.add(overRoad ? 'ridge-parapet' : id, lo, hi, z0, z1, overRoad ? hangingBottom : bottom, top);
       }
       ring.row();
     }
   }
-  const hanging = RIDGE.temporaryCaps.filter((c) => 'hanging' in c).map((c) => ({
-    id: `ridge-cap-${c.id}`, x: (c.minX + c.maxX) / 2, y: c.bottomY, z: (c.minZ + c.maxZ) / 2,
-    w: c.maxX - c.minX, h: c.top - c.bottomY, d: c.maxZ - c.minZ }));
-  return [...floor.boxes, ...coarse.boxes, ...ring.boxes, ...hanging];
+  const { bridge: b } = RIDGE;
+  const deck = { id: 'ridge-bridge-deck', x: (b.minX + b.maxX) / 2, y: b.undersideY, z: (b.minZ + b.maxZ) / 2,
+    w: b.maxX - b.minX, h: b.deckY - b.undersideY, d: b.maxZ - b.minZ };
+  const gate = RIDGE.temporaryCaps.find((c) => c.id === 'east-gate')!;
+  const gateCap = { id: 'ridge-cap-east-gate', x: (gate.minX + gate.maxX) / 2, y: gate.bottomY, z: (gate.minZ + gate.maxZ) / 2,
+    w: gate.maxX - gate.minX, h: gate.top - gate.bottomY, d: gate.maxZ - gate.minZ };
+  return [...floor.boxes, deck, ...coarse.boxes, ...ring.boxes, gateCap];
 }
 
 /** Screening proofs count permanent solids only. The temporary ridge caps
- * close the unbuilt bays and R7's bridge mouth until U-141/U-164 replace them;
+ * close the unbuilt bays and east gate until U-141/U-116 replace them;
  * without them a proof sees a more open scene than either before or after. */
 export const isTemporaryRidgeCap = (id: string) => id.startsWith('ridge-cap-');
 
@@ -316,6 +343,6 @@ export function ridgeManifest(boxes: readonly BoxSpec[]) {
     flights: FLIGHTS.map((f) => ({ from: f.from, to: f.to, fromY: f.fromY, toY: f.toY, lengthM: r(f.length),
       stairStartM: r(f.t0), stairEndM: r(f.t1), risers: f.risers.length, restLandingM: r(f.restLandingM),
       firstRiserM: f.risers.length ? r(f.risers[0]!) : null, lastRiserM: f.risers.length ? r(f.risers.at(-1)!) : null })),
-    boxes: { floor: count('ridge-floor'), slab: count('ridge-slab'), rock: count('ridge-rock'), caps: count('ridge-cap-') },
+    boxes: { floor: count('ridge-floor'), slab: count('ridge-slab'), bridge: count('ridge-bridge'), parapet: count('ridge-parapet'), rock: count('ridge-rock'), caps: count('ridge-cap-') },
     rays: ridgeRayClearances(boxes) };
 }

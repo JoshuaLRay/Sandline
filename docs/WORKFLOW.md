@@ -64,6 +64,12 @@ supply, and the queue says so instead of guessing:
 
 ## Policies in force
 
+- **Continuous pushed checkpoints:** agents commit and push each meaningful
+  small step promptly, with no more than 15 minutes of active edits kept only
+  locally. Unfinished work gets a labelled WIP commit and a current card handoff
+  recording the branch/PR, progress, checks and next action. They also checkpoint
+  before long checks, pauses and handoffs, so a new bot can resume if usage
+  limits cut a session short. These pushes do not relax the final CI merge gates.
 - **Merge when green** (your instruction of 2026-10-08): a task's PR merges once
   all four required CI jobs pass on its latest head. Say "hold merges" to stop.
 - **Dependencies on merged work don't wait for your verdict** (adopted

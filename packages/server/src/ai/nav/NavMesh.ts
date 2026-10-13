@@ -135,7 +135,9 @@ export class NavMesh {
   private readonly query: NavMeshQuery;
 
   private constructor(private readonly mesh: DetourNavMesh, private readonly agentHeight: number) {
-    this.query = new NavMeshQuery(mesh, { maxNodes: 2048 });
+    // U-164's 11,210-polygon ridge/road bake exhausts 2,048 search nodes on
+    // R7–R9→X0 through D0; 4,096 completes its 401–442-polygon corridors.
+    this.query = new NavMeshQuery(mesh, { maxNodes: 4096 });
     this.query.defaultQueryHalfExtents = { ...QUERY_HALF_EXTENTS };
   }
 
