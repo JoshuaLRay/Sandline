@@ -1,15 +1,15 @@
 {
-  "task": "U-165",
-  "parent": "U-140",
+  "task": "U-167",
+  "parent": "U-141",
   "foundation": "U-149",
   "bend": "U-159",
   "rock": "U-160",
   "road": "U-139",
-  "kind": "isolated surface whitebox: road fights, screened tank ingress, D0 return store and furnished R0–R9 ridge with service bridge",
+  "kind": "isolated surface whitebox: road fights, screened tank ingress, D0 return store and furnished R0–R9 ridge with V1–V3 support bays and service bridge",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "106717bd83e393e6079b2240987a79262bb34e9bb3bf6f0f9b2e3af1c1bd4a13",
-  "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b",
-  "boxCount": 79130,
+  "sourceHash": "c807d9dd7fc3e1263f721767a7693ef08858efc00170087f997b7a512521df12",
+  "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7",
+  "boxCount": 80715,
   "stratumM": 0.025,
   "edgeExpansionM": 0.005,
   "circleSides": 512,
@@ -2654,40 +2654,83 @@
         ]
       ]
     },
+    "bays": {
+      "edgeBackM": 0.8,
+      "halfLengthM": 4,
+      "eastM": 7.2,
+      "lipDepthM": 0.25,
+      "canopyHighM": 3,
+      "frameTopM": 3.6,
+      "list": [
+        {
+          "id": "V1",
+          "x": 58,
+          "y": 20,
+          "z": 128,
+          "strata": [
+            {
+              "maxZ": 132,
+              "lipM": 1,
+              "canopyM": 1.7
+            }
+          ]
+        },
+        {
+          "id": "V2",
+          "x": 88,
+          "y": 30,
+          "z": 210,
+          "strata": [
+            {
+              "maxZ": 214,
+              "lipM": 1,
+              "canopyM": 1.7
+            }
+          ]
+        },
+        {
+          "id": "V3",
+          "x": 66,
+          "y": 26,
+          "z": 286,
+          "strata": [
+            {
+              "maxZ": 287,
+              "lipM": 1,
+              "canopyM": 1.7
+            },
+            {
+              "maxZ": 288.15,
+              "lipM": 0.75,
+              "canopyM": 1.45
+            },
+            {
+              "maxZ": 290,
+              "lipM": 0.5,
+              "canopyM": 1.2,
+              "outer": {
+                "depthM": 0.15,
+                "lipM": 0.3,
+                "canopyM": 1
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "fins": [
+      {
+        "id": "F3",
+        "minX": 66,
+        "maxX": 72,
+        "minZ": 260,
+        "maxZ": 274,
+        "bottomY": 5.5,
+        "top": 36,
+        "why": "blocks V2 from the outpost compound; outside every fan and the 8 m lane"
+      }
+    ],
     "temporaryCaps": [
-      {
-        "id": "V1-bay",
-        "for": "U-141",
-        "minX": 54,
-        "maxX": 58,
-        "minZ": 120,
-        "maxZ": 136,
-        "bottomY": 5.5,
-        "top": 24,
-        "why": "V1's fan reaches the R2 landing's west edge; until U-141 builds the bay lip and canopy, rock stands at full barrier height across the bay front"
-      },
-      {
-        "id": "V2-bay",
-        "for": "U-141",
-        "minX": 83,
-        "maxX": 88,
-        "minZ": 202,
-        "maxZ": 218,
-        "bottomY": 5.5,
-        "top": 34,
-        "why": "V2's fan reaches the R4 landing's west edge; closed at barrier height until U-141 builds the bay"
-      },
-      {
-        "id": "V3-bay",
-        "for": "U-141",
-        "minX": 61,
-        "maxX": 68,
-        "minZ": 278,
-        "maxZ": 300,
-        "bottomY": 5.5,
-        "top": 30,
-        "why": "V3's fans reach the R6 landing and the R6-R7 stair's west edge; closed at barrier height until U-141 builds the bay"
-      },
       {
         "id": "east-gate",
         "for": "U-116",
@@ -2848,12 +2891,13 @@
       }
     ],
     "boxes": {
-      "floor": 14754,
+      "floor": 14759,
       "slab": 330,
       "bridge": 1,
-      "parapet": 332,
-      "rock": 10082,
-      "caps": 439,
+      "parapet": 356,
+      "rock": 11882,
+      "caps": 4,
+      "bayFrames": 190,
       "cover": 4,
       "hut": 7,
       "survey": 5
@@ -2862,71 +2906,63 @@
       {
         "bay": "V1",
         "target": "A-C02 nominal truck fan target",
-        "clearanceM": 0.404,
-        "blockedOnlyByTemporaryCaps": [
-          "V1-bay"
-        ]
+        "clearanceM": 0.354,
+        "frameGapM": 0.27,
+        "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V1",
         "target": "A-C03 eastern road wall",
-        "clearanceM": 0.32,
-        "blockedOnlyByTemporaryCaps": [
-          "V1-bay"
-        ]
+        "clearanceM": 0.329,
+        "frameGapM": 0.231,
+        "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V2",
         "target": "A-C06 MG nest",
-        "clearanceM": 0.329,
-        "blockedOnlyByTemporaryCaps": [
-          "V2-bay"
-        ]
+        "clearanceM": 0.312,
+        "frameGapM": 0.268,
+        "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V2",
         "target": "C12-U crossing approach",
-        "clearanceM": 0.313,
-        "blockedOnlyByTemporaryCaps": [
-          "V2-bay"
-        ]
+        "clearanceM": 0.309,
+        "frameGapM": 0.246,
+        "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V3",
         "target": "A7 road",
-        "clearanceM": null,
-        "blockedOnlyByTemporaryCaps": [
-          "V3-bay"
-        ]
+        "clearanceM": 0.36,
+        "frameGapM": 0.278,
+        "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V3",
         "target": "A8",
         "clearanceM": 0.332,
-        "blockedOnlyByTemporaryCaps": [
-          "V3-bay"
-        ]
+        "frameGapM": 0.237,
+        "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V3",
         "target": "south-gate gun",
-        "clearanceM": 1.583,
-        "blockedOnlyByTemporaryCaps": [
-          "V3-bay"
-        ]
+        "clearanceM": 0.663,
+        "frameGapM": 0.241,
+        "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V3-X5",
         "target": "X5 tank turret silhouette",
-        "clearanceM": null,
-        "blockedOnlyByTemporaryCaps": [
-          "V3-bay"
-        ]
+        "clearanceM": 0.314,
+        "frameGapM": 0.16,
+        "blockedOnlyByTemporaryCaps": []
       }
     ]
   },
   "tankSweep": {
-    "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b",
+    "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7",
     "route": {
       "method": "closed interval disk tubes; complete support prism slab union",
       "radiusM": 3.31058907144937,
@@ -3371,7 +3407,8 @@
   },
   "ownerQualityVerdict": "road look/play batched in U-139; ridge look/play batched in U-140",
   "unfinished": [
-    "support bays/C12 stairs: U-141",
+    "C12 stairs: U-168",
+    "integrated surface proofs: U-169",
     "outpost: U-116",
     "basement: U-115"
   ]

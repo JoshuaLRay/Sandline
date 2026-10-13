@@ -63,7 +63,6 @@ const views = [
     { name: 'ridge-r9-gate', feet: [56, 8, 370], target: [56, 9.55, 374], label: 'R9 y8 · east-gate approach capped until U-116' },
   ].map((v) => ({ name: v.name, position: [v.feet[0]!, v.feet[1]! + 1.55, v.feet[2]!], target: v.target,
     label: `${v.label} · standing eye`, probe: false, feetY: v.feet[1]! })),
-  { name: 'bay-f3-fin', position: [100, 44, 228], target: [69, 30, 267], label: 'Free view · F3 blind-spot fin to y36 between V2 and the compound', probe: false },
   { name: 'ridge-r7-mouth', position: [98, 56, 300], target: [70, 16, 336], label: 'Free view · R7 landing, built R7b bridge and R8/R9 descent over the tank road', probe: false },
   { name: 'ridge-overview', position: [190, 150, 110], target: [76, 20, 230], label: 'Free overview · furnished R0–R9 ridge, V1–V3 bays, F3 and service bridge; east-gate cap remains', probe: false },
   { name: 'bridge-under-tank', position: [72, 9.55, 327], target: [70, 10.5, 336], label: 'Tank road standing eye · production hull/turret at (70,8,336) beneath the built bridge', probe: false, tank: { x: 70, y: 8, z: 336, yaw: 0 }, expectedTankVisible: true },
@@ -77,6 +76,9 @@ const views = [
     { name: 'ridge-r5-hold', feet: [95.8, 30, 238], target: [94, 31.2, 238], label: 'R5 inland escorted hold · built high rock stops the shell and attenuates ordinary blast damage' },
     { name: 'ridge-r5-exposed', feet: [91, 30, 238], target: [94, 31.2, 238], label: 'R5 outside cover · ordinary tank blast danger remains when leaving the hold' },
     { name: 'ridge-r7-cover', feet: [70, 20, 321.5], target: [82, 21.5, 320], label: 'R7 high rock · exact 4 m north-south cover in its inland recess' },
+  ].map((v) => ({ name: v.name, position: [v.feet[0]!, v.feet[1]! + 1.55, v.feet[2]!], target: v.target,
+    label: `${v.label} · standing eye`, probe: false, feetY: v.feet[1]! })),
+  ...[
     // U-167: each bay from its standing anchor toward a mandatory target, and from behind.
     { name: 'bay-v1-anchor', feet: [58, 20, 128], target: [-4, 10.45, 126], label: 'V1 bay anchor · lip 1.0 m, canopy 1.70 m, toward the truck fan target' },
     { name: 'bay-v1-rear', feet: [63, 20, 128], target: [57.2, 21.2, 128], label: 'V1 bay from its open rear · rock lip, canopy and side returns' },
@@ -85,6 +87,7 @@ const views = [
     { name: 'bay-v3-rear', feet: [71, 26, 286], target: [65.2, 27, 288], label: 'V3 bay from its open rear · lip strata step down to the north' },
   ].map((v) => ({ name: v.name, position: [v.feet[0]!, v.feet[1]! + 1.55, v.feet[2]!], target: v.target,
     label: `${v.label} · standing eye`, probe: false, feetY: v.feet[1]! })),
+  { name: 'bay-f3-fin', position: [100, 44, 228], target: [69, 30, 267], label: 'Free view · F3 blind-spot fin to y36 between V2 and the compound', probe: false },
 ];
 const output = new URL('../../../artifacts/qalat-road-supports/', import.meta.url);
 const world = loadLevel(JSON.parse(await readFile(new URL('level.json', output), 'utf8')));
