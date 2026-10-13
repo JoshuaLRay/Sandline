@@ -22,6 +22,20 @@ const BAYS = [
   { id: 'V3', y: 26, x: 66, z: 286, targets: [{ x: -18, y: 8, z: 302 }, { x: 16, y: 8, z: 332 }, { x: 38, y: 8, z: 360 }] },
   { id: 'V3-X5', y: 26, x: 66, z: 286, targets: [{ x: 54, y: 11.2, z: 334 }] },
 ];
+const FURNITURE_FLOORS = [
+  [81.6, 90.6, 97.4, 106.6], [80, 82, 98, 102], [77.6, 86.6, 277.4, 288.6],
+  [90, 98, 235, 251], [78, 85, 317.4, 323], [74, 78, 318, 322],
+] as const;
+const inFurnitureFloor = (p: Point, margin: number) => FURNITURE_FLOORS.some(([x0, x1, z0, z1]) =>
+  p.x >= x0 - margin && p.x <= x1 + margin && p.z >= z0 - margin && p.z <= z1 + margin);
+// Fixed cover/shell occupancy replaces the old empty-pad assertion only here;
+// qalatRidgeClearance independently proves the continuous 8 m route beside it.
+const OCCUPIED = [[83.6, 84.4, 168, 172], [75.6, 76.4, 283.5, 288.5],
+  [82, 90.6, 97.4, 98], [82, 90.6, 106, 106.6], [90, 90.6, 98, 106],
+  [78, 86.6, 277.4, 278], [78, 86.6, 288, 288.6], [86, 86.6, 278, 288]] as const;
+const furnishingAt = (p: Point, radius: number) => OCCUPIED.some(([x0, x1, z0, z1]) =>
+  p.x + radius > x0 && p.x - radius < x1 && p.z + radius > z0 && p.z - radius < z1);
+const underlying = (b: WorldBox) => !/^(ridge-cover-|ridge-hut-|ridge-survey-)/.test(b.id);
 const HALF = 4, BARRIER = 2.2, X4 = { x: 84, z: 338 };
 
 /** Independent pointwise §6.2 surface: plane between adjacent rays, nearer ray outside them. */
@@ -50,7 +64,7 @@ for (const b of world.boxes) for (let x = Math.floor(b.minX / CELL); x <= Math.f
 const column = (p: Point, e = 1e-6) => (grid.get(`${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`) ?? [])
   .filter((b) => p.x >= b.minX - e && p.x <= b.maxX + e && p.z >= b.minZ - e && p.z <= b.maxZ + e);
 const near = (p: Point, r = 1) => world.boxes.filter((b) => b.maxX > p.x - r && b.minX < p.x + r && b.maxZ > p.z - r && b.minZ < p.z + r);
-const floorAt = (p: Point, below: number) => supportUnder(p.x, p.z, .001, below, column(p), 0);
+const floorAt = (p: Point, below: number) => supportUnder(p.x, p.z, .001, below, column(p).filter(underlying), 0);
 
 const segments = NODES.slice(1).map((b, i) => {
   const a = NODES[i]!, length = Math.hypot(b.x - a.x, b.z - a.z);
@@ -63,6 +77,7 @@ const inLanding = (p: Point, margin = 0) => LANDINGS.find((l) =>
 /** A superset of the designed shelf: 8 m ribbons, their corner bevels (inside
  * a 4 m disc at each turning node; R7 ends the shelf) and the flat landings. */
 function onShelf(p: Point, margin = 0): boolean {
+  if (inFurnitureFloor(p, margin)) return true;
   // U-164 opens R7's north edge onto its full-width bridge approach.
   if (p.x >= 66 - margin && p.x <= 74 + margin && p.z >= 322 - margin && p.z <= 350 + margin) return true;
   if (inLanding(p, margin) || NODES.slice(0, -1).some((n) => Math.hypot(p.x - n.x, p.z - n.z) <= HALF + margin)) return true;
@@ -125,7 +140,7 @@ describe('U-163 continuous R0–R7 ridge shelf', () => {
     console.log('U-163 stair flights', JSON.stringify(report));
   });
 
-  it('keeps the full 8 m shelf supported and clear to head height at every station', () => {
+  it('keeps inherited shelf floors supported and head clearance outside fixed furnishing footprints', () => {
     let probes = 0;
     for (const s of segments) {
       const top = Math.max(s.a.y, s.b.y) + .1;
@@ -138,8 +153,9 @@ describe('U-163 continuous R0–R7 ridge shelf', () => {
           const p = at(s, t, off), y = floorAt(p, top), boxes = near(p);
           // Across the width only rasterized riser lines may differ (one riser).
           expect(Math.abs(y - centre), `${s.a.id}→${s.b.id} at ${t}/${off}`).toBeLessThanOrEqual(.2 + 1e-9);
+          if (furnishingAt(p, .35)) continue;
           // A standing soldier's whole footprint fits, stepping no more than the controller's 0.45 m.
-          const feet = supportUnder(p.x, p.z, .35, top, boxes, 0);
+          const feet = supportUnder(p.x, p.z, .35, top, boxes.filter(underlying), 0);
           expect(blockedAt(p.x, p.z, .35, feet, .45, 1.8, boxes), `blocked ${JSON.stringify(p)} y${feet}`).toBe(false);
           probes++;
         }
@@ -148,8 +164,9 @@ describe('U-163 continuous R0–R7 ridge shelf', () => {
     for (const l of LANDINGS) for (let x = l.minX + .35; x <= l.maxX - .35 + 1e-9; x += .5) for (let z = l.minZ + .35; z <= l.maxZ - .35 + 1e-9; z += .5) {
       const p = { x, z };
       expect(floorAt(p, l.y + .1), `${l.id} flat at ${JSON.stringify(p)}`).toBe(l.y);
-      // Open sky: nothing at all above the landing.
-      expect(blockedAt(x, z, .35, l.y, 0, 30, near(p)), `${l.id} roofed at ${JSON.stringify(p)}`).toBe(false);
+      if (furnishingAt(p, .35)) continue;
+      // Fixed broken survey beams stay above standing head clearance.
+      expect(blockedAt(x, z, .35, l.y, 0, 1.8, near(p)), `${l.id} roofed at ${JSON.stringify(p)}`).toBe(false);
       probes++;
     }
     expect(probes).toBeGreaterThan(15_000);
@@ -230,7 +247,7 @@ describe('U-163 continuous R0–R7 ridge shelf', () => {
       expect(b.minZ, b.id).toBeGreaterThanOrEqual(60);
       const apron = Math.hypot(Math.max(b.minX - X4.x, 0, X4.x - b.maxX), Math.max(b.minZ - X4.z, 0, X4.z - b.maxZ)) < 18;
       if (b.id.startsWith('ridge-slab')) expect(b.minY, b.id).toBeGreaterThanOrEqual(14);
-      else expect(apron, `${b.id} reaches the X4 apron`).toBe(false);
+      else if (apron) expect(b.minY, `${b.id} enters the clear X4 volume`).toBeGreaterThanOrEqual(14);
     }
     expect(ridge.filter((b) => b.id.startsWith('ridge-slab')).every((b) => b.maxY === 20)).toBe(true);
   });

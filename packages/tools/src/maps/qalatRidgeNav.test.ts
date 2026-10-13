@@ -26,8 +26,16 @@ const segments = NODES.slice(1).map((b, i) => {
   const a = NODES[i]!, length = Math.hypot(b.x - a.x, b.z - a.z);
   return { a, b, length, u: { x: (b.x - a.x) / length, z: (b.z - a.z) / length } };
 });
+const FURNITURE_FLOORS = [
+  [81.6, 90.6, 97.4, 106.6], [80, 82, 98, 102], [77.6, 86.6, 277.4, 288.6],
+  [90, 98, 235, 251], [78, 85, 317.4, 323], [74, 78, 318, 322],
+] as const;
+const inFurnitureFloor = (p: Point, margin: number) => FURNITURE_FLOORS.some(([x0, x1, z0, z1]) =>
+  p.x >= x0 - margin && p.x <= x1 + margin && p.z >= z0 - margin && p.z <= z1 + margin);
+
 /** A superset of the designed shelf (8 m ribbons, turning bevels, landings). */
 function onShelf(p: Point, margin = 0): boolean {
+  if (inFurnitureFloor(p, margin)) return true;
   if (LANDINGS.some((l) => p.x >= l.minX - margin && p.x <= l.maxX + margin && p.z >= l.minZ - margin && p.z <= l.maxZ + margin)) return true;
   if (NODES.slice(0, -1).some((n) => Math.hypot(p.x - n.x, p.z - n.z) <= 4 + margin)) return true;
   return segments.some((s) => {

@@ -301,8 +301,14 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
       const k = row * ROWS_PER_M / MASS_ROWS_PER_M + fine, z0 = k / ROWS_PER_M, z1 = (k + 1) / ROWS_PER_M;
       const below = union(ground.map((p) => sweep(p, z0 - EDGE_M, z1 + EDGE_M)).filter((s): s is Interval => s !== null)
         .map(([a, b]): Interval => [a - EDGE_M, b + EDGE_M]));
+      // The R7 inland recess reaches over a road apron before z322. That
+      // apron must stay open below, while its raised recess still needs a
+      // hanging outer barrier. Retain the older ground exclusion elsewhere.
+      const furnitureRing = union(RIDGE.furniture.recesses.map((r) => sweep(rectPolygon(r), z0 - reach, z1 + reach))
+        .filter((s): s is Interval => s !== null).map(([a, b]): Interval => [a - reach, b + reach]));
+      const excludedGround = z0 < 322 ? below.flatMap(([a, b]) => subtract(a, b, furnitureRing)) : [];
       const shelf = union([...FLOORS.map((f) => sweep(f.polygon, z0 + TOUCH_M, z1 - TOUCH_M)).filter((s): s is Interval => s !== null)
-        .map(([a, b]): Interval => [a - EDGE_M, b + EDGE_M]), ...(z0 < 322 ? below : [])]);
+        .map(([a, b]): Interval => [a - EDGE_M, b + EDGE_M]), ...excludedGround]);
       const spans = open.flatMap(([a, b]) => subtract(Math.max(a, west), Math.min(b, east), shelf));
       for (const [lo, hi] of cutAt(spans, [...capCuts(z0, z1), ...below.flat()])) {
         const { id, top, bottom } = barrier({ minX: lo, maxX: hi, minZ: z0, maxZ: z1 }, inBody);
