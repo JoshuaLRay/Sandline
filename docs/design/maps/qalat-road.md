@@ -586,7 +586,13 @@ required: use the riflemen specified below.
 
 These crossings are exposed to their adjacent route enemies, not spawn points.
 Use 4×4 m landings at interior waypoints; the standard extra landings still apply
-within flights. No door, unlock, one-way drop, third shortcut or link to basement.
+within flights. **U-168 owner-approved exception (2026-10-13):** use 0.30 m
+treads on constrained C12 flights where 0.40 m cannot fit those pads/rests or
+retain the ridge's 8 m clear route at the terminal mouths. The owner approved
+this compact-tread option rather than moving the specified spines. Keep the
+exact coordinates, elevations, 4 m widths, 0.20 m risers, 60/110 total counts,
+4×4 m waypoint pads and at least 2 m intermediate rests; other flights retain
+0.40 m treads. No door, unlock, one-way drop, third shortcut or link to basement.
 Route changes use these paths or D0/outpost, regardless of alert or mission stage.
 
 ## 7. Underground depot
