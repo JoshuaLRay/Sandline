@@ -136,6 +136,9 @@
 <polygon points="90.086,-209.176 82.086,-247.176 89.914,-248.824 97.914,-210.824"/>
 <polygon points="82.247,-246.617 68.247,-284.617 75.753,-287.383 89.753,-249.383"/>
 <polygon points="68.006,-285.778 66.006,-321.778 73.994,-322.222 75.994,-286.222"/>
+<polygon points="66.000,-322.000 66.000,-336.000 74.000,-336.000 74.000,-322.000"/>
+<polygon points="66.000,-336.000 66.000,-350.000 74.000,-350.000 74.000,-336.000"/>
+<polygon points="66.723,-347.706 52.723,-367.706 59.277,-372.294 73.277,-352.294"/>
 <polygon points="58.527,-69.985 62.529,-64.035 65.473,-66.015 61.471,-71.965"/>
 <polygon points="74.335,-94.397 81.473,-94.015 81.665,-97.603 74.527,-97.985"/>
 <polygon points="60.286,-129.486 60.335,-126.397 67.714,-126.514 67.665,-129.603"/>
@@ -143,18 +146,23 @@
 <polygon points="90.086,-209.176 97.795,-208.735 97.914,-210.824 90.205,-211.265"/>
 <polygon points="82.086,-247.176 82.247,-246.617 89.914,-248.824 89.753,-249.383"/>
 <polygon points="68.006,-285.778 68.247,-284.617 75.994,-286.222 75.753,-287.383"/>
+<polygon points="66.000,-322.000 66.006,-321.778 74.000,-322.000 73.994,-322.222"/>
+<polygon points="66.000,-336.000 74.000,-336.000"/>
+<polygon points="66.000,-350.000 66.723,-347.706 74.000,-350.000 73.277,-352.294"/>
 <polygon points="72.000,-90.000 84.000,-90.000 84.000,-102.000 72.000,-102.000"/>
 <polygon points="58.000,-122.000 70.000,-122.000 70.000,-134.000 58.000,-134.000"/>
 <polygon points="74.000,-158.000 86.000,-158.000 86.000,-182.000 74.000,-182.000"/>
 <polygon points="88.000,-204.000 100.000,-204.000 100.000,-216.000 88.000,-216.000"/>
 <polygon points="80.000,-242.000 92.000,-242.000 92.000,-254.000 80.000,-254.000"/>
 <polygon points="66.000,-280.000 78.000,-280.000 78.000,-292.000 66.000,-292.000"/>
-<polygon points="66.000,-320.000 74.000,-320.000 74.000,-324.000 66.000,-324.000"/></g>
+<polygon points="66.000,-320.000 74.000,-320.000 74.000,-322.000 66.000,-322.000"/>
+<polygon points="66.000,-330.000 74.000,-330.000 74.000,-342.000 66.000,-342.000"/>
+<polygon points="66.000,-348.000 74.000,-348.000 74.000,-352.000 66.000,-352.000"/>
+<polygon points="52.000,-368.000 60.000,-368.000 60.000,-374.000 52.000,-374.000"/></g>
 <g fill="#5c6b80" fill-opacity=".85"><rect x="54" y="-136" width="4" height="16"/>
 <rect x="83" y="-218" width="5" height="16"/>
 <rect x="61" y="-300" width="7" height="22"/>
-<rect x="66" y="-325" width="8.599999999999994" height="1"/>
-<rect x="74.005" y="-324" width="0.5949999999999989" height="1.5"/></g>
+<rect x="52" y="-374.6" width="8" height="0.6000000000000227"/></g>
 <g fill="#5a3d1c" font-family="sans-serif" font-size="2.5"><circle cx="62" cy="-68" r="1"/><text x="64" y="-67">R0 · y8</text>
 <circle cx="78" cy="-96" r="1"/><text x="80" y="-95">R1 · y14</text>
 <circle cx="64" cy="-128" r="1"/><text x="66" y="-127">R2 · y20</text>
@@ -162,7 +170,10 @@
 <circle cx="94" cy="-210" r="1"/><text x="96" y="-209">R4 · y30</text>
 <circle cx="86" cy="-248" r="1"/><text x="88" y="-247">R5 · y30</text>
 <circle cx="72" cy="-286" r="1"/><text x="74" y="-285">R6 · y26</text>
-<circle cx="70" cy="-322" r="1"/><text x="72" y="-321">R7 · y20</text></g>
+<circle cx="70" cy="-322" r="1"/><text x="72" y="-321">R7 · y20</text>
+<circle cx="70" cy="-336" r="1"/><text x="72" y="-335">R7b · y16</text>
+<circle cx="70" cy="-350" r="1"/><text x="72" y="-349">R8 · y12</text>
+<circle cx="56" cy="-370" r="1"/><text x="58" y="-369">R9 · y8</text></g>
 <rect x="45.4" y="-62.6" width="9.2" height="9.2" fill="#a8804c" stroke="#3f2517" stroke-width=".2"/>
 <rect x="44" y="-60" width="6" height="4" fill="#d8ccb6"/>
 <circle cx="50" cy="-58" r=".5" fill="#2b7c61"/>
@@ -172,7 +183,7 @@
 <circle cx="-34" cy="-198" r=".6"/><text x="-33" y="-198">AF2</text>
 <circle cx="-12" cy="-222" r=".6"/><text x="-11" y="-222">AF3</text></g>
 <rect x="16" y="-288" width="28" height="36" fill="none" stroke="#5b6d86" stroke-dasharray="1 1"/>
-<rect x="66" y="-342" width="8" height="12" fill="none" stroke="#5b6d86" stroke-dasharray="1 1"/>
+<rect x="66" y="-342" width="8" height="12" fill="#e6dcc4" stroke="#8a6a3a" stroke-width=".3"/>
 <g fill="none" stroke="#5d3a7a" stroke-width=".25" stroke-dasharray="1.5 .8" font-family="sans-serif" font-size="2.5"><polygon points="-5.020,-126.000 -4.942,-125.610 -4.721,-125.279 -4.390,-125.058 -4.000,-124.980 57.200,-122.980 57.590,-123.058 57.921,-123.279 58.142,-123.610 58.220,-124.000 58.220,-132.000 58.142,-132.390 57.921,-132.721 57.590,-132.942 57.200,-133.020 24.000,-139.020 23.610,-138.942 -4.390,-126.942 -4.721,-126.721 -4.942,-126.390"/><line x1="58" y1="-128" x2="-4" y2="-126"/><line x1="58" y1="-128" x2="24" y2="-138"/><text x="49" y="-130" stroke="none" fill="#5d3a7a">V1</text>
 <polygon points="-23.020,-222.000 -22.942,-221.610 -22.721,-221.279 -22.390,-221.058 -22.000,-220.980 87.200,-204.980 87.590,-205.058 87.921,-205.279 88.142,-205.610 88.220,-206.000 88.220,-214.000 88.142,-214.390 87.921,-214.721 87.590,-214.942 26.390,-232.942 26.000,-233.020 25.610,-232.942 -22.390,-222.942 -22.721,-222.721 -22.942,-222.390"/><line x1="88" y1="-210" x2="-22" y2="-222"/><line x1="88" y1="-210" x2="26" y2="-232"/><text x="79" y="-212" stroke="none" fill="#5d3a7a">V2</text>
 <polygon points="-19.020,-302.000 -18.942,-301.610 -18.721,-301.279 -18.390,-301.058 64.810,-281.058 65.200,-280.980 65.590,-281.058 65.921,-281.279 66.142,-281.610 66.220,-282.000 66.220,-290.000 66.142,-290.390 38.942,-360.390 38.721,-360.721 38.390,-360.942 38.000,-361.020 37.610,-360.942 37.279,-360.721 -18.721,-302.721 -18.942,-302.390"/><line x1="66" y1="-286" x2="-18" y2="-302"/><line x1="66" y1="-286" x2="16" y2="-332"/><line x1="66" y1="-286" x2="38" y2="-360"/><text x="57" y="-288" stroke="none" fill="#5d3a7a">V3</text>
@@ -204,13 +215,13 @@
 <circle cx="54" cy="-334" r="1"/><text x="56" y="-336">X5 · y8</text>
 <circle cx="40" cy="-320" r="1"/><text x="42" y="-322">J4 · y8</text>
 <circle cx="16" cy="-332" r="1"/><text x="18" y="-334">X6 · y8</text>
-<text x="-69" y="-507" font-size="3.5">U-163 · R0–R7 ridge shelf, first-X5 mouth, D0 return store and road fights · north ↑</text>
+<text x="-69" y="-507" font-size="3.5">U-164 · R0–R9 ridge, R7b service bridge, first-X5 mouth and road fights · north ↑</text>
 <text x="-69" y="-501">20 m ribbon / 12 m carriageway / 36 m aprons; grey: rock from y5.5, ≥2.2 m above the road</text>
 <text x="-69" y="-496">West T-W crest y26; east T-C/T-E foot y20; dotted: inside-corner spur zones (off-road part)</text>
 <text x="-69" y="-491">Purple: ridge bay fans and target rays; rock stays 0.3 m under them</text>
-<text x="-69" y="-486">Blue-grey: temporary caps (C12-L mouth and V1–V3 bay fronts for U-141, R7 bridge mouth for U-164, south gate for U-116)</text>
+<text x="-69" y="-486">Blue-grey: temporary caps (C12-L mouth and V1–V3 bay fronts for U-141; road and ridge gate approaches for U-116)</text>
 <text x="-69" y="-481">Dashed red: the three fights. Solid red: longest tank-lane view 86.7 m (limit 90 m)</text>
-<text x="-69" y="-476">Dashed blue: future B6 vault and ridge bridge; reserved.</text>
+<text x="-69" y="-476">Dashed blue: future B6 vault. R7b bridge built: flat y16 deck, underside y14; R8 landing y12 clears tank at y11.4.</text>
 <text x="-69" y="-471" fill="#5a3d1c">Pale: 8 m ridge shelf, 0.20 m risers in 10-riser flights on 0.40 m treads, ≥2 m rest landings, rock ≥2.2 m above every edge</text>
-<text x="-69" y="-50">Isolated whitebox; X0–X6 and R0–R7 built, bridge reserved for U-164. Road look/play: U-139; ridge look/play: U-140.</text></g>
+<text x="-69" y="-50">Isolated whitebox; X0–X6 and R0–R9 built; 0.30 m bridge treads, capped east gate. Road look/play: U-139; ridge look/play: U-140.</text></g>
 </svg>

@@ -170,7 +170,7 @@ that ring. Temporary caps close the V1–V3 bay fronts (U-141). U-164 replaces
 the R7 mouth caps with the bridge/descent and caps the east gate for U-116.
 Screening proofs and the six U-162
 reveal captures count permanent solids only (`isTemporaryRidgeCap`). Run
-`pnpm exec vitest run packages/tools/src/maps/qalatRidge.test.ts packages/tools/src/maps/qalatRidgeNav.test.ts`
+`pnpm exec vitest run packages/tools/src/maps/qalatRidge.test.ts packages/tools/src/maps/qalatRidgeBridge.test.ts packages/tools/src/maps/qalatRidgeNav.test.ts`
 for the stair recipe, edge, fan, travel, mouth, island and escape proofs.
 
 U-164 adds the exact y16 service deck x66..74/z330..342, underside y14,
@@ -181,13 +181,16 @@ Parapets and rock returns reject drops onto the road; nav/controller travel
 reaches R9 in both directions without a new road↔ridge crossing.
 
 Run `pnpm exec tsx packages/tools/src/capture-qalat-road-supports.ts` after
-generation for forty-three 1440×1000 exact-scene views and geometry/draw measurements,
-including the road fights, motor pool/retaining turns, bridge void, V3→X5 opening,
+generation for forty-nine 1440×1000 exact-scene views and geometry/draw measurements,
+including the road fights, motor pool/retaining turns, occupied bridge, V3→X5 opening,
 CAP-RETURN, store door/holding socket and the six road rocket firing choices.
 The six added A-C11/A-C12/V3 X4-hidden/X5-visible views display production
 hull/turret capsules; pixel-difference assertions require zero tank pixels at
 X4 and a visible body at X5. They retain the preceding twenty-eight views.
 U-163 adds standing eyes on R0–R6, a free R7 bridge-mouth view and a ridge overview;
+U-164 adds standing eyes on R7/R7b/R8/R9 (R7's capture sits 0.5 m south of
+its node on the retained pad), a tank under the bridge and the R8 underside.
+CAP-X ingress now shows the built deck with a production tank capsule at J1.
 the V2/V3 bay-eye and reveal views render permanent solids (temporary caps hidden).
 Streaming CI uploads `qalat-road-support-review`. Commit manifest, plan,
 capture metadata and PNGs; large level/surface JSON stays ignored. For orbit
@@ -198,7 +201,7 @@ Eye-height and free-camera captures are construction evidence, not human accepta
 `pnpm exec vitest run packages/tools/src/maps/qalatRoadSupports.test.ts packages/tools/src/maps/qalatRoadTerrain.test.ts packages/tools/src/maps/qalatRoadCombat.test.ts packages/tools/src/maps/qalatRoadCombatGeometry.test.ts packages/tools/src/maps/qalatRoadCombatElevated.test.ts`
 checks approved coordinates and full widths/aprons, actual solid-nav/controller
 traversal for all six starts in both directions, backing-floor and rock-top
-disconnection, reserved basement/bridge volumes and inherited southern occlusion.
+disconnection, reserved basement volume, exact built bridge and inherited southern occlusion.
 Its nav bake keeps the backing plane only under the built content: Recast's
 compact heightfield indexes spans in 24 bits (`MAX_COMPACT_SPANS`, 16.8 M) and
 the solid rasterizer refuses a bake past it. `bakeRoadSupportNav` tiles the full

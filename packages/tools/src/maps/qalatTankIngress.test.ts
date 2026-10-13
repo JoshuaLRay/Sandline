@@ -39,8 +39,7 @@ const onIngress = (p: Point, margin = 0) =>
 const main = ROAD_SUPPORTS.spine;
 const onMain = (p: Point) => main.slice(1).some((b, i) => onRibbon(p, main[i]!, b, 10, .25))
   || main.slice(1, 9).some((a) => Math.hypot(p.x - a.x, p.z - a.z) <= 18.25);
-const floor = (p: Point) => {
-  const boxes = column(p);
+const floor = (p: Point, boxes = column(p)) => {
   expect(boxes.some((b) => b.minY <= 7.99 && b.maxY === 8), `unsupported ${JSON.stringify(p)}`).toBe(true);
   expect(boxes.some((b) => b.id.startsWith('road-rock') && b.maxY > 8), `rock on ingress ${JSON.stringify(p)}`).toBe(false);
 };
@@ -71,12 +70,12 @@ describe('U-151 exact service-spur construction', () => {
     const returns = world.boxes.filter((b) => b.id.startsWith('X-return-'));
     const builtOverhead = (b: WorldBox) => b.id === 'ridge-bridge-deck' || /^ridge-(slab|parapet)-/.test(b.id);
     const clear = (p: Point) => {
-      floor(p);
-      const solids = column(p).filter((b) => b.maxY > 8);
-      expect(solids.some((b) => b.minY < 10.2), `head-height solid in lane/apron ${JSON.stringify(p)}`).toBe(false);
+      const boxes = column(p);
+      floor(p, boxes);
       // The finished ridge's identified overhead members clear the full turret;
       // all other lane/apron solids retain U-151's stronger six-metre headroom.
-      expect(solids.some((b) => b.minY < (builtOverhead(b) ? 8 + TANK_BODY_HEIGHT_M : 14)),
+      // Every member also leaves the infantry's head-height envelope empty.
+      expect(boxes.some((b) => b.maxY > 8 && (b.minY < 10.2 || b.minY < (builtOverhead(b) ? 8 + TANK_BODY_HEIGHT_M : 14))),
         `solid in 12 m lane/apron ${JSON.stringify(p)}`).toBe(false);
     };
     for (let i = 1; i < PATH.length; i++) {

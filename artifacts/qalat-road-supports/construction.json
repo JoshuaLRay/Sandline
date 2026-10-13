@@ -1,15 +1,15 @@
 {
-  "task": "U-163",
+  "task": "U-164",
   "parent": "U-140",
   "foundation": "U-149",
   "bend": "U-159",
   "rock": "U-160",
   "road": "U-139",
-  "kind": "isolated surface whitebox: road fights, screened tank ingress, D0 return store and R0–R7 ridge shelf",
+  "kind": "isolated surface whitebox: road fights, screened tank ingress, D0 return store and R0–R9 ridge with service bridge",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "4326fc8ab9cb28b558eba65cf5297d3512d7b80782dc0b75759ee73331121080",
-  "levelHash": "0b1b8de1dbf8d7a7da700ed4017a46aaceb19acb5b400f0fcfa66c5ce9318416",
-  "boxCount": 75635,
+  "sourceHash": "827de316e48b01e51e274240c7ab2d3407f9608a6fee2066951b76c909064bd9",
+  "levelHash": "a652a53c70700d5c4e36b0aa983ebb8ff939a44a5c170f3a71691b1b62300b32",
+  "boxCount": 79213,
   "stratumM": 0.025,
   "edgeExpansionM": 0.005,
   "circleSides": 512,
@@ -97,13 +97,14 @@
     "A7",
     "A8"
   ],
-  "reservedBridge": {
+  "builtBridge": {
     "minX": 66,
     "maxX": 74,
     "minZ": 330,
     "maxZ": 342,
     "undersideY": 14,
-    "deckY": 16
+    "deckY": 16,
+    "constructed": true
   },
   "reservedVault": {
     "minX": 16,
@@ -475,7 +476,7 @@
     "massRowM": 0.5,
     "fanCellM": 1,
     "eyeHeightM": 1.55,
-    "rockBoxes": 16927,
+    "rockBoxes": 17043,
     "temporaryCapBoxes": 746,
     "rays": [
       {
@@ -2304,6 +2305,24 @@
         "x": 70,
         "y": 20,
         "z": 322
+      },
+      {
+        "id": "R7b",
+        "x": 70,
+        "y": 16,
+        "z": 336
+      },
+      {
+        "id": "R8",
+        "x": 70,
+        "y": 12,
+        "z": 350
+      },
+      {
+        "id": "R9",
+        "x": 56,
+        "y": 8,
+        "z": 370
       }
     ],
     "risers": [
@@ -2313,7 +2332,10 @@
       20,
       0,
       20,
-      30
+      30,
+      20,
+      20,
+      20
     ],
     "landings": [
       {
@@ -2363,7 +2385,28 @@
         "minX": 66,
         "maxX": 74,
         "minZ": 320,
-        "maxZ": 324
+        "maxZ": 322
+      },
+      {
+        "id": "R7b",
+        "minX": 66,
+        "maxX": 74,
+        "minZ": 330,
+        "maxZ": 342
+      },
+      {
+        "id": "R8",
+        "minX": 66,
+        "maxX": 74,
+        "minZ": 348,
+        "maxZ": 352
+      },
+      {
+        "id": "R9",
+        "minX": 52,
+        "maxX": 60,
+        "minZ": 368,
+        "maxZ": 374
       }
     ],
     "insertionBounds": {
@@ -2478,30 +2521,29 @@
         "why": "V3's fans reach the R6 landing and the R6-R7 stair's west edge; closed at barrier height until U-141 builds the bay"
       },
       {
-        "id": "R7-north",
-        "for": "U-164",
-        "minX": 66,
-        "maxX": 74.6,
-        "minZ": 324,
-        "maxZ": 325,
-        "bottomY": 19.4,
-        "top": 24,
-        "hanging": true,
-        "why": "R7's north edge is the future bridge approach; over the X4 apron the wall hangs above y14 so the 36 m apron stays clear"
-      },
-      {
-        "id": "R7-east",
-        "for": "U-164",
-        "minX": 74.005,
-        "maxX": 74.6,
-        "minZ": 322.5,
-        "maxZ": 324,
-        "bottomY": 19.4,
-        "top": 24,
-        "hanging": true,
-        "why": "the R7 landing's north-east corner overhangs the X4 apron, which reaches its east edge north of z322.5; a hanging wall closes that drop until the bridge exists"
+        "id": "east-gate",
+        "for": "U-116",
+        "minX": 52,
+        "maxX": 60,
+        "minZ": 374,
+        "maxZ": 374.6,
+        "bottomY": 5.5,
+        "top": 10.2,
+        "why": "The y8 R9 approach stops at the named outpost east gate; U-116 builds and opens its shell."
       }
     ],
+    "bridge": {
+      "minX": 66,
+      "maxX": 74,
+      "minZ": 330,
+      "maxZ": 342,
+      "undersideY": 14,
+      "deckY": 16,
+      "approachTreadM": 0.3,
+      "approachRunM": 8,
+      "minTurretUndersideY": 11.4,
+      "finalStairFirstMinZ": 355.06
+    },
     "rowM": 0.05,
     "massRowM": 0.5,
     "edgeExpansionM": 0.005,
@@ -2596,12 +2638,53 @@
         "restLandingM": 4.201,
         "firstRiserM": 10.433,
         "lastRiserM": 29.635
+      },
+      {
+        "from": "R7",
+        "to": "R7b",
+        "fromY": 20,
+        "toY": 16,
+        "lengthM": 14,
+        "stairStartM": 0,
+        "stairEndM": 8,
+        "risers": 20,
+        "restLandingM": 2,
+        "firstRiserM": 0.3,
+        "lastRiserM": 6
+      },
+      {
+        "from": "R7b",
+        "to": "R8",
+        "fromY": 16,
+        "toY": 12,
+        "lengthM": 14,
+        "stairStartM": 6,
+        "stairEndM": 14,
+        "risers": 20,
+        "restLandingM": 2,
+        "firstRiserM": 6.3,
+        "lastRiserM": 12
+      },
+      {
+        "from": "R8",
+        "to": "R9",
+        "fromY": 12,
+        "toY": 8,
+        "lengthM": 24.413,
+        "stairStartM": 3.932,
+        "stairEndM": 20.481,
+        "risers": 20,
+        "restLandingM": 2.152,
+        "firstRiserM": 8.977,
+        "lastRiserM": 18.329
       }
     ],
     "boxes": {
-      "floor": 12483,
-      "slab": 20,
-      "rock": 9559,
+      "floor": 14774,
+      "slab": 288,
+      "bridge": 1,
+      "parapet": 320,
+      "rock": 10141,
       "caps": 491
     },
     "rays": [
@@ -2632,7 +2715,7 @@
       {
         "bay": "V2",
         "target": "C12-U crossing approach",
-        "clearanceM": 0.313,
+        "clearanceM": 0.312,
         "blockedOnlyByTemporaryCaps": [
           "V2-bay"
         ]
@@ -2672,7 +2755,7 @@
     ]
   },
   "tankSweep": {
-    "levelHash": "0b1b8de1dbf8d7a7da700ed4017a46aaceb19acb5b400f0fcfa66c5ce9318416",
+    "levelHash": "a652a53c70700d5c4e36b0aa983ebb8ff939a44a5c170f3a71691b1b62300b32",
     "route": {
       "method": "closed interval disk tubes; complete support prism slab union",
       "radiusM": 3.31058907144937,
@@ -2681,7 +2764,7 @@
       "allHullAndTurretYaws": true,
       "endpointsAndStops": true,
       "intervals": 1177,
-      "slabChecks": 656267,
+      "slabChecks": 661326,
       "lengthM": 584.3375731555884,
       "floorY": 8
     },
@@ -2762,7 +2845,7 @@
         "allHullAndTurretYaws": true,
         "endpointsAndStops": true,
         "intervals": 10694,
-        "slabChecks": 5706002,
+        "slabChecks": 5750268,
         "lengthM": 570.3466666666613,
         "floorY": 8
       },
@@ -2774,7 +2857,7 @@
         "allHullAndTurretYaws": true,
         "endpointsAndStops": true,
         "intervals": 10694,
-        "slabChecks": 5706002,
+        "slabChecks": 5750268,
         "lengthM": 570.3466666666613,
         "floorY": 8
       },
@@ -2791,7 +2874,7 @@
       "measurementScope": "actual Session drive and fire ticks; projectiles and wider encounter are not advanced; authored final facing belongs to activation",
       "finalSouthwestOrientationCovered": true
     },
-    "reservedBridge": {
+    "builtBridge": {
       "minX": 66,
       "maxX": 74,
       "minZ": 330,
@@ -2799,18 +2882,19 @@
       "undersideY": 14,
       "deckY": 16,
       "minimumBodyClearanceM": 2.8000000000000003,
-      "constructed": false
+      "constructed": true
     },
-    "reservedR8Landing": {
+    "builtR8Landing": {
       "minX": 66,
       "maxX": 74,
       "minZ": 348,
       "maxZ": 352,
       "floorY": 12,
-      "fixtureUndersideY": 11.4,
+      "minimumUndersideY": 11.4,
       "minimumBodyClearanceM": 0.20000000000000062,
-      "constructed": false,
-      "obligation": "U-140 must certify completed R8 stairs/landing/supports against the tank route"
+      "slabBoxes": 68,
+      "constructed": true,
+      "obligation": "completed bridge approaches, R8 stairs/landing and every support certified against authored and both controller traces"
     },
     "sharedVehicle": {
       "radiusM": 2,
@@ -3116,7 +3200,6 @@
   },
   "ownerQualityVerdict": "road look/play batched in U-139; ridge look/play batched in U-140",
   "unfinished": [
-    "R7b bridge and R8/R9 descent: U-164",
     "ridge huts, cover and R5 hold: U-165",
     "support bays/C12 stairs: U-141",
     "outpost: U-116",
