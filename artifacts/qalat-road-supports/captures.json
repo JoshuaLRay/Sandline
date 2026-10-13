@@ -1,15 +1,15 @@
 {
-  "task": "U-165",
-  "parent": "U-140",
+  "task": "U-167",
+  "parent": "U-141",
   "foundation": "U-149",
   "bend": "U-159",
   "rock": "U-160",
   "road": "U-139",
-  "kind": "isolated surface whitebox: road fights, screened tank ingress, D0 return store and furnished R0–R9 ridge with service bridge",
+  "kind": "isolated surface whitebox: road fights, screened tank ingress, D0 return store and furnished R0–R9 ridge with V1–V3 support bays and service bridge",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "106717bd83e393e6079b2240987a79262bb34e9bb3bf6f0f9b2e3af1c1bd4a13",
-  "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b",
-  "boxCount": 79130,
+  "sourceHash": "c807d9dd7fc3e1263f721767a7693ef08858efc00170087f997b7a512521df12",
+  "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7",
+  "boxCount": 80715,
   "stratumM": 0.025,
   "edgeExpansionM": 0.005,
   "circleSides": 512,
@@ -2654,40 +2654,83 @@
         ]
       ]
     },
+    "bays": {
+      "edgeBackM": 0.8,
+      "halfLengthM": 4,
+      "eastM": 7.2,
+      "lipDepthM": 0.25,
+      "canopyHighM": 3,
+      "frameTopM": 3.6,
+      "list": [
+        {
+          "id": "V1",
+          "x": 58,
+          "y": 20,
+          "z": 128,
+          "strata": [
+            {
+              "maxZ": 132,
+              "lipM": 1,
+              "canopyM": 1.7
+            }
+          ]
+        },
+        {
+          "id": "V2",
+          "x": 88,
+          "y": 30,
+          "z": 210,
+          "strata": [
+            {
+              "maxZ": 214,
+              "lipM": 1,
+              "canopyM": 1.7
+            }
+          ]
+        },
+        {
+          "id": "V3",
+          "x": 66,
+          "y": 26,
+          "z": 286,
+          "strata": [
+            {
+              "maxZ": 287,
+              "lipM": 1,
+              "canopyM": 1.7
+            },
+            {
+              "maxZ": 288.15,
+              "lipM": 0.75,
+              "canopyM": 1.45
+            },
+            {
+              "maxZ": 290,
+              "lipM": 0.5,
+              "canopyM": 1.2,
+              "outer": {
+                "depthM": 0.15,
+                "lipM": 0.3,
+                "canopyM": 1
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "fins": [
+      {
+        "id": "F3",
+        "minX": 66,
+        "maxX": 72,
+        "minZ": 260,
+        "maxZ": 274,
+        "bottomY": 5.5,
+        "top": 36,
+        "why": "blocks V2 from the outpost compound; outside every fan and the 8 m lane"
+      }
+    ],
     "temporaryCaps": [
-      {
-        "id": "V1-bay",
-        "for": "U-141",
-        "minX": 54,
-        "maxX": 58,
-        "minZ": 120,
-        "maxZ": 136,
-        "bottomY": 5.5,
-        "top": 24,
-        "why": "V1's fan reaches the R2 landing's west edge; until U-141 builds the bay lip and canopy, rock stands at full barrier height across the bay front"
-      },
-      {
-        "id": "V2-bay",
-        "for": "U-141",
-        "minX": 83,
-        "maxX": 88,
-        "minZ": 202,
-        "maxZ": 218,
-        "bottomY": 5.5,
-        "top": 34,
-        "why": "V2's fan reaches the R4 landing's west edge; closed at barrier height until U-141 builds the bay"
-      },
-      {
-        "id": "V3-bay",
-        "for": "U-141",
-        "minX": 61,
-        "maxX": 68,
-        "minZ": 278,
-        "maxZ": 300,
-        "bottomY": 5.5,
-        "top": 30,
-        "why": "V3's fans reach the R6 landing and the R6-R7 stair's west edge; closed at barrier height until U-141 builds the bay"
-      },
       {
         "id": "east-gate",
         "for": "U-116",
@@ -2848,12 +2891,13 @@
       }
     ],
     "boxes": {
-      "floor": 14754,
+      "floor": 14759,
       "slab": 330,
       "bridge": 1,
-      "parapet": 332,
-      "rock": 10082,
-      "caps": 439,
+      "parapet": 356,
+      "rock": 11882,
+      "caps": 4,
+      "bayFrames": 190,
       "cover": 4,
       "hut": 7,
       "survey": 5
@@ -2862,71 +2906,63 @@
       {
         "bay": "V1",
         "target": "A-C02 nominal truck fan target",
-        "clearanceM": 0.404,
-        "blockedOnlyByTemporaryCaps": [
-          "V1-bay"
-        ]
+        "clearanceM": 0.354,
+        "frameGapM": 0.27,
+        "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V1",
         "target": "A-C03 eastern road wall",
-        "clearanceM": 0.32,
-        "blockedOnlyByTemporaryCaps": [
-          "V1-bay"
-        ]
+        "clearanceM": 0.329,
+        "frameGapM": 0.231,
+        "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V2",
         "target": "A-C06 MG nest",
-        "clearanceM": 0.329,
-        "blockedOnlyByTemporaryCaps": [
-          "V2-bay"
-        ]
+        "clearanceM": 0.312,
+        "frameGapM": 0.268,
+        "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V2",
         "target": "C12-U crossing approach",
-        "clearanceM": 0.313,
-        "blockedOnlyByTemporaryCaps": [
-          "V2-bay"
-        ]
+        "clearanceM": 0.309,
+        "frameGapM": 0.246,
+        "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V3",
         "target": "A7 road",
-        "clearanceM": null,
-        "blockedOnlyByTemporaryCaps": [
-          "V3-bay"
-        ]
+        "clearanceM": 0.36,
+        "frameGapM": 0.278,
+        "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V3",
         "target": "A8",
         "clearanceM": 0.332,
-        "blockedOnlyByTemporaryCaps": [
-          "V3-bay"
-        ]
+        "frameGapM": 0.237,
+        "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V3",
         "target": "south-gate gun",
-        "clearanceM": 1.583,
-        "blockedOnlyByTemporaryCaps": [
-          "V3-bay"
-        ]
+        "clearanceM": 0.663,
+        "frameGapM": 0.241,
+        "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V3-X5",
         "target": "X5 tank turret silhouette",
-        "clearanceM": null,
-        "blockedOnlyByTemporaryCaps": [
-          "V3-bay"
-        ]
+        "clearanceM": 0.314,
+        "frameGapM": 0.16,
+        "blockedOnlyByTemporaryCaps": []
       }
     ]
   },
   "tankSweep": {
-    "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b",
+    "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7",
     "route": {
       "method": "closed interval disk tubes; complete support prism slab union",
       "radiusM": 3.31058907144937,
@@ -3371,7 +3407,8 @@
   },
   "ownerQualityVerdict": "road look/play batched in U-139; ridge look/play batched in U-140",
   "unfinished": [
-    "support bays/C12 stairs: U-141",
+    "C12 stairs: U-168",
+    "integrated surface proofs: U-169",
     "outpost: U-116",
     "basement: U-115"
   ],
@@ -3397,9 +3434,9 @@
       "label": "Court approach · legal U-138 anchor; canonical CAP-D lies inside accepted reveal-toe rock",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "cap-a",
@@ -3416,9 +3453,9 @@
       "label": "CAP-A · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "a3-west-leg",
@@ -3435,9 +3472,9 @@
       "label": "A3 · U-159 west leg toward A4 · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "a5",
@@ -3454,9 +3491,9 @@
       "label": "A5 · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "cap-x-forecourt-road",
@@ -3473,9 +3510,9 @@
       "label": "CAP-X · forecourt road only · actual standing eye height y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "a2-toward-a3",
@@ -3492,9 +3529,9 @@
       "label": "A2 · U-160 A3 inside corner closes the toll fight · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "a6-toward-a7",
@@ -3511,9 +3548,9 @@
       "label": "A6 · U-160 A7 inside corner closes the frontage fight · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "top-down",
@@ -3530,9 +3567,9 @@
       "label": "Top-down · north up; 3D shows spec +x (east) on the left, mirrored from plan.svg · road, rock and unchanged insertion",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "overview",
@@ -3549,9 +3586,9 @@
       "label": "Free overview · road, U-160 rock and unchanged natural insertion",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "cap-a-standing-probe",
@@ -3568,9 +3605,9 @@
       "label": "CAP-A · standing capsule probe · unfinished soldier presentation",
       "probe": true,
       "calls": 2,
-      "triangles": 857652,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869908,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "v2-eye-to-mg-nest",
@@ -3584,13 +3621,12 @@
         9.15,
         222
       ],
-      "label": "V2 bay standing eye · visible MG breastwork; feet fan kept 0.3 m above rock · permanent solids, temporary bay cap hidden until U-141",
+      "label": "V2 bay standing eye · visible MG breastwork under the built lip and canopy; feet fan kept 0.3 m above rock",
       "probe": false,
-      "permanent": true,
       "calls": 1,
-      "triangles": 856068,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "toll-office",
@@ -3607,9 +3643,9 @@
       "label": "Toll office interior · open 4 m east door, closed north wall · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "frontage-mg",
@@ -3626,9 +3662,9 @@
       "label": "AF1 MG nest · A-C06 at the head of the west leg · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "depot-frontage",
@@ -3645,9 +3681,9 @@
       "label": "West-leg depot frontage · closed loading recesses · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "cap-x-ingress",
@@ -3670,9 +3706,9 @@
         "yaw": 0
       },
       "calls": 3,
-      "triangles": 859140,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b",
+      "triangles": 871396,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7",
       "tankPixels": 2
     },
     {
@@ -3690,9 +3726,9 @@
       "label": "X0 · exact motor pool, y14 rock canopy and offset six-metre returns · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "x1-retaining-turn",
@@ -3709,9 +3745,9 @@
       "label": "X1 · screened return through the retaining dogleg · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "x-bridge-reservation",
@@ -3728,9 +3764,9 @@
       "label": "Service road y8 · built x66..74/z330..342 bridge overhead, flat deck y16 / underside y14",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "v3-x5-silhouette",
@@ -3744,13 +3780,12 @@
         11.2,
         334
       ],
-      "label": "V3 eye probe · X5 turret-height silhouette opening; X0 remains hidden · permanent solids, temporary bay cap hidden until U-141",
+      "label": "V3 bay standing eye · X5 turret-height silhouette through the stepped lip opening; X0 remains hidden",
       "probe": false,
-      "permanent": true,
       "calls": 1,
-      "triangles": 856068,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "cap-return",
@@ -3767,9 +3802,9 @@
       "label": "CAP-RETURN · court edge and tank stop · store entrance beside the retreat · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "weigh-station-door",
@@ -3786,9 +3821,9 @@
       "label": "D0 court toward store · 4 m connector and west door · y8 floor / y12 ceiling · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "weigh-station-holding",
@@ -3805,9 +3840,9 @@
       "label": "D0 holding socket toward west exit · north/east stone walls screen X-stop · ordinary blast attenuation · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "rocket-ac01",
@@ -3824,9 +3859,9 @@
       "label": "A-C01 southern firing choice · real swept rocket reaches X-stop · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "rocket-ac02",
@@ -3843,9 +3878,9 @@
       "label": "A-C02 southern choice beside truck in toll office · rocket clears doorway and fin to X-stop · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "rocket-ac07",
@@ -3862,9 +3897,9 @@
       "label": "A-C07 switchback choice · real swept rocket reaches A5 · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "rocket-ac08",
@@ -3881,9 +3916,9 @@
       "label": "A-C08 switchback choice · real swept rocket reaches A5 · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "rocket-ac11",
@@ -3900,9 +3935,9 @@
       "label": "A-C11 forecourt choice · real swept rocket reaches X5 and A8 · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "rocket-ac12",
@@ -3919,9 +3954,9 @@
       "label": "A-C12 forecourt choice · real swept rocket reaches X5 and A8 · standing eye y9.55",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ac11-x4-hidden",
@@ -3935,7 +3970,7 @@
         9.55,
         338
       ],
-      "label": "ac11 · X4 production hull/turret probe hidden by permanent built solids (temporary ridge caps hidden)",
+      "label": "ac11 · X4 production hull/turret probe hidden by the built scene",
       "probe": false,
       "tank": {
         "x": 84,
@@ -3944,11 +3979,10 @@
         "yaw": 0
       },
       "expectedTankVisible": false,
-      "permanent": true,
       "calls": 3,
-      "triangles": 857700,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b",
+      "triangles": 871396,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7",
       "tankPixels": 0
     },
     {
@@ -3963,7 +3997,7 @@
         9.55,
         334
       ],
-      "label": "ac11 · X5 production hull/turret probe visible at the western mouth (temporary ridge caps hidden; U-141 opens V3)",
+      "label": "ac11 · X5 production hull/turret probe visible at the western mouth in the built scene",
       "probe": false,
       "tank": {
         "x": 54,
@@ -3972,11 +4006,10 @@
         "yaw": 0
       },
       "expectedTankVisible": true,
-      "permanent": true,
       "calls": 3,
-      "triangles": 857700,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b",
+      "triangles": 871396,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7",
       "tankPixels": 2946
     },
     {
@@ -3991,7 +4024,7 @@
         9.55,
         338
       ],
-      "label": "ac12 · X4 production hull/turret probe hidden by permanent built solids (temporary ridge caps hidden)",
+      "label": "ac12 · X4 production hull/turret probe hidden by the built scene",
       "probe": false,
       "tank": {
         "x": 84,
@@ -4000,11 +4033,10 @@
         "yaw": 0
       },
       "expectedTankVisible": false,
-      "permanent": true,
       "calls": 3,
-      "triangles": 857700,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b",
+      "triangles": 871396,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7",
       "tankPixels": 0
     },
     {
@@ -4019,7 +4051,7 @@
         9.55,
         334
       ],
-      "label": "ac12 · X5 production hull/turret probe visible at the western mouth (temporary ridge caps hidden; U-141 opens V3)",
+      "label": "ac12 · X5 production hull/turret probe visible at the western mouth in the built scene",
       "probe": false,
       "tank": {
         "x": 54,
@@ -4028,11 +4060,10 @@
         "yaw": 0
       },
       "expectedTankVisible": true,
-      "permanent": true,
       "calls": 3,
-      "triangles": 857700,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b",
+      "triangles": 871396,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7",
       "tankPixels": 21550
     },
     {
@@ -4047,7 +4078,7 @@
         9.55,
         338
       ],
-      "label": "v3 · X4 production hull/turret probe hidden by permanent built solids (temporary ridge caps hidden)",
+      "label": "v3 · X4 production hull/turret probe hidden by the built scene",
       "probe": false,
       "tank": {
         "x": 84,
@@ -4056,11 +4087,10 @@
         "yaw": 0
       },
       "expectedTankVisible": false,
-      "permanent": true,
       "calls": 3,
-      "triangles": 857700,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b",
+      "triangles": 871396,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7",
       "tankPixels": 0
     },
     {
@@ -4075,7 +4105,7 @@
         9.55,
         334
       ],
-      "label": "v3 · X5 production hull/turret probe visible at the western mouth (temporary ridge caps hidden; U-141 opens V3)",
+      "label": "v3 · X5 production hull/turret probe visible at the western mouth in the built scene",
       "probe": false,
       "tank": {
         "x": 54,
@@ -4084,11 +4114,10 @@
         "yaw": 0
       },
       "expectedTankVisible": true,
-      "permanent": true,
       "calls": 3,
-      "triangles": 857700,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b",
+      "triangles": 871396,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7",
       "tankPixels": 85
     },
     {
@@ -4107,9 +4136,9 @@
       "probe": false,
       "feetY": 8,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r1-landing",
@@ -4127,9 +4156,9 @@
       "probe": false,
       "feetY": 14,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r2-saddle",
@@ -4143,13 +4172,13 @@
         27.55,
         168
       ],
-      "label": "R2 lower saddle y20 · climb behind the shelf edge; V1 bay front capped for U-141 · standing eye",
+      "label": "R2 lower saddle y20 · climb past the built V1 bay · standing eye",
       "probe": false,
       "feetY": 20,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r3-shelf",
@@ -4167,9 +4196,9 @@
       "probe": false,
       "feetY": 26,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r4-eagle",
@@ -4183,13 +4212,13 @@
         31.55,
         248
       ],
-      "label": "R4 Eagle shelf y30 · level saddle to R5; V2 bay front capped for U-141 · standing eye",
+      "label": "R4 Eagle shelf y30 · level saddle to R5 beside the built V2 bay · standing eye",
       "probe": false,
       "feetY": 30,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r5-saddle",
@@ -4207,9 +4236,9 @@
       "probe": false,
       "feetY": 30,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r6-survey",
@@ -4223,13 +4252,13 @@
         21.55,
         322
       ],
-      "label": "R6 y26 · descent to R7; V3 bay front capped for U-141 · standing eye",
+      "label": "R6 y26 · descent to R7 beside the built V3 bay · standing eye",
       "probe": false,
       "feetY": 26,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r7-landing",
@@ -4247,9 +4276,9 @@
       "probe": false,
       "feetY": 20,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r7b-deck",
@@ -4267,9 +4296,9 @@
       "probe": false,
       "feetY": 16,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r8-landing",
@@ -4287,9 +4316,9 @@
       "probe": false,
       "feetY": 12,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r9-gate",
@@ -4307,9 +4336,9 @@
       "probe": false,
       "feetY": 8,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r7-mouth",
@@ -4326,9 +4355,9 @@
       "label": "Free view · R7 landing, built R7b bridge and R8/R9 descent over the tank road",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-overview",
@@ -4342,12 +4371,12 @@
         20,
         230
       ],
-      "label": "Free overview · furnished R0–R9 ridge and service bridge; V1–V3 and east-gate caps remain",
+      "label": "Free overview · furnished R0–R9 ridge, V1–V3 bays, F3 and service bridge; east-gate cap remains",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "bridge-under-tank",
@@ -4371,9 +4400,9 @@
       },
       "expectedTankVisible": true,
       "calls": 3,
-      "triangles": 859140,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b",
+      "triangles": 871396,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7",
       "tankPixels": 70177
     },
     {
@@ -4391,9 +4420,9 @@
       "label": "Tank road standing eye · R8 landing floor y12 / underside y11.4, 0.2 m above full turret envelope",
       "probe": false,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-hut-interior",
@@ -4411,9 +4440,9 @@
       "probe": false,
       "feetY": 14,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-hut-spur",
@@ -4431,9 +4460,9 @@
       "probe": false,
       "feetY": 14,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-survey-interior",
@@ -4451,9 +4480,9 @@
       "probe": false,
       "feetY": 26,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r3-cover",
@@ -4471,9 +4500,9 @@
       "probe": false,
       "feetY": 26,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r6-cover",
@@ -4491,9 +4520,9 @@
       "probe": false,
       "feetY": 26,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r5-hold",
@@ -4511,9 +4540,9 @@
       "probe": false,
       "feetY": 30,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r5-exposed",
@@ -4531,9 +4560,9 @@
       "probe": false,
       "feetY": 30,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     },
     {
       "name": "ridge-r7-cover",
@@ -4551,9 +4580,128 @@
       "probe": false,
       "feetY": 20,
       "calls": 1,
-      "triangles": 857508,
-      "boxCount": 79130,
-      "levelHash": "862dd4f27c6c1690dc41e308faba729be0e7152a4bedda06395b3d8bcbcf131b"
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
+    },
+    {
+      "name": "bay-v1-anchor",
+      "position": [
+        58,
+        21.55,
+        128
+      ],
+      "target": [
+        -4,
+        10.45,
+        126
+      ],
+      "label": "V1 bay anchor · lip 1.0 m, canopy 1.70 m, toward the truck fan target · standing eye",
+      "probe": false,
+      "feetY": 20,
+      "calls": 1,
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
+    },
+    {
+      "name": "bay-v1-rear",
+      "position": [
+        63,
+        21.55,
+        128
+      ],
+      "target": [
+        57.2,
+        21.2,
+        128
+      ],
+      "label": "V1 bay from its open rear · rock lip, canopy and side returns · standing eye",
+      "probe": false,
+      "feetY": 20,
+      "calls": 1,
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
+    },
+    {
+      "name": "bay-v2-anchor",
+      "position": [
+        88,
+        31.55,
+        210
+      ],
+      "target": [
+        26,
+        8.5,
+        232
+      ],
+      "label": "V2 bay anchor · toward the C12-U crossing approach · standing eye",
+      "probe": false,
+      "feetY": 30,
+      "calls": 1,
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
+    },
+    {
+      "name": "bay-v3-anchor",
+      "position": [
+        66,
+        27.55,
+        286
+      ],
+      "target": [
+        16,
+        8.5,
+        332
+      ],
+      "label": "V3 bay anchor · toward A8 through the stepped lip · standing eye",
+      "probe": false,
+      "feetY": 26,
+      "calls": 1,
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
+    },
+    {
+      "name": "bay-v3-rear",
+      "position": [
+        71,
+        27.55,
+        286
+      ],
+      "target": [
+        65.2,
+        27,
+        288
+      ],
+      "label": "V3 bay from its open rear · lip strata step down to the north · standing eye",
+      "probe": false,
+      "feetY": 26,
+      "calls": 1,
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
+    },
+    {
+      "name": "bay-f3-fin",
+      "position": [
+        100,
+        44,
+        228
+      ],
+      "target": [
+        69,
+        30,
+        267
+      ],
+      "label": "Free view · F3 blind-spot fin to y36 between V2 and the compound",
+      "probe": false,
+      "calls": 1,
+      "triangles": 869764,
+      "boxCount": 80715,
+      "levelHash": "0b5627f1baf5fc1b2aa1da20be48314c329468be0af6875c3e29155f823af6d7"
     }
   ]
 }

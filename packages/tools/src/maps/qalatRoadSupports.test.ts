@@ -395,8 +395,8 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     const captures = JSON.parse(readFileSync(new URL('../../../../artifacts/qalat-road-supports/captures.json', import.meta.url), 'utf8'));
     expect(captures).toMatchObject(manifest);
     expect(captures.viewport).toEqual([1440, 1000]);
-    expect(captures.views).toHaveLength(57);
-    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(57);
+    expect(captures.views).toHaveLength(63);
+    expect(new Set(captures.views.map((v: { name: string }) => v.name)).size).toBe(63);
     const standingViews = captures.views.slice(0, 7) as { name: string; position: number[] }[];
     expect(standingViews.map((view) => view.name)).toEqual(['cap-d', 'cap-a', 'a3-west-leg', 'a5', 'cap-x-forecourt-road', 'a2-toward-a3', 'a6-toward-a7']);
     const combatViews = captures.views.slice(11, 14) as { name: string; position: number[] }[];
@@ -432,8 +432,8 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
       name: string; position: number[]; tank: { x: number; y: number; z: number; yaw: number };
       expectedTankVisible: boolean; tankPixels: number; permanent: boolean;
     }[];
-    // U-163: rendered on permanent solids, as the screening proofs count them.
-    expect(revealViews.every((view) => view.permanent)).toBe(true);
+    // U-167: with the bays built, rendered on the whole scene like the screening proofs.
+    expect(revealViews.some((view) => view.permanent)).toBe(false);
     const revealEyes = [['ac11', [2, 9.55, 330]], ['ac12', [34.16, 9.55, 336.7]], ['v3', [66, 27.55, 286]]] as const;
     expect(revealViews.map((view) => [view.name, view.position, view.tank, view.expectedTankVisible])).toEqual(
       revealEyes.flatMap(([eye, position]) => [
@@ -467,7 +467,7 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     expect(captures.views[47].tankPixels).toBeGreaterThanOrEqual(10);
     for (const view of undersideViews) clearSupport({ x: view.position[0]!, z: view.position[2]! }, DEFAULT_MOVE_CONFIG.radius);
     // U-165: exact furniture/hold standing eyes, appended to all 49 retained views.
-    const furnitureViews = captures.views.slice(49) as { name: string; position: number[]; feetY: number }[];
+    const furnitureViews = captures.views.slice(49, 57) as { name: string; position: number[]; feetY: number }[];
     expect(furnitureViews.map((v) => [v.name, v.position[0], v.feetY, v.position[2]])).toEqual([
       ['ridge-hut-interior', 86, 14, 102], ['ridge-hut-spur', 81, 14, 100],
       ['ridge-survey-interior', 82, 26, 286], ['ridge-r3-cover', 80, 26, 174],
@@ -481,6 +481,20 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
       for (const dx of [-DEFAULT_MOVE_CONFIG.radius, 0, DEFAULT_MOVE_CONFIG.radius])
         for (const dz of [-DEFAULT_MOVE_CONFIG.radius, 0, DEFAULT_MOVE_CONFIG.radius])
           expect(supportUnder(x! + dx, z! + dz, .001, view.feetY + .05, world.boxes, 0)).toBe(view.feetY);
+    }
+    // U-167: each bay's standing anchor and rear, then a free F3 view.
+    const bayViews = captures.views.slice(57) as { name: string; position: number[]; feetY?: number }[];
+    expect(bayViews.map((v) => [v.name, v.position[0], v.feetY, v.position[2]])).toEqual([
+      ['bay-v1-anchor', 58, 20, 128], ['bay-v1-rear', 63, 20, 128], ['bay-v2-anchor', 88, 30, 210],
+      ['bay-v3-anchor', 66, 26, 286], ['bay-v3-rear', 71, 26, 286], ['bay-f3-fin', 100, undefined, 228],
+    ]);
+    for (const view of bayViews.slice(0, 5)) {
+      const [x, eyeY, z] = view.position;
+      expect(eyeY! - view.feetY!).toBeCloseTo(DEFAULT_MUZZLE_RIG.eyeHeight);
+      expect(blockedAt(x!, z!, DEFAULT_MOVE_CONFIG.radius, view.feetY!, 0, DEFAULT_MOVE_CONFIG.height, world.boxes)).toBe(false);
+      for (const dx of [-DEFAULT_MOVE_CONFIG.radius, 0, DEFAULT_MOVE_CONFIG.radius])
+        for (const dz of [-DEFAULT_MOVE_CONFIG.radius, 0, DEFAULT_MOVE_CONFIG.radius])
+          expect(supportUnder(x! + dx, z! + dz, .001, view.feetY! + .05, world.boxes, 0)).toBe(view.feetY);
     }
     for (const view of [...standingViews, ...combatViews, ...ingressViews]) {
       const feet = { x: view.position[0]!, y: view.position[1]! - DEFAULT_MUZZLE_RIG.eyeHeight, z: view.position[2]! };

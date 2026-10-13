@@ -1,5 +1,5 @@
 {
-  "$comment": "U-163/U-164/U-165: continuous R0-R9 ridge shelf, exact R7b service bridge, descent and inland furnishings. Temporary caps close unbuilt V1-V3 bay fronts (U-141) and the east gate approach (U-116). Bridge approaches override R7 generic landing north extent; R8 keeps its exact landing. Furniture recesses join existing pads without a new route; not a campaign registry entry.",
+  "$comment": "U-163/U-164/U-165: continuous R0-R9 ridge shelf, exact R7b service bridge, descent and inland furnishings. U-167 opens the V1-V3 bays under rock lips/canopies (V3 lip steps down northward, always a 0.70 m opening above a lip higher than the 0.45 m step except on its unreachable outer ledge) and builds F3; a temporary cap closes the east gate approach (U-116). Bridge approaches override R7 generic landing north extent; R8 keeps its exact landing. Furniture recesses join existing pads without a new route; not a campaign registry entry.",
   "id": "qalat-ridge",
   "shelfWidth": 8,
   "riserM": 0.2,
@@ -71,10 +71,16 @@
     ]
   },
   "mass": {"minZ": 60, "maxZ": 300, "ringM": 1, "polygon": [[46, 70], [88, 58], [114, 116], [122, 208], [110, 300], [90, 364], [54, 362], [58, 302], [68, 252], [70, 204], [50, 150]], "crest": [[128, 20], [168, 34], [210, 38], [248, 34], [286, 30]]},
+  "bays": {
+    "edgeBackM": 0.8, "halfLengthM": 4, "eastM": 7.2, "lipDepthM": 0.25, "canopyHighM": 3, "frameTopM": 3.6,
+    "list": [
+      {"id": "V1", "x": 58, "y": 20, "z": 128, "strata": [{"maxZ": 132, "lipM": 1, "canopyM": 1.7}]},
+      {"id": "V2", "x": 88, "y": 30, "z": 210, "strata": [{"maxZ": 214, "lipM": 1, "canopyM": 1.7}]},
+      {"id": "V3", "x": 66, "y": 26, "z": 286, "strata": [{"maxZ": 287, "lipM": 1, "canopyM": 1.7}, {"maxZ": 288.15, "lipM": 0.75, "canopyM": 1.45}, {"maxZ": 290, "lipM": 0.5, "canopyM": 1.2, "outer": {"depthM": 0.15, "lipM": 0.3, "canopyM": 1}}]}
+    ]
+  },
+  "fins": [{"id": "F3", "minX": 66, "maxX": 72, "minZ": 260, "maxZ": 274, "bottomY": 5.5, "top": 36, "why": "blocks V2 from the outpost compound; outside every fan and the 8 m lane"}],
   "temporaryCaps": [
-    {"id": "V1-bay", "for": "U-141", "minX": 54, "maxX": 58, "minZ": 120, "maxZ": 136, "bottomY": 5.5, "top": 24, "why": "V1's fan reaches the R2 landing's west edge; until U-141 builds the bay lip and canopy, rock stands at full barrier height across the bay front"},
-    {"id": "V2-bay", "for": "U-141", "minX": 83, "maxX": 88, "minZ": 202, "maxZ": 218, "bottomY": 5.5, "top": 34, "why": "V2's fan reaches the R4 landing's west edge; closed at barrier height until U-141 builds the bay"},
-    {"id": "V3-bay", "for": "U-141", "minX": 61, "maxX": 68, "minZ": 278, "maxZ": 300, "bottomY": 5.5, "top": 30, "why": "V3's fans reach the R6 landing and the R6-R7 stair's west edge; closed at barrier height until U-141 builds the bay"},
     {"id": "east-gate", "for": "U-116", "minX": 52, "maxX": 60, "minZ": 374, "maxZ": 374.6, "bottomY": 5.5, "top": 10.2, "why": "The y8 R9 approach stops at the named outpost east gate; U-116 builds and opens its shell."}
   ],
   "bridge": {"minX": 66, "maxX": 74, "minZ": 330, "maxZ": 342, "undersideY": 14, "deckY": 16, "approachTreadM": 0.3, "approachRunM": 8, "minTurretUndersideY": 11.4, "finalStairFirstMinZ": 355.06}

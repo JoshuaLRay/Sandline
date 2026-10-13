@@ -1,9 +1,9 @@
 /** U-163/U-164/U-165: the continuous R0–R9 ridge shelf (§§2.2, 3.2,
  * 6.1–6.2), outside the campaign until U-117. An 8 m stepped shelf with its exact
  * flat landings, cut into the T-E ridge body. Every edge stands against rock at
- * least 2.2 m above the adjacent floor; recorded temporary caps close the
- * unbuilt V1–V3 bay fronts (U-141) and east gate (U-116). Collision and
- * rendering use the same boxes.
+ * least 2.2 m above the adjacent floor, except at U-167's V1–V3 bay fronts,
+ * where a rock lip and canopy frame the view; a recorded temporary cap closes
+ * the east gate (U-116). Collision and rendering use the same boxes.
  *
  * Stair recipe (Conflict default for §2.2's "distribute risers evenly"): each
  * segment's risers form flights of ten 0.20 m risers on 0.40 m treads, spaced
@@ -13,7 +13,7 @@
 import type { BoxSpec } from '@sandline/shared';
 import source from './qalat-ridge.json' with { type: 'json' };
 import { insertionFloors } from './qalatInsertion.ts';
-import { VIEW_FANS, fanCap, rockEastBound } from './qalatRoadTerrain.ts';
+import { VIEW_FANS, capUnder, rockEastBound } from './qalatRoadTerrain.ts';
 import { clipConvex, rectPolygon, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
 import { convexHull, ribbonPieces } from './roadSightLines.ts';
 
@@ -30,6 +30,40 @@ const TOUCH_M = 1e-7;
 const CARVE_MARGIN_M = 2 * EDGE_M;
 const FAN_CELL_M = 1;
 const MASS = { ...RIDGE.mass, polygon: RIDGE.mass.polygon.map(([x, z]) => ({ x: x!, z: z! })) };
+
+// Ring reach plus a coarse row: the frame covers every ring cell beside it.
+const FRAME_REACH_M = 1.6;
+/** U-167 (§§3.2, 6.2): each bay's 8×8 m floor west of its feet anchor, the
+ * lip strip on its westernmost edge and the frame zone in which the lip,
+ * canopy and side returns replace the ordinary 2.2 m barrier ring. */
+export const BAYS = RIDGE.bays.list.map((b) => {
+  const { edgeBackM, halfLengthM, eastM, lipDepthM } = RIDGE.bays;
+  const floor = { minX: b.x - edgeBackM, maxX: b.x + eastM, minZ: b.z - halfLengthM, maxZ: b.z + halfLengthM };
+  let minZ = floor.minZ;
+  const strata = b.strata.map((s) => { const out = { ...s, minZ }; minZ = s.maxZ; return out; });
+  if (minZ !== floor.maxZ) throw new Error(`${b.id}: lip strata end at z${minZ}, not z${floor.maxZ}`);
+  // The frame spans every row where this bay's fan hulls reach the barrier
+  // ring west of the landing, plus a coarse row and the ring's reach.
+  const near = VIEW_FANS.filter((f) => f.eye.x === b.x && f.eye.z === b.z)
+    .flatMap((f) => clipConvex(f.hull, rectPolygon({ minX: floor.minX - FRAME_REACH_M, maxX: b.x, minZ: -1e4, maxZ: 1e4 })));
+  const frame = { minX: floor.minX - FRAME_REACH_M, maxX: b.x,
+    minZ: Math.min(floor.minZ, ...near.map((p) => p.z)) - FRAME_REACH_M, maxZ: Math.max(floor.maxZ, ...near.map((p) => p.z)) + FRAME_REACH_M };
+  return { ...b, floor, frame, lipMaxX: floor.minX + lipDepthM, strata };
+});
+const frameOf = (r: Rect) => BAYS.find((b) => r.minX < b.frame.maxX && r.maxX > b.frame.minX && r.minZ < b.frame.maxZ && r.maxZ > b.frame.minZ);
+/** The ridge's view-fan cap (§6.2): rock stays 0.3 m under the lowest ray
+ * surface over the cell. Exact for the same reason as `fanRayFloor`; unlike
+ * the road's guard it accepts rock east of a bay's eye-1 m line, which only
+ * the bay frames and the oblique V3→X5 fan's ridge-side hull reach. */
+function ridgeFanCap(r: Rect): number {
+  let min = Infinity;
+  const cell = rectPolygon({ minX: r.minX - 1e-6, maxX: r.maxX + 1e-6, minZ: r.minZ - 1e-6, maxZ: r.maxZ + 1e-6 });
+  for (const fan of VIEW_FANS) {
+    const inside = clipConvex(cell, fan.hull);
+    if (inside.length) for (const s of fan.sectors) for (const v of clipConvex(inside, s.wedge)) min = Math.min(min, s.height(v));
+  }
+  return capUnder(min);
+}
 
 /** One segment's stair layout along its centreline parameter t (metres from the lower-index node). */
 export interface Flight {
@@ -111,6 +145,9 @@ function floors(): Floor[] {
     // Dead-end inland furniture recesses join the existing pads. The named
     // spine, stair ribbons and landing elevations remain unchanged.
     ...RIDGE.furniture.recesses.map((r) => flat(`furniture-${r.id}`, rectPolygon(r), r.y)),
+    // U-167: each bay adds the 0.8 m strip west of its landing; the rest of
+    // its 8×8 m floor is the landing itself.
+    ...BAYS.map((b) => flat(`bay-${b.id}`, rectPolygon(b.floor), b.y)),
     // The exact R6 wall narrows the inner corner. A bounded outer bevel on
     // the existing y26 rest keeps eight metres clear beside the survey
     // post's broken southwest return. Its extra area lies after the final
@@ -160,7 +197,7 @@ function strata(name: string) {
       // Preserve accepted bare R0–R7 rows. Bridge/descent and newly
       // furnished rows need a sub-micron weld: a centre/size round trip
       // must not open a point-query seam between two full-height supports.
-      const furnished = RIDGE.furniture.recesses.some((r) => z0 >= r.minZ && z0 < r.maxZ && lo < r.maxX && hi > r.minX);
+      const furnished = [...RIDGE.furniture.recesses, ...BAYS.map((b) => b.floor)].some((r) => z0 >= r.minZ && z0 < r.maxZ && lo < r.maxX && hi > r.minX);
       const weld = z0 >= 322 || furnished ? TOUCH_M : 0;
       if (old) { old.d = z1 + weld - (old.z - old.d / 2); old.z = z1 + weld - old.d / 2; next.set(key, old); return; }
       const box = { id: `${id}-${name}-${boxes.length}`, x: (lo + hi) / 2, y: bottom, z: (z0 + z1) / 2, w: hi - lo, h: top - bottom, d: z1 - z0 + 2 * weld };
@@ -280,7 +317,7 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
       return { id: `ridge-cap-${cap.id}`, top: cap.top, bottom: cap.bottomY };
     }
     const top = Math.max(body ? ridgeCrest((r.minZ + r.maxZ) / 2) : -Infinity, floorY + RIDGE.barrierM);
-    if (fanCap(r) < top) throw new Error(`View fan needs ridge rock below the y${top} barrier at x${r.minX}..${r.maxX} z${r.minZ}..${r.maxZ}`);
+    if (ridgeFanCap(r) < top) throw new Error(`View fan needs ridge rock below the y${top} barrier at x${r.minX}..${r.maxX} z${r.minZ}..${r.maxZ}`);
     return { id: 'ridge-rock', top, bottom: RIDGE.bottomY };
   };
   const lastRow = Math.ceil((Math.max(...zs) + reach) * MASS_ROWS_PER_M);
@@ -300,7 +337,7 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
       for (let i = 0; i < cells; i++) {
         const a = lo + (hi - lo) * i / cells, b = i === cells - 1 ? hi : lo + (hi - lo) * (i + 1) / cells;
         const r = { minX: a, maxX: b, minZ: Z0, maxZ: Z1 }, cap = capAt(r);
-        const top = cap ? cap.top : Math.min(ridgeCrest((Z0 + Z1) / 2), fanCap(r));
+        const top = cap ? cap.top : Math.min(ridgeCrest((Z0 + Z1) / 2), ridgeFanCap(r));
         if (top > RIDGE.bottomY + 1e-9) coarse.add(cap ? `ridge-cap-${cap.id}` : 'ridge-rock', a, b, Z0, Z1, cap?.bottomY ?? RIDGE.bottomY, top);
       }
     }
@@ -318,8 +355,19 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
       const shelf = union([...FLOORS.map((f) => sweep(f.polygon, z0 + TOUCH_M, z1 - TOUCH_M)).filter((s): s is Interval => s !== null)
         .map(([a, b]): Interval => [a - EDGE_M, b + EDGE_M]), ...excludedGround]);
       const spans = open.flatMap(([a, b]) => subtract(Math.max(a, west), Math.min(b, east), shelf));
-      for (const [lo, hi] of cutAt(spans, [...capCuts(z0, z1), ...below.flat()])) {
-        const { id, top, bottom } = barrier({ minX: lo, maxX: hi, minZ: z0, maxZ: z1 }, inBody);
+      const frameCuts = BAYS.flatMap((b) => [b.floor.minX, b.x]);
+      for (const [lo, hi] of cutAt(spans, [...capCuts(z0, z1), ...frameCuts, ...below.flat()])) {
+        const r = { minX: lo, maxX: hi, minZ: z0, maxZ: z1 }, bay = frameOf(r);
+        if (bay) {
+          // U-167: west of the bay floor the hillside stays under the fan;
+          // beside the bay strip a full-height side return closes the frame.
+          const ordinary = Math.max(inBody ? ridgeCrest((z0 + z1) / 2) : -Infinity, bay.y + RIDGE.barrierM);
+          const west = lo < bay.floor.minX - 1e-9;
+          const top = west ? Math.min(ordinary, ridgeFanCap(r)) : Math.max(ordinary, bay.y + RIDGE.bays.frameTopM);
+          if (top > RIDGE.bottomY + 1e-9) ring.add(west ? 'ridge-rock' : `ridge-bay-${bay.id}-return`, lo, hi, z0, z1, RIDGE.bottomY, top);
+          continue;
+        }
+        const { id, top, bottom } = barrier(r, inBody);
         const overRoad = below.some(([a, b]) => (lo + hi) / 2 >= a && (lo + hi) / 2 <= b);
         const hangingBottom = Math.max(RIDGE.bridge.minTurretUndersideY, near({ minX: lo, maxX: hi, minZ: z0, maxZ: z1 }, .06) - RIDGE.slabM);
         if (top > bottom + 1e-9) ring.add(overRoad ? 'ridge-parapet' : id, lo, hi, z0, z1, overRoad ? hangingBottom : bottom, top);
@@ -333,18 +381,51 @@ export function buildRidge(ground: readonly Polygon[]): BoxSpec[] {
   const gate = RIDGE.temporaryCaps.find((c) => c.id === 'east-gate')!;
   const gateCap = { id: 'ridge-cap-east-gate', x: (gate.minX + gate.maxX) / 2, y: gate.bottomY, z: (gate.minZ + gate.maxZ) / 2,
     w: gate.maxX - gate.minX, h: gate.top - gate.bottomY, d: gate.maxZ - gate.minZ };
-  return [...floor.boxes, deck, ...coarse.boxes, ...ring.boxes, gateCap, ...buildRidgeFurniture()];
+  return [...floor.boxes, deck, ...coarse.boxes, ...ring.boxes, gateCap, ...buildRidgeFurniture(), ...buildBayFrames(), ...buildRidgeFins()];
 }
 
-/** Screening proofs count permanent solids only. The temporary ridge caps
- * close the unbuilt bays and east gate until U-141/U-116 replace them;
- * without them a proof sees a more open scene than either before or after. */
+/** §6.2's lip on each bay's westernmost strip, the canopy's low edge over
+ * only that strip and its high underside behind it, all on the bay floor.
+ * Every lip stratum leaves exactly the same opening below its canopy. */
+export function buildBayFrames(): BoxSpec[] {
+  const { canopyHighM, frameTopM } = RIDGE.bays;
+  const box = (id: string, minX: number, maxX: number, minZ: number, maxZ: number, y0: number, y1: number): BoxSpec =>
+    ({ id, x: (minX + maxX) / 2, y: y0, z: (minZ + maxZ) / 2, w: maxX - minX, h: y1 - y0, d: maxZ - minZ });
+  return BAYS.flatMap((b) => [
+    ...b.strata.flatMap((s, i) => {
+      // An optional lower outer ledge lies wholly beyond the inner lip, which
+      // stays above the controller's step height wherever a body can reach.
+      const split = 'outer' in s ? b.floor.minX + s.outer.depthM : b.floor.minX;
+      return [
+        box(`ridge-bay-${b.id}-lip-${i}`, split, b.lipMaxX, s.minZ, s.maxZ, b.y, b.y + s.lipM),
+        box(`ridge-bay-${b.id}-canopy-${i}`, split, b.lipMaxX, s.minZ, s.maxZ, b.y + s.canopyM, b.y + frameTopM),
+        ...'outer' in s ? [
+          box(`ridge-bay-${b.id}-ledge-${i}`, b.floor.minX, split, s.minZ, s.maxZ, b.y, b.y + s.outer.lipM),
+          box(`ridge-bay-${b.id}-ledge-canopy-${i}`, b.floor.minX, split, s.minZ, s.maxZ, b.y + s.outer.canopyM, b.y + frameTopM),
+        ] : [],
+      ];
+    }),
+    box(`ridge-bay-${b.id}-canopy`, b.lipMaxX, b.x, b.floor.minZ, b.floor.maxZ, b.y + canopyHighM, b.y + frameTopM),
+  ]);
+}
+
+/** §6.2's blind-spot fin F3, solid from the ridge bottom; F1/F2 stand in the road rock. */
+export function buildRidgeFins(): BoxSpec[] {
+  return RIDGE.fins.map((f) => ({ id: `ridge-fin-${f.id}`, x: (f.minX + f.maxX) / 2, y: f.bottomY, z: (f.minZ + f.maxZ) / 2,
+    w: f.maxX - f.minX, h: f.top - f.bottomY, d: f.maxZ - f.minZ }));
+}
+
+/** Screening proofs count permanent solids only. The temporary east-gate cap
+ * closes the unbuilt outpost approach until U-116 replaces it. */
 export const isTemporaryRidgeCap = (id: string) => id.startsWith('ridge-cap-');
 
-/** Clearance of every listed bay ray over the permanent ridge rock, and the
- * temporary ridge caps it crosses (the bays open in U-141). */
+/** Clearance of every listed bay ray over the permanent ridge rock, the
+ * temporary ridge caps it crosses, and the least distance between the ray
+ * and its bay's lip/canopy/return frame, which is exempt from the fan cap
+ * but must leave the whole ray open. */
 export function ridgeRayClearances(boxes: readonly BoxSpec[]) {
   const rock = boxes.filter((b) => b.id.startsWith('ridge-rock') || b.id.startsWith('ridge-cap-'));
+  const frames = boxes.filter((b) => b.id.startsWith('ridge-bay-'));
   return VIEW_FANS.flatMap((fan) => fan.rays.map((ray) => {
     const dx = ray.to.x - fan.eye.x, dz = ray.to.z - fan.eye.z;
     let clearanceM = Infinity;
@@ -363,8 +444,21 @@ export function ridgeRayClearances(boxes: readonly BoxSpec[]) {
       if (cap) { if (b.y + b.h > height && b.y < entry) caps.add(cap.id); continue; }
       clearanceM = Math.min(clearanceM, height - (b.y + b.h));
     }
+    // Vertical gap between the ray and each frame box it passes over or under.
+    let frameGapM = Infinity;
+    for (const b of frames) {
+      let t0 = 0, t1 = 1;
+      for (const [o, d, lo, hi] of [[fan.eye.x, dx, b.x - b.w / 2, b.x + b.w / 2], [fan.eye.z, dz, b.z - b.d / 2, b.z + b.d / 2]] as const) {
+        if (Math.abs(d) < 1e-12) { if (o < lo || o > hi) t1 = -1; continue; }
+        const a = (lo - o) / d, c = (hi - o) / d;
+        t0 = Math.max(t0, Math.min(a, c)); t1 = Math.min(t1, Math.max(a, c));
+      }
+      if (t1 < t0) continue;
+      const enter = fan.eye.y + (ray.to.y - fan.eye.y) * t0, leave = fan.eye.y + (ray.to.y - fan.eye.y) * t1;
+      frameGapM = Math.min(frameGapM, Math.max(Math.min(enter, leave) - (b.y + b.h), b.y - Math.max(enter, leave)));
+    }
     return { bay: fan.id, target: ray.id, clearanceM: clearanceM === Infinity ? null : Math.round(clearanceM * 1000) / 1000,
-      blockedOnlyByTemporaryCaps: [...caps] };
+      frameGapM: frameGapM === Infinity ? null : Math.round(frameGapM * 1000) / 1000, blockedOnlyByTemporaryCaps: [...caps] };
   }));
 }
 
@@ -378,6 +472,7 @@ export function ridgeManifest(boxes: readonly BoxSpec[]) {
       stairStartM: r(f.t0), stairEndM: r(f.t1), risers: f.risers.length, restLandingM: r(f.restLandingM),
       firstRiserM: f.risers.length ? r(f.risers[0]!) : null, lastRiserM: f.risers.length ? r(f.risers.at(-1)!) : null })),
     boxes: { floor: count('ridge-floor'), slab: count('ridge-slab'), bridge: count('ridge-bridge'), parapet: count('ridge-parapet'), rock: count('ridge-rock'), caps: count('ridge-cap-'),
+      bayFrames: count('ridge-bay-'),
       cover: count('ridge-cover-'), hut: count('ridge-hut-'), survey: count('ridge-survey-') },
     rays: ridgeRayClearances(boxes) };
 }

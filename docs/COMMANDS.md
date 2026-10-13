@@ -56,7 +56,7 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | `pnpm export:soldier` | write the code-built soldier as `assets/src/soldier.glb`, the pipeline's test asset |
 | `pnpm gen:nav` | re-bake every named world's navmesh; required after editing a world, `MoveConfig` or the hitbox (a test fails until you do) |
 | `pnpm gen:qalat-insertion` | U-138: compile the isolated Juniper Hollow replacement section and its exact collision/render surface, manifest and plan into `artifacts/qalat-insertion/`; production campaign activation remains U-117 |
-| `pnpm gen:qalat-road-supports` | U-149/U-159–U-165/U-151/U-152: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard, loading façades, D0 return store, first-X5 ingress dogleg/screens and the furnished R0–R9 ridge shelf/service bridge; preserve basement voids, the 12 m vehicle corridor and ridge views; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
+| `pnpm gen:qalat-road-supports` | U-149/U-159–U-165/U-167/U-151/U-152: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard, loading façades, D0 return store, first-X5 ingress dogleg/screens and the furnished R0–R9 ridge shelf/service bridge with its V1–V3 support bays and F3; preserve basement voids, the 12 m vehicle corridor and ridge views; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
 
 ## Isolated Juniper Hollow construction (U-138)
@@ -166,10 +166,10 @@ shelf: 8 m stepped ribbons on 0.05 m rows (≤5 cm edge/riser rasterization),
 §6.1's landings and R3 shelf, ten-riser flights of 0.20 m risers on 0.40 m treads
 spaced evenly with ≥2 m rest landings. The T-E body and a 1 m barrier ring stand
 ≥2.2 m above every adjacent floor; north of z300 the road rock stands back by
-that ring. Temporary caps close the V1–V3 bay fronts (U-141). U-164 replaces
+that ring. Temporary caps closed the V1–V3 bay fronts until U-167. U-164 replaces
 the R7 mouth caps with the bridge/descent and caps the east gate for U-116.
-Screening proofs and the six U-162
-reveal captures count permanent solids only (`isTemporaryRidgeCap`). Run
+Screening proofs count permanent solids only (`isTemporaryRidgeCap`, now just
+the east-gate cap); the six U-162 reveal captures render the whole scene. Run
 `pnpm exec vitest run packages/tools/src/maps/qalatRidge.test.ts packages/tools/src/maps/qalatRidgeBridge.test.ts packages/tools/src/maps/qalatRidgeNav.test.ts`
 for the stair recipe, edge, fan, travel, mouth, island and escape proofs.
 
@@ -195,8 +195,18 @@ The hold is (95.8,30,238); U-141 builds the C12-U route to its existing R5 endpo
 An adjacent exact-impact-face blast exposure issue is recorded in U-166;
 U-165's exposed control additionally receives a real ordinary direct cannon hit.
 
+U-167 replaces the V1–V3 bay caps with §6.2's bays: each anchor's 0.8 m floor
+strip, a rock lip on its western 0.25 m under a canopy whose low edge leaves a
+0.70 m opening (below the 0.8 m prone body), a 3 m canopy behind it and
+full-height side returns. V3's lip steps down northward so its south-gate and
+X5 rays clear it, keeping every reachable lip above the 0.45 m step. Rock west
+of each lip stays 0.3 m under the fans; the frame itself is exempt but leaves
+every listed ray open (manifest `ridge.rays[].frameGapM`). F3 is one explicit
+y36 fin. `qalatRidgeBays.test.ts` checks construction, target rays from each
+anchor's standing eye, F1/F2/F3 blind spots and four-stance escape attempts.
+
 Run `pnpm exec tsx packages/tools/src/capture-qalat-road-supports.ts` after
-generation for fifty-seven 1440×1000 exact-scene views and geometry/draw measurements,
+generation for sixty-three 1440×1000 exact-scene views and geometry/draw measurements,
 including the road fights, motor pool/retaining turns, occupied bridge, V3→X5 opening,
 CAP-RETURN, store door/holding socket and the six road rocket firing choices.
 The six added A-C11/A-C12/V3 X4-hidden/X5-visible views display production
@@ -207,8 +217,9 @@ U-164 adds standing eyes on R7/R7b/R8/R9 (R7's capture sits 0.5 m south of
 its node on the retained pad), a tank under the bridge and the R8 underside.
 U-165 appends eight standing-eye views of the hut/spur, survey interior, four
 cover choices and sheltered/exposed R5 hold positions, retaining all 49 prior views.
+U-167 appends five bay standing eyes (V1/V3 anchors and rears, V2 anchor) and a
+free F3 view; with the bays built, every view renders the whole scene.
 CAP-X ingress now shows the built deck with a production tank capsule at J1.
-the V2/V3 bay-eye and reveal views render permanent solids (temporary caps hidden).
 Streaming CI uploads `qalat-road-support-review`. Commit manifest, plan,
 capture metadata and PNGs; large level/surface JSON stays ignored. For orbit
 review run `pnpm exec vite --host 127.0.0.1` from the repository root and open

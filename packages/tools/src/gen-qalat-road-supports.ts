@@ -1,4 +1,4 @@
-/** Generate isolated road supports and U-165's furnished R0–R9 ridge/service bridge without altering production data. */
+/** Generate isolated road supports and the furnished R0–R9 ridge/service bridge with U-167's support bays without altering production data. */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buildRoadSupportLevel, roadSupportManifest, roadSupportPlanSvg } from './maps/qalatRoadSupports.ts';
 import { insertionSurface } from './maps/insertionSurface.ts';
@@ -10,4 +10,4 @@ const surface = insertionSurface(level.boxes);
 await writeFile(new URL('surface.json', output), JSON.stringify({ levelHash: manifest.levelHash, ...surface }) + '\n');
 await writeFile(new URL('construction.json', output), JSON.stringify(manifest, null, 2) + '\n');
 await writeFile(new URL('plan.svg', output), roadSupportPlanSvg());
-console.log(`U-165: furnished R0–R9 ridge and service bridge, first-X5 ingress, road fights and D0 return store generated (${manifest.boxCount} boxes, ${surface.indices.length / 3} exposed triangles)`);
+console.log(`U-167: V1–V3 support bays on the furnished R0–R9 ridge and service bridge, first-X5 ingress, road fights and D0 return store generated (${manifest.boxCount} boxes, ${surface.indices.length / 3} exposed triangles)`);

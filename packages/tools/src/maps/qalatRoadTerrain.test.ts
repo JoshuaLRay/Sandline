@@ -231,7 +231,7 @@ describe('U-160 road-facing rock on the bent road', () => {
         : (bay.id === 'V1' && t.x === 24) || (bay.id === 'V2' && t.x === -22) ? 9.15 : bay.id === 'V3-X5' ? 11.2 : 8.05;
       const view = between(bay.eye, { ...t, y: targetY });
       if (rayWorld(view, caps) !== null) crossings.push(`${bay.id}→${t.x},${t.z}`);
-      // U-163's temporary ridge bay caps close every bay until U-141 opens it (asserted in qalatRidge.test.ts).
+      // U-167's built bays leave every listed view open (asserted in qalatRidge*.test.ts).
       else expect(rayWorld(view, permanentScene), `${bay.id} → ${JSON.stringify(t)}`).toBeNull();
     }
     // Only the two recorded temporary caps block a listed view.
@@ -308,6 +308,9 @@ describe('U-160 road-facing rock on the bent road', () => {
 
   it('rejects walking, sprint-jumping, vaulting, crouching and crawling off every edge', async () => {
     let attempts = 0;
+    // Low road walls are legitimate landings; select them once, not per attempt.
+    const lowCover = world.boxes.filter((b) => ['A-C03', 'A-C04', 'A-C06', 'A-C08', 'A-C09', 'A-C11']
+      .some((id) => b.id.startsWith(`road-combat-${id}-`)));
     const tryEscape = (p: Point, out: Point) => {
       const start = { x: p.x - out.x * .6, z: p.z - out.z * .6 };
       if (!onRoad(start, -.45) || start.z < 84) return;
@@ -327,8 +330,7 @@ describe('U-160 road-facing rock on the bent road', () => {
         expect(state.vault).toBeNull();
         // A low wall on the road is now a legitimate landing; the surrounding
         // rock and high cover are still forbidden destinations.
-        const onLowCover = world.boxes.some((b) => ['A-C03', 'A-C04', 'A-C06', 'A-C08', 'A-C09', 'A-C11']
-          .some((id) => b.id.startsWith(`road-combat-${id}-`)) && Math.abs(state.y - b.maxY) < .01
+        const onLowCover = lowCover.some((b) => Math.abs(state.y - b.maxY) < .01
           && state.x + DEFAULT_MOVE_CONFIG.radius > b.minX && state.x - DEFAULT_MOVE_CONFIG.radius < b.maxX
           && state.z + DEFAULT_MOVE_CONFIG.radius > b.minZ && state.z - DEFAULT_MOVE_CONFIG.radius < b.maxZ);
         expect(Math.abs(state.y - 8) < .01 || onLowCover, `${stance} landed off the road/low cover at ${JSON.stringify(state)}`).toBe(true);
