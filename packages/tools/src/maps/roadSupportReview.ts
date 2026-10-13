@@ -107,6 +107,8 @@ const views = {
   hut: { position: [81, 15.55, 100], target: [87, 15.55, 102], label: 'Shepherd hut · open west face and four east-wall sacks' },
   survey: { position: [82, 27.55, 286], target: [80, 29.3, 281], label: 'Broken survey post · open west face, high attached beams' },
   ridgeHold: { position: [95.8, 31.55, 238], target: [94, 31.2, 238], label: 'R5 inland escorted hold · ordinary blast cover and projectile obstruction' },
+  c12L: { position: [12, 9.55, 128], target: [28, 9.55, 134], label: 'C12-L road mouth · four-metre shepherd stair toward R2' },
+  c12U: { position: [26, 9.55, 232], target: [40, 9.55, 218], label: 'C12-U road mouth · four-metre quarry stair toward R5' },
   ridgeOverview: { position: [190, 150, 110], target: [76, 20, 200], label: 'Free overview · furnished R0–R9 ridge, V1–V3 bays, F3 and service bridge; east-gate cap remains' },
   returnCourt: { position: [44, 9.55, 58], target: [32, 9.55, 98], label: 'CAP-RETURN · court edge toward tank stop; store entrance beside retreat' },
   storeDoor: { position: [40, 9.55, 58], target: [50, 9.55, 58], label: 'D0 court toward store · 4 m connector and west door · y8 floor / y12 ceiling' },
