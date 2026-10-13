@@ -1,0 +1,31 @@
+{
+  "$comment": "U-168: exactly two bidirectional road-ridge crossings from construction specification section 6.3. Four-metre ribbons and 4x4 m waypoint landings are carved through the road and ridge rock; lower terminal mouths cut only their stair footprint into existing ridge landings.",
+  "id": "qalat-c12",
+  "widthM": 4,
+  "landingM": 4,
+  "riserM": 0.2,
+  "treadM": 0.4,
+  "flightRisers": 10,
+  "restLandingM": 2,
+  "bottomY": 5.5,
+  "cheekM": 1,
+  "cheekWidthM": 0.25,
+  "barrierM": 2.2,
+  "stairs": [
+    { "id": "C12-L", "spine": [
+      { "id": "A2", "x": 12, "y": 8, "z": 128 },
+      { "id": "L1", "x": 28, "y": 8, "z": 134 },
+      { "id": "L2", "x": 40, "y": 12, "z": 140 },
+      { "id": "L3", "x": 54, "y": 16, "z": 140 },
+      { "id": "R2", "x": 64, "y": 20, "z": 128 }
+    ], "risers": [0, 20, 20, 20] },
+    { "id": "C12-U", "spine": [
+      { "id": "A5", "x": 26, "y": 8, "z": 232 },
+      { "id": "U1", "x": 40, "y": 8, "z": 218 },
+      { "id": "U2", "x": 62, "y": 14, "z": 216 },
+      { "id": "U3", "x": 78, "y": 20, "z": 224 },
+      { "id": "U4", "x": 66, "y": 24, "z": 244 },
+      { "id": "R5", "x": 86, "y": 30, "z": 248 }
+    ], "risers": [0, 30, 30, 20, 30] }
+  ]
+}
