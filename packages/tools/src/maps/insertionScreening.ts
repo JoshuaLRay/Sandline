@@ -75,8 +75,7 @@ export function insertionObservers(): { kind: string; points: Point[] }[] {
   ];
 }
 
-export async function verifyInsertionScreening() {
-  const world = buildInsertionWorld();
+export async function verifyInsertionScreening(world = buildInsertionWorld()) {
   // Only southern terrain counts. This excludes the temporary road/ridge/depot
   // continuation caps, and proves protection without the rest of the map.
   const southern = world.boxes.filter((b) => b.minZ < 60)

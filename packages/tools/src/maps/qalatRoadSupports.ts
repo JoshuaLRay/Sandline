@@ -171,7 +171,7 @@ export function roadTankSweepReport(level = buildRoadSupportLevel()) {
 export function roadSupportManifest() {
   const level = buildRoadSupportLevel();
   const levelHash = createHash('sha256').update(JSON.stringify(level)).digest('hex');
-  return { task: 'U-168', parent: 'U-141', foundation: 'U-149', bend: 'U-159', rock: 'U-160', road: 'U-139',
+  return { task: 'U-169', parent: 'U-141', foundation: 'U-149', bend: 'U-159', rock: 'U-160', road: 'U-139',
     kind: 'isolated surface whitebox: road fights, screened tank ingress, D0 return store and furnished ridge with support bays, service bridge and C12-L/C12-U stairs',
     activeCampaign: 'unchanged; activation belongs to U-117',
     sourceHash: createHash('sha256').update(JSON.stringify({ insertion: INSERTION, road: ROAD_SUPPORTS, terrain: ROAD_TERRAIN, combat: ROAD_COMBAT, ingress: TANK_INGRESS, shelters: RETURN_SHELTERS, ridge: RIDGE, crossings: C12 })).digest('hex'),
@@ -192,7 +192,7 @@ export function roadSupportManifest() {
     tankSweep: roadTankSweepReport(level),
     combatSightLines: roadCombatReport(),
     ownerQualityVerdict: 'road look/play batched in U-139; ridge look/play batched in U-140',
-    unfinished: ['integrated surface proofs: U-169', 'outpost: U-116', 'basement: U-115'],
+    unfinished: ['outpost: U-116', 'basement: U-115'],
   };
 }
 

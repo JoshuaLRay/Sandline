@@ -233,6 +233,14 @@ using the ordinary Formation, POW escort Brain, PathFollower and body separation
 A2 apron edge. The inherited ridge nav isolation test now seals D0, C12-L and
 C12-U together; ridge, bay and terrain proofs exempt only the R2/R5 open mouths.
 CAP-X ingress now shows the built deck with a production tank capsule at J1.
+U-169's `qalatSurfaceNav.test.ts` checks the live Detour junction portals and
+single-goal route sequences; `qalatSurfaceEscape.test.ts` runs 8,460 integrated
+jump/vault/crouch/prone/drop attempts, checking every grounded storey.
+`qalatC12TerminalEscape.test.ts` pins both reproduced chained climbs: existing
+cheek heights now include sprint-jump reach, and the A-C03 edge guard meets the
+mouth guard. `qalatRidgeReturnCombat.test.ts` proves real standing rockets from
+V3 to A8 and C12-U's U1 landing to A5, tank blast damage and actual canopy-cover
+attenuation; V3→X5 rockets are not certified. Run these files with `pnpm exec vitest run`.
 Streaming CI uploads `qalat-road-support-review`. Commit manifest, plan,
 capture metadata and PNGs; large level/surface JSON stays ignored. For orbit
 review run `pnpm exec vite --host 127.0.0.1` from the repository root and open
