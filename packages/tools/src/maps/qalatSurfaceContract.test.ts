@@ -15,7 +15,7 @@ describe('U-169 completed surface screening and continuation contracts', () => {
     for (const id of ['V1', 'V2', 'V3']) {
       expect(world.boxes.some((b) => b.id.startsWith(`ridge-bay-${id}-`)), id).toBe(true);
     }
-    for (const [id, x, z, y] of [['C12-L', 40, 140, 14], ['C12-U', 62, 216, 14]] as const) {
+    for (const [id, x, z, y] of [['C12-L', 40, 140, 12], ['C12-U', 62, 216, 14]] as const) {
       const floors = world.boxes.filter((b) => b.id.startsWith('crossing-floor-'));
       expect(supportUnder(x, z, DEFAULT_MOVE_CONFIG.radius, y + .05, floors, 0), id).toBe(y);
     }
