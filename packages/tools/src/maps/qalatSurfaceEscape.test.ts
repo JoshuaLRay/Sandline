@@ -28,8 +28,28 @@ function routeOf(b: WorldBox): Route | null {
   if (b.id.startsWith('road-support-') || lowRoad.test(b.id)) return 'road';
   return b.id === 'insertion-foundation' ? 'insertion' : null;
 }
-const near = (p: Point) => world.boxes.filter((b) => b.maxX >= p.x - WINDOW && b.minX <= p.x + WINDOW
-  && b.maxZ >= p.z - WINDOW && b.minZ <= p.z + WINDOW);
+const near = (p: Point, radius: number) => world.boxes.filter((b) => b.maxX >= p.x - radius && b.minX <= p.x + radius
+  && b.maxZ >= p.z - radius && b.minZ <= p.z + radius);
+// Include every scene box touching a bucket expanded by 3 m. The controller's
+// furthest ordinary probe (vault landing plus footprint and tick motion) is
+// strictly inside that reach; this keeps repeated collision scans local.
+const QUERY = 3, CELL = 4, collisionGrid = new Map<string, WorldBox[]>();
+for (const b of world.boxes) for (let x = Math.floor((b.minX - QUERY) / CELL); x <= Math.floor((b.maxX + QUERY) / CELL); x++)
+  for (let z = Math.floor((b.minZ - QUERY) / CELL); z <= Math.floor((b.maxZ + QUERY) / CELL); z++) {
+    const key = `${x},${z}`, list = collisionGrid.get(key) ?? []; list.push(b); collisionGrid.set(key, list);
+  }
+const collisions = (p: Point) => collisionGrid.get(`${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`) ?? [];
+const supportGrid = new Map<string, Map<Route, WorldBox[]>>();
+const supports = (p: Point) => {
+  const key = `${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`;
+  if (!supportGrid.has(key)) {
+    const groups = new Map<Route, WorldBox[]>();
+    for (const b of collisions(p)) { const route = routeOf(b); if (!route) continue;
+      const group = groups.get(route) ?? []; group.push(b); groups.set(route, group); }
+    supportGrid.set(key, groups);
+  }
+  return supportGrid.get(key)!;
+};
 const valid = new Map<Polygon, boolean>();
 const contains = (polys: readonly Polygon[], p: Point) => polys.some((poly) => {
   if (!valid.has(poly)) valid.set(poly, poly.length >= 3 && Math.abs(poly.reduce((area, a, i) => {
@@ -91,48 +111,51 @@ function edges(polys: readonly Polygon[], spacing: number) {
 describe('U-169 GEO-05 complete surface rejects unregistered shortcuts', () => {
   it('sweeps mass edges, stair sides, bridge parapets, bays, screens and reachable decorative stacks', async () => {
     expect(reach).toBeLessThan(WINDOW);
+    expect(config.vaultDistance + config.radius + config.vaultProbe + config.sprintSpeed * TICK_SECONDS).toBeLessThan(QUERY);
     expect(world.boxes.some((b) => b.id.startsWith('ridge-bay-V3-'))).toBe(true);
     for (const range of [[124, 142], [214, 250]]) expect(world.boxes.some((b) => b.id.startsWith('crossing-floor-')
       && b.minZ >= range[0]! && b.maxZ <= range[1]!)).toBe(true);
-    const counts = new Map<string, number>(), transitions = new Map<string, number>();
+    const counts = new Map<string, number>(), transitions = new Map<string, number>(), violations = new Map<string, string>();
     let vaultTicks = 0, dropTicks = 0, attempts = 0;
     const attempt = (start: Point & { y?: number }, out: Point, label: string, mandatory = false) => {
-      const boxes = near(start), legal = boxes.filter((b) => routeOf(b) !== null);
+      const pushTicks = label.startsWith('stack/') ? STACK_PUSH : PUSH;
+      const window = pushTicks === STACK_PUSH ? WINDOW : 16;
+      expect(config.sprintSpeed * pushTicks * TICK_SECONDS + config.radius + config.vaultProbe + config.vaultDistance).toBeLessThan(window);
+      const boxes = near(start, window), legal = boxes.filter((b) => routeOf(b) !== null);
       const y = start.y ?? supportUnder(start.x, start.z, config.radius, 30.01, legal, 0);
       if (y < 7.9 || blockedAt(start.x, start.z, config.radius, y, .05, config.height, boxes)) {
         expect(mandatory, `unoccupiable mandatory start ${label}: ${JSON.stringify(start)}`).toBe(false); return;
       }
-      const groups = new Map<Route, WorldBox[]>();
-      for (const b of legal) { const route = routeOf(b)!; const group = groups.get(route) ?? []; group.push(b); groups.set(route, group); }
-      const supported = (p: Point & { y: number }): Route[] => [...groups].filter(([route, group]) =>
+      const supported = (p: Point & { y: number }): Route[] => [...supports(p)].filter(([route, group]) =>
         (route !== 'insertion' || onInsertionFloor(p, .06) || contains(returnShelterFloors(), p))
         && Math.abs(supportUnder(p.x, p.z, config.radius, p.y + .01, group, 0) - p.y) < 1e-6).map(([route]) => route)
-        .concat(Math.abs(p.y - 8) < .01 && supportUnder(p.x, p.z, config.radius, 8.01, groups.get('insertion') ?? [], 0) === 8
+        .concat(Math.abs(p.y - 8) < .01 && supportUnder(p.x, p.z, config.radius, 8.01, supports(p).get('insertion') ?? [], 0) === 8
           ? (['road', 'ridge'] as const).filter((route) => contains(outlines[route], p)) : []);
       expect(supported({ ...start, y }).length, `${label} must start on a listed support`).toBeGreaterThan(0);
       const yaw = (Math.round(Math.atan2(out.x, out.z) / (2 * Math.PI) * 1024) + 1024) % 1024;
-      const pushTicks = label.startsWith('stack/') ? STACK_PUSH : PUSH;
       for (const action of ACTIONS) {
         let state = { ...createMoveState(start.x, y, start.z), grounded: true };
         let previous = supported(state), previousPoint = state;
-        for (let tick = 0; tick < pushTicks + SETTLE; tick++) {
+        trace: for (let tick = 0; tick < pushTicks + SETTLE; tick++) {
           const pushing = tick < pushTicks, oldY = state.y;
           state = stepCharacter(state, { moveX: 0, moveY: pushing ? 1 : 0, yaw,
             sprint: pushing && (action === 'sprint/drop' || action === 'sprint-jump/vault'),
             jump: pushing && action === 'sprint-jump/vault', crouch: pushing && action === 'crouch', prone: pushing && action === 'prone',
-          }, TICK_SECONDS, config, boxes);
+          }, TICK_SECONDS, config, collisions(state));
           const where = `${label}/${action} from ${JSON.stringify(start)}: ${JSON.stringify(state)}`;
           expect(Math.max(Math.abs(state.x - start.x), Math.abs(state.z - start.z)) + config.radius
-            + config.vaultProbe + config.vaultDistance, where).toBeLessThan(WINDOW);
+            + config.vaultProbe + config.vaultDistance, where).toBeLessThan(window);
           if (state.vault) vaultTicks++;
           if (state.y < oldY - .001) dropTicks++;
           if (!state.grounded) continue;
           const current = supported(state);
-          expect(current.length, `${where} landed on rock, canopy, roof or an unlisted floor`).toBeGreaterThan(0);
+          const fail = (reason: string) => violations.set(`${label}/${start.x.toFixed(2)},${start.z.toFixed(2)}`, `${where}: ${reason}`);
+          if (!current.length) { fail('landed on rock, canopy, roof or an unlisted floor'); break; }
           for (const route of current.filter((r) => previous.includes(r))) {
             const spine = spines[route];
-            if (spine) expect(Math.abs(segmentAt(state, spine) - segmentAt(previousPoint, spine)),
-              `${where} jumped/dropped onto a nonadjacent ${route} segment`).toBeLessThanOrEqual(1);
+            if (spine && Math.abs(segmentAt(state, spine) - segmentAt(previousPoint, spine)) > 1) {
+              fail(`jumped/dropped onto a nonadjacent ${route} segment`); break trace;
+            }
           }
           if (!current.some((route) => previous.includes(route))) {
             // Only D0's southern hub and the two authored C12 ribbons join
@@ -147,7 +170,7 @@ describe('U-169 GEO-05 complete surface rejects unregistered shortcuts', () => {
                 || other.includes('ridge') && Math.abs(state.y - mouth.top) < .01 && Math.abs(previousPoint.y - mouth.top) < .01
                 && (inConvex(mouth.ridge, state) || inConvex(mouth.ridge, previousPoint));
             });
-            expect(d0 || crossing, `${where} changed routes outside D0/C12 mouths or dropped from a stair`).toBe(true);
+            if (!d0 && !crossing) { fail('changed routes outside D0/C12 mouths or dropped from a stair'); break; }
             const key = `${previous.join('+')}→${current.join('+')}`;
             transitions.set(key, (transitions.get(key) ?? 0) + 1);
           }
@@ -166,7 +189,7 @@ describe('U-169 GEO-05 complete surface rejects unregistered shortcuts', () => {
         if (i % 16 === 0) await yieldWorker();
       }
       expect(counts.get(category) ?? 0, `entire ${category} boundary was skipped`).toBeGreaterThan(30);
-      console.log('U-169 boundary coverage', category, counts.get(category));
+      console.log('U-169 boundary coverage', category, counts.get(category), [...violations.values()].filter((v) => v.startsWith(`${category}/`)));
       await yieldWorker();
     }
     // Every screen's accessible faces, including those inside the broad road
@@ -212,6 +235,7 @@ describe('U-169 GEO-05 complete surface rejects unregistered shortcuts', () => {
     expect(attempts).toBeGreaterThan(2500);
     expect(vaultTicks, 'ordinary jump intent must actually exercise the automatic vault path').toBeGreaterThan(0);
     expect(dropTicks, 'reachable low tops must exercise ordinary downhill/drop movement').toBeGreaterThan(0);
+    expect([...violations.values()], 'all attempts must keep their supported route and legal storey').toEqual([]);
     console.log('U-169 integrated GEO-05', JSON.stringify({ attempts, counts: Object.fromEntries(counts),
       actions: ACTIONS, pushTicks: PUSH, stackPushTicks: STACK_PUSH, settleTicks: SETTLE, vaultTicks, dropTicks,
       legalTransitions: Object.fromEntries(transitions), windowM: WINDOW, reachBoundM: reach }));

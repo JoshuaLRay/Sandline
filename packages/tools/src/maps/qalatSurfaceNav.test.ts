@@ -45,7 +45,7 @@ const rect = (x0: number, x1: number, z0: number, z1: number) =>
   rectPolygon({ minX: x0, maxX: x1, minZ: z0, maxZ: z1 });
 const pocket = rect(-20, 18, -24, 12), court = rect(20, 44, 53, 75);
 const insertionFloors = [pocket, court, ...ribbonPieces(INSERTION, 8)];
-const junctionFloors = [ribbonPieces([D0, RIDGE[0]!], 8), ...CROSSING_SPINES.map((spine) => [
+const junctionFloors = [[court, ...ribbonPieces([D0, RIDGE[0]!], 8)], ...CROSSING_SPINES.map((spine) => [
   ...ribbonPieces(spine, 4), ...spine.slice(1, -1).map((p) => rect(p.x - 2, p.x + 2, p.z - 2, p.z + 2)),
 ])];
 const roadFloors = [...ribbonPieces([D0, ...ROAD], 20), ...ROAD.slice(0, 8).map((n) =>
@@ -189,9 +189,14 @@ describe('U-169 GEO-02/04 integrated surface route regions and exact legal cross
       const refs = junctionRefs[i]!, boundary = [...refs].flatMap((ref) => [...graph.get(ref)!]);
       const rejoins = reachable(roadRefs[0]!, new Set([...removed].filter((r) => !refs.has(r)))).has(ridgeRefs[0]!);
       if (!rejoins) return [];
+      expect(j.built, `${j.id} unexpectedly became a live crossing`).toBe(true);
       expect(boundary.some((ref) => road.has(ref)), `${j.id} missing road boundary`).toBe(true);
       expect(boundary.some((ref) => ridge.has(ref)), `${j.id} missing ridge boundary`).toBe(true);
-      const crossingPortals = [...refs].flatMap((ref) => portals.get(ref) ?? []).filter((edge) => road.has(edge.to) || ridge.has(edge.to));
+      // The ridge-facing live portals are the actual route-change boundary.
+      // On the road side an overlapping removed polygon can also expose an
+      // ordinary apron/court edge, far from where the crossing begins.
+      const crossingPortals = [...refs].flatMap((ref) => portals.get(ref) ?? []).filter((edge) => ridge.has(edge.to));
+      expect(crossingPortals.length, `${j.id} has no actual ridge-facing portal`).toBeGreaterThan(0);
       for (const edge of crossingPortals)
         expect(contains(junctionFloors[i]!, edge.point), `${j.id} boundary portal outside its independent legal floor: ${JSON.stringify(edge.point)}`).toBe(true);
       return [j.id];
