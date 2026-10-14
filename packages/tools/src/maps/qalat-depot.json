@@ -1,0 +1,29 @@
+{
+  "id": "qalat-depot-construction", "floorY": 0, "surfaceY": 8,
+  "wallM": 0.6, "corridorWidth": 4, "corridorCeiling": 3.2, "doorHeight": 3,
+  "rooms": [
+    { "id": "B1", "x": -2, "z": 96, "w": 12, "d": 12, "ceiling": 3.6 },
+    { "id": "B2", "x": -20, "z": 120, "w": 20, "d": 24, "ceiling": 4.5 },
+    { "id": "B3", "x": -36, "z": 160, "w": 24, "d": 32, "ceiling": 5.5 },
+    { "id": "B4", "x": -18, "z": 200, "w": 20, "d": 24, "ceiling": 4.5 },
+    { "id": "B5", "x": 8, "z": 232, "w": 16, "d": 16, "ceiling": 4 },
+    { "id": "B6", "x": 30, "z": 270, "w": 28, "d": 36, "ceiling": 5.5 },
+    { "id": "B7", "x": -14, "z": 310, "w": 20, "d": 20, "ceiling": 4 },
+    { "id": "B8", "x": -14, "z": 346, "w": 20, "d": 24, "ceiling": 4 },
+    { "id": "B9", "x": -8, "z": 370, "w": 12, "d": 12, "ceiling": 3.6 }
+  ],
+  "connectors": [
+    { "from": "B1", "to": "B2", "via": [{ "x": -20, "z": 96 }] },
+    { "from": "B2", "to": "B3", "via": [{ "x": -36, "z": 136 }] },
+    { "from": "B3", "to": "B4", "via": [{ "x": -36, "z": 188 }] },
+    { "from": "B4", "to": "B5", "via": [{ "x": 8, "z": 216 }] },
+    { "from": "B5", "to": "B6", "via": [{ "x": 8, "z": 250 }, { "x": 30, "z": 250 }] },
+    { "from": "B6", "to": "B7", "via": [{ "x": 30, "z": 298 }, { "x": -14, "z": 298 }] },
+    { "from": "B7", "to": "B8", "via": [{ "x": -14, "z": 330 }] },
+    { "from": "B8", "to": "B9", "via": [{ "x": -8, "z": 362 }] }
+  ],
+  "stairPorts": [
+    { "id": "B1-stair", "room": "B1", "axis": "x", "normal": 1, "x": 4, "z": 96 },
+    { "id": "B9-stair", "room": "B9", "axis": "z", "normal": 1, "x": -8, "z": 376 }
+  ]
+}

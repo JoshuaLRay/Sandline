@@ -89,7 +89,11 @@ canonical when this documentation PR merges.
 | [U-167](docs/backlog/U-167.md) | Open the V1–V3 support bays under their rock lips and canopies | Map implementation | P1 | DONE | U-140 REVIEW (engineering merged); ridge look/play verdict batched in U-140 | [#339](https://github.com/JoshuaLRay/Sandline/pull/339) |
 | [U-168](docs/backlog/U-168.md) | Build the C12-L and C12-U stairs between the road and the ridge | Map implementation | P1 | DONE | U-167 DONE; owner-approved compact treads; ridge look/play verdict (incl. V1's slot view of A-C03) batched in U-140 | [#340](https://github.com/JoshuaLRay/Sandline/pull/340) |
 | [U-169](docs/backlog/U-169.md) | Prove the integrated surface: isolated approaches, no shortcuts, ridge return fire | Map implementation | P1 | DONE | U-167/U-168 DONE; integrated proofs and two existing guard repairs complete; ridge look/play remains in U-140 | [#341](https://github.com/JoshuaLRay/Sandline/pull/341) |
-| [U-115](docs/backlog/U-115.md) | Build the continuous underground depot and its stairs | Map implementation | P1 | READY | U-109 DONE; U-114 REVIEW with engineering merged in #341 (human verdict not required first) | — |
+| [U-115](docs/backlog/U-115.md) | Build the continuous underground depot and its stairs | Map implementation | P1 | BLOCKED | Aggregate: U-170–U-173; surface engineering merged, human verdict not required first | — |
+| [U-170](docs/backlog/U-170.md) | Enclose the B1–B9 depot rooms and flat connecting corridors below road8 | Map implementation | P1 | IN_PROGRESS | U-109 DONE; U-114 REVIEW with engineering merged | `task/U-170-depot-shell` |
+| [U-171](docs/backlog/U-171.md) | Build the covered B0/B10 stairs and exact depot endpoint connections | Map implementation | P1 | BLOCKED | U-170 | — |
+| [U-172](docs/backlog/U-172.md) | Furnish the depot with its fixed piers, engines, shelves and cover | Map implementation | P1 | BLOCKED | U-171 | — |
+| [U-173](docs/backlog/U-173.md) | Prove the complete depot's seven-actor traversal and floor isolation | Map implementation | P1 | BLOCKED | U-172 | — |
 | [U-116](docs/backlog/U-116.md) | Build the prisoner outpost and reserve annex | Map implementation | P1 | BLOCKED | U-114, U-115 | — |
 | [U-117](docs/backlog/U-117.md) | Integrate redesigned Mission 1 combat, supplies and objectives | Map implementation | P1 | BLOCKED | U-111, U-112, U-113, U-116 | — |
 | [U-118](docs/backlog/U-118.md) | Finish Qalat terrain, architecture, lighting and presentation | Map implementation | P1 | BLOCKED | U-117 | — |
