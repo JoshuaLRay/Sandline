@@ -37,7 +37,8 @@ const full = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ vertexColo
 scene.add(full);
 // The world/nav backing plane is implicit in level data and absent from boxes.
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * level.floor.halfWidth, 2 * level.floor.halfDepth),
-  new THREE.MeshLambertMaterial({ color: '#827359', polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
+  new THREE.MeshLambertMaterial({ color: new THREE.Color().setRGB(.32, .34, .27),
+    polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
 floor.rotation.x = -Math.PI / 2; scene.add(floor);
 
 // Independent §7.2 outgoing centreline vertices, including B9's closed future

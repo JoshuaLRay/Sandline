@@ -78,6 +78,15 @@ describe('U-170 exact enclosed depot shells', () => {
     expect(up(30, 270, shell.filter((b) => !b.id.startsWith('depot-roof-')))).toBeUndefined();
   }, 120_000);
 
+  it('keeps the listed flat connector turns underground at the 3.2 m corridor ceiling', () => {
+    for (const [x, z] of [[-14, 96], [-20, 104], [-36, 136], [-36, 140], [-36, 182],
+      [-32, 190 + 2 / 3], [0, 211 + 1 / 13], [8, 216], [8, 220], [8, 246], [8, 250],
+      [18, 250], [30, 250], [30, 294], [30, 298], [0, 298], [-14, 298], [-14, 326], [-14, 330], [-8, 362]]) {
+      expect(blockedAt(x!, z!, .35, 0, 0, 3.199, shell), `${x}/${z} clear corridor`).toBe(false);
+      expect(up(x!, z!), `${x}/${z} corridor roof`).toBeCloseTo(1.6, 6);
+    }
+  });
+
   it('adds only underground construction, preserves the exact complete surface and fresh evidence', async () => {
     const level = buildDepotLevel(), surface = buildRoadSupportLevel();
     expect(level.boxes.slice(0, surface.boxes.length)).toEqual(surface.boxes);
