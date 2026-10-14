@@ -71,8 +71,9 @@ const mouths = {
 };
 // These are the actual authored outlines, so this integrated sweep adapts to
 // all carved masses. Inherited suites independently pin their coordinates.
+const shelterFloors = returnShelterFloors();
 const outlines = {
-  insertion: insertionFloors(), road: [...roadSupportFloors(), ...tankIngressFloors(), ...returnShelterFloors()],
+  insertion: insertionFloors(), road: [...roadSupportFloors(), ...tankIngressFloors(), ...shelterFloors],
   ridge: ridgeFloors(), stairs: crossingFloors(),
 };
 const spines: Partial<Record<Route, readonly Point[]>> = {
@@ -126,8 +127,10 @@ describe('U-169 GEO-05 complete surface rejects unregistered shortcuts', () => {
       if (y < 7.9 || blockedAt(start.x, start.z, config.radius, y, .05, config.height, boxes)) {
         expect(mandatory, `unoccupiable mandatory start ${label}: ${JSON.stringify(start)}`).toBe(false); return;
       }
-      const supported = (p: Point & { y: number }): Route[] => [...supports(p)].filter(([route, group]) =>
-        (route !== 'insertion' || onInsertionFloor(p, .06) || contains(returnShelterFloors(), p))
+      // supportUnder returns implicit ground y0 when no listed box qualifies;
+      // all authored route storeys start at y8, so that fallback is an escape.
+      const supported = (p: Point & { y: number }): Route[] => p.y < 7.9 ? [] : [...supports(p)].filter(([route, group]) =>
+        (route !== 'insertion' || onInsertionFloor(p, .06) || contains(shelterFloors, p))
         && Math.abs(supportUnder(p.x, p.z, config.radius, p.y + .01, group, 0) - p.y) < 1e-6).map(([route]) => route)
         .concat(Math.abs(p.y - 8) < .01 && supportUnder(p.x, p.z, config.radius, 8.01, supports(p).get('insertion') ?? [], 0) === 8
           ? (['road', 'ridge'] as const).filter((route) => contains(outlines[route], p)) : []);
@@ -142,18 +145,20 @@ describe('U-169 GEO-05 complete surface rejects unregistered shortcuts', () => {
             sprint: pushing && (action === 'sprint/drop' || action === 'sprint-jump/vault'),
             jump: pushing && action === 'sprint-jump/vault', crouch: pushing && action === 'crouch', prone: pushing && action === 'prone',
           }, TICK_SECONDS, config, collisions(state));
-          const where = `${label}/${action} from ${JSON.stringify(start)}: ${JSON.stringify(state)}`;
-          expect(Math.max(Math.abs(state.x - start.x), Math.abs(state.z - start.z)) + config.radius
-            + config.vaultProbe + config.vaultDistance, where).toBeLessThan(window);
+          const where = () => `${label}/${action} from ${JSON.stringify({ ...start, y })}: ${JSON.stringify(state)}`;
+          const extent = Math.max(Math.abs(state.x - start.x), Math.abs(state.z - start.z)) + config.radius
+            + config.vaultProbe + config.vaultDistance;
+          if (!(extent < window)) throw new Error(`${where()}: exceeded the complete collision window ${window}`);
           if (state.vault) vaultTicks++;
           if (state.y < oldY - .001) dropTicks++;
           if (!state.grounded) continue;
-          const current = supported(state);
-          const fail = (reason: string) => violations.set(`${label}/${start.x.toFixed(2)},${start.z.toFixed(2)}`, `${where}: ${reason}`);
+          const unchanged = state.x === previousPoint.x && state.y === previousPoint.y && state.z === previousPoint.z;
+          const current = unchanged ? previous : supported(state);
+          const fail = (reason: string) => violations.set(`${label}/${start.x.toFixed(2)},${start.z.toFixed(2)}/${action}`, `${where()}: ${reason}`);
           if (!current.length) { fail('landed on rock, canopy, roof or an unlisted floor'); break; }
           for (const route of current.filter((r) => previous.includes(r))) {
             const spine = spines[route];
-            if (spine && Math.abs(segmentAt(state, spine) - segmentAt(previousPoint, spine)) > 1) {
+            if (!unchanged && spine && Math.abs(segmentAt(state, spine) - segmentAt(previousPoint, spine)) > 1) {
               fail(`jumped/dropped onto a nonadjacent ${route} segment`); break trace;
             }
           }
@@ -167,8 +172,10 @@ describe('U-169 GEO-05 complete surface rejects unregistered shortcuts', () => {
               const mouth = mouths[route], other = previous.includes(route) ? current : previous;
               return other.includes('road') && Math.abs(state.y - 8) < .01 && Math.abs(previousPoint.y - 8) < .01
                 && (contains(mouth.road, state) || contains(mouth.road, previousPoint))
-                || other.includes('ridge') && Math.abs(state.y - mouth.top) < .01 && Math.abs(previousPoint.y - mouth.top) < .01
-                && (inConvex(mouth.ridge, state) || inConvex(mouth.ridge, previousPoint));
+                || other.includes('ridge') && Math.max(state.y, previousPoint.y) <= mouth.top + .01
+                && Math.min(state.y, previousPoint.y) >= mouth.top - config.vaultMaxHeight
+                && (Math.abs(state.y - mouth.top) < .01 || Math.abs(previousPoint.y - mouth.top) < .01)
+                && inConvex(mouth.ridge, state) && inConvex(mouth.ridge, previousPoint);
             });
             if (!d0 && !crossing) { fail('changed routes outside D0/C12 mouths or dropped from a stair'); break; }
             const key = `${previous.join('+')}→${current.join('+')}`;
@@ -197,7 +204,13 @@ describe('U-169 GEO-05 complete surface rejects unregistered shortcuts', () => {
     for (const screen of ROAD_COMBAT.screens) {
       for (const { edge, out } of edges([combatFootprint(screen)], 2))
         attempt({ x: edge.x + out.x * .6, z: edge.z + out.z * .6, y: 8 }, { x: -out.x, z: -out.z }, `screen/${screen.id}`);
-      expect(counts.get(`screen/${screen.id}`) ?? 0, `untested screen ${screen.id}`).toBeGreaterThanOrEqual(5);
+      if (!counts.get(`screen/${screen.id}`)) {
+        // A-S14-3 is wholly buried in another frontage screen. Its solid
+        // interior has no occupiable face; the enclosing union is swept.
+        expect(ROAD_COMBAT.screens.some((other) => other.id !== screen.id
+          && combatFootprint(screen).every((p) => inConvex(combatFootprint(other), p))),
+        `uncovered inaccessible screen ${screen.id}`).toBe(true);
+      } else expect(counts.get(`screen/${screen.id}`), `untested screen ${screen.id}`).toBeGreaterThanOrEqual(5);
       await yieldWorker();
     }
     // Mandatory independent samples guard against union-outline skips at the
@@ -235,9 +248,9 @@ describe('U-169 GEO-05 complete surface rejects unregistered shortcuts', () => {
     expect(attempts).toBeGreaterThan(2500);
     expect(vaultTicks, 'ordinary jump intent must actually exercise the automatic vault path').toBeGreaterThan(0);
     expect(dropTicks, 'reachable low tops must exercise ordinary downhill/drop movement').toBeGreaterThan(0);
-    expect([...violations.values()], 'all attempts must keep their supported route and legal storey').toEqual([]);
     console.log('U-169 integrated GEO-05', JSON.stringify({ attempts, counts: Object.fromEntries(counts),
       actions: ACTIONS, pushTicks: PUSH, stackPushTicks: STACK_PUSH, settleTicks: SETTLE, vaultTicks, dropTicks,
       legalTransitions: Object.fromEntries(transitions), windowM: WINDOW, reachBoundM: reach }));
+    expect([...violations.values()], 'all attempts must keep their supported route and legal storey').toEqual([]);
   }, 240_000);
 });

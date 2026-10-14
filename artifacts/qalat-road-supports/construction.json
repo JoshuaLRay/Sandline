@@ -1,5 +1,5 @@
 {
-  "task": "U-168",
+  "task": "U-169",
   "parent": "U-141",
   "foundation": "U-149",
   "bend": "U-159",
@@ -7,9 +7,9 @@
   "road": "U-139",
   "kind": "isolated surface whitebox: road fights, screened tank ingress, D0 return store and furnished ridge with support bays, service bridge and C12-L/C12-U stairs",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "5601ae5d7dcb9f3ceb08cad601dbfe2ce0672b83ae09957bb8c020c598fde052",
-  "levelHash": "07305011cb83b4e0c638dc750fc2317059144b52cd4de64b0542db8a669b6942",
-  "boxCount": 94236,
+  "sourceHash": "2d9c68fe6305f2d673f81418d0c49784013d2add1b55a81868344808abf1e9b9",
+  "levelHash": "5805fb10202ac4f31228825d67887798cdad929b4a752172e775347e4d0f0e7a",
+  "boxCount": 94342,
   "stratumM": 0.025,
   "edgeExpansionM": 0.005,
   "circleSides": 512,
@@ -419,11 +419,11 @@
       {
         "id": "A-C03-edge",
         "minX": 14,
-        "maxX": 20,
-        "minZ": 142,
+        "maxX": 24,
+        "minZ": 140,
         "maxZ": 148,
         "top": 12,
-        "why": "U-161: close the low wall's jump approach onto permanent rock outside the C12-L cap"
+        "why": "U-169: extend the existing U-161 guard to meet the C12-L mouth guard; A-C03's north-west tip otherwise lets an ordinary second jump reach the y10.2 road skin"
       },
       {
         "id": "A-C04-edge",
@@ -479,7 +479,7 @@
     "massRowM": 0.5,
     "fanCellM": 1,
     "eyeHeightM": 1.55,
-    "rockBoxes": 16420,
+    "rockBoxes": 16437,
     "temporaryCapBoxes": 479,
     "rays": [
       {
@@ -3240,13 +3240,13 @@
     ],
     "boxes": {
       "floor": 11884,
-      "rock": 1527,
-      "lip": 288,
-      "canopy": 288
+      "rock": 1488,
+      "lip": 352,
+      "canopy": 352
     }
   },
   "tankSweep": {
-    "levelHash": "07305011cb83b4e0c638dc750fc2317059144b52cd4de64b0542db8a669b6942",
+    "levelHash": "5805fb10202ac4f31228825d67887798cdad929b4a752172e775347e4d0f0e7a",
     "route": {
       "method": "closed interval disk tubes; complete support prism slab union",
       "radiusM": 3.31058907144937,
@@ -3691,7 +3691,6 @@
   },
   "ownerQualityVerdict": "road look/play batched in U-139; ridge look/play batched in U-140",
   "unfinished": [
-    "integrated surface proofs: U-169",
     "outpost: U-116",
     "basement: U-115"
   ]

@@ -1,6 +1,6 @@
 /** U-168: the two exposed, reversible §6.3 stairs. Collision and rendering
  * share these strata; their raised floors never become y8 road aprons. */
-import type { BoxSpec } from '@sandline/shared';
+import { DEFAULT_MOVE_CONFIG, TICK_SECONDS, type BoxSpec } from '@sandline/shared';
 import source from './qalat-c12.json' with { type: 'json' };
 import { convexHull, ribbonPieces } from './roadSightLines.ts';
 import { clipConvex, inConvex, rectPolygon, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
@@ -11,8 +11,12 @@ const ROWS_PER_M = 20, EDGE_M = .005, TOUCH_M = 1e-7;
 // The road and ridge mass rows (0.5 m, ±0.01 m) are the coarsest rows that
 // carve `crossingCarve`. The barrier fills each whole carved row: no seam.
 const CARVE_ROWS_PER_M = 2, CARVE_MARGIN_M = 2 * EDGE_M;
-// Every floor this close sets the barrier height: a carved row plus the band.
-const NEAR_M = 1.1;
+// Guard the highest floor from which an ordinary sprint-jump can reach a
+// cheek, including the footprint and coarse carve row. Local-tread-only
+// heights let a terminal launch land on a lower cheek and skip its flight.
+const NEAR_M = DEFAULT_MOVE_CONFIG.sprintSpeed *
+  (2 * DEFAULT_MOVE_CONFIG.jumpSpeed / -DEFAULT_MOVE_CONFIG.gravity + 2 * TICK_SECONDS) +
+  DEFAULT_MOVE_CONFIG.radius + 1 / CARVE_ROWS_PER_M;
 // A fan slot piece is split until its listed rays stay this far under the canopy.
 const SLOT_CLEAR_M = .05, SLOT_MIN_PIECE_M = .02;
 type Span = { lo: number; hi: number; y: number };

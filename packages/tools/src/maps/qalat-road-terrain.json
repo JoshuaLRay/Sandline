@@ -48,8 +48,8 @@
       "why": "U-168: the permanent lip and canopy replace the C12-L mouth cap only beside the road apron; their 0.70 m opening passes V1's low fan but rejects the 0.80 m prone body. Outside the fan the rock rises to y12, closing A-C03's sprint-jump approach as the cap and U-161's A-C03-edge guard do" }
   ],
   "climbGuards": [
-    { "id": "A-C03-edge", "minX": 14, "maxX": 20, "minZ": 142, "maxZ": 148, "top": 12,
-      "why": "U-161: close the low wall's jump approach onto permanent rock outside the C12-L cap" },
+    { "id": "A-C03-edge", "minX": 14, "maxX": 24, "minZ": 140, "maxZ": 148, "top": 12,
+      "why": "U-169: extend the existing U-161 guard to meet the C12-L mouth guard; A-C03's north-west tip otherwise lets an ordinary second jump reach the y10.2 road skin" },
     { "id": "A-C04-edge", "minX": -48, "maxX": -36, "minZ": 164, "maxZ": 180, "top": 12,
       "why": "U-161: the low orchard wall must not give a 1.1 m vault onto the fine edge skin; only existing off-road rock is raised" },
     { "id": "A-C06-edge", "minX": -23, "maxX": -16, "minZ": 223.5, "maxZ": 229, "top": 12,
