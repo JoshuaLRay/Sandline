@@ -88,7 +88,7 @@ canonical when this documentation PR merges.
 | [U-141](docs/backlog/U-141.md) | Construct support bays/C12 links and verify surface isolation | Map implementation | P1 | BLOCKED | Aggregate: U-167, U-168, U-169 | — |
 | [U-167](docs/backlog/U-167.md) | Open the V1–V3 support bays under their rock lips and canopies | Map implementation | P1 | DONE | U-140 REVIEW (engineering merged); ridge look/play verdict batched in U-140 | [#339](https://github.com/JoshuaLRay/Sandline/pull/339) |
 | [U-168](docs/backlog/U-168.md) | Build the C12-L and C12-U stairs between the road and the ridge | Map implementation | P1 | DONE | U-167 DONE; owner-approved compact treads; ridge look/play verdict (incl. V1's slot view of A-C03) batched in U-140 | [#340](https://github.com/JoshuaLRay/Sandline/pull/340) |
-| [U-169](docs/backlog/U-169.md) | Prove the integrated surface: isolated approaches, no shortcuts, ridge return fire | Map implementation | P1 | READY | U-167 DONE, U-168 DONE; ridge look/play verdict batched in U-140 | — |
+| [U-169](docs/backlog/U-169.md) | Prove the integrated surface: isolated approaches, no shortcuts, ridge return fire | Map implementation | P1 | IN_PROGRESS | U-167 DONE, U-168 DONE; ridge look/play verdict batched in U-140 | task/U-169-integrated-surface |
 | [U-115](docs/backlog/U-115.md) | Build the continuous underground depot and its stairs | Map implementation | P1 | BLOCKED | U-109, U-114 | — |
 | [U-116](docs/backlog/U-116.md) | Build the prisoner outpost and reserve annex | Map implementation | P1 | BLOCKED | U-114, U-115 | — |
 | [U-117](docs/backlog/U-117.md) | Integrate redesigned Mission 1 combat, supplies and objectives | Map implementation | P1 | BLOCKED | U-111, U-112, U-113, U-116 | — |
