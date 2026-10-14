@@ -11,3 +11,6 @@ artifacts/qalat-insertion/level.json
 artifacts/qalat-insertion/surface.json
 artifacts/qalat-road-supports/level.json
 artifacts/qalat-road-supports/surface.json
+
+artifacts/qalat-depot/level.json
+artifacts/qalat-depot/surface.json
