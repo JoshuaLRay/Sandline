@@ -23,8 +23,8 @@ const ROOMS = [
   [-2, 96, 12, 12], [-20, 120, 20, 24], [-36, 160, 24, 32], [-18, 200, 20, 24],
   [8, 232, 16, 16], [30, 270, 28, 36], [-14, 310, 20, 20], [-14, 346, 20, 24], [-8, 370, 12, 12],
 ] as const;
-// Independent §4 road nodes, including A6 directly over B6. U-171 will open
-// the two endpoint stairs; this shell leaf must leave both endpoints capped.
+// Independent §4 road nodes, including A6 directly over B6. The endpoint
+// stairs are legal connections; no intervening room may acquire an exit.
 const SURFACE: Node[] = [
   ['D0', 32, 64], ['A1', 32, 98], ['A2', 12, 128], ['A3', -37, 142], ['A4', -28, 210],
   ['A5', 26, 232], ['A6', 30, 270], ['A7', -18, 302], ['A8', 16, 332], ['A9', 32, 350],
@@ -35,6 +35,24 @@ const BACKING: Node[] = [
   ['backing-west-B1', -60, 96], ['backing-west-B3', -60, 160], ['backing-west-B6', -60, 270],
   ['backing-west-B9', -60, 370], ['backing-east-B3', 60, 160], ['backing-east-B6', 60, 270],
 ].map(([id, x, z]) => ({ id: id as string, x: x as number, y: 0, z: z as number }));
+
+const ENDPOINTS: Node[][] = [
+  [['D0', 32, 8, 64], ['loading-lane', 12, 8, 68], ['B0', -2, 8, 68], ['B0-upper', -2, 8, 76],
+    ['B0-first-rest', -2, 6, 81], ['B0-switchback-west', -2, 4, 86], ['B0-switchback-east', 8, 4, 86],
+    ['B0-second-rest', 8, 2, 91], ['B0-lower', 8, 0, 96], ['B1', -2, 0, 96]],
+  [['B9', -8, 0, 370], ['B10-lower', -8, 0, 376], ['B10-first-rest', -8, 2, 381],
+    ['B10-switchback-west', -8, 4, 386], ['B10-switchback-east', 2, 4, 386],
+    ['B10-second-rest', 2, 6, 381], ['B10-upper', 2, 8, 376], ['B10', 8, 8, 374]],
+].map((spine) => spine.map(([id, x, y, z]) => ({ id: id as string, x: x as number, y: y as number, z: z as number })));
+const endpointFootprints = [
+  rectPolygon({ minX: -14, maxX: 10, minZ: 58, maxZ: 78 }),
+  rectPolygon({ minX: 20, maxX: 44, minZ: 53, maxZ: 75 }),
+  rectPolygon({ minX: 4, maxX: 12, minZ: 370, maxZ: 378 }),
+  ...ENDPOINTS.flatMap((spine) => ribbonPieces(spine, 4)),
+  ...ribbonPieces(ENDPOINTS[0]!.slice(0, 3), 6),
+].map((poly) => convexHull(poly.flatMap((p) => [-.06, .06].flatMap((dx) =>
+  [-.06, .06].map((dz) => ({ x: p.x + dx, z: p.z + dz }))))));
+const onEndpointFloor = (p: Point) => endpointFootprints.some((poly) => inConvex(poly, p)) || onDepotFloor(p);
 
 const floorPieces: Polygon[] = [
   ...ROOMS.map(([x, z, w, d]) => rectPolygon({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 })),
@@ -131,16 +149,69 @@ describe('U-170 covered B1–B9 shell on the actual standing nav and controller'
     console.log(`U-170 depot ${outward ? 'B1→B9' : 'B9→B1'} controller`, JSON.stringify({ ticks, seconds: ticks * TICK_SECONDS, legs: stops.length - 1 }));
   }, 120_000);
 
-  it('keeps the capped basement disconnected from every road node in both directions', () => {
+  for (const [endpoint, spine] of ENDPOINTS.entries()) for (const outward of [true, false])
+    it(`walks every ${endpoint === 0 ? 'D0/B0/B1' : 'B9/B10'} flight and landing ${outward ? 'forward' : 'backward'} with the standing controller`, async () => {
+      expect(nav.links()).toEqual([]);
+      const stops = outward ? spine : [...spine].reverse(), first = stops[0]!;
+      let state = { ...createMoveState(first.x, first.y, first.z), grounded: true };
+      const follower = new PathFollower(nav, world.boxes);
+      let ticks = 0;
+      for (const [i, goal] of stops.slice(1).entries()) {
+        const label = `${stops[i]!.id}→${goal.id}`, projected = nav.nearestPoint(goal)?.point;
+        expect(projected, `${label}: missing actual nav floor`).toBeDefined();
+        expect(projected!.y, `${goal.id}: wrong projected storey`).toBeCloseTo(goal.y + .05, 3);
+        expect(supportUnder(goal.x, goal.z, .001, goal.y + .01, nearby(goal), 0), `${goal.id}: wrong authored support`).toBeCloseTo(goal.y, 6);
+        const path = nav.path(state, goal);
+        expect(completePathLength(path, state, goal), `${label}: incomplete stairs path`).not.toBeNull();
+        expect(path!.vaults, label).toEqual([]);
+        expect(path!.points.every(onEndpointFloor), `${label}: path cut outside the prescribed endpoint`).toBe(true);
+        let arrived = false;
+        for (let tick = 0; tick < 1200; tick++) {
+          const { input, status } = follower.step(state, { goal, pace: 'walk' }, 0);
+          expect(input.jump, `${label}: requested jump`).toBe(false);
+          if (status === 'arrived') { arrived = true; break; }
+          state = stepCharacter(state, input, TICK_SECONDS, DEFAULT_MOVE_CONFIG, nearby(state));
+          const at = `${label} at ${JSON.stringify(state)}`;
+          expect(state.vault, at).toBeNull();
+          expect(state.crouched || state.prone, at).toBe(false);
+          expect(state.grounded, `${at}: uncontrolled fall`).toBe(true);
+          expect(onEndpointFloor(state), `${at}: unlisted shortcut`).toBe(true);
+          expect(state.y, `${at}: left the flight's vertical interval`).toBeGreaterThanOrEqual(Math.min(stops[i]!.y, goal.y) - .2);
+          expect(state.y, `${at}: reached an upper roof`).toBeLessThanOrEqual(Math.max(stops[i]!.y, goal.y) + .2);
+          expect(supportUnder(state.x, state.z, DEFAULT_MOVE_CONFIG.radius, state.y + .01, nearby(state), 0), `${at}: wrong support`).toBeCloseTo(state.y, 6);
+          expect(blockedAt(state.x, state.z, DEFAULT_MOVE_CONFIG.radius, state.y, .05, DEFAULT_MOVE_CONFIG.height, nearby(state)), `${at}: inside structure`).toBe(false);
+          if (++ticks % 256 === 0) await yieldWorker();
+        }
+        expect(arrived, `${label}: stalled at ${JSON.stringify(state)}`).toBe(true);
+        expect(state.y, `${goal.id}: arrived on wrong floor`).toBeCloseTo(goal.y, 6);
+      }
+      console.log(`U-171 ${endpoint === 0 ? 'B0' : 'B10'} ${outward ? 'forward' : 'backward'} controller`, JSON.stringify({ ticks, seconds: ticks * TICK_SECONDS, legs: stops.length - 1 }));
+    }, 120_000);
+
+  it('connects the road through the legal endpoints and disconnects it when those portals close', () => {
+    const basementNodes = SPINE.filter((n) => ['B1', 'B5', 'B9'].includes(n.id));
     for (const surface of SURFACE) {
       const point = nav.nearestPoint(surface)?.point;
       expect(point, surface.id).toBeDefined();
       expect(Math.abs(point!.y - 8), `${surface.id} lost its surface floor`).toBeLessThanOrEqual(.05002);
-      for (const basement of SPINE.filter((n) => ['B1', 'B5', 'B9'].includes(n.id))) {
-        expect(completePathLength(nav.path(basement, surface), basement, surface), `${basement.id} escaped to ${surface.id}`).toBeNull();
-        expect(completePathLength(nav.path(surface, basement), surface, basement), `${surface.id} entered ${basement.id} through a roof`).toBeNull();
+      for (const basement of basementNodes) {
+        expect(completePathLength(nav.path(basement, surface), basement, surface), `${basement.id} cannot reach ${surface.id} through B0`).not.toBeNull();
+        expect(completePathLength(nav.path(surface, basement), surface, basement), `${surface.id} cannot enter ${basement.id} through B0`).not.toBeNull();
       }
     }
+    // Remove precisely the two registered lower endpoint doorway edges from
+    // the actual mesh, including vertical bounds. Reachability alone would
+    // accept a hidden hatch in B6 once the intended stairs were connected.
+    nav.setBlocker('closed-depot-endpoints', [
+      { minX: 3.9, maxX: 4.7, minZ: 94, maxZ: 98, minY: 0, maxY: 3 },
+      { minX: -10, maxX: -6, minZ: 375.9, maxZ: 376.7, minY: 0, maxY: 3 },
+    ], true);
+    try {
+      for (const surface of SURFACE) for (const basement of basementNodes) {
+        expect(completePathLength(nav.path(basement, surface), basement, surface), `${basement.id} escaped to ${surface.id} outside an endpoint`).toBeNull();
+        expect(completePathLength(nav.path(surface, basement), surface, basement), `${surface.id} entered ${basement.id} through a roof`).toBeNull();
+      }
+    } finally { nav.setBlocker('closed-depot-endpoints', [], false); }
   });
 
   it('keeps the basement enclosed from the exterior backing plane in both directions', () => {
