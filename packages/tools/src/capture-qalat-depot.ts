@@ -35,7 +35,7 @@ try {
     if (Math.abs(eyeY! - v.floorY - 1.55) > 1e-8 || blockedAt(x!, z!, .35, v.floorY, 0, 1.8, world.boxes))
       throw new Error(`${v.name}: standing-eye anchor is inside collision geometry or above the listed floor`);
     for (const dx of [-.35, 0, .35]) for (const dz of [-.35, 0, .35])
-      if (Math.abs((supportUnder(x! + dx, z! + dz, .001, .05, world.boxes, v.floorY) ?? -100) - v.floorY) > 1e-6)
+      if (Math.abs((supportUnder(x! + dx, z! + dz, .001, v.floorY + .05, world.boxes, -1)) - v.floorY) > 1e-6)
         throw new Error(`${v.name}: standing-eye footprint is unsupported at its listed floor`);
     const stats = await page.evaluate((name) => (globalThis as unknown as { __depotReview: Review }).__depotReview.view(name), v.name);
     if (stats.calls >= 300 || stats.levelHash !== manifest.levelHash)

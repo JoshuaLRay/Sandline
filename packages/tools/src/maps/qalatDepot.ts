@@ -160,5 +160,5 @@ export function depotManifest() {
 }
 export function depotPlanSvg() {
   const polygons = [...depotFloors(), ...depotStairFloors().map((f) => f.polygon)].map((p) => `<polygon points="${p.map((v) => `${v.x},${-v.z}`).join(' ')}"/>`).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="1320" viewBox="-58 -390 112 336"><rect x="-58" y="-390" width="112" height="336" fill="#45483d"/><g fill="#d4c2a0" stroke="#786247" stroke-width=".15">${polygons}</g><g font-size="3" font-family="sans-serif" fill="#142b32">${DEPOT.rooms.map((r) => `<text x="${r.x - 3}" y="${-r.z}">${r.id} · ${r.ceiling} m</text>`).join('')}</g></svg>\n`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="1320" viewBox="-58 -392 112 338"><rect x="-58" y="-392" width="112" height="338" fill="#45483d"/><g fill="#d4c2a0" stroke="#786247" stroke-width=".15">${polygons}</g><g font-size="3" font-family="sans-serif" fill="#142b32">${DEPOT.rooms.map((r) => `<text x="${r.x - 3}" y="${-r.z}">${r.id} · ${r.ceiling} m</text>`).join('')}</g></svg>\n`;
 }

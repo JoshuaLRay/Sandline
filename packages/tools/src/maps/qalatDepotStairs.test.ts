@@ -56,7 +56,9 @@ describe('U-171 exact covered B0/B10 stairs', () => {
   it('keeps the 24×20 B0 loading room, its east doorway and the open 8×8 west landing exact', () => {
     const loading = nearby({ x: -2, z: 68 });
     for (let x = -13.9; x < 10; x += 1) for (let z = 58.1; z < 78; z += 1) {
-      if (x >= -4 && x <= 0 && z >= 76) continue; // Named stair well inside B0.
+      // Exactly the named well and its required 0.6 m balustrades occupy
+      // the last 2 m of the room; no other room area is exempted.
+      if (x >= -4.6 && x <= .6 && z >= 76) continue;
       expect(supportUnder(x, z, .001, 8.01, loading, 0), `B0 floor ${x}/${z}`).toBeCloseTo(8, 6);
       expect(blockedAt(x, z, .001, 8, .001, 3.999, loading), `B0 inside ${x}/${z}`).toBe(false);
       expect(rayWorld({ origin: { x, y: 9.6, z }, direction: { x: 0, y: 1, z: 0 }, maxDistance: 10 }, loading)?.distance,
@@ -68,6 +70,12 @@ describe('U-171 exact covered B0/B10 stairs', () => {
     }
     for (const z of [65.99, 70.01]) expect(blockedAt(10.3, z, .001, 8, .001, 1.8, loading), `B0 east jamb ${z}`).toBe(true);
     const porch = nearby({ x: 8, z: 374 });
+    const westDoorZ = 375 + 1 / 3;
+    for (const side of [-1.99, 0, 1.99]) {
+      expect(blockedAt(3.7, westDoorZ + side, .001, 8, .001, 3.199, porch), `B10 west doorway ${side}`).toBe(false);
+      expect(supportUnder(3.7, westDoorZ + side, .001, 8.01, porch, 0), `B10 west doorway floor ${side}`).toBeCloseTo(8, 6);
+    }
+    for (const side of [-2.01, 2.01]) expect(blockedAt(3.7, westDoorZ + side, .001, 8, .001, 1.8, porch), `B10 west jamb ${side}`).toBe(true);
     for (const x of [4.01, 8, 11.99]) for (const z of [370.01, 374, 377.99]) {
       expect(supportUnder(x, z, .001, 8.01, porch, 0), `B10 floor ${x}/${z}`).toBeCloseTo(8, 6);
       expect(blockedAt(x, z, .001, 8, .001, 3.199, porch), `B10 inside ${x}/${z}`).toBe(false);
@@ -81,23 +89,40 @@ describe('U-171 exact covered B0/B10 stairs', () => {
     for (const flight of FLIGHTS) {
       const boxes = nearby(at(flight, 5));
       for (const distance of [1, 3, 5, 7, 9]) for (const side of [-1, 1]) {
-        const start = at(flight, distance, 1.4 * side), y = floorAt(flight, distance);
+        const start = at(flight, distance, 1.4 * side);
+        // A controller capsule spans adjacent 0.40 m treads. Its supported
+        // launch uses the higher tread under its real 0.30 m footprint.
+        const y = Math.max(floorAt(flight, distance - DEFAULT_MOVE_CONFIG.radius),
+          floorAt(flight, distance + DEFAULT_MOVE_CONFIG.radius));
         expect(supportUnder(start.x, start.z, DEFAULT_MOVE_CONFIG.radius, y + .01, boxes, 0), `${flight.id} launch`).toBeCloseTo(y, 6);
         expect(blockedAt(start.x, start.z, DEFAULT_MOVE_CONFIG.radius, y, .05, DEFAULT_MOVE_CONFIG.height, boxes), `${flight.id} launch blocked`).toBe(false);
         for (const stance of ['walk', 'jump', 'crouch', 'prone']) {
           let state = { ...createMoveState(start.x, y, start.z), grounded: true };
           const label = `${flight.id}/${distance}/${side}/${stance}`;
+          const terminalMouth = flight.id === 'B10-second' && distance === 9 && side === 1;
           for (let tick = 0; tick < 105; tick++) {
             state = stepCharacter(state, { moveX: 0, moveY: tick < 60 ? 1 : 0, yaw: side > 0 ? 256 : 768,
               sprint: tick < 60 && stance !== 'walk', jump: tick < 60 && stance === 'jump',
               crouch: tick < 60 && stance === 'crouch', prone: tick < 60 && stance === 'prone',
             }, TICK_SECONDS, DEFAULT_MOVE_CONFIG, boxes);
             expect(state.vault, `${label}: vaulted a cheek`).toBeNull();
-            expect(Math.abs(state.x - flight.x), `${label}: left the 4 m stair: ${JSON.stringify(state)}`).toBeLessThanOrEqual(2.06);
-            if (state.grounded) expect(state.y, `${label}: landed on a cheek, roof or dropped past a tread`).toBeCloseTo(y, 6);
+            if (terminalMouth) {
+              expect(state.x, `${label}: escaped past the porch east edge`).toBeLessThanOrEqual(12.06);
+              expect(state.x, `${label}: crossed the opposite stair cheek`).toBeGreaterThanOrEqual(flight.x - 2.06);
+              expect(state.z, `${label}: escaped past the doorway north edge`).toBeLessThanOrEqual(375 + 1 / 3 + 2.06);
+              expect(state.z, `${label}: escaped past the doorway south edge`).toBeGreaterThanOrEqual(375 + 1 / 3 - 2.06);
+            } else expect(Math.abs(state.x - flight.x), `${label}: left the 4 m stair: ${JSON.stringify(state)}`).toBeLessThanOrEqual(2.06);
+            // The B10 doorway clips the last cheek only within the final
+            // 2 m mouth. A normal single-riser step onto its y8 porch is a
+            // legal endpoint connection; its bounds are checked separately.
+            if (state.grounded) {
+              if (terminalMouth) expect(Math.min(Math.abs(state.y - y), Math.abs(state.y - 8)), `${label}: wrong registered mouth floor`).toBeLessThan(1e-6);
+              else expect(state.y, `${label}: landed on a cheek, roof or dropped past a tread`).toBeCloseTo(y, 6);
+              expect(supportUnder(state.x, state.z, DEFAULT_MOVE_CONFIG.radius, state.y + .01, boxes, 0), `${label}: unsupported landing`).toBeCloseTo(state.y, 6);
+            }
           }
           expect(state.grounded, `${label}: never settled`).toBe(true);
-          expect(state.y, `${label}: drop shortcut`).toBeCloseTo(y, 6);
+          expect(state.y, `${label}: drop shortcut`).toBeCloseTo(flight.id === 'B10-second' && distance === 9 && side === 1 ? 8 : y, 6);
           attempts++;
         }
       }

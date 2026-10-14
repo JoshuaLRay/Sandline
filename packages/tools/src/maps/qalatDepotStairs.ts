@@ -5,7 +5,7 @@
 import type { BoxSpec } from '@sandline/shared';
 import source from './qalat-depot.json' with { type: 'json' };
 import { convexHull } from './roadSightLines.ts';
-import { rectPolygon, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
+import { rectPolygon, sweep, union, type Interval, type Polygon } from './planStrata.ts';
 
 const D = source, ROW_M = .05, TOUCH = 1e-7;
 type Node = typeof D.stairs.systems[number]['nodes'][number];
@@ -56,14 +56,18 @@ export function depotStairFloors(): readonly DepotStairFloor[] {
         y, ceiling: y + D.stairs.headroom });
     }
   }
-  pieces.push({ id: 'B0-switchback', polygon: rectangle(-4, 10, 84, 88), y: 4, ceiling: 7.2 },
-    { id: 'B10-switchback', polygon: rectangle(-10, 4, 384, 388), y: 4, ceiling: 7.2 });
+  // The listed ten-metre links are broad landings. Four metres of flat
+  // clearance extend beyond each unbroken cheek tip; keeping only the
+  // centred four-metre ribbon would leave a two-metre turning throat.
+  pieces.push({ id: 'B0-switchback', polygon: rectangle(-4, 10, 86 - D.stairs.switchLandingWidth / 2, 86 + D.stairs.switchLandingWidth / 2), y: 4, ceiling: 7.2 },
+    { id: 'B10-switchback', polygon: rectangle(-10, 4, 386 - D.stairs.switchLandingWidth / 2, 386 + D.stairs.switchLandingWidth / 2), y: 4, ceiling: 7.2 });
   const door = depotEndpointDoors()[1]!, a = { x: 2, z: 376 };
   // Locally bevel the perpendicular-width ribbon into its four-metre wall
   // socket, preserving both jambs and the porch's exact eight-metre bounds.
   const side = 2 / Math.sqrt(10), end = [{ x: door.x, z: door.z - 2 }, { x: door.x, z: door.z + 2 }];
   const bevel = convexHull([{ x: a.x - side, z: a.z - 3 * side }, { x: a.x + side, z: a.z + 3 * side }, ...end]);
-  pieces.push({ id: 'B10-covered-mouth', polygon: bevel, y: 8, ceiling: 11.2 });
+  pieces.push({ id: 'B10-covered-mouth', polygon: bevel, y: 8, ceiling: 11.2 },
+    { id: 'B10-west-door', polygon: rectangle(3.4, 4, door.z - 2, door.z + 2), y: 8, ceiling: 11.2 });
   return cached = pieces;
 }
 
@@ -82,7 +86,8 @@ const rows = () => {
   const zs = depotStairFloors().flatMap((f) => f.polygon.map((v) => v.z));
   const a = Math.min(...zs) - D.wallM, b = Math.max(...zs) + D.wallM;
   return [...new Set([a, b, ...zs, ...zs.flatMap((z) => [z - D.wallM, z + D.wallM]),
-    ...Array.from({ length: Math.ceil((b - a) / ROW_M) }, (_, i) => Math.min(b, a + i * ROW_M))])].sort((x, y) => x - y);
+    ...Array.from({ length: Math.ceil((b - a) / ROW_M) }, (_, i) => Math.min(b, a + i * ROW_M))]
+    .map((z) => Math.round(z * 1e10) / 1e10))].sort((x, y) => x - y);
 };
 
 interface Cut { minX: number; maxX: number; minZ: number; maxZ: number; minY: number; maxY: number }
@@ -115,8 +120,12 @@ export function carveDepotStairs(boxes: readonly BoxSpec[]): BoxSpec[] {
     else { const fresh = { ...c }; merged.push(fresh); current.set(key, fresh); }
   }
   return boxes.filter((b) => b.id !== 'depot-cap-B1-stair' && b.id !== 'depot-cap-B9-stair').flatMap((b) => {
+    if (b.x + b.w / 2 <= -14 || b.x - b.w / 2 >= 12 || b.z + b.d / 2 <= 58 || b.z - b.d / 2 >= 390 ||
+      (b.z - b.d / 2 >= 98 && b.z + b.d / 2 <= 370)) return [b];
+    const candidates = merged.filter((c) => b.x + b.w / 2 > c.minX && b.x - b.w / 2 < c.maxX && b.z + b.d / 2 > c.minZ && b.z - b.d / 2 < c.maxZ && b.y + b.h > c.minY && b.y < c.maxY);
+    if (!candidates.length) return [b];
     let pieces = [b];
-    for (const c of merged) pieces = pieces.flatMap((p) => carveBox(p, c));
+    for (const c of candidates) pieces = pieces.flatMap((p) => carveBox(p, c));
     return pieces;
   });
 }
@@ -129,9 +138,10 @@ export function buildDepotStairs(): BoxSpec[] {
     const z0 = zs[k - 1]!, z1 = zs[k]!, spans = rowFloors(z0, z1), next = new Map<string, BoxSpec>();
     function add(kind: string, lo: number, hi: number, bottom: number, top: number) {
       if (hi - lo < 1e-9 || top - bottom < 1e-9) return;
+      const weld = kind === 'wall' ? 0 : TOUCH;
       const key = `${kind}/${lo}/${hi}/${bottom}/${top}`, old = previous.get(key);
-      if (old && Math.abs(old.z + old.d / 2 - z0) < 1e-8) { old.d = z1 - (old.z - old.d / 2); old.z = z1 - old.d / 2; next.set(key, old); }
-      else { const box = { id: `depot-stair-${kind}-${boxes.length}`, x: (lo + hi) / 2, y: bottom, z: (z0 + z1) / 2, w: hi - lo, h: top - bottom, d: z1 - z0 }; boxes.push(box); next.set(key, box); }
+      if (old && Math.abs(old.z + old.d / 2 - z0 - weld) < 1e-8) { old.d = z1 + weld - (old.z - old.d / 2); old.z = z1 + weld - old.d / 2; next.set(key, old); }
+      else { const box = { id: `depot-stair-${kind}-${boxes.length}`, x: (lo + hi) / 2, y: bottom, z: (z0 + z1) / 2, w: hi - lo, h: top - bottom, d: z1 - z0 + 2 * weld }; boxes.push(box); next.set(key, box); }
     }
     for (const f of spans) { add('floor', f.lo, f.hi, -.4, f.y); if (Number.isFinite(f.ceiling)) add('roof', f.lo, f.hi, f.ceiling, Math.max(D.surfaceY, f.ceiling + D.stairs.roofM)); }
     const ring = union(outer.map((p) => sweep(p, z0 + TOUCH, z1 - TOUCH)).filter((s): s is Interval => s !== null));
@@ -158,6 +168,7 @@ export function buildDepotStairs(): BoxSpec[] {
   // Remove helper wall/roof overlap inside their preserved room dimensions.
   return boxes.flatMap((b) => {
     let pieces = [b];
+    pieces = pieces.flatMap((p) => carveBox(p, { minX: 4, maxX: 12, minZ: 370, maxZ: 378, minY: 8, maxY: Infinity }));
     pieces = pieces.flatMap((p) => carveBox(p, { minX: 12, maxX: 16, minZ: 65, maxZ: 71, minY: 8, maxY: 11.2 }));
     for (const r of D.rooms) pieces = pieces.flatMap((p) => carveBox(p, { ...bounds(rectangle(r.x - r.w / 2, r.x + r.w / 2, r.z - r.d / 2, r.z + r.d / 2)), minY: 0, maxY: r.ceiling }));
     return pieces;
