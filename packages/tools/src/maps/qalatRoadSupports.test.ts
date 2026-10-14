@@ -76,11 +76,22 @@ function clearSupport(p: Point, half = .001, allowCombat = false): void {
 }
 
 const world = buildRoadSupportWorld();
+// Keep every scene solid that any one-tick body/vault query can touch, in
+// original box order. Repeated full-scene scans made the six-start proofs
+// intermittently exceed CI's existing 180 s limit as construction grew.
+const QUERY_M = 3, CELL_M = 4, collisionGrid = new Map<string, WorldBox[]>();
+for (const b of world.boxes) for (let x = Math.floor((b.minX - QUERY_M) / CELL_M); x <= Math.floor((b.maxX + QUERY_M) / CELL_M); x++)
+  for (let z = Math.floor((b.minZ - QUERY_M) / CELL_M); z <= Math.floor((b.maxZ + QUERY_M) / CELL_M); z++) {
+    const key = `${x},${z}`, boxes = collisionGrid.get(key) ?? []; boxes.push(b); collisionGrid.set(key, boxes);
+  }
+const collisions = (p: Point) => collisionGrid.get(`${Math.floor(p.x / CELL_M)},${Math.floor(p.z / CELL_M)}`) ?? [];
 const combatIds = new Set(buildRoadCombat().map((b) => b.id));
 const combatBoxes = world.boxes.filter((b) => combatIds.has(b.id));
 let nav: NavMesh;
 describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed by U-160 rock', () => {
   beforeAll(async () => {
+    expect(DEFAULT_MOVE_CONFIG.vaultDistance + DEFAULT_MOVE_CONFIG.vaultProbe + DEFAULT_MOVE_CONFIG.radius
+      + DEFAULT_MOVE_CONFIG.sprintSpeed * TICK_SECONDS).toBeLessThan(QUERY_M);
     await initNav();
     // Use the production solid/headroom rasterizer and the standing agent.
     // These same-height slabs need neither vault links nor a fake route mesh.
@@ -191,7 +202,15 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
         for (let tick = 0; tick < 1500; tick++) {
           const { input, status } = follower.step(state, { goal, pace: 'walk' }, 0);
           if (status === 'arrived') { arrived = true; break; }
-          state = stepCharacter(state, input, TICK_SECONDS, DEFAULT_MOVE_CONFIG, world.boxes);
+          const before = state;
+          expect(blockedAt(before.x, before.z, DEFAULT_MOVE_CONFIG.radius, before.y, DEFAULT_MOVE_CONFIG.stepHeight,
+            DEFAULT_MOVE_CONFIG.height, collisions(before)), 'collision queries require a clear starting body').toBe(false);
+          state = stepCharacter(before, input, TICK_SECONDS, DEFAULT_MOVE_CONFIG, collisions(before));
+          if (tick % 256 === 0) {
+            const full = stepCharacter(before, input, TICK_SECONDS, DEFAULT_MOVE_CONFIG, world.boxes);
+            for (const axis of ['x', 'y', 'z', 'vy'] as const) expect(Math.abs(state[axis] - full[axis])).toBeLessThan(1e-9);
+            expect(state).toMatchObject({ grounded: full.grounded, crouched: full.crouched, prone: full.prone, vault: full.vault });
+          }
           expect(Math.abs(state.y - 8)).toBeLessThan(.05);
           expect(state.vault).toBeNull();
           expect(onInsertionFloor(state, .05) || approvedRoadFootprint(state, .05)).toBe(true);
@@ -219,7 +238,15 @@ describe('U-149 isolated A0–A9 primary road supports, bent by U-159 and closed
     for (let tick = 0; tick < 6000; tick++) {
       const { input, status } = follower.step(state, { goal: SOUTH_GATE, pace: 'walk' }, 0);
       if (status === 'arrived') { arrived = true; break; }
-      state = stepCharacter(state, input, TICK_SECONDS, DEFAULT_MOVE_CONFIG, world.boxes);
+      const before = state;
+      expect(blockedAt(before.x, before.z, DEFAULT_MOVE_CONFIG.radius, before.y, DEFAULT_MOVE_CONFIG.stepHeight,
+        DEFAULT_MOVE_CONFIG.height, collisions(before)), 'collision queries require a clear starting body').toBe(false);
+      state = stepCharacter(before, input, TICK_SECONDS, DEFAULT_MOVE_CONFIG, collisions(before));
+      if (tick % 256 === 0) {
+        const full = stepCharacter(before, input, TICK_SECONDS, DEFAULT_MOVE_CONFIG, world.boxes);
+        for (const axis of ['x', 'y', 'z', 'vy'] as const) expect(Math.abs(state[axis] - full[axis])).toBeLessThan(1e-9);
+        expect(state).toMatchObject({ grounded: full.grounded, crouched: full.crouched, prone: full.prone, vault: full.vault });
+      }
       expect(Math.abs(state.y - 8)).toBeLessThan(.05);
       expect(state.vault).toBeNull();
       expect(onInsertionFloor(state, .05) || approvedRoadFootprint(state, .05)).toBe(true);
