@@ -91,7 +91,7 @@ canonical when this documentation PR merges.
 | [U-169](docs/backlog/U-169.md) | Prove the integrated surface: isolated approaches, no shortcuts, ridge return fire | Map implementation | P1 | DONE | U-167/U-168 DONE; integrated proofs and two existing guard repairs complete; ridge look/play remains in U-140 | [#341](https://github.com/JoshuaLRay/Sandline/pull/341) |
 | [U-115](docs/backlog/U-115.md) | Build the continuous underground depot and its stairs | Map implementation | P1 | BLOCKED | Aggregate: U-170 DONE; U-171–U-173 remain; human verdict not required first | — |
 | [U-170](docs/backlog/U-170.md) | Enclose the B1–B9 depot rooms and flat connecting corridors below road8 | Map implementation | P1 | DONE | U-109 DONE; U-114 REVIEW with engineering merged; exact enclosed shells verified | [#342](https://github.com/JoshuaLRay/Sandline/pull/342) |
-| [U-171](docs/backlog/U-171.md) | Build the covered B0/B10 stairs and exact depot endpoint connections | Map implementation | P1 | READY | U-170 DONE; no human verdict required first | — |
+| [U-171](docs/backlog/U-171.md) | Build the covered B0/B10 stairs and exact depot endpoint connections | Map implementation | P1 | IN_PROGRESS | U-170 DONE; no human verdict required first | `task/U-171-depot-stairs` |
 | [U-172](docs/backlog/U-172.md) | Furnish the depot with its fixed piers, engines, shelves and cover | Map implementation | P1 | BLOCKED | U-171 | — |
 | [U-173](docs/backlog/U-173.md) | Prove the complete depot's seven-actor traversal and floor isolation | Map implementation | P1 | BLOCKED | U-172 | — |
 | [U-116](docs/backlog/U-116.md) | Build the prisoner outpost and reserve annex | Map implementation | P1 | BLOCKED | U-114, U-115 | — |
