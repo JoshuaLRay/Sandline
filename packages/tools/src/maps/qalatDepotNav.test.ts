@@ -29,6 +29,12 @@ const SURFACE: Node[] = [
   ['D0', 32, 64], ['A1', 32, 98], ['A2', 12, 128], ['A3', -37, 142], ['A4', -28, 210],
   ['A5', 26, 232], ['A6', 30, 270], ['A7', -18, 302], ['A8', 16, 332], ['A9', 32, 350],
 ].map(([id, x, z]) => ({ id: id as string, x: x as number, y: 8, z: z as number }));
+// The construction's global y0 backing plane extends beyond the depot walls.
+// Surface-only queries cannot detect a wall gap that leaks onto that plane.
+const BACKING: Node[] = [
+  ['backing-west-B1', -60, 96], ['backing-west-B3', -60, 160], ['backing-west-B6', -60, 270],
+  ['backing-west-B9', -60, 370], ['backing-east-B3', 60, 160], ['backing-east-B6', 60, 270],
+].map(([id, x, z]) => ({ id: id as string, x: x as number, y: 0, z: z as number }));
 
 const floorPieces: Polygon[] = [
   ...ROOMS.map(([x, z, w, d]) => rectPolygon({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 })),
@@ -133,6 +139,22 @@ describe('U-170 covered B1–B9 shell on the actual standing nav and controller'
       for (const basement of SPINE.filter((n) => ['B1', 'B5', 'B9'].includes(n.id))) {
         expect(completePathLength(nav.path(basement, surface), basement, surface), `${basement.id} escaped to ${surface.id}`).toBeNull();
         expect(completePathLength(nav.path(surface, basement), surface, basement), `${surface.id} entered ${basement.id} through a roof`).toBeNull();
+      }
+    }
+  });
+
+  it('keeps the basement enclosed from the exterior backing plane in both directions', () => {
+    for (const exterior of BACKING) {
+      expect(onDepotFloor(exterior), `${exterior.id} must be outside the depot footprint`).toBe(false);
+      const point = nav.nearestPoint(exterior)?.point;
+      // Require real exterior nav, so a missing query target cannot make a
+      // broken enclosure pass simply by returning no path.
+      expect(point, exterior.id).toBeDefined();
+      expect(Math.abs(point!.y), `${exterior.id} is not on the y0 backing plane`).toBeLessThanOrEqual(.05002);
+      expect(Math.hypot(point!.x - exterior.x, point!.z - exterior.z), exterior.id).toBeLessThanOrEqual(.1);
+      for (const basement of SPINE.filter((n) => ['B1', 'B5', 'B9'].includes(n.id))) {
+        expect(completePathLength(nav.path(basement, exterior), basement, exterior), `${basement.id} escaped to ${exterior.id}`).toBeNull();
+        expect(completePathLength(nav.path(exterior, basement), exterior, basement), `${exterior.id} entered ${basement.id} through a wall`).toBeNull();
       }
     }
   });

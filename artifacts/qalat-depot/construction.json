@@ -1,0 +1,329 @@
+{
+  "task": "U-170",
+  "parent": "U-115",
+  "kind": "isolated B1–B9 enclosed depot shells below the complete surface",
+  "sourceHash": "1488c9fa59bd99cf6b242484180be732336b90376f3533ff6806a7f3e7c04996",
+  "levelHash": "f8baf420e4ebe731dad7162df38ab4d739ebc6e2cd3824f58e7c82f90c21124e",
+  "boxCount": 103739,
+  "shellBoxCount": 9397,
+  "rowM": 0.05,
+  "rooms": [
+    {
+      "id": "B1",
+      "x": -2,
+      "z": 96,
+      "w": 12,
+      "d": 12,
+      "ceiling": 3.6
+    },
+    {
+      "id": "B2",
+      "x": -20,
+      "z": 120,
+      "w": 20,
+      "d": 24,
+      "ceiling": 4.5
+    },
+    {
+      "id": "B3",
+      "x": -36,
+      "z": 160,
+      "w": 24,
+      "d": 32,
+      "ceiling": 5.5
+    },
+    {
+      "id": "B4",
+      "x": -18,
+      "z": 200,
+      "w": 20,
+      "d": 24,
+      "ceiling": 4.5
+    },
+    {
+      "id": "B5",
+      "x": 8,
+      "z": 232,
+      "w": 16,
+      "d": 16,
+      "ceiling": 4
+    },
+    {
+      "id": "B6",
+      "x": 30,
+      "z": 270,
+      "w": 28,
+      "d": 36,
+      "ceiling": 5.5
+    },
+    {
+      "id": "B7",
+      "x": -14,
+      "z": 310,
+      "w": 20,
+      "d": 20,
+      "ceiling": 4
+    },
+    {
+      "id": "B8",
+      "x": -14,
+      "z": 346,
+      "w": 20,
+      "d": 24,
+      "ceiling": 4
+    },
+    {
+      "id": "B9",
+      "x": -8,
+      "z": 370,
+      "w": 12,
+      "d": 12,
+      "ceiling": 3.6
+    }
+  ],
+  "connectors": [
+    {
+      "from": "B1",
+      "to": "B2",
+      "via": [
+        {
+          "x": -20,
+          "z": 96
+        }
+      ]
+    },
+    {
+      "from": "B2",
+      "to": "B3",
+      "via": [
+        {
+          "x": -36,
+          "z": 136
+        }
+      ]
+    },
+    {
+      "from": "B3",
+      "to": "B4",
+      "via": [
+        {
+          "x": -36,
+          "z": 188
+        }
+      ]
+    },
+    {
+      "from": "B4",
+      "to": "B5",
+      "via": [
+        {
+          "x": 8,
+          "z": 216
+        }
+      ]
+    },
+    {
+      "from": "B5",
+      "to": "B6",
+      "via": [
+        {
+          "x": 8,
+          "z": 250
+        },
+        {
+          "x": 30,
+          "z": 250
+        }
+      ]
+    },
+    {
+      "from": "B6",
+      "to": "B7",
+      "via": [
+        {
+          "x": 30,
+          "z": 298
+        },
+        {
+          "x": -14,
+          "z": 298
+        }
+      ]
+    },
+    {
+      "from": "B7",
+      "to": "B8",
+      "via": [
+        {
+          "x": -14,
+          "z": 330
+        }
+      ]
+    },
+    {
+      "from": "B8",
+      "to": "B9",
+      "via": [
+        {
+          "x": -8,
+          "z": 362
+        }
+      ]
+    }
+  ],
+  "doors": [
+    {
+      "id": "B1-B2-out",
+      "room": "B1",
+      "x": -8,
+      "z": 96,
+      "axis": "x",
+      "normal": -1
+    },
+    {
+      "id": "B1-B2-in",
+      "room": "B2",
+      "x": -20,
+      "z": 108,
+      "axis": "z",
+      "normal": -1
+    },
+    {
+      "id": "B2-B3-out",
+      "room": "B2",
+      "x": -30,
+      "z": 130,
+      "axis": "x",
+      "normal": -1
+    },
+    {
+      "id": "B2-B3-in",
+      "room": "B3",
+      "x": -36,
+      "z": 144,
+      "axis": "z",
+      "normal": -1
+    },
+    {
+      "id": "B3-B4-out",
+      "room": "B3",
+      "x": -36,
+      "z": 176,
+      "axis": "z",
+      "normal": 1
+    },
+    {
+      "id": "B3-B4-in",
+      "room": "B4",
+      "x": -28,
+      "z": 193.33333333333334,
+      "axis": "x",
+      "normal": -1
+    },
+    {
+      "id": "B4-B5-out",
+      "room": "B4",
+      "x": -8,
+      "z": 206.15384615384616,
+      "axis": "x",
+      "normal": 1
+    },
+    {
+      "id": "B4-B5-in",
+      "room": "B5",
+      "x": 8,
+      "z": 224,
+      "axis": "z",
+      "normal": -1
+    },
+    {
+      "id": "B5-B6-out",
+      "room": "B5",
+      "x": 8,
+      "z": 240,
+      "axis": "z",
+      "normal": 1
+    },
+    {
+      "id": "B5-B6-in",
+      "room": "B6",
+      "x": 30,
+      "z": 252,
+      "axis": "z",
+      "normal": -1
+    },
+    {
+      "id": "B6-B7-out",
+      "room": "B6",
+      "x": 30,
+      "z": 288,
+      "axis": "z",
+      "normal": 1
+    },
+    {
+      "id": "B6-B7-in",
+      "room": "B7",
+      "x": -14,
+      "z": 300,
+      "axis": "z",
+      "normal": -1
+    },
+    {
+      "id": "B7-B8-out",
+      "room": "B7",
+      "x": -14,
+      "z": 320,
+      "axis": "z",
+      "normal": 1
+    },
+    {
+      "id": "B7-B8-in",
+      "room": "B8",
+      "x": -14,
+      "z": 334,
+      "axis": "z",
+      "normal": -1
+    },
+    {
+      "id": "B8-B9-out",
+      "room": "B8",
+      "x": -9.5,
+      "z": 358,
+      "axis": "z",
+      "normal": 1
+    },
+    {
+      "id": "B8-B9-in",
+      "room": "B9",
+      "x": -8,
+      "z": 364,
+      "axis": "z",
+      "normal": -1
+    }
+  ],
+  "stairPorts": [
+    {
+      "id": "B1-stair",
+      "room": "B1",
+      "axis": "x",
+      "normal": 1,
+      "x": 4,
+      "z": 96
+    },
+    {
+      "id": "B9-stair",
+      "room": "B9",
+      "axis": "z",
+      "normal": 1,
+      "x": -8,
+      "z": 376
+    }
+  ],
+  "activeCampaign": "unchanged; activation U-117",
+  "humanVerdict": "whole-mission acceptance U-119",
+  "unfinished": [
+    "covered B0/B10 stairs and endpoint joins: U-171",
+    "fixed internals: U-172",
+    "integrated seven-actor/floor-isolation proof: U-173"
+  ]
+}

@@ -6,7 +6,7 @@ import { loadLevel, type BoxSpec } from '@sandline/shared';
 import source from './qalat-depot.json' with { type: 'json' };
 import { buildRoadSupportLevel } from './qalatRoadSupports.ts';
 import { convexHull, ribbonPieces } from './roadSightLines.ts';
-import { rectPolygon, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
+import { clipConvex, rectPolygon, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
 
 export const DEPOT = source;
 const ROW_M = .05;
@@ -41,6 +41,34 @@ function doorFace(d: Door, depth: number): Point[] {
   }));
 }
 const neck = (d: Door) => convexHull([...doorFace(d, 0), ...doorFace(d, DEPOT.wallM)]);
+const grow = (p: Polygon, amount: number) => convexHull(p.flatMap((v) => [-amount, amount]
+  .flatMap((x) => [-amount, amount].map((z) => ({ x: v.x + x, z: v.z + z })))));
+const area = (p: Polygon) => Math.abs(p.reduce((sum, a, i) => {
+  const b = p[(i + 1) % p.length]!; return sum + a.x * b.z - b.x * a.z;
+}, 0)) / 2;
+
+/** Parallel connectors at B6/B7 graze a room's inside wall. Keep that wall
+ * intact except its named doorway; widen the local corridor away from it by
+ * the masonry depth so clipping cannot reduce its four-metre clear width. */
+function outsideRooms(polygon: Polygon): Polygon[] {
+  let pieces = [polygon];
+  for (const r of DEPOT.rooms) {
+    const x0 = r.x - r.w / 2 - DEPOT.wallM, x1 = r.x + r.w / 2 + DEPOT.wallM;
+    const z0 = r.z - r.d / 2 - DEPOT.wallM, z1 = r.z + r.d / 2 + DEPOT.wallM;
+    const bounds = rectPolygon({ minX: x0, maxX: x1, minZ: z0, maxZ: z1 });
+    pieces = pieces.flatMap((p) => {
+      if (area(clipConvex(p, bounds)) < 1e-8) return [p];
+      const widened = grow(p, DEPOT.wallM);
+      return [
+        { minX: -1000, maxX: x0, minZ: -1000, maxZ: 1000 },
+        { minX: x1, maxX: 1000, minZ: -1000, maxZ: 1000 },
+        { minX: x0, maxX: x1, minZ: -1000, maxZ: z0 },
+        { minX: x0, maxX: x1, minZ: z1, maxZ: 1000 },
+      ].map((cut) => clipConvex(widened, rectPolygon(cut))).filter((part) => area(part) > 1e-8);
+    });
+  }
+  return pieces;
+}
 
 /** Outside the wall the corridor locally bevels from the 4 m portal to its
  * ordinary perpendicular width. Its centreline still meets the exact socket. */
@@ -58,6 +86,7 @@ for (const c of connections) {
   const a = approach(c.a, c.via[0]!), b = approach(c.b, c.via.at(-1)!);
   volumes.push(...[neck(c.a), neck(c.b)].map((polygon) => ({ polygon, ceiling: DEPOT.doorHeight })),
     ...[a.polygon, ...ribbonPieces([a.point, ...c.via, b.point], DEPOT.corridorWidth), b.polygon]
+      .flatMap(outsideRooms)
       .map((polygon) => ({ polygon, ceiling: DEPOT.corridorCeiling })));
 }
 const ports: Door[] = DEPOT.stairPorts.map((p) => ({ ...p, axis: p.axis as 'x' | 'z' }));
@@ -70,8 +99,7 @@ export function depotFloors(): readonly Polygon[] { return volumes.map((v) => v.
  * A roof's bottom follows the highest overlapping void, never filling it.
  */
 export function buildDepotShell(): BoxSpec[] {
-  const outer = volumes.map((v) => convexHull(v.polygon.flatMap((p) => [-DEPOT.wallM, DEPOT.wallM]
-    .flatMap((x) => [-DEPOT.wallM, DEPOT.wallM].map((z) => ({ x: p.x + x, z: p.z + z }))))));
+  const outer = volumes.map((v) => grow(v.polygon, DEPOT.wallM));
   const all = [...volumes.map((v) => v.polygon), ...outer];
   const minZ = Math.min(...all.flatMap((p) => p.map((v) => v.z))), maxZ = Math.max(...all.flatMap((p) => p.map((v) => v.z)));
   const rows = [...new Set([minZ, maxZ, ...all.flatMap((p) => p.map((v) => v.z)),
