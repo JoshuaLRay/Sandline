@@ -11,10 +11,17 @@ east wall occupies the original R9 reference (56,8,370); the retained stair/land
 now reaches the fixed gate via the exterior shoulder and a clear x57..61 turn.
 The gate remains (56,8,374). North/east returns bound the pocket.
 
-The shared antechamber/cell divider is still an owner decision. The proposed
-0.6 m divider at z395.4..396 retains the cell and its captive point while taking
-the antechamber's last 0.6 m. The independent exact-room test continues to reject
-that proposal until accepted dimensions are recorded. This is not a green head.
+The owner authorized divider A on 2026-10-15, conditional on accommodating six
+prisoners total. The exact cell stays12×14m (168m²); the divider occupies
+z395.4..396 and the antechamber's clear north face is395.4. The original POW
+keeps(16,8,402), with five carried-prisoner reservations at(12,8,400),
+(20,8,400),(12,8,404),(20,8,404),(12,8,408). All are supported at y8,
+stand clear of collision and each other, and preserve the inside four-by-four
+landing x14..18/z396..400. Actual nav/controller access to each holding and
+external body-ray protection for all six pass focused tests. These are physical
+reservations; production placement/mapping and forced-Mission1 routing remain
+U-144/U-178, with activationU-117. Captured squad characters occupy their existing
+slots; after rescue the group is still six soldiers plus the original escort.
 
 ## Geometry and routes
 
@@ -52,7 +59,10 @@ was removed across its full prescribed eight metres.
   Initial asset pack remains 3,745,044 / 80,000,000 bytes.
 - `pnpm sim-run --scenario mission --all-missions --seeds 3` — exits 0;
   greybox 1/6, mission-01 2/6, active Qalat 0/6 (ordinary soldier-dead losses).
-- `pnpm verify` — running; final complete result and latest-head CI remain pending.
+- A pre-authorization `pnpm verify` run reported the original exact-antechamber
+  failure, then was superseded/stopped after the owner approved changed dimensions
+  and six capacity; it is not a completed verification result.
+- Final approved-head `pnpm verify` and all four latest-head CI jobs remain pending.
 
 The compact [manifest](../../artifacts/qalat-outpost/construction.json),
 [plan](../../artifacts/qalat-outpost/plan.svg) and

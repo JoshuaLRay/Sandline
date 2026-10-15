@@ -70,7 +70,7 @@ one event script. The grey-box `greybox-01` is its test twin. Everything below i
 |---|---|---|
 | D1 | **Premise and tone** | **Afghanistan after 9/11; the enemy is the Taliban and al-Qaeda.** Grounded and tense. This changes the art as well as the story: the characters must look more realistic (see U-080). The owner's yardstick is *Conflict: Desert Storm*: ours read as scrawny and "drawn", too cartoonish even for PS2 standards. |
 | D2 | **Length** | A first **season of ten missions of 30–45 minutes each**, built **one mission at a time**; they need not all exist at once. |
-| D3 | **Structure** | **Straight line.** Past missions can be replayed. Two kinds of run (below). |
+| D3 | **Structure** | **Straight line.** Past missions can be replayed. Two kinds of run (below). The 2026-10-15 owner addendum below requires a Mission 1 rescue return after a successful completion with prisoners. |
 | D4 | **Pacing / objectives** | **Reimagined.** No clear-and-hold, and above all no holding a spot. Maps are bigger: **three lanes and much longer.** A mission's objectives can be done **in any order the players choose, where applicable**, and not every enemy has to be cleared. Mission 1 is a rescue and escort (section 3). |
 | D5 | **Map size and time** | Three-lane maps, **30–45 minutes**, "fairly large": about **10x the area of mission-01's map** (at least where there are assets). |
 | D6 | **Carry-over** | **Weapons, ammo and gear carry to the next mission**, but a pickup **replaces the gear in the character's current slot**. Replaying a mission is how players fetch different weapons for their squad. Rank and XP "are not all that important right now" and may eventually live on the player instead of the campaign soldier. |
@@ -81,7 +81,7 @@ one event script. The grey-box `greybox-01` is its test twin. Everything below i
 
 ### Campaign runs and replay runs (from D3)
 
-After each mission, completed **or failed**, the team leader chooses what to play next:
+After each mission, completed **or failed**, the team leader chooses what to play next, subject to the successful-completion rescue return below:
 
 - a **campaign run** of the newest mission the campaign has reached; or
 - a **replay run** of any mission already beaten.
@@ -89,6 +89,29 @@ After each mission, completed **or failed**, the team leader chooses what to pla
 The two keep **separate prisoner pools**: a character captured in a campaign run can only be rescued in the *next
 campaign-run mission*, never in a replay; a character captured in a replay run can only be rescued in the *next replay
 run*. A replay run is how players collect other weapons (D6).
+
+### D3 owner addendum — 2026-10-15
+
+After successfully completing **any mission** with an imprisoned character in
+that run's prisoner pool, the squad must return to **Mission 1, The Qalat Road**
+to retrieve the captured squad members alongside Mission 1's original prisoner.
+This includes completing Mission 1 itself with prisoners still held: the next
+mission is Mission 1 again. The host's next-mission choice cannot bypass this
+required rescue return. The stated new trigger is successful completion; this
+addendum does not introduce a new trigger on failure or abandonment.
+
+The cell holds **six captives total**: the original Mission 1 POW and up to five
+captured squad members. Campaign and replay prisoner pools remain separate;
+the return uses the pool and run kind that triggered it and cannot free or
+overwrite the other pool. Preserve campaign progress and the correct next-run
+resume destination across the return, without resetting progression or duplicating
+completed-mission entries and unlocks when revisiting Mission 1.
+
+This is an owner decision, **not implemented runtime behaviour**. [U-178](../backlog/U-178.md)
+records routing, persistence and rescue integration for decomposition;
+[U-144](../backlog/U-144.md) retains the current-map placement contract blocker.
+[U-175](../backlog/U-175.md) provides isolated replacement-cell capacity only;
+construction activation remains U-117.
 
 ## 3. Missions
 
