@@ -155,6 +155,8 @@ export function depotManifest() {
     boxCount: level.boxes.length, shellBoxCount: buildDepotShell().length, rowM: ROW_M,
     rooms: DEPOT.rooms, connectors: DEPOT.connectors, doors: depotDoors(), stairPorts: DEPOT.stairPorts,
     endpoints: DEPOT.endpoints, stairs: DEPOT.stairs, flights: depotFlights(), endpointDoors: depotEndpointDoors(),
+    stairFloors: depotStairFloors().map((f) => ({ ...f, ceiling: Number.isFinite(f.ceiling) ? f.ceiling : 'sky' })),
+    stairGuards: level.boxes.filter((b) => b.id.startsWith('depot-stair-balustrade-')),
     activeCampaign: 'unchanged; activation U-117', humanVerdict: 'whole-mission acceptance U-119',
     unfinished: ['fixed internals: U-172', 'integrated seven-actor/floor-isolation proof: U-173'] };
 }

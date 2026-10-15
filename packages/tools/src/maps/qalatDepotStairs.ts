@@ -51,8 +51,9 @@ export function depotStairFloors(): readonly DepotStairFloor[] {
     for (let k = 1; k < cuts.length; k++) {
       const a = cuts[k - 1]!, b = cuts[k]!;
       const y = depotFlightHeight(f, (a + b) / 2);
+      const westBevel = f.to.id === 'B10-mouth' && a >= f.length - D.stairs.exitBevelRun - 1e-9 ? D.stairs.exitBevelWestM : 0;
       pieces.push({ id: `${f.id}-tread-${k}`, flight: f.id,
-        polygon: rectangle(f.from.x - 2, f.from.x + 2, Math.min(f.from.z + direction * a, f.from.z + direction * b), Math.max(f.from.z + direction * a, f.from.z + direction * b)),
+        polygon: rectangle(f.from.x - 2 - westBevel, f.from.x + 2, Math.min(f.from.z + direction * a, f.from.z + direction * b), Math.max(f.from.z + direction * a, f.from.z + direction * b)),
         y, ceiling: y + D.stairs.headroom });
     }
   }
@@ -64,10 +65,11 @@ export function depotStairFloors(): readonly DepotStairFloor[] {
   const door = depotEndpointDoors()[1]!, a = { x: 2, z: 376 };
   // Locally bevel the perpendicular-width ribbon into its four-metre wall
   // socket, preserving both jambs and the porch's exact eight-metre bounds.
-  const side = 2 / Math.sqrt(10), end = [{ x: door.x, z: door.z - 2 }, { x: door.x, z: door.z + 2 }];
+  const side = 2 / Math.sqrt(10), end = [{ x: door.x - D.wallM, z: door.z - 2 }, { x: door.x - D.wallM, z: door.z + 2 }];
   const bevel = convexHull([{ x: a.x - side, z: a.z - 3 * side }, { x: a.x + side, z: a.z + 3 * side }, ...end]);
   pieces.push({ id: 'B10-covered-mouth', polygon: bevel, y: 8, ceiling: 11.2 },
-    { id: 'B10-west-door', polygon: rectangle(3.4, 4, door.z - 2, door.z + 2), y: 8, ceiling: 11.2 });
+    { id: 'B10-west-door', polygon: rectangle(3.4, 4, door.z - 2, door.z + 2), y: 8, ceiling: 11.2 },
+    { id: 'B10-upper-turn', polygon: rectangle(-D.stairs.exitBevelWestM, 3.4, 372.4, 376.4), y: 8, ceiling: 11.2 });
   return cached = pieces;
 }
 
@@ -77,7 +79,8 @@ function rowFloors(z0: number, z1: number) {
   return xs.slice(1).flatMap((hi, i) => {
     const lo = xs[i]!, x = (lo + hi) / 2, active = raw.filter((f) => x > f.span![0] && x < f.span![1]);
     if (!active.length) return [];
-    const flight = active.find((f) => f.flight), y = flight?.y ?? Math.max(...active.map((f) => f.y));
+    const flight = active.find((f) => f.flight), door = active.find((f) => f.id === 'B10-west-door');
+    const y = door?.y ?? flight?.y ?? Math.max(...active.map((f) => f.y));
     const ceiling = Math.max(...active.map((f) => f.ceiling));
     return [{ lo, hi, y, ceiling }];
   });
@@ -161,9 +164,23 @@ export function buildDepotStairs(): BoxSpec[] {
   // the B0 well inside the vestibule. Only the axial landing mouths are open.
   for (const f of depotFlights()) {
     const top = Math.max(f.from.y, f.to.y) + D.stairs.headroom + D.stairs.roofM;
-    for (const side of [-1, 1]) boxes.push({ id: `depot-stair-balustrade-${f.id}-${side}`, x: f.from.x + side * (2 + D.wallM / 2), y: -.4,
-      z: (f.from.z + f.to.z) / 2, w: D.wallM, d: f.length, h: top + .4 });
+    for (const side of [-1, 1]) {
+      const bevel = f.to.id === 'B10-mouth' && side === -1;
+      boxes.push({ id: `depot-stair-balustrade-${f.id}-${side}`, x: f.from.x + side * (2 + D.wallM / 2), y: -.4,
+        z: bevel ? (f.from.z + f.to.z + D.stairs.exitBevelRun) / 2 : (f.from.z + f.to.z) / 2,
+        w: D.wallM, d: f.length - (bevel ? D.stairs.exitBevelRun : 0), h: top + .4 });
+      if (bevel) boxes.push({ id: 'depot-stair-balustrade-B10-door-bevel-west', x: -D.stairs.exitBevelWestM - D.wallM / 2, y: -.4,
+        z: f.to.z + D.stairs.exitBevelRun / 2, w: D.wallM, d: D.stairs.exitBevelRun, h: top + .4 });
+    }
   }
+  // The four-metre porch socket has a level floor. Guard its north edge
+  // from the lower last-flight treads; the western bevel retains four clear
+  // metres beside this cheek, and the upper axial turn opens at floor eight.
+  const guardStart = depotEndpointDoors()[1]!.z + 2;
+  boxes.push({ id: 'depot-stair-balustrade-B10-door-guard', x: 3.1, y: -.4, z: (guardStart + 378.6) / 2,
+    w: D.wallM, d: 378.6 - guardStart, h: 12.4 },
+  { id: 'depot-stair-balustrade-B10-door-guard-join', x: 4, y: -.4, z: 378.3,
+    w: 1.2, d: D.wallM, h: 12.4 });
   // Existing B1/B9 masonry supplies the lower landing's outer envelope.
   // Remove helper wall/roof overlap inside their preserved room dimensions.
   return boxes.flatMap((b) => {

@@ -24,6 +24,10 @@ const nearby = (p: Point) => world.boxes.filter((b) => b.maxX >= p.x - 12 && b.m
   && b.maxZ >= p.z - 12 && b.minZ <= p.z + 12);
 const yieldWorker = () => new Promise<void>((resolve) => setImmediate(resolve));
 const at = (f: typeof FLIGHTS[number], distance: number, side = 0) => ({ x: f.x + side, z: f.z + f.dz * distance });
+// The named B10 doorway's guard occupies the east terminal strip. Its local
+// west bevel preserves a full 4 m lower-tread band, independently measured
+// from x=-1.2 to 2.8; the listed x2 endpoint remains fixed inside that band.
+const bandCentre = (f: typeof FLIGHTS[number], distance: number) => f.id === 'B10-second' && distance >= 8 ? .8 : f.x;
 
 describe('U-171 exact covered B0/B10 stairs', () => {
   for (const flight of FLIGHTS) it(`${flight.id}: twenty 0.20/0.40 risers/treads, 2 m rest, 4 m clear and covered`, () => {
@@ -31,7 +35,8 @@ describe('U-171 exact covered B0/B10 stairs', () => {
     const treadCentres = Array.from({ length: 20 }, (_, i) => i * .4 + (i >= 10 ? 2 : 0) + .2);
     const distances = [...treadCentres, 4.01, 4.5, 5, 5.5, 5.99];
     for (const distance of distances) for (const side of [-1.99, -1, 0, 1, 1.99]) {
-      const p = at(flight, distance, side), y = floorAt(flight, distance), label = `${flight.id} ${distance}/${side}`;
+      const p = { x: bandCentre(flight, distance) + side, z: flight.z + flight.dz * distance };
+      const y = floorAt(flight, distance), label = `${flight.id} ${distance}/${side}`;
       expect(supportUnder(p.x, p.z, .001, y + .01, boxes, 0), `${label}: wrong tread floor`).toBeCloseTo(y, 6);
       expect(blockedAt(p.x, p.z, .001, y, .001, 3.199, boxes), `${label}: lost clear stair volume`).toBe(false);
       const roof = rayWorld({ origin: { ...p, y: y + 1.6 }, direction: { x: 0, y: 1, z: 0 }, maxDistance: 20 }, boxes);
@@ -84,61 +89,87 @@ describe('U-171 exact covered B0/B10 stairs', () => {
     }
   });
 
+  it('keeps four-by-four standing turn spaces around every continuous switchback cheek tip', () => {
+    // Flight runs stay exact; the broad level landing supplies the full 4 m
+    // turn outside each cheek rather than squeezing actors into a 2 m throat.
+    const TURNS = [
+      { id: 'B0-first-tip', minX: -2, maxX: 2, minZ: 86, maxZ: 90 },
+      { id: 'B0-second-tip', minX: 4, maxX: 8, minZ: 82, maxZ: 86 },
+      { id: 'B10-first-tip', minX: -8, maxX: -4, minZ: 386, maxZ: 390 },
+      { id: 'B10-second-tip', minX: -2, maxX: 2, minZ: 386, maxZ: 390 },
+    ];
+    for (const turn of TURNS) {
+      const boxes = nearby({ x: (turn.minX + turn.maxX) / 2, z: (turn.minZ + turn.maxZ) / 2 });
+      for (const x of [turn.minX + .01, (turn.minX + turn.maxX) / 2, turn.maxX - .01])
+        for (const z of [turn.minZ + .01, (turn.minZ + turn.maxZ) / 2, turn.maxZ - .01]) {
+          expect(supportUnder(x, z, .001, 4.01, boxes, 0), `${turn.id}: y4 turn floor ${x}/${z}`).toBeCloseTo(4, 6);
+          expect(blockedAt(x, z, .001, 4, .001, 3.199, boxes), `${turn.id}: narrowed standing turn ${x}/${z}`).toBe(false);
+          expect(rayWorld({ origin: { x, y: 5.6, z }, direction: { x: 0, y: 1, z: 0 }, maxDistance: 10 }, boxes)?.distance,
+            `${turn.id}: covered turn ${x}/${z}`).toBeGreaterThanOrEqual(1.6 - 1e-6);
+        }
+    }
+  });
+
   it('rejects walking, sprint-jump/vault, crouch/prone and downhill drops over every stair cheek', async () => {
     let attempts = 0;
     for (const flight of FLIGHTS) {
       const boxes = nearby(at(flight, 5));
-      for (const distance of [1, 3, 5, 7, 9]) for (const side of [-1, 1]) {
-        const start = at(flight, distance, 1.4 * side);
+      const distances = flight.id === 'B10-second' ? [1, 3, 5, 7, 8.2, 8.6, 9] : [1, 3, 5, 7, 9];
+      for (const distance of distances) for (const side of [-1, 1]) {
+        const centre = bandCentre(flight, distance);
+        // The north-jamb samples exercise the actual eastern edge outside
+        // the registered socket; inside it the full-height guard closes it.
+        const eastEdge = flight.id === 'B10-second' && distance === 8.2 ? 4 : centre + 2;
+        const start = { x: side < 0 ? centre - 1.4 : eastEdge - .6, z: flight.z + flight.dz * distance };
         // A controller capsule spans adjacent 0.40 m treads. Its supported
         // launch uses the higher tread under its real 0.30 m footprint.
         const y = Math.max(floorAt(flight, distance - DEFAULT_MOVE_CONFIG.radius),
           floorAt(flight, distance + DEFAULT_MOVE_CONFIG.radius));
-        expect(supportUnder(start.x, start.z, DEFAULT_MOVE_CONFIG.radius, y + .01, boxes, 0), `${flight.id} launch`).toBeCloseTo(y, 6);
-        expect(blockedAt(start.x, start.z, DEFAULT_MOVE_CONFIG.radius, y, .05, DEFAULT_MOVE_CONFIG.height, boxes), `${flight.id} launch blocked`).toBe(false);
+        expect(supportUnder(start.x, start.z, DEFAULT_MOVE_CONFIG.radius, y + .01, boxes, 0), `${flight.id} ${distance}/${side} launch`).toBeCloseTo(y, 6);
+        expect(blockedAt(start.x, start.z, DEFAULT_MOVE_CONFIG.radius, y, .05, DEFAULT_MOVE_CONFIG.height, boxes), `${flight.id} ${distance}/${side} launch blocked`).toBe(false);
         for (const stance of ['walk', 'jump', 'crouch', 'prone']) {
           let state = { ...createMoveState(start.x, y, start.z), grounded: true };
           const label = `${flight.id}/${distance}/${side}/${stance}`;
-          const terminalMouth = flight.id === 'B10-second' && distance === 9 && side === 1;
           for (let tick = 0; tick < 105; tick++) {
             state = stepCharacter(state, { moveX: 0, moveY: tick < 60 ? 1 : 0, yaw: side > 0 ? 256 : 768,
               sprint: tick < 60 && stance !== 'walk', jump: tick < 60 && stance === 'jump',
               crouch: tick < 60 && stance === 'crouch', prone: tick < 60 && stance === 'prone',
             }, TICK_SECONDS, DEFAULT_MOVE_CONFIG, boxes);
             expect(state.vault, `${label}: vaulted a cheek`).toBeNull();
-            if (terminalMouth) {
-              expect(state.x, `${label}: escaped past the porch east edge`).toBeLessThanOrEqual(12.06);
-              expect(state.x, `${label}: crossed the opposite stair cheek`).toBeGreaterThanOrEqual(flight.x - 2.06);
-              expect(state.z, `${label}: escaped past the doorway north edge`).toBeLessThanOrEqual(375 + 1 / 3 + 2.06);
-              expect(state.z, `${label}: escaped past the doorway south edge`).toBeGreaterThanOrEqual(375 + 1 / 3 - 2.06);
-            } else expect(Math.abs(state.x - flight.x), `${label}: left the 4 m stair: ${JSON.stringify(state)}`).toBeLessThanOrEqual(2.06);
-            // The B10 doorway clips the last cheek only within the final
-            // 2 m mouth. A normal single-riser step onto its y8 porch is a
-            // legal endpoint connection; its bounds are checked separately.
+            expect(state.x, `${label}: crossed the eastern guard/cheek`).toBeLessThanOrEqual(eastEdge + .06);
+            expect(state.x, `${label}: crossed the western cheek`).toBeGreaterThanOrEqual(centre - 2.06);
             if (state.grounded) {
-              if (terminalMouth) expect(Math.min(Math.abs(state.y - y), Math.abs(state.y - 8)), `${label}: wrong registered mouth floor`).toBeLessThan(1e-6);
-              else expect(state.y, `${label}: landed on a cheek, roof or dropped past a tread`).toBeCloseTo(y, 6);
+              expect(state.y, `${label}: landed on a cheek, roof or dropped past a tread`).toBeCloseTo(y, 6);
               expect(supportUnder(state.x, state.z, DEFAULT_MOVE_CONFIG.radius, state.y + .01, boxes, 0), `${label}: unsupported landing`).toBeCloseTo(state.y, 6);
             }
           }
           expect(state.grounded, `${label}: never settled`).toBe(true);
-          expect(state.y, `${label}: drop shortcut`).toBeCloseTo(flight.id === 'B10-second' && distance === 9 && side === 1 ? 8 : y, 6);
+          expect(state.y, `${label}: drop shortcut`).toBeCloseTo(y, 6);
           attempts++;
         }
       }
       await yieldWorker();
     }
-    expect(attempts).toBe(160);
+    expect(attempts).toBe(176);
     console.log('U-171 stair cheek escapes', JSON.stringify({ attempts, stances: ['walk', 'sprint-jump/vault', 'crouch', 'prone'], pushTicks: 60, settleTicks: 45 }));
   }, 120_000);
 
-  it('closes B0 room-floor drop shortcuts and the exposed B10 platform edges in every stance', async () => {
+  it('closes the room rims, broad switchbacks and exposed porch edges in every stance', async () => {
     const EDGES = [
       { id: 'B0-west-rim', x: -5, y: 8, z: 77, yaw: 256, axis: 'x', bound: -4.3, direction: 1 },
       { id: 'B0-east-rim', x: 1, y: 8, z: 77, yaw: 768, axis: 'x', bound: .3, direction: -1 },
       { id: 'B10-east-edge', x: 11, y: 8, z: 374, yaw: 256, axis: 'x', bound: 12.06, direction: 1 },
       { id: 'B10-south-edge', x: 8, y: 8, z: 371, yaw: 512, axis: 'z', bound: 369.94, direction: -1 },
       { id: 'B10-north-edge', x: 8, y: 8, z: 377, yaw: 0, axis: 'z', bound: 378.06, direction: 1 },
+      { id: 'B10-north-door-drop', x: 3.85, y: 8, z: 375 + 1 / 3 + 1.99, yaw: 768, axis: 'x', bound: 3.4, direction: -1 },
+      { id: 'B0-switchback-west', x: -3, y: 4, z: 88, yaw: 768, axis: 'x', bound: -4.06, direction: -1 },
+      { id: 'B0-switchback-east', x: 9, y: 4, z: 84, yaw: 256, axis: 'x', bound: 10.06, direction: 1 },
+      { id: 'B0-switchback-north', x: 3, y: 4, z: 89, yaw: 0, axis: 'z', bound: 90.06, direction: 1 },
+      { id: 'B0-switchback-south', x: 3, y: 4, z: 83, yaw: 512, axis: 'z', bound: 81.94, direction: -1 },
+      { id: 'B10-switchback-west', x: -9, y: 4, z: 388, yaw: 768, axis: 'x', bound: -10.06, direction: -1 },
+      { id: 'B10-switchback-east', x: 3, y: 4, z: 388, yaw: 256, axis: 'x', bound: 4.06, direction: 1 },
+      { id: 'B10-switchback-north', x: -3, y: 4, z: 389, yaw: 0, axis: 'z', bound: 390.06, direction: 1 },
+      { id: 'B10-switchback-south', x: -3, y: 4, z: 383, yaw: 512, axis: 'z', bound: 381.94, direction: -1 },
     ] as const;
     let attempts = 0;
     for (const edge of EDGES) {
@@ -158,12 +189,12 @@ describe('U-171 exact covered B0/B10 stairs', () => {
           if (state.grounded) expect(state.y, `${label}: landed on a wall, roof or drop shortcut`).toBeCloseTo(edge.y, 6);
         }
         expect(state.grounded, `${edge.id}/${stance}: never settled`).toBe(true);
-        expect(state.y, `${edge.id}/${stance}: endpoint drop`).toBeCloseTo(8, 6);
+        expect(state.y, `${edge.id}/${stance}: endpoint drop`).toBeCloseTo(edge.y, 6);
         attempts++;
       }
       await yieldWorker();
     }
-    expect(attempts).toBe(20);
+    expect(attempts).toBe(56);
     console.log('U-171 endpoint rim/drop escapes', JSON.stringify({ attempts, edges: EDGES.map((e) => e.id) }));
   }, 120_000);
 });

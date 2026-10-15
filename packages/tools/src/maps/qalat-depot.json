@@ -31,7 +31,7 @@
     {"id": "B10", "x": 8, "y": 8, "z": 374, "w": 8, "d": 8, "open": true}
   ],
   "stairs": {
-    "width": 4, "riser": 0.2, "tread": 0.4, "rest": 2, "switchLandingWidth": 8, "headroom": 3.2, "roofM": 0.8,
+    "width": 4, "riser": 0.2, "tread": 0.4, "rest": 2, "switchLandingWidth": 8, "exitBevelRun": 6, "exitBevelWestM": 1.2, "headroom": 3.2, "roofM": 0.8,
     "systems": [
       { "id": "B0-B1", "nodes": [
         {"id": "B0", "x": -2, "y": 8, "z": 68},

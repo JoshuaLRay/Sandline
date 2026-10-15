@@ -32,7 +32,8 @@ function subtract(a: Solid, cut: Solid): Solid[] {
 // authoring JSON. All four flight profiles include their exact 2 m rests.
 const apertures: Solid[] = [solid(-14, 10, 58, 78, 8, 12), solid(10, 12, 66, 70, 8, 11.2),
   solid(4, 8, 94, 98, 0, 3.2), solid(-4, 10, 82, 90, 4, 7.2), solid(-10, 4, 382, 390, 4, 7.2),
-  solid(4, 12, 370, 378, 8, Infinity), solid(3.4, 4, 373 + 1 / 3, 377 + 1 / 3, 8, 11.2)];
+  solid(4, 12, 370, 378, 8, Infinity), solid(3.4, 4, 373 + 1 / 3, 377 + 1 / 3, 8, 11.2),
+  solid(-1.2, 3.4, 372.4, 376.4, 8, 11.2)];
 // The broad middle landings keep 4 m turns around each unbroken cheek tip;
 // their extra depth does not authorize another cut at any other elevation.
 const RISERS = [.4, .8, 1.2, 1.6, 2, 2.4, 2.8, 3.2, 3.6, 4, 6, 6.4, 6.8, 7.2, 7.6, 8, 8.4, 8.8, 9.2, 9.6];
@@ -41,7 +42,10 @@ for (const [x, z, y, dz, dy] of [[-2, 76, 8, 1, -1], [8, 86, 4, 1, -1], [-8, 376
   for (let i = 1; i < cuts.length; i++) {
     const start = cuts[i - 1]!, end = cuts[i]!;
     const floor = y! + dy! * .2 * RISERS.filter((at) => at <= (start + end) / 2).length;
-    apertures.push(solid(x! - 2, x! + 2, Math.min(z! + dz! * start, z! + dz! * end),
+    // Only the last six metres of the B10 upper flight widen westward to
+    // turn beside the doorway guard; the same exact risers and roofs remain.
+    const west = x === 2 && z === 386 && start >= 4 ? -1.2 : x! - 2;
+    apertures.push(solid(west, x! + 2, Math.min(z! + dz! * start, z! + dz! * end),
       Math.max(z! + dz! * start, z! + dz! * end), floor, floor + 3.2));
   }
 }
@@ -50,7 +54,7 @@ for (const [x, z, y, dz, dy] of [[-2, 76, 8, 1, -1], [8, 86, 4, 1, -1], [-8, 376
 // tolerance; this exception ends at y11.2 and never opens the sky above it.
 const side = 2 / Math.sqrt(10);
 const mouth = convexHull([{ x: 2 - side, z: 376 - 3 * side }, { x: 2 + side, z: 376 + 3 * side },
-  { x: 4, z: 375 + 1 / 3 - 2 }, { x: 4, z: 375 + 1 / 3 + 2 }]
+  { x: 3.4, z: 375 + 1 / 3 - 2 }, { x: 3.4, z: 375 + 1 / 3 + 2 }]
   .flatMap((p) => [-.05, .05].flatMap((x) => [-.05, .05].map((z) => ({ x: p.x + x, z: p.z + z })))));
 const insideMouth = (p: Solid) => p.minY >= 8 - EPS && p.maxY <= 11.2 + EPS
   && [p.minX, p.maxX].every((x) => [p.minZ, p.maxZ].every((z) => inConvex(mouth, { x, z })));
