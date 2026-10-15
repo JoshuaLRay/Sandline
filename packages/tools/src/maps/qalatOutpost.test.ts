@@ -39,7 +39,10 @@ function difference(a: Solid, cut: Solid): Solid[] {
 describe('U-175 independent outpost shell and opaque reserve annex', () => {
   it('preserves the complete inside room dimensions, y8 floors, and solid ceilings', () => {
     let samples = 0;
-    for (const [id, x0, x1, z0, z1, top] of ROOMS)
+    for (const [id, x0, x1, z0, z1, top] of ROOMS) {
+      const intrusions = world.boxes.filter((b) => b.maxY > 8.000001 && b.minY < top - .000001
+        && b.maxX > x0 + .000001 && b.minX < x1 - .000001 && b.maxZ > z0 + .000001 && b.minZ < z1 - .000001);
+      expect(intrusions.map((b) => b.id), `${id} exact full interior`).toEqual([]);
       for (let x = x0 + .1; x < x1; x += .8) for (let z = z0 + .1; z < z1; z += .8) {
         const local = shell.filter((b) => x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ);
         const actual = world.boxes.filter((b) => x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ);
@@ -50,6 +53,7 @@ describe('U-175 independent outpost shell and opaque reserve annex', () => {
         expect(local.some((b) => b.minY === top && b.maxY > top), `${id} solid roof`).toBe(true);
         samples++;
       }
+    }
     expect(samples).toBeGreaterThan(1_000);
   });
 
@@ -152,7 +156,7 @@ describe('U-175 independent outpost shell and opaque reserve annex', () => {
     expect(hit({ x: 16, y: 9.6, z: 398 }, { x: 16, y: 9.6, z: 402 })).toBeNull();
   });
 
-  it('screens every staged reserve body from courtyard, north gate and ridge cameras', () => {
+  it('screens every staged reserve body from independent courtyard, north gate and ridge camera probes', () => {
     const observers: Point[] = [];
     for (let x = 8.5; x < 56; x += 3) for (let z = 356.5; z < 412; z += 3)
       for (const y of [9.6, 10.2]) observers.push({ x, y, z });
@@ -166,7 +170,7 @@ describe('U-175 independent outpost shell and opaque reserve annex', () => {
 
   it('preserves every inherited solid outside independently bounded three-dimensional courtyard/gate cuts', () => {
     const cuts = [volume(8, 56, 356, 412, 8, Infinity), volume(28, 36, 355, 356, 8, 12),
-      volume(4, 8, 372, 376, 8, 12), volume(56, 60, 372, 376, 8, 12),
+      volume(4, 8, 372, 376, 8, 12), volume(56, 61, 370, 376, 8, 12),
       // §9.3 exact rectangular union, including its 4x4 inside corner rests.
       volume(24, 40, 434, 448, 8, 12), volume(28, 36, 412, 414, 8, 12),
       volume(30, 34, 426, 434, 8, 12), volume(20, 32, 424, 428, 8, 12),
@@ -201,8 +205,16 @@ describe('U-175 independent outpost shell and opaque reserve annex', () => {
   it('keeps generated construction evidence fresh and construction isolated from campaign activation', async () => {
     const output = new URL('../../../../artifacts/qalat-outpost/', import.meta.url), manifest = outpostManifest();
     expect(JSON.parse(await readFile(new URL('construction.json', output), 'utf8'))).toEqual(manifest);
+    const captures = JSON.parse(await readFile(new URL('captures.json', output), 'utf8')) as {
+      levelHash: string; renderHash: string; views: { name: string; calls: number; floorY: number; renderedCeilingY: number | null }[];
+    };
+    expect(captures.levelHash).toBe(manifest.levelHash); expect(captures.renderHash).toBe(manifest.renderHash);
+    expect(captures.views.map((v) => v.name)).toEqual(['south-gate-court', 'west-gate', 'east-gate', 'barracks',
+      'refuge', 'antechamber', 'cell', 'radio', 'reserve-bend', 'reserve-room']);
+    expect(captures.views.every((v) => v.calls < 300 && v.floorY === 8)).toBe(true);
+    for (const view of captures.views.slice(3)) expect(view.renderedCeilingY, view.name).toBeCloseTo(view.name === 'refuge' ? 12.5 : 12, 6);
     expect(world.id).toBe('qalat-outpost-construction');
     expect(manifest.activeCampaign).toBe('unchanged; activation U-117');
     expect(manifest.humanVerdict).toBe('whole-mission acceptance U-119');
-  });
+  }, 120_000);
 });

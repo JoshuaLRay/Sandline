@@ -16,7 +16,7 @@ const TRIPS = [
   ['depot west approach', [[2, 376], [5, 374], [8, 374], [26, 374], [32, 374]]],
   // R9's pad continues outside the eastwall. Its named centre at(56,370)
   // meets the structural arch's infilled jamb; use the actual outer pad.
-  ['ridge east approach', [[58, 370], [58, 374], [56, 374], [48, 374], [32, 374]]],
+  ['ridge east approach', [[59, 370], [59, 374], [56, 374], [48, 374], [32, 374]]],
   ['barracks', [[32, 374], [20, 374], [20, 368], [18, 365]]],
   ['refuge', [[32, 374], [26, 380], [20, 380], [16, 380]]],
   ['antechamber and captive', [[32, 374], [26, 392], [20, 392], [16, 392], [16, 398], [16, 402]]],
@@ -27,7 +27,7 @@ const point = ([x, z]: readonly number[]): Point => ({ x: x!, y: 8, z: z! });
 const within = (p: Point, x0: number, x1: number, z0: number, z1: number) =>
   p.x >= x0 - .06 && p.x <= x1 + .06 && p.z >= z0 - .06 && p.z <= z1 + .06;
 const onFloor = (p: Point) => within(p, 8, 56, 356, 412) || within(p, 28, 36, 350, 356)
-  || within(p, 1, 8, 372, 378) || within(p, 52, 60, 368, 376)
+  || within(p, 1, 8, 372, 378) || within(p, 52, 60, 368, 374) || within(p, 56, 61, 370, 376)
   || within(p, 28, 36, 412, 414) || within(p, 24, 40, 434, 448)
   || RESERVE.slice(1).some((b, i) => {
     const a = RESERVE[i]!;
@@ -61,7 +61,11 @@ describe('U-175 outpost on the actual complete tiled standing bake', () => {
       const goal = point(at), projected = nav.nearestPoint(goal)?.point;
       expect(projected, JSON.stringify(goal)).toBeDefined();
       expect(Math.hypot(projected!.x - goal.x, projected!.z - goal.z), 'lost real floor').toBeLessThan(.1);
-      expect(Math.abs(projected!.y - 8), `wrong storey ${JSON.stringify(goal)}`).toBeLessThanOrEqual(.05002);
+      // B10's exact top stair boundary borrows its adjacent ordinary .20m
+      // riser in nav detail, as in the accepted depot endpoint proof. Its
+      // actual support/controller feet must still remain exactly y8 below.
+      const stairBoundary = goal.x === 2 && goal.z === 376;
+      expect(Math.abs(projected!.y - 8), `wrong storey ${JSON.stringify(goal)}`).toBeLessThanOrEqual(stairBoundary ? .25002 : .05002);
       expect(supportUnder(goal.x, goal.z, .001, 8.01, nearby(goal), 0), 'authored floor').toBeCloseTo(8, 6);
     }
   });
@@ -71,6 +75,23 @@ describe('U-175 outpost on the actual complete tiled standing bake', () => {
     // exterior shoulder route above is distinct from that authored centre.
     expect(blockedAt(56, 370, DEFAULT_MOVE_CONFIG.radius, 8, .05,
       DEFAULT_MOVE_CONFIG.height, nearby({ x: 56, y: 8, z: 370 }))).toBe(true);
+  });
+
+  it('preserves the approved four-metre outside-wall turn and rejects escape beyond its bounded pocket', () => {
+    for (let x = 57.01; x < 61; x += .4) for (let z = 370.01; z < 376; z += .4) {
+      expect(blockedAt(x, z, .001, 8, 0, 3.999, world.boxes), `east four-metre turn ${x}/${z}`).toBe(false);
+      expect(supportUnder(x, z, .001, 8.01, world.boxes, 0)).toBeCloseTo(8, 6);
+    }
+    for (const yaw of [0, 256]) {
+      let state = { ...createMoveState(59, 8, 374), grounded: true };
+      for (let tick = 0; tick < 150; tick++) {
+        state = stepCharacter(state, { moveX: 0, moveY: 1, yaw, sprint: true,
+          jump: tick % 30 === 0, crouch: false, prone: false }, TICK_SECONDS, DEFAULT_MOVE_CONFIG, nearby(state));
+        expect(state.x, 'east pocket escape').toBeLessThanOrEqual(60.651);
+        expect(state.z, 'north pocket escape').toBeLessThanOrEqual(375.651);
+        expect(state.vault).toBeNull();
+      }
+    }
   });
 
   for (const reverse of [false, true]) it(`walks all three approaches, every room and every reserve bend ${reverse ? 'outward' : 'inward'}`, async () => {
