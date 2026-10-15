@@ -125,6 +125,37 @@ describe('U-175 outpost on the actual complete tiled standing bake', () => {
     console.log(`U-175 outpost ${reverse ? 'outward' : 'inward'} controller`, JSON.stringify({ routes: TRIPS.length, ticks, seconds: ticks * TICK_SECONDS }));
   }, 120_000);
 
+  it('walks the retained R8 final stairs directly to the courtyard and back through the new east pocket', async () => {
+    const r8 = { x: 70, y: 12, z: 350 }, length = Math.hypot(14, 20);
+    const retained = (p: Point) => onFloor(p) || within(p, 66, 74, 348, 352)
+      || (((p.x - 70) * -14 + (p.z - 350) * 20) / length >= -.06
+        && ((p.x - 70) * -14 + (p.z - 350) * 20) / length <= length + .06
+        && Math.abs((p.x - 70) * 20 + (p.z - 350) * 14) / length <= 4.06);
+    for (const [first, goal] of [[r8, COURT], [COURT, r8]]) {
+      let state = { ...createMoveState(first!.x, first!.y, first!.z), grounded: true }, arrived = false;
+      const path = nav.path(state, goal!);
+      expect(completePathLength(path, state, goal!), 'final ridge connection').not.toBeNull();
+      expect(path!.vaults).toEqual([]); expect(path!.points.every(retained), 'detoured through another approach').toBe(true);
+      const follower = new PathFollower(nav, world.boxes);
+      for (let tick = 0; tick < 2_400; tick++) {
+        const { input, status } = follower.step(state, { goal: goal!, pace: 'walk' }, 0);
+        if (status === 'arrived') { arrived = true; break; }
+        expect(input.jump).toBe(false);
+        const before = state;
+        state = stepCharacter(state, input, TICK_SECONDS, DEFAULT_MOVE_CONFIG, nearby(state));
+        expect(Math.abs(state.y - before.y)).toBeLessThanOrEqual(DEFAULT_MOVE_CONFIG.stepHeight);
+        expect(state.y).toBeGreaterThanOrEqual(7.999999); expect(state.y).toBeLessThanOrEqual(12.000001);
+        expect(retained(state), 'left final stair/pad, east pocket and courtyard').toBe(true);
+        expect(state.vault).toBeNull(); expect(state.crouched || state.prone).toBe(false);
+        expect(blockedAt(state.x, state.z, DEFAULT_MOVE_CONFIG.radius, state.y, DEFAULT_MOVE_CONFIG.stepHeight,
+          DEFAULT_MOVE_CONFIG.height, nearby(state)), 'inside final stair structure').toBe(false);
+        if (tick % 256 === 0) await yieldWorker();
+      }
+      expect(arrived, `stalled final ridge leg at ${JSON.stringify(state)}`).toBe(true);
+      expect(state.y).toBeCloseTo(goal!.y, 6);
+    }
+  }, 120_000);
+
   it('uses the north gate as the reserve annex sole connection and excludes a fourth approach to X', () => {
     const reserve = point([32, 440]), x0 = point([96, 444]);
     expect(completePathLength(nav.path(reserve, COURT), reserve, COURT)).not.toBeNull();
