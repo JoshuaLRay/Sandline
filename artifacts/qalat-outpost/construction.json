@@ -2,9 +2,9 @@
   "task": "U-175",
   "parent": "U-116",
   "kind": "isolated outpost shell and sealed screened reserve annex",
-  "sourceHash": "485d43cf381327b0a983a2e02e93f56134127845abfd3537f85875f6eb0c6df9",
-  "levelHash": "9f7f3018589943fb1d0e2e7d0773dfd396ecbdfdf3089ff102481a181d91f233",
-  "renderHash": "853beab5a9ea3d45b6813ade41186cf065bcbbddd1563709428655af8e239e20",
+  "sourceHash": "3cf617895dd32d5314b388c1757290a0dba0d5810dacc586731af0a81b8a76d0",
+  "levelHash": "f26e3753eafecd47c2050e712778cff2655866d21d52bd70b94ca86f784e0616",
+  "renderHash": "95f1fb1741ae2e0163d0ce1b9a9c03af5ff6e883748caa7e590793c66a8d789c",
   "boxCount": 110444,
   "shellBoxCount": 504,
   "courtyard": {
@@ -79,7 +79,7 @@
       "minX": 10,
       "maxX": 22,
       "minZ": 386,
-      "maxZ": 396,
+      "maxZ": 395.4,
       "ceiling": 12
     },
     {
@@ -246,7 +246,7 @@
   "sharedDivider": {
     "minZ": 395.4,
     "maxZ": 396,
-    "status": "proposed A; awaiting owner choice"
+    "status": "owner approved exact cell and shortened antechamber, 2026-10-15"
   },
   "eastJoin": {
     "status": "owner approved bounded turning pocket, 2026-10-15",
@@ -263,6 +263,62 @@
       "maxZ": 376
     },
     "why": "One metre of bounded external turning pocket keeps the prescribed gate at z374 and gives four clear metres beside its outward wall; no new approach or predecessor stair move."
+  },
+  "holding": {
+    "capacity": 6,
+    "constructionOnly": true,
+    "purpose": "One original Mission 1 POW plus up to five captured squad members; metadata for construction proofs, with runtime spawning and campaign activation deferred.",
+    "entryLanding": {
+      "minX": 14,
+      "maxX": 18,
+      "minZ": 396,
+      "maxZ": 400
+    },
+    "layoutRule": "Captured-squad spots stay outside x14..18; the four-metre entry landing remains clear. The original POW keeps the fixed point beyond that landing.",
+    "positions": [
+      {
+        "id": "mission-pow",
+        "role": "original-mission-pow",
+        "x": 16,
+        "y": 8,
+        "z": 402
+      },
+      {
+        "id": "carry-1",
+        "role": "captured-squad",
+        "x": 12,
+        "y": 8,
+        "z": 400
+      },
+      {
+        "id": "carry-2",
+        "role": "captured-squad",
+        "x": 20,
+        "y": 8,
+        "z": 400
+      },
+      {
+        "id": "carry-3",
+        "role": "captured-squad",
+        "x": 12,
+        "y": 8,
+        "z": 404
+      },
+      {
+        "id": "carry-4",
+        "role": "captured-squad",
+        "x": 20,
+        "y": 8,
+        "z": 404
+      },
+      {
+        "id": "carry-5",
+        "role": "captured-squad",
+        "x": 12,
+        "y": 8,
+        "z": 408
+      }
+    ]
   },
   "carveVoids": [
     {

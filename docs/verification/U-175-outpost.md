@@ -12,15 +12,15 @@ now reaches the fixed gate via the exterior shoulder and a clear x57..61 turn.
 The gate remains (56,8,374). North/east returns bound the pocket.
 
 The owner authorized divider A on 2026-10-15, conditional on accommodating six
-prisoners total. The exact cell stays12×14m (168m²); the divider occupies
-z395.4..396 and the antechamber's clear north face is395.4. The original POW
-keeps(16,8,402), with five carried-prisoner reservations at(12,8,400),
-(20,8,400),(12,8,404),(20,8,404),(12,8,408). All are supported at y8,
+prisoners total. The exact cell stays 12×14 m (168 m²); the divider occupies
+z395.4..396 and the antechamber's clear north face is z395.4. The original POW
+keeps (16,8,402), with five carried-prisoner reservations at (12,8,400),
+(20,8,400), (12,8,404), (20,8,404), (12,8,408). All are supported at y8,
 stand clear of collision and each other, and preserve the inside four-by-four
 landing x14..18/z396..400. Actual nav/controller access to each holding and
 external body-ray protection for all six pass focused tests. These are physical
-reservations; production placement/mapping and forced-Mission1 routing remain
-U-144/U-178, with activationU-117. Captured squad characters occupy their existing
+reservations; production placement/mapping and forced-Mission 1 routing remain
+U-144/U-178, with activation U-117. Captured squad characters occupy their existing
 slots; after rescue the group is still six soldiers plus the original escort.
 
 ## Geometry and routes
@@ -51,7 +51,7 @@ was removed across its full prescribed eight metres.
 - `pnpm gen:qalat-outpost` — passes; 110,444 total boxes, 504 shell boxes.
 - `CHROMIUM_PATH=/usr/bin/chromium pnpm exec tsx packages/tools/src/capture-qalat-outpost.ts`
   — all ten standing-eye captures pass footprint, support, hash and rendered solid
-  roof checks; two draws and 1,079,986 triangles per full-scene view, below 300 draws.
+  roof checks; two draws and 1,079,984 triangles per full-scene view, below 300 draws.
 - `pnpm gen:qalat-depot` plus its capture command — all 26 views pass; retained
   hashes and byte-for-byte artifacts (two draws, 1,069,134 triangles each).
 - `pnpm gen:nav` — passes; registered world bakes unchanged.
