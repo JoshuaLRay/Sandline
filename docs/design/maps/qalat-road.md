@@ -91,6 +91,20 @@ V1's north-east floor corner): those bounded open mouths replace only the 4 m
 stair footprint. A-S07's south-west corner is clipped along x+z=261, 0.12 m
 outside the C12-U A5→U1 ribbon. Ridge look/play stays batched in U-140.
 
+**U-175 outpost gate-join addendum · 2026-10-15:** the owner approved a bounded
+turning pocket extending 1 m east to reconcile the fixed east gate with R9. The
+old standing node (56,8,370) lies in the specified east wall/jamb. Keep the gate
+at (56,8,374) and the existing R9 landing/stair; use its exterior shoulder to turn
+through the local y8 pocket x56..61,z370..376. The clear turn outside the wall is
+x57..61 (4 m). Opaque north/east returns close the pocket; this is a gate join,
+not a new approach or connection to X. The original R9 node remains a spine
+reference, not a usable standing socket once the outpost wall is built.
+Conflict default: standard side-gate infantry doors are 4×3 m beneath their
+8 m structural arches whose ceilings stay y12; the remaining arch is masonry.
+Room/corridor roofs are solid 0.8 m structural slabs. North's full 8 m throat
+opens into an enclosed x28..36,z412..414 vestibule, narrowing to the exact 4 m
+reserve spine beyond the outer wall.
+
 This is the canonical construction brief for campaign mission 1, world/mission
 `qalat-road`. It replaces the rectangular valley, terrace slots and surface
 riverbed flank delivered by U-106. That implementation remains the current game

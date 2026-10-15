@@ -1,0 +1,35 @@
+{
+  "$comment": "U-175 isolated §8.1 shell and §9.3 reserve annex, first U-116 leaf; no campaign activation, furniture, tower or combat shelter acceptance. Room roofs use the §2.2 0.8m minimum structural roof. Proposed shared-divider convention: cell south face stays z396; its sole 0.6m wall occupies z395.4..396, with the antechamber nominal north edge sharing that wall. North gate's 8m arch opens into a bounded 8x2m roofed vestibule before the 4m reserve spine. R9's exterior pad approaches the east door via (58,370),(58,374); its former node (56,370) coincides with the specified wall jamb.",
+  "id": "qalat-outpost-construction", "task": "U-175", "floorY": 8, "floorM": 0.4, "wallM": 0.6, "roofM": 0.8,
+  "courtyard": { "minX": 8, "maxX": 56, "minZ": 356, "maxZ": 412, "wallM": 1, "topY": 14 },
+  "gates": [
+    { "id": "south", "axis": "z", "x": 32, "z": 356, "normal": -1, "archWidth": 8, "width": 8, "ceiling": 12 },
+    { "id": "east", "axis": "x", "x": 56, "z": 374, "normal": 1, "archWidth": 8, "width": 4, "ceiling": 12 },
+    { "id": "west", "axis": "x", "x": 8, "z": 374, "normal": -1, "archWidth": 8, "width": 4, "ceiling": 12 },
+    { "id": "north", "axis": "z", "x": 32, "z": 412, "normal": 1, "archWidth": 8, "width": 8, "ceiling": 12 }
+  ],
+  "rooms": [
+    { "id": "barracks", "minX": 10, "maxX": 26, "minZ": 360, "maxZ": 370, "ceiling": 12 },
+    { "id": "refuge", "minX": 10, "maxX": 22, "minZ": 376, "maxZ": 384, "ceiling": 12.5 },
+    { "id": "antechamber", "minX": 10, "maxX": 22, "minZ": 386, "maxZ": 396, "ceiling": 12 },
+    { "id": "cell", "minX": 10, "maxX": 22, "minZ": 396, "maxZ": 410, "ceiling": 12 },
+    { "id": "radio", "minX": 42, "maxX": 54, "minZ": 390, "maxZ": 410, "ceiling": 12 },
+    { "id": "reserve", "minX": 24, "maxX": 40, "minZ": 434, "maxZ": 448, "ceiling": 12 }
+  ],
+  "doors": [
+    { "id": "barracks-north", "room": "barracks", "axis": "z", "x": 20, "z": 370, "normal": 1 },
+    { "id": "refuge-east", "room": "refuge", "axis": "x", "x": 22, "z": 380, "normal": 1 },
+    { "id": "antechamber-east", "room": "antechamber", "axis": "x", "x": 22, "z": 392, "normal": 1 },
+    { "id": "cell-south", "room": "cell", "axis": "z", "x": 16, "z": 396, "normal": -1 },
+    { "id": "radio-west", "room": "radio", "axis": "x", "x": 42, "z": 396, "normal": -1 },
+    { "id": "reserve-south", "room": "reserve", "axis": "z", "x": 32, "z": 434, "normal": -1 }
+  ],
+  "windows": [
+    { "id": "cell-north", "room": "cell", "axis": "z", "x": 16, "z": 410, "normal": 1, "width": 4, "sill": 10.4, "height": 0.6, "barred": true },
+    { "id": "radio-west", "room": "radio", "axis": "x", "x": 42, "z": 404, "normal": -1, "width": 4, "sill": 9.1, "height": 0.7, "barred": false }
+  ],
+  "reserve": { "width": 4, "ceiling": 12, "spine": [{"x":32,"y":8,"z":434},{"x":32,"y":8,"z":426},{"x":20,"y":8,"z":426},{"x":20,"y":8,"z":418},{"x":32,"y":8,"z":418},{"x":32,"y":8,"z":412}], "vestibule": { "minX": 28, "maxX": 36, "minZ": 412, "maxZ": 414 } },
+  "eastGatePad": { "minX": 56, "maxX": 61, "minZ": 370, "maxZ": 376 },
+  "eastJoin": { "status": "owner approved bounded turning pocket, 2026-10-15", "legacyNode": { "x": 56, "y": 8, "z": 370 }, "legacyNodeBlockedBy": "specified east perimeter south jamb", "clearTurn": { "minX": 57, "maxX": 61, "minZ": 370, "maxZ": 376 }, "why": "One metre of bounded external turning pocket keeps the prescribed gate at z374 and gives four clear metres beside its outward wall; no new approach or predecessor stair move." },
+  "sharedDivider": { "minZ": 395.4, "maxZ": 396, "status": "proposed A; awaiting owner choice" }
+}

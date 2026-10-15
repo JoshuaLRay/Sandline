@@ -26,7 +26,12 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.append(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#222820');
-scene.add(new THREE.HemisphereLight('#e5eff7', '#82715b', 2), new THREE.AmbientLight('#f0e6d3', 1.2));
+scene.add(new THREE.HemisphereLight('#e5eff7', '#82715b', 1.5), new THREE.AmbientLight('#f0e6d3', .65));
+// A fixed studio light separates perpendicular whitebox walls without adding
+// shadow maps, hidden faces or changes to the collision/render union.
+const light = new THREE.DirectionalLight('#fff2d8', 1.6);
+light.position.set(-80, 160, 300); light.target.position.set(32, 8, 392);
+scene.add(light, light.target);
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, .05, 900);
 const controls = new OrbitControls(camera, renderer.domElement);
 const geometry = new THREE.BufferGeometry();
