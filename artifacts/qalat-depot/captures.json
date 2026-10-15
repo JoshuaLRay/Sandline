@@ -1,11 +1,11 @@
 {
-  "task": "U-170",
+  "task": "U-171",
   "parent": "U-115",
-  "kind": "isolated B1–B9 enclosed depot shells below the complete surface",
-  "sourceHash": "1488c9fa59bd99cf6b242484180be732336b90376f3533ff6806a7f3e7c04996",
-  "levelHash": "f8baf420e4ebe731dad7162df38ab4d739ebc6e2cd3824f58e7c82f90c21124e",
-  "boxCount": 103739,
-  "shellBoxCount": 9397,
+  "kind": "isolated B1–B9 enclosed shells with covered B0/B10 stairs and exact endpoint connections",
+  "sourceHash": "a444c2dd2a7e521f169a0c63374f7df459037db7649e1645b55514a1c40aa01c",
+  "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
+  "boxCount": 108542,
+  "shellBoxCount": 9405,
   "rowM": 0.05,
   "rooms": [
     {
@@ -319,10 +319,2646 @@
       "z": 376
     }
   ],
+  "endpoints": [
+    {
+      "id": "B0",
+      "x": -2,
+      "y": 8,
+      "z": 68,
+      "w": 24,
+      "d": 20,
+      "ceiling": 12
+    },
+    {
+      "id": "B10",
+      "x": 8,
+      "y": 8,
+      "z": 374,
+      "w": 8,
+      "d": 8,
+      "open": true
+    }
+  ],
+  "stairs": {
+    "width": 4,
+    "riser": 0.2,
+    "tread": 0.4,
+    "rest": 2,
+    "switchLandingWidth": 8,
+    "exitBevelRun": 6,
+    "exitBevelWestM": 1.2,
+    "headroom": 3.2,
+    "roofM": 0.8,
+    "systems": [
+      {
+        "id": "B0-B1",
+        "nodes": [
+          {
+            "id": "B0",
+            "x": -2,
+            "y": 8,
+            "z": 68
+          },
+          {
+            "id": "B0-mouth",
+            "x": -2,
+            "y": 8,
+            "z": 76
+          },
+          {
+            "id": "B0-first-foot",
+            "x": -2,
+            "y": 4,
+            "z": 86
+          },
+          {
+            "id": "B0-second-head",
+            "x": 8,
+            "y": 4,
+            "z": 86
+          },
+          {
+            "id": "B0-second-foot",
+            "x": 8,
+            "y": 0,
+            "z": 96
+          },
+          {
+            "id": "B1",
+            "x": -2,
+            "y": 0,
+            "z": 96
+          }
+        ]
+      },
+      {
+        "id": "B9-B10",
+        "nodes": [
+          {
+            "id": "B9",
+            "x": -8,
+            "y": 0,
+            "z": 370
+          },
+          {
+            "id": "B9-mouth",
+            "x": -8,
+            "y": 0,
+            "z": 376
+          },
+          {
+            "id": "B10-first-head",
+            "x": -8,
+            "y": 4,
+            "z": 386
+          },
+          {
+            "id": "B10-second-foot",
+            "x": 2,
+            "y": 4,
+            "z": 386
+          },
+          {
+            "id": "B10-mouth",
+            "x": 2,
+            "y": 8,
+            "z": 376
+          },
+          {
+            "id": "B10",
+            "x": 8,
+            "y": 8,
+            "z": 374
+          }
+        ]
+      }
+    ]
+  },
+  "flights": [
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot",
+      "from": {
+        "id": "B0-mouth",
+        "x": -2,
+        "y": 8,
+        "z": 76
+      },
+      "to": {
+        "id": "B0-first-foot",
+        "x": -2,
+        "y": 4,
+        "z": 86
+      },
+      "length": 10,
+      "risers": [
+        0.4,
+        0.8,
+        1.2000000000000002,
+        1.6,
+        2,
+        2.4000000000000004,
+        2.8000000000000003,
+        3.2,
+        3.6,
+        4,
+        6,
+        6.4,
+        6.800000000000001,
+        7.2,
+        7.6000000000000005,
+        8,
+        8.4,
+        8.8,
+        9.2,
+        9.600000000000001
+      ]
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot",
+      "from": {
+        "id": "B0-second-head",
+        "x": 8,
+        "y": 4,
+        "z": 86
+      },
+      "to": {
+        "id": "B0-second-foot",
+        "x": 8,
+        "y": 0,
+        "z": 96
+      },
+      "length": 10,
+      "risers": [
+        0.4,
+        0.8,
+        1.2000000000000002,
+        1.6,
+        2,
+        2.4000000000000004,
+        2.8000000000000003,
+        3.2,
+        3.6,
+        4,
+        6,
+        6.4,
+        6.800000000000001,
+        7.2,
+        7.6000000000000005,
+        8,
+        8.4,
+        8.8,
+        9.2,
+        9.600000000000001
+      ]
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head",
+      "from": {
+        "id": "B9-mouth",
+        "x": -8,
+        "y": 0,
+        "z": 376
+      },
+      "to": {
+        "id": "B10-first-head",
+        "x": -8,
+        "y": 4,
+        "z": 386
+      },
+      "length": 10,
+      "risers": [
+        0.4,
+        0.8,
+        1.2000000000000002,
+        1.6,
+        2,
+        2.4000000000000004,
+        2.8000000000000003,
+        3.2,
+        3.6,
+        4,
+        6,
+        6.4,
+        6.800000000000001,
+        7.2,
+        7.6000000000000005,
+        8,
+        8.4,
+        8.8,
+        9.2,
+        9.600000000000001
+      ]
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth",
+      "from": {
+        "id": "B10-second-foot",
+        "x": 2,
+        "y": 4,
+        "z": 386
+      },
+      "to": {
+        "id": "B10-mouth",
+        "x": 2,
+        "y": 8,
+        "z": 376
+      },
+      "length": 10,
+      "risers": [
+        0.4,
+        0.8,
+        1.2000000000000002,
+        1.6,
+        2,
+        2.4000000000000004,
+        2.8000000000000003,
+        3.2,
+        3.6,
+        4,
+        6,
+        6.4,
+        6.800000000000001,
+        7.2,
+        7.6000000000000005,
+        8,
+        8.4,
+        8.8,
+        9.2,
+        9.600000000000001
+      ]
+    }
+  ],
+  "endpointDoors": [
+    {
+      "id": "B0-east",
+      "room": "B0",
+      "x": 10,
+      "y": 8,
+      "z": 68,
+      "axis": "x",
+      "normal": 1,
+      "width": 4,
+      "headroom": 3.2
+    },
+    {
+      "id": "B10-west",
+      "room": "B10",
+      "x": 4,
+      "y": 8,
+      "z": 375.3333333333333,
+      "axis": "x",
+      "normal": -1,
+      "width": 4,
+      "headroom": 3.2
+    }
+  ],
+  "stairFloors": [
+    {
+      "id": "B0-room",
+      "polygon": [
+        {
+          "x": -14,
+          "z": 58
+        },
+        {
+          "x": 10,
+          "z": 58
+        },
+        {
+          "x": 10,
+          "z": 78
+        },
+        {
+          "x": -14,
+          "z": 78
+        }
+      ],
+      "y": 8,
+      "ceiling": 12
+    },
+    {
+      "id": "B0-east-door",
+      "polygon": [
+        {
+          "x": 10,
+          "z": 66
+        },
+        {
+          "x": 12,
+          "z": 66
+        },
+        {
+          "x": 12,
+          "z": 70
+        },
+        {
+          "x": 10,
+          "z": 70
+        }
+      ],
+      "y": 8,
+      "ceiling": 11.2
+    },
+    {
+      "id": "B0-lower-door",
+      "polygon": [
+        {
+          "x": 4,
+          "z": 94
+        },
+        {
+          "x": 8,
+          "z": 94
+        },
+        {
+          "x": 8,
+          "z": 98
+        },
+        {
+          "x": 4,
+          "z": 98
+        }
+      ],
+      "y": 0,
+      "ceiling": 3.2
+    },
+    {
+      "id": "B10-porch",
+      "polygon": [
+        {
+          "x": 4,
+          "z": 370
+        },
+        {
+          "x": 12,
+          "z": 370
+        },
+        {
+          "x": 12,
+          "z": 378
+        },
+        {
+          "x": 4,
+          "z": 378
+        }
+      ],
+      "y": 8,
+      "ceiling": "sky"
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-1",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 76
+        },
+        {
+          "x": 0,
+          "z": 76
+        },
+        {
+          "x": 0,
+          "z": 76.4
+        },
+        {
+          "x": -4,
+          "z": 76.4
+        }
+      ],
+      "y": 8,
+      "ceiling": 11.2
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-2",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 76.4
+        },
+        {
+          "x": 0,
+          "z": 76.4
+        },
+        {
+          "x": 0,
+          "z": 76.8
+        },
+        {
+          "x": -4,
+          "z": 76.8
+        }
+      ],
+      "y": 7.8,
+      "ceiling": 11
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-3",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 76.8
+        },
+        {
+          "x": 0,
+          "z": 76.8
+        },
+        {
+          "x": 0,
+          "z": 77.2
+        },
+        {
+          "x": -4,
+          "z": 77.2
+        }
+      ],
+      "y": 7.6,
+      "ceiling": 10.8
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-4",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 77.2
+        },
+        {
+          "x": 0,
+          "z": 77.2
+        },
+        {
+          "x": 0,
+          "z": 77.6
+        },
+        {
+          "x": -4,
+          "z": 77.6
+        }
+      ],
+      "y": 7.4,
+      "ceiling": 10.600000000000001
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-5",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 77.6
+        },
+        {
+          "x": 0,
+          "z": 77.6
+        },
+        {
+          "x": 0,
+          "z": 78
+        },
+        {
+          "x": -4,
+          "z": 78
+        }
+      ],
+      "y": 7.2,
+      "ceiling": 10.4
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-6",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 78
+        },
+        {
+          "x": 0,
+          "z": 78
+        },
+        {
+          "x": 0,
+          "z": 78.4
+        },
+        {
+          "x": -4,
+          "z": 78.4
+        }
+      ],
+      "y": 7,
+      "ceiling": 10.2
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-7",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 78.4
+        },
+        {
+          "x": 0,
+          "z": 78.4
+        },
+        {
+          "x": 0,
+          "z": 78.8
+        },
+        {
+          "x": -4,
+          "z": 78.8
+        }
+      ],
+      "y": 6.8,
+      "ceiling": 10
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-8",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 78.8
+        },
+        {
+          "x": 0,
+          "z": 78.8
+        },
+        {
+          "x": 0,
+          "z": 79.2
+        },
+        {
+          "x": -4,
+          "z": 79.2
+        }
+      ],
+      "y": 6.6,
+      "ceiling": 9.8
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-9",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 79.2
+        },
+        {
+          "x": 0,
+          "z": 79.2
+        },
+        {
+          "x": 0,
+          "z": 79.6
+        },
+        {
+          "x": -4,
+          "z": 79.6
+        }
+      ],
+      "y": 6.4,
+      "ceiling": 9.600000000000001
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-10",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 79.6
+        },
+        {
+          "x": 0,
+          "z": 79.6
+        },
+        {
+          "x": 0,
+          "z": 80
+        },
+        {
+          "x": -4,
+          "z": 80
+        }
+      ],
+      "y": 6.2,
+      "ceiling": 9.4
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-11",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 80
+        },
+        {
+          "x": 0,
+          "z": 80
+        },
+        {
+          "x": 0,
+          "z": 82
+        },
+        {
+          "x": -4,
+          "z": 82
+        }
+      ],
+      "y": 6,
+      "ceiling": 9.2
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-12",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 82
+        },
+        {
+          "x": 0,
+          "z": 82
+        },
+        {
+          "x": 0,
+          "z": 82.4
+        },
+        {
+          "x": -4,
+          "z": 82.4
+        }
+      ],
+      "y": 5.8,
+      "ceiling": 9
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-13",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 82.4
+        },
+        {
+          "x": 0,
+          "z": 82.4
+        },
+        {
+          "x": 0,
+          "z": 82.8
+        },
+        {
+          "x": -4,
+          "z": 82.8
+        }
+      ],
+      "y": 5.6,
+      "ceiling": 8.8
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-14",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 82.8
+        },
+        {
+          "x": 0,
+          "z": 82.8
+        },
+        {
+          "x": 0,
+          "z": 83.2
+        },
+        {
+          "x": -4,
+          "z": 83.2
+        }
+      ],
+      "y": 5.4,
+      "ceiling": 8.600000000000001
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-15",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 83.2
+        },
+        {
+          "x": 0,
+          "z": 83.2
+        },
+        {
+          "x": 0,
+          "z": 83.6
+        },
+        {
+          "x": -4,
+          "z": 83.6
+        }
+      ],
+      "y": 5.199999999999999,
+      "ceiling": 8.399999999999999
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-16",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 83.6
+        },
+        {
+          "x": 0,
+          "z": 83.6
+        },
+        {
+          "x": 0,
+          "z": 84
+        },
+        {
+          "x": -4,
+          "z": 84
+        }
+      ],
+      "y": 5,
+      "ceiling": 8.2
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-17",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 84
+        },
+        {
+          "x": 0,
+          "z": 84
+        },
+        {
+          "x": 0,
+          "z": 84.4
+        },
+        {
+          "x": -4,
+          "z": 84.4
+        }
+      ],
+      "y": 4.8,
+      "ceiling": 8
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-18",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 84.4
+        },
+        {
+          "x": 0,
+          "z": 84.4
+        },
+        {
+          "x": 0,
+          "z": 84.8
+        },
+        {
+          "x": -4,
+          "z": 84.8
+        }
+      ],
+      "y": 4.6,
+      "ceiling": 7.8
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-19",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 84.8
+        },
+        {
+          "x": 0,
+          "z": 84.8
+        },
+        {
+          "x": 0,
+          "z": 85.2
+        },
+        {
+          "x": -4,
+          "z": 85.2
+        }
+      ],
+      "y": 4.4,
+      "ceiling": 7.6000000000000005
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-20",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 85.2
+        },
+        {
+          "x": 0,
+          "z": 85.2
+        },
+        {
+          "x": 0,
+          "z": 85.6
+        },
+        {
+          "x": -4,
+          "z": 85.6
+        }
+      ],
+      "y": 4.199999999999999,
+      "ceiling": 7.3999999999999995
+    },
+    {
+      "id": "B0-B1-B0-mouth-B0-first-foot-tread-21",
+      "flight": "B0-B1-B0-mouth-B0-first-foot",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 85.6
+        },
+        {
+          "x": 0,
+          "z": 85.6
+        },
+        {
+          "x": 0,
+          "z": 86
+        },
+        {
+          "x": -4,
+          "z": 86
+        }
+      ],
+      "y": 4,
+      "ceiling": 7.2
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-1",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 86
+        },
+        {
+          "x": 10,
+          "z": 86
+        },
+        {
+          "x": 10,
+          "z": 86.4
+        },
+        {
+          "x": 6,
+          "z": 86.4
+        }
+      ],
+      "y": 4,
+      "ceiling": 7.2
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-2",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 86.4
+        },
+        {
+          "x": 10,
+          "z": 86.4
+        },
+        {
+          "x": 10,
+          "z": 86.8
+        },
+        {
+          "x": 6,
+          "z": 86.8
+        }
+      ],
+      "y": 3.8,
+      "ceiling": 7
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-3",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 86.8
+        },
+        {
+          "x": 10,
+          "z": 86.8
+        },
+        {
+          "x": 10,
+          "z": 87.2
+        },
+        {
+          "x": 6,
+          "z": 87.2
+        }
+      ],
+      "y": 3.6,
+      "ceiling": 6.800000000000001
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-4",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 87.2
+        },
+        {
+          "x": 10,
+          "z": 87.2
+        },
+        {
+          "x": 10,
+          "z": 87.6
+        },
+        {
+          "x": 6,
+          "z": 87.6
+        }
+      ],
+      "y": 3.4,
+      "ceiling": 6.6
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-5",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 87.6
+        },
+        {
+          "x": 10,
+          "z": 87.6
+        },
+        {
+          "x": 10,
+          "z": 88
+        },
+        {
+          "x": 6,
+          "z": 88
+        }
+      ],
+      "y": 3.2,
+      "ceiling": 6.4
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-6",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 88
+        },
+        {
+          "x": 10,
+          "z": 88
+        },
+        {
+          "x": 10,
+          "z": 88.4
+        },
+        {
+          "x": 6,
+          "z": 88.4
+        }
+      ],
+      "y": 3,
+      "ceiling": 6.2
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-7",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 88.4
+        },
+        {
+          "x": 10,
+          "z": 88.4
+        },
+        {
+          "x": 10,
+          "z": 88.8
+        },
+        {
+          "x": 6,
+          "z": 88.8
+        }
+      ],
+      "y": 2.8,
+      "ceiling": 6
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-8",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 88.8
+        },
+        {
+          "x": 10,
+          "z": 88.8
+        },
+        {
+          "x": 10,
+          "z": 89.2
+        },
+        {
+          "x": 6,
+          "z": 89.2
+        }
+      ],
+      "y": 2.5999999999999996,
+      "ceiling": 5.8
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-9",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 89.2
+        },
+        {
+          "x": 10,
+          "z": 89.2
+        },
+        {
+          "x": 10,
+          "z": 89.6
+        },
+        {
+          "x": 6,
+          "z": 89.6
+        }
+      ],
+      "y": 2.4,
+      "ceiling": 5.6
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-10",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 89.6
+        },
+        {
+          "x": 10,
+          "z": 89.6
+        },
+        {
+          "x": 10,
+          "z": 90
+        },
+        {
+          "x": 6,
+          "z": 90
+        }
+      ],
+      "y": 2.2,
+      "ceiling": 5.4
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-11",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 90
+        },
+        {
+          "x": 10,
+          "z": 90
+        },
+        {
+          "x": 10,
+          "z": 92
+        },
+        {
+          "x": 6,
+          "z": 92
+        }
+      ],
+      "y": 2,
+      "ceiling": 5.2
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-12",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 92
+        },
+        {
+          "x": 10,
+          "z": 92
+        },
+        {
+          "x": 10,
+          "z": 92.4
+        },
+        {
+          "x": 6,
+          "z": 92.4
+        }
+      ],
+      "y": 1.7999999999999998,
+      "ceiling": 5
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-13",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 92.4
+        },
+        {
+          "x": 10,
+          "z": 92.4
+        },
+        {
+          "x": 10,
+          "z": 92.8
+        },
+        {
+          "x": 6,
+          "z": 92.8
+        }
+      ],
+      "y": 1.5999999999999996,
+      "ceiling": 4.8
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-14",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 92.8
+        },
+        {
+          "x": 10,
+          "z": 92.8
+        },
+        {
+          "x": 10,
+          "z": 93.2
+        },
+        {
+          "x": 6,
+          "z": 93.2
+        }
+      ],
+      "y": 1.4,
+      "ceiling": 4.6
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-15",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 93.2
+        },
+        {
+          "x": 10,
+          "z": 93.2
+        },
+        {
+          "x": 10,
+          "z": 93.6
+        },
+        {
+          "x": 6,
+          "z": 93.6
+        }
+      ],
+      "y": 1.1999999999999997,
+      "ceiling": 4.4
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-16",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 93.6
+        },
+        {
+          "x": 10,
+          "z": 93.6
+        },
+        {
+          "x": 10,
+          "z": 94
+        },
+        {
+          "x": 6,
+          "z": 94
+        }
+      ],
+      "y": 1,
+      "ceiling": 4.2
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-17",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 94
+        },
+        {
+          "x": 10,
+          "z": 94
+        },
+        {
+          "x": 10,
+          "z": 94.4
+        },
+        {
+          "x": 6,
+          "z": 94.4
+        }
+      ],
+      "y": 0.7999999999999998,
+      "ceiling": 4
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-18",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 94.4
+        },
+        {
+          "x": 10,
+          "z": 94.4
+        },
+        {
+          "x": 10,
+          "z": 94.8
+        },
+        {
+          "x": 6,
+          "z": 94.8
+        }
+      ],
+      "y": 0.5999999999999996,
+      "ceiling": 3.8
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-19",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 94.8
+        },
+        {
+          "x": 10,
+          "z": 94.8
+        },
+        {
+          "x": 10,
+          "z": 95.2
+        },
+        {
+          "x": 6,
+          "z": 95.2
+        }
+      ],
+      "y": 0.3999999999999999,
+      "ceiling": 3.6
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-20",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 95.2
+        },
+        {
+          "x": 10,
+          "z": 95.2
+        },
+        {
+          "x": 10,
+          "z": 95.6
+        },
+        {
+          "x": 6,
+          "z": 95.6
+        }
+      ],
+      "y": 0.19999999999999973,
+      "ceiling": 3.4
+    },
+    {
+      "id": "B0-B1-B0-second-head-B0-second-foot-tread-21",
+      "flight": "B0-B1-B0-second-head-B0-second-foot",
+      "polygon": [
+        {
+          "x": 6,
+          "z": 95.6
+        },
+        {
+          "x": 10,
+          "z": 95.6
+        },
+        {
+          "x": 10,
+          "z": 96
+        },
+        {
+          "x": 6,
+          "z": 96
+        }
+      ],
+      "y": 0,
+      "ceiling": 3.2
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-1",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 376
+        },
+        {
+          "x": -6,
+          "z": 376
+        },
+        {
+          "x": -6,
+          "z": 376.4
+        },
+        {
+          "x": -10,
+          "z": 376.4
+        }
+      ],
+      "y": 0,
+      "ceiling": 3.2
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-2",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 376.4
+        },
+        {
+          "x": -6,
+          "z": 376.4
+        },
+        {
+          "x": -6,
+          "z": 376.8
+        },
+        {
+          "x": -10,
+          "z": 376.8
+        }
+      ],
+      "y": 0.2,
+      "ceiling": 3.4000000000000004
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-3",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 376.8
+        },
+        {
+          "x": -6,
+          "z": 376.8
+        },
+        {
+          "x": -6,
+          "z": 377.2
+        },
+        {
+          "x": -10,
+          "z": 377.2
+        }
+      ],
+      "y": 0.4,
+      "ceiling": 3.6
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-4",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 377.2
+        },
+        {
+          "x": -6,
+          "z": 377.2
+        },
+        {
+          "x": -6,
+          "z": 377.6
+        },
+        {
+          "x": -10,
+          "z": 377.6
+        }
+      ],
+      "y": 0.6000000000000001,
+      "ceiling": 3.8000000000000003
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-5",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 377.6
+        },
+        {
+          "x": -6,
+          "z": 377.6
+        },
+        {
+          "x": -6,
+          "z": 378
+        },
+        {
+          "x": -10,
+          "z": 378
+        }
+      ],
+      "y": 0.8,
+      "ceiling": 4
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-6",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 378
+        },
+        {
+          "x": -6,
+          "z": 378
+        },
+        {
+          "x": -6,
+          "z": 378.4
+        },
+        {
+          "x": -10,
+          "z": 378.4
+        }
+      ],
+      "y": 1,
+      "ceiling": 4.2
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-7",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 378.4
+        },
+        {
+          "x": -6,
+          "z": 378.4
+        },
+        {
+          "x": -6,
+          "z": 378.8
+        },
+        {
+          "x": -10,
+          "z": 378.8
+        }
+      ],
+      "y": 1.2000000000000002,
+      "ceiling": 4.4
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-8",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 378.8
+        },
+        {
+          "x": -6,
+          "z": 378.8
+        },
+        {
+          "x": -6,
+          "z": 379.2
+        },
+        {
+          "x": -10,
+          "z": 379.2
+        }
+      ],
+      "y": 1.4000000000000001,
+      "ceiling": 4.6000000000000005
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-9",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 379.2
+        },
+        {
+          "x": -6,
+          "z": 379.2
+        },
+        {
+          "x": -6,
+          "z": 379.6
+        },
+        {
+          "x": -10,
+          "z": 379.6
+        }
+      ],
+      "y": 1.6,
+      "ceiling": 4.800000000000001
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-10",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 379.6
+        },
+        {
+          "x": -6,
+          "z": 379.6
+        },
+        {
+          "x": -6,
+          "z": 380
+        },
+        {
+          "x": -10,
+          "z": 380
+        }
+      ],
+      "y": 1.8,
+      "ceiling": 5
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-11",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 380
+        },
+        {
+          "x": -6,
+          "z": 380
+        },
+        {
+          "x": -6,
+          "z": 382
+        },
+        {
+          "x": -10,
+          "z": 382
+        }
+      ],
+      "y": 2,
+      "ceiling": 5.2
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-12",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 382
+        },
+        {
+          "x": -6,
+          "z": 382
+        },
+        {
+          "x": -6,
+          "z": 382.4
+        },
+        {
+          "x": -10,
+          "z": 382.4
+        }
+      ],
+      "y": 2.2,
+      "ceiling": 5.4
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-13",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 382.4
+        },
+        {
+          "x": -6,
+          "z": 382.4
+        },
+        {
+          "x": -6,
+          "z": 382.8
+        },
+        {
+          "x": -10,
+          "z": 382.8
+        }
+      ],
+      "y": 2.4000000000000004,
+      "ceiling": 5.6000000000000005
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-14",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 382.8
+        },
+        {
+          "x": -6,
+          "z": 382.8
+        },
+        {
+          "x": -6,
+          "z": 383.2
+        },
+        {
+          "x": -10,
+          "z": 383.2
+        }
+      ],
+      "y": 2.6,
+      "ceiling": 5.800000000000001
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-15",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 383.2
+        },
+        {
+          "x": -6,
+          "z": 383.2
+        },
+        {
+          "x": -6,
+          "z": 383.6
+        },
+        {
+          "x": -10,
+          "z": 383.6
+        }
+      ],
+      "y": 2.8000000000000003,
+      "ceiling": 6
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-16",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 383.6
+        },
+        {
+          "x": -6,
+          "z": 383.6
+        },
+        {
+          "x": -6,
+          "z": 384
+        },
+        {
+          "x": -10,
+          "z": 384
+        }
+      ],
+      "y": 3,
+      "ceiling": 6.2
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-17",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 384
+        },
+        {
+          "x": -6,
+          "z": 384
+        },
+        {
+          "x": -6,
+          "z": 384.4
+        },
+        {
+          "x": -10,
+          "z": 384.4
+        }
+      ],
+      "y": 3.2,
+      "ceiling": 6.4
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-18",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 384.4
+        },
+        {
+          "x": -6,
+          "z": 384.4
+        },
+        {
+          "x": -6,
+          "z": 384.8
+        },
+        {
+          "x": -10,
+          "z": 384.8
+        }
+      ],
+      "y": 3.4000000000000004,
+      "ceiling": 6.6000000000000005
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-19",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 384.8
+        },
+        {
+          "x": -6,
+          "z": 384.8
+        },
+        {
+          "x": -6,
+          "z": 385.2
+        },
+        {
+          "x": -10,
+          "z": 385.2
+        }
+      ],
+      "y": 3.6,
+      "ceiling": 6.800000000000001
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-20",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 385.2
+        },
+        {
+          "x": -6,
+          "z": 385.2
+        },
+        {
+          "x": -6,
+          "z": 385.6
+        },
+        {
+          "x": -10,
+          "z": 385.6
+        }
+      ],
+      "y": 3.8000000000000003,
+      "ceiling": 7
+    },
+    {
+      "id": "B9-B10-B9-mouth-B10-first-head-tread-21",
+      "flight": "B9-B10-B9-mouth-B10-first-head",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 385.6
+        },
+        {
+          "x": -6,
+          "z": 385.6
+        },
+        {
+          "x": -6,
+          "z": 386
+        },
+        {
+          "x": -10,
+          "z": 386
+        }
+      ],
+      "y": 4,
+      "ceiling": 7.2
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-1",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": 0,
+          "z": 385.6
+        },
+        {
+          "x": 4,
+          "z": 385.6
+        },
+        {
+          "x": 4,
+          "z": 386
+        },
+        {
+          "x": 0,
+          "z": 386
+        }
+      ],
+      "y": 4,
+      "ceiling": 7.2
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-2",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": 0,
+          "z": 385.2
+        },
+        {
+          "x": 4,
+          "z": 385.2
+        },
+        {
+          "x": 4,
+          "z": 385.6
+        },
+        {
+          "x": 0,
+          "z": 385.6
+        }
+      ],
+      "y": 4.2,
+      "ceiling": 7.4
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-3",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": 0,
+          "z": 384.8
+        },
+        {
+          "x": 4,
+          "z": 384.8
+        },
+        {
+          "x": 4,
+          "z": 385.2
+        },
+        {
+          "x": 0,
+          "z": 385.2
+        }
+      ],
+      "y": 4.4,
+      "ceiling": 7.6000000000000005
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-4",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": 0,
+          "z": 384.4
+        },
+        {
+          "x": 4,
+          "z": 384.4
+        },
+        {
+          "x": 4,
+          "z": 384.8
+        },
+        {
+          "x": 0,
+          "z": 384.8
+        }
+      ],
+      "y": 4.6,
+      "ceiling": 7.8
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-5",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": 0,
+          "z": 384
+        },
+        {
+          "x": 4,
+          "z": 384
+        },
+        {
+          "x": 4,
+          "z": 384.4
+        },
+        {
+          "x": 0,
+          "z": 384.4
+        }
+      ],
+      "y": 4.8,
+      "ceiling": 8
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-6",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": 0,
+          "z": 383.6
+        },
+        {
+          "x": 4,
+          "z": 383.6
+        },
+        {
+          "x": 4,
+          "z": 384
+        },
+        {
+          "x": 0,
+          "z": 384
+        }
+      ],
+      "y": 5,
+      "ceiling": 8.2
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-7",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": 0,
+          "z": 383.2
+        },
+        {
+          "x": 4,
+          "z": 383.2
+        },
+        {
+          "x": 4,
+          "z": 383.6
+        },
+        {
+          "x": 0,
+          "z": 383.6
+        }
+      ],
+      "y": 5.2,
+      "ceiling": 8.4
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-8",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": 0,
+          "z": 382.8
+        },
+        {
+          "x": 4,
+          "z": 382.8
+        },
+        {
+          "x": 4,
+          "z": 383.2
+        },
+        {
+          "x": 0,
+          "z": 383.2
+        }
+      ],
+      "y": 5.4,
+      "ceiling": 8.600000000000001
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-9",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": 0,
+          "z": 382.4
+        },
+        {
+          "x": 4,
+          "z": 382.4
+        },
+        {
+          "x": 4,
+          "z": 382.8
+        },
+        {
+          "x": 0,
+          "z": 382.8
+        }
+      ],
+      "y": 5.6,
+      "ceiling": 8.8
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-10",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": 0,
+          "z": 382
+        },
+        {
+          "x": 4,
+          "z": 382
+        },
+        {
+          "x": 4,
+          "z": 382.4
+        },
+        {
+          "x": 0,
+          "z": 382.4
+        }
+      ],
+      "y": 5.8,
+      "ceiling": 9
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-11",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": -1.2,
+          "z": 380
+        },
+        {
+          "x": 4,
+          "z": 380
+        },
+        {
+          "x": 4,
+          "z": 382
+        },
+        {
+          "x": -1.2,
+          "z": 382
+        }
+      ],
+      "y": 6,
+      "ceiling": 9.2
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-12",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": -1.2,
+          "z": 379.6
+        },
+        {
+          "x": 4,
+          "z": 379.6
+        },
+        {
+          "x": 4,
+          "z": 380
+        },
+        {
+          "x": -1.2,
+          "z": 380
+        }
+      ],
+      "y": 6.2,
+      "ceiling": 9.4
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-13",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": -1.2,
+          "z": 379.2
+        },
+        {
+          "x": 4,
+          "z": 379.2
+        },
+        {
+          "x": 4,
+          "z": 379.6
+        },
+        {
+          "x": -1.2,
+          "z": 379.6
+        }
+      ],
+      "y": 6.4,
+      "ceiling": 9.600000000000001
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-14",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": -1.2,
+          "z": 378.8
+        },
+        {
+          "x": 4,
+          "z": 378.8
+        },
+        {
+          "x": 4,
+          "z": 379.2
+        },
+        {
+          "x": -1.2,
+          "z": 379.2
+        }
+      ],
+      "y": 6.6,
+      "ceiling": 9.8
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-15",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": -1.2,
+          "z": 378.4
+        },
+        {
+          "x": 4,
+          "z": 378.4
+        },
+        {
+          "x": 4,
+          "z": 378.8
+        },
+        {
+          "x": -1.2,
+          "z": 378.8
+        }
+      ],
+      "y": 6.800000000000001,
+      "ceiling": 10
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-16",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": -1.2,
+          "z": 378
+        },
+        {
+          "x": 4,
+          "z": 378
+        },
+        {
+          "x": 4,
+          "z": 378.4
+        },
+        {
+          "x": -1.2,
+          "z": 378.4
+        }
+      ],
+      "y": 7,
+      "ceiling": 10.2
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-17",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": -1.2,
+          "z": 377.6
+        },
+        {
+          "x": 4,
+          "z": 377.6
+        },
+        {
+          "x": 4,
+          "z": 378
+        },
+        {
+          "x": -1.2,
+          "z": 378
+        }
+      ],
+      "y": 7.2,
+      "ceiling": 10.4
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-18",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": -1.2,
+          "z": 377.2
+        },
+        {
+          "x": 4,
+          "z": 377.2
+        },
+        {
+          "x": 4,
+          "z": 377.6
+        },
+        {
+          "x": -1.2,
+          "z": 377.6
+        }
+      ],
+      "y": 7.4,
+      "ceiling": 10.600000000000001
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-19",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": -1.2,
+          "z": 376.8
+        },
+        {
+          "x": 4,
+          "z": 376.8
+        },
+        {
+          "x": 4,
+          "z": 377.2
+        },
+        {
+          "x": -1.2,
+          "z": 377.2
+        }
+      ],
+      "y": 7.6,
+      "ceiling": 10.8
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-20",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": -1.2,
+          "z": 376.4
+        },
+        {
+          "x": 4,
+          "z": 376.4
+        },
+        {
+          "x": 4,
+          "z": 376.8
+        },
+        {
+          "x": -1.2,
+          "z": 376.8
+        }
+      ],
+      "y": 7.800000000000001,
+      "ceiling": 11
+    },
+    {
+      "id": "B9-B10-B10-second-foot-B10-mouth-tread-21",
+      "flight": "B9-B10-B10-second-foot-B10-mouth",
+      "polygon": [
+        {
+          "x": -1.2,
+          "z": 376
+        },
+        {
+          "x": 4,
+          "z": 376
+        },
+        {
+          "x": 4,
+          "z": 376.4
+        },
+        {
+          "x": -1.2,
+          "z": 376.4
+        }
+      ],
+      "y": 8,
+      "ceiling": 11.2
+    },
+    {
+      "id": "B0-switchback",
+      "polygon": [
+        {
+          "x": -4,
+          "z": 82
+        },
+        {
+          "x": 10,
+          "z": 82
+        },
+        {
+          "x": 10,
+          "z": 90
+        },
+        {
+          "x": -4,
+          "z": 90
+        }
+      ],
+      "y": 4,
+      "ceiling": 7.2
+    },
+    {
+      "id": "B10-switchback",
+      "polygon": [
+        {
+          "x": -10,
+          "z": 382
+        },
+        {
+          "x": 4,
+          "z": 382
+        },
+        {
+          "x": 4,
+          "z": 390
+        },
+        {
+          "x": -10,
+          "z": 390
+        }
+      ],
+      "y": 4,
+      "ceiling": 7.2
+    },
+    {
+      "id": "B10-covered-mouth",
+      "polygon": [
+        {
+          "x": 1.367544467966324,
+          "z": 374.10263340389895
+        },
+        {
+          "x": 3.4,
+          "z": 373.3333333333333
+        },
+        {
+          "x": 3.4,
+          "z": 377.3333333333333
+        },
+        {
+          "x": 2.632455532033676,
+          "z": 377.89736659610105
+        }
+      ],
+      "y": 8,
+      "ceiling": 11.2
+    },
+    {
+      "id": "B10-west-door",
+      "polygon": [
+        {
+          "x": 3.4,
+          "z": 373.3333333333333
+        },
+        {
+          "x": 4,
+          "z": 373.3333333333333
+        },
+        {
+          "x": 4,
+          "z": 377.3333333333333
+        },
+        {
+          "x": 3.4,
+          "z": 377.3333333333333
+        }
+      ],
+      "y": 8,
+      "ceiling": 11.2
+    },
+    {
+      "id": "B10-upper-turn",
+      "polygon": [
+        {
+          "x": -1.2,
+          "z": 372.4
+        },
+        {
+          "x": 3.4,
+          "z": 372.4
+        },
+        {
+          "x": 3.4,
+          "z": 376.4
+        },
+        {
+          "x": -1.2,
+          "z": 376.4
+        }
+      ],
+      "y": 8,
+      "ceiling": 11.2
+    }
+  ],
+  "stairGuards": [
+    {
+      "id": "depot-stair-balustrade-B0-B1-B0-mouth-B0-first-foot--1",
+      "x": -4.3,
+      "y": -0.4,
+      "z": 81,
+      "w": 0.6,
+      "d": 10,
+      "h": 12.4
+    },
+    {
+      "id": "depot-stair-balustrade-B0-B1-B0-mouth-B0-first-foot-1",
+      "x": 0.2999999999999998,
+      "y": -0.4,
+      "z": 81,
+      "w": 0.6,
+      "d": 10,
+      "h": 12.4
+    },
+    {
+      "id": "depot-stair-balustrade-B0-B1-B0-second-head-B0-second-foot--1",
+      "x": 5.7,
+      "y": -0.4,
+      "z": 91,
+      "w": 0.6,
+      "d": 10,
+      "h": 8.4
+    },
+    {
+      "id": "depot-stair-balustrade-B0-B1-B0-second-head-B0-second-foot-1",
+      "x": 10.3,
+      "y": -0.4,
+      "z": 91,
+      "w": 0.6,
+      "d": 10,
+      "h": 8.4
+    },
+    {
+      "id": "depot-stair-balustrade-B9-B10-B9-mouth-B10-first-head--1",
+      "x": -10.3,
+      "y": -0.4,
+      "z": 381,
+      "w": 0.6,
+      "d": 10,
+      "h": 8.4
+    },
+    {
+      "id": "depot-stair-balustrade-B9-B10-B9-mouth-B10-first-head-1",
+      "x": -5.7,
+      "y": -0.4,
+      "z": 381,
+      "w": 0.6,
+      "d": 10,
+      "h": 8.4
+    },
+    {
+      "id": "depot-stair-balustrade-B9-B10-B10-second-foot-B10-mouth--1",
+      "x": -0.2999999999999998,
+      "y": -0.4,
+      "z": 384,
+      "w": 0.6,
+      "d": 4,
+      "h": 12.4
+    },
+    {
+      "id": "depot-stair-balustrade-B10-door-bevel-west",
+      "x": -1.5,
+      "y": -0.4,
+      "z": 379,
+      "w": 0.6,
+      "d": 6,
+      "h": 12.4
+    },
+    {
+      "id": "depot-stair-balustrade-B9-B10-B10-second-foot-B10-mouth-1-depot-cut-0",
+      "x": 4.3,
+      "y": -0.4,
+      "z": 382,
+      "w": 0.5999999999999996,
+      "d": 8,
+      "h": 12.4
+    },
+    {
+      "id": "depot-stair-balustrade-B9-B10-B10-second-foot-B10-mouth-1-depot-cut-1",
+      "x": 4.3,
+      "y": -0.4,
+      "z": 377,
+      "w": 0.5999999999999996,
+      "d": 2,
+      "h": 8.4
+    },
+    {
+      "id": "depot-stair-balustrade-B10-door-guard",
+      "x": 3.1,
+      "y": -0.4,
+      "z": 377.9666666666667,
+      "w": 0.6,
+      "d": 1.2666666666667084,
+      "h": 12.4
+    },
+    {
+      "id": "depot-stair-balustrade-B10-door-north-jamb",
+      "x": 3.7,
+      "y": 8,
+      "z": 377.9666666666667,
+      "w": 0.6,
+      "d": 1.2666666666667084,
+      "h": 4
+    },
+    {
+      "id": "depot-stair-balustrade-B10-door-guard-join",
+      "x": 4,
+      "y": -0.4,
+      "z": 378.3,
+      "w": 1.2,
+      "d": 0.6,
+      "h": 12.4
+    }
+  ],
   "activeCampaign": "unchanged; activation U-117",
   "humanVerdict": "whole-mission acceptance U-119",
   "unfinished": [
-    "covered B0/B10 stairs and endpoint joins: U-171",
     "fixed internals: U-172",
     "integrated seven-actor/floor-isolation proof: U-173"
   ],
@@ -346,12 +2982,13 @@
         1.55,
         96
       ],
+      "floorY": 0,
       "ceilingY": 3.6,
       "label": "B1 · floor 0 / ceiling 3.6 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1046224,
-      "boxCount": 103739,
-      "levelHash": "f8baf420e4ebe731dad7162df38ab4d739ebc6e2cd3824f58e7c82f90c21124e",
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
       "renderedCeilingY": 3.5999999046325684
     },
     {
@@ -366,12 +3003,13 @@
         1.55,
         130
       ],
+      "floorY": 0,
       "ceilingY": 4.5,
       "label": "B2 · floor 0 / ceiling 4.5 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1046224,
-      "boxCount": 103739,
-      "levelHash": "f8baf420e4ebe731dad7162df38ab4d739ebc6e2cd3824f58e7c82f90c21124e",
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
       "renderedCeilingY": 4.5
     },
     {
@@ -386,12 +3024,13 @@
         1.55,
         176
       ],
+      "floorY": 0,
       "ceilingY": 5.5,
       "label": "B3 · floor 0 / ceiling 5.5 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1046224,
-      "boxCount": 103739,
-      "levelHash": "f8baf420e4ebe731dad7162df38ab4d739ebc6e2cd3824f58e7c82f90c21124e",
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
       "renderedCeilingY": 5.5
     },
     {
@@ -406,12 +3045,13 @@
         1.55,
         206.15384615384616
       ],
+      "floorY": 0,
       "ceilingY": 4.5,
       "label": "B4 · floor 0 / ceiling 4.5 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1046224,
-      "boxCount": 103739,
-      "levelHash": "f8baf420e4ebe731dad7162df38ab4d739ebc6e2cd3824f58e7c82f90c21124e",
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
       "renderedCeilingY": 4.5
     },
     {
@@ -426,12 +3066,13 @@
         1.55,
         240
       ],
+      "floorY": 0,
       "ceilingY": 4,
       "label": "B5 · floor 0 / ceiling 4 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1046224,
-      "boxCount": 103739,
-      "levelHash": "f8baf420e4ebe731dad7162df38ab4d739ebc6e2cd3824f58e7c82f90c21124e",
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
       "renderedCeilingY": 4
     },
     {
@@ -446,12 +3087,13 @@
         1.55,
         288
       ],
+      "floorY": 0,
       "ceilingY": 5.5,
       "label": "B6 · floor 0 / ceiling 5.5 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1046224,
-      "boxCount": 103739,
-      "levelHash": "f8baf420e4ebe731dad7162df38ab4d739ebc6e2cd3824f58e7c82f90c21124e",
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
       "renderedCeilingY": 5.5
     },
     {
@@ -466,12 +3108,13 @@
         1.55,
         320
       ],
+      "floorY": 0,
       "ceilingY": 4,
       "label": "B7 · floor 0 / ceiling 4 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1046224,
-      "boxCount": 103739,
-      "levelHash": "f8baf420e4ebe731dad7162df38ab4d739ebc6e2cd3824f58e7c82f90c21124e",
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
       "renderedCeilingY": 4
     },
     {
@@ -486,12 +3129,13 @@
         1.55,
         358
       ],
+      "floorY": 0,
       "ceilingY": 4,
       "label": "B8 · floor 0 / ceiling 4 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1046224,
-      "boxCount": 103739,
-      "levelHash": "f8baf420e4ebe731dad7162df38ab4d739ebc6e2cd3824f58e7c82f90c21124e",
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
       "renderedCeilingY": 4
     },
     {
@@ -506,12 +3150,13 @@
         1.55,
         376
       ],
+      "floorY": 0,
       "ceilingY": 3.6,
-      "label": "B9 · floor 0 / ceiling 3.6 m · standing eye toward closed U171 stair interface",
+      "label": "B9 · floor 0 / ceiling 3.6 m · standing eye toward covered upward stair",
       "calls": 2,
-      "triangles": 1046224,
-      "boxCount": 103739,
-      "levelHash": "f8baf420e4ebe731dad7162df38ab4d739ebc6e2cd3824f58e7c82f90c21124e",
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
       "renderedCeilingY": 3.5999999046325684
     },
     {
@@ -526,13 +3171,188 @@
         5.5,
         270.01
       ],
+      "floorY": 0,
       "ceilingY": 5.5,
       "label": "B6 · standing eye looking up at the solid y5.5 ceiling beneath the y8 road",
       "calls": 2,
-      "triangles": 1046224,
-      "boxCount": 103739,
-      "levelHash": "f8baf420e4ebe731dad7162df38ab4d739ebc6e2cd3824f58e7c82f90c21124e",
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
       "renderedCeilingY": 5.5
+    },
+    {
+      "name": "b0-loading",
+      "position": [
+        -2,
+        9.55,
+        68
+      ],
+      "target": [
+        -2,
+        9.55,
+        76
+      ],
+      "floorY": 8,
+      "ceilingY": 12,
+      "label": "B0 · loading vestibule at y8, covered descent ahead",
+      "calls": 2,
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
+      "renderedCeilingY": 12
+    },
+    {
+      "name": "b0-first-rest",
+      "position": [
+        -2,
+        7.55,
+        81
+      ],
+      "target": [
+        -2,
+        5.55,
+        85
+      ],
+      "floorY": 6,
+      "ceilingY": null,
+      "minClearance": 3.2,
+      "label": "B0 first flight · 2 m rest at y6",
+      "calls": 2,
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
+      "renderedCeilingY": 9.199999809265137
+    },
+    {
+      "name": "b0-switchback",
+      "position": [
+        3,
+        5.55,
+        86
+      ],
+      "target": [
+        8,
+        5.55,
+        86
+      ],
+      "floorY": 4,
+      "ceilingY": null,
+      "minClearance": 3.2,
+      "label": "B0 · broad 10 m switchback landing at y4",
+      "calls": 2,
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
+      "renderedCeilingY": 7.199999809265137
+    },
+    {
+      "name": "b0-second-rest",
+      "position": [
+        8,
+        3.55,
+        91
+      ],
+      "target": [
+        8,
+        1.55,
+        95
+      ],
+      "floorY": 2,
+      "ceilingY": null,
+      "minClearance": 3.2,
+      "label": "B0 second flight · 2 m rest at y2 toward B1",
+      "calls": 2,
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
+      "renderedCeilingY": 5.199999809265137
+    },
+    {
+      "name": "b10-first-rest",
+      "position": [
+        -8,
+        3.55,
+        381
+      ],
+      "target": [
+        -8,
+        5.55,
+        385
+      ],
+      "floorY": 2,
+      "ceilingY": null,
+      "minClearance": 3.2,
+      "label": "B10 first flight · 2 m rest at y2",
+      "calls": 2,
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
+      "renderedCeilingY": 5.199999809265137
+    },
+    {
+      "name": "b10-switchback",
+      "position": [
+        -3,
+        5.55,
+        386
+      ],
+      "target": [
+        2,
+        5.55,
+        386
+      ],
+      "floorY": 4,
+      "ceilingY": null,
+      "minClearance": 3.2,
+      "label": "B10 · broad 10 m switchback landing at y4",
+      "calls": 2,
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
+      "renderedCeilingY": 7.199999809265137
+    },
+    {
+      "name": "b10-second-rest",
+      "position": [
+        2,
+        7.55,
+        381
+      ],
+      "target": [
+        2,
+        9.55,
+        377
+      ],
+      "floorY": 6,
+      "ceilingY": null,
+      "minClearance": 3.2,
+      "label": "B10 second flight · 2 m rest at y6 toward west gate",
+      "calls": 2,
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
+      "renderedCeilingY": 9.199999809265137
+    },
+    {
+      "name": "b10-west-landing",
+      "position": [
+        8,
+        9.55,
+        374
+      ],
+      "target": [
+        2,
+        9.55,
+        376
+      ],
+      "floorY": 8,
+      "ceilingY": null,
+      "label": "B10 · exact open 8×8 m west landing at (8,8,374)",
+      "calls": 2,
+      "triangles": 1067746,
+      "boxCount": 108542,
+      "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
+      "renderedCeilingY": null
     }
   ]
 }
