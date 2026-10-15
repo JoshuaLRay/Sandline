@@ -1,4 +1,4 @@
-/** U-172 furnished depot with covered endpoint stairs, isolated until U-117. */
+/** U-173 verified furnished depot with covered endpoint stairs, isolated until U-117. */
 import { createHash } from 'node:crypto';
 import { loadLevel, type BoxSpec } from '@sandline/shared';
 import source from './qalat-depot.json' with { type: 'json' };
@@ -150,7 +150,7 @@ export function buildDepotLevel() {
 export function buildDepotWorld() { return loadLevel(buildDepotLevel()); }
 export function depotManifest() {
   const level = buildDepotLevel();
-  return { task: 'U-172', parent: 'U-115', kind: 'isolated furnished B1–B9 depot with covered B0/B10 stairs and exact endpoint connections',
+  return { task: 'U-173', parent: 'U-115', kind: 'isolated furnished B1–B9 depot with covered B0/B10 stairs and exact endpoint connections',
     sourceHash: createHash('sha256').update(JSON.stringify([DEPOT, buildDepotFurniture(), depotDecorations()])).digest('hex'),
     levelHash: createHash('sha256').update(JSON.stringify(level)).digest('hex'),
     renderHash: createHash('sha256').update(JSON.stringify([...level.boxes, ...depotDecorations()])).digest('hex'),
@@ -161,7 +161,7 @@ export function depotManifest() {
     stairGuards: level.boxes.filter((b) => b.id.startsWith('depot-stair-balustrade-')),
     furniture: buildDepotFurniture(), decorations: depotDecorations(),
     activeCampaign: 'unchanged; activation U-117', humanVerdict: 'whole-mission acceptance U-119',
-    unfinished: ['integrated seven-actor/floor-isolation proof: U-173'] };
+    engineeringEvidence: 'docs/verification/U-173-depot.md', unfinished: [] };
 }
 export function depotPlanSvg() {
   const polygons = [...depotFloors(), ...depotStairFloors().map((f) => f.polygon)].map((p) => `<polygon points="${p.map((v) => `${v.x},${-v.z}`).join(' ')}"/>`).join('');

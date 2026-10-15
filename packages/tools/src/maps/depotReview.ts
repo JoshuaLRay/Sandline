@@ -1,4 +1,4 @@
-/** U-172: review exact furnished rooms, cues and covered endpoint stairs. */
+/** U-173: review exact furnished rooms, cues and covered endpoint stairs. */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
