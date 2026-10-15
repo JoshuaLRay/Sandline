@@ -213,7 +213,7 @@ it('U-173 sweeps every furnished basement boundary, roof, stair side, balustrade
   for (const [i, { edge, out }] of edges(polys, 2).entries()) {
     if (contains({ x: edge.x + out.x * .2, z: edge.z + out.z * .2 })) continue;
     // The B9 lower door is a legal stair entrance, not a basement wall.
-    if (Math.abs(edge.z - 376) < .1 && edge.x >= -10 && edge.x <= -6) continue;
+    if (edge.z >= 375.9 && edge.z <= 376.7 && edge.x >= -10 && edge.x <= -6) continue;
     attempt({ x: edge.x - out.x * .65, y: 0, z: edge.z - out.z * .65 }, out, 'basement-shell');
     if (i % 16 === 0) await yieldWorker();
   }

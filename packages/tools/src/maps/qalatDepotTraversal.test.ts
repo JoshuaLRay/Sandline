@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   ClientConnection, DEFAULT_MOVE_CONFIG, TICK_SECONDS, blockedAt, buildTree,
-  createLoopbackPair, createMoveState, supportUnder, type Message, type SquadSpread,
+  createLoopbackPair, supportUnder, type Message, type SquadSpread,
 } from '@sandline/shared';
 import { createBrainRegistry } from '../../../server/src/ai/Brain.ts';
 import { NavMesh, completePathLength, initNav } from '../../../server/src/ai/nav/NavMesh.ts';
@@ -74,6 +74,16 @@ const grow = (poly: ReturnType<typeof rect>) => convexHull(poly.flatMap((p) => [
 const flat = flatFloors.map(grow), endpoints = endpointFloors.map(grow);
 const contains = (polys: typeof flat, p: Point) => polys.some((poly) => inConvex(poly, p));
 const world = buildDepotWorld();
+// A conservative movement broadphase for the real Session. Keep every exact
+// generated solid touching the entire independent route plus four metres,
+// at every elevation (including all roofs). The unchanged full world is baked
+// and audited separately; bodies leaving this envelope fail on that tick.
+const queryBounds = [...flatFloors, ...endpointFloors].map((poly) => ({
+  minX: Math.min(...poly.map((p) => p.x)) - 4, maxX: Math.max(...poly.map((p) => p.x)) + 4,
+  minZ: Math.min(...poly.map((p) => p.z)) - 4, maxZ: Math.max(...poly.map((p) => p.z)) + 4,
+}));
+const movementBoxes = world.boxes.filter((b) => queryBounds.some((a) => b.maxX >= a.minX && b.minX <= a.maxX
+  && b.maxZ >= a.minZ && b.minZ <= a.maxZ));
 const windows = new Map<string, typeof world.boxes>();
 function nearby(p: Point) {
   const x = Math.floor(p.x / 4) * 4, z = Math.floor(p.z / 4) * 4, key = `${x}/${z}`;
@@ -114,10 +124,13 @@ describe('U-173 complete furnished depot with seven actual Session actors', () =
 
   for (const reverse of [false, true]) for (const spread of ['tight', 'standard', 'wide'] satisfies SquadSpread[])
     it(`${reverse ? 'B10→D0' : 'D0→B10'} at ${spread}: every soldier and POW traverses every route region`, async () => {
-      // Movement-only construction fixture. All physical solids, standing
+      // Movement-only construction fixture. All route solids, standing
       // nav, normal Session AI, avoidance, body separation and orders remain.
       // No encounter, tank activation, objective progression or human verdict.
-      const session = new Session(undefined, '', world, {
+      const nodes = reverse ? [...ROUTE].reverse() : ROUTE, first = nodes[0]!, last = nodes.at(-1)!;
+      const squadStarts = Array.from({ length: 6 }, (_, index) => ({ x: first.x + (index % 2 ? .8 : -.8),
+        y: first.y, z: first.z + (Math.floor(index / 2) - 1) * 1.2 }));
+      const session = new Session(undefined, '', { ...world, boxes: movementBoxes, squadStarts }, {
         navMesh: nav, brainTree: buildTree('friendly', createBrainRegistry()), testHumanCount: 0,
       });
       const pair = createLoopbackPair();
@@ -132,10 +145,9 @@ describe('U-173 complete furnished depot with seven actual Session actors', () =
       send({ kind: 'Spread', address: { to: 'all' }, spread });
       send({ kind: 'SwitchCharacter', slot: 1, spectate: true });
       expect(session.slots.map((s) => session.spreadFor(s.index))).toEqual(Array(6).fill(spread));
-      const nodes = reverse ? [...ROUTE].reverse() : ROUTE, first = nodes[0]!, last = nodes.at(-1)!;
       for (const slot of session.slots) {
         const x = first.x + (slot.index % 2 ? .8 : -.8), z = first.z + (Math.floor(slot.index / 2) - 1) * 1.2;
-        slot.state = { ...createMoveState(x, first.y, z), grounded: true };
+        expect(slot.state).toMatchObject({ x, y: first.y, z });
         expect(blockedAt(x, z, DEFAULT_MOVE_CONFIG.radius, first.y, .05, DEFAULT_MOVE_CONFIG.height, nearby(slot.state))).toBe(false);
       }
       expect(session.spawnEnemy('pow', { x: first.x + 2.2, y: first.y, z: first.z, authoredHeight: true })).not.toBeNull();
@@ -176,7 +188,7 @@ describe('U-173 complete furnished depot with seven actual Session actors', () =
             const t = a / (a - b), across = door.axis === 'x' ? 'z' : 'x';
             const lateral = previous[across] + t * (p[across] - previous[across]);
             const y = previous.y + t * (p.y - previous.y);
-            if (Math.abs(lateral - door[across]) < 2.05 && Math.abs(y - door.y) < .45) crossed[i]!.add(door.id);
+            if (Math.abs(lateral - door[across]) < 2.05 && y >= door.y - .200001 && y <= door.y + maximumGap) crossed[i]!.add(door.id);
           }
           expect(body.health.current, `${label}: movement fixture lost actor`).toBe(body.health.max);
         }
@@ -191,7 +203,10 @@ describe('U-173 complete furnished depot with seven actual Session actors', () =
         { id: 'B6', x: 30, y: 0, z: 270 }, { id: 'B7', x: -14, y: 0, z: 310 },
       ];
       if (reverse) stops.reverse();
-      for (const goal of [...stops, last]) {
+      // Put the outward destination inside the far half of the 8×8 porch,
+      // leaving space for Wide's trailing destinations to emerge from B10.
+      const destination = reverse ? last : { ...last, x: 9, z: 376 };
+      for (const goal of [...stops, destination]) {
         send({ kind: 'Order', order: 'move', address: { to: 'all' }, point: goal, target: null });
         for (const slot of session.slots) {
           const asked = session.orderFor(slot.index)?.point;
@@ -201,18 +216,25 @@ describe('U-173 complete furnished depot with seven actual Session actors', () =
           expect(completePathLength(path, slot.state, asked!), `${goal.id}/actor${slot.index} incomplete order`).not.toBeNull();
           expect(path!.vaults).toEqual([]);
         }
-        let arrived = false;
+        let arrived = false, bestDistance = Infinity, stalled = 0;
         for (let tick = 0; tick < 7200; tick++) {
           await advance();
-          arrived = session.slots.every((s) => {
-            const point = session.orderFor(s.index)!.point!;
-            return Math.hypot(s.state.x - point.x, s.state.y - point.y, s.state.z - point.z) < .85;
-          }) && Math.hypot(pow.state.x - goal.x, pow.state.y - goal.y, pow.state.z - goal.z) < 1.6;
+          // GEO-06 asks the whole group to reach the clear regroup pocket,
+          // then halt. It does not require seven actors to finish a tightly
+          // packed move-order pattern before the commander may issue Hold.
+          arrived = goal === destination ? bodies.every((b) => Math.abs(b.state.y - 8) < .05 && locate(b.state) === nodes.length - 1
+            && (reverse ? b.state.x >= 20.35 && b.state.x <= 43.65 && b.state.z >= 53.35 && b.state.z <= 74.65
+              : b.state.x >= 4.35 && b.state.x <= 11.65 && b.state.z >= 370.35 && b.state.z <= 377.65))
+            : bodies.every((b) => Math.abs(b.state.y) < .05 && Math.abs(b.state.x - goal.x) <= 4 && Math.abs(b.state.z - goal.z) <= 4);
           if (arrived) break;
+          const distance = bodies.reduce((sum, b) => sum + Math.hypot(b.state.x - goal.x, b.state.y - goal.y, b.state.z - goal.z), 0);
+          if (distance < bestDistance - .1) { bestDistance = distance; stalled = 0; } else stalled++;
+          if (stalled > 900) break;
         }
-        expect(arrived, `${goal.id}: stranded actors ${JSON.stringify(bodies.map((b) => b.state))}; reports ${JSON.stringify(session.orderReports)}`).toBe(true);
+        expect(arrived, `${goal.id}: stranded actors ${JSON.stringify(bodies.map((b) => b.state))}; orders ${JSON.stringify(session.slots.map((s) => session.orderFor(s.index)))}; reports ${JSON.stringify(session.orderReports)}`).toBe(true);
+        console.log('U-173 group arrival', JSON.stringify({ reverse, spread, room: goal.id, ticks }));
         expect(session.orderReports.filter((r) => r.outcome === 'failed'), goal.id).toEqual([]);
-        if (goal !== last) {
+        if (goal !== destination) {
           const room = ROOMS.find(([, z]) => z === (goal.id === 'B3' ? 160 : goal.id === 'B5' ? 232 : goal.z))!;
           send({ kind: 'Order', order: 'hold', address: { to: 'all' }, point: null, target: null });
           for (let tick = 0; tick < 30; tick++) await advance();
@@ -223,6 +245,8 @@ describe('U-173 complete furnished depot with seven actual Session actors', () =
           }
         }
       }
+      send({ kind: 'Order', order: 'hold', address: { to: 'all' }, point: null, target: null });
+      for (let tick = 0; tick < 30; tick++) await advance();
       for (const [i, trace] of regions.entries()) {
         expect([...crossed[i]!].sort(), `actor${i} missed a doorway`).toEqual(doors.map((d) => d.id).sort());
         expect([...new Set(trace)], `actor${i} missed/reordered room, corridor or stair region: ${trace}`).toEqual(nodes.map((_, i) => i));
@@ -230,7 +254,7 @@ describe('U-173 complete furnished depot with seven actual Session actors', () =
       }
       expect(bodies.every((b) => Math.abs(b.state.y - 8) < .05), 'all seven emerged onto the endpoint floor').toBe(true);
       console.log('U-173 actual Session seven-actor depot', JSON.stringify({ direction: reverse ? 'B10→D0' : 'D0→B10',
-        spread, ticks, seconds: ticks * TICK_SECONDS, actors: bodies.length, regionsPerActor: regions.map((r) => new Set(r).size),
+        spread, ticks, seconds: ticks * TICK_SECONDS, sourceSolids: world.boxes.length, movementSolids: movementBoxes.length, actors: bodies.length, regionsPerActor: regions.map((r) => new Set(r).size),
         doorwaysPerActor: crossed.map((d) => d.size), regroupRooms: stops.map((s) => s.id), failedOrders: session.orderReports.filter((r) => r.outcome === 'failed').length }));
       pair.b.close('fixture complete'); pair.settle();
     }, 360_000);

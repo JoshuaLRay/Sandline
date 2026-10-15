@@ -1,10 +1,10 @@
 /** U-173: actual furnished depot geometry through the production floor consumers. */
 import * as THREE from 'three';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 // Full generated-scene Session and mesh queries exceed the 5 s unit default.
 const SESSION_TIMEOUT = 90_000;
 import {
-  ClientConnection, DEFAULT_MOVE_CONFIG, DEFAULT_MUZZLE_RIG, TICK_SECONDS,
+  ClientConnection, DEFAULT_MUZZLE_RIG, TICK_SECONDS,
   blastDamageAt, blastDamageOn, blastExposure, blockedAt, buildTree, createLoopbackPair,
   createMoveState, decodeMessage, getEnemy, getProjectile, parseEncounter, parseMission,
   rayWorld, requireWorld, sight, supportUnder, type BotOrder, type Message, type WorldBox,
@@ -43,6 +43,8 @@ const mission = parseMission({ id: 'depot-isolation', world: world.id, respawn: 
 let nav: NavMesh;
 beforeAll(async () => { await initNav(); nav = NavMesh.load(await bakeRoadSupportNav(generated)); }, 240_000);
 afterAll(() => nav?.destroy());
+// Let Vitest flush worker messages between the synchronous scene probes.
+afterEach(() => new Promise<void>((resolve) => setImmediate(resolve)));
 
 /** Conservative broadphase, retaining every box intersecting a query's bounds. */
 const windows = new Map<string, WorldBox[]>();
@@ -87,15 +89,16 @@ function squad(park = true) {
 /** Exact collision meshes, with ordinary outward-facing underside triangles. */
 function scenery(at: { x: number; z: number }, reach = 35) {
   const material = new THREE.MeshBasicMaterial({ visible: false });
-  const objects: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>[] = world.boxes.filter((b) => b.maxX >= at.x - reach && b.minX <= at.x + reach
-    && b.maxZ >= at.z - reach && b.minZ <= at.z + reach).map((b) => {
+  const boxes = world.boxes.filter((b) => b.maxX >= at.x - reach && b.minX <= at.x + reach
+    && b.maxZ >= at.z - reach && b.minZ <= at.z + reach);
+  const objects: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>[] = boxes.map((b) => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.maxX - b.minX, b.maxY - b.minY, b.maxZ - b.minZ), material);
     mesh.position.set((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, (b.minZ + b.maxZ) / 2);
     mesh.updateMatrixWorld(); return mesh;
   });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000).rotateX(-Math.PI / 2), material);
   floor.updateMatrixWorld(); objects.push(floor);
-  return { objects, dispose() { for (const o of objects) o.geometry.dispose(); material.dispose(); } };
+  return { boxes, objects, dispose() { for (const o of objects) o.geometry.dispose(); material.dispose(); } };
 }
 
 describe('U-173 actual depot spawn, AI, cover and order floors', () => {
@@ -190,7 +193,12 @@ describe('U-173 actual depot spawn, AI, cover and order floors', () => {
     // Crop candidate generation at a conservative B6 enclosure. All physical
     // solids touching that enclosure remain exact; the full nav/session still
     // decide reachability, so the roof is never removed to manufacture cover.
-    const local = { ...world, boxes: world.boxes.filter((b) => b.maxX >= 15 && b.minX <= 45 && b.maxZ >= 250 && b.minZ <= 290) };
+    const local = { ...world, boxes: world.boxes.filter((b) => b.maxX > 15 && b.minX < 45 && b.maxZ > 250 && b.minZ < 290)
+      .map((b) => ({ ...b, minX: Math.max(15, b.minX), maxX: Math.min(45, b.maxX),
+        minZ: Math.max(250, b.minZ), maxZ: Math.min(290, b.maxZ) })) };
+    // Candidate boxes below are wholly inside this enclosure and unchanged.
+    // Clip distant foundation faces so the local bake does not enumerate a
+    // 1 km floor edge; every resulting witness is rechecked on the full scene.
     const points = coverPoints(local, DEFAULT_NAV_AGENT, (p) => onMesh(nav, p, DEFAULT_NAV_AGENT.climb));
     const lower = points.filter((p) => p.box === 'depot-furniture-B6-low-stack');
     expect(lower.length).toBeGreaterThan(0);
@@ -201,8 +209,17 @@ describe('U-173 actual depot spawn, AI, cover and order floors', () => {
     expect(session.cover!.choose(100, { from: low, threats: [lowThreat], combat: false })?.point.y).toBe(0);
     expect(session.cover!.choose(101, { from: { ...low, y: 8 }, threats: [lowThreat], combat: false })).toBeNull();
     // Retained A6 shoulder cover is generated from the actual surface solids.
-    const upper = points.filter((p) => p.y === 8);
+    const sourceBoxes = new Map(world.boxes.map((b) => [b.id, b]));
+    const upper = points.filter((p) => {
+      const b = sourceBoxes.get(p.box)!;
+      return p.y === 8 && b.minX >= 15 && b.maxX <= 45 && b.minZ >= 250 && b.maxZ <= 290
+        && !blockedAt(p.x, p.z, .35, p.y, .45, 1.8, world.boxes);
+    });
     expect(upper.length).toBeGreaterThan(0);
+    for (const p of [...lower, ...upper]) {
+      expect(supportUnder(p.x, p.z, .35, p.y + .01, world.boxes, -1), p.box).toBe(p.y);
+      expect(blockedAt(p.x, p.z, .35, p.y, .45, 1.8, world.boxes), p.box).toBe(false);
+    }
     const high = upper[0]!, threat = { x: high.x - high.nx * 4, y: 9.55, z: high.z - high.nz * 4 };
     const surface = new Session(undefined, '', world, { navMesh: nav, cover: [high], testHumanCount: 0 });
     expect(surface.cover!.choose(102, { from: high, threats: [threat], combat: false })?.point.y).toBe(8);
@@ -267,6 +284,16 @@ describe('U-173 roof weapons, order picking and camera collision', () => {
     expect(target.health.current).toBeLessThan(hp);
   }, SESSION_TIMEOUT);
 
+  it('keeps a real surface cannon blast out of B6 beneath the overhead tank route', () => {
+    const cannon = getEnemy('tank').vehicle!.cannon;
+    const def = { ...getProjectile('rocket'), blastRadiusM: cannon.blastRadiusM, blastDamage: cannon.blastDamage };
+    for (const x of [28, 30, 32]) for (const z of [266, 270, 274]) {
+      const centre = { x, y: 8, z }, feet = { x, y: 0, z };
+      expect(blastExposure(centre, feet, 1.8, world.boxes)).toBe(0);
+      expect(blastDamageOn(def, centre, feet, 1.8, world.boxes)).toBe(0);
+    }
+  });
+
   it('real screen picks and wire move/hold retain basement, road and bridge feet', () => {
     const sq = squad();
     for (const at of [{ x: 30, z: 270, y: 0 }, { x: 30, z: 270, y: 8 }, { x: 70, z: 336, y: 16 }]) {
@@ -299,7 +326,12 @@ describe('U-173 roof weapons, order picking and camera collision', () => {
         const collider = createSceneCollider(scene.objects);
         const clearArm = (solved: { position: { x: number; y: number; z: number }; focus: { x: number; y: number; z: number } }) => {
           const delta = new THREE.Vector3().subVectors(new THREE.Vector3().copy(solved.position), new THREE.Vector3().copy(solved.focus));
-          expect(collider.cast(solved.focus, delta.clone().normalize(), delta.length()), `${x}/${y}/${z}`).toBeNull();
+          // Test the solved arm against exact collision slabs as well as
+          // the real renderer query that solved it. A 1 µm inset excludes
+          // numerical grazing of a face when recomputing a Three ray from
+          // rounded world positions; any traversal through slab volume fails.
+          expect(rayWorld({ origin: solved.focus, direction: delta.clone().normalize(), maxDistance: delta.length() },
+            scene.boxes, -1e-6), `${x}/${y}/${z}: arm crossed solid ${JSON.stringify(solved)}`).toBeNull();
           // An arm may extend up the neighbouring stair, whose roof rises
           // with its treads. Compare against the actual solid there rather
           // than the ceiling height at the focus's different x/z.

@@ -98,6 +98,7 @@ canonical when this documentation PR merges.
 | [U-117](docs/backlog/U-117.md) | Integrate redesigned Mission 1 combat, supplies and objectives | Map implementation | P1 | BLOCKED | U-111, U-112, U-113, U-116 | — |
 | [U-118](docs/backlog/U-118.md) | Finish Qalat terrain, architecture, lighting and presentation | Map implementation | P1 | BLOCKED | U-117 | — |
 | [U-119](docs/backlog/U-119.md) | Verify the complete replacement mission and capture review evidence | Map implementation | P1 | BLOCKED | U-118 | — |
+| [U-174](docs/backlog/U-174.md) | Finish crowded squad move orders after reaching the room | Squad command | P2 | INBOX | U-173 actor-proof observation; reproduce packing/avoidance independently on open floor | — |
 | [U-166](docs/backlog/U-166.md) | Open-side blast exposure at scenery impact faces | Grounded combat | P1 | INBOX | U-165 actor-proof observation; confirm ordinary Session path and scope boundary fix | — |
 | [U-142](docs/backlog/U-142.md) | Profile Qalat cold-start load-time overruns | Maintenance | P2 | INBOX | U-138 observation: local/CI exceed 30 s; same-head retry passes; measure bottleneck before scoping | — |
 | [U-013](docs/backlog/U-013.md) | Supply and process the real voice recordings | Audio | P2 | BLOCKED | U-012; owner recordings or explicit ADR-017 change | — |
