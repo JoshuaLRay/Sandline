@@ -105,6 +105,20 @@ Room/corridor roofs are solid 0.8 m structural slabs. North's full 8 m throat
 opens into an enclosed x28..36,z412..414 vestibule, narrowing to the exact 4 m
 reserve spine beyond the outer wall.
 
+**U-175 prison capacity/divider addendum · 2026-10-15:** the owner authorized
+keeping the cell's exact x10..22,z396..410 interior (12×14 m, 168 m²) for **six
+total prisoners**: the original mission POW plus up to five captured squad
+characters. Use the single divider at z395.4..396; the antechamber's clear north
+inside face is z395.4, while its east doorway and the four-metre cell doorway stay.
+Keep the original POW at (16,8,402); reserve five other feet positions at
+(12,8,400), (20,8,400), (12,8,404), (20,8,404), (12,8,408). Keep the cell's
+x14..18,z396..400 inside landing clear. These are construction reservations;
+production authored-placement/mapping and rescue lifecycle remain U-144/U-117.
+The owner also decided that completing any mission with imprisoned squad
+characters forces Mission 1 to recover them alongside its original POW; the
+canonical campaign addendum and U-178 retain the routing/persistence work.
+No runtime campaign activation is supplied by this shell leaf.
+
 This is the canonical construction brief for campaign mission 1, world/mission
 `qalat-road`. It replaces the rectangular valley, terrace slots and surface
 riverbed flank delivered by U-106. That implementation remains the current game
@@ -726,7 +740,7 @@ outpost annex, not a way around the valley or onto the tank road.
 |---|---|---|
 | South barracks | x10..26; z360..370, y8 / 12 | North door x18..22 at z370; south wall closed; rifleman watching court from inside |
 | West refuge porch | x10..22; z376..384, y8 / 12.5 | East door z378..382 at x22; all other faces solid; covered escorted hold point |
-| Prison antechamber | x10..22; z386..396, y8 / 12 | East door z390..394 at x22; north doorway x14..18 at z396 |
+| Prison antechamber | x10..22; z386..395.4, y8 / 12 | East door z390..394 at x22; north doorway x14..18 at z396 |
 | Prison cell / records room | x10..22; z396..410, y8 / 12 | South doorway above, barred north window x14..18, sill y10.4, height 0.6; POW feet (16,8,402) |
 | Radio room | x42..54; z390..410, y8 / 12 | West door z394..398 at x42; west window z402..406, sill y9.1, height 0.7; radio table east wall |
 | Central court | Remaining space | No internal floor-level building overlaps; pathways ≥4 m around cover |
@@ -734,8 +748,9 @@ outpost annex, not a way around the valley or onto the tank road.
 
 Room walls 0.6 m thick outside the inner bounds; prevent adjacent envelopes from
 closing a doorway. Prison cell's south divider has a fixed-open door, not a
-second rescue interaction. The existing 3-second rescue is the only prisoner
-release action. POW posture before rescue: kneeling/sitting presentation within
+second door interaction. The existing 3-second rescue releases the original POW;
+carried squad prisoners retain their existing individual rescue rules. The cell
+reserves six total holding positions under the U-175 capacity addendum above. POW posture before rescue: kneeling/sitting presentation within
 the captive implementation; collision/target remains at the authored feet point.
 No new captor execution timer, escort dialogue system or cinematic.
 
@@ -769,7 +784,9 @@ a visual texture. Do not spawn guards immediately behind the POW in the cell.
 Use only existing rifleman/MG/tank archetypes plus the captive POW. **32 initial
 hostiles**, **4 counterattack riflemen**, **1 tank**, **1 POW**: at most **38**
 encounter entities if no one is killed, under the current aliveCap 42. Six squad
-members are additional friendly slots, not part of that encounter count. Retain
+members are additional friendly slots, not part of that encounter count. Up to
+five of those existing slots can be held in the cell alongside the original POW;
+they are not five additional encounter entities or extra squad slots. Retain
 fixed counts at 1–6 human budgets; existing budget-based behaviour applies, not
 randomly empty routes. No infinite reinforcements or global extermination target.
 

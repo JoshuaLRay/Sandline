@@ -1,5 +1,5 @@
 {
-  "$comment": "U-175 isolated §8.1 shell and §9.3 reserve annex, first U-116 leaf; no campaign activation, furniture, tower or combat shelter acceptance. Room roofs use the §2.2 0.8m minimum structural roof. Proposed shared-divider convention: cell south face stays z396; its sole 0.6m wall occupies z395.4..396, with the antechamber nominal north edge sharing that wall. North gate's 8m arch opens into a bounded 8x2m roofed vestibule before the 4m reserve spine. R9's exterior pad approaches the east door via (58,370),(58,374); its former node (56,370) coincides with the specified wall jamb.",
+  "$comment": "U-175 isolated §8.1 shell and §9.3 reserve annex, first U-116 leaf; no campaign activation, furniture, tower or combat shelter acceptance. Room roofs use the §2.2 0.8m minimum structural roof. Owner-approved shared divider: cell south face stays z396; its sole 0.6m wall occupies z395.4..396, with the antechamber clear north edge at z395.4. North gate's 8m arch opens into a bounded 8x2m roofed vestibule before the 4m reserve spine. R9's exterior pad approaches the east door via (58,370),(58,374); its former node (56,370) coincides with the specified wall jamb.",
   "id": "qalat-outpost-construction", "task": "U-175", "floorY": 8, "floorM": 0.4, "wallM": 0.6, "roofM": 0.8,
   "courtyard": { "minX": 8, "maxX": 56, "minZ": 356, "maxZ": 412, "wallM": 1, "topY": 14 },
   "gates": [
@@ -11,7 +11,7 @@
   "rooms": [
     { "id": "barracks", "minX": 10, "maxX": 26, "minZ": 360, "maxZ": 370, "ceiling": 12 },
     { "id": "refuge", "minX": 10, "maxX": 22, "minZ": 376, "maxZ": 384, "ceiling": 12.5 },
-    { "id": "antechamber", "minX": 10, "maxX": 22, "minZ": 386, "maxZ": 396, "ceiling": 12 },
+    { "id": "antechamber", "minX": 10, "maxX": 22, "minZ": 386, "maxZ": 395.4, "ceiling": 12 },
     { "id": "cell", "minX": 10, "maxX": 22, "minZ": 396, "maxZ": 410, "ceiling": 12 },
     { "id": "radio", "minX": 42, "maxX": 54, "minZ": 390, "maxZ": 410, "ceiling": 12 },
     { "id": "reserve", "minX": 24, "maxX": 40, "minZ": 434, "maxZ": 448, "ceiling": 12 }
@@ -31,5 +31,19 @@
   "reserve": { "width": 4, "ceiling": 12, "spine": [{"x":32,"y":8,"z":434},{"x":32,"y":8,"z":426},{"x":20,"y":8,"z":426},{"x":20,"y":8,"z":418},{"x":32,"y":8,"z":418},{"x":32,"y":8,"z":412}], "vestibule": { "minX": 28, "maxX": 36, "minZ": 412, "maxZ": 414 } },
   "eastGatePad": { "minX": 56, "maxX": 61, "minZ": 370, "maxZ": 376 },
   "eastJoin": { "status": "owner approved bounded turning pocket, 2026-10-15", "legacyNode": { "x": 56, "y": 8, "z": 370 }, "legacyNodeBlockedBy": "specified east perimeter south jamb", "clearTurn": { "minX": 57, "maxX": 61, "minZ": 370, "maxZ": 376 }, "why": "One metre of bounded external turning pocket keeps the prescribed gate at z374 and gives four clear metres beside its outward wall; no new approach or predecessor stair move." },
-  "sharedDivider": { "minZ": 395.4, "maxZ": 396, "status": "proposed A; awaiting owner choice" }
+  "sharedDivider": { "minZ": 395.4, "maxZ": 396, "status": "owner approved exact cell and shortened antechamber, 2026-10-15" },
+  "holding": {
+    "capacity": 6, "constructionOnly": true,
+    "purpose": "One original Mission 1 POW plus up to five captured squad members; metadata for construction proofs, with runtime spawning and campaign activation deferred.",
+    "entryLanding": { "minX": 14, "maxX": 18, "minZ": 396, "maxZ": 400 },
+    "layoutRule": "Captured-squad spots stay outside x14..18; the four-metre entry landing remains clear. The original POW keeps the fixed point beyond that landing.",
+    "positions": [
+      { "id": "mission-pow", "role": "original-mission-pow", "x": 16, "y": 8, "z": 402 },
+      { "id": "carry-1", "role": "captured-squad", "x": 12, "y": 8, "z": 400 },
+      { "id": "carry-2", "role": "captured-squad", "x": 20, "y": 8, "z": 400 },
+      { "id": "carry-3", "role": "captured-squad", "x": 12, "y": 8, "z": 404 },
+      { "id": "carry-4", "role": "captured-squad", "x": 20, "y": 8, "z": 404 },
+      { "id": "carry-5", "role": "captured-squad", "x": 12, "y": 8, "z": 408 }
+    ]
+  }
 }

@@ -125,6 +125,34 @@ describe('U-175 outpost on the actual complete tiled standing bake', () => {
     console.log(`U-175 outpost ${reverse ? 'outward' : 'inward'} controller`, JSON.stringify({ routes: TRIPS.length, ticks, seconds: ticks * TICK_SECONDS }));
   }, 120_000);
 
+  it('reaches each of the six standing holding positions from the antechamber on the actual floor and controller', async () => {
+    // Independently transcribed capacity layout: original POW then five
+    // captured squad members. Session multi-actor release remains U-177.
+    const positions = [[16, 402], [12, 400], [20, 400], [12, 404], [20, 404], [12, 408]];
+    for (const holding of positions) {
+      const goal = point(holding), projected = nav.nearestPoint(goal)?.point;
+      expect(projected).toBeDefined(); expect(Math.abs(projected!.y - 8)).toBeLessThanOrEqual(.05002);
+      expect(Math.hypot(projected!.x - goal.x, projected!.z - goal.z)).toBeLessThan(.1);
+      let state = { ...createMoveState(16, 8, 392), grounded: true }, arrived = false;
+      const path = nav.path(state, goal), follower = new PathFollower(nav, world.boxes);
+      expect(completePathLength(path, state, goal), `unreachable holding ${holding}`).not.toBeNull();
+      expect(path!.vaults).toEqual([]);
+      for (let tick = 0; tick < 1_200; tick++) {
+        const { input, status } = follower.step(state, { goal, pace: 'walk' }, 0);
+        expect(input.jump).toBe(false);
+        if (status === 'arrived') { arrived = true; break; }
+        state = stepCharacter(state, input, TICK_SECONDS, DEFAULT_MOVE_CONFIG, nearby(state));
+        expect(state.y).toBeCloseTo(8, 6); expect(state.vault).toBeNull();
+        expect(state.crouched || state.prone).toBe(false);
+        expect(within(state, 10, 22, 386, 410), 'left the ante/cell route').toBe(true);
+        expect(blockedAt(state.x, state.z, DEFAULT_MOVE_CONFIG.radius, 8, .05,
+          DEFAULT_MOVE_CONFIG.height, nearby(state)), 'holding route intersects construction').toBe(false);
+        if (tick % 256 === 0) await yieldWorker();
+      }
+      expect(arrived, `stalled toward holding ${holding} at ${JSON.stringify(state)}`).toBe(true);
+    }
+  }, 120_000);
+
   it('walks the retained R8 final stairs directly to the courtyard and back through the new east pocket', async () => {
     const r8 = { x: 70, y: 12, z: 350 }, length = Math.hypot(14, 20);
     const retained = (p: Point) => onFloor(p) || within(p, 66, 74, 348, 352)

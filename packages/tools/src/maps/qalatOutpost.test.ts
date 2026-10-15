@@ -1,16 +1,21 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import { blockedAt, boxFrom, rayWorld, supportUnder, type WorldBox } from '@sandline/shared';
+import { DEFAULT_MOVE_CONFIG, blockedAt, boxFrom, rayWorld, supportUnder, type WorldBox } from '@sandline/shared';
 import { buildDepotWorld } from './qalatDepot.ts';
-import { buildOutpostShell, buildOutpostWorld, outpostManifest } from './qalatOutpost.ts';
+import { OUTPOST, buildOutpostShell, buildOutpostWorld, outpostManifest } from './qalatOutpost.ts';
 
 // Independent §8.1 dimensions: neither authoring JSON nor its manifest may
 // silently redefine a room, aperture, floor, or ceiling in these proofs.
 const ROOMS = [
   ['barracks', 10, 26, 360, 370, 12], ['refuge', 10, 22, 376, 384, 12.5],
-  ['antechamber', 10, 22, 386, 396, 12], ['cell', 10, 22, 396, 410, 12],
+  // Owner approved divider A (2026-10-15): its 0.6m comes from the ante,
+  // preserving the complete 12x14m cell and its south inside face at z396.
+  ['antechamber', 10, 22, 386, 395.4, 12], ['cell', 10, 22, 396, 410, 12],
   ['radio', 42, 54, 390, 410, 12], ['reserve', 24, 40, 434, 448, 12],
 ] as const;
+// Owner-approved total: the original mission POW plus five captured soldiers.
+const HOLDING = [['mission-pow', 16, 402], ['carry-1', 12, 400], ['carry-2', 20, 400],
+  ['carry-3', 12, 404], ['carry-4', 20, 404], ['carry-5', 12, 408]] as const;
 const shell = buildOutpostShell().map((b) => boxFrom(b, 'cover'));
 const world = buildOutpostWorld();
 type Point = { x: number; y: number; z: number };
@@ -55,6 +60,22 @@ describe('U-175 independent outpost shell and opaque reserve annex', () => {
       }
     }
     expect(samples).toBeGreaterThan(1_000);
+  }, 120_000);
+
+  it('holds six separate standing prisoner bodies while retaining the complete four-by-four cell entry landing', () => {
+    const radius = DEFAULT_MOVE_CONFIG.radius;
+    expect(OUTPOST.holding.capacity).toBe(6); expect(OUTPOST.holding.constructionOnly).toBe(true);
+    expect(OUTPOST.holding.positions.map(({ id, x, y, z }) => [id, x, y, z])).toEqual(HOLDING.map(([id, x, z]) => [id, x, 8, z]));
+    for (const [i, [id, x, z]] of HOLDING.entries()) {
+      expect(blockedAt(x, z, radius, 8, .05, DEFAULT_MOVE_CONFIG.height, world.boxes), `${id} standing capsule`).toBe(false);
+      expect(supportUnder(x, z, radius, 8.01, world.boxes, 0), `${id} full footprint floor`).toBeCloseTo(8, 6);
+      expect(x + radius <= 14 || x - radius >= 18 || z + radius <= 396 || z - radius >= 400, `${id} occupies entry landing`).toBe(true);
+      for (const [, otherX, otherZ] of HOLDING.slice(i + 1))
+        expect(Math.hypot(x - otherX, z - otherZ), `${id} overlaps another captive`).toBeGreaterThanOrEqual(radius * 2);
+    }
+    expect(world.boxes.filter((b) => b.maxY > 8.000001 && b.minY < 8 + DEFAULT_MOVE_CONFIG.height
+      && b.maxX > 14.000001 && b.minX < 17.999999 && b.maxZ > 396.000001 && b.minZ < 399.999999).map((b) => b.id),
+    'cell entry landing narrowed by construction').toEqual([]);
   });
 
   it('keeps the y14 perimeter outside x8..56/z356..412 and opens only its prescribed gates', () => {
@@ -140,18 +161,20 @@ describe('U-175 independent outpost shell and opaque reserve annex', () => {
       for (const y of [8.01, 9.6, 11.99]) expect(solid(x!, z!, y), `opaque annex ${x}/${z}/${y}`).toBe(true);
   });
 
-  it('blocks prisoner body/camera rays from all gate, ridge, tank and basement probes with the actual shell', () => {
+  it('blocks all six prisoner body/camera rays from external gate, ridge, tank and basement probes with the actual shell', () => {
     const sources = [
       ...[28.2, 32, 35.8].map((x) => [x, 8, 356]),
+      [8, 8, 374], [56, 8, 374], [32, 8, 412],
       [58, 20, 128], [88, 30, 210], [66, 26, 286],
       [96, 8, 444], [114, 8, 432], [112, 8, 386], [104, 8, 350], [84, 8, 338], [54, 8, 334], [16, 8, 332],
       [-8, 0, 370], [30, 0, 270], [-14, 0, 346],
     ];
-    for (const [x, floor, z] of sources) for (const eye of [1.6, 2.2]) for (const body of [.15, .8, 1.6, 1.75]) {
-      const from = { x: x!, y: floor! + eye, z: z! }, to = { x: 16, y: 8 + body, z: 402 };
-      expect(hit(from, to), `shell leaks ${JSON.stringify(from)}`).not.toBeNull();
-      expect(hit(from, to, world.boxes), 'complete construction leaks').not.toBeNull();
-    }
+    for (const [x, floor, z] of sources) for (const eye of [1.6, 2.2]) for (const body of [.15, .8, 1.6, 1.75])
+      for (const [id, prisonerX, prisonerZ] of HOLDING) {
+        const from = { x: x!, y: floor! + eye, z: z! }, to = { x: prisonerX, y: 8 + body, z: prisonerZ };
+        expect(hit(from, to), `${id} shell leaks ${JSON.stringify(from)}`).not.toBeNull();
+        expect(hit(from, to, world.boxes), 'complete construction leaks').not.toBeNull();
+      }
     expect(hit({ x: 16, y: 14, z: 402 }, { x: 16, y: 9.6, z: 402 })?.point.y).toBeGreaterThanOrEqual(12);
     expect(hit({ x: 16, y: 9.6, z: 398 }, { x: 16, y: 9.6, z: 402 })).toBeNull();
   });

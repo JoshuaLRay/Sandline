@@ -78,7 +78,7 @@ export function buildOutpostShell(): BoxSpec[] {
   }
   const rooms = D.rooms.filter((r) => r.id !== 'reserve').flatMap((r) => {
     let walls = carve([box(`outpost-${r.id}-walls`, grow(r, T), F, r.ceiling)], [{ ...r, minY: F, maxY: r.ceiling }]);
-    // Proposed owner option A: only the cell supplies the shared divider.
+    // Owner-approved divider: the cell supplies the sole wall north of the antechamber.
     if (r.id === 'antechamber') walls = carve(walls, [{ minX: r.minX - T, maxX: r.maxX + T, minZ: D.sharedDivider.minZ, maxZ: r.maxZ + T, minY: F, maxY: r.ceiling }]);
     const cuts = [...D.doors.filter((d) => d.room === r.id).map((d) => ({ ...aperture(d, 4, T), minY: F, maxY: F + 3 })),
       ...D.windows.filter((w) => w.room === r.id).map((w) => ({ ...aperture(w, w.width, T), minY: w.sill, maxY: w.sill + w.height }))];
@@ -113,7 +113,7 @@ export function outpostManifest() {
     levelHash: createHash('sha256').update(JSON.stringify(level)).digest('hex'),
     renderHash: createHash('sha256').update(JSON.stringify([...level.boxes, ...decorations])).digest('hex'),
     boxCount: level.boxes.length, shellBoxCount: buildOutpostShell().length, courtyard: C, gates: D.gates,
-    rooms: D.rooms, doors: outpostDoors(), windows: D.windows, reserve: D.reserve, sharedDivider: D.sharedDivider, eastJoin: D.eastJoin,
+    rooms: D.rooms, doors: outpostDoors(), windows: D.windows, reserve: D.reserve, sharedDivider: D.sharedDivider, eastJoin: D.eastJoin, holding: D.holding,
     carveVoids: outpostCarveVoids().map((c) => ({ ...c, maxY: Number.isFinite(c.maxY) ? c.maxY : 'sky' })), decorations,
     activeCampaign: 'unchanged; activation U-117', humanVerdict: 'whole-mission acceptance U-119',
     engineeringEvidence: 'docs/verification/U-175-outpost.md', unfinished: ['U-176 courtyard furniture and tower', 'U-177 real captive/escort tank and blast shelter proofs'] };
