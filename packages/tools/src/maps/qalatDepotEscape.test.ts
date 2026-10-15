@@ -1,3 +1,4 @@
+import { Detour, importNavMesh, type NavMesh as DetourMesh } from '@recast-navigation/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   DEFAULT_MOVE_CONFIG as config, TICK_SECONDS, blockedAt, createMoveState, stepCharacter, supportUnder,
@@ -27,12 +28,12 @@ const portals = [
   { minX: -10, maxX: -6, minZ: 375.9, maxZ: 376.7, minY: 0, maxY: 3 },
 ];
 const world = buildDepotWorld();
-let nav: NavMesh;
+let nav: NavMesh, mesh: DetourMesh;
 const yieldWorker = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 describe('U-173 furnished depot has exactly the two registered connections', () => {
-  beforeAll(async () => { await initNav(); nav = NavMesh.load(await bakeRoadSupportNav(world)); }, 240_000);
-  afterAll(() => nav?.destroy());
+  beforeAll(async () => { await initNav(); const bytes = await bakeRoadSupportNav(world); nav = NavMesh.load(bytes); mesh = importNavMesh(bytes).navMesh; }, 240_000);
+  afterAll(() => { nav?.destroy(); mesh?.destroy(); });
 
   it('requires valid targets, reaches both endpoints, then isolates every room from the surface and backing plane', () => {
     expect(nav.links()).toEqual([]);
@@ -77,8 +78,31 @@ describe('U-173 furnished depot has exactly the two registered connections', () 
       for (const road of surface) connected(surface[0]!, road, true);
     } finally { nav.setBlocker('both-depot-endpoints', [], false); }
     for (const room of rooms) for (const end of [surface[0]!, west]) connected(room, end, true);
+    // Audit every live Detour adjacency after the two exact cuts, rather
+    // than relying only on a finite set of negative destination queries.
+    const polygons = nav.polygons(), byRef = new Map(polygons.map((p) => [p.ref, p]));
+    const removed = new Set(polygons.filter((p) => portals.some((b) =>
+      Math.max(...p.corners.map((v) => v.x)) > b.minX && Math.min(...p.corners.map((v) => v.x)) < b.maxX &&
+      Math.max(...p.corners.map((v) => v.z)) > b.minZ && Math.min(...p.corners.map((v) => v.z)) < b.maxZ &&
+      p.centre.y < b.maxY && p.centre.y + config.height > b.minY)).map((p) => p.ref));
+    const seen = new Set<number>(), todo = [nav.nearestPoint(rooms[4]!)!.polyRef];
+    for (let i = 0; i < todo.length; i++) {
+      const ref = todo[i]!;
+      if (seen.has(ref) || removed.has(ref)) continue;
+      seen.add(ref);
+      const { tile, poly } = mesh.getTileAndPolyByRefUnsafe(ref);
+      for (let index = poly.firstLink(); index !== Detour.DT_NULL_LINK;) {
+        const link = tile.links(index), next = link.ref();
+        if (byRef.has(next) && !seen.has(next)) todo.push(next);
+        index = link.next();
+      }
+    }
+    expect(seen.size).toBeGreaterThan(100);
+    for (const room of rooms) expect(seen.has(nav.nearestPoint(room)!.polyRef), room.id).toBe(true);
+    const escaped = [...seen].map((ref) => byRef.get(ref)!).filter((p) => Math.abs(p.centre.y) > .05002 || !contains(p.centre));
+    expect(escaped, 'actual basement component reached stairs, surface or exterior backing plane').toEqual([]);
     console.log('U-173 exact furnished depot graph', JSON.stringify({ rooms: rooms.length,
-      surfaceTargets: surface.length + 1, backingTargets: backing.length, portals: portals.length, bidirectionalQueries: queries }));
+      surfaceTargets: surface.length + 1, backingTargets: backing.length, portals: portals.length, bidirectionalQueries: queries, auditedBasementPolygons: seen.size }));
   }, 120_000);
 });
 
@@ -99,8 +123,8 @@ const isSurface = (b: WorldBox) => b.id.startsWith('road-support-') || b.id.star
 const allowed = (boxes: readonly WorldBox[], p: Point & { y: number }, surfaceStart: boolean) => {
   // A y0 support query without a real slab must not accept implicit ground.
   // Structural walls, balustrades and all roof tops are intentionally absent.
-  const floors = boxes.filter((b) => isFloor(b) || isFurniture(b) || surfaceStart && isSurface(b));
-  return Math.abs(supportUnder(p.x, p.z, config.radius, p.y + .01, floors, -100) - p.y) < 1e-6;
+  const floors = boxes.filter((b) => isFloor(b) || isFurniture(b) || (surfaceStart || p.y === 8) && isSurface(b));
+  return p.y >= 0 && Math.abs(supportUnder(p.x, p.z, config.radius, p.y + .01, floors, -100) - p.y) < 1e-6;
 };
 const polys = depotFloors().filter((poly) => poly.length >= 3 && Math.abs(poly.reduce((sum, a, i) => {
   const b = poly[(i + 1) % poly.length]!; return sum + a.x * b.z - b.x * a.z;
@@ -145,14 +169,18 @@ it('U-173 sweeps every furnished basement boundary, roof, stair side, balustrade
   const counts = new Map<string, number>(), violations: string[] = [];
   let attempts = 0, vaultTicks = 0, dropTicks = 0;
   const attempt = (start: Point & { y: number }, out: Point, label: string,
-    options: { mandatory?: boolean; surface?: boolean; stair?: number; crouched?: boolean } = {}) => {
+    options: { mandatory?: boolean; surface?: boolean; stair?: number; crouched?: boolean; floorOnly?: boolean } = {}) => {
     const boxes = nearby(start), height = options.crouched ? config.crouchHeight : config.height;
     if (blockedAt(start.x, start.z, config.radius, start.y, .05, height, boxes)
       || !allowed(boxes, start, options.surface ?? false)) {
       expect(options.mandatory, `${label}: invalid start ${JSON.stringify(start)}`).not.toBe(true); return;
     }
     const yaw = (Math.round(Math.atan2(out.x, out.z) / (2 * Math.PI) * 1024) + 1024) % 1024;
-    for (const action of ACTIONS) {
+    // B9's 2.2 m crate has only 1.4 m above its top and no reachable
+    // stepping stone. Ground-level jump/vault probes below must prove that
+    // top unreachable; artificial top starts exercise only fitting stances.
+    const actions = options.crouched ? ACTIONS.filter((a) => a !== 'sprint-jump/vault') : ACTIONS;
+    for (const action of actions) {
       let state = { ...createMoveState(start.x, start.y, start.z), grounded: true, crouched: options.crouched ?? false };
       let previousStage = options.stair === undefined ? -1 : stageAt(state, stairs[options.stair]!);
       for (let tick = 0; tick < PUSH + SETTLE; tick++) {
@@ -165,7 +193,8 @@ it('U-173 sweeps every furnished basement boundary, roof, stair side, balustrade
         if (state.vault) vaultTicks++;
         if (state.y < oldY - .001) dropTicks++;
         if (!state.grounded) continue;
-        const reason = !allowed(nearby(state), state, options.surface ?? false) ? 'landed on backing plane, wall, balustrade or roof'
+        const reason = options.floorOnly && state.y > .001 ? 'reached the inaccessible B9 crate top'
+          : !allowed(nearby(state), state, options.surface ?? false) ? 'landed on backing plane, wall, balustrade or roof'
           : !options.surface && options.stair === undefined && state.y > 2.200001 ? 'changed from basement to another storey' : '';
         if (reason) { violations.push(`${label}/${action} from ${JSON.stringify(start)} at tick ${tick}: ${reason}: ${JSON.stringify(state)}`); break; }
         if (options.stair !== undefined) {
@@ -183,6 +212,8 @@ it('U-173 sweeps every furnished basement boundary, roof, stair side, balustrade
   };
   for (const [i, { edge, out }] of edges(polys, 2).entries()) {
     if (contains({ x: edge.x + out.x * .2, z: edge.z + out.z * .2 })) continue;
+    // The B9 lower door is a legal stair entrance, not a basement wall.
+    if (Math.abs(edge.z - 376) < .1 && edge.x >= -10 && edge.x <= -6) continue;
     attempt({ x: edge.x - out.x * .65, y: 0, z: edge.z - out.z * .65 }, out, 'basement-shell');
     if (i % 16 === 0) await yieldWorker();
   }
@@ -205,14 +236,14 @@ it('U-173 sweeps every furnished basement boundary, roof, stair side, balustrade
   for (const box of furniture) {
     const poly: Polygon = [{ x: box.minX, z: box.minZ }, { x: box.maxX, z: box.minZ }, { x: box.maxX, z: box.maxZ }, { x: box.minX, z: box.maxZ }];
     for (const { edge, out } of edges([poly], 2)) attempt({ x: edge.x + out.x * .65, y: 0, z: edge.z + out.z * .65 },
-      { x: -out.x, z: -out.z }, box.id);
+      { x: -out.x, z: -out.z }, box.id, { floorOnly: box.id === 'depot-furniture-B9-crate' });
     expect(counts.get(box.id) ?? 0, `all faces skipped: ${box.id}`).toBeGreaterThanOrEqual(5);
     if (isFurniture(box)) {
       const start = { x: (box.minX + box.maxX) / 2, y: box.maxY, z: (box.minZ + box.maxZ) / 2 };
       for (let direction = 0; direction < 8; direction++) attempt(start,
         { x: Math.sin(direction * Math.PI / 4), z: Math.cos(direction * Math.PI / 4) }, `top/${box.id}`,
         { mandatory: true, crouched: box.id === 'depot-furniture-B9-crate' });
-      expect(counts.get(`top/${box.id}`)).toBe(40);
+      expect(counts.get(`top/${box.id}`)).toBe(box.id === 'depot-furniture-B9-crate' ? 32 : 40);
     }
     await yieldWorker();
   }

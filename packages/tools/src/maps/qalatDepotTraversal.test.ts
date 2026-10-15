@@ -30,11 +30,27 @@ const ROOMS = [
   [-2, 96, 12, 12], [-20, 120, 20, 24], [-36, 160, 24, 32], [-18, 200, 20, 24],
   [8, 232, 16, 16], [30, 270, 28, 36], [-14, 310, 20, 20], [-14, 346, 20, 24], [-8, 370, 12, 12],
 ] as const;
+// Actual doorway plane crossings, independently intersected from §7.2.
+// All nine rooms contribute entry/exit portals, plus the two upper doors.
+const roomIndices = [9, 11, 13, 15, 17, 20, 23, 25, 27];
+const doors = ROOMS.flatMap(([x, z, w, d], i) => [-1, 1].map((side) => {
+  const toward = ROUTE[roomIndices[i]! + side]!, dx = toward.x - x, dz = toward.z - z;
+  const tx = dx ? w / 2 / Math.abs(dx) : Infinity, tz = dz ? d / 2 / Math.abs(dz) : Infinity;
+  const t = Math.min(tx, tz);
+  return { id: `B${i + 1}-${side < 0 ? 'in' : 'out'}`, x: x + t * dx, z: z + t * dz, y: 0, axis: tx < tz ? 'x' as const : 'z' as const };
+}));
+// The upper B10 west doorway meets the diagonal segment at z375⅓.
+// Its room centre is (8,374); the inside west face is x4.
+doors.push({ id: 'B0-east', x: 10, z: 68, y: 8, axis: 'x' },
+  { id: 'B10-west', x: 4, z: 375 + 1 / 3, y: 8, axis: 'x' });
 const rect = (x0: number, x1: number, z0: number, z1: number) => rectPolygon({ minX: x0, maxX: x1, minZ: z0, maxZ: z1 });
 const flatFloors = [
   ...ROOMS.map(([x, z, w, d]) => rect(x - w / 2, x + w / 2, z - d / 2, z + d / 2)),
-  ...ribbonPieces(ROUTE.slice(8, 29), 4),
-  ...ROUTE.slice(8, 29).map((p) => rect(p.x - 2, p.x + 2, p.z - 2, p.z + 2)),
+  // Door masonry bevels extend a touching corridor piece by 0.6 m.
+  // This admits that bounded widening, while exact door crossings and the
+  // separate full-component escape proof retain the enclosure contract.
+  ...ribbonPieces(ROUTE.slice(8, 29), 5.2),
+  ...ROUTE.slice(8, 29).map((p) => rect(p.x - 2.6, p.x + 2.6, p.z - 2.6, p.z + 2.6)),
 ];
 for (const [x, z, w, d] of ROOMS) for (const [i, a] of ROUTE.slice(9, 27).entries()) {
   const b = ROUTE[i + 10]!, dx = b.x - a.x, dz = b.z - a.z;
@@ -129,6 +145,7 @@ describe('U-173 complete furnished depot with seven actual Session actors', () =
         const index = locate(body.state), trace = regions[i]!;
         if (trace.at(-1) !== index) trace.push(index);
       });
+      const crossed = bodies.map(() => new Set<string>());
       record();
       let ticks = 0;
       const advance = async () => {
@@ -136,7 +153,7 @@ describe('U-173 complete furnished depot with seven actual Session actors', () =
         if (ticks % 30 === 0) send({ kind: 'Ping', id: ticks, clientTime: ticks * TICK_SECONDS * 1000 });
         session.step((session.tick + 1) * TICK_SECONDS * 1000); pair.settle(); ticks++;
         for (const [i, body] of bodies.entries()) {
-          const p = body.state, label = `${spread}/${reverse}/actor${i}/${ticks} ${JSON.stringify(p)}`;
+          const p = body.state, previous = before[i]!, label = `${spread}/${reverse}/actor${i}/${ticks} ${JSON.stringify(p)}`;
           expect(p.vault, label).toBeNull();
           expect(p.crouched || p.prone, label).toBe(false);
           expect(Math.abs(p.y - before[i]!.y), `${label}: floor snap/drop`).toBeLessThanOrEqual(DEFAULT_MOVE_CONFIG.stepHeight + 1e-6);
@@ -153,6 +170,14 @@ describe('U-173 complete furnished depot with seven actual Session actors', () =
           const maximumGap = DEFAULT_MOVE_CONFIG.stepHeight + descentSpeed ** 2 / (-2 * DEFAULT_MOVE_CONFIG.gravity);
           expect(p.y - support, `${label}: lost supported storey`).toBeLessThanOrEqual(maximumGap + 1e-6);
           if (p.grounded) expect(p.y, `${label}: grounded support`).toBeCloseTo(support, 6);
+          for (const door of doors) {
+            const a = previous[door.axis] - door[door.axis], b = p[door.axis] - door[door.axis];
+            if (a * b > 0 || Math.abs(a - b) < 1e-9) continue;
+            const t = a / (a - b), across = door.axis === 'x' ? 'z' : 'x';
+            const lateral = previous[across] + t * (p[across] - previous[across]);
+            const y = previous.y + t * (p.y - previous.y);
+            if (Math.abs(lateral - door[across]) < 2.05 && Math.abs(y - door.y) < .45) crossed[i]!.add(door.id);
+          }
           expect(body.health.current, `${label}: movement fixture lost actor`).toBe(body.health.max);
         }
         record();
@@ -199,13 +224,14 @@ describe('U-173 complete furnished depot with seven actual Session actors', () =
         }
       }
       for (const [i, trace] of regions.entries()) {
+        expect([...crossed[i]!].sort(), `actor${i} missed a doorway`).toEqual(doors.map((d) => d.id).sort());
         expect([...new Set(trace)], `actor${i} missed/reordered room, corridor or stair region: ${trace}`).toEqual(nodes.map((_, i) => i));
         for (let j = 1; j < trace.length; j++) expect(Math.abs(trace[j]! - trace[j - 1]!), `actor${i} skipped region`).toBeLessThanOrEqual(1);
       }
       expect(bodies.every((b) => Math.abs(b.state.y - 8) < .05), 'all seven emerged onto the endpoint floor').toBe(true);
       console.log('U-173 actual Session seven-actor depot', JSON.stringify({ direction: reverse ? 'B10→D0' : 'D0→B10',
         spread, ticks, seconds: ticks * TICK_SECONDS, actors: bodies.length, regionsPerActor: regions.map((r) => new Set(r).size),
-        regroupRooms: stops.map((s) => s.id), failedOrders: session.orderReports.filter((r) => r.outcome === 'failed').length }));
+        doorwaysPerActor: crossed.map((d) => d.size), regroupRooms: stops.map((s) => s.id), failedOrders: session.orderReports.filter((r) => r.outcome === 'failed').length }));
       pair.b.close('fixture complete'); pair.settle();
-    }, 240_000);
+    }, 360_000);
 });

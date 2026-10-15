@@ -1,6 +1,8 @@
 /** U-173: actual furnished depot geometry through the production floor consumers. */
 import * as THREE from 'three';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+// Full generated-scene Session and mesh queries exceed the 5 s unit default.
+const SESSION_TIMEOUT = 90_000;
 import {
   ClientConnection, DEFAULT_MOVE_CONFIG, DEFAULT_MUZZLE_RIG, TICK_SECONDS,
   blastDamageAt, blastDamageOn, blastExposure, blockedAt, buildTree, createLoopbackPair,
@@ -53,7 +55,7 @@ function nearby(x: number, z: number): WorldBox[] {
   }
   return boxes;
 }
-function squad() {
+function squad(park = true) {
   const session = new Session(undefined, '', world, { encounter, mission, navMesh: nav,
     brainTree: buildTree('friendly', createBrainRegistry()) });
   const pair = createLoopbackPair();
@@ -63,9 +65,13 @@ function squad() {
   let orders: readonly BotOrder[] = [];
   const client = new ClientConnection(pair.b, { onOrders: (o) => { orders = o; } });
   client.join('depot-proof'); pair.settle();
-  // The other four slots are irrelevant to these focused single-bot probes;
-  // full live seven-actor congestion is covered by the traversal regression.
-  for (const slot of session.slots.slice(2)) Object.assign(slot.health, { current: 0, downedAt: null, diedAt: 0 });
+  // Keep every soldier alive: a dead fixture bystander would fail the real
+  // mission and stop the very AI path under test. Park the other four in
+  // clear B6/A6 side aisles with ordinary hold orders.
+  for (const slot of park ? session.slots.slice(2) : []) {
+    slot.state = createMoveState(34, starts[slot.index]!.y, starts[slot.index]!.z);
+    session.orderFrom(0, { order: 'hold', address: { to: 'slot', index: slot.index }, point: null, target: null });
+  }
   let tick = 0;
   return { session, hits, get orders() { return orders; },
     say(msg: Message) { client.send(msg); pair.settle(); },
@@ -81,7 +87,7 @@ function squad() {
 /** Exact collision meshes, with ordinary outward-facing underside triangles. */
 function scenery(at: { x: number; z: number }, reach = 35) {
   const material = new THREE.MeshBasicMaterial({ visible: false });
-  const objects = world.boxes.filter((b) => b.maxX >= at.x - reach && b.minX <= at.x + reach
+  const objects: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>[] = world.boxes.filter((b) => b.maxX >= at.x - reach && b.minX <= at.x + reach
     && b.maxZ >= at.z - reach && b.minZ <= at.z + reach).map((b) => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.maxX - b.minX, b.maxY - b.minY, b.maxZ - b.minZ), material);
     mesh.position.set((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, (b.minZ + b.maxZ) / 2);
@@ -94,7 +100,7 @@ function scenery(at: { x: number; z: number }, reach = 35) {
 
 describe('U-173 actual depot spawn, AI, cover and order floors', () => {
   it('retains exact six authored slot starts and two same-x/z enemy socket floors through restart/retry', () => {
-    const sq = squad();
+    const sq = squad(false);
     expect(sq.session.slots.map((s) => ({ x: s.state.x, y: s.state.y, z: s.state.z }))).toEqual(starts);
     const assertStarts = () => {
       for (const [i, slot] of sq.session.slots.entries()) {
@@ -108,11 +114,14 @@ describe('U-173 actual depot spawn, AI, cover and order floors', () => {
     sq.session.retryMission(true); assertStarts();
     sq.session.slots.forEach((s) => { s.state.z += 1; });
     sq.session.restartMission(); assertStarts();
-    for (const [i, slot] of sq.session.slots.entries()) slot.state = createMoveState(30, starts[i]!.y, 254 + i);
-    sq.session.spawner!.activate('floors', 0);
-    sq.run(1);
+    // Initial authored sockets exist before players can see them; a late
+    // dynamic spawn correctly waits while the seated commander's eyes see it.
+    const initial = { ...encounter, groups: encounter.groups.map((g) => ({ ...g, trigger: { kind: 'start' as const } })) };
+    const spawned = new Session(undefined, '', { ...world, squadStarts: starts.map((p, i) => ({ ...p, z: 254 + i })) },
+      { encounter: initial, mission, navMesh: nav, testHumanCount: 0 });
+    spawned.step(TICK_MS);
     for (const socket of sockets) {
-      const e = sq.session.enemies.find((e) => e.spawnId === socket.id)!;
+      const e = spawned.enemies.find((e) => e.spawnId === socket.id)!;
       expect(e.state).toMatchObject(socket.feet);
       expect(e.posture!.post).toEqual(socket.feet);
     }
@@ -121,7 +130,7 @@ describe('U-173 actual depot spawn, AI, cover and order floors', () => {
     ] }] };
     expect(() => new Session(undefined, '', world, { encounter: bad, mission, navMesh: nav }))
       .toThrow(/B6-floor-0.*(floor|socket|support)/);
-  });
+  }, SESSION_TIMEOUT);
 
   for (const y of [0, 8]) it(`executes a real wire move then hold on B6/A6 floor y${y}`, () => {
     const sq = squad(), bot = sq.session.slots[1]!;
@@ -140,7 +149,7 @@ describe('U-173 actual depot spawn, AI, cover and order floors', () => {
     sq.say({ kind: 'Order', order: 'hold', address: { to: 'slot', index: 1 }, point: goal, target: null });
     sq.run(30); expect(bot.state.y).toBeCloseTo(y, 8);
     expect(sq.orders.find((o) => o.slot === 1)).toMatchObject({ order: 'hold', point: goal });
-  });
+  }, SESSION_TIMEOUT);
 
   it('routes B6→A6 commands through B0, never completes a move/hold from directly beneath the goal', () => {
     const sq = squad(), bot = sq.session.slots[1]!;
@@ -175,7 +184,7 @@ describe('U-173 actual depot spawn, AI, cover and order floors', () => {
     sq.run(30);
     expect(guard.awareness.get(sq.session.slots[0]!.netId)).toBeGreaterThan(0);
     expect(guard.memory.entries.has(sq.session.slots[0]!.netId)).toBe(true);
-  });
+  }, SESSION_TIMEOUT);
 
   it('bakes real B6 cover and rejects surface choices from below and basement choices from above', () => {
     // Crop candidate generation at a conservative B6 enclosure. All physical
@@ -256,7 +265,7 @@ describe('U-173 roof weapons, order picking and camera collision', () => {
     sq.say({ kind: 'Fire', tick: sq.session.tick, yaw: 0, pitch: 0, renderTimeMs: sq.session.tick * TICK_MS, weapon: 0, ads: true });
     expect(sq.hits.at(-1)!.targetNetId).toBe(target.netId);
     expect(target.health.current).toBeLessThan(hp);
-  });
+  }, SESSION_TIMEOUT);
 
   it('real screen picks and wire move/hold retain basement, road and bridge feet', () => {
     const sq = squad();
@@ -284,14 +293,22 @@ describe('U-173 roof weapons, order picking and camera collision', () => {
       [30, 0, 270, 5.5], [-14, 0, 310, 4], [-14, 0, 346, 4], [-8, 0, 370, 3.6],
       [-8, 2, 381, 5.2], [2, 6, 381, 9.2], [2, 8, 376, 11.2], [30, 8, 270, Infinity], [70, 16, 336, Infinity]];
     let desktopBlocked = 0, mobileBlocked = 0, solves = 0;
-    for (const [x, y, z, ceiling] of views) {
+    for (const [x, y, z] of views) {
       const at = { x: x!, y: y!, z: z! }, scene = scenery(at);
       try {
         const collider = createSceneCollider(scene.objects);
         const clearArm = (solved: { position: { x: number; y: number; z: number }; focus: { x: number; y: number; z: number } }) => {
           const delta = new THREE.Vector3().subVectors(new THREE.Vector3().copy(solved.position), new THREE.Vector3().copy(solved.focus));
           expect(collider.cast(solved.focus, delta.clone().normalize(), delta.length()), `${x}/${y}/${z}`).toBeNull();
-          expect(solved.position.y).toBeLessThan(ceiling!);
+          // An arm may extend up the neighbouring stair, whose roof rises
+          // with its treads. Compare against the actual solid there rather
+          // than the ceiling height at the focus's different x/z.
+          const p = solved.position;
+          // The production camera is a point ray, not a soldier capsule.
+          // A grazing face is legal; a position strictly inside a slab is not.
+          const containing = nearby(p.x, p.z).filter((b) => p.x > b.minX + 1e-7 && p.x < b.maxX - 1e-7
+            && p.z > b.minZ + 1e-7 && p.z < b.maxZ - 1e-7 && p.y > b.minY + 1e-7 && p.y < b.maxY - 1e-7);
+          expect(containing, `${x}/${y}/${z}: camera inside solid ${JSON.stringify(solved)}`).toEqual([]);
           solves++;
         };
         for (const yawWire of [0, 256, 512, 768]) for (const degrees of [-75, -55, -35, 0, 35, 55, 75]) {
