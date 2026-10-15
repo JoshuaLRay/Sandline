@@ -1,5 +1,5 @@
 {
-  "task": "U-172",
+  "task": "U-173",
   "parent": "U-115",
   "kind": "isolated furnished B1–B9 depot with covered B0/B10 stairs and exact endpoint connections",
   "sourceHash": "f9bdc201362a53871aa4dee7e68ec7d376b0cccd71fde46e321087a9bb020f5d",
@@ -3314,9 +3314,8 @@
   ],
   "activeCampaign": "unchanged; activation U-117",
   "humanVerdict": "whole-mission acceptance U-119",
-  "unfinished": [
-    "integrated seven-actor/floor-isolation proof: U-173"
-  ],
+  "engineeringEvidence": "docs/verification/U-173-depot.md",
+  "unfinished": [],
   "renderer": "Three WebGL whitebox; complete generated collision union plus noncolliding wall/floor cues, downward ceiling faces and implicit world floor",
   "antialias": true,
   "viewport": [

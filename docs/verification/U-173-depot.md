@@ -75,7 +75,11 @@ The [26 standing-eye captures](../../artifacts/qalat-depot/captures.json),
 All captures use two draws, below the 300-draw ceiling. Regenerate the large ignored
 level/surface JSON with the commands above before opening the review viewer.
 
-Focused suites and asset/pack budgets pass. Full verify/latest-head CI are pending
-in the implementation checkpoint; the final card handoff records their actual result.
+All 20 focused tests and `pnpm verify` pass: typecheck, lint, **352 test files /
+3,509 tests**. Depot/nav generation, capture regeneration and asset/pack budgets pass.
+Checkpoint CI run 38765168129 passed 3,508 tests and failed only the stale U-172
+construction metadata; the regenerated construction/capture manifests correct it.
+The [PR checks](https://github.com/JoshuaLRay/Sandline/pull/345/checks) record final
+latest-head CI; all four required jobs must pass before the authorized merge.
 The active Qalat diagnostic matrix remains **0/6** (ordinary gameplay losses);
 no replacement-mission matrix or human verdict is claimed.
