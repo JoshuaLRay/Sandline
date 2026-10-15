@@ -124,7 +124,9 @@ const allowed = (boxes: readonly WorldBox[], p: Point & { y: number }, surfaceSt
   // A y0 support query without a real slab must not accept implicit ground.
   // Structural walls, balustrades and all roof tops are intentionally absent.
   const floors = boxes.filter((b) => isFloor(b) || isFurniture(b) || (surfaceStart || p.y === 8) && isSurface(b));
-  return p.y >= 0 && Math.abs(supportUnder(p.x, p.z, config.radius, p.y + .01, floors, -100) - p.y) < 1e-6;
+  // Surface probes may climb legal cover but must never accept a drop
+  // through a roof merely because there is valid depot flooring below it.
+  return (!surfaceStart || p.y >= 8 - 1e-6) && p.y >= 0 && Math.abs(supportUnder(p.x, p.z, config.radius, p.y + .01, floors, -100) - p.y) < 1e-6;
 };
 const polys = depotFloors().filter((poly) => poly.length >= 3 && Math.abs(poly.reduce((sum, a, i) => {
   const b = poly[(i + 1) % poly.length]!; return sum + a.x * b.z - b.x * a.z;
