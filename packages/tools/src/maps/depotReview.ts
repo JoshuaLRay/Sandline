@@ -8,14 +8,18 @@ const root = '/artifacts/qalat-depot/';
 const [level, surface, construction] = await Promise.all([
   fetch(`${root}level.json`).then((r) => r.json()) as Promise<{ boxes: unknown[]; floor: { halfWidth: number; halfDepth: number } }>,
   fetch(`${root}surface.json`).then((r) => r.json()) as Promise<{
-    levelHash: string; positions: number[]; normals: number[]; colours: number[]; indices: number[];
+    levelHash: string; renderHash: string; positions: number[]; normals: number[]; colours: number[]; indices: number[];
   }>,
-  fetch(`${root}construction.json`).then((r) => r.json()) as Promise<{ levelHash: string; rooms: Room[] }>,
+  fetch(`${root}construction.json`).then((r) => r.json()) as Promise<{ levelHash: string; renderHash: string; rooms: Room[]; decorations: unknown[] }>,
 ]);
 const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(level)));
 const levelHash = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 if (surface.levelHash !== levelHash || construction.levelHash !== levelHash)
   throw new Error('Stale depot construction/render surface; run pnpm gen:qalat-depot');
+const renderDigest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([...level.boxes, ...construction.decorations])));
+const renderHash = Array.from(new Uint8Array(renderDigest), (b) => b.toString(16).padStart(2, '0')).join('');
+if (surface.renderHash !== renderHash || construction.renderHash !== renderHash)
+  throw new Error('Stale depot decoration/render surface; run pnpm gen:qalat-depot');
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight); renderer.setPixelRatio(1);
@@ -112,7 +116,7 @@ function view(name: string) {
   if (v.minClearance !== undefined && (!hit || hit.point.y - v.floorY < v.minClearance - .0001))
     throw new Error(`${name}: covered stair has less than ${v.minClearance} m rendered headroom`);
   return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles,
-    boxCount: level.boxes.length, levelHash, renderedCeilingY: hit?.point.y ?? null };
+    boxCount: level.boxes.length, levelHash, renderHash, renderedCeilingY: hit?.point.y ?? null };
 }
 for (const v of views) {
   const button = document.createElement('button'); button.textContent = v.name.toUpperCase();

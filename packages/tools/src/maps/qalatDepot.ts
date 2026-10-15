@@ -153,6 +153,7 @@ export function depotManifest() {
   return { task: 'U-172', parent: 'U-115', kind: 'isolated furnished B1–B9 depot with covered B0/B10 stairs and exact endpoint connections',
     sourceHash: createHash('sha256').update(JSON.stringify([DEPOT, buildDepotFurniture(), depotDecorations()])).digest('hex'),
     levelHash: createHash('sha256').update(JSON.stringify(level)).digest('hex'),
+    renderHash: createHash('sha256').update(JSON.stringify([...level.boxes, ...depotDecorations()])).digest('hex'),
     boxCount: level.boxes.length, shellBoxCount: buildDepotShell().length, rowM: ROW_M,
     rooms: DEPOT.rooms, connectors: DEPOT.connectors, doors: depotDoors(), stairPorts: DEPOT.stairPorts,
     endpoints: DEPOT.endpoints, stairs: DEPOT.stairs, flights: depotFlights(), endpointDoors: depotEndpointDoors(),
