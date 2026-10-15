@@ -179,6 +179,8 @@ export function buildDepotStairs(): BoxSpec[] {
   const guardStart = depotEndpointDoors()[1]!.z + 2;
   boxes.push({ id: 'depot-stair-balustrade-B10-door-guard', x: 3.1, y: -.4, z: (guardStart + 378.6) / 2,
     w: D.wallM, d: 378.6 - guardStart, h: 12.4 },
+  { id: 'depot-stair-balustrade-B10-door-north-jamb', x: 3.7, y: 8, z: (guardStart + 378.6) / 2,
+    w: D.wallM, d: 378.6 - guardStart, h: 4 },
   { id: 'depot-stair-balustrade-B10-door-guard-join', x: 4, y: -.4, z: 378.3,
     w: 1.2, d: D.wallM, h: 12.4 });
   // Existing B1/B9 masonry supplies the lower landing's outer envelope.

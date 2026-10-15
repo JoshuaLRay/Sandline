@@ -52,7 +52,7 @@ const endpointFootprints = [
   // cheek tips; each centred east-west landing therefore spans 8 m in z.
   rectPolygon({ minX: -4, maxX: 10, minZ: 82, maxZ: 90 }),
   rectPolygon({ minX: -10, maxX: 4, minZ: 382, maxZ: 390 }),
-  rectPolygon({ minX: -1.2, maxX: 4, minZ: 376, maxZ: 378 }),
+  rectPolygon({ minX: -1.2, maxX: 4, minZ: 376, maxZ: 382 }),
   rectPolygon({ minX: -1.2, maxX: 4, minZ: 372.4, maxZ: 376.4 }),
   ...ENDPOINTS.flatMap((spine) => ribbonPieces(spine, 4)),
   ...ribbonPieces(ENDPOINTS[0]!.slice(0, 3), 6),
@@ -246,6 +246,17 @@ describe('U-170 covered B1–B9 shell on the actual standing nav and controller'
         expect(completePathLength(nav.path(surface, basement), surface, basement), `${surface.id} entered ${basement.id} through a roof`).toBeNull();
       }
     } finally { nav.setBlocker('closed-depot-endpoints', [], false); }
+  });
+
+  it('completes the long B9–A7 command in both directions within the actual nav corridor budget', () => {
+    const basement = SPINE.at(-1)!, road = SURFACE.find((n) => n.id === 'A7')!;
+    for (const [from, goal] of [[basement, road], [road, basement]]) {
+      const path = nav.path(from!, goal!), length = completePathLength(path, from!, goal!);
+      expect(length, `${from!.id}→${goal!.id}: truncated the command before its real destination`).not.toBeNull();
+      expect(path!.vaults, `${from!.id}→${goal!.id}: required a synthetic stair link`).toEqual([]);
+      console.log('U-171 long basement/road command', JSON.stringify({ from: from!.id, to: goal!.id,
+        length, polygons: path!.corridor.length, points: path!.points.length, last: path!.points.at(-1) }));
+    }
   });
 
   it('keeps the basement enclosed from the exterior backing plane in both directions', () => {
