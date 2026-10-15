@@ -98,7 +98,7 @@ describe('U-170 exact enclosed depot shells', () => {
       levelHash: string; views: { name: string; calls: number; floorY: number; renderedCeilingY: number | null }[];
     };
     expect(captures.levelHash).toBe(depotManifest().levelHash);
-    expect(captures.views).toHaveLength(18);
+    expect(captures.views).toHaveLength(25);
     expect(captures.views.every((v) => v.calls < 300)).toBe(true);
     expect(captures.views.slice(0, 10).every((v) => v.renderedCeilingY !== null && v.renderedCeilingY >= 3.59999)).toBe(true);
     for (const [id, floor, ceiling] of [

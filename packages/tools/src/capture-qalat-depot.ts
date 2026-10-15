@@ -1,4 +1,4 @@
-/** Capture the exact U-171 basement and covered stairs inside the complete surface. */
+/** Capture the exact U-172 furnished basement inside the complete surface. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { blockedAt, loadLevel, supportUnder } from '@sandline/shared';
 import { chromium } from 'playwright';
@@ -46,7 +46,7 @@ try {
   }
   if (errors.length) throw new Error(errors.join('\n'));
   await writeFile(new URL('captures.json', output), JSON.stringify({ ...manifest,
-    renderer: 'Three WebGL whitebox; complete generated box union, downward ceiling faces and implicit world floor',
+    renderer: 'Three WebGL whitebox; complete generated collision union plus noncolliding wall/floor cues, downward ceiling faces and implicit world floor',
     antialias: true, viewport: [1440, 1000], ownerQualityVerdict: 'pending; whole-mission acceptance U-119', views: measurements,
   }, null, 2) + '\n');
 } finally { await browser?.close(); await server.close(); }
