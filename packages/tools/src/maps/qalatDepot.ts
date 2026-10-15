@@ -1,10 +1,10 @@
-/** U-170: enclosed flat depot shells beneath the unchanged isolated surface.
- * The stair ports stay visibly capped until U-171; production remains U-117.
- */
+/** U-170 shells with U-171 covered endpoint stairs, isolated until U-117. */
 import { createHash } from 'node:crypto';
 import { loadLevel, type BoxSpec } from '@sandline/shared';
 import source from './qalat-depot.json' with { type: 'json' };
 import { buildRoadSupportLevel } from './qalatRoadSupports.ts';
+import { buildDepotStairs, carveDepotStairs, depotEndpointDoors, depotFlights, depotStairFloors } from './qalatDepotStairs.ts';
+export { depotEndpointDoors, depotFlightHeight, depotFlights, depotStairFloors, depotStairNodes } from './qalatDepotStairs.ts';
 import { convexHull, ribbonPieces } from './roadSightLines.ts';
 import { clipConvex, rectPolygon, sweep, union, type Interval, type Point, type Polygon } from './planStrata.ts';
 
@@ -139,25 +139,28 @@ export function buildDepotShell(): BoxSpec[] {
     boxes.push({ id: `depot-cap-${d.id}`, x: (minX + maxX) / 2, y: 0, z: (minZ + maxZ) / 2,
       w: maxX - minX, h: DEPOT.doorHeight, d: maxZ - minZ });
   }
-  return boxes;
+  return carveDepotStairs(boxes);
 }
 
 export function buildDepotLevel() {
   const surface = buildRoadSupportLevel();
-  return { ...surface, id: DEPOT.id, boxes: [...surface.boxes, ...buildDepotShell()] };
+  return { ...surface, id: DEPOT.id, boxes: [...carveDepotStairs(surface.boxes), ...buildDepotShell(), ...buildDepotStairs()] };
 }
 export function buildDepotWorld() { return loadLevel(buildDepotLevel()); }
 export function depotManifest() {
   const level = buildDepotLevel();
-  return { task: 'U-170', parent: 'U-115', kind: 'isolated B1–B9 enclosed depot shells below the complete surface',
+  return { task: 'U-171', parent: 'U-115', kind: 'isolated B1–B9 enclosed shells with covered B0/B10 stairs and exact endpoint connections',
     sourceHash: createHash('sha256').update(JSON.stringify(DEPOT)).digest('hex'),
     levelHash: createHash('sha256').update(JSON.stringify(level)).digest('hex'),
     boxCount: level.boxes.length, shellBoxCount: buildDepotShell().length, rowM: ROW_M,
     rooms: DEPOT.rooms, connectors: DEPOT.connectors, doors: depotDoors(), stairPorts: DEPOT.stairPorts,
+    endpoints: DEPOT.endpoints, stairs: DEPOT.stairs, flights: depotFlights(), endpointDoors: depotEndpointDoors(),
+    stairFloors: depotStairFloors().map((f) => ({ ...f, ceiling: Number.isFinite(f.ceiling) ? f.ceiling : 'sky' })),
+    stairGuards: level.boxes.filter((b) => b.id.startsWith('depot-stair-balustrade-')),
     activeCampaign: 'unchanged; activation U-117', humanVerdict: 'whole-mission acceptance U-119',
-    unfinished: ['covered B0/B10 stairs and endpoint joins: U-171', 'fixed internals: U-172', 'integrated seven-actor/floor-isolation proof: U-173'] };
+    unfinished: ['fixed internals: U-172', 'integrated seven-actor/floor-isolation proof: U-173'] };
 }
 export function depotPlanSvg() {
-  const polygons = depotFloors().map((p) => `<polygon points="${p.map((v) => `${v.x},${-v.z}`).join(' ')}"/>`).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="1200" viewBox="-58 -388 112 310"><rect x="-58" y="-388" width="112" height="310" fill="#45483d"/><g fill="#d4c2a0" stroke="#786247" stroke-width=".15">${polygons}</g><g font-size="3" font-family="sans-serif" fill="#142b32">${DEPOT.rooms.map((r) => `<text x="${r.x - 3}" y="${-r.z}">${r.id} · ${r.ceiling} m</text>`).join('')}</g></svg>\n`;
+  const polygons = [...depotFloors(), ...depotStairFloors().map((f) => f.polygon)].map((p) => `<polygon points="${p.map((v) => `${v.x},${-v.z}`).join(' ')}"/>`).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="1320" viewBox="-58 -392 112 338"><rect x="-58" y="-392" width="112" height="338" fill="#45483d"/><g fill="#d4c2a0" stroke="#786247" stroke-width=".15">${polygons}</g><g font-size="3" font-family="sans-serif" fill="#142b32">${DEPOT.rooms.map((r) => `<text x="${r.x - 3}" y="${-r.z}">${r.id} · ${r.ceiling} m</text>`).join('')}</g></svg>\n`;
 }

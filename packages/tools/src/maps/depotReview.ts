@@ -1,9 +1,9 @@
-/** U-170: review the actual enclosed basement inside the complete surface. */
+/** U-171: review the exact enclosed basement and covered endpoint stairs. */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 type Room = { id: string; x: number; z: number; w: number; d: number; ceiling: number };
-type View = { name: string; position: number[]; target: number[]; label: string; ceilingY: number };
+type View = { name: string; position: number[]; target: number[]; label: string; floorY: number; ceilingY: number | null; minClearance?: number };
 const root = '/artifacts/qalat-depot/';
 const [level, surface, construction] = await Promise.all([
   fetch(`${root}level.json`).then((r) => r.json()) as Promise<{ boxes: unknown[]; floor: { halfWidth: number; halfDepth: number } }>,
@@ -41,7 +41,7 @@ const floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * level.floor.halfWidth, 
     polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
 floor.rotation.x = -Math.PI / 2; scene.add(floor);
 
-// Independent §7.2 outgoing centreline vertices, including B9's closed future
+// Independent §7.2 outgoing centreline vertices, including B9's covered exit
 // stair interface. Intersect each ray with its room's inside wall face.
 const onward: Record<string, [number, number]> = {
   B1: [-20, 96], B2: [-36, 136], B3: [-36, 188], B4: [8, 216], B5: [8, 250],
@@ -53,13 +53,34 @@ const views: View[] = construction.rooms.map((r) => {
   const dx = goal[0] - r.x, dz = goal[1] - r.z;
   const t = Math.min(dx ? r.w / 2 / Math.abs(dx) : Infinity, dz ? r.d / 2 / Math.abs(dz) : Infinity);
   return { name: r.id.toLowerCase(), position: [r.x, 1.55, r.z],
-    target: [r.x + t * dx, 1.55, r.z + t * dz], ceilingY: r.ceiling,
-    label: `${r.id} · floor 0 / ceiling ${r.ceiling} m · standing eye toward ${r.id === 'B9' ? 'closed U171 stair interface' : 'onward doorway'}` };
+    target: [r.x + t * dx, 1.55, r.z + t * dz], floorY: 0, ceilingY: r.ceiling,
+    label: `${r.id} · floor 0 / ceiling ${r.ceiling} m · standing eye toward ${r.id === 'B9' ? 'covered upward stair' : 'onward doorway'}` };
 });
 const vault = construction.rooms.find((r) => r.id === 'B6');
 if (!vault || construction.rooms.length !== 9) throw new Error('Depot review requires every B1–B9 room');
 views.push({ name: 'b6-ceiling', position: [vault.x, 1.55, vault.z], target: [vault.x, vault.ceiling, vault.z + .01],
-  ceilingY: vault.ceiling, label: 'B6 · standing eye looking up at the solid y5.5 ceiling beneath the y8 road' });
+  floorY: 0, ceilingY: vault.ceiling, label: 'B6 · standing eye looking up at the solid y5.5 ceiling beneath the y8 road' });
+
+// Independent approved endpoint and rest anchors. Each flight has ten 0.40 m
+// treads, a 2 m rest, then another ten treads. Keep the full roofs visible.
+views.push(
+  { name: 'b0-loading', position: [-2, 9.55, 68], target: [-2, 9.55, 76], floorY: 8,
+    ceilingY: 12, label: 'B0 · loading vestibule at y8, covered descent ahead' },
+  { name: 'b0-first-rest', position: [-2, 7.55, 81], target: [-2, 5.55, 85], floorY: 6,
+    ceilingY: null, minClearance: 3.2, label: 'B0 first flight · 2 m rest at y6' },
+  { name: 'b0-switchback', position: [3, 5.55, 86], target: [8, 5.55, 86], floorY: 4,
+    ceilingY: null, minClearance: 3.2, label: 'B0 · broad 10 m switchback landing at y4' },
+  { name: 'b0-second-rest', position: [8, 3.55, 91], target: [8, 1.55, 95], floorY: 2,
+    ceilingY: null, minClearance: 3.2, label: 'B0 second flight · 2 m rest at y2 toward B1' },
+  { name: 'b10-first-rest', position: [-8, 3.55, 381], target: [-8, 5.55, 385], floorY: 2,
+    ceilingY: null, minClearance: 3.2, label: 'B10 first flight · 2 m rest at y2' },
+  { name: 'b10-switchback', position: [-3, 5.55, 386], target: [2, 5.55, 386], floorY: 4,
+    ceilingY: null, minClearance: 3.2, label: 'B10 · broad 10 m switchback landing at y4' },
+  { name: 'b10-second-rest', position: [2, 7.55, 381], target: [2, 9.55, 377], floorY: 6,
+    ceilingY: null, minClearance: 3.2, label: 'B10 second flight · 2 m rest at y6 toward west gate' },
+  { name: 'b10-west-landing', position: [8, 9.55, 374], target: [2, 9.55, 376], floorY: 8,
+    ceilingY: null, label: 'B10 · exact open 8×8 m west landing at (8,8,374)' },
+);
 
 function view(name: string) {
   const v = views.find((item) => item.name === name);
@@ -68,10 +89,12 @@ function view(name: string) {
   document.querySelector<HTMLParagraphElement>('#view-label')!.textContent = v.label;
   renderer.render(scene, camera);
   const hit = new THREE.Raycaster(camera.position, new THREE.Vector3(0, 1, 0)).intersectObject(full)[0];
-  if (!hit || Math.abs(hit.point.y - v.ceilingY) > .0001)
+  if (v.ceilingY !== null && (!hit || Math.abs(hit.point.y - v.ceilingY) > .0001))
     throw new Error(`${name}: rendered underside does not match ceiling ${v.ceilingY}`);
+  if (v.minClearance !== undefined && (!hit || hit.point.y - v.floorY < v.minClearance - .0001))
+    throw new Error(`${name}: covered stair has less than ${v.minClearance} m rendered headroom`);
   return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles,
-    boxCount: level.boxes.length, levelHash, renderedCeilingY: hit.point.y };
+    boxCount: level.boxes.length, levelHash, renderedCeilingY: hit?.point.y ?? null };
 }
 for (const v of views) {
   const button = document.createElement('button'); button.textContent = v.name.toUpperCase();

@@ -1,11 +1,11 @@
-/** Capture the exact U-170 basement inside the unchanged complete surface. */
+/** Capture the exact U-171 basement and covered stairs inside the complete surface. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { blockedAt, loadLevel, supportUnder } from '@sandline/shared';
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
 
-type View = { name: string; position: number[]; target: number[]; label: string; ceilingY: number };
-type Stats = { calls: number; triangles: number; boxCount: number; levelHash: string; renderedCeilingY: number };
+type View = { name: string; position: number[]; target: number[]; label: string; floorY: number; ceilingY: number | null; minClearance?: number };
+type Stats = { calls: number; triangles: number; boxCount: number; levelHash: string; renderedCeilingY: number | null };
 type Review = { views: View[]; view: (name: string) => Stats };
 const output = new URL('../../../artifacts/qalat-depot/', import.meta.url);
 const [level, manifest] = await Promise.all([
@@ -32,11 +32,11 @@ try {
   await mkdir(output, { recursive: true });
   for (const v of views) {
     const [x, eyeY, z] = v.position;
-    if (eyeY !== 1.55 || blockedAt(x!, z!, .35, 0, 0, 1.8, world.boxes))
-      throw new Error(`${v.name}: standing-eye anchor is inside collision geometry or above floor 0`);
+    if (Math.abs(eyeY! - v.floorY - 1.55) > 1e-8 || blockedAt(x!, z!, .35, v.floorY, 0, 1.8, world.boxes))
+      throw new Error(`${v.name}: standing-eye anchor is inside collision geometry or above the listed floor`);
     for (const dx of [-.35, 0, .35]) for (const dz of [-.35, 0, .35])
-      if (supportUnder(x! + dx, z! + dz, .001, .05, world.boxes, 0) !== 0)
-        throw new Error(`${v.name}: standing-eye footprint is unsupported at floor 0`);
+      if (Math.abs((supportUnder(x! + dx, z! + dz, .001, v.floorY + .05, world.boxes, -1)) - v.floorY) > 1e-6)
+        throw new Error(`${v.name}: standing-eye footprint is unsupported at its listed floor`);
     const stats = await page.evaluate((name) => (globalThis as unknown as { __depotReview: Review }).__depotReview.view(name), v.name);
     if (stats.calls >= 300 || stats.levelHash !== manifest.levelHash)
       throw new Error(`${v.name}: stale geometry or draw budget overrun`);

@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { blockedAt, boxFrom, rayWorld, supportUnder } from '@sandline/shared';
 import { buildDepotLevel, buildDepotShell, depotManifest, depotDoors } from './qalatDepot.ts';
-import { buildRoadSupportLevel } from './qalatRoadSupports.ts';
 
 // Independent §7.2 inside bounds and heights. These are acceptance dimensions,
 // never inferred from the author's room helper or generated manifest.
@@ -68,9 +67,11 @@ describe('U-170 exact enclosed depot shells', () => {
         expect(blockedAt(x, z, .001, 0, 0, 3.199, shell), `four-metre parallel corridor at ${x}/${z}`).toBe(false);
   });
 
-  it('seals future stairs explicitly and retains outward masonry and roof ray obstruction', () => {
-    expect(shell.filter((b) => b.id.startsWith('depot-cap-')).map((b) => b.id)).toEqual(['depot-cap-B1-stair', 'depot-cap-B9-stair']);
-    for (const [x, z] of [[4.3, 96], [-8, 376.3], [-48.3, 160], [25, 251.7]])
+  it('opens only the named stair caps and retains outward masonry and roof ray obstruction', () => {
+    expect(shell.filter((b) => b.id.startsWith('depot-cap-'))).toEqual([]);
+    for (const [x, z] of [[4.3, 96], [-8, 376.3]])
+      expect(blockedAt(x!, z!, .001, 0, 0, 1.8, shell), `capped stair ${x}/${z}`).toBe(false);
+    for (const [x, z] of [[-48.3, 160], [25, 251.7], [4.3, 92], [-4, 376.3]])
       expect(blockedAt(x!, z!, .001, 0, 0, 1.8, shell), `unsealed ${x}/${z}`).toBe(true);
     // The west B2 door stops at its corner; north masonry remains intact.
     expect(blockedAt(-30.3, 132.3, .001, 0, 0, 1.8, shell)).toBe(true);
@@ -87,17 +88,28 @@ describe('U-170 exact enclosed depot shells', () => {
     }
   });
 
-  it('adds only underground construction, preserves the exact complete surface and fresh evidence', async () => {
-    const level = buildDepotLevel(), surface = buildRoadSupportLevel();
-    expect(level.boxes.slice(0, surface.boxes.length)).toEqual(surface.boxes);
-    expect(level.boxes.slice(surface.boxes.length).every((b) => b.y + b.h <= 8)).toBe(true);
+  it('keeps the generated construction and covered shell/endpoint review evidence fresh', async () => {
+    // Exact preservation outside each 3D stair aperture is separately tested
+    // against the original scene in qalatDepotSurface.test.ts.
+    expect(buildDepotLevel().id).toBe('qalat-depot-construction');
     const output = new URL('../../../../artifacts/qalat-depot/', import.meta.url);
     expect(JSON.parse(await readFile(new URL('construction.json', output), 'utf8'))).toEqual(depotManifest());
     const captures = JSON.parse(await readFile(new URL('captures.json', output), 'utf8')) as {
-      levelHash: string; views: { calls: number; renderedCeilingY: number }[];
+      levelHash: string; views: { name: string; calls: number; floorY: number; renderedCeilingY: number | null }[];
     };
     expect(captures.levelHash).toBe(depotManifest().levelHash);
-    expect(captures.views).toHaveLength(10);
-    expect(captures.views.every((v) => v.calls < 300 && v.renderedCeilingY >= 3.59999)).toBe(true);
+    expect(captures.views).toHaveLength(18);
+    expect(captures.views.every((v) => v.calls < 300)).toBe(true);
+    expect(captures.views.slice(0, 10).every((v) => v.renderedCeilingY !== null && v.renderedCeilingY >= 3.59999)).toBe(true);
+    for (const [id, floor, ceiling] of [
+      ['b0-loading', 8, 12], ['b0-first-rest', 6, 9.2], ['b0-switchback', 4, 7.2], ['b0-second-rest', 2, 5.2],
+      ['b10-first-rest', 2, 5.2], ['b10-switchback', 4, 7.2], ['b10-second-rest', 6, 9.2],
+    ] as const) {
+      const view = captures.views.find((v) => v.name === id);
+      expect(view, id).toBeDefined(); expect(view!.floorY, id).toBe(floor);
+      expect(view!.renderedCeilingY, id).not.toBeNull();
+      expect(view!.renderedCeilingY!, id).toBeGreaterThanOrEqual(ceiling - 1e-5);
+    }
+    expect(captures.views.find((v) => v.name === 'b10-west-landing')?.renderedCeilingY).toBeNull();
   }, 120_000);
 });

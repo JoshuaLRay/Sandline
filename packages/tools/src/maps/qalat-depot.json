@@ -25,5 +25,30 @@
   "stairPorts": [
     { "id": "B1-stair", "room": "B1", "axis": "x", "normal": 1, "x": 4, "z": 96 },
     { "id": "B9-stair", "room": "B9", "axis": "z", "normal": 1, "x": -8, "z": 376 }
-  ]
+  ],
+  "endpoints": [
+    {"id": "B0", "x": -2, "y": 8, "z": 68, "w": 24, "d": 20, "ceiling": 12},
+    {"id": "B10", "x": 8, "y": 8, "z": 374, "w": 8, "d": 8, "open": true}
+  ],
+  "stairs": {
+    "width": 4, "riser": 0.2, "tread": 0.4, "rest": 2, "switchLandingWidth": 8, "exitBevelRun": 6, "exitBevelWestM": 1.2, "headroom": 3.2, "roofM": 0.8,
+    "systems": [
+      { "id": "B0-B1", "nodes": [
+        {"id": "B0", "x": -2, "y": 8, "z": 68},
+        {"id": "B0-mouth", "x": -2, "y": 8, "z": 76},
+        {"id": "B0-first-foot", "x": -2, "y": 4, "z": 86},
+        {"id": "B0-second-head", "x": 8, "y": 4, "z": 86},
+        {"id": "B0-second-foot", "x": 8, "y": 0, "z": 96},
+        {"id": "B1", "x": -2, "y": 0, "z": 96}
+      ] },
+      { "id": "B9-B10", "nodes": [
+        {"id": "B9", "x": -8, "y": 0, "z": 370},
+        {"id": "B9-mouth", "x": -8, "y": 0, "z": 376},
+        {"id": "B10-first-head", "x": -8, "y": 4, "z": 386},
+        {"id": "B10-second-foot", "x": 2, "y": 4, "z": 386},
+        {"id": "B10-mouth", "x": 2, "y": 8, "z": 376},
+        {"id": "B10", "x": 8, "y": 8, "z": 374}
+      ] }
+    ]
+  }
 }
