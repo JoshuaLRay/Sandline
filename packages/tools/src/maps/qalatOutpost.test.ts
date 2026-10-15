@@ -23,8 +23,8 @@ const ceiling = (x: number, z: number) => hit({ x, y: 9.6, z }, { x, y: 28, z })
 type Solid = Pick<WorldBox, 'minX' | 'maxX' | 'minY' | 'maxY' | 'minZ' | 'maxZ'>;
 const volume = (minX: number, maxX: number, minZ: number, maxZ: number, minY: number, maxY: number): Solid =>
   ({ minX, maxX, minZ, maxZ, minY, maxY });
-const overlaps = (a: Solid, b: Solid) => a.maxX > b.minX + 1e-7 && a.minX < b.maxX - 1e-7
-  && a.maxY > b.minY + 1e-7 && a.minY < b.maxY - 1e-7 && a.maxZ > b.minZ + 1e-7 && a.minZ < b.maxZ - 1e-7;
+const overlaps = (a: Solid, b: Solid) => a.maxX > b.minX + 1e-9 && a.minX < b.maxX - 1e-9
+  && a.maxY > b.minY + 1e-9 && a.minY < b.maxY - 1e-9 && a.maxZ > b.minZ + 1e-9 && a.minZ < b.maxZ - 1e-9;
 function difference(a: Solid, cut: Solid): Solid[] {
   if (!overlaps(a, cut)) return [a];
   const x0 = Math.max(a.minX, cut.minX), x1 = Math.min(a.maxX, cut.maxX);
@@ -33,7 +33,7 @@ function difference(a: Solid, cut: Solid): Solid[] {
   return [volume(a.minX, x0, a.minZ, a.maxZ, a.minY, a.maxY), volume(x1, a.maxX, a.minZ, a.maxZ, a.minY, a.maxY),
     volume(x0, x1, a.minZ, z0, a.minY, a.maxY), volume(x0, x1, z1, a.maxZ, a.minY, a.maxY),
     volume(x0, x1, z0, z1, a.minY, y0), volume(x0, x1, z0, z1, y1, a.maxY)]
-    .filter((p) => p.maxX - p.minX > 1e-7 && p.maxY - p.minY > 1e-7 && p.maxZ - p.minZ > 1e-7);
+    .filter((p) => p.maxX - p.minX > 1e-9 && p.maxY - p.minY > 1e-9 && p.maxZ - p.minZ > 1e-9);
 }
 
 describe('U-175 independent outpost shell and opaque reserve annex', () => {
@@ -183,11 +183,11 @@ describe('U-175 independent outpost shell and opaque reserve annex', () => {
       const source = b.id.split('-outpost-cut-')[0]!, group = descendants.get(source) ?? [];
       group.push(b); descendants.set(source, group);
     }
-    const violations: { id: string; loss: Solid[] }[] = [];
+    const violations: { id: string; loss: Solid[] }[] = [], untouched: WorldBox[] = [];
     let unchanged = 0, changed = 0;
     for (const old of original.boxes) {
       if (!cuts.some((c) => overlaps(old, c))) {
-        expect(byId.get(old.id), `changed exterior ${old.id}`).toEqual(old);
+        untouched.push(old);
         unchanged++; continue;
       }
       let loss: Solid[] = [old];
@@ -197,6 +197,7 @@ describe('U-175 independent outpost shell and opaque reserve annex', () => {
       changed++;
     }
     expect(unchanged).toBeGreaterThan(10_000);
+    expect(untouched.map((b) => byId.get(b.id)), 'changed inherited exterior').toEqual(untouched);
     expect(changed).toBeGreaterThan(0);
     expect(violations.slice(0, 5), 'deleted inherited solid outside authorized 3D cut').toEqual([]);
     console.log('U-175 exact inherited preservation', JSON.stringify({ unchanged, changed, illegalLosses: violations.length }));
