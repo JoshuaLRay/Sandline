@@ -668,7 +668,7 @@ set dressing; all navigable doorways lead to the next named space.
 
 | Room | Structural/cover layout | Clear route and combat intention |
 |---|---|---|
-| B1 | 3 m low crate at (-6,0,98), long axis east-west | 4 m south/east entry landing and west exit kept open; look left to see B2 connector |
+| B1 | 3 m low crate at (-6,0,98.4), long axis east-west | 4 m south/east entry landing and west exit kept open; look left to see B2 connector |
 | B2 | 4 m low sack stack at (-24,0,116); 4 m high crate at (-14,0,124), both north-south | Central 6 m aisle x=-23..-17; cover offset toward walls, trim crate depth outside aisle; first guard visible beyond first cover |
 | B3 | 1.2×1.2 piers centred (-44,0,152),(-28,0,152),(-44,0,168),(-28,0,168), full ceiling height; low 4 m wall at (-36,0,164), east-west | 6 m central aisle splits around low cover through 4 m side gaps; water stains explain cistern, no deep pit |
 | B4 | Engine blocks 3×8×2.2 at (-24,0,200),(-12,0,200), long axes north-south | 6 m aisle between engines; incoming northwest/outgoing northeast doors cannot shoot straight through the room |
@@ -677,6 +677,10 @@ set dressing; all navigable doorways lead to the next named space.
 | B7 | Workbench 6×1×1 at (-22,0,312), north-south; two wall racks west; central floor empty | Whole escorted group can regroup; no engine, fire or explosive prop |
 | B8 | Shelves 1×16×2.2 at (-22,0,346),(-6,0,346), north-south | 6 m central lane; no maze of repeated shelves; end door is the obvious onward path |
 | B9 | Empty central floor; high 3 m crate at (-12,0,367), north-south | Protected hold point before climbing into the compound; no door interaction required |
+
+B1's crate moves 0.4 m north from its original z98 socket under the owner's
+2026-10-15 approval, preserving its full dimensions and the centered 4×4 m
+west-door inside landing at x[-8,-4], z[94,98].
 
 B2's central aisle is a circulation guide, not a solid rail: low cover can be
 flanked within the room. No crate stack touches a pier/roof in a way that enables

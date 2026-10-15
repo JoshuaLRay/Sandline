@@ -88,6 +88,8 @@ views.push(
 
 // Furniture review anchors stay at standing eye on the actual y0 floor.
 views.push(
+  { name: 'b1-crate', position: [-2, 1.55, 96], target: [-6, .55, 98.4], floorY: 0,
+    ceilingY: 3.6, label: 'B1 · full-size low crate at approved z98.4; centered west-door landing remains free' },
   { name: 'b1-pipe', position: [-2, 1.55, 96], target: [-2, 2.7, 90.07], floorY: 0,
     ceilingY: 3.6, label: 'B1 · blue service pipe on the closed wall; west landing stays clear' },
   { name: 'b3-cistern', position: [-36, 1.55, 147], target: [-36, 1.55, 166], floorY: 0,

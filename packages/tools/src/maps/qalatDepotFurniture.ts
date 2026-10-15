@@ -6,7 +6,8 @@ const solid = (name: string, x: number, z: number, w: number, d: number, h: numb
 
 export function buildDepotFurniture(): BoxSpec[] {
   return [
-    // B1 is intentionally pending the owner's crate/landing reconciliation.
+    // Owner-approved 0.4 m shift keeps the centered west-door landing free.
+    solid('B1-crate', -6, 98.4, 3, .8, 1.1),
     solid('B2-sacks', -24, 116, .8, 4, 1.1),
     // §7.3 permits trimming only B2's crate depth outside the aisle. Keep
     // its nominal -14 datum as the east face, trimming the east 0.6 m so

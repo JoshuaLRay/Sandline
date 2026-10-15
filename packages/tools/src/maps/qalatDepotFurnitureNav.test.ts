@@ -11,6 +11,8 @@ import type { Point } from './planStrata.ts';
 // Independent §7.3 clearance witnesses: changing the furniture generator must
 // not silently move an aisle or choose the other side of its obstruction.
 const STRIPS = [
+  ['B1 complete door-to-stair band', -8, 4, 94, 98, 12],
+  ['B1 centered west-door landing', -8, -4, 94, 98, 4],
   ['B2 central', -23, -17, 110, 130, 6], ['B2 trimmed east bypass', -14, -10, 121, 127, 4],
   ['B3 west bypass', -42.7, -38.7, 159, 170, 4], ['B3 east bypass', -33.3, -29.3, 159, 170, 4],
   ['B4 main aisle', -21, -15, 192, 208, 6], ['B5 regroup', 5, 13, 226, 234, 8],
@@ -19,6 +21,10 @@ const STRIPS = [
   ['B7 regroup', -18, -10, 306, 314, 8], ['B8 main aisle', -17, -11, 336, 356, 6],
 ] as const;
 const TRIPS: { id: string; points: Point[] }[] = [
+  { id: 'B1 entry to west connector', points: [[2, 96], [-2, 96], [-6, 96], [-10, 96]] },
+  // The 0.5 m wall margin west of the crate is not an actor passage. Reach
+  // both exposed long faces through the real east flank and full west landing.
+  { id: 'B1 crate east flank', points: [[-10, 96], [-6, 96], [-3, 96], [-3, 100], [-6, 100]] },
   { id: 'B2 main aisle', points: [[-20, 110], [-20, 120], [-20, 130]] },
   { id: 'B2 sack flank', points: [[-20, 111], [-27, 112], [-27, 120], [-20, 121]] },
   { id: 'B2 trimmed crate flank', points: [[-20, 120], [-12, 120], [-12, 128], [-20, 130]] },
@@ -126,6 +132,7 @@ describe('U-172 furniture on the real standing nav and controller', () => {
     // Deliberately begin on supported prop tops, even high tops not reachable
     // from an ordinary floor jump. B9 requires crouching under its 3.6 m roof.
     const starts = [
+      [-6, 1.1, 98.4, -8, 98.4], [-6, 1.1, 98.4, -6, 102], [-6, 1.1, 98.4, 4, 96],
       [-24, 1.1, 116, -24, 108], [-14.3, 2.2, 124, -10, 124],
       [-36, 1.1, 164, -44, 168], [-36, 1.1, 164, -28, 168],
       [-24, 2.2, 200, -28, 200], [-12, 2.2, 200, -8, 200], [3, 1.1, 234, 0, 234],
@@ -181,7 +188,7 @@ describe('U-172 furniture on the real standing nav and controller', () => {
       }
       await yieldWorker();
     }
-    expect(attempts).toBe(204);
+    expect(attempts).toBe(240);
     console.log('U-172 chained furniture escapes', JSON.stringify({ starts: starts.length, attempts, ticksPerAttempt: 180 }));
   }, 120_000);
 });

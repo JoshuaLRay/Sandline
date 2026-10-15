@@ -6,6 +6,9 @@ import { buildDepotFurniture, depotDecorations } from './qalatDepotFurniture.ts'
 // Independent §2.2/7.3 dimensions: x/z centre, east-west width,
 // north-south depth and height. The builder/manifest are not the oracle.
 const FIXTURES = [
+  // Owner-approved 0.4 m northward move retains the full-size low crate
+  // while leaving the centered west-door landing exactly x[-8,-4], z[94,98].
+  ['B1-crate', -6, 98.4, 3, .8, 1.1],
   ['B2-sacks', -24, 116, .8, 4, 1.1], ['B2-crate', -14.3, 124, .6, 4, 2.2],
   ['B3-pier-0', -44, 152, 1.2, 1.2, 5.5], ['B3-pier-1', -28, 152, 1.2, 1.2, 5.5],
   ['B3-pier-2', -44, 168, 1.2, 1.2, 5.5], ['B3-pier-3', -28, 168, 1.2, 1.2, 5.5],
@@ -41,14 +44,19 @@ function clearRect(label: string, rect: Rect, height = DEFAULT_MOVE_CONFIG.heigh
 
 describe('U-172 fixed depot internals and measured clearances', () => {
   it('uses every independently specified fixed socket, axis and full-height pier', () => {
-    // B1's conflicting socket/landing is reconciled separately before it is
-    // furnished; the remaining fixed sockets may not drift with that decision.
-    expect(furniture.filter((b) => b.id !== 'depot-furniture-B1-crate')).toHaveLength(FIXTURES.length);
+    expect(furniture).toHaveLength(FIXTURES.length);
     expect(new Set(furniture.map((b) => b.id)).size).toBe(furniture.length);
     for (const [id, x, z, w, d, h] of FIXTURES) {
       const box = furniture.find((b) => b.id === `depot-furniture-${id}`);
       expect(box, id).toEqual({ id: `depot-furniture-${id}`, x, y: 0, z, w, d, h });
     }
+    // The crate may touch the landing's north boundary, but neither a size
+    // trim nor a shifted landing is an alternative to the approved move.
+    const moved = solids.find((b) => b.id === 'depot-furniture-B1-crate')!;
+    expect(moved.minX).toBeCloseTo(-7.5, 8); expect(moved.maxX).toBeCloseTo(-4.5, 8);
+    expect(moved.minZ).toBeCloseTo(98, 8); expect(moved.maxZ).toBeCloseTo(98.8, 8);
+    expect(moved.maxY).toBeCloseTo(1.1, 8);
+    expect(overlaps(moved, { minX: -8, maxX: -4, minZ: 94, maxZ: 98 })).toBe(false);
     // B2's one permitted asymmetric depth trim retains its east datum and
     // exactly 4 m of room between the crate and x=-10 inside east wall.
     const trimmed = solids.find((b) => b.id === 'depot-furniture-B2-crate')!;
