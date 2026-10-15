@@ -1,16 +1,16 @@
-/** Capture the exact U-171 basement and covered stairs inside the complete surface. */
+/** Capture the exact U-172 furnished basement inside the complete surface. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { blockedAt, loadLevel, supportUnder } from '@sandline/shared';
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
 
 type View = { name: string; position: number[]; target: number[]; label: string; floorY: number; ceilingY: number | null; minClearance?: number };
-type Stats = { calls: number; triangles: number; boxCount: number; levelHash: string; renderedCeilingY: number | null };
+type Stats = { calls: number; triangles: number; boxCount: number; levelHash: string; renderHash: string; renderedCeilingY: number | null };
 type Review = { views: View[]; view: (name: string) => Stats };
 const output = new URL('../../../artifacts/qalat-depot/', import.meta.url);
 const [level, manifest] = await Promise.all([
   readFile(new URL('level.json', output), 'utf8').then((s) => JSON.parse(s)),
-  readFile(new URL('construction.json', output), 'utf8').then((s) => JSON.parse(s)) as Promise<{ levelHash: string; task: string }>,
+  readFile(new URL('construction.json', output), 'utf8').then((s) => JSON.parse(s)) as Promise<{ levelHash: string; renderHash: string; task: string }>,
 ]);
 const world = loadLevel(level);
 const server = await createServer({ root: new URL('../../../', import.meta.url).pathname,
@@ -38,15 +38,15 @@ try {
       if (Math.abs((supportUnder(x! + dx, z! + dz, .001, v.floorY + .05, world.boxes, -1)) - v.floorY) > 1e-6)
         throw new Error(`${v.name}: standing-eye footprint is unsupported at its listed floor`);
     const stats = await page.evaluate((name) => (globalThis as unknown as { __depotReview: Review }).__depotReview.view(name), v.name);
-    if (stats.calls >= 300 || stats.levelHash !== manifest.levelHash)
+    if (stats.calls >= 300 || stats.levelHash !== manifest.levelHash || stats.renderHash !== manifest.renderHash)
       throw new Error(`${v.name}: stale geometry or draw budget overrun`);
-    await page.screenshot({ path: new URL(`${v.name}.png`, output).pathname });
+    await page.screenshot({ path: new URL(`${v.name}.png`, output).pathname, timeout: 60_000 });
     measurements.push({ ...v, ...stats });
     console.log(`${manifest.task} ${v.name}: ${stats.calls} draws, ${stats.triangles} triangles, ceiling y${stats.renderedCeilingY}`);
   }
   if (errors.length) throw new Error(errors.join('\n'));
   await writeFile(new URL('captures.json', output), JSON.stringify({ ...manifest,
-    renderer: 'Three WebGL whitebox; complete generated box union, downward ceiling faces and implicit world floor',
+    renderer: 'Three WebGL whitebox; complete generated collision union plus noncolliding wall/floor cues, downward ceiling faces and implicit world floor',
     antialias: true, viewport: [1440, 1000], ownerQualityVerdict: 'pending; whole-mission acceptance U-119', views: measurements,
   }, null, 2) + '\n');
 } finally { await browser?.close(); await server.close(); }

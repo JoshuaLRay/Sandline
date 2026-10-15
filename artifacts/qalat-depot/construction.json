@@ -1,10 +1,11 @@
 {
-  "task": "U-171",
+  "task": "U-172",
   "parent": "U-115",
-  "kind": "isolated B1–B9 enclosed shells with covered B0/B10 stairs and exact endpoint connections",
-  "sourceHash": "a444c2dd2a7e521f169a0c63374f7df459037db7649e1645b55514a1c40aa01c",
-  "levelHash": "219ad5da8100c9524d3dfabf46c79214e56fc1b7d1d442918ce37445ab2c6723",
-  "boxCount": 108542,
+  "kind": "isolated furnished B1–B9 depot with covered B0/B10 stairs and exact endpoint connections",
+  "sourceHash": "f9bdc201362a53871aa4dee7e68ec7d376b0cccd71fde46e321087a9bb020f5d",
+  "levelHash": "80e1617eccf61b2cd7316be3cafaf68915e5b85d6301662e5f826e1cd2fdcfa7",
+  "renderHash": "f54d9260df122e132a0664ae8dbe3d0b752063c8db7b7aba98dcec61d6b30001",
+  "boxCount": 108566,
   "shellBoxCount": 9405,
   "rowM": 0.05,
   "rooms": [
@@ -2956,10 +2957,364 @@
       "h": 12.4
     }
   ],
+  "furniture": [
+    {
+      "id": "depot-furniture-B1-crate",
+      "x": -6,
+      "y": 0,
+      "z": 98.4,
+      "w": 3,
+      "d": 0.8,
+      "h": 1.1
+    },
+    {
+      "id": "depot-furniture-B2-sacks",
+      "x": -24,
+      "y": 0,
+      "z": 116,
+      "w": 0.8,
+      "d": 4,
+      "h": 1.1
+    },
+    {
+      "id": "depot-furniture-B2-crate",
+      "x": -14.3,
+      "y": 0,
+      "z": 124,
+      "w": 0.6,
+      "d": 4,
+      "h": 2.2
+    },
+    {
+      "id": "depot-furniture-B3-pier-0",
+      "x": -44,
+      "y": 0,
+      "z": 152,
+      "w": 1.2,
+      "d": 1.2,
+      "h": 5.5
+    },
+    {
+      "id": "depot-furniture-B3-pier-1",
+      "x": -28,
+      "y": 0,
+      "z": 152,
+      "w": 1.2,
+      "d": 1.2,
+      "h": 5.5
+    },
+    {
+      "id": "depot-furniture-B3-pier-2",
+      "x": -44,
+      "y": 0,
+      "z": 168,
+      "w": 1.2,
+      "d": 1.2,
+      "h": 5.5
+    },
+    {
+      "id": "depot-furniture-B3-pier-3",
+      "x": -28,
+      "y": 0,
+      "z": 168,
+      "w": 1.2,
+      "d": 1.2,
+      "h": 5.5
+    },
+    {
+      "id": "depot-furniture-B3-wall",
+      "x": -36,
+      "y": 0,
+      "z": 164,
+      "w": 4,
+      "d": 0.8,
+      "h": 1.1
+    },
+    {
+      "id": "depot-furniture-B4-engine-0",
+      "x": -24,
+      "y": 0,
+      "z": 200,
+      "w": 3,
+      "d": 8,
+      "h": 2.2
+    },
+    {
+      "id": "depot-furniture-B4-engine-1",
+      "x": -12,
+      "y": 0,
+      "z": 200,
+      "w": 3,
+      "d": 8,
+      "h": 2.2
+    },
+    {
+      "id": "depot-furniture-B5-bench",
+      "x": 3,
+      "y": 0,
+      "z": 234,
+      "w": 0.8,
+      "d": 4,
+      "h": 1.1
+    },
+    {
+      "id": "depot-furniture-B6-pier-0",
+      "x": 22,
+      "y": 0,
+      "z": 258,
+      "w": 1.2,
+      "d": 1.2,
+      "h": 5.5
+    },
+    {
+      "id": "depot-furniture-B6-pier-1",
+      "x": 38,
+      "y": 0,
+      "z": 258,
+      "w": 1.2,
+      "d": 1.2,
+      "h": 5.5
+    },
+    {
+      "id": "depot-furniture-B6-pier-2",
+      "x": 22,
+      "y": 0,
+      "z": 270,
+      "w": 1.2,
+      "d": 1.2,
+      "h": 5.5
+    },
+    {
+      "id": "depot-furniture-B6-pier-3",
+      "x": 38,
+      "y": 0,
+      "z": 270,
+      "w": 1.2,
+      "d": 1.2,
+      "h": 5.5
+    },
+    {
+      "id": "depot-furniture-B6-pier-4",
+      "x": 22,
+      "y": 0,
+      "z": 282,
+      "w": 1.2,
+      "d": 1.2,
+      "h": 5.5
+    },
+    {
+      "id": "depot-furniture-B6-pier-5",
+      "x": 38,
+      "y": 0,
+      "z": 282,
+      "w": 1.2,
+      "d": 1.2,
+      "h": 5.5
+    },
+    {
+      "id": "depot-furniture-B6-crate-west",
+      "x": 19,
+      "y": 0,
+      "z": 265,
+      "w": 1.2,
+      "d": 4,
+      "h": 2.2
+    },
+    {
+      "id": "depot-furniture-B6-crate-east",
+      "x": 41,
+      "y": 0,
+      "z": 277,
+      "w": 1.2,
+      "d": 4,
+      "h": 2.2
+    },
+    {
+      "id": "depot-furniture-B6-low-stack",
+      "x": 30,
+      "y": 0,
+      "z": 276,
+      "w": 4,
+      "d": 0.8,
+      "h": 1.1
+    },
+    {
+      "id": "depot-furniture-B7-bench",
+      "x": -22,
+      "y": 0,
+      "z": 312,
+      "w": 1,
+      "d": 6,
+      "h": 1
+    },
+    {
+      "id": "depot-furniture-B8-shelf-0",
+      "x": -22,
+      "y": 0,
+      "z": 346,
+      "w": 1,
+      "d": 16,
+      "h": 2.2
+    },
+    {
+      "id": "depot-furniture-B8-shelf-1",
+      "x": -6,
+      "y": 0,
+      "z": 346,
+      "w": 1,
+      "d": 16,
+      "h": 2.2
+    },
+    {
+      "id": "depot-furniture-B9-crate",
+      "x": -12,
+      "y": 0,
+      "z": 367,
+      "w": 1.2,
+      "d": 3,
+      "h": 2.2
+    }
+  ],
+  "decorations": [
+    {
+      "id": "depot-decor-B1-blue-pipe",
+      "x": -2,
+      "y": 2.65,
+      "z": 90.07,
+      "w": 8,
+      "h": 0.14,
+      "d": 0.14
+    },
+    {
+      "id": "depot-decor-B3-dry-channel-0",
+      "x": -40,
+      "y": 0.002,
+      "z": 160,
+      "w": 0.22,
+      "h": 0.004,
+      "d": 28
+    },
+    {
+      "id": "depot-decor-B3-dry-channel-1",
+      "x": -32,
+      "y": 0.002,
+      "z": 160,
+      "w": 0.22,
+      "h": 0.004,
+      "d": 28
+    },
+    {
+      "id": "depot-decor-B3-water-stain-0",
+      "x": -47.99,
+      "y": 0.15,
+      "z": 151,
+      "w": 0.02,
+      "h": 0.7,
+      "d": 3
+    },
+    {
+      "id": "depot-decor-B3-water-stain-1",
+      "x": -47.99,
+      "y": 0.15,
+      "z": 160,
+      "w": 0.02,
+      "h": 0.7,
+      "d": 3
+    },
+    {
+      "id": "depot-decor-B3-water-stain-2",
+      "x": -47.99,
+      "y": 0.15,
+      "z": 169,
+      "w": 0.02,
+      "h": 0.7,
+      "d": 3
+    },
+    {
+      "id": "depot-decor-B5-sealed-service-door-0",
+      "x": 15.99,
+      "y": 0,
+      "z": 228,
+      "w": 0.02,
+      "h": 2.7,
+      "d": 2
+    },
+    {
+      "id": "depot-decor-B5-sealed-service-door-1",
+      "x": 15.99,
+      "y": 0,
+      "z": 236,
+      "w": 0.02,
+      "h": 2.7,
+      "d": 2
+    },
+    {
+      "id": "depot-decor-B7-wall-rack-0",
+      "x": -23.94,
+      "y": 1.35,
+      "z": 307,
+      "w": 0.12,
+      "h": 0.8,
+      "d": 2
+    },
+    {
+      "id": "depot-decor-B7-wall-rack-1",
+      "x": -23.94,
+      "y": 1.35,
+      "z": 316,
+      "w": 0.12,
+      "h": 0.8,
+      "d": 2
+    },
+    {
+      "id": "depot-decor-B9-up-arrow-shaft",
+      "x": -2.01,
+      "y": 1,
+      "z": 371,
+      "w": 0.02,
+      "h": 1.2,
+      "d": 0.16
+    },
+    {
+      "id": "depot-decor-B9-up-arrow-head-0",
+      "x": -2.01,
+      "y": 2.05,
+      "z": 371,
+      "w": 0.02,
+      "h": 0.12,
+      "d": 0.88
+    },
+    {
+      "id": "depot-decor-B9-up-arrow-head-1",
+      "x": -2.01,
+      "y": 2.17,
+      "z": 371,
+      "w": 0.02,
+      "h": 0.12,
+      "d": 0.66
+    },
+    {
+      "id": "depot-decor-B9-up-arrow-head-2",
+      "x": -2.01,
+      "y": 2.29,
+      "z": 371,
+      "w": 0.02,
+      "h": 0.12,
+      "d": 0.44
+    },
+    {
+      "id": "depot-decor-B9-up-arrow-head-3",
+      "x": -2.01,
+      "y": 2.4099999999999997,
+      "z": 371,
+      "w": 0.02,
+      "h": 0.12,
+      "d": 0.21999999999999997
+    }
+  ],
   "activeCampaign": "unchanged; activation U-117",
   "humanVerdict": "whole-mission acceptance U-119",
   "unfinished": [
-    "fixed internals: U-172",
     "integrated seven-actor/floor-isolation proof: U-173"
   ]
 }

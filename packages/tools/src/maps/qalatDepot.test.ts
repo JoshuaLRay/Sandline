@@ -95,10 +95,13 @@ describe('U-170 exact enclosed depot shells', () => {
     const output = new URL('../../../../artifacts/qalat-depot/', import.meta.url);
     expect(JSON.parse(await readFile(new URL('construction.json', output), 'utf8'))).toEqual(depotManifest());
     const captures = JSON.parse(await readFile(new URL('captures.json', output), 'utf8')) as {
-      levelHash: string; views: { name: string; calls: number; floorY: number; renderedCeilingY: number | null }[];
+      levelHash: string; renderHash: string; views: { name: string; calls: number; floorY: number; renderedCeilingY: number | null }[];
     };
     expect(captures.levelHash).toBe(depotManifest().levelHash);
-    expect(captures.views).toHaveLength(18);
+    expect(captures.renderHash).toBe(depotManifest().renderHash);
+    expect(captures.views).toHaveLength(26);
+    expect(captures.views.find((v) => v.name === 'b1-crate')?.floorY).toBe(0);
+    expect(captures.views.find((v) => v.name === 'b1-crate')?.renderedCeilingY).toBeCloseTo(3.6, 6);
     expect(captures.views.every((v) => v.calls < 300)).toBe(true);
     expect(captures.views.slice(0, 10).every((v) => v.renderedCeilingY !== null && v.renderedCeilingY >= 3.59999)).toBe(true);
     for (const [id, floor, ceiling] of [

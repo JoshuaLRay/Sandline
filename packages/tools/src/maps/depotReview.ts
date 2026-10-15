@@ -1,4 +1,4 @@
-/** U-171: review the exact enclosed basement and covered endpoint stairs. */
+/** U-172: review exact furnished rooms, cues and covered endpoint stairs. */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
@@ -8,14 +8,18 @@ const root = '/artifacts/qalat-depot/';
 const [level, surface, construction] = await Promise.all([
   fetch(`${root}level.json`).then((r) => r.json()) as Promise<{ boxes: unknown[]; floor: { halfWidth: number; halfDepth: number } }>,
   fetch(`${root}surface.json`).then((r) => r.json()) as Promise<{
-    levelHash: string; positions: number[]; normals: number[]; colours: number[]; indices: number[];
+    levelHash: string; renderHash: string; positions: number[]; normals: number[]; colours: number[]; indices: number[];
   }>,
-  fetch(`${root}construction.json`).then((r) => r.json()) as Promise<{ levelHash: string; rooms: Room[] }>,
+  fetch(`${root}construction.json`).then((r) => r.json()) as Promise<{ levelHash: string; renderHash: string; rooms: Room[]; decorations: unknown[] }>,
 ]);
 const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(level)));
 const levelHash = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 if (surface.levelHash !== levelHash || construction.levelHash !== levelHash)
   throw new Error('Stale depot construction/render surface; run pnpm gen:qalat-depot');
+const renderDigest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([...level.boxes, ...construction.decorations])));
+const renderHash = Array.from(new Uint8Array(renderDigest), (b) => b.toString(16).padStart(2, '0')).join('');
+if (surface.renderHash !== renderHash || construction.renderHash !== renderHash)
+  throw new Error('Stale depot decoration/render surface; run pnpm gen:qalat-depot');
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight); renderer.setPixelRatio(1);
@@ -82,6 +86,26 @@ views.push(
     ceilingY: null, label: 'B10 · exact open 8×8 m west landing at (8,8,374)' },
 );
 
+// Furniture review anchors stay at standing eye on the actual y0 floor.
+views.push(
+  { name: 'b1-crate', position: [-2, 1.55, 96], target: [-6, .55, 98.4], floorY: 0,
+    ceilingY: 3.6, label: 'B1 · full-size low crate at approved z98.4; centered west-door landing remains free' },
+  { name: 'b1-pipe', position: [-2, 1.55, 96], target: [-2, 2.7, 90.07], floorY: 0,
+    ceilingY: 3.6, label: 'B1 · blue service pipe on the closed wall; west landing stays clear' },
+  { name: 'b3-cistern', position: [-36, 1.55, 147], target: [-36, 1.55, 166], floorY: 0,
+    ceilingY: 5.5, label: 'B3 · dry channels, water stains, full-height piers and low cross-wall' },
+  { name: 'b4-engines', position: [-18, 1.55, 190], target: [-18, 1.55, 207], floorY: 0,
+    ceilingY: 4.5, label: 'B4 · inert diesel blocks flank the clear central aisle' },
+  { name: 'b5-regroup', position: [9, 1.55, 228], target: [4, 1.55, 234], floorY: 0,
+    ceilingY: 4, label: 'B5 · eight-metre regroup pocket beside the low bench and sealed service doors' },
+  { name: 'b7-workbench', position: [-14, 1.55, 306], target: [-22, 1.55, 312], floorY: 0,
+    ceilingY: 4, label: 'B7 · west workbench and two wall racks; open central regroup floor' },
+  { name: 'b8-shelves', position: [-14, 1.55, 336], target: [-14, 1.55, 356], floorY: 0,
+    ceilingY: 4, label: 'B8 · sixteen-metre shelves frame the onward lane and doorway' },
+  { name: 'b9-arrow', position: [-8, 1.55, 370], target: [-2, 1.8, 371], floorY: 0,
+    ceilingY: 3.6, label: 'B9 · painted upward arrow beside the covered exit stair' },
+);
+
 function view(name: string) {
   const v = views.find((item) => item.name === name);
   if (!v) throw new Error(`Unknown depot capture ${name}`);
@@ -94,7 +118,7 @@ function view(name: string) {
   if (v.minClearance !== undefined && (!hit || hit.point.y - v.floorY < v.minClearance - .0001))
     throw new Error(`${name}: covered stair has less than ${v.minClearance} m rendered headroom`);
   return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles,
-    boxCount: level.boxes.length, levelHash, renderedCeilingY: hit?.point.y ?? null };
+    boxCount: level.boxes.length, levelHash, renderHash, renderedCeilingY: hit?.point.y ?? null };
 }
 for (const v of views) {
   const button = document.createElement('button'); button.textContent = v.name.toUpperCase();

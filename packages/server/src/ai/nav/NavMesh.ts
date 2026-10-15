@@ -105,10 +105,10 @@ export interface NavRaycast {
 const QUERY_HALF_EXTENTS: NavPoint = { x: 0.5, y: 2, z: 0.5 };
 /** How much wider each step of `resolvePoint`'s search is than the last. */
 const RESOLVE_WIDEN = 4;
-// U-161's connected insertion-to-gate route crosses 272 floor polygons.
-// Retain a bounded output buffer without truncating that single command;
+// U-172's furnished B9↔A7 route crosses 549/543 floor polygons. Retain a
+// bounded output buffer that completes that single command in both directions;
 // this does not change the search-node budget or partial-route handling.
-const MAX_CORRIDOR = 512;
+const MAX_CORRIDOR = 1024;
 
 let ready: Promise<void> | null = null;
 let initialised = false;
