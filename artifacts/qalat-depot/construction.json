@@ -2,10 +2,10 @@
   "task": "U-172",
   "parent": "U-115",
   "kind": "isolated furnished B1–B9 depot with covered B0/B10 stairs and exact endpoint connections",
-  "sourceHash": "16004a92f4b755a47a8f75bdf6c7a5c0ec6f9cd73dada1935c359e628a21844b",
-  "levelHash": "8110fd91d9b2f082b19c2ec822b29ebe49e422ca04e13dae4433943e3bf6096f",
-  "renderHash": "30291df67faa4df3d879d96795b94eca69e63412ac1178c04b40df4e1486998a",
-  "boxCount": 108565,
+  "sourceHash": "f9bdc201362a53871aa4dee7e68ec7d376b0cccd71fde46e321087a9bb020f5d",
+  "levelHash": "80e1617eccf61b2cd7316be3cafaf68915e5b85d6301662e5f826e1cd2fdcfa7",
+  "renderHash": "f54d9260df122e132a0664ae8dbe3d0b752063c8db7b7aba98dcec61d6b30001",
+  "boxCount": 108566,
   "shellBoxCount": 9405,
   "rowM": 0.05,
   "rooms": [
@@ -2958,6 +2958,15 @@
     }
   ],
   "furniture": [
+    {
+      "id": "depot-furniture-B1-crate",
+      "x": -6,
+      "y": 0,
+      "z": 98.4,
+      "w": 3,
+      "d": 0.8,
+      "h": 1.1
+    },
     {
       "id": "depot-furniture-B2-sacks",
       "x": -24,
