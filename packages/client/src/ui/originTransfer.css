@@ -1,0 +1,11 @@
+.sandline-transfer{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:20px;background:rgba(7,11,15,.96);overflow:auto;color:#f6f5ed;font-family:system-ui,-apple-system,sans-serif}
+.sandline-transfer-panel{width:min(100%,580px);padding:24px;border:1px solid #777b7c;border-radius:12px;background:#191d20;box-shadow:0 12px 50px #0008}
+.sandline-transfer h1{font-size:1.5rem;line-height:1.2;margin:0 0 18px}
+.sandline-transfer p{line-height:1.55;font-size:.97rem;margin:0 0 18px}
+.sandline-transfer-warning{border-left:3px solid #f59e0b;padding:12px;background:#65450e44}
+.sandline-transfer button,.sandline-transfer input{font:inherit}
+.sandline-transfer button{display:block;width:100%;margin:12px 0;padding:12px;border:1px solid #94a3b8;border-radius:6px;color:#fff;background:#334155;cursor:pointer}
+.sandline-transfer button:focus-visible,.sandline-transfer input:focus-visible{outline:3px solid #38bdf8}
+.sandline-transfer label{display:block;margin-top:20px;line-height:1.5}
+.sandline-transfer input{display:block;width:100%;max-width:100%;padding:12px 0}
+.sandline-transfer [role=status]{min-height:2.5em;font-weight:600;color:#e2e8f0}
