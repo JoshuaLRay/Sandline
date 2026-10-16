@@ -43,8 +43,33 @@ export interface ZoneRule {
   minFraction: number;
 }
 
+/**
+ * U-181: the most whole seconds the replicated vital timer (the Health component's `timer`) can carry, so the
+ * longest bleed-out or respawn a HUD can count down honestly: seven bits, up from six (63 s) for the 120 s bleed-out.
+ */
+export const VITAL_TIMER_BITS = 7;
+export const VITAL_TIMER_MAX_SECONDS = (1 << VITAL_TIMER_BITS) - 1;
+
+/**
+ * U-181: bits for a replicated hold's progress (a revive, or an enemy at the upload's lever), in sixty-thirds. The
+ * timer's extra bit comes from here, so a soldier's Health costs no more on the wire than before.
+ */
+export const PROGRESS_BITS = 6;
+const PROGRESS_WIRE_MAX = (1 << PROGRESS_BITS) - 1;
+
+/** U-181: a hold's progress (0..1) as wire levels, rounded down so it never reads done before it is. */
+export function progressToWire(fraction: number): number {
+  const level = Math.floor(fraction * PROGRESS_WIRE_MAX + 1e-9);
+  return level < 0 ? 0 : level > PROGRESS_WIRE_MAX ? PROGRESS_WIRE_MAX : level;
+}
+
+/** U-181: wire levels back to the percent (0..100) the HUD shows. */
+export function progressFromWire(level: number): number {
+  return (Math.min(Math.max(level, 0), PROGRESS_WIRE_MAX) * 100) / PROGRESS_WIRE_MAX;
+}
+
 export interface DownedConfig {
-  /** Seconds from being downed to dying, with nobody reviving. */
+  /** Seconds from being downed to dying, with nobody reviving (U-181: 120, the series' "about two minutes"). */
   bleedOutSeconds: number;
   /** Seconds a teammate must hold the revive to complete it (T-2.15). */
   reviveSeconds: number;
@@ -140,7 +165,7 @@ export function parseDamageConfig(raw: unknown): DamageConfig {
   if (typeof rawDowned !== 'object' || rawDowned === null) throw new DamageDataError('damage.downed: expected an object');
   const d = rawDowned as Record<string, unknown>;
   const downed: DownedConfig = {
-    bleedOutSeconds: num(d, 'bleedOutSeconds', 'damage.downed', 1, 300),
+    bleedOutSeconds: num(d, 'bleedOutSeconds', 'damage.downed', 1, VITAL_TIMER_MAX_SECONDS),
     reviveSeconds: num(d, 'reviveSeconds', 'damage.downed', 0, 30),
     reviveRangeM: num(d, 'reviveRangeM', 'damage.downed', 0.1, 10),
     reviveHealthFraction: num(d, 'reviveHealthFraction', 'damage.downed', 0.01, 1),

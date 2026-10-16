@@ -12,6 +12,7 @@ import { COMPONENT_IDS, type ComponentName } from '../ecs/components.ts';
 import { ENEMY_ARCHETYPE_BITS, ENEMY_FACTION_BITS } from '../sim/enemies.ts';
 import { EMPLACEMENT_HEAT_BITS, EMPLACEMENT_KIND_BITS } from '../sim/emplacement.ts';
 import { PICKUP_AMMO_BITS, PICKUP_WEAPON_BITS } from '../sim/pickups.ts';
+import { PROGRESS_BITS, VITAL_TIMER_BITS } from '../sim/damage.ts';
 import { WEAPON_INDEX_BITS } from '../sim/weapons.ts';
 import { PROJECTILE_IDS, PROJECTILE_INDEX_BITS } from '../sim/ballistics.ts';
 import { SUPPRESSION_BITS } from '../sim/suppression.ts';
@@ -88,12 +89,14 @@ export const SCHEMAS: readonly ComponentSchema[] = [
     name: 'Health',
     // T-2.13: vitality (alive / downed / dead) and the seconds left in that
     // phase, so a HUD counts down what the server counts, not a local guess.
+    // U-181: the timer holds a whole 120 s bleed-out.
     fields: [
         uint('current', HEALTH.bits),
         uint('max', HEALTH.bits),
         uint('state', 2),
-        uint('timer', 6),
-        uint('reviveProgress', 7),
+        uint('timer', VITAL_TIMER_BITS),
+        // U-181: sixty-thirds (progressToWire), one bit fewer, which the timer took.
+        uint('reviveProgress', PROGRESS_BITS),
         uint('reviverSlot', 3),
       ],
   },
