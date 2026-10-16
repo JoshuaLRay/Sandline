@@ -1,4 +1,5 @@
-/** U-179 fixed §8.2 furnishings. No encounter, interaction or campaign activation. */
+/** U-179 fixed §8.2 furnishings, with U-180's resolved V3 gun line. No
+ * encounter, interaction or campaign activation. */
 import type { BoxSpec } from '@sandline/shared';
 
 const box = (id: string, x: number, y: number, z: number, w: number, h: number, d: number): BoxSpec =>
@@ -6,8 +7,10 @@ const box = (id: string, x: number, y: number, z: number, w: number, h: number, 
 
 export function buildOutpostFurniture(): BoxSpec[] {
   return [
-    // Original positions remain explicit until U-180 resolves the V3 gun view.
-    box('furniture-O-C01', 38, 8, 359, 6, 1.1, .8),
+    // U-180: the sandbags fill the south throat's west half, x26..32. OG1's
+    // gun at their east end fires over them through the arch toward A8, and
+    // V3 sees the gunner past that end. The east half stays a 4 m lane.
+    box('furniture-O-C01', 29, 8, 359, 6, 1.1, .8),
     box('furniture-O-C02', 30, 8, 376, 1.2, 2.2, 4),
     box('furniture-O-C03', 40, 8, 385, 5, 1.1, 1.8),
     box('furniture-O-C04', 32, 8, 400, 1.2, 2.2, 4),

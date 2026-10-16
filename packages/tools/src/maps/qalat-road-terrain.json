@@ -34,7 +34,7 @@
       { "id": "V3", "anchor": { "x": 66, "y": 26, "z": 286 }, "targets": [
         { "id": "A7 road", "x": -18, "z": 302 },
         { "id": "A8", "x": 16, "z": 332 },
-        { "id": "south-gate gun", "x": 38, "z": 360 }] },
+        { "id": "south-gate gun", "x": 31.2, "z": 360.4 }] },
       { "id": "V3-X5", "anchor": { "x": 66, "y": 26, "z": 286 }, "targets": [
         { "id": "X5 tank turret silhouette", "x": 54, "y": 11.2, "z": 334 }] }
     ]
@@ -61,6 +61,6 @@
   ],
   "temporaryCaps": [
     { "id": "south-gate", "for": "U-116", "minX": 20, "maxX": 48, "minZ": 346, "maxZ": 362, "top": 20,
-      "why": "seals the road end until the outpost exists; V3's south-gate gun ray crosses here and is blocked by the outpost's own south wall as specified" }
+      "why": "seals the road end until the outpost exists; U-180 moved V3's south-gate gun target to (31.2,8,360.4), whose ray crosses here through the outpost's south arch" }
   ]
 }

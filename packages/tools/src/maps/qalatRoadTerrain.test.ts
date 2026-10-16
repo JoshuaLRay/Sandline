@@ -26,7 +26,7 @@ const A9_BEVEL: Point[] = [
 const BAYS = [
   { id: 'V1', eye: { x: 58, y: 20 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 128 }, targets: [{ x: -4, z: 126 }, { x: 24, z: 138 }] },
   { id: 'V2', eye: { x: 88, y: 30 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 210 }, targets: [{ x: -22, z: 222 }, { x: 26, z: 232 }] },
-  { id: 'V3', eye: { x: 66, y: 26 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 286 }, targets: [{ x: -18, z: 302 }, { x: 16, z: 332 }, { x: 38, z: 360 }] },
+  { id: 'V3', eye: { x: 66, y: 26 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 286 }, targets: [{ x: -18, z: 302 }, { x: 16, z: 332 }, { x: 31.2, z: 360.4 }] },
   { id: 'V3-X5', eye: { x: 66, y: 26 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 286 }, targets: [{ x: 54, z: 334 }] },
 ];
 const MG_NEST = { x: -22, z: 222 };
