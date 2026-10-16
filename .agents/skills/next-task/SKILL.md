@@ -36,6 +36,8 @@ task-specific **procedure**; read only the one card and its relevant references.
    for a pushed WIP state and a compact task-card handoff.
 6. **Verify:** run focused tests, `pnpm verify`, and affected generators,
    simulations, asset checks or browser checks from `docs/COMMANDS.md`.
+   Use [bounded output guidance](../../../docs/AGENT-OUTPUT.md) for concise
+   logs and diffs while preserving complete local diagnostics; never skip a check.
    Visual/audio acceptance needs a reproducible artifact and an honest
    pending owner verdict, never a fabricated sign-off.
 7. **Deliver:** one PR includes ≤15-line card handoff, one CHANGELOG entry
