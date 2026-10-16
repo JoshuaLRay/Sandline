@@ -64,7 +64,7 @@ facts come from the DS1 manual and contemporary reviews (sources at the end);
 | ID | Feature | Series | Sandline | Status |
 |---|---|---|---|---|
 | CP-23 | Medikits heal self and squadmates | Yes, plentiful | Health kits (U-047); bots use them (U-053) | ✅ |
-| CP-24 | Downed, bleed-out, revive | About 2 minutes to heal a badly wounded soldier | Bleed-out 30 s, revive 3 s (`damage.json`) | ✅ tuned shorter |
+| CP-24 | Downed, bleed-out, revive | About 2 minutes to heal a badly wounded soldier | Bleed-out 120 s, revive 3 s (`damage.json`, ADR-025, U-181) | ✅ |
 | CP-25 | A death fails the mission | DS II and Vietnam; DS1 replaces him with a rookie | U-033 | ✅ |
 | CP-26 | Capture and rescue | Story only, not a system | U-061–U-064 | ⛔ owner addition |
 

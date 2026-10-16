@@ -63,6 +63,7 @@ import {
   NO_SECONDARY,
   PROJECTILE_IDS,
   WEAPON_IDS,
+  progressFromWire,
 } from '@sandline/shared';
 
 const T = COMPONENT_IDS.Transform;
@@ -1649,7 +1650,7 @@ export class NetClient {
           this.maxHealthValue = health[1] as number;
           this.vitalityValue = vitalityFromCode((health[2] as number | undefined) ?? 0);
           this.vitalTimerValue = (health[3] as number | undefined) ?? 0;
-          this.reviveProgressValue = (health[4] as number | undefined) ?? 0;
+          this.reviveProgressValue = progressFromWire((health[4] as number | undefined) ?? 0);
           const encodedReviverSlot = (health[5] as number | undefined) ?? 0;
           this.reviverSlotValue = encodedReviverSlot === 0 ? -1 : encodedReviverSlot - 1;
         }
@@ -1763,7 +1764,7 @@ export class NetClient {
       if (health) {
         this.remoteVitalities.set(entity.netId, vitalityFromCode((health[2] as number | undefined) ?? 0));
         this.noteRemoteHealth(entity.netId, health);
-        this.remoteReviveProgressValues.set(entity.netId, (health[4] as number | undefined) ?? 0);
+        this.remoteReviveProgressValues.set(entity.netId, progressFromWire((health[4] as number | undefined) ?? 0));
         const encodedReviverSlot = (health[5] as number | undefined) ?? 0;
         this.remoteReviverSlots.set(entity.netId, encodedReviverSlot === 0 ? -1 : encodedReviverSlot - 1);
       }

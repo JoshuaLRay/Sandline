@@ -559,7 +559,7 @@ describe('damage, downed, bleed-out and respawn (T-1.19, T-2.13)', () => {
   it('a full health bar of shots on a downed body finishes them early', () => {
     const range = shootTheNeighbour();
     for (let i = 0; i < SHOTS_TO_DOWN; i += 1) range.fire();
-    // One more bar's worth cuts the whole bleed-out: dead now, not in 30 s.
+    // One more bar's worth cuts the whole bleed-out: dead now, not in two minutes.
     for (let i = 0; i < SHOTS_TO_DOWN; i += 1) range.fire('lying');
     // Respawned after only the respawn delay from HERE, and immune for the
     // first seconds on their feet.

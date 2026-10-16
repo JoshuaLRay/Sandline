@@ -40,6 +40,7 @@ different choice.
 | [019](019-persistence.md) | Campaign progress lives on the host: per-campaign squads, anonymous IDs, SQLite on a Fly volume | Accepted · 1 addendum |
 | [020](020-setting.md) | The setting: Afghanistan, winter 2001–2002, US infantry in desert camouflage | Accepted |
 | [021](021-conflict-gameplay-reference.md) | The Conflict series is the gameplay reference; unspecified details default to it, adapted to six | Accepted |
+| [025](025-bleed-out-two-minutes.md) | A downed soldier bleeds out over two minutes (120 s, replicated whole) | Accepted |
 
 ## Template
 

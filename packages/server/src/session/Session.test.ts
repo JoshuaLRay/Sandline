@@ -24,6 +24,7 @@ import {
   createWeaponState,
   encodeMessage,
   getWeapon,
+  progressFromWire,
 } from '@sandline/shared';
 import { MAX_INPUT_REPEAT, Session } from './Session.ts';
 
@@ -416,7 +417,7 @@ describe('Session revive interaction (T-2.15)', () => {
 
     expect(targetSlot.reviveBySlot).toBe(reviverSlot.index);
     expect(targetSlot.reviveProgressSeconds).toBeGreaterThan(1.4);
-    expect(target.snapshots.at(-1)?.entities.find((e) => e.netId === targetSlot.netId)?.components[2]?.[4]).toBeGreaterThan(45);
+    expect(progressFromWire(target.snapshots.at(-1)?.entities.find((e) => e.netId === targetSlot.netId)?.components[2]?.[4] ?? 0)).toBeGreaterThan(45);
 
     // Keep holding through the configured 3-second interaction.
     const completionTicks = Math.ceil(DAMAGE.downed.reviveSeconds / (1 / 30));
