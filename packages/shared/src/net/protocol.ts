@@ -23,7 +23,7 @@ import type { SupplyCacheDef, SupplyItem, SupplyUseProgress } from '../sim/suppl
 import { readCommanderSupplySelect, readSupplies, readSupplyProgress, readSupplySelect, writeCommanderSupplySelect, writeSupplies, writeSupplyProgress, writeSupplySelect } from './supplyWire.ts';
 
 /** Bump whenever the schema, quantization, or message layout changes. */
-export const PROTOCOL_VERSION = 72;
+export const PROTOCOL_VERSION = 74;
 
 /** U-143: every client presents the same incompatible-map decision. */
 export const RESTORE_MAP_CHANGED_MESSAGE = 'This mission map has changed. Restart the mission to continue.';
@@ -46,8 +46,13 @@ export const INPUT_BUTTONS = Object.freeze({
   prone: 0b100000,
   /** U-029: G puts the held gun on the ground. Carried on the one input frame it was pressed on. */
   drop: 0b1000000,
-  /** U-046: right click held with a thrown item in hand; a press (up to down) pulls the pin and starts the fuse. */
+  /**
+   * U-046: right click held with a thrown item in hand; a press (up to down) pulls the pin and starts the fuse.
+   * U-182: with placed charges in hand the same press sets off the oldest one the soldier has out.
+   */
   cook: 0b10000000,
+  /** U-182: R held with placed charges in hand; a press sets off every one of that kind the soldier has out. */
+  detonateAll: 0b100000000,
 });
 
 /**

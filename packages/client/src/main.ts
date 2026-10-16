@@ -161,6 +161,7 @@ import { createSoundBoard } from './ui/SoundBoard.ts';
 import { showVoiceSubmission } from './ui/VoiceSubmission.ts';
 import { QUALITY, type Settings, browserStore, loadSettings, saveSettings } from './ui/menu/settings.ts';
 import { createHud } from './ui/hud/Hud.ts';
+import { chargeHint } from './ui/hud/chargeHint.ts';
 import {
   type CompassMarkerInput,
   type DamageHit,
@@ -705,6 +706,9 @@ function equipPouch(index: number): void {
   holdingPouch = true;
   holdingKit = false;
   pouchTrigger.cancel();
+  // U-182: drawing charges says how to set them off.
+  const hint = chargeHint(throws.def, localLoadout?.throwsPlaced ?? true);
+  if (hint) playerHud.notify(hint);
 }
 
 /** The weapon in hand in first person, drawn over the world. */
@@ -2405,9 +2409,12 @@ function frame(): void {
     const beforeStep = net.simulated;
     // U-046: right click with a grenade (a thrown item) in hand pulls the pin; the host starts the fuse on the press.
     const cooking = holdingPouch && throws.def.kind === 'thrown' && throws.def.fuseSeconds > 0 && input.rightHeld && net.vitality === 'alive';
-    // U-054: right click with C4 in hand is the detonator, the same press on the same input.
-    const detonating = holdingPouch && throws.def.kind === 'placed' && input.rightHeld && net.vitality === 'alive';
+    // U-054, U-182: with C4 in hand right click sets off the oldest charge out, the same press on the same input;
+    // R sets them all off. With a gun in hand R stays reload (the keydown handler), so it is dropped here.
+    const charges = holdingPouch && throws.def.kind === 'placed' && net.vitality === 'alive';
+    const detonating = charges && input.rightHeld;
     tickInput.cook = cooking || detonating;
+    tickInput.detonateAll = charges && tickInput.detonateAll === true;
     // U-050: the same multiple the host applies to this character (predicted, replayed, reconciled with it).
     tickInput.speedScale = localLoadout?.speedScale ?? 1;
     if (cooking && !cookWasHeld && cookStartedAt === null && throws.count() > 0) {
@@ -3402,7 +3409,8 @@ addEventListener('keydown', (e) => {
   // LocalInput owns Tab's scoreboard hold and temporary pointer release.
   // R is reload, not reset: this is a shooter now and R is muscle memory.
   // Reset moved to T.
-  // Nothing to reload with a grenade or a launcher in hand.
+  // Nothing to reload with a grenade or a launcher in hand. U-182: with C4 in hand R is the detonator for every
+  // charge out instead (sampled with the tick's input).
   if (e.code === 'KeyR' && !holdingPouch) combat.requestReload(clock.tick * TICK_SECONDS);
   // T resets the local readouts only. Position is authoritative now, so
   // teleporting to spawn needs a server-side respawn — that is T-1.19.

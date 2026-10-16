@@ -24,6 +24,7 @@ import {
   zoneAt,
   zoneDamage,
   applyKit,
+  VITAL_TIMER_MAX_SECONDS,
 } from './damage.ts';
 
 /**
@@ -334,6 +335,19 @@ describe('damage data', () => {
     expect(() => parseDamageConfig(noDowned)).toThrow(/damage\.downed/);
     expect(() => parseDamageConfig({ ...CONFIG, downed: { ...CONFIG.downed, reviveHealthFraction: 0 } })).toThrow(/reviveHealthFraction/);
     expect(() => parseDamageConfig({ ...CONFIG, downed: { ...CONFIG.downed, bleedOutSeconds: 0 } })).toThrow(/bleedOutSeconds/);
+    // U-181: no longer than the replicated timer can count down.
+    expect(() => parseDamageConfig({ ...CONFIG, downed: { ...CONFIG.downed, bleedOutSeconds: VITAL_TIMER_MAX_SECONDS + 1 } })).toThrow(/bleedOutSeconds/);
+  });
+
+  it('bleeds out over two minutes, the owner-approved window for a revive or a capture (U-181, ADR-025)', () => {
+    expect(DAMAGE.downed.bleedOutSeconds).toBe(120);
+    const h = createHealth();
+    expect(applyDamage(h, h.max, 10)).toMatchObject({ downed: true, killed: false });
+    expect(bleedOutRemaining(h, 10)).toBe(120);
+    expect(bleedOutRemaining(h, 100)).toBe(30);
+    expect(expireBleedOut(h, 129.9)).toBe(false);
+    expect(expireBleedOut(h, 130)).toBe(true);
+    expect(h.diedAt).toBe(130);
   });
 
   it('rejects a capture block that is missing or out of range (U-062)', () => {

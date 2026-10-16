@@ -60,8 +60,8 @@ canonical when this documentation PR merges.
 The owner set new direction ([ADR-022](docs/adr/022-conflict-reference-scope.md)
 reference scope, [ADR-023](docs/adr/023-flexible-mission-routes.md) flexible
 maps, [ADR-024](docs/adr/024-equipment-freedom-and-loot.md) equipment freedom
-and loot) and approved two changes for implementation now (U-181 bleed-out,
-U-182 C4 detonators). The new rows below U-117 keep the Mission 1 stream first
+and loot) and approved two changes that are now implemented (U-181 bleed-out,
+#349; U-182 C4 detonators, #350). The new rows below U-117 keep the Mission 1 stream first
 and add command reliability, stealth, armour and map tooling as interleaved
 READY work; loot implementation waits for the owner's design session (U-184).
 Decisions with defaults are in the rows; the owner can reply "agree".
@@ -110,6 +110,8 @@ Decisions with defaults are in the rows; the owner can reply "agree".
 | [U-176](docs/backlog/U-176.md) | Furnish the outpost and prove its combat, patrol and supply clearances | Map implementation | P1 | BLOCKED | Aggregate: U-179 DONE; U-180 READY for combat/patrol/supply, V3 and west-entry turn proofs | — |
 | [U-179](docs/backlog/U-179.md) | Build fixed outpost furniture, water tower and radio/cell cues | Map implementation | P1 | DONE | Fixed furnishings, six holdings/landing, isolation and 25 outpost proofs verified; full tactical clearance remains U-180; human quality U-119 | [#347](https://github.com/JoshuaLRay/Sandline/pull/347) |
 | [U-180](docs/backlog/U-180.md) | Resolve V3 gun view and prove outpost combat, patrol and supply clearances | Map implementation | P1 | READY | U-179 DONE; second U-176 leaf; resolve V3 and inherited west-entry turn; update canonical tables and sight/path proofs | — |
+| [U-181](docs/backlog/U-181.md) | A downed soldier bleeds out over two minutes (120 s) | Every soldier matters | P1 | DONE | — (owner-approved 2026-10-16, ADR-025) | [#349](https://github.com/JoshuaLRay/Sandline/pull/349) |
+| [U-182](docs/backlog/U-182.md) | C4: right click sets off the oldest charge, R sets off all | Weapons and equipment | P1 | DONE | — (owner-approved 2026-10-16, ADR-026) | [#350](https://github.com/JoshuaLRay/Sandline/pull/350) |
 | [U-177](docs/backlog/U-177.md) | Prove outpost traversal and real captive/escort tank shelters | Map implementation | P1 | BLOCKED | U-176; actual Session projectile/blast and seven-actor proofs | — |
 | [U-117](docs/backlog/U-117.md) | Integrate redesigned Mission 1 combat, supplies and objectives | Map implementation | P1 | BLOCKED | U-111, U-112, U-113, U-116 | — |
 | [U-196](docs/backlog/U-196.md) | Bots keep their orders through switches, leaves and cache runs | Squad command reliability | P1 | READY | — (Conflict default; CP-14) | — |
@@ -119,7 +121,7 @@ Decisions with defaults are in the rows; the owner can reply "agree".
 | [U-219](docs/backlog/U-219.md) | Per-map approach graph checks (flexible map topology) | Map design standards | P2 | READY | — (ADR-023) | — |
 | [U-214](docs/backlog/U-214.md) | Armour hit feedback: impacts, damage stages, destruction and sound | Armour and vehicles | P2 | READY | — (look/listen verdict batched in U-119) | — |
 | [U-203](docs/backlog/U-203.md) | Squad command reliability (epic and solo-play verification) | Squad command reliability | P1 | BLOCKED | Aggregate: U-196, U-174, U-197, U-198 first, then U-201, U-200, U-202; owner solo playtest | — |
-| [U-198](docs/backlog/U-198.md) | Order a soldier to plant charges and to set them off | Squad command reliability | P1 | BLOCKED | U-182; Decision: how to give plant/detonate orders — default: an equipment ring on the order wheel | — |
+| [U-198](docs/backlog/U-198.md) | Order a soldier to plant charges and to set them off | Squad command reliability | P1 | BLOCKED | Decision: how to give plant/detonate orders — default: an equipment ring on the order wheel (U-182 DONE) | — |
 | [U-201](docs/backlog/U-201.md) | Friendly bots lay suppressive fire on an attack order | Squad command reliability | P2 | BLOCKED | Decision: lift U-087's deferral for suppressive fire only? — default: yes, suppression on orders only | — |
 | [U-202](docs/backlog/U-202.md) | Synchronised orders: plan several moves and release them together | Squad command reliability | P2 | BLOCKED | U-196, U-197, U-198; Decision: when to build — default: after command reliability | — |
 | [U-199](docs/backlog/U-199.md) | Finite reserve ammunition and giving ammo to a squadmate | Weapons and equipment | P1 | BLOCKED | Decision (L-16): reserve sizes before the loot session? — default: fixed spare magazines per family now, data-tunable | — |

@@ -15,6 +15,7 @@ import {
   createLoopbackPair,
   decodeMessage,
   encodeMessage,
+  DAMAGE,
 } from '@sandline/shared';
 import { Session, type SessionOptions } from './Session.ts';
 
@@ -208,8 +209,8 @@ describe('bot commanders (U-025)', () => {
     a.leave();
     expect(r.session.paused).toBe(true);
     expect(r.commanders()).toEqual([-1, -1, -1, -1, -1, -1]);
-    // A long time with nobody here: longer than any bleed-out.
-    r.step(30 * 120);
+    // A long time with nobody here: longer than any bleed-out (U-181: two minutes now).
+    r.step(30 * (DAMAGE.downed.bleedOutSeconds + 30));
     expect(r.session.tick).toBe(tick);
     expect(walker.state).toEqual(where);
     expect(downed.health.diedAt).toBeNull();

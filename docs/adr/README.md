@@ -43,6 +43,8 @@ different choice.
 | [022](022-conflict-reference-scope.md) | Active Conflict references: Desert Storm, Desert Storm II (primary), Global Storm (selective) | Accepted |
 | [023](023-flexible-mission-routes.md) | Missions offer varied approaches; three separated lanes are a guideline, not a rule | Accepted |
 | [024](024-equipment-freedom-and-loot.md) | Equipment freedom and loot-driven progression (direction; mechanics pending the loot design session) | Accepted |
+| [025](025-bleed-out-two-minutes.md) | A downed soldier bleeds out over two minutes (120 s, replicated whole) | Accepted |
+| [026](026-c4-detonation-controls.md) | C4: right click sets off the oldest charge, R sets off all | Accepted |
 
 ## Template
 

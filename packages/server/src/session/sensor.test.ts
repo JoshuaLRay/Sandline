@@ -13,7 +13,7 @@ const DOWN_45 = degToAngle(-45) & 0xfff;
 
 interface Internals {
   placeCharge(slot: Slot, projectile: number, yaw: number, pitch: number): boolean;
-  detonateCharges(slot: Slot, kind: number): void;
+  detonateAllCharges(slot: Slot, kind: number): void;
   takeOwnCharge(slot: Slot): boolean;
   detonate(p: unknown, at: { x: number; y: number; z: number }): void;
   projectiles: { kind: number; stuck?: boolean; def: { maxLifeSeconds: number }; state: { x: number; y: number; z: number; age: number } }[];
@@ -117,7 +117,7 @@ describe('the motion sensor (U-057)', () => {
 
   it('right click does not set it off, and it expires at 90 s', () => {
     const { x, vance, sensor, run } = scene();
-    x.detonateCharges(vance, SENSOR);
+    x.detonateAllCharges(vance, SENSOR);
     expect(x.projectiles).toHaveLength(1);
     sensor.state.age = sensor.def.maxLifeSeconds - TICK_SECONDS / 2;
     run(2);
