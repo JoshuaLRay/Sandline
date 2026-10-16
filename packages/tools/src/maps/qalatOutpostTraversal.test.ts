@@ -210,7 +210,7 @@ describe('U-221 furnished outpost joins with six Session soldiers and an escorte
               // gate. A commander stages each soldier on a distinct exterior
               // stand with normal wire orders; no body is moved by the test.
               console.log('U-221 ordinary side-pad staging', JSON.stringify({ join: join.id, spread, initialDestinations }));
-              const powGoal = join.id === 'west' ? at(5.5, 376.7) : at(59.5, 371.2);
+              const powGoal = join.id === 'west' ? at(5.5, 376.7) : at(60.2, 374.5);
               send({ kind: 'Order', order: 'move', address: { to: 'all' }, point: powGoal, target: null });
               const stands = join.id === 'west' ? [at(4.7, 373), at(6.2, 373), at(4.7, 374.5), at(6.2, 374.5), at(2, 375), at(3.5, 375)]
                 : [at(58, 372.5), at(59.5, 372.5), at(58, 374), at(59.5, 374), at(58, 375.5), at(59.5, 375.5)];
