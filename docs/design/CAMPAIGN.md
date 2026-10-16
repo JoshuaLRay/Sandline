@@ -100,6 +100,11 @@ mission is Mission 1 again. The host's next-mission choice cannot bypass this
 required rescue return. The stated new trigger is successful completion; this
 addendum does not introduce a new trigger on failure or abandonment.
 
+Mission 1 retains its mandatory rescue and **all seven standing at extraction**:
+all six squad characters and the original POW must be recovered. The repeated-
+return rule is a routing guard whenever a successful completion actually reports
+a nonempty active pool; it does not relax those rescue/extraction conditions.
+
 The cell holds **six captives total**: the original Mission 1 POW and up to five
 captured squad members. Campaign and replay prisoner pools remain separate;
 the return uses the pool and run kind that triggered it and cannot free or

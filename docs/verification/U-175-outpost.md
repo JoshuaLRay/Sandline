@@ -1,6 +1,6 @@
 # U-175 — Outpost shell engineering evidence
 
-Draft [#346](https://github.com/JoshuaLRay/Sandline/pull/346) constructs the
+[#346](https://github.com/JoshuaLRay/Sandline/pull/346) constructs the
 isolated shell on the completed U-173 depot/surface. The active campaign remains
 unchanged; U-117 activates the replacement and U-119 owns human quality acceptance.
 
@@ -62,7 +62,17 @@ was removed across its full prescribed eight metres.
 - A pre-authorization `pnpm verify` run reported the original exact-antechamber
   failure, then was superseded/stopped after the owner approved changed dimensions
   and six capacity; it is not a completed verification result.
-- Final approved-head `pnpm verify` and all four latest-head CI jobs remain pending.
+- The approved local full run was interrupted by the environment restart; no
+  completed local full-suite result is claimed.
+- Full `pnpm verify`, asset/pack budgets, mission simulations, non-V8 parity and
+  streaming all pass in [CI run 38823159934](https://github.com/JoshuaLRay/Sandline/actions/runs/38823159934)
+  on implementation head `a3baf02a85a3d5db07663d7b7272a96f718ea48e`.
+  The verify job explicitly ran `pnpm verify`, `check:assets` and `check:packs`.
+  Streaming also passed both load-time budgets, all construction captures and
+  `perf:frame`. All four jobs must pass again on the final documentation commit
+  before merge; the PR checks retain that final run and exact head.
+- Complete focused suite on the approved implementation: **19/19 tests** in two
+  files, 65.68 s, including the regenerated six-capacity manifest/capture checks.
 
 The compact [manifest](../../artifacts/qalat-outpost/construction.json),
 [plan](../../artifacts/qalat-outpost/plan.svg) and
