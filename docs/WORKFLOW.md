@@ -83,6 +83,14 @@ supply, and the queue says so instead of guessing:
 - **One focused task per PR**, its evidence in its card, one line in
   `docs/CHANGELOG.md`.
 
+## Output and measurement
+
+For noisy verification, `pnpm agent:run -- pnpm verify` preserves all logs locally
+but shows a short result. Review diffs by changed file before fetching full
+patches, and report CI jobs on their exact current SHA. The on-demand
+[agent output and measurement guide](AGENT-OUTPUT.md) defines these conventions
+and explicitly distinguishes observed document bytes from unmeasured tokens.
+
 ## Codex specifics
 
 [docs/CODEX.md](CODEX.md) has the environment setup. Codex cloud tasks may not

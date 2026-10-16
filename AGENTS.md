@@ -98,3 +98,5 @@ or playtest sheets. For uncommon traps/terms see the optional
 
 Node ≥22, pnpm 10.33.0. `pnpm verify` is mandatory. Commands and special
 QA steps are in [COMMANDS](docs/COMMANDS.md), read on demand.
+For bounded log/diff/CI output and honest context measurement, consult
+[agent output guidance](docs/AGENT-OUTPUT.md) when executing or reporting work.
