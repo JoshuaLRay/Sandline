@@ -33,9 +33,13 @@ import { VoiceReview } from './voice/review.ts';
 
 const config = loadConfig();
 const intakeSettings = [process.env['VOICE_INTAKE_DIR'], process.env['VOICE_SITE_ORIGIN']];
-if (intakeSettings.some(Boolean) && !intakeSettings.every(Boolean)) throw new Error('Set VOICE_INTAKE_DIR and VOICE_SITE_ORIGIN together');
+const voiceExtraOrigins = process.env['VOICE_EXTRA_ORIGINS'];
+if ((intakeSettings.some(Boolean) || voiceExtraOrigins) && !intakeSettings.every(Boolean)) {
+  throw new Error('Set VOICE_INTAKE_DIR and VOICE_SITE_ORIGIN together before VOICE_EXTRA_ORIGINS');
+}
 const voiceIntake = process.env['VOICE_INTAKE_DIR'] && process.env['VOICE_SITE_ORIGIN']
   ? new VoiceIntake({ dir: process.env['VOICE_INTAKE_DIR'], inviteKey: 'JRay', origin: process.env['VOICE_SITE_ORIGIN'],
+    ...(voiceExtraOrigins ? { extraOrigins: voiceExtraOrigins.split(',').map((origin) => origin.trim()) } : {}),
     ...(process.env['VOICE_GITHUB_DISPATCH_TOKEN'] ? { onFinished: githubVoiceNotification(process.env['VOICE_GITHUB_DISPATCH_TOKEN']) } : {}),
   }) : undefined;
 const reviewSettings = [process.env['VOICE_REVIEW_ORIGIN'], process.env['VOICE_GITHUB_CLIENT_ID'], process.env['VOICE_GITHUB_CLIENT_SECRET']];
