@@ -1,4 +1,4 @@
-/** Reproduce U-179’s isolated furnished prisoner outpost and screened reserve annex. */
+/** Reproduce U-180's resolved, furnished prisoner outpost and screened reserve annex. */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buildOutpostLevel, outpostManifest, outpostPlanSvg } from './maps/qalatOutpost.ts';
 import { insertionSurface } from './maps/insertionSurface.ts';
@@ -11,4 +11,4 @@ await writeFile(new URL('surface.json', output), JSON.stringify({ levelHash: man
   ...insertionSurface([...level.boxes, ...manifest.decorations]) }) + '\n');
 await writeFile(new URL('construction.json', output), JSON.stringify(manifest, null, 2) + '\n');
 await writeFile(new URL('plan.svg', output), outpostPlanSvg());
-console.log(`U-179: isolated prisoner outpost, all three player gates and screened reserve annex (${level.boxes.length} collision boxes)`);
+console.log(`U-180: isolated prisoner outpost, all three player gates and screened reserve annex (${level.boxes.length} collision boxes)`);

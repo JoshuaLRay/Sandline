@@ -1,4 +1,5 @@
 /** U-175: isolated outpost shell, wrapping the accepted U-173 depot unchanged.
+ * U-179 furnishes it; U-180 adds the V3 gun line and the west door's reveal.
  * The only inherited replacements are bounded courtyard/gate and tower voids;
  * supporting material below y8 and all exterior routes remain intact. */
 import { createHash } from 'node:crypto';
@@ -74,7 +75,10 @@ export function buildOutpostShell(): BoxSpec[] {
     perimeter = carve(perimeter, [opening]);
     if (g.width < g.archWidth) {
       const infill = box(`outpost-${g.id}-arch-infill`, aperture(g, g.archWidth, C.wallM), F, g.ceiling);
-      perimeter.push(...carve([infill], [{ ...aperture(g, g.width, C.wallM), minY: F, maxY: F + 3 }]));
+      // U-180: only the west door needs its inner reveal to turn a 4 m band
+      // past the refuge corner; the door keeps 4 m at the outer face.
+      const reveal = g.id === 'west' ? [D.westReveal.cut] : [];
+      perimeter.push(...carve([infill], [{ ...aperture(g, g.width, C.wallM), minY: F, maxY: F + 3 }, ...reveal]));
     }
   }
   const rooms = D.rooms.filter((r) => r.id !== 'reserve').flatMap((r) => {
@@ -112,15 +116,15 @@ export function buildOutpostLevel() {
 export function buildOutpostWorld() { return loadLevel(buildOutpostLevel()); }
 export function outpostManifest() {
   const level = buildOutpostLevel(), decorations = outpostDecorations();
-  return { task: 'U-179', parent: 'U-176', kind: 'isolated furnished outpost and sealed screened reserve annex',
+  return { task: 'U-180', parent: 'U-176', kind: 'isolated furnished outpost and sealed screened reserve annex',
     sourceHash: createHash('sha256').update(JSON.stringify({ shell: D, furniture: buildOutpostFurniture(), decorations })).digest('hex'),
     levelHash: createHash('sha256').update(JSON.stringify(level)).digest('hex'),
     renderHash: createHash('sha256').update(JSON.stringify([...level.boxes, ...decorations])).digest('hex'),
     boxCount: level.boxes.length, shellBoxCount: buildOutpostShell().length, furniture: buildOutpostFurniture(), courtyard: C, gates: D.gates,
-    rooms: D.rooms, doors: outpostDoors(), windows: D.windows, reserve: D.reserve, sharedDivider: D.sharedDivider, eastJoin: D.eastJoin, holding: D.holding,
+    rooms: D.rooms, doors: outpostDoors(), windows: D.windows, reserve: D.reserve, sharedDivider: D.sharedDivider, eastJoin: D.eastJoin, westReveal: D.westReveal, southGateGun: D.southGateGun, holding: D.holding,
     carveVoids: outpostCarveVoids().map((c) => ({ ...c, maxY: Number.isFinite(c.maxY) ? c.maxY : 'sky' })), decorations,
     activeCampaign: 'unchanged; activation U-117', humanVerdict: 'whole-mission acceptance U-119',
-    engineeringEvidence: 'docs/verification/U-179-outpost.md', unfinished: ['U-180 V3 gun view and complete combat/patrol/supply proofs', 'U-177 real captive/escort tank and blast shelter proofs'] };
+    engineeringEvidence: 'docs/verification/U-180-outpost.md', unfinished: ['U-177 real captive/escort tank and blast shelter proofs'] };
 }
 export function outpostPlanSvg() {
   const floors = outpostFloors().map((p) => `<polygon points="${p.map((v) => `${v.x},${-v.z}`).join(' ')}"/>`).join('');

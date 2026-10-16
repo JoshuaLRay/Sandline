@@ -23,7 +23,7 @@ const LANDINGS = Object.entries({
 const BAYS = [
   { id: 'V1', y: 20, x: 58, z: 128, targets: [{ x: -4, y: 8, z: 126 }, { x: 24, y: 8, z: 138 }] },
   { id: 'V2', y: 30, x: 88, z: 210, targets: [{ x: -22, y: 8, z: 222 }, { x: 26, y: 8, z: 232 }] },
-  { id: 'V3', y: 26, x: 66, z: 286, targets: [{ x: -18, y: 8, z: 302 }, { x: 16, y: 8, z: 332 }, { x: 38, y: 8, z: 360 }] },
+  { id: 'V3', y: 26, x: 66, z: 286, targets: [{ x: -18, y: 8, z: 302 }, { x: 16, y: 8, z: 332 }, { x: 31.2, y: 8, z: 360.4 }] },
   { id: 'V3-X5', y: 26, x: 66, z: 286, targets: [{ x: 54, y: 11.2, z: 334 }] },
 ];
 // Independent local R6 clearance bevel; exact stairs/nodes remain unchanged.

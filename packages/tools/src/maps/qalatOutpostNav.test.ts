@@ -47,6 +47,46 @@ const nearby = (p: Point) => {
 };
 const yieldWorker = () => new Promise<void>((resolve) => setImmediate(resolve));
 let nav: NavMesh;
+// U-180 independent §9.1/9.3/12 tactical points and §9.2's OG6 patrol, with
+// the cell and refuge every hostile must avoid.
+const GARRISON = [['OG1', 31.5, 361], ['OG2', 18, 368], ['OG3', 48, 378], ['OG4', 18, 390],
+  ['OG5', 28, 402], ['OG6', 36, 386], ['OR1', 50, 402]] as const;
+const RELEASES = [['C1', [28, 440], [30, 404]], ['C2', [32, 440], [38, 404]],
+  ['C3', [36, 440], [28, 388]], ['C4', [32, 444], [44, 388]]] as const;
+const OG6 = [[36, 386], [36, 376], [28, 384], [36, 376], [36, 386]] as const;
+const CACHE_USE = [15.6, 380] as const;
+const inCell = (p: Point) => within(p, 10, 22, 396, 410);
+const inRefuge = (p: Point) => within(p, 10, 22, 376, 384);
+const hostile = (p: Point) => onFloor(p) && !inCell(p) && !inRefuge(p);
+
+/** Plan each leg on the live bake and follow it with the real controller. */
+async function travel(stops: readonly (readonly number[])[], label: string, allowed: (p: Point) => boolean) {
+  const points = stops.map(point), first = points[0]!;
+  let state = { ...createMoveState(first.x, 8, first.z), grounded: true }, ticks = 0;
+  const follower = new PathFollower(nav, world.boxes);
+  for (const goal of points.slice(1)) {
+    const path = nav.path(state, goal), leg = `${label} → ${JSON.stringify(goal)}`;
+    expect(completePathLength(path, state, goal), leg).not.toBeNull();
+    expect(path!.vaults, leg).toEqual([]);
+    expect(path!.points.every(allowed), `${leg}: planned outside its region`).toBe(true);
+    let arrived = false;
+    for (let tick = 0; tick < 1_500; tick++) {
+      const { input, status } = follower.step(state, { goal, pace: 'walk' }, 0);
+      expect(input.jump, leg).toBe(false);
+      if (status === 'arrived') { arrived = true; break; }
+      state = stepCharacter(state, input, TICK_SECONDS, DEFAULT_MOVE_CONFIG, nearby(state));
+      expect(state.y, `${leg}: left y8`).toBeCloseTo(8, 6);
+      expect(state.vault, leg).toBeNull();
+      expect(state.crouched || state.prone, leg).toBe(false);
+      expect(allowed(state), `${leg}: walked outside its region at ${JSON.stringify(state)}`).toBe(true);
+      expect(blockedAt(state.x, state.z, DEFAULT_MOVE_CONFIG.radius, state.y, .05,
+        DEFAULT_MOVE_CONFIG.height, nearby(state)), `${leg}: inside solid`).toBe(false);
+      if (++ticks % 256 === 0) await yieldWorker();
+    }
+    expect(arrived, `${leg}: stalled at ${JSON.stringify(state)}`).toBe(true);
+  }
+  return ticks;
+}
 
 describe('U-175 outpost on the actual complete tiled standing bake', () => {
   beforeAll(async () => {
@@ -182,6 +222,44 @@ describe('U-175 outpost on the actual complete tiled standing bake', () => {
       expect(arrived, `stalled final ridge leg at ${JSON.stringify(state)}`).toBe(true);
       expect(state.y).toBeCloseTo(goal!.y, 6);
     }
+  }, 120_000);
+
+  it('projects every U-180 garrison, radio, reserve, release, patrol and supply point onto its actual y8 floor', () => {
+    const points = [...GARRISON.map(([, x, z]) => [x, z]), ...RELEASES.flatMap(([, from, to]) => [from, to]), ...OG6, CACHE_USE];
+    for (const at of points) {
+      const goal = point(at), projected = nav.nearestPoint(goal)?.point;
+      expect(projected, JSON.stringify(goal)).toBeDefined();
+      expect(Math.hypot(projected!.x - goal.x, projected!.z - goal.z), `lost floor ${JSON.stringify(goal)}`).toBeLessThan(.1);
+      expect(Math.abs(projected!.y - 8), `wrong storey ${JSON.stringify(goal)}`).toBeLessThanOrEqual(.05002);
+    }
+  });
+
+  it('walks the court to every garrison and radio socket and back without entering the cell or refuge', async () => {
+    let ticks = 0;
+    for (const [id, x, z] of GARRISON) ticks += await travel([[COURT.x, COURT.z], [x, z], [COURT.x, COURT.z]], `U-180 ${id}`, hostile);
+    console.log('U-180 garrison socket controller', JSON.stringify({ sockets: GARRISON.length, ticks, seconds: ticks * TICK_SECONDS }));
+  }, 120_000);
+
+  it('releases each staged reserve through the screened bends to its listed target, outside the cell and refuge', async () => {
+    let ticks = 0;
+    for (const [id, from, to] of RELEASES) {
+      ticks += await travel([from, [32, 434], [32, 412], to], `U-180 ${id} release`, hostile);
+      expect(nav.path(point(from), point(to))!.points.some((p) => p.z > 412 && p.z < 434), `${id} skipped the annex`).toBe(true);
+    }
+    console.log('U-180 reserve release controller', JSON.stringify({ reserves: RELEASES.length, ticks, seconds: ticks * TICK_SECONDS }));
+  }, 120_000);
+
+  it('patrols OG6’s listed legs both ways on the live bake inside the court, never the cell or refuge', async () => {
+    const court = (p: Point) => within(p, 8, 56, 356, 412) && !inCell(p) && !inRefuge(p);
+    const ticks = await travel(OG6, 'U-180 OG6 patrol', court);
+    console.log('U-180 OG6 patrol controller', JSON.stringify({ legs: OG6.length - 1, ticks, seconds: ticks * TICK_SECONDS }));
+  }, 120_000);
+
+  it('reaches P-OUTPOST’s refuge use stand from all three approaches and returns', async () => {
+    let ticks = 0;
+    for (const [id, from] of [['south', [32, 350]], ['west', [5, 374]], ['east', [59, 374]]] as const)
+      ticks += await travel([from, CACHE_USE, from], `U-180 P-OUTPOST ${id}`, (p) => onFloor(p) && !inCell(p));
+    console.log('U-180 P-OUTPOST access controller', JSON.stringify({ approaches: 3, ticks, seconds: ticks * TICK_SECONDS }));
   }, 120_000);
 
   it('uses the north gate as the reserve annex sole connection and excludes a fourth approach to X', () => {

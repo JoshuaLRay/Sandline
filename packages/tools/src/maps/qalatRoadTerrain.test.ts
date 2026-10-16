@@ -26,7 +26,7 @@ const A9_BEVEL: Point[] = [
 const BAYS = [
   { id: 'V1', eye: { x: 58, y: 20 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 128 }, targets: [{ x: -4, z: 126 }, { x: 24, z: 138 }] },
   { id: 'V2', eye: { x: 88, y: 30 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 210 }, targets: [{ x: -22, z: 222 }, { x: 26, z: 232 }] },
-  { id: 'V3', eye: { x: 66, y: 26 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 286 }, targets: [{ x: -18, z: 302 }, { x: 16, z: 332 }, { x: 38, z: 360 }] },
+  { id: 'V3', eye: { x: 66, y: 26 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 286 }, targets: [{ x: -18, z: 302 }, { x: 16, z: 332 }, { x: 31.2, z: 360.4 }] },
   { id: 'V3-X5', eye: { x: 66, y: 26 + DEFAULT_MUZZLE_RIG.eyeHeight, z: 286 }, targets: [{ x: 54, z: 334 }] },
 ];
 const MG_NEST = { x: -22, z: 222 };
@@ -260,7 +260,8 @@ describe('U-160 road-facing rock on the bent road', () => {
       else expect(rayWorld(view, permanentScene), `${bay.id} → ${JSON.stringify(t)}`).toBeNull();
     }
     // U-168 opens C12-L's cap, retaining the V1 eastern road-wall ray.
-    expect(crossings).toEqual(['V3→38,360']);
+    // U-180 retargets V3's gun to (31.2,360.4); only the temporary gate cap crosses it.
+    expect(crossings).toEqual(['V3→31.2,360.4']);
     expect(rayWorld(between(BAYS[1]!.eye, { x: -23, y: 9.8, z: 222.8 }), permanentScene), 'V2 sees the actual frontage MG head').toBeNull();
     const clearances = rayClearances(level.boxes);
     expect(clearances.map((r) => r.blockedOnlyByTemporaryCaps)).toEqual([[], [], [], [], [], [], ['south-gate'], []]);

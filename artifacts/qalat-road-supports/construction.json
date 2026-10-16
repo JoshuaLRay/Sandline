@@ -7,9 +7,9 @@
   "road": "U-139",
   "kind": "isolated surface whitebox: road fights, screened tank ingress, D0 return store and furnished ridge with support bays, service bridge and C12-L/C12-U stairs",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "2d9c68fe6305f2d673f81418d0c49784013d2add1b55a81868344808abf1e9b9",
-  "levelHash": "5805fb10202ac4f31228825d67887798cdad929b4a752172e775347e4d0f0e7a",
-  "boxCount": 94342,
+  "sourceHash": "33af31340d2463d1f103ba72813d8d9e634ec2fbf0634ab4dd9fd276ab29fac6",
+  "levelHash": "a4b3c2409c33a64252b6fb04d4f440a29904cbb2f602f98fff9572403aef3f3f",
+  "boxCount": 94215,
   "stratumM": 0.025,
   "edgeExpansionM": 0.005,
   "circleSides": 512,
@@ -369,8 +369,8 @@
             },
             {
               "id": "south-gate gun",
-              "x": 38,
-              "z": 360
+              "x": 31.2,
+              "z": 360.4
             }
           ]
         },
@@ -471,7 +471,7 @@
         "minZ": 346,
         "maxZ": 362,
         "top": 20,
-        "why": "seals the road end until the outpost exists; V3's south-gate gun ray crosses here and is blocked by the outpost's own south wall as specified"
+        "why": "seals the road end until the outpost exists; U-180 moved V3's south-gate gun target to (31.2,8,360.4), whose ray crosses here through the outpost's south arch"
       }
     ],
     "skinTopY": 10.2,
@@ -479,8 +479,8 @@
     "massRowM": 0.5,
     "fanCellM": 1,
     "eyeHeightM": 1.55,
-    "rockBoxes": 16437,
-    "temporaryCapBoxes": 479,
+    "rockBoxes": 16310,
+    "temporaryCapBoxes": 381,
     "rays": [
       {
         "bay": "V1",
@@ -551,19 +551,19 @@
           "z": 332
         },
         "lengthM": 67.94,
-        "clearanceM": 0.316,
+        "clearanceM": 0.307,
         "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V3",
         "target": "south-gate gun",
         "to": {
-          "x": 38,
+          "x": 31.2,
           "y": 8,
-          "z": 360
+          "z": 360.4
         },
-        "lengthM": 79.12,
-        "clearanceM": 0.321,
+        "lengthM": 82.14,
+        "clearanceM": 0.329,
         "blockedOnlyByTemporaryCaps": [
           "south-gate"
         ]
@@ -577,7 +577,7 @@
           "z": 334
         },
         "lengthM": 49.48,
-        "clearanceM": 0.317,
+        "clearanceM": 0.323,
         "blockedOnlyByTemporaryCaps": []
       }
     ]
@@ -2953,14 +2953,14 @@
       {
         "bay": "V3",
         "target": "south-gate gun",
-        "clearanceM": 0.663,
-        "frameGapM": 0.241,
+        "clearanceM": 0.667,
+        "frameGapM": 0.209,
         "blockedOnlyByTemporaryCaps": []
       },
       {
         "bay": "V3-X5",
         "target": "X5 tank turret silhouette",
-        "clearanceM": 0.314,
+        "clearanceM": 0.316,
         "frameGapM": 0.16,
         "blockedOnlyByTemporaryCaps": []
       }
@@ -3246,7 +3246,7 @@
     }
   },
   "tankSweep": {
-    "levelHash": "5805fb10202ac4f31228825d67887798cdad929b4a752172e775347e4d0f0e7a",
+    "levelHash": "a4b3c2409c33a64252b6fb04d4f440a29904cbb2f602f98fff9572403aef3f3f",
     "route": {
       "method": "closed interval disk tubes; complete support prism slab union",
       "radiusM": 3.31058907144937,
