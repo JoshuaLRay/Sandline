@@ -207,7 +207,7 @@ describe('U-175 outpost on the actual complete tiled standing bake', () => {
 
   it('keeps solid room roofs, perimeter tops and annex roofs inaccessible from all three approaches', () => {
     for (const roof of [[18, 12.8, 365], [16, 13.3, 380], [16, 12.8, 392], [16, 12.8, 402],
-      [48, 12.8, 402], [32, 12.8, 440], [26, 12.8, 426], [40, 14, 412]]) {
+      [48, 12.8, 402], [32, 12.8, 440], [26, 12.8, 426], [40, 14, 412], [49, 26, 417]]) {
       const target = { x: roof[0]!, y: roof[1]!, z: roof[2]! };
       const projected = nav.nearestPoint(target, { x: .3, y: .15, z: .3 });
       // Narrow masonry may carry no standing polygon. A baked roof polygon
