@@ -10,12 +10,12 @@ pointed at the same game: **Conflict: Desert Storm, with a squad of six**.
 
 | File | Owns | Who reads it |
 |---|---|---|
-| `AGENTS.md` | Goal, request routing, read budget, delivery policy, engineering rules, traps | Every agent, automatically (Claude via `CLAUDE.md`) |
+| `AGENTS.md` | Short shared entry point, routing, progressive read ladder and mandatory engineering/merge rules | Every agent, automatically (Claude via `CLAUDE.md`) |
 | `CLAUDE.md` | `@AGENTS.md` plus a few Claude-only notes | Claude Code, automatically |
 | `docs/VISION.md` | What the game is: pillars P1–P8, six-for-four mapping, deliberate differences | Agents making design or priority choices |
 | `docs/design/CONFLICT-PARITY.md` | Feature-by-feature: the series vs Sandline, and the gaps in order | Agents choosing or scoping new work; you |
 | `docs/adr/021-conflict-gameplay-reference.md` | The rule: unspecified detail → do what Conflict did, adapted to six | Agents settling details without asking you |
-| `BACKLOG.md` | The ordered queue and every task's status (active rows only) | Every task |
+| `BACKLOG.md` | The ordered queue and every task's status (active rows only) | Selected task only |
 | `docs/backlog/U-NNN.md` | One task's scope, acceptance and evidence | The agent doing that task |
 | `docs/CODEMAP.md` | Where each system lives in the code | Agents before searching |
 | `.agents/skills/*/SKILL.md` | Procedures: next task, record feedback, handoff box | Codex natively; Claude via `/next-task` etc. |
@@ -47,7 +47,7 @@ when the chat is already attached to the repository.
 | Status only | `What is blocked and why?` |
 
 Start a **new chat for each task** (or each small batch). Long chats carry stale
-context and cost more per step; the handoff box makes the switch cheap.
+context and cost more per step; the handoff box makes the switch cheap. After a confirmed merge, hand off only a short pointer to current main; if interrupted, hand off the exact pushed branch/PR/head and the task card's ≤15-line state. Never preselect the next U-ID just to create a handoff.
 
 ## What still needs you
 

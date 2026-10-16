@@ -14,7 +14,7 @@ architecture decisions are in [docs/adr/](docs/adr/).
 
 **Working with AI agents (Claude Code or Codex, including iOS):** start with
 [the workflow guide](docs/WORKFLOW.md). Every agent reads [AGENTS.md](AGENTS.md)
-(Claude through [CLAUDE.md](CLAUDE.md)), then the queue and one task card.
+(Claude through [CLAUDE.md](CLAUDE.md)), then `pnpm task:next` and only the selected task card.
 Codex environment setup: [docs/CODEX.md](docs/CODEX.md). The hosted QA endpoint
 is `wss://sandline-host.fly.dev`.
 

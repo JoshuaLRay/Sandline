@@ -51,6 +51,7 @@ descriptions. Plain prompts route to them; see the prompt table in
 
 > Queue the next Conflict parity gap.
 
-Codex's whole instruction budget is 32 KiB across all `AGENTS.md` files, so keep
-`AGENTS.md` short and put depth in linked documents. If a Codex cloud task cannot
+Keep `AGENTS.md` short; use its progressive read ladder and load deeper
+references only for the selected task. The full-document and history reads
+are not part of normal agent bootstrap. If a Codex cloud task cannot
 watch CI or merge, it stops at a locally verified PR and says what remains.
