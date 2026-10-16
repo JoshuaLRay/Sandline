@@ -7,6 +7,7 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | Command | What it does |
 |---|---|
 | `pnpm verify` | typecheck + lint + test — the gate every task must pass |
+| `pnpm agent:run -- pnpm verify` | opt-in command wrapper: same test/exit code, saves full local log under ignored `.agent-logs/`, shows concise result and bounded failure excerpt (see `docs/AGENT-OUTPUT.md`) |
 | `pnpm host` | authoritative session host — six slots, real WebSocket |
 | `LINK_LATENCY_MS=100 LINK_JITTER_MS=20 LINK_LOSS=0.05 pnpm host` | same host with link sliders on the wire — latency counts **each way** |
 | `pnpm --filter @sandline/client dev` | renderer dev server at localhost:5173 |
