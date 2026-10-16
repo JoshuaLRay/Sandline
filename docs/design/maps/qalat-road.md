@@ -590,7 +590,7 @@ rock ledge; the wide rear opens back onto the ridge.
 |---|---|---|---|
 | V1 lower saddle | (58,20,128) | Nominal truck fan target (-4,8,126); eastern road wall (24,8,138) | A4 nest at (-22,8,222), screened by rock fin F1 at (36,8,150) |
 | V2 Eagle shelf | (88,30,210) | MG nest (-22,8,222); crossing approach (26,8,232) | Toll bend behind lower spur; compound interior behind upper ridge shoulder |
-| V3 survey post | (66,26,286) | A7 road at (-18,8,302); A8 at (16,8,332); south-gate gun at (38,8,360) | Prisoner and radio rooms, west service gate and basement |
+| V3 survey post | (66,26,286) | A7 road at (-18,8,302); A8 at (16,8,332); south-gate gun at (31.2,8,360.4) (U-180) | Prisoner and radio rooms, west service gate and basement |
 
 The terrain mass polygons are envelopes, not permission to obstruct these views.
 Excavate each bay's road-facing view fan through T-E: in plan, take the convex
@@ -605,6 +605,13 @@ F1 x33..39,z146..154, top y26; F2 x49..55,z168..176, top y32;
 F3 x66..72,z260..274, top y36. F1 blocks V1→A4, F2 blocks V2→A2,
 F3 blocks V2→compound. They avoid both C12 stairs and the ridge walking shelf.
 The outpost walls/roofs provide V3's named blind spots.
+
+**U-180 V3 resolution (2026-10-16):** the original gun target (38,8,360) sat behind
+the solid south wall (its ray crossed x≈39.5, y≈9.1). Only the 8 m south arch's
+centre lets V3 see the crew while the gun can still fire at A8 through the arch.
+The gun line moves west into the arch throat (§8.2, §9.1); the wall, arch and
+every other target stay. V3 reaches the crouched crew and the gun's 1.2 m
+muzzle; the gun's own sandbags end the feet ray, as a target's own cover may.
 
 Use actual standing eye height from the movement configuration for verification;
 these are floor coordinates. Longest intended target ray is about 112 m. A rifle
@@ -746,6 +753,13 @@ outpost annex, not a way around the valley or onto the tank road.
 | Central court | Remaining space | No internal floor-level building overlaps; pathways ≥4 m around cover |
 | North reserve room | x24..40; z434..448, y8 / 12 | South door x30..34 at z434; opaque bends screen it from every approach |
 
+**U-180 west reveal (2026-10-16):** the west door's south jamb (8,372) and the
+refuge's south-west wall corner (9.4,375.4) are 3.68 m apart, below the 4 m
+minimum for the turn into the court lane z371.4..375.4. The south infill is
+recessed at x7.2..8, z371.4..372, y8..11 behind a 0.2 m outer jamb. The 4×3 m
+door, its z374 centre, the 8 m arch, 1 m wall and both rooms are unchanged; the
+pinch becomes 4.05 m and a full 4 m band turns through it.
+
 Room walls 0.6 m thick outside the inner bounds; prevent adjacent envelopes from
 closing a doorway. Prison cell's south divider has a fixed-open door, not a
 second door interaction. The existing 3-second rescue releases the original POW;
@@ -764,8 +778,12 @@ approach/nav connection. Tower legs have no ladder or intermediate step; its
 closed tank occupies y22..26. No platform or additional route is created.
 
 
-- O-C01 low sandbag line, centre `(38,8,359)`, length 6 east-west; mounted MG use
-  point `(38,8,361)` faces south toward A8. MG hostile socket is that use point.
+- O-C01 low sandbag line, centre `(29,8,359)`, length 6 east-west (x26..32 across
+  the south throat's west half); mounted MG (`mg-nest`) gun `(31.2,8,360.4)` faces
+  A8 `(16,8,332)`, its use point `(31.5,8,361)` 0.7 m behind. MG hostile socket is
+  that use point. U-180 moved it from `(38,8,359)`/`(38,8,361)` for V3 (§6.2).
+  The east half x32..36 stays a 4 m lane; at the facing point (32,8,350) the
+  sandbags leave a standing target's shins in dead ground.
 - O-C02 high stone trough, `(30,8,376)`, length 4 north-south, standard high-cover
   dimensions; blocks south-gate view to prisoner doorway without sealing movement.
 - O-C03 low cart, `(40,8,385)`, length 5 east-west, 1.8 m deep, 1.1 m high.
@@ -818,7 +836,7 @@ number is a persistent entity/spawn ID, used by saves and acceptance tests.
 | basement-grain | BG1 R (-26,0,124); BG2 R (-16,0,128); BG3 R (-24,0,128) | (-20,108) |
 | basement-generator | BE1 R (-18,0,206); BE2 R (-24,0,208); BE3 R (-12,0,210) | (-26,194) |
 | basement-vault | BV1 R (24,0,282); BV2 R (36,0,280); BV3 R (30,0,284) | (30,254) |
-| garrison | OG1 M (38,8,361); OG2 R (18,8,368); OG3 R (48,8,378); OG4 R (18,8,390); OG5 R (28,8,402); OG6 R (36,8,386) | OG1/2 (32,350); OG3 (56,374); OG4 (22,392); OG5/6 (32,376) |
+| garrison | OG1 M (31.5,8,361); OG2 R (18,8,368); OG3 R (48,8,378); OG4 R (18,8,390); OG5 R (28,8,402); OG6 R (36,8,386) | OG1/2 (32,350); OG3 (56,374); OG4 (22,392); OG5/6 (32,376) |
 | radio-operator | OR1 R (50,8,402) | (42,396) |
 
 U-159 bend: the road groups face their approach node (A3, A7). U-161 moves AF2

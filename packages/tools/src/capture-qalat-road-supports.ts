@@ -119,7 +119,9 @@ const server = await createServer({ root: new URL('../../../', import.meta.url).
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 try {
   await server.listen();
-  browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--disable-dev-shm-usage'] });
+  const executablePath = process.env['CHROMIUM_PATH'];
+  browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}),
+    args: ['--use-angle=swiftshader', '--disable-dev-shm-usage'] });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));

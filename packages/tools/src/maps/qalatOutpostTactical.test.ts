@@ -195,6 +195,35 @@ describe('U-180 west entry turn through the recessed reveal', () => {
       pinchBeforeM: +Math.hypot(1.4, 3.4).toFixed(3), pinchAfterM: +Math.hypot(2.2, 3.4).toFixed(3) }));
   }, 60_000);
 
+  it('rejects sprint-jump, vault, crouch and prone escapes from inside the reveal and its jambs', () => {
+    let attempts = 0, peak = 8;
+    // Bodies straddling the 0.6 m recess and beside both jamb faces push into the
+    // infill, the jamb and the wall in every direction.
+    for (const [x, z] of [[7.6, 371.8], [7.6, 372.4], [8.4, 371.2], [8.4, 372], [6.6, 372.4]] as const)
+      for (const yaw of [0, 128, 256, 384, 512, 640, 768, 896]) for (const stance of ['jump', 'crouch', 'prone']) {
+        // Every box within 32 m: a 1.5 s sprint push cannot leave the window.
+        const boxes = region(x - 32, x + 32, z - 32, z + 32);
+        let state = { ...createMoveState(x, 8, z), grounded: true };
+        expect(blockedAt(x, z, config.radius, 8, .05, config.height, boxes), `start ${x}/${z}`).toBe(false);
+        for (let tick = 0; tick < 75; tick++) {
+          const push = tick < 45;
+          state = stepCharacter(state, { moveX: 0, moveY: push ? 1 : 0, yaw, sprint: push, jump: push && stance === 'jump',
+            crouch: push && stance === 'crouch', prone: push && stance === 'prone' }, TICK_SECONDS, config, boxes);
+          const where = `${x}/${z}/${yaw}/${stance}/${tick}: ${JSON.stringify(state)}`;
+          // Never onto the y11 lintel, infill or y14 wall and never landed on
+          // a raised surface (B10's legal stair descends from the pad).
+          expect(state.y, where).toBeLessThan(8 + config.vaultMaxHeight + .5);
+          peak = Math.max(peak, state.y);
+          if (state.grounded) expect(state.y, `${where} landed above the floor`).toBeLessThanOrEqual(8 + 1e-6);
+          expect(blockedAt(state.x, state.z, config.radius, state.y, .05, config.proneHeight, boxes), `${where} inside solid`).toBe(false);
+        }
+        expect(state.grounded && state.vault === null, `${x}/${z}/${yaw}/${stance} settled`).toBe(true);
+        attempts++;
+      }
+    expect(attempts).toBe(120);
+    console.log('U-180 west reveal escape attempts', JSON.stringify({ attempts, ticks: 75, peakFeet: +peak.toFixed(3) }));
+  }, 60_000);
+
   it('walks two abreast soldiers through the turn both ways on the real controller without touching it', () => {
     // Lanes 1.6 m either side of the centre (bodies inside the band), mitred.
     const lane = (offset: number) => {

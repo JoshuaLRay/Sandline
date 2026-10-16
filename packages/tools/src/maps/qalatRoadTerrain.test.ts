@@ -260,7 +260,8 @@ describe('U-160 road-facing rock on the bent road', () => {
       else expect(rayWorld(view, permanentScene), `${bay.id} → ${JSON.stringify(t)}`).toBeNull();
     }
     // U-168 opens C12-L's cap, retaining the V1 eastern road-wall ray.
-    expect(crossings).toEqual(['V3→38,360']);
+    // U-180 retargets V3's gun to (31.2,360.4); only the temporary gate cap crosses it.
+    expect(crossings).toEqual(['V3→31.2,360.4']);
     expect(rayWorld(between(BAYS[1]!.eye, { x: -23, y: 9.8, z: 222.8 }), permanentScene), 'V2 sees the actual frontage MG head').toBeNull();
     const clearances = rayClearances(level.boxes);
     expect(clearances.map((r) => r.blockedOnlyByTemporaryCaps)).toEqual([[], [], [], [], [], [], ['south-gate'], []]);
