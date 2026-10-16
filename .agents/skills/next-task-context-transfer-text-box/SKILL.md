@@ -1,45 +1,57 @@
 ---
 name: next-task-context-transfer-text-box
-description: Create a concise, copyable prompt for a new chat (Claude Code or Codex) to complete Sandline's next eligible task. Use when the owner asks for a next task context transfer text box, a handoff prompt, or next-chat instructions, especially after a merge.
+description: Create a compact copyable Sandline new-chat pointer after a merge or an exact resumption pointer for unfinished pushed work.
 ---
 
-# Next task context transfer text box
+# Context handoffs: fresh vs interrupted
 
-Give the owner one fenced `text` block to paste into a new chat. Keep it
-self-contained and about 80–150 words. Producing the box does not claim or
-implement the next task, and needs no confirmation.
+Give the owner **one fenced `text` block**. Never copy chat history, huge
+diffs, logs, credentials or machine paths. The repository/card stores durable
+context. Always distinguish the two cases.
 
-## Refresh the evidence
+## Completed and merged: a 30–60-word pointer
 
-1. If a task is in flight in this chat, finish it first under the delivery
-   policy in `AGENTS.md` (merge its verified head when all four required CI jobs
-   are green; keep REVIEW where a human verdict is pending). Never report an
-   unmerged PR as merged. If blocked or the owner is handing off unfinished work
-   because of usage limits, push a checkpoint with the current card handoff and
-   make the box about resuming that task instead of selecting another.
-2. Fetch main and list open PRs. For a resumption, also fetch the task branch
-   and check its current claim and card. Otherwise pick the next eligible row
-   with the next-task skill's selection rules
-   (`.agents/skills/next-task/SKILL.md` step 1). Read only that card.
+First verify the previous PR actually merged if reporting that outcome.
+**Do not preselect the next task**, read a new task card or do separate
+discovery just to create a handoff. The new agent rechecks main, claims and
+eligibility. Example (replace only verified placeholders):
 
-## Write the box
+```text
+Continue Sandline at https://github.com/JoshuaLRay/Sandline.
+Previous: [U-ID or task], merged PR [URL] at [main commit SHA].
+Read AGENTS.md and .agents/skills/next-task/SKILL.md. Select an eligible
+unclaimed task afresh from current main, implement and verify it, then merge
+its latest verified head only when all four required CI jobs are green.
+```
 
-Include:
+If the previous outcome is unverified, omit the merge claim; do not guess.
 
-- The repository URL and the previous task's verified outcome and PR link.
-- For unfinished work: the pushed branch and head SHA, PR link if any, current
-  progress, checks passed/failed/unrun, and the concrete next action. Tell the
-  new chat to resume that branch after checking its remote state and claims.
-- The expected task ID (current task for a resumption, next task after a merge)
-  and its plain-language outcome, marked as a snapshot: the new chat rechecks
-  main, dependencies and open PRs before claiming or resuming.
-- "Follow AGENTS.md and `.agents/skills/next-task/SKILL.md`." Those files carry
-  the gates and the four CI jobs, so the box does not repeat them.
-- The owner's sentence (2026-10-08), verbatim: "Complete the selected task and
-  merge its verified head when all four required latest-head CI jobs are green."
-- Any task-specific human verdict, asset or generator the card names.
-- This skill's path, so the new chat can produce the next box.
+## Interrupted: card handoff of at most 15 lines
 
-Keep logs, history, credentials, session IDs and machine paths out. If nothing
-is eligible, name the real blocker and the owner decision that would unblock
-it, with a recommended default, instead of inventing a task.
+Push a labelled WIP checkpoint **before** handing off. Update the current
+`docs/backlog/U-NNN.md` **Handoff / evidence** section, including precise
+pass/fail/unrun values; these are the required fields:
+
+```text
+Task: U-NNN — [objective]
+Branch: task/U-NNN-...; PR: [URL or none]; head: [full SHA]
+Files changed: [relevant paths]
+Completed: [implemented work and evidence]
+Tests: [focused/pnpm verify/affected commands: pass/fail/unrun]
+CI: verify=[status]; streaming=[status]; parity-non-v8=[status]; mission=[status]
+Blockers: [specifics or none]; human verdict: [pending/not applicable]
+Next action: [exact command, file edit or verification]
+```
+
+The copyable box names the repo URL, U-ID, pushed branch, PR, full head SHA
+and card path; tells the next agent to verify current remote main/branch/PR
+and resume that exact state; and points to `AGENTS.md` and
+`.agents/skills/next-task/SKILL.md`. The *card* is authoritative for files,
+progress, checks, blockers and next action. Do not duplicate its narrative
+in the box. If no checkpoint is pushed, say the missing work is not resumable
+from GitHub. Never call stale/pending/unrun CI passing, invent a human verdict,
+or claim another worker's task. If blocked by an owner decision, name the
+question, options and recommended default.
+
+This handoff procedure does not itself claim, implement or authorize merging
+an unrelated task.
