@@ -61,4 +61,22 @@ describe('agent documentation contracts', () => {
     expect(handoff).toContain('unrun');
     expect(handoff).toContain('push');
   });
+
+  it('keeps bounded-output guidance discoverable and honest about measurement', () => {
+    const guide = read('docs/AGENT-OUTPUT.md');
+    const plan = read('docs/AGENT-CONTEXT-EFFICIENCY.md');
+    expect(agents).toContain('docs/AGENT-OUTPUT.md');
+    expect(read('.agents/skills/next-task/SKILL.md')).toContain('docs/AGENT-OUTPUT.md');
+    expect(read('package.json')).toContain('"agent:run"');
+    expect(read('.gitignore')).toContain('.agent-logs/');
+    for (const name of ['verify', 'streaming', 'parity-non-v8', 'mission']) {
+      expect(guide).toContain('`' + name + '`');
+    }
+    expect(guide).toContain('10,862');
+    expect(guide).toContain('6,070');
+    expect(guide).toContain('not collected');
+    expect(guide).toContain('not a measured token reduction');
+    expect(plan).toContain('[AGENT-OUTPUT.md](AGENT-OUTPUT.md)');
+  });
+
 });
