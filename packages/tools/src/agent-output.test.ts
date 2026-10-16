@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { failureExcerpt, runLogged, runSummary, successCounters } from './agent-output.js';
+import { failureExcerpt, runLogged, runSummary, successCounters } from './agent-output.ts';
 
 const temporary: string[] = [];
 afterEach(() => {
