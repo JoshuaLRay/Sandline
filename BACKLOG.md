@@ -100,6 +100,7 @@ canonical when this documentation PR merges.
 | [U-179](docs/backlog/U-179.md) | Build fixed outpost furniture, water tower and radio/cell cues | Map implementation | P1 | DONE | Fixed furnishings, six holdings/landing, isolation and 25 outpost proofs verified; full tactical clearance remains U-180; human quality U-119 | [#347](https://github.com/JoshuaLRay/Sandline/pull/347) |
 | [U-180](docs/backlog/U-180.md) | Resolve V3 gun view and prove outpost combat, patrol and supply clearances | Map implementation | P1 | READY | U-179 DONE; second U-176 leaf; resolve V3 and inherited west-entry turn; update canonical tables and sight/path proofs | — |
 | [U-181](docs/backlog/U-181.md) | A downed soldier bleeds out over two minutes (120 s) | Every soldier matters | P1 | IN_PROGRESS | — (owner-approved 2026-10-16, ADR-025) | — |
+| [U-182](docs/backlog/U-182.md) | C4: right click sets off the oldest charge, R sets off all | Weapons and equipment | P1 | IN_PROGRESS | — (owner-approved 2026-10-16, ADR-026) | — |
 | [U-177](docs/backlog/U-177.md) | Prove outpost traversal and real captive/escort tank shelters | Map implementation | P1 | BLOCKED | U-176; actual Session projectile/blast and seven-actor proofs | — |
 | [U-117](docs/backlog/U-117.md) | Integrate redesigned Mission 1 combat, supplies and objectives | Map implementation | P1 | BLOCKED | U-111, U-112, U-113, U-116 | — |
 | [U-118](docs/backlog/U-118.md) | Finish Qalat terrain, architecture, lighting and presentation | Map implementation | P1 | BLOCKED | U-117 | — |

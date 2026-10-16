@@ -154,6 +154,35 @@ describe('a retry restores the world as the checkpoint saw it (U-059)', () => {
     expect(placed).toHaveLength(1);
     expect([placed[0]!.x, placed[0]!.z, placed[0]!.ownerNetId]).toEqual([3, 4, m.session.slots[0]!.netId]);
   });
+
+  it('gives placed charges back in the order they were placed, so right click still sets off the oldest (U-182)', () => {
+    const m = play();
+    m.step(2);
+    const c4 = PROJECTILE_IDS.indexOf('c4');
+    const def = m.session.projectileDef(c4)!;
+    const owner = m.session.slots[0]!;
+    for (const [netId, x] of [[9000, 3], [9001, 6], [9002, 9]] as const) {
+      (m.x.projectiles as unknown[]).push({
+        xpPlayerId: null,
+        netId,
+        def,
+        kind: c4,
+        ownerSlot: 0,
+        ownerNetId: owner.netId,
+        state: { x, y: 0.2, z: 4, vx: 0, vy: 0, vz: 0, age: 1, bounces: 0, resting: true },
+        stuck: true,
+      });
+    }
+    m.beatA();
+    m.step(30);
+    m.wipe();
+    m.session.retryMission();
+    const out = () => m.session.projectilesNow().filter((p) => p.kind === c4).sort((a, b) => a.netId - b.netId).map((p) => p.x);
+    expect(out()).toEqual([3, 6, 9]);
+    Object.assign(owner.health, { current: owner.health.max, downedAt: null, diedAt: null });
+    (m.session as unknown as { detonateOldestCharge(slot: unknown, kind: number): void }).detonateOldestCharge(owner, c4);
+    expect(out()).toEqual([6, 9]);
+  });
 });
 
 describe('no checkpoint is saved while a soldier is downed (U-059)', () => {

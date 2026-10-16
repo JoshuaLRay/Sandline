@@ -113,7 +113,7 @@ Equipment is the sixth device slot (key 5), drawn before it is used, droppable w
 
 | Character | Equipment | Card | Status |
 |---|---|---|---|
-| Holloway (Support) | C4 x2: thrown by the Support only, placed by anyone else, right click detonates all | U-054 | Owner-decided; numbers accepted (4 m, 250 damage, friendly fire as the frag, E picks up your own) |
+| Holloway (Support) | C4 x2: thrown by the Support only, placed by anyone else; right click detonates the oldest charge, R detonates all (U-182) | U-054 | Owner-decided; numbers accepted (4 m, 250 damage, friendly fire as the frag, E picks up your own) |
 | Brennan (LMG) | Rocket launcher x2 | U-048 | Owner-decided; Preach loses his rocket |
 | Preach (lead) | Concussion grenade x4: no damage, heavy suppression | U-056 | Owner-decided |
 | Ortiz (scoped AR) | Smoke grenade x2 | U-058 | Proposal, not objected to |
@@ -123,7 +123,7 @@ Equipment is the sixth device slot (key 5), drawn before it is used, droppable w
 | # | Decision | State |
 |---|---|---|
 | D-10 | Slot 5 per character | **Decided (2026-09-30)** as above |
-| D-11 | C4: 2 charges, 250 damage, 4 m radius, detonate all at once, friendly fire as the frag, E picks up your own | **Decided (2026-09-30)** |
+| D-11 | C4: 2 charges, 250 damage, 4 m radius, detonate all at once, friendly fire as the frag, E picks up your own | **Decided (2026-09-30)**; detonation **changed 2026-10-16** ([ADR-026](../adr/026-c4-detonation-controls.md), U-182): right click sets off the oldest charge out, R sets off all |
 
 ## Proposed ADR addendum
 
