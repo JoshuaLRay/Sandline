@@ -159,6 +159,7 @@ import { createMenu } from './ui/menu/Menu.ts';
 import { type AudioContextLike, AudioEngine } from './audio/engine.ts';
 import { createSoundBoard } from './ui/SoundBoard.ts';
 import { showVoiceSubmission } from './ui/VoiceSubmission.ts';
+import { showOriginTransfer } from './ui/originTransfer.ts';
 import { QUALITY, type Settings, browserStore, loadSettings, saveSettings } from './ui/menu/settings.ts';
 import { createHud } from './ui/hud/Hud.ts';
 import { chargeHint } from './ui/hud/chargeHint.ts';
@@ -2039,6 +2040,8 @@ if (mobileMode) {
   document.addEventListener('visibilitychange', () => { if (document.hidden) clearTouch(); });
 }
 if (new URLSearchParams(location.search).has('record-voice')) showVoiceSubmission(document.body, __DEFAULT_HOST__);
+// Explicit local-only backup to carry saved identity/voice submission tokens across host domains.
+if (new URLSearchParams(location.search).has('transfer-data')) showOriginTransfer(document.body, __DEFAULT_HOST__);
 
 panels.append(
   squadPanel.root,
