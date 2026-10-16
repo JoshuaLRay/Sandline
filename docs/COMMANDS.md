@@ -81,6 +81,14 @@ line, support rays/blind spots, west turn, sockets, OG6 patrol, P-OUTPOST and
 reserve camera concealment) are `qalatOutpostTactical.test.ts` and the U-180 cases
 in `qalatOutpostNav.test.ts`.
 
+U-221 adds `qalatOutpostTraversal.test.ts` (all three joins, both directions,
+three spreads, seven actual Session actors) and `qalatOutpostIsolation.test.ts`
+(full standing-nav component, registered boundary crossings, roof weapons/blast,
+desktop/mobile cameras and real wire orders/perception). Narrow side-pad exits
+use ordinary individual move orders to finish staging after the initial group
+order; U-174 packed formation completion remains separate. Real captive/escort
+tank shelters and the carry-1 external-camera repair remain U-222.
+
 ## Isolated Juniper Hollow construction (U-138)
 
 This authoring fixture implements the replacement's southern S0–D0 section and
