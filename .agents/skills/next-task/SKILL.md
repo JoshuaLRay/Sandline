@@ -77,10 +77,14 @@ decision always comes with options and a recommended default.
 
 11. Final commit in the PR, together: the card's handoff (≤15 lines — PR,
     commands with pass/fail, criteria checked, pending verdict and where it is
-    batched, follow-up IDs), one CHANGELOG line, and the BACKLOG row → **DONE**
-    if every criterion is met, or **REVIEW** if only a human verdict remains.
-    Close any linked legacy B-IDs only when the criteria are met. Commit messages
-    are `U-NNN: description`.
+    batched, follow-up IDs), one CHANGELOG line, and the canonical task row:
+    if every criterion is met, mark **DONE** and move the row out of `BACKLOG.md`
+    into the dated `docs/backlog/archive/*.md` file (preserve text/order/PR and
+    rewrite its relative task-card link only); if a human verdict remains,
+    keep the row in the active queue as **REVIEW**. Never duplicate an ID in
+    active and archived tables. The backlog-index regression test enforces
+    these rules. Close linked legacy B-IDs only when criteria are met. Commit
+    messages are `U-NNN: description`.
 12. Watch all four required CI jobs on the **latest pushed head SHA**. Fix
     failures within scope and push again. Skipped, cancelled, pending or
     older-head runs are not green. Report real run numbers and the head SHA.
