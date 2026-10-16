@@ -317,3 +317,115 @@ describe('taking control of a bot you command (U-026)', () => {
     r.step(3);
   });
 });
+
+describe('orders outlast switches, leaves and reconnects (U-196)', () => {
+  beforeAll(() => initNav());
+  const order = (c: { send(m: Message): void }, kind: 'hold' | 'move', address: Extract<Message, { kind: 'Order' }>['address'], point: { x: number; y: number; z: number } | null = null) =>
+    c.send({ kind: 'Order', order: kind, address, point, target: null });
+
+  it('a bot keeps its order when its commander switches soldier; the order passes to the new seat', () => {
+    const r = room();
+    const a = r.join('a');
+    order(a, 'hold', { to: 'slot', index: 4 });
+    order(a, 'hold', { to: 'slot', index: 3 });
+    a.switchTo(3);
+    expect(a.slot).toBe(3);
+    expect(r.session.orderFor(4)).toMatchObject({ order: 'hold', from: 3 });
+    // The bot taken is a human now: its order lapses. The soldier left had no
+    // standing fireteam/squad posture to join, so it follows.
+    expect(r.session.orderFor(3)).toBeNull();
+    expect(r.session.orderFor(0)).toBeNull();
+    r.step(30);
+    expect(r.session.orderFor(4)).toMatchObject({ order: 'hold', from: 3 });
+  });
+
+  it('the soldier left by a switch joins its fireteam\'s standing move, spaced from the others', () => {
+    const r = room();
+    const a = r.join('a');
+    const point = { x: 4, y: 0, z: 12 };
+    order(a, 'move', { to: 'fireteam', index: 0 }, point);
+    const mate = r.session.orderFor(2)!;
+    a.switchTo(1);
+    const joined = r.session.orderFor(0);
+    expect(joined).toMatchObject({ order: 'move', from: 1, target: null });
+    expect(Math.hypot(joined!.point!.x - point.x, joined!.point!.z - point.z)).toBeLessThan(6);
+    expect(Math.hypot(joined!.point!.x - mate.point!.x, joined!.point!.z - mate.point!.z)).toBeGreaterThan(0.5);
+    expect(r.session.orderFor(2)).toMatchObject({ order: 'move', from: 1 });
+    expect(r.session.orderFor(1)).toBeNull();
+  });
+
+  it('with no fireteam posture it joins the squad\'s standing hold; mixed orders mean it follows', () => {
+    const r = room();
+    const a = r.join('a');
+    const b = r.join('b');
+    a.assign(2, b.slot); // a's fireteam has no bot of a's left
+    order(a, 'hold', { to: 'fireteam', index: 1 });
+    a.switchTo(3);
+    expect(r.session.orderFor(0)).toMatchObject({ order: 'hold', from: 3 });
+    expect(r.session.orderFor(2)).toBeNull(); // b's bot is not a's to order or count
+    // Back again with the squad's bots on a hold and a move: no single posture.
+    const r2 = room();
+    const c = r2.join('c');
+    order(c, 'hold', { to: 'slot', index: 1 });
+    order(c, 'move', { to: 'slot', index: 2 }, { x: 0, y: 0, z: 10 });
+    c.switchTo(4);
+    expect(r2.session.orderFor(0)).toBeNull();
+  });
+
+  it('a departed commander\'s bots keep their orders, now from the human left in command', () => {
+    const r = room();
+    const a = r.join('a');
+    const b = r.join('b');
+    order(a, 'hold', { to: 'slot', index: 4 });
+    order(a, 'move', { to: 'slot', index: 5 }, { x: 2, y: 0, z: 8 });
+    a.send({ kind: 'Disconnect', code: 'left', reason: 'left' });
+    r.step();
+    expect(r.commanders()[4]).toBe(b.slot);
+    expect(r.session.orderFor(4)).toMatchObject({ order: 'hold', from: b.slot });
+    expect(r.session.orderFor(5)).toMatchObject({ order: 'move', from: b.slot });
+  });
+
+  it('a dropped commander\'s orders stand through the grace and are theirs again on reconnect when alone', () => {
+    const r = room();
+    const a = r.join('a');
+    order(a, 'hold', { to: 'slot', index: 4 });
+    const resume = a.ack.resume;
+    a.drop();
+    r.step(30);
+    expect(r.session.paused).toBe(true);
+    expect(r.session.orderFor(4)).toMatchObject({ order: 'hold', from: 0 });
+    const back = r.join('a', resume);
+    expect(back.slot).toBe(0);
+    r.step();
+    expect(r.session.orderFor(4)).toMatchObject({ order: 'hold', from: 0 });
+  });
+
+  it('with two humans a drop hands the orders to the other, and they stay theirs after the reconnect', () => {
+    const r = room();
+    const a = r.join('a');
+    const b = r.join('b');
+    order(a, 'hold', { to: 'slot', index: 4 });
+    const resume = a.ack.resume;
+    a.drop();
+    r.step(5);
+    expect(r.session.orderFor(4)).toMatchObject({ order: 'hold', from: b.slot });
+    r.join('a', resume);
+    r.step();
+    expect(r.commanders()[4]).toBe(b.slot);
+    expect(r.session.orderFor(4)).toMatchObject({ order: 'hold', from: b.slot });
+  });
+
+  it('a spectator commander\'s own seat drops its stale order on takeover; its other orders stand', () => {
+    const r = room();
+    const a = r.join('a');
+    a.spectate(3);
+    order(a, 'hold', { to: 'slot', index: 0 }); // the watcher's AI-driven seat
+    order(a, 'hold', { to: 'slot', index: 4 });
+    expect(r.session.orderFor(0)).toMatchObject({ order: 'hold', from: 0 });
+    a.switchTo(3);
+    expect(a.slot).toBe(3);
+    expect(r.session.orderReports.some((o) => o.slot === 0 && o.outcome === 'replaced')).toBe(true);
+    expect(r.session.orderFor(0)).toBeNull();
+    expect(r.session.orderFor(4)).toMatchObject({ order: 'hold', from: 3 });
+  });
+});

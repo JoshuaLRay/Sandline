@@ -175,12 +175,13 @@ describe('nearby commander supply authority (U-146)', () => {
     },
   );
 
-  it('a valid supply selection replaces the standing order; replacement and cancellation IDs cannot replay', () => {
+  it('a valid supply selection holds the standing order aside (U-196); replacement and cancellation IDs cannot replay', () => {
     const r = room(); const p = r.join(); const s = r.session.slots[1]!; r.place(1); s.kits = 0;
     r.send(p, { kind: 'Order', address: { to: 'slot', index: 1 }, order: 'hold', point: null, target: null });
-    r.select(p); expect(r.session.orderFor(1)).toBeNull(); expect(r.session.orderReports.at(-1)).toMatchObject({ outcome: 'replaced' });
+    r.select(p); expect(r.session.orderFor(1)).toBeNull(); expect(r.session.orderReports.filter((o) => o.slot === 1)).toEqual([]);
     r.step(15); r.select(p, 1, 'open', null, 1); expect(r.progress(p)[0]!.percent).toBe(50);
     r.select(p, 1, 'open', null); expect(r.progress(p)).toEqual([]);
+    expect(r.session.orderFor(1)).toMatchObject({ order: 'hold', from: 0 });
     r.select(p, 1, 'open', KIT, 1); r.step(31); expect(s.kits).toBe(0);
     r.select(p); r.step(30); expect(s.kits).toBe(1); s.kits = 0;
     r.select(p, 1, 'open', KIT, p.request); r.step(31); expect(s.kits).toBe(0); expect(r.stock().healthKits).toBe(2);
@@ -195,6 +196,32 @@ describe('nearby commander supply authority (U-146)', () => {
     expect(r.session.slots[1]!.kits).toBe(1); expect(r.session.slots[3]!.kits).toBe(0);
     expect(r.stock().healthKits).toBe(0); expect(r.progress(a)).toEqual([]); expect(r.progress(b)).toEqual([]);
     expect(a.seen.filter((m) => m.kind === 'Supplies').at(-1)).toMatchObject({ full: false, caches: [{ id: 'open', stock: { healthKits: 0 } }] });
+  });
+
+  it('U-196: a bot sent to a cache resumes its prior order after collecting; a new order replaces both', () => {
+    const r = room(); const p = r.join(); const s = r.session.slots[1]!; r.place(1); s.kits = 0;
+    const point = { x: 6, y: 0, z: -4 };
+    r.send(p, { kind: 'Order', address: { to: 'slot', index: 1 }, order: 'move', point, target: null });
+    const given = r.session.orderFor(1);
+    expect(given).toMatchObject({ order: 'move', from: 0 });
+    r.select(p); expect(r.session.orderFor(1)).toBeNull();
+    r.step(31); expect(s.kits).toBe(1); expect(r.progress(p)).toEqual([]);
+    expect(r.session.orderFor(1)).toEqual(given);
+    // An order during a run ends the run and drops what it held aside.
+    s.kits = 0; r.select(p); expect(r.session.orderFor(1)).toBeNull();
+    r.send(p, { kind: 'Order', address: { to: 'slot', index: 1 }, order: 'hold', point: null, target: null });
+    expect(r.progress(p)).toEqual([]); expect(r.session.orderFor(1)).toMatchObject({ order: 'hold', from: 0 });
+    r.step(31); expect(s.kits).toBe(0); expect(r.session.orderFor(1)).toMatchObject({ order: 'hold' });
+  });
+
+  it('U-196: a commander leaving mid-run gives the bot its order back under the next commander', () => {
+    const r = room(); const a = r.join(); const b = r.join(3); const s = r.session.slots[1]!; r.place(1); s.kits = 0;
+    r.send(a, { kind: 'Order', address: { to: 'slot', index: 1 }, order: 'hold', point: null, target: null });
+    r.select(a); r.step(5); expect(r.session.orderFor(1)).toBeNull();
+    r.send(a, { kind: 'Disconnect', code: 'left', reason: 'left' });
+    expect(r.progress(b)).toEqual([]);
+    expect(r.session.commanderOf(1)).toBe(3);
+    expect(r.session.orderFor(1)).toMatchObject({ order: 'hold', from: 3 });
   });
 
   it.each(['leave', 'drop'] as const)('clears all requests on commander %s; reconnect does not restart a timer or refill stock', (why) => {
