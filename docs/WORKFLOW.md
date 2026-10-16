@@ -22,6 +22,10 @@ pointed at the same game: **Conflict: Desert Storm, with a squad of six**.
 | `docs/COMMANDS.md` | Every dev/QA/generator command | On demand |
 | `TASKS.md`, `PLAN.md`, `docs/BUGS.md`, `docs/backlog/archive/` | History | Only for an explicit legacy ID or a dependency check |
 
+Completed task rows are moved to the dated `docs/backlog/archive/` indexes;
+`BACKLOG.md` contains only active work. U-ID task cards stay at their original
+paths. `pnpm task:next` reads these records programmatically.
+
 ## Prompts
 
 These work the same in Claude Code and Codex. The repository URL is optional

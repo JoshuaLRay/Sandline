@@ -77,14 +77,15 @@ run sheets. For any file over ~300 lines, grep or read a range.
   (`verify`, `streaming`, `parity-non-v8`, `mission`) pass on the latest pushed
   head, respecting branch protection. It covers the task being completed, not
   another worker's PR, an intake-only PR, or anything the owner said to hold.
-- **Statuses** (BACKLOG.md owns them): READY executable · IN_PROGRESS a pushed
-  `task/U-NNN-*` branch or open PR · BLOCKED names the exact missing dependency,
-  decision or asset · REVIEW code merged (or PR green) and waiting only on a
-  human verdict · DONE merged and accepted · INBOX captured, unscoped ·
-  CANCELLED closed with a reason.
-- **Dependencies:** satisfied by DONE, by an archived row, or by **REVIEW whose
-  code is merged on main** — unless the dependent card explicitly needs that
-  verdict first. Pending human verdicts never serialize engineering work.
+- **Statuses:** `BACKLOG.md` owns the active queue (READY, IN_PROGRESS,
+  BLOCKED, REVIEW, INBOX); completed DONE and CANCELLED rows are stored in
+  `docs/backlog/archive/` with stable U-ID cards. IN_PROGRESS means a pushed
+  `task/U-NNN-*` branch or open PR; REVIEW means implemented but awaiting a
+  human verdict. Never leave a DONE/CANCELLED row in the active index.
+- **Dependencies:** satisfied by active/archived DONE (never CANCELLED), or
+  by **REVIEW whose code is merged on main** — unless the dependent card
+  explicitly needs that verdict first. Pending human verdicts never serialize
+  engineering work.
 - **Human verdicts are batched** on the epic's verification card (e.g. the
   mission's final review), not on every leaf. Never invent a verdict, playtest
   or listening result; a green test is not one.
@@ -122,7 +123,10 @@ run sheets. For any file over ~300 lines, grep or read a range.
 6. **Respect locked ADRs.** An owner change becomes an addendum or a new ADR; if
    a request doesn't actually decide a conflicting choice, surface the conflict.
 7. **Leave a short trail** in the same PR: the card's handoff (≤15 lines), one
-   `docs/CHANGELOG.md` line `- U-NNN — change ([#PR](url))`, the BACKLOG row.
+   `docs/CHANGELOG.md` line `- U-NNN — change ([#PR](url))`, and the canonical
+   queue record. DONE rows move intact to a dated `docs/backlog/archive/*.md`
+   file (adjusting only relative task-card links); REVIEW remains in
+   `BACKLOG.md`. Keep one status source per U-ID and its task-card path stable.
    Legacy T-IDs also update `TASKS.md` under their workflow.
 8. **Preserve other work.** Check open PRs and `task/*` branches before
    claiming; never push to another worker's branch; keep unrelated changes.
