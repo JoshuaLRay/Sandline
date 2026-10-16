@@ -13,7 +13,7 @@ than route counts. This governs every future map and every future redesign.
 designed under the earlier rule (owner, 2026-10-04: three physically distinct
 lanes, a separated flank) and keep their approved geometry, separators,
 crossing registers and proofs unless an approved map revision changes them.
-Their records still use the [declared-separation rules](#declared-separation-and-crossings)
+Their records still use the [declared-separation rules](#5-declared-separation-and-crossings)
 below, which remain the method for any map that chooses to separate a route.
 
 [Campaign](CAMPAIGN.md) owns story, progression and mission order. This document

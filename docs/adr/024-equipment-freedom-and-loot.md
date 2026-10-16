@@ -56,7 +56,7 @@ session decides it.
    "cannot acquire weapons through character/enemy exchanges" is superseded.
 5. **Existing character-specific restrictions are to be reconciled, not
    silently kept.** Each is listed, with its source, code location and a
-   recommended reconciliation, in LOOT-PROGRESSION.md §11 and carded as
+   recommended reconciliation, in LOOT-PROGRESSION.md §14 and carded as
    [U-194](../backlog/U-194.md). Until U-194 lands they remain in code, labelled
    as transitional.
 6. **Grounded combat comes first.** Loot must not create power creep that makes
