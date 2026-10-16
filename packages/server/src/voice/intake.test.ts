@@ -18,9 +18,9 @@ afterEach(async () => {
   dir = '';
 });
 
-async function setup(key = KEY, onFinished?: (submission: { id: string; name: string; clips: number }) => Promise<void>): Promise<string> {
+async function setup(key = KEY, onFinished?: (submission: { id: string; name: string; clips: number }) => Promise<void>, extraOrigins: string[] = []): Promise<string> {
   dir = mkdtempSync(join(tmpdir(), 'sandline-voice-'));
-  const intake = new VoiceIntake({ dir, inviteKey: key, origin: ORIGIN, ...(onFinished ? { onFinished } : {}) });
+  const intake = new VoiceIntake({ dir, inviteKey: key, origin: ORIGIN, extraOrigins, ...(onFinished ? { onFinished } : {}) });
   server = createServer((req, res) => void intake.handle(req, res));
   await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -29,6 +29,42 @@ async function setup(key = KEY, onFinished?: (submission: { id: string; name: st
 }
 
 describe('private voice intake', () => {
+  it('permits only exact approved origins during the website overlap', async () => {
+    const newOrigin = 'https://sandline.pages.dev';
+    const url = await setup(KEY, undefined, [newOrigin]);
+    const preflight = (origin: string) => fetch(`${url}/voice-submissions`, {
+      method: 'OPTIONS',
+      headers: { origin, 'access-control-request-method': 'POST', 'access-control-request-headers': 'content-type' },
+    });
+    for (const origin of [ORIGIN, newOrigin]) {
+      const response = await preflight(origin);
+      expect(response.status).toBe(204);
+      expect(response.headers.get('access-control-allow-origin')).toBe(origin);
+      expect(response.headers.get('vary')).toContain('Origin');
+    }
+    for (const origin of ['https://unapproved.example', 'https://sandline.pages.dev.evil.example', 'null']) {
+      const response = await preflight(origin);
+      expect(response.status).toBe(403);
+      expect(response.headers.get('access-control-allow-origin')).toBeNull();
+    }
+    const response = await fetch(`${url}/voice-submissions`, {
+      method: 'POST', headers: { origin: newOrigin, 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Mia', invite: KEY, agree: true, consent: VOICE_CONSENT_TEXT }),
+    });
+    expect(response.status).toBe(201);
+    expect(response.headers.get('access-control-allow-origin')).toBe(newOrigin);
+    expect((await response.json() as { id: string }).id).toMatch(/^[a-f0-9]{32}$/);
+  });
+
+  it('rejects wildcard, malformed and non-origin allowlist entries at startup', () => {
+    dir = mkdtempSync(join(tmpdir(), 'sandline-voice-'));
+    for (const extraOrigins of [['*'], ['https://sandline.pages.dev/path'],
+      ['https://sandline.pages.dev/'], ['https://sandline.pages.dev?x=1'],
+      ['https://sandline.pages.dev', 'https://one.example', 'https://two.example']]) {
+      expect(() => new VoiceIntake({ dir, inviteKey: KEY, origin: ORIGIN, extraOrigins })).toThrow('exact site origins');
+    }
+  });
+
   async function contributor(url: string): Promise<{ id: string; token: string }> {
     const response = await fetch(`${url}/voice-submissions`, { method: 'POST', headers: { origin: ORIGIN, 'content-type': 'application/json' },
       body: JSON.stringify({ name: 'Mia', invite: KEY, agree: true, consent: VOICE_CONSENT_TEXT }) });
