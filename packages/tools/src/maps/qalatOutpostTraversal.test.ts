@@ -122,6 +122,64 @@ describe('U-221 furnished outpost joins with six Session soldiers and an escorte
     } finally { pair.b.close('fixture complete'); pair.settle(); }
   }, 120_000);
 
+  it('U-222: walks six soldiers and the escorted POW from the west refuge to the hold below the west exit stair and back', async () => {
+    // Independent §10.3/§11.2 and depot B9–B10 transcription: refuge porch,
+    // court, west door and pad, B10's covered mouth, its two flights and
+    // switchback landing, and the B9 vestibule at the stair's foot.
+    const REFUGE = rect(10, 22, 376, 384), B9 = rect(-14, -2, 364, 376);
+    const ROUTE = [REFUGE, COURT, rect(1, 8, 372, 378), rect(-1.2, 4, 370, 378), rect(-10, 4, 376, 390), B9];
+    const routeBoxes = world.boxes.filter((b) => b.maxX >= -20 && b.minX <= 30 && b.maxZ >= 356 && b.minZ <= 396);
+    const starts = [at(12, 378), at(14.5, 378), at(19.5, 378), at(12, 382), at(14.5, 382), at(19.5, 382)];
+    const session = new Session(undefined, '', { ...world, boxes: routeBoxes, squadStarts: starts.map((p) => ({ ...p })) }, {
+      navMesh: nav, brainTree: buildTree('friendly', createBrainRegistry()), testHumanCount: 0,
+    });
+    const { pair, send } = connect(session);
+    try {
+      send({ kind: 'SwitchCharacter', slot: 0, spectate: true });
+      expect(session.spawnEnemy('pow', { ...at(17, 380), authoredHeight: true })).not.toBeNull();
+      const pow = session.enemies[0]!, bodies = [...session.slots, pow];
+      expect(pow.captive).toBe(false);
+      let ticks = 0, lowest = Infinity;
+      const advance = async () => {
+        if (ticks % 30 === 0) send({ kind: 'Ping', id: ticks, clientTime: ticks * TICK_SECONDS * 1000 });
+        session.step((session.tick + 1) * TICK_SECONDS * 1000); pair.settle(); ticks++;
+        for (const [i, b] of bodies.entries()) {
+          const q = b.state, label = `actor${i} ${JSON.stringify(q)}`;
+          expect(q.vault, `${label}: vaulted`).toBeNull();
+          expect(q.crouched || q.prone, `${label}: nonstanding route`).toBe(false);
+          expect(ROUTE.some((r) => inside(q, r)), `${label}: left the legal route`).toBe(true);
+          expect(blockedAt(q.x, q.z, DEFAULT_MOVE_CONFIG.radius, q.y, .05, DEFAULT_MOVE_CONFIG.height, routeBoxes), `${label}: intersects construction`).toBe(false);
+          expect(b.health.current, `${label}: lost actor`).toBe(b.health.max);
+          lowest = Math.min(lowest, q.y);
+        }
+        if (ticks % 128 === 0) await yieldWorker();
+      };
+      const walk = async (goal: Point, done: () => boolean) => {
+        send({ kind: 'Order', order: 'move', address: { to: 'all' }, point: goal, target: null });
+        for (const soldier of session.slots) {
+          const asked = session.orderFor(soldier.index)?.point;
+          expect(asked, 'wire move did not reach every soldier').toBeDefined();
+          const path = nav.path(soldier.state, asked!);
+          expect(completePathLength(path, soldier.state, asked!), 'incomplete standing order').not.toBeNull();
+          expect(path!.vaults).toEqual([]);
+        }
+        for (let tick = 0; tick < 3600 && !done(); tick++) await advance();
+        expect(done(), `stranded at ${JSON.stringify(bodies.map((b) => b.state))}; reports ${JSON.stringify(session.orderReports)}`).toBe(true);
+        send({ kind: 'Order', order: 'hold', address: { to: 'all' }, point: null, target: null });
+        for (let tick = 0; tick < 30; tick++) await advance();
+        expect(done(), 'left the hold').toBe(true);
+      };
+      const STAIR_HOLD = { x: -8, y: 0, z: 370 };
+      await walk(STAIR_HOLD, () => bodies.every((b) => inside(b.state, B9, DEFAULT_MOVE_CONFIG.radius) && Math.abs(b.state.y) < 1e-6));
+      expect(lowest).toBeCloseTo(0, 6);
+      // Reversible: the same legal route back up to the refuge porch.
+      await walk(at(16, 380), () => inside(pow.state, REFUGE, DEFAULT_MOVE_CONFIG.radius) && Math.abs(pow.state.y - 8) < 1e-6
+        && session.slots.every((s) => (inside(s.state, REFUGE) || inside(s.state, COURT)) && Math.abs(s.state.y - 8) < 1e-6));
+      expect(session.orderReports.filter((r) => r.outcome === 'failed')).toEqual([]);
+      console.log('U-222 below-west-stair escort', JSON.stringify({ ticks, actors: bodies.length, lowestFloor: lowest, movementSolids: routeBoxes.length }));
+    } finally { pair.b.close('fixture complete'); pair.settle(); }
+  }, 240_000);
+
   for (const join of joins) for (const outward of [false, true])
     for (const spread of ['tight', 'standard', 'wide'] satisfies SquadSpread[])
       it(`${join.id} ${outward ? 'outward' : 'inward'} at ${spread}: seven bodies cross the legal door and regroup`, async () => {
