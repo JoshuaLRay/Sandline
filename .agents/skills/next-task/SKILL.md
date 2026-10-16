@@ -1,103 +1,50 @@
 ---
 name: next-task
-description: Complete one Sandline backlog task end to end — select the first eligible READY leaf (or the U-ID the user named), implement it, verify, open the PR and merge on green under the standing owner authorization. Use for "complete the next task", "do U-NNN", or the repo URL plus "next task".
+description: Complete one Sandline task — select a READY leaf or requested U-ID, implement, verify and merge when the current PR head is green under AGENTS.md.
 ---
 
 # Complete one task
 
-The task is the U-ID the user named (Claude passes it as `$ARGUMENTS`);
-otherwise the first eligible row in `BACKLOG.md`. Rules and the delivery policy
-are in `AGENTS.md`; this is the procedure. Keep moving: stop only for a real
-missing owner decision, asset, permission or inaccessible dependency — and a
-decision always comes with options and a recommended default.
+`AGENTS.md` owns the shared rules and delivery policy. This skill is the
+task-specific **procedure**; read only the one card and its relevant references.
 
-## 1. Select (≈5 minutes, not an investigation)
+1. **Select:** refresh main; use `pnpm task:next` (explicit U-ID:
+   `pnpm task:next --id U-NNN`). It inspects canonical active/archive
+   statuses and remote branch/PR claims, read-only; requires authenticated
+   `gh`. On parser/network/claim UNKNOWN or missing `gh`, inspect live
+   `BACKLOG.md`, relevant archived dependencies, open PRs and remote
+   `task/*` branches through available integrations. Unknown is not free.
+   Recheck just before branching. First eligible unclaimed READY leaf wins;
+   an explicit ID overrides order but never blockers. Update an actually
+   unblocked BLOCKED row to READY in the canonical queue.
+2. **If none:** report actual blockers; suggest at most three next scope
+   choices from [parity tracker](../../../docs/design/CONFLICT-PARITY.md)
+   or INBOX. Owner decision questions include options and one recommended
+   default. Do not invent readiness or override a human acceptance gate.
+3. **Scope:** read exactly one `docs/backlog/U-NNN.md` card and its
+   `Read first` list. Refer to the relevant VISION/ADR sections when
+   making a design decision; use CODEMAP only for unknown source locations.
+   Write `Conflict default: …` in the card when ADR-021 settles a gap.
+   Split work above ~800 changed non-generated lines or unrelated systems
+   into linked leaves; leave human approval on the epic verification card.
+4. **Claim:** branch `task/U-NNN-short-name` from current main, push meaningful
+   work, and open a PR promptly (draft acceptable). The branch/PR is the claim.
+5. **Build:** bugs need a reproduced symptom and failing regression test
+   first; if not reproducible, record attempts and stop. Keep scope narrow.
+   Push checkpoints within 15 minutes of active edits. On interruption,
+   follow [handoff skill](../next-task-context-transfer-text-box/SKILL.md)
+   for a pushed WIP state and a compact task-card handoff.
+6. **Verify:** run focused tests, `pnpm verify`, and affected generators,
+   simulations, asset checks or browser checks from `docs/COMMANDS.md`.
+   Visual/audio acceptance needs a reproducible artifact and an honest
+   pending owner verdict, never a fabricated sign-off.
+7. **Deliver:** one PR includes ≤15-line card handoff, one CHANGELOG entry
+   and canonical status (DONE archived; REVIEW remains active if human
+   verdict pending). Preserve stable links/evidence. Check all four required
+   CI jobs on the latest PR head; sync and rerun if main advanced. Merge only
+   as allowed by `AGENTS.md` and verify resulting main. Report task ID,
+   PR, merge SHA, checks and any remaining verdict. Stop after this task
+   unless the owner asked for multiple.
 
-1. Fetch `origin/main`; preserve any dirty work. Run `pnpm task:next`
-   (or `pnpm task:next --id U-NNN` for an explicit task), which consults the
-   canonical active backlog, archived statuses and fresh GitHub PR/branch claims.
-   It returns a small JSON result; `--explain` gives diagnostic skips.
-   It is **read-only**. It requires authenticated `gh` access to the repo.
-   If `gh` is absent, GitHub is unreachable, output is UNKNOWN, or the parser
-   fails, use the original **manual** selection procedure: inspect the live
-   `BACKLOG.md`, relevant archive rows, open PRs and remote `task/*` branches
-   through available integrations. Never treat an unavailable claim check as
-   confirmation that a task is free. Recheck claims before creating a branch.
-2. Take the first **READY** row in table order whose dependencies are satisfied
-   (DONE, archived in `docs/backlog/archive/`, or REVIEW with code merged on main
-   unless the card needs that verdict). Skip rows another worker's PR/branch
-   holds. Promote a BLOCKED row to READY when its only blockers were
-   dependencies that are now satisfied; a missing decision or asset stays
-   BLOCKED. An explicit ID overrides order, not dependencies: if it is blocked,
-   say exactly by what and stop; if the blocker is an owner decision, present
-   it with options and a recommended default (`AGENTS.md`, delivery policy).
-3. **Nothing eligible?** Say so in one line, list each blocker in a short table,
-   and propose at most three next steps — the top unqueued gaps in
-   `docs/design/CONFLICT-PARITY.md`, or scoping an INBOX/BLOCKED row — and ask
-   which to queue, with your recommended default. Do not invent work or mark a
-   human gate passed.
-
-## 2. Scope
-
-4. Read the card, its "Read first" list, the ADRs it names and the code it
-   points to (`docs/CODEMAP.md` for anything it doesn't). Check the card's
-   pillar against `docs/VISION.md` when making design choices; settle open
-   details with ADR-021's order and write `Conflict default: …` in the card.
-5. If the card is bigger than one PR (size L ≈ 800 changed non-generated lines,
-   or it mixes unrelated subsystems), split it into linked leaves first, in the
-   same PR as the first leaf. Never split only to isolate a human review; put
-   the verdict on the epic's verification card instead.
-6. Branch `task/U-NNN-short-name` from main and push it; open the PR (draft is
-   fine) as soon as there is a meaningful commit. The branch/PR is the claim —
-   no separate claim-only commit.
-
-## 3. Implement and verify
-
-7. Bugs: reproduce on current code first, record observation separately from
-   hypothesis, add a failing regression test, then fix the cause. If it won't
-   reproduce, record the attempts and stop; never ship a speculative fix.
-8. Implement only the card's scope. Record adjacent problems as new cards
-   (report-feedback), don't absorb them. Commit and push each meaningful small
-   checkpoint promptly, at least every 15 minutes of active edits. If unfinished,
-   push a labelled WIP commit and update the card's handoff (≤15 lines) with the
-   branch/PR, progress, checks run or still unrun, and next action. Checkpoint
-   before long checks, pauses or handoffs; never keep resumable work only local.
-   Intermediate WIP commits may have incomplete checks; label that honestly and
-   satisfy every final verification gate before merging.
-9. Run focused tests, then `pnpm verify`, then whatever the change affects:
-   generators (`pnpm gen:*`), `pnpm gen:nav` for world edits,
-   `pnpm sim-run --scenario mission --all-missions --seeds 3` for AI/mission
-   changes, budgets for assets (`docs/COMMANDS.md`). Never call an unrun check
-   passed.
-10. Visual/audio/feel work: give reproducible capture or listening steps and
-    leave the verdict pending for the owner. Fixtures and fallback chirps prove
-    infrastructure, not content.
-
-## 4. Deliver (one PR, one final docs commit)
-
-11. Final commit in the PR, together: the card's handoff (≤15 lines — PR,
-    commands with pass/fail, criteria checked, pending verdict and where it is
-    batched, follow-up IDs), one CHANGELOG line, and the canonical task row:
-    if every criterion is met, mark **DONE** and move the row out of `BACKLOG.md`
-    into the dated `docs/backlog/archive/*.md` file (preserve text/order/PR and
-    rewrite its relative task-card link only); if a human verdict remains,
-    keep the row in the active queue as **REVIEW**. Never duplicate an ID in
-    active and archived tables. The backlog-index regression test enforces
-    these rules. Close linked legacy B-IDs only when criteria are met. Commit
-    messages are `U-NNN: description`.
-12. Watch all four required CI jobs on the **latest pushed head SHA**. Fix
-    failures within scope and push again. Skipped, cancelled, pending or
-    older-head runs are not green. Report real run numbers and the head SHA.
-13. Merge that verified head under the standing authorization (`AGENTS.md`),
-    after merging main in and re-running CI if main moved. Confirm the merge on
-    main. No follow-up documentation PR unless main's state differs from what
-    the PR recorded. Without CI/merge access, stop at the green-locally PR and
-    say what remains.
-14. Report in a few lines: ID, outcome, PR, merge SHA, checks, pending human
-    verdict. Stop — one task per request unless the user asked for more.
-
-## Legacy and human gates
-
-An explicit `T-` request follows `docs/LEGACY-TASK-WORKFLOW.md`. No procedure
-may fabricate a playtest, fill in a human verdict or silently change a locked
-decision. Old M2–M5 sign-offs do not block U-ID work.
+For an explicit legacy T-ID use `docs/LEGACY-TASK-WORKFLOW.md`. Never
+fabricate a playtest or silently modify a locked ADR.
