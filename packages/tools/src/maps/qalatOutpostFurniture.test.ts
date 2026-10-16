@@ -8,8 +8,9 @@ import { buildOutpostFurniture, outpostDecorations } from './qalatOutpostFurnitu
 
 // Independent §2.2/8.2 dimensions: neither authoring data nor the generated
 // manifest can redefine these centres, axes, heights or tower bounds.
+// U-180 moved O-C01 west into the south throat for V3's gun line.
 const FIXTURES = [
-  ['outpost-furniture-O-C01', 38, 8, 359, 6, .8, 1.1],
+  ['outpost-furniture-O-C01', 29, 8, 359, 6, .8, 1.1],
   ['outpost-furniture-O-C02', 30, 8, 376, 1.2, 4, 2.2],
   ['outpost-furniture-O-C03', 40, 8, 385, 5, 1.8, 1.1],
   ['outpost-furniture-O-C04', 32, 8, 400, 1.2, 4, 2.2],
@@ -69,7 +70,7 @@ describe('U-179 independent fixed outpost furnishings and physical clearances', 
 
   it('preserves independent four-metre circulation rectangles and all room-door inside landings', () => {
     const lanes = [
-      ['south gate', 28, 32, 356, 372], ['court corridor below refuge', 8, 28, 371.4, 375.4],
+      ['south gate east of the gun line', 32, 36, 356, 372], ['court corridor below refuge', 8, 28, 371.4, 375.4],
       ['east gate to court', 32, 56, 372, 376], ['east turning pad', 57, 61, 370, 376],
       ['trough west bypass', 24, 28, 372, 390], ['trough east bypass', 32, 36, 372, 390],
       ['cart west bypass', 33.5, 37.5, 382, 389.4], ['cart east bypass', 42.5, 46.5, 380, 389.4],
@@ -143,7 +144,7 @@ describe('U-179 independent fixed outpost furnishings and physical clearances', 
       [47.1, 8, 414.3, 46.3, 414.3], [47.1, 8, 419.5, 46.3, 419.7],
       [50.9, 8, 414.3, 51.7, 414.3], [50.9, 8, 419.5, 51.7, 419.7],
       [49, 8, 413.5, 49, 417], [44, 8, 411.2, 49, 417], [55.1, 8, 411.2, 49, 417],
-      [38, 9.1, 359, 38, 356], [30, 10.2, 376, 22, 380],
+      [29, 9.1, 359, 29, 356], [30, 10.2, 376, 22, 380],
       [40, 9.1, 385, 42, 390], [32, 10.2, 400, 32, 412], [52, 9, 404, 54, 404],
     ] as const;
     // Retain all nearby overhead/collision geometry; the 32m padding exceeds

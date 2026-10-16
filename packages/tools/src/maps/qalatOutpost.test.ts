@@ -86,7 +86,9 @@ describe('U-175 independent outpost shell and opaque reserve annex', () => {
       expect(solid(x, atZ, 13.999)).toBe(true);
       expect(solid(x, atZ, 14.001)).toBe(false);
     }
-    for (const x of [7.5, 56.5]) for (let z = 356.25; z < 412; z += .5) {
+    // U-180's west reveal leaves only the outer 0.2 m jamb at z371.4..372.
+    for (const x of [7.1, 7.5, 56.5]) for (let z = 356.25; z < 412; z += .5) {
+      if (x === 7.5 && z > 371.4 && z < 372) continue;
       expect(solid(x, z), `side wall ${x}/${z}`).toBe(Math.abs(z - 374) > 2);
       expect(solid(x, z, 13.999)).toBe(true);
       expect(solid(x, z, 14.001)).toBe(false);
@@ -99,8 +101,15 @@ describe('U-175 independent outpost shell and opaque reserve annex', () => {
       expect(blockedAt(px, pz, .001, 8, 0, top - 8 - .001, shell), `gate ${px}/${pz}`).toBe(false);
       expect(solid(px, pz, top + .001), `gate lintel ${px}/${pz}`).toBe(true);
     }
-    for (const x of [7.5, 56.5]) for (const z of [370.01, 371.99, 376.01, 377.99])
+    for (const x of [7.1, 56.5]) for (const z of [370.01, 371.99, 376.01, 377.99])
       expect(solid(x, z), `side arch infill ${x}/${z}`).toBe(true);
+    for (const z of [370.01, 371.39, 376.01, 377.99]) expect(solid(7.5, z), `west infill behind reveal ${z}`).toBe(true);
+    // Exact U-180 reveal: open x7.2..8, z371.4..372 to the door head; lintel above.
+    for (const x of [7.21, 7.6, 7.99]) for (const z of [371.41, 371.7, 371.99]) {
+      expect(blockedAt(x, z, .001, 8, 0, 2.999, shell), `west reveal ${x}/${z}`).toBe(false);
+      expect(solid(x, z, 11.001), `west reveal lintel ${x}/${z}`).toBe(true);
+    }
+    for (const z of [371.41, 371.99]) expect(solid(7.19, z), 'outer west jamb').toBe(true);
     for (const x of [28.01, 30, 32, 34, 35.99]) for (const z of [411.5, 411.99, 412.5, 413])
       expect(blockedAt(x, z, .001, 8, 0, 3.999, shell), `complete north arch throat ${x}/${z}`).toBe(false);
     for (let x = 8.1; x < 56; x += 1.3) for (let z = 356.1; z < 412; z += 1.3)
@@ -234,10 +243,10 @@ describe('U-175 independent outpost shell and opaque reserve annex', () => {
       levelHash: string; renderHash: string; views: { name: string; calls: number; floorY: number; renderedCeilingY: number | null }[];
     };
     expect(captures.levelHash).toBe(manifest.levelHash); expect(captures.renderHash).toBe(manifest.renderHash);
-    expect(captures.views.map((v) => v.name)).toEqual(['south-gate-court', 'west-gate', 'east-gate', 'barracks',
+    expect(captures.views.map((v) => v.name)).toEqual(['v3-gun', 'west-turn', 'south-gate-court', 'west-gate', 'east-gate', 'barracks',
       'refuge', 'antechamber', 'cell', 'radio', 'court-cover', 'water-tower', 'radio-equipment', 'cell-trim', 'reserve-bend', 'reserve-room']);
-    expect(captures.views.every((v) => v.calls < 300 && v.floorY === 8)).toBe(true);
-    for (const view of captures.views.filter((v) => !['south-gate-court', 'west-gate', 'east-gate', 'court-cover', 'water-tower'].includes(v.name))) expect(view.renderedCeilingY, view.name).toBeCloseTo(view.name === 'refuge' ? 12.5 : 12, 6);
+    expect(captures.views.every((v) => v.calls < 300 && v.floorY === (v.name === 'v3-gun' ? 26 : 8))).toBe(true);
+    for (const view of captures.views.filter((v) => !['v3-gun', 'west-turn', 'south-gate-court', 'west-gate', 'east-gate', 'court-cover', 'water-tower'].includes(v.name))) expect(view.renderedCeilingY, view.name).toBeCloseTo(view.name === 'refuge' ? 12.5 : 12, 6);
     expect(world.id).toBe('qalat-outpost-construction');
     expect(manifest.activeCampaign).toBe('unchanged; activation U-117');
     expect(manifest.humanVerdict).toBe('whole-mission acceptance U-119');
