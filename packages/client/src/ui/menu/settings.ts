@@ -140,6 +140,7 @@ export const KEY_BINDINGS: readonly { action: string; keys: string }[] = [
   { action: 'Reload', keys: 'R' },
   { action: 'Weapons', keys: '1 primary · 2 secondary · 3 knife (7 – 9 range only)' },
   { action: 'Grenade / equipment / kits', keys: '4 grenade · 5 equipment · 6 health kits  (fire to use)' },
+  { action: 'Detonate C4 (C4 in hand)', keys: 'Right mouse oldest charge · R all charges' },
   { action: 'Interact / revive', keys: 'E (hold)' },
   { action: 'Order wheel', keys: 'Q (hold)' },
   { action: 'Mark target', keys: 'F' },

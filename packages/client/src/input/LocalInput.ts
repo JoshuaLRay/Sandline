@@ -570,6 +570,8 @@ export class LocalInput {
       prone: this.proning,
       interact: tapped('KeyE'),
       drop: tapped('KeyG'),
+      // U-182: R. The page keeps it only with placed charges in hand (detonate all); otherwise R reloads.
+      detonateAll: tapped('KeyR'),
       // Carried so the server can refuse a vault mid-burst (T-2.21).
       firing: this.firing,
     };

@@ -41,6 +41,7 @@ different choice.
 | [020](020-setting.md) | The setting: Afghanistan, winter 2001–2002, US infantry in desert camouflage | Accepted |
 | [021](021-conflict-gameplay-reference.md) | The Conflict series is the gameplay reference; unspecified details default to it, adapted to six | Accepted |
 | [025](025-bleed-out-two-minutes.md) | A downed soldier bleeds out over two minutes (120 s, replicated whole) | Accepted |
+| [026](026-c4-detonation-controls.md) | C4: right click sets off the oldest charge, R sets off all | Accepted |
 
 ## Template
 

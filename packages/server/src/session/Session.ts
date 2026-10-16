@@ -500,6 +500,9 @@ export interface Slot {
   /** U-046: right click was held on the newest input, and on the one before (to see a press). */
   cookHeld: boolean;
   cookWasHeld: boolean;
+  /** U-182: R held with placed charges in hand, and whether it was last tick (a press sets them all off). */
+  detonateAllHeld: boolean;
+  detonateAllWasHeld: boolean;
   /**
    * U-022: the second primary of a character who carries two (Preach, once he
    * has taken one; the support from the start), or null.
@@ -1322,6 +1325,8 @@ export class Session {
         cook: null,
         cookHeld: false,
         cookWasHeld: false,
+        detonateAllHeld: false,
+        detonateAllWasHeld: false,
         secondary: null,
         stowed: new Map(),
         suppression: createSuppression(),
@@ -4787,6 +4792,8 @@ export class Session {
           drop: (frame.buttons & 0b1000000) !== 0,
           // U-046.
           cook: (frame.buttons & 0b10000000) !== 0,
+          // U-182: R with placed charges in hand.
+          detonateAll: (frame.buttons & 0b100000000) !== 0,
         },
       });
     }
@@ -5263,15 +5270,22 @@ export class Session {
   /**
    * U-046: right click with a thrown item in hand pulls the pin (a press, not a hold); the fuse runs from then. A
    * grenade not thrown in time goes off in the hand, where its soldier stands (dead or alive), and is spent.
+   * U-054, U-182: with placed charges in hand right click is the detonator for the oldest one out, and R for all of
+   * them; each press sets off what it names once, and R wins a tick both are pressed on.
    */
   private updateCooking(nowSeconds: number): void {
     for (const slot of this.slots) {
       const held = slot.cookHeld && !this.autonomous(slot);
       const pressed = held && !slot.cookWasHeld;
       slot.cookWasHeld = held;
-      if (pressed && isAlive(slot.health) && !slot.mounted && !slot.state.vault && this.projectileDefs[slot.heldProjectile]?.kind === 'placed') {
-        // U-054: right click with the charges in hand is the detonator.
-        this.detonateCharges(slot, slot.heldProjectile);
+      const allHeld = slot.detonateAllHeld && !this.autonomous(slot);
+      const allPressed = allHeld && !slot.detonateAllWasHeld;
+      slot.detonateAllWasHeld = allHeld;
+      const detonator = isAlive(slot.health) && !slot.mounted && !slot.state.vault && this.projectileDefs[slot.heldProjectile]?.kind === 'placed';
+      if (allPressed && detonator) {
+        this.detonateAllCharges(slot, slot.heldProjectile);
+      } else if (pressed && detonator) {
+        this.detonateOldestCharge(slot, slot.heldProjectile);
       } else if (pressed && slot.cook === null && isAlive(slot.health) && !slot.mounted && !slot.state.vault && slot.heldProjectile >= 0) {
         const def = this.projectileDefs[slot.heldProjectile];
         if (def && def.kind === 'thrown' && def.fuseSeconds > 0 && (slot.pouch[slot.heldProjectile] ?? 0) > 0) {
@@ -5423,14 +5437,34 @@ export class Session {
     }
   }
 
-  /** U-054: every armed charge of this kind that `slot` has out goes off at once. */
-  private detonateCharges(slot: Slot, kind: number): void {
-    const mine = this.projectiles.filter((p) => p.kind === kind && p.stuck === true && p.ownerNetId === slot.netId && p.def.senseM <= 0);
-    if (mine.length === 0) return;
-    const rest = this.projectiles.filter((p) => !mine.includes(p));
+  /**
+   * U-182: the armed charges of this kind that `slot`'s own soldier has out, oldest first. Only a charge stuck where it
+   * landed counts (one still in the air is not armed); a sensor is never a charge. Net ids only grow and a checkpoint
+   * restores charges in that order, so the order is the placement order, the same on every run.
+   */
+  private chargesOut(slot: Slot, kind: number): ActiveProjectile[] {
+    return this.projectiles
+      .filter((p) => p.kind === kind && p.stuck === true && p.destroyed !== true && p.ownerNetId === slot.netId && p.def.senseM <= 0)
+      .sort((a, b) => a.netId - b.netId);
+  }
+
+  /** U-182: these charges come off the world and go off, in the order given; each is spent and goes off once. */
+  private setOff(charges: readonly ActiveProjectile[]): void {
+    if (charges.length === 0) return;
+    const rest = this.projectiles.filter((p) => !charges.includes(p));
     this.projectiles.length = 0;
     this.projectiles.push(...rest);
-    for (const p of mine) this.detonate(p, { x: p.state.x, y: p.state.y, z: p.state.z });
+    for (const p of charges) this.detonate(p, { x: p.state.x, y: p.state.y, z: p.state.z });
+  }
+
+  /** U-054, U-182: right click — the oldest armed charge of this kind that `slot` has out goes off, and only it. */
+  private detonateOldestCharge(slot: Slot, kind: number): void {
+    this.setOff(this.chargesOut(slot, kind).slice(0, 1));
+  }
+
+  /** U-054, U-182: R (and a bot's detonator) — every armed charge of this kind that `slot` has out goes off at once. */
+  private detonateAllCharges(slot: Slot, kind: number): void {
+    this.setOff(this.chargesOut(slot, kind));
   }
 
   /** U-054: E on the soldier's own charge, within reach and in sight, takes it back into the pouch. */
@@ -5914,6 +5948,7 @@ export class Session {
           slot.interactHeld = ahead.input.interact === true;
           if (ahead.input.drop === true) slot.dropPending = true;
           slot.cookHeld = ahead.input.cook === true;
+          slot.detonateAllHeld = ahead.input.detonateAll === true;
           slot.pendingInputTick = ahead.tick;
           slot.staleTicks = 0;
           slot.input.downed = isDowned(slot.health);
@@ -5928,6 +5963,7 @@ export class Session {
           slot.interactHeld = next.input.interact === true;
           if (next.input.drop === true) slot.dropPending = true;
           slot.cookHeld = next.input.cook === true;
+          slot.detonateAllHeld = next.input.detonateAll === true;
           slot.pendingInputTick = next.tick;
           slot.staleTicks = 0;
         } else {
@@ -6251,7 +6287,7 @@ export class Session {
     // U-079: a bot's word to set off the charges it has out, the human's detonator.
     const detonate = brain.take('detonate');
     const caster = ownerSlot === NO_SLOT ? undefined : this.slots[ownerSlot];
-    if (detonate !== null && caster && isAlive(caster.health) && this.canBotEngage(caster.index, caster.target)) this.detonateCharges(caster, detonate);
+    if (detonate !== null && caster && isAlive(caster.health) && this.canBotEngage(caster.index, caster.target)) this.detonateAllCharges(caster, detonate);
     const toss = brain.take('throwAt');
     if (toss && (ownerSlot === NO_SLOT || this.canBotEngage(ownerSlot, this.slots[ownerSlot]?.target ?? null)) && !body.state.vault && this.launch(body, ownerSlot, toss.projectile, toss.yaw, toss.pitch)) {
       body.yaw = tableToWire(toss.yaw);

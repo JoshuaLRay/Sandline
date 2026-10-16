@@ -94,6 +94,8 @@ export interface MoveInput {
   drop?: boolean;
   /** U-046: right click held with a grenade in hand. The host starts the fuse on its press; the step ignores it. */
   cook?: boolean;
+  /** U-182: R held with placed charges in hand. The host sets them all off on its press; the step ignores it. */
+  detonateAll?: boolean;
   /**
    * Downed (T-2.13, B-05): immobile. Not a button — the server sets it from
    * the soldier's vitality and the client predictor from the replicated one,

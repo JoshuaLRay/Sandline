@@ -500,3 +500,5 @@ Format: `T-<id> — <what changed>`
 - U-179 — Furnish the isolated outpost with fixed court cover, exact inaccessible water tower, folded gates and radio/cell cues; preserve six holding positions and the cell landing, verify 25 outpost proofs and regenerate depot/outpost/nav/captures. Split U-176; V3, full tactical clearances and the inherited west-entry turn remain U-180, actor shelters U-177, activation U-117 and human quality U-119 ([#347](https://github.com/JoshuaLRay/Sandline/pull/347)).
 
 - U-181 — A downed soldier bleeds out over 120 s (ADR-025); the replicated vital timer widens to 7 bits by trading a bit from revive/lever progress (snapshot budget unchanged, protocol 73); the RPG scenario's 30 s downed recycle is now explicit ([#349](https://github.com/JoshuaLRay/Sandline/pull/349)).
+
+- U-182 — C4: right click sets off the soldier's oldest armed charge (one per press, placement order kept through retries) and R sets off all of them; R stays reload with a gun; host-authoritative and owner-only; key list and draw hint updated; protocol 74 (ADR-026) ([#350](https://github.com/JoshuaLRay/Sandline/pull/350)).
