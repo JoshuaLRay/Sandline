@@ -39,7 +39,8 @@
     "bake:light": "tsx packages/tools/src/bake-light.ts",
     "check:packs": "tsx packages/tools/src/check-packs.ts",
     "check:load-time": "tsx packages/tools/src/check-load-time.ts",
-    "perf:frame": "tsx packages/tools/src/perf-frame.ts"
+    "perf:frame": "tsx packages/tools/src/perf-frame.ts",
+    "task:next": "tsx packages/tools/src/task-next.ts"
   },
   "devDependencies": {
     "@dimforge/rapier3d-compat": "0.20.0",
