@@ -18,6 +18,8 @@ const LINES = new Set(VOICE_RECORDING_LINES.map((line) => line.id));
 
 export interface VoiceIntakeOptions {
   dir: string; inviteKey: string; origin: string;
+  /** Extra exact site origins permitted temporarily during a domain migration. */
+  extraOrigins?: readonly string[];
   onFinished?: (submission: { id: string; name: string; clips: number }) => Promise<void>;
 }
 interface Submission { id: string; tokenHash: string; name: string; agreedAt: string; consent: string; clips: Record<string, { bytes: number; file: string; line?: string; savedAt?: string }>; complete: boolean; notifiedAt?: string }
@@ -51,8 +53,21 @@ async function body(req: IncomingMessage, limit: number): Promise<Buffer> {
 export class VoiceIntake {
   private readonly starts = new Map<string, { count: number; since: number }>();
   private readonly notifications = new Map<string, Promise<boolean>>();
+  private readonly allowedOrigins: ReadonlySet<string>;
   constructor(private readonly options: VoiceIntakeOptions) {
-    if (!options.dir || !options.inviteKey || !/^https?:\/\/[^/]+$/.test(options.origin)) throw new Error('Voice intake needs a directory, invite key and a site origin');
+    const origins = [options.origin, ...(options.extraOrigins ?? [])];
+    const invalid = (origin: string): boolean => {
+      try {
+        const url = new URL(origin);
+        return !['https:', 'http:'].includes(url.protocol) || url.origin !== origin ||
+          url.username !== '' || url.password !== '';
+      } catch { return true; }
+    };
+    // Two live sites plus at most one emergency fallback; never allow wildcard origins.
+    if (!options.dir || !options.inviteKey || origins.length > 3 || origins.some(invalid)) {
+      throw new Error('Voice intake needs a directory, invite key and exact site origins');
+    }
+    this.allowedOrigins = new Set(origins);
     mkdirSync(options.dir, { recursive: true, mode: 0o700 });
   }
   private path(id: string): string { return join(this.options.dir, id); }
@@ -147,11 +162,13 @@ export class VoiceIntake {
   async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     res.setHeader('cache-control', 'no-store');
     res.setHeader('vary', 'Origin');
-    if (req.headers.origin === this.options.origin) {
-      res.setHeader('access-control-allow-origin', this.options.origin);
+    // Reflect only an exact approved origin; Vary prevents shared-cache cross-origin leaks.
+    const origin = req.headers.origin;
+    if (origin && this.allowedOrigins.has(origin)) {
+      res.setHeader('access-control-allow-origin', origin);
       res.setHeader('access-control-allow-methods', 'GET, POST, PUT, OPTIONS');
       res.setHeader('access-control-allow-headers', 'Content-Type, X-Submission-Token');
-    } else if (req.headers.origin) { json(res, 403, { error: 'Origin is not permitted' }); return; }
+    } else if (origin) { json(res, 403, { error: 'Origin is not permitted' }); return; }
     if (req.method === 'OPTIONS') { res.statusCode = 204; res.end(); return; }
     try {
       if (req.method === 'POST' && req.url === '/voice-submissions') {
