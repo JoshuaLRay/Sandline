@@ -1,6 +1,6 @@
 # U-NNN — Observable outcome
 
-Epic: <group>. Pillar: <P1–P7 from docs/VISION.md, or "maintenance">.
+Epic: <group>. Pillar: <P1–P8 from docs/VISION.md, or "maintenance">.
 Size: <S ≈ <150 LOC · M ≈ 150–400 · L ≈ 400–800 changed non-generated lines>.
 Human verdict: <none | batched in U-NNN (the epic's verification card) | this card>.
 Status, priority, dependencies and branch/PR live in BACKLOG.md.

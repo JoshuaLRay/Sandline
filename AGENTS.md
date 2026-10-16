@@ -9,17 +9,27 @@ This project is built entirely by AI agents; the repository is its only memory.
 ## What we are building
 
 **Sandline is Conflict: Desert Storm with a squad of six.** Lead, command and
-switch between six specialist soldiers, keep every one of them alive, and fight
-through a linear campaign of objective missions — one to six friends online in
-the browser, bots in the empty slots. Afghanistan 2001–02, original IP.
+switch between six soldiers, keep every one of them alive, and fight through a
+linear campaign of objective missions on varied maps — one to six friends
+online in the browser, bots in the empty slots — finding gear worth keeping and
+building each soldier around it. Afghanistan 2001–02, original IP.
 
-- [docs/VISION.md](docs/VISION.md) — pillars P1–P7, the six-for-four squad
+- [docs/VISION.md](docs/VISION.md) — pillars P1–P8, the six-for-four squad
   mapping, deliberate differences and anti-goals. Read it before any design,
   scoping or priority decision.
+- **Direction of 2026-10-16:** only *Desert Storm*, *Desert Storm II* (primary)
+  and *Global Storm* (selective) are references ([ADR-022](docs/adr/022-conflict-reference-scope.md));
+  maps vary their approaches instead of following a three-lane formula
+  ([ADR-023](docs/adr/023-flexible-mission-routes.md)); loadouts are starting
+  configurations and any soldier may use any equipment, Marsh left-handed only
+  ([ADR-024](docs/adr/024-equipment-freedom-and-loot.md)). Never add a
+  character-exclusive equipment rule; loot mechanics wait for the owner's
+  design session ([LOOT-PROGRESSION.md](docs/design/LOOT-PROGRESSION.md), U-184).
 - [docs/design/CONFLICT-PARITY.md](docs/design/CONFLICT-PARITY.md) — what the
   series had, what Sandline has, and the gaps in recommended order.
 - **Unspecified gameplay detail?** ([ADR-021](docs/adr/021-conflict-gameplay-reference.md))
-  Owner decision → locked ADR → what Desert Storm / Desert Storm II did, adapted
+  Owner decision → locked ADR → what Desert Storm / Desert Storm II did (Global
+  Storm only where the owner points to it or the first two are weak), adapted
   to six soldiers and online co-op (write `Conflict default: …` in the card) →
   smallest reversible proposal. Do not stop to ask when step 3 answers it.
 
@@ -32,6 +42,7 @@ the browser, bots in the empty slots. Afghanistan 2001–02, original IP.
 | A bug, playtest note or suggestion (incl. repo URL + feedback) | [.agents/skills/report-feedback/SKILL.md](.agents/skills/report-feedback/SKILL.md) — record first; implement only if they said fix/build/do it now |
 | "Queue / build the next Conflict feature" | report-feedback for the named or top unqueued gap in CONFLICT-PARITY.md; then next-task if they said build it |
 | A context-transfer text box / new-chat handoff | [.agents/skills/next-task-context-transfer-text-box/SKILL.md](.agents/skills/next-task-context-transfer-text-box/SKILL.md) |
+| Answers to loot decisions (L-NN) | record them in [U-184](docs/backlog/U-184.md) and [LOOT-PROGRESSION.md §15](docs/design/LOOT-PROGRESSION.md); update the BACKLOG blockers they unblock |
 | An explicit legacy T-ID | `TASKS.md` → that one `PLAN.md` section → `docs/LEGACY-TASK-WORKFLOW.md` |
 | A question or status check | answer from files and PRs; a repo URL alone is not a task |
 
@@ -143,7 +154,8 @@ plays every mission headless. Everything else: `docs/COMMANDS.md`.
 ## Glossary
 
 **Slot** one of six squad positions (0–5), each bound to one **character**
-(Preach, Brennan, Holloway, Ortiz, Marsh, Vance). **Possession** a human taking
+(Preach, Brennan, Holloway, Ortiz, Marsh, Vance). **Starting loadout** a
+character's default equipment, not a class (ADR-024). **Possession** a human taking
 a slot's soldier; leaving hands it back to a bot. **Commander** the human a bot
 answers to; a player may **switch** into a bot they command. **Fireteams** slots
 0–2 (assault) and 3–5 (overwatch). **Escorted character** a non-slot friendly

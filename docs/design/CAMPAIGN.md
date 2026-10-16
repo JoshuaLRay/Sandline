@@ -7,7 +7,21 @@ nothing marked so is decided. Status and order live in [BACKLOG.md](../../BACKLO
 Not to be confused with the **Campaign** *systems* epic (U-032, U-059 to U-065): saving the world at a checkpoint,
 prisoners and the rescue objective. Those are built and are the campaign's tools, not its content.
 
-## Map direction amendment — 2026-10-04
+## Map direction amendment — 2026-10-16 (current)
+
+The owner relaxed the three-lane rule ([ADR-023](../adr/023-flexible-mission-routes.md)):
+maps should generally offer several meaningful approaches, but their number,
+shape and separation vary by mission; three approaches are a starting point,
+not a requirement, and a mission may be deliberately linear when its objective
+justifies it. Tactical opportunity and environmental believability matter more
+than route counts. **The Qalat Road and the Kestrel Dam keep their approved
+three-route layouts** unless a map revision is approved. The amendment below is
+kept as the record of how those two were designed; D4, D5 and Q5's lane wording
+is historical sizing, not structure. [Map and mission creation](MAP-MISSION-CREATION.md)
+holds the current guidance, the review criteria and the season's variety
+ledger.
+
+## Map direction amendment — 2026-10-04 (applies to Qalat and Kestrel)
 
 The owner requires **three physically distinct lanes** for mission 1 and all
 forthcoming missions: direct primary assault, overlook/support, and a narrower
@@ -58,9 +72,9 @@ one event script. The grey-box `greybox-01` is its test twin. Everything below i
    mission list (`sim/mission.ts`), the encounter list (`sim/encounters.ts`), the script lookup (`sim/scripts.ts`), a baked navmesh
    (`server/src/ai/nav/baked`), the lobby entry, the level checker's join table (`tools/src/level-check.ts`), and the
    mission sim, which is fixed to `mission-01` (`tools/src/scenarios/mission.ts`).
-3. **One map, one look, and a small one.** mission-01 is about 200 x 100 m and two lanes; the season needs three-lane maps roughly ten times that area. The kit has dirt, road, walls, props and a compound; there is no second environment, no
+3. **One map, one look, and a small one.** mission-01 is about 200 x 100 m and two lanes; the season needs larger maps (historically sized as three lanes, roughly ten times that area; see the 2026-10-16 amendment). The kit has dirt, road, walls, props and a compound; there is no second environment, no
    interiors, no night and no weather.
-4. **No vehicles for the squad, no air, no stealth, no multi-stage maps** (a mission is one level).
+4. **No vehicles for the squad, no air, no stealth, no multi-stage maps** (a mission is one level). Stealth and enemy awareness are now an epic ([STEALTH-AWARENESS.md](STEALTH-AWARENESS.md), U-204); one drivable vehicle is a later epic (U-218).
 5. **The friendly bots cannot yet fight armour** (the tank beats them in the mission sim). Any mission with a tank
    needs that first, or accepts that bots do not complete it.
 
@@ -160,10 +174,10 @@ One short document per mission, in this folder, written before any level is buil
 
 1. **Premise** in two sentences, and what the squad must do.
 2. **Objectives in order**, each with its type, its failure and its checkpoint.
-3. **Map:** link a separate `maps/<world-id>.md` copied from [the map template](maps/TEMPLATE.md). Apply [the shared standard](MAP-MISSION-CREATION.md): three route roles, physical separators, every crossing, convergence bounds, support sight lines, start/exit and validation plan.
+3. **Map:** link a separate `maps/<world-id>.md` copied from [the map template](maps/TEMPLATE.md). Apply [the shared standard](MAP-MISSION-CREATION.md): the approach graph and why its shape suits the mission, any declared separations with their crossings, convergence bounds, overwatch sight lines, start/exit, the variety-ledger row, answers to review criteria R1–R10 and the validation plan.
 4. **Opposition:** groups, archetypes, triggers and the set pieces (an emplacement nest, an armoured arrival, a counter-attack).
 5. **The new element** (D4) and how the mission teaches it before it tests it.
-6. **Campaign state:** which prisoners it assumes, what it grants.
+6. **Campaign state:** which prisoners it assumes, what it grants — including its loot opportunities and rewards once the loot design is approved ([LOOT-PROGRESSION.md](LOOT-PROGRESSION.md)).
 7. **Verification:** what `sim-run` and the scenario tests must show, and what only a human playtest can say.
 
 ## 5. Order of work

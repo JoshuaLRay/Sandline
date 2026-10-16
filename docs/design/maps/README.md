@@ -2,6 +2,9 @@
 
 Use the [map and mission creation standard](../MAP-MISSION-CREATION.md) and copy
 [TEMPLATE.md](TEMPLATE.md) for every new campaign map before level authoring.
+Since 2026-10-16 ([ADR-023](../../adr/023-flexible-mission-routes.md)) the number
+and separation of approaches vary by mission; the two records below keep their
+approved three-route layouts.
 A mission brief links its map record; a map record links every mission using it.
 Use the registered world ID as the filename to avoid confusing mission numbers
 with the legacy `mission-01` world.
@@ -10,7 +13,7 @@ with the legacy `mission-01` world.
 |---|---|---|
 | `qalat-road` / campaign mission 1 | [The Qalat Road](qalat-road.md) | U-107 complete replacement specification: hidden spawn, road, ridge and underground depot; U-106 remains the live map until implemented |
 | `kestrel-dam` / campaign mission 2 | [The Kestrel Dam](kestrel-dam.md) | U-127 full construction specification: concealed gravel-bar insertion, gorge road, canal overlook, west-bank flank and the dam complex; design approved 2026-10-09, not built |
-| Campaign missions 3–10 | Create one record per map from the template when each mission is designed | Not yet designed; the shared standard applies to all |
+| Campaign missions 3–10 | Create one record per map from the template when each mission is designed | Not yet designed; the flexible-approach guidance, review criteria and variety ledger apply |
 
 `mission-01` is the preserved clear-and-hold QA slice, `greybox-01` its layout
 fixture, `range` a QA range, and `kit-gallery` a kit inspection world. They are not
