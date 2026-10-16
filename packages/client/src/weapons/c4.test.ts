@@ -1,7 +1,8 @@
 /**
  * U-054: C4. The support throws it and it sticks where it lands; everyone
- * else puts it on a surface within reach; right click with it in hand
- * detonates every charge its owner has out; E takes an unexploded one back.
+ * else puts it on a surface within reach; E takes an unexploded one back.
+ * U-182 (ADR-026): with it in hand right click sets off the oldest charge its
+ * owner has out, one per click in placement order, and R sets them all off.
  * Real `Session` and `NetClient`s over loopback.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -62,9 +63,10 @@ function room() {
 const C4 = PROJECTILE_IDS.indexOf('c4');
 const item = WEAPON_IDS.length + C4;
 const DETONATE = INPUT_BUTTONS.cook;
+const DETONATE_ALL = INPUT_BUTTONS.detonateAll;
 const ticks = (seconds: number) => Math.round(seconds / TICK_SECONDS);
 const DOWN_45 = degToAngle(-45) & 0xfff;
-type Live = { kind: number; stuck?: boolean; ownerNetId: number; state: { x: number; y: number; z: number; age: number } };
+type Live = { netId: number; kind: number; stuck?: boolean; ownerNetId: number; state: { x: number; y: number; z: number; age: number } };
 const charges = (s: Session): Live[] => (s as unknown as { projectiles: Live[] }).projectiles.filter((p) => p.kind === C4);
 
 describe('C4 (U-054)', () => {
@@ -103,26 +105,97 @@ describe('C4 (U-054)', () => {
     expect(charges(r.session)).toHaveLength(1);
   });
 
-  it('right click with C4 in hand detonates every charge the owner has out, and hurts what is near', () => {
-    const { r, brennan, support, sb, ss } = started();
-    r.send(support, { kind: 'Equip', item });
-    ss.pouch[C4] = 2;
-    for (let i = 0; i < 2; i++) {
-      support.net.throwProjectile(r.session.tick, 0, 0, C4);
-      support.pair.settle();
-      r.step(ticks(1.5));
+  /** The support with `n` charges out, thrown one after another, each stuck before the next goes. */
+  const withCharges = (n: number) => {
+    const s = started();
+    s.r.send(s.support, { kind: 'Equip', item });
+    s.ss.pouch[C4] = n;
+    for (let i = 0; i < n; i++) {
+      s.support.net.throwProjectile(s.r.session.tick, 0, 0, C4);
+      s.support.pair.settle();
+      s.r.step(ticks(1.5));
     }
-    expect(charges(r.session)).toHaveLength(2);
-    // Brennan walks up to the charges.
-    const [first] = charges(r.session);
-    r.place(brennan, { x: first!.state.x + 1, z: first!.state.z });
+    expect(charges(s.r.session)).toHaveLength(n);
+    return { ...s, placed: charges(s.r.session).map((c) => c.netId) };
+  };
+
+  it('right click with C4 in hand sets off only the oldest charge out, and hurts what is near it', () => {
+    const { r, brennan, sb, support, placed } = withCharges(2);
+    // Brennan walks up to the first charge placed.
+    const first = charges(r.session).find((c) => c.netId === placed[0])!;
+    r.place(brennan, { x: first.state.x + 1, z: first.state.z });
     const before = sb.health.current;
     r.tap(DETONATE, support);
-    expect(charges(r.session)).toHaveLength(0);
+    expect(charges(r.session).map((c) => c.netId)).toEqual([placed[1]]);
     expect(sb.health.current).toBeLessThan(before);
   });
 
-  it('only the owner\'s charges: another soldier\'s right click detonates none of them', () => {
+  it('each right click sets off the next oldest, in placement order, and one with none out does nothing (U-182)', () => {
+    const { r, support, ss, placed } = withCharges(3);
+    expect(placed).toEqual([...placed].sort((a, b) => a - b));
+    r.tap(DETONATE, support);
+    expect(charges(r.session).map((c) => c.netId)).toEqual(placed.slice(1));
+    r.tap(DETONATE, support);
+    expect(charges(r.session).map((c) => c.netId)).toEqual(placed.slice(2));
+    r.tap(DETONATE, support);
+    expect(charges(r.session)).toHaveLength(0);
+    // None out: the click is spent on nothing, and nothing comes back into the pouch.
+    r.tap(DETONATE, support);
+    expect(charges(r.session)).toHaveLength(0);
+    expect(ss.pouch[C4]).toBe(0);
+  });
+
+  it('holding right click down sets off one charge, not one a tick (U-182)', () => {
+    const { r, support, placed } = withCharges(2);
+    support.buttons = DETONATE;
+    r.step(ticks(1));
+    support.buttons = 0;
+    r.step(1);
+    expect(charges(r.session).map((c) => c.netId)).toEqual([placed[1]]);
+  });
+
+  it('R with C4 in hand sets off every charge the owner has out at once, and they are spent (U-182)', () => {
+    const { r, brennan, sb, support, ss } = withCharges(3);
+    const [first] = charges(r.session);
+    r.place(brennan, { x: first!.state.x + 1, z: first!.state.z });
+    const before = sb.health.current;
+    r.tap(DETONATE_ALL, support);
+    expect(charges(r.session)).toHaveLength(0);
+    expect(sb.health.current).toBeLessThan(before);
+    expect(ss.pouch[C4]).toBe(0);
+    // Nothing left to go off: neither key does anything more.
+    r.tap(DETONATE_ALL, support);
+    r.tap(DETONATE, support);
+    expect(charges(r.session)).toHaveLength(0);
+  });
+
+  it('right click and R on the same tick set everything off once: R wins (U-182)', () => {
+    const { r, support } = withCharges(2);
+    r.tap(DETONATE | DETONATE_ALL, support);
+    expect(charges(r.session)).toHaveLength(0);
+  });
+
+  it('R with a gun in hand sets nothing off (R is reload there) (U-182)', () => {
+    const { r, support } = withCharges(2);
+    r.send(support, { kind: 'Equip', item: WEAPON_IDS.indexOf('smg') });
+    r.tap(DETONATE_ALL, support);
+    r.tap(DETONATE, support);
+    expect(charges(r.session)).toHaveLength(2);
+  });
+
+  it('a charge taken back is no longer the oldest: the next right click sets off the one still out (U-182)', () => {
+    const { r, support, ss, placed } = withCharges(2);
+    const oldest = charges(r.session).find((c) => c.netId === placed[0])!;
+    r.place(support, { x: oldest.state.x - 0.5, z: oldest.state.z });
+    const had = ss.pouch[C4]!;
+    r.press(support);
+    expect(charges(r.session).map((c) => c.netId)).toEqual([placed[1]]);
+    expect(ss.pouch[C4]).toBe(had + 1);
+    r.tap(DETONATE, support);
+    expect(charges(r.session)).toHaveLength(0);
+  });
+
+  it('only the owner\'s charges: another soldier\'s right click or R detonates none of them', () => {
     const { r, support, sp, preach, ss } = started();
     r.send(support, { kind: 'Equip', item });
     support.net.throwProjectile(r.session.tick, 0, 0, C4);
@@ -133,7 +206,28 @@ describe('C4 (U-054)', () => {
     sp.equipment = C4;
     r.send(preach, { kind: 'Equip', item });
     r.tap(DETONATE, preach);
+    r.tap(DETONATE_ALL, preach);
     expect(charges(r.session)).toHaveLength(1);
+    expect(ss.pouch[C4]).toBe(1);
+  });
+
+  it('R sets off only the presser\'s own charges, oldest-first ones of another player stay (U-182)', () => {
+    const { r, support, preach, sp, ss } = started();
+    r.send(support, { kind: 'Equip', item });
+    support.net.throwProjectile(r.session.tick, 0, 0, C4);
+    support.pair.settle();
+    r.step(ticks(1.5));
+    const theirs = charges(r.session)[0]!.netId;
+    // Preach puts one at his feet: newer than the support's.
+    sp.pouch[C4] = 1;
+    sp.equipment = C4;
+    r.send(preach, { kind: 'Equip', item });
+    preach.net.throwProjectile(r.session.tick, 0, DOWN_45, C4);
+    preach.pair.settle();
+    r.step(3);
+    expect(charges(r.session)).toHaveLength(2);
+    r.tap(DETONATE_ALL, preach);
+    expect(charges(r.session).map((c) => c.netId)).toEqual([theirs]);
     expect(ss.pouch[C4]).toBe(1);
   });
 
@@ -145,6 +239,7 @@ describe('C4 (U-054)', () => {
     r.step(ticks(1.5));
     Object.assign(ss.health, { current: 0, downedAt: r.now / 1000 });
     r.tap(DETONATE, support);
+    r.tap(DETONATE_ALL, support);
     expect(charges(r.session)).toHaveLength(1);
     Object.assign(ss.health, { current: 50, downedAt: null });
     r.tap(DETONATE, support);

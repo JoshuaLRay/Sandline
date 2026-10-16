@@ -3,7 +3,7 @@
   "respawnSeconds": 5,
   "respawnImmunitySeconds": 2,
   "downed": {
-    "bleedOutSeconds": 30,
+    "bleedOutSeconds": 120,
     "reviveSeconds": 3,
     "reviveRangeM": 1.5,
     "reviveHealthFraction": 0.4

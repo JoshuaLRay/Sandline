@@ -8,6 +8,35 @@ slot choice), ruled that the support is third-person only, and **deferred
 character skills to a later version of the game**. Two-primary keys and pickup
 replacement stay for U-022. No gameplay is implemented by this document.
 
+## Equipment freedom (owner, 2026-10-16) — read this first
+
+[ADR-024](../adr/024-equipment-freedom-and-loot.md): **the loadouts below are
+starting configurations, not classes.** Every character keeps their name,
+identity, default starting equipment and personal characteristics, but any
+character may acquire, drop, exchange, loot and equip any weapon or equipment,
+subject only to general rules based on the equipment itself (to be set by the
+loot design session, [U-184](../backlog/U-184.md)) and to one character trait:
+
+- **Marsh is left-handed.** He equips only left-handed-compatible firearms, and
+  the loot pool must offer him left-handed assault rifles, LMGs, sniper rifles
+  and other suitable firearms, so his sniper start is a default, not a
+  specialisation. He may obtain them by any acquisition path.
+
+What this changes on this page (the rules stay in code until
+[U-194](../backlog/U-194.md) reconciles them; see
+[LOOT-PROGRESSION.md §14](LOOT-PROGRESSION.md#14-restrictions-audit-and-recommended-reconciliation)):
+
+| Earlier decision | Status from 2026-10-16 |
+|---|---|
+| 2026-09-27 #3: Marsh cannot acquire weapons through character/enemy exchanges | **Superseded** — any acquisition path, left-handed-compatible only |
+| 2026-09-27 #4 and D-6: only Preach and the support may carry two primaries | **Superseded in direction** — a carry rule must apply to every character; default: today's weapon rule for all (L-08) |
+| D-5: the support has no pistol | Now a starting loadout; default: he may pick one up (L-09) |
+| D-3 / D-7: the support is third-person only and cannot ADS | A personal characteristic; its interaction with scoped loot is open, default: a magnified optic's scope view only (L-12) |
+| U-054: only the support throws placed charges | A personal characteristic; everyone may carry and place them (L-13) |
+| D-9: which enemy weapons are pickups | Superseded by the loot acquisition design (L-01) |
+| D-10: one equipment item per character | A starting loadout; the carry rule decides how many (L-08) |
+| Skills (D-3 table) | Still deferred; loot does not bring back cooldown abilities |
+
 ## Approved: the owner's requirements (2026-09-26)
 
 From [the owner's feedback](../backlog/2026-09-26-feedback.md), verbatim in substance:
@@ -107,13 +136,13 @@ Each skill is **bounded**: one effect, a duration, a cooldown, and a range where
 | D-8 | Whether a player may take any free slot, or only the lowest one | **Decided (2026-09-29):** any free slot. |
 | D-9 | Which enemy weapons are available as pickups | **Partially decided:** other characters may pick up enemy weapon drops; U-017's drop table and the left-handed sniper exception still apply. |
 
-## Slot 5: each character's equipment *(decided 2026-09-30)*
+## Slot 5: each character's equipment *(decided 2026-09-30; starting equipment since 2026-10-16)*
 
-Equipment is the sixth device slot (key 5), drawn before it is used, droppable with G and picked up with E. Cards: U-048 (foundation), U-054 to U-058.
+Equipment is the sixth device slot (key 5), drawn before it is used, droppable with G and picked up with E. Cards: U-048 (foundation), U-054 to U-058. Since ADR-024 this table is what each character **starts** with; any character may carry any of it.
 
 | Character | Equipment | Card | Status |
 |---|---|---|---|
-| Holloway (Support) | C4 x2: thrown by the Support only, placed by anyone else, right click detonates all | U-054 | Owner-decided; numbers accepted (4 m, 250 damage, friendly fire as the frag, E picks up your own) |
+| Holloway (Support) | C4 x2: thrown by the Support only, placed by anyone else; right click detonates the oldest charge, R detonates all (U-182) | U-054 | Owner-decided; numbers accepted (4 m, 250 damage, friendly fire as the frag, E picks up your own) |
 | Brennan (LMG) | Rocket launcher x2 | U-048 | Owner-decided; Preach loses his rocket |
 | Preach (lead) | Concussion grenade x4: no damage, heavy suppression | U-056 | Owner-decided |
 | Ortiz (scoped AR) | Smoke grenade x2 | U-058 | Proposal, not objected to |
@@ -123,7 +152,7 @@ Equipment is the sixth device slot (key 5), drawn before it is used, droppable w
 | # | Decision | State |
 |---|---|---|
 | D-10 | Slot 5 per character | **Decided (2026-09-30)** as above |
-| D-11 | C4: 2 charges, 250 damage, 4 m radius, detonate all at once, friendly fire as the frag, E picks up your own | **Decided (2026-09-30)** |
+| D-11 | C4: 2 charges, 250 damage, 4 m radius, detonate all at once, friendly fire as the frag, E picks up your own | **Decided (2026-09-30)**; detonation **changed 2026-10-16** ([ADR-026](../adr/026-c4-detonation-controls.md), U-182): right click sets off the oldest charge out, R sets off all |
 
 ## Proposed ADR addendum
 

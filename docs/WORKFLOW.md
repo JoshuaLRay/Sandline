@@ -12,7 +12,7 @@ pointed at the same game: **Conflict: Desert Storm, with a squad of six**.
 |---|---|---|
 | `AGENTS.md` | Goal, request routing, read budget, delivery policy, engineering rules, traps | Every agent, automatically (Claude via `CLAUDE.md`) |
 | `CLAUDE.md` | `@AGENTS.md` plus a few Claude-only notes | Claude Code, automatically |
-| `docs/VISION.md` | What the game is: pillars P1–P7, six-for-four mapping, deliberate differences | Agents making design or priority choices |
+| `docs/VISION.md` | What the game is: pillars P1–P8, six-for-four mapping, deliberate differences | Agents making design or priority choices |
 | `docs/design/CONFLICT-PARITY.md` | Feature-by-feature: the series vs Sandline, and the gaps in order | Agents choosing or scoping new work; you |
 | `docs/adr/021-conflict-gameplay-reference.md` | The rule: unspecified detail → do what Conflict did, adapted to six | Agents settling details without asking you |
 | `BACKLOG.md` | The ordered queue and every task's status (active rows only) | Every task |

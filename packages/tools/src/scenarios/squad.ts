@@ -10,8 +10,8 @@
  * take cover near their places, fire (never through a squadmate), throw
  * grenades and revive whoever goes down. A group
  * of riflemen runs the committed `rifleman` tree from up range, north of the
- * west walls. Nobody else is healed: bots go down, bleed out and die, enemies
- * die.
+ * west walls. Nobody else is healed: bots go down (and would bleed out over
+ * two minutes, longer than the fight — ADR-025), enemies die.
  *
  * Measured per run: riflemen killed, rounds fired by a slot that hurt a slot
  * (`Session.friendlyHits`), bots downed, bots revived by a bot, bots dead.

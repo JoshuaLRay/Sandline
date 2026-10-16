@@ -100,6 +100,16 @@ describe('capture eligibility (U-062)', () => {
     expect(s.session.captures.some((c) => c.slot === s.victim.index)).toBe(false);
   });
 
+  it('can still take a character who has been down longer than the old 30 s bleed-out (U-181)', () => {
+    const s = scene();
+    // A minute down, a minute left: past the old window, still well inside the two-minute one.
+    Object.assign(s.victim.health, { current: 0, downedAt: s.seconds() - 60 });
+    expect(untilJob(s, 4)).toBe(true);
+    for (let i = 0; i < 30 * 20 && !s.victim.captured; i++) s.run(1);
+    expect(s.victim.captured).toBe(true);
+    expect(s.victim.prisoner).not.toBeNull();
+  });
+
   it('refuses a capture that could not finish inside the bleed-out', () => {
     const s = scene();
     // Down long ago: less bleed-out left than a channel takes.

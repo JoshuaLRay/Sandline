@@ -13,7 +13,7 @@ const DOWN_45 = degToAngle(-45) & 0xfff;
 
 interface Internals {
   placeCharge(slot: Slot, projectile: number, yaw: number, pitch: number): boolean;
-  detonateCharges(slot: Slot, kind: number): void;
+  detonateAllCharges(slot: Slot, kind: number): void;
   projectiles: { kind: number; stuck?: boolean; facing?: { x: number; z: number }; state: { x: number; z: number } }[];
 }
 
@@ -91,7 +91,7 @@ describe('the claymore (U-055)', () => {
     const mine = x.projectiles[0]!;
     mate.state = createMoveState(mine.state.x + 0.3, 0, mine.state.z + 1.2);
     const [f0, b0, m0] = [front.health.current, behind.health.current, mate.health.current];
-    x.detonateCharges(marsh, CLAYMORE);
+    x.detonateAllCharges(marsh, CLAYMORE);
     expect(x.projectiles).toHaveLength(0);
     expect(front.health.current).toBeLessThan(f0);
     expect(mate.health.current).toBeLessThan(m0);

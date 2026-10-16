@@ -142,9 +142,13 @@ pin it exactly (`grep -rn "PROTOCOL_VERSION).toBe" packages`).
 | Budgets and checks | `tools/src/check-assets.ts`, `check-packs.ts`, `check-load-time.ts`, `perf-frame.ts`, `capture-*.ts` |
 | Audio and voice | `tools/src/gen-audio.ts`, `tools/src/audio/`, `gen-voice.ts`, `tools/src/voice/`, `server/src/voice/` |
 
-## Not built yet (searched 2026-10-09)
+## Not built yet (searched 2026-10-09; re-checked 2026-10-16)
 
 Player-drivable vehicles (the tank is enemy-only), helicopters, air strikes or
 artillery, binoculars and laser designators, stealth/alarm states, night or
 weather, difficulty settings, a radar or map screen, gamepad support and key
-rebinding. Mission 2 (Kestrel Dam) exists only as design documents.
+rebinding. Mission 2 (Kestrel Dam) exists only as design documents. Also
+(2026-10-16 audit): reserve ammunition (reloads are unlimited), attachments,
+any loot system or item instances, bots picking up or mounting anything,
+directional armour, and awareness state on the wire. Planned in BACKLOG.md
+(U-183–U-220).

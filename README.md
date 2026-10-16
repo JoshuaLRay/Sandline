@@ -1,9 +1,11 @@
 # SANDLINE
 
 *Conflict: Desert Storm* with a squad of six: a browser-based co-op squad
-shooter where one to six players lead, command and switch between six specialist
-soldiers, with bots in the empty slots. Afghanistan 2001–02, original IP.
-[What the game is](docs/VISION.md) · [how close it is to the series](docs/design/CONFLICT-PARITY.md).
+shooter where one to six players lead, command and switch between six soldiers,
+with bots in the empty slots, and build each soldier around the gear the squad
+finds. Afghanistan 2001–02, original IP.
+[What the game is](docs/VISION.md) · [how close it is to the series](docs/design/CONFLICT-PARITY.md) ·
+[loot planning](docs/design/LOOT-PROGRESSION.md).
 
 The playable vertical slice is built; ongoing upgrades and bugs live in
 [BACKLOG.md](BACKLOG.md). Legacy milestone history and outstanding human

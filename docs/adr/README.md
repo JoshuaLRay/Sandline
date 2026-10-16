@@ -19,7 +19,7 @@ different choice.
 
 | ADR | Decision | Status |
 |---|---|---|
-| [001](001-six-slot-squad.md) | Six-slot squad with AI backfill | Accepted |
+| [001](001-six-slot-squad.md) | Six-slot squad with AI backfill | Accepted · 9 addenda |
 | [002](002-v1-scope-exclusions.md) | v1 scope exclusions | Accepted |
 | [003](003-typescript-end-to-end.md) | TypeScript end to end | Accepted |
 | [004](004-threejs-renderer.md) | Three.js for rendering | Accepted |
@@ -39,7 +39,12 @@ different choice.
 | [018](018-art-sourcing.md) | Art made in-house as code: generated meshes and atlases, procedural animation | Accepted · 1 addendum |
 | [019](019-persistence.md) | Campaign progress lives on the host: per-campaign squads, anonymous IDs, SQLite on a Fly volume | Accepted · 1 addendum |
 | [020](020-setting.md) | The setting: Afghanistan, winter 2001–2002, US infantry in desert camouflage | Accepted |
-| [021](021-conflict-gameplay-reference.md) | The Conflict series is the gameplay reference; unspecified details default to it, adapted to six | Accepted |
+| [021](021-conflict-gameplay-reference.md) | The Conflict series is the gameplay reference; unspecified details default to it, adapted to six | Accepted · 1 addendum; decision 1 superseded by 022 |
+| [022](022-conflict-reference-scope.md) | Active Conflict references: Desert Storm, Desert Storm II (primary), Global Storm (selective) | Accepted |
+| [023](023-flexible-mission-routes.md) | Missions offer varied approaches; three separated lanes are a guideline, not a rule | Accepted |
+| [024](024-equipment-freedom-and-loot.md) | Equipment freedom and loot-driven progression (direction; mechanics pending the loot design session) | Accepted |
+| [025](025-bleed-out-two-minutes.md) | A downed soldier bleeds out over two minutes (120 s, replicated whole) | Accepted |
+| [026](026-c4-detonation-controls.md) | C4: right click sets off the oldest charge, R sets off all | Accepted |
 
 ## Template
 

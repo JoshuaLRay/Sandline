@@ -5,6 +5,7 @@ import { SnapshotHistory, readDelta, writeDelta } from './delta.ts';
 import { type WorldSnapshot, readSnapshot, writeSnapshot } from './snapshot.ts';
 import { Sfc32 } from '../math/prng.ts';
 import { SUPPRESSION_BITS, suppressionFromWire, suppressionToWire } from '../sim/suppression.ts';
+import { DAMAGE, VITAL_TIMER_MAX_SECONDS, progressFromWire, progressToWire } from '../sim/damage.ts';
 
 const T = COMPONENT_IDS.Transform;
 const H = COMPONENT_IDS.Health;
@@ -68,6 +69,29 @@ describe('full snapshot (T-1.03)', () => {
       ],
     };
     expectSameWorld(readSnapshot(new BitReader(encodeFull(world))), world);
+  });
+
+  it('carries a whole 120 s bleed-out in the Health timer, not the old 63 s ceiling (U-181)', () => {
+    const world: WorldSnapshot = {
+      tick: 1,
+      entities: [
+        { netId: 1, components: { [H]: [0, 100, 1, DAMAGE.downed.bleedOutSeconds, progressToWire(0.5), 2] } },
+        { netId: 2, components: { [H]: [0, 100, 1, VITAL_TIMER_MAX_SECONDS, progressToWire(1), 6] } },
+      ],
+    };
+    expect(DAMAGE.downed.bleedOutSeconds).toBeGreaterThan(63);
+    expect(DAMAGE.downed.bleedOutSeconds).toBeLessThanOrEqual(VITAL_TIMER_MAX_SECONDS);
+    expectSameWorld(readSnapshot(new BitReader(encodeFull(world))), world);
+  });
+
+  it('reads a hold\'s progress back as the percent the HUD shows, never ahead of the server (U-181)', () => {
+    expect(progressFromWire(progressToWire(0))).toBe(0);
+    expect(progressFromWire(progressToWire(1))).toBe(100);
+    for (let f = 0; f <= 1; f += 0.01) {
+      const shown = progressFromWire(progressToWire(f));
+      expect(shown).toBeLessThanOrEqual(f * 100 + 1e-9);
+      expect(f * 100 - shown).toBeLessThan(100 / 63 + 1e-9);
+    }
   });
 
   it('rejects a component given the wrong field count', () => {

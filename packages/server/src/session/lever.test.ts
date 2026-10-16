@@ -27,6 +27,7 @@ import {
   decodeMessage,
   parseEncounter,
   requireWorld,
+  progressFromWire,
 } from '@sandline/shared';
 import { createBrainRegistry } from '../ai/Brain.ts';
 import { type NavMesh, initNav } from '../ai/nav/NavMesh.ts';
@@ -89,7 +90,7 @@ function room(objectives: ObjectiveDef[]) {
     if (msg.kind !== 'Delta') return;
     const res = store.applyDelta(msg.tick, msg.baselineTick, msg.payload);
     if (!res.ok || !res.snapshot) return;
-    for (const e of res.snapshot.entities) if (e.components[COMPONENT_IDS.Enemy]) pull.set(e.netId, (e.components[COMPONENT_IDS.Health]?.[4] as number) ?? 0);
+    for (const e of res.snapshot.entities) if (e.components[COMPONENT_IDS.Enemy]) pull.set(e.netId, progressFromWire((e.components[COMPONENT_IDS.Health]?.[4] as number) ?? 0));
   });
   client.join('me');
   pair.settle();
