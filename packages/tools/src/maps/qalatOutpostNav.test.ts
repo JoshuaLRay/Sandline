@@ -207,7 +207,7 @@ describe('U-175 outpost on the actual complete tiled standing bake', () => {
 
   it('keeps solid room roofs, perimeter tops and annex roofs inaccessible from all three approaches', () => {
     for (const roof of [[18, 12.8, 365], [16, 13.3, 380], [16, 12.8, 392], [16, 12.8, 402],
-      [48, 12.8, 402], [32, 12.8, 440], [26, 12.8, 426], [40, 14, 412]]) {
+      [48, 12.8, 402], [32, 12.8, 440], [26, 12.8, 426], [40, 14, 412], [49, 26, 417]]) {
       const target = { x: roof[0]!, y: roof[1]!, z: roof[2]! };
       const projected = nav.nearestPoint(target, { x: .3, y: .15, z: .3 });
       // Narrow masonry may carry no standing polygon. A baked roof polygon
@@ -216,5 +216,15 @@ describe('U-175 outpost on the actual complete tiled standing bake', () => {
       for (const from of [COURT, point([32, 350]), point([58, 370]), point([2, 376])])
         expect(completePathLength(nav.path(from, projected.point), from, projected.point), `roof route ${JSON.stringify(target)}`).toBeNull();
     }
+  });
+
+  it('keeps the bounded tower footing disconnected from all three entries and the reserve annex', () => {
+    const pocket = { x: 49, y: 8, z: 417 }, projected = nav.nearestPoint(pocket)?.point;
+    expect(projected).toBeDefined();
+    expect(Math.abs(projected!.y - 8)).toBeLessThan(.05002);
+    expect(Math.hypot(projected!.x - 49, projected!.z - 417)).toBeLessThan(.1);
+    for (const outside of [COURT, point([32, 350]), point([58, 370]), point([2, 376]), point([32, 440])])
+      for (const [from, to] of [[pocket, outside], [outside, pocket]])
+        expect(completePathLength(nav.path(from!, to!), from!, to!), 'tower creates an additional route').toBeNull();
   });
 });

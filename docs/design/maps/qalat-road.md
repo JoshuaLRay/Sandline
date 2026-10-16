@@ -756,6 +756,14 @@ No new captor execution timer, escort dialogue system or cinematic.
 
 ### 8.2 Courtyard cover and landmarks
 
+U-179 construction: remove inherited terrain only inside x46..52,z412..420
+above y8 to expose the specified tower (the inherited rock rose to y34).
+Restore the exact north perimeter wall after that bounded carve. The resulting
+exterior footing pocket is enclosed by rock and the unchanged y14 wall, with no
+approach/nav connection. Tower legs have no ladder or intermediate step; its
+closed tank occupies y22..26. No platform or additional route is created.
+
+
 - O-C01 low sandbag line, centre `(38,8,359)`, length 6 east-west; mounted MG use
   point `(38,8,361)` faces south toward A8. MG hostile socket is that use point.
 - O-C02 high stone trough, `(30,8,376)`, length 4 north-south, standard high-cover

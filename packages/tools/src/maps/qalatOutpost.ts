@@ -1,10 +1,11 @@
 /** U-175: isolated outpost shell, wrapping the accepted U-173 depot unchanged.
- * The only inherited replacements are three-dimensional courtyard/gate voids;
+ * The only inherited replacements are bounded courtyard/gate and tower voids;
  * supporting material below y8 and all exterior routes remain intact. */
 import { createHash } from 'node:crypto';
 import { loadLevel, type BoxSpec } from '@sandline/shared';
 import source from './qalat-outpost.json' with { type: 'json' };
 import { buildDepotLevel } from './qalatDepot.ts';
+import { buildOutpostFurniture, outpostDecorations } from './qalatOutpostFurniture.ts';
 import { rectPolygon, type Polygon } from './planStrata.ts';
 
 export const OUTPOST = source;
@@ -99,28 +100,31 @@ export function outpostCarveVoids(): Cut[] {
   return [{ ...C, minY: F, maxY: Infinity }, ...annexFloors.map((r) => ({ ...r, minY: F, maxY: D.reserve.ceiling })),
     { ...aperture(D.gates[0]!, 8, C.wallM), minY: F, maxY: 12 },
     { minX: 4, maxX: 8, minZ: 372, maxZ: 376, minY: F, maxY: 12 },
-    { ...D.eastGatePad, minY: F, maxY: 12 }];
+    { ...D.eastGatePad, minY: F, maxY: 12 },
+    // Remove inherited y34 rock only in the tower's bounded pocket. The
+    // unchanged y14 north wall separates it from the court; no new route.
+    { minX: 46, maxX: 52, minZ: 412, maxZ: 420, minY: F, maxY: Infinity }];
 }
 export function buildOutpostLevel() {
   const depot = buildDepotLevel();
-  return { ...depot, id: D.id, boxes: [...carve(depot.boxes, outpostCarveVoids()), ...buildOutpostShell()] };
+  return { ...depot, id: D.id, boxes: [...carve(depot.boxes, outpostCarveVoids()), ...buildOutpostShell(), ...buildOutpostFurniture()] };
 }
 export function buildOutpostWorld() { return loadLevel(buildOutpostLevel()); }
 export function outpostManifest() {
-  const level = buildOutpostLevel(), decorations: BoxSpec[] = [];
-  return { task: D.task, parent: 'U-116', kind: 'isolated outpost shell and sealed screened reserve annex',
-    sourceHash: createHash('sha256').update(JSON.stringify(D)).digest('hex'),
+  const level = buildOutpostLevel(), decorations = outpostDecorations();
+  return { task: 'U-179', parent: 'U-176', kind: 'isolated furnished outpost and sealed screened reserve annex',
+    sourceHash: createHash('sha256').update(JSON.stringify({ shell: D, furniture: buildOutpostFurniture(), decorations })).digest('hex'),
     levelHash: createHash('sha256').update(JSON.stringify(level)).digest('hex'),
     renderHash: createHash('sha256').update(JSON.stringify([...level.boxes, ...decorations])).digest('hex'),
-    boxCount: level.boxes.length, shellBoxCount: buildOutpostShell().length, courtyard: C, gates: D.gates,
+    boxCount: level.boxes.length, shellBoxCount: buildOutpostShell().length, furniture: buildOutpostFurniture(), courtyard: C, gates: D.gates,
     rooms: D.rooms, doors: outpostDoors(), windows: D.windows, reserve: D.reserve, sharedDivider: D.sharedDivider, eastJoin: D.eastJoin, holding: D.holding,
     carveVoids: outpostCarveVoids().map((c) => ({ ...c, maxY: Number.isFinite(c.maxY) ? c.maxY : 'sky' })), decorations,
     activeCampaign: 'unchanged; activation U-117', humanVerdict: 'whole-mission acceptance U-119',
-    engineeringEvidence: 'docs/verification/U-175-outpost.md', unfinished: ['U-176 courtyard furniture and tower', 'U-177 real captive/escort tank and blast shelter proofs'] };
+    engineeringEvidence: 'docs/verification/U-179-outpost.md', unfinished: ['U-180 V3 gun view and complete combat/patrol/supply proofs', 'U-177 real captive/escort tank and blast shelter proofs'] };
 }
 export function outpostPlanSvg() {
   const floors = outpostFloors().map((p) => `<polygon points="${p.map((v) => `${v.x},${-v.z}`).join(' ')}"/>`).join('');
-  const shell = buildOutpostShell().filter((b) => b.y === F && b.h > 1).map((b) => `<rect x="${b.x - b.w / 2}" y="${-b.z - b.d / 2}" width="${b.w}" height="${b.d}"/>`).join('');
+  const shell = [...buildOutpostShell(), ...buildOutpostFurniture()].filter((b) => b.y === F && b.h > 1).map((b) => `<rect x="${b.x - b.w / 2}" y="${-b.z - b.d / 2}" width="${b.w}" height="${b.d}"/>`).join('');
   const labels = D.rooms.map((r) => `<text x="${(r.minX + r.maxX) / 2}" y="${-(r.minZ + r.maxZ) / 2}">${r.id}</text>`).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1200" viewBox="0 -454 66 104"><rect x="0" y="-454" width="66" height="104" fill="#45483d"/><g fill="#d4c2a0">${floors}</g><g fill="#786247">${shell}</g><g font-family="sans-serif" font-size="1.8" text-anchor="middle" fill="#142b32">${labels}</g></svg>\n`;
 }

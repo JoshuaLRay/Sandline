@@ -1,12 +1,104 @@
 {
-  "task": "U-175",
-  "parent": "U-116",
-  "kind": "isolated outpost shell and sealed screened reserve annex",
-  "sourceHash": "3cf617895dd32d5314b388c1757290a0dba0d5810dacc586731af0a81b8a76d0",
-  "levelHash": "f26e3753eafecd47c2050e712778cff2655866d21d52bd70b94ca86f784e0616",
-  "renderHash": "95f1fb1741ae2e0163d0ce1b9a9c03af5ff6e883748caa7e590793c66a8d789c",
-  "boxCount": 110444,
+  "task": "U-179",
+  "parent": "U-176",
+  "kind": "isolated furnished outpost and sealed screened reserve annex",
+  "sourceHash": "3b7025a54ce171167d617596d30d15971313ff878d1e97a892be3ec8d5f4b009",
+  "levelHash": "86aadabbb9649c1e9106d1c023942542e3f5637a56d36fb5cb544279b796d31d",
+  "renderHash": "c2f493efb09b48f06f2cfb0cfe9fc4b8a0908721d473fcb8e5924cfd7a6b1b34",
+  "boxCount": 110630,
   "shellBoxCount": 504,
+  "furniture": [
+    {
+      "id": "outpost-furniture-O-C01",
+      "x": 38,
+      "y": 8,
+      "z": 359,
+      "w": 6,
+      "h": 1.1,
+      "d": 0.8
+    },
+    {
+      "id": "outpost-furniture-O-C02",
+      "x": 30,
+      "y": 8,
+      "z": 376,
+      "w": 1.2,
+      "h": 2.2,
+      "d": 4
+    },
+    {
+      "id": "outpost-furniture-O-C03",
+      "x": 40,
+      "y": 8,
+      "z": 385,
+      "w": 5,
+      "h": 1.1,
+      "d": 1.8
+    },
+    {
+      "id": "outpost-furniture-O-C04",
+      "x": 32,
+      "y": 8,
+      "z": 400,
+      "w": 1.2,
+      "h": 2.2,
+      "d": 4
+    },
+    {
+      "id": "outpost-furniture-radio-table",
+      "x": 52,
+      "y": 8,
+      "z": 404,
+      "w": 2,
+      "h": 1,
+      "d": 1
+    },
+    {
+      "id": "outpost-tower-leg-0-0",
+      "x": 46.3,
+      "y": 8,
+      "z": 414.3,
+      "w": 0.6,
+      "h": 14,
+      "d": 0.6
+    },
+    {
+      "id": "outpost-tower-leg-0-1",
+      "x": 46.3,
+      "y": 8,
+      "z": 419.7,
+      "w": 0.6,
+      "h": 14,
+      "d": 0.6
+    },
+    {
+      "id": "outpost-tower-leg-1-0",
+      "x": 51.7,
+      "y": 8,
+      "z": 414.3,
+      "w": 0.6,
+      "h": 14,
+      "d": 0.6
+    },
+    {
+      "id": "outpost-tower-leg-1-1",
+      "x": 51.7,
+      "y": 8,
+      "z": 419.7,
+      "w": 0.6,
+      "h": 14,
+      "d": 0.6
+    },
+    {
+      "id": "outpost-tower-tank",
+      "x": 49,
+      "y": 22,
+      "z": 417,
+      "w": 6,
+      "h": 4,
+      "d": 6
+    }
+  ],
   "courtyard": {
     "minX": 8,
     "maxX": 56,
@@ -444,14 +536,167 @@
       "maxZ": 376,
       "minY": 8,
       "maxY": 12
+    },
+    {
+      "minX": 46,
+      "maxX": 52,
+      "minZ": 412,
+      "maxZ": 420,
+      "minY": 8,
+      "maxY": "sky"
     }
   ],
-  "decorations": [],
+  "decorations": [
+    {
+      "id": "outpost-decor-south-leaf-0",
+      "x": 26,
+      "y": 8,
+      "z": 356.03,
+      "w": 4,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-south-leaf-1",
+      "x": 38,
+      "y": 8,
+      "z": 356.03,
+      "w": 4,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-north-leaf-0",
+      "x": 26,
+      "y": 8,
+      "z": 411.97,
+      "w": 4,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-north-leaf-1",
+      "x": 38,
+      "y": 8,
+      "z": 411.97,
+      "w": 4,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-side-leaf-0-0",
+      "x": 8.03,
+      "y": 8,
+      "z": 371,
+      "w": 0.06,
+      "h": 3,
+      "d": 2
+    },
+    {
+      "id": "outpost-decor-side-leaf-0-1",
+      "x": 55.97,
+      "y": 8,
+      "z": 371,
+      "w": 0.06,
+      "h": 3,
+      "d": 2
+    },
+    {
+      "id": "outpost-decor-side-leaf-1-0",
+      "x": 8.03,
+      "y": 8,
+      "z": 377,
+      "w": 0.06,
+      "h": 3,
+      "d": 2
+    },
+    {
+      "id": "outpost-decor-side-leaf-1-1",
+      "x": 55.97,
+      "y": 8,
+      "z": 377,
+      "w": 0.06,
+      "h": 3,
+      "d": 2
+    },
+    {
+      "id": "outpost-decor-radio-lamp-stem",
+      "x": 52.5,
+      "y": 9,
+      "z": 404,
+      "w": 0.08,
+      "h": 0.45,
+      "d": 0.08
+    },
+    {
+      "id": "outpost-decor-radio-lamp-shade",
+      "x": 52.5,
+      "y": 9.4,
+      "z": 404,
+      "w": 0.4,
+      "h": 0.16,
+      "d": 0.3
+    },
+    {
+      "id": "outpost-decor-radio-set",
+      "x": 51.8,
+      "y": 9,
+      "z": 404,
+      "w": 0.8,
+      "h": 0.35,
+      "d": 0.5
+    },
+    {
+      "id": "outpost-decor-radio-aerial-lead",
+      "x": 53.98,
+      "y": 9.05,
+      "z": 404,
+      "w": 0.04,
+      "h": 2.9,
+      "d": 0.04
+    },
+    {
+      "id": "outpost-decor-cell-blue-trim-0",
+      "x": 13.96,
+      "y": 8,
+      "z": 396.03,
+      "w": 0.08,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-cell-blue-trim-1",
+      "x": 18.04,
+      "y": 8,
+      "z": 396.03,
+      "w": 0.08,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-cell-blue-trim-head",
+      "x": 16,
+      "y": 10.98,
+      "z": 396.03,
+      "w": 4.16,
+      "h": 0.08,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-cell-paperwork",
+      "x": 10.02,
+      "y": 10.2,
+      "z": 406,
+      "w": 0.04,
+      "h": 0.6,
+      "d": 0.5
+    }
+  ],
   "activeCampaign": "unchanged; activation U-117",
   "humanVerdict": "whole-mission acceptance U-119",
-  "engineeringEvidence": "docs/verification/U-175-outpost.md",
+  "engineeringEvidence": "docs/verification/U-179-outpost.md",
   "unfinished": [
-    "U-176 courtyard furniture and tower",
+    "U-180 V3 gun view and complete combat/patrol/supply proofs",
     "U-177 real captive/escort tank and blast shelter proofs"
   ]
 }

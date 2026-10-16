@@ -36,6 +36,12 @@ function neighbours(boxes: readonly { minX: number; maxX: number; minZ: number; 
  * U-160/U-163 temporary caps read blue-grey so a reviewer can tell them from
  * permanent rock; U-167 bay frames read as warmer strata. */
 function colourOf(id: string): number[] {
+  if (id.startsWith('outpost-decor-cell-blue-trim')) return [.12, .35, .65];
+  if (id === 'outpost-decor-cell-paperwork') return [.85, .81, .65];
+  if (id.startsWith('outpost-decor-radio-lamp')) return [.86, .69, .34];
+  if (id.startsWith('outpost-decor-') || id.startsWith('outpost-tower-')) return [.24, .29, .27];
+  if (id.startsWith('outpost-furniture-O-C02')) return [.46, .43, .36];
+  if (id.startsWith('outpost-furniture-')) return [.5, .41, .27];
   if (id === 'depot-decor-B1-blue-pipe') return [.12, .35, .65];
   if (id.startsWith('depot-decor-B3-')) return [.19, .22, .18];
   if (id.startsWith('depot-decor-B9-')) return [.83, .77, .52];
