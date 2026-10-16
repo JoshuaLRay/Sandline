@@ -165,7 +165,7 @@ export function selectTask(input: SelectionInput): Selection {
       break;
     }
     if (uncertain) {
-      return { task_id: task.id, card: task.card, status: 'UNKNOWN', reason: problem, ...(input.explain ? { skipped } : {}) };
+      return { task_id: task.id, card: task.card, status: 'UNKNOWN', reason: problem ?? 'Dependency check incomplete', ...(input.explain ? { skipped } : {}) };
     }
     if (problem) {
       if (input.id) return { task_id: task.id, card: task.card, status: 'BLOCKED', reason: problem };
