@@ -1,6 +1,6 @@
 # Proposal: Token-efficient agent workflow
 
-**Status:** Proposed — implementation not yet started  
+**Status:** Phase 1 and Phase 2 merged; Phase 3 implementation in progress in a focused PR; Phase 4 not started  
 **Date:** 2026-10-16  
 **Scope:** Agent orchestration, backlog maintenance, documentation retrieval and handoffs; no gameplay or CI-gate changes.
 
@@ -162,6 +162,11 @@ Record a representative sample of task starts **before and after** rollout (simp
 
 Record measurements and method; do not promise a token-saving percentage from byte counts or anecdotal runs. Favor a reversible rollout if the selector or abbreviated handoffs cause ambiguity.
 
-## First implementation instruction
+## Rollout record (2026-10-16)
 
-Implement **stage 1 only** first. Add the selector and test fixtures, wire it into the next-task skill with a fail-closed manual fallback, and demonstrate a correct result against current main. Then propose the archive migration as its own PR. **This document is a proposal, not authorization to merge future implementation PRs or change Sandline's existing tests, owner decisions or gameplay.**
+- Phase 1: `pnpm task:next`, claim/dependency checks and fixtures, merged in `89cf4c1`.
+- Phase 2: completed-row archival and integrity checks, merged as [PR #361](https://github.com/JoshuaLRay/Sandline/pull/361) (`b0ecb69`).
+- Phase 3: thin shared entry point, on-demand references, compact merged/interrupted handoffs and contract tests (this PR).
+- Phase 4: **not started**; output conventions and measurement require separate scope.
+
+Do not reinterpret this proposal as permission to weaken testing gates, change gameplay or merge another worker's PR.
