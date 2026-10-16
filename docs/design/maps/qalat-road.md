@@ -748,7 +748,7 @@ outpost annex, not a way around the valley or onto the tank road.
 | South barracks | x10..26; z360..370, y8 / 12 | North door x18..22 at z370; south wall closed; rifleman watching court from inside |
 | West refuge porch | x10..22; z376..384, y8 / 12.5 | East door z378..382 at x22; all other faces solid; covered escorted hold point |
 | Prison antechamber | x10..22; z386..395.4, y8 / 12 | East door z390..394 at x22; north doorway x14..18 at z396 |
-| Prison cell / records room | x10..22; z396..410, y8 / 12 | South doorway above, barred north window x14..18, sill y10.4, height 0.6; POW feet (16,8,402) |
+| Prison cell / records room | x10..22; z396..410, y8 / 12 | South doorway above with its fixed-open leaf at x13.88..14, z396..400, y8..11 (U-222); barred north window x14..18, sill y10.4, height 0.6; POW feet (16,8,402) |
 | Radio room | x42..54; z390..410, y8 / 12 | West door z394..398 at x42; west window z402..406, sill y9.1, height 0.7; radio table east wall |
 | Central court | Remaining space | No internal floor-level building overlaps; pathways ≥4 m around cover |
 | North reserve room | x24..40; z434..448, y8 / 12 | South door x30..34 at z434; opaque bends screen it from every approach |
@@ -762,7 +762,13 @@ pinch becomes 4.05 m and a full 4 m band turns through it.
 
 Room walls 0.6 m thick outside the inner bounds; prevent adjacent envelopes from
 closing a doorway. Prison cell's south divider has a fixed-open door, not a
-second door interaction. The existing 3-second rescue releases the original POW;
+second door interaction. **U-222 cell door leaf (2026-10-16):** that fixed-open
+door is built as one 4×3 m, 0.12 m leaf standing open into the cell against the
+west jamb, at x13.88..14, z396..400, y8..11, outside the x14..18 landing.
+Raised production cameras at X4, R8 and the east pad otherwise saw carry-1
+(12,8,400) through the aligned antechamber and cell doors (93 body views). Every
+such line crosses x14 at z398..398.7 below y10.4, so the leaf closes them. All
+six holdings, the clear landing, each rescue stand and the door contracts stay. The existing 3-second rescue releases the original POW;
 carried squad prisoners retain their existing individual rescue rules. The cell
 reserves six total holding positions under the U-175 capacity addendum above. POW posture before rescue: kneeling/sitting presentation within
 the captive implementation; collision/target remains at the authored feet point.

@@ -312,7 +312,7 @@ describe('U-180 hostile, reserve and supply clearances on y8', () => {
   });
 });
 
-describe('U-180 reserve and captive concealment from production cameras', () => {
+describe('U-222 reserve and all-six captive concealment from production cameras', () => {
   // Independent §8.2 captive sources: road, forecourt and south gate; the
   // three bays; X tank road; the basement. §9.3's reserve is also screened
   // from the ridge route and its R7/R8 descent, the side pads and B10, the
@@ -324,12 +324,9 @@ describe('U-180 reserve and captive concealment from production cameras', () => 
   const SIDES = [p(86, 30, 248), p(72, 26, 286), p(70, 20, 322), p(70, 12, 350), p(2, 8, 376), p(5, 8, 374), p(59, 8, 374), p(59, 8, 371)];
   const COURTSIDE = [p(32, 8, 410), ...[12, 20, 28, 36, 44, 52].map((x) => p(x, 8, 408)), p(44, 8, 380), p(24, 8, 374), p(40, 8, 362)];
   const reserveBodies = RESERVE.flatMap(([, x, z]) => [.2, 1, 1.75].map((h) => p(x, 8 + h, z)));
-  // carry-1 (12,400) lies on the line through the aligned antechamber east
-  // and cell south doors; raised cameras at X4, R8 and the east pad reach it
-  // over the y14 wall. That captive screening is recorded as a U-177 input.
-  const EXPOSED = [12, 400] as const;
-  const captives = HOLDING.filter(([x, z]) => x !== EXPOSED[0] || z !== EXPOSED[1]).flatMap(([x, z]) => [.15, .8, 1.6].map((h) => p(x, 8 + h, z)));
-  const carry1 = [.15, .8, 1.6].map((h) => p(EXPOSED[0], 8 + h, EXPOSED[1]));
+  // Every independent holding stays in the proof, including carry-1 at its
+  // original feet point. Cover seated/kneeling and full standing bodies.
+  const captives = HOLDING.flatMap(([x, z]) => [.15, .8, 1.6, 1.75].map((h) => p(x, 8 + h, z)));
 
   function scenery(at: Point, reach: number) {
     const material = new THREE.MeshBasicMaterial({ visible: false });
@@ -342,9 +339,9 @@ describe('U-180 reserve and captive concealment from production cameras', () => 
     return { boxes, objects, dispose() { for (const o of objects) o.geometry.dispose(); material.dispose(); } };
   }
 
-  it('solves every desktop and mobile camera at each approach and finds no line to the reserve, the POW or four captives', () => {
-    let cameras = 0, rays = 0, shortened = 0, carry1Views = 0;
-    for (const [observerSet, targets] of [[SCREENED, [...reserveBodies, ...captives]], [[...SIDES, ...COURTSIDE], reserveBodies]] as const) for (const at of observerSet) {
+  it('solves every desktop and mobile camera at each approach and screens the reserve and all six captives', () => {
+    let cameras = 0, rays = 0, shortened = 0;
+    for (const [observerSet, targets] of [[[...SCREENED, ...SIDES], [...reserveBodies, ...captives]], [COURTSIDE, reserveBodies]] as const) for (const at of observerSet) {
       expect(blockedAt(at.x, at.z, config.radius, at.y, .05, config.height, world.boxes), `observer ${JSON.stringify(at)}`).toBe(false);
       expect(supportUnder(at.x, at.z, config.radius, at.y + .01, world.boxes, -100), `observer floor ${JSON.stringify(at)}`).toBeCloseTo(at.y, 6);
       const scene = scenery(at, 30);
@@ -359,7 +356,6 @@ describe('U-180 reserve and captive concealment from production cameras', () => 
             expect(blocked(between(camera, target)), `${label}: sees ${JSON.stringify(target)} from ${JSON.stringify(camera)}`).toBe(true);
             rays++;
           }
-          if (targets.length > reserveBodies.length && carry1.some((t) => !blocked(between(camera, t)))) carry1Views++;
           cameras++;
         };
         for (const h of [rig.crouchEyeHeight, rig.eyeHeight]) check(eyeOf(at, h), `weapon eye ${JSON.stringify(at)}`);
@@ -379,7 +375,7 @@ describe('U-180 reserve and captive concealment from production cameras', () => 
       } finally { scene.dispose(); }
     }
     expect(shortened).toBeGreaterThan(0);
-    console.log('U-180 camera concealment', JSON.stringify({ observers: SCREENED.length + SIDES.length + COURTSIDE.length, cameras, rays,
-      desktopArmsShortened: shortened, u177Carry1ViewsFromScreenedSources: carry1Views }));
+    console.log('U-222 camera concealment', JSON.stringify({ observers: SCREENED.length + SIDES.length + COURTSIDE.length, cameras, rays,
+      captiveHoldings: HOLDING.length, desktopArmsShortened: shortened }));
   }, 240_000);
 });

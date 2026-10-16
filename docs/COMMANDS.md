@@ -75,8 +75,8 @@ PNGs. The large level/surface JSON files remain ignored.
 For interactive review, run `pnpm exec vite --host 127.0.0.1` at the repository
 root and visit `/packages/tools/src/maps/outpost-review.html`. These isolated
 construction views leave production activation to U-117 and human quality
-acceptance to U-119. The real captive/escort projectile and blast shelter proofs
-remain on the dependent outpost verification leaf. U-180's tactical proofs (V3 gun
+acceptance to U-119. U-222's live captive/escort tank-shell and blast shelter proofs
+are `qalatOutpostShelters.test.ts`. U-180's tactical proofs (V3 gun
 line, support rays/blind spots, west turn, sockets, OG6 patrol, P-OUTPOST and
 reserve camera concealment) are `qalatOutpostTactical.test.ts` and the U-180 cases
 in `qalatOutpostNav.test.ts`.
@@ -86,8 +86,10 @@ three spreads, seven actual Session actors) and `qalatOutpostIsolation.test.ts`
 (full standing-nav component, registered boundary crossings, roof weapons/blast,
 desktop/mobile cameras and real wire orders/perception). Narrow side-pad exits
 use ordinary individual move orders to finish staging after the initial group
-order; U-174 packed formation completion remains separate. Real captive/escort
-tank shelters and the carry-1 external-camera repair remain U-222.
+order; U-174 packed formation completion remains separate. U-222 adds
+`qalatOutpostShelters.test.ts` (live Session tank shells, wall/roof cover and
+open controls), the below-west-stair escort route in the traversal suite, and
+the cell door leaf that screens carry-1 from production cameras.
 
 ## Isolated Juniper Hollow construction (U-138)
 
