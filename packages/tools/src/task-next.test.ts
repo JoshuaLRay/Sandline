@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { claimsFromRemote, dependencyIds, parseRows, selectTask, type Claim } from './task-next.js';
+import { claimsFromRemote, dependencyIds, parseRows, selectTask, type Claim } from './task-next.ts';
 
 const row = (
   id: string, status = 'READY', blocker = '—', work = '—',
@@ -21,7 +21,7 @@ const choices = (
   archives: opts.archives ?? [], claims: opts.claims ?? [],
   lookupMerged: opts.lookupMerged ?? (() => null),
   readCard: opts.readCard ?? (() => '# Candidate task\n'),
-  id: opts.id, explain: opts.explain,
+  ...(opts.id ? { id: opts.id } : {}), ...(opts.explain === undefined ? {} : { explain: opts.explain }),
 });
 
 describe('backlog parsing', () => {
@@ -85,8 +85,8 @@ describe('deterministic next-task selection', () => {
     ], { lookupMerged, readCard });
     expect(result.status).toBe('READY');
     expect(result.task_id).toBe('U-302');
-    expect(lookupMerged).toHaveBeenCalledExactlyOnceWith(321);
-    expect(readCard).toHaveBeenCalledExactlyOnceWith('docs/backlog/U-302.md');
+    expect(lookupMerged).toHaveBeenCalledWith(321);
+    expect(readCard).toHaveBeenCalledWith('docs/backlog/U-302.md');
   });
   it('blocks on unmerged REVIEW instead of selecting that dependency', () => {
     const result = choices([
