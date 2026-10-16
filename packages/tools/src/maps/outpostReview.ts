@@ -49,8 +49,13 @@ const floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * level.floor.halfWidth, 
 floor.rotation.x = -Math.PI / 2; scene.add(floor);
 
 // Independent anchors from the approved §8/§9 inner bounds and corridor
-// spine. The south-gate view also reviews the open central court.
+// spine. Tactical views retain the actual V3 floor and exterior west turn.
+// The south-gate view also reviews the open central court.
 const views: View[] = [
+  { name: 'v3-gun', position: [66, 27.55, 286], target: [31, 9.55, 364], floorY: 26, ceilingY: null,
+    label: 'V3 · actual supported bay anchor toward the south-gate gun through the existing arch' },
+  { name: 'west-turn', position: [5, 9.55, 374], target: [12, 9.55, 373.4], floorY: 8, ceilingY: null,
+    label: 'West entry · bounded inner arch reveal turns into the four-metre court lane below the refuge' },
   { name: 'south-gate-court', position: [32, 9.55, 359], target: [30, 9.55, 394], floorY: 8, ceilingY: null,
     label: 'South gate · standing inside the 8 m arch toward the central court and indirect prisoner approach' },
   { name: 'west-gate', position: [10, 9.55, 374], target: [26, 9.55, 378], floorY: 8, ceilingY: null,

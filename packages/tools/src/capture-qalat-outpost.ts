@@ -28,7 +28,7 @@ try {
   try { await page.waitForFunction("document.body.dataset.ready === 'true'", undefined, { timeout: 60_000 }); }
   catch (error) { throw new Error(`Outpost viewer did not start: ${errors.join('; ') || String(error)}`); }
   const views = await page.evaluate(() => (globalThis as unknown as { __outpostReview: Review }).__outpostReview.views);
-  const required = ['south-gate-court', 'west-gate', 'east-gate', 'barracks', 'refuge', 'antechamber', 'cell', 'radio', 'court-cover', 'water-tower', 'radio-equipment', 'cell-trim', 'reserve-bend', 'reserve-room'];
+  const required = ['v3-gun', 'west-turn', 'south-gate-court', 'west-gate', 'east-gate', 'barracks', 'refuge', 'antechamber', 'cell', 'radio', 'court-cover', 'water-tower', 'radio-equipment', 'cell-trim', 'reserve-bend', 'reserve-room'];
   if (views.length !== required.length || required.some((name) => !views.some((v) => v.name === name)))
     throw new Error('Outpost review must capture every gate, room and reserve bend');
   const measurements = [];
