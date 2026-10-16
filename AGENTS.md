@@ -1,169 +1,100 @@
-# Sandline — agent brief
+# Sandline — agent entry point
 
-The one shared instruction file for every coding agent. Codex loads it directly;
-Claude Code loads it through `CLAUDE.md` (`@AGENTS.md`). Procedures are skills in
-`.agents/skills/`; package rules are nested `AGENTS.md` files — read
-`packages/shared/AGENTS.md` before editing anything in `packages/shared`.
-This project is built entirely by AI agents; the repository is its only memory.
+Shared brief for Codex (direct) and Claude Code (`CLAUDE.md` imports this).
+The repository is the durable project memory. Procedures are in
+`.agents/skills/`; nested `AGENTS.md` files apply per package (especially
+`packages/shared/AGENTS.md`). Do not reload old chat history.
 
-## What we are building
+## Identity and design authority
 
-**Sandline is Conflict: Desert Storm with a squad of six.** Lead, command and
-switch between six soldiers, keep every one of them alive, and fight through a
-linear campaign of objective missions on varied maps — one to six friends
-online in the browser, bots in the empty slots — finding gear worth keeping and
-building each soldier around it. Afghanistan 2001–02, original IP.
+**Sandline is Conflict: Desert Storm with a squad of six.** Original-IP browser
+co-op in Afghanistan 2001–02: 1–6 humans command/switch among six soldiers,
+bots fill empty slots, loot persists across objective missions, and all six
+must survive. Read relevant [vision](docs/VISION.md) sections for design work.
+References: Desert Storm II primary, Desert Storm and selectively Global Storm
+([ADR-022](docs/adr/022-conflict-reference-scope.md)); maps vary their tactical
+approaches ([ADR-023](docs/adr/023-flexible-mission-routes.md)); any soldier may
+use any equipment, with Marsh left-handed ([ADR-024](docs/adr/024-equipment-freedom-and-loot.md)).
+Do not add character-exclusive loadouts. Loot rules await the owner's U-184
+design session. Unspecified gameplay: owner decision → locked ADR → Conflict
+default adapted to six/co-op ([ADR-021](docs/adr/021-conflict-gameplay-reference.md))
+→ smallest reversible proposal. Record `Conflict default: …` in the card.
 
-- [docs/VISION.md](docs/VISION.md) — pillars P1–P8, the six-for-four squad
-  mapping, deliberate differences and anti-goals. Read it before any design,
-  scoping or priority decision.
-- **Direction of 2026-10-16:** only *Desert Storm*, *Desert Storm II* (primary)
-  and *Global Storm* (selective) are references ([ADR-022](docs/adr/022-conflict-reference-scope.md));
-  maps vary their approaches instead of following a three-lane formula
-  ([ADR-023](docs/adr/023-flexible-mission-routes.md)); loadouts are starting
-  configurations and any soldier may use any equipment, Marsh left-handed only
-  ([ADR-024](docs/adr/024-equipment-freedom-and-loot.md)). Never add a
-  character-exclusive equipment rule; loot mechanics wait for the owner's
-  design session ([LOOT-PROGRESSION.md](docs/design/LOOT-PROGRESSION.md), U-184).
-- [docs/design/CONFLICT-PARITY.md](docs/design/CONFLICT-PARITY.md) — what the
-  series had, what Sandline has, and the gaps in recommended order.
-- **Unspecified gameplay detail?** ([ADR-021](docs/adr/021-conflict-gameplay-reference.md))
-  Owner decision → locked ADR → what Desert Storm / Desert Storm II did (Global
-  Storm only where the owner points to it or the first two are weak), adapted
-  to six soldiers and online co-op (write `Conflict default: …` in the card) →
-  smallest reversible proposal. Do not stop to ask when step 3 answers it.
+## Request routing (load only the applicable skill)
 
-## Route the request
+- Next eligible task or explicit U-ID → [next-task](.agents/skills/next-task/SKILL.md).
+- Bug/playtest/idea → [report-feedback](.agents/skills/report-feedback/SKILL.md);
+  record first and implement only on request.
+- Queue/build Conflict gap → [parity tracker](docs/design/CONFLICT-PARITY.md),
+  report-feedback, then next-task only if asked to build.
+- New-chat handoff → [handoff](.agents/skills/next-task-context-transfer-text-box/SKILL.md).
+- Loot decision L-NN → [U-184](docs/backlog/U-184.md) and
+  [loot §15](docs/design/LOOT-PROGRESSION.md); update blocked rows.
+- Legacy T-ID → `TASKS.md`, relevant `PLAN.md` section and
+  `docs/LEGACY-TASK-WORKFLOW.md`. Status/question → relevant files/PRs.
+  A repository URL alone does not authorize implementation.
 
-| The user says | Do |
-|---|---|
-| "Complete the next task" (with or without the repo URL) | [.agents/skills/next-task/SKILL.md](.agents/skills/next-task/SKILL.md) |
-| An explicit U-ID ("complete U-150") | the same skill for that card; its dependencies still apply |
-| A bug, playtest note or suggestion (incl. repo URL + feedback) | [.agents/skills/report-feedback/SKILL.md](.agents/skills/report-feedback/SKILL.md) — record first; implement only if they said fix/build/do it now |
-| "Queue / build the next Conflict feature" | report-feedback for the named or top unqueued gap in CONFLICT-PARITY.md; then next-task if they said build it |
-| A context-transfer text box / new-chat handoff | [.agents/skills/next-task-context-transfer-text-box/SKILL.md](.agents/skills/next-task-context-transfer-text-box/SKILL.md) |
-| Answers to loot decisions (L-NN) | record them in [U-184](docs/backlog/U-184.md) and [LOOT-PROGRESSION.md §15](docs/design/LOOT-PROGRESSION.md); update the BACKLOG blockers they unblock |
-| An explicit legacy T-ID | `TASKS.md` → that one `PLAN.md` section → `docs/LEGACY-TASK-WORKFLOW.md` |
-| A question or status check | answer from files and PRs; a repo URL alone is not a task |
+## Minimal read ladder
 
-## Read budget
+1. Select via `pnpm task:next` (explicit ID: `--id U-NNN`); it examines
+   active/archived dependencies and remote claims. If unavailable or UNKNOWN,
+   manually check current main, queue, applicable archive entries, PRs and task
+   branches. **Unknown claim status is never "unclaimed."**
+2. Read only the chosen `docs/backlog/U-NNN.md` and its `Read first` paths.
+3. For unknown source locations use [CODEMAP](docs/CODEMAP.md); read relevant
+   functions, ADR sections, and affected [commands](docs/COMMANDS.md).
+4. Use history only for an explicit legacy task, dependency or regression.
 
-Read only what the task needs, in this order, and stop when you have enough.
+Search before opening. Read bounded ranges of files over ~300 lines. Never
+preload `PLAN.md`, full `docs/CHANGELOG.md`, all ADRs, archive, map specs
+or playtest sheets. For uncommon traps/terms see the optional
+[agent reference](docs/AGENT-REFERENCE.md).
 
-| Need | Read |
-|---|---|
-| Queue, blockers, claims | `BACKLOG.md` (active rows only) and open PRs |
-| Exact scope | one `docs/backlog/U-NNN.md`, then only its "Read first" list |
-| Where the code is | [docs/CODEMAP.md](docs/CODEMAP.md), then the source itself |
-| A locked choice | the one relevant ADR in `docs/adr/` |
-| A dev/QA/generator command | its row in `docs/COMMANDS.md` |
-| A map or mission spec | only the § sections the card cites |
+## Delivery and safety — mandatory
 
-Never read end to end: `PLAN.md` (history), `docs/CHANGELOG.md` (tail it),
-`docs/backlog/archive/`, `docs/design/maps/*.md`, `docs/HANDOFF-*.md`, playtest
-run sheets. For any file over ~300 lines, grep or read a range.
+- `BACKLOG.md` owns the active queue (INBOX, READY, IN_PROGRESS, BLOCKED,
+  REVIEW). DONE/CANCELLED rows live only in dated `docs/backlog/archive/`;
+  task-card paths remain stable. Dependencies: DONE (including archived) or
+  **REVIEW whose code is merged on main** (unless the dependent card requires
+  its human verdict); CANCELLED never satisfies a dependency. Check for
+  another worker's branch/PR claim before starting.
+- One task per request/PR unless explicitly batched. Push small meaningful
+  checkpoints within 15 minutes of active edits and before long checks or
+  handoffs. Interrupted work gets a pushed labelled WIP commit and the card's
+  ≤15-line handoff (task, branch, PR, SHA, changed files, completed work,
+  pass/fail/unrun tests and CI, blockers, exact next action). WIP does not
+  waive final gates. Preserve other workers' work.
+- **Standing owner authorization (2026-10-08): merge this task's PR when green.**
+  Require all four jobs — `verify`, `streaming`, `parity-non-v8`,
+  `mission` — successful on its **latest head SHA**, with a mergeable PR.
+  Pending, failed, skipped, missing, cancelled or stale checks are NOT green.
+  If main advances, synchronize safely and rerun checks. Merge with an
+  expected-head-SHA guard and verify the new main commit. Do not merge an
+  intake-only PR, someone else's PR or an owner-held PR.
+- Run focused tests, `pnpm verify` and task-affected generators, mission
+  simulations or budgets; never call an unrun test passed or weaken a gate.
+  New shared logic needs unit tests; netcode changes need headless integration
+  tests. Keep a concise task-card evidence handoff, one CHANGELOG line and
+  canonical backlog status in the same PR; archive DONE, leave unfinished
+  human signoff as REVIEW. Verdicts on playing, visuals or real voices remain
+  the owner's; never fabricate them. Batch human reviews on the epic card.
+- Real owner-only decisions need 2–3 choices with player-facing tradeoffs,
+  a **recommended default** and a recorded blocker in card/backlog; await
+  owner choice, work on other READY tasks. Preserve locked ADRs; owner changes
+  need an explicit addendum or superseding ADR. If CI/merge access is lacking,
+  stop at the PR and report exactly what remains.
 
-## Delivery policy
+## Engineering invariants
 
-- **Commit and push continuously.** Push each meaningful small checkpoint
-  promptly; do not leave more than 15 minutes of active edits only on your
-  machine. If a step is still unfinished, push a clearly labelled WIP commit
-  and keep the card's handoff current with branch/PR, completed work, checks
-  run (including failures or unrun checks), and the next action. Checkpoint
-  before long-running checks, a pause or a handoff so another bot can resume
-  after usage limits. WIP pushes do not satisfy the verification or merge gates.
-- **Merge when green — standing owner authorization (2026-10-08).** When you
-  complete a task, merge its verified head once all four required CI jobs
-  (`verify`, `streaming`, `parity-non-v8`, `mission`) pass on the latest pushed
-  head, respecting branch protection. It covers the task being completed, not
-  another worker's PR, an intake-only PR, or anything the owner said to hold.
-- **Statuses:** `BACKLOG.md` owns the active queue (READY, IN_PROGRESS,
-  BLOCKED, REVIEW, INBOX); completed DONE and CANCELLED rows are stored in
-  `docs/backlog/archive/` with stable U-ID cards. IN_PROGRESS means a pushed
-  `task/U-NNN-*` branch or open PR; REVIEW means implemented but awaiting a
-  human verdict. Never leave a DONE/CANCELLED row in the active index.
-- **Dependencies:** satisfied by active/archived DONE (never CANCELLED), or
-  by **REVIEW whose code is merged on main** — unless the dependent card
-  explicitly needs that verdict first. Pending human verdicts never serialize
-  engineering work.
-- **Human verdicts are batched** on the epic's verification card (e.g. the
-  mission's final review), not on every leaf. Never invent a verdict, playtest
-  or listening result; a green test is not one.
-- **Every owner decision comes with a default.** When a blocker truly needs a
-  human decision (nothing in an owner decision, ADR or ADR-021's Conflict
-  default answers it), write it so the owner can reply with one word: the
-  question in plain language, two or three options with a one-line trade-off
-  each, and **one recommended default** with the reason. Put it in the card's
-  "Decision needed" section and in the BACKLOG row (`Decision: … — default: …`).
-  Wait for "agree" or another choice before acting on it, and keep working on
-  other READY rows meanwhile. The owner is new to game development: explain the
-  consequence for players, not the implementation.
-- **One task per PR, one task per request.** "Next task" means one; do more only
-  when asked ("the next three tasks").
-- Cannot watch CI or merge from your environment (e.g. Codex cloud)? Stop at an
-  open PR with local evidence and state exactly what remains.
+- `packages/shared` is platform-free and cross-engine deterministic: no
+  `three`, `ws`, `fs`, wall clock, `Math.random` or non-deterministic
+  trig. Use seeded math, bounded parity (not bit equality). Read
+  [shared rules](packages/shared/AGENTS.md) before editing it.
+- Bot and human slots share their entity path (ADR-001); new actions need a
+  bot/order path or a documented exception.
+- Tuning is zod-validated JSON in `packages/shared/src/data`. No new
+  runtime dependency without an ADR; update generated assets with generators.
+- Wire changes bump `PROTOCOL_VERSION` and its tests.
 
-## Engineering rules
-
-1. **Stay green.** `pnpm verify` (typecheck, lint, tests) for every change; all
-   four CI jobs on the actual PR head. Never skip, weaken or re-baseline a gate
-   to make a task look complete.
-2. **Tests ship with code.** New shared logic gets unit tests; netcode changes
-   get headless integration coverage. When generator inputs change, regenerate
-   (`pnpm gen:art`/`gen:assets`/`gen:audio`/`gen:nav`); tests fail if you don't.
-3. **Data over code.** Weapons, characters, enemies, AI and director tuning are
-   zod-validated JSON in `packages/shared/src/data`. No new runtime dependency
-   without an ADR line; dev dependencies are free.
-4. **`packages/shared` is platform-free and deterministic** — no `three`, `ws`,
-   `fs`, wall clock, `Math.random` or `Math.sin`-family. Parity is bounded
-   divergence, never bit equality. Details: `packages/shared/AGENTS.md`.
-5. **Bots and humans share one path** (ADR-001). Any slot may be a bot, so a new
-   soldier ability or interaction needs its bot/order path, or a recorded reason
-   why bots never use it.
-6. **Respect locked ADRs.** An owner change becomes an addendum or a new ADR; if
-   a request doesn't actually decide a conflicting choice, surface the conflict.
-7. **Leave a short trail** in the same PR: the card's handoff (≤15 lines), one
-   `docs/CHANGELOG.md` line `- U-NNN — change ([#PR](url))`, and the canonical
-   queue record. DONE rows move intact to a dated `docs/backlog/archive/*.md`
-   file (adjusting only relative task-card links); REVIEW remains in
-   `BACKLOG.md`. Keep one status source per U-ID and its task-card path stable.
-   Legacy T-IDs also update `TASKS.md` under their workflow.
-8. **Preserve other work.** Check open PRs and `task/*` branches before
-   claiming; never push to another worker's branch; keep unrelated changes.
-
-## Commands
-
-Node >=22; pnpm 10.33.0 via `corepack enable`. `pnpm install --frozen-lockfile`
-installs, `pnpm verify` is the gate, `pnpm host` runs the authoritative host
-(ws://localhost:8080), `pnpm --filter @sandline/client dev` serves the client
-(localhost:5173), `pnpm sim-run --scenario mission --all-missions --seeds 3`
-plays every mission headless. Everything else: `docs/COMMANDS.md`.
-
-## Known traps
-
-- HTTPS pages need `wss://`; a blocked `ws://` looks exactly like a dead host.
-- A slot keeps its soldier's position between occupants (ADR-001): joining
-  possesses a bot's entity. That is design, not a spawn bug. Per-client state
-  (camera, HUD, input) must reset on join and on switch.
-- Art is code: generators in `packages/tools/src/art`, outputs in
-  `packages/client/public/assets`. Edit the generator and regenerate.
-- The audio pipeline exists but real voice recordings do not (ADR-017); fixture
-  tests passing does not mean voices exist.
-- The game is `packages/server/src/session/Session.ts` (~7,000 lines; grep for
-  the method, never read it whole). `shared/src/sim/Simulation.ts` is only a
-  bootstrap, and `data/regions.json` means hosting regions. See CODEMAP.
-- Wire changes bump `PROTOCOL_VERSION` in `packages/shared/src/net/protocol.ts`
-  and the tests pinning it (`grep -rn "PROTOCOL_VERSION).toBe" packages`).
-
-## Glossary
-
-**Slot** one of six squad positions (0–5), each bound to one **character**
-(Preach, Brennan, Holloway, Ortiz, Marsh, Vance). **Starting loadout** a
-character's default equipment, not a class (ADR-024). **Possession** a human taking
-a slot's soldier; leaving hands it back to a bot. **Commander** the human a bot
-answers to; a player may **switch** into a bot they command. **Fireteams** slots
-0–2 (assault) and 3–5 (overwatch). **Escorted character** a non-slot friendly
-such as a rescued POW. **World / level / mission** registry entry / geometry /
-objectives (`campaignRegistry.ts`). **Director budget** encounter scaling by
-human count. **Campaign run / replay run** newest mission vs an already-beaten
-one, with separate prisoner pools.
+Node ≥22, pnpm 10.33.0. `pnpm verify` is mandatory. Commands and special
+QA steps are in [COMMANDS](docs/COMMANDS.md), read on demand.
