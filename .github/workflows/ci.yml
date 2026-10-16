@@ -7,6 +7,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Manual release once Cloudflare is configured; all four tests run first.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -227,3 +229,72 @@ jobs:
       - name: Qalat measured baseline at both budgets
         run: pnpm sim-run --scenario mission --mission packages/shared/src/data/missions/qalat-road.json --seeds 20
         if: ${{ !cancelled() }}
+
+  # Private-repository migration phase 1. Keep GitHub Pages live until owner cutover.
+  # This job runs only after ALL four normal CI jobs pass for the same main commit.
+  # It opts in only when the account/project credentials have been configured.
+  deploy-client:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: [verify, streaming, parity-non-v8, mission]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      deployments: write
+    env:
+      CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+    steps:
+      - name: Check explicit Cloudflare deployment opt-in
+        id: cloudflare
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [[ -n "$CLOUDFLARE_API_TOKEN" && -n "$CLOUDFLARE_ACCOUNT_ID" && -n "$CLOUDFLARE_PAGES_PROJECT" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Cloudflare Pages not configured; existing GitHub Pages remains primary. See docs/CLOUDFLARE-SETUP.md"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.cloudflare.outputs.ready == 'true'
+      - uses: pnpm/action-setup@v4
+        if: steps.cloudflare.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.cloudflare.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install build dependencies
+        if: steps.cloudflare.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Build production client pointing to Fly.io
+        if: steps.cloudflare.outputs.ready == 'true'
+        run: pnpm --filter @sandline/client build
+        env:
+          SANDLINE_HOST: ${{ vars.SANDLINE_HOST }}
+      - name: Validate Cloudflare Pages limits
+        if: steps.cloudflare.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          files="$(find packages/client/dist -type f | wc -l)"
+          if (( files > 20000 )); then
+            echo "::error::Cloudflare Pages supports at most 20,000 files; found $files"
+            exit 1
+          fi
+          large="$(find packages/client/dist -type f -size +25600k -print -quit)"
+          if [[ -n "$large" ]]; then
+            echo "::error::Cloudflare Pages limit exceeded (25 MiB per file): $large"
+            exit 1
+          fi
+          echo "Validated $files Pages files; each <=25 MiB"
+      - name: Deploy browser bundle to Cloudflare Pages
+        if: steps.cloudflare.outputs.ready == 'true'
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy packages/client/dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=main
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
