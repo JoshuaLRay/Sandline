@@ -47,7 +47,13 @@ camera collision, screen-picked wire Move/Hold and actual friendly movement,
 and Session enemy perception with a same-room visible control. U-180's carry-1
 raised-camera line remains an explicit U-222 input, not a passing claim here.
 
-## Validation checkpoint
+## Reproduction and validation
+
+Run `pnpm exec vitest run packages/tools/src/maps/qalatOutpostTraversal.test.ts
+packages/tools/src/maps/qalatOutpostIsolation.test.ts`, then `pnpm verify`.
+Regenerate with `pnpm gen:qalat-depot`, `pnpm gen:qalat-outpost`, `pnpm gen:nav`
+and the two corresponding `capture-qalat-*.ts` runners; check assets/packs and
+run `pnpm sim-run --scenario mission --all-missions --seeds 3`.
 
 - Pass: typecheck, asset/pack budgets, depot/outpost/nav regeneration.
 - Pass: 26 depot and 16 outpost captures, two draws each; manifests unchanged.
@@ -55,7 +61,17 @@ raised-camera line remains an explicit U-222 input, not a passing claim here.
   Qalat 0/6 with ordinary soldier-dead outcomes.
 - Pass: all six focused isolation tests (71.89 s), 557 component polygons,
   1,610 controller attempts, 2,970 roof probes and 560 camera solves.
-- Focused traversal tests are being finalized. Early traversal
-  failures exposed the fixture arrival-box and narrow-pad order limits above;
-  they are not recorded as successful complete runs.
-- Full `pnpm verify` and required latest-head CI are pending.
+- Pass: all 19 focused traversal/capacity tests (40.98 s), including all 18
+  join/direction/spread combinations. Early traversal failures exposed the
+  fixture arrival-box and narrow-pad order limits documented above; the final
+  full focused run passes without changing collision or runtime behavior.
+- Pass: full `pnpm verify` (typecheck, lint, 359 files / 3,588 tests) and all
+  four required jobs on code head `8f81b30efad35fc31d4b9d55651bfed73e15a2f3`,
+  [run 38938696581](https://github.com/JoshuaLRay/Sandline/actions/runs/38938696581).
+  The test phase took 1,023.30 s; no gate was skipped or weakened.
+- Local full verification was still running at the documentation checkpoint;
+  local typecheck/lint and the focused runs above pass. Its final result is
+  recorded in the PR, separately from CI evidence.
+- The final documentation head must pass all four jobs again before merge.
+  The PR records the actual final head, CI run and confirmed merge; this record
+  does not treat an older-head result as the final merge gate.
