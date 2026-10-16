@@ -1,6 +1,6 @@
 # ADR-021: The Conflict series is the gameplay reference
 
-- **Status:** Accepted
+- **Status:** Accepted · decision 1 superseded by [ADR-022](022-conflict-reference-scope.md) (2026-10-16); decision 5's "large three-lane maps" superseded by [ADR-023](023-flexible-mission-routes.md)
 - **Date:** 2026-10-09
 - **Plan reference:** header, §1; ADR-001, ADR-002, ADR-015, ADR-020
 
@@ -76,3 +76,19 @@ rather than four**, built as efficiently as possible by agentic coding.
 - **A broader "tactical shooter" reference set (Ghost Recon, SOCOM, Brothers in
   Arms).** Rejected: competing references give agents conflicting defaults.
   They may inform a solution only where the Conflict series has none.
+
+## Addendum — 2026-10-16: narrower reference, flexible maps, loot
+
+Three owner decisions change parts of this ADR without changing its method
+(the default resolution order and original IP stand):
+
+- **Decision 1** is superseded by [ADR-022](022-conflict-reference-scope.md):
+  the active references are *Desert Storm* and *Desert Storm II* (primary) and
+  *Global Storm* (selective, chiefly for squad command). *Conflict: Vietnam* is
+  no longer a reference.
+- **Decision 5's** "large three-lane maps" is superseded by
+  [ADR-023](023-flexible-mission-routes.md): approaches vary by mission; the
+  approved Qalat and Kestrel layouts stand.
+- [ADR-024](024-equipment-freedom-and-loot.md) adds loot-driven progression and
+  equipment freedom as owner direction beyond the series. Where it conflicts
+  with a "Conflict default" (fixed specialist loadouts), ADR-024 wins.

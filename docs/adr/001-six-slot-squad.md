@@ -170,3 +170,17 @@ not change, and **the squad is still always six**. He is unarmed, takes damage a
 him, as with bots. Enemies treat him as a squad member; **his death fails the mission** (Q4), and a retry restores him
 from the checkpoint. Encounter difficulty still scales on human count, which an escorted character does not change.
 
+## Addendum — 2026-10-16: starting loadouts, not fixed roles (ADR-024)
+
+Owner direction: "No character should be permanently forced into a predefined
+weapon or equipment role." [ADR-024](024-equipment-freedom-and-loot.md) makes the
+six characters' loadouts **starting configurations**: any character may
+acquire, drop, exchange and equip any equipment, subject to Marsh's left-handed
+requirement and to general rules based on the equipment itself. It supersedes in
+direction this ADR's 2026-09-27 weapon-handling clauses (Marsh acquiring only
+through authored loot; only Preach and the support carrying two primaries) and
+the U-022 addendum's character flag. Those rules stay in code until U-194
+reconciles them under the loot design session's decisions; no new
+character-exclusive equipment rule may be added. Slots, possession, command,
+switching, escorted characters and the deferral of character skills are
+unchanged.

@@ -502,3 +502,5 @@ Format: `T-<id> — <what changed>`
 - U-181 — A downed soldier bleeds out over 120 s (ADR-025); the replicated vital timer widens to 7 bits by trading a bit from revive/lever progress (snapshot budget unchanged, protocol 73); the RPG scenario's 30 s downed recycle is now explicit ([#349](https://github.com/JoshuaLRay/Sandline/pull/349)).
 
 - U-182 — C4: right click sets off the soldier's oldest armed charge (one per press, placement order kept through retries) and R sets off all of them; R stays reload with a gun; host-authoritative and owner-only; key list and draw hint updated; protocol 74 (ADR-026) ([#350](https://github.com/JoshuaLRay/Sandline/pull/350)).
+
+- U-183–U-220 — Recorded the owner's 2026-10-16 design alignment: ADR-022 (reference scope), ADR-023 (flexible map approaches), ADR-024 (equipment freedom and loot direction), VISION P8, the rewritten map standard, the loot planning package and the stealth design; queued the loot, command-reliability, stealth, armour and map-tooling cards ([#351](https://github.com/JoshuaLRay/Sandline/pull/351)).
