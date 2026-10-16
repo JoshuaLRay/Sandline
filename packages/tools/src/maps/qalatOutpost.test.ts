@@ -45,7 +45,9 @@ describe('U-175 independent outpost shell and opaque reserve annex', () => {
   it('preserves the complete inside room dimensions, y8 floors, and solid ceilings', () => {
     let samples = 0;
     for (const [id, x0, x1, z0, z1, top] of ROOMS) {
-      const structure = world.boxes.filter((b) => b.id !== 'outpost-furniture-radio-table');
+      // Specified fittings, not shell: §8.2's radio table and §8.1's
+      // fixed-open cell door leaf (U-222), proved in the furniture suite.
+      const structure = world.boxes.filter((b) => b.id !== 'outpost-furniture-radio-table' && b.id !== 'outpost-cell-door-leaf');
       const intrusions = structure.filter((b) => b.maxY > 8.000001 && b.minY < top - .000001
         && b.maxX > x0 + .000001 && b.minX < x1 - .000001 && b.maxZ > z0 + .000001 && b.minZ < z1 - .000001);
       expect(intrusions.map((b) => b.id), `${id} exact full interior`).toEqual([]);

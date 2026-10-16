@@ -116,7 +116,7 @@ export function buildOutpostLevel() {
 export function buildOutpostWorld() { return loadLevel(buildOutpostLevel()); }
 export function outpostManifest() {
   const level = buildOutpostLevel(), decorations = outpostDecorations();
-  return { task: 'U-180', parent: 'U-176', kind: 'isolated furnished outpost and sealed screened reserve annex',
+  return { task: 'U-222', parent: 'U-177', kind: 'isolated furnished outpost and sealed screened reserve annex',
     sourceHash: createHash('sha256').update(JSON.stringify({ shell: D, furniture: buildOutpostFurniture(), decorations })).digest('hex'),
     levelHash: createHash('sha256').update(JSON.stringify(level)).digest('hex'),
     renderHash: createHash('sha256').update(JSON.stringify([...level.boxes, ...decorations])).digest('hex'),
@@ -124,7 +124,7 @@ export function outpostManifest() {
     rooms: D.rooms, doors: outpostDoors(), windows: D.windows, reserve: D.reserve, sharedDivider: D.sharedDivider, eastJoin: D.eastJoin, westReveal: D.westReveal, southGateGun: D.southGateGun, holding: D.holding,
     carveVoids: outpostCarveVoids().map((c) => ({ ...c, maxY: Number.isFinite(c.maxY) ? c.maxY : 'sky' })), decorations,
     activeCampaign: 'unchanged; activation U-117', humanVerdict: 'whole-mission acceptance U-119',
-    engineeringEvidence: 'docs/verification/U-180-outpost.md', unfinished: ['U-177 real captive/escort tank and blast shelter proofs'] };
+    engineeringEvidence: 'docs/verification/U-222-outpost.md', unfinished: [] };
 }
 export function outpostPlanSvg() {
   const floors = outpostFloors().map((p) => `<polygon points="${p.map((v) => `${v.x},${-v.z}`).join(' ')}"/>`).join('');

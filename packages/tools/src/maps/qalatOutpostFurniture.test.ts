@@ -15,6 +15,8 @@ const FIXTURES = [
   ['outpost-furniture-O-C03', 40, 8, 385, 5, 1.8, 1.1],
   ['outpost-furniture-O-C04', 32, 8, 400, 1.2, 4, 2.2],
   ['outpost-furniture-radio-table', 52, 8, 404, 2, 1, 1],
+  // U-222: §8.1's fixed-open cell door leaf, west of the x14..18 landing.
+  ['outpost-cell-door-leaf', 13.94, 8, 398, .12, 4, 3],
   ['outpost-tower-leg-0-0', 46.3, 8, 414.3, .6, .6, 14],
   ['outpost-tower-leg-0-1', 46.3, 8, 419.7, .6, .6, 14],
   ['outpost-tower-leg-1-0', 51.7, 8, 414.3, .6, .6, 14],
