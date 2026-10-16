@@ -69,7 +69,7 @@ const views: View[] = [
     label: 'Radio room · west door and sill-height west window' },
   { name: 'court-cover', position: [34, 9.55, 380], target: [40, 8.6, 385], floorY: 8, ceilingY: null,
     label: 'Court · low cart and fixed cover beside the clear circulation lanes' },
-  { name: 'water-tower', position: [44, 9.55, 406], target: [49, 24, 417], floorY: 8, ceilingY: null,
+  { name: 'water-tower', position: [36, 9.55, 385], target: [49, 24, 417], floorY: 8, ceilingY: null,
     label: 'Water tower · exact y26 closed tank beyond the intact y14 perimeter; no ladder or deck' },
   { name: 'radio-equipment', position: [48, 9.55, 400], target: [52, 9.3, 404], floorY: 8, ceilingY: 12,
     label: 'Radio · fixed table, set, lamp and aerial lead; no interaction' },

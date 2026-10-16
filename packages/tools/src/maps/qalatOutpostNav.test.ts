@@ -217,4 +217,14 @@ describe('U-175 outpost on the actual complete tiled standing bake', () => {
         expect(completePathLength(nav.path(from, projected.point), from, projected.point), `roof route ${JSON.stringify(target)}`).toBeNull();
     }
   });
+
+  it('keeps the bounded tower footing disconnected from all three entries and the reserve annex', () => {
+    const pocket = { x: 49, y: 8, z: 417 }, projected = nav.nearestPoint(pocket)?.point;
+    expect(projected).toBeDefined();
+    expect(Math.abs(projected!.y - 8)).toBeLessThan(.05002);
+    expect(Math.hypot(projected!.x - 49, projected!.z - 417)).toBeLessThan(.1);
+    for (const outside of [COURT, point([32, 350]), point([58, 370]), point([2, 376]), point([32, 440])])
+      for (const [from, to] of [[pocket, outside], [outside, pocket]])
+        expect(completePathLength(nav.path(from!, to!), from!, to!), 'tower creates an additional route').toBeNull();
+  });
 });

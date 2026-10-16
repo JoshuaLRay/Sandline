@@ -1,5 +1,5 @@
 /** U-175: isolated outpost shell, wrapping the accepted U-173 depot unchanged.
- * The only inherited replacements are three-dimensional courtyard/gate voids;
+ * The only inherited replacements are bounded courtyard/gate and tower voids;
  * supporting material below y8 and all exterior routes remain intact. */
 import { createHash } from 'node:crypto';
 import { loadLevel, type BoxSpec } from '@sandline/shared';
