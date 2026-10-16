@@ -129,6 +129,15 @@ jobs:
           name: qalat-depot-review
           path: artifacts/qalat-depot/*
           if-no-files-found: error
+      - name: Generate and capture isolated prisoner outpost shells
+        run: |
+          pnpm gen:qalat-outpost
+          pnpm exec tsx packages/tools/src/capture-qalat-outpost.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qalat-outpost-review
+          path: artifacts/qalat-outpost/*
+          if-no-files-found: error
       - run: pnpm perf:frame
 
   # ADR-014: the transcendental-drift bug is invisible on a V8-to-V8 pairing.

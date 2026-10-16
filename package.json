@@ -16,6 +16,7 @@
     "gen:trig": "tsx packages/tools/src/gen-trig-table.ts",
     "gen:nav-spike": "tsx packages/tools/src/gen-nav-spike.ts",
     "gen:nav": "tsx packages/tools/src/gen-nav.ts",
+    "gen:qalat-outpost": "tsx packages/tools/src/gen-qalat-outpost.ts",
     "gen:qalat-depot": "tsx packages/tools/src/gen-qalat-depot.ts",
     "gen:qalat-insertion": "tsx packages/tools/src/gen-qalat-insertion.ts",
     "gen:qalat-road-supports": "tsx packages/tools/src/gen-qalat-road-supports.ts",
