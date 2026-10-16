@@ -55,15 +55,20 @@ export function parseRows(markdown: string): TaskRow[] {
     if (!/^\|\s*\[U-\d{3}\]\(/.test(line)) continue;
     const fields = line.split('|').slice(1, -1).map((part) => part.trim());
     if (fields.length !== 7) throw new Error('Malformed backlog row: expected seven columns');
-    const task = /^\[(U-\d{3})\]\(([^)]+)\)$/.exec(fields[0]);
-    if (!task || !STATUS.has(fields[4])) throw new Error('Malformed backlog row: invalid ID, card or status');
-    if (seen.has(task[1])) throw new Error('Duplicate backlog ID: ' + task[1]);
-    seen.add(task[1]);
+    const [taskCell = '', outcome = '', _epic = '', _priority = '',
+      status = '', blocker = '', work = ''] = fields;
+    const task = /^\[(U-\d{3})\]\(([^)]+)\)$/.exec(taskCell);
+    const id = task?.[1];
+    const card = task?.[2];
+    if (!id || !card || !STATUS.has(status)) {
+      throw new Error('Malformed backlog row: invalid ID, card or status');
+    }
+    if (seen.has(id)) throw new Error('Duplicate backlog ID: ' + id);
+    seen.add(id);
     result.push({
-      id: task[1], card: task[2], outcome: fields[1], status: fields[4],
-      blocker: fields[5], work: fields[6],
-      aggregate: /\baggregate\b|\bumbrella\b|\bepic closure\b/i.test(fields[1]) ||
-        /^\s*Aggregate\b/i.test(fields[5]),
+      id, card, outcome, status, blocker, work,
+      aggregate: /\baggregate\b|\bumbrella\b|\bepic closure\b/i.test(outcome) ||
+        /^\s*Aggregate\b/i.test(blocker),
     });
   }
   if (!result.length) throw new Error('No task rows found in backlog/archive');
@@ -235,7 +240,7 @@ function main(): void {
     backlog: readFileSync(join(root, 'BACKLOG.md'), 'utf8'),
     archives: readArchives(root), claims, lookupMerged,
     readCard: (path) => readFileSync(join(root, path), 'utf8'),
-    id, explain: flags.includes('--explain'),
+    ...(id ? { id } : {}), explain: flags.includes('--explain'),
   });
   process.stdout.write(JSON.stringify(result) + '\n');
   if (result.status === 'UNKNOWN') process.exitCode = 2;
