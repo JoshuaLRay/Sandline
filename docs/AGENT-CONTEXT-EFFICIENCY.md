@@ -1,6 +1,6 @@
 # Proposal: Token-efficient agent workflow
 
-**Status:** Phase 1 and Phase 2 merged; Phase 3 implementation in progress in a focused PR; Phase 4 not started  
+**Status:** Phase 1 and Phase 2 merged; Phase 3 implemented in this focused PR; Phase 4 not started  
 **Date:** 2026-10-16  
 **Scope:** Agent orchestration, backlog maintenance, documentation retrieval and handoffs; no gameplay or CI-gate changes.
 
