@@ -1,6 +1,6 @@
 # Proposal: Token-efficient agent workflow
 
-**Status:** Phase 1 and Phase 2 merged; Phase 3 implemented in this focused PR; Phase 4 not started  
+**Status:** Phases 1–3 merged; Phase 4 implementation delivered by this PR (actual token telemetry unavailable)  
 **Date:** 2026-10-16  
 **Scope:** Agent orchestration, backlog maintenance, documentation retrieval and handoffs; no gameplay or CI-gate changes.
 
@@ -149,6 +149,9 @@ Prefer a single small PR per stage; do not bundle backlog reshuffling with unrel
 
 ## Measure effectiveness honestly
 
+Phase 4 measurement method, observed byte baseline and explicit missing-token
+fields are maintained in [AGENT-OUTPUT.md](AGENT-OUTPUT.md).
+
 Record a representative sample of task starts **before and after** rollout (simple feature, bug, complex map or multiplayer task), using comparable agents/configurations where practical:
 
 | Metric | Why |
@@ -166,7 +169,7 @@ Record measurements and method; do not promise a token-saving percentage from by
 
 - Phase 1: `pnpm task:next`, claim/dependency checks and fixtures, merged in `89cf4c1`.
 - Phase 2: completed-row archival and integrity checks, merged as [PR #361](https://github.com/JoshuaLRay/Sandline/pull/361) (`b0ecb69`).
-- Phase 3: thin shared entry point, on-demand references, compact merged/interrupted handoffs and contract tests (this PR).
-- Phase 4: **not started**; output conventions and measurement require separate scope.
+- Phase 3: merged via [PR #362](https://github.com/JoshuaLRay/Sandline/pull/362) (`7e6481a`) — thin shared entry, progressive reading and handoff contracts.
+- Phase 4: this PR introduces bounded command output with durable local logs, diff-first/CI-summary guidance, and the transparent [measurement protocol and baseline](AGENT-OUTPUT.md). No real per-task token improvement is claimed without paired telemetry.
 
 Do not reinterpret this proposal as permission to weaken testing gates, change gameplay or merge another worker's PR.
