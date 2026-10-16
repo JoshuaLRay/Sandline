@@ -791,6 +791,9 @@ export interface PickupEntity {
 }
 
 /** Where and how to spawn an enemy. */
+/** T-3.28: how a bot's order is going, where it is anchored, and who is credited when it is done. */
+type OrderRun = { status: 'active' | 'done'; anchor: OrderPoint; xpPlayerId: string | null };
+
 export interface EnemySpawn {
   inactive?: boolean;
   spawnId?: string;
@@ -940,7 +943,8 @@ export class Session {
   private nextPickupNetId = FIRST_PICKUP_NET_ID;
   private readonly supplyDefs: readonly SupplyCacheDef[];
   private readonly supplyStocks = new Map<string, SupplyStock>();
-  private readonly supplyUses = new Map<number, { mode: 'self' | 'commander'; phase: 'approach' | 'collect'; connection: ServerConnection; cacheId: string; item: SupplyItem; ticks: number }>();
+  /** U-196: a commander's cache run holds the bot's order aside (`resume`) and gives it back when the run ends. */
+  private readonly supplyUses = new Map<number, { mode: 'self' | 'commander'; phase: 'approach' | 'collect'; connection: ServerConnection; cacheId: string; item: SupplyItem; ticks: number; resume?: { order: BotOrder; run: OrderRun } }>();
   private readonly supplyRequestIds = new WeakMap<ServerConnection, number>();
   private readonly commanderSupplyRequestIds = new WeakMap<ServerConnection, number>();
   private lastSupplyProgress = '';
@@ -2392,12 +2396,60 @@ export class Session {
     this.commanders[from.index] = to.index;
     this.commanders[to.index] = -1;
     this.spectators.delete(conn);
+    // U-196: a spectator's own seat may have been under its player's order; that lapses with the switch. The soldier
+    // left behind joins its fireteam's or the squad's standing hold or move, else follows; every other order stands.
+    if (this.orders[from.index]) this.endOrder(from.index, 'replaced', 'its player switched soldier');
+    this.joinStandingOrder(from, to.index);
+    this.attributeOrders();
 
     const gun = WEAPON_IDS.indexOf(to.weapon.id as (typeof WEAPON_IDS)[number]);
     conn.send({ kind: 'Possessed', netId: to.netId, slot: to.index, resume: to.resumeToken, weapon: gun < 0 ? 0 : gun, ammo: to.weaponState.ammo, pouch: [...to.pouch] });
     this.sendProgression(conn);
     this.broadcastRoster();
     if (this.orders[to.index]) this.endOrder(to.index, 'replaced', 'a human took the slot');
+  }
+
+  /**
+   * U-196 (Conflict default): the soldier a player switches out of joins the standing posture of the bots that
+   * player commands — the fireteam's if every bot of it there is on one hold or one move, else the squad's on the same
+   * terms — at its own spaced place around their points. With no such posture it follows, as before.
+   */
+  private joinStandingOrder(left: Slot, commander: number): void {
+    const standing = (indices: readonly number[]): BotOrder[] | null => {
+      const mates = indices.filter((i) => i !== left.index && this.commanders[i] === commander && !this.slots[i]!.captured && this.autonomous(this.slots[i]!));
+      const orders = mates.map((i) => this.orders[i]);
+      if (orders.length === 0 || orders.some((o) => !o || (o.order !== 'hold' && o.order !== 'move'))) return null;
+      return orders.every((o) => o!.order === orders[0]!.order) ? (orders as BotOrder[]) : null;
+    };
+    const team = SQUAD_CONFIG.fireteams.find((f) => f.slots.includes(left.index));
+    const group = (team ? standing(team.slots) : null) ?? standing(this.slots.map((s) => s.index));
+    if (!group) return;
+    const kind = group[0]!.order;
+    const points = group.map((o) => o.point).filter((p): p is OrderPoint => p !== null);
+    let point: OrderPoint | null = null;
+    if (points.length > 0) {
+      const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length, cz = points.reduce((sum, p) => sum + p.z, 0) / points.length;
+      const floor = points.reduce((a, b) => (Math.hypot(a.x - cx, a.z - cz) <= Math.hypot(b.x - cx, b.z - cz) ? a : b));
+      const centre = this.orderGoal({ x: cx, y: floor.y, z: cz });
+      // Spaced as a group order spaces its addressees: the first free place around the centre, facing it from here.
+      const gap = Math.max(2 * this.moveConfig.radius + 0.001, (2 * this.moveConfig.radius + 0.1) * SQUAD_CONFIG.spreadScales[this.spreadFor(left.index)]);
+      const offsets = kind === 'move' ? [[-1, -1], [1, -1], [-1, -2], [1, -2], [-1, -3], [1, -3]] : [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -2], [0, 2]];
+      const length = Math.hypot(centre.x - left.state.x, centre.z - left.state.z);
+      const fx = length > 0.01 ? (centre.x - left.state.x) / length : 0;
+      const fz = length > 0.01 ? (centre.z - left.state.z) / length : 1;
+      point = centre;
+      for (const [side, back] of offsets) {
+        const place = { x: centre.x + side! * fz * gap + back! * gap * fx, y: centre.y, z: centre.z - side! * fx * gap + back! * gap * fz };
+        const projected = this.navMesh?.nearestPoint(place)?.point ?? place;
+        if (points.every((p) => Math.hypot(p.x - projected.x, p.z - projected.z) >= gap)) { point = { x: projected.x, y: projected.y, z: projected.z }; break; }
+      }
+    }
+    const facing = group[0]!.facing;
+    const sameFacing = facing !== undefined && group.every((o) => o.facing === facing);
+    this.orders[left.index] = { slot: left.index, order: kind, point, target: null, from: commander, ...(sameFacing ? { facing } : {}) };
+    const at = left.state;
+    this.orderRuns[left.index] = { status: 'active', anchor: point ? { ...point } : { x: at.x, y: at.y, z: at.z }, xpPlayerId: this.xpPlayer(commander) };
+    this.broadcastOrders();
   }
 
   /** Retry a failed mission from the latest completed-objective checkpoint. */
@@ -3381,19 +3433,64 @@ export class Session {
       (travelling && slot.kits > 0 && slot.health.current < slot.health.max * SQUAD_CONFIG.bot.kitBelowFraction);
   }
 
-  /** Every exit releases the owned locomotion, including cancellation between brain ticks. */
-  private clearSupplyUse(index: number): boolean {
+  /**
+   * Every exit releases the owned locomotion, including cancellation between brain ticks. U-196: a commander's run
+   * that ends — collected, cancelled or failed — gives the bot back the order it held aside, unless `resume` is false
+   * (a new order replaces it; a world reset has cleared every order).
+   */
+  private clearSupplyUse(index: number, resume = true): boolean {
     const use = this.supplyUses.get(index);
     if (use?.mode === 'commander') {
       this.followers[index] = null;
       const slot = this.slots[index]!;
       slot.input = idleInput(slot.yaw);
     }
-    return this.supplyUses.delete(index);
+    const had = this.supplyUses.delete(index);
+    if (resume && use?.resume) this.resumeOrder(index, use.resume);
+    return had;
   }
 
   private clearSupplyUses(): void {
-    for (const index of this.supplyUses.keys()) this.clearSupplyUse(index);
+    for (const index of this.supplyUses.keys()) this.clearSupplyUse(index, false);
+  }
+
+  /** U-196: take a bot's order off it to be given back later, unreported; null when it had none. */
+  private suspendOrder(index: number): { order: BotOrder; run: OrderRun } | null {
+    const order = this.orders[index], run = this.orderRuns[index];
+    if (!order || !run) return null;
+    this.orders[index] = null;
+    this.orderRuns[index] = null;
+    this.broadcastOrders();
+    return { order, run };
+  }
+
+  /** U-196: a held-aside order back on its bot, if it is still a bot with no newer order; its source is its commander now. */
+  private resumeOrder(index: number, held: { order: BotOrder; run: OrderRun }): void {
+    const slot = this.slots[index];
+    if (!slot || !this.autonomous(slot) || slot.captured || this.orders[index]) return;
+    this.orders[index] = { ...held.order };
+    this.orderRuns[index] = { ...held.run };
+    if (!this.attributeOrders()) this.broadcastOrders();
+  }
+
+  /**
+   * U-196: every bot's order belongs to whoever commands it now. When a commander leaves, drops or switches soldier,
+   * or a bot is handed to someone else, its order stands and passes to the new commander, credit and all. A bot with
+   * no seated commander (nobody seated) keeps the order's last source. Returns whether anything changed.
+   */
+  private attributeOrders(): boolean {
+    let changed = false;
+    for (const order of this.orders) {
+      if (!order) continue;
+      const commander = this.commanders[order.slot] ?? -1;
+      if (commander < 0 || order.from === commander) continue;
+      order.from = commander;
+      const run = this.orderRuns[order.slot];
+      if (run) run.xpPlayerId = this.xpPlayer(commander);
+      changed = true;
+    }
+    if (changed) this.broadcastOrders();
+    return changed;
   }
 
   /** Reuse the existing navigation failure cue; no ordinary move order is installed. */
@@ -3475,11 +3572,12 @@ export class Session {
       if (!this.supplyUnsafe(slot, phase === 'approach')) {
         if (phase === 'approach' && !this.supplyPath(slot.state, cache.feet)) this.failCommanderSupply(slot, 'unreachable cache');
         else {
-          this.endOrder(slot.index, 'replaced', 'commander supply request');
+          // U-196: the order it was under waits for the run to end, rather than ending.
+          const resume = this.suspendOrder(slot.index);
           // The request owns hands and feet; no generic revive/upload press is synthesized.
           this.giveBrain(slot);
           slot.input = idleInput(slot.yaw);
-          this.supplyUses.set(slot.index, { mode: 'commander', phase, connection: conn, cacheId: cache.id, item: msg.item, ticks: 0 });
+          this.supplyUses.set(slot.index, { mode: 'commander', phase, connection: conn, cacheId: cache.id, item: msg.item, ticks: 0, ...(resume ? { resume } : {}) });
         }
       }
     }
@@ -3626,6 +3724,7 @@ export class Session {
       if (use.mode === 'commander' && !this.canCommandSupply(use.connection, this.slots[index]!)) this.clearSupplyUse(index);
     }
     this.broadcastSupplyProgress();
+    this.attributeOrders();
     return changed;
   }
 
@@ -3652,6 +3751,7 @@ export class Session {
       this.clearSupplyUse(bot.index);
       this.broadcastSupplyProgress();
     }
+    this.attributeOrders();
     this.broadcastRoster();
   }
 
@@ -3915,7 +4015,7 @@ export class Session {
    * standing (a move that has arrived holds there until told otherwise) —
    * and its anchor: a hold's point, or where the bot stood when told.
    */
-  private readonly orderRuns: ({ status: 'active' | 'done'; anchor: OrderPoint; xpPlayerId: string | null } | null)[] = Array.from({ length: MAX_SLOTS }, () => null);
+  private readonly orderRuns: (OrderRun | null)[] = Array.from({ length: MAX_SLOTS }, () => null);
   /** T-3.28: what became of each order — finished, failed, or replaced — newest last, the last 64. */
   readonly orderReports: OrderReport[] = [];
 
@@ -4057,7 +4157,8 @@ export class Session {
     this.bumpStat(from.index, 'ordersGiven');
     const destinations: { x: number; y: number; z: number }[] = [];
     for (const i of bots) {
-      if (this.commanderUsingSupply(this.slots[i]!)) this.clearSupplyUse(i);
+      // U-196: the new order replaces the run and the order it held aside.
+      if (this.commanderUsingSupply(this.slots[i]!)) this.clearSupplyUse(i, false);
       let point = asked;
       if (asked && msg.address.to !== 'slot') {
         let spaced: OrderPoint = asked;
