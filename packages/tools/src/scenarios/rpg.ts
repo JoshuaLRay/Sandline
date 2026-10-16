@@ -16,6 +16,14 @@
  * Not every gunner is killed, and that is the archetype working: it fights
  * from cover in its band and the lead here never advances, so a gunner behind
  * the east walls is out of every bot's sight once the first exchange is over.
+ *
+ * U-181: the thresholds were measured when a downed bot bled out in 30 s and
+ * the range brought it back 5 s later, so a bot knocked down early fought
+ * again. The bleed-out is two minutes now (ADR-025): as long as this fight,
+ * with nothing to recycle a downed bot. A bot down `downedOutSeconds` is
+ * taken out of the fight as the old bleed-out took it — dead, and back from
+ * the range's own respawn — so the gate measures the gunners and the squad's
+ * fire under the conditions its thresholds were set for, not the bleed-out.
  */
 import {
   type Message,
@@ -169,10 +177,13 @@ export async function runRpg(seed: number, config = RPG_SCENARIO): Promise<RpgRu
       if (sides.some((s) => Math.hypot(s.x - last.x, s.z - last.z) <= BLAST_M)) unsafeBursts++;
     }
 
+    const nowSeconds = session.tick * TICK_SECONDS;
     bots.forEach((b, i) => {
       const down = isDowned(b.health);
       if (down && !wasDowned[i]) botsDowned++;
       wasDowned[i] = down;
+      // U-181: out of the fight after `downedOutSeconds` down, as the 30 s bleed-out had it (see the header).
+      if (down && b.health.downedAt !== null && nowSeconds - b.health.downedAt >= config.downedOutSeconds) b.health.diedAt = nowSeconds;
     });
     for (const id of ids) {
       const e = session.enemies.find((x) => x.netId === id);
