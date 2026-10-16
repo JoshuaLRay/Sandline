@@ -101,7 +101,7 @@ export function claimsFromRemote(
   }
   for (const pr of prs) {
     const id = branchId(pr.head.ref) ??
-      /(?:^|[\s:[(])U-(\d{3})(?=[\s:\])\-]|$)/i.exec(pr.title)?.[1]?.replace(/^/, 'U-');
+      /(?:^|\W)(U-\d{3})(?!\d)/i.exec(pr.title)?.[1];
     if (id) claims.push({ id: id.toUpperCase(), kind: 'pr', reference: pr.html_url || '#' + pr.number });
   }
   return claims;
