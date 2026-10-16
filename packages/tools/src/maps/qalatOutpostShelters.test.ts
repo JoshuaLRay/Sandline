@@ -37,6 +37,7 @@ const cannonOf = (session: Session) => {
 
 interface Internals {
   fireShell(enemy: unknown, vehicle: unknown, at: Point): void;
+  turretPoint(enemy: unknown, offset: readonly number[]): Point;
   detonate(projectile: unknown, at: Point): void;
   projectiles: unknown[];
 }
@@ -96,7 +97,17 @@ function fixture(boxes: readonly WorldBox[], pow: Point, captive: boolean, contr
       state: { ...at, vx: 0, vy: 0, vz: 0, age: 0, bounces: 0, resting: false } }, at);
     return new Map(actors.map(([id, actor]) => [id, actor.health.max - actor.health.current]));
   };
-  return { session, actors, shoot, burst, cannon, pow: powEntity };
+  /** fireShell lays the barrel for gravity over the flat time to `aim`, so
+   * from the real muzzle the lower root of y = H − g·dy²/(2s²) puts the
+   * shell's descending arc exactly on `at` (with no scenery in the way). */
+  const lob = (origin: Point, at: Point) => {
+    Object.assign(tank.state, origin);
+    tank.turretYaw = Math.round(Math.atan2(at.x - origin.x, at.z - origin.z) / (2 * Math.PI) * 1024 + 1024) % 1024;
+    const muzzle = x.turretPoint(tank, tank.def.vehicle!.cannon.muzzle);
+    const c = cannon.gravity / (2 * cannon.speedMPerSec ** 2), k = c * ((at.x - muzzle.x) ** 2 + (at.z - muzzle.z) ** 2) - muzzle.y;
+    return shoot(origin, { x: at.x, y: (1 - Math.sqrt(1 - 4 * c * (at.y + k))) / (2 * c) - k, z: at.z });
+  };
+  return { session, actors, shoot, burst, lob, cannon, pow: powEntity };
 }
 
 describe('U-222 actual captive and escort shelters under ordinary tank shells', () => {
@@ -169,6 +180,45 @@ describe('U-222 actual captive and escort shelters under ordinary tank shells', 
         sameBlastWithoutWall: open, openCourtSameRange: court.get('control') }));
     }
   }, 120_000);
+
+  it('lets no ordinary arcing lay reach the cell or refuge roof; the tank\'s own blast on those roofs is cut to the cover fraction', () => {
+    const CELL_ROOF = 12.8, REFUGE_ROOF = 13.3;
+    const roofs = [
+      { roof: 'outpost-cell-roof', pow: POW_CELL, captive: true, top: CELL_ROOF, under: ['pow', ...HOLDINGS.map((_, i) => `carry-${i + 1}`)] },
+      { roof: 'outpost-refuge-roof', pow: REFUGE_HOLD, captive: false, top: REFUGE_ROOF, under: ['pow'] },
+    ] as const;
+    let lays = 0;
+    const results: Record<string, number> = {};
+    for (const r of roofs) {
+      const f = fixture(region, r.pow, r.captive);
+      const sheltered = f.actors.filter(([id]) => (r.under as readonly string[]).includes(id));
+      // Lay every origin's arc onto the roof above each sheltered body.
+      for (const [label, origin] of [...ROUTE, ...APPROACHES]) for (const [id, , feet] of sheltered) {
+        const { blast, damage } = f.lob(origin, { ...feet, y: r.top });
+        lays++;
+        expect(Math.hypot(blast.x - feet.x, blast.z - feet.z) > .5 || Math.abs(blast.y - r.top) > .05, `${label}: arc landed on ${r.roof} above ${id}`).toBe(true);
+        for (const [target, , at] of sheltered) if (damage.get(target)! > 0)
+          expect(blastExposure(blast, at, STANDING, region), `${label}: arc exposes ${target}`).toBe(0);
+      }
+      // The tank's own shell bursting on the roof directly above each body:
+      // 1 mm clear of the solid, so the roof itself (not U-166's face rule)
+      // decides; the same blast with only that roof removed is the control.
+      const withoutRoof = region.filter((b) => b.id !== r.roof);
+      expect(region.length - withoutRoof.length).toBe(1);
+      const open = fixture(withoutRoof, r.pow, r.captive);
+      for (const [id, , feet] of sheltered) {
+        const above = { ...feet, y: r.top + .001 };
+        const taken = f.burst(above).get(id)!, bare = open.burst(above).get(id)!;
+        expect(blastExposure(above, feet, STANDING, region)).toBe(0);
+        expect(blastExposure(above, feet, STANDING, withoutRoof)).toBe(1);
+        expect(bare, `${id}: control beyond the blast`).toBeGreaterThan(0);
+        expect(taken).toBeCloseTo(bare * f.cannon.blastCoverFraction, 6);
+        results[`${r.roof}/${id}`] = taken; results[`${r.roof}/${id} without roof`] = bare;
+      }
+    }
+    expect(lays).toBe(12 * 7);
+    console.log('U-222 roof cover', JSON.stringify({ arcingLays: lays, landedOnRoof: 0, ...results }));
+  }, 300_000);
 
   it('hurts the same escorted POW ordinarily once it stands in the open court on its escort leg', () => {
     const f = fixture(region, COURT_LEG, false, STAIR_HOLD);
