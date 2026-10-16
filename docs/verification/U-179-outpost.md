@@ -47,15 +47,17 @@ claimed here.
 - `pnpm exec vitest run packages/tools/src/maps/qalatOutpostFurniture.test.ts`:
   **5/5 pass**, including the 192 controller attempts.
 - Existing shell/nav focused run: 18 pass; the sole early failure was stale
-  capture metadata while regeneration was in progress. Final full verification
-  must retest the regenerated evidence and additional tower-nav test.
+  capture metadata while regeneration was in progress. The completed CI full
+  verification passes all 25 outpost tests, including freshness and tower nav.
 - `pnpm gen:qalat-depot` and its 26-view capture: pass; generated depot unchanged.
 - `pnpm gen:qalat-outpost`: pass. Fourteen standing-eye captures use complete
   collision plus noncolliding cues and ordinary roof undersides; each has two
   draw calls, below 300. Final labeled capture rerun passes.
 - `pnpm gen:nav`: pass for all five registered worlds; production bakes unchanged.
 - `pnpm check:assets` and `pnpm check:packs`: pass.
-- `pnpm typecheck` and `pnpm lint`: pass; `pnpm verify` is running.
+- `pnpm typecheck` and `pnpm lint`: pass locally. CI `pnpm verify`: **355 files,
+  3,534 tests pass**. The local full invocation was still running at this final
+  documentation checkpoint; CI supplies the completed full verification.
 - `pnpm sim-run --scenario mission --all-missions --seeds 3`: exit 0. Active
   Qalat remains 0/6, ordinary soldier-death losses; this is a diagnostic, not
   replacement-mission activation or a successful playthrough.
@@ -63,8 +65,10 @@ claimed here.
 The first capture attempt lacked Playwright's downloaded executable; reruns use
 `CHROMIUM_PATH=/usr/bin/chromium`. One capture interrupted during viewer editing
 timed out; rerun after the viewer stabilized. No gate, timeout or budget changed.
-CI must pass verify, streaming, parity-non-v8 and mission on the final pushed head
-before authorized merge; the PR exposes the current head and actual run links.
+All four CI jobs pass in [38890726887](https://github.com/JoshuaLRay/Sandline/actions/runs/38890726887)
+on implementation head `17710783afe9b5b191f89d7951d5021116aed76a`.
+The final documentation head must separately pass verify, streaming, parity-non-v8
+and mission before authorized merge; the PR exposes that head and actual run links.
 
 ## Review
 
