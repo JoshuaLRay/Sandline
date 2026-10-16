@@ -13,8 +13,16 @@ decision always comes with options and a recommended default.
 
 ## 1. Select (≈5 minutes, not an investigation)
 
-1. Fetch `origin/main`; preserve any dirty work. Read `BACKLOG.md` and list open
-   PRs and remote `task/*` branches — they are the claims.
+1. Fetch `origin/main`; preserve any dirty work. Run `pnpm task:next`
+   (or `pnpm task:next --id U-NNN` for an explicit task), which consults the
+   canonical active backlog, archived statuses and fresh GitHub PR/branch claims.
+   It returns a small JSON result; `--explain` gives diagnostic skips.
+   It is **read-only**. It requires authenticated `gh` access to the repo.
+   If `gh` is absent, GitHub is unreachable, output is UNKNOWN, or the parser
+   fails, use the original **manual** selection procedure: inspect the live
+   `BACKLOG.md`, relevant archive rows, open PRs and remote `task/*` branches
+   through available integrations. Never treat an unavailable claim check as
+   confirmation that a task is free. Recheck claims before creating a branch.
 2. Take the first **READY** row in table order whose dependencies are satisfied
    (DONE, archived in `docs/backlog/archive/`, or REVIEW with code merged on main
    unless the card needs that verdict). Skip rows another worker's PR/branch
