@@ -10,6 +10,6 @@
     { "id": "carry-5", "feet": { "x": 12, "y": 8, "z": 408 } }
   ],
   "objectives": [
-    { "type": "survive", "seconds": 3600, "label": "Isolated holdings fixture; no production objectives" }
+    { "type": "survive", "seconds": 3600, "label": "Isolated holdings fixture" }
   ]
 }

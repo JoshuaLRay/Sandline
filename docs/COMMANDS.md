@@ -126,6 +126,17 @@ checks for the refuge hold, both screen bypasses, the original escort leg and a
 seven-actor screen round trip before the retained below-stair hold/return.
 The two added captures show the east-pad sight line and the refuge screen.
 
+U-225 adds the unregistered `qalat-outpost-mission.json` holdings fixture and
+`buildOutpostCaptiveFixture` composer. `pnpm gen:qalat-outpost` also writes
+`mission.json` and `captives.json`, binding the declaration to the unchanged
+composed level hash. The composer refuses missing/insufficient holdings or any
+unsupported, obstructed or overlapping captive body, including the separate POW.
+`qalatOutpostCaptives.test.ts` covers all 63 possible zero-to-five captured-slot
+subsets; the traversal suite walks an actual Session soldier to every occupied
+rescue stand at each occupancy, checking ordinary 3D reach and LOS. The fixture's
+survive objective is a parser sentinel, not replacement campaign content.
+Actual rescue/restart lifecycle coverage remains U-226; activation remains U-117.
+
 ## Isolated Juniper Hollow construction (U-138)
 
 This authoring fixture implements the replacement's southern S0–D0 section and
