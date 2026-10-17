@@ -83,7 +83,6 @@ Decisions with defaults are in the rows; the owner can reply "agree".
 | [U-205](docs/backlog/U-205.md) | Enemy awareness: five authoritative states | Stealth and enemy awareness | P2 | READY | — (owner direction 2026-10-16) | — |
 | [U-197](docs/backlog/U-197.md) | Man a mounted gun: bots mount guns; a move order onto a gun mans it | Squad command reliability | P1 | READY | — (Conflict default; Mission 2 §9.5 precedent) | — |
 | [U-213](docs/backlog/U-213.md) | Directional tank armour: weak sides and rear | Armour and vehicles | P2 | READY | — (Conflict default; CP-20) | — |
-| [U-219](docs/backlog/U-219.md) | Per-map approach graph checks (flexible map topology) | Map design standards | P2 | READY | — (ADR-023) | — |
 | [U-214](docs/backlog/U-214.md) | Armour hit feedback: impacts, damage stages, destruction and sound | Armour and vehicles | P2 | READY | — (look/listen verdict batched in U-119) | — |
 | [U-203](docs/backlog/U-203.md) | Squad command reliability (epic and solo-play verification) | Squad command reliability | P1 | BLOCKED | Aggregate: U-196, U-174, U-197, U-198 first, then U-201, U-200, U-202; owner solo playtest | — |
 | [U-198](docs/backlog/U-198.md) | Order a soldier to plant charges and to set them off | Squad command reliability | P1 | BLOCKED | Decision: how to give plant/detonate orders — default: an equipment ring on the order wheel (U-182 DONE) | — |

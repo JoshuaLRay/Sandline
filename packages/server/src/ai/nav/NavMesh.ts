@@ -22,6 +22,7 @@
 import { DEFAULT_MOVE_CONFIG } from '@sandline/shared';
 import {
   Crowd,
+  Detour,
   type CrowdParams,
   NavMeshQuery,
   QueryFilter,
@@ -199,6 +200,30 @@ export class NavMesh {
    */
   path(from: NavPoint, to: NavPoint, searchM?: number): NavPath | null {
     return this.pathWith(from, to, searchM, undefined);
+  }
+
+  /** U-219 topology proof: exhaust actual directed links, including off-mesh
+   * links and tiled seams. A bounded Detour search returning a partial path
+   * cannot prove disconnection. Current blocker/within flags still apply.
+   */
+  connected(from: NavPoint, to: NavPoint): boolean {
+    const a = this.nearestPoint(from), b = this.nearestPoint(to);
+    const near = (p: NavPoint, q: NavPoint) => Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z) <= DEFAULT_MOVE_CONFIG.stepHeight;
+    if (!a || !b || !near(a.point, from) || !near(b.point, to)) return false;
+    const seen = new Set([a.polyRef]), todo = [a.polyRef];
+    for (let i = 0; i < todo.length; i++) {
+      const ref = todo[i]!;
+      if (ref === b.polyRef) return true;
+      const { tile, poly } = this.mesh.getTileAndPolyByRefUnsafe(ref);
+      for (let index = poly.firstLink(); index !== Detour.DT_NULL_LINK;) {
+        const link = tile.links(index), next = link.ref();
+        if (next !== 0 && !seen.has(next) && this.mesh.getPolyFlags(next).flags !== 0) {
+          seen.add(next); todo.push(next);
+        }
+        index = link.next();
+      }
+    }
+    return false;
   }
 
   /**

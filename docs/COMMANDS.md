@@ -56,11 +56,41 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | `pnpm perf:frame` | T-5.04: after building the client, the slice mission with the squad in Chromium — a walk and a firefight — printing frame time (median, p95, worst), draw calls and triangles; asserts ADR-013's 300 draw calls, records frame time (headless is software, not target hardware). `?perf` shows the same numbers live on any machine |
 | `pnpm export:soldier` | write the code-built soldier as `assets/src/soldier.glb`, the pipeline's test asset |
 | `pnpm gen:nav` | re-bake every named world's navmesh; required after editing a world, `MoveConfig` or the hitbox (a test fails until you do) |
+| `pnpm check:approaches [path/to/graph.json]` | U-219: check authored feet waypoints outward/return, retain each separated approach with registered connections closed, and restore every crossing/convergence independently. Defaults to live Qalat; `--schema-only` validates an unbuilt map without asserting navigation. Also runs in level checks and `pnpm verify` |
 | `pnpm gen:qalat-outpost` | U-175: generate isolated prisoner outpost and screened reserve-annex shells in `artifacts/qalat-outpost/`; run `pnpm exec tsx packages/tools/src/capture-qalat-outpost.ts` for eighteen standing-eye gate, court, room, tower, furnishing, reserve-bend, U-180 V3 gun-line, west-turn and refuge-screen captures with exact geometry hashes, supported footprints and <300 draws; activation U-117, whole-mission human quality acceptance U-119 |
 | `pnpm gen:qalat-depot` | generate the isolated furnished B1–B9 depot, B0 loading vestibule, covered B0/B10 stairs and exact D0/west-landing joins in `artifacts/qalat-depot/`; run `pnpm exec tsx packages/tools/src/capture-qalat-depot.ts` for twenty-six standing-eye room/furniture/stair/porch captures and draw-budget evidence; integrated group/floor/escape evidence in [U-173](verification/U-173-depot.md), whole-mission acceptance U-119, activation U-117 |
 | `pnpm gen:qalat-insertion` | U-138: compile the isolated Juniper Hollow replacement section and its exact collision/render surface, manifest and plan into `artifacts/qalat-insertion/`; production campaign activation remains U-117 |
 | `pnpm gen:qalat-road-supports` | U-149/U-159–U-165/U-167/U-168/U-151/U-152: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard, loading façades, D0 return store, first-X5 ingress dogleg/screens and the furnished R0–R9 ridge shelf/service bridge with its V1–V3 support bays, F3 and two C12 road↔ridge stairs; preserve basement voids, the 12 m vehicle corridor and ridge views; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
+
+## Declared approach graphs (U-219)
+
+Records beside map data live in `packages/tools/src/maps/approaches/`; the tooling-only
+zod schema is `maps/approachGraph.ts`. Each record names its world and objective
+stage, any number of approaches with explicit `{x,y,z}` feet waypoints, declared
+separation pairs, and localized connection cut volumes. Omit separation pairs
+for braided/shared ground; no three-route count or implicit boundary is enforced.
+Separated approaches need at least two interior probes that stay connected in
+both directions while every connection is cut. A cut swallowing a probe fails.
+Connections name their approach endpoints, crossing/convergence kind and allowed
+direction (`both` or `forward` in endpoint order). Every connection must work on
+its own; declared-separated endpoints must disconnect when its cut is closed.
+Isolation follows actual directed Detour links, including off-mesh/tiled links,
+without the path search's node/corridor limit. Keep endpoints outside cuts.
+
+`qalat-road.json` describes the live U-106 world, preserving its three separations,
+two hubs and C12-S/M/N register. C12 cuts use x17–19 inside the passage rather
+than deleting adjacent lane polygons. Existing corridor/controller proofs remain;
+real friendly-bot and Session escort traversal consume the declared waypoints.
+The replacement Qalat construction retains its separate, existing proofs until
+activation. No geometry, nav bake input or generated asset changes here.
+
+`kestrel-dam.json` transcribes the designed approach spines and registered mouths.
+Run `pnpm check:approaches packages/tools/src/maps/approaches/kestrel-dam.json --schema-only`
+now; navigation is **unrun**, because Kestrel has no constructed world/navmesh.
+After construction, run the same command without `--schema-only`, refine cuts to
+the real portals if necessary, and add controller traversal evidence. Schema
+validity alone does not certify its geometry or replace an owner playtest.
 
 ## Isolated furnished prisoner outpost (U-175/U-179/U-180)
 

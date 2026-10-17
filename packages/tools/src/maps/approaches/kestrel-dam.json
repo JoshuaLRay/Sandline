@@ -1,0 +1,29 @@
+{
+  "world": "kestrel-dam",
+  "stage": "dam-approaches",
+  "$comment": "Design-only transcription of kestrel-dam.md sections 3.1, 5.1, 6.1, 6.4 and 7.1. Navigation remains UNRUN until construction supplies a navmesh; cut volumes mark the registered mouths, not new geometry.",
+  "approaches": [
+    {
+      "id": "road",
+      "waypoints": [{"x": 8, "y": 8, "z": 78}, {"x": 6, "y": 8, "z": 98}, {"x": 3, "y": 8, "z": 112}, {"x": -4, "y": 8, "z": 138}, {"x": 4, "y": 8, "z": 164}, {"x": 8, "y": 8, "z": 180}, {"x": 12, "y": 8, "z": 201}, {"x": 18, "y": 8, "z": 238}, {"x": 32, "y": 8, "z": 262}, {"x": 40, "y": 8, "z": 280}, {"x": 40, "y": 8, "z": 294}],
+      "probes": [{"x": -4, "y": 8, "z": 138}, {"x": 8, "y": 8, "z": 180}]
+    },
+    {
+      "id": "canal",
+      "waypoints": [{"x": 30, "y": 8, "z": 60}, {"x": 36, "y": 12, "z": 71}, {"x": 42, "y": 16, "z": 82}, {"x": 47, "y": 20, "z": 93}, {"x": 52, "y": 24, "z": 104}, {"x": 56, "y": 24, "z": 128}, {"x": 57.6, "y": 24, "z": 140}, {"x": 57.6, "y": 24, "z": 168}, {"x": 57.6, "y": 24, "z": 182}, {"x": 57, "y": 24, "z": 190}, {"x": 57, "y": 24, "z": 212}, {"x": 60, "y": 24, "z": 238}, {"x": 62, "y": 24, "z": 262}, {"x": 65.6, "y": 24, "z": 280}, {"x": 65.6, "y": 24, "z": 297}, {"x": 68, "y": 24, "z": 320}, {"x": 68, "y": 24, "z": 328}, {"x": 68, "y": 32, "z": 350}],
+      "probes": [{"x": 47, "y": 20, "z": 93}, {"x": 56, "y": 24, "z": 128}]
+    },
+    {
+      "id": "west-bank",
+      "waypoints": [{"x": -10, "y": 8, "z": 62}, {"x": -32, "y": 8, "z": 62}, {"x": -42, "y": 8, "z": 86}, {"x": -44, "y": 8, "z": 104}, {"x": -48, "y": 16, "z": 130}, {"x": -50, "y": 16, "z": 146}, {"x": -46, "y": 8, "z": 172}, {"x": -46, "y": 8, "z": 192}, {"x": -52, "y": 8, "z": 216}, {"x": -64, "y": 8, "z": 244}, {"x": -56, "y": 8, "z": 262}, {"x": -56, "y": 20, "z": 296}, {"x": -56, "y": 20, "z": 304}, {"x": -56, "y": 32, "z": 338}, {"x": -56, "y": 32, "z": 344}],
+      "probes": [{"x": -44, "y": 8, "z": 104}, {"x": -50, "y": 16, "z": 146}]
+    }
+  ],
+  "separations": [["road", "canal"], ["road", "west-bank"], ["canal", "west-bank"]],
+  "connections": [
+    {"id": "Ford-Court", "kind": "convergence", "endpoints": [{"approach": "road", "point": {"x": 6, "y": 8, "z": 98}}, {"approach": "canal", "point": {"x": 42, "y": 16, "z": 82}}, {"approach": "west-bank", "point": {"x": -42, "y": 8, "z": 86}}], "direction": "both", "cuts": [{"minX": -32, "maxX": 32, "minY": 7, "maxY": 14, "minZ": 56, "maxZ": 78}]},
+    {"id": "dam-complex", "kind": "convergence", "endpoints": [{"approach": "road", "point": {"x": 40, "y": 8, "z": 280}}, {"approach": "canal", "point": {"x": 68, "y": 24, "z": 328}}, {"approach": "west-bank", "point": {"x": -56, "y": 32, "z": 338}}], "direction": "both", "cuts": [{"minX": 34, "maxX": 46, "minY": 7, "maxY": 12, "minZ": 293, "maxZ": 295}, {"minX": 65, "maxX": 71, "minY": 29, "maxY": 36, "minZ": 345, "maxZ": 347}, {"minX": -61, "maxX": -51, "minY": 31, "maxY": 36, "minZ": 341, "maxZ": 343}]},
+    {"id": "C12-P", "kind": "crossing", "endpoints": [{"approach": "road", "point": {"x": 19, "y": 8, "z": 198}}, {"approach": "canal", "point": {"x": 57, "y": 24, "z": 198}}], "direction": "both", "cuts": [{"minX": 32, "maxX": 54, "minY": 23, "maxY": 28, "minZ": 196, "maxZ": 200}]},
+    {"id": "C12-S", "kind": "crossing", "endpoints": [{"approach": "road", "point": {"x": 32, "y": 8, "z": 262}}, {"approach": "canal", "point": {"x": 58, "y": 24, "z": 256}}], "direction": "both", "cuts": [{"minX": 50, "maxX": 54, "minY": 23, "maxY": 28, "minZ": 254, "maxZ": 258}]}
+  ]
+}
