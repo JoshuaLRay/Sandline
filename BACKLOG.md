@@ -70,8 +70,8 @@ Decisions with defaults are in the rows; the owner can reply "agree".
 
 Owner explicitly approved U-148's delivered phone commander supply UI as an acceptance **disposition**, not evidence of a new physical-phone test. The completed U-148, U-145 and U-112 supply-system work moved to the DONE archive; actual five-cache placement and integrated mission testing remain U-117/U-119. The U-144/U-113 production prisoner/restart blocker is decomposed into U-225 (replacement-only holding authoring) and U-226 (isolated real Session rescue/restore tests). U-144/U-113 close **with**, not before, U-117's actual production activation. The owner has not authorized implementing U-117 in this work item.
 
-Owner requested the U-117 planning split on 2026-10-17. U-225 is DONE; U-226 stays
-next. U-227–U-232 prepare and prove an unregistered replacement, then U-233 alone
+Owner requested the U-117 planning split on 2026-10-17. U-225/U-226 are DONE;
+U-227 is next. U-227–U-232 prepare and prove an unregistered replacement, then U-233 alone
 switches all production data and reruns current-map acceptance atomically. Only
 that proof closes U-144/U-136/U-113 and U-117. U-118 follows completed U-117;
 prepare the handoff after activation. U-119 remains the separate owner playtest.
@@ -84,12 +84,11 @@ The split is not implementation/activation authorization or an inferred verdict.
 | [U-113](docs/backlog/U-113.md) | Map-revision-aware checkpoint restart and restore | Map implementation | P1 | BLOCKED | Aggregate closure: U-135, U-136; split before implementation | — |
 | [U-136](docs/backlog/U-136.md) | Refuse incompatible restores and offer restart or mission select | Map implementation | P1 | BLOCKED | Aggregate: U-143 DONE; U-144 current-map carried-prisoner placement remains blocked | [#312](https://github.com/JoshuaLRay/Sandline/pull/312) |
 | [U-144](docs/backlog/U-144.md) | Restart incompatible saves with authored carried-prisoner placement | Map implementation | P1 | BLOCKED | U-143/U-224 DONE; production holdings and accessible rescue integration must ship with replacement activation (U-117), never on the older map | — |
-| [U-226](docs/backlog/U-226.md) | Prove captive rescue and restart in isolated replacement Session | Map implementation | P1 | READY | U-225 DONE; isolated Session proof only; production activation/acceptance is separate | — |
 | [U-114](docs/backlog/U-114.md) | Build the hidden insertion, road, ridge and tank ingress | Map implementation | P1 | REVIEW | Surface engineering U-138–U-141 complete; only batched road/ridge look/play verdicts in U-139/U-140 remain | [#341](https://github.com/JoshuaLRay/Sandline/pull/341) |
 | [U-139](docs/backlog/U-139.md) | Construct the road fights and tank ingress with swept clearance | Map implementation | P1 | REVIEW | Aggregate: U-149–U-152 and U-162 DONE (first-X5 forecourt criterion met); only the batched human road look/play verdict remains | [#335](https://github.com/JoshuaLRay/Sandline/pull/335) |
 | [U-140](docs/backlog/U-140.md) | Construct the continuous ridge stairs, shelves and service bridge | Map implementation | P1 | REVIEW | Aggregate: U-163/U-164/U-165 DONE; only the batched owner ridge look/play verdict remains | [#338](https://github.com/JoshuaLRay/Sandline/pull/338) |
 | [U-117](docs/backlog/U-117.md) | Integrate redesigned Mission 1 combat, supplies and objectives | Map implementation | P1 | BLOCKED | Aggregate: U-227–U-233; engineering closure after actual atomic activation proof | — |
-| [U-227](docs/backlog/U-227.md) | Package the unregistered replacement level, tiled nav and cover | Map implementation | P1 | BLOCKED | U-226 | — |
+| [U-227](docs/backlog/U-227.md) | Package the unregistered replacement level, tiled nav and cover | Map implementation | P1 | READY | U-226 DONE; unregistered preparation only | — |
 | [U-228](docs/backlog/U-228.md) | Author replacement guards, patrols, emplacement and staged reserves | Map implementation | P1 | BLOCKED | U-227 | — |
 | [U-229](docs/backlog/U-229.md) | Author and validate all five replacement supply caches | Map implementation | P1 | BLOCKED | U-227 | — |
 | [U-230](docs/backlog/U-230.md) | Author isolated replacement objectives, timers and mission texts | Map implementation | P1 | BLOCKED | U-228, U-229 | — |

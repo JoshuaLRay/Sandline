@@ -135,7 +135,15 @@ unsupported, obstructed or overlapping captive body, including the separate POW.
 subsets; the traversal suite walks an actual Session soldier to every occupied
 rescue stand at each occupancy, checking ordinary 3D reach and LOS. The fixture's
 survive objective is a parser sentinel, not replacement campaign content.
-Actual rescue/restart lifecycle coverage remains U-226; activation remains U-117.
+Actual rescue/restart lifecycle coverage is supplied by U-226 below; activation remains U-117.
+
+U-226's `qalatOutpostSession.test.ts` exercises real timed rescues and all-seven
+court/refuge returns for campaign/replay, 0/1/5 carried captives and fresh/changed-map
+starts. `qalatOutpostRestore.test.ts` covers exact checkpoint positions, exhausted
+stock, incompatible/legacy restart, separate prisoner pools, host/reconnect/ready-up
+and mission selection. Run both with `pnpm exec vitest run packages/tools/src/maps/qalatOutpostSession.test.ts packages/tools/src/maps/qalatOutpostRestore.test.ts`.
+See [U-226 evidence](verification/U-226-session.md). These remain unregistered;
+atomic production activation is U-233, then U-118 polish and U-119 owner playtest.
 
 ## Isolated Juniper Hollow construction (U-138)
 
