@@ -17,7 +17,7 @@ describe('Cloudflare Worker cutover contracts', () => {
   });
 
   it('does not let pull requests publish or skip any of the four release gates', () => {
-    const worker = ci.split(/\n  deploy-worker:/)[1];
+    const worker = ci.split('\n  deploy-worker:')[1];
     expect(worker).toBeDefined();
     expect(worker).toContain("github.ref == 'refs/heads/main'");
     expect(worker).toContain("github.event_name == 'push'");
