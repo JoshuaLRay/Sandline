@@ -16,6 +16,13 @@ function checkpoint(run: 'campaign' | 'replay', count: number) {
     expect(p.session.slots[0]!.kits).toBe(1);
     p.session.slots[0]!.kits = 0;
     p.session.slots[0]!.state.x += .25;
+    // Same-revision saves must keep later exact positions, rather than silently
+    // snapping either prisoner kind back to its original authored socket.
+    for (const s of p.session.slots.filter((s) => s.captured)) {
+      s.prisoner = { ...s.prisoner!, x: s.prisoner!.x + .125, z: s.prisoner!.z + .25 };
+      Object.assign(s.state, s.prisoner);
+    }
+    p.pow().state.x += .25; p.pow().state.z += .25;
     return p.save();
   } finally { p.close(); }
 }
@@ -47,10 +54,14 @@ describe('U-226 replacement Session checkpoint/restart matrix', () => {
         expect(p.gate(host)).toBeNull();
         expect(p.inventory()).toEqual((saved.checkpoint!.world as CheckpointWorld).slots);
         expect(p.session.slots.map((s) => ({ x: s.state.x, y: s.state.y, z: s.state.z }))).toEqual(saved.checkpoint!.spawns);
-        expect(p.pow().state).toMatchObject({ x: 16, y: 8, z: 402 });
+        expect(p.pow().state).toMatchObject({ x: 16.25, y: 8, z: 402.25 });
         expect(p.pow().captive).toBe(true);
         expect(p.session.supplyCaches[0]!.stock.healthKits).toBe(0);
         const captured = p.captured();
+        expect(captured).toEqual(heldSlots(count).map((slot, i) => ({ slot, at: {
+          ...fixture.mission.prisonerHoldings[i]!.feet, x: fixture.mission.prisonerHoldings[i]!.feet.x + .125,
+          z: fixture.mission.prisonerHoldings[i]!.feet.z + .25,
+        } })));
         // A real failed mission, rather than calling reset on a healthy run.
         Object.assign(p.session.slots[0]!.health, { current: 0, diedAt: 1 }); p.step(2);
         expect(p.session.mission!.state).toBe('failed');
@@ -80,8 +91,10 @@ describe('U-226 replacement Session checkpoint/restart matrix', () => {
         expect(after.checkpoint).toMatchObject({ mapRevision: 2, missionStart: { captured: expected } });
         const reloaded = play(after), owner = reloaded.join();
         try {
-          reloaded.send(owner, { kind: 'MissionRestart', full: true });
-          expect(reloaded.captured()).toEqual(expected); expect(reloaded.session.enemies).toHaveLength(1);
+          for (let i = 0; i < 3; i++) {
+            reloaded.send(owner, { kind: 'MissionRestart', full: true });
+            expect(reloaded.captured()).toEqual(expected); expect(reloaded.session.enemies).toHaveLength(1);
+          }
         } finally { reloaded.close(); }
         expect(saved).toEqual(original);
       } finally { p.close(); }
@@ -120,9 +133,13 @@ describe('U-226 replacement Session checkpoint/restart matrix', () => {
       try {
         for (const person of [host, guest]) p.send(person, { kind: 'RoomCommand', command: 'ready', ready: true });
         p.send(host, { kind: 'RoomCommand', command: 'start' });
+        p.send(host, { kind: 'MissionRestart' });
         p.send(guest, { kind: 'MissionRestart', full: true });
+        p.send(host, { kind: 'RoomCommand', command: 'choose', run, mission: 'later' });
         expect(p.session.started).toBe(false); expect(p.saves).toEqual([]);
-        host.pair.b.close('drop'); p.step(2); const resumed = p.join(host.resume);
+        host.pair.b.close('drop'); p.step(2);
+        expect(p.gate(guest)).toMatchObject({ host: 1 });
+        const resumed = p.join(host.resume);
         expect(resumed.client.slot).toBe(0); expect(p.session.stats.resumes).toBe(1);
         expect(p.gate(resumed)).toMatchObject({ host: 0, restart: 'original' });
         p.send(guest, { kind: 'MissionRestart', full: true }); expect(p.saves).toEqual([]);
