@@ -42,7 +42,8 @@ bakes must regenerate byte-for-byte unchanged, including their cover arrays.
 ## Proof and limits
 
 The candidate test builds and serializes the complete bundle, compares its
-receipt to the committed manifest and independently rebakes its nav/cover.
+receipt to the committed manifest and independently rebakes its nav. The full
+generator freshness check repeats nav, cover and render export byte-for-byte.
 It checks all starts, three-lane/room/gate witnesses and six holdings against
 connected intended floors; backing-plane and roof witnesses stay disconnected.
 The actual standing controller follows insertion, road, ridge/bridge and depot
@@ -67,3 +68,16 @@ Production level/mission/encounters/scripts, registered nav/cover, campaign/lobb
 save handling and deployment configuration remain unchanged. U-228–U-232 prepare
 encounters, caches, flow and rehearsals; U-233 activates atomically and repeats
 actual registered acceptance. U-118 presentation and U-119 owner playtest follow.
+
+## Deployment observation — 2026-10-17
+
+Before this merge, GitHub Pages reports a successful deployment of main
+`de5d22cd759a5b57401d0bf8cee6c4afaf0ffb4e` and serves HTTP 200 at
+<https://joshualray.github.io/Sandline/>. Fly's
+<https://sandline-host.fly.dev/healthz> reports healthy, protocol 74.
+Main's `deploy-client` job skips Cloudflare upload because deployment is not
+configured; its successful conclusion does not establish a Cloudflare release.
+The U-227 Workers build also reports failure. The previously reported Cloudflare
+authentication failure is not resolved or converted into deployment evidence.
+These observations verify the existing deployment's availability, without
+activating the replacement or inferring an owner verdict.

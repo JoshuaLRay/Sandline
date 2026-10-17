@@ -4,9 +4,10 @@ import { DEFAULT_MOVE_CONFIG as move, TICK_SECONDS, WORLD_IDS, blockedAt, create
   missionFor, requireWorld, stepCharacter, supportUnder } from '@sandline/shared';
 import { completePathLength, type NavPoint } from '../../../server/src/ai/nav/NavMesh.ts';
 import { PathFollower } from '../../../server/src/ai/locomotion/followPath.ts';
+import { bakedBytes } from '../../../server/src/ai/nav/baked/types.ts';
 import { bakedNavFor } from '../../../server/src/ai/nav/bakedNav.ts';
 import { navBakeHash } from '../nav/bake.ts';
-import { digest, exportInputHash, exportWorldBake } from '../nav/export.ts';
+import { digest, exportInputHash, bakeTiledStanding } from '../nav/export.ts';
 import { bodyBlocked } from '../nav/cover.ts';
 import { QALAT_TILED_PLAN } from './qalatRoadNav.ts';
 import { buildOutpostLevel } from './qalatOutpost.ts';
@@ -49,8 +50,8 @@ describe('U-227 staged complete replacement', () => {
     expect(bundle.manifest.bytes.level + bundle.manifest.bytes.surface + JSON.stringify(bundle.nav).length).toBeLessThan(80_000_000);
   }, 60_000);
 
-  it('rebakes the exported nav/cover deterministically and keeps legacy registered inputs and hashes', async () => {
-    expect(await exportWorldBake(loaded.world, QALAT_TILED_PLAN)).toEqual(bundle.nav);
+  it('rebakes the exported nav deterministically and keeps legacy registered inputs and hashes', async () => {
+    expect(Buffer.from(await bakeTiledStanding(loaded.world, QALAT_TILED_PLAN)).equals(Buffer.from(bakedBytes(bundle.nav)))).toBe(true);
     for (const id of WORLD_IDS) expect(exportInputHash(requireWorld(id))).toBe(navBakeHash(requireWorld(id)));
     expect(WORLD_IDS).not.toContain(loaded.world.id);
     expect(missionFor(loaded.world.id)).toBeUndefined();
@@ -99,6 +100,8 @@ describe('U-227 staged complete replacement', () => {
       floors.add(Math.round(at.y));
     }
     for (const y of [0,8,26,30]) expect(floors.has(y)).toBe(true);
+    for (const [prefix, y] of [['outpost-',8], ['depot-',0], ['road-combat-',8], ['ridge-',26]] as const)
+      expect(bundle.nav.cover.some((c)=>c.box.startsWith(prefix) && c.y===y), `${prefix} floor ${y}`).toBe(true);
   }, 120_000);
 
   it('follows exported standing routes across tiled seams, elevated bridge and basement with the actual controller', async () => {
