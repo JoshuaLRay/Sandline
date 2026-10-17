@@ -26,3 +26,5 @@ artifacts/qalat-replacement/mission.json
 artifacts/qalat-replacement/*.png
 
 packages/client/public/wip-qalat/
+
+artifacts/qalat-preview/

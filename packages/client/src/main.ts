@@ -325,11 +325,12 @@ function buildScenery(world: World): void {
     ground.visible = false;
     scene.background = new THREE.Color(0x9baab1);
     scene.fog = new THREE.Fog(0x9baab1, 120, 800);
-    const mesh = qalatPreview.mesh;
-    scene.add(mesh);
-    worldMeshes.push(mesh);
-    shootable.push(mesh);
-    cameraScenery.push(mesh);
+    for (const mesh of qalatPreview.meshes) {
+      scene.add(mesh);
+      worldMeshes.push(mesh);
+      shootable.push(mesh);
+      cameraScenery.push(mesh);
+    }
     return;
   }
   ground.visible = true;
@@ -1685,6 +1686,7 @@ function leaveSession(message: { text: string; tone: 'info' | 'error' } | null):
   squadPanel.setVisible(false);
   roomLobby.hide();
   if (document.pointerLockElement) document.exitPointerLock();
+  if (qalatPreview) { location.assign('./'); return; }
   lobby.show(message ?? undefined);
   menu.showMain();
 }
@@ -2091,8 +2093,8 @@ if (qalatPreview) {
   const previewLink = document.createElement('a');
   previewLink.href = '?preview-qalat';
   previewLink.textContent = 'Play Qalat WIP preview (unfinished)';
-  previewLink.style.cssText = 'position:fixed;bottom:8px;left:12px;z-index:10000;color:#f3d18b;background:#18232b;padding:8px';
-  document.body.append(previewLink);
+  previewLink.style.cssText = 'display:block;color:#f3d18b;padding:8px';
+  lobby.root.append(previewLink);
 }
 
 /* -- Loop ------------------------------------------------------------------ */
@@ -3432,8 +3434,7 @@ function frame(): void {
   requestAnimationFrame(frame);
 }
 player.visible = false;
-lobby.show();
-menu.showMain();
+if (!qalatPreview) { lobby.show(); menu.showMain(); }
 requestAnimationFrame(frame);
 
 addEventListener('keydown', (e) => {

@@ -17,7 +17,7 @@ interface QalatPreview {
   world: World;
   nav: NavMesh;
   cover: NonNullable<LocalServerOptions['cover']>;
-  mesh: THREE.Mesh;
+  meshes: THREE.Mesh[];
   manifest: Manifest;
   mount(start: () => void): void;
 }
@@ -46,22 +46,48 @@ export async function loadQalatPreview(): Promise<QalatPreview> {
     const text = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
     const rendered = JSON.parse(text) as { positions: number[]; normals: number[]; colours: number[]; indices: number[] };
     if (await digest(rendered) !== surface.contentHash) throw new Error('Stale Qalat WIP render payload');
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(rendered.positions, 3));
-    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(rendered.normals, 3));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(rendered.colours, 3));
-    geometry.setIndex(rendered.indices);
-    const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
-    mesh.name = 'U-227 actual replacement construction';
+    // Share vertex buffers, partition only triangle indices. Camera/weapon rays
+    // then reject distant chunks by bounds instead of scanning the full map.
+    const attributes = {
+      position: new THREE.Float32BufferAttribute(rendered.positions, 3),
+      normal: new THREE.Float32BufferAttribute(rendered.normals, 3),
+      color: new THREE.Float32BufferAttribute(rendered.colours, 3),
+    };
+    const chunks = new Map<string, { indices: number[]; bounds: THREE.Box3 }>();
+    const vertex = new THREE.Vector3();
+    for (let i = 0; i < rendered.indices.length; i += 3) {
+      const triangle = rendered.indices.slice(i, i + 3);
+      let x = 0, z = 0;
+      for (const index of triangle) { x += rendered.positions[index * 3]!; z += rendered.positions[index * 3 + 2]!; }
+      const key = `${Math.floor(x / 3 / 48)},${Math.floor(z / 3 / 48)}`;
+      let chunk = chunks.get(key);
+      if (!chunk) { chunk = { indices: [], bounds: new THREE.Box3() }; chunks.set(key, chunk); }
+      for (const index of triangle) {
+        chunk.indices.push(index);
+        vertex.fromBufferAttribute(attributes.position, index);
+        chunk.bounds.expandByPoint(vertex);
+      }
+    }
+    const material = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    const meshes = [...chunks].map(([key, chunk]) => {
+      const geometry = new THREE.BufferGeometry();
+      for (const [name, attribute] of Object.entries(attributes)) geometry.setAttribute(name, attribute);
+      geometry.setIndex(chunk.indices);
+      geometry.boundingBox = chunk.bounds;
+      geometry.boundingSphere = chunk.bounds.getBoundingSphere(new THREE.Sphere());
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = `U-227 actual replacement construction ${key}`;
+      return mesh;
+    });
     await initNav();
     const nav = NavMesh.load(Uint8Array.from(atob(navData.base64), (c) => c.charCodeAt(0)), navData.agent.height);
     notice.remove();
-    return { world, nav, cover: navData.cover, mesh, manifest,
+    return { world, nav, cover: navData.cover, meshes, manifest,
       mount(start: () => void): void {
         const panel = document.createElement('aside');
         panel.id = 'qalat-wip';
         panel.style.cssText = 'position:fixed;top:8px;left:8px;max-width:540px;z-index:10000;background:#18232bee;color:#f3d18b;padding:10px;font:14px system-ui';
-        panel.innerHTML = '<strong>Qalat · PLAYABLE WIP · U-227 construction, revision 2</strong><details open><summary>Unfinished content & controls</summary><p>Explore the actual insertion, road, ridge, depot and outpost with the normal controller, weapons and five squad bots. Encounters, objectives, five caches, mission flow, final art and full verification are unfinished. No campaign progress or saves. Reload to reset.</p><p>Click game to capture mouse · WASD move · Shift sprint · Space jump/vault · C crouch · Z prone · left mouse fire · right mouse aim/first person · R reload · 1–6 equipment · V shoulder/exit first person · hold Q for orders · Esc for squad switching and settings.</p></details>';
+        panel.innerHTML = '<strong>Qalat · PLAYABLE WIP · U-227 construction, revision 2</strong><details open><summary>Unfinished content & controls</summary><p>Explore the actual insertion, road, ridge, depot and outpost with the normal controller, weapons and five squad bots. Encounters, objectives, five caches, mission flow, rescue content, final art and full verification are unfinished. No campaign progress or saves. Reload to reset.</p><p>Click game to capture mouse · WASD move · Shift sprint · Space jump/vault · C crouch · Z prone · left mouse fire · right mouse aim/first person · R reload · 1–6 equipment · V shoulder/exit first person · hold Q for orders · Esc for squad switching and settings.</p></details>';
         const button = document.createElement('button');
         button.textContent = 'Start WIP playtest';
         button.onclick = () => { start(); panel.querySelector('details')!.open = false; button.remove(); };
