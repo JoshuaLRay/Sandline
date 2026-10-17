@@ -6,6 +6,7 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 
 | Command | What it does |
 |---|---|
+| `pnpm exec tsx packages/tools/src/check-qalat-preview.ts [site-url]` | U-234: play the built/published isolated Qalat WIP with real input; optional `SANDLINE_EXPECT_SHA` verifies the published build, artifacts under `artifacts/qalat-preview/` |
 | `pnpm verify` | typecheck + lint + test — the gate every task must pass |
 | `pnpm agent:run -- pnpm verify` | opt-in command wrapper: same test/exit code, saves full local log under ignored `.agent-logs/`, shows concise result and bounded failure excerpt (see `docs/AGENT-OUTPUT.md`) |
 | `pnpm host` | authoritative session host — six slots, real WebSocket |

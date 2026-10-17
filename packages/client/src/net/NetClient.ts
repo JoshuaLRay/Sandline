@@ -471,6 +471,8 @@ export class NetClient {
      * mispredict every tick.
      */
     private readonly moveConfig?: MoveConfig,
+    /** Isolated QA worlds; remote clients retain the registered lookup. */
+    private readonly resolveWorld: (id: string) => World | undefined = getWorld,
   ) {
     transport.onMessage((bytes) => this.handle(bytes));
   }
@@ -1268,7 +1270,7 @@ export class NetClient {
         this.supplyProgressValue = msg.uses;
         break;
       case 'JoinAck': {
-        const world = getWorld(msg.world);
+        const world = this.resolveWorld(msg.world);
         if (!world) {
           // A world this build does not have: refuse, typed, rather than draw
           // the wrong scenery and predict against boxes the server does not

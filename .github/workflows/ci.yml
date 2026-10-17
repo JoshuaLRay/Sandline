@@ -98,6 +98,13 @@ jobs:
       - run: pnpm check:load-time
       - name: Qalat Road first playable frame budget
         run: SANDLINE_LOAD_WORLD=qalat-road pnpm check:load-time
+      - name: Play current isolated Qalat WIP with normal controls
+        run: pnpm exec tsx packages/tools/src/check-qalat-preview.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qalat-playable-wip
+          path: artifacts/qalat-preview/*
+          if-no-files-found: error
       # T-5.04: the slice mission with the squad, walked and fought; asserts the draw budget, records frame time.
       - name: Capture Qalat map review
         run: pnpm exec tsx packages/tools/src/capture-map-review.ts
