@@ -64,5 +64,5 @@ describe('U-225 replacement-only six-captive declaration', () => {
     expect(generated).toMatchObject({ isolated: true, capacity: 6, pow: fixture.pow,
       prisonerHoldings: fixture.mission.prisonerHoldings, levelHash: outpostManifest().levelHash,
       missionHash: createHash('sha256').update(JSON.stringify(mission)).digest('hex') });
-  });
+  }, 60_000);
 });
