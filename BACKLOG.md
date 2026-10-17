@@ -66,20 +66,23 @@ and add command reliability, stealth, armour and map tooling as interleaved
 READY work; loot implementation waits for the owner's design session (U-184).
 Decisions with defaults are in the rows; the owner can reply "agree".
 
+## Owner acceptance and staged Qalat work — 2026-10-16
+
+Owner explicitly approved U-148's delivered phone commander supply UI as an acceptance **disposition**, not evidence of a new physical-phone test. The completed U-148, U-145 and U-112 supply-system work moved to the DONE archive; actual five-cache placement and integrated mission testing remain U-117/U-119. The U-144/U-113 production prisoner/restart blocker is decomposed into U-225 (replacement-only holding authoring) and U-226 (isolated real Session rescue/restore tests). U-144/U-113 close **with**, not before, U-117's actual production activation. The owner has not authorized implementing U-117 in this work item.
+
 ## Ordered work queue
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
-| [U-112](docs/backlog/U-112.md) | Finite projectile, health and ammunition supply caches | Map implementation | P1 | BLOCKED | Aggregate: U-132–U-134 DONE; U-145/U-148 new physical-phone acceptance remains open | — |
-| [U-145](docs/backlog/U-145.md) | Use supply caches through approved mobile controls | Map implementation | P1 | BLOCKED | Aggregate: U-146/U-147 DONE; U-148 REVIEW in #321; new physical-phone mobile-use acceptance remains open | — |
-| [U-148](docs/backlog/U-148.md) | Mobile commander cache choice, cancellation and authoritative progress | Map implementation | P1 | REVIEW | U-146/U-147 DONE; implementation in #321; new physical-phone presentation/play acceptance remains pending after authorized green merge | [#321](https://github.com/JoshuaLRay/Sandline/pull/321) |
 | [U-113](docs/backlog/U-113.md) | Map-revision-aware checkpoint restart and restore | Map implementation | P1 | BLOCKED | Aggregate closure: U-135, U-136; split before implementation | — |
 | [U-136](docs/backlog/U-136.md) | Refuse incompatible restores and offer restart or mission select | Map implementation | P1 | BLOCKED | Aggregate: U-143 DONE; U-144 current-map carried-prisoner placement remains blocked | [#312](https://github.com/JoshuaLRay/Sandline/pull/312) |
 | [U-144](docs/backlog/U-144.md) | Restart incompatible saves with authored carried-prisoner placement | Map implementation | P1 | BLOCKED | U-143/U-224 DONE; production holdings and accessible rescue integration must ship with replacement activation (U-117), never on the older map | — |
+| [U-225](docs/backlog/U-225.md) | Author replacement-only six-captive holding declarations and spatial proofs | Map implementation | P1 | READY | U-224 DONE; isolated authoring only, never change old live map | — |
+| [U-226](docs/backlog/U-226.md) | Prove captive rescue and restart in isolated replacement Session | Map implementation | P1 | BLOCKED | U-225; production activation/acceptance remains U-117 | — |
 | [U-114](docs/backlog/U-114.md) | Build the hidden insertion, road, ridge and tank ingress | Map implementation | P1 | REVIEW | Surface engineering U-138–U-141 complete; only batched road/ridge look/play verdicts in U-139/U-140 remain | [#341](https://github.com/JoshuaLRay/Sandline/pull/341) |
 | [U-139](docs/backlog/U-139.md) | Construct the road fights and tank ingress with swept clearance | Map implementation | P1 | REVIEW | Aggregate: U-149–U-152 and U-162 DONE (first-X5 forecourt criterion met); only the batched human road look/play verdict remains | [#335](https://github.com/JoshuaLRay/Sandline/pull/335) |
 | [U-140](docs/backlog/U-140.md) | Construct the continuous ridge stairs, shelves and service bridge | Map implementation | P1 | REVIEW | Aggregate: U-163/U-164/U-165 DONE; only the batched owner ridge look/play verdict remains | [#338](https://github.com/JoshuaLRay/Sandline/pull/338) |
-| [U-117](docs/backlog/U-117.md) | Integrate redesigned Mission 1 combat, supplies and objectives | Map implementation | P1 | BLOCKED | U-111/U-116/U-224 DONE; U-112 (U-148 physical-phone acceptance); U-144 production placement and U-113 acceptance must close atomically with replacement activation | — |
+| [U-117](docs/backlog/U-117.md) | Integrate redesigned Mission 1 combat, supplies and objectives | Map implementation | P1 | BLOCKED | U-112 owner-accepted; isolated prerequisites U-225/U-226 first; U-144 production placement and U-113 acceptance ship atomically with activation | — |
 | [U-205](docs/backlog/U-205.md) | Enemy awareness: five authoritative states | Stealth and enemy awareness | P2 | READY | — (owner direction 2026-10-16) | — |
 | [U-197](docs/backlog/U-197.md) | Man a mounted gun: bots mount guns; a move order onto a gun mans it | Squad command reliability | P1 | READY | — (Conflict default; Mission 2 §9.5 precedent) | — |
 | [U-213](docs/backlog/U-213.md) | Directional tank armour: weak sides and rear | Armour and vehicles | P2 | READY | — (Conflict default; CP-20) | — |
