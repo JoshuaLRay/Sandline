@@ -527,3 +527,4 @@ Format: `T-<id> — <what changed>`
 - U-117 planning — Split replacement integration into U-227–U-233: isolated bundle/nav, encounters, caches, mission flow, route/combat and persistence proofs, then one atomic activation; U-226 remains next, with U-118/U-119 later and no implementation or acceptance claimed ([#370](https://github.com/JoshuaLRay/Sandline/pull/370)).
 
 - U-226 — Prove isolated replacement Qalat captive rescue, all-seven return and safe checkpoint/restart semantics for campaign/replay without production activation ([#371](https://github.com/JoshuaLRay/Sandline/pull/371)).
+- MIGRATION-P3 — Replace GitHub Pages delivery with opt-in, four-gate Cloudflare Worker release; reroute Fly-triggered rebuilds and update private-cutover documentation (Worker deployment requires account activation).

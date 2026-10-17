@@ -17,7 +17,9 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The full suite reached 371 files / 3745 green tests but the 20-minute
+    # job timeout cancelled it during teardown (run #2026). Keep ALL checks.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       # No `version:` here on purpose. package.json's `packageManager` field is
@@ -230,71 +232,71 @@ jobs:
         run: pnpm sim-run --scenario mission --mission packages/shared/src/data/missions/qalat-road.json --seeds 20
         if: ${{ !cancelled() }}
 
-  # Private-repository migration phase 1. Keep GitHub Pages live until owner cutover.
-  # This job runs only after ALL four normal CI jobs pass for the same main commit.
-  # It opts in only when the account/project credentials have been configured.
-  deploy-client:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+  # Production static Worker release. The four required jobs must all pass
+  # on this main commit before GitHub Actions can deploy. PRs never deploy.
+  # Enable only after setting the scoped Cloudflare Worker token, account ID
+  # and SANDLINE_HOST variable, and disabling competing Cloudflare Git builds.
+  deploy-worker:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.CLOUDFLARE_WORKER_DEPLOY_ENABLED == 'true'
     needs: [verify, streaming, parity-non-v8, mission]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
       deployments: write
-    env:
-      CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
     steps:
-      - name: Check explicit Cloudflare deployment opt-in
-        id: cloudflare
+      - uses: actions/checkout@v4
+      - name: Reject stale main and missing configuration
         shell: bash
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SANDLINE_HOST: ${{ vars.SANDLINE_HOST }}
         run: |
-          if [[ -n "$CLOUDFLARE_API_TOKEN" && -n "$CLOUDFLARE_ACCOUNT_ID" && -n "$CLOUDFLARE_PAGES_PROJECT" ]]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Cloudflare Pages not configured; existing GitHub Pages remains primary. See docs/CLOUDFLARE-SETUP.md"
+          set -euo pipefail
+          if [[ -z "$CF_TOKEN" || -z "$CF_ACCOUNT" ]]; then
+            echo "::error::Worker deployment is enabled but CLOUDFLARE_WORKERS_API_TOKEN or CLOUDFLARE_ACCOUNT_ID is unset"
+            exit 1
           fi
-      - uses: actions/checkout@v4
-        if: steps.cloudflare.outputs.ready == 'true'
+          if [[ ! "$SANDLINE_HOST" =~ ^wss://[^[:space:]]+$ ]]; then
+            echo "::error::SANDLINE_HOST must be the production wss:// Fly host"
+            exit 1
+          fi
+          git fetch --depth=1 origin main
+          if [[ "$(git rev-parse FETCH_HEAD)" != "$GITHUB_SHA" ]]; then
+            echo "::error::main advanced after this CI run began; refusing to overwrite a newer production release"
+            exit 1
+          fi
       - uses: pnpm/action-setup@v4
-        if: steps.cloudflare.outputs.ready == 'true'
       - uses: actions/setup-node@v4
-        if: steps.cloudflare.outputs.ready == 'true'
         with:
           node-version: 22
           cache: pnpm
-      - name: Install build dependencies
-        if: steps.cloudflare.outputs.ready == 'true'
-        run: pnpm install --frozen-lockfile
-      - name: Build production client pointing to Fly.io
-        if: steps.cloudflare.outputs.ready == 'true'
+      - run: pnpm install --frozen-lockfile
+      - name: Build production browser client
         run: pnpm --filter @sandline/client build
         env:
           SANDLINE_HOST: ${{ vars.SANDLINE_HOST }}
-      - name: Validate Cloudflare Pages limits
-        if: steps.cloudflare.outputs.ready == 'true'
+      - name: Validate Worker static assets
         shell: bash
         run: |
           set -euo pipefail
+          test -s packages/client/dist/index.html
           files="$(find packages/client/dist -type f | wc -l)"
           if (( files > 20000 )); then
-            echo "::error::Cloudflare Pages supports at most 20,000 files; found $files"
+            echo "::error::Static asset count too high: $files"
             exit 1
           fi
           large="$(find packages/client/dist -type f -size +25600k -print -quit)"
           if [[ -n "$large" ]]; then
-            echo "::error::Cloudflare Pages limit exceeded (25 MiB per file): $large"
+            echo "::error::Static asset exceeds 25 MiB: $large"
             exit 1
           fi
-          echo "Validated $files Pages files; each <=25 MiB"
-      - name: Deploy browser bundle to Cloudflare Pages
-        if: steps.cloudflare.outputs.ready == 'true'
+          echo "Validated $files static files for sandline Worker"
+      - name: Publish verified client to Cloudflare Worker
         uses: cloudflare/wrangler-action@v4
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.CLOUDFLARE_WORKERS_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy packages/client/dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=main
+          command: deploy --assets ./packages/client/dist --name sandline --compatibility-date 2026-10-12
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}

@@ -40,10 +40,12 @@ code into the other. Both squad panels show two humans and four bots. Set
 `SANDLINE_HOST=ws://localhost:8080` before `pnpm --filter @sandline/client dev`
 and the field is pre-filled.
 
-The published site at https://joshualray.github.io/Sandline/ works against the
-deployed host at `wss://sandline-host.fly.dev` (T-1.5.07). For local/LAN
-operation, the host field can still be overridden; [`docs/DEPLOYING.md`](./docs/DEPLOYING.md)
-has the deployment recipe, teardown, and the things that will waste your afternoon.
+The public game is at https://sandline.joshualray21.workers.dev/ on Cloudflare
+Workers, with multiplayer via `wss://sandline-host.fly.dev` (T-1.5.07).
+[Cloudflare cutover instructions](docs/CLOUDFLARE-SETUP.md) explain how the
+production deployment becomes gated by all four CI jobs before GitHub privacy
+cutover. The host can be overridden for local/LAN play; see
+[deployment documentation](docs/DEPLOYING.md).
 
 ## Useful commands
 

@@ -6,7 +6,7 @@
 #
 # With the secrets set, this is the WHOLE deploy: it creates the Fly app named
 # in fly.toml if it does not exist yet, deploys, writes the host's address into
-# the SANDLINE_HOST repository variable, and rebuilds Pages so the published
+# the SANDLINE_HOST repository variable, and dispatches the required CI-gated Cloudflare Worker client release so the published
 # lobby points at it. Two secrets are the only setup — docs/DEPLOYING.md:
 #   FLY_API_TOKEN  an org-scoped Fly token
 #   GH_PAT         a GitHub token that may write repository variables. The
@@ -32,7 +32,7 @@ concurrency:
   cancel-in-progress: false
 
 # `actions: write` is what lets the job set the SANDLINE_HOST variable and
-# dispatch the Pages workflow; nothing here writes to the repository's content.
+# dispatch the CI workflow; nothing here writes to the repository's content.
 permissions:
   contents: read
   actions: write
@@ -107,17 +107,16 @@ jobs:
           echo "host=$host" >> "$GITHUB_OUTPUT"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      # The published client learns the address from the SANDLINE_HOST
-      # repository variable at build time (pages.yml). Setting it here, from the
-      # hostname Fly actually assigned, means the variable can never name a host
-      # that does not exist — and rebuilding Pages means the lobby shows it
-      # within a few minutes of this job finishing.
+      # Rebuild the browser client AFTER Fly health confirms the host is ready.
+      # This must dispatch ci.yml: its deploy-worker job requires all four CI
+      # gates, and never deploys from a PR. The Worker job is opt-in until
+      # Cloudflare credential/setup verification is complete.
       - name: Point the published client at the host
         if: steps.token.outputs.present == 'true'
         run: |
           gh variable set SANDLINE_HOST --body "wss://${{ steps.health.outputs.host }}"
-          gh workflow run pages.yml --ref main
-          echo "::notice::SANDLINE_HOST=wss://${{ steps.health.outputs.host }}; Pages rebuild dispatched."
+          gh workflow run ci.yml --ref main
+          echo "::notice::SANDLINE_HOST=wss://${{ steps.health.outputs.host }}; gated CI release requested."
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
           GH_REPO: ${{ github.repository }}

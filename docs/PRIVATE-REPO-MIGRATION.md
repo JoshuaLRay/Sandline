@@ -1,6 +1,6 @@
 # Sandline: Private GitHub + Cloudflare Pages migration
 
-> **Status:** Planned; not started. This document is a migration runbook, not permission to change repository visibility.  
+> **Status (2026-10-17):** Cloudflare Worker is live; GitHub Pages retirement and gated Worker publishing are implemented in the phase-3 cutover PR. GitHub repository privacy remains an **owner-controlled final step**, pending confirmation of a successful Actions Worker deployment and account access. The earlier Cloudflare Pages proposal below is historical and superseded by this Worker-specific cutover. Do not change visibility in a PR.  
 > **Decision (2026-10-16):** Remain on GitHub Free, make `JoshuaLRay/Sandline` private, publish the playable browser client via Cloudflare Pages Free, and retain the existing Fly.io host and its persistent data.  
 > **Owner-controlled cutover:** Change GitHub visibility **only after** the replacement site and all integrations pass live verification.
 
@@ -19,8 +19,8 @@
 | Component | Target | Notes |
 | --- | --- | --- |
 | Source / issues / PRs / backlog | Private `github.com/JoshuaLRay/Sandline` (GitHub Free) | Existing repository, no relocation |
-| Public game | `https://sandline.pages.dev/` **proposed** | Must confirm that Pages project name is available; record the actual URL before changing configuration |
-| Static client deployment | GitHub Actions -> Cloudflare Pages **Direct Upload** | Builds from private checkout; only `packages/client/dist` is uploaded |
+| Public game | `https://sandline.joshualray21.workers.dev/` **live Worker** | Preserve this verified URL, not the unused proposed Pages address |
+| Static client deployment | GitHub Actions -> Cloudflare Worker `sandline`, static assets | Gated on all four CI jobs; activation opt-in and separate Worker Builds disablement needed |
 | Multiplayer/WebSocket | `wss://sandline-host.fly.dev` | Existing Fly.io app remains |
 | Voice upload API | `https://sandline-host.fly.dev/voice-submissions` | Existing host and persistent volume remain |
 | Owner voice review | `https://sandline-host.fly.dev/voice-review` | GitHub OAuth callback remains on Fly.io |
@@ -117,6 +117,29 @@ Browser `localStorage` is isolated by origin. Moving from GitHub Pages to Cloudf
 
 **PR 2 acceptance:** both origins can submit and restore recordings during overlap, unauthorized origins are blocked, owner review works, notification issues can be created on a private test context or using an appropriately scoped credential, and returning-player identity preservation is demonstrated with an opt-in test.
 
+## 2026-10-17 Worker implementation (supersedes the Pages deployment proposal)
+
+The actual production URL is `https://sandline.joshualray21.workers.dev/`,
+deployed by Cloudflare **Workers Builds**, not Pages Direct Upload. The original
+phase-1 Pages publisher was never the released endpoint. This focused PR
+retires `pages.yml`, replaces the obsolete Pages deploy job with an opt-in
+`deploy-worker` job after `verify`, `streaming`, `parity-non-v8`, and
+`mission`, and updates Fly's host-change dispatch to run full `ci.yml`.
+It does not make the repository private or modify the Fly database/volume.
+
+Follow [Worker activation instructions](CLOUDFLARE-SETUP.md): add a Worker
+Editor token and matching account ID to GitHub secrets, disable competing
+Cloudflare Workers Builds, enable `CLOUDFLARE_WORKER_DEPLOY_ENABLED=true`, run
+`ci.yml` on `main`, and verify its `deploy-worker` actually succeeds.
+Until then, a merged PR **is not proof** that GitHub Actions can deploy.
+A GitHub-connected Worker without this switch can publish code before CI.
+
+Live Fly `VOICE_SITE_ORIGIN` and `VOICE_EXTRA_ORIGINS` values, player and voice
+tokens, OAuth, voice-notification PAT, external service permissions, and
+returning-user migration still need explicit checks before the owner changes
+repository visibility. Do not fabricate those checks from source code or
+from an assumed completed checklist.
+
 ## PR 3 — Finalize deployment automation and docs
 
 - Once the Cloudflare site has passed live QA, remove `.github/workflows/pages.yml`, replace GitHub Pages URLs in `README.md` and `docs/DEPLOYING.md`, and update any relevant links in release/playtest documents.
@@ -172,7 +195,7 @@ Do **not** perform step 4 automatically as part of a pull request.
 ## Costs, quotas and references
 
 - GitHub Free private repositories remain available; **private** GitHub Actions jobs consume plan-included runner minutes and artifact storage. Sandline's four expensive CI jobs and map-review uploads warrant checking usage after cutover.
-- Cloudflare Pages has a Free plan, but verify up-to-date quotas and account settings. Do not assume that GitHub Actions execution itself is free.
+- Cloudflare Workers has a Free plan, but verify up-to-date quotas and account settings. Do not assume that GitHub Actions execution itself is free.
 - Fly.io stays on its **existing** pricing/account and public hostname. Its storage and network costs are independent of source visibility.
 - Cloudflare Direct Upload through GitHub Actions: https://developers.cloudflare.com/pages/how-to/use-direct-upload-with-continuous-integration/
 - Cloudflare Pages limits: https://developers.cloudflare.com/pages/platform/limits/
@@ -181,6 +204,6 @@ Do **not** perform step 4 automatically as part of a pull request.
 
 ## Completion definition
 
-Migration is DONE only when the repository is private on GitHub Free, Sandline is publicly playable from Cloudflare Pages, the same Fly.io sessions/campaign/voice data continue working, required CI/deployment automation works with private-repository credentials, and the owner confirms the final live review.
+Migration is DONE only when the repository is private on GitHub Free, Sandline is publicly playable from the Cloudflare Worker, the same Fly.io sessions/campaign/voice data continue working, required CI/deployment automation works with private-repository credentials, and the owner confirms the final live review.
 
 **No implementation, account setup, visibility change or deployment is authorized by merely storing this plan.**
