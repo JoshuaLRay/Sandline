@@ -41,6 +41,12 @@ bakes must regenerate byte-for-byte unchanged, including their cover arrays.
 
 ## Proof and limits
 
+Focused validation passes **146 tests across 13 files**. The generator and full
+byte-freshness check pass; registered nav regeneration and the 18 existing
+outpost captures remain unchanged. Candidate captures cover 22 standing-eye
+anchors, each at two draw calls and 1,080,622 triangles. Final full verify,
+load/frame and latest-head CI results are linked from [PR #372](https://github.com/JoshuaLRay/Sandline/pull/372/checks).
+
 The candidate test builds and serializes the complete bundle, compares its
 receipt to the committed manifest and independently rebakes its nav. The full
 generator freshness check repeats nav, cover and render export byte-for-byte.

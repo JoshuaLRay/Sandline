@@ -4,6 +4,13 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 type View = { name: string; position: number[]; target: number[]; label: string; floorY: number; ceilingY: number | null };
 const replacement = new URLSearchParams(location.search).has('replacement');
+if (replacement) {
+  document.title = 'U-227 unregistered Qalat replacement review';
+  document.querySelector('aside strong')!.textContent = 'U227 · Unregistered complete Qalat replacement';
+  document.querySelector('aside p')!.textContent = 'Insertion, road, ridge, underground depot, outpost and captive holdings. Exact accepted construction; candidate revision 2.';
+  document.querySelector('aside small')!.textContent = 'Drag to orbit · wheel to zoom · standing eyes on actual floors · unregistered through U232 · atomic activation U233 · owner quality verdict U119 pending';
+}
+
 const root = replacement ? '/artifacts/qalat-replacement/' : '/artifacts/qalat-outpost/';
 const [level, storedSurface, construction] = await Promise.all([
   fetch(`${root}level.json`).then((r) => r.json()) as Promise<{ boxes: unknown[]; floor: { halfWidth: number; halfDepth: number } }>,
