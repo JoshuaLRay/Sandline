@@ -8,7 +8,7 @@ const url = new URL('?preview-qalat&review-map', base).href;
 const vite = process.argv[2] ? null : spawn('pnpm', ['--filter', '@sandline/client', 'exec', 'vite', 'preview', '--host', '127.0.0.1', '--port', '4174', '--strictPort'], { stdio: 'ignore' });
 type State = { joined: boolean; disconnectReason: string | null; world: string; revision: number; boxes: number; position: { x: number; y: number; z: number };
   slot: number; roster: { human: boolean }[]; magazine: { ammo: number }; firstPerson: boolean;
-  orders: { order: string }[]; frozen: boolean; calls: number };
+  orders: { order: string }[]; calls: number };
 let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
 try {
   const deadline = Date.now() + 20000;
@@ -27,7 +27,6 @@ try {
     (window as unknown as { __sandlineQalatPreview: () => State }).__sandlineQalatPreview());
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Start WIP playtest' }).waitFor({ timeout: 120000 });
-  assert.equal(await page.evaluate('typeof window.__sandlineQalatPreviewFrame'), 'function', 'current preview capture build required');
   assert.match(await page.locator('#qalat-wip').innerText(), /Encounters, objectives, five caches/);
   await page.getByRole('button', { name: 'Start WIP playtest' }).click();
   await page.waitForFunction("document.body.dataset.playable === 'true'", undefined, { timeout: 60000 });
@@ -107,7 +106,7 @@ try {
   console.log(`[preview] switched to soldier slot ${switched.slot}, ${switched.calls} draws`);
   assert.equal(switched.roster.filter((s) => !s.human).length, 5);
   assert.ok(switched.calls < 300, 'preview draw-call budget');
-  console.log('[preview] controls verified; preparing rendered frame');
+  console.log('[preview] controls verified; capturing actual browser frame');
   // Restore the native API after the headless input fixture.
   await page.evaluate(() => {
     Reflect.deleteProperty(document.querySelector('canvas')!, 'requestPointerLock');
@@ -117,15 +116,17 @@ try {
     if (document.fullscreenElement) void document.exitFullscreen();
   });
   await page.waitForFunction('document.fullscreenElement === null && document.pointerLockElement === null');
-  console.log('[preview] capture platform settled');
-  await page.evaluate(() => (window as unknown as { __sandlineQalatPreviewFreeze: () => void }).__sandlineQalatPreviewFreeze());
-  console.log('[preview] rendered frame requested');
-  await page.waitForFunction(() => (window as unknown as { __sandlineQalatPreview: () => State }).__sandlineQalatPreview().frozen);
-  console.log('[preview] rendered frame ready');
-  const frame = await page.evaluate(() => (window as unknown as { __sandlineQalatPreviewFrame: () => string | null }).__sandlineQalatPreviewFrame());
-  assert.ok(frame !== null, 'real rendered frame required');
-  assert.ok(frame.startsWith('data:image/png;base64,'), 'PNG canvas frame required');
-  await writeFile('artifacts/qalat-preview/playing.png', Buffer.from(frame.split(',')[1]!, 'base64'));
+  // Chromium captures the real composited WebGL canvas and WIP label. Reading
+  // canvas.toDataURL synchronously inside the render loop can block software
+  // WebGL indefinitely after takeover; never stall the application to capture.
+  await page.waitForTimeout(500);
+  const frame = await page.screenshot({ path: 'artifacts/qalat-preview/playing.png', timeout: 90000, animations: 'disabled' });
+  assert.deepEqual([...frame.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10], 'actual PNG screenshot required');
+  assert.ok(frame.byteLength > 3000, 'rendered frame screenshot must be nonempty');
+  const afterCapture = await read();
+  assert.equal(afterCapture.joined, true, 'real browser session must stay alive after capture');
+  assert.ok(afterCapture.calls > 0, 'rendered scene must contain draw calls');
+  console.log('[preview] browser frame captured with live session');
   assert.deepEqual(errors, []);
   const buildStamp = await page.locator('#build-stamp').textContent() ?? '';
   const expectedSha = process.env['SANDLINE_EXPECT_SHA'];
