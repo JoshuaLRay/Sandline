@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  ClientConnection, DEFAULT_MOVE_CONFIG, TICK_SECONDS, blockedAt, buildTree,
-  createLoopbackPair, supportUnder, type Message, type SquadSpread,
+  ClientConnection, DEFAULT_MOVE_CONFIG, DEFAULT_MUZZLE_RIG, TICK_SECONDS, blockedAt, buildTree,
+  createLoopbackPair, placePrisoners, supportUnder, type Message, type SquadSpread,
 } from '@sandline/shared';
+import { lineOfSight } from '../../../server/src/ai/aim.ts';
+import { buildOutpostCaptiveFixture } from './qalatOutpostCaptives.ts';
 import { createBrainRegistry } from '../../../server/src/ai/Brain.ts';
 import { NavMesh, completePathLength, initNav } from '../../../server/src/ai/nav/NavMesh.ts';
 import { Session } from '../../../server/src/session/Session.ts';
@@ -31,6 +33,7 @@ const joins = [
 const courtStarts = [at(35, 374), at(36.2, 374), at(35, 375.2), at(36.2, 375.2), at(35, 376.4), at(36.2, 376.4)];
 const HOLDINGS = [at(16, 402), at(12, 400), at(20, 400), at(12, 404), at(20, 404), at(12, 408)];
 const world = buildOutpostWorld();
+const captives = buildOutpostCaptiveFixture(world);
 // A conservative movement broadphase only: retain every exact solid at every
 // elevation touching the independent footprint plus four metres. The standing
 // bake uses the complete construction, including its inherited approaches.
@@ -62,29 +65,33 @@ describe('U-221 furnished outpost joins with six Session soldiers and an escorte
   beforeAll(async () => { await initNav(); nav = NavMesh.load(await bakeRoadSupportNav(world)); }, 240_000);
   afterAll(() => nav?.destroy());
 
-  it('retains six real holding bodies and reaches each individual rescue stand through the antechamber', async () => {
+  for (let occupancy = 0; occupancy <= 5; occupancy++) it(`U-225: reaches every rescue stand with POW + ${occupancy} carried prisoners`, async () => {
+    const placements = placePrisoners(Array.from({ length: occupancy }, (_, i) => i + 1).reverse(), captives.mission.prisonerHoldings)!;
+    const positions = [captives.pow.feet, ...placements.map((p) => p.at)];
+    expect(positions).toEqual(HOLDINGS.slice(0, occupancy + 1));
     const session = new Session(undefined, '', { ...world, boxes: movementBoxes,
-      squadStarts: Array.from({ length: 6 }, (_, i) => at(16 + i, 392)) }, {
-      navMesh: nav, brainTree: buildTree('friendly', createBrainRegistry()), testHumanCount: 0,
+      squadStarts: [at(16, 392), ...courtStarts.slice(1)] }, {
+      navMesh: nav, mission: captives.mission, brainTree: buildTree('friendly', createBrainRegistry()), testHumanCount: 0,
     });
     const { pair, send } = connect(session);
     try {
       send({ kind: 'SwitchCharacter', slot: 0, spectate: true });
-      for (let i = 1; i < HOLDINGS.length; i++) expect(session.captureCharacter(i, HOLDINGS[i]!)).toBe(true);
-      expect(session.spawnEnemy('pow', { ...HOLDINGS[0]!, captive: true, authoredHeight: true })).not.toBeNull();
-      const held = [session.enemies[0]!, ...session.slots.slice(1)], rescuer = session.slots[0]!;
-      expect(held).toHaveLength(6);
-      expect(session.slots.filter((s) => s.captured)).toHaveLength(5);
+      send({ kind: 'Order', order: 'hold', address: { to: 'all' }, point: null, target: null });
+      for (const { slot, at: p } of placements) expect(session.captureCharacter(slot, p)).toBe(true);
+      expect(session.spawnEnemy('pow', { ...captives.pow.feet, captive: true, authoredHeight: true })).not.toBeNull();
+      const held = [session.enemies[0]!, ...placements.map((p) => session.slots[p.slot]!)], rescuer = session.slots[0]!;
+      expect(held).toHaveLength(occupancy + 1);
+      expect(session.slots.filter((s) => s.captured)).toHaveLength(occupancy);
       for (const [i, captive] of held.entries()) {
         const p = captive.state;
-        expect(p).toMatchObject(HOLDINGS[i]!);
+        expect(p).toMatchObject(positions[i]!);
         expect(blockedAt(p.x, p.z, DEFAULT_MOVE_CONFIG.radius, 8, .05, DEFAULT_MOVE_CONFIG.height, nearby(p))).toBe(false);
         expect(supportUnder(p.x, p.z, DEFAULT_MOVE_CONFIG.radius, 8.01, nearby(p), 0)).toBeCloseTo(8, 6);
         for (const other of held.slice(i + 1)) expect(Math.hypot(p.x - other.state.x, p.z - other.state.z)).toBeGreaterThanOrEqual(2 * DEFAULT_MOVE_CONFIG.radius);
       }
       const stands = [at(16, 400.8), at(13.2, 400), at(18.8, 400), at(13.2, 404), at(18.8, 404), at(13.2, 408)];
       let ticks = 0;
-      for (const [i, stand] of stands.entries()) {
+      for (const [i, stand] of stands.slice(0, occupancy + 1).entries()) {
         // Return through the independently specified doorway before each
         // approach. No teleport, added soldier or automatic rescue is used.
         for (const goal of [at(16, 392), stand]) {
@@ -103,7 +110,7 @@ describe('U-221 furnished outpost joins with six Session soldiers and an escorte
             expect(blockedAt(p.x, p.z, DEFAULT_MOVE_CONFIG.radius, 8, .05, DEFAULT_MOVE_CONFIG.height, nearby(p))).toBe(false);
             expect(supportUnder(p.x, p.z, DEFAULT_MOVE_CONFIG.radius, 8.01, nearby(p), 0)).toBeCloseTo(8, 6);
             for (const [j, captive] of held.entries()) {
-              expect(captive.state).toMatchObject(HOLDINGS[j]!);
+              expect(captive.state).toMatchObject(positions[j]!);
               expect(Math.hypot(p.x - captive.state.x, p.z - captive.state.z), `holding${i}: walked through captive${j}`)
                 .toBeGreaterThanOrEqual(2 * DEFAULT_MOVE_CONFIG.radius - 1e-6);
             }
@@ -114,10 +121,13 @@ describe('U-221 furnished outpost joins with six Session soldiers and an escorte
           expect(arrived, `holding${i}: stranded rescuer ${JSON.stringify(rescuer.state)}`).toBe(true);
         }
         const captive = held[i]!;
-        expect(Math.hypot(rescuer.state.x - captive.state.x, rescuer.state.z - captive.state.z), `holding${i}: beyond ordinary rescue reach`).toBeLessThan(2);
+        const eye = { ...rescuer.state, y: rescuer.state.y + DEFAULT_MUZZLE_RIG.eyeHeight };
+        const target = { ...captive.state, y: captive.state.y + 1 };
+        expect(Math.hypot(eye.x - target.x, eye.y - target.y, eye.z - target.z), `holding${i}: beyond ordinary rescue reach`).toBeLessThan(2);
+        expect(lineOfSight(eye, target, world.boxes), `holding${i}: blocked rescue interaction`).toBe(true);
       }
       expect(session.enemies[0]!.captive).toBe(true);
-      expect(session.slots.filter((s) => s.captured)).toHaveLength(5);
+      expect(session.slots.filter((s) => s.captured)).toHaveLength(occupancy);
       expect(session.orderReports.filter((r) => r.outcome === 'failed')).toEqual([]);
     } finally { pair.b.close('fixture complete'); pair.settle(); }
   }, 120_000);
