@@ -2085,6 +2085,7 @@ if (qalatPreview) {
   if (query.has('review-map')) {
     (window as unknown as { __sandlineQalatPreview: () => unknown }).__sandlineQalatPreview = () => ({
       world: live?.net.world?.id, revision: live?.net.world?.mapRevision,
+      joined: live?.net.joined, disconnectReason: live?.net.disconnectReason,
       boxes: live?.net.worldBoxes.length, position: live?.net.simulated,
       slot: live?.net.slot, roster: live?.net.roster, magazine: live?.net.magazine,
       orders: live?.net.orders, stances: live?.net.stances,

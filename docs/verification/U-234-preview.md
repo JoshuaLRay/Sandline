@@ -16,7 +16,7 @@ render surface (including undersides), standing tiled nav and 9,389 cover points
 Bundle hash: `1d7728e30f3a44bf6445a0b1c35a693d16a960dbf62cedb81da09922adc824c4`.
 The browser checks the level, surface, nav, cover, manifest and decompressed
 render payload hashes before starting. Render indices are partitioned into bounded
-spatial chunks sharing the original vertex buffers, so camera/weapon rays skip
+spatial chunks with compact buffers copying the exact original vertex attributes, so camera/weapon rays skip
 distant triangles without changing construction. A stale/mixed bundle fails visibly.
 
 This uses the normal LocalServer/Session, network encoding, NetClient prediction,

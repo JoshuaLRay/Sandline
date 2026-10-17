@@ -1,5 +1,6 @@
 /** U-234: explicit, disposable WIP access. Never register this world or open a save. */
-import * as THREE from 'three';
+import type * as THREE from 'three';
+import { surfaceChunks, type RenderSurface } from './surfaceChunks.ts';
 import { loadLevel, type World } from '@sandline/shared';
 import { initNav, NavMesh } from '@sandline/server/nav';
 import type { bakedNavFor } from '@sandline/server/nav/baked';
@@ -44,41 +45,9 @@ export async function loadQalatPreview(): Promise<QalatPreview> {
       surface.encoding !== 'gzip-json-v1') throw new Error('Stale or mixed Qalat WIP bundle');
     const bytes = Uint8Array.from(atob(surface.data), (c) => c.charCodeAt(0));
     const text = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
-    const rendered = JSON.parse(text) as { positions: number[]; normals: number[]; colours: number[]; indices: number[] };
+    const rendered = JSON.parse(text) as RenderSurface;
     if (await digest(rendered) !== surface.contentHash) throw new Error('Stale Qalat WIP render payload');
-    // Share vertex buffers, partition only triangle indices. Camera/weapon rays
-    // then reject distant chunks by bounds instead of scanning the full map.
-    const attributes = {
-      position: new THREE.Float32BufferAttribute(rendered.positions, 3),
-      normal: new THREE.Float32BufferAttribute(rendered.normals, 3),
-      color: new THREE.Float32BufferAttribute(rendered.colours, 3),
-    };
-    const chunks = new Map<string, { indices: number[]; bounds: THREE.Box3 }>();
-    const vertex = new THREE.Vector3();
-    for (let i = 0; i < rendered.indices.length; i += 3) {
-      const triangle = rendered.indices.slice(i, i + 3);
-      let x = 0, z = 0;
-      for (const index of triangle) { x += rendered.positions[index * 3]!; z += rendered.positions[index * 3 + 2]!; }
-      const key = `${Math.floor(x / 3 / 48)},${Math.floor(z / 3 / 48)}`;
-      let chunk = chunks.get(key);
-      if (!chunk) { chunk = { indices: [], bounds: new THREE.Box3() }; chunks.set(key, chunk); }
-      for (const index of triangle) {
-        chunk.indices.push(index);
-        vertex.fromBufferAttribute(attributes.position, index);
-        chunk.bounds.expandByPoint(vertex);
-      }
-    }
-    const material = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
-    const meshes = [...chunks].map(([key, chunk]) => {
-      const geometry = new THREE.BufferGeometry();
-      for (const [name, attribute] of Object.entries(attributes)) geometry.setAttribute(name, attribute);
-      geometry.setIndex(chunk.indices);
-      geometry.boundingBox = chunk.bounds;
-      geometry.boundingSphere = chunk.bounds.getBoundingSphere(new THREE.Sphere());
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.name = `U-227 actual replacement construction ${key}`;
-      return mesh;
-    });
+    const meshes = surfaceChunks(rendered);
     await initNav();
     const nav = NavMesh.load(Uint8Array.from(atob(navData.base64), (c) => c.charCodeAt(0)), navData.agent.height);
     notice.remove();
