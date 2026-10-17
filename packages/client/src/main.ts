@@ -1381,7 +1381,7 @@ const qaWorld: World = qalatPreview?.world ??
   requireWorld(qaMissionWanted ? 'mission-01' : new URLSearchParams(location.search).has('kit') ? 'kit-gallery' : DEFAULT_WORLD_ID);
 // The practice level is already known: overlap its pack with initial assets/nav.
 // prepareLevelAssets still owns blocking progress/readiness and retries a failed preload.
-if (qaMissionWanted) void packLoader.loadLevel(qaWorld.id).catch(() => undefined);
+if (qaMissionWanted && !qalatPreview) void packLoader.loadLevel(qaWorld.id).catch(() => undefined);
 const qaEncounter = !qalatPreview && qaMissionWanted ? encounterFor(qaWorld.id) : undefined;
 /**
  * `?squad` (T-3.29): the in-page bots run the committed `friendly` tree, with
@@ -2082,6 +2082,7 @@ if (qalatPreview) {
       world: live?.net.world?.id, revision: live?.net.world?.mapRevision,
       boxes: live?.net.worldBoxes.length, position: live?.net.simulated,
       slot: live?.net.slot, roster: live?.net.roster, magazine: live?.net.magazine,
+      orders: live?.net.orders, stances: live?.net.stances,
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
       firstPerson: input.firstPerson, calls: renderer.info.render.calls,
     });
