@@ -144,7 +144,7 @@ describe('authored prisoner placement through the restore wire (U-224)', () => {
       const saved = checkpoint(prisonerCampaign(run)); saved.checkpoint!.mapRevision = 1;
       // A later checkpoint capture must not join the original mission-start pool.
       if (run === 'campaign') saved.soldiers[3] = { ...saved.soldiers[3]!, captured: true, prisoner: { x: 70, y: 0, z: 65 } };
-      else saved.replayPrisoners.push({ slot: 3, at: { x: 70, y: 0, z: 65 } });
+      else saved.replayPrisoners!.push({ slot: 3, at: { x: 70, y: 0, z: 65 } });
       const original = structuredClone(saved);
       const restored = play(saved, lobby, true, holdingMission), host = restored.join(), guest = restored.join();
       expect(restored.gate(host)).toMatchObject({ restart: 'original' });
