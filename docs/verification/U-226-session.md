@@ -31,6 +31,8 @@ tested court/cell/return region plus four metres. Nav uses the **complete**
 unchanged construction. Test-only encounter metadata, revision 2, local starts,
 one cache and rescue/survive objectives are harness inputs, not campaign content.
 The terminal survive objective intentionally prevents a full mission claim.
+Narrow-door return staging may finish with ordinary individual soldier orders,
+as in U-221/U-222; packed formation completion remains U-174.
 
 The outpost generator reproduces existing artifacts; no geometry, render input,
 registered nav input, live Qalat data, registry or protocol changes are required.
@@ -48,5 +50,7 @@ the existing deployment, not replacement mission activation.
 Cloudflare's main Workers build is failed; U-226 PR previews report rate limiting
 and, subsequently, **Authentication error**. No successful Cloudflare replacement
 preview is verified.
+Main's `deploy-client` job explicitly reports Cloudflare Pages not configured;
+its upload steps were skipped despite the job's successful conclusion.
 Keep the U-227–U-232 preparation/proof sequence, U-233 atomic activation, then
 U-118 polish and U-119 owner playtest. No owner verdict is inferred.

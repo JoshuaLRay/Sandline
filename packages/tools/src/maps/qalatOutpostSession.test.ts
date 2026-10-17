@@ -93,15 +93,25 @@ describe('U-226 actual replacement Session rescue and safe return', () => {
         // The real escort follows all-squad move orders through the cell and
         // antechamber doors. Soldiers already staged outside retain their holds.
         await walk(0, at(16, 392)); await walk(0, at(16, 380));
+        // The commander now watches the ordinary squad/escort order path;
+        // every soldier, including the commander's seat, must make the return.
+        send({ kind: 'SwitchCharacter', slot: 0, spectate: true });
         send({ kind: 'Order', order: 'move', address: { to: 'all' }, point: at(16, 380), target: null });
         for (let i = 0; i < 2400 && bodies().some((b) => b.state.z > 385); i++) await advance();
         expect(bodies().every((b) => b.state.z < 386), 'a rescued actor remained in the cell/antechamber').toBe(true);
         for (const goal of [at(36, 380), at(16, 380)]) {
-          await walk(0, goal);
           send({ kind: 'Order', order: 'move', address: { to: 'all' }, point: goal, target: null });
           const arrived = () => distance(p.pow().state, goal) <= 2 && bodies().every((b) => goal.x > 28 ? b.state.x >= 28 : b.state.x < 28);
-          for (let i = 0; i < 2400 && !arrived(); i++) await advance();
-          expect(arrived(), 'a rescued actor failed the court/refuge round trip').toBe(true);
+          for (let i = 0; i < 800 && !arrived(); i++) await advance();
+          if (!arrived()) {
+            // As in U-221/U-222, finish narrow-door staging with ordinary
+            // individual orders. Packed formation completion remains U-174.
+            const destinations = goal.x > 28 ? [at(34, 378), at(36, 378), at(38, 378), at(34, 382), at(36, 382), at(38, 382)]
+              : [at(12, 378), at(14.5, 378), at(19.5, 378), at(12, 382), at(14.5, 382), at(19.5, 382)];
+            for (const s of p.session.slots) send({ kind: 'Order', order: 'move', address: { to: 'slot', index: s.index }, point: destinations[s.index]!, target: null });
+            for (let i = 0; i < 2400 && !arrived(); i++) await advance();
+          }
+          expect(arrived(), `return ${goal.x}: ${JSON.stringify(bodies().map((b) => b.state))}`).toBe(true);
           expect(distance(p.pow().state, goal)).toBeLessThanOrEqual(2);
         }
         const saved = p.save();
