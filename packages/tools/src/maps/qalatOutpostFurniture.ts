@@ -12,6 +12,11 @@ export function buildOutpostFurniture(): BoxSpec[] {
     // V3 sees the gunner past that end. The east half stays a 4 m lane.
     box('furniture-O-C01', 29, 8, 359, 6, 1.1, .8),
     box('furniture-O-C02', 30, 8, 376, 1.2, 2.2, 4),
+    // U-223 owner-approved screen: west edge x28 preserves x24..28 court
+    // passage and x22.6..26.6 refuge landing. Its north/south ends screen
+    // the east-gate wedge. The y12.8 top also stops raised mobile cameras;
+    // standard 2.2 m cover leaves their in-frame rays above it.
+    box('furniture-refuge-screen', 28.6, 8, 377.8, 1.2, 4.8, 4),
     box('furniture-O-C03', 40, 8, 385, 5, 1.1, 1.8),
     box('furniture-O-C04', 32, 8, 400, 1.2, 2.2, 4),
     box('furniture-radio-table', 52, 8, 404, 2, 1, 1),

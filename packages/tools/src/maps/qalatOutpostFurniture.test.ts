@@ -12,6 +12,7 @@ import { buildOutpostFurniture, outpostDecorations } from './qalatOutpostFurnitu
 const FIXTURES = [
   ['outpost-furniture-O-C01', 29, 8, 359, 6, .8, 1.1],
   ['outpost-furniture-O-C02', 30, 8, 376, 1.2, 4, 2.2],
+  ['outpost-furniture-refuge-screen', 28.6, 8, 377.8, 1.2, 4, 4.8],
   ['outpost-furniture-O-C03', 40, 8, 385, 5, 1.8, 1.1],
   ['outpost-furniture-O-C04', 32, 8, 400, 1.2, 4, 2.2],
   ['outpost-furniture-radio-table', 52, 8, 404, 2, 1, 1],

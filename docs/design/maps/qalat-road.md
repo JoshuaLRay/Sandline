@@ -792,6 +792,13 @@ closed tank occupies y22..26. No platform or additional route is created.
   sandbags leave a standing target's shins in dead ground.
 - O-C02 high stone trough, `(30,8,376)`, length 4 north-south, standard high-cover
   dimensions; blocks south-gate view to prisoner doorway without sealing movement.
+- U-223 owner-approved Option B refuge screen: centre `(28.6,8,377.8)`,
+  4 m north-south, 1.2 m thick, top y12.8 (4.8 m high). The west edge x28
+  retains the x24..28 four-metre court passage and the refuge's outside landing
+  x22.6..26.6, z378..382. The south end z375.8 stays outside the court lane
+  z371.4..375.4. The raised top screens in-frame production mobile cameras;
+  ordinary 2.2 m high cover leaves elevated rays over it. The east gate,
+  refuge door, escort hold `(16,8,380)` and §10.3 route remain fixed.
 - O-C03 low cart, `(40,8,385)`, length 5 east-west, 1.8 m deep, 1.1 m high.
 - O-C04 high stores crate, `(32,8,400)`, length 4 north-south; leaves the northern
   gate approach and radio-room door accessible.
