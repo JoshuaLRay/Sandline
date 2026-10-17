@@ -524,4 +524,4 @@ Format: `T-<id> — <what changed>`
 
 - U-225 — Author and validate isolated replacement Qalat holdings for the original POW plus up to five carried squad captives; prove deterministic placement and physical rescue access without changing the active map, registry or saves ([#368](https://github.com/JoshuaLRay/Sandline/pull/368)).
 
-- U-117 planning — Split replacement integration into U-227–U-233: isolated bundle/nav, encounters, caches, mission flow, route/combat and persistence proofs, then one atomic activation; U-226 remains next, with U-118/U-119 later and no implementation or acceptance claimed.
+- U-117 planning — Split replacement integration into U-227–U-233: isolated bundle/nav, encounters, caches, mission flow, route/combat and persistence proofs, then one atomic activation; U-226 remains next, with U-118/U-119 later and no implementation or acceptance claimed ([#370](https://github.com/JoshuaLRay/Sandline/pull/370)).
