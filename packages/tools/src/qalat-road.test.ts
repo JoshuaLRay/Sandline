@@ -4,8 +4,10 @@ import { initNav, type NavMesh, type NavPoint } from '../../server/src/ai/nav/Na
 import { loadWorldNavMesh } from '../../server/src/ai/nav/bakedNav.ts';
 
 import { PathFollower } from '../../server/src/ai/locomotion/followPath.ts';
+import { approachGraphFile, checkApproachGraph, readApproachGraph } from './check-approaches.ts';
 
 const world = requireWorld('qalat-road');
+const approachGraph = readApproachGraph(approachGraphFile(world.id));
 // U-125: a 1 cm footprint, so a sample on the seam between two abutting boxes (stair steps) finds their top, not the
 // ground inside them; the old bake's hidden nav inside solid boxes used to answer for such a point.
 const surface = (p: { x: number; z: number }): NavPoint => ({ ...p, y: supportUnder(p.x, p.z, 0.01, Infinity, world.boxes, 0) });
@@ -29,6 +31,8 @@ describe('U-092 valley routes and authored sight lines', () => {
   it('connects each named lane to the compound and back to extraction', () => {
     const m = world.mission!;
     expect(m.routes.map((r) => r.id)).toEqual(['riverbed', 'road', 'terraces']);
+    for (const route of m.routes) expect(approachGraph.approaches.find((a) => a.id === route.id)!.waypoints)
+      .toEqual([m.start, ...route.via, m.objective].map(({ x, z }) => surface({ x, z })));
     for (const route of m.routes) {
       const stops = [m.start, ...route.via, m.objective].map(surface);
       for (let i = 1; i < stops.length; i++) {
@@ -55,10 +59,10 @@ describe('U-092 valley routes and authored sight lines', () => {
     expect(surface({ x: -40, z: 32 }).y).toBe(.75);
     expect(surface({ x: -40, z: 158 }).y).toBe(.75);
   });
-  for (const route of world.mission!.routes) {
+  for (const route of approachGraph.approaches) {
     for (const reverse of [false, true]) {
       it(`walks ${route.id} ${reverse ? 'south' : 'north'} with the actual character controller and bot path follower`, () => {
-        const stops = [world.mission!.start, ...route.via, world.mission!.objective].map(surface);
+        const stops = [...route.waypoints];
         if (reverse) stops.reverse();
         let state = createMoveState(stops[0]!.x, stops[0]!.y, stops[0]!.z);
         const follower = new PathFollower(nav, world.boxes);
@@ -134,16 +138,9 @@ describe('U-106 declared crossings and lane isolation', () => {
   it('disconnects all three lanes when hubs and C12 passages are closed in the test mesh', () => {
     const isolated = loadWorldNavMesh(world.id);
     try {
-      isolated.setBlocker('junctions', [
-        { minX: -64, maxX: 64, minZ: -16, maxZ: 17 },
-        { minX: -64, maxX: 64, minZ: 169, maxZ: 202 },
-        ...crossings.map((z) => ({ minX: 9, maxX: 26, minZ: z - 2.1, maxZ: z + 2.1 })),
-      ], true);
-      for (const [a, b] of [[-40, 0], [0, 33], [-40, 33]]) {
-        const target = surface({ x: b!, z: 68 });
-        const path = isolated.path(surface({ x: a!, z: 68 }), target);
-        expect(path === null || Math.abs(path.points.at(-1)!.x - target.x) > 2).toBe(true);
-      }
+      const graph = readApproachGraph(approachGraphFile(world.id));
+      expect(graph.separations).toHaveLength(3);
+      expect(checkApproachGraph(graph, isolated)).toEqual([]);
     } finally { isolated.destroy(); }
   });
   for (const z of crossings) for (const reverse of [false, true]) {

@@ -25,6 +25,7 @@ import {
 } from '@sandline/shared';
 import { initNav, type NavMesh, type NavPath, type NavPoint } from '../../server/src/ai/nav/NavMesh.ts';
 import { bakedNavFor, loadWorldNavMesh } from '../../server/src/ai/nav/bakedNav.ts';
+import { checkWorldApproaches } from './check-approaches.ts';
 
 const LEVELS_DIR = fileURLToPath(new URL('../../shared/src/data/levels/', import.meta.url));
 const DEFAULT_RENDER_DIR = join(process.cwd(), 'artifacts', 'level-review');
@@ -69,7 +70,7 @@ const LEGACY_COLLISION_JOINS: Record<string, readonly (readonly [string, string]
 };
 
 export interface LevelIssue {
-  check: 'collision-overlap' | 'navmesh-island' | 'spawn-visibility' | 'route-connectivity' | 'piece-budget';
+  check: 'collision-overlap' | 'navmesh-island' | 'spawn-visibility' | 'route-connectivity' | 'piece-budget' | 'approach-graph';
   message: string;
 }
 
@@ -789,6 +790,7 @@ export async function checkAllLevels(options: {
     const nav = loadWorldNavMesh(world.id);
     try {
       const report = checkLevel(world, nav);
+      report.issues.push(...checkWorldApproaches(world.id, nav).map((message) => issue('approach-graph', message)));
       report.renders = renderReviewRenders(world, renderDir);
       reports.push(report);
     } finally {

@@ -21,7 +21,7 @@
   ],
   "separations": [["riverbed", "road"], ["road", "terraces"], ["riverbed", "terraces"]],
   "connections": [
-    {"id": "start-hub", "kind": "convergence", "endpoints": [{"approach": "riverbed", "point": {"x": -40, "y": 0, "z": 24}}, {"approach": "road", "point": {"x": 0, "y": 0, "z": 24}}, {"approach": "terraces", "point": {"x": 33, "y": 1.0, "z": 24}}], "direction": "both", "cuts": [{"minX": -64, "maxX": 64, "minY": -1, "maxY": 12, "minZ": -16, "maxZ": 17}]},
+    {"id": "start-hub", "kind": "convergence", "endpoints": [{"approach": "riverbed", "point": {"x": -40, "y": 0, "z": 24}}, {"approach": "road", "point": {"x": 0, "y": 0, "z": 32}}, {"approach": "terraces", "point": {"x": 33, "y": 1.0, "z": 24}}], "direction": "both", "cuts": [{"minX": -64, "maxX": 64, "minY": -1, "maxY": 12, "minZ": -16, "maxZ": 17}]},
     {"id": "objective-hub", "kind": "convergence", "endpoints": [{"approach": "riverbed", "point": {"x": -40, "y": 0, "z": 164}}, {"approach": "road", "point": {"x": 0, "y": 0, "z": 164}}, {"approach": "terraces", "point": {"x": 33, "y": 3.25, "z": 164}}], "direction": "both", "cuts": [{"minX": -64, "maxX": 64, "minY": -1, "maxY": 12, "minZ": 169, "maxZ": 202}]},
     {"id": "C12-S", "kind": "crossing", "endpoints": [{"approach": "road", "point": {"x": 8, "y": 0, "z": 44}}, {"approach": "terraces", "point": {"x": 28, "y": 1, "z": 44}}], "direction": "both", "cuts": [{"minX": 17, "maxX": 19, "minY": -1, "maxY": 12, "minZ": 41.9, "maxZ": 46.1}]},
     {"id": "C12-M", "kind": "crossing", "endpoints": [{"approach": "road", "point": {"x": 8, "y": 0, "z": 104}}, {"approach": "terraces", "point": {"x": 28, "y": 2, "z": 104}}], "direction": "both", "cuts": [{"minX": 17, "maxX": 19, "minY": -1, "maxY": 12, "minZ": 101.9, "maxZ": 106.1}]},

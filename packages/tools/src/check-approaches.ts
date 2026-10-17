@@ -19,8 +19,9 @@ export function readApproachGraph(path: string): ApproachGraph {
  * Bot and escort share the standing nav/character dimensions in production.
  * Complete 3D endpoints reject partial corridors and wrong-floor projections.
  */
-export function checkApproachGraph(raw: unknown, nav: NavMesh): string[] {
+export function checkApproachGraph(raw: unknown, nav: Pick<NavMesh, 'path' | 'setBlocker' | 'connected'>): string[] {
   const g = approachGraphSchema.parse(raw), issues: string[] = [];
+  const separatedPair = (a: string, b: string) => g.separations.some(([x, y]) => (a === x && b === y) || (a === y && b === x));
   const reaches = (a: NavPoint, b: NavPoint) => completePathLength(nav.path(a, b), a, b) !== null;
   const directions = (a: NavPoint, b: NavPoint) => [[a, b], [b, a]] as const;
   for (const approach of g.approaches) {
@@ -49,20 +50,31 @@ export function checkApproachGraph(raw: unknown, nav: NavMesh): string[] {
     }
     for (const [a, b] of g.separations) {
       // All retained waypoint pairs, both ways: one-way drops are shortcuts too.
-      if (retained.get(a)!.some((p) => retained.get(b)!.some((q) => reaches(p, q) || reaches(q, p))))
+      if (retained.get(a)!.some((p) => retained.get(b)!.some((q) => nav.connected(p, q) || nav.connected(q, p))))
         issues.push(`${a}/${b}: undeclared adjacency with all registered connections closed`);
+    }
+    for (const c of g.connections) for (const e of c.endpoints) {
+      const probes = retained.get(e.approach)!;
+      if (separated.has(e.approach) && !probes.some((p) => reaches(p, e.point) && reaches(e.point, p)))
+        issues.push(`${c.id}: endpoint detached from ${e.approach}`);
     }
     // Restore each connection alone. An unrelated hub must not make a missing
     // crossing look connected; its endpoints must actually become reachable.
     for (const [i, c] of g.connections.entries()) {
       toggle(i, false);
-      const pairs = c.endpoints.flatMap((a, j) => c.endpoints.slice(j + 1).flatMap((b) =>
-        c.direction === 'both' ? directions(a.point, b.point) : [[a.point, b.point]]));
+      const pairs = c.endpoints.flatMap((a, j) => c.endpoints.slice(j + 1).flatMap((b): (readonly [NavPoint, NavPoint])[] =>
+        c.direction === 'both' ? [...directions(a.point, b.point)] : [[a.point, b.point]]));
       for (const [a, b] of pairs) {
-        if (!reaches(a!, b!)) issues.push(`${c.id}: declared ${c.kind} missing from ${JSON.stringify(a)}`);
+        if (!reaches(a, b)) issues.push(`${c.id}: declared ${c.kind} missing from ${JSON.stringify(a)}`);
       }
+      if (c.direction === 'forward' && separatedPair(c.endpoints[0]!.approach, c.endpoints[1]!.approach)
+        && nav.connected(c.endpoints[1]!.point, c.endpoints[0]!.point))
+        issues.push(`${c.id}: undeclared reverse direction`);
       toggle(i, true);
-      for (const [a, b] of pairs) if (reaches(a!, b!)) issues.push(`${c.id}: cut does not isolate its endpoints`);
+      for (const a of c.endpoints) for (const b of c.endpoints) {
+        if (separatedPair(a.approach, b.approach) && nav.connected(a.point, b.point))
+          issues.push(`${c.id}: cut does not isolate its endpoints`);
+      }
     }
   } finally {
     g.connections.forEach((_, i) => toggle(i, false));

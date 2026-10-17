@@ -227,6 +227,7 @@ For each implemented map, record:
   `pnpm check:assets`, `pnpm check:packs`, relevant mission simulations and the
   required latest-head CI. A per-map route-graph check that reads each map's
   declared approaches and separations replaces the implicit three-lane
-  assumption ([U-219](../backlog/U-219.md)).
+  assumption: `pnpm check:approaches [graph.json]` ([U-219](../backlog/U-219.md),
+  [authoring and unbuilt-map limits](../COMMANDS.md#declared-approach-graphs-u-219)).
 - **Human evidence:** annotated top-down approach view and client views of
   boundaries, overwatch angles and key arrivals; the playtest record of §8.
