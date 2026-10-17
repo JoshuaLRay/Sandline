@@ -516,3 +516,8 @@ Format: `T-<id> — <what changed>`
 - U-219 — Validate declared per-map approach graphs, separations and crossings; port live Qalat proofs and record Kestrel topology without geometry changes ([#365](https://github.com/JoshuaLRay/Sandline/pull/365)).
 
 - U-224 — Add validated carried-prisoner holdings and deterministic placement for fresh missions and explicit changed-map restarts; preserve original inventory/pools, exact same-revision saves and the missing-placement guard. Production authoring/rescue remains U-144/U-117 ([#366](https://github.com/JoshuaLRay/Sandline/pull/366)).
+
+- U-148 — Owner disposition accepted U-148's delivered mobile commander cache choice/use UI on 2026-10-16 without claiming a fresh physical-phone test; no production-Qalat use is claimed (approval documentation).
+- U-145 — Close commander-controlled mobile supply use after U-146/U-147/U-148 engineering and U-148 owner signoff (approval documentation).
+- U-112 — Close the finite supply-cache system aggregate after owner acceptance; five replacement-mission cache placements remain U-117 (approval documentation).
+- Qalat U-144/U-113 — Scope U-225 isolated holdings and U-226 real isolated rescue/restart proofs before atomic U-117 production activation; no gameplay changes or save acceptance claimed (planning documentation).
