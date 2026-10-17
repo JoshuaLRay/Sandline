@@ -1,11 +1,11 @@
 {
-  "task": "U-222",
-  "parent": "U-177",
+  "task": "U-223",
+  "parent": "U-116",
   "kind": "isolated furnished outpost and sealed screened reserve annex",
-  "sourceHash": "2d760c42e11d39dab0fb34c4c6946940149d3a71dbf8092307f3005876b9a3de",
-  "levelHash": "e6fa692e1166ce86b4cd83c7091bd2d52de0438051921babc0db81ca48242632",
-  "renderHash": "c9b0e110edd6a0a77494ba601953aa2e09af34d1c139351029ccf3ec8d6965bf",
-  "boxCount": 110508,
+  "sourceHash": "d314d2eb341ea63eeccfa0eec753589bfe22f461cff7ab3c961edfa09841eb79",
+  "levelHash": "8bd402615a09db76f27940f8a4ee2539dc629e616a91ca7c69402f21d08769f5",
+  "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+  "boxCount": 110509,
   "shellBoxCount": 506,
   "furniture": [
     {
@@ -24,6 +24,15 @@
       "z": 376,
       "w": 1.2,
       "h": 2.2,
+      "d": 4
+    },
+    {
+      "id": "outpost-furniture-refuge-screen",
+      "x": 28.6,
+      "y": 8,
+      "z": 377.8,
+      "w": 1.2,
+      "h": 4.8,
       "d": 4
     },
     {
@@ -738,6 +747,6 @@
   ],
   "activeCampaign": "unchanged; activation U-117",
   "humanVerdict": "whole-mission acceptance U-119",
-  "engineeringEvidence": "docs/verification/U-222-outpost.md",
+  "engineeringEvidence": "docs/verification/U-223-outpost.md",
   "unfinished": []
 }

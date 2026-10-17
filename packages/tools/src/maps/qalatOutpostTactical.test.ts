@@ -445,7 +445,7 @@ describe('U-223 refuge escort concealment from the east gate and R9 pad', () => 
           // Production mobile orbit uses a fixed chest pivot for both stances.
           for (let yaw = 0; yaw < 2 * Math.PI - 1e-9; yaw += Math.PI / 8) for (const pitch of [-1.15, -1, -.85, -.7, -.55, -.4, -.25, -.1, 0, .15])
             for (const distance of [MOBILE_CAMERA_MIN, mobileCameraMax(false), mobileCameraMax(true)]) {
-              const solved = mobileOrbit(at, yaw, pitch, distance, 8, collider);
+              const solved = mobileOrbit(at, yaw, pitch, distance, config.groundY, collider);
               for (const aspect of [9 / 19.5, 19.5 / 9]) check(solved.position, 'mobile', solved.focus, 60, aspect);
             }
         }

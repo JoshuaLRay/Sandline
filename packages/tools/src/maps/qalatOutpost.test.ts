@@ -245,10 +245,10 @@ describe('U-175 independent outpost shell and opaque reserve annex', () => {
       levelHash: string; renderHash: string; views: { name: string; calls: number; floorY: number; renderedCeilingY: number | null }[];
     };
     expect(captures.levelHash).toBe(manifest.levelHash); expect(captures.renderHash).toBe(manifest.renderHash);
-    expect(captures.views.map((v) => v.name)).toEqual(['v3-gun', 'west-turn', 'south-gate-court', 'west-gate', 'east-gate', 'barracks',
+    expect(captures.views.map((v) => v.name)).toEqual(['v3-gun', 'west-turn', 'south-gate-court', 'west-gate', 'east-gate', 'east-pad-refuge', 'refuge-screen', 'barracks',
       'refuge', 'antechamber', 'cell', 'radio', 'court-cover', 'water-tower', 'radio-equipment', 'cell-trim', 'reserve-bend', 'reserve-room']);
     expect(captures.views.every((v) => v.calls < 300 && v.floorY === (v.name === 'v3-gun' ? 26 : 8))).toBe(true);
-    for (const view of captures.views.filter((v) => !['v3-gun', 'west-turn', 'south-gate-court', 'west-gate', 'east-gate', 'court-cover', 'water-tower'].includes(v.name))) expect(view.renderedCeilingY, view.name).toBeCloseTo(view.name === 'refuge' ? 12.5 : 12, 6);
+    for (const view of captures.views.filter((v) => !['v3-gun', 'west-turn', 'south-gate-court', 'west-gate', 'east-gate', 'east-pad-refuge', 'refuge-screen', 'court-cover', 'water-tower'].includes(v.name))) expect(view.renderedCeilingY, view.name).toBeCloseTo(view.name === 'refuge' ? 12.5 : 12, 6);
     expect(world.id).toBe('qalat-outpost-construction');
     expect(manifest.activeCampaign).toBe('unchanged; activation U-117');
     expect(manifest.humanVerdict).toBe('whole-mission acceptance U-119');

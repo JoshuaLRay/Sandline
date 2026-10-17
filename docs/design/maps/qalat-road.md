@@ -992,7 +992,7 @@ No new voice recording, named real-world unit or cinematic is a content dependen
 
 The intended first escort leg is cell `(16,8,402)` → antechamber door `(22,8,392)`
 → court `(26,8,388)` → refuge `(16,8,380)`. The player chooses the order; no autopilot
-teleports the POW to the refuge. Refuge walls/roof shelter him from every external
+teleports the POW to the refuge. Refuge walls/roof and the U-223 court screen shelter him from every external
 lane and tank ray, while a 4 m door lets the squad retrieve him. Surviving courtyard
 guards can still threaten the approach, so the brief says **shelter**, not invulnerability.
 Counterattack may cover the porch exit but may not enter it or fire through its walls.
