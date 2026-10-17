@@ -514,3 +514,5 @@ Format: `T-<id> — <what changed>`
 - U-223 — Add the owner-approved four-metre refuge screen without moving the east gate, refuge door, hold or escort route; prove standing/crouched weapon and production-camera concealment, preserved four-metre access, seven-actor screen/stair travel and retained U-221/U-222 shelters. Regenerate eighteen outpost captures and close U-116 engineering; U-117 stays blocked on U-112/U-113 and human acceptance remains U-119 ([#364](https://github.com/JoshuaLRay/Sandline/pull/364)).
 
 - U-219 — Validate declared per-map approach graphs, separations and crossings; port live Qalat proofs and record Kestrel topology without geometry changes ([#365](https://github.com/JoshuaLRay/Sandline/pull/365)).
+
+- U-224 — Add validated carried-prisoner holdings and deterministic placement for fresh missions and explicit changed-map restarts; preserve original inventory/pools, exact same-revision saves and the missing-placement guard. Production authoring/rescue remains U-144/U-117 ([#366](https://github.com/JoshuaLRay/Sandline/pull/366)).
