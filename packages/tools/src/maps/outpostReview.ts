@@ -5,13 +5,25 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 type View = { name: string; position: number[]; target: number[]; label: string; floorY: number; ceilingY: number | null };
 const replacement = new URLSearchParams(location.search).has('replacement');
 const root = replacement ? '/artifacts/qalat-replacement/' : '/artifacts/qalat-outpost/';
-const [level, surface, construction] = await Promise.all([
+const [level, storedSurface, construction] = await Promise.all([
   fetch(`${root}level.json`).then((r) => r.json()) as Promise<{ boxes: unknown[]; floor: { halfWidth: number; halfDepth: number } }>,
   fetch(`${root}surface.json`).then((r) => r.json()) as Promise<{
     levelHash: string; renderHash: string; positions: number[]; normals: number[]; colours: number[]; indices: number[];
+    encoding?: string; contentHash?: string; data?: string;
   }>,
   fetch(`${root}${replacement ? 'manifest' : 'construction'}.json`).then((r) => r.json()) as Promise<{ levelHash: string; renderHash: string; decorations: unknown[] }>,
 ]);
+let surface = storedSurface;
+if (replacement) {
+  if (storedSurface.encoding !== 'gzip-json-v1' || !storedSurface.data) throw new Error('Invalid candidate surface encoding');
+  const bytes = Uint8Array.from(atob(storedSurface.data), (c) => c.charCodeAt(0));
+  const text = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  if (Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, '0')).join('') !== storedSurface.contentHash)
+    throw new Error('Stale candidate render payload');
+  surface = { ...storedSurface, ...JSON.parse(text) } as typeof storedSurface;
+}
+
 const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(level)));
 const levelHash = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 if (surface.levelHash !== levelHash || construction.levelHash !== levelHash)

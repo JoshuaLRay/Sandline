@@ -96,7 +96,7 @@ export function bodyBlocked(x: number, y: number, z: number, world: World, agent
 
 /** Conservative x/z index; exact support/body predicates still decide every point. */
 function coverBoxes(world: World): (x: number, z: number, radius: number) => World['boxes'] {
-  const grid = new Map<string, number[]>(), cell = (n: number) => Math.floor(n / 8);
+  const grid = new Map<string, number[]>(), cell = (n: number) => Math.floor(n / 2);
   world.boxes.forEach((b, i) => {
     for (let x = cell(b.minX); x <= cell(b.maxX); x++) for (let z = cell(b.minZ); z <= cell(b.maxZ); z++) {
       const key = `${x}/${z}`, list = grid.get(key);
@@ -107,7 +107,7 @@ function coverBoxes(world: World): (x: number, z: number, radius: number) => Wor
     const ids = new Set<number>();
     for (let cx = cell(x - r); cx <= cell(x + r); cx++) for (let cz = cell(z - r); cz <= cell(z + r); cz++)
       for (const i of grid.get(`${cx}/${cz}`) ?? []) ids.add(i);
-    return [...ids].sort((a, b) => a - b).map((i) => world.boxes[i]!)
+    return [...ids].map((i) => world.boxes[i]!)
       .filter((b) => b.maxX >= x - r && b.minX <= x + r && b.maxZ >= z - r && b.minZ <= z + r);
   };
 }
@@ -117,15 +117,17 @@ function coverBoxes(world: World): (x: number, z: number, radius: number) => Wor
  * is `bake.ts`'s `onMesh` over it. Ordered by box, then side, then along the
  * face, so a re-bake of unchanged data writes the same list.
  */
-export function coverPoints(
+function* coverBatches(
   world: World,
   agent: NavAgent,
   isOnMesh: (p: { x: number; y: number; z: number }) => boolean,
   eyes: CoverEyes = DEFAULT_COVER_EYES,
-): CoverPoint[] {
+): Generator<CoverPoint[]> {
   const r = agent.radius;
   const stand = r + COVER_MARGIN_M;
-  const out: CoverPoint[] = [], nearby = coverBoxes(world);
+  let out: CoverPoint[] = [];
+  const nearby = coverBoxes(world);
+  let processed = 0;
   for (const box of world.boxes) {
     for (const { nx, nz } of SIDES) {
       // Along the face, the span where the whole body is behind it.
@@ -147,13 +149,31 @@ export function coverPoints(
         for (const y of [...levels].sort((a, b) => a - b)) {
           // An overhead slab is not a wall hiding a soldier on the floor below.
           if (box.minY > y + agent.climb) continue;
-          if (supportUnder(x, z, r, y + agent.climb, local.boxes, agent.groundY) !== y) continue;
           const height = heightClass(box.maxY - y, eyes);
-          if (!height || bodyBlocked(x, y, z, local, agent) || !isOnMesh({ x, y, z })) continue;
+          if (!height) continue;
+          if (supportUnder(x, z, r, y + agent.climb, local.boxes, agent.groundY) !== y) continue;
+          if (bodyBlocked(x, y, z, local, agent) || !isOnMesh({ x, y, z })) continue;
           out.push({ box: box.id, x, y, z, nx, nz, height });
         }
       }
     }
+    if (++processed % 256 === 0) { yield out; out = []; }
+  }
+  yield out;
+}
+
+export function coverPoints(world: World, agent: NavAgent, isOnMesh: (p: { x: number; y: number; z: number }) => boolean,
+  eyes: CoverEyes = DEFAULT_COVER_EYES): CoverPoint[] {
+  return [...coverBatches(world, agent, isOnMesh, eyes)].flat();
+}
+
+/** Keep long full-construction exports responsive between bounded box batches. */
+export async function coverPointsAsync(world: World, agent: NavAgent,
+  isOnMesh: (p: { x: number; y: number; z: number }) => boolean): Promise<CoverPoint[]> {
+  const out: CoverPoint[] = [];
+  for (const batch of coverBatches(world, agent, isOnMesh)) {
+    for (const point of batch) out.push(point);
+    await new Promise<void>((resolve) => setImmediate(resolve));
   }
   return out;
 }

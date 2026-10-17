@@ -45,7 +45,7 @@ describe('U-227 staged complete replacement', () => {
     expect(loaded.mission.prisonerHoldings).toHaveLength(5);
     expect(loaded.pow.feet).toEqual(p(16,8,402));
     expect(loaded.nav.links()).toEqual([]);
-    expect(bundle.surface.indices.length).toBeGreaterThan(0);
+    expect(bundle.surface.triangles).toBeGreaterThan(0);
     expect(bundle.manifest.bytes.level + bundle.manifest.bytes.surface + JSON.stringify(bundle.nav).length).toBeLessThan(80_000_000);
   }, 60_000);
 
@@ -58,9 +58,9 @@ describe('U-227 staged complete replacement', () => {
     expect(requireWorld('qalat-road').mapRevision ?? 1).toBe(1);
   }, 240_000);
 
-  it('rejects stale or mixed-world serialized level, render, nav, cover, mission, holdings, starts and plan inputs', () => {
+  it('rejects stale or mixed-world serialized level, render, nav, cover, mission, holdings, starts and plan inputs', async () => {
     const changes: ((b: ReplacementBundle) => void)[] = [
-      (b)=>{b.level.boxes[0]!.h += 1;}, (b)=>{b.surface.positions[0]! += 1;},
+      (b)=>{b.level.boxes[0]!.h += 1;}, (b)=>{b.surface.data = 'bad';},
       (b)=>{b.nav.base64 = 'bad';}, (b)=>{b.nav.cover = [];}, (b)=>{b.mission.world = 'qalat-road';},
       (b)=>{b.manifest.pow.feet.y = 0;}, (b)=>{b.level.squadStarts[0]!.x += 1;},
       (b)=>{b.manifest.navPlan.tileSize = 512;}, (b)=>{b.manifest.hashes.level = 'stale';},
@@ -68,6 +68,7 @@ describe('U-227 staged complete replacement', () => {
     for (const change of changes) {
       const altered = structuredClone(bundle); change(altered);
       expect(()=>reloadReplacement(altered)).toThrow();
+      await new Promise<void>((resolve)=>setImmediate(resolve));
     }
     expect(exportInputHash(loaded.world, { ...QALAT_TILED_PLAN, tileSize: 512 })).not.toBe(bundle.nav.hash);
     expect(digest(bundle.manifest.hashes)).toBe(bundle.manifest.bundleHash);

@@ -1,10 +1,12 @@
 /** U-227: complete, unregistered revision-2 construction bundle. Never consult a live world lookup. */
+import { gzipSync, gunzipSync } from 'node:zlib';
 import { loadLevel, parseMission } from '@sandline/shared';
 import { bakedBytes } from '../../../server/src/ai/nav/baked/types.ts';
 import { NavMesh } from '../../../server/src/ai/nav/NavMesh.ts';
 import { digest, exportInputHash, exportWorldBake } from '../nav/export.ts';
 import { coverCounts } from '../nav/cover.ts';
-import { buildOutpostLevel, outpostManifest } from './qalatOutpost.ts';
+import { buildOutpostLevel } from './qalatOutpost.ts';
+import { outpostDecorations } from './qalatOutpostFurniture.ts';
 import { buildOutpostCaptiveFixture } from './qalatOutpostCaptives.ts';
 import { QALAT_TILED_PLAN } from './qalatRoadNav.ts';
 import { insertionSurface } from './insertionSurface.ts';
@@ -12,13 +14,17 @@ import { insertionSurface } from './insertionSurface.ts';
 export function replacementInputs() {
   const level = { ...buildOutpostLevel(), mapRevision: 2 };
   const world = loadLevel(level), { mission, pow } = buildOutpostCaptiveFixture(world);
-  const { decorations } = outpostManifest();
+  const decorations = outpostDecorations();
   return { level, world, mission, pow, decorations };
 }
 export async function buildReplacementBundle() {
   const { level, world, mission, pow, decorations } = replacementInputs();
   const levelHash = digest(level), renderHash = digest([...level.boxes, ...decorations]);
-  const surface = { levelHash, renderHash, ...insertionSurface([...level.boxes, ...decorations]) };
+  const rendered = insertionSurface([...level.boxes, ...decorations]);
+  // Lossless transport only; the exact union/ceiling faces remain the render input.
+  const surface = { levelHash, renderHash, encoding: 'gzip-json-v1', contentHash: digest(rendered),
+    triangles: rendered.indices.length / 3,
+    data: gzipSync(JSON.stringify(rendered), { level: 9 }).toString('base64') };
   const nav = await exportWorldBake(world, QALAT_TILED_PLAN);
   const hashes = { level: levelHash, render: renderHash, surface: digest(surface), mission: digest(mission),
     navInput: nav.hash, nav: digest(nav), cover: digest(nav.cover),
@@ -51,7 +57,10 @@ export function reloadReplacement(bundle: ReplacementBundle) {
     m.levelHash !== hashes.level || m.renderHash !== hashes.render || digest(hashes) !== m.bundleHash ||
     digest(m.hashes) !== m.bundleHash || digest(m.navPlan) !== digest(QALAT_TILED_PLAN))
     throw new Error('stale or inconsistent unregistered Qalat replacement bundle');
+  if (surface.encoding !== 'gzip-json-v1' ||
+    digest(JSON.parse(gunzipSync(Buffer.from(surface.data, 'base64')).toString('utf8'))) !== surface.contentHash)
+    throw new Error('replacement render surface content changed');
   const fixture = buildOutpostCaptiveFixture(world, parsed);
   if (digest(fixture.pow) !== digest(m.pow)) throw new Error('replacement POW holding changed');
-  return { ...fixture, nav: NavMesh.load(bakedBytes(nav)) };
+  return { ...fixture, nav: NavMesh.load(bakedBytes(nav), nav.agent.height) };
 }

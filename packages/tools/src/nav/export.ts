@@ -4,7 +4,7 @@ import type { World } from '@sandline/shared';
 import { NavMesh, initNav } from '../../../server/src/ai/nav/NavMesh.ts';
 import type { BakedNav } from '../../../server/src/ai/nav/baked/types.ts';
 import { DEFAULT_NAV_AGENT, bakeWorld, navBakeHash, navConfigFor, onMesh, worldSolids, worldSoup } from './bake.ts';
-import { coverPoints } from './cover.ts';
+import { coverPointsAsync } from './cover.ts';
 import { bakeSolidTiledNavMesh } from './solidBake.ts';
 
 export type TiledStandingPlan = { kind: 'tiled-standing'; tileSize: number;
@@ -13,7 +13,7 @@ export const digest = (value: unknown): string => createHash('sha256').update(JS
 
 /** No special traversal links: the accepted construction uses standing routes. */
 export function bakeTiledStanding(world: World, plan: TiledStandingPlan): Promise<Uint8Array> {
-  return bakeSolidTiledNavMesh(worldSoup(world), worldSolids(world), { ...navConfigFor(DEFAULT_NAV_AGENT), ...plan });
+  return bakeSolidTiledNavMesh(worldSoup(world), worldSolids(world), { ...navConfigFor(DEFAULT_NAV_AGENT), tileSize: plan.tileSize, bounds: plan.bounds });
 }
 export function exportInputHash(world: World, plan?: TiledStandingPlan): string {
   // Preserve every existing registered hash when no plan is explicitly injected.
@@ -26,7 +26,7 @@ export async function exportWorldBake(world: World, plan?: TiledStandingPlan): P
   try {
     return { world: world.id, hash: exportInputHash(world, plan), agent: DEFAULT_NAV_AGENT,
       base64: Buffer.from(bytes).toString('base64'),
-      cover: coverPoints(world, DEFAULT_NAV_AGENT, (p) => onMesh(mesh, p, DEFAULT_NAV_AGENT.climb)) };
+      cover: await coverPointsAsync(world, DEFAULT_NAV_AGENT, (p) => onMesh(mesh, p, DEFAULT_NAV_AGENT.climb)) };
   } finally { mesh.destroy(); }
 }
 
