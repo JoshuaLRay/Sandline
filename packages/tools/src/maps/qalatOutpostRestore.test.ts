@@ -138,7 +138,7 @@ describe('U-226 replacement Session checkpoint/restart matrix', () => {
         p.send(host, { kind: 'RoomCommand', command: 'choose', run, mission: 'later' });
         expect(p.session.started).toBe(false); expect(p.saves).toEqual([]);
         host.pair.b.close('drop'); p.step(2);
-        expect(p.gate(guest)).toMatchObject({ host: 1 });
+        expect(p.gate(guest)).toMatchObject({ host: guest.client.slot });
         const resumed = p.join(host.resume);
         expect(resumed.client.slot).toBe(0); expect(p.session.stats.resumes).toBe(1);
         expect(p.gate(resumed)).toMatchObject({ host: 0, restart: 'original' });
