@@ -1,48 +1,106 @@
-# Cloudflare Pages setup (private-repository migration, phase 1)
+# Cloudflare Worker production deployment (Sandline)
 
-> **Status:** Deployment automation added, but Cloudflare activation requires the owner to create a Pages project and configure GitHub Actions. **Do not** make this repository private or remove GitHub Pages yet. See [PRIVATE-REPO-MIGRATION.md](PRIVATE-REPO-MIGRATION.md).
+> **Current site:** https://sandline.joshualray21.workers.dev
+> **Status:** Worker was published manually via Cloudflare Workers Builds (2026-10-17).
+> The GitHub Actions **Worker deployment is opt-in** until credentials are
+> configured and an actual gated release succeeds. Do not mistake merged
+> code for verified production deployment. See [private-repo migration](PRIVATE-REPO-MIGRATION.md).
 
 ## Architecture
 
-- GitHub Actions builds Sandline from this repository after `verify`, `streaming`, `parity-non-v8` and `mission` all succeed on the same `main` commit.
-- Only `packages/client/dist` is uploaded to **Cloudflare Pages** via Direct Upload.
-- The browser connects to the unchanged Fly.io multiplayer/voice host at `wss://sandline-host.fly.dev`.
-- The original `https://joshualray.github.io/Sandline/` stays available until the separately approved cutover.
-- A Pages Direct Upload project cannot later be converted in place to Cloudflare Git integration; using GitHub Actions to upload is intentional.
+- GitHub `main` is the source of truth. A production Worker release from
+  `.github/workflows/ci.yml` waits for **verify, streaming, parity-non-v8,
+  mission** to succeed for that same commit.
+- The Worker named `sandline` serves the static `packages/client/dist`
+  bundle using Wrangler's `--assets` mode; production URL stays
+  `https://sandline.joshualray21.workers.dev` (not `*.pages.dev`).
+- The built client defaults to `wss://sandline-host.fly.dev`; its Fly.io
+  multiplayer, campaign volume and voice-review service **stay on Fly.io**.
+- Worker Builds' existing GitHub integration currently builds/deploys outside
+  the four GitHub CI gates. **Do not leave both uploaders active** after
+  switching release ownership to GitHub Actions.
 
-## One-time owner actions
+## Finish GitHub Actions activation (iPhone Safari)
 
-1. Sign into [Cloudflare Dashboard](https://dash.cloudflare.com/) using a Free account.
-2. Navigate to **Workers & Pages**, create a **Pages** project using **Direct Upload**, and choose `sandline` if available, with production branch `main`. A placeholder drag-and-drop is **not required** if the dashboard supports creating an empty Direct Upload project; otherwise create it using Wrangler (`npx wrangler pages project create sandline --production-branch main`) while logged in. Keep the actual project name and site URL.
-3. Open [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens); create a narrowly scoped token with **Account: Cloudflare Pages: Edit**, restricted to the correct account, and copy the account ID from Cloudflare's account overview.
-4. In [Sandline GitHub Actions secrets and variables](https://github.com/JoshuaLRay/Sandline/settings/secrets/actions), set:
-   - Secret `CLOUDFLARE_API_TOKEN`: scoped Cloudflare Pages API token.
-   - Secret `CLOUDFLARE_ACCOUNT_ID`: Cloudflare account ID. (Treat this as configuration; storing as a secret follows the documented workflow.)
-   - Repository variable `CLOUDFLARE_PAGES_PROJECT`: **actual** Pages project name, e.g. `sandline`.
-   - Repository variable `SANDLINE_HOST`: `wss://sandline-host.fly.dev` (already used by GitHub Pages).
-5. Go to GitHub **Actions → CI → Run workflow**, choose `main`. This triggers all four CI gates before the Cloudflare release. A subsequent merge to `main` also runs the deployment automatically.
-6. In the run summary, confirm `deploy-client` completed successfully. If it says **Cloudflare Pages not configured**, check that the two secrets and the project variable exist. A missing configuration does not affect GitHub Pages.
-7. Record the **actual** Cloudflare URL (commonly `https://sandline.pages.dev/`, but not guaranteed) in the migration plan/checklist and open it on desktop and mobile. Verify the build SHA, game boot, assets, WSS lobby connection and two-player sessions. The old site remains untouched.
+1. Cloudflare dashboard → account API Tokens → **Create Token**.
+   Grant **Workers Editor** for the existing `sandline` Worker (or the scoped
+   **Edit Cloudflare Workers** template for your account). A Pages-only
+   token is *not* sufficient. Do not send the token to chat.
+2. GitHub repository → [Actions secrets](https://github.com/JoshuaLRay/Sandline/settings/secrets/actions):
+   - Secret `CLOUDFLARE_WORKERS_API_TOKEN`: the new Worker-capable token.
+   - Secret `CLOUDFLARE_ACCOUNT_ID`: the matching Cloudflare account ID.
+   - Variable `SANDLINE_HOST`: `wss://sandline-host.fly.dev`.
+3. Cloudflare dashboard → **Workers & Pages → sandline → Settings → Builds**:
+   **disable automatic Builds** (or **Disconnect** the Git integration) so
+   it can no longer publish a new `main` build ahead of CI.
+   **Do not delete the Worker.** Disabling Builds preserves its last live
+   deployment. This is a Cloudflare setting, not a GitHub secret.
+4. In [GitHub Actions variables](https://github.com/JoshuaLRay/Sandline/settings/variables/actions),
+   set `CLOUDFLARE_WORKER_DEPLOY_ENABLED` to exactly `true`.
+5. Run [CI → Run workflow](https://github.com/JoshuaLRay/Sandline/actions/workflows/ci.yml)
+   against **main**. Wait for all four tests **and** `deploy-worker` to
+   succeed. The deploy must use the current `main` SHA; otherwise it fails
+   closed rather than replacing a newer release.
+6. Open the public Worker link and check the HUD build SHA, assets, room
+   host/join, mobile spectator, voice contribution, and saved campaign state.
+   Then proceed to the repository visibility change in the migration plan.
 
-## What the new CI job does
+An intentionally **skipped** `deploy-worker` while the opt-in flag is absent
+means that CI tests may be green but GitHub has not shipped the game. Do not
+mark deployment complete based on test jobs alone.
 
-`.github/workflows/ci.yml` defines `deploy-client` with `needs: [verify, streaming, parity-non-v8, mission]`. No PR build can publish. Main-branch pushes and manually dispatched main CI runs can publish **only** if all required jobs pass.
+## What the automation does
 
-The deploy job skips its build/deploy steps, with an informational notice, until **all three** Cloudflare settings are present. Once enabled, it builds the client using the configured `SANDLINE_HOST`, checks the current Cloudflare Pages limits of 20,000 files and 25 MiB per file, and uploads through `cloudflare/wrangler-action@v4`. Build, upload, authentication or quota failures are reported as job failures, rather than ignored.
+On a push or manual dispatch to `main`, after all four required jobs pass,
+`deploy-worker` checks credentials and `SANDLINE_HOST`, verifies it is
+still testing current main, builds the Vite client on Node 22, validates
+`dist/index.html` and static asset bounds, then runs:
 
-## Known migration blockers
+```sh
+wrangler deploy --assets ./packages/client/dist --name sandline --compatibility-date 2026-10-12
+```
 
-- Voice submission currently only accepts the exact GitHub Pages origin in `fly.toml`/`packages/server/src/voice/intake.ts`. The new website can be loaded and multiplayer can be tested, but **voice recordings from Cloudflare may be rejected** until migration PR 2 introduces a temporary, explicit origin allowlist and is deployed to Fly.
-- Player identity and voice submission credentials are saved in origin-specific browser `localStorage`; they will not automatically transfer from GitHub Pages to the new site. Preserve them for returning playtesters in PR 2.
-- `.github/workflows/host.yml` still triggers `pages.yml` after a Fly host update. Do **not** remove `pages.yml` until PR 3 migrates this dependency.
-- Do not change GitHub repository visibility until the Cloudflare site, Fly multiplayer, voice submissions, OAuth owner review, and private GitHub credentials have passed the full cutover checklist.
+GitHub PR workflows **never** publish. On a Fly host deployment, `host.yml`
+updates the `SANDLINE_HOST` repository variable then dispatches **`ci.yml`**,
+not the retired GitHub Pages workflow; that dispatch still runs all four gates.
+If you keep Worker Builds active, it can independently deploy a failing
+`main` commit before CI is finished; that is **not** CI-gated.
 
-## Troubleshooting
+## Voice, credentials and private-repo considerations
 
-- **Cloudflare deploy skipped:** Confirm `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_PAGES_PROJECT`; do not copy secret values into issues or logs.
-- **Project not found:** Ensure the project has been created as Direct Upload and its name is correct. GitHub credentials do not create Cloudflare account access by themselves.
-- **Game loads but room cannot connect:** Confirm `SANDLINE_HOST` begins with `wss://` and `https://sandline-host.fly.dev/healthz` is healthy.
-- **Voice upload returns 403 from Cloudflare site:** Expected before PR 2 is deployed; do not weaken CORS to `*`.
-- **Asset 404 / blank page:** Confirm build output contains `index.html` and keep Vite's `base: './'`.
+- Fly's `VOICE_SITE_ORIGIN` remains the historical GitHub Pages origin in
+  `fly.toml`; the already-implemented `VOICE_EXTRA_ORIGINS` can authorize
+  the exact new `https://sandline.joshualray21.workers.dev` origin.
+  Treat this as **live verification required**, not proof it is configured
+  on the running Fly instance. After a tested transition, make the Worker
+  the primary allowed origin and retire the old origin deliberately.
+- Old GitHub Pages identity and submission tokens are browser-origin-local.
+  Offer the consented migration from the phase-2 implementation before
+  old Pages is unpublished; do not put tokens in URLs or repository files.
+- The OAuth review callback remains on `sandline-host.fly.dev`, and its
+  homepage can be updated to the Worker address. Ensure GitHub App/PAT
+  permissions cover a private repository and that voice notifications
+  continue. Never publish secrets or contributor audio.
+- GitHub Free private Actions consumes the account's private runner-minutes
+  allowance. The Worker site remains public; privatizing GitHub does not
+  conceal browser-delivered JavaScript or remove historical public clones.
 
-References: [Cloudflare Direct Upload CI](https://developers.cloudflare.com/pages/how-to/use-direct-upload-with-continuous-integration/), [Direct Upload setup](https://developers.cloudflare.com/pages/get-started/direct-upload/), [Pages limits](https://developers.cloudflare.com/pages/platform/limits/).
+## Troubleshooting and rollback
+
+- **deploy-worker skipped:** verify `CLOUDFLARE_WORKER_DEPLOY_ENABLED=true`
+  under GitHub *Variables*; dispatch CI on `main`.
+- **deploy-worker fails on token:** check `CLOUDFLARE_WORKERS_API_TOKEN`
+  Worker Editor scope and the matching `CLOUDFLARE_ACCOUNT_ID`.
+- **main advanced:** re-run CI on current main; never deploy a stale SHA.
+- **No default multiplayer host:** `SANDLINE_HOST` must be the `wss://` Fly
+  address at **build** time, not a value added later to the browser.
+- **Voice 403:** inspect the Fly exact-origin allowlist and deployment; do not
+  allow all origins or rotate the persisted contributor credentials.
+- **Recover previous release:** restore the last known-good Worker version
+  from Cloudflare's deployment history; keep the Fly volume untouched and
+  fix the cause before the next CI release. If GitHub Actions deployment
+  was not yet verified, leave the old GitHub Pages site available.
+
+Official references: [Cloudflare Workers GitHub Actions](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/),
+[Worker permissions](https://developers.cloudflare.com/workers/authorization/workers/),
+[Worker Builds](https://developers.cloudflare.com/workers/ci-cd/builds/).
