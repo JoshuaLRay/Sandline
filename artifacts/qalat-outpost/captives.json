@@ -1,0 +1,59 @@
+{
+  "task": "U-225",
+  "isolated": true,
+  "levelHash": "8bd402615a09db76f27940f8a4ee2539dc629e616a91ca7c69402f21d08769f5",
+  "missionHash": "40e644c629e6bb1a13d229af6291acc3f2564a94b6003406185c3950acf762d0",
+  "pow": {
+    "id": "mission-pow",
+    "feet": {
+      "x": 16,
+      "y": 8,
+      "z": 402
+    }
+  },
+  "prisonerHoldings": [
+    {
+      "id": "carry-1",
+      "feet": {
+        "x": 12,
+        "y": 8,
+        "z": 400
+      }
+    },
+    {
+      "id": "carry-2",
+      "feet": {
+        "x": 20,
+        "y": 8,
+        "z": 400
+      }
+    },
+    {
+      "id": "carry-3",
+      "feet": {
+        "x": 12,
+        "y": 8,
+        "z": 404
+      }
+    },
+    {
+      "id": "carry-4",
+      "feet": {
+        "x": 20,
+        "y": 8,
+        "z": 404
+      }
+    },
+    {
+      "id": "carry-5",
+      "feet": {
+        "x": 12,
+        "y": 8,
+        "z": 408
+      }
+    }
+  ],
+  "capacity": 6,
+  "mapping": "ascending captured squad slot to authored holding order; POW independent",
+  "evidence": "docs/verification/U-225-holdings.md"
+}

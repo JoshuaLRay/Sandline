@@ -1,0 +1,15 @@
+{
+  "id": "qalat-outpost-construction",
+  "world": "qalat-outpost-construction",
+  "respawn": false,
+  "prisonerHoldings": [
+    { "id": "carry-1", "feet": { "x": 12, "y": 8, "z": 400 } },
+    { "id": "carry-2", "feet": { "x": 20, "y": 8, "z": 400 } },
+    { "id": "carry-3", "feet": { "x": 12, "y": 8, "z": 404 } },
+    { "id": "carry-4", "feet": { "x": 20, "y": 8, "z": 404 } },
+    { "id": "carry-5", "feet": { "x": 12, "y": 8, "z": 408 } }
+  ],
+  "objectives": [
+    { "type": "survive", "seconds": 3600, "label": "Isolated holdings fixture" }
+  ]
+}
