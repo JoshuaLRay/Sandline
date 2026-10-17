@@ -64,10 +64,12 @@ fixture and standard keyboard/MouseEvent handlers. It does not test native brows
 fullscreen/capture or supply an owner verdict. It asserts the intended world/revision/solids, five bots, normal
 movement, authoritative ammo expenditure, first-person aiming, a visible order
 wheel, accepted floor-aware hold order, soldier switching and the draw-call ceiling.
-After the input assertions it freezes the last real frame through the explicit
-`review-map` capture hook and reads the actual WebGL canvas before its buffer is
-discarded. It saves the UI label/state in `artifacts/qalat-preview/evidence.json`
-and the rendered canvas in `playing.png`; streaming CI
+After the input assertions it captures the real composited Chromium frame via
+Playwright's browser screenshot (including the WebGL canvas and WIP notice),
+without synchronously reading back GPU pixels inside the game's animation loop.
+It verifies that the session is still running and the PNG contains image data.
+It saves the UI label/state in `artifacts/qalat-preview/evidence.json`
+and the rendered frame in `playing.png`; streaming CI
 uploads them as `qalat-playable-wip`. The optional expected SHA checks the actual
 published build stamp. These are engineering checks, not owner feedback or
 U-233's full activation matrix.
