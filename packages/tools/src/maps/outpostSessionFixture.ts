@@ -1,7 +1,7 @@
 /** U-226 test harness only. No registry entry or production map revision. */
 import {
   ClientConnection, PROTOCOL_VERSION, TICK_SECONDS, buildTree, createLoopbackPair, decodeMessage,
-  parseCampaign, parseEncounter, parseMission, type Message, type MissionDef,
+  parseCampaign, parseEncounter, parseEventScript, parseMission, requireWorld, type Message, type MissionDef,
 } from '@sandline/shared';
 import { createBrainRegistry } from '../../../server/src/ai/Brain.ts';
 import type { NavMesh } from '../../../server/src/ai/nav/NavMesh.ts';
@@ -15,6 +15,7 @@ export const at = (x: number, z: number) => ({ x, y: 8, z });
 // Keep every solid/elevation in the tested court/cell/return corridor plus a
 // four-metre margin. Nav is baked from the COMPLETE, unchanged construction.
 export const world = { ...fixture.world, mapRevision: 2,
+  mission: requireWorld('greybox-01').mission!,
   boxes: fixture.world.boxes.filter((b) => b.maxX >= -4 && b.minX <= 64 && b.maxZ >= 342 && b.minZ <= 416),
   squadStarts: [at(16, 392), at(35, 374), at(37, 374), at(35, 376), at(37, 376), at(35, 378)],
 };
@@ -53,17 +54,26 @@ interface Internals {
   checkpointSlot(slot: Session['slots'][number]): SlotCheckpoint;
   campaignSnapshot(): CampaignState;
 }
+interface Person {
+  pair: ReturnType<typeof createLoopbackPair>; heard: Message[]; resume: string; client: ClientConnection;
+}
 export function play(state: CampaignState, options: { nav?: NavMesh; lobby?: boolean; mission?: MissionDef } = {}) {
   const saves: CampaignState[] = []; let handoffs = 0, now = 0;
-  const session = new Session(undefined, '', world, { encounter, mission: options.mission ?? fixture.mission,
+  const mission = options.mission ?? fixture.mission;
+  const events = parseEventScript({ world: world.id, blockers: [],
+    supplyCaches: [{ id: 'fixture-stock', feet: at(17, 392), stock: { healthKits: 1 } }],
+    events: [{ id: 'fixture-start', trigger: { kind: 'time', seconds: 0 },
+      actions: [{ kind: 'set-flag', flag: 'fixture-started', value: true }] }],
+  }, encounter, world, mission);
+  const session = new Session(undefined, '', world, { encounter, mission, events,
     campaign: state, campaignDef, roomLobby: options.lobby ?? false, loadouts: 'class',
     ...(options.nav ? { navMesh: options.nav, brainTree: buildTree('friendly', createBrainRegistry()) } : {}),
     onCampaignSave: (s) => saves.push(structuredClone(s)), onHandoff: () => handoffs++,
   });
   const x = session as unknown as Internals;
-  const people: ReturnType<typeof join>[] = [];
+  const people: Person[] = [];
   function settle() { for (let i = 0; i < 2; i++) for (const p of people) p.pair.settle(); }
-  function join(resume = '') {
+  function join(resume = ''): Person {
     const pair = createLoopbackPair(), heard: Message[] = [];
     session.addConnection(pair.a, now);
     const person = { pair, heard, resume: '', client: new ClientConnection(pair.b, { onRestoreGate: (m) => heard.push(m) }) };
@@ -73,11 +83,13 @@ export function play(state: CampaignState, options: { nav?: NavMesh; lobby?: boo
     return person;
   }
   const send = (p: ReturnType<typeof join>, m: Message) => { p.client.send(m); settle(); };
-  const step = (count = 1, interact = false) => {
+  const step = (count = 1, interact = false, movement = { yaw: 0, moveY: 0 }) => {
     for (let i = 0; i < count; i++) {
-      for (const p of people) send(p, { kind: 'Ping', id: 1, clientTime: now });
-      // Production held-E path, with the human at an ordinarily walked stand.
-      for (const s of session.slots) if (!s.isBot) { s.interactHeld = interact; s.staleTicks = 0; }
+      for (const p of people) {
+        send(p, { kind: 'Ping', id: 1, clientTime: now });
+        send(p, { kind: 'Input', tick: session.tick + 1, moveX: 0, moveY: movement.moveY,
+          yaw: movement.yaw, pitch: 0, buttons: interact ? 0b1000 : 0 });
+      }
       session.step(now += TICK_SECONDS * 1000); settle();
     }
   };

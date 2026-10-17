@@ -19,9 +19,9 @@ describe('U-226 actual replacement Session rescue and safe return', () => {
       const send = (message: Parameters<typeof p.send>[1]) => p.send(host, message);
       const bodies = () => [...p.session.slots.filter((s) => !s.captured), p.pow()];
       let ticks = 0;
-      const advance = async (n = 1, interact = false) => {
+      const advance = async (n = 1, interact = false, movement = { yaw: 0, moveY: 0 }) => {
         for (let i = 0; i < n; i++) {
-          p.step(1, interact); ticks++;
+          p.step(1, interact, movement); ticks++;
           for (const b of bodies()) {
             const q = b.state;
             expect(q.y).toBeCloseTo(8, 6); expect(q.vault).toBeNull();
@@ -34,11 +34,21 @@ describe('U-226 actual replacement Session rescue and safe return', () => {
         }
       };
       const walk = async (slot: number, goal: ReturnType<typeof at>) => {
-        send({ kind: 'SwitchCharacter', slot: 0, spectate: true });
         const soldier = p.session.slots[slot]!, path = nav.path(soldier.state, goal);
         expect(completePathLength(path, soldier.state, goal)).not.toBeNull(); expect(path!.vaults).toEqual([]);
-        send({ kind: 'Order', order: 'move', address: { to: 'slot', index: slot }, point: goal, target: null });
-        for (let i = 0; i < 1500 && distance(soldier.state, goal) > .55; i++) await advance();
+        if (slot === 0) {
+          // A human walks the standing nav corners with ordinary wire inputs.
+          // Other soldiers retain production bot/orders and collision bodies.
+          for (const point of [...path!.points.slice(1), goal]) {
+            for (let i = 0; i < 1500 && distance(soldier.state, point) > .25; i++) {
+              const yaw = Math.round(Math.atan2(point.x - soldier.state.x, point.z - soldier.state.z) * 1024 / (2 * Math.PI)) & 1023;
+              await advance(1, false, { yaw, moveY: 1 });
+            }
+          }
+        } else {
+          send({ kind: 'Order', order: 'move', address: { to: 'slot', index: slot }, point: goal, target: null });
+          for (let i = 0; i < 1500 && distance(soldier.state, goal) > .55; i++) await advance();
+        }
         expect(distance(soldier.state, goal), `slot${slot} stranded: ${JSON.stringify(soldier.state)}`).toBeLessThan(.55);
         send({ kind: 'Order', order: 'hold', address: { to: 'slot', index: slot }, point: null, target: null });
       };
@@ -48,7 +58,6 @@ describe('U-226 actual replacement Session rescue and safe return', () => {
         expect(p.pow().state).toMatchObject({ x: 16, y: 8, z: 402 });
         expect(p.pow().captive).toBe(true);
         await walk(0, at(16, 400.8));
-        send({ kind: 'SwitchCharacter', slot: 0 });
         // Letting go interrupts the ordinary timed interaction.
         await advance(15, true); expect(p.pow().captive).toBe(true);
         await advance(1); expect(p.session.mission!.progress).toBe(0);
@@ -57,7 +66,6 @@ describe('U-226 actual replacement Session rescue and safe return', () => {
         send({ kind: 'Order', order: 'hold', address: { to: 'all' }, point: null, target: null });
         for (const [i, slot] of slots.entries()) {
           await walk(0, at(16, 392)); await walk(0, stands[i]!);
-          send({ kind: 'SwitchCharacter', slot: 0 });
           await advance(40, true);
           expect(p.session.slots[slot]!.captured).toBe(false);
           expect(p.captured().map((s) => s.slot)).toEqual(slots.slice(i + 1));
