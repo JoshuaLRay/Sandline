@@ -7,10 +7,11 @@ import { createServer } from 'vite';
 type View = { name: string; position: number[]; target: number[]; label: string; floorY: number; ceilingY: number | null; minClearance?: number };
 type Stats = { calls: number; triangles: number; boxCount: number; levelHash: string; renderHash: string; renderedCeilingY: number | null };
 type Review = { views: View[]; view: (name: string) => Stats };
-const output = new URL('../../../artifacts/qalat-outpost/', import.meta.url);
+const replacement = process.argv.includes('--replacement');
+const output = new URL(replacement ? '../../../artifacts/qalat-replacement/' : '../../../artifacts/qalat-outpost/', import.meta.url);
 const [level, manifest] = await Promise.all([
   readFile(new URL('level.json', output), 'utf8').then((s) => JSON.parse(s)),
-  readFile(new URL('construction.json', output), 'utf8').then((s) => JSON.parse(s)) as Promise<{ levelHash: string; renderHash: string; task: string }>,
+  readFile(new URL(replacement ? 'manifest.json' : 'construction.json', output), 'utf8').then((s) => JSON.parse(s)) as Promise<{ levelHash: string; renderHash: string; task: string }>,
 ]);
 const world = loadLevel(level);
 const server = await createServer({ root: new URL('../../../', import.meta.url).pathname,
@@ -24,11 +25,12 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('http://127.0.0.1:4177/packages/tools/src/maps/outpost-review.html');
+  await page.goto('http://127.0.0.1:4177/packages/tools/src/maps/outpost-review.html' + (replacement ? '?replacement' : ''));
   try { await page.waitForFunction("document.body.dataset.ready === 'true'", undefined, { timeout: 60_000 }); }
   catch (error) { throw new Error(`Outpost viewer did not start: ${errors.join('; ') || String(error)}`); }
   const views = await page.evaluate(() => (globalThis as unknown as { __outpostReview: Review }).__outpostReview.views);
   const required = ['v3-gun', 'west-turn', 'south-gate-court', 'west-gate', 'east-gate', 'east-pad-refuge', 'refuge-screen', 'barracks', 'refuge', 'antechamber', 'cell', 'radio', 'court-cover', 'water-tower', 'radio-equipment', 'cell-trim', 'reserve-bend', 'reserve-room'];
+  if (replacement) required.push('insertion', 'road', 'ridge', 'depot');
   if (views.length !== required.length || required.some((name) => !views.some((v) => v.name === name)))
     throw new Error('Outpost review must capture every gate, room and reserve bend');
   const measurements = [];

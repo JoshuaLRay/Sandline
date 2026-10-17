@@ -63,6 +63,31 @@ package-relative (`packages/client`, `packages/tools`, `packages/shared/src/data
 | `pnpm gen:qalat-road-supports` | U-149/U-159–U-165/U-167/U-168/U-151/U-152: extend the isolated insertion with the bent y8 road, closing rock, road cover, toll office, orchard, loading façades, D0 return store, first-X5 ingress dogleg/screens and the furnished R0–R9 ridge shelf/service bridge with its V1–V3 support bays, F3 and two C12 road↔ridge stairs; preserve basement voids, the 12 m vehicle corridor and ridge views; exact collision/render scene, sight/clearance proofs and review plan in `artifacts/qalat-road-supports/` |
 | `pnpm test:parity-browsers` | parity on Firefox + WebKit (needs `playwright install firefox webkit`) |
 
+## Unregistered complete replacement bundle (U-227)
+
+`pnpm gen:qalat-replacement` writes `artifacts/qalat-replacement/`: the accepted
+composed level with candidate revision 2 and six insertion starts, explicit
+holdings mission, matching render surface, tiled standing `BakedNav`/cover and
+`manifest.json`. It never registers or replaces live inputs. Hashes bind all
+payloads, starts, holdings, nav plan and cover; `pnpm gen:qalat-replacement --check`
+rebuilds and checks every artifact byte for freshness. Large payloads are ignored;
+the compact manifest is committed and tested against a new in-memory build.
+
+Run `pnpm exec vitest run packages/tools/src/maps/qalatReplacement.test.ts` for
+serialized reload, deterministic rebake, tamper refusal, connected floor witnesses,
+cover support and real standing controller routes on the exported nav. The
+ordinary registered `pnpm gen:nav` uses the same explicit-world export seam with
+its existing solo/vault policy; its generated files must remain unchanged here.
+
+After generation, run
+`pnpm exec tsx packages/tools/src/capture-qalat-outpost.ts --replacement` for 22
+hash-bound standing-eye views spanning insertion, road, ridge, depot and outpost.
+For orbit review run `pnpm exec vite --host 127.0.0.1` and open
+`/packages/tools/src/maps/outpost-review.html?replacement`. Streaming CI uploads
+`qalat-replacement-review`, including the generated bundle and PNGs. Captures are
+construction evidence; whole-mission quality remains U-119. Keep U-227–U-232
+unregistered; U-233 activates atomically, followed by U-118/U-119.
+
 ## Declared approach graphs (U-219)
 
 Records beside map data live in `packages/tools/src/maps/approaches/`; the tooling-only

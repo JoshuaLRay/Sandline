@@ -1,0 +1,729 @@
+{
+  "task": "U-227",
+  "world": "qalat-outpost-construction",
+  "mapRevision": 2,
+  "registered": false,
+  "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+  "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+  "decorations": [
+    {
+      "id": "outpost-decor-south-leaf-0",
+      "x": 26,
+      "y": 8,
+      "z": 356.03,
+      "w": 4,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-south-leaf-1",
+      "x": 38,
+      "y": 8,
+      "z": 356.03,
+      "w": 4,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-north-leaf-0",
+      "x": 26,
+      "y": 8,
+      "z": 411.97,
+      "w": 4,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-north-leaf-1",
+      "x": 38,
+      "y": 8,
+      "z": 411.97,
+      "w": 4,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-side-leaf-0-0",
+      "x": 8.03,
+      "y": 8,
+      "z": 371,
+      "w": 0.06,
+      "h": 3,
+      "d": 2
+    },
+    {
+      "id": "outpost-decor-side-leaf-0-1",
+      "x": 55.97,
+      "y": 8,
+      "z": 371,
+      "w": 0.06,
+      "h": 3,
+      "d": 2
+    },
+    {
+      "id": "outpost-decor-side-leaf-1-0",
+      "x": 8.03,
+      "y": 8,
+      "z": 377,
+      "w": 0.06,
+      "h": 3,
+      "d": 2
+    },
+    {
+      "id": "outpost-decor-side-leaf-1-1",
+      "x": 55.97,
+      "y": 8,
+      "z": 377,
+      "w": 0.06,
+      "h": 3,
+      "d": 2
+    },
+    {
+      "id": "outpost-decor-radio-lamp-stem",
+      "x": 52.5,
+      "y": 9,
+      "z": 404,
+      "w": 0.08,
+      "h": 0.45,
+      "d": 0.08
+    },
+    {
+      "id": "outpost-decor-radio-lamp-shade",
+      "x": 52.5,
+      "y": 9.4,
+      "z": 404,
+      "w": 0.4,
+      "h": 0.16,
+      "d": 0.3
+    },
+    {
+      "id": "outpost-decor-radio-set",
+      "x": 51.8,
+      "y": 9,
+      "z": 404,
+      "w": 0.8,
+      "h": 0.35,
+      "d": 0.5
+    },
+    {
+      "id": "outpost-decor-radio-aerial-lead",
+      "x": 53.98,
+      "y": 9.05,
+      "z": 404,
+      "w": 0.04,
+      "h": 2.9,
+      "d": 0.04
+    },
+    {
+      "id": "outpost-decor-cell-blue-trim-0",
+      "x": 13.96,
+      "y": 8,
+      "z": 396.03,
+      "w": 0.08,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-cell-blue-trim-1",
+      "x": 18.04,
+      "y": 8,
+      "z": 396.03,
+      "w": 0.08,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-cell-blue-trim-head",
+      "x": 16,
+      "y": 10.98,
+      "z": 396.03,
+      "w": 4.16,
+      "h": 0.08,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-cell-paperwork",
+      "x": 10.02,
+      "y": 10.2,
+      "z": 406,
+      "w": 0.04,
+      "h": 0.6,
+      "d": 0.5
+    }
+  ],
+  "pow": {
+    "id": "mission-pow",
+    "feet": {
+      "x": 16,
+      "y": 8,
+      "z": 402
+    }
+  },
+  "hashes": {
+    "level": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+    "render": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+    "surface": "2a1ed0aeab0e0a980266c832738b780a3a346b0668b37c05647f1ad5d896ae2d",
+    "mission": "40e644c629e6bb1a13d229af6291acc3f2564a94b6003406185c3950acf762d0",
+    "navInput": "531a3e7e792f77648d915d10ba3133cea4fbf30ae45002b78421819dd92dd891",
+    "nav": "71992ec28a823fdc5c2f92362be7408b376e7d13554bbe4b6a89b51602706e07",
+    "cover": "2b1269196d0881a84dbaca28fbd15c3cb4b51a4225006d8babdb695c90c5e0b7",
+    "starts": "df60968231b21aa3e0c91e476cdd3976b85e1d03015e10436a16e5a7179e60d1",
+    "holdings": "9c6cfdb28b89fad3c88f8f1b885e69d4de32382901dcae4ffb84d9f21a898782"
+  },
+  "bundleHash": "1d7728e30f3a44bf6445a0b1c35a693d16a960dbf62cedb81da09922adc824c4",
+  "navPlan": {
+    "kind": "tiled-standing",
+    "tileSize": 1024,
+    "bounds": [
+      [
+        -80,
+        0,
+        -45
+      ],
+      [
+        150,
+        38,
+        470
+      ]
+    ]
+  },
+  "boxes": 110509,
+  "squadStarts": [
+    {
+      "x": -6,
+      "y": 8,
+      "z": -10
+    },
+    {
+      "x": -2,
+      "y": 8,
+      "z": -10
+    },
+    {
+      "x": 2,
+      "y": 8,
+      "z": -10
+    },
+    {
+      "x": -6,
+      "y": 8,
+      "z": -6
+    },
+    {
+      "x": -2,
+      "y": 8,
+      "z": -6
+    },
+    {
+      "x": 2,
+      "y": 8,
+      "z": -6
+    }
+  ],
+  "cover": {
+    "low": 243,
+    "high": 9146,
+    "total": 9389
+  },
+  "bytes": {
+    "nav": 2239876,
+    "level": 15277907,
+    "surface": 12976025
+  },
+  "review": "/packages/tools/src/maps/outpost-review.html?replacement",
+  "activation": "U-233 only, after U-228 through U-232; then U-118 and U-119",
+  "humanVerdict": "pending U-119",
+  "renderer": "Three WebGL whitebox; complete generated collision union, downward ceiling faces and implicit world floor; no cutaway roofs",
+  "antialias": true,
+  "viewport": [
+    1440,
+    1000
+  ],
+  "ownerQualityVerdict": "pending; whole-mission acceptance U-119",
+  "views": [
+    {
+      "name": "insertion",
+      "position": [
+        -2,
+        9.55,
+        -6
+      ],
+      "target": [
+        -12,
+        9.55,
+        18
+      ],
+      "floorY": 8,
+      "ceilingY": 13,
+      "label": "Candidate · authored squad insertion",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": 13
+    },
+    {
+      "name": "road",
+      "position": [
+        30,
+        9.55,
+        270
+      ],
+      "target": [
+        0,
+        9.55,
+        290
+      ],
+      "floorY": 8,
+      "ceilingY": null,
+      "label": "Candidate · surface over B6",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": null
+    },
+    {
+      "name": "ridge",
+      "position": [
+        70,
+        17.55,
+        336
+      ],
+      "target": [
+        70,
+        13.55,
+        350
+      ],
+      "floorY": 16,
+      "ceilingY": null,
+      "label": "Candidate · R7b bridge",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": null
+    },
+    {
+      "name": "depot",
+      "position": [
+        30,
+        1.55,
+        270
+      ],
+      "target": [
+        36,
+        1.55,
+        278
+      ],
+      "floorY": 0,
+      "ceilingY": 5.5,
+      "label": "Candidate · B6 beneath A6",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": 5.5
+    },
+    {
+      "name": "v3-gun",
+      "position": [
+        66,
+        27.55,
+        286
+      ],
+      "target": [
+        31.5,
+        9.15,
+        361
+      ],
+      "floorY": 26,
+      "ceilingY": null,
+      "label": "V3 · supported bay anchor sees the crouched south-gate gunner through the 8 m arch",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": 29
+    },
+    {
+      "name": "west-turn",
+      "position": [
+        5,
+        9.55,
+        374
+      ],
+      "target": [
+        12,
+        9.55,
+        373.4
+      ],
+      "floorY": 8,
+      "ceilingY": null,
+      "label": "West entry · the recessed south reveal turns a 4 m band into the court lane below the refuge",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": null
+    },
+    {
+      "name": "south-gate-court",
+      "position": [
+        34,
+        9.55,
+        359
+      ],
+      "target": [
+        30,
+        9.55,
+        394
+      ],
+      "floorY": 8,
+      "ceilingY": null,
+      "label": "South gate · in the arch’s 4 m east lane beside the O-C01 gun line, toward the court and indirect prisoner approach",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": null
+    },
+    {
+      "name": "west-gate",
+      "position": [
+        10,
+        9.55,
+        374
+      ],
+      "target": [
+        26,
+        9.55,
+        378
+      ],
+      "floorY": 8,
+      "ceilingY": null,
+      "label": "West gate · depot service entry beside the covered refuge",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": null
+    },
+    {
+      "name": "east-gate",
+      "position": [
+        54,
+        9.55,
+        374
+      ],
+      "target": [
+        34,
+        9.55,
+        382
+      ],
+      "floorY": 8,
+      "ceilingY": null,
+      "label": "East gate · ridge entry across the court toward the west rooms",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": null
+    },
+    {
+      "name": "east-pad-refuge",
+      "position": [
+        59,
+        9.55,
+        374
+      ],
+      "target": [
+        16,
+        9.55,
+        380
+      ],
+      "floorY": 8,
+      "ceilingY": null,
+      "label": "East pad · approved court screen blocks the original gate-to-refuge escort sight line",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": null
+    },
+    {
+      "name": "refuge-screen",
+      "position": [
+        26,
+        9.55,
+        384
+      ],
+      "target": [
+        28.6,
+        10.1,
+        377.8
+      ],
+      "floorY": 8,
+      "ceilingY": null,
+      "label": "Refuge approach · four-metre screen east of the clear door landing and west court passage",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": null
+    },
+    {
+      "name": "barracks",
+      "position": [
+        20,
+        9.55,
+        365
+      ],
+      "target": [
+        20,
+        9.55,
+        372
+      ],
+      "floorY": 8,
+      "ceilingY": 12,
+      "label": "South barracks · solid south wall, covered interior and north court door",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": 12
+    },
+    {
+      "name": "refuge",
+      "position": [
+        16,
+        9.55,
+        380
+      ],
+      "target": [
+        23,
+        9.55,
+        380
+      ],
+      "floorY": 8,
+      "ceilingY": 12.5,
+      "label": "West refuge · solid roof and three closed faces around the escorted hold point",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": 12.5
+    },
+    {
+      "name": "antechamber",
+      "position": [
+        16,
+        9.55,
+        390
+      ],
+      "target": [
+        16,
+        9.55,
+        402
+      ],
+      "floorY": 8,
+      "ceilingY": 12,
+      "label": "Prison antechamber · fixed-open inner doorway gives the first cell view",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": 12
+    },
+    {
+      "name": "cell",
+      "position": [
+        16,
+        9.55,
+        402
+      ],
+      "target": [
+        16,
+        10.6,
+        410
+      ],
+      "floorY": 8,
+      "ceilingY": 12,
+      "label": "Prison records room · authored captive point under the solid roof and barred north window",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": 12
+    },
+    {
+      "name": "radio",
+      "position": [
+        48,
+        9.55,
+        400
+      ],
+      "target": [
+        42,
+        9.55,
+        396
+      ],
+      "floorY": 8,
+      "ceilingY": 12,
+      "label": "Radio room · west door and sill-height west window",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": 12
+    },
+    {
+      "name": "court-cover",
+      "position": [
+        34,
+        9.55,
+        380
+      ],
+      "target": [
+        40,
+        8.6,
+        385
+      ],
+      "floorY": 8,
+      "ceilingY": null,
+      "label": "Court · low cart and fixed cover beside the clear circulation lanes",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": null
+    },
+    {
+      "name": "water-tower",
+      "position": [
+        36,
+        9.55,
+        385
+      ],
+      "target": [
+        49,
+        24,
+        417
+      ],
+      "floorY": 8,
+      "ceilingY": null,
+      "label": "Water tower · exact y26 closed tank beyond the intact y14 perimeter; no ladder or deck",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": null
+    },
+    {
+      "name": "radio-equipment",
+      "position": [
+        48,
+        9.55,
+        400
+      ],
+      "target": [
+        52,
+        9.3,
+        404
+      ],
+      "floorY": 8,
+      "ceilingY": 12,
+      "label": "Radio · fixed table, set, lamp and aerial lead; no interaction",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": 12
+    },
+    {
+      "name": "cell-trim",
+      "position": [
+        16,
+        9.55,
+        402
+      ],
+      "target": [
+        16,
+        9.55,
+        396
+      ],
+      "floorY": 8,
+      "ceilingY": 12,
+      "label": "Cell · blue trim identifies the fixed-open rescue doorway; six holding points stay clear",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": 12
+    },
+    {
+      "name": "reserve-bend",
+      "position": [
+        20,
+        9.55,
+        426
+      ],
+      "target": [
+        32,
+        9.55,
+        426
+      ],
+      "floorY": 8,
+      "ceilingY": 12,
+      "label": "Reserve service bend · opaque return walls screen the short annex",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": 12
+    },
+    {
+      "name": "reserve-room",
+      "position": [
+        32,
+        9.55,
+        440
+      ],
+      "target": [
+        32,
+        9.55,
+        432
+      ],
+      "floorY": 8,
+      "ceilingY": 12,
+      "label": "North reserve room · covered holding room facing its south doorway",
+      "calls": 2,
+      "triangles": 1080622,
+      "boxCount": 110509,
+      "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+      "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+      "renderedCeilingY": 12
+    }
+  ]
+}

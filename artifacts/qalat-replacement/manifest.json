@@ -1,0 +1,236 @@
+{
+  "task": "U-227",
+  "world": "qalat-outpost-construction",
+  "mapRevision": 2,
+  "registered": false,
+  "levelHash": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+  "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+  "decorations": [
+    {
+      "id": "outpost-decor-south-leaf-0",
+      "x": 26,
+      "y": 8,
+      "z": 356.03,
+      "w": 4,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-south-leaf-1",
+      "x": 38,
+      "y": 8,
+      "z": 356.03,
+      "w": 4,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-north-leaf-0",
+      "x": 26,
+      "y": 8,
+      "z": 411.97,
+      "w": 4,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-north-leaf-1",
+      "x": 38,
+      "y": 8,
+      "z": 411.97,
+      "w": 4,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-side-leaf-0-0",
+      "x": 8.03,
+      "y": 8,
+      "z": 371,
+      "w": 0.06,
+      "h": 3,
+      "d": 2
+    },
+    {
+      "id": "outpost-decor-side-leaf-0-1",
+      "x": 55.97,
+      "y": 8,
+      "z": 371,
+      "w": 0.06,
+      "h": 3,
+      "d": 2
+    },
+    {
+      "id": "outpost-decor-side-leaf-1-0",
+      "x": 8.03,
+      "y": 8,
+      "z": 377,
+      "w": 0.06,
+      "h": 3,
+      "d": 2
+    },
+    {
+      "id": "outpost-decor-side-leaf-1-1",
+      "x": 55.97,
+      "y": 8,
+      "z": 377,
+      "w": 0.06,
+      "h": 3,
+      "d": 2
+    },
+    {
+      "id": "outpost-decor-radio-lamp-stem",
+      "x": 52.5,
+      "y": 9,
+      "z": 404,
+      "w": 0.08,
+      "h": 0.45,
+      "d": 0.08
+    },
+    {
+      "id": "outpost-decor-radio-lamp-shade",
+      "x": 52.5,
+      "y": 9.4,
+      "z": 404,
+      "w": 0.4,
+      "h": 0.16,
+      "d": 0.3
+    },
+    {
+      "id": "outpost-decor-radio-set",
+      "x": 51.8,
+      "y": 9,
+      "z": 404,
+      "w": 0.8,
+      "h": 0.35,
+      "d": 0.5
+    },
+    {
+      "id": "outpost-decor-radio-aerial-lead",
+      "x": 53.98,
+      "y": 9.05,
+      "z": 404,
+      "w": 0.04,
+      "h": 2.9,
+      "d": 0.04
+    },
+    {
+      "id": "outpost-decor-cell-blue-trim-0",
+      "x": 13.96,
+      "y": 8,
+      "z": 396.03,
+      "w": 0.08,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-cell-blue-trim-1",
+      "x": 18.04,
+      "y": 8,
+      "z": 396.03,
+      "w": 0.08,
+      "h": 3,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-cell-blue-trim-head",
+      "x": 16,
+      "y": 10.98,
+      "z": 396.03,
+      "w": 4.16,
+      "h": 0.08,
+      "d": 0.06
+    },
+    {
+      "id": "outpost-decor-cell-paperwork",
+      "x": 10.02,
+      "y": 10.2,
+      "z": 406,
+      "w": 0.04,
+      "h": 0.6,
+      "d": 0.5
+    }
+  ],
+  "pow": {
+    "id": "mission-pow",
+    "feet": {
+      "x": 16,
+      "y": 8,
+      "z": 402
+    }
+  },
+  "hashes": {
+    "level": "c4b26b023ff51aabb9893eb937090affbad897e2bf8cb899619de3e94f737281",
+    "render": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
+    "surface": "2a1ed0aeab0e0a980266c832738b780a3a346b0668b37c05647f1ad5d896ae2d",
+    "mission": "40e644c629e6bb1a13d229af6291acc3f2564a94b6003406185c3950acf762d0",
+    "navInput": "531a3e7e792f77648d915d10ba3133cea4fbf30ae45002b78421819dd92dd891",
+    "nav": "71992ec28a823fdc5c2f92362be7408b376e7d13554bbe4b6a89b51602706e07",
+    "cover": "2b1269196d0881a84dbaca28fbd15c3cb4b51a4225006d8babdb695c90c5e0b7",
+    "starts": "df60968231b21aa3e0c91e476cdd3976b85e1d03015e10436a16e5a7179e60d1",
+    "holdings": "9c6cfdb28b89fad3c88f8f1b885e69d4de32382901dcae4ffb84d9f21a898782"
+  },
+  "bundleHash": "1d7728e30f3a44bf6445a0b1c35a693d16a960dbf62cedb81da09922adc824c4",
+  "navPlan": {
+    "kind": "tiled-standing",
+    "tileSize": 1024,
+    "bounds": [
+      [
+        -80,
+        0,
+        -45
+      ],
+      [
+        150,
+        38,
+        470
+      ]
+    ]
+  },
+  "boxes": 110509,
+  "squadStarts": [
+    {
+      "x": -6,
+      "y": 8,
+      "z": -10
+    },
+    {
+      "x": -2,
+      "y": 8,
+      "z": -10
+    },
+    {
+      "x": 2,
+      "y": 8,
+      "z": -10
+    },
+    {
+      "x": -6,
+      "y": 8,
+      "z": -6
+    },
+    {
+      "x": -2,
+      "y": 8,
+      "z": -6
+    },
+    {
+      "x": 2,
+      "y": 8,
+      "z": -6
+    }
+  ],
+  "cover": {
+    "low": 243,
+    "high": 9146,
+    "total": 9389
+  },
+  "bytes": {
+    "nav": 2239876,
+    "level": 15277907,
+    "surface": 12976025
+  },
+  "review": "/packages/tools/src/maps/outpost-review.html?replacement",
+  "activation": "U-233 only, after U-228 through U-232; then U-118 and U-119",
+  "humanVerdict": "pending U-119"
+}
