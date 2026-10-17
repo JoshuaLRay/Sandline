@@ -792,6 +792,13 @@ closed tank occupies y22..26. No platform or additional route is created.
   sandbags leave a standing target's shins in dead ground.
 - O-C02 high stone trough, `(30,8,376)`, length 4 north-south, standard high-cover
   dimensions; blocks south-gate view to prisoner doorway without sealing movement.
+- U-223 owner-approved Option B refuge screen: centre `(28.6,8,377.8)`,
+  4 m north-south, 1.2 m thick, top y12.8 (4.8 m high). The west edge x28
+  retains the x24..28 four-metre court passage and the refuge's outside landing
+  x22.6..26.6, z378..382. The south end z375.8 stays outside the court lane
+  z371.4..375.4. The raised top screens in-frame production mobile cameras;
+  ordinary 2.2 m high cover leaves elevated rays over it. The east gate,
+  refuge door, escort hold `(16,8,380)` and §10.3 route remain fixed.
 - O-C03 low cart, `(40,8,385)`, length 5 east-west, 1.8 m deep, 1.1 m high.
 - O-C04 high stores crate, `(32,8,400)`, length 4 north-south; leaves the northern
   gate approach and radio-room door accessible.
@@ -985,7 +992,7 @@ No new voice recording, named real-world unit or cinematic is a content dependen
 
 The intended first escort leg is cell `(16,8,402)` → antechamber door `(22,8,392)`
 → court `(26,8,388)` → refuge `(16,8,380)`. The player chooses the order; no autopilot
-teleports the POW to the refuge. Refuge walls/roof shelter him from every external
+teleports the POW to the refuge. Refuge walls/roof and the U-223 court screen shelter him from every external
 lane and tank ray, while a 4 m door lets the squad retrieve him. Surviving courtyard
 guards can still threaten the approach, so the brief says **shelter**, not invulnerability.
 Counterattack may cover the porch exit but may not enter it or fire through its walls.

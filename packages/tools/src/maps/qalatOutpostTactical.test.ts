@@ -312,6 +312,17 @@ describe('U-180 hostile, reserve and supply clearances on y8', () => {
   });
 });
 
+function scenery(at: Point, reach: number) {
+  const material = new THREE.MeshBasicMaterial({ visible: false });
+  const boxes = region(at.x - reach, at.x + reach, at.z - reach, at.z + reach);
+  const objects: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>[] = boxes.map((b) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.maxX - b.minX, b.maxY - b.minY, b.maxZ - b.minZ), material);
+    mesh.position.set((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, (b.minZ + b.maxZ) / 2);
+    mesh.updateMatrixWorld(); return mesh;
+  });
+  return { boxes, objects, dispose() { for (const o of objects) o.geometry.dispose(); material.dispose(); } };
+}
+
 describe('U-222 reserve and all-six captive concealment from production cameras', () => {
   // Independent §8.2 captive sources: road, forecourt and south gate; the
   // three bays; X tank road; the basement. §9.3's reserve is also screened
@@ -327,17 +338,6 @@ describe('U-222 reserve and all-six captive concealment from production cameras'
   // Every independent holding stays in the proof, including carry-1 at its
   // original feet point. Cover seated/kneeling and full standing bodies.
   const captives = HOLDING.flatMap(([x, z]) => [.15, .8, 1.6, 1.75].map((h) => p(x, 8 + h, z)));
-
-  function scenery(at: Point, reach: number) {
-    const material = new THREE.MeshBasicMaterial({ visible: false });
-    const boxes = region(at.x - reach, at.x + reach, at.z - reach, at.z + reach);
-    const objects: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>[] = boxes.map((b) => {
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.maxX - b.minX, b.maxY - b.minY, b.maxZ - b.minZ), material);
-      mesh.position.set((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, (b.minZ + b.maxZ) / 2);
-      mesh.updateMatrixWorld(); return mesh;
-    });
-    return { boxes, objects, dispose() { for (const o of objects) o.geometry.dispose(); material.dispose(); } };
-  }
 
   it('solves every desktop and mobile camera at each approach and screens the reserve and all six captives', () => {
     let cameras = 0, rays = 0, shortened = 0;
@@ -377,5 +377,85 @@ describe('U-222 reserve and all-six captive concealment from production cameras'
     expect(shortened).toBeGreaterThan(0);
     console.log('U-222 camera concealment', JSON.stringify({ observers: SCREENED.length + SIDES.length + COURTSIDE.length, cameras, rays,
       captiveHoldings: HOLDING.length, desktopArmsShortened: shortened }));
+  }, 240_000);
+});
+
+describe('U-223 refuge escort concealment from the east gate and R9 pad', () => {
+  const east = [56, 58, 59, 60].flatMap((x) => [373, 374, 375].map((z) => p(x, 8, z)));
+  east.push(...[58, 59, 60].map((x) => p(x, 8, 370.5)));
+  // Original §10.3 hold, sampled across the full body footprint and seated,
+  // crouched and standing heights. Neither the hold nor the door moves.
+  const bodies = [15.65, 16, 16.35].flatMap((x) => [379.65, 380, 380.35].flatMap((z) =>
+    [.15, .8, 1.6, 1.75].map((h) => p(x, 8 + h, z))));
+
+  it('screens every body sample from standing/crouched weapon eyes and settled production desktop/mobile cameras', async () => {
+    const without = rayOccluded(world.boxes.filter((b) => b.id !== 'outpost-furniture-refuge-screen'));
+    let cameras = 0, rays = 0, exposedWithoutScreen = 0;
+    let minZ = Infinity, maxZ = -Infinity, maxY = -Infinity;
+    const exposedByKind = { weapon: 0, desktop: 0, mobile: 0 };
+    const visible: { camera: Point; target: Point; atScreen: Point }[] = [];
+    for (const at of east) {
+      expect(blockedAt(at.x, at.z, config.radius, 8, .05, config.height, world.boxes), `observer ${JSON.stringify(at)}`).toBe(false);
+      expect(supportUnder(at.x, at.z, config.radius, 8.01, world.boxes, -100)).toBeCloseTo(8, 6);
+      const scene = scenery(at, 30);
+      try {
+        const collider = createSceneCollider(scene.objects);
+        const check = (camera: Point, kind: keyof typeof exposedByKind, focus?: Point, fov = 60, aspect = 16 / 9) => {
+          const projection = new THREE.PerspectiveCamera(fov, aspect, .1, 500);
+          projection.position.set(camera.x, camera.y, camera.z);
+          if (focus) projection.lookAt(focus.x, focus.y, focus.z);
+          projection.updateMatrixWorld();
+          const frustum = new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(
+            projection.projectionMatrix, projection.matrixWorldInverse));
+          expect(scene.boxes.some((b) => camera.x > b.minX + 1e-7 && camera.x < b.maxX - 1e-7
+            && camera.y > b.minY + 1e-7 && camera.y < b.maxY - 1e-7 && camera.z > b.minZ + 1e-7 && camera.z < b.maxZ - 1e-7),
+          `camera inside solid ${JSON.stringify(camera)}`).toBe(false);
+          for (const target of bodies) {
+            // Only samples inside the actual production view can be seen.
+            // Weapon eyes remain direction-independent.
+            if (focus && !frustum.containsPoint(new THREE.Vector3(target.x, target.y, target.z))) continue;
+            const ray = between(camera, target);
+            if (!blocked(ray)) {
+              const t = (28 - camera.x) / (target.x - camera.x);
+              visible.push({ camera: { ...camera }, target, atScreen: p(28, camera.y + t * (target.y - camera.y), camera.z + t * (target.z - camera.z)) });
+            }
+            if (!without(ray)) {
+              exposedWithoutScreen++; exposedByKind[kind]++;
+              const t = (28 - camera.x) / (target.x - camera.x);
+              minZ = Math.min(minZ, camera.z + t * (target.z - camera.z));
+              maxZ = Math.max(maxZ, camera.z + t * (target.z - camera.z));
+              maxY = Math.max(maxY, camera.y + t * (target.y - camera.y));
+            }
+            rays++;
+          }
+          cameras++;
+        };
+        for (const crouched of [false, true]) {
+          check(eyeOf(at, crouched ? rig.crouchEyeHeight : rig.eyeHeight), 'weapon');
+          for (const shoulderSide of [-1, 1] as const) for (const ads of [false, true])
+            for (const yawWire of Array.from({ length: 16 }, (_, i) => i * 64)) for (const degrees of [-75, -55, -35, -20, 0, 20, 35, 55, 75]) {
+              const view = { ...at, crouched, yawWire, pitchWire: degrees * 1024 / 360, pitchFraction: degrees / 89,
+                ads, firstPerson: false, shoulderSide };
+              // dt=0 settles the full production arm, ADS, shoulder and stance;
+              // a fresh one-frame spring solve alone barely leaves the pivot.
+              const solved = solveCamera(view, DEFAULT_CAMERA_CONFIG, createCameraSolve(), 0, collider);
+              check(solved.position, 'desktop', { x: solved.position.x + solved.direction.x, y: solved.position.y + solved.direction.y,
+                z: solved.position.z + solved.direction.z }, solved.fov);
+            }
+          // Production mobile orbit uses a fixed chest pivot for both stances.
+          for (let yaw = 0; yaw < 2 * Math.PI - 1e-9; yaw += Math.PI / 8) for (const pitch of [-1.15, -1, -.85, -.7, -.55, -.4, -.25, -.1, 0, .15])
+            for (const distance of [MOBILE_CAMERA_MIN, mobileCameraMax(false), mobileCameraMax(true)]) {
+              const solved = mobileOrbit(at, yaw, pitch, distance, config.groundY, collider);
+              for (const aspect of [9 / 19.5, 19.5 / 9]) check(solved.position, 'mobile', solved.focus, 60, aspect);
+            }
+        }
+      } finally { scene.dispose(); }
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    console.log('U-223 refuge cameras', JSON.stringify({ observers: east.length, cameras, rays, exposedWithoutScreen, exposedByKind, originalWedge: { minZ, maxZ, maxY }, visible: visible.length,
+      screenCrossings: visible.length ? { minZ: Math.min(...visible.map((v) => v.atScreen.z)), maxZ: Math.max(...visible.map((v) => v.atScreen.z)), maxY: Math.max(...visible.map((v) => v.atScreen.y)) } : null }));
+    expect(visible.slice(0, 3), `${visible.length} exposed body views`).toEqual([]);
+    for (const [kind, views] of Object.entries(exposedByKind))
+      expect(views, `removing only the screen must restore ${kind} exposure`).toBeGreaterThan(0);
   }, 240_000);
 });

@@ -262,6 +262,15 @@ describe('U-175 outpost on the actual complete tiled standing bake', () => {
     console.log('U-180 P-OUTPOST access controller', JSON.stringify({ approaches: 3, ticks, seconds: ticks * TICK_SECONDS }));
   }, 120_000);
 
+  it('U-223: walks around both ends of the screen to the unchanged refuge hold and back', async () => {
+    let ticks = 0;
+    for (const start of [[32, 374], [32, 384]] as const)
+      ticks += await travel([start, [26, 380], [16, 380], [26, 380], start], 'U-223 screen bypass', onFloor);
+    // The specified first escort leg remains walkable with its original stops.
+    ticks += await travel([[16, 402], [22, 392], [26, 388], [16, 380]], 'U-223 original escort route', onFloor);
+    console.log('U-223 screen and escort controller', JSON.stringify({ bypassTrips: 2, originalEscortLeg: true, ticks }));
+  }, 120_000);
+
   it('uses the north gate as the reserve annex sole connection and excludes a fourth approach to X', () => {
     const reserve = point([32, 440]), x0 = point([96, 444]);
     expect(completePathLength(nav.path(reserve, COURT), reserve, COURT)).not.toBeNull();

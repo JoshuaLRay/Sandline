@@ -128,7 +128,7 @@ describe('U-221 furnished outpost joins with six Session soldiers and an escorte
     // switchback landing, and the B9 vestibule at the stair's foot.
     const REFUGE = rect(10, 22, 376, 384), B9 = rect(-14, -2, 364, 376);
     const ROUTE = [REFUGE, COURT, rect(1, 8, 372, 378), rect(-1.2, 4, 370, 378), rect(-10, 4, 376, 390), B9];
-    const routeBoxes = world.boxes.filter((b) => b.maxX >= -20 && b.minX <= 30 && b.maxZ >= 356 && b.minZ <= 396);
+    const routeBoxes = world.boxes.filter((b) => b.maxX >= -20 && b.minX <= 46 && b.maxZ >= 356 && b.minZ <= 396);
     const starts = [at(12, 378), at(14.5, 378), at(19.5, 378), at(12, 382), at(14.5, 382), at(19.5, 382)];
     const session = new Session(undefined, '', { ...world, boxes: routeBoxes, squadStarts: starts.map((p) => ({ ...p })) }, {
       navMesh: nav, brainTree: buildTree('friendly', createBrainRegistry()), testHumanCount: 0,
@@ -169,6 +169,12 @@ describe('U-221 furnished outpost joins with six Session soldiers and an escorte
         for (let tick = 0; tick < 30; tick++) await advance();
         expect(done(), 'left the hold').toBe(true);
       };
+      // U-223: the same seven live actors first cross from the refuge to
+      // the east side of the screen and return through its unchanged door.
+      await walk(at(36, 380), () => bodies.every((b) => b.state.x >= 31.1 && inside(b.state, COURT)
+        && Math.abs(b.state.y - 8) < 1e-6));
+      await walk(at(16, 380), () => inside(pow.state, REFUGE, DEFAULT_MOVE_CONFIG.radius)
+        && session.slots.every((s) => s.state.x < 28 && Math.abs(s.state.y - 8) < 1e-6));
       const STAIR_HOLD = { x: -8, y: 0, z: 370 };
       await walk(STAIR_HOLD, () => bodies.every((b) => inside(b.state, B9, DEFAULT_MOVE_CONFIG.radius) && Math.abs(b.state.y) < 1e-6));
       expect(lowest).toBeCloseTo(0, 6);
