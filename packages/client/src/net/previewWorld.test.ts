@@ -19,9 +19,15 @@ it('joins and predicts an explicitly injected local world while leaving register
   expect(getWorld(world.id)).toBeUndefined();
   expect(requireWorld('qalat-road').mapRevision).not.toBe(2);
 
+  client.switchTo(1);
+  for (let i = 12; i < 24; i++) server.step(i * 34);
+  expect(client.slot).toBe(1);
+  expect(client.world).toBe(world);
+  expect(client.roster.filter((slot) => !slot.human)).toHaveLength(5);
+
   const ordinary = new NetClient(server.connect({ latencyMs: 0, jitterMs: 0, lossRate: 0 }).transport, 'normal');
   ordinary.join();
-  for (let i = 12; i < 24; i++) server.step(i * 34);
+  for (let i = 24; i < 36; i++) server.step(i * 34);
   expect(ordinary.joined).toBe(false);
   expect(ordinary.world).toBeNull();
 });

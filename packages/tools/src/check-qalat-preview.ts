@@ -8,7 +8,7 @@ const url = new URL('?preview-qalat&review-map', base).href;
 const vite = process.argv[2] ? null : spawn('pnpm', ['--filter', '@sandline/client', 'exec', 'vite', 'preview', '--host', '127.0.0.1', '--port', '4174', '--strictPort'], { stdio: 'ignore' });
 type State = { world: string; revision: number; boxes: number; position: { x: number; y: number; z: number };
   slot: number; roster: { human: boolean }[]; magazine: { ammo: number }; firstPerson: boolean;
-  orders: { order: string }[]; calls: number };
+  orders: { order: string }[]; frozen: boolean; calls: number };
 let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
 try {
   const deadline = Date.now() + 20000;
@@ -37,8 +37,22 @@ try {
   assert.equal(start.boxes, 110509);
   assert.equal(start.roster.filter((s) => !s.human).length, 5);
   assert.equal(start.position.y, 8);
-  await page.mouse.click(800, 500);
-  await page.waitForFunction('document.pointerLockElement !== null');
+  // Match perf-frame.ts's explicit headless pointer-lock fixture. All game
+  // actions still enter LocalInput and the real Session; no state is teleported.
+  const pointer = (on: boolean) => page.evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    const set = (element) => {
+      Object.defineProperty(document, 'pointerLockElement', { get: () => element, configurable: true });
+      document.dispatchEvent(new Event('pointerlockchange'));
+    };
+    canvas.requestPointerLock = () => { set(canvas); return Promise.resolve(); };
+    document.exitPointerLock = () => set(null);
+    Object.defineProperty(document, 'pointerLockElement', { get: () => ${on ? 'canvas' : 'null'}, configurable: true });
+    document.dispatchEvent(new Event('pointerlockchange'));
+  })()`);
+  const mouse = (type: 'mousedown' | 'mouseup', button = 0) => page.evaluate(({ type, button }) =>
+    window.dispatchEvent(new MouseEvent(type, { button, bubbles: true })), { type, button });
+  await pointer(true);
   await page.keyboard.down('KeyW');
   await page.waitForFunction((origin) => {
     const current = (window as unknown as { __sandlineQalatPreview: () => State }).__sandlineQalatPreview().position;
@@ -48,13 +62,16 @@ try {
   const moved = await read();
   console.log(`[preview] moved to ${JSON.stringify(moved.position)}`);
   assert.ok(Math.hypot(moved.position.x - start.position.x, moved.position.z - start.position.z) > 1, 'normal movement must change feet position');
-  await page.mouse.down(); await page.waitForTimeout(300); await page.mouse.up();
-  await page.waitForTimeout(300);
+  await mouse('mousedown');
+  await page.waitForFunction((ammo) =>
+    (window as unknown as { __sandlineQalatPreview: () => State }).__sandlineQalatPreview().magazine.ammo < ammo,
+  start.magazine.ammo, { timeout: 15000 });
+  await mouse('mouseup');
   const fired = await read();
   assert.ok(fired.magazine.ammo < start.magazine.ammo, 'normal firing must spend authoritative ammo');
-  await page.mouse.down({ button: 'right' }); await page.waitForTimeout(300);
+  await mouse('mousedown', 2); await page.waitForTimeout(300);
   await page.waitForFunction(() => (window as unknown as { __sandlineQalatPreview: () => State }).__sandlineQalatPreview().firstPerson);
-  await page.mouse.up({ button: 'right' });
+  await mouse('mouseup', 2);
   console.log('[preview] firing and first-person aim passed');
   await page.evaluate(() => document.dispatchEvent(new MouseEvent('mousemove', { movementY: 100, bubbles: true })));
   await page.keyboard.down('KeyQ');
@@ -69,23 +86,37 @@ try {
   await page.waitForFunction(() => (window as unknown as { __sandlineQalatPreview: () => State }).__sandlineQalatPreview().orders.some((o) => o.order === 'hold'));
   console.log('[preview] squad accepted floor-aware hold order');
   await page.keyboard.press('Escape');
+  if (await page.locator('#menu').getAttribute('data-mode') !== 'pause') await page.keyboard.press('Escape');
+  await pointer(false);
+  console.log(`[preview] pause mode: ${await page.locator('#menu').getAttribute('data-mode')}`);
   await page.getByRole('button', { name: 'Take control', exact: true }).first().click();
   await page.waitForFunction(() => (window as unknown as { __sandlineQalatPreview: () => State }).__sandlineQalatPreview().slot !== 0);
   const switched = await read();
+  console.log(`[preview] switched to soldier slot ${switched.slot}`);
   assert.equal(switched.roster.filter((s) => !s.human).length, 5);
   assert.ok(switched.calls < 300, 'preview draw-call budget');
-  // Leave browser capture/fullscreen before requesting a compositor screenshot.
-  await page.evaluate(async () => {
+  // Leave browser capture before requesting a compositor screenshot.
+  await page.evaluate(() => {
+    Reflect.deleteProperty(document.querySelector('canvas')!, 'requestPointerLock');
+    Reflect.deleteProperty(document, 'exitPointerLock');
+    Reflect.deleteProperty(document, 'pointerLockElement');
     document.exitPointerLock();
-    if (document.fullscreenElement) await document.exitFullscreen();
+    if (document.fullscreenElement) void document.exitFullscreen();
   });
-  await page.screenshot({ path: 'artifacts/qalat-preview/playing.png' });
+  await page.waitForFunction('document.fullscreenElement === null && document.pointerLockElement === null');
+  await page.evaluate(() => (window as unknown as { __sandlineQalatPreviewFreeze: () => void }).__sandlineQalatPreviewFreeze());
+  await page.waitForFunction(() => (window as unknown as { __sandlineQalatPreview: () => State }).__sandlineQalatPreview().frozen);
+  const frame = await page.evaluate(() => (window as unknown as { __sandlineQalatPreviewFrame: () => string | null }).__sandlineQalatPreviewFrame());
+  assert.ok(frame !== null, 'real rendered frame required');
+  assert.ok(frame.startsWith('data:image/png;base64,'), 'PNG canvas frame required');
+  await writeFile('artifacts/qalat-preview/playing.png', Buffer.from(frame.split(',')[1]!, 'base64'));
   assert.deepEqual(errors, []);
   const buildStamp = await page.locator('#build-stamp').textContent() ?? '';
   const expectedSha = process.env['SANDLINE_EXPECT_SHA'];
   const publishedSha = buildStamp.split(' ')[0] ?? '';
   if (expectedSha) assert.ok(publishedSha.length >= 7 && expectedSha.startsWith(publishedSha), `unexpected published build: ${buildStamp}`);
-  const result = { url, buildStamp, start, moved, fired, switched, bundleHash: await page.getAttribute('body', 'data-preview-bundle'), errors };
+  const label = await page.locator('#qalat-wip').innerText();
+  const result = { url, buildStamp, label, start, moved, fired, switched, bundleHash: await page.getAttribute('body', 'data-preview-bundle'), errors };
   await writeFile('artifacts/qalat-preview/evidence.json', JSON.stringify(result, null, 2) + '\n');
   console.log(`PASS Qalat WIP: actual ${start.boxes} boxes, normal movement, firing, first person, order wheel, five bots and soldier switching; ${switched.calls} draws`);
 } finally { await browser?.close(); vite?.kill('SIGTERM'); }

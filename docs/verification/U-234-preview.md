@@ -59,11 +59,15 @@ pnpm check:packs
 SANDLINE_EXPECT_SHA=<merged-main-sha> pnpm exec tsx packages/tools/src/check-qalat-preview.ts https://sandline.joshualray21.workers.dev/
 ```
 
-The browser probe uses standard keyboard/buttons and the existing perf probe’s
-relative MouseEvent path for headless pointer-lock motion. It asserts the intended world/revision/solids, five bots, normal
+The browser probe uses the existing perf probe’s explicit headless pointer-lock
+fixture and standard keyboard/MouseEvent handlers. It does not test native browser
+fullscreen/capture or supply an owner verdict. It asserts the intended world/revision/solids, five bots, normal
 movement, authoritative ammo expenditure, first-person aiming, a visible order
 wheel, accepted floor-aware hold order, soldier switching and the draw-call ceiling.
-It saves `artifacts/qalat-preview/evidence.json` and `playing.png`; streaming CI
+After the input assertions it freezes the last real frame through the explicit
+`review-map` capture hook and reads the actual WebGL canvas before its buffer is
+discarded. It saves the UI label/state in `artifacts/qalat-preview/evidence.json`
+and the rendered canvas in `playing.png`; streaming CI
 uploads them as `qalat-playable-wip`. The optional expected SHA checks the actual
 published build stamp. These are engineering checks, not owner feedback or
 U-233's full activation matrix.

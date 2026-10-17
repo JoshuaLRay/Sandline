@@ -494,6 +494,9 @@ const query = new URLSearchParams(location.search);
 /** U-095: explicit QA-only camera for reproducible screenshots of the authored map. */
 type MapReviewView = { position: [number, number, number]; target: [number, number, number] };
 let mapReviewView: MapReviewView | null = null;
+let previewCaptureRequested = false;
+let previewCaptureReady = false;
+let previewCaptureImage: string | null = null;
 if (query.has('review-map')) {
   (window as unknown as { __sandlineMapReview: (view: MapReviewView) => unknown }).__sandlineMapReview = (view) => {
     mapReviewView = view;
@@ -2086,8 +2089,10 @@ if (qalatPreview) {
       slot: live?.net.slot, roster: live?.net.roster, magazine: live?.net.magazine,
       orders: live?.net.orders, stances: live?.net.stances,
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
-      firstPerson: input.firstPerson, calls: renderer.info.render.calls,
+      firstPerson: input.firstPerson, calls: renderer.info.render.calls, frozen: previewCaptureReady,
     });
+    (window as unknown as { __sandlineQalatPreviewFreeze: () => void }).__sandlineQalatPreviewFreeze = () => { previewCaptureRequested = true; };
+    (window as unknown as { __sandlineQalatPreviewFrame: () => string | null }).__sandlineQalatPreviewFrame = () => previewCaptureImage;
   }
 } else {
   const previewLink = document.createElement('a');
@@ -3431,7 +3436,12 @@ function frame(): void {
   orderMarkerOverlay.render(camera, innerWidth, innerHeight);
   viewModel.render(renderer);
   scopeOverlay.set(viewModel.scoped);
-  requestAnimationFrame(frame);
+  // Explicit QA capture only: settle the last real frame before a software-GPU screenshot.
+  if (previewCaptureRequested) {
+    previewCaptureImage = renderer.domElement.toDataURL('image/png');
+    previewCaptureReady = true;
+  }
+  else requestAnimationFrame(frame);
 }
 player.visible = false;
 if (!qalatPreview) { lobby.show(); menu.showMain(); }
