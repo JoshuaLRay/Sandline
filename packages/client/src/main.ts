@@ -292,6 +292,8 @@ const invisible = new THREE.MeshBasicMaterial({ visible: false });
  * The world being drawn, collided with and shot at (T-3.02). The range until
  * a host names another in `JoinAck`; the lobby is drawn over it.
  */
+const qalatPreview = new URLSearchParams(location.search).has('preview-qalat')
+  ? await import('./preview/qalatPreview.ts').then((m) => m.loadQalatPreview()) : null;
 let activeWorld: World = requireWorld(DEFAULT_WORLD_ID);
 
 /** Static world plus the live session's replicated blocker boxes. */
@@ -318,6 +320,19 @@ function buildScenery(world: World): void {
       if (at >= 0) list.splice(at, 1);
     }
   }
+  if (qalatPreview && world === qalatPreview.world) {
+    levelPieces.clear();
+    ground.visible = false;
+    scene.background = new THREE.Color(0x9baab1);
+    scene.fog = new THREE.Fog(0x9baab1, 120, 800);
+    const mesh = qalatPreview.mesh;
+    scene.add(mesh);
+    worldMeshes.push(mesh);
+    shootable.push(mesh);
+    cameraScenery.push(mesh);
+    return;
+  }
+  ground.visible = true;
   for (const box of world.boxes) {
     const c = boxCentre(box);
     // A kit piece's box (T-4.10) collides and takes rays but is not drawn: the piece's mesh is (`levelPieces`).
@@ -515,6 +530,7 @@ function loadDeferredAssets(): void {
 /** Fetch one level's pack and finish its shared character presentation before play. */
 async function prepareLevelAssets(worldId: string): Promise<void> {
   await initialPresentationReady;
+  if (qalatPreview && worldId === qalatPreview.world.id) return;
   const key = `level:${worldId}`;
   if (!packLoader.isLoaded(key)) loadScreen.show(`Loading ${worldId}`);
   await packLoader.loadLevel(worldId, showPackProgress);
@@ -1360,31 +1376,31 @@ const qaSuppressWanted = new URLSearchParams(location.search).has('suppress');
  * With `&squad` the bots fight beside you.
  */
 const qaMissionWanted = new URLSearchParams(location.search).has('mission');
-const qaWorld: World =
+const qaWorld: World = qalatPreview?.world ??
   getWorld(new URLSearchParams(location.search).get('world') ?? '') ??
   requireWorld(qaMissionWanted ? 'mission-01' : new URLSearchParams(location.search).has('kit') ? 'kit-gallery' : DEFAULT_WORLD_ID);
 // The practice level is already known: overlap its pack with initial assets/nav.
 // prepareLevelAssets still owns blocking progress/readiness and retries a failed preload.
 if (qaMissionWanted) void packLoader.loadLevel(qaWorld.id).catch(() => undefined);
-const qaEncounter = qaMissionWanted ? encounterFor(qaWorld.id) : undefined;
+const qaEncounter = !qalatPreview && qaMissionWanted ? encounterFor(qaWorld.id) : undefined;
 /**
  * `?squad` (T-3.29): the in-page bots run the committed `friendly` tree, with
  * the range's cover — they follow in formation, fight, and carry out what the
  * order wheel tells them. Needs the navmesh too; combine with `?enemies` for
  * something to attack.
  */
-const qaSquadWanted = new URLSearchParams(location.search).has('squad');
+const qaSquadWanted = !!qalatPreview || new URLSearchParams(location.search).has('squad');
 const qaSquad: Promise<LocalServerOptions> = qaSquadWanted
   ? Promise.all([import('@sandline/server/brain'), import('@sandline/server/nav/baked')]).then(
       ([brain, baked]) => ({
         brainTree: buildTree('friendly', brain.createBrainRegistry()),
-        cover: baked.bakedCoverFor(qaWorld.id),
+        cover: qalatPreview?.cover ?? baked.bakedCoverFor(qaWorld.id),
       }),
     )
   : qaEncounter
     ? import('@sandline/server/nav/baked').then((baked) => ({ cover: baked.bakedCoverFor(qaWorld.id) }))
     : Promise.resolve({});
-const qaNavMesh: Promise<NavMesh | null> = qaEnemiesWanted || qaSquadWanted || qaEncounter
+const qaNavMesh: Promise<NavMesh | null> = qalatPreview ? Promise.resolve(qalatPreview.nav) : qaEnemiesWanted || qaSquadWanted || qaEncounter
   ? navReady.then(() => import('@sandline/server/nav/baked')).then((baked) => baked.loadWorldNavMesh(qaWorld.id))
   : Promise.resolve(null);
 
@@ -1393,7 +1409,8 @@ function chooseSession(choice: LobbyChoice, freshIdentity = false): void {
   playablePending = null;
   if (choice.kind === 'local') {
     void Promise.all([prepareLevelAssets(qaWorld.id), navReady, qaNavMesh, qaSquad])
-      .then(([, , navMesh, squad]) => startSession(choice, navMesh, squad));
+      .then(([, , navMesh, squad]) => startSession(choice, navMesh, squad))
+      .catch((error: unknown) => { loadScreen.hide(); alert(`Preview/session could not start: ${String(error)}`); });
     return;
   }
   // Hosting names the level before Join; joining an existing room learns it from JoinAck.
@@ -1418,7 +1435,8 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
   // T-4.31: the code rides the socket URL too, so the host's allocator can send the upgrade to the machine that holds it.
   const remote = choice.kind === 'remote' ? new RemoteServer(choice.host, {}, choice.room) : null;
   const server: SessionSource = local ?? (remote as RemoteServer);
-  const net = new NetClient(server.transport, choice.kind === 'remote' ? choice.name : 'qa', config);
+  const net = new NetClient(server.transport, choice.kind === 'remote' ? choice.name : 'qa', config,
+    choice.kind === 'local' && qalatPreview ? (id) => id === qaWorld.id ? qaWorld : undefined : getWorld);
   net.onScriptMessage = (text) => {
     scriptNotice = text;
     scriptNoticeUntil = performance.now() + 5000;
@@ -1580,7 +1598,7 @@ function startSession(choice: LobbyChoice, qaNav: NavMesh | null = null, squad: 
    * standing in for since T-1.23, and it would now be taking one of the six
    * slots away from a human to do it.
    */
-  const sparringLink = local?.connect(peerLink) ?? null;
+  const sparringLink = qalatPreview ? null : local?.connect(peerLink) ?? null;
   const sparring = sparringLink ? new SparringPartner(sparringLink.transport) : null;
 
   const networkPanel = createNetworkPanel(
@@ -2054,6 +2072,18 @@ panels.append(
 document.body.appendChild(panels);
 // T-5.07: the demo face — the page is the game unless ?qa (or H) asks for the QA layer.
 setQaShown(qaFromSearch(location.search));
+
+if (qalatPreview) {
+  menu.hide();
+  lobby.hide();
+  qalatPreview.mount(() => chooseSession({ kind: 'local' }));
+} else {
+  const previewLink = document.createElement('a');
+  previewLink.href = '?preview-qalat';
+  previewLink.textContent = 'Play Qalat WIP preview (unfinished)';
+  previewLink.style.cssText = 'position:fixed;bottom:8px;left:12px;z-index:10000;color:#f3d18b;background:#18232b;padding:8px';
+  document.body.append(previewLink);
+}
 
 /* -- Loop ------------------------------------------------------------------ */
 

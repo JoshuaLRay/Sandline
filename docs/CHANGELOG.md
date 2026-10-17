@@ -530,3 +530,5 @@ Format: `T-<id> — <what changed>`
 
 - U-227 — Package the complete unregistered replacement Qalat level, six starts and holdings with hash-bound render transport, tiled standing nav/cover and an explicit export seam; production activation remains U-233 ([#372](https://github.com/JoshuaLRay/Sandline/pull/372)).
 - MIGRATION-P3 — Replace GitHub Pages delivery with opt-in, four-gate Cloudflare Worker release; reroute Fly-triggered rebuilds and update private-cutover documentation (Worker deployment requires account activation).
+
+- U-234 — Add isolated playable Qalat WIP access with normal controls; keep production activation and owner acceptance pending.

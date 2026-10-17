@@ -24,3 +24,5 @@ artifacts/qalat-replacement/surface.json
 artifacts/qalat-replacement/nav.json
 artifacts/qalat-replacement/mission.json
 artifacts/qalat-replacement/*.png
+
+packages/client/public/wip-qalat/

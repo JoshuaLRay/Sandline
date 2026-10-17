@@ -71,7 +71,11 @@ Decisions with defaults are in the rows; the owner can reply "agree".
 Owner explicitly approved U-148's delivered phone commander supply UI as an acceptance **disposition**, not evidence of a new physical-phone test. The completed U-148, U-145 and U-112 supply-system work moved to the DONE archive; actual five-cache placement and integrated mission testing remain U-117/U-119. The U-144/U-113 production prisoner/restart blocker is decomposed into U-225 (replacement-only holding authoring) and U-226 (isolated real Session rescue/restore tests). U-144/U-113 close **with**, not before, U-117's actual production activation. The owner has not authorized implementing U-117 in this work item.
 
 Owner requested the U-117 planning split on 2026-10-17. U-225–U-227 are DONE;
-U-228 is next. U-227–U-232 prepare and prove an unregistered replacement, then U-233 alone
+Owner clarification (2026-10-17): prioritize playable access to the current WIP before
+encounters, objectives, polish or final verification. U-234 provides isolated WIP
+access from U-227; U-228–U-232 gate full production activation only. Automated
+checks cannot replace owner feedback; U-119 is final acceptance, not first playtest.
+U-228 is next after this owner-directed preview. U-227–U-232 prepare and prove an unregistered replacement, then U-233 alone
 switches all production data and reruns current-map acceptance atomically. Only
 that proof closes U-144/U-136/U-113 and U-117. U-118 follows completed U-117;
 prepare the handoff after activation. U-119 remains the separate owner playtest.
@@ -88,6 +92,7 @@ The split is not implementation/activation authorization or an inferred verdict.
 | [U-139](docs/backlog/U-139.md) | Construct the road fights and tank ingress with swept clearance | Map implementation | P1 | REVIEW | Aggregate: U-149–U-152 and U-162 DONE (first-X5 forecourt criterion met); only the batched human road look/play verdict remains | [#335](https://github.com/JoshuaLRay/Sandline/pull/335) |
 | [U-140](docs/backlog/U-140.md) | Construct the continuous ridge stairs, shelves and service bridge | Map implementation | P1 | REVIEW | Aggregate: U-163/U-164/U-165 DONE; only the batched owner ridge look/play verdict remains | [#338](https://github.com/JoshuaLRay/Sandline/pull/338) |
 | [U-117](docs/backlog/U-117.md) | Integrate redesigned Mission 1 combat, supplies and objectives | Map implementation | P1 | BLOCKED | Aggregate: U-227–U-233; engineering closure after actual atomic activation proof | — |
+| [U-234](docs/backlog/U-234.md) | Publish playable current Qalat WIP with normal controls | Map implementation | P1 | IN_PROGRESS | U-227 DONE; owner-directed preview before production gates | task/U-234-playable-qalat-preview |
 | [U-228](docs/backlog/U-228.md) | Author replacement guards, patrols, emplacement and staged reserves | Map implementation | P1 | READY | U-227 DONE | — |
 | [U-229](docs/backlog/U-229.md) | Author and validate all five replacement supply caches | Map implementation | P1 | READY | U-227 DONE | — |
 | [U-230](docs/backlog/U-230.md) | Author isolated replacement objectives, timers and mission texts | Map implementation | P1 | BLOCKED | U-228, U-229 | — |
