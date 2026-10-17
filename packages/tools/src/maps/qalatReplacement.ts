@@ -17,14 +17,18 @@ export function replacementInputs() {
   const decorations = outpostDecorations();
   return { level, world, mission, pow, decorations };
 }
+const yieldPhase = () => new Promise<void>((resolve) => setImmediate(resolve));
 export async function buildReplacementBundle() {
   const { level, world, mission, pow, decorations } = replacementInputs();
   const levelHash = digest(level), renderHash = digest([...level.boxes, ...decorations]);
+  await yieldPhase();
   const rendered = insertionSurface([...level.boxes, ...decorations]);
+  await yieldPhase();
   // Lossless transport only; the exact union/ceiling faces remain the render input.
   const surface = { levelHash, renderHash, encoding: 'gzip-json-v1', contentHash: digest(rendered),
     triangles: rendered.indices.length / 3,
     data: gzipSync(JSON.stringify(rendered), { level: 9 }).toString('base64') };
+  await yieldPhase();
   const nav = await exportWorldBake(world, QALAT_TILED_PLAN);
   const hashes = { level: levelHash, render: renderHash, surface: digest(surface), mission: digest(mission),
     navInput: nav.hash, nav: digest(nav), cover: digest(nav.cover),
