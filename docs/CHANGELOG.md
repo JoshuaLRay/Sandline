@@ -521,3 +521,5 @@ Format: `T-<id> — <what changed>`
 - U-145 — Close commander-controlled mobile supply use after U-146/U-147/U-148 engineering and U-148 owner signoff (approval documentation).
 - U-112 — Close the finite supply-cache system aggregate after owner acceptance; five replacement-mission cache placements remain U-117 (approval documentation).
 - Qalat U-144/U-113 — Scope U-225 isolated holdings and U-226 real isolated rescue/restart proofs before atomic U-117 production activation; no gameplay changes or save acceptance claimed (planning documentation).
+
+- U-225 — Author and validate isolated replacement Qalat holdings for the original POW plus up to five carried squad captives; prove deterministic placement and physical rescue access without changing the active map, registry or saves ([#368](https://github.com/JoshuaLRay/Sandline/pull/368)).

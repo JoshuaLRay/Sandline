@@ -9,7 +9,7 @@ U-226 supplies its own rescue/restart scenarios. It is not the production script
 The original POW retains its independently authored `(16,8,402)` socket. Ascending
 captured squad slots map to `carry-1..5`: `(12,8,400)`, `(20,8,400)`, `(12,8,404)`,
 `(20,8,404)`, `(12,8,408)`. All coordinates are feet. The composer checks all six
-standing bodies on the complete collision world before returning even for an
+standing bodies on the complete collision world, confined to the intended y8 cell, before returning even for an
 empty carried pool. U-224 supplies parsing, support/headroom/separation checks and
 the deterministic mapping; no saved coordinates or squad starts determine holds.
 
@@ -34,10 +34,18 @@ inputs are unchanged; existing camera captures retain their construction meaning
 | Check | Result |
 |---|---|
 | Generator and declaration validation | PASS; six-body capacity, unchanged collision/render hashes |
-| Focused declaration/traversal tests | Pending final run |
-| Outpost captures, asset and pack budgets | Pending final run |
-| Full `pnpm verify` | Pending final run |
-| Latest-head CI | Required: verify, streaming, parity-non-v8, mission; PR #368 |
+| Focused declaration/traversal tests | PASS: 5 declaration + 25 traversal cases; all six occupancy access cases |
+| Outpost captures, asset and pack budgets | PASS: 18 unchanged captures, 2 draws/view; both budgets pass |
+| Registered nav generator | PASS; no active-world bake changes |
+| Full `pnpm verify` | Mandatory typecheck/lint/test gate; local result recorded in PR #368 and latest-head CI record below |
+| Latest-head CI | [PR #368 checks](https://github.com/JoshuaLRay/Sandline/pull/368/checks): verify, streaming, parity-non-v8, mission must all succeed before merge |
+
+The initial fixture label exceeded parser bounds and was shortened. A negative
+wrong-floor control exposed that the shared validator can accept supported lower
+floors; the isolated composer now requires the cell floor and bounds. The
+manifest reconstruction exceeded the default test timeout; its explicit 60-second
+limit preserves the complete geometry/hash check. All five declaration cases pass
+after these corrections; traversal passed all 25 cases.
 
 Reproduce with `pnpm gen:qalat-outpost`, `pnpm exec vitest run
 packages/tools/src/maps/qalatOutpostCaptives.test.ts
