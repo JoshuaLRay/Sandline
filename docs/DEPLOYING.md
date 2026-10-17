@@ -103,18 +103,20 @@ pnpm --filter @sandline/client build
 # -> packages/client/dist/ - drag onto any static host
 ```
 
-`.github/workflows/pages.yml` deploys this on every push to `main`.
-
-**It needs turning on once:** repo -> Settings -> Pages -> Source ->
-**GitHub Actions**. Not "Deploy from a branch" - that is the Jekyll path, and it
-makes the Actions deploy fail with a misleading *"Ensure GitHub Pages has been
-enabled"* 404 even though Pages is, technically, enabled.
-
-Published at: **https://joshualray.github.io/Sandline/**
+The published site is **https://sandline.joshualray21.workers.dev/**,
+a Cloudflare Worker serving `packages/client/dist` as static assets.
+The repository's `ci.yml` has an **opt-in, CI-gated** Worker publisher;
+see [CLOUDFLARE-SETUP.md](CLOUDFLARE-SETUP.md) for iPhone configuration,
+required GitHub secrets, build-token permissions and release verification.
+After enabling GitHub Actions as the publisher, disable Cloudflare's separate
+Git-connected Workers Builds to prevent unverified code from deploying.
+The former GitHub Pages workflow was retired in the migration cutover PR.
+`host.yml` dispatches the fully gated CI run after a successful Fly host deploy.
+The multiplayer endpoint remains `wss://sandline-host.fly.dev`.
 
 ### Voice contributions from friends (U-036)
 
-The published site's **Contribute a voice recording** link opens `?record-voice`. The browser needs HTTPS for microphone permission. The Fly host stores uploads on its persistent `/data` volume and accepts the invitation code **JRay** in any capitalization. The directory and exact site origin are configured in `fly.toml`; deployments to another site must update `VOICE_SITE_ORIGIN`. An older `VOICE_INVITE_KEY` secret is ignored. The code is short and public, so the existing request and storage limits remain important. The intake verifies consent and keeps uploaded source audio private. Avoid enabling it on several machines with separate volumes: the owner must know which host holds the submissions. The current single host is the intended intake endpoint.
+The public Cloudflare site's **Contribute a voice recording** link opens `?record-voice`. The browser needs HTTPS for microphone permission. The Fly host stores uploads on its persistent `/data` volume and accepts the invitation code **JRay** in any capitalization. The primary origin and any explicitly approved temporary additional origins are configured on Fly (`VOICE_SITE_ORIGIN` and `VOICE_EXTRA_ORIGINS`). The Worker address must be allowed exactly before voice submission is considered verified. An older `VOICE_INVITE_KEY` secret is ignored. The code is short and public, so the existing request and storage limits remain important. The intake verifies consent and keeps uploaded source audio private. Avoid enabling it on several machines with separate volumes: the owner must know which host holds the submissions. The current single host is the intended intake endpoint.
 
 Each **Submit** saves a separate line take, immediately marks the contribution available for review/import, and requires no Upload or Finish step. The contributor's browser retains its submission credential to restore saved counts and fetch only that contribution's audio. The invitation alone cannot list or read audio, and names never authorize access. Existing section submissions remain supported. Inspect `submission.json` and listen to every clip, then copy that submission securely into a local private directory and run `pnpm import:voice <private-intake-directory> <submission-id>`. The importer preserves old section files and names new files `<line>-<style>-take-<id>.<format>`; the processor accepts any subset of explicitly named lines without assigning them by section position. Review the imported audio, run `pnpm gen:voice`, then use the sound board to decide whether to release the rendered files. Remove unprocessed submissions on request. To stop accepting new recordings, remove either intake setting and redeploy.
 
@@ -122,7 +124,7 @@ On the first line submission (or legacy section completion), the host dispatches
 
 #### Owner playback in the browser (U-128)
 
-Open the contribution page at `https://joshualray.github.io/Sandline/?record-voice` and choose **Owner: review saved recordings**. It opens `https://sandline-host.fly.dev/voice-review` on the intake host so login and audio playback use first-party cookies. Sign in with the **JoshuaLRay** GitHub account. Submissions show names, consent dates, saved status, line prompts and audio players; incomplete legacy submissions are visible too. Use **Refresh recordings** after a new submission and **Sign out** when finished. A **Download recording** link is available if the browser does not support a clip's original format. No clip is imported or published by listening.
+Open the contribution page at `https://sandline.joshualray21.workers.dev/?record-voice` and choose **Owner: review saved recordings**. It opens `https://sandline-host.fly.dev/voice-review` on the intake host so login and audio playback use first-party cookies. Sign in with the **JoshuaLRay** GitHub account. Submissions show names, consent dates, saved status, line prompts and audio players; incomplete legacy submissions are visible too. Use **Refresh recordings** after a new submission and **Sign out** when finished. A **Download recording** link is available if the browser does not support a clip's original format. No clip is imported or published by listening.
 
 To enable this page, register a GitHub **OAuth App** at https://github.com/settings/developers with:
 
@@ -137,7 +139,7 @@ Set these three Fly runtime settings together (the client secret belongs in Fly 
 | `VOICE_GITHUB_CLIENT_ID` | The OAuth App's client ID |
 | `VOICE_GITHUB_CLIENT_SECRET` | The OAuth App's client secret |
 
-Use Fly's secret-management UI or `fly secrets set --app sandline-host` from an authorized terminal. Existing intake settings and the single persistent volume are required. The notification PAT is separate from this OAuth App. With all three review settings absent, the review URL displays a setup message and uploads/gameplay keep working. Partial configuration fails startup explicitly rather than enabling an incomplete login flow. Owner sessions expire in eight hours, on logout or on host restart; sign in again after a deploy/cold restart. GitHub tokens and private source files are never sent to GitHub Pages.
+Use Fly's secret-management UI or `fly secrets set --app sandline-host` from an authorized terminal. Existing intake settings and the single persistent volume are required. The notification PAT is separate from this OAuth App. With all three review settings absent, the review URL displays a setup message and uploads/gameplay keep working. Partial configuration fails startup explicitly rather than enabling an incomplete login flow. Owner sessions expire in eight hours, on logout or on host restart; sign in again after a deploy/cold restart. GitHub tokens and private source files are never sent to the public Cloudflare client.
 
 Deployment acceptance: log in as JoshuaLRay, see the current volume's submissions, play and seek a real recording on Chrome and Safari, and check downloads. Verify a different GitHub account is denied and a signed-out browser cannot retrieve a copied clip URL. This live OAuth/microphone/listening check is pending until the credentials and release are configured. Automated local review uses a mock OAuth provider and synthetic playable clips, not contributor voices. Reproduce those checks with `corepack pnpm exec tsx packages/tools/src/check-voice-review.ts` after installing Chromium/WebKit and FFmpeg/OpenSSL; captures go to `artifacts/voice-review/`.
 
@@ -187,7 +189,7 @@ nobody is connected.
 | `packages/server/Dockerfile` | the host as a container, built from the repo root; plain `ws://` on `PORT`, TLS expected outside |
 | `fly.toml` | one Fly.io machine: TLS at the edge, auto-stop when idle, `/healthz` checked every 30 s |
 | `.github/workflows/host.yml` | `flyctl deploy` on demand and on pushes to `main` that touch the host; skipped when no token is set |
-| `.github/workflows/pages.yml` | bakes `SANDLINE_HOST` into the published client as the lobby's default |
+| `.github/workflows/ci.yml` (`deploy-worker`) | after four CI gates, opt-in publishing of the static Worker client with the Fly host in `SANDLINE_HOST` |
 
 Fly is the platform because it terminates TLS for free on `*.fly.dev`, proxies
 WebSockets without configuration, stops an idle machine on its own, and has a
