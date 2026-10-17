@@ -70,20 +70,28 @@ bundle and all 22 PNGs as `qalat-replacement-review`. Review locally at
 Captures and automation do not supply an owner quality verdict or prove target
 hardware frame rate. This is construction packaging, not a full combat mission.
 
-Production level/mission/encounters/scripts, registered nav/cover, campaign/lobby,
-save handling and deployment configuration remain unchanged. U-228–U-232 prepare
+Relative to synchronized main `1125649c`, production level/mission/encounters/scripts,
+registered nav/cover, campaign/lobby, save handling and deployment configuration
+remain unchanged. The upstream migration in [#373](https://github.com/JoshuaLRay/Sandline/pull/373) is preserved. U-228–U-232 prepare
 encounters, caches, flow and rehearsals; U-233 activates atomically and repeats
 actual registered acceptance. U-118 presentation and U-119 owner playtest follow.
 
 ## Deployment observation — 2026-10-17
 
-Before this merge, GitHub Pages reports a successful deployment of main
-`de5d22cd759a5b57401d0bf8cee6c4afaf0ffb4e` and serves HTTP 200 at
-<https://joshualray.github.io/Sandline/>. Fly's
-<https://sandline-host.fly.dev/healthz> reports healthy, protocol 74.
-Main's `deploy-client` job skips Cloudflare upload because deployment is not
-configured; its successful conclusion does not establish a Cloudflare release.
-The U-227 Workers build also reports failure. The previously reported Cloudflare
-authentication failure is not resolved or converted into deployment evidence.
-These observations verify the existing deployment's availability, without
-activating the replacement or inferring an owner verdict.
+Main advanced to `1125649c1bc6880f17a39b5c62f0b44f482bf0f1` via migration
+[#373](https://github.com/JoshuaLRay/Sandline/pull/373) during U-227 verification.
+Synchronization preserves its retired Pages workflow, gated Worker publisher and
+workflow-contract tests; U-227 adds only the candidate generation/capture step.
+The four upstream cutover-contract tests pass locally. No accepted construction,
+render/nav/cover input, holding, start or candidate receipt changed during sync.
+All four CI jobs must run again on the synchronized U-227 head before merge.
+
+At 20:30 UTC, <https://sandline.joshualray21.workers.dev/> returns HTTP 200 and
+boots in Chromium as **SANDLINE 1125649**, built 20:27 UTC, with no JavaScript
+errors. <https://sandline-host.fly.dev/healthz> reports healthy, protocol 74.
+This verifies the existing live main build and supersedes the earlier Pages-only
+availability observation. U-227's earlier Worker preview build failed; neither
+that failed preview nor green test jobs prove a new production release.
+After merge, check the actual Worker build stamp against current main; a skipped
+publisher is not deployment success. These are automated availability/build
+observations, without replacement activation or an inferred owner verdict.
