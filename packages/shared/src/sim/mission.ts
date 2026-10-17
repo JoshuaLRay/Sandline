@@ -22,6 +22,7 @@ import { parseAreaHeightBounds } from './areas.ts';
 import { COMMITTED, type CampaignEntry } from './campaignRegistry.ts';
 import type { AreaRef, Encounter } from './encounters.ts';
 import type { World } from './world.ts';
+import { parsePrisonerHoldings, type PrisonerHolding } from './prisonerHoldings.ts';
 
 export const OBJECTIVE_TYPES = ['clear-and-hold', 'reach', 'destroy', 'defend', 'survive', 'upload', 'rescue'] as const;
 export type ObjectiveType = (typeof OBJECTIVE_TYPES)[number];
@@ -113,6 +114,8 @@ export interface MissionDef {
   respawn: boolean;
   /** Optional mission-wide failure rules; a death or all six down always fails. */
   failure?: MissionFailureDef;
+  /** Carried squad prisoners, in deterministic placement order; excludes the encounter POW. */
+  prisonerHoldings?: readonly PrisonerHolding[];
   objectives: readonly ObjectiveDef[];
 }
 
@@ -317,7 +320,7 @@ function parseObjectiveBody(where: string, raw: unknown): ObjectiveDef {
 
 /** Validate a mission file. Its areas and groups are names until `checkMission` holds them to an encounter and a world. */
 export function parseMission(raw: unknown): MissionDef {
-  const o = obj('mission', raw, ['id', 'world', 'respawn', 'objectives'], ['failure']);
+  const o = obj('mission', raw, ['id', 'world', 'respawn', 'objectives'], ['failure', 'prisonerHoldings']);
   const id = typeof o['id'] === 'string' ? o['id'] : '';
   if (!/^[a-z][a-z0-9-]{0,31}$/.test(id)) throw new MissionDataError(`mission.id must be a lowercase id, got ${JSON.stringify(o['id'])}`);
   const where = `mission '${id}'`;
@@ -347,6 +350,7 @@ export function parseMission(raw: unknown): MissionDef {
     world: o['world'],
     respawn: o['respawn'],
     ...(failure ? { failure } : {}),
+    ...(o['prisonerHoldings'] === undefined ? {} : { prisonerHoldings: parsePrisonerHoldings(o['prisonerHoldings']) }),
     objectives,
   };
 }

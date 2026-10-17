@@ -158,6 +158,9 @@ import {
   type WorldBox,
   type GroundArea,
   checkMission,
+  checkPrisonerHoldings,
+  placePrisoners,
+  type PrisonerHolding,
   missionFor,
   scriptFor,
   resolveArea,
@@ -1130,6 +1133,7 @@ export class Session {
   private readonly localPlayers = new Map<number, string>();
   private readonly campaignSave: ((state: CampaignState) => void) | null;
   private readonly missionId: string | null;
+  private readonly prisonerHoldings: readonly PrisonerHolding[];
   /** T-3.35: milliseconds spent in the AI's share of every tick so far, when `profileAi` is on; 0 otherwise. */
   aiMs = 0;
 
@@ -1154,6 +1158,8 @@ export class Session {
     this.directorValue = null;
     this.spawnerValue = null;
     const missionDef = options.mission ?? missionFor(this.world.id);
+    this.prisonerHoldings = missionDef?.prisonerHoldings ?? [];
+    checkPrisonerHoldings(this.prisonerHoldings, this.world, this.moveConfig);
     this.missionId = missionDef?.id ?? null;
     this.campaignSave = options.onCampaignSave ?? null;
     this.campaignCompletedMissions = new Set(options.campaign?.completedMissions ?? []);
@@ -1385,6 +1391,11 @@ export class Session {
       this.runKind === 'replay'
         ? this.replayPoolAtLoad.map((p) => ({ slot: p.slot, at: { ...p.at } }))
         : this.campaignSoldiers.flatMap((soldier, slot) => (soldier.captured === true && soldier.prisoner ? [{ slot, at: { ...soldier.prisoner } }] : []));
+    if (!honoured && this.prisonerHoldings.length > 0) {
+      const placed = placePrisoners(this.capturedAtStart.map((p) => p.slot), this.prisonerHoldings);
+      if (!placed) throw new Error(`mission '${this.missionId}': insufficient prisoner holdings`);
+      this.capturedAtStart = placed;
+    }
     if (!this.incompatibleCampaign) this.applyCaptured(this.capturedAtStart);
     else {
       // Keep roster membership without giving a prisoner any saved or invented holding coordinates.
@@ -2087,7 +2098,8 @@ export class Session {
     return { kind: 'RestoreGate', choice: this.incompatibleCampaign && this.missionId ? {
       mission: this.missionId,
       host: Math.max(0, this.hostSlot()),
-      restart: this.capturedAtStart.length > 0 ? 'prisoner-placement' : this.missionStartState ? 'original' : 'legacy',
+      restart: placePrisoners(this.capturedAtStart.map((p) => p.slot), this.prisonerHoldings) === null
+        ? 'prisoner-placement' : this.missionStartState ? 'original' : 'legacy',
     } : null };
   }
 
@@ -2100,7 +2112,11 @@ export class Session {
   }
 
   private restartIncompatibleMission(): void {
-    if (!this.incompatibleCampaign || this.capturedAtStart.length > 0) return;
+    if (!this.incompatibleCampaign) return;
+    const placed = placePrisoners(this.capturedAtStart.map((p) => p.slot), this.prisonerHoldings);
+    if (!placed) return;
+    this.capturedAtStart = placed;
+    if (this.missionStartState) this.missionStartState.captured = structuredClone(placed);
     this.incompatibleCampaign = null;
     this.roomStarted = !this.roomLobbyEnabled;
     this.restartMission();
@@ -2110,7 +2126,7 @@ export class Session {
       this.missionCheckpointState = {
         mapRevision: this.world.mapRevision ?? 1,
         spawns: this.slots.map((slot) => ({ x: slot.state.x, y: slot.state.y, z: slot.state.z })),
-        completedGroups: [], event: null, captured: [],
+        completedGroups: [], event: null, captured: this.capturedList(),
       };
       this.persistCampaign();
     } else this.captureMissionCheckpoint();
