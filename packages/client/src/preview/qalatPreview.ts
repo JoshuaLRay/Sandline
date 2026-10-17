@@ -1,8 +1,10 @@
 /** U-234: explicit, disposable WIP access. Never register this world or open a save. */
 import * as THREE from 'three';
-import { loadLevel } from '@sandline/shared';
+import { loadLevel, type World } from '@sandline/shared';
 import { initNav, NavMesh } from '@sandline/server/nav';
-import { bakedBytes, type BakedNav } from '../../../server/src/ai/nav/baked/types.ts';
+import type { bakedNavFor } from '@sandline/server/nav/baked';
+import type { LocalServerOptions } from '../net/LocalServer.ts';
+type BakedNav = NonNullable<ReturnType<typeof bakedNavFor>>;
 
 type Surface = { levelHash: string; renderHash: string; encoding: string; contentHash: string; data: string };
 type Manifest = { world: string; mapRevision: number; registered: boolean; bundleHash: string;
@@ -11,7 +13,15 @@ async function digest(value: unknown): Promise<string> {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(value)));
   return Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, '0')).join('');
 }
-export async function loadQalatPreview() {
+interface QalatPreview {
+  world: World;
+  nav: NavMesh;
+  cover: NonNullable<LocalServerOptions['cover']>;
+  mesh: THREE.Mesh;
+  manifest: Manifest;
+  mount(start: () => void): void;
+}
+export async function loadQalatPreview(): Promise<QalatPreview> {
   const notice = document.createElement('p');
   notice.textContent = 'Loading Qalat WIP construction and navigation…';
   notice.style.cssText = 'position:fixed;inset:20px;z-index:20000;background:#18232b;color:white;padding:20px';
@@ -44,7 +54,7 @@ export async function loadQalatPreview() {
     const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
     mesh.name = 'U-227 actual replacement construction';
     await initNav();
-    const nav = NavMesh.load(bakedBytes(navData), navData.agent.height);
+    const nav = NavMesh.load(Uint8Array.from(atob(navData.base64), (c) => c.charCodeAt(0)), navData.agent.height);
     notice.remove();
     return { world, nav, cover: navData.cover, mesh, manifest,
       mount(start: () => void): void {

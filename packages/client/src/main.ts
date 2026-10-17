@@ -2077,6 +2077,15 @@ if (qalatPreview) {
   menu.hide();
   lobby.hide();
   qalatPreview.mount(() => chooseSession({ kind: 'local' }));
+  if (query.has('review-map')) {
+    (window as unknown as { __sandlineQalatPreview: () => unknown }).__sandlineQalatPreview = () => ({
+      world: live?.net.world?.id, revision: live?.net.world?.mapRevision,
+      boxes: live?.net.worldBoxes.length, position: live?.net.simulated,
+      slot: live?.net.slot, roster: live?.net.roster, magazine: live?.net.magazine,
+      camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+      firstPerson: input.firstPerson, calls: renderer.info.render.calls,
+    });
+  }
 } else {
   const previewLink = document.createElement('a');
   previewLink.href = '?preview-qalat';
