@@ -1,0 +1,2 @@
+Temporary branch-only Cloudflare preview-build toggle smoke test, 2026-10-17.
+This file is not intended for merge or production deployment.
