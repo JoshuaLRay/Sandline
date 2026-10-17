@@ -88,7 +88,7 @@ The split is not implementation/activation authorization or an inferred verdict.
 | [U-139](docs/backlog/U-139.md) | Construct the road fights and tank ingress with swept clearance | Map implementation | P1 | REVIEW | Aggregate: U-149–U-152 and U-162 DONE (first-X5 forecourt criterion met); only the batched human road look/play verdict remains | [#335](https://github.com/JoshuaLRay/Sandline/pull/335) |
 | [U-140](docs/backlog/U-140.md) | Construct the continuous ridge stairs, shelves and service bridge | Map implementation | P1 | REVIEW | Aggregate: U-163/U-164/U-165 DONE; only the batched owner ridge look/play verdict remains | [#338](https://github.com/JoshuaLRay/Sandline/pull/338) |
 | [U-117](docs/backlog/U-117.md) | Integrate redesigned Mission 1 combat, supplies and objectives | Map implementation | P1 | BLOCKED | Aggregate: U-227–U-233; engineering closure after actual atomic activation proof | — |
-| [U-227](docs/backlog/U-227.md) | Package the unregistered replacement level, tiled nav and cover | Map implementation | P1 | READY | U-226 DONE; unregistered preparation only | — |
+| [U-227](docs/backlog/U-227.md) | Package the unregistered replacement level, tiled nav and cover | Map implementation | P1 | IN_PROGRESS | U-226 DONE; unregistered preparation only | `task/U-227-replacement-bundle` |
 | [U-228](docs/backlog/U-228.md) | Author replacement guards, patrols, emplacement and staged reserves | Map implementation | P1 | BLOCKED | U-227 | — |
 | [U-229](docs/backlog/U-229.md) | Author and validate all five replacement supply caches | Map implementation | P1 | BLOCKED | U-227 | — |
 | [U-230](docs/backlog/U-230.md) | Author isolated replacement objectives, timers and mission texts | Map implementation | P1 | BLOCKED | U-228, U-229 | — |
