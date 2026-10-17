@@ -12,10 +12,22 @@ describe('U-226 actual replacement Session rescue and safe return', () => {
   beforeAll(async () => { await initNav(); nav = NavMesh.load(await bakeRoadSupportNav(fixture.world)); }, 240_000);
   afterAll(() => nav?.destroy());
 
-  for (const run of ['campaign', 'replay'] as const) for (const count of [0, 1, 5]) {
-    it(`${run}: independently rescues POW and ${count} squad captives, then returns all seven actors`, async () => {
+  for (const run of ['campaign', 'replay'] as const) for (const count of [0, 1, 5]) for (const restart of [false, true]) {
+    it(`${run}/${restart ? 'changed-map restart' : 'fresh'}: rescues POW and ${count} squad captives and returns seven actors`, async () => {
       const slots = heldSlots(count), mission = rescueMission(slots), input = pool(run, count);
-      const p = play(input, { nav, mission }), host = p.join();
+      let state = input;
+      if (restart) {
+        const previous = play(input, { mission });
+        try { previous.step(2); state = previous.save(); } finally { previous.close(); }
+        state.checkpoint!.mapRevision = 1;
+        for (const captive of state.checkpoint!.missionStart!.captured) captive.at = { x: -60, y: 0, z: 12 };
+      }
+      const p = play(state, { nav, mission }), host = p.join();
+      if (restart) {
+        expect(p.gate(host)).toMatchObject({ restart: 'original' });
+        p.send(host, { kind: 'MissionRestart', full: true });
+        expect(p.gate(host)).toBeNull();
+      }
       const send = (message: Parameters<typeof p.send>[1]) => p.send(host, message);
       const bodies = () => [...p.session.slots.filter((s) => !s.captured), p.pow()];
       let ticks = 0;
@@ -29,6 +41,9 @@ describe('U-226 actual replacement Session rescue and safe return', () => {
             expect(blockedAt(q.x, q.z, DEFAULT_MOVE_CONFIG.radius, q.y, .05, DEFAULT_MOVE_CONFIG.height, world.boxes)).toBe(false);
             expect(supportUnder(q.x, q.z, DEFAULT_MOVE_CONFIG.radius, q.y + .01, world.boxes, 0)).toBeCloseTo(8, 6);
             expect(b.health.current).toBe(b.health.max);
+            for (const captive of p.session.slots.filter((s) => s.captured)) {
+              expect(distance(q, captive.state), 'walked through a held squad captive').toBeGreaterThanOrEqual(2 * DEFAULT_MOVE_CONFIG.radius - 1e-6);
+            }
           }
           if (ticks % 128 === 0) await new Promise<void>((resolve) => setImmediate(resolve));
         }
@@ -82,19 +97,28 @@ describe('U-226 actual replacement Session rescue and safe return', () => {
         for (let i = 0; i < 2400 && bodies().some((b) => b.state.z > 385); i++) await advance();
         expect(bodies().every((b) => b.state.z < 386), 'a rescued actor remained in the cell/antechamber').toBe(true);
         for (const goal of [at(36, 380), at(16, 380)]) {
+          await walk(0, goal);
           send({ kind: 'Order', order: 'move', address: { to: 'all' }, point: goal, target: null });
-          for (let i = 0; i < 2400 && distance(p.pow().state, goal) > 2; i++) await advance();
+          const arrived = () => distance(p.pow().state, goal) <= 2 && bodies().every((b) => goal.x > 28 ? b.state.x >= 28 : b.state.x < 28);
+          for (let i = 0; i < 2400 && !arrived(); i++) await advance();
+          expect(arrived(), 'a rescued actor failed the court/refuge round trip').toBe(true);
           expect(distance(p.pow().state, goal)).toBeLessThanOrEqual(2);
         }
         const saved = p.save();
+        const reloaded = play(saved, { nav, mission });
+        try {
+          reloaded.join(); reloaded.session.retryMission(true);
+          expect(reloaded.captured()).toEqual([]); expect(reloaded.pow().captive).toBe(false);
+          expect(reloaded.session.slots).toHaveLength(6); expect(reloaded.session.enemies).toHaveLength(1);
+        } finally { reloaded.close(); }
         if (run === 'campaign') {
           expect(saved.soldiers.every((s) => !s.captured)).toBe(true);
           expect(saved.replayPrisoners).toEqual(input.replayPrisoners);
         } else {
-          expect(saved.replayPrisoners).toEqual([]);
+          expect(saved.replayPrisoners ?? []).toEqual([]);
           expect(saved.soldiers[4]!.prisoner).toEqual(input.soldiers[4]!.prisoner);
         }
-        console.log(`U-226 ${run} POW+${count}: ${ticks} ticks; rescue/return, no full mission verdict`);
+        console.log(`U-226 ${run}/${restart ? 'restart' : 'fresh'} POW+${count}: ${ticks} ticks; rescue/return, no full mission verdict`);
       } finally { p.close(); }
     }, 180_000);
   }
