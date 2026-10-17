@@ -45,7 +45,8 @@ GitHub Pages reports successful deployment of main `cfc3057c0deab961e568e30b3f55
 and serves HTTP 200 at <https://joshualray.github.io/Sandline/>. The Fly
 `/healthz` endpoint reports healthy, protocol 74. This verifies availability of
 the existing deployment, not replacement mission activation.
-Cloudflare's main Workers build is failed; the initial U-226 PR preview explicitly
-reports rate limiting. No successful Cloudflare replacement preview is verified.
+Cloudflare's main Workers build is failed; U-226 PR previews report rate limiting
+and, subsequently, **Authentication error**. No successful Cloudflare replacement
+preview is verified.
 Keep the U-227–U-232 preparation/proof sequence, U-233 atomic activation, then
 U-118 polish and U-119 owner playtest. No owner verdict is inferred.
