@@ -16,9 +16,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { WORLD_IDS, requireWorld } from '@sandline/shared';
-import { NavMesh, initNav } from '../../server/src/ai/nav/NavMesh.ts';
-import { DEFAULT_NAV_AGENT, bakeWorld, navBakeHash, onMesh } from './nav/bake.ts';
-import { coverCounts, coverPoints } from './nav/cover.ts';
+import { bakedModule, exportWorldBake } from './nav/export.ts';
 
 const dir = new URL('../../server/src/ai/nav/baked/', import.meta.url);
 mkdirSync(dir, { recursive: true });
@@ -30,44 +28,9 @@ const ids = [...WORLD_IDS].sort();
 for (const id of ids) {
   const world = requireWorld(id);
   const t0 = performance.now();
-  const bytes = await bakeWorld(world);
-  const ms = performance.now() - t0;
-  // Cover (T-3.18), checked against the mesh just baked.
-  await initNav();
-  const mesh = NavMesh.load(bytes);
-  const cover = coverPoints(world, DEFAULT_NAV_AGENT, (p) => onMesh(mesh, p, DEFAULT_NAV_AGENT.climb));
-  mesh.destroy();
-  const counts = coverCounts(cover);
-  const lines = Buffer.from(bytes).toString('base64').match(/.{1,100}/g) ?? [];
-  // Widen each bounded chunk before spreading it: large cover arrays otherwise
-  // make TypeScript infer thousands of literal variants and exceed its union limit.
-  const coverLines: string[] = [];
-  for (let offset = 0; offset < cover.length; offset += 256) {
-    const chunk = cover.slice(offset, offset + 256);
-    coverLines.push(`...([${chunk.map((c) => JSON.stringify(c)).join(',\n    ')}] as BakedNav['cover'])`);
-  }
-  const coverSource = cover.length > 1000 ? coverLines.join(',\n    ') : cover.map((c) => JSON.stringify(c)).join(',\n    ');
-  const out = `${HEADER}
-import type { BakedNav } from './types.ts';
-
-/** World '${id}': ${bytes.length} bytes of Detour navmesh. */
-export const BAKED: BakedNav = {
-  world: '${id}',
-  hash: '${navBakeHash(world)}',
-  agent: ${JSON.stringify(DEFAULT_NAV_AGENT)},
-  // An array joined once at load, not a chain of \`+\`: two thousand
-  // concatenations nest too deep for a parser to walk.
-  base64: [
-    ${lines.map((l) => `'${l}'`).join(',\n    ')},
-  ].join(''),
-  // T-3.18: ${counts.total} cover points, ${counts.low} low and ${counts.high} high.
-  cover: [
-    ${coverSource},
-  ],
-};
-`;
-  writeFileSync(new URL(`${id}.ts`, dir), out);
-  console.log(`baked '${id}': ${bytes.length} bytes in ${ms.toFixed(0)} ms; cover ${counts.total} points (${counts.low} low, ${counts.high} high)`);
+  const bake = await exportWorldBake(world);
+  writeFileSync(new URL(`${id}.ts`, dir), bakedModule(bake, HEADER));
+  console.log(`baked '${id}': ${Buffer.from(bake.base64, 'base64').length} bytes in ${(performance.now() - t0).toFixed(0)} ms; cover ${bake.cover.length} points`);
 }
 
 const index = `${HEADER}

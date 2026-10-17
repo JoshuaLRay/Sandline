@@ -17,6 +17,7 @@
     "gen:nav-spike": "tsx packages/tools/src/gen-nav-spike.ts",
     "gen:nav": "tsx packages/tools/src/gen-nav.ts",
     "check:approaches": "tsx packages/tools/src/check-approaches.ts",
+    "gen:qalat-replacement": "tsx packages/tools/src/gen-qalat-replacement.ts",
     "gen:qalat-outpost": "tsx packages/tools/src/gen-qalat-outpost.ts",
     "gen:qalat-depot": "tsx packages/tools/src/gen-qalat-depot.ts",
     "gen:qalat-insertion": "tsx packages/tools/src/gen-qalat-insertion.ts",

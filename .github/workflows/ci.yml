@@ -140,6 +140,16 @@ jobs:
           name: qalat-outpost-review
           path: artifacts/qalat-outpost/*
           if-no-files-found: error
+      - name: Generate and capture unregistered replacement bundle
+        run: |
+          pnpm gen:qalat-replacement
+          pnpm gen:qalat-replacement --check
+          pnpm exec tsx packages/tools/src/capture-qalat-outpost.ts --replacement
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qalat-replacement-review
+          path: artifacts/qalat-replacement/*
+          if-no-files-found: error
       - run: pnpm perf:frame
 
   # ADR-014: the transcendental-drift bug is invisible on a V8-to-V8 pairing.

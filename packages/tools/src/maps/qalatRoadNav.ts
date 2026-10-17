@@ -1,6 +1,5 @@
 import { type World } from '@sandline/shared';
-import { DEFAULT_NAV_AGENT, navConfigFor, worldSolids, worldSoup } from '../nav/bake.ts';
-import { bakeSolidTiledNavMesh } from '../nav/solidBake.ts';
+import { bakeTiledStanding, type TiledStandingPlan } from '../nav/export.ts';
 import { buildRoadSupportWorld } from './qalatRoadSupports.ts';
 
 /**
@@ -9,9 +8,9 @@ import { buildRoadSupportWorld } from './qalatRoadSupports.ts';
  * plane and tile the entire built content with the unchanged standing agent.
  * No production mission, route link or committed campaign bake is activated.
  */
+export const QALAT_TILED_PLAN: TiledStandingPlan = { kind: 'tiled-standing', tileSize: 1024,
+  bounds: [[-80, 0, -45], [150, 38, 470]] };
+
 export async function bakeRoadSupportNav(world: World = buildRoadSupportWorld()): Promise<Uint8Array> {
-  return bakeSolidTiledNavMesh(worldSoup(world), worldSolids(world), {
-    ...navConfigFor(DEFAULT_NAV_AGENT), tileSize: 1024,
-    bounds: [[-80, 0, -45], [150, 38, 470]],
-  });
+  return bakeTiledStanding(world, QALAT_TILED_PLAN);
 }

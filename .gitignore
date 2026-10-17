@@ -18,3 +18,9 @@ artifacts/qalat-depot/surface.json
 artifacts/qalat-outpost/level.json
 artifacts/qalat-outpost/surface.json
 .agent-logs/
+
+artifacts/qalat-replacement/level.json
+artifacts/qalat-replacement/surface.json
+artifacts/qalat-replacement/nav.json
+artifacts/qalat-replacement/mission.json
+artifacts/qalat-replacement/*.png

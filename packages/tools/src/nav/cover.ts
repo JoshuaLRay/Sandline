@@ -94,6 +94,24 @@ export function bodyBlocked(x: number, y: number, z: number, world: World, agent
   return false;
 }
 
+/** Conservative x/z index; exact support/body predicates still decide every point. */
+function coverBoxes(world: World): (x: number, z: number, radius: number) => World['boxes'] {
+  const grid = new Map<string, number[]>(), cell = (n: number) => Math.floor(n / 8);
+  world.boxes.forEach((b, i) => {
+    for (let x = cell(b.minX); x <= cell(b.maxX); x++) for (let z = cell(b.minZ); z <= cell(b.maxZ); z++) {
+      const key = `${x}/${z}`, list = grid.get(key);
+      if (list) list.push(i); else grid.set(key, [i]);
+    }
+  });
+  return (x, z, r) => {
+    const ids = new Set<number>();
+    for (let cx = cell(x - r); cx <= cell(x + r); cx++) for (let cz = cell(z - r); cz <= cell(z + r); cz++)
+      for (const i of grid.get(`${cx}/${cz}`) ?? []) ids.add(i);
+    return [...ids].sort((a, b) => a - b).map((i) => world.boxes[i]!)
+      .filter((b) => b.maxX >= x - r && b.minX <= x + r && b.maxZ >= z - r && b.minZ <= z + r);
+  };
+}
+
 /**
  * Every cover point of a world, checked against its baked mesh — `isOnMesh`
  * is `bake.ts`'s `onMesh` over it. Ordered by box, then side, then along the
@@ -107,7 +125,7 @@ export function coverPoints(
 ): CoverPoint[] {
   const r = agent.radius;
   const stand = r + COVER_MARGIN_M;
-  const out: CoverPoint[] = [];
+  const out: CoverPoint[] = [], nearby = coverBoxes(world);
   for (const box of world.boxes) {
     for (const { nx, nz } of SIDES) {
       // Along the face, the span where the whole body is behind it.
@@ -123,14 +141,15 @@ export function coverPoints(
         // re-bakes byte for byte; every check below is of the rounded point.
         const x = round(alongX ? t : face + nx * stand);
         const z = round(alongX ? face + nz * stand : t);
+        const local = { ...world, boxes: nearby(x, z, r) };
         const levels = new Set([agent.groundY]);
-        for (const floor of world.boxes) if (overlapsFootprint(x, z, r, floor)) levels.add(floor.maxY);
+        for (const floor of local.boxes) if (overlapsFootprint(x, z, r, floor)) levels.add(floor.maxY);
         for (const y of [...levels].sort((a, b) => a - b)) {
           // An overhead slab is not a wall hiding a soldier on the floor below.
           if (box.minY > y + agent.climb) continue;
-          if (supportUnder(x, z, r, y + agent.climb, world.boxes, agent.groundY) !== y) continue;
+          if (supportUnder(x, z, r, y + agent.climb, local.boxes, agent.groundY) !== y) continue;
           const height = heightClass(box.maxY - y, eyes);
-          if (!height || bodyBlocked(x, y, z, world, agent) || !isOnMesh({ x, y, z })) continue;
+          if (!height || bodyBlocked(x, y, z, local, agent) || !isOnMesh({ x, y, z })) continue;
           out.push({ box: box.id, x, y, z, nx, nz, height });
         }
       }

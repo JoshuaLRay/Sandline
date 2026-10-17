@@ -3,13 +3,14 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 type View = { name: string; position: number[]; target: number[]; label: string; floorY: number; ceilingY: number | null };
-const root = '/artifacts/qalat-outpost/';
+const replacement = new URLSearchParams(location.search).has('replacement');
+const root = replacement ? '/artifacts/qalat-replacement/' : '/artifacts/qalat-outpost/';
 const [level, surface, construction] = await Promise.all([
   fetch(`${root}level.json`).then((r) => r.json()) as Promise<{ boxes: unknown[]; floor: { halfWidth: number; halfDepth: number } }>,
   fetch(`${root}surface.json`).then((r) => r.json()) as Promise<{
     levelHash: string; renderHash: string; positions: number[]; normals: number[]; colours: number[]; indices: number[];
   }>,
-  fetch(`${root}construction.json`).then((r) => r.json()) as Promise<{ levelHash: string; renderHash: string; decorations: unknown[] }>,
+  fetch(`${root}${replacement ? 'manifest' : 'construction'}.json`).then((r) => r.json()) as Promise<{ levelHash: string; renderHash: string; decorations: unknown[] }>,
 ]);
 const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(level)));
 const levelHash = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
@@ -90,6 +91,13 @@ const views: View[] = [
     label: 'North reserve room · covered holding room facing its south doorway' },
 ];
 
+if (replacement) views.unshift(
+  { name: 'insertion', position: [-2, 9.55, -6], target: [-12, 9.55, 18], floorY: 8, ceilingY: 13, label: 'Candidate · authored squad insertion' },
+  { name: 'road', position: [30, 9.55, 270], target: [0, 9.55, 290], floorY: 8, ceilingY: null, label: 'Candidate · surface over B6' },
+  { name: 'ridge', position: [70, 17.55, 336], target: [70, 13.55, 350], floorY: 16, ceilingY: null, label: 'Candidate · R7b bridge' },
+  { name: 'depot', position: [30, 1.55, 270], target: [36, 1.55, 278], floorY: 0, ceilingY: 5.5, label: 'Candidate · B6 beneath A6' },
+);
+
 function view(name: string) {
   const v = views.find((item) => item.name === name);
   if (!v) throw new Error(`Unknown outpost capture ${name}`);
@@ -107,7 +115,7 @@ for (const v of views) {
   button.onclick = () => view(v.name); document.querySelector('#views')!.append(button);
 }
 (globalThis as unknown as { __outpostReview: { views: View[]; view: typeof view } }).__outpostReview = { views, view };
-view('south-gate-court');
+view(replacement ? 'insertion' : 'south-gate-court');
 controls.addEventListener('change', () => renderer.render(scene, camera));
 window.addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
