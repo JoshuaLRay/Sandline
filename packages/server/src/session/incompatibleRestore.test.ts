@@ -37,11 +37,11 @@ interface Internals {
   nowMs: number;
 }
 
-function play(campaign = newCampaignState(world.id), lobby = false, ai = true) {
+function play(campaign = newCampaignState(world.id), lobby = false, ai = true, missionDef = mission) {
   const saves: CampaignState[] = [];
   let handoffs = 0;
   const session = new Session(undefined, '', world, {
-    ...(ai ? { encounter, events } : {}), mission, campaign, campaignDef, loadouts: 'class', roomLobby: lobby,
+    ...(ai ? { encounter, events } : {}), mission: missionDef, campaign, campaignDef, loadouts: 'class', roomLobby: lobby,
     onCampaignSave: (state) => saves.push(structuredClone(state)), onHandoff: () => handoffs++,
   });
   const x = session as unknown as Internals;
@@ -102,6 +102,119 @@ function checkpoint(input = carried()): CampaignState {
   original.session.slots[1]!.state.x += 1;
   return JSON.parse(JSON.stringify(original.save())) as CampaignState;
 }
+
+const holdingMission = parseMission({ ...mission, prisonerHoldings: Array.from({ length: 5 }, (_, i) =>
+  ({ id: `carry-${i + 1}`, feet: { x: -16 + i * 4, y: 8, z: 10 } })) });
+function prisonerCampaign(run: 'campaign' | 'replay') {
+  const input = carried(); input.run = run;
+  const prisoners = [5, 2].map((slot) => ({ slot, at: { x: 18, y: 8, z: 12 + slot } }));
+  if (run === 'campaign') {
+    for (const p of prisoners) input.soldiers[p.slot] = { ...input.soldiers[p.slot]!, captured: true, prisoner: p.at };
+  } else {
+    input.replayPrisoners = prisoners;
+    input.soldiers[4] = { ...input.soldiers[4]!, captured: true, prisoner: { x: 24, y: 8, z: 18 } };
+  }
+  return input;
+}
+
+describe('authored prisoner placement through the restore wire (U-224)', () => {
+  it('places the five-carried maximum without claiming the separate escort holding', () => {
+    const input = carried();
+    for (let slot = 1; slot < 6; slot++) input.soldiers[slot] = { ...input.soldiers[slot]!, captured: true, prisoner: { x: 18, y: 8, z: 12 } };
+    const fresh = play(input, false, true, holdingMission);
+    expect(fresh.session.slots.filter((s) => s.captured).map((s) => s.prisoner)).toEqual(holdingMission.prisonerHoldings!.map((h) => h.feet));
+    expect(fresh.session.slots[0]!.captured).toBe(false);
+  });
+
+  it.each(['campaign', 'replay'] as const)('places only the active %s pool on a fresh mission start', (run) => {
+    const input = prisonerCampaign(run), before = structuredClone(input);
+    const fresh = play(input, false, true, holdingMission);
+    expect(fresh.session.slots.filter((s) => s.captured).map((s) => ({ slot: s.index, at: s.prisoner })))
+      .toEqual([2, 5].map((slot, i) => ({ slot, at: holdingMission.prisonerHoldings![i]!.feet })));
+    const after = fresh.save();
+    expect(after.completedMissions).toEqual(input.completedMissions);
+    expect(after.soldiers[1]).toMatchObject({ xp: 740, rank: 1 });
+    if (run === 'campaign') expect(after.replayPrisoners).toEqual(input.replayPrisoners);
+    else expect(after.soldiers[4]!.prisoner).toEqual(input.soldiers[4]!.prisoner);
+    expect(input).toEqual(before);
+  });
+
+  for (const run of ['campaign', 'replay'] as const) for (const lobby of [false, true]) {
+    it(`restarts the original ${run} pool only on host choice; lobby=${lobby}`, () => {
+      const saved = checkpoint(prisonerCampaign(run)); saved.checkpoint!.mapRevision = 1;
+      // A later checkpoint capture must not join the original mission-start pool.
+      if (run === 'campaign') saved.soldiers[3] = { ...saved.soldiers[3]!, captured: true, prisoner: { x: 70, y: 0, z: 65 } };
+      else saved.replayPrisoners!.push({ slot: 3, at: { x: 70, y: 0, z: 65 } });
+      const original = structuredClone(saved);
+      const restored = play(saved, lobby, true, holdingMission), host = restored.join(), guest = restored.join();
+      expect(restored.gate(host)).toMatchObject({ restart: 'original' });
+      expect(restored.gate(guest)).toEqual(restored.gate(host));
+      expect(restored.session.slots.every((s) => s.prisoner === null)).toBe(true);
+      restored.send(guest, { kind: 'MissionRestart', full: true });
+      restored.step(30);
+      expect(restored.session.started).toBe(false);
+      expect(restored.saves).toHaveLength(0);
+      expect(restored.x.campaignSnapshot()).toEqual(original);
+      restored.send(host, { kind: 'MissionRestart', full: true });
+      expect(restored.gate(host)).toBeNull();
+      expect(restored.session.started).toBe(!lobby);
+      const expected = [2, 5].map((slot, i) => ({ slot, at: holdingMission.prisonerHoldings![i]!.feet }));
+      expect(restored.session.slots.filter((s) => s.captured).map((s) => ({ slot: s.index, at: s.prisoner }))).toEqual(expected);
+      expect(restored.inventory()).toEqual(saved.checkpoint!.missionStart!.slots);
+      const after = restored.saves.at(-1)!;
+      expect(after.checkpoint).toMatchObject({ mapRevision: 2, missionStart: { captured: expected } });
+      if (run === 'campaign') expect(after.soldiers.filter((s) => s.captured).map((s) => ({ slot: s.slot, at: s.prisoner }))).toEqual(expected);
+      else expect(after.replayPrisoners).toEqual(expected);
+      expect(after.completedMissions).toEqual(saved.completedMissions);
+      expect(after.soldiers[1]).toMatchObject({ xp: 740, rank: 1 });
+      if (run === 'campaign') expect(after.replayPrisoners).toEqual(saved.replayPrisoners);
+      else expect(after.soldiers[4]!.prisoner).toEqual(saved.soldiers[4]!.prisoner);
+      // A basic lobby save reloads before ready-up without duplicating or losing captives.
+      const reloaded = play(after, lobby, true, holdingMission), owner = reloaded.join();
+      expect(reloaded.gate(owner)).toBeNull();
+      if (lobby) reloaded.send(owner, { kind: 'RoomCommand', command: 'ready', ready: true });
+      reloaded.session.restartMission();
+      expect(reloaded.session.slots.filter((s) => s.captured).map((s) => s.prisoner)).toEqual(expected.map((p) => p.at));
+      expect(saved).toEqual(original);
+    });
+  }
+
+  it('keeps insufficient holdings blocked without overwriting the refused save', () => {
+    const saved = checkpoint(prisonerCampaign('campaign')); saved.checkpoint!.mapRevision = 1;
+    const small = { ...holdingMission, prisonerHoldings: holdingMission.prisonerHoldings!.slice(0, 1) };
+    const restored = play(saved, false, true, small), host = restored.join();
+    expect(restored.gate(host)).toMatchObject({ restart: 'prisoner-placement' });
+    restored.send(host, { kind: 'MissionRestart', full: true });
+    expect(restored.saves).toHaveLength(0);
+    expect(restored.x.campaignSnapshot()).toEqual(saved);
+    expect(() => play(prisonerCampaign('campaign'), false, true, small)).toThrow(/insufficient prisoner holdings/);
+  });
+
+  it('preserves same-revision checkpoint coordinates and spent inventory despite new authored holdings', () => {
+    const saved = checkpoint(prisonerCampaign('campaign'));
+    const restored = play(saved, false, true, holdingMission), host = restored.join();
+    expect(restored.gate(host)).toBeNull();
+    expect(restored.inventory()).toEqual((saved.checkpoint!.world as CheckpointWorld).slots);
+    expect(restored.session.slots[2]!.prisoner).toEqual(saved.soldiers[2]!.prisoner);
+    restored.session.retryMission();
+    expect(restored.session.slots[2]!.prisoner).toEqual(saved.soldiers[2]!.prisoner);
+    restored.session.restartMission();
+    expect(restored.session.slots[2]!.prisoner).toEqual(saved.checkpoint!.missionStart!.captured.find((p) => p.slot === 2)!.at);
+  });
+
+  it('uses legacy carry-over inventory with authored holdings and rejects invalid standing space before play', () => {
+    const saved = checkpoint(prisonerCampaign('campaign'));
+    delete saved.checkpoint!.missionStart; delete saved.checkpoint!.mapRevision;
+    const restored = play(saved, false, true, holdingMission), host = restored.join();
+    expect(restored.gate(host)).toMatchObject({ restart: 'legacy' });
+    restored.send(host, { kind: 'MissionRestart', full: true });
+    expect(restored.session.slots[1]!.weaponState.ammo).toBe(7);
+    expect(restored.session.slots[1]!.kits).toBe(2);
+    expect(restored.session.slots[2]!.prisoner).toEqual(holdingMission.prisonerHoldings![0]!.feet);
+    expect(() => play(saved, false, true, { ...holdingMission,
+      prisonerHoldings: [{ id: 'bad-floor', feet: { x: 0, y: 9, z: 10 } }] })).toThrow(/unsupported/);
+  });
+});
 
 describe('incompatible restores are quarantined (U-143)', () => {
   it('cannot bypass revision quarantine by disabling the encounter/AI runtime', () => {
