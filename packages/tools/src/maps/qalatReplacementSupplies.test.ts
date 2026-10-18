@@ -7,7 +7,7 @@ import { buildReplacementSupplies } from './qalatReplacementSupplies.ts';
 import raw from './qalat-replacement-supplies.json' with { type: 'json' };
 
 const cacheIds = ['P-SOUTH', 'P-ROAD', 'P-RIDGE', 'P-BASEMENT', 'P-OUTPOST'];
-const at = [[50,8,58],[-6,8,118],[86,14,102],[-22,0,314],[14,8,380]];
+const at = [[50,8,58],[-6,8,118],[86,14,102],[-21,0,314],[14,8,380]];
 const rockets = [6,0,0,6,12], mags = [6,3,3,3,6], kits = [2,1,1,1,3];
 
 describe('U-229 staged Qalat supply caches', () => {
