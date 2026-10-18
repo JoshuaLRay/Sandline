@@ -21,10 +21,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh run download 39148011976 --repo JoshuaLRay/Sandline --name qalat-road-support-review --dir artifacts/qalat-road-supports
-          gh run download 39148011976 --repo JoshuaLRay/Sandline --name qalat-depot-review --dir artifacts/qalat-depot
-          gh run download 39148011976 --repo JoshuaLRay/Sandline --name qalat-outpost-review --dir artifacts/qalat-outpost
-          gh run download 39148011976 --repo JoshuaLRay/Sandline --name qalat-replacement-review --dir artifacts/qalat-replacement
+          # gh refuses extracting into a directory containing tracked images.
+          # Download into clean per-artifact directories first, then overwrite
+          # only artifacts emitted by the exact geometry revision's green capture jobs.
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          for item in \
+            qalat-road-support-review:qalat-road-supports \
+            qalat-depot-review:qalat-depot \
+            qalat-outpost-review:qalat-outpost \
+            qalat-replacement-review:qalat-replacement; do
+            name="${item%%:*}"
+            target="${item#*:}"
+            mkdir -p "$tmp/$target" "artifacts/$target"
+            gh run download 39148011976 --repo JoshuaLRay/Sandline --name "$name" --dir "$tmp/$target"
+            cp -f "$tmp/$target"/. "artifacts/$target"/
+          done
       - name: Persist exact reviewed proof only to the U-229 branch
         run: |
           set -euo pipefail
