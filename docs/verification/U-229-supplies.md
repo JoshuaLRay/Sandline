@@ -31,3 +31,8 @@ First CI after geometry edit has expected red snapshot/preview checks due stale 
 - Actual Chromium capture artifacts for all five Qalat independent reviews passed and were sourced from [#39148011976](https://github.com/JoshuaLRay/Sandline/actions/runs/39148011976); task-only bot sync imported the changed tracked screenshots and capture JSON at `40e95c8128133e27d4604617e1153d208816226b`. A branch helper existed only for regeneration/synchronization and is removed from the final PR head.
 - The preview expected box count remains an *exact* check, updated 110509 → 110182 to match constructed geometry rather than deleting coverage.
 - Latest final-head verification: **pending**. Require `verify`, `streaming`, `parity-non-v8`, `mission` all green before claiming delivery, with actual run URL and merge SHA appended to PR discussion. A previous red run is never treated as final proof.
+
+### Follow-up failed sight bound, do not count previous run as green
+
+- [#39149079347](https://github.com/JoshuaLRay/Sandline/actions/runs/39149079347), head `9809bf9c757800359be3392d80bfc145386bbb2c`: U-161 conservative physical road LOS bound **97.937 m > 90 m** in verify shard 4/4. Actual witness from (41.5796,101.21) to (-41.2937,153.3981). No budget waiver.
+- Restore isolated original-width detached A-S05-north rock cap for z120.5..123.157. This screen intercepts the old overlong diagonal outside the repaired entrance corridor (z118). Preserve every assertion and regenerate all source-bound proof; outcome remains PENDING until final CI.

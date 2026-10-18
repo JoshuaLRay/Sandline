@@ -1,0 +1,108 @@
+# Temporary branch-only combined proof regeneration; REMOVE before U-229 merge.
+name: U-229 rebuild and capture repaired sight cap
+on:
+  push:
+    branches: [task/U-229-qalat-supply-caches]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: pnpm}
+      - run: pnpm install --frozen-lockfile
+      - name: Recreate all source-verified isolated manifests
+        run: |
+          pnpm gen:qalat-road-supports
+          pnpm gen:qalat-depot
+          pnpm gen:qalat-outpost
+          pnpm gen:qalat-replacement
+      - name: Push manifested construction evidence to task branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -u artifacts/qalat-road-supports artifacts/qalat-depot artifacts/qalat-outpost artifacts/qalat-replacement
+          if ! git diff --cached --quiet; then
+            git commit -m "U-229: regenerate detached north sight cap construction proofs"
+            git push origin HEAD:refs/heads/task/U-229-qalat-supply-caches
+          fi
+  captures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [road-supports, depot, outpost, replacement]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: pnpm}
+      - run: pnpm install --frozen-lockfile
+      - id: playwright
+        run: echo "version=$(pnpm exec playwright --version | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm --filter @sandline/client build
+      - name: Generate and capture isolated ${{ matrix.target }} review
+        run: |
+          set -euo pipefail
+          case "${{ matrix.target }}" in
+            road-supports)
+              pnpm gen:qalat-road-supports
+              pnpm exec tsx packages/tools/src/capture-qalat-road-supports.ts ;;
+            depot)
+              pnpm gen:qalat-depot
+              pnpm exec tsx packages/tools/src/capture-qalat-depot.ts ;;
+            outpost)
+              pnpm gen:qalat-outpost
+              pnpm exec tsx packages/tools/src/capture-qalat-outpost.ts ;;
+            replacement)
+              pnpm gen:qalat-replacement
+              pnpm gen:qalat-replacement --check
+              pnpm exec tsx packages/tools/src/capture-qalat-outpost.ts --replacement ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: artifacts/qalat-${{ matrix.target }}/*
+          if-no-files-found: error
+  sync:
+    needs: [regenerate, captures]
+    if: always() && needs.regenerate.result == 'success' && needs.captures.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: true}
+      - name: Update only existing reviewed screenshot and capture files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/task/U-229-qalat-supply-caches
+          git fetch origin task/U-229-qalat-supply-caches
+          git checkout -B task/U-229-qalat-supply-caches origin/task/U-229-qalat-supply-caches
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          for name in road-supports depot outpost replacement; do
+            mkdir -p "$tmp/$name" "artifacts/qalat-$name"
+            gh run download "$GITHUB_RUN_ID" --repo JoshuaLRay/Sandline --name "$name" --dir "$tmp/$name"
+            cp -a "$tmp/$name"/. "artifacts/qalat-$name"/
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -u artifacts/qalat-road-supports artifacts/qalat-depot artifacts/qalat-outpost artifacts/qalat-replacement
+          if ! git diff --cached --quiet; then
+            git commit -m "U-229: synchronize separated sight cap screenshots and capture hashes"
+            git push origin HEAD:refs/heads/task/U-229-qalat-supply-caches
+          fi
