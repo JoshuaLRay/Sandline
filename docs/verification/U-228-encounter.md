@@ -33,3 +33,15 @@ construction evidence. Release timing and mission-flow testing belong to U-230/U
 PR: https://github.com/JoshuaLRay/Sandline/pull/376 .
 CI results, actual generator/asset commands and any remaining failures must be
 recorded before merging. No human verdict is inferred; U-119 remains final quality acceptance.
+
+## Geometry-constrained authoring adjustment
+
+The initial §9 ridge slots RL1 (76,26,164) and RL3 (78,26,178) are
+not fully supported by the real, already accepted construction collision:
+RL1's 0.35 m body loses its west footprint and RL3's authored y26 floor
+ends before the north end of its planned z178 socket. A grouped collision
+audit found the nearest safe same-floor sockets at **RL1 (76,26,164.5)**
+(+0.5 m north) and **RL3 (78,26,172.5)** (5.5 m south).
+These preserve the named squad groups and identities without adding any
+artificial level floor or modifying U-227's construction. The alignment
+variance is recorded for U-119 human review; it is not claimed owner-accepted.
