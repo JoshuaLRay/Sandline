@@ -85,6 +85,7 @@ The split is not implementation/activation authorization or an inferred verdict.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
+| [U-236](docs/backlog/U-236.md) | Shared Windows-PC self-hosted CI, preserve all four gates | Infrastructure | P1 | IN_PROGRESS | Owner Windows PC selected; live registration/green CI pending | [#379](https://github.com/JoshuaLRay/Sandline/pull/379) |
 | [U-113](docs/backlog/U-113.md) | Map-revision-aware checkpoint restart and restore | Map implementation | P1 | BLOCKED | Aggregate closure: U-135, U-136; split before implementation | — |
 | [U-136](docs/backlog/U-136.md) | Refuse incompatible restores and offer restart or mission select | Map implementation | P1 | BLOCKED | Aggregate: U-143 DONE; U-144 current-map carried-prisoner placement remains blocked | [#312](https://github.com/JoshuaLRay/Sandline/pull/312) |
 | [U-144](docs/backlog/U-144.md) | Restart incompatible saves with authored carried-prisoner placement | Map implementation | P1 | BLOCKED | U-143/U-224 DONE; production holdings and accessible rescue integration must ship with replacement activation (U-117), never on the older map | — |

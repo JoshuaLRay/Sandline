@@ -19,15 +19,20 @@ jobs:
   # Remaining shards run all other test files. The stable verify gate refuses
   # skipped, missing, failed or cancelled work from ANY shard.
   verify-core:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Check dedicated self-hosted runner prerequisites
+        if: runner.environment == 'self-hosted'
+        run: bash scripts/ci/preflight.sh Sandline
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
+      - name: Verify self-hosted runner policy and setup tools
+        run: node --test scripts/ci/runner-policy.test.mjs scripts/ci/runner-setup.test.mjs
       - run: pnpm install --frozen-lockfile
       - name: Mandatory pnpm verify (typecheck, lint and test shard 1/4)
         run: pnpm verify
@@ -37,7 +42,7 @@ jobs:
       - run: pnpm check:packs
 
   verify-extra:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -45,6 +50,9 @@ jobs:
         shard: ['2/4', '3/4', '4/4']
     steps:
       - uses: actions/checkout@v4
+      - name: Check dedicated self-hosted runner prerequisites
+        if: runner.environment == 'self-hosted'
+        run: bash scripts/ci/preflight.sh Sandline
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -61,7 +69,7 @@ jobs:
     # must produce a red verify job, not a skipped (or falsely green) result.
     if: always()
     needs: [verify-core, verify-extra]
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 5
     steps:
       - name: Require successful typecheck, lint, assets, packs and every test shard
@@ -77,10 +85,13 @@ jobs:
   # Independent reviews no longer serialize behind the Qalat road supports,
   # replacement bundle, or map-review screenshot pass.
   streaming-core:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Check dedicated self-hosted runner prerequisites
+        if: runner.environment == 'self-hosted'
+        run: bash scripts/ci/preflight.sh Sandline
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -109,7 +120,7 @@ jobs:
       - name: Install Chromium
         run: |
           for attempt in 1 2 3; do
-            timeout 300 pnpm exec playwright install --with-deps chromium && exit 0
+            flock -w 600 /tmp/project-ci-browser-install.lock timeout 300 pnpm exec playwright install --with-deps chromium && exit 0
             echo "playwright install attempt $attempt failed or timed out" >&2
             # A timed-out attempt leaves its apt-get running; a retry needs the dpkg lock it holds.
             for _ in $(seq 60); do sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; sleep 5; done
@@ -150,7 +161,7 @@ jobs:
       - run: pnpm perf:frame
 
   streaming-captures:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -163,6 +174,9 @@ jobs:
           - { target: replacement, artifact: qalat-replacement-review, output: qalat-replacement }
     steps:
       - uses: actions/checkout@v4
+      - name: Check dedicated self-hosted runner prerequisites
+        if: runner.environment == 'self-hosted'
+        run: bash scripts/ci/preflight.sh Sandline
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -191,7 +205,7 @@ jobs:
       - name: Install Chromium
         run: |
           for attempt in 1 2 3; do
-            timeout 300 pnpm exec playwright install --with-deps chromium && exit 0
+            flock -w 600 /tmp/project-ci-browser-install.lock timeout 300 pnpm exec playwright install --with-deps chromium && exit 0
             echo "playwright install attempt $attempt failed or timed out" >&2
             # A timed-out attempt leaves its apt-get running; a retry needs the dpkg lock it holds.
             for _ in $(seq 60); do sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; sleep 5; done
@@ -247,7 +261,7 @@ jobs:
   streaming:
     if: always()
     needs: [streaming-core, streaming-captures]
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 5
     steps:
       - name: Require load, visual, gameplay and ALL five captured review suites
@@ -264,10 +278,13 @@ jobs:
   # Node and Chrome are both V8, so parity MUST also run on a non-V8 engine or
   # nothing in this project can detect it.
   parity-non-v8:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Check dedicated self-hosted runner prerequisites
+        if: runner.environment == 'self-hosted'
+        run: bash scripts/ci/preflight.sh Sandline
       # No `version:` here on purpose. package.json's `packageManager` field is
       # the single source of truth; specifying both makes the action fail with
       # "Multiple versions of pnpm specified".
@@ -303,7 +320,7 @@ jobs:
       - name: Install browsers
         run: |
           for attempt in 1 2 3; do
-            timeout 300 pnpm exec playwright install --with-deps chromium firefox webkit && exit 0
+            flock -w 600 /tmp/project-ci-browser-install.lock timeout 300 pnpm exec playwright install --with-deps chromium firefox webkit && exit 0
             echo "playwright install attempt $attempt failed or timed out" >&2
             # A timed-out attempt leaves its apt-get running; a retry needs the dpkg lock it holds.
             for _ in $(seq 60); do sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; sleep 5; done
@@ -329,10 +346,13 @@ jobs:
   # diagnostic; invalid files and runner errors fail). See known balance bug B-11.
   # Keep T-3.35's combat/AI-cost gate as a separate step, even after a mission fails.
   mission:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Check dedicated self-hosted runner prerequisites
+        if: runner.environment == 'self-hosted'
+        run: bash scripts/ci/preflight.sh Sandline
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -355,13 +375,16 @@ jobs:
   deploy-worker:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.CLOUDFLARE_WORKER_DEPLOY_ENABLED == 'true'
     needs: [verify, streaming, parity-non-v8, mission]
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 15
     permissions:
       contents: read
       deployments: write
     steps:
       - uses: actions/checkout@v4
+      - name: Check dedicated self-hosted runner prerequisites
+        if: runner.environment == 'self-hosted'
+        run: bash scripts/ci/preflight.sh Sandline
       - name: Reject stale main and missing configuration
         shell: bash
         env:
