@@ -15,33 +15,68 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  verify:
+  # A complete pnpm verify (typecheck, lint, and shard 1/4) still runs.
+  # Remaining shards run all other test files. The stable verify gate refuses
+  # skipped, missing, failed or cancelled work from ANY shard.
+  verify-core:
     runs-on: ubuntu-latest
-    # The full suite reached 371 files / 3745 green tests but the 20-minute
-    # job timeout cancelled it during teardown (run #2026). Keep ALL checks.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      # No `version:` here on purpose. package.json's `packageManager` field is
-      # the single source of truth; specifying both makes the action fail with
-      # "Multiple versions of pnpm specified".
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm verify
-      # T-4.03: ADR-013's budgets, every asset's numbers against its class,
-      # printed so an overrun names the asset in the job log. `pnpm verify`
-      # already fails on one; this is the readable line.
+      - name: Mandatory pnpm verify (typecheck, lint and test shard 1/4)
+        run: pnpm verify
+        env:
+          SANDLINE_CI_TEST_SHARD: 1/4
       - run: pnpm check:assets
-      # T-4.06: the initial pack, not every level asset, owns the 80 MB ceiling.
       - run: pnpm check:packs
 
-  # T-4.06: a real Chromium page over a throttled 4 Mbit/s link must reach its
-  # first rendered mission frame inside ADR-013's 30 second ceiling.
-  streaming:
+  verify-extra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['2/4', '3/4', '4/4']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Complete remaining Vitest files, shard ${{ matrix.shard }}
+        env:
+          SANDLINE_CI_TEST_SHARD: ${{ matrix.shard }}
+        run: pnpm test
+
+  verify:
+    # Stable required check. "always" is essential: a failed prerequisite
+    # must produce a red verify job, not a skipped (or falsely green) result.
+    if: always()
+    needs: [verify-core, verify-extra]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require successful typecheck, lint, assets, packs and every test shard
+        env:
+          CORE_RESULT: ${{ needs['verify-core'].result }}
+          EXTRA_RESULT: ${{ needs['verify-extra'].result }}
+        run: |
+          if [[ "$CORE_RESULT" != success || "$EXTRA_RESULT" != success ]]; then
+            echo "::error::Verification failed: core=$CORE_RESULT extra-shards=$EXTRA_RESULT"
+            exit 1
+          fi
+
+  # Independent reviews no longer serialize behind the Qalat road supports,
+  # replacement bundle, or map-review screenshot pass.
+  streaming-core:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -105,7 +140,6 @@ jobs:
           name: qalat-playable-wip
           path: artifacts/qalat-preview/*
           if-no-files-found: error
-      # T-5.04: the slice mission with the squad, walked and fought; asserts the draw budget, records frame time.
       - name: Capture Qalat map review
         run: pnpm exec tsx packages/tools/src/capture-map-review.ts
       - uses: actions/upload-artifact@v4
@@ -113,53 +147,118 @@ jobs:
           name: qalat-map-review
           path: artifacts/map-review/*
           if-no-files-found: error
-      - name: Generate and capture isolated Juniper Hollow construction
-        run: |
-          pnpm gen:qalat-insertion
-          pnpm exec tsx packages/tools/src/capture-qalat-insertion.ts
-      - uses: actions/upload-artifact@v4
-        with:
-          name: qalat-insertion-review
-          path: artifacts/qalat-insertion/*
-          if-no-files-found: error
-      - name: Generate and capture isolated Qalat road supports
-        run: |
-          pnpm gen:qalat-road-supports
-          pnpm exec tsx packages/tools/src/capture-qalat-road-supports.ts
-      - uses: actions/upload-artifact@v4
-        with:
-          name: qalat-road-support-review
-          path: artifacts/qalat-road-supports/*
-          if-no-files-found: error
-      - name: Generate and capture isolated underground depot shells
-        run: |
-          pnpm gen:qalat-depot
-          pnpm exec tsx packages/tools/src/capture-qalat-depot.ts
-      - uses: actions/upload-artifact@v4
-        with:
-          name: qalat-depot-review
-          path: artifacts/qalat-depot/*
-          if-no-files-found: error
-      - name: Generate and capture isolated prisoner outpost shells
-        run: |
-          pnpm gen:qalat-outpost
-          pnpm exec tsx packages/tools/src/capture-qalat-outpost.ts
-      - uses: actions/upload-artifact@v4
-        with:
-          name: qalat-outpost-review
-          path: artifacts/qalat-outpost/*
-          if-no-files-found: error
-      - name: Generate and capture unregistered replacement bundle
-        run: |
-          pnpm gen:qalat-replacement
-          pnpm gen:qalat-replacement --check
-          pnpm exec tsx packages/tools/src/capture-qalat-outpost.ts --replacement
-      - uses: actions/upload-artifact@v4
-        with:
-          name: qalat-replacement-review
-          path: artifacts/qalat-replacement/*
-          if-no-files-found: error
       - run: pnpm perf:frame
+
+  streaming-captures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: insertion, artifact: qalat-insertion-review, output: qalat-insertion }
+          - { target: road-supports, artifact: qalat-road-support-review, output: qalat-road-supports }
+          - { target: depot, artifact: qalat-depot-review, output: qalat-depot }
+          - { target: outpost, artifact: qalat-outpost-review, output: qalat-outpost }
+          - { target: replacement, artifact: qalat-replacement-review, output: qalat-replacement }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: playwright
+        run: echo "version=$(pnpm exec playwright --version | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+      # The browser download is most of this job's time and the slowest, flakiest step in CI: cache it by Playwright's
+      # version, and retry (with a time limit) the one download that stalls.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      # The browsers' system libraries come from an Ubuntu mirror that is sometimes very slow (a package every few
+      # seconds; fifteen minutes for three browsers): keep the .debs apt downloads and put them back before the install.
+      - id: debs
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/apt-debs
+          key: apt-debs-streaming-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Seed apt with the cached packages
+        run: |
+          mkdir -p ~/apt-debs
+          sudo cp -n ~/apt-debs/*.deb /var/cache/apt/archives/ 2>/dev/null || true
+      - name: Install Chromium
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 pnpm exec playwright install --with-deps chromium && exit 0
+            echo "playwright install attempt $attempt failed or timed out" >&2
+            # A timed-out attempt leaves its apt-get running; a retry needs the dpkg lock it holds.
+            for _ in $(seq 60); do sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; sleep 5; done
+          done
+          exit 1
+      - name: Keep the downloaded packages
+        if: always() && steps.debs.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/apt-debs
+          sudo cp -n /var/cache/apt/archives/*.deb ~/apt-debs/ 2>/dev/null || true
+          sudo chown -R "$USER" ~/apt-debs
+      - name: Save the downloaded packages
+        if: always() && steps.debs.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: ~/apt-debs
+          key: apt-debs-streaming-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      # Every matrix member starts from the same commit, generates its OWN
+      # immutable review inputs, uploads its OWN evidence, and fails closed.
+      - run: pnpm --filter @sandline/client build
+      - name: Generate and capture ${{ matrix.target }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.target }}" in
+            insertion)
+              pnpm gen:qalat-insertion
+              pnpm exec tsx packages/tools/src/capture-qalat-insertion.ts ;;
+            road-supports)
+              pnpm gen:qalat-road-supports
+              pnpm exec tsx packages/tools/src/capture-qalat-road-supports.ts ;;
+            depot)
+              pnpm gen:qalat-depot
+              pnpm exec tsx packages/tools/src/capture-qalat-depot.ts ;;
+            outpost)
+              pnpm gen:qalat-outpost
+              pnpm exec tsx packages/tools/src/capture-qalat-outpost.ts ;;
+            replacement)
+              pnpm gen:qalat-replacement
+              pnpm gen:qalat-replacement --check
+              pnpm exec tsx packages/tools/src/capture-qalat-outpost.ts --replacement ;;
+            *)
+              echo "::error::Unknown capture target"
+              exit 1 ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: artifacts/${{ matrix.output }}/*
+          if-no-files-found: error
+
+  streaming:
+    if: always()
+    needs: [streaming-core, streaming-captures]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require load, visual, gameplay and ALL five captured review suites
+        env:
+          CORE_RESULT: ${{ needs['streaming-core'].result }}
+          CAPTURE_RESULT: ${{ needs['streaming-captures'].result }}
+        run: |
+          if [[ "$CORE_RESULT" != success || "$CAPTURE_RESULT" != success ]]; then
+            echo "::error::Streaming failed: core=$CORE_RESULT captures=$CAPTURE_RESULT"
+            exit 1
+          fi
 
   # ADR-014: the transcendental-drift bug is invisible on a V8-to-V8 pairing.
   # Node and Chrome are both V8, so parity MUST also run on a non-V8 engine or
