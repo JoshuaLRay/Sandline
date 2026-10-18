@@ -46,8 +46,8 @@ export function buildReplacementEncounter(world: World): {
   const expectedRoute = tankReturnRoute();
   const tank = encounter.groups.find((g) => g.id === 'tank');
   if (!tank?.staged || !tank.path || tank.sockets?.length !== 1 ||
-    JSON.stringify([tank.sockets[0]!.feet, ...tank.path]) !==
-    JSON.stringify(expectedRoute.map(({ x, y, z }) => ({ x, y, z }))))
+    JSON.stringify([tank.sockets[0]!.feet, ...tank.path].map((p) => [p.x, p.y, p.z])) !==
+    JSON.stringify(expectedRoute.map((p) => [p.x, p.y, p.z])))
     throw new Error('U-228 staged tank no longer follows exact constructed y8 return');
   if (encounter.groups.reduce((n, g) => n + (g.sockets?.length ?? 0), 0) !== 38)
     throw new Error('U-228 requires all 38 fixed encounter entities');
