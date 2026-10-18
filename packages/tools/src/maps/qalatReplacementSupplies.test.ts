@@ -78,14 +78,14 @@ describe('U-229 staged Qalat supply caches', () => {
       }
       // A cache directly above/below cannot be collected from the wrong storey,
       // even when x/z coincide and the item is compatible.
-      const ridge = supplyCaches[2]!;
-      soldier.state = createMoveState(ridge.feet.x, 8, ridge.feet.z);
+      const high = supplyCaches[4]!;
+      soldier.state = createMoveState(high.feet.x, 0, high.feet.z);
       soldier.kits = 0;
-      client.send({ kind: 'SupplySelect', requestId: ++requestId, cacheId: ridge.id, item: { kind: 'health-kit' } });
+      client.send({ kind: 'SupplySelect', requestId: ++requestId, cacheId: high.id, item: { kind: 'health-kit' } });
       settle(); step(31);
       expect(soldier.kits).toBe(0);
-      expect(session.supplyCaches.find((c) => c.id === ridge.id)!.stock.healthKits)
-        .toBe(ridge.stock.healthKits - 1);
+      expect(session.supplyCaches.find((c) => c.id === high.id)!.stock.healthKits)
+        .toBe(high.stock.healthKits - 1);
     } finally {
       session.close();
     }
