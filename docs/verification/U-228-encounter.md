@@ -31,8 +31,14 @@ The prior U-180 camera/LOS and emplacement tests remain the independent
 construction evidence. Release timing and mission-flow testing belong to U-230/U-231.
 
 PR: https://github.com/JoshuaLRay/Sandline/pull/376 .
-CI results, actual generator/asset commands and any remaining failures must be
-recorded before merging. No human verdict is inferred; U-119 remains final quality acceptance.
+
+## CI outcome and closure
+
+- Implementation CI [#39088769356](https://github.com/JoshuaLRay/Sandline/actions/runs/39088769356) passed `mission`, `streaming` and `parity-non-v8`, but `verify` failed solely because the existing serialized candidate tamper-matrix test exceeded its 60-second timeout. The test's timeout was increased to 180 seconds without weakening its assertions.
+- Follow-up CI [#39090017626](https://github.com/JoshuaLRay/Sandline/actions/runs/39090017626), head `fd6889f402401a3fe4076f337206ba6199810b56`, finished **success** for all four required jobs: `verify`, `streaming`, `mission`, `parity-non-v8`.
+- The final documentation-only closure commit must likewise pass these same four jobs on its latest PR head before merge; see PR checks for the final result. Streaming includes the unregistered replacement-bundle generation and capture step. Do not infer any additional independent local command executions not evidenced by CI.
+- Human playtest feedback on U-234 remains deferred and is not fabricated; U-119 owns whole-mission visual/quality acceptance. This task does not activate registered Qalat.
+
 
 ## Geometry-constrained authoring adjustment
 
