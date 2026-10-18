@@ -16,7 +16,7 @@ describe('U-228 isolated candidate combat roster', () => {
   it('transcribes all 32 guards, POW, four prepositioned reserves and tank without changing live Qalat', () => {
     expect(encounter.aliveCap).toBe(42);
     expect(positions).toHaveLength(38);
-    expect(positions.filter((p) => p.archetype === 'rifleman')).toHaveLength(35);
+    expect(positions.filter((p) => p.archetype === 'rifleman')).toHaveLength(34);
     expect(positions.filter((p) => p.archetype === 'mg').map((p) => p.id)).toEqual(['AF1','OG1']);
     expect(positions.filter((p) => p.archetype === 'pow').map((p) => p.id)).toEqual(['mission-pow']);
     expect(positions.filter((p) => p.archetype === 'tank').map((p) => p.id)).toEqual(['X0-tank']);
@@ -112,7 +112,7 @@ describe('U-228 isolated candidate combat roster', () => {
   });
 
   it('rejects tampered floor sockets, unknown regions and duplicate member identities', () => {
-    const altered = structuredClone(raw);
+    const altered = structuredClone(raw) as unknown as { groups: { sockets: { id: string; feet: { y: number }; combatRegion?: string }[] }[] };
     altered.groups[0]!.sockets![0]!.feet.y = 0;
     expect(() => parseEncounter(altered, (id) => id === world.id ? context : undefined)).toThrow();
     altered.groups[0]!.sockets![0]!.feet.y = 8;
