@@ -18,9 +18,22 @@
 - `streaming-core` and five `streaming-captures` members run concurrently. Each capture generates its own level/bundle, uses Playwright Chromium, enforces budgets and uploads the same named evidence artifacts. The stable `streaming` gate fails unless every participant succeeds.
 - `parity-non-v8`, `mission`, and `deploy-worker.needs` are unchanged. Main-only, latest-main and secret/config deploy protections remain intact. Existing timeouts unchanged for substantive workers.
 
+## First optimization trial — FAILED (not a green performance proof)
+
+- [#39121563725](https://github.com/JoshuaLRay/Sandline/actions/runs/39121563725), head `dc0ece1eb8407d48eec4eed490852a6fece73a51`.
+- Workflow started 2026-10-18 11:01:31 UTC, completed 11:08:57 UTC: **7m26s wall time**.
+- Stable gate outcomes: `verify` **failed** due ESLint not recognizing `console` and `process` in the new Node launcher; `streaming`, `parity-non-v8` and `mission` **passed**. This run **does not** establish achievement of any performance goal.
+- Independently successful `verify-extra` shards:
+  - 2/4: 94 test files and 1207 tests; Vitest duration 315.32s.
+  - 3/4: 94 test files and 808 tests; Vitest duration 168.98s.
+  - 4/4: 94 test files and 695 tests; Vitest duration 389.62s.
+  - 1/4 was **not run** because lint failed; its 95 files remain mandatory for a green cycle.
+- Independent Chromium captures `insertion`, `road-supports`, `depot`, `outpost`, `replacement` all **passed**, with required artifacts uploaded. `streaming-core` also passed load/preview/map/frame checks.
+- Exact next fix: import `process` and `console` from `node:process` and `node:console`; rerun all gates on latest head.
+
 ## After timings (required before merge)
 
-PR: pending. Final latest-head SHA: pending. Latest run URL: pending.
+PR: https://github.com/JoshuaLRay/Sandline/pull/378. Final latest-head SHA: pending. Latest fully green run URL: pending.
 - `verify`: pending actual all-shard gate time (not a measured success).
 - `streaming`: pending actual all-capture gate time (not a measured success).
 - `parity-non-v8` / `mission`: pending.

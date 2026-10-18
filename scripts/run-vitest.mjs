@@ -4,6 +4,8 @@
  * suites, assertions or seed budgets by changed files.
  */
 import { spawnSync } from 'node:child_process';
+import process from 'node:process';
+import console from 'node:console';
 
 const shard = process.env.SANDLINE_CI_TEST_SHARD;
 if (shard !== undefined && !/^[1-4]\/4$/.test(shard)) {
