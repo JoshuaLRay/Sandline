@@ -67,6 +67,21 @@ describe('U-229 staged Qalat supply caches', () => {
       client.send({ kind: 'Join', version: PROTOCOL_VERSION, name: 'U229', room: '', slot: 0 });
       settle();
       const soldier = session.slots[0]!;
+      // The B7 bench is solid; even a cache two metres away cannot be used through it.
+      const basement = supplyCaches[3]!;
+      soldier.state = createMoveState(-23, 0, 314);
+      soldier.kits = 0;
+      client.send({ kind: 'SupplySelect', requestId: ++requestId, cacheId: basement.id, item: { kind: 'health-kit' } });
+      settle(); step(31);
+      expect(soldier.kits, 'bench blocks B7 cache use').toBe(0);
+      expect(session.supplyCaches.find((c) => c.id === basement.id)!.stock.healthKits).toBe(1);
+      // Ordinary 2 m three-dimensional reach is mandatory even with unobstructed sight.
+      const south = supplyCaches[0]!;
+      soldier.state = createMoveState(south.feet.x, south.feet.y, south.feet.z + 2.2);
+      client.send({ kind: 'SupplySelect', requestId: ++requestId, cacheId: south.id, item: { kind: 'health-kit' } });
+      settle(); step(31);
+      expect(soldier.kits, 'outside 2m reach').toBe(0);
+      expect(session.supplyCaches.find((c) => c.id === south.id)!.stock.healthKits).toBe(2);
       for (const cache of supplyCaches) {
         soldier.state = createMoveState(cache.feet.x, cache.feet.y, cache.feet.z);
         soldier.kits = 0;
