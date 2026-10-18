@@ -3,9 +3,9 @@
   "parent": "U-115",
   "kind": "isolated furnished B1–B9 depot with covered B0/B10 stairs and exact endpoint connections",
   "sourceHash": "f9bdc201362a53871aa4dee7e68ec7d376b0cccd71fde46e321087a9bb020f5d",
-  "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-  "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
-  "boxCount": 108439,
+  "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+  "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
+  "boxCount": 108112,
   "shellBoxCount": 9405,
   "rowM": 0.05,
   "rooms": [
@@ -3340,10 +3340,10 @@
       "ceilingY": 3.6,
       "label": "B1 · floor 0 / ceiling 3.6 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 3.5999999046325684
     },
     {
@@ -3362,10 +3362,10 @@
       "ceilingY": 4.5,
       "label": "B2 · floor 0 / ceiling 4.5 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 4.5
     },
     {
@@ -3384,10 +3384,10 @@
       "ceilingY": 5.5,
       "label": "B3 · floor 0 / ceiling 5.5 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 5.5
     },
     {
@@ -3406,10 +3406,10 @@
       "ceilingY": 4.5,
       "label": "B4 · floor 0 / ceiling 4.5 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 4.5
     },
     {
@@ -3428,10 +3428,10 @@
       "ceilingY": 4,
       "label": "B5 · floor 0 / ceiling 4 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 4
     },
     {
@@ -3450,10 +3450,10 @@
       "ceilingY": 5.5,
       "label": "B6 · floor 0 / ceiling 5.5 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 5.5
     },
     {
@@ -3472,10 +3472,10 @@
       "ceilingY": 4,
       "label": "B7 · floor 0 / ceiling 4 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 4
     },
     {
@@ -3494,10 +3494,10 @@
       "ceilingY": 4,
       "label": "B8 · floor 0 / ceiling 4 m · standing eye toward onward doorway",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 4
     },
     {
@@ -3516,10 +3516,10 @@
       "ceilingY": 3.6,
       "label": "B9 · floor 0 / ceiling 3.6 m · standing eye toward covered upward stair",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 3.5999999046325684
     },
     {
@@ -3538,10 +3538,10 @@
       "ceilingY": 5.5,
       "label": "B6 · standing eye looking up at the solid y5.5 ceiling beneath the y8 road",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 5.5
     },
     {
@@ -3560,10 +3560,10 @@
       "ceilingY": 12,
       "label": "B0 · loading vestibule at y8, covered descent ahead",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 12
     },
     {
@@ -3583,10 +3583,10 @@
       "minClearance": 3.2,
       "label": "B0 first flight · 2 m rest at y6",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 9.199999809265137
     },
     {
@@ -3606,10 +3606,10 @@
       "minClearance": 3.2,
       "label": "B0 · broad 10 m switchback landing at y4",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 7.199999809265137
     },
     {
@@ -3629,10 +3629,10 @@
       "minClearance": 3.2,
       "label": "B0 second flight · 2 m rest at y2 toward B1",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 5.199999809265137
     },
     {
@@ -3652,10 +3652,10 @@
       "minClearance": 3.2,
       "label": "B10 first flight · 2 m rest at y2",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 5.199999809265137
     },
     {
@@ -3675,10 +3675,10 @@
       "minClearance": 3.2,
       "label": "B10 · broad 10 m switchback landing at y4",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 7.199999809265137
     },
     {
@@ -3698,10 +3698,10 @@
       "minClearance": 3.2,
       "label": "B10 second flight · 2 m rest at y6 toward west gate",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 9.199999809265137
     },
     {
@@ -3720,10 +3720,10 @@
       "ceilingY": null,
       "label": "B10 · exact open 8×8 m west landing at (8,8,374)",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": null
     },
     {
@@ -3742,10 +3742,10 @@
       "ceilingY": 3.6,
       "label": "B1 · full-size low crate at approved z98.4; centered west-door landing remains free",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 3.5999999046325684
     },
     {
@@ -3764,10 +3764,10 @@
       "ceilingY": 3.6,
       "label": "B1 · blue service pipe on the closed wall; west landing stays clear",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 3.5999999046325684
     },
     {
@@ -3786,10 +3786,10 @@
       "ceilingY": 5.5,
       "label": "B3 · dry channels, water stains, full-height piers and low cross-wall",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 5.499999999999999
     },
     {
@@ -3808,10 +3808,10 @@
       "ceilingY": 4.5,
       "label": "B4 · inert diesel blocks flank the clear central aisle",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 4.499999999999999
     },
     {
@@ -3830,10 +3830,10 @@
       "ceilingY": 4,
       "label": "B5 · eight-metre regroup pocket beside the low bench and sealed service doors",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 4
     },
     {
@@ -3852,10 +3852,10 @@
       "ceilingY": 4,
       "label": "B7 · west workbench and two wall racks; open central regroup floor",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 4
     },
     {
@@ -3874,10 +3874,10 @@
       "ceilingY": 4,
       "label": "B8 · sixteen-metre shelves frame the onward lane and doorway",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 4
     },
     {
@@ -3896,10 +3896,10 @@
       "ceilingY": 3.6,
       "label": "B9 · painted upward arrow beside the covered exit stair",
       "calls": 2,
-      "triangles": 1068280,
-      "boxCount": 108439,
-      "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-      "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
+      "triangles": 1062326,
+      "boxCount": 108112,
+      "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+      "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
       "renderedCeilingY": 3.5999999046325684
     }
   ]
