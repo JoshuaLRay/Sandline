@@ -1,0 +1,43 @@
+# Temporary, strictly branch-scoped regeneration of committed source-derived
+# Qalat evidence following U-229's toll-office passage repair. REMOVE before merge.
+name: U-229 regenerate isolated Qalat evidence
+on:
+  push:
+    branches: [task/U-229-qalat-supply-caches]
+permissions:
+  contents: write
+jobs:
+  regenerate:
+    if: github.repository == 'JoshuaLRay/Sandline' && github.ref == 'refs/heads/task/U-229-qalat-supply-caches'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Rebuild all downstream isolated construction and candidate proofs
+        run: |
+          set -euo pipefail
+          pnpm gen:qalat-road-supports
+          pnpm gen:qalat-depot
+          pnpm gen:qalat-outpost
+          pnpm gen:qalat-replacement
+      - name: Persist rebuilt proofs ONLY to this task branch
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/task/U-229-qalat-supply-caches
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/qalat-road-supports artifacts/qalat-depot artifacts/qalat-outpost artifacts/qalat-replacement
+          if git diff --cached --quiet; then
+            echo "All committed generated proofs are already current"
+            exit 0
+          fi
+          git commit -m "U-229: regenerate isolated Qalat artifacts for repaired toll portal"
+          git push origin HEAD:refs/heads/task/U-229-qalat-supply-caches
