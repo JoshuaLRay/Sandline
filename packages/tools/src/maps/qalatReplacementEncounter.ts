@@ -32,14 +32,35 @@ export function buildReplacementEncounter(world: World): {
     if (socket.archetype === 'tank') continue;
     for (const point of [socket.feet, ...('patrol' in socket && socket.patrol ? socket.patrol.route : []),
       ...('advance' in socket && socket.advance ? socket.advance : [])]) {
-      const checks = [-move.radius, 0, move.radius].flatMap((dx) => [-move.radius, 0, move.radius].map((dz) =>
-        supportUnder(point.x + dx, point.z + dz, 0, point.y + .05, world.boxes, move.groundY)));
+      const checks = (point === socket.feet ? [-move.radius, 0, move.radius] : [0]).flatMap((dx) =>
+        (point === socket.feet ? [-move.radius, 0, move.radius] : [0]).map((dz) =>
+          supportUnder(point.x + dx, point.z + dz, point === socket.feet ? 0 : move.radius,
+            point.y + .05, world.boxes, move.groundY)));
       const blocked = blockedAt(point.x, point.z, move.radius, point.y, .05, move.height, world.boxes);
       if (checks.some((y) => Math.abs(y - point.y) > .05) || blocked)
         mismatch.push(`${socket.id} ${JSON.stringify(point)} support=${JSON.stringify(checks)} blocked=${blocked}`);
     }
   }
-  if (mismatch.length) throw new Error('U-228 authored collision audit:\\n' + mismatch.join('\\n'));
+  if (mismatch.length) {
+    for (const id of ['RL1', 'RL2', 'RL3']) {
+      const socket = rawEncounter.groups.flatMap((g) => g.sockets).find((x) => x.id === id);
+      if (!socket) continue;
+      const { x, y, z } = socket.feet;
+      const local = world.boxes.filter((q) =>
+        q.minX < x + 9 && q.maxX > x - 9 && q.minZ < z + 9 && q.maxZ > z - 9);
+      const candidates: { x: number; y: number; z: number; distance: number }[] = [];
+      for (let ix = -12; ix <= 12; ix++) for (let iz = -12; iz <= 12; iz++) {
+        const px = x + ix * .5, pz = z + iz * .5;
+        if ([-move.radius, 0, move.radius].some((dx) => [-move.radius, 0, move.radius].some((dz) =>
+          Math.abs(supportUnder(px + dx, pz + dz, 0, y + .05, local, move.groundY) - y) > .05))) continue;
+        if (blockedAt(px, pz, move.radius, y, .05, move.height, local)) continue;
+        candidates.push({ x: px, y, z: pz, distance: ix * ix + iz * iz });
+      }
+      candidates.sort((a, b) => a.distance - b.distance);
+      mismatch.push('candidates ' + id + ' ' + JSON.stringify(candidates.slice(0, 8)));
+    }
+    throw new Error('U-228 authored collision audit:\\n' + mismatch.join('\\n'));
+  }
   const encounter = parseEncounter(rawEncounter, (id) => id === world.id ? context : undefined);
   const expectedRoute = tankReturnRoute();
   const tank = encounter.groups.find((g) => g.id === 'tank');
