@@ -67,9 +67,9 @@
       "trigger": {"kind":"start"},
       "fixedCount": true,
       "sockets": [
-        {"id":"RL1","archetype":"rifleman","feet":{"x":76,"y":26,"z":164},"face":{"x":64,"z":128},"combatRegion":"ridge-lower"},
+        {"id":"RL1","archetype":"rifleman","feet":{"x":76,"y":26,"z":164.5},"face":{"x":64,"z":128},"combatRegion":"ridge-lower"},
         {"id":"RL2","archetype":"rifleman","feet":{"x":82,"y":26,"z":172},"face":{"x":64,"z":128},"combatRegion":"ridge-lower","patrol":{"route":[{"x":82,"y":26,"z":172},{"x":80,"y":26,"z":168},{"x":84,"y":26,"z":178}],"pauseSeconds":3}},
-        {"id":"RL3","archetype":"rifleman","feet":{"x":78,"y":26,"z":178},"face":{"x":64,"z":128},"combatRegion":"ridge-lower"}
+        {"id":"RL3","archetype":"rifleman","feet":{"x":78,"y":26,"z":172.5},"face":{"x":64,"z":128},"combatRegion":"ridge-lower"}
       ]
     },
     {
