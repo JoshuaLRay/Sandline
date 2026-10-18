@@ -1,7 +1,8 @@
 /** U-229: §12 fixed stock and candidate-floor authoring, no live activation. */
 import { describe, expect, it } from 'vitest';
-import { parseSupplyCaches, requireWorld, SUPPLY_AMMO_UNITS_PER_MAGAZINE,
-  transferSupply, type SupplyInventory } from '@sandline/shared';
+import { ClientConnection, createLoopbackPair, createMoveState, parseSupplyCaches, PROTOCOL_VERSION,
+  requireWorld, SUPPLY_AMMO_UNITS_PER_MAGAZINE, TICK_SECONDS, transferSupply,
+  type SupplyInventory } from '@sandline/shared';
 import { replacementInputs } from './qalatReplacement.ts';
 import { buildReplacementSupplies } from './qalatReplacementSupplies.ts';
 import { Session } from '../../../server/src/session/Session.ts';
@@ -44,6 +45,51 @@ describe('U-229 staged Qalat supply caches', () => {
       session.close();
     }
   }, 120_000);
+  it('runs one-second authoritative transfers at all five actual constructed cache floors', () => {
+    const { world } = replacementInputs();
+    const supplyCaches = buildReplacementSupplies(world);
+    const session = new Session(undefined, '', world, {
+      events: { world: world.id, blockers: [], events: [], supplyCaches }, loadouts: 'class',
+    });
+    const pair = createLoopbackPair();
+    let now = 0, tick = 0, requestId = 0;
+    const settle = () => { for (let i = 0; i < 3; i++) pair.settle(); };
+    const client = new ClientConnection(pair.b);
+    const step = (n: number) => {
+      for (let i = 0; i < n; i++) {
+        now += TICK_SECONDS * 1000; tick++;
+        client.send({ kind: 'Input', tick, moveX: 0, moveY: 0, yaw: 0, pitch: 0, buttons: 0b1000 });
+        settle(); session.step(now); settle();
+      }
+    };
+    try {
+      session.addConnection(pair.a, now);
+      client.send({ kind: 'Join', version: PROTOCOL_VERSION, name: 'U229', room: '', slot: 0 });
+      settle();
+      const soldier = session.slots[0]!;
+      for (const cache of supplyCaches) {
+        soldier.state = createMoveState(cache.feet.x, cache.feet.y, cache.feet.z);
+        soldier.kits = 0;
+        client.send({ kind: 'SupplySelect', requestId: ++requestId, cacheId: cache.id, item: { kind: 'health-kit' } });
+        settle(); step(30);
+        expect(soldier.kits, cache.id).toBe(1);
+        expect(session.supplyCaches.find((c) => c.id === cache.id)!.stock.healthKits, cache.id)
+          .toBe(cache.stock.healthKits - 1);
+      }
+      // A cache directly above/below cannot be collected from the wrong storey,
+      // even when x/z coincide and the item is compatible.
+      const ridge = supplyCaches[2]!;
+      soldier.state = createMoveState(ridge.feet.x, 8, ridge.feet.z);
+      soldier.kits = 0;
+      client.send({ kind: 'SupplySelect', requestId: ++requestId, cacheId: ridge.id, item: { kind: 'health-kit' } });
+      settle(); step(31);
+      expect(soldier.kits).toBe(0);
+      expect(session.supplyCaches.find((c) => c.id === ridge.id)!.stock.healthKits)
+        .toBe(ridge.stock.healthKits - 1);
+    } finally {
+      session.close();
+    }
+  }, 180_000);
   it('uses the existing finite stock transfer: partial refills, full/incompatible choices consume nothing', () => {
     const stock = parseSupplyCaches(raw)[0]!.stock;
     const inventory: SupplyInventory = {
