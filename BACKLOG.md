@@ -94,7 +94,7 @@ The split is not implementation/activation authorization or an inferred verdict.
 | [U-117](docs/backlog/U-117.md) | Integrate redesigned Mission 1 combat, supplies and objectives | Map implementation | P1 | BLOCKED | Aggregate: U-227–U-233; engineering closure after actual atomic activation proof | — |
 | [U-234](docs/backlog/U-234.md) | Publish playable current Qalat WIP with normal controls | Map implementation | P1 | REVIEW | U-227 DONE; owner-directed isolated preview, early owner feedback pending | [#375](https://github.com/JoshuaLRay/Sandline/pull/375); delivery gates/evidence there |
 | [U-228](docs/backlog/U-228.md) | Author replacement guards, patrols, emplacement and staged reserves | Map implementation | P1 | READY | U-227 DONE | — |
-| [U-229](docs/backlog/U-229.md) | Author and validate all five replacement supply caches | Map implementation | P1 | READY | U-227 DONE | — |
+| [U-229](docs/backlog/U-229.md) | Author and validate all five replacement supply caches | Map implementation | P1 | IN_PROGRESS | U-227 DONE; claimed on `task/U-229-qalat-supply-caches` | — |
 | [U-230](docs/backlog/U-230.md) | Author isolated replacement objectives, timers and mission texts | Map implementation | P1 | BLOCKED | U-228, U-229 | — |
 | [U-231](docs/backlog/U-231.md) | Rehearse all replacement routes, tank combat and escort | Map implementation | P1 | BLOCKED | U-230 | — |
 | [U-232](docs/backlog/U-232.md) | Rehearse full replacement checkpoint and retry persistence | Map implementation | P1 | BLOCKED | U-230 | — |
