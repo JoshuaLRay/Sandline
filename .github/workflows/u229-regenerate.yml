@@ -1,43 +1,40 @@
-# Temporary, strictly branch-scoped regeneration of committed source-derived
-# Qalat evidence following U-229's toll-office passage repair. REMOVE before merge.
-name: U-229 regenerate isolated Qalat evidence
+# Short-lived branch-only capture proof synchronization after U-229 geometry repair.
+# REMOVE this workflow before final PR review/merge. No production or release jobs.
+name: U-229 sync regenerated visual proof
 on:
   push:
     branches: [task/U-229-qalat-supply-caches]
 permissions:
   contents: write
+  actions: read
 jobs:
-  regenerate:
+  sync-evidence:
     if: github.repository == 'JoshuaLRay/Sandline' && github.ref == 'refs/heads/task/U-229-qalat-supply-caches'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: true
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Rebuild all downstream isolated construction and candidate proofs
+      - name: Retrieve regenerated capture proofs for the exact source checkpoint
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          pnpm gen:qalat-road-supports
-          pnpm gen:qalat-depot
-          pnpm gen:qalat-outpost
-          pnpm gen:qalat-replacement
-      - name: Persist rebuilt proofs ONLY to this task branch
+          gh run download 39148011976 --repo JoshuaLRay/Sandline --name qalat-road-support-review --dir artifacts/qalat-road-supports
+          gh run download 39148011976 --repo JoshuaLRay/Sandline --name qalat-depot-review --dir artifacts/qalat-depot
+          gh run download 39148011976 --repo JoshuaLRay/Sandline --name qalat-outpost-review --dir artifacts/qalat-outpost
+          gh run download 39148011976 --repo JoshuaLRay/Sandline --name qalat-replacement-review --dir artifacts/qalat-replacement
+      - name: Persist exact reviewed proof only to the U-229 branch
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = refs/heads/task/U-229-qalat-supply-caches
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add artifacts/qalat-road-supports artifacts/qalat-depot artifacts/qalat-outpost artifacts/qalat-replacement
+          git add -u artifacts/qalat-road-supports artifacts/qalat-depot artifacts/qalat-outpost artifacts/qalat-replacement
           if git diff --cached --quiet; then
-            echo "All committed generated proofs are already current"
+            echo "All visual proof was already checked in"
             exit 0
           fi
-          git commit -m "U-229: regenerate isolated Qalat artifacts for repaired toll portal"
+          git commit -m "U-229: synchronize verified geometry screenshots and capture digests"
           git push origin HEAD:refs/heads/task/U-229-qalat-supply-caches
