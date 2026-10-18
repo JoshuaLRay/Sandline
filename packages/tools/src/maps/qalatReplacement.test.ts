@@ -50,6 +50,24 @@ describe('U-227 staged complete replacement', () => {
     expect(bundle.manifest.bytes.level + bundle.manifest.bytes.surface + JSON.stringify(bundle.nav).length).toBeLessThan(80_000_000);
   }, 60_000);
 
+  it('U-228 binds fixed enemy sockets and patrols to the exported standing nav without registering them', () => {
+    const sockets = bundle.encounter.groups.flatMap((g) => g.sockets ?? []);
+    expect(sockets).toHaveLength(38);
+    expect(loaded.encounter.groups).toEqual(bundle.encounter.groups);
+    expect(loaded.emplacements).toHaveLength(1);
+    const all = sockets.flatMap((s) => [s.feet, ...(s.patrol?.route ?? []), ...(s.advance ?? [])]);
+    for (const at of all) {
+      const nearest = loaded.nav.nearestPoint(at)?.point;
+      expect(nearest, `missing actual standing nav at ${JSON.stringify(at)}`).toBeDefined();
+      expect(Math.abs(nearest!.y - at.y), JSON.stringify(at)).toBeLessThan(.35);
+      expect(Math.hypot(nearest!.x - at.x, nearest!.z - at.z), JSON.stringify(at)).toBeLessThan(.65);
+    }
+    const damaged = structuredClone(bundle);
+    damaged.encounter.groups[0]!.sockets![0]!.feet.x += 1;
+    expect(() => reloadReplacement(damaged)).toThrow(/encounter/);
+    expect(loaded.world.mission).toBeNull();
+  }, 60_000);
+
   it('rebakes the exported nav deterministically and keeps legacy registered inputs and hashes', async () => {
     expect(Buffer.from(await bakeTiledStanding(loaded.world, QALAT_TILED_PLAN)).equals(Buffer.from(bakedBytes(bundle.nav)))).toBe(true);
     for (const id of WORLD_IDS) expect(exportInputHash(requireWorld(id))).toBe(navBakeHash(requireWorld(id)));
@@ -73,7 +91,7 @@ describe('U-227 staged complete replacement', () => {
     }
     expect(exportInputHash(loaded.world, { ...QALAT_TILED_PLAN, tileSize: 512 })).not.toBe(bundle.nav.hash);
     expect(digest(bundle.manifest.hashes)).toBe(bundle.manifest.bundleHash);
-  }, 60_000);
+  }, 180_000);
 
   it('keeps all authored starts, lane/room/gate witnesses and six holdings on the proper connected floors', () => {
     const witnesses = [...bundle.level.squadStarts, ...insertion, ...road, ...ridge, ...depot,

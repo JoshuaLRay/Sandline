@@ -532,3 +532,4 @@ Format: `T-<id> — <what changed>`
 - MIGRATION-P3 — Replace GitHub Pages delivery with opt-in, four-gate Cloudflare Worker release; reroute Fly-triggered rebuilds and update private-cutover documentation (Worker deployment requires account activation).
 
 - U-234 — Add isolated playable Qalat WIP access with normal controls; keep production activation and owner acceptance pending.
+- U-228 — Author isolated replacement-Qalat 32-guard roster, POW, four dormant counterattack riflemen and y8 staged tank, with fixed sockets, patrol/advance regions, OG1 emplacement and deterministic validation (PR #376; activation remains U-233).

@@ -10,6 +10,7 @@ import { outpostDecorations } from './qalatOutpostFurniture.ts';
 import { buildOutpostCaptiveFixture } from './qalatOutpostCaptives.ts';
 import { QALAT_TILED_PLAN } from './qalatRoadNav.ts';
 import { insertionSurface } from './insertionSurface.ts';
+import { buildReplacementEncounter } from './qalatReplacementEncounter.ts';
 
 export function replacementInputs() {
   const level = { ...buildOutpostLevel(), mapRevision: 2 };
@@ -20,6 +21,8 @@ export function replacementInputs() {
 const yieldPhase = () => new Promise<void>((resolve) => setImmediate(resolve));
 export async function buildReplacementBundle() {
   const { level, world, mission, pow, decorations } = replacementInputs();
+  const { encounter, encounterMission, emplacements } = buildReplacementEncounter(world);
+  const encounterDigest = digest({ encounter, encounterMission, emplacements });
   const levelHash = digest(level), renderHash = digest([...level.boxes, ...decorations]);
   await yieldPhase();
   const rendered = insertionSurface([...level.boxes, ...decorations]);
@@ -33,7 +36,7 @@ export async function buildReplacementBundle() {
   const hashes = { level: levelHash, render: renderHash, surface: digest(surface), mission: digest(mission),
     navInput: nav.hash, nav: digest(nav), cover: digest(nav.cover),
     starts: digest(level.squadStarts), holdings: digest({ pow, carried: mission.prisonerHoldings }) };
-  return { level, surface, mission, nav, manifest: {
+  return { level, surface, mission, nav, encounter, encounterMission, emplacements, encounterDigest, manifest: {
     task: 'U-227', world: world.id, mapRevision: 2, registered: false,
     levelHash, renderHash, decorations, pow, hashes, bundleHash: digest(hashes),
     navPlan: QALAT_TILED_PLAN, boxes: level.boxes.length,
@@ -49,22 +52,40 @@ export type ReplacementBundle = Awaited<ReturnType<typeof buildReplacementBundle
 
 /** Validate serialized artifacts before handing their explicit data to a Session or reviewer. */
 export function reloadReplacement(bundle: ReplacementBundle) {
-  const { level, surface, mission, nav, manifest: m } = bundle;
+  const { level, surface, mission, nav, manifest: m, encounter, encounterMission, emplacements, encounterDigest } = bundle;
+  // Reject serialized tampering against the existing source-bound manifest
+  // before loading 110k collision boxes and auditing all encounter sockets.
+  // This also bounds the negative-test matrix without skipping any checks.
+  if (m.registered !== false || m.mapRevision !== 2 || level.mapRevision !== 2 ||
+    m.world !== level.id || nav.world !== level.id ||
+    digest(level) !== m.hashes.level || digest(mission) !== m.hashes.mission ||
+    digest(surface) !== m.hashes.surface || digest(nav) !== m.hashes.nav ||
+    digest(nav.cover) !== m.hashes.cover || digest(level.squadStarts) !== m.hashes.starts ||
+    digest({ pow: m.pow, carried: mission.prisonerHoldings }) !== m.hashes.holdings ||
+    m.levelHash !== m.hashes.level || m.renderHash !== m.hashes.render ||
+    surface.levelHash !== m.hashes.level || surface.renderHash !== m.hashes.render ||
+    digest(m.hashes) !== m.bundleHash || digest(m.navPlan) !== digest(QALAT_TILED_PLAN))
+    throw new Error('stale or inconsistent unregistered Qalat replacement bundle');
   const world = loadLevel(level), parsed = parseMission(mission);
   const hashes = { level: digest(level), render: digest([...level.boxes, ...m.decorations]),
     surface: digest(surface), mission: digest(mission), navInput: exportInputHash(world, m.navPlan),
     nav: digest(nav), cover: digest(nav.cover), starts: digest(level.squadStarts),
     holdings: digest({ pow: m.pow, carried: mission.prisonerHoldings }) };
-  if (m.registered !== false || m.mapRevision !== 2 || world.mapRevision !== 2 ||
-    m.world !== world.id || parsed.id !== world.id || parsed.world !== world.id || nav.world !== world.id ||
-    nav.hash !== hashes.navInput || surface.levelHash !== hashes.level || surface.renderHash !== hashes.render ||
-    m.levelHash !== hashes.level || m.renderHash !== hashes.render || digest(hashes) !== m.bundleHash ||
-    digest(m.hashes) !== m.bundleHash || digest(m.navPlan) !== digest(QALAT_TILED_PLAN))
+  if (parsed.id !== world.id || parsed.world !== world.id ||
+    nav.hash !== hashes.navInput || m.hashes.render !== hashes.render ||
+    m.hashes.navInput !== hashes.navInput || digest(hashes) !== m.bundleHash)
     throw new Error('stale or inconsistent unregistered Qalat replacement bundle');
+  if (digest({ encounter, encounterMission, emplacements }) !== encounterDigest ||
+    encounter.world !== world.id)
+    throw new Error('stale or altered U-228 replacement encounter');
+  const authored = buildReplacementEncounter(world);
+  if (digest(authored) !== encounterDigest)
+    throw new Error('stale or altered U-228 replacement encounter');
   if (surface.encoding !== 'gzip-json-v1' ||
     digest(JSON.parse(gunzipSync(Buffer.from(surface.data, 'base64')).toString('utf8'))) !== surface.contentHash)
     throw new Error('replacement render surface content changed');
   const fixture = buildOutpostCaptiveFixture(world, parsed);
   if (digest(fixture.pow) !== digest(m.pow)) throw new Error('replacement POW holding changed');
-  return { ...fixture, nav: NavMesh.load(bakedBytes(nav), nav.agent.height) };
+  return { ...fixture, encounter, encounterMission, emplacements,
+    nav: NavMesh.load(bakedBytes(nav), nav.agent.height) };
 }
