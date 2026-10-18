@@ -10,7 +10,7 @@
     "build": "tsc --build",
     "typecheck": "tsc --build --force",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "node scripts/run-vitest.mjs",
     "verify": "pnpm typecheck && pnpm lint && pnpm test",
     "sim-run": "tsx packages/tools/src/sim-run.ts",
     "gen:trig": "tsx packages/tools/src/gen-trig-table.ts",

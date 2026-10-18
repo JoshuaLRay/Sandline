@@ -78,6 +78,21 @@ describe('U-227 staged complete replacement', () => {
       expect(near, cache.id).toBeDefined();
       expect(Math.abs(near!.y - cache.feet.y), cache.id).toBeLessThan(.35);
       expect(Math.hypot(near!.x - cache.feet.x, near!.z - cache.feet.z), cache.id).toBeLessThan(.65);
+      // U-229 CI failure probe: keep the original connected/path assertions.
+      // Capture actual Detour floor snaps and connectivity along the existing toll-office doorway;
+      // delete these logs after the construction defect is repaired.
+      if (cache.id === 'P-ROAD') {
+        const probes = [-6, -4, -2, 0, 2].map((x) => {
+          const target = p(x, 8, 118), hit = loaded.nav.nearestPoint(target);
+          return { x, nearest: hit?.point, polyRef: hit?.polyRef,
+            connected: loaded.nav.connected(insertion[0]!, target),
+            path: !!loaded.nav.path(insertion[0]!, target) };
+        });
+        console.info('U-229 toll-office nav diagnostic', JSON.stringify({
+          from: loaded.nav.nearestPoint(insertion[0]!), cache: cache.feet,
+          near, probes,
+        }));
+      }
       expect(loaded.nav.connected(insertion[0]!, cache.feet), cache.id).toBe(true);
       expect(completePathLength(loaded.nav.path(insertion[0]!, cache.feet),
         insertion[0]!, cache.feet), cache.id).not.toBeNull();
