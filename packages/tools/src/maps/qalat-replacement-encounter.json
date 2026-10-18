@@ -1,0 +1,1493 @@
+{
+  "world": "qalat-outpost-construction",
+  "aliveCap": 42,
+  "probes": [
+    0.3,
+    1,
+    1.7
+  ],
+  "stragglers": {
+    "alive": 0,
+    "seconds": 60
+  },
+  "areas": {},
+  "regions": {
+    "road-toll": [
+      {
+        "minX": -48,
+        "maxX": 43,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 98,
+        "maxZ": 148
+      }
+    ],
+    "road-frontage": [
+      {
+        "minX": -47,
+        "maxX": 39,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 142,
+        "maxZ": 244
+      }
+    ],
+    "road-forecourt": [
+      {
+        "minX": -30,
+        "maxX": 45,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 298,
+        "maxZ": 353
+      }
+    ],
+    "ridge-lower": [
+      {
+        "minX": 60,
+        "maxX": 99,
+        "minY": 25.5,
+        "maxY": 26.5,
+        "minZ": 126,
+        "maxZ": 214
+      }
+    ],
+    "ridge-upper": [
+      {
+        "minX": 67,
+        "maxX": 100,
+        "minY": 29.5,
+        "maxY": 30.5,
+        "minZ": 206,
+        "maxZ": 270
+      },
+      {
+        "minX": 65,
+        "maxX": 95,
+        "minY": 25.5,
+        "maxY": 26.5,
+        "minZ": 264,
+        "maxZ": 302
+      }
+    ],
+    "basement-grain": [
+      {
+        "minX": -43,
+        "maxX": -9,
+        "minY": -0.5,
+        "maxY": 0.5,
+        "minZ": 102,
+        "maxZ": 151
+      }
+    ],
+    "basement-generator": [
+      {
+        "minX": -43,
+        "maxX": 5,
+        "minY": -0.5,
+        "maxY": 0.5,
+        "minZ": 188,
+        "maxZ": 230
+      }
+    ],
+    "basement-vault": [
+      {
+        "minX": 14,
+        "maxX": 42,
+        "minY": -0.5,
+        "maxY": 0.5,
+        "minZ": 250,
+        "maxZ": 300
+      }
+    ],
+    "garrison": [
+      {
+        "minX": 22.5,
+        "maxX": 55.5,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 356,
+        "maxZ": 411
+      },
+      {
+        "minX": 10,
+        "maxX": 22,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 358,
+        "maxZ": 374
+      },
+      {
+        "minX": 10,
+        "maxX": 22,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 385,
+        "maxZ": 395
+      }
+    ],
+    "radio-operator": [
+      {
+        "minX": 42,
+        "maxX": 54,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 390,
+        "maxZ": 410
+      }
+    ],
+    "counterattack": [
+      {
+        "minX": 24,
+        "maxX": 40,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 433,
+        "maxZ": 448
+      },
+      {
+        "minX": 28,
+        "maxX": 36,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 424,
+        "maxZ": 434
+      },
+      {
+        "minX": 18,
+        "maxX": 34,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 424,
+        "maxZ": 428
+      },
+      {
+        "minX": 18,
+        "maxX": 22,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 416,
+        "maxZ": 428
+      },
+      {
+        "minX": 18,
+        "maxX": 34,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 416,
+        "maxZ": 420
+      },
+      {
+        "minX": 28,
+        "maxX": 36,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 409,
+        "maxZ": 420
+      },
+      {
+        "minX": 22.5,
+        "maxX": 55.5,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 356,
+        "maxZ": 412
+      }
+    ],
+    "tank": [
+      {
+        "minX": 79,
+        "maxX": 136,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 314,
+        "maxZ": 458
+      },
+      {
+        "minX": 10,
+        "maxX": 84,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 306,
+        "maxZ": 358
+      },
+      {
+        "minX": -52,
+        "maxX": 44,
+        "minY": 7.5,
+        "maxY": 8.5,
+        "minZ": 95,
+        "maxZ": 340
+      }
+    ]
+  },
+  "groups": [
+    {
+      "id": "road-toll",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 3
+        }
+      ],
+      "zone": "road-toll",
+      "posture": {
+        "kind": "hold",
+        "face": "start"
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "fixedCount": true,
+      "sockets": [
+        {
+          "id": "AT1",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 6,
+            "y": 8,
+            "z": 122
+          },
+          "face": {
+            "x": 32,
+            "z": 98
+          },
+          "combatRegion": "road-toll"
+        },
+        {
+          "id": "AT2",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 16,
+            "y": 8,
+            "z": 130
+          },
+          "face": {
+            "x": 32,
+            "z": 98
+          },
+          "combatRegion": "road-toll",
+          "patrol": {
+            "route": [
+              {
+                "x": 16,
+                "y": 8,
+                "z": 130
+              },
+              {
+                "x": 20,
+                "y": 8,
+                "z": 116
+              },
+              {
+                "x": 14,
+                "y": 8,
+                "z": 136
+              }
+            ],
+            "pauseSeconds": 3
+          }
+        },
+        {
+          "id": "AT3",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 8,
+            "y": 8,
+            "z": 138
+          },
+          "face": {
+            "x": 32,
+            "z": 98
+          },
+          "combatRegion": "road-toll"
+        }
+      ]
+    },
+    {
+      "id": "road-frontage",
+      "members": [
+        {
+          "archetype": "mg",
+          "count": 1
+        },
+        {
+          "archetype": "rifleman",
+          "count": 3
+        }
+      ],
+      "zone": "road-frontage",
+      "posture": {
+        "kind": "hold",
+        "face": "start"
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "fixedCount": true,
+      "sockets": [
+        {
+          "id": "AF1",
+          "archetype": "mg",
+          "feet": {
+            "x": -23,
+            "y": 8,
+            "z": 222.8
+          },
+          "face": {
+            "x": -37,
+            "z": 142
+          },
+          "combatRegion": "road-frontage"
+        },
+        {
+          "id": "AF2",
+          "archetype": "rifleman",
+          "feet": {
+            "x": -34,
+            "y": 8,
+            "z": 198
+          },
+          "face": {
+            "x": -37,
+            "z": 142
+          },
+          "combatRegion": "road-frontage"
+        },
+        {
+          "id": "AF3",
+          "archetype": "rifleman",
+          "feet": {
+            "x": -12,
+            "y": 8,
+            "z": 222
+          },
+          "face": {
+            "x": -37,
+            "z": 142
+          },
+          "combatRegion": "road-frontage"
+        },
+        {
+          "id": "AF4",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 18,
+            "y": 8,
+            "z": 224
+          },
+          "face": {
+            "x": -37,
+            "z": 142
+          },
+          "combatRegion": "road-frontage",
+          "patrol": {
+            "route": [
+              {
+                "x": 18,
+                "y": 8,
+                "z": 224
+              },
+              {
+                "x": 18,
+                "y": 8,
+                "z": 226
+              },
+              {
+                "x": 10,
+                "y": 8,
+                "z": 218
+              }
+            ],
+            "pauseSeconds": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "road-forecourt",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 3
+        }
+      ],
+      "zone": "road-forecourt",
+      "posture": {
+        "kind": "hold",
+        "face": "start"
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "fixedCount": true,
+      "sockets": [
+        {
+          "id": "AG1",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 10,
+            "y": 8,
+            "z": 322
+          },
+          "face": {
+            "x": -18,
+            "z": 302
+          },
+          "combatRegion": "road-forecourt"
+        },
+        {
+          "id": "AG2",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 24,
+            "y": 8,
+            "z": 338
+          },
+          "face": {
+            "x": -18,
+            "z": 302
+          },
+          "combatRegion": "road-forecourt",
+          "patrol": {
+            "route": [
+              {
+                "x": 24,
+                "y": 8,
+                "z": 338
+              },
+              {
+                "x": 22,
+                "y": 8,
+                "z": 342
+              },
+              {
+                "x": 16,
+                "y": 8,
+                "z": 332
+              }
+            ],
+            "pauseSeconds": 3
+          }
+        },
+        {
+          "id": "AG3",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 34,
+            "y": 8,
+            "z": 346
+          },
+          "face": {
+            "x": -18,
+            "z": 302
+          },
+          "combatRegion": "road-forecourt"
+        }
+      ]
+    },
+    {
+      "id": "ridge-lower",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 3
+        }
+      ],
+      "zone": "ridge-lower",
+      "posture": {
+        "kind": "hold",
+        "face": "start"
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "fixedCount": true,
+      "sockets": [
+        {
+          "id": "RL1",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 76,
+            "y": 26,
+            "z": 164
+          },
+          "face": {
+            "x": 64,
+            "z": 128
+          },
+          "combatRegion": "ridge-lower"
+        },
+        {
+          "id": "RL2",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 82,
+            "y": 26,
+            "z": 172
+          },
+          "face": {
+            "x": 64,
+            "z": 128
+          },
+          "combatRegion": "ridge-lower",
+          "patrol": {
+            "route": [
+              {
+                "x": 82,
+                "y": 26,
+                "z": 172
+              },
+              {
+                "x": 80,
+                "y": 26,
+                "z": 168
+              },
+              {
+                "x": 84,
+                "y": 26,
+                "z": 178
+              }
+            ],
+            "pauseSeconds": 3
+          }
+        },
+        {
+          "id": "RL3",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 78,
+            "y": 26,
+            "z": 178
+          },
+          "face": {
+            "x": 64,
+            "z": 128
+          },
+          "combatRegion": "ridge-lower"
+        }
+      ]
+    },
+    {
+      "id": "ridge-upper",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 3
+        }
+      ],
+      "zone": "ridge-upper",
+      "posture": {
+        "kind": "hold",
+        "face": "start"
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "fixedCount": true,
+      "sockets": [
+        {
+          "id": "RU1",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 82,
+            "y": 30,
+            "z": 244
+          },
+          "face": {
+            "x": 94,
+            "z": 210
+          },
+          "combatRegion": "ridge-upper"
+        },
+        {
+          "id": "RU2",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 88,
+            "y": 30,
+            "z": 252
+          },
+          "face": {
+            "x": 94,
+            "z": 210
+          },
+          "combatRegion": "ridge-upper",
+          "patrol": {
+            "route": [
+              {
+                "x": 88,
+                "y": 30,
+                "z": 252
+              },
+              {
+                "x": 86,
+                "y": 30,
+                "z": 248
+              },
+              {
+                "x": 90,
+                "y": 30,
+                "z": 242
+              }
+            ],
+            "pauseSeconds": 3
+          }
+        },
+        {
+          "id": "RU3",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 72,
+            "y": 26,
+            "z": 282
+          },
+          "face": {
+            "x": 94,
+            "z": 210
+          },
+          "combatRegion": "ridge-upper"
+        }
+      ]
+    },
+    {
+      "id": "basement-grain",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 3
+        }
+      ],
+      "zone": "basement-grain",
+      "posture": {
+        "kind": "hold",
+        "face": "start"
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "fixedCount": true,
+      "sockets": [
+        {
+          "id": "BG1",
+          "archetype": "rifleman",
+          "feet": {
+            "x": -26,
+            "y": 0,
+            "z": 124
+          },
+          "face": {
+            "x": -20,
+            "z": 108
+          },
+          "combatRegion": "basement-grain"
+        },
+        {
+          "id": "BG2",
+          "archetype": "rifleman",
+          "feet": {
+            "x": -16,
+            "y": 0,
+            "z": 128
+          },
+          "face": {
+            "x": -20,
+            "z": 108
+          },
+          "combatRegion": "basement-grain",
+          "patrol": {
+            "route": [
+              {
+                "x": -16,
+                "y": 0,
+                "z": 128
+              },
+              {
+                "x": -16,
+                "y": 0,
+                "z": 118
+              },
+              {
+                "x": -20,
+                "y": 0,
+                "z": 124
+              }
+            ],
+            "pauseSeconds": 3
+          }
+        },
+        {
+          "id": "BG3",
+          "archetype": "rifleman",
+          "feet": {
+            "x": -24,
+            "y": 0,
+            "z": 128
+          },
+          "face": {
+            "x": -20,
+            "z": 108
+          },
+          "combatRegion": "basement-grain"
+        }
+      ]
+    },
+    {
+      "id": "basement-generator",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 3
+        }
+      ],
+      "zone": "basement-generator",
+      "posture": {
+        "kind": "hold",
+        "face": "start"
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "fixedCount": true,
+      "sockets": [
+        {
+          "id": "BE1",
+          "archetype": "rifleman",
+          "feet": {
+            "x": -18,
+            "y": 0,
+            "z": 206
+          },
+          "face": {
+            "x": -26,
+            "z": 194
+          },
+          "combatRegion": "basement-generator",
+          "patrol": {
+            "route": [
+              {
+                "x": -18,
+                "y": 0,
+                "z": 206
+              },
+              {
+                "x": -18,
+                "y": 0,
+                "z": 194
+              },
+              {
+                "x": -18,
+                "y": 0,
+                "z": 204
+              }
+            ],
+            "pauseSeconds": 3
+          }
+        },
+        {
+          "id": "BE2",
+          "archetype": "rifleman",
+          "feet": {
+            "x": -24,
+            "y": 0,
+            "z": 208
+          },
+          "face": {
+            "x": -26,
+            "z": 194
+          },
+          "combatRegion": "basement-generator"
+        },
+        {
+          "id": "BE3",
+          "archetype": "rifleman",
+          "feet": {
+            "x": -12,
+            "y": 0,
+            "z": 210
+          },
+          "face": {
+            "x": -26,
+            "z": 194
+          },
+          "combatRegion": "basement-generator"
+        }
+      ]
+    },
+    {
+      "id": "basement-vault",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 3
+        }
+      ],
+      "zone": "basement-vault",
+      "posture": {
+        "kind": "hold",
+        "face": "start"
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "fixedCount": true,
+      "sockets": [
+        {
+          "id": "BV1",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 24,
+            "y": 0,
+            "z": 282
+          },
+          "face": {
+            "x": 30,
+            "z": 254
+          },
+          "combatRegion": "basement-vault"
+        },
+        {
+          "id": "BV2",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 36,
+            "y": 0,
+            "z": 280
+          },
+          "face": {
+            "x": 30,
+            "z": 254
+          },
+          "combatRegion": "basement-vault",
+          "patrol": {
+            "route": [
+              {
+                "x": 36,
+                "y": 0,
+                "z": 280
+              },
+              {
+                "x": 36,
+                "y": 0,
+                "z": 262
+              },
+              {
+                "x": 34,
+                "y": 0,
+                "z": 282
+              }
+            ],
+            "pauseSeconds": 3
+          }
+        },
+        {
+          "id": "BV3",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 30,
+            "y": 0,
+            "z": 284
+          },
+          "face": {
+            "x": 30,
+            "z": 254
+          },
+          "combatRegion": "basement-vault"
+        }
+      ]
+    },
+    {
+      "id": "garrison",
+      "members": [
+        {
+          "archetype": "mg",
+          "count": 1
+        },
+        {
+          "archetype": "rifleman",
+          "count": 5
+        }
+      ],
+      "zone": "garrison",
+      "posture": {
+        "kind": "hold",
+        "face": "start"
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "fixedCount": true,
+      "sockets": [
+        {
+          "id": "OG1",
+          "archetype": "mg",
+          "feet": {
+            "x": 31.5,
+            "y": 8,
+            "z": 361
+          },
+          "face": {
+            "x": 32,
+            "z": 350
+          },
+          "combatRegion": "garrison"
+        },
+        {
+          "id": "OG2",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 18,
+            "y": 8,
+            "z": 368
+          },
+          "face": {
+            "x": 32,
+            "z": 350
+          },
+          "combatRegion": "garrison"
+        },
+        {
+          "id": "OG3",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 48,
+            "y": 8,
+            "z": 378
+          },
+          "face": {
+            "x": 56,
+            "z": 374
+          },
+          "combatRegion": "garrison"
+        },
+        {
+          "id": "OG4",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 18,
+            "y": 8,
+            "z": 390
+          },
+          "face": {
+            "x": 22,
+            "z": 392
+          },
+          "combatRegion": "garrison"
+        },
+        {
+          "id": "OG5",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 28,
+            "y": 8,
+            "z": 402
+          },
+          "face": {
+            "x": 32,
+            "z": 376
+          },
+          "combatRegion": "garrison"
+        },
+        {
+          "id": "OG6",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 36,
+            "y": 8,
+            "z": 386
+          },
+          "face": {
+            "x": 32,
+            "z": 376
+          },
+          "combatRegion": "garrison",
+          "patrol": {
+            "route": [
+              {
+                "x": 36,
+                "y": 8,
+                "z": 386
+              },
+              {
+                "x": 36,
+                "y": 8,
+                "z": 376
+              },
+              {
+                "x": 28,
+                "y": 8,
+                "z": 384
+              }
+            ],
+            "pauseSeconds": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "radio-operator",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 1
+        }
+      ],
+      "zone": "radio-operator",
+      "posture": {
+        "kind": "hold",
+        "face": "start"
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "fixedCount": true,
+      "sockets": [
+        {
+          "id": "OR1",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 50,
+            "y": 8,
+            "z": 402
+          },
+          "face": {
+            "x": 42,
+            "z": 396
+          },
+          "combatRegion": "radio-operator"
+        }
+      ]
+    },
+    {
+      "id": "prisoner",
+      "zone": "prisoner",
+      "members": [
+        {
+          "archetype": "pow",
+          "count": 1
+        }
+      ],
+      "posture": {
+        "kind": "hold",
+        "face": "start"
+      },
+      "trigger": {
+        "kind": "start"
+      },
+      "captive": true,
+      "fixedCount": true,
+      "sockets": [
+        {
+          "id": "mission-pow",
+          "archetype": "pow",
+          "feet": {
+            "x": 16,
+            "y": 8,
+            "z": 402
+          },
+          "face": {
+            "x": 16,
+            "z": 392
+          }
+        }
+      ]
+    },
+    {
+      "id": "counterattack",
+      "zone": "counterattack",
+      "members": [
+        {
+          "archetype": "rifleman",
+          "count": 4
+        }
+      ],
+      "posture": {
+        "kind": "hold",
+        "face": "start"
+      },
+      "trigger": {
+        "kind": "script"
+      },
+      "fixedCount": true,
+      "staged": true,
+      "sockets": [
+        {
+          "id": "C1",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 28,
+            "y": 8,
+            "z": 440
+          },
+          "face": {
+            "x": 32,
+            "z": 412
+          },
+          "combatRegion": "counterattack",
+          "advance": [
+            {
+              "x": 28,
+              "y": 8,
+              "z": 440
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 434
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 426
+            },
+            {
+              "x": 20,
+              "y": 8,
+              "z": 426
+            },
+            {
+              "x": 20,
+              "y": 8,
+              "z": 418
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 418
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 412
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 404
+            },
+            {
+              "x": 30,
+              "y": 8,
+              "z": 404
+            }
+          ]
+        },
+        {
+          "id": "C2",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 32,
+            "y": 8,
+            "z": 440
+          },
+          "face": {
+            "x": 32,
+            "z": 412
+          },
+          "combatRegion": "counterattack",
+          "advance": [
+            {
+              "x": 32,
+              "y": 8,
+              "z": 440
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 434
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 426
+            },
+            {
+              "x": 20,
+              "y": 8,
+              "z": 426
+            },
+            {
+              "x": 20,
+              "y": 8,
+              "z": 418
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 418
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 412
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 404
+            },
+            {
+              "x": 38,
+              "y": 8,
+              "z": 404
+            }
+          ]
+        },
+        {
+          "id": "C3",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 36,
+            "y": 8,
+            "z": 440
+          },
+          "face": {
+            "x": 32,
+            "z": 412
+          },
+          "combatRegion": "counterattack",
+          "advance": [
+            {
+              "x": 36,
+              "y": 8,
+              "z": 440
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 434
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 426
+            },
+            {
+              "x": 20,
+              "y": 8,
+              "z": 426
+            },
+            {
+              "x": 20,
+              "y": 8,
+              "z": 418
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 418
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 412
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 404
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 396
+            },
+            {
+              "x": 28,
+              "y": 8,
+              "z": 388
+            }
+          ]
+        },
+        {
+          "id": "C4",
+          "archetype": "rifleman",
+          "feet": {
+            "x": 32,
+            "y": 8,
+            "z": 444
+          },
+          "face": {
+            "x": 32,
+            "z": 412
+          },
+          "combatRegion": "counterattack",
+          "advance": [
+            {
+              "x": 32,
+              "y": 8,
+              "z": 444
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 434
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 426
+            },
+            {
+              "x": 20,
+              "y": 8,
+              "z": 426
+            },
+            {
+              "x": 20,
+              "y": 8,
+              "z": 418
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 418
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 412
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 404
+            },
+            {
+              "x": 32,
+              "y": 8,
+              "z": 396
+            },
+            {
+              "x": 44,
+              "y": 8,
+              "z": 388
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tank",
+      "zone": "tank",
+      "members": [
+        {
+          "archetype": "tank",
+          "count": 1
+        }
+      ],
+      "posture": {
+        "kind": "hold",
+        "face": "start"
+      },
+      "trigger": {
+        "kind": "script"
+      },
+      "fixedCount": true,
+      "staged": true,
+      "sockets": [
+        {
+          "id": "X0-tank",
+          "archetype": "tank",
+          "feet": {
+            "x": 96,
+            "y": 8,
+            "z": 444
+          },
+          "face": {
+            "x": 114,
+            "z": 432
+          },
+          "combatRegion": "tank"
+        }
+      ],
+      "path": [
+        {
+          "x": 114,
+          "y": 8,
+          "z": 432
+        },
+        {
+          "x": 112,
+          "y": 8,
+          "z": 386
+        },
+        {
+          "x": 104,
+          "y": 8,
+          "z": 350
+        },
+        {
+          "x": 84,
+          "y": 8,
+          "z": 338
+        },
+        {
+          "x": 70,
+          "y": 8,
+          "z": 336
+        },
+        {
+          "x": 70,
+          "y": 8,
+          "z": 349
+        },
+        {
+          "x": 58,
+          "y": 8,
+          "z": 349
+        },
+        {
+          "x": 54,
+          "y": 8,
+          "z": 334
+        },
+        {
+          "x": 40,
+          "y": 8,
+          "z": 320
+        },
+        {
+          "x": 16,
+          "y": 8,
+          "z": 332
+        },
+        {
+          "x": -18,
+          "y": 8,
+          "z": 302
+        },
+        {
+          "x": 30,
+          "y": 8,
+          "z": 270
+        },
+        {
+          "x": 26,
+          "y": 8,
+          "z": 232
+        },
+        {
+          "x": -28,
+          "y": 8,
+          "z": 210
+        },
+        {
+          "x": -37,
+          "y": 8,
+          "z": 142
+        },
+        {
+          "x": 12,
+          "y": 8,
+          "z": 128
+        },
+        {
+          "x": 32,
+          "y": 8,
+          "z": 98
+        }
+      ]
+    }
+  ]
+}
