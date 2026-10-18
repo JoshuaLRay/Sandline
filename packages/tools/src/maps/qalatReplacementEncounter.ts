@@ -30,7 +30,8 @@ export function buildReplacementEncounter(world: World): {
   const mismatch: string[] = [];
   for (const group of rawEncounter.groups) for (const socket of group.sockets) {
     if (socket.archetype === 'tank') continue;
-    for (const point of [socket.feet, ...(socket.patrol?.route ?? []), ...(socket.advance ?? [])]) {
+    for (const point of [socket.feet, ...('patrol' in socket && socket.patrol ? socket.patrol.route : []),
+      ...('advance' in socket && socket.advance ? socket.advance : [])]) {
       const checks = [-move.radius, 0, move.radius].flatMap((dx) => [-move.radius, 0, move.radius].map((dz) =>
         supportUnder(point.x + dx, point.z + dz, 0, point.y + .05, world.boxes, move.groundY)));
       const blocked = blockedAt(point.x, point.z, move.radius, point.y, .05, move.height, world.boxes);
