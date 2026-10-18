@@ -54,7 +54,7 @@ describe('U-229 staged Qalat supply caches', () => {
     const pair = createLoopbackPair();
     let now = 0, tick = 0, requestId = 0;
     const settle = () => { for (let i = 0; i < 3; i++) pair.settle(); };
-    const client = new ClientConnection(pair.b);
+    const client = new ClientConnection(pair.b, {});
     const step = (n: number) => {
       for (let i = 0; i < n; i++) {
         now += TICK_SECONDS * 1000; tick++;
