@@ -3,9 +3,9 @@
   "parent": "U-115",
   "kind": "isolated furnished B1–B9 depot with covered B0/B10 stairs and exact endpoint connections",
   "sourceHash": "f9bdc201362a53871aa4dee7e68ec7d376b0cccd71fde46e321087a9bb020f5d",
-  "levelHash": "acd7324801b72d956801f7ee3b757b35cc858960949d47a4d9a1e876341e6f43",
-  "renderHash": "b3ad834c5c5e5bee3bec1c1da06c024c91b71e78e637cfa1835a552c9018f095",
-  "boxCount": 108439,
+  "levelHash": "37235d621db1f774a1ed1f6965776c1a8d21cc0a5826d6f6f0d74d7ee05f9cd8",
+  "renderHash": "48cd3620954a84b5d4b0fcffd6740b8d00fa09082d5b21ca382a61102824f06a",
+  "boxCount": 108112,
   "shellBoxCount": 9405,
   "rowM": 0.05,
   "rooms": [

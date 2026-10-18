@@ -7,9 +7,9 @@
   "road": "U-139",
   "kind": "isolated surface whitebox: road fights, screened tank ingress, D0 return store and furnished ridge with support bays, service bridge and C12-L/C12-U stairs",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "33af31340d2463d1f103ba72813d8d9e634ec2fbf0634ab4dd9fd276ab29fac6",
-  "levelHash": "a4b3c2409c33a64252b6fb04d4f440a29904cbb2f602f98fff9572403aef3f3f",
-  "boxCount": 94215,
+  "sourceHash": "4c246da8bb0760927b522fabe59790e076636fcf18ba9bad3881ebdc39723725",
+  "levelHash": "dca959b0b64a96fc8a9c3170bb6a230ddeb0c00f4512d7ec25179302c9b4d3b4",
+  "boxCount": 93888,
   "stratumM": 0.025,
   "edgeExpansionM": 0.005,
   "circleSides": 512,
@@ -1163,8 +1163,8 @@
         "id": "A-S05",
         "x": 13.209754301492024,
         "y": 8,
-        "z": 114.57863838340275,
-        "length": 17.157276766805495,
+        "z": 110.5,
+        "length": 9,
         "depth": 12.419508602984049,
         "height": 2.2,
         "orientation": "along-road",
@@ -1184,15 +1184,15 @@
             106
           ],
           [
-            8.212223878081653,
-            122.8109270873536
+            13.419508602984,
+            115
           ],
           [
             7,
-            123.1572767668055
+            115
           ]
         ],
-        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+        "why": "Keep the original A2 sight-screen south of the toll office; terminate before the 4 m z116..120 doorway approach so soldiers and Recast nav can move from the actual road into P-ROAD. The nearby A-S18 still screens the north shoulder."
       },
       {
         "id": "A-S06",
@@ -3246,7 +3246,7 @@
     }
   },
   "tankSweep": {
-    "levelHash": "a4b3c2409c33a64252b6fb04d4f440a29904cbb2f602f98fff9572403aef3f3f",
+    "levelHash": "dca959b0b64a96fc8a9c3170bb6a230ddeb0c00f4512d7ec25179302c9b4d3b4",
     "route": {
       "method": "closed interval disk tubes; complete support prism slab union",
       "radiusM": 3.31058907144937,
@@ -3661,16 +3661,16 @@
     },
     "endpointDomain": "whole road and office; all valid controller-square standing endpoints; ray interiors unchanged",
     "longestRoadView": {
-      "upperBoundM": 89.943,
+      "upperBoundM": 97.937,
       "witness": {
-        "length": 89.94222012349863,
+        "length": 97.9366282049203,
         "from": {
-          "x": 45.17742520664952,
-          "z": 259.8468852532556
+          "x": 41.5796136011155,
+          "z": 101.21
         },
         "to": {
-          "x": -21.819999999999993,
-          "z": 319.854784536794
+          "x": -41.29369189946409,
+          "z": 153.39810572876152
         }
       },
       "sampledLines": 8033175,
@@ -3684,7 +3684,7 @@
     },
     "certification": {
       "occluders": 46,
-      "checkedBands": 24889,
+      "checkedBands": 23990,
       "floorY": 8,
       "headHeightM": 1.8
     }
