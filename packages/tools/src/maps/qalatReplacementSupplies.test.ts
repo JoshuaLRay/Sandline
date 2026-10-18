@@ -4,6 +4,7 @@ import { parseSupplyCaches, requireWorld, SUPPLY_AMMO_UNITS_PER_MAGAZINE,
   transferSupply, type SupplyInventory } from '@sandline/shared';
 import { replacementInputs } from './qalatReplacement.ts';
 import { buildReplacementSupplies } from './qalatReplacementSupplies.ts';
+import { Session } from '../../../server/src/session/Session.ts';
 import raw from './qalat-replacement-supplies.json' with { type: 'json' };
 
 const cacheIds = ['P-SOUTH', 'P-ROAD', 'P-RIDGE', 'P-BASEMENT', 'P-OUTPOST'];
@@ -29,6 +30,20 @@ describe('U-229 staged Qalat supply caches', () => {
     expect(() => buildReplacementSupplies({ ...world, mapRevision: 1 })).toThrow(/revision 2/);
     expect(() => buildReplacementSupplies({ ...world, id: 'qalat-road' })).toThrow(/unregistered/);
   }, 60_000);
+  it('initializes all five authored cache identities and finite stocks in a real isolated Session', () => {
+    const { world } = replacementInputs();
+    const supplyCaches = buildReplacementSupplies(world);
+    const session = new Session(undefined, '', world, {
+      events: { world: world.id, blockers: [], events: [], supplyCaches }, loadouts: 'class',
+    });
+    try {
+      expect(session.supplyCaches).toEqual(supplyCaches);
+      expect(session.supplyCaches.map((cache) => cache.id)).toEqual(cacheIds);
+      expect(session.supplyCaches.reduce((n, cache) => n + (cache.stock.projectiles.rocket ?? 0), 0)).toBe(24);
+    } finally {
+      session.close();
+    }
+  }, 120_000);
   it('uses the existing finite stock transfer: partial refills, full/incompatible choices consume nothing', () => {
     const stock = parseSupplyCaches(raw)[0]!.stock;
     const inventory: SupplyInventory = {
