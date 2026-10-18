@@ -113,7 +113,7 @@ describe('U-161 built road combat geometry', () => {
     expect(combatOpenFloors()).toEqual([[{ x: -8.6, z: 113.4 }, { x: .6, z: 113.4 }, { x: .6, z: 122.6 }, { x: -8.6, z: 122.6 }]]);
     const cap = ROAD_COMBAT.screens.find((s) => s.id === 'A-S05-north');
     expect(cap?.polygon).toEqual([[7,120.5],[9.75284193631739,120.5],[8.212223878081653,122.8109270873536],[7,123.1572767668055]]);
-    expect(ROAD_COMBAT.screens.find((s) => s.id === 'A-S05')?.polygon.every((p) => p[1] <= 115)).toBe(true);
+    expect(ROAD_COMBAT.screens.find((s) => s.id === 'A-S05')?.polygon.every((p) => p[1]! <= 115)).toBe(true);
     const office = ROAD_COMBAT.tollOffice;
     expect(office.doorMaxZ - office.doorMinZ).toBe(4);
     expect(office.ceilingY).toBe(11.5); expect(office.roofTopY).toBe(12.3); expect(office.roofWalkable).toBe(false);

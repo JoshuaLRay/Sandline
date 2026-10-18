@@ -36,3 +36,10 @@ First CI after geometry edit has expected red snapshot/preview checks due stale 
 
 - [#39149079347](https://github.com/JoshuaLRay/Sandline/actions/runs/39149079347), head `9809bf9c757800359be3392d80bfc145386bbb2c`: U-161 conservative physical road LOS bound **97.937 m > 90 m** in verify shard 4/4. Actual witness from (41.5796,101.21) to (-41.2937,153.3981). No budget waiver.
 - Restore isolated original-width detached A-S05-north rock cap for z120.5..123.157. This screen intercepts the old overlong diagonal outside the repaired entrance corridor (z118). Preserve every assertion and regenerate all source-bound proof; outcome remains PENDING until final CI.
+
+### Exact northern cap proof after failed 97.937m run
+
+- Retain A-S05 south wedge z106..115, restore its old northern tip separately at z120.5..123.157, preserving the actual y8 z118 entrance. The road longest sight upper bound is **89.943 metres**, all seven fight views ≤ 90 metres: `artifacts/qalat-road-supports/construction.json` built from this source. This is physical conservative continuous-ray certification, not a higher timeout/budget.
+- [Temporary regeneration and captures #39149746039](https://github.com/JoshuaLRay/Sandline/actions/runs/39149746039): regenerate success; depot success; outpost success; replacement success; road-supports success; artifact sync success. Manifest, source-bound hashes and screenshots committed, then temporary task-only workflow removed in the final source checkpoint.
+- The added geometry regression checks the full office-to-apron path, standing controller support and the detached sight cap. The earlier TypeScript noUncheckedIndexedAccess failure (array index possibly undefined) corrected with a non-null assertion on the authored 2D polygon's second coordinate, not a weakened check.
+- Final required CI success evidence **pending**; report exact four names/head in PR discussion and only merge when all green.
