@@ -50,8 +50,9 @@
       "x": 6,
       "z": 122,
       "radius": 3,
-      "minY": null,
-      "maxY": null
+      "y": 8,
+      "minY": 7.5,
+      "maxY": 8.5
     },
     {
       "id": "road-frontage",
@@ -59,8 +60,9 @@
       "x": -23,
       "z": 222.8,
       "radius": 3,
-      "minY": null,
-      "maxY": null
+      "y": 8,
+      "minY": 7.5,
+      "maxY": 8.5
     },
     {
       "id": "road-forecourt",
@@ -68,8 +70,9 @@
       "x": 10,
       "z": 322,
       "radius": 3,
-      "minY": null,
-      "maxY": null
+      "y": 8,
+      "minY": 7.5,
+      "maxY": 8.5
     },
     {
       "id": "ridge-lower",
@@ -77,8 +80,9 @@
       "x": 76,
       "z": 164,
       "radius": 3,
-      "minY": null,
-      "maxY": null
+      "y": 26,
+      "minY": 25.5,
+      "maxY": 26.5
     },
     {
       "id": "ridge-upper",
@@ -86,8 +90,9 @@
       "x": 82,
       "z": 244,
       "radius": 3,
-      "minY": null,
-      "maxY": null
+      "y": 30,
+      "minY": 29.5,
+      "maxY": 30.5
     },
     {
       "id": "basement-grain",
@@ -95,8 +100,9 @@
       "x": -26,
       "z": 124,
       "radius": 3,
-      "minY": null,
-      "maxY": null
+      "y": 0,
+      "minY": -0.5,
+      "maxY": 0.5
     },
     {
       "id": "basement-generator",
@@ -104,8 +110,9 @@
       "x": -18,
       "z": 206,
       "radius": 3,
-      "minY": null,
-      "maxY": null
+      "y": 0,
+      "minY": -0.5,
+      "maxY": 0.5
     },
     {
       "id": "basement-vault",
@@ -113,8 +120,9 @@
       "x": 24,
       "z": 282,
       "radius": 3,
-      "minY": null,
-      "maxY": null
+      "y": 0,
+      "minY": -0.5,
+      "maxY": 0.5
     },
     {
       "id": "garrison",
@@ -122,8 +130,9 @@
       "x": 31.5,
       "z": 361,
       "radius": 3,
-      "minY": null,
-      "maxY": null
+      "y": 8,
+      "minY": 7.5,
+      "maxY": 8.5
     },
     {
       "id": "radio-operator",
@@ -131,8 +140,9 @@
       "x": 50,
       "z": 402,
       "radius": 3,
-      "minY": null,
-      "maxY": null
+      "y": 8,
+      "minY": 7.5,
+      "maxY": 8.5
     },
     {
       "id": "prisoner",
@@ -140,8 +150,9 @@
       "x": 16,
       "z": 402,
       "radius": 3,
-      "minY": null,
-      "maxY": null
+      "y": 8,
+      "minY": 7.5,
+      "maxY": 8.5
     },
     {
       "id": "counterattack",
@@ -149,8 +160,9 @@
       "x": 28,
       "z": 440,
       "radius": 3,
-      "minY": null,
-      "maxY": null
+      "y": 8,
+      "minY": 7.5,
+      "maxY": 8.5
     },
     {
       "id": "tank",
@@ -158,8 +170,9 @@
       "x": 96,
       "z": 444,
       "radius": 3,
-      "minY": null,
-      "maxY": null
+      "y": 8,
+      "minY": 7.5,
+      "maxY": 8.5
     }
   ],
   "checks": {
