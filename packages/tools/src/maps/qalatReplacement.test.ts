@@ -78,19 +78,25 @@ describe('U-227 staged complete replacement', () => {
       expect(near, cache.id).toBeDefined();
       expect(Math.abs(near!.y - cache.feet.y), cache.id).toBeLessThan(.35);
       expect(Math.hypot(near!.x - cache.feet.x, near!.z - cache.feet.z), cache.id).toBeLessThan(.65);
-      // U-229 CI failure probe: keep the original connected/path assertions.
-      // Capture actual Detour floor snaps and connectivity along the existing toll-office doorway;
-      // delete these logs after the construction defect is repaired.
+      // U-229 diagnostic: distinguish a disconnected toll-office Recast island
+      // from the roadway and establish the exact boundary. Never bypass the
+      // original connectivity and complete-path assertions below.
       if (cache.id === 'P-ROAD') {
-        const probes = [-6, -4, -2, 0, 2].map((x) => {
-          const target = p(x, 8, 118), hit = loaded.nav.nearestPoint(target);
-          return { x, nearest: hit?.point, polyRef: hit?.polyRef,
-            connected: loaded.nav.connected(insertion[0]!, target),
-            path: !!loaded.nav.path(insertion[0]!, target) };
+        const points = [
+          ...[-6, -4, -2, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 22].map((x) => p(x, 8, 118)),
+          ...[116, 120, 122, 124].flatMap((z) => [2, 6, 10, 14].map((x) => p(x, 8, z))),
+        ];
+        const probes = points.map((at) => {
+          const hit = loaded.nav.nearestPoint(at);
+          const path = loaded.nav.path(insertion[0]!, at);
+          return { x: at.x, z: at.z, nearest: hit?.point, polyRef: hit?.polyRef,
+            connected: loaded.nav.connected(insertion[0]!, at),
+            completeM: completePathLength(path, insertion[0]!, at),
+            final: path?.points.at(-1) };
         });
         console.info('U-229 toll-office nav diagnostic', JSON.stringify({
           from: loaded.nav.nearestPoint(insertion[0]!), cache: cache.feet,
-          near, probes,
+          probes,
         }));
       }
       expect(loaded.nav.connected(insertion[0]!, cache.feet), cache.id).toBe(true);
