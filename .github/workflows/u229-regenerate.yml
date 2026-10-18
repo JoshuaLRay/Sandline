@@ -35,7 +35,7 @@ jobs:
             target="${item#*:}"
             mkdir -p "$tmp/$target" "artifacts/$target"
             gh run download 39148011976 --repo JoshuaLRay/Sandline --name "$name" --dir "$tmp/$target"
-            cp -f "$tmp/$target"/. "artifacts/$target"/
+            cp -a "$tmp/$target"/. "artifacts/$target"/
           done
       - name: Persist exact reviewed proof only to the U-229 branch
         run: |
