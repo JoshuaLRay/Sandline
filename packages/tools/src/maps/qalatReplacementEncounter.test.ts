@@ -58,7 +58,7 @@ describe('U-228 isolated candidate combat roster', () => {
 
   it('retains a fully swept y8 tank route to A1 and one-shot staged activation', () => {
     const tank = encounter.groups.find((g) => g.id === 'tank')!;
-    const path = [tank.sockets![0]!.feet, ...tank.path!].map((p) => ({ ...p, id: undefined }));
+    const path = [tank.sockets![0]!.feet, ...tank.path!].map((p) => ({ x: p.x, y: p.y ?? 8, z: p.z }));
     expect(path.at(-1)).toMatchObject({ x: 32, y: 8, z: 98 });
     expect(path).toHaveLength(18);
     expect(() => certifyTankRoute(world.boxes, path)).not.toThrow();
