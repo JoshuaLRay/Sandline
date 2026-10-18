@@ -3,8 +3,8 @@
   "world": "qalat-outpost-construction",
   "mapRevision": 2,
   "registered": false,
-  "levelHash": "0ce5541c5641627adfc837cde43ed7383a51aa4e7c5400b432ae477c6ccc7ec5",
-  "renderHash": "db1865957b895e2c691a4982d6ab21080d4ef6096390b9cf107071362c598166",
+  "levelHash": "aceac802109b115cf33c78d9bfa95a8db1f78904848cc6917c8dbf35402c3693",
+  "renderHash": "bd48c58b5a236deba95502c66b11681acc696acc00937d24a8cf6b43f973ed29",
   "decorations": [
     {
       "id": "outpost-decor-south-leaf-0",
@@ -160,17 +160,17 @@
     }
   },
   "hashes": {
-    "level": "0ce5541c5641627adfc837cde43ed7383a51aa4e7c5400b432ae477c6ccc7ec5",
-    "render": "db1865957b895e2c691a4982d6ab21080d4ef6096390b9cf107071362c598166",
-    "surface": "74096b1f6bdb43b41b7208b5c025b956662a09ea3218ca893851d15326011c46",
+    "level": "aceac802109b115cf33c78d9bfa95a8db1f78904848cc6917c8dbf35402c3693",
+    "render": "bd48c58b5a236deba95502c66b11681acc696acc00937d24a8cf6b43f973ed29",
+    "surface": "241a6642dfdc01a5d166d89184bc329a713d4cc2e05a9a7858084641330e2a20",
     "mission": "40e644c629e6bb1a13d229af6291acc3f2564a94b6003406185c3950acf762d0",
-    "navInput": "2e47426a467ccdda21c9d63e3cf4b6936e3b1e7fef7d61467d3181b39e2c26e5",
-    "nav": "5c7bce849f533725ef8ba607227c8d4c4c47d2178548708f2f9b374b0b575d67",
-    "cover": "cb01324dfbb6f90d501cad8219c45b9692225a59b7dda79e82c2fd437a16a5b2",
+    "navInput": "7851f435988962bb540fbc3c40ff9595cccd54b94dc166b60bf26e4209ed72dc",
+    "nav": "5992d8e1f8a0b98229abecd314ca8ecdbcc69b3c4d4317656fdfd24f6b3233dc",
+    "cover": "6fb3012b8e53731c578611db1ed9cc2f73c7c48204af31608361ce1c1520e6c9",
     "starts": "df60968231b21aa3e0c91e476cdd3976b85e1d03015e10436a16e5a7179e60d1",
     "holdings": "9c6cfdb28b89fad3c88f8f1b885e69d4de32382901dcae4ffb84d9f21a898782"
   },
-  "bundleHash": "e9b84f472c7491cd044ee4a663028832f92725714379538995c181f2002040a2",
+  "bundleHash": "0bbd73e4bac29c554a8ba3dcce75b895687ef684605ee418ba60363e10eb0047",
   "navPlan": {
     "kind": "tiled-standing",
     "tileSize": 1024,
@@ -187,7 +187,7 @@
       ]
     ]
   },
-  "boxes": 110182,
+  "boxes": 110289,
   "squadStarts": [
     {
       "x": -6,
@@ -222,13 +222,13 @@
   ],
   "cover": {
     "low": 243,
-    "high": 9160,
-    "total": 9403
+    "high": 9179,
+    "total": 9422
   },
   "bytes": {
-    "nav": 2236712,
-    "level": 15229968,
-    "surface": 12893993
+    "nav": 2238072,
+    "level": 15245205,
+    "surface": 12919933
   },
   "review": "/packages/tools/src/maps/outpost-review.html?replacement",
   "activation": "U-233 only, after U-228 through U-232; then U-118 and U-119",

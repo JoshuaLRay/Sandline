@@ -7,9 +7,9 @@
   "road": "U-139",
   "kind": "isolated surface whitebox: road fights, screened tank ingress, D0 return store and furnished ridge with support bays, service bridge and C12-L/C12-U stairs",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "4c246da8bb0760927b522fabe59790e076636fcf18ba9bad3881ebdc39723725",
-  "levelHash": "dca959b0b64a96fc8a9c3170bb6a230ddeb0c00f4512d7ec25179302c9b4d3b4",
-  "boxCount": 93888,
+  "sourceHash": "bc48ed456a3e17d77f1be490d73f2015544126f2dc89b3af3c4df3f53cdd61db",
+  "levelHash": "8609d23b996cad0329480e2933c25a7e802f0289942ff56ba17f718bbc875f9e",
+  "boxCount": 93995,
   "stratumM": 0.025,
   "edgeExpansionM": 0.005,
   "circleSides": 512,
@@ -1193,6 +1193,41 @@
           ]
         ],
         "why": "Keep the original A2 sight-screen south of the toll office; terminate before the 4 m z116..120 doorway approach so soldiers and Recast nav can move from the actual road into P-ROAD. The nearby A-S18 still screens the north shoulder."
+      },
+      {
+        "id": "A-S05-north",
+        "x": 8.38,
+        "y": 8,
+        "z": 121.8286383834,
+        "length": 2.6572767668055,
+        "depth": 2.7528419363174,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A1",
+          "A2"
+        ],
+        "kind": "rock-screen",
+        "region": "A2-southwest-apron",
+        "polygon": [
+          [
+            7,
+            120.5
+          ],
+          [
+            9.75284193631739,
+            120.5
+          ],
+          [
+            8.212223878081653,
+            122.8109270873536
+          ],
+          [
+            7,
+            123.1572767668055
+          ]
+        ],
+        "why": "Retain the old north-end A2 sight-break as a detached limestone cap. The full z116..120 4 m toll-office doorway and z118 standing corridor stay clear between the south A-S05 screen (ending z115) and this cap (starting z120.5). No extra route."
       },
       {
         "id": "A-S06",
@@ -3246,7 +3281,7 @@
     }
   },
   "tankSweep": {
-    "levelHash": "dca959b0b64a96fc8a9c3170bb6a230ddeb0c00f4512d7ec25179302c9b4d3b4",
+    "levelHash": "8609d23b996cad0329480e2933c25a7e802f0289942ff56ba17f718bbc875f9e",
     "route": {
       "method": "closed interval disk tubes; complete support prism slab union",
       "radiusM": 3.31058907144937,
@@ -3661,16 +3696,16 @@
     },
     "endpointDomain": "whole road and office; all valid controller-square standing endpoints; ray interiors unchanged",
     "longestRoadView": {
-      "upperBoundM": 97.937,
+      "upperBoundM": 89.943,
       "witness": {
-        "length": 97.9366282049203,
+        "length": 89.94222012349863,
         "from": {
-          "x": 41.5796136011155,
-          "z": 101.21
+          "x": 45.17742520664952,
+          "z": 259.8468852532556
         },
         "to": {
-          "x": -41.29369189946409,
-          "z": 153.39810572876152
+          "x": -21.819999999999993,
+          "z": 319.854784536794
         }
       },
       "sampledLines": 8033175,
@@ -3683,8 +3718,8 @@
       "reachM": 400
     },
     "certification": {
-      "occluders": 46,
-      "checkedBands": 23990,
+      "occluders": 47,
+      "checkedBands": 24342,
       "floorY": 8,
       "headHeightM": 1.8
     }
