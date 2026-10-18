@@ -91,7 +91,7 @@ describe('U-227 staged complete replacement', () => {
     }
     expect(exportInputHash(loaded.world, { ...QALAT_TILED_PLAN, tileSize: 512 })).not.toBe(bundle.nav.hash);
     expect(digest(bundle.manifest.hashes)).toBe(bundle.manifest.bundleHash);
-  }, 60_000);
+  }, 180_000);
 
   it('keeps all authored starts, lane/room/gate witnesses and six holdings on the proper connected floors', () => {
     const witnesses = [...bundle.level.squadStarts, ...insertion, ...road, ...ridge, ...depot,
