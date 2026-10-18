@@ -1,0 +1,175 @@
+{
+  "start": {
+    "x": 0,
+    "z": -6,
+    "radius": 5,
+    "minY": 7.5,
+    "maxY": 8.5
+  },
+  "objective": {
+    "x": 32,
+    "z": 374,
+    "radius": 7,
+    "minY": 7.5,
+    "maxY": 8.5
+  },
+  "routes": [
+    {
+      "id": "assault",
+      "role": "assault",
+      "via": [
+        {
+          "x": 32,
+          "z": 98
+        },
+        {
+          "x": 16,
+          "z": 332
+        }
+      ]
+    },
+    {
+      "id": "overwatch",
+      "role": "overwatch",
+      "via": [
+        {
+          "x": 78,
+          "z": 172
+        },
+        {
+          "x": 88,
+          "z": 252
+        }
+      ]
+    }
+  ],
+  "spawnZones": [
+    {
+      "id": "road-toll",
+      "on": "assault",
+      "x": 6,
+      "z": 122,
+      "radius": 3,
+      "minY": null,
+      "maxY": null
+    },
+    {
+      "id": "road-frontage",
+      "on": "assault",
+      "x": -23,
+      "z": 222.8,
+      "radius": 3,
+      "minY": null,
+      "maxY": null
+    },
+    {
+      "id": "road-forecourt",
+      "on": "assault",
+      "x": 10,
+      "z": 322,
+      "radius": 3,
+      "minY": null,
+      "maxY": null
+    },
+    {
+      "id": "ridge-lower",
+      "on": "overwatch",
+      "x": 76,
+      "z": 164,
+      "radius": 3,
+      "minY": null,
+      "maxY": null
+    },
+    {
+      "id": "ridge-upper",
+      "on": "overwatch",
+      "x": 82,
+      "z": 244,
+      "radius": 3,
+      "minY": null,
+      "maxY": null
+    },
+    {
+      "id": "basement-grain",
+      "on": "assault",
+      "x": -26,
+      "z": 124,
+      "radius": 3,
+      "minY": null,
+      "maxY": null
+    },
+    {
+      "id": "basement-generator",
+      "on": "assault",
+      "x": -18,
+      "z": 206,
+      "radius": 3,
+      "minY": null,
+      "maxY": null
+    },
+    {
+      "id": "basement-vault",
+      "on": "assault",
+      "x": 24,
+      "z": 282,
+      "radius": 3,
+      "minY": null,
+      "maxY": null
+    },
+    {
+      "id": "garrison",
+      "on": "objective",
+      "x": 31.5,
+      "z": 361,
+      "radius": 3,
+      "minY": null,
+      "maxY": null
+    },
+    {
+      "id": "radio-operator",
+      "on": "objective",
+      "x": 50,
+      "z": 402,
+      "radius": 3,
+      "minY": null,
+      "maxY": null
+    },
+    {
+      "id": "prisoner",
+      "on": "objective",
+      "x": 16,
+      "z": 402,
+      "radius": 3,
+      "minY": null,
+      "maxY": null
+    },
+    {
+      "id": "counterattack",
+      "on": "objective",
+      "x": 28,
+      "z": 440,
+      "radius": 3,
+      "minY": null,
+      "maxY": null
+    },
+    {
+      "id": "tank",
+      "on": "objective",
+      "x": 96,
+      "z": 444,
+      "radius": 3,
+      "minY": null,
+      "maxY": null
+    }
+  ],
+  "checks": {
+    "sampleM": 0.5,
+    "minDistinctShare": 0.25,
+    "coverWithinM": 5,
+    "maxUncoveredM": {
+      "overwatch": 20,
+      "assault": 20
+    },
+    "sightM": 8
+  }
+}
