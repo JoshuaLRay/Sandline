@@ -1,5 +1,5 @@
 /** U-228: fixed, unregistered Qalat encounter. No live campaign lookup or mutation. */
-import { getEmplacement, gunnerPlace, loadMission, parseEncounter, parsePlacedEmplacements,
+import { DEFAULT_MOVE_CONFIG as move, blockedAt, supportUnder, getEmplacement, gunnerPlace, loadMission, parseEncounter, parsePlacedEmplacements,
   type Encounter, type World, type WorldMission } from '@sandline/shared';
 import rawEncounter from './qalat-replacement-encounter.json' with { type: 'json' };
 import rawMission from './qalat-replacement-encounter-mission.json' with { type: 'json' };
@@ -25,6 +25,20 @@ export function buildReplacementEncounter(world: World): {
   encounter: Encounter; encounterMission: WorldMission; emplacements: typeof emplacements;
 } {
   const context = replacementEncounterWorld(world);
+  // During initial authoring, report every spec-versus-build collision mismatch
+  // at once rather than failing one member per CI cycle.
+  const mismatch: string[] = [];
+  for (const group of rawEncounter.groups) for (const socket of group.sockets) {
+    if (socket.archetype === 'tank') continue;
+    for (const point of [socket.feet, ...(socket.patrol?.route ?? []), ...(socket.advance ?? [])]) {
+      const checks = [-move.radius, 0, move.radius].flatMap((dx) => [-move.radius, 0, move.radius].map((dz) =>
+        supportUnder(point.x + dx, point.z + dz, 0, point.y + .05, world.boxes, move.groundY)));
+      const blocked = blockedAt(point.x, point.z, move.radius, point.y, .05, move.height, world.boxes);
+      if (checks.some((y) => Math.abs(y - point.y) > .05) || blocked)
+        mismatch.push(`${socket.id} ${JSON.stringify(point)} support=${JSON.stringify(checks)} blocked=${blocked}`);
+    }
+  }
+  if (mismatch.length) throw new Error('U-228 authored collision audit:\\n' + mismatch.join('\\n'));
   const encounter = parseEncounter(rawEncounter, (id) => id === world.id ? context : undefined);
   const expectedRoute = tankReturnRoute();
   const tank = encounter.groups.find((g) => g.id === 'tank');
