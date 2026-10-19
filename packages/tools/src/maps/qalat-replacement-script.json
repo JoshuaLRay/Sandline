@@ -11,7 +11,15 @@
       "actions": [
         {
           "kind": "message",
-          "text": "An allied prisoner is held in the records room of the Qalat depot outpost. Approach by the supply road, the eastern ridge or the old depot cellars. Free him and bring the squad back to Juniper Hollow. The outpost has a radio operator and an armoured reserve. Expect trouble on the return."
+          "text": "An allied prisoner is held in the records room of the Qalat depot outpost."
+        },
+        {
+          "kind": "message",
+          "text": "Approach by the supply road, the eastern ridge or the old depot cellars."
+        },
+        {
+          "kind": "message",
+          "text": "Free him and bring the squad back to Juniper Hollow. The outpost has a radio operator and an armoured reserve. Expect trouble on the return."
         }
       ]
     },
