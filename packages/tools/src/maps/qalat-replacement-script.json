@@ -1,0 +1,179 @@
+{
+  "world": "qalat-outpost-construction",
+  "blockers": [],
+  "events": [
+    {
+      "id": "briefing",
+      "trigger": {
+        "kind": "time",
+        "seconds": 0
+      },
+      "actions": [
+        {
+          "kind": "message",
+          "text": "An allied prisoner is held in the records room of the Qalat depot outpost. Approach by the supply road, the eastern ridge or the old depot cellars. Free him and bring the squad back to Juniper Hollow. The outpost has a radio operator and an armoured reserve. Expect trouble on the return."
+        }
+      ]
+    },
+    {
+      "id": "route-reveal",
+      "trigger": {
+        "kind": "enter-box",
+        "minX": 20,
+        "maxX": 44,
+        "minZ": 53,
+        "maxZ": 75,
+        "minY": 7.5,
+        "maxY": 10.5
+      },
+      "actions": [
+        {
+          "kind": "message",
+          "text": "Three routes ahead: supply road, eastern ridge or old depot cellars. Choose your approach."
+        }
+      ]
+    },
+    {
+      "id": "approach-complete",
+      "trigger": {
+        "kind": "objective-complete",
+        "objective": 0
+      },
+      "actions": [
+        {
+          "kind": "message",
+          "text": "Outpost reached. The prisoner is in the northwest records room."
+        }
+      ]
+    },
+    {
+      "id": "prisoner-released",
+      "trigger": {
+        "kind": "objective-complete",
+        "objective": 1
+      },
+      "actions": [
+        {
+          "kind": "set-flag",
+          "flag": "pow-freed",
+          "value": true
+        },
+        {
+          "kind": "message",
+          "text": "Prisoner free. Move him to cover. Armour is inbound."
+        }
+      ]
+    },
+    {
+      "id": "escort-hint",
+      "trigger": {
+        "kind": "flag",
+        "flag": "pow-freed",
+        "value": true
+      },
+      "delaySeconds": 3,
+      "actions": [
+        {
+          "kind": "message",
+          "text": "Use Hold to shelter the prisoner, Move to send him to cover, Regroup to bring him with you."
+        }
+      ]
+    },
+    {
+      "id": "armour-early",
+      "trigger": {
+        "kind": "flag",
+        "flag": "pow-freed",
+        "value": true
+      },
+      "delaySeconds": 5,
+      "ifGroupAlive": "radio-operator",
+      "unlessFlag": "tank-arrived",
+      "actions": [
+        {
+          "kind": "spawn-group",
+          "group": "tank"
+        },
+        {
+          "kind": "set-flag",
+          "flag": "tank-arrived",
+          "value": true
+        },
+        {
+          "kind": "message",
+          "text": "The radio operator called in armour. Tank entering the north service road."
+        }
+      ]
+    },
+    {
+      "id": "armour-delayed",
+      "trigger": {
+        "kind": "flag",
+        "flag": "pow-freed",
+        "value": true
+      },
+      "delaySeconds": 20,
+      "unlessFlag": "tank-arrived",
+      "actions": [
+        {
+          "kind": "spawn-group",
+          "group": "tank"
+        },
+        {
+          "kind": "set-flag",
+          "flag": "tank-arrived",
+          "value": true
+        },
+        {
+          "kind": "message",
+          "text": "Armour entering the north service road. Keep the prisoner behind cover."
+        }
+      ]
+    },
+    {
+      "id": "reserve-release",
+      "trigger": {
+        "kind": "flag",
+        "flag": "pow-freed",
+        "value": true
+      },
+      "delaySeconds": 45,
+      "actions": [
+        {
+          "kind": "spawn-group",
+          "group": "counterattack"
+        },
+        {
+          "kind": "message",
+          "text": "Movement at the north gate."
+        }
+      ]
+    },
+    {
+      "id": "tank-destroyed",
+      "trigger": {
+        "kind": "objective-complete",
+        "objective": 3
+      },
+      "actions": [
+        {
+          "kind": "message",
+          "text": "Armour destroyed. Bring all seven back to Juniper Hollow."
+        }
+      ]
+    },
+    {
+      "id": "mission-success",
+      "trigger": {
+        "kind": "objective-complete",
+        "objective": 4
+      },
+      "actions": [
+        {
+          "kind": "message",
+          "text": "Prisoner recovered. All seven extracted. The Qalat route is open for the next operation."
+        }
+      ]
+    }
+  ]
+}
