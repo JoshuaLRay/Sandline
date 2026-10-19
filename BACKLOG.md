@@ -85,6 +85,7 @@ The split is not implementation/activation authorization or an inferred verdict.
 
 | Task | Outcome | Epic | Priority | Status | Depends / blocker | Work |
 |---|---|---|---|---|---|---|
+| [U-236](docs/backlog/U-236.md) | Complete owner-only private-controller CI without source runner registrations | Maintenance | P0 | IN_PROGRESS | Full exact-head controller suite/artifacts and genuine App gates; old direct-runner #379 superseded | [#381](https://github.com/JoshuaLRay/Sandline/pull/381) |
 | [U-113](docs/backlog/U-113.md) | Map-revision-aware checkpoint restart and restore | Map implementation | P1 | BLOCKED | Aggregate closure: U-135, U-136; split before implementation | — |
 | [U-136](docs/backlog/U-136.md) | Refuse incompatible restores and offer restart or mission select | Map implementation | P1 | BLOCKED | Aggregate: U-143 DONE; U-144 current-map carried-prisoner placement remains blocked | [#312](https://github.com/JoshuaLRay/Sandline/pull/312) |
 | [U-144](docs/backlog/U-144.md) | Restart incompatible saves with authored carried-prisoner placement | Map implementation | P1 | BLOCKED | U-143/U-224 DONE; production holdings and accessible rescue integration must ship with replacement activation (U-117), never on the older map | — |
