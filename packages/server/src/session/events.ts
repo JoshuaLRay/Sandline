@@ -178,6 +178,11 @@ export class EventRun {
         return completed.includes(trigger.objective);
       case 'enter':
         return this.inArea(resolveArea(trigger.area, this.encounter, this.world));
+      case 'enter-box':
+        return this.host.squadFeet().some((p) => p.y !== undefined &&
+          p.x >= trigger.minX && p.x <= trigger.maxX &&
+          p.z >= trigger.minZ && p.z <= trigger.maxZ &&
+          p.y >= trigger.minY && p.y <= trigger.maxY);
       case 'time':
         return seconds >= trigger.seconds;
       case 'group-dead':

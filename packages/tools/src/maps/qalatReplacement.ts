@@ -1,6 +1,6 @@
 /** U-227: complete, unregistered revision-2 construction bundle. Never consult a live world lookup. */
 import { gzipSync, gunzipSync } from 'node:zlib';
-import { loadLevel, parseMission } from '@sandline/shared';
+import { loadLevel, parseMission, parseEventScript } from '@sandline/shared';
 import { bakedBytes } from '../../../server/src/ai/nav/baked/types.ts';
 import { NavMesh } from '../../../server/src/ai/nav/NavMesh.ts';
 import { digest, exportInputHash, exportWorldBake } from '../nav/export.ts';
@@ -12,6 +12,7 @@ import { QALAT_TILED_PLAN } from './qalatRoadNav.ts';
 import { insertionSurface } from './insertionSurface.ts';
 import { buildReplacementEncounter } from './qalatReplacementEncounter.ts';
 import { buildReplacementSupplies } from './qalatReplacementSupplies.ts';
+import scriptSource from './qalat-replacement-script.json' with { type: 'json' };
 
 export function replacementInputs() {
   const level = { ...buildOutpostLevel(), mapRevision: 2 };
@@ -26,6 +27,8 @@ export async function buildReplacementBundle() {
   const encounterDigest = digest({ encounter, encounterMission, emplacements });
   const supplyCaches = buildReplacementSupplies(world);
   const supplyDigest = digest(supplyCaches);
+  const script = parseEventScript({ ...scriptSource, supplyCaches }, encounter, { ...world, mission: encounterMission }, mission);
+  const scriptDigest = digest(script);
   const levelHash = digest(level), renderHash = digest([...level.boxes, ...decorations]);
   await yieldPhase();
   const rendered = insertionSurface([...level.boxes, ...decorations]);
@@ -40,7 +43,7 @@ export async function buildReplacementBundle() {
     navInput: nav.hash, nav: digest(nav), cover: digest(nav.cover),
     starts: digest(level.squadStarts), holdings: digest({ pow, carried: mission.prisonerHoldings }) };
   return { level, surface, mission, nav, encounter, encounterMission, emplacements, encounterDigest,
-    supplyCaches, supplyDigest, manifest: {
+    supplyCaches, supplyDigest, script, scriptDigest, manifest: {
     task: 'U-227', world: world.id, mapRevision: 2, registered: false,
     levelHash, renderHash, decorations, pow, hashes, bundleHash: digest(hashes),
     navPlan: QALAT_TILED_PLAN, boxes: level.boxes.length,
@@ -57,10 +60,12 @@ export type ReplacementBundle = Awaited<ReturnType<typeof buildReplacementBundle
 /** Validate serialized artifacts before handing their explicit data to a Session or reviewer. */
 export function reloadReplacement(bundle: ReplacementBundle) {
   const { level, surface, mission, nav, manifest: m, encounter, encounterMission, emplacements, encounterDigest,
-    supplyCaches, supplyDigest } = bundle;
+    supplyCaches, supplyDigest, script, scriptDigest } = bundle;
   // Reject serialized tampering against the existing source-bound manifest
   // before loading 110k collision boxes and auditing all encounter sockets.
   // This also bounds the negative-test matrix without skipping any checks.
+  if (digest(script) !== scriptDigest || digest(scriptSource) !== digest({ world: script.world, blockers: script.blockers, events: script.events }))
+    throw new Error('stale or altered U-230 replacement script');
   if (digest(supplyCaches) !== supplyDigest)
     throw new Error('stale or altered U-229 replacement supplies');
   if (m.registered !== false || m.mapRevision !== 2 || level.mapRevision !== 2 ||
@@ -87,6 +92,8 @@ export function reloadReplacement(bundle: ReplacementBundle) {
   if (digest({ encounter, encounterMission, emplacements }) !== encounterDigest ||
     encounter.world !== world.id)
     throw new Error('stale or altered U-228 replacement encounter');
+  const boundScript = parseEventScript({ ...scriptSource, supplyCaches }, encounter, { ...world, mission: encounterMission }, parsed);
+  if (digest(boundScript) !== scriptDigest) throw new Error('altered U-230 script source');
   const authored = buildReplacementEncounter(world);
   if (digest(authored) !== encounterDigest)
     throw new Error('stale or altered U-228 replacement encounter');
@@ -95,6 +102,6 @@ export function reloadReplacement(bundle: ReplacementBundle) {
     throw new Error('replacement render surface content changed');
   const fixture = buildOutpostCaptiveFixture(world, parsed);
   if (digest(fixture.pow) !== digest(m.pow)) throw new Error('replacement POW holding changed');
-  return { ...fixture, encounter, encounterMission, emplacements, supplyCaches,
+  return { ...fixture, encounter, encounterMission, emplacements, supplyCaches, script,
     nav: NavMesh.load(bakedBytes(nav), nav.agent.height) };
 }

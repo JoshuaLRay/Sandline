@@ -24,7 +24,7 @@ import { validateVehiclePath } from './vehiclePlacement.ts';
 import { parseSupplyCaches, type SupplyCacheDef } from './supplyCaches.ts';
 import { boxFrom, type BoxSpec, type World, type WorldBox } from './world.ts';
 
-export const EVENT_TRIGGER_KINDS = ['objective-start', 'upload-start', 'objective-complete', 'enter', 'time', 'group-dead', 'flag'] as const;
+export const EVENT_TRIGGER_KINDS = ['objective-start', 'upload-start', 'objective-complete', 'enter', 'enter-box', 'time', 'group-dead', 'flag'] as const;
 export type EventTrigger =
   | { kind: 'objective-start'; objective: number }
   /** U-069: the upload objective actually running (a terminal pressed), not merely reached. Fires once per attempt. */
@@ -32,6 +32,7 @@ export type EventTrigger =
   | { kind: 'objective-complete'; objective: number }
   | { kind: 'enter'; area: AreaRef }
   | { kind: 'time'; seconds: number }
+  | { kind: 'enter-box'; minX: number; maxX: number; minZ: number; maxZ: number; minY: number; maxY: number }
   | { kind: 'group-dead'; group: string }
   | { kind: 'flag'; flag: string; value: boolean };
 
@@ -218,6 +219,19 @@ export function parseEventScript(raw: unknown, encounter: Encounter, world: Worl
       case 'enter': {
         const t = obj(`${where}.trigger`, tr, ['kind', 'area']);
         trigger = { kind: tk, area: area(`${where}.trigger.area`, t['area'], encounter, world) };
+        break;
+      }
+      case 'enter-box': {
+        const t = obj(`${where}.trigger`, tr, ['kind', 'minX', 'maxX', 'minZ', 'maxZ', 'minY', 'maxY']);
+        const minX = finite(`${where}.trigger.minX`, t['minX']);
+        const maxX = finite(`${where}.trigger.maxX`, t['maxX']);
+        const minZ = finite(`${where}.trigger.minZ`, t['minZ']);
+        const maxZ = finite(`${where}.trigger.maxZ`, t['maxZ']);
+        const minY = finite(`${where}.trigger.minY`, t['minY']);
+        const maxY = finite(`${where}.trigger.maxY`, t['maxY']);
+        if (maxX < minX || maxZ < minZ || maxY < minY)
+          throw new EventDataError(`${where}.trigger: box maxima must be >= minima`);
+        trigger = { kind: tk, minX, maxX, minZ, maxZ, minY, maxY };
         break;
       }
       case 'time': {
