@@ -9,7 +9,7 @@ describe('private owner CI authorization boundary', () => {
     expect(provider.required_checks).toEqual(['verify', 'streaming', 'parity-non-v8', 'mission']);
     const workflow = readFileSync('.github/workflows/ci.yml', 'utf8');
     expect(workflow).toContain('  workflow_dispatch:');
-    expect(workflow).not.toMatch(/^  (?:pull_request|pull_request_target|push|repository_dispatch|workflow_call):/m);
+    expect(workflow).not.toMatch(/^ {2}(?:pull_request|pull_request_target|push|repository_dispatch|workflow_call):/m);
     expect(workflow).not.toContain('self-hosted');
   });
 });
