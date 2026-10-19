@@ -535,3 +535,4 @@ Format: `T-<id> — <what changed>`
 - U-228 — Author isolated replacement-Qalat 32-guard roster, POW, four dormant counterattack riflemen and y8 staged tank, with fixed sockets, patrol/advance regions, OG1 emplacement and deterministic validation (PR #376; activation remains U-233).
 - U-235 — Partition complete CI Vitest suite and independent Qalat captures across fail-closed required verification/streaming gates; retain production and asset safeguards.
 - U-229 — Author five source-verified finite Qalat supply caches, including 24 rockets and server-authoritative Session tests; repair A-S05 toll-office ingress, keep the B7 bench variance documented, and refresh exact nav, construction, render and screenshot evidence (PR #377; activation remains U-233).
+- U-230 (WIP): isolate Qalat objective, route-volume and timed-event authoring from production activation.
