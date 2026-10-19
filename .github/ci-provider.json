@@ -1,0 +1,7 @@
+{
+  "controller_repository": "JoshuaLRay/Private-CI-Controller",
+  "github_app_id": 5384278,
+  "required_checks": ["verify", "streaming", "parity-non-v8", "mission"],
+  "authorization": "manual-owner-reviewed-exact-sha",
+  "hosted_fallback": ".github/workflows/ci.yml"
+}
