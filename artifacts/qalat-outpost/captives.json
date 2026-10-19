@@ -1,7 +1,7 @@
 {
   "task": "U-225",
   "isolated": true,
-  "levelHash": "8bd402615a09db76f27940f8a4ee2539dc629e616a91ca7c69402f21d08769f5",
+  "levelHash": "1de3f5359a8867367aa103666be42bbffb6e536c8ea8f5ff4806bacd2c356b12",
   "missionHash": "40e644c629e6bb1a13d229af6291acc3f2564a94b6003406185c3950acf762d0",
   "pow": {
     "id": "mission-pow",

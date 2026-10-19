@@ -34,7 +34,8 @@ try {
   console.log(`[preview] joined ${start.world}, ${start.boxes} boxes`);
   assert.equal(start.world, 'qalat-outpost-construction');
   assert.equal(start.revision, 2);
-  assert.equal(start.boxes, 110509);
+  // The repaired A-S05 portal and detached A-S05-north sight cap have a source-verified exact construction count.
+  assert.equal(start.boxes, 110289);
   assert.equal(start.roster.filter((s) => !s.human).length, 5);
   assert.equal(start.position.y, 8);
   // Match perf-frame.ts's explicit headless pointer-lock fixture. All game

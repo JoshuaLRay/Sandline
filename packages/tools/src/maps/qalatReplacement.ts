@@ -11,6 +11,7 @@ import { buildOutpostCaptiveFixture } from './qalatOutpostCaptives.ts';
 import { QALAT_TILED_PLAN } from './qalatRoadNav.ts';
 import { insertionSurface } from './insertionSurface.ts';
 import { buildReplacementEncounter } from './qalatReplacementEncounter.ts';
+import { buildReplacementSupplies } from './qalatReplacementSupplies.ts';
 
 export function replacementInputs() {
   const level = { ...buildOutpostLevel(), mapRevision: 2 };
@@ -23,6 +24,8 @@ export async function buildReplacementBundle() {
   const { level, world, mission, pow, decorations } = replacementInputs();
   const { encounter, encounterMission, emplacements } = buildReplacementEncounter(world);
   const encounterDigest = digest({ encounter, encounterMission, emplacements });
+  const supplyCaches = buildReplacementSupplies(world);
+  const supplyDigest = digest(supplyCaches);
   const levelHash = digest(level), renderHash = digest([...level.boxes, ...decorations]);
   await yieldPhase();
   const rendered = insertionSurface([...level.boxes, ...decorations]);
@@ -36,7 +39,8 @@ export async function buildReplacementBundle() {
   const hashes = { level: levelHash, render: renderHash, surface: digest(surface), mission: digest(mission),
     navInput: nav.hash, nav: digest(nav), cover: digest(nav.cover),
     starts: digest(level.squadStarts), holdings: digest({ pow, carried: mission.prisonerHoldings }) };
-  return { level, surface, mission, nav, encounter, encounterMission, emplacements, encounterDigest, manifest: {
+  return { level, surface, mission, nav, encounter, encounterMission, emplacements, encounterDigest,
+    supplyCaches, supplyDigest, manifest: {
     task: 'U-227', world: world.id, mapRevision: 2, registered: false,
     levelHash, renderHash, decorations, pow, hashes, bundleHash: digest(hashes),
     navPlan: QALAT_TILED_PLAN, boxes: level.boxes.length,
@@ -52,10 +56,13 @@ export type ReplacementBundle = Awaited<ReturnType<typeof buildReplacementBundle
 
 /** Validate serialized artifacts before handing their explicit data to a Session or reviewer. */
 export function reloadReplacement(bundle: ReplacementBundle) {
-  const { level, surface, mission, nav, manifest: m, encounter, encounterMission, emplacements, encounterDigest } = bundle;
+  const { level, surface, mission, nav, manifest: m, encounter, encounterMission, emplacements, encounterDigest,
+    supplyCaches, supplyDigest } = bundle;
   // Reject serialized tampering against the existing source-bound manifest
   // before loading 110k collision boxes and auditing all encounter sockets.
   // This also bounds the negative-test matrix without skipping any checks.
+  if (digest(supplyCaches) !== supplyDigest)
+    throw new Error('stale or altered U-229 replacement supplies');
   if (m.registered !== false || m.mapRevision !== 2 || level.mapRevision !== 2 ||
     m.world !== level.id || nav.world !== level.id ||
     digest(level) !== m.hashes.level || digest(mission) !== m.hashes.mission ||
@@ -71,6 +78,8 @@ export function reloadReplacement(bundle: ReplacementBundle) {
     surface: digest(surface), mission: digest(mission), navInput: exportInputHash(world, m.navPlan),
     nav: digest(nav), cover: digest(nav.cover), starts: digest(level.squadStarts),
     holdings: digest({ pow: m.pow, carried: mission.prisonerHoldings }) };
+  if (digest(buildReplacementSupplies(world)) !== supplyDigest)
+    throw new Error('stale or altered U-229 replacement supplies');
   if (parsed.id !== world.id || parsed.world !== world.id ||
     nav.hash !== hashes.navInput || m.hashes.render !== hashes.render ||
     m.hashes.navInput !== hashes.navInput || digest(hashes) !== m.bundleHash)
@@ -86,6 +95,6 @@ export function reloadReplacement(bundle: ReplacementBundle) {
     throw new Error('replacement render surface content changed');
   const fixture = buildOutpostCaptiveFixture(world, parsed);
   if (digest(fixture.pow) !== digest(m.pow)) throw new Error('replacement POW holding changed');
-  return { ...fixture, encounter, encounterMission, emplacements,
+  return { ...fixture, encounter, encounterMission, emplacements, supplyCaches,
     nav: NavMesh.load(bakedBytes(nav), nav.agent.height) };
 }

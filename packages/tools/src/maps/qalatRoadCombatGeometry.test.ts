@@ -111,9 +111,23 @@ describe('U-161 built road combat geometry', () => {
 
   it('carves and closes the toll interior, preserves a full 4 m east door, and crosses its edges with the production controller', () => {
     expect(combatOpenFloors()).toEqual([[{ x: -8.6, z: 113.4 }, { x: .6, z: 113.4 }, { x: .6, z: 122.6 }, { x: -8.6, z: 122.6 }]]);
+    const cap = ROAD_COMBAT.screens.find((s) => s.id === 'A-S05-north');
+    expect(cap?.polygon).toEqual([[7,120.5],[9.75284193631739,120.5],[8.212223878081653,122.8109270873536],[7,123.1572767668055]]);
+    expect(ROAD_COMBAT.screens.find((s) => s.id === 'A-S05')?.polygon.every((p) => p[1]! <= 115)).toBe(true);
     const office = ROAD_COMBAT.tollOffice;
     expect(office.doorMaxZ - office.doorMinZ).toBe(4);
     expect(office.ceilingY).toBe(11.5); expect(office.roofTopY).toBe(12.3); expect(office.roofWalkable).toBe(false);
+    // U-229: the previous A-S05 screen made the real 4 m entrance a
+    // disconnected nav island despite an unobstructed first metre at the door.
+    // Check the FULL office-to-apron corridor with the production collision
+    // and standing support, not just the inside of the office.
+    for (let x = -6; x <= 12; x += .5) {
+      const nearbyBoxes = nearby(x, 118, 1);
+      expect(blockedAt(x, 118, DEFAULT_MOVE_CONFIG.radius, 8, 0,
+        DEFAULT_MOVE_CONFIG.height, nearbyBoxes), `P-ROAD entrance blocked at x=${x}`).toBe(false);
+      expect(supportUnder(x, 118, DEFAULT_MOVE_CONFIG.radius, 8.45,
+        nearbyBoxes, 0), `P-ROAD entrance unsupported at x=${x}`).toBe(8);
+    }
     for (let x = -7.5; x <= -.5; x += .5) for (let z = 114.5; z <= 121.5; z += .5) {
       const boxes = nearby(x, z, .4);
       expect(blockedAt(x, z, .01, 8, 0, DEFAULT_MOVE_CONFIG.height, boxes)).toBe(false);

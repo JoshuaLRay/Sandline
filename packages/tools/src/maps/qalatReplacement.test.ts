@@ -68,6 +68,30 @@ describe('U-227 staged complete replacement', () => {
     expect(loaded.world.mission).toBeNull();
   }, 60_000);
 
+  it('U-229 keeps five source-verified finite caches on the supported connected replacement nav', () => {
+    const caches = bundle.supplyCaches;
+    expect(caches.map((c) => c.id)).toEqual(['P-SOUTH', 'P-ROAD', 'P-RIDGE', 'P-BASEMENT', 'P-OUTPOST']);
+    expect(loaded.supplyCaches).toEqual(caches);
+    expect(caches.reduce((n, c) => n + (c.stock.projectiles.rocket ?? 0), 0)).toBe(24);
+    for (const cache of caches) {
+      const near = loaded.nav.nearestPoint(cache.feet)?.point;
+      expect(near, cache.id).toBeDefined();
+      expect(Math.abs(near!.y - cache.feet.y), cache.id).toBeLessThan(.35);
+      expect(Math.hypot(near!.x - cache.feet.x, near!.z - cache.feet.z), cache.id).toBeLessThan(.65);
+      expect(loaded.nav.connected(insertion[0]!, cache.feet), cache.id).toBe(true);
+      expect(completePathLength(loaded.nav.path(insertion[0]!, cache.feet),
+        insertion[0]!, cache.feet), cache.id).not.toBeNull();
+    }
+    const altered = structuredClone(bundle);
+    altered.supplyCaches = altered.supplyCaches.map((c, i) =>
+      i === 0 ? { ...c, stock: { ...c.stock, healthKits: c.stock.healthKits + 1 } } : c);
+    expect(() => reloadReplacement(altered)).toThrow(/supplies/);
+    // A forged self-consistent sidecar digest must still fail the source-bound check.
+    altered.supplyDigest = digest(altered.supplyCaches);
+    expect(() => reloadReplacement(altered)).toThrow(/supplies/);
+    expect(missionFor(loaded.world.id)).toBeUndefined();
+  }, 90_000);
+
   it('rebakes the exported nav deterministically and keeps legacy registered inputs and hashes', async () => {
     expect(Buffer.from(await bakeTiledStanding(loaded.world, QALAT_TILED_PLAN)).equals(Buffer.from(bakedBytes(bundle.nav)))).toBe(true);
     for (const id of WORLD_IDS) expect(exportInputHash(requireWorld(id))).toBe(navBakeHash(requireWorld(id)));

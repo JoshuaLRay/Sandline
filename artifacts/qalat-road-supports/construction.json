@@ -7,9 +7,9 @@
   "road": "U-139",
   "kind": "isolated surface whitebox: road fights, screened tank ingress, D0 return store and furnished ridge with support bays, service bridge and C12-L/C12-U stairs",
   "activeCampaign": "unchanged; activation belongs to U-117",
-  "sourceHash": "33af31340d2463d1f103ba72813d8d9e634ec2fbf0634ab4dd9fd276ab29fac6",
-  "levelHash": "a4b3c2409c33a64252b6fb04d4f440a29904cbb2f602f98fff9572403aef3f3f",
-  "boxCount": 94215,
+  "sourceHash": "bc48ed456a3e17d77f1be490d73f2015544126f2dc89b3af3c4df3f53cdd61db",
+  "levelHash": "8609d23b996cad0329480e2933c25a7e802f0289942ff56ba17f718bbc875f9e",
+  "boxCount": 93995,
   "stratumM": 0.025,
   "edgeExpansionM": 0.005,
   "circleSides": 512,
@@ -1163,8 +1163,8 @@
         "id": "A-S05",
         "x": 13.209754301492024,
         "y": 8,
-        "z": 114.57863838340275,
-        "length": 17.157276766805495,
+        "z": 110.5,
+        "length": 9,
         "depth": 12.419508602984049,
         "height": 2.2,
         "orientation": "along-road",
@@ -1184,6 +1184,41 @@
             106
           ],
           [
+            13.419508602984,
+            115
+          ],
+          [
+            7,
+            115
+          ]
+        ],
+        "why": "Keep the original A2 sight-screen south of the toll office; terminate before the 4 m z116..120 doorway approach so soldiers and Recast nav can move from the actual road into P-ROAD. The nearby A-S18 still screens the north shoulder."
+      },
+      {
+        "id": "A-S05-north",
+        "x": 8.38,
+        "y": 8,
+        "z": 121.8286383834,
+        "length": 2.6572767668055,
+        "depth": 2.7528419363174,
+        "height": 2.2,
+        "orientation": "along-road",
+        "segment": [
+          "A1",
+          "A2"
+        ],
+        "kind": "rock-screen",
+        "region": "A2-southwest-apron",
+        "polygon": [
+          [
+            7,
+            120.5
+          ],
+          [
+            9.75284193631739,
+            120.5
+          ],
+          [
             8.212223878081653,
             122.8109270873536
           ],
@@ -1192,7 +1227,7 @@
             123.1572767668055
           ]
         ],
-        "why": "Polygon is authoritative; nominal dimensions record its plan bounds. The footprint closes an apron or shoulder outside the central 12 m lane."
+        "why": "Retain the old north-end A2 sight-break as a detached limestone cap. The full z116..120 4 m toll-office doorway and z118 standing corridor stay clear between the south A-S05 screen (ending z115) and this cap (starting z120.5). No extra route."
       },
       {
         "id": "A-S06",
@@ -3246,7 +3281,7 @@
     }
   },
   "tankSweep": {
-    "levelHash": "a4b3c2409c33a64252b6fb04d4f440a29904cbb2f602f98fff9572403aef3f3f",
+    "levelHash": "8609d23b996cad0329480e2933c25a7e802f0289942ff56ba17f718bbc875f9e",
     "route": {
       "method": "closed interval disk tubes; complete support prism slab union",
       "radiusM": 3.31058907144937,
@@ -3683,8 +3718,8 @@
       "reachM": 400
     },
     "certification": {
-      "occluders": 46,
-      "checkedBands": 24889,
+      "occluders": 47,
+      "checkedBands": 24342,
       "floorY": 8,
       "headHeightM": 1.8
     }

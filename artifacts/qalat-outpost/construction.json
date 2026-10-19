@@ -3,9 +3,9 @@
   "parent": "U-116",
   "kind": "isolated furnished outpost and sealed screened reserve annex",
   "sourceHash": "d314d2eb341ea63eeccfa0eec753589bfe22f461cff7ab3c961edfa09841eb79",
-  "levelHash": "8bd402615a09db76f27940f8a4ee2539dc629e616a91ca7c69402f21d08769f5",
-  "renderHash": "563ad780328968c093bdddc33d3fe6ace023a5f9eba6602bde8dade4cd54b710",
-  "boxCount": 110509,
+  "levelHash": "1de3f5359a8867367aa103666be42bbffb6e536c8ea8f5ff4806bacd2c356b12",
+  "renderHash": "bd48c58b5a236deba95502c66b11681acc696acc00937d24a8cf6b43f973ed29",
+  "boxCount": 110289,
   "shellBoxCount": 506,
   "furniture": [
     {
