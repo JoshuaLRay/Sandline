@@ -1,13 +1,11 @@
-name: CI
+name: Hosted CI fallback and gated deployment
 
 # A pull request's branch used to run this whole workflow twice for every push (once for `push`, once for
 # `pull_request`), eight jobs where four do. The pull-request run is the one that counts (it tests the branch merged
 # into its base), so `push` is now only main, and a newer push to the same pull request replaces the run in flight.
 on:
-  push:
-    branches: [main]
-  pull_request:
-  # Manual release once Cloudflare is configured; all four tests run first.
+  # Active tests run only through the private owner's reviewed-SHA controller.
+  # Preserve this full hosted rollback/release path and every deployment guard.
   workflow_dispatch:
 
 concurrency:

@@ -67,6 +67,12 @@ or playtest sheets. For uncommon traps/terms see the optional
 - **Standing owner authorization (2026-10-08): merge this task's PR when green.**
   Require all four jobs — `verify`, `streaming`, `parity-non-v8`,
   `mission` — successful on its **latest head SHA**, with a mergeable PR.
+  Active results must come from owner-only GitHub App **5384278**
+  (`joshualray-private-ci-checks`), backed by manually reviewed exact-SHA runs
+  in `JoshuaLRay/Private-CI-Controller`. Use its owner-side evidence/merge gate;
+  same-name checks from another App are not equivalent. The full source hosted
+  workflow is manual rollback/deployment only. Never register a source runner
+  or let source events dispatch work on the home PC.
   Pending, failed, skipped, missing, cancelled or stale checks are NOT green.
   If main advances, synchronize safely and rerun checks. Merge with an
   expected-head-SHA guard and verify the new main commit. Do not merge an
